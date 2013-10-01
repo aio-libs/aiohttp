@@ -8,13 +8,11 @@ import http.server
 import json
 import logging
 import io
-import unittest.mock
 import os
 import re
 import sys
 import threading
 import traceback
-import unittest
 import urllib.parse
 try:
     import ssl

@@ -8,8 +8,6 @@ Requirements
 
 - Python 3.3
 
-- psycopg2
-
 - tulip http://code.google.com/p/tulip/
 
 
