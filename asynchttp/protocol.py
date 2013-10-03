@@ -741,7 +741,8 @@ class Response(HttpMessage):
 
         self.status = status
         self.status_line = 'HTTP/{}.{} {} {}\r\n'.format(
-            http_version[0], http_version[1], status, RESPONSES[status][0])
+            http_version[0], http_version[1], status,
+            RESPONSES.get(status, (status,))[0])
 
     def _add_default_headers(self):
         super()._add_default_headers()
