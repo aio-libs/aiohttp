@@ -136,6 +136,15 @@ class HttpMessageTests(unittest.TestCase):
         self.assertNotIn('SERVER', headers)
         self.assertIn('USER-AGENT', headers)
 
+    def test_default_headers_useragent_custom(self):
+        msg = protocol.Request(self.transport, 'GET', '/')
+        msg.add_headers(('user-agent', 'my custom agent'))
+        msg._add_default_headers()
+
+        headers = [r for r, _ in msg.headers
+                   if r.lower() == 'user-agent']
+        self.assertEqual(len(headers), 1)
+
     def test_default_headers_chunked(self):
         msg = protocol.Response(self.transport, 200)
         msg._add_default_headers()

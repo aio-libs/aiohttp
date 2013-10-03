@@ -488,6 +488,8 @@ class HttpMessage:
     # this is useful for wsgi's start_response implementation.
     _send_headers = False
 
+    _has_user_agent = False
+
     def __init__(self, transport, version, close):
         self.transport = transport
         self.version = version
@@ -551,6 +553,9 @@ class HttpMessage:
             self.chunked = value.lower().strip() == 'chunked'
 
         elif name not in self.HOP_HEADERS:
+            if name == 'USER-AGENT':
+                self._has_user_agent = True
+
             # ignore hopbyhop headers
             self.headers.append((name, value))
 
@@ -765,4 +770,5 @@ class Request(HttpMessage):
 
     def _add_default_headers(self):
         super()._add_default_headers()
-        self.headers.append(('USER-AGENT', self.SERVER_SOFTWARE))
+        if not self._has_user_agent:
+            self.headers.append(('USER-AGENT', self.SERVER_SOFTWARE))
