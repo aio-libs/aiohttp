@@ -9,6 +9,7 @@ import time
 import tulip
 
 import asynchttp
+import asynchttp.server
 from asynchttp import websocket
 
 ARGS = argparse.ArgumentParser(description="Run simple http server.")
@@ -25,7 +26,7 @@ ARGS.add_argument(
 WS_FILE = os.path.join(os.path.dirname(__file__), 'websocket.html')
 
 
-class HttpServer(asynchttp.ServerHttpProtocol):
+class HttpServer(asynchttp.server.ServerHttpProtocol):
 
     clients = None  # list of all active connections
     parent = None  # process supervisor
@@ -49,7 +50,7 @@ class HttpServer(asynchttp.ServerHttpProtocol):
             resp.send_headers()
 
             # install websocket parser
-            databuffer = self.stream.set_parser(parser)
+            dataqueue = self.stream.set_parser(parser)
 
             # notify everybody
             print('{}: Someone joined.'.format(os.getpid()))
@@ -61,7 +62,7 @@ class HttpServer(asynchttp.ServerHttpProtocol):
             # chat dispatcher
             while True:
                 try:
-                    msg = yield from databuffer.read()
+                    msg = yield from dataqueue.read()
                 except asynchttp.EofStream:
                     # client droped connection
                     break

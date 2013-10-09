@@ -10,6 +10,7 @@ import time
 import tulip
 
 import asynchttp
+import asynchttp.server
 from asynchttp import websocket
 
 ARGS = argparse.ArgumentParser(description="Run simple http server.")
@@ -24,7 +25,7 @@ ARGS.add_argument(
     default=2, type=int, help='Number of workers.')
 
 
-class HttpServer(asynchttp.ServerHttpProtocol):
+class HttpServer(asynchttp.server.ServerHttpProtocol):
 
     @tulip.coroutine
     def handle_request(self, message, payload):

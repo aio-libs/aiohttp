@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Tests for tulip/http/client.py"""
+"""Tests for asynchttp/client.py"""
 
 import inspect
 import tulip

@@ -19,6 +19,7 @@ import urllib.parse
 import tulip
 import asynchttp
 from asynchttp import client
+from asynchttp import server
 
 
 def run_briefly(loop):
@@ -53,7 +54,7 @@ def run_server(loop, *, host='127.0.0.1', port=0, use_ssl=False, router=None):
             return urllib.parse.urljoin(
                 self._url, '/'.join(str(s) for s in suffix))
 
-    class TestHttpServer(asynchttp.ServerHttpProtocol):
+    class TestHttpServer(server.ServerHttpProtocol):
 
         def connection_made(self, transport):
             transports.append(transport)

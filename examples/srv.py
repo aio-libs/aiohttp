@@ -15,9 +15,10 @@ assert sys.version >= '3.3', 'Please use Python 3.3 or higher.'
 
 import tulip
 import asynchttp
+import asynchttp.server
 
 
-class HttpServer(asynchttp.ServerHttpProtocol):
+class HttpServer(asynchttp.server.ServerHttpProtocol):
 
     @tulip.coroutine
     def handle_request(self, message, payload):

@@ -1,10 +1,10 @@
 """Parser is a generator function.
 
 Parser receives data with generator's send() method and sends data to
-destination DataBuffer. Parser receives ParserBuffer and DataBuffer objects
+destination DataQueue. Parser receives ParserBuffer and DataQueue objects
 as a parameters of the parser call, all subsequent send() calls should
 send bytes objects. Parser sends parsed `term` to desitnation buffer with
-DataBuffer.feed_data() method. DataBuffer object should implement two methods.
+DataQueue.feed_data() method. DataQueue object should implement two methods.
 feed_data() - parser uses this method to send parsed protocol data.
 feed_eof() - parser uses this method for indication of end of parsing stream.
 To indicate end of incoming data stream EofStream exception should be sent
@@ -21,12 +21,12 @@ There are three stages:
         parser = HttpRequestParser()
         data_buffer = stream.set_parser(parser)
 
-    3. At this stage StreamParser creates DataBuffer object and passes it
+    3. At this stage StreamParser creates DataQueue object and passes it
        and internal buffer into parser as an arguments.
 
         def set_parser(self, parser):
             next(parser)
-            data_buffer = DataBuffer()
+            data_buffer = DataQueue()
             self.p = parser(data_buffer, self._buffer)
             return data_buffer
 
@@ -43,8 +43,8 @@ There are three stages:
     2. Protocol sends data to StreamParser with feed_data() call.
     3. StreamParser sends data into parser with generator's send() method.
     4. Parser processes incoming data and sends parsed data
-       to DataBuffer with feed_data()
-    4. Application received parsed data from DataBuffer.read()
+       to DataQueue with feed_data()
+    4. Application received parsed data from DataQueue.read()
 
  * Eof:
 
@@ -53,11 +53,11 @@ There are three stages:
     3. Then it unsets parser.
 
 _SocketSocketTransport ->
-   -> "protocol" -> StreamParser -> "parser" -> DataBuffer <- "application"
+   -> "protocol" -> StreamParser -> "parser" -> DataQueue <- "application"
 
 """
 __all__ = ['EofStream', 'StreamParser', 'StreamProtocol',
-           'ParserBuffer', 'DataBuffer', 'LinesParser', 'ChunksParser']
+           'ParserBuffer', 'DataQueue', 'LinesParser', 'ChunksParser']
 
 import collections
 import inspect
@@ -73,19 +73,21 @@ class StreamParser:
 
     StreamParser uses ParserBuffer as internal buffer.
 
-    set_parser() sets current parser, it creates DataBuffer object
-    and sends ParserBuffer and DataBuffer into parser generator.
+    set_parser() sets current parser, it creates DataQueue object
+    and sends ParserBuffer and DataQueue into parser generator.
 
     unset_parser() sends EofStream into parser and then removes it.
     """
 
-    def __init__(self, *, loop=None):
+    def __init__(self, *, loop=None, buffer=None):
         self._loop = loop
-        self._buffer = ParserBuffer()
         self._eof = False
         self._parser = None
         self._parser_buffer = None
         self._exception = None
+        if buffer is None:
+            buffer = ParserBuffer()
+        self._buffer = buffer
 
     def is_connected(self):
         return not self._eof
@@ -137,11 +139,11 @@ class StreamParser:
         self._eof = True
 
     def set_parser(self, parser):
-        """set parser to stream. return parser's DataStream."""
+        """set parser to stream. return parser's DataQueue."""
         if self._parser:
             self.unset_parser()
 
-        out = DataBuffer(loop=self._loop)
+        out = DataQueue(loop=self._loop)
         if self._exception:
             out.set_exception(self._exception)
             return out
@@ -206,8 +208,8 @@ class StreamProtocol(StreamParser, tulip.Protocol):
             self.feed_eof()
 
 
-class DataBuffer:
-    """DataBuffer is a destination for parsed data."""
+class DataQueue:
+    """DataQueue is a destination for parsed data."""
 
     def __init__(self, *, loop=None):
         self._loop = loop

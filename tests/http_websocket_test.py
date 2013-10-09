@@ -284,7 +284,7 @@ class WebsocketParserTests(unittest.TestCase):
                 return websocket.Message(websocket.OPCODE_CLOSE, b'', b'')
 
         m_parse_message.side_effect = parse_message
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = websocket.WebSocketParser(out, buf)
         next(p)
@@ -298,7 +298,7 @@ class WebsocketParserTests(unittest.TestCase):
         self.assertTrue(out._eof)
 
     def test_parser_eof(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = websocket.WebSocketParser(out, buf)
         next(p)

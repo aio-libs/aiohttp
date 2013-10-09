@@ -102,7 +102,7 @@ class DeflateBufferTests(unittest.TestCase):
         tulip.set_event_loop(None)
 
     def test_feed_data(self):
-        buf = asynchttp.DataBuffer()
+        buf = asynchttp.DataQueue()
         dbuf = protocol.DeflateBuffer(buf, 'deflate')
 
         dbuf.zlib = unittest.mock.Mock()
@@ -112,7 +112,7 @@ class DeflateBufferTests(unittest.TestCase):
         self.assertEqual([b'line'], list(buf._buffer))
 
     def test_feed_data_err(self):
-        buf = asynchttp.DataBuffer()
+        buf = asynchttp.DataQueue()
         dbuf = protocol.DeflateBuffer(buf, 'deflate')
 
         exc = ValueError()
@@ -122,7 +122,7 @@ class DeflateBufferTests(unittest.TestCase):
         self.assertRaises(errors.IncompleteRead, dbuf.feed_data, b'data')
 
     def test_feed_eof(self):
-        buf = asynchttp.DataBuffer()
+        buf = asynchttp.DataQueue()
         dbuf = protocol.DeflateBuffer(buf, 'deflate')
 
         dbuf.zlib = unittest.mock.Mock()
@@ -133,7 +133,7 @@ class DeflateBufferTests(unittest.TestCase):
         self.assertTrue(buf._eof)
 
     def test_feed_eof_err(self):
-        buf = asynchttp.DataBuffer()
+        buf = asynchttp.DataQueue()
         dbuf = protocol.DeflateBuffer(buf, 'deflate')
 
         dbuf.zlib = unittest.mock.Mock()
@@ -149,7 +149,7 @@ class ParsePayloadTests(unittest.TestCase):
         tulip.set_event_loop(None)
 
     def test_parse_eof_payload(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpPayloadParser(None).parse_eof_payload(out, buf)
         next(p)
@@ -162,7 +162,7 @@ class ParsePayloadTests(unittest.TestCase):
         self.assertEqual([b'data'], list(out._buffer))
 
     def test_parse_length_payload(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpPayloadParser(None).parse_length_payload(out, buf, 4)
         next(p)
@@ -178,7 +178,7 @@ class ParsePayloadTests(unittest.TestCase):
         self.assertEqual(b'line', bytes(buf))
 
     def test_parse_length_payload_eof(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpPayloadParser(None).parse_length_payload(out, buf, 4)
         next(p)
@@ -187,7 +187,7 @@ class ParsePayloadTests(unittest.TestCase):
             errors.IncompleteRead, p.throw, asynchttp.EofStream)
 
     def test_parse_chunked_payload(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpPayloadParser(None).parse_chunked_payload(out, buf)
         next(p)
@@ -199,7 +199,7 @@ class ParsePayloadTests(unittest.TestCase):
         self.assertEqual(b'', bytes(buf))
 
     def test_parse_chunked_payload_chunks(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpPayloadParser(None).parse_chunked_payload(out, buf)
         next(p)
@@ -212,7 +212,7 @@ class ParsePayloadTests(unittest.TestCase):
         self.assertEqual(b'dataline', b''.join(out._buffer))
 
     def test_parse_chunked_payload_incomplete(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpPayloadParser(None).parse_chunked_payload(out, buf)
         next(p)
@@ -220,7 +220,7 @@ class ParsePayloadTests(unittest.TestCase):
         self.assertRaises(errors.IncompleteRead, p.throw, asynchttp.EofStream)
 
     def test_parse_chunked_payload_extension(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpPayloadParser(None).parse_chunked_payload(out, buf)
         next(p)
@@ -231,7 +231,7 @@ class ParsePayloadTests(unittest.TestCase):
         self.assertEqual(b'dataline', b''.join(out._buffer))
 
     def test_parse_chunked_payload_size_error(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpPayloadParser(None).parse_chunked_payload(out, buf)
         next(p)
@@ -240,7 +240,7 @@ class ParsePayloadTests(unittest.TestCase):
     def test_http_payload_parser_length_broken(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1), [('CONTENT-LENGTH', 'qwe')], None, None)
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg)(out, buf)
         self.assertRaises(errors.InvalidHeader, next, p)
@@ -248,7 +248,7 @@ class ParsePayloadTests(unittest.TestCase):
     def test_http_payload_parser_length_wrong(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1), [('CONTENT-LENGTH', '-1')], None, None)
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg)(out, buf)
         self.assertRaises(errors.InvalidHeader, next, p)
@@ -256,7 +256,7 @@ class ParsePayloadTests(unittest.TestCase):
     def test_http_payload_parser_length(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1), [('CONTENT-LENGTH', '2')], None, None)
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg)(out, buf)
         next(p)
@@ -271,7 +271,7 @@ class ParsePayloadTests(unittest.TestCase):
     def test_http_payload_parser_no_length(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1), [], None, None)
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg, readall=False)(out, buf)
         self.assertRaises(StopIteration, next, p)
@@ -286,7 +286,7 @@ class ParsePayloadTests(unittest.TestCase):
             'GET', '/', (1, 1), [('CONTENT-LENGTH', len(self._COMPRESSED))],
             None, 'deflate')
 
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg)(out, buf)
         next(p)
@@ -298,7 +298,7 @@ class ParsePayloadTests(unittest.TestCase):
             'GET', '/', (1, 1), [('CONTENT-LENGTH', len(self._COMPRESSED))],
             None, 'deflate')
 
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg, compression=False)(out, buf)
         next(p)
@@ -308,7 +308,7 @@ class ParsePayloadTests(unittest.TestCase):
     def test_http_payload_parser_websocket(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1), [('SEC-WEBSOCKET-KEY1', '13')], None, None)
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg)(out, buf)
         next(p)
@@ -318,7 +318,7 @@ class ParsePayloadTests(unittest.TestCase):
     def test_http_payload_parser_chunked(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1), [('TRANSFER-ENCODING', 'chunked')], None, None)
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg)(out, buf)
         next(p)
@@ -329,7 +329,7 @@ class ParsePayloadTests(unittest.TestCase):
     def test_http_payload_parser_eof(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1), [], None, None)
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg, readall=True)(out, buf)
         next(p)
@@ -341,7 +341,7 @@ class ParsePayloadTests(unittest.TestCase):
     def test_http_payload_parser_length_zero(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1), [('CONTENT-LENGTH', '0')], None, None)
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg)(out, buf)
         self.assertRaises(StopIteration, next, p)
@@ -354,7 +354,7 @@ class ParseRequestTests(unittest.TestCase):
         tulip.set_event_loop(None)
 
     def test_http_request_parser_max_headers(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpRequestParser(8190, 20, 8190)(out, buf)
         next(p)
@@ -365,7 +365,7 @@ class ParseRequestTests(unittest.TestCase):
             b'get /path HTTP/1.1\r\ntest: line\r\ntest2: data\r\n\r\n')
 
     def test_http_request_parser(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpRequestParser()(out, buf)
         next(p)
@@ -379,7 +379,7 @@ class ParseRequestTests(unittest.TestCase):
 
     def test_http_request_parser_eof(self):
         # HttpRequestParser does not fail on EofStream()
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpRequestParser()(out, buf)
         next(p)
@@ -391,7 +391,7 @@ class ParseRequestTests(unittest.TestCase):
         self.assertFalse(out._buffer)
 
     def test_http_request_parser_two_slashes(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpRequestParser()(out, buf)
         next(p)
@@ -403,7 +403,7 @@ class ParseRequestTests(unittest.TestCase):
             ('GET', '//path', (1, 1), deque(), False, None), out._buffer[0])
 
     def test_http_request_parser_bad_status_line(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpRequestParser()(out, buf)
         next(p)
@@ -411,7 +411,7 @@ class ParseRequestTests(unittest.TestCase):
             errors.BadStatusLine, p.send, b'\r\n\r\n')
 
     def test_http_request_parser_bad_method(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpRequestParser()(out, buf)
         next(p)
@@ -420,7 +420,7 @@ class ParseRequestTests(unittest.TestCase):
             p.send, b'!12%()+=~$ /get HTTP/1.1\r\n\r\n')
 
     def test_http_request_parser_bad_version(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpRequestParser()(out, buf)
         next(p)
@@ -435,14 +435,14 @@ class ParseResponseTests(unittest.TestCase):
         tulip.set_event_loop(None)
 
     def test_http_response_parser_bad_status_line(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpResponseParser()(out, buf)
         next(p)
         self.assertRaises(errors.BadStatusLine, p.send, b'\r\n\r\n')
 
     def test_http_response_parser_bad_status_line_eof(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpResponseParser()(out, buf)
         next(p)
@@ -450,7 +450,7 @@ class ParseResponseTests(unittest.TestCase):
             errors.BadStatusLine, p.throw, asynchttp.EofStream())
 
     def test_http_response_parser_bad_version(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpResponseParser()(out, buf)
         next(p)
@@ -459,7 +459,7 @@ class ParseResponseTests(unittest.TestCase):
         self.assertEqual('HT/11 200 Ok\r\n', cm.exception.args[0])
 
     def test_http_response_parser_no_reason(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpResponseParser()(out, buf)
         next(p)
@@ -473,7 +473,7 @@ class ParseResponseTests(unittest.TestCase):
         self.assertEqual(r, '')
 
     def test_http_response_parser_bad(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpResponseParser()(out, buf)
         next(p)
@@ -482,7 +482,7 @@ class ParseResponseTests(unittest.TestCase):
         self.assertIn('HTT/1', str(cm.exception))
 
     def test_http_response_parser_code_under_100(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpResponseParser()(out, buf)
         next(p)
@@ -491,7 +491,7 @@ class ParseResponseTests(unittest.TestCase):
         self.assertIn('HTTP/1.1 99 test', str(cm.exception))
 
     def test_http_response_parser_code_above_999(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpResponseParser()(out, buf)
         next(p)
@@ -500,7 +500,7 @@ class ParseResponseTests(unittest.TestCase):
         self.assertIn('HTTP/1.1 9999 test', str(cm.exception))
 
     def test_http_response_parser_code_not_int(self):
-        out = asynchttp.DataBuffer()
+        out = asynchttp.DataQueue()
         buf = asynchttp.ParserBuffer()
         p = protocol.HttpResponseParser()(out, buf)
         next(p)

@@ -32,7 +32,7 @@ class StreamParserTests(unittest.TestCase):
         stream = parsers.StreamParser()
 
         stream._parser = self.lines_parser
-        buf = stream._parser_buffer = parsers.DataBuffer(loop=self.loop)
+        buf = stream._parser_buffer = parsers.DataQueue(loop=self.loop)
 
         exc = ValueError()
         stream.set_exception(exc)
@@ -301,7 +301,7 @@ class StreamParserTests(unittest.TestCase):
         self.assertTrue(s._eof)
 
 
-class DataBufferTests(unittest.TestCase):
+class DataQueueTests(unittest.TestCase):
 
     def setUp(self):
         self.loop = tulip.new_event_loop()
@@ -311,20 +311,20 @@ class DataBufferTests(unittest.TestCase):
         self.loop.close()
 
     def test_feed_data(self):
-        buffer = parsers.DataBuffer(loop=self.loop)
+        buffer = parsers.DataQueue(loop=self.loop)
 
         item = object()
         buffer.feed_data(item)
         self.assertEqual([item], list(buffer._buffer))
 
     def test_feed_eof(self):
-        buffer = parsers.DataBuffer(loop=self.loop)
+        buffer = parsers.DataQueue(loop=self.loop)
         buffer.feed_eof()
         self.assertTrue(buffer._eof)
 
     def test_read(self):
         item = object()
-        buffer = parsers.DataBuffer(loop=self.loop)
+        buffer = parsers.DataQueue(loop=self.loop)
         read_task = tulip.Task(buffer.read(), loop=self.loop)
 
         def cb():
@@ -335,7 +335,7 @@ class DataBufferTests(unittest.TestCase):
         self.assertIs(item, data)
 
     def test_read_eof(self):
-        buffer = parsers.DataBuffer(loop=self.loop)
+        buffer = parsers.DataQueue(loop=self.loop)
         read_task = tulip.Task(buffer.read(), loop=self.loop)
 
         def cb():
@@ -346,7 +346,7 @@ class DataBufferTests(unittest.TestCase):
             parsers.EofStream, self.loop.run_until_complete, read_task)
 
     def test_read_cancelled(self):
-        buffer = parsers.DataBuffer(loop=self.loop)
+        buffer = parsers.DataQueue(loop=self.loop)
         read_task = tulip.Task(buffer.read(), loop=self.loop)
         test_utils.run_briefly(self.loop)
         self.assertIsInstance(buffer._waiter, tulip.Future)
@@ -359,7 +359,7 @@ class DataBufferTests(unittest.TestCase):
 
     def test_read_until_eof(self):
         item = object()
-        buffer = parsers.DataBuffer(loop=self.loop)
+        buffer = parsers.DataQueue(loop=self.loop)
         buffer.feed_data(item)
         buffer.feed_eof()
 
@@ -370,7 +370,7 @@ class DataBufferTests(unittest.TestCase):
             parsers.EofStream, self.loop.run_until_complete, buffer.read())
 
     def test_read_exception(self):
-        buffer = parsers.DataBuffer(loop=self.loop)
+        buffer = parsers.DataQueue(loop=self.loop)
         buffer.feed_data(object())
         buffer.set_exception(ValueError())
 
@@ -378,7 +378,7 @@ class DataBufferTests(unittest.TestCase):
             ValueError, self.loop.run_until_complete, buffer.read())
 
     def test_exception(self):
-        buffer = parsers.DataBuffer(loop=self.loop)
+        buffer = parsers.DataQueue(loop=self.loop)
         self.assertIsNone(buffer.exception())
 
         exc = ValueError()
@@ -386,7 +386,7 @@ class DataBufferTests(unittest.TestCase):
         self.assertIs(buffer.exception(), exc)
 
     def test_exception_waiter(self):
-        buffer = parsers.DataBuffer(loop=self.loop)
+        buffer = parsers.DataQueue(loop=self.loop)
 
         @tulip.coroutine
         def set_err():
@@ -565,7 +565,7 @@ class ParserBufferTests(unittest.TestCase):
         self.assertEqual(b'', bytes(buf))
 
     def test_lines_parser(self):
-        out = parsers.DataBuffer(loop=self.loop)
+        out = parsers.DataQueue(loop=self.loop)
         buf = self._make_one()
 
         p = parsers.LinesParser()(out, buf)
@@ -584,7 +584,7 @@ class ParserBufferTests(unittest.TestCase):
         self.assertEqual(bytes(buf), b'data')
 
     def test_chunks_parser(self):
-        out = parsers.DataBuffer(loop=self.loop)
+        out = parsers.DataQueue(loop=self.loop)
         buf = self._make_one()
 
         p = parsers.ChunksParser(5)(out, buf)

@@ -1,4 +1,4 @@
-"""Tests for tulip/http/session.py"""
+"""Tests for asynchttp/session.py"""
 
 import http.cookies
 import tulip
