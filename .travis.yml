@@ -4,6 +4,10 @@ python:
 
 install:
   - pip install -e hg+https://code.google.com/p/tulip/#egg=tulip
+  - pip install coveralls --use-mirrors
   - python setup.py develop --allow-hosts='pypi.python.org'
 
-script: python setup.py test
+script:
+  coverage run --source=asynchttp setyp.py test
+after_success:
+  coveralls
