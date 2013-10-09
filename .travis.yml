@@ -8,6 +8,6 @@ install:
   - python setup.py develop --allow-hosts='pypi.python.org'
 
 script:
-  coverage run --source=asynchttp setyp.py test
+  coverage run --source=asynchttp setup.py test
 after_success:
   coveralls
