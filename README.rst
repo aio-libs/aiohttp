@@ -1,7 +1,10 @@
 http client/server for asyncio
 ==============================
 
-...
+
+.. image :: https://secure.travis-ci.org/fafhrd91/asynchttp.png
+  :target:  https://secure.travis-ci.org/fafhrd91/asynchttp
+
 
 Requirements
 ------------

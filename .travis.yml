@@ -1,0 +1,9 @@
+language: python
+python:
+  - 3.3
+
+install:
+  - python -m pip install -e hg+https://code.google.com/p/tulip/#egg=tulip
+  - python setup.py develop --allow-hosts='pypi.python.org'
+
+script: python setup.py test
