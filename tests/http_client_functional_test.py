@@ -26,7 +26,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
         gc.collect()
 
     def test_HTTP_200_OK_METHOD(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             for meth in ('get', 'post', 'put', 'delete', 'head'):
                 r = self.loop.run_until_complete(
                     client.request(meth, httpd.url('method', meth),
@@ -41,7 +41,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 r.close()
 
     def test_use_global_loop(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             try:
                 tulip.set_event_loop(self.loop)
                 r = self.loop.run_until_complete(
@@ -58,7 +58,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             r.close()
 
     def test_HTTP_302_REDIRECT_GET(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
                 client.request('get', httpd.url('redirect', 2),
                                loop=self.loop))
@@ -68,7 +68,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             r.close()
 
     def test_HTTP_302_REDIRECT_NON_HTTP(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             self.assertRaises(
                 ValueError,
                 self.loop.run_until_complete,
@@ -76,7 +76,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                                loop=self.loop))
 
     def test_HTTP_302_REDIRECT_POST(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
                 client.request('post', httpd.url('redirect', 2),
                                data={'some': 'data'}, loop=self.loop))
@@ -89,7 +89,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             r.close()
 
     def test_HTTP_302_max_redirects(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
                 client.request('get', httpd.url('redirect', 5),
                                max_redirects=2, loop=self.loop))
@@ -99,7 +99,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             r.close()
 
     def test_HTTP_200_GET_WITH_PARAMS(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
                 client.request('get', httpd.url('method', 'get'),
                                params={'q': 'test'}, loop=self.loop))
@@ -111,7 +111,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             r.close()
 
     def test_HTTP_200_GET_WITH_MIXED_PARAMS(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
                 client.request(
                     'get', httpd.url('method', 'get') + '?test=true',
@@ -124,7 +124,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             r.close()
 
     def test_POST_DATA(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
             r = self.loop.run_until_complete(
                 client.request('post', url, data={'some': 'data'},
@@ -137,7 +137,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             r.close()
 
     def test_POST_DATA_DEFLATE(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
             r = self.loop.run_until_complete(
                 client.request('post', url,
@@ -152,7 +152,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             r.close()
 
     def test_POST_FILES(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
             with open(__file__) as f:
@@ -177,7 +177,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 r.close()
 
     def test_POST_FILES_DEFLATE(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
             with open(__file__) as f:
@@ -203,7 +203,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 r.close()
 
     def test_POST_FILES_STR(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
             with open(__file__) as f:
@@ -225,7 +225,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 r.close()
 
     def test_POST_FILES_LIST(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
             with open(__file__) as f:
@@ -249,7 +249,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 r.close()
 
     def test_POST_FILES_LIST_CT(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
             with open(__file__) as f:
@@ -275,7 +275,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 r.close()
 
     def test_POST_FILES_SINGLE(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
             with open(__file__) as f:
@@ -298,7 +298,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 r.close()
 
     def test_POST_FILES_IO(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
             data = io.BytesIO(b'data')
@@ -318,7 +318,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             r.close()
 
     def test_POST_FILES_WITH_DATA(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
             with open(__file__) as f:
@@ -346,7 +346,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 r.close()
 
     def test_POST_STREAM_DATA(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
             with open(__file__, 'rb') as f:
@@ -373,7 +373,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                              content['headers']['Content-Length'])
 
     def test_encoding(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
                 client.request('get', httpd.url('encoding', 'deflate'),
                                loop=self.loop))
@@ -386,7 +386,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             r.close()
 
     def test_cookies(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             c = http.cookies.Morsel()
             c.set('test3', '456', '456')
 
@@ -401,7 +401,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             r.close()
 
     def test_set_cookies(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             resp = self.loop.run_until_complete(
                 client.request('get', httpd.url('cookies'), loop=self.loop))
             self.assertEqual(resp.status, 200)
@@ -411,7 +411,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             resp.close()
 
     def test_chunked(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
                 client.request('get', httpd.url('chunked'), loop=self.loop))
             self.assertEqual(r.status, 200)
@@ -421,7 +421,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             r.close()
 
     def test_timeout(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             httpd['noresponse'] = True
             self.assertRaises(
                 tulip.TimeoutError,
@@ -437,7 +437,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                            timeout=0.1, loop=self.loop))
 
     def test_request_conn_closed(self):
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             httpd['close'] = True
             self.assertRaises(
                 asynchttp.HttpException,
@@ -449,7 +449,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
         from asynchttp import session
         s = session.Session()
 
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
                 client.request('get', httpd.url('keepalive',),
                                session=s, loop=self.loop))
@@ -470,7 +470,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
         from asynchttp import session
         s = session.Session()
 
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
                 client.request(
                     'get', httpd.url('keepalive') + '?close=1',
@@ -492,7 +492,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
         from asynchttp import session
         s = session.Session()
 
-        with test_utils.run_test_server(self.loop, router=Functional) as httpd:
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             s.update_cookies({'test': '1'})
             r = self.loop.run_until_complete(
                 client.request('get', httpd.url('cookies'),

@@ -92,6 +92,8 @@ def request(method, url, *,
 
         try:
             resp = yield from conn
+        except tulip.CancelledError:
+            raise tulip.TimeoutError from None
         except tulip.TimeoutError:
             raise tulip.TimeoutError from None
 

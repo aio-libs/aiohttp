@@ -43,8 +43,7 @@ def run_once(loop):
 
 
 @contextlib.contextmanager
-def run_test_server(loop, *, host='127.0.0.1', port=0,
-                    use_ssl=False, router=None):
+def run_server(loop, *, host='127.0.0.1', port=0, use_ssl=False, router=None):
     properties = {}
     transports = []
 
