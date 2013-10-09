@@ -10,14 +10,11 @@ import logging
 import io
 import os
 import re
+import ssl
 import sys
 import threading
 import traceback
 import urllib.parse
-try:
-    import ssl
-except ImportError:  # pragma: no cover
-    ssl = None
 
 import tulip
 import asynchttp
@@ -30,16 +27,6 @@ def run_briefly(loop):
         pass
     t = tulip.Task(once(), loop=loop)
     loop.run_until_complete(t)
-
-
-def run_once(loop):
-    """loop.stop() schedules _raise_stop_error()
-    and run_forever() runs until _raise_stop_error() callback.
-    this wont work if test waits for some IO events, because
-    _raise_stop_error() runs before any of io events callbacks.
-    """
-    loop.stop()
-    loop.run_forever()
 
 
 @contextlib.contextmanager

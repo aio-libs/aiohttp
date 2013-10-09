@@ -40,6 +40,18 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 self.assertEqual(content1, content2)
                 r.close()
 
+    def test_HTTP_200_OK_METHOD_ssl(self):
+        with test_utils.run_server(self.loop, use_ssl=True) as httpd:
+            for meth in ('get', 'post', 'put', 'delete', 'head'):
+                r = self.loop.run_until_complete(
+                    client.request(meth, httpd.url('method', meth),
+                                   loop=self.loop))
+                content = self.loop.run_until_complete(r.read())
+
+                self.assertEqual(r.status, 200)
+                self.assertEqual(content, b'Test message')
+                r.close()
+
     def test_use_global_loop(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             try:
