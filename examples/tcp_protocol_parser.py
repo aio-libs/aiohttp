@@ -19,7 +19,7 @@ Message = collections.namedtuple('Message', ('tp', 'data'))
 
 
 def my_protocol_parser(out, buf):
-    """Parser is used with StreamBuffer for incremental protocol parsing.
+    """Parser is used with StreamParser for incremental protocol parsing.
     Parser is a generator function, but it is not a coroutine. Usually
     parsers are implemented as a state machine.
 
@@ -68,7 +68,7 @@ class EchoServer(tulip.Protocol):
     def connection_made(self, transport):
         print('Connection made')
         self.transport = transport
-        self.stream = asynchttp.StreamBuffer()
+        self.stream = asynchttp.StreamParser()
         tulip.Task(self.dispatch())
 
     def data_received(self, data):

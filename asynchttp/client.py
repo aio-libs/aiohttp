@@ -86,9 +86,12 @@ def request(method, url, *,
         else:
             conn = session.start(req, loop)
 
-        # connection timeout
+        if timeout:
+            # connection timeout
+            conn = tulip.wait_for(conn, timeout, loop=loop)
+
         try:
-            resp = yield from tulip.wait_for(conn, timeout, loop=loop)
+            resp = yield from conn
         except tulip.TimeoutError:
             raise tulip.TimeoutError from None
 

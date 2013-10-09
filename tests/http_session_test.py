@@ -17,7 +17,7 @@ class HttpSessionTests(unittest.TestCase):
         tulip.set_event_loop(None)
 
         self.transport = unittest.mock.Mock()
-        self.stream = asynchttp.StreamBuffer()
+        self.stream = asynchttp.StreamParser()
         self.response = HttpResponse('get', 'http://python.org')
 
     def tearDown(self):

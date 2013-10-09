@@ -14,14 +14,14 @@ There are three stages:
 
  * Data flow chain:
 
-    1. Application creates StreamBuffer object for storing incoming data.
-    2. StreamBuffer creates ParserBuffer as internal data buffer.
+    1. Application creates StreamParser object for storing incoming data.
+    2. StreamParser creates ParserBuffer as internal data buffer.
     3. Application create parser and set it into stream buffer:
 
-        parser = http_request_parser()
+        parser = HttpRequestParser()
         data_buffer = stream.set_parser(parser)
 
-    3. At this stage StreamBuffer creates DataBuffer object and passes it
+    3. At this stage StreamParser creates DataBuffer object and passes it
        and internal buffer into parser as an arguments.
 
         def set_parser(self, parser):
@@ -40,23 +40,23 @@ There are three stages:
 
     1. Tulip's transport reads data from socket and sends data to protocol
        with data_received() call.
-    2. Protocol sends data to StreamBuffer with feed_data() call.
-    3. StreamBuffer sends data into parser with generator's send() method.
+    2. Protocol sends data to StreamParser with feed_data() call.
+    3. StreamParser sends data into parser with generator's send() method.
     4. Parser processes incoming data and sends parsed data
        to DataBuffer with feed_data()
     4. Application received parsed data from DataBuffer.read()
 
  * Eof:
 
-    1. StreamBuffer recevies eof with feed_eof() call.
-    2. StreamBuffer throws EofStream exception into parser.
+    1. StreamParser recevies eof with feed_eof() call.
+    2. StreamParser throws EofStream exception into parser.
     3. Then it unsets parser.
 
 _SocketSocketTransport ->
-   -> "protocol" -> StreamBuffer -> "parser" -> DataBuffer <- "application"
+   -> "protocol" -> StreamParser -> "parser" -> DataBuffer <- "application"
 
 """
-__all__ = ['EofStream', 'StreamBuffer', 'StreamProtocol',
+__all__ = ['EofStream', 'StreamParser', 'StreamProtocol',
            'ParserBuffer', 'DataBuffer', 'LinesParser', 'ChunksParser']
 
 import collections
@@ -68,10 +68,10 @@ class EofStream(Exception):
     """eof stream indication."""
 
 
-class StreamBuffer:
-    """StreamBuffer manages incoming bytes stream and protocol parsers.
+class StreamParser:
+    """StreamParser manages incoming bytes stream and protocol parsers.
 
-    StreamBuffer uses ParserBuffer as internal buffer.
+    StreamParser uses ParserBuffer as internal buffer.
 
     set_parser() sets current parser, it creates DataBuffer object
     and sends ParserBuffer and DataBuffer into parser generator.
@@ -185,14 +185,14 @@ class StreamBuffer:
             self._parser_buffer = None
 
 
-class StreamProtocol(StreamBuffer, tulip.Protocol):
-    """Tulip's stream protocol based on StreamBuffer"""
+class StreamProtocol(StreamParser, tulip.Protocol):
+    """Tulip's stream protocol based on StreamParser"""
 
     transport = None
 
-    data_received = StreamBuffer.feed_data
+    data_received = StreamParser.feed_data
 
-    eof_received = StreamBuffer.feed_eof
+    eof_received = StreamParser.feed_eof
 
     def connection_made(self, transport):
         self.transport = transport

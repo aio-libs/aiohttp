@@ -62,7 +62,7 @@ class ServerHttpProtocol(tulip.Protocol):
 
     def connection_made(self, transport):
         self.transport = transport
-        self.stream = asynchttp.StreamBuffer(loop=self._loop)
+        self.stream = asynchttp.StreamParser(loop=self._loop)
         self._request_handler = tulip.async(self.start(), loop=self._loop)
 
     def data_received(self, data):

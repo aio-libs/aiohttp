@@ -8,7 +8,7 @@ from asynchttp import parsers
 from asynchttp import test_utils
 
 
-class StreamBufferTests(unittest.TestCase):
+class StreamParserTests(unittest.TestCase):
 
     DATA = b'line1\nline2\nline3\n'
 
@@ -21,7 +21,7 @@ class StreamBufferTests(unittest.TestCase):
         self.loop.close()
 
     def test_exception(self):
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
         self.assertIsNone(stream.exception())
 
         exc = ValueError()
@@ -29,7 +29,7 @@ class StreamBufferTests(unittest.TestCase):
         self.assertIs(stream.exception(), exc)
 
     def test_exception_waiter(self):
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
 
         stream._parser = self.lines_parser
         buf = stream._parser_buffer = parsers.DataBuffer(loop=self.loop)
@@ -39,19 +39,19 @@ class StreamBufferTests(unittest.TestCase):
         self.assertIs(buf.exception(), exc)
 
     def test_feed_data(self):
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
 
         stream.feed_data(self.DATA)
         self.assertEqual(self.DATA, bytes(stream._buffer))
 
     def test_feed_empty_data(self):
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
 
         stream.feed_data(b'')
         self.assertEqual(b'', bytes(stream._buffer))
 
     def test_set_parser_unset_prev(self):
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
         stream.set_parser(self.lines_parser)
 
         unset = stream.unset_parser = unittest.mock.Mock()
@@ -60,7 +60,7 @@ class StreamBufferTests(unittest.TestCase):
         self.assertTrue(unset.called)
 
     def test_set_parser_exception(self):
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
 
         exc = ValueError()
         stream.set_exception(exc)
@@ -68,7 +68,7 @@ class StreamBufferTests(unittest.TestCase):
         self.assertIs(s.exception(), exc)
 
     def test_set_parser_feed_existing(self):
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
         stream.feed_data(b'line1')
         stream.feed_data(b'\r\nline2\r\ndata')
         s = stream.set_parser(self.lines_parser)
@@ -88,13 +88,13 @@ class StreamBufferTests(unittest.TestCase):
             yield from buf.read(1)
             raise ValueError()
 
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
         stream.feed_data(b'line1')
         s = stream.set_parser(p)
         self.assertIsInstance(s.exception(), ValueError)
 
     def test_set_parser_feed_existing_eof(self):
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
         stream.feed_data(b'line1')
         stream.feed_data(b'\r\nline2\r\ndata')
         stream.feed_eof()
@@ -113,7 +113,7 @@ class StreamBufferTests(unittest.TestCase):
             except parsers.EofStream:
                 raise ValueError()
 
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
         stream.feed_data(b'line1')
         stream.feed_eof()
         s = stream.set_parser(p)
@@ -124,7 +124,7 @@ class StreamBufferTests(unittest.TestCase):
             while True:
                 yield  # read chunk
 
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
         stream.feed_data(b'line1')
         stream.feed_eof()
         s = stream.set_parser(p)
@@ -132,7 +132,7 @@ class StreamBufferTests(unittest.TestCase):
         self.assertTrue(s._eof)
 
     def test_set_parser_unset(self):
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
         s = stream.set_parser(self.lines_parser)
 
         stream.feed_data(b'line1\r\nline2\r\n')
@@ -152,7 +152,7 @@ class StreamBufferTests(unittest.TestCase):
             finally:
                 out.feed_eof()
 
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
         stream.feed_data(b'line1')
         stream.feed_data(b'\r\nline2\r\ndata')
         s = stream.set_parser(LinesParser)
@@ -163,7 +163,7 @@ class StreamBufferTests(unittest.TestCase):
         self.assertTrue(s._eof)
 
     def test_feed_parser(self):
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
         s = stream.set_parser(self.lines_parser)
 
         stream.feed_data(b'line1')
@@ -181,7 +181,7 @@ class StreamBufferTests(unittest.TestCase):
             yield  # read chunk
             raise ValueError()
 
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
         s = stream.set_parser(p)
 
         stream.feed_data(b'line1')
@@ -192,7 +192,7 @@ class StreamBufferTests(unittest.TestCase):
         def p(out, buf):
             yield  # chunk
 
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
         stream.set_parser(p)
 
         stream.feed_data(b'line1')
@@ -207,7 +207,7 @@ class StreamBufferTests(unittest.TestCase):
             except parsers.EofStream:
                 raise ValueError()
 
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
         s = stream.set_parser(p)
 
         stream.feed_data(b'line1')
@@ -224,7 +224,7 @@ class StreamBufferTests(unittest.TestCase):
             except parsers.EofStream:
                 out.feed_eof()
 
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
         s = stream.set_parser(p)
 
         stream.feed_data(b'line1')
@@ -236,7 +236,7 @@ class StreamBufferTests(unittest.TestCase):
             while True:
                 yield  # read chunk
 
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
         s = stream.set_parser(p)
 
         stream.feed_data(b'line1')
@@ -245,7 +245,7 @@ class StreamBufferTests(unittest.TestCase):
         self.assertTrue(s._eof)
 
     def test_feed_parser2(self):
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
         s = stream.set_parser(self.lines_parser)
 
         stream.feed_data(b'line1\r\nline2\r\n')
@@ -264,7 +264,7 @@ class StreamBufferTests(unittest.TestCase):
             except parsers.EofStream:
                 raise ValueError()
 
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
         s = stream.set_parser(p)
 
         stream.feed_data(b'line1')
@@ -277,7 +277,7 @@ class StreamBufferTests(unittest.TestCase):
             while True:
                 yield  # read chunk
 
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
         s = stream.set_parser(p)
 
         stream.feed_data(b'line1')
@@ -293,7 +293,7 @@ class StreamBufferTests(unittest.TestCase):
             except parsers.EofStream:
                 out.feed_eof()
 
-        stream = parsers.StreamBuffer()
+        stream = parsers.StreamParser()
         s = stream.set_parser(p)
 
         stream.feed_data(b'line1')
