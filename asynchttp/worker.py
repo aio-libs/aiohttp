@@ -30,9 +30,14 @@ class AsyncGunicornWorker(base.Worker):
 
     @tulip.coroutine
     def _run(self):
-        servers = [
-            self.loop.create_server(self.factory, sock=sock.sock)
-            for sock in self.sockets]
+        servers = []
+        def add_server(t):
+            servers.append(t.result())
+
+        for sock in self.sockets:
+            t = tulip.async(
+                self.loop.create_server(self.factory, sock=sock.sock))
+            t.add_done_callback(add_server)
 
         # If our parent changed then we shut down.
         pid = os.getpid()
