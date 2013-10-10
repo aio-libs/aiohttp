@@ -32,7 +32,7 @@ class StreamParserTests(unittest.TestCase):
         stream = parsers.StreamParser()
 
         stream._parser = self.lines_parser
-        buf = stream._parser_buffer = parsers.DataQueue(loop=self.loop)
+        buf = stream._output = parsers.DataQueue(loop=self.loop)
 
         exc = ValueError()
         stream.set_exception(exc)
@@ -42,13 +42,13 @@ class StreamParserTests(unittest.TestCase):
         stream = parsers.StreamParser()
 
         stream.feed_data(self.DATA)
-        self.assertEqual(self.DATA, bytes(stream._buffer))
+        self.assertEqual(self.DATA, bytes(stream._input))
 
     def test_feed_empty_data(self):
         stream = parsers.StreamParser()
 
         stream.feed_data(b'')
-        self.assertEqual(b'', bytes(stream._buffer))
+        self.assertEqual(b'', bytes(stream._input))
 
     def test_set_parser_unset_prev(self):
         stream = parsers.StreamParser()
@@ -75,12 +75,12 @@ class StreamParserTests(unittest.TestCase):
 
         self.assertEqual([bytearray(b'line1\r\n'), bytearray(b'line2\r\n')],
                          list(s._buffer))
-        self.assertEqual(b'data', bytes(stream._buffer))
+        self.assertEqual(b'data', bytes(stream._input))
         self.assertIsNotNone(stream._parser)
 
         stream.unset_parser()
         self.assertIsNone(stream._parser)
-        self.assertEqual(b'data', bytes(stream._buffer))
+        self.assertEqual(b'data', bytes(stream._input))
         self.assertTrue(s._eof)
 
     def test_set_parser_feed_existing_exc(self):
@@ -102,7 +102,7 @@ class StreamParserTests(unittest.TestCase):
 
         self.assertEqual([bytearray(b'line1\r\n'), bytearray(b'line2\r\n')],
                          list(s._buffer))
-        self.assertEqual(b'data', bytes(stream._buffer))
+        self.assertEqual(b'data', bytes(stream._input))
         self.assertIsNone(stream._parser)
 
     def test_set_parser_feed_existing_eof_exc(self):
@@ -139,10 +139,10 @@ class StreamParserTests(unittest.TestCase):
         self.assertEqual(
             [bytearray(b'line1\r\n'), bytearray(b'line2\r\n')],
             list(s._buffer))
-        self.assertEqual(b'', bytes(stream._buffer))
+        self.assertEqual(b'', bytes(stream._input))
         stream.unset_parser()
         self.assertTrue(s._eof)
-        self.assertEqual(b'', bytes(stream._buffer))
+        self.assertEqual(b'', bytes(stream._input))
 
     def test_set_parser_feed_existing_stop(self):
         def LinesParser(out, buf):
@@ -158,7 +158,7 @@ class StreamParserTests(unittest.TestCase):
         s = stream.set_parser(LinesParser)
 
         self.assertEqual(b'line1\r\nline2\r\n', b''.join(s._buffer))
-        self.assertEqual(b'data', bytes(stream._buffer))
+        self.assertEqual(b'data', bytes(stream._input))
         self.assertIsNone(stream._parser)
         self.assertTrue(s._eof)
 
@@ -168,12 +168,12 @@ class StreamParserTests(unittest.TestCase):
 
         stream.feed_data(b'line1')
         stream.feed_data(b'\r\nline2\r\ndata')
-        self.assertEqual(b'data', bytes(stream._buffer))
+        self.assertEqual(b'data', bytes(stream._input))
 
         stream.feed_eof()
         self.assertEqual([bytearray(b'line1\r\n'), bytearray(b'line2\r\n')],
                          list(s._buffer))
-        self.assertEqual(b'data', bytes(stream._buffer))
+        self.assertEqual(b'data', bytes(stream._input))
         self.assertTrue(s._eof)
 
     def test_feed_parser_exc(self):
@@ -186,7 +186,7 @@ class StreamParserTests(unittest.TestCase):
 
         stream.feed_data(b'line1')
         self.assertIsInstance(s.exception(), ValueError)
-        self.assertEqual(b'', bytes(stream._buffer))
+        self.assertEqual(b'', bytes(stream._input))
 
     def test_feed_parser_stop(self):
         def p(out, buf):
@@ -197,7 +197,7 @@ class StreamParserTests(unittest.TestCase):
 
         stream.feed_data(b'line1')
         self.assertIsNone(stream._parser)
-        self.assertEqual(b'', bytes(stream._buffer))
+        self.assertEqual(b'', bytes(stream._input))
 
     def test_feed_eof_exc(self):
         def p(out, buf):
@@ -253,7 +253,7 @@ class StreamParserTests(unittest.TestCase):
         self.assertEqual(
             [bytearray(b'line1\r\n'), bytearray(b'line2\r\n')],
             list(s._buffer))
-        self.assertEqual(b'', bytes(stream._buffer))
+        self.assertEqual(b'', bytes(stream._input))
         self.assertTrue(s._eof)
 
     def test_unset_parser_eof_exc(self):

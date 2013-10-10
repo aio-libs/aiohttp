@@ -19,21 +19,20 @@ There are three stages:
     3. Application create parser and set it into stream buffer:
 
         parser = HttpRequestParser()
-        data_buffer = stream.set_parser(parser)
+        data_queue = stream.set_parser(parser)
 
     3. At this stage StreamParser creates DataQueue object and passes it
        and internal buffer into parser as an arguments.
 
         def set_parser(self, parser):
-            next(parser)
-            data_buffer = DataQueue()
-            self.p = parser(data_buffer, self._buffer)
-            return data_buffer
+            output = DataQueue()
+            self.p = parser(output, self._input)
+            return output
 
-    4. Application waits data on data_buffer.read()
+    4. Application waits data on output.read()
 
         while True:
-             msg = yield form data_buffer.read()
+             msg = yield form output.read()
              ...
 
  * Data flow:
@@ -79,15 +78,13 @@ class StreamParser:
     unset_parser() sends EofStream into parser and then removes it.
     """
 
-    def __init__(self, *, loop=None, buffer=None):
+    def __init__(self, *, loop=None, inbuf=None):
         self._loop = loop
         self._eof = False
-        self._parser = None
-        self._parser_buffer = None
         self._exception = None
-        if buffer is None:
-            buffer = ParserBuffer()
-        self._buffer = buffer
+        self._parser = None
+        self._output = None
+        self._input = inbuf if inbuf is not None else ParserBuffer()
 
     def is_connected(self):
         return not self._eof
@@ -98,10 +95,10 @@ class StreamParser:
     def set_exception(self, exc):
         self._exception = exc
 
-        if self._parser_buffer is not None:
-            self._parser_buffer.set_exception(exc)
+        if self._output is not None:
+            self._output.set_exception(exc)
+            self._output = None
             self._parser = None
-            self._parser_buffer = None
 
     def feed_data(self, data):
         """send data to current parser or store in buffer."""
@@ -112,14 +109,15 @@ class StreamParser:
             try:
                 self._parser.send(data)
             except StopIteration:
+                self._output.feed_eof()
+                self._output = None
                 self._parser = None
-                self._parser_buffer = None
             except Exception as exc:
-                self._parser_buffer.set_exception(exc)
+                self._output.set_exception(exc)
+                self._output = None
                 self._parser = None
-                self._parser_buffer = None
         else:
-            self._buffer.feed_data(data)
+            self._input.feed_data(data)
 
     def feed_eof(self):
         """send eof to all parsers, recursively."""
@@ -129,12 +127,12 @@ class StreamParser:
             except StopIteration:
                 pass
             except EofStream:
-                self._parser_buffer.feed_eof()
+                self._output.feed_eof()
             except Exception as exc:
-                self._parser_buffer.set_exception(exc)
+                self._output.set_exception(exc)
 
             self._parser = None
-            self._parser_buffer = None
+            self._output = None
 
         self._eof = True
 
@@ -143,13 +141,13 @@ class StreamParser:
         if self._parser:
             self.unset_parser()
 
-        out = DataQueue(loop=self._loop)
+        output = DataQueue(loop=self._loop)
         if self._exception:
-            out.set_exception(self._exception)
-            return out
+            output.set_exception(self._exception)
+            return output
 
         # init parser
-        p = parser(out, self._buffer)
+        p = parser(output, self._input)
         assert inspect.isgenerator(p), 'Generator is required'
 
         try:
@@ -158,16 +156,16 @@ class StreamParser:
         except StopIteration:
             pass
         except Exception as exc:
-            out.set_exception(exc)
+            output.set_exception(exc)
         else:
             # parser still require more data
             self._parser = p
-            self._parser_buffer = out
+            self._output = output
 
             if self._eof:
                 self.unset_parser()
 
-        return out
+        return output
 
     def unset_parser(self):
         """unset parser, send eof to the parser and then remove it."""
@@ -179,12 +177,12 @@ class StreamParser:
         except StopIteration:
             pass
         except EofStream:
-            self._parser_buffer.feed_eof()
+            self._output.feed_eof()
         except Exception as exc:
-            self._parser_buffer.set_exception(exc)
+            self._output.set_exception(exc)
         finally:
+            self._output = None
             self._parser = None
-            self._parser_buffer = None
 
 
 class StreamProtocol(StreamParser, tulip.Protocol):

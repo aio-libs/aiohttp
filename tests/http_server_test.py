@@ -49,10 +49,10 @@ class HttpServerProtocolTests(unittest.TestCase):
         srv.connection_made(unittest.mock.Mock())
 
         srv.data_received(b'123')
-        self.assertEqual(b'123', bytes(srv.stream._buffer))
+        self.assertEqual(b'123', bytes(srv.stream._input))
 
         srv.data_received(b'456')
-        self.assertEqual(b'123456', bytes(srv.stream._buffer))
+        self.assertEqual(b'123456', bytes(srv.stream._input))
 
     def test_eof_received(self):
         srv = server.ServerHttpProtocol(loop=self.loop)

@@ -1,11 +1,8 @@
 """Tests for asynchttp/worker.py"""
-import inspect
 import tulip
 import unittest
 import unittest.mock
-import urllib.parse
 
-import asynchttp
 from asynchttp import worker
 from asynchttp.wsgi import WSGIServerHttpProtocol
 
