@@ -50,8 +50,7 @@ class WorkerTests(unittest.TestCase):
 
         self.assertIsInstance(f, WSGIServerHttpProtocol)
 
-    @unittest.mock.patch('asynchttp.worker.tulip')
-    def test__run(self, m_tulip):
+    def test__run(self):
         self.worker.ppid = 1
         self.worker.alive = True
         self.worker.sockets = [unittest.mock.Mock()]

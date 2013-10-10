@@ -30,8 +30,9 @@ class AsyncGunicornWorker(base.Worker):
 
     @tulip.coroutine
     def _run(self):
-        for sock in self.sockets:
-            tulip.async(self.loop.start_serving(self.factory, sock=sock.sock))
+        servers = [
+            self.loop.create_server(self.factory, sock=sock.sock)
+            for sock in self.sockets]
 
         # If our parent changed then we shut down.
         pid = os.getpid()
@@ -46,3 +47,6 @@ class AsyncGunicornWorker(base.Worker):
                 yield from tulip.sleep(1.0)
         except KeyboardInterrupt:
             pass
+
+        for server in servers:
+            server.close()

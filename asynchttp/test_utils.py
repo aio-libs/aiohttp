@@ -104,14 +104,15 @@ def run_server(loop, *, host='127.0.0.1', port=0, use_ssl=False, router=None):
         thread_loop = tulip.new_event_loop()
         tulip.set_event_loop(thread_loop)
 
-        socks = thread_loop.run_until_complete(
-            thread_loop.start_serving(
+        server = thread_loop.run_until_complete(
+            thread_loop.create_server(
                 lambda: TestHttpServer(keep_alive=0.5),
                 host, port, ssl=sslcontext))
 
         waiter = tulip.Future(loop=thread_loop)
         loop.call_soon_threadsafe(
-            fut.set_result, (thread_loop, waiter, socks[0].getsockname()))
+            fut.set_result, (thread_loop, waiter,
+                             server.sockets[0].getsockname()))
 
         try:
             thread_loop.run_until_complete(waiter)
@@ -125,9 +126,7 @@ def run_server(loop, *, host='127.0.0.1', port=0, use_ssl=False, router=None):
 
             run_briefly(thread_loop)  # call close callbacks
 
-            for s in socks:
-                thread_loop.stop_serving(s)
-
+            server.close()
             thread_loop.stop()
             thread_loop.close()
             gc.collect()
