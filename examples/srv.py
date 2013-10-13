@@ -149,10 +149,11 @@ def main():
         sslcontext = None
 
     loop = tulip.get_event_loop()
-    f = loop.start_serving(
+    f = loop.create_server(
         lambda: HttpServer(debug=True, keep_alive=75), args.host, args.port,
         ssl=sslcontext)
-    socks = loop.run_until_complete(f)
+    svr = loop.run_until_complete(f)
+    socks = svr.sockets
     print('serving on', socks[0].getsockname())
     try:
         loop.run_forever()
