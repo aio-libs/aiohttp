@@ -8,6 +8,10 @@ from asynchttp.wsgi import WSGIServerHttpProtocol
 
 class AsyncGunicornWorker(base.Worker):
 
+    def __init__(self, *args, **kw):  # pragma: no cover
+        super().__init__(*args, **kw)
+        self.servers = []
+
     def init_process(self):
         # create new event_loop after fork
         tulip.get_event_loop().close()
@@ -30,9 +34,8 @@ class AsyncGunicornWorker(base.Worker):
 
     @tulip.coroutine
     def _run(self):
-        servers = []
         def add_server(t):
-            servers.append(t.result())
+            self.servers.append(t.result())
 
         for sock in self.sockets:
             t = tulip.async(
@@ -53,5 +56,5 @@ class AsyncGunicornWorker(base.Worker):
         except KeyboardInterrupt:
             pass
 
-        for server in servers:
+        for server in self.servers:
             server.close()

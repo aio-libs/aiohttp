@@ -234,7 +234,8 @@ class DataQueue:
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            waiter.set_result(True)
+            if not waiter.cancelled():
+                waiter.set_result(True)
 
     def feed_eof(self):
         self._eof = True
@@ -242,7 +243,8 @@ class DataQueue:
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            waiter.set_result(False)
+            if not waiter.cancelled():
+                waiter.set_result(False)
 
     @tulip.coroutine
     def read(self):
@@ -252,10 +254,7 @@ class DataQueue:
         if not self._buffer and not self._eof:
             assert not self._waiter
             self._waiter = tulip.Future(loop=self._loop)
-            try:
-                yield from self._waiter
-            finally:
-                self._waiter = None
+            yield from self._waiter
 
         if self._buffer:
             return self._buffer.popleft()

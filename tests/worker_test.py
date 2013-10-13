@@ -54,12 +54,16 @@ class WorkerTests(unittest.TestCase):
     def test__run(self, m_tulip):
         self.worker.ppid = 1
         self.worker.alive = True
+        self.worker.servers = []
         self.worker.sockets = [unittest.mock.Mock()]
         self.worker.log = unittest.mock.Mock()
         self.worker.loop = unittest.mock.Mock()
         self.worker.notify = unittest.mock.Mock()
 
         self.loop.run_until_complete(self.worker._run())
+
+        m_tulip.async.return_value.add_done_callback.call_args[0][0](
+            self.worker.sockets[0])
 
         self.assertTrue(self.worker.log.info.called)
         self.assertTrue(self.worker.notify.called)
@@ -70,6 +74,7 @@ class WorkerTests(unittest.TestCase):
         m_os.getpid.return_value = 1
         m_os.getppid.return_value = 1
 
+        self.worker.servers = [unittest.mock.Mock()]
         self.worker.ppid = 1
         self.worker.alive = True
         self.worker.sockets = []
@@ -83,3 +88,4 @@ class WorkerTests(unittest.TestCase):
 
         self.loop.run_until_complete(self.worker._run())
         self.assertTrue(m_sleep.called)
+        self.assertTrue(self.worker.servers[0].close.called)

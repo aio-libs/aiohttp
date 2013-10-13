@@ -355,6 +355,9 @@ class DataQueueTests(unittest.TestCase):
         self.assertRaises(
             tulip.CancelledError,
             self.loop.run_until_complete, read_task)
+        self.assertTrue(buffer._waiter.cancelled())
+
+        buffer.feed_data(b'test')
         self.assertIsNone(buffer._waiter)
 
     def test_read_until_eof(self):
