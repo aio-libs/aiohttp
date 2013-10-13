@@ -133,8 +133,9 @@ def start_client(loop, host, port):
 
 
 def start_server(loop, host, port):
-    f = loop.start_serving(EchoServer, host, port)
-    x = loop.run_until_complete(f)[0]
+    f = loop.create_server(EchoServer, host, port)
+    srv = loop.run_until_complete(f)
+    x = srv.sockets[0]
     print('serving on', x.getsockname())
     loop.run_forever()
 
