@@ -132,7 +132,7 @@ class ChildProcess:
             os.getpid(), x.getsockname()))
 
         # heartbeat
-        tulip.Task(self.heartbeat())
+        tulip.async(self.heartbeat())
 
         tulip.get_event_loop().run_forever()
         os._exit(0)
@@ -188,7 +188,7 @@ class Worker:
             # parent
             os.close(up_read)
             os.close(down_write)
-            self.connect(pid, up_write, down_read)
+            tulip.async(self.connect(pid, up_write, down_read))
         else:
             # child
             os.close(up_write)
