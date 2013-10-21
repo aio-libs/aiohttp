@@ -477,7 +477,7 @@ class HttpMessage:
 
     HOP_HEADERS = None  # Must be set by subclass.
 
-    SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} tulip/0.0'.format(sys.version_info)
+    SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} asyncio/0.0'.format(sys.version_info)
 
     status = None
     status_line = b''
