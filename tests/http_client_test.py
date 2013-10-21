@@ -2,7 +2,7 @@
 """Tests for asynchttp/client.py"""
 
 import inspect
-import tulip
+import asyncio
 import unittest
 import unittest.mock
 import urllib.parse
@@ -14,8 +14,8 @@ from asynchttp.client import HttpRequest, HttpResponse
 class HttpResponseTests(unittest.TestCase):
 
     def setUp(self):
-        self.loop = tulip.new_event_loop()
-        tulip.set_event_loop(None)
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
 
         self.transport = unittest.mock.Mock()
         self.stream = asynchttp.StreamParser(loop=self.loop)
@@ -42,8 +42,8 @@ class HttpResponseTests(unittest.TestCase):
 class HttpRequestTests(unittest.TestCase):
 
     def setUp(self):
-        self.loop = tulip.new_event_loop()
-        tulip.set_event_loop(None)
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
 
         self.transport = unittest.mock.Mock()
         self.stream = asynchttp.StreamParser(loop=self.loop)
@@ -323,7 +323,7 @@ class HttpRequestTests(unittest.TestCase):
              unittest.mock.call(b'0\r\n\r\n')])
 
     def test_data_stream_not_bytes(self):
-        @tulip.coroutine
+        @asyncio.coroutine
         def gen():
             yield object()
             return b' result'
@@ -335,9 +335,9 @@ class HttpRequestTests(unittest.TestCase):
             ValueError, self.loop.run_until_complete, req._writer)
 
     def test_close(self):
-        @tulip.coroutine
+        @asyncio.coroutine
         def gen():
-            yield from tulip.sleep(0.00001, loop=self.loop)
+            yield from asyncio.sleep(0.00001, loop=self.loop)
             return b'result'
 
         req = HttpRequest(

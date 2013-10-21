@@ -2,11 +2,11 @@
 
 __all__ = ['ServerHttpProtocol']
 
+import asyncio
 import http.server
 import inspect
 import logging
 import traceback
-import tulip
 
 import asynchttp
 from asynchttp import errors
@@ -25,7 +25,7 @@ DEFAULT_ERROR_MESSAGE = """
 </html>"""
 
 
-class ServerHttpProtocol(tulip.Protocol):
+class ServerHttpProtocol(asyncio.Protocol):
     """Simple http protocol implementation.
 
     ServerHttpProtocol handles incoming http request. It reads request line,
@@ -57,13 +57,13 @@ class ServerHttpProtocol(tulip.Protocol):
         self._keep_alive_period = keep_alive  # number of seconds to keep alive
 
         if keep_alive and loop is None:
-            loop = tulip.get_event_loop()
+            loop = asyncio.get_event_loop()
         self._loop = loop
 
     def connection_made(self, transport):
         self.transport = transport
         self.stream = asynchttp.StreamParser(loop=self._loop)
-        self._request_handler = tulip.async(self.start(), loop=self._loop)
+        self._request_handler = asyncio.async(self.start(), loop=self._loop)
 
     def data_received(self, data):
         self.stream.feed_data(data)
@@ -94,7 +94,7 @@ class ServerHttpProtocol(tulip.Protocol):
     def log_exception(self, *args, **kw):
         self.log.exception(*args, **kw)
 
-    @tulip.coroutine
+    @asyncio.coroutine
     def start(self):
         """Start processing of incoming requests.
         It reads request line, request headers and request payload, then
@@ -124,10 +124,10 @@ class ServerHttpProtocol(tulip.Protocol):
 
                 handler = self.handle_request(message, payload)
                 if (inspect.isgenerator(handler) or
-                        isinstance(handler, tulip.Future)):
+                        isinstance(handler, asyncio.Future)):
                     yield from handler
 
-            except tulip.CancelledError:
+            except asyncio.CancelledError:
                 self.log_debug('Ignored premature client disconnection.')
                 break
             except errors.HttpException as exc:

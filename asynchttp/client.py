@@ -1,7 +1,8 @@
-"""HTTP Client for Tulip."""
+"""HTTP Client for asyncio."""
 
 __all__ = ['request']
 
+import asyncio
 import base64
 import email.message
 import functools
@@ -13,14 +14,14 @@ import inspect
 import itertools
 import mimetypes
 import os
-import tulip
+import ssl
 import uuid
 import urllib.parse
 
 import asynchttp
 
 
-@tulip.coroutine
+@asyncio.coroutine
 def request(method, url, *,
             params=None,
             data=None,
@@ -36,6 +37,7 @@ def request(method, url, *,
             compress=None,
             chunked=None,
             session=None,
+            verify_ssl=True,
             loop=None):
     """Constructs and sends a request. Returns response object.
 
@@ -73,13 +75,14 @@ def request(method, url, *,
     """
     redirects = 0
     if loop is None:
-        loop = tulip.get_event_loop()
+        loop = asyncio.get_event_loop()
 
     while True:
         req = HttpRequest(
             method, url, params=params, headers=headers, data=data,
             cookies=cookies, files=files, auth=auth, encoding=encoding,
-            version=version, compress=compress, chunked=chunked, loop=loop)
+            version=version, compress=compress, chunked=chunked,
+            verify_ssl=verify_ssl, loop=loop)
 
         if session is None:
             conn = start(req, loop)
@@ -88,12 +91,12 @@ def request(method, url, *,
 
         if timeout:
             # connection timeout
-            conn = tulip.wait_for(conn, timeout, loop=loop)
+            conn = asyncio.wait_for(conn, timeout, loop=loop)
 
         try:
             resp = yield from conn
-        except tulip.TimeoutError:
-            raise tulip.TimeoutError from None
+        except asyncio.TimeoutError:
+            raise asyncio.TimeoutError from None
 
         # redirects
         if resp.status in (301, 302) and allow_redirects:
@@ -120,7 +123,7 @@ def request(method, url, *,
     return resp
 
 
-@tulip.coroutine
+@asyncio.coroutine
 def start(req, loop):
     transport, p = yield from loop.create_connection(
         functools.partial(asynchttp.StreamProtocol, loop=loop),
@@ -154,12 +157,13 @@ class HttpRequest:
     def __init__(self, method, url, *,
                  params=None, headers=None, data=None, cookies=None,
                  files=None, auth=None, encoding='utf-8', version=(1, 1),
-                 compress=None, chunked=None, loop=None):
+                 compress=None, chunked=None, verify_ssl=True, loop=None):
         self.url = url
         self.method = method.upper()
         self.encoding = encoding
         self.chunked = chunked
         self.compress = compress
+        self.verify_ssl = verify_ssl
         self.loop = loop
 
         self.update_version(version)
@@ -199,6 +203,10 @@ class HttpRequest:
 
         # extract host and port
         self.ssl = scheme == 'https'
+        if self.ssl and not self.verify_ssl:
+            sslcontext = self.ssl = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+            sslcontext.options |= ssl.OP_NO_SSLv2
+            sslcontext.set_default_verify_paths()
 
         if ':' in netloc:
             netloc, port_s = netloc.split(':', 1)
@@ -418,7 +426,7 @@ class HttpRequest:
                 if 'content-length' not in self.headers:
                     self.headers['content-length'] = str(len(self.body))
 
-    @tulip.coroutine
+    @asyncio.coroutine
     def write_bytes(self, request, stream):
         """Support coroutines that yields bytes objects."""
         value = None
@@ -431,7 +439,7 @@ class HttpRequest:
                     request.write(exc.value)
                 break
 
-            if isinstance(result, tulip.Future):
+            if isinstance(result, asyncio.Future):
                 value = yield from result
             elif isinstance(result, bytes):
                 request.write(result)
@@ -456,7 +464,7 @@ class HttpRequest:
         request.send_headers()
 
         if inspect.isgenerator(self.body):
-            self._writer = tulip.async(
+            self._writer = asyncio.async(
                 self.write_bytes(request, self.body), loop=self.loop)
         else:
             if isinstance(self.body, bytes):
@@ -469,7 +477,7 @@ class HttpRequest:
 
         return HttpResponse(self.method, self.path, self.host)
 
-    @tulip.coroutine
+    @asyncio.coroutine
     def close(self):
         if self._writer is not None:
             try:
@@ -549,7 +557,7 @@ class HttpResponse(http.client.HTTPMessage):
             self.transport.close()
             self.transport = None
 
-    @tulip.coroutine
+    @asyncio.coroutine
     def read(self, decode=False):
         """Read response payload. Decode known types of content."""
         if self._content is None:

@@ -4,7 +4,7 @@ import gc
 import io
 import os.path
 import http.cookies
-import tulip
+import asyncio
 import unittest
 
 import asynchttp
@@ -15,8 +15,8 @@ from asynchttp import test_utils
 class HttpClientFunctionalTests(unittest.TestCase):
 
     def setUp(self):
-        self.loop = tulip.new_event_loop()
-        tulip.set_event_loop(None)
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
 
     def tearDown(self):
         # just in case if we have transport close callbacks
@@ -45,7 +45,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             for meth in ('get', 'post', 'put', 'delete', 'head'):
                 r = self.loop.run_until_complete(
                     client.request(meth, httpd.url('method', meth),
-                                   loop=self.loop))
+                                   loop=self.loop, verify_ssl=False))
                 content = self.loop.run_until_complete(r.read())
 
                 self.assertEqual(r.status, 200)
@@ -55,11 +55,11 @@ class HttpClientFunctionalTests(unittest.TestCase):
     def test_use_global_loop(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             try:
-                tulip.set_event_loop(self.loop)
+                asyncio.set_event_loop(self.loop)
                 r = self.loop.run_until_complete(
                     client.request('get', httpd.url('method', 'get')))
             finally:
-                tulip.set_event_loop(None)
+                asyncio.set_event_loop(None)
             content1 = self.loop.run_until_complete(r.read())
             content2 = self.loop.run_until_complete(r.read())
             content = content1.decode()
@@ -364,9 +364,9 @@ class HttpClientFunctionalTests(unittest.TestCase):
             with open(__file__, 'rb') as f:
                 data = f.read()
 
-            fut = tulip.Future(loop=self.loop)
+            fut = asyncio.Future(loop=self.loop)
 
-            @tulip.coroutine
+            @asyncio.coroutine
             def stream():
                 yield from fut
                 yield data
@@ -436,7 +436,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             httpd['noresponse'] = True
             self.assertRaises(
-                tulip.TimeoutError,
+                asyncio.TimeoutError,
                 self.loop.run_until_complete,
                 client.request('get', httpd.url('method', 'get'),
                                timeout=0.1, loop=self.loop))

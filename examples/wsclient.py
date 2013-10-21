@@ -7,8 +7,8 @@ import os
 import signal
 import sys
 
-import tulip
-import tulip.selectors
+import asyncio
+import asyncio.selectors
 
 import asynchttp
 from asynchttp import websocket
@@ -57,7 +57,7 @@ def start_client(loop, url):
             writer.send(name + b': ' + line)
     loop.add_reader(sys.stdin.fileno(), stdin_callback)
 
-    @tulip.coroutine
+    @asyncio.coroutine
     def dispatch():
         while True:
             try:
@@ -93,9 +93,9 @@ if __name__ == '__main__':
 
     url = 'http://{}:{}'.format(args.host, args.port)
 
-    loop = tulip.SelectorEventLoop(tulip.selectors.SelectSelector())
-    tulip.set_event_loop(loop)
+    loop = asyncio.SelectorEventLoop(asyncio.selectors.SelectSelector())
+    asyncio.set_event_loop(loop)
 
     loop.add_signal_handler(signal.SIGINT, loop.stop)
-    tulip.Task(start_client(loop, url))
+    asyncio.Task(start_client(loop, url))
     loop.run_forever()

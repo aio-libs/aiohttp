@@ -2,7 +2,7 @@
 
 import unittest
 import unittest.mock
-import tulip
+import asyncio
 import zlib
 
 from asynchttp import protocol
@@ -12,7 +12,7 @@ class HttpMessageTests(unittest.TestCase):
 
     def setUp(self):
         self.transport = unittest.mock.Mock()
-        tulip.set_event_loop(None)
+        asyncio.set_event_loop(None)
 
     def test_start_request(self):
         msg = protocol.Request(

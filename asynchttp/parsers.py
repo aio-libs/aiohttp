@@ -37,7 +37,7 @@ There are three stages:
 
  * Data flow:
 
-    1. Tulip's transport reads data from socket and sends data to protocol
+    1. asyncio's transport reads data from socket and sends data to protocol
        with data_received() call.
     2. Protocol sends data to StreamParser with feed_data() call.
     3. StreamParser sends data into parser with generator's send() method.
@@ -58,9 +58,9 @@ _SocketSocketTransport ->
 __all__ = ['EofStream', 'StreamParser', 'StreamProtocol',
            'ParserBuffer', 'DataQueue', 'LinesParser', 'ChunksParser']
 
+import asyncio
 import collections
 import inspect
-import tulip
 
 
 class EofStream(Exception):
@@ -185,8 +185,8 @@ class StreamParser:
             self._parser = None
 
 
-class StreamProtocol(StreamParser, tulip.Protocol):
-    """Tulip's stream protocol based on StreamParser"""
+class StreamProtocol(StreamParser, asyncio.Protocol):
+    """asyncio's stream protocol based on StreamParser"""
 
     transport = None
 
@@ -246,14 +246,14 @@ class DataQueue:
             if not waiter.cancelled():
                 waiter.set_result(False)
 
-    @tulip.coroutine
+    @asyncio.coroutine
     def read(self):
         if self._exception is not None:
             raise self._exception
 
         if not self._buffer and not self._eof:
             assert not self._waiter
-            self._waiter = tulip.Future(loop=self._loop)
+            self._waiter = asyncio.Future(loop=self._loop)
             yield from self._waiter
 
         if self._buffer:

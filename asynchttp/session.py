@@ -2,10 +2,10 @@
 
 __all__ = ['Session']
 
+import asyncio
 import asynchttp
 import functools
 import http.cookies
-import tulip
 
 
 class Session:
@@ -36,7 +36,7 @@ class Session:
             else:
                 self.cookies[name] = value
 
-    @tulip.coroutine
+    @asyncio.coroutine
     def start(self, req, loop, new_conn=False, set_cookies=True):
         key = (req.host, req.port, req.ssl)
 

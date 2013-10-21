@@ -4,7 +4,7 @@ import logging
 import re
 import signal
 import sys
-import tulip
+import asyncio
 import urllib.parse
 
 import asynchttp
@@ -19,22 +19,22 @@ class Crawler:
         self.busy = set()
         self.done = {}
         self.tasks = set()
-        self.sem = tulip.Semaphore(maxtasks)
+        self.sem = asyncio.Semaphore(maxtasks)
 
         # session stores cookies between requests and uses connection pool
         self.session = asynchttp.Session()
 
-    @tulip.coroutine
+    @asyncio.coroutine
     def run(self):
-        tulip.Task(self.addurls([(self.rooturl, '')]))  # Set initial work.
-        yield from tulip.sleep(1)
+        asyncio.Task(self.addurls([(self.rooturl, '')]))  # Set initial work.
+        yield from asyncio.sleep(1)
         while self.busy:
-            yield from tulip.sleep(1)
+            yield from asyncio.sleep(1)
 
         self.session.close()
         self.loop.stop()
 
-    @tulip.coroutine
+    @asyncio.coroutine
     def addurls(self, urls):
         for url, parenturl in urls:
             url = urllib.parse.urljoin(parenturl, url)
@@ -45,12 +45,12 @@ class Crawler:
                     url not in self.todo):
                 self.todo.add(url)
                 yield from self.sem.acquire()
-                task = tulip.Task(self.process(url))
+                task = asyncio.Task(self.process(url))
                 task.add_done_callback(lambda t: self.sem.release())
                 task.add_done_callback(self.tasks.remove)
                 self.tasks.add(task)
 
-    @tulip.coroutine
+    @asyncio.coroutine
     def process(self, url):
         print('processing:', url)
 
@@ -66,7 +66,7 @@ class Crawler:
             if resp.status == 200 and resp.get_content_type() == 'text/html':
                 data = (yield from resp.read()).decode('utf-8', 'replace')
                 urls = re.findall(r'(?i)href=["\']?([^\s"\'<>]+)', data)
-                tulip.Task(self.addurls([(u, url) for u in urls]))
+                asyncio.Task(self.addurls([(u, url) for u in urls]))
 
             resp.close()
             self.done[url] = True
@@ -77,10 +77,10 @@ class Crawler:
 
 
 def main():
-    loop = tulip.get_event_loop()
+    loop = asyncio.get_event_loop()
 
     c = Crawler(sys.argv[1], loop)
-    tulip.Task(c.run())
+    asyncio.Task(c.run())
 
     try:
         loop.add_signal_handler(signal.SIGINT, loop.stop)
@@ -95,7 +95,7 @@ def main():
 
 if __name__ == '__main__':
     if '--iocp' in sys.argv:
-        from tulip import events, windows_events
+        from asyncio import events, windows_events
         sys.argv.remove('--iocp')
         logging.info('using iocp')
         el = windows_events.ProactorEventLoop()

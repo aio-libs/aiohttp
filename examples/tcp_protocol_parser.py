@@ -3,7 +3,7 @@
 import argparse
 import asynchttp
 import collections
-import tulip
+import asyncio
 try:
     import signal
 except ImportError:
@@ -23,10 +23,10 @@ def my_protocol_parser(out, buf):
     Parser is a generator function, but it is not a coroutine. Usually
     parsers are implemented as a state machine.
 
-    more details in tulip/parsers.py
+    more details in asyncio/parsers.py
     existing parsers:
-      * http protocol parsers tulip/http/protocol.py
-      * websocket parser tulip/http/websocket.py
+      * http protocol parsers asyncio/http/protocol.py
+      * websocket parser asyncio/http/websocket.py
     """
     while True:
         tp = yield from buf.read(5)
@@ -63,13 +63,13 @@ class MyProtocolWriter:
             'text:{}\r\n'.format(text.strip()).encode('utf-8'))
 
 
-class EchoServer(tulip.Protocol):
+class EchoServer(asyncio.Protocol):
 
     def connection_made(self, transport):
         print('Connection made')
         self.transport = transport
         self.stream = asynchttp.StreamParser()
-        tulip.Task(self.dispatch())
+        asyncio.Task(self.dispatch())
 
     def data_received(self, data):
         self.stream.feed_data(data)
@@ -80,7 +80,7 @@ class EchoServer(tulip.Protocol):
     def connection_lost(self, exc):
         print('Connection lost')
 
-    @tulip.coroutine
+    @asyncio.coroutine
     def dispatch(self):
         reader = self.stream.set_parser(my_protocol_parser)
         writer = MyProtocolWriter(self.transport)
@@ -103,7 +103,7 @@ class EchoServer(tulip.Protocol):
                 break
 
 
-@tulip.coroutine
+@asyncio.coroutine
 def start_client(loop, host, port):
     transport, stream = yield from loop.create_connection(
         asynchttp.StreamProtocol, host, port)
@@ -166,7 +166,7 @@ if __name__ == '__main__':
         print('Please specify --server or --client\n')
         ARGS.print_help()
     else:
-        loop = tulip.get_event_loop()
+        loop = asyncio.get_event_loop()
         if signal is not None:
             loop.add_signal_handler(signal.SIGINT, loop.stop)
 

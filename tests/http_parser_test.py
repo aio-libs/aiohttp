@@ -1,7 +1,7 @@
 """Tests for asynchttp/protocol.py"""
 
 from collections import deque
-import tulip
+import asyncio
 import zlib
 import unittest
 import unittest.mock
@@ -14,7 +14,7 @@ from asynchttp import protocol
 class ParseHeadersTests(unittest.TestCase):
 
     def setUp(self):
-        tulip.set_event_loop(None)
+        asyncio.set_event_loop(None)
 
         self.parser = protocol.HttpParser(8190, 32768, 8190)
 
@@ -99,7 +99,7 @@ class ParseHeadersTests(unittest.TestCase):
 class DeflateBufferTests(unittest.TestCase):
 
     def setUp(self):
-        tulip.set_event_loop(None)
+        asyncio.set_event_loop(None)
 
     def test_feed_data(self):
         buf = asynchttp.DataQueue()
@@ -146,7 +146,7 @@ class DeflateBufferTests(unittest.TestCase):
 class ParsePayloadTests(unittest.TestCase):
 
     def setUp(self):
-        tulip.set_event_loop(None)
+        asyncio.set_event_loop(None)
 
     def test_parse_eof_payload(self):
         out = asynchttp.DataQueue()
@@ -351,7 +351,7 @@ class ParsePayloadTests(unittest.TestCase):
 class ParseRequestTests(unittest.TestCase):
 
     def setUp(self):
-        tulip.set_event_loop(None)
+        asyncio.set_event_loop(None)
 
     def test_http_request_parser_max_headers(self):
         out = asynchttp.DataQueue()
@@ -432,7 +432,7 @@ class ParseRequestTests(unittest.TestCase):
 class ParseResponseTests(unittest.TestCase):
 
     def setUp(self):
-        tulip.set_event_loop(None)
+        asyncio.set_event_loop(None)
 
     def test_http_response_parser_bad_status_line(self):
         out = asynchttp.DataQueue()

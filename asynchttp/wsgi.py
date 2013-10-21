@@ -8,11 +8,11 @@ TODO:
 
 __all__ = ['WSGIServerHttpProtocol']
 
+import asyncio
 import inspect
 import io
 import os
 import sys
-import tulip
 from urllib.parse import unquote, urlsplit
 
 import asynchttp
@@ -139,7 +139,7 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
 
         return environ
 
-    @tulip.coroutine
+    @asyncio.coroutine
     def handle_request(self, message, payload):
         """Handle a single HTTP request"""
 
@@ -157,13 +157,13 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
         response = self.create_wsgi_response(message)
 
         riter = self.wsgi(environ, response.start_response)
-        if isinstance(riter, tulip.Future) or inspect.isgenerator(riter):
+        if isinstance(riter, asyncio.Future) or inspect.isgenerator(riter):
             riter = yield from riter
 
         resp = response.response
         try:
             for item in riter:
-                if isinstance(item, tulip.Future):
+                if isinstance(item, asyncio.Future):
                     item = yield from item
                 resp.write(item)
 

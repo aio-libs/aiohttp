@@ -15,7 +15,7 @@ Requirements
 
 - Python 3.3
 
-- tulip http://code.google.com/p/tulip/
+- asyncio http://code.google.com/p/tulip/
 
 
 License

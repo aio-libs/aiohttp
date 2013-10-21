@@ -1,6 +1,6 @@
 """Tests for parser.py"""
 
-import tulip
+import asyncio
 import unittest
 import unittest.mock
 
@@ -14,8 +14,8 @@ class StreamParserTests(unittest.TestCase):
 
     def setUp(self):
         self.lines_parser = parsers.LinesParser()
-        self.loop = tulip.new_event_loop()
-        tulip.set_event_loop(None)
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
 
     def tearDown(self):
         self.loop.close()
@@ -304,8 +304,8 @@ class StreamParserTests(unittest.TestCase):
 class DataQueueTests(unittest.TestCase):
 
     def setUp(self):
-        self.loop = tulip.new_event_loop()
-        tulip.set_event_loop(None)
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
 
     def tearDown(self):
         self.loop.close()
@@ -325,7 +325,7 @@ class DataQueueTests(unittest.TestCase):
     def test_read(self):
         item = object()
         buffer = parsers.DataQueue(loop=self.loop)
-        read_task = tulip.Task(buffer.read(), loop=self.loop)
+        read_task = asyncio.Task(buffer.read(), loop=self.loop)
 
         def cb():
             buffer.feed_data(item)
@@ -336,7 +336,7 @@ class DataQueueTests(unittest.TestCase):
 
     def test_read_eof(self):
         buffer = parsers.DataQueue(loop=self.loop)
-        read_task = tulip.Task(buffer.read(), loop=self.loop)
+        read_task = asyncio.Task(buffer.read(), loop=self.loop)
 
         def cb():
             buffer.feed_eof()
@@ -347,13 +347,13 @@ class DataQueueTests(unittest.TestCase):
 
     def test_read_cancelled(self):
         buffer = parsers.DataQueue(loop=self.loop)
-        read_task = tulip.Task(buffer.read(), loop=self.loop)
+        read_task = asyncio.Task(buffer.read(), loop=self.loop)
         test_utils.run_briefly(self.loop)
-        self.assertIsInstance(buffer._waiter, tulip.Future)
+        self.assertIsInstance(buffer._waiter, asyncio.Future)
 
         read_task.cancel()
         self.assertRaises(
-            tulip.CancelledError,
+            asyncio.CancelledError,
             self.loop.run_until_complete, read_task)
         self.assertTrue(buffer._waiter.cancelled())
 
@@ -391,14 +391,14 @@ class DataQueueTests(unittest.TestCase):
     def test_exception_waiter(self):
         buffer = parsers.DataQueue(loop=self.loop)
 
-        @tulip.coroutine
+        @asyncio.coroutine
         def set_err():
             buffer.set_exception(ValueError())
 
-        t1 = tulip.Task(buffer.read(), loop=self.loop)
-        t2 = tulip.Task(set_err(), loop=self.loop)
+        t1 = asyncio.Task(buffer.read(), loop=self.loop)
+        t2 = asyncio.Task(set_err(), loop=self.loop)
 
-        self.loop.run_until_complete(tulip.wait([t1, t2], loop=self.loop))
+        self.loop.run_until_complete(asyncio.wait([t1, t2], loop=self.loop))
 
         self.assertRaises(ValueError, t1.result)
 
@@ -433,8 +433,8 @@ class StreamProtocolTests(unittest.TestCase):
 class ParserBufferTests(unittest.TestCase):
 
     def setUp(self):
-        self.loop = tulip.new_event_loop()
-        tulip.set_event_loop(None)
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
 
     def tearDown(self):
         self.loop.close()

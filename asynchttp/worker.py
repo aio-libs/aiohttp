@@ -1,6 +1,6 @@
 """Async gunicorn worker."""
 import os
-import tulip
+import asyncio
 import gunicorn.workers.base as base
 
 from asynchttp.wsgi import WSGIServerHttpProtocol
@@ -14,15 +14,15 @@ class AsyncGunicornWorker(base.Worker):
 
     def init_process(self):
         # create new event_loop after fork
-        tulip.get_event_loop().close()
+        asyncio.get_event_loop().close()
 
-        self.loop = tulip.new_event_loop()
-        tulip.set_event_loop(self.loop)
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
 
         super().init_process()
 
     def run(self):
-        self._runner = tulip.async(self._run(), loop=self.loop)
+        self._runner = asyncio.async(self._run(), loop=self.loop)
 
         try:
             self.loop.run_until_complete(self._runner)
@@ -32,13 +32,13 @@ class AsyncGunicornWorker(base.Worker):
     def factory(self):
         return WSGIServerHttpProtocol(self.wsgi, loop=self.loop)
 
-    @tulip.coroutine
+    @asyncio.coroutine
     def _run(self):
         def add_server(t):
             self.servers.append(t.result())
 
         for sock in self.sockets:
-            t = tulip.async(
+            t = asyncio.async(
                 self.loop.create_server(self.factory, sock=sock.sock))
             t.add_done_callback(add_server)
 
@@ -52,7 +52,7 @@ class AsyncGunicornWorker(base.Worker):
                     self.log.info("Parent changed, shutting down: %s", self)
                     break
 
-                yield from tulip.sleep(1.0)
+                yield from asyncio.sleep(1.0)
         except KeyboardInterrupt:
             pass
 

@@ -16,17 +16,17 @@ import threading
 import traceback
 import urllib.parse
 
-import tulip
+import asyncio
 import asynchttp
 from asynchttp import client
 from asynchttp import server
 
 
 def run_briefly(loop):
-    @tulip.coroutine
+    @asyncio.coroutine
     def once():
         pass
-    t = tulip.Task(once(), loop=loop)
+    t = asyncio.Task(once(), loop=loop)
     loop.run_until_complete(t)
 
 
@@ -65,7 +65,7 @@ def run_server(loop, *, host='127.0.0.1', port=0, use_ssl=False, router=None):
                 return
 
             if properties.get('noresponse', False):
-                yield from tulip.sleep(99999)
+                yield from asyncio.sleep(99999)
 
             if router is not None:
                 body = bytearray()
@@ -101,15 +101,15 @@ def run_server(loop, *, host='127.0.0.1', port=0, use_ssl=False, router=None):
         sslcontext = None
 
     def run(loop, fut):
-        thread_loop = tulip.new_event_loop()
-        tulip.set_event_loop(thread_loop)
+        thread_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(thread_loop)
 
         server = thread_loop.run_until_complete(
             thread_loop.create_server(
                 lambda: TestHttpServer(keep_alive=0.5),
                 host, port, ssl=sslcontext))
 
-        waiter = tulip.Future(loop=thread_loop)
+        waiter = asyncio.Future(loop=thread_loop)
         loop.call_soon_threadsafe(
             fut.set_result, (thread_loop, waiter,
                              server.sockets[0].getsockname()))
@@ -131,7 +131,7 @@ def run_server(loop, *, host='127.0.0.1', port=0, use_ssl=False, router=None):
             thread_loop.close()
             gc.collect()
 
-    fut = tulip.Future(loop=loop)
+    fut = asyncio.Future(loop=loop)
     server_thread = threading.Thread(target=run, args=(loop, fut))
     server_thread.start()
 

@@ -6,7 +6,7 @@ import os
 import socket
 import signal
 import time
-import tulip
+import asyncio
 
 import asynchttp
 import asynchttp.server
@@ -32,7 +32,7 @@ class HttpServer(asynchttp.server.ServerHttpProtocol):
     parent = None  # process supervisor
                    # we use it as broadcaster to all workers
 
-    @tulip.coroutine
+    @asyncio.coroutine
     def handle_request(self, message, payload):
         upgrade = False
         for hdr, val in message.headers:
@@ -121,8 +121,8 @@ class ChildProcess:
 
     def start(self):
         # start server
-        self.loop = loop = tulip.new_event_loop()
-        tulip.set_event_loop(loop)
+        self.loop = loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
         def stop():
             self.loop.stop()
@@ -130,12 +130,12 @@ class ChildProcess:
         loop.add_signal_handler(signal.SIGINT, stop)
 
         # heartbeat
-        tulip.Task(self.heartbeat())
+        asyncio.Task(self.heartbeat())
 
-        tulip.get_event_loop().run_forever()
+        asyncio.get_event_loop().run_forever()
         os._exit(0)
 
-    @tulip.coroutine
+    @asyncio.coroutine
     def start_server(self, writer):
         socks = yield from self.loop.start_serving(
             lambda: HttpServer(
@@ -145,7 +145,7 @@ class ChildProcess:
         print('Starting srv worker process {} on {}'.format(
             os.getpid(), socks[0].getsockname()))
 
-    @tulip.coroutine
+    @asyncio.coroutine
     def heartbeat(self):
         # setup pipes
         read_transport, read_proto = yield from self.loop.connect_read_pipe(
@@ -156,7 +156,7 @@ class ChildProcess:
         reader = read_proto.set_parser(websocket.WebSocketParser)
         writer = websocket.WebSocketWriter(write_transport)
 
-        tulip.Task(self.start_server(writer))
+        asyncio.Task(self.start_server(writer))
 
         while True:
             try:
@@ -202,23 +202,23 @@ class Worker:
             # parent
             os.close(up_read)
             os.close(down_write)
-            tulip.async(self.connect(pid, up_write, down_read))
+            asyncio.async(self.connect(pid, up_write, down_read))
         else:
             # child
             os.close(up_write)
             os.close(down_read)
 
             # cleanup after fork
-            tulip.set_event_loop(None)
+            asyncio.set_event_loop(None)
 
             # setup process
             process = ChildProcess(up_read, down_write, args, sock)
             process.start()
 
-    @tulip.coroutine
+    @asyncio.coroutine
     def heartbeat(self, writer):
         while True:
-            yield from tulip.sleep(15)
+            yield from asyncio.sleep(15)
 
             if (time.monotonic() - self.ping) < 30:
                 writer.ping()
@@ -229,7 +229,7 @@ class Worker:
                 self.start()
                 return
 
-    @tulip.coroutine
+    @asyncio.coroutine
     def chat(self, reader):
         while True:
             try:
@@ -249,7 +249,7 @@ class Worker:
                     if self.pid != worker.pid:
                         worker.writer.send(msg.data)
 
-    @tulip.coroutine
+    @asyncio.coroutine
     def connect(self, pid, up_write, down_read):
         # setup pipes
         read_transport, proto = yield from self.loop.connect_read_pipe(
@@ -267,8 +267,8 @@ class Worker:
         self.writer = writer
         self.rtransport = read_transport
         self.wtransport = write_transport
-        self.chat_task = tulip.async(self.chat(reader))
-        self.heartbeat_task = tulip.async(self.heartbeat(writer))
+        self.chat_task = asyncio.async(self.chat(reader))
+        self.heartbeat_task = asyncio.async(self.heartbeat(writer))
 
     def kill(self):
         self._started = False
@@ -282,7 +282,7 @@ class Worker:
 class Superviser:
 
     def __init__(self, args):
-        self.loop = tulip.get_event_loop()
+        self.loop = asyncio.get_event_loop()
         self.args = args
         self.workers = []
 

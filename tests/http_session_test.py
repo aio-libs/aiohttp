@@ -1,7 +1,7 @@
 """Tests for asynchttp/session.py"""
 
 import http.cookies
-import tulip
+import asyncio
 import unittest
 import unittest.mock
 
@@ -13,8 +13,8 @@ from asynchttp.session import Session
 class HttpSessionTests(unittest.TestCase):
 
     def setUp(self):
-        self.loop = tulip.new_event_loop()
-        tulip.set_event_loop(None)
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
 
         self.transport = unittest.mock.Mock()
         self.stream = asynchttp.StreamParser()
@@ -88,7 +88,7 @@ class HttpSessionTests(unittest.TestCase):
                 raise ValueError()
 
         class Loop:
-            @tulip.coroutine
+            @asyncio.coroutine
             def create_connection(self, *args, **kw):
                 return tr, proto
 
@@ -117,12 +117,12 @@ class HttpSessionTests(unittest.TestCase):
                     return Resp()
 
         class Resp:
-            @tulip.coroutine
+            @asyncio.coroutine
             def start(self, *args, **kw):
                 pass
 
         class Loop:
-            @tulip.coroutine
+            @asyncio.coroutine
             def create_connection(self, *args, **kw):
                 return tr, proto
 
@@ -149,12 +149,12 @@ class HttpSessionTests(unittest.TestCase):
                 return Resp()
 
         class Resp:
-            @tulip.coroutine
+            @asyncio.coroutine
             def start(self, *args, **kw):
                 pass
 
         class Loop:
-            @tulip.coroutine
+            @asyncio.coroutine
             def create_connection(self, *args, **kw):
                 nonlocal new_connection
                 new_connection = True

@@ -1,7 +1,7 @@
 """Tests for http/wsgi.py"""
 
 import io
-import tulip
+import asyncio
 import unittest
 import unittest.mock
 
@@ -13,8 +13,8 @@ from asynchttp import protocol
 class HttpWsgiServerProtocolTests(unittest.TestCase):
 
     def setUp(self):
-        self.loop = tulip.new_event_loop()
-        tulip.set_event_loop(None)
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
 
         self.wsgi = unittest.mock.Mock()
         self.stream = unittest.mock.Mock()
@@ -163,7 +163,7 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
             '500 Err', [('CONTENT-TYPE', 'text/plain')], ['', ValueError()])
 
     @unittest.mock.patch('asynchttp.wsgi.asynchttp')
-    def test_wsgi_response_101_upgrade_to_websocket(self, m_tulip):
+    def test_wsgi_response_101_upgrade_to_websocket(self, m_asyncio):
         srv = wsgi.WSGIServerHttpProtocol(self.wsgi, loop=self.loop)
         srv.stream = self.stream
         srv.transport = self.transport
@@ -173,7 +173,7 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
             '101 Switching Protocols', (('UPGRADE', 'websocket'),
                                         ('CONNECTION', 'upgrade')))
         self.assertEqual(resp.status, '101 Switching Protocols')
-        self.assertTrue(m_tulip.Response.return_value.send_headers.called)
+        self.assertTrue(m_asyncio.Response.return_value.send_headers.called)
 
     def test_file_wrapper(self):
         fobj = io.BytesIO(b'data')
@@ -192,9 +192,9 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
 
         def wsgi_app(env, start):
             start('200 OK', [('Content-Type', 'text/plain')])
-            f1 = tulip.Future(loop=self.loop)
+            f1 = asyncio.Future(loop=self.loop)
             f1.set_result(b'data')
-            fut = tulip.Future(loop=self.loop)
+            fut = asyncio.Future(loop=self.loop)
             fut.set_result([f1])
             return fut
 
@@ -216,7 +216,7 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
             start('200 OK', [('Content-Type', 'text/plain')])
             return [b'data']
 
-        stream = tulip.StreamReader(loop=self.loop)
+        stream = asyncio.StreamReader(loop=self.loop)
         stream.feed_data(b'data')
         stream.feed_eof()
 
@@ -261,7 +261,7 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
             start('200 OK', [('Content-Type', 'text/plain')])
             return [b'data']
 
-        stream = tulip.StreamReader(loop=self.loop)
+        stream = asyncio.StreamReader(loop=self.loop)
         stream.feed_data(b'data')
         stream.feed_eof()
 

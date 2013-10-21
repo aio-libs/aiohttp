@@ -13,14 +13,14 @@ except ImportError:  # pragma: no cover
 
 assert sys.version >= '3.3', 'Please use Python 3.3 or higher.'
 
-import tulip
+import asyncio
 import asynchttp
 import asynchttp.server
 
 
 class HttpServer(asynchttp.server.ServerHttpProtocol):
 
-    @tulip.coroutine
+    @asyncio.coroutine
     def handle_request(self, message, payload):
         print('method = {!r}; path = {!r}; version = {!r}'.format(
             message.method, message.path, message.version))
@@ -127,11 +127,11 @@ def main():
         args.port = int(port)
 
     if args.iocp:
-        from tulip import windows_events
+        from asyncio import windows_events
         sys.argv.remove('--iocp')
         logging.info('using iocp')
         el = windows_events.ProactorEventLoop()
-        tulip.set_event_loop(el)
+        asyncio.set_event_loop(el)
 
     if args.ssl:
         here = os.path.join(os.path.dirname(__file__), 'tests')
@@ -148,7 +148,7 @@ def main():
     else:
         sslcontext = None
 
-    loop = tulip.get_event_loop()
+    loop = asyncio.get_event_loop()
     f = loop.create_server(
         lambda: HttpServer(debug=True, keep_alive=75), args.host, args.port,
         ssl=sslcontext)

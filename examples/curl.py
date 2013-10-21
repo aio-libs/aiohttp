@@ -2,7 +2,7 @@
 
 import asynchttp
 import sys
-import tulip
+import asyncio
 
 
 def curl(url):
@@ -15,10 +15,10 @@ def curl(url):
 
 if __name__ == '__main__':
     if '--iocp' in sys.argv:
-        from tulip import events, windows_events
+        from asyncio import events, windows_events
         sys.argv.remove('--iocp')
         el = windows_events.ProactorEventLoop()
         events.set_event_loop(el)
 
-    loop = tulip.get_event_loop()
+    loop = asyncio.get_event_loop()
     loop.run_until_complete(curl(sys.argv[1]))

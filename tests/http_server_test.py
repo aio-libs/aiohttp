@@ -1,6 +1,6 @@
 """Tests for asynchttp/server.py"""
 
-import tulip
+import asyncio
 import unittest
 import unittest.mock
 
@@ -12,8 +12,8 @@ from asynchttp import test_utils
 class HttpServerProtocolTests(unittest.TestCase):
 
     def setUp(self):
-        self.loop = tulip.new_event_loop()
-        tulip.set_event_loop(None)
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
 
     def tearDown(self):
         self.loop.close()
@@ -97,10 +97,10 @@ class HttpServerProtocolTests(unittest.TestCase):
         srv.connection_made(transport)
         srv.keep_alive(True)
 
-        srv.handle_error(404, headers=(('X-Server', 'Tulip'),))
+        srv.handle_error(404, headers=(('X-Server', 'asyncio'),))
         content = b''.join([c[1][0] for c in list(transport.write.mock_calls)])
         self.assertIn(b'HTTP/1.1 404 Not Found', content)
-        self.assertIn(b'X-SERVER: Tulip', content)
+        self.assertIn(b'X-SERVER: asyncio', content)
         self.assertFalse(srv._keep_alive)
 
     @unittest.mock.patch('asynchttp.server.traceback')
@@ -165,7 +165,7 @@ class HttpServerProtocolTests(unittest.TestCase):
 
         called = False
 
-        @tulip.coroutine
+        @asyncio.coroutine
         def coro(message, payload):
             nonlocal called
             called = True
@@ -189,12 +189,12 @@ class HttpServerProtocolTests(unittest.TestCase):
 
         srv.handle_request = unittest.mock.Mock()
 
-        @tulip.coroutine
+        @asyncio.coroutine
         def cancel():
             srv._request_handler.cancel()
 
         self.loop.run_until_complete(
-            tulip.wait([srv._request_handler, cancel()], loop=self.loop))
+            asyncio.wait([srv._request_handler, cancel()], loop=self.loop))
         self.assertTrue(log.debug.called)
 
     def test_handle_cancelled(self):

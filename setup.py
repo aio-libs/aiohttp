@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 version = '0.1'
 
-install_requires = ['tulip']
+install_requires = ['asyncio']
 
 tests_require = install_requires + ['nose', 'gunicorn']
 
