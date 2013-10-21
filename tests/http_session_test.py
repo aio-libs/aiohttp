@@ -7,7 +7,7 @@ import unittest.mock
 
 import asynchttp
 from asynchttp.client import HttpResponse
-from asynchttp.session import Session
+from asynchttp.session import Session, TransportWrapper
 
 
 class HttpSessionTests(unittest.TestCase):
@@ -166,3 +166,17 @@ class HttpSessionTests(unittest.TestCase):
 
         self.loop.run_until_complete(session.start(Req(), Loop()))
         self.assertTrue(new_connection)
+
+    def test_transport_wrapper_force_close(self):
+        m = unittest.mock.Mock()
+        release = unittest.mock.Mock()
+        transp = unittest.mock.Mock()
+
+        wrp = TransportWrapper(release, m, transp, m, m)
+        wrp.close()
+        self.assertTrue(release.called)
+
+        release.reset_mock()
+        wrp.close(True)
+        self.assertFalse(release.called)
+        self.assertTrue(transp.close.called)

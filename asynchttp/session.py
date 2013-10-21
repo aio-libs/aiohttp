@@ -101,6 +101,9 @@ class TransportWrapper:
         self.protocol = protocol
         self.response = response
 
-    def close(self):
-        self.release(self.response, self.key,
-                     (self.transport, self.protocol))
+    def close(self, force=False):
+        if force:
+            self.transport.close()
+        else:
+            self.release(self.response, self.key,
+                         (self.transport, self.protocol))

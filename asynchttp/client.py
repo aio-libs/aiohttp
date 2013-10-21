@@ -552,7 +552,7 @@ class HttpResponse(http.client.HTTPMessage):
 
         return self
 
-    def close(self):
+    def close(self, force=False):
         if self.transport is not None:
             self.transport.close()
             self.transport = None
