@@ -1,10 +1,10 @@
-"""Tests for asynchttp/worker.py"""
+"""Tests for aiohttp/worker.py"""
 import asyncio
 import unittest
 import unittest.mock
 
-from asynchttp import worker
-from asynchttp.wsgi import WSGIServerHttpProtocol
+from aiohttp import worker
+from aiohttp.wsgi import WSGIServerHttpProtocol
 
 
 class TestWorker(worker.AsyncGunicornWorker):
@@ -23,7 +23,7 @@ class WorkerTests(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
-    @unittest.mock.patch('asynchttp.worker.asyncio')
+    @unittest.mock.patch('aiohttp.worker.asyncio')
     def test_init_process(self, m_asyncio):
         try:
             self.worker.init_process()
@@ -34,7 +34,7 @@ class WorkerTests(unittest.TestCase):
         self.assertTrue(m_asyncio.new_event_loop.called)
         self.assertTrue(m_asyncio.set_event_loop.called)
 
-    @unittest.mock.patch('asynchttp.worker.asyncio')
+    @unittest.mock.patch('aiohttp.worker.asyncio')
     def test_run(self, m_asyncio):
         self.worker.loop = unittest.mock.Mock()
         self.worker.run()
@@ -52,7 +52,7 @@ class WorkerTests(unittest.TestCase):
         f = self.worker.factory()
         self.assertIsInstance(f, WSGIServerHttpProtocol)
 
-    @unittest.mock.patch('asynchttp.worker.asyncio')
+    @unittest.mock.patch('aiohttp.worker.asyncio')
     def test__run(self, m_asyncio):
         self.worker.ppid = 1
         self.worker.alive = True
@@ -70,8 +70,8 @@ class WorkerTests(unittest.TestCase):
         self.assertTrue(self.worker.log.info.called)
         self.assertTrue(self.worker.notify.called)
 
-    @unittest.mock.patch('asynchttp.worker.os')
-    @unittest.mock.patch('asynchttp.worker.asyncio.sleep')
+    @unittest.mock.patch('aiohttp.worker.os')
+    @unittest.mock.patch('aiohttp.worker.asyncio.sleep')
     def test__run_exc(self, m_sleep, m_os):
         m_os.getpid.return_value = 1
         m_os.getppid.return_value = 1

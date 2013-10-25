@@ -18,7 +18,7 @@ import ssl
 import uuid
 import urllib.parse
 
-import asynchttp
+import aiohttp
 
 
 @asyncio.coroutine
@@ -59,14 +59,14 @@ def request(method, url, *,
        with deflate encoding.
     chunked: Boolean or Integer. Set to chunk size for chunked
        transfer encoding.
-    session: asynchttp.Session instance to support connection pooling and
+    session: aiohttp.Session instance to support connection pooling and
        session cookies.
     loop: Optional event loop.
 
     Usage:
 
-      import asynchttp
-      >> resp = yield from asynchttp.request('GET', 'http://python.org/')
+      import aiohttp
+      >> resp = yield from aiohttp.request('GET', 'http://python.org/')
       >> resp
       <HttpResponse(python.org/) [200]>
 
@@ -126,7 +126,7 @@ def request(method, url, *,
 @asyncio.coroutine
 def start(req, loop):
     transport, p = yield from loop.create_connection(
-        functools.partial(asynchttp.StreamProtocol, loop=loop),
+        functools.partial(aiohttp.StreamProtocol, loop=loop),
         req.host, req.port, ssl=req.ssl)
 
     try:
@@ -451,7 +451,7 @@ class HttpRequest:
         self._writer = None
 
     def send(self, transport):
-        request = asynchttp.Request(
+        request = aiohttp.Request(
             transport, self.method, self.path, self.version)
 
         if self.compress:
@@ -501,7 +501,7 @@ class HttpResponse(http.client.HTTPMessage):
     stream = None   # input stream
     transport = None  # current transport
 
-    _response_parser = asynchttp.HttpResponseParser()
+    _response_parser = aiohttp.HttpResponseParser()
 
     def __init__(self, method, url, host=''):
         super().__init__()
@@ -542,7 +542,7 @@ class HttpResponse(http.client.HTTPMessage):
 
         # payload
         self.content = stream.set_parser(
-            asynchttp.HttpPayloadParser(self.message))
+            aiohttp.HttpPayloadParser(self.message))
 
         # cookies
         self.cookies = http.cookies.SimpleCookie()
@@ -569,7 +569,7 @@ class HttpResponse(http.client.HTTPMessage):
                     size = len(chunk)
                     buf.append((chunk, size))
                     total += size
-            except asynchttp.EofStream:
+            except aiohttp.EofStream:
                 pass
 
             self._content = bytearray(total)

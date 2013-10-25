@@ -16,8 +16,8 @@ import sys
 import time
 from urllib.parse import unquote, urlsplit
 
-import asynchttp
-from asynchttp import server
+import aiohttp
+from aiohttp import server
 
 
 class WSGIServerHttpProtocol(server.ServerHttpProtocol):
@@ -57,7 +57,7 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
             'wsgi.run_once': False,
             'wsgi.file_wrapper': FileWrapper,
             'wsgi.url_scheme': url_scheme,
-            'SERVER_SOFTWARE': asynchttp.HttpMessage.SERVER_SOFTWARE,
+            'SERVER_SOFTWARE': aiohttp.HttpMessage.SERVER_SOFTWARE,
             'REQUEST_METHOD': message.method,
             'QUERY_STRING': uri_parts.query or '',
             'RAW_URI': message.path,
@@ -150,7 +150,7 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
             try:
                 while True:
                     wsgiinput.write((yield from payload.read()))
-            except asynchttp.EofStream:
+            except aiohttp.EofStream:
                 pass
             wsgiinput.seek(0)
             payload = wsgiinput
@@ -220,7 +220,7 @@ class WsgiResponse:
         status_code = int(status.split(' ', 1)[0])
 
         self.status = status
-        resp = self.response = asynchttp.Response(
+        resp = self.response = aiohttp.Response(
             self.transport, status_code,
             self.message.version, self.message.should_close)
         resp.add_headers(*headers)

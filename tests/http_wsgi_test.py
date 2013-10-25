@@ -5,9 +5,9 @@ import asyncio
 import unittest
 import unittest.mock
 
-import asynchttp
-from asynchttp import wsgi
-from asynchttp import protocol
+import aiohttp
+from aiohttp import wsgi
+from aiohttp import protocol
 
 
 class HttpWsgiServerProtocolTests(unittest.TestCase):
@@ -24,7 +24,7 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
         self.headers = []
         self.message = protocol.RawRequestMessage(
             'GET', '/path', (1, 0), self.headers, True, 'deflate')
-        self.payload = asynchttp.DataQueue()
+        self.payload = aiohttp.DataQueue()
         self.payload.feed_data(b'data')
         self.payload.feed_data(b'data')
         self.payload.feed_eof()
@@ -162,7 +162,7 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
             resp.start_response,
             '500 Err', [('CONTENT-TYPE', 'text/plain')], ['', ValueError()])
 
-    @unittest.mock.patch('asynchttp.wsgi.asynchttp')
+    @unittest.mock.patch('aiohttp.wsgi.aiohttp')
     def test_wsgi_response_101_upgrade_to_websocket(self, m_asyncio):
         srv = wsgi.WSGIServerHttpProtocol(self.wsgi, loop=self.loop)
         srv.stream = self.stream

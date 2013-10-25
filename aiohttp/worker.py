@@ -3,7 +3,7 @@ import os
 import asyncio
 import gunicorn.workers.base as base
 
-from asynchttp.wsgi import WSGIServerHttpProtocol
+from aiohttp.wsgi import WSGIServerHttpProtocol
 
 
 class AsyncGunicornWorker(base.Worker):

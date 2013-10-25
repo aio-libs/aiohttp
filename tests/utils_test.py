@@ -1,8 +1,8 @@
-"""Tests for asynchttp/utils.py"""
+"""Tests for aiohttp/utils.py"""
 import unittest
 import unittest.mock
 
-from asynchttp import utils
+from aiohttp import utils
 
 
 class SafeAtomsTests(unittest.TestCase):

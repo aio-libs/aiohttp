@@ -4,8 +4,8 @@ import asyncio
 import unittest
 import unittest.mock
 
-from asynchttp import parsers
-from asynchttp import test_utils
+from aiohttp import parsers
+from aiohttp import test_utils
 
 
 class StreamParserTests(unittest.TestCase):

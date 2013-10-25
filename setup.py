@@ -11,7 +11,7 @@ def read(f):
     return open(os.path.join(os.path.dirname(__file__), f)).read().strip()
 
 
-setup(name='asynchttp',
+setup(name='aiohttp',
       version=version,
       description=('http client/server for asyncio'),
       long_description='\n\n'.join((read('README.rst'), read('CHANGES.txt'))),
@@ -20,7 +20,7 @@ setup(name='asynchttp',
           'Intended Audience :: Developers',
           'Programming Language :: Python',
           'Programming Language :: Python :: 3.3',
-          'Topic :: Web'],
+          'Topic :: Internet :: WWW/HTTP'],
       author='Nikolay Kim',
       author_email='fafhrd91@gmail.com',
       url='https://github.com/fafhrd91/asynchttp/',

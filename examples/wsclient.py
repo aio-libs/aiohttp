@@ -10,8 +10,8 @@ import sys
 import asyncio
 import asyncio.selectors
 
-import asynchttp
-from asynchttp import websocket
+import aiohttp
+from aiohttp import websocket
 
 WS_KEY = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
@@ -22,7 +22,7 @@ def start_client(loop, url):
     sec_key = base64.b64encode(os.urandom(16))
 
     # send request
-    response = yield from asynchttp.request(
+    response = yield from aiohttp.request(
         'get', url,
         headers={
             'UPGRADE': 'WebSocket',
@@ -62,7 +62,7 @@ def start_client(loop, url):
         while True:
             try:
                 msg = yield from stream.read()
-            except asynchttp.EofStream:
+            except aiohttp.EofStream:
                 # server disconnected
                 break
 

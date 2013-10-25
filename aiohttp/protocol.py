@@ -13,8 +13,8 @@ import sys
 import zlib
 from wsgiref.handlers import format_date_time
 
-import asynchttp
-from asynchttp import errors
+import aiohttp
+from aiohttp import errors
 
 METHRE = re.compile('[A-Z0-9$-_.]+')
 VERSRE = re.compile('HTTP/(\d+).(\d+)')
@@ -158,7 +158,7 @@ class HttpRequestParser(HttpParser):
                 RawRequestMessage(
                     method, path, version, headers, close, compression))
             out.feed_eof()
-        except asynchttp.EofStream:
+        except aiohttp.EofStream:
             # Presumably, the server closed the connection before
             # sending a valid response.
             pass
@@ -216,7 +216,7 @@ class HttpResponseParser(HttpParser):
                     version, status, reason.strip(),
                     headers, close, compression))
             out.feed_eof()
-        except asynchttp.EofStream:
+        except aiohttp.EofStream:
             # Presumably, the server closed the connection before
             # sending a valid response.
             raise errors.BadStatusLine(b'') from None
@@ -298,7 +298,7 @@ class HttpPayloadParser:
             # read and discard trailer up to the CRLF terminator
             yield from buf.skipuntil(b'\r\n')
 
-        except asynchttp.EofStream:
+        except aiohttp.EofStream:
             raise errors.IncompleteRead(b'') from None
 
     def parse_length_payload(self, out, buf, length):
@@ -308,7 +308,7 @@ class HttpPayloadParser:
                 chunk = yield from buf.readsome(length)
                 out.feed_data(chunk)
                 length -= len(chunk)
-        except asynchttp.EofStream:
+        except aiohttp.EofStream:
             raise errors.IncompleteRead(b'') from None
 
     def parse_eof_payload(self, out, buf):
@@ -437,7 +437,7 @@ class HttpMessage:
     compression and then send it with chunked transfer encoding, code may look
     like this:
 
-       >> response = asynchttp.Response(transport, 200)
+       >> response = aiohttp.Response(transport, 200)
 
     We have to use deflate compression first:
 
@@ -640,7 +640,7 @@ class HttpMessage:
     def write_eof(self):
         self.write(EOF_MARKER)
         try:
-            self.writer.throw(asynchttp.EofStream())
+            self.writer.throw(aiohttp.EofStream())
         except StopIteration:
             pass
 
@@ -649,7 +649,7 @@ class HttpMessage:
         while True:
             try:
                 chunk = yield
-            except asynchttp.EofStream:
+            except aiohttp.EofStream:
                 self.transport.write(b'0\r\n\r\n')
                 self.output_length += 5
                 break
@@ -666,7 +666,7 @@ class HttpMessage:
         while True:
             try:
                 chunk = yield
-            except asynchttp.EofStream:
+            except aiohttp.EofStream:
                 break
 
             if length:
@@ -684,7 +684,7 @@ class HttpMessage:
         while True:
             try:
                 chunk = yield
-            except asynchttp.EofStream:
+            except aiohttp.EofStream:
                 break
 
             self.transport.write(chunk)

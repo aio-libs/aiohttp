@@ -9,7 +9,7 @@ import binascii
 import collections
 import hashlib
 import struct
-from asynchttp import errors
+from aiohttp import errors
 
 # Frame opcodes defined in the spec.
 OPCODE_CONTINUATION = 0x0

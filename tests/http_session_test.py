@@ -1,13 +1,13 @@
-"""Tests for asynchttp/session.py"""
+"""Tests for aiohttp/session.py"""
 
 import http.cookies
 import asyncio
 import unittest
 import unittest.mock
 
-import asynchttp
-from asynchttp.client import HttpResponse
-from asynchttp.session import Session, TransportWrapper
+import aiohttp
+from aiohttp.client import HttpResponse
+from aiohttp.session import Session, TransportWrapper
 
 
 class HttpSessionTests(unittest.TestCase):
@@ -17,7 +17,7 @@ class HttpSessionTests(unittest.TestCase):
         asyncio.set_event_loop(None)
 
         self.transport = unittest.mock.Mock()
-        self.stream = asynchttp.StreamParser()
+        self.stream = aiohttp.StreamParser()
         self.response = HttpResponse('get', 'http://python.org')
 
     def tearDown(self):

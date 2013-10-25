@@ -7,9 +7,9 @@ import http.cookies
 import asyncio
 import unittest
 
-import asynchttp
-from asynchttp import client
-from asynchttp import test_utils
+import aiohttp
+from aiohttp import client
+from aiohttp import test_utils
 
 
 class HttpClientFunctionalTests(unittest.TestCase):
@@ -452,13 +452,13 @@ class HttpClientFunctionalTests(unittest.TestCase):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             httpd['close'] = True
             self.assertRaises(
-                asynchttp.HttpException,
+                aiohttp.HttpException,
                 self.loop.run_until_complete,
                 client.request('get', httpd.url('method', 'get'),
                                loop=self.loop))
 
     def test_keepalive(self):
-        from asynchttp import session
+        from aiohttp import session
         s = session.Session()
 
         with test_utils.run_server(self.loop, router=Functional) as httpd:
@@ -479,7 +479,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             r.close()
 
     def test_session_close(self):
-        from asynchttp import session
+        from aiohttp import session
         s = session.Session()
 
         with test_utils.run_server(self.loop, router=Functional) as httpd:
@@ -501,7 +501,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             r.close()
 
     def test_session_cookies(self):
-        from asynchttp import session
+        from aiohttp import session
         s = session.Session()
 
         with test_utils.run_server(self.loop, router=Functional) as httpd:

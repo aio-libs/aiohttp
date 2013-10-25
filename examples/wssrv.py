@@ -8,9 +8,9 @@ import signal
 import time
 import asyncio
 
-import asynchttp
-import asynchttp.server
-from asynchttp import websocket
+import aiohttp
+import aiohttp.server
+from aiohttp import websocket
 
 ARGS = argparse.ArgumentParser(description="Run simple http server.")
 ARGS.add_argument(
@@ -26,7 +26,7 @@ ARGS.add_argument(
 WS_FILE = os.path.join(os.path.dirname(__file__), 'websocket.html')
 
 
-class HttpServer(asynchttp.server.ServerHttpProtocol):
+class HttpServer(aiohttp.server.ServerHttpProtocol):
 
     clients = None  # list of all active connections
     parent = None  # process supervisor
@@ -45,7 +45,7 @@ class HttpServer(asynchttp.server.ServerHttpProtocol):
             status, headers, parser, writer = websocket.do_handshake(
                 message.method, message.headers, self.transport)
 
-            resp = asynchttp.Response(self.transport, status)
+            resp = aiohttp.Response(self.transport, status)
             resp.add_headers(*headers)
             resp.send_headers()
 
@@ -63,7 +63,7 @@ class HttpServer(asynchttp.server.ServerHttpProtocol):
             while True:
                 try:
                     msg = yield from dataqueue.read()
-                except asynchttp.EofStream:
+                except aiohttp.EofStream:
                     # client droped connection
                     break
 
@@ -90,7 +90,7 @@ class HttpServer(asynchttp.server.ServerHttpProtocol):
 
         else:
             # send html page with js chat
-            response = asynchttp.Response(self.transport, 200)
+            response = aiohttp.Response(self.transport, 200)
             response.add_header('Transfer-Encoding', 'chunked')
             response.add_header('Content-type', 'text/html')
             response.send_headers()
@@ -149,9 +149,9 @@ class ChildProcess:
     def heartbeat(self):
         # setup pipes
         read_transport, read_proto = yield from self.loop.connect_read_pipe(
-            asynchttp.StreamProtocol, os.fdopen(self.up_read, 'rb'))
+            aiohttp.StreamProtocol, os.fdopen(self.up_read, 'rb'))
         write_transport, _ = yield from self.loop.connect_write_pipe(
-            asynchttp.StreamProtocol, os.fdopen(self.down_write, 'wb'))
+            aiohttp.StreamProtocol, os.fdopen(self.down_write, 'wb'))
 
         reader = read_proto.set_parser(websocket.WebSocketParser)
         writer = websocket.WebSocketWriter(write_transport)
@@ -161,7 +161,7 @@ class ChildProcess:
         while True:
             try:
                 msg = yield from reader.read()
-            except asynchttp.EofStream:
+            except aiohttp.EofStream:
                 print('Superviser is dead, {} stopping...'.format(os.getpid()))
                 self.loop.stop()
                 break
@@ -234,7 +234,7 @@ class Worker:
         while True:
             try:
                 msg = yield from reader.read()
-            except asynchttp.EofStream:
+            except aiohttp.EofStream:
                 print('Restart unresponsive worker process: {}'.format(
                     self.pid))
                 self.kill()
@@ -253,9 +253,9 @@ class Worker:
     def connect(self, pid, up_write, down_read):
         # setup pipes
         read_transport, proto = yield from self.loop.connect_read_pipe(
-            asynchttp.StreamProtocol, os.fdopen(down_read, 'rb'))
+            aiohttp.StreamProtocol, os.fdopen(down_read, 'rb'))
         write_transport, _ = yield from self.loop.connect_write_pipe(
-            asynchttp.StreamProtocol, os.fdopen(up_write, 'wb'))
+            aiohttp.StreamProtocol, os.fdopen(up_write, 'wb'))
 
         # websocket protocol
         reader = proto.set_parser(websocket.WebSocketParser)

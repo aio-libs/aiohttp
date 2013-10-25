@@ -9,8 +9,8 @@ import logging
 import time
 import traceback
 
-import asynchttp
-from asynchttp import errors, utils
+import aiohttp
+from aiohttp import errors, utils
 
 
 RESPONSES = http.server.BaseHTTPRequestHandler.responses
@@ -51,7 +51,7 @@ class ServerHttpProtocol(asyncio.Protocol):
     _keep_alive = False  # keep transport open
     _keep_alive_handle = None  # keep alive timer handle
 
-    _request_parser = asynchttp.HttpRequestParser()  # default request parser
+    _request_parser = aiohttp.HttpRequestParser()  # default request parser
 
     def __init__(self, *, loop=None,
                  keep_alive=None, debug=False, log=logging,
@@ -69,7 +69,7 @@ class ServerHttpProtocol(asyncio.Protocol):
 
     def connection_made(self, transport):
         self.transport = transport
-        self.stream = asynchttp.StreamParser(loop=self._loop)
+        self.stream = aiohttp.StreamParser(loop=self._loop)
         self._request_handler = asyncio.async(self.start(), loop=self._loop)
 
     def data_received(self, data):
@@ -134,7 +134,7 @@ class ServerHttpProtocol(asyncio.Protocol):
                     self._keep_alive_handle = None
 
                 payload = self.stream.set_parser(
-                    asynchttp.HttpPayloadParser(message))
+                    aiohttp.HttpPayloadParser(message))
 
                 handler = self.handle_request(message, payload)
                 if (inspect.isgenerator(handler) or
@@ -191,7 +191,7 @@ class ServerHttpProtocol(asyncio.Protocol):
             html = DEFAULT_ERROR_MESSAGE.format(
                 status=status, reason=reason, message=msg)
 
-            response = asynchttp.Response(self.transport, status, close=True)
+            response = aiohttp.Response(self.transport, status, close=True)
             response.add_headers(
                 ('Content-Type', 'text/html'),
                 ('Content-Length', str(len(html))))
@@ -212,11 +212,11 @@ class ServerHttpProtocol(asyncio.Protocol):
         Subclass should override this method. By default it always
         returns 404 response.
 
-        info: asynchttp.RequestLine instance
-        message: asynchttp.RawHttpMessage instance
+        info: aiohttp.RequestLine instance
+        message: aiohttp.RawHttpMessage instance
         """
         now = time.time()
-        response = asynchttp.Response(
+        response = aiohttp.Response(
             self.transport, 404, http_version=message.version, close=True)
 
         body = b'Page Not Found!'

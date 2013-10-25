@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Tests for asynchttp/client.py"""
+"""Tests for aiohttp/client.py"""
 
 import inspect
 import asyncio
@@ -7,8 +7,8 @@ import unittest
 import unittest.mock
 import urllib.parse
 
-import asynchttp
-from asynchttp.client import HttpRequest, HttpResponse
+import aiohttp
+from aiohttp.client import HttpRequest, HttpResponse
 
 
 class HttpResponseTests(unittest.TestCase):
@@ -18,7 +18,7 @@ class HttpResponseTests(unittest.TestCase):
         asyncio.set_event_loop(None)
 
         self.transport = unittest.mock.Mock()
-        self.stream = asynchttp.StreamParser(loop=self.loop)
+        self.stream = aiohttp.StreamParser(loop=self.loop)
         self.response = HttpResponse('get', 'http://python.org')
 
     def tearDown(self):
@@ -46,7 +46,7 @@ class HttpRequestTests(unittest.TestCase):
         asyncio.set_event_loop(None)
 
         self.transport = unittest.mock.Mock()
-        self.stream = asynchttp.StreamParser(loop=self.loop)
+        self.stream = aiohttp.StreamParser(loop=self.loop)
 
     def tearDown(self):
         self.loop.close()
@@ -241,7 +241,7 @@ class HttpRequestTests(unittest.TestCase):
             'POST', 'http://python.org/',
             data=b'binary data', files={'file': b'file data'})
 
-    @unittest.mock.patch('asynchttp.client.asynchttp')
+    @unittest.mock.patch('aiohttp.client.aiohttp')
     def test_content_encoding(self, m_http):
         req = HttpRequest('get', 'http://python.org/', compress='deflate')
         req.send(self.transport)
@@ -250,7 +250,7 @@ class HttpRequestTests(unittest.TestCase):
         m_http.Request.return_value\
             .add_compression_filter.assert_called_with('deflate')
 
-    @unittest.mock.patch('asynchttp.client.asynchttp')
+    @unittest.mock.patch('aiohttp.client.aiohttp')
     def test_content_encoding_header(self, m_http):
         req = HttpRequest('get', 'http://python.org/',
                           headers={'Content-Encoding': 'deflate'})
@@ -276,7 +276,7 @@ class HttpRequestTests(unittest.TestCase):
         req.send(self.transport)
         self.assertEqual('chunked', req.headers['Transfer-encoding'])
 
-    @unittest.mock.patch('asynchttp.client.asynchttp')
+    @unittest.mock.patch('aiohttp.client.aiohttp')
     def test_chunked_explicit(self, m_http):
         req = HttpRequest(
             'get', 'http://python.org/', chunked=True)
@@ -286,7 +286,7 @@ class HttpRequestTests(unittest.TestCase):
         m_http.Request.return_value\
                       .add_chunking_filter.assert_called_with(8196)
 
-    @unittest.mock.patch('asynchttp.client.asynchttp')
+    @unittest.mock.patch('aiohttp.client.aiohttp')
     def test_chunked_explicit_size(self, m_http):
         req = HttpRequest(
             'get', 'http://python.org/', chunked=1024)

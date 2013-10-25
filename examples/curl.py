@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-import asynchttp
+import aiohttp
 import sys
 import asyncio
 
 
 def curl(url):
-    response = yield from asynchttp.request('GET', url)
+    response = yield from aiohttp.request('GET', url)
     print(repr(response))
 
     data = yield from response.read()

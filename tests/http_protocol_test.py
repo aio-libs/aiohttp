@@ -1,11 +1,11 @@
-"""Tests for asynchttp/protocol.py"""
+"""Tests for aiohttp/protocol.py"""
 
 import unittest
 import unittest.mock
 import asyncio
 import zlib
 
-from asynchttp import protocol
+from aiohttp import protocol
 
 
 class HttpMessageTests(unittest.TestCase):

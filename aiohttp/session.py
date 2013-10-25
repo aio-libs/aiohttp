@@ -3,7 +3,7 @@
 __all__ = ['Session']
 
 import asyncio
-import asynchttp
+import aiohttp
 import functools
 import http.cookies
 
@@ -51,7 +51,7 @@ class Session:
         if new_conn or transport is None:
             new = True
             transport, proto = yield from loop.create_connection(
-                functools.partial(asynchttp.StreamProtocol, loop=loop),
+                functools.partial(aiohttp.StreamProtocol, loop=loop),
                 req.host, req.port, ssl=req.ssl)
         else:
             new = False

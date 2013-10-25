@@ -21,4 +21,4 @@ Requirements
 License
 -------
 
-asynchttp is offered under the BSD license.
+aiohttp is offered under the BSD license.

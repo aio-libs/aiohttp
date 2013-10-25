@@ -7,7 +7,7 @@ import sys
 import asyncio
 import urllib.parse
 
-import asynchttp
+import aiohttp
 
 
 class Crawler:
@@ -22,7 +22,7 @@ class Crawler:
         self.sem = asyncio.Semaphore(maxtasks)
 
         # session stores cookies between requests and uses connection pool
-        self.session = asynchttp.Session()
+        self.session = aiohttp.Session()
 
     @asyncio.coroutine
     def run(self):
@@ -57,7 +57,7 @@ class Crawler:
         self.todo.remove(url)
         self.busy.add(url)
         try:
-            resp = yield from asynchttp.request(
+            resp = yield from aiohttp.request(
                 'get', url, session=self.session)
         except Exception as exc:
             print('...', url, 'has error', repr(str(exc)))

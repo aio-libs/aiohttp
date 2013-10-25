@@ -14,11 +14,11 @@ except ImportError:  # pragma: no cover
 assert sys.version >= '3.3', 'Please use Python 3.3 or higher.'
 
 import asyncio
-import asynchttp
-import asynchttp.server
+import aiohttp
+import aiohttp.server
 
 
-class HttpServer(asynchttp.server.ServerHttpProtocol):
+class HttpServer(aiohttp.server.ServerHttpProtocol):
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
@@ -39,7 +39,7 @@ class HttpServer(asynchttp.server.ServerHttpProtocol):
                 isdir = os.path.isdir(path)
 
         if not path:
-            raise asynchttp.HttpErrorException(404)
+            raise aiohttp.HttpErrorException(404)
 
         headers = email.message.Message()
         for hdr, val in message.headers:
@@ -48,10 +48,10 @@ class HttpServer(asynchttp.server.ServerHttpProtocol):
 
         if isdir and not path.endswith('/'):
             path = path + '/'
-            raise asynchttp.HttpErrorException(
+            raise aiohttp.HttpErrorException(
                 302, headers=(('URI', path), ('Location', path)))
 
-        response = asynchttp.Response(self.transport, 200)
+        response = aiohttp.Response(self.transport, 200)
         response.add_header('Transfer-Encoding', 'chunked')
 
         # content encoding

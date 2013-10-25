@@ -17,9 +17,9 @@ import traceback
 import urllib.parse
 
 import asyncio
-import asynchttp
-from asynchttp import client
-from asynchttp import server
+import aiohttp
+from aiohttp import client
+from aiohttp import server
 
 
 def run_briefly(loop):
@@ -72,7 +72,7 @@ def run_server(loop, *, host='127.0.0.1', port=0, use_ssl=False, router=None):
                 try:
                     while True:
                         body.extend((yield from payload.read()))
-                except asynchttp.EofStream:
+                except aiohttp.EofStream:
                     pass
 
                 rob = router(
@@ -81,7 +81,7 @@ def run_server(loop, *, host='127.0.0.1', port=0, use_ssl=False, router=None):
                 rob.dispatch()
 
             else:
-                response = asynchttp.Response(
+                response = aiohttp.Response(
                     self.transport, 200, message.version)
 
                 text = b'Test message'
@@ -193,7 +193,7 @@ class Router:
         return self._response(self._start_response(404))
 
     def _start_response(self, code):
-        return asynchttp.Response(self._transport, code)
+        return aiohttp.Response(self._transport, code)
 
     def _response(self, response, body=None, headers=None, chunked=False):
         r_headers = {}

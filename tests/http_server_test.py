@@ -1,12 +1,12 @@
-"""Tests for asynchttp/server.py"""
+"""Tests for aiohttp/server.py"""
 
 import asyncio
 import unittest
 import unittest.mock
 
-from asynchttp import server
-from asynchttp import errors
-from asynchttp import test_utils
+from aiohttp import server
+from aiohttp import errors
+from aiohttp import test_utils
 
 
 class HttpServerProtocolTests(unittest.TestCase):
@@ -103,7 +103,7 @@ class HttpServerProtocolTests(unittest.TestCase):
         self.assertIn(b'X-SERVER: asyncio', content)
         self.assertFalse(srv._keep_alive)
 
-    @unittest.mock.patch('asynchttp.server.traceback')
+    @unittest.mock.patch('aiohttp.server.traceback')
     def test_handle_error_traceback_exc(self, m_trace):
         transport = unittest.mock.Mock()
         log = unittest.mock.Mock()

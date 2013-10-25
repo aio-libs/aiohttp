@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Protocol parser example."""
 import argparse
-import asynchttp
+import aiohttp
 import collections
 import asyncio
 try:
@@ -68,7 +68,7 @@ class EchoServer(asyncio.Protocol):
     def connection_made(self, transport):
         print('Connection made')
         self.transport = transport
-        self.stream = asynchttp.StreamParser()
+        self.stream = aiohttp.StreamParser()
         asyncio.Task(self.dispatch())
 
     def data_received(self, data):
@@ -88,7 +88,7 @@ class EchoServer(asyncio.Protocol):
         while True:
             try:
                 msg = yield from reader.read()
-            except asynchttp.EofStream:
+            except aiohttp.EofStream:
                 # client has been disconnected
                 break
 
@@ -106,7 +106,7 @@ class EchoServer(asyncio.Protocol):
 @asyncio.coroutine
 def start_client(loop, host, port):
     transport, stream = yield from loop.create_connection(
-        asynchttp.StreamProtocol, host, port)
+        aiohttp.StreamProtocol, host, port)
     reader = stream.set_parser(my_protocol_parser)
     writer = MyProtocolWriter(transport)
     writer.ping()
@@ -116,7 +116,7 @@ def start_client(loop, host, port):
     while True:
         try:
             msg = yield from reader.read()
-        except asynchttp.EofStream:
+        except aiohttp.EofStream:
             print('Server has been disconnected.')
             break
 
