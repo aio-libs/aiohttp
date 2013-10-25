@@ -1,7 +1,7 @@
 import os
 from setuptools import setup, find_packages
 
-version = '0.1'
+version = '0.2'
 
 install_requires = ['asyncio']
 tests_require = install_requires + ['nose', 'gunicorn']
