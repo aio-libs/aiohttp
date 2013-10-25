@@ -2,11 +2,11 @@ http client/server for asyncio
 ==============================
 
 
-.. image:: https://secure.travis-ci.org/fafhrd91/asynchttp.png
-  :target:  https://secure.travis-ci.org/fafhrd91/asynchttp
+.. image:: https://secure.travis-ci.org/fafhrd91/aiohttp.png
+  :target:  https://secure.travis-ci.org/fafhrd91/aiohttp
 
-.. image:: https://coveralls.io/repos/fafhrd91/asynchttp/badge.png?branch=master
-  :target: https://coveralls.io/r/fafhrd91/asynchttp?branch=master
+.. image:: https://coveralls.io/repos/fafhrd91/aiohttp/badge.png?branch=master
+  :target: https://coveralls.io/r/fafhrd91/aiohttp?branch=master
 
 
 
