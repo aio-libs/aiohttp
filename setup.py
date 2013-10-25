@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 version = '0.1'
 
 install_requires = ['asyncio']
-tests_require = install_requires + ['nose']
+tests_require = install_requires + ['nose', 'gunicorn']
 
 
 def read(f):
