@@ -29,10 +29,10 @@ class HttpServerProtocolTests(unittest.TestCase):
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.connection_made(transport)
 
-        rline = unittest.mock.Mock()
-        rline.version = (1, 1)
         message = unittest.mock.Mock()
-        srv.handle_request(rline, message)
+        message.headers = []
+        message.version = (1, 1)
+        srv.handle_request(message, unittest.mock.Mock())
 
         content = b''.join([c[1][0] for c in list(transport.write.mock_calls)])
         self.assertTrue(content.startswith(b'HTTP/1.1 404 Not Found\r\n'))
@@ -299,3 +299,18 @@ class HttpServerProtocolTests(unittest.TestCase):
         self.assertTrue(keep_alive_handle.cancel.called)
         self.assertIsNone(srv._keep_alive_handle)
         self.assertTrue(transport.close.called)
+
+    def test_log_access_error(self):
+        transport = unittest.mock.Mock()
+
+        srv = server.ServerHttpProtocol(loop=self.loop)
+        srv.connection_made(transport)
+        srv.log = unittest.mock.Mock()
+        srv.access_log = unittest.mock.Mock()
+
+        message = unittest.mock.Mock()
+        message.headers = []
+        message.version = (1, 1)
+        srv.log_access(None, None, None, None)
+
+        self.assertTrue(srv.log.error.called)

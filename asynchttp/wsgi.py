@@ -13,6 +13,7 @@ import inspect
 import io
 import os
 import sys
+import time
 from urllib.parse import unquote, urlsplit
 
 import asynchttp
@@ -142,6 +143,7 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
     @asyncio.coroutine
     def handle_request(self, message, payload):
         """Handle a single HTTP request"""
+        now = time.time()
 
         if self.readpayload:
             wsgiinput = io.BytesIO()
@@ -174,6 +176,9 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
 
         if resp.keep_alive():
             self.keep_alive(True)
+
+        self.log_access(
+            message, environ, response.response, time.time() - now)
 
 
 class FileWrapper:

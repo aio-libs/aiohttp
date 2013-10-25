@@ -6,10 +6,11 @@ import asyncio
 import http.server
 import inspect
 import logging
+import time
 import traceback
 
 import asynchttp
-from asynchttp import errors
+from asynchttp import errors, utils
 
 
 RESPONSES = http.server.BaseHTTPRequestHandler.responses
@@ -23,6 +24,10 @@ DEFAULT_ERROR_MESSAGE = """
     {message}
   </body>
 </html>"""
+
+ACCESS_LOG = logging.getLogger('http.access')
+ACCESS_LOG_FORMAT = (
+    '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"')
 
 
 class ServerHttpProtocol(asyncio.Protocol):
@@ -48,17 +53,19 @@ class ServerHttpProtocol(asyncio.Protocol):
 
     _request_parser = asynchttp.HttpRequestParser()  # default request parser
 
-    def __init__(self, *, log=logging, debug=False,
-                 keep_alive=None, loop=None, **kwargs):
-        self.__dict__.update(kwargs)
-        self.log = log
-        self.debug = debug
-
+    def __init__(self, *, loop=None,
+                 keep_alive=None, debug=False, log=logging,
+                 access_log=ACCESS_LOG, access_log_format=ACCESS_LOG_FORMAT):
         self._keep_alive_period = keep_alive  # number of seconds to keep alive
 
         if keep_alive and loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
+
+        self.log = log
+        self.debug = debug
+        self.access_log = access_log
+        self.access_log_format = access_log_format
 
     def connection_made(self, transport):
         self.transport = transport
@@ -84,8 +91,15 @@ class ServerHttpProtocol(asyncio.Protocol):
     def keep_alive(self, val):
         self._keep_alive = val
 
-    def log_access(self, status, message, *args, **kw):
-        pass
+    def log_access(self, message, environ, response, time):
+        if self.access_log and self.access_log_format:
+            try:
+                environ = environ if environ is not None else {}
+                atoms = utils.SafeAtoms(
+                    utils.atoms(message, environ, response, time))
+                self.access_log.info(self.access_log_format % atoms)
+            except:
+                self.log.error(traceback.format_exc())
 
     def log_debug(self, *args, **kw):
         if self.debug:
@@ -152,6 +166,7 @@ class ServerHttpProtocol(asyncio.Protocol):
 
         Returns http response with specific status code. Logs additional
         information. It always closes current connection."""
+        now = time.time()
         try:
             if self._request_handler is None:
                 # client has been disconnected during writing.
@@ -173,8 +188,6 @@ class ServerHttpProtocol(asyncio.Protocol):
                 except:
                     pass
 
-            self.log_access(status, message)
-
             html = DEFAULT_ERROR_MESSAGE.format(
                 status=status, reason=reason, message=msg)
 
@@ -188,6 +201,8 @@ class ServerHttpProtocol(asyncio.Protocol):
 
             response.write(html.encode('ascii'))
             response.write_eof()
+
+            self.log_access(message, None, response, time.time() - now)
         finally:
             self.keep_alive(False)
 
@@ -200,6 +215,7 @@ class ServerHttpProtocol(asyncio.Protocol):
         info: asynchttp.RequestLine instance
         message: asynchttp.RawHttpMessage instance
         """
+        now = time.time()
         response = asynchttp.Response(
             self.transport, 404, http_version=message.version, close=True)
 
@@ -213,4 +229,4 @@ class ServerHttpProtocol(asyncio.Protocol):
         response.write_eof()
 
         self.keep_alive(False)
-        self.log_access(404, message)
+        self.log_access(message, None, response, time.time() - now)

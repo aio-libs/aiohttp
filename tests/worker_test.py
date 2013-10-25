@@ -46,8 +46,10 @@ class WorkerTests(unittest.TestCase):
     def test_factory(self):
         self.worker.wsgi = unittest.mock.Mock()
         self.worker.loop = unittest.mock.Mock()
-        f = self.worker.factory()
+        self.worker.log = unittest.mock.Mock()
+        self.worker.cfg = unittest.mock.Mock()
 
+        f = self.worker.factory()
         self.assertIsInstance(f, WSGIServerHttpProtocol)
 
     @unittest.mock.patch('asynchttp.worker.asyncio')

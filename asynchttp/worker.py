@@ -30,7 +30,11 @@ class AsyncGunicornWorker(base.Worker):
             self.loop.close()
 
     def factory(self):
-        return WSGIServerHttpProtocol(self.wsgi, loop=self.loop)
+        return WSGIServerHttpProtocol(
+            self.wsgi, loop=self.loop,
+            log=self.log,
+            access_log=self.log.access_log,
+            access_log_format=self.cfg.access_log_format)
 
     @asyncio.coroutine
     def _run(self):

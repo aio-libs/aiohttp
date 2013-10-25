@@ -477,7 +477,8 @@ class HttpMessage:
 
     HOP_HEADERS = None  # Must be set by subclass.
 
-    SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} asyncio/0.0'.format(sys.version_info)
+    SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} asyncio/0.1'.format(
+        sys.version_info)
 
     status = None
     status_line = b''
@@ -505,6 +506,7 @@ class HttpMessage:
         self.length = None
         self.headers = collections.deque()
         self.headers_sent = False
+        self.output_length = 0
 
     def force_close(self):
         self.closing = True
@@ -594,8 +596,10 @@ class HttpMessage:
         hdrs = ''.join(itertools.chain(
             (self.status_line,),
             *((k, ': ', v, '\r\n') for k, v in self.headers)))
+        hdrs = hdrs.encode('ascii') + b'\r\n'
 
-        self.transport.write(hdrs.encode('ascii') + b'\r\n')
+        self.output_length += len(hdrs)
+        self.transport.write(hdrs)
 
     def _add_default_headers(self):
         # set the connection header
@@ -647,11 +651,15 @@ class HttpMessage:
                 chunk = yield
             except asynchttp.EofStream:
                 self.transport.write(b'0\r\n\r\n')
+                self.output_length += 5
                 break
 
-            self.transport.write('{:x}\r\n'.format(len(chunk)).encode('ascii'))
-            self.transport.write(bytes(chunk))
+            chunk = bytes(chunk)
+            chunk_len = '{:x}\r\n'.format(len(chunk)).encode('ascii')
+            self.transport.write(chunk_len)
+            self.transport.write(chunk)
             self.transport.write(b'\r\n')
+            self.output_length += len(chunk_len) + len(chunk) + 2
 
     def _write_length_payload(self, length):
         """Write specified number of bytes to a stream."""
@@ -665,8 +673,10 @@ class HttpMessage:
                 l = len(chunk)
                 if length >= l:
                     self.transport.write(chunk)
+                    self.output_length += len(chunk)
                 else:
                     self.transport.write(chunk[:length])
+                    self.output_length += length
 
                 length = max(0, length-l)
 
@@ -678,6 +688,7 @@ class HttpMessage:
                 break
 
             self.transport.write(chunk)
+            self.output_length += len(chunk)
 
     @wrap_payload_filter
     def add_chunking_filter(self, chunk_size=16*1024):
