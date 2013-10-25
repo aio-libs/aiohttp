@@ -3,7 +3,6 @@ python:
   - 3.3
 
 install:
-  - pip install -e hg+https://code.google.com/p/tulip/#egg=asyncio
   - pip install coveralls --use-mirrors
   - python setup.py develop --allow-hosts='pypi.python.org'
 

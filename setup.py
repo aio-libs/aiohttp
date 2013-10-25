@@ -1,11 +1,10 @@
 import os
 from setuptools import setup, find_packages
 
-version = '0.0.1'
+version = '0.1'
 
 install_requires = ['asyncio']
-
-tests_require = install_requires + ['nose', 'gunicorn']
+tests_require = install_requires + ['nose']
 
 
 def read(f):
@@ -14,7 +13,7 @@ def read(f):
 
 setup(name='asynchttp',
       version=version,
-      description=('http client/server'),
+      description=('http client/server for asyncio'),
       long_description='\n\n'.join((read('README.rst'), read('CHANGES.txt'))),
       classifiers=[
           'License :: OSI Approved :: BSD License',
