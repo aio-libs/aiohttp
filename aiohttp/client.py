@@ -1,6 +1,6 @@
 """HTTP Client for asyncio."""
 
-__all__ = ['request']
+__all__ = ['request', 'HttpClient']
 
 import asyncio
 import base64
