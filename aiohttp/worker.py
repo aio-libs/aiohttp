@@ -1,6 +1,9 @@
 """Async gunicorn worker."""
-import os
+__all__ = ['AsyncGunicornWorker', 'PortMapperWorker']
+
 import asyncio
+import functools
+import os
 import gunicorn.workers.base as base
 
 from aiohttp.wsgi import WSGIServerHttpProtocol
@@ -11,6 +14,7 @@ class AsyncGunicornWorker(base.Worker):
     def __init__(self, *args, **kw):  # pragma: no cover
         super().__init__(*args, **kw)
         self.servers = []
+        self.connections = {}
 
     def init_process(self):
         # create new event_loop after fork
@@ -29,12 +33,23 @@ class AsyncGunicornWorker(base.Worker):
         finally:
             self.loop.close()
 
-    def factory(self):
-        return WSGIServerHttpProtocol(
-            self.wsgi, loop=self.loop,
+    def wrap_protocol(self, proto):
+        proto.connection_made = _wrp(
+            id(proto), proto.connection_made, self.connections)
+        proto.connection_lost = _wrp(
+            id(proto), proto.connection_lost, self.connections, False)
+        return proto
+
+    def factory(self, wsgi, host, port):
+        proto = WSGIServerHttpProtocol(
+            wsgi, loop=self.loop,
             log=self.log,
             access_log=self.log.access_log,
             access_log_format=self.cfg.access_log_format)
+        return self.wrap_protocol(proto)
+
+    def get_factory(self, sock, host, port):
+        return functools.partial(self.factory, self.wsgi, host, port)
 
     @asyncio.coroutine
     def _run(self):
@@ -42,8 +57,10 @@ class AsyncGunicornWorker(base.Worker):
             self.servers.append(t.result())
 
         for sock in self.sockets:
+            factory = self.get_factory(sock.sock, *sock.cfg_addr)
+
             t = asyncio.async(
-                self.loop.create_server(self.factory, sock=sock.sock))
+                self.loop.create_server(factory, sock=sock.sock))
             t.add_done_callback(add_server)
 
         # If our parent changed then we shut down.
@@ -62,3 +79,30 @@ class AsyncGunicornWorker(base.Worker):
 
         for server in self.servers:
             server.close()
+
+
+class PortMapperWorker(AsyncGunicornWorker):
+    """Special worker that uses different wsgi application depends on port.
+
+    Main wsgi application object has to be dictionary:
+    """
+
+    def get_factory(self, sock, host, port):
+        return functools.partial(self.factory, self.wsgi[port], host, port)
+
+
+class _wrp:
+
+    def __init__(self, id, meth, tracking, add=True):
+        self._id = id
+        self._meth = meth
+        self._tracking = tracking
+        self._add = add
+
+    def __call__(self, *args):
+        if self._add:
+            self._tracking[self._id] = 1
+        elif self._id in self._tracking:
+            del self._tracking[self._id]
+
+        return self._meth(*args)
