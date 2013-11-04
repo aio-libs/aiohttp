@@ -66,19 +66,30 @@ class AsyncGunicornWorker(base.Worker):
         # If our parent changed then we shut down.
         pid = os.getpid()
         try:
-            while self.alive:
+            while self.alive or self.connections:
                 self.notify()
 
-                if pid == os.getpid() and self.ppid != os.getppid():
+                if (self.alive and
+                        pid == os.getpid() and self.ppid != os.getppid()):
                     self.log.info("Parent changed, shutting down: %s", self)
-                    break
+                    self.alive = False
 
-                yield from asyncio.sleep(1.0)
+                # stop accepting requests
+                if not self.alive and self.servers:
+                    self.log.info(
+                        "Stopping server: %s, connections: %s",
+                        pid, len(self.connections))
+                    for server in self.servers:
+                        server.close()
+                    self.servers.clear()
+
+                yield from asyncio.sleep(1.0, loop=self.loop)
         except KeyboardInterrupt:
             pass
 
-        for server in self.servers:
-            server.close()
+        if self.servers:
+            for server in self.servers:
+                server.close()
 
 
 class PortMapperWorker(AsyncGunicornWorker):

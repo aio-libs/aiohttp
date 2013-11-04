@@ -74,6 +74,29 @@ class WorkerTests(unittest.TestCase):
         self.assertTrue(self.worker.log.info.called)
         self.assertTrue(self.worker.notify.called)
 
+    def test__run_connections(self):
+        self.worker.ppid = 1
+        self.worker.alive = False
+        self.worker.servers = [unittest.mock.Mock()]
+        self.worker.connections = {1: object()}
+        self.worker.sockets = []
+        self.worker.wsgi = unittest.mock.Mock()
+        self.worker.log = unittest.mock.Mock()
+        self.worker.loop = self.loop
+        self.worker.loop.create_server = unittest.mock.Mock()
+        self.worker.notify = unittest.mock.Mock()
+
+        def _close_conns():
+            yield from asyncio.sleep(0.1, loop=self.loop)
+            self.worker.connections = {}
+
+        asyncio.async(_close_conns(), loop=self.loop)
+        self.loop.run_until_complete(self.worker._run())
+
+        self.assertTrue(self.worker.log.info.called)
+        self.assertTrue(self.worker.notify.called)
+        self.assertFalse(self.worker.servers)
+
     @unittest.mock.patch('aiohttp.worker.os')
     @unittest.mock.patch('aiohttp.worker.asyncio.sleep')
     def test__run_exc(self, m_sleep, m_os):
