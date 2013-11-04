@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 """Tests for aiohttp/client.py"""
 
-import inspect
 import asyncio
+import inspect
+import time
 import unittest
 import unittest.mock
 import urllib.parse
 
 import aiohttp
-from aiohttp.client import HttpRequest, HttpResponse
+from aiohttp.client import HttpRequest, HttpResponse, HttpClient
 
 
 class HttpResponseTests(unittest.TestCase):
@@ -349,3 +350,84 @@ class HttpRequestTests(unittest.TestCase):
             [unittest.mock.call(b'result'),
              unittest.mock.call(b'\r\n'),
              unittest.mock.call(b'0\r\n\r\n')])
+
+
+class HttpClientTests(unittest.TestCase):
+
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+    def tearDown(self):
+        self.loop.close()
+
+    @unittest.mock.patch('aiohttp.client.asyncio')
+    def test_ctor(self, asyncio):
+        self.assertRaises(ValueError, HttpClient, ())
+        self.assertRaises(ValueError, HttpClient, ('test:test',))
+
+        c = HttpClient('localhost:8080', loop=self.loop)
+        self.assertEqual(c._hosts, [('localhost', 8080)])
+
+        c = HttpClient('localhost', loop=self.loop)
+        self.assertEqual(c._hosts, [('localhost', 80)])
+
+        c = HttpClient([('localhost', 1000)], loop=self.loop)
+        self.assertEqual(c._hosts, [('localhost', 1000)])
+
+        c = HttpClient([('localhost', 1000)])
+        self.assertIs(c._loop, asyncio.get_event_loop.return_value)
+
+    @unittest.mock.patch('aiohttp.client.asyncio')
+    def test_resurrect_failed(self, asyncio):
+        now = int(time.time())
+
+        c = HttpClient([('localhost', 1000), ('localhost', 1000)])
+        c._hosts = []
+        c._failed.append(('localhost', 1000, now - 10))
+        c._failed.append(('localhost', 1001, now - 10))
+        c._failed.append(('localhost', 1002, now + 10))
+        c._resurrect_failed()
+
+        self.assertEqual(
+            c._hosts, [('localhost', 1000), ('localhost', 1001)])
+        self.assertTrue(
+            asyncio.get_event_loop.return_value.call_later.called)
+
+    @unittest.mock.patch('aiohttp.client.asyncio')
+    def test_resurrect_failed_all(self, asyncio):
+        now = int(time.time())
+
+        c = HttpClient([('localhost', 1000), ('localhost', 1000)])
+        c._hosts = []
+        c._failed.append(('localhost', 1000, now - 10))
+        c._failed.append(('localhost', 1001, now - 10))
+        c._resurrect_failed()
+
+        self.assertEqual(
+            c._hosts, [('localhost', 1000), ('localhost', 1001)])
+        self.assertFalse(
+            asyncio.get_event_loop.return_value.call_later.called)
+
+    def test_failed_request(self):
+        c = HttpClient(
+            [('localhost', 56777), ('localhost', 56778)], loop=self.loop)
+
+        self.assertRaises(
+            aiohttp.ConnectionError,
+            self.loop.run_until_complete,
+            c.request('get', path='/', timeout=0.0001))
+
+    def test_failed_request_one_failed(self):
+        now = int(time.time())
+
+        c = HttpClient(
+            [('localhost', 56777), ('localhost', 56778)], loop=self.loop)
+        c._hosts = []
+        c._failed.append(('localhost', 1000, now - 10))
+        c._failed.append(('localhost', 1001, now - 10))
+
+        self.assertRaises(
+            aiohttp.ConnectionError,
+            self.loop.run_until_complete,
+            c.request('get', path='/', timeout=0.0001))

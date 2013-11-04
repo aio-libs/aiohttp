@@ -4,6 +4,7 @@ __all__ = ['request']
 
 import asyncio
 import base64
+import collections
 import email.message
 import functools
 import http.client
@@ -14,7 +15,9 @@ import inspect
 import itertools
 import mimetypes
 import os
+import random
 import ssl
+import time
 import uuid
 import urllib.parse
 
@@ -148,6 +151,129 @@ class TransportWrapper:
 
     def close(self, force=False):
         self.transport.close()
+
+
+class HttpClient:
+    """Allow to use mutiple hosts with same path. And automatically
+    mark failed hosts.
+    """
+
+    def __init__(self, hosts, *, method=None, path=None, ssl=False,
+                 timeout=None, failed_timeout=5.0, loop=None):
+        super().__init__()
+
+        self._hosts = []
+
+        if isinstance(hosts, str):
+            hosts = (hosts,)
+
+        if not hosts:
+            raise ValueError('Hosts are required')
+
+        for host in hosts:
+            if isinstance(host, str):
+                if ':' in host:
+                    host, port = host.split(':')
+                    try:
+                        port = int(port)
+                    except:
+                        raise ValueError('Port has to be integer: %s' % host)
+                else:
+                    port = 80
+            else:
+                host, port = host
+
+            self._hosts.append((host, port))
+
+        self._method = method
+        self._path = path
+        self._ssl = ssl
+        self._timeout = timeout
+        self._schema = 'https' if ssl else 'http'
+        self._session = aiohttp.Session()
+
+        self._failed = collections.deque()
+        self._failed_handle = None
+        self._failed_timeout = failed_timeout
+
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        self._loop = loop
+
+    def _resurrect_failed(self):
+        now = int(time.time())
+
+        while self._failed:
+            host, port, ts = self._failed[0]
+            if (now - ts) >= self._failed_timeout:
+                self._hosts.append((host, port))
+                self._failed.popleft()
+            else:
+                break
+
+        if self._failed:
+            self._failed_handle = self._loop.call_later(
+                self._failed_timeout, self._resurrect_failed)
+        else:
+            self._failed_handle = None
+
+    @asyncio.coroutine
+    def request(self, method=None, path=None, *,
+                params=None,
+                data=None,
+                headers=None,
+                cookies=None,
+                files=None,
+                auth=None,
+                allow_redirects=True,
+                max_redirects=10,
+                encoding='utf-8',
+                version=(1, 1),
+                compress=None,
+                timeout=None,
+                chunked=None,
+                verify_ssl=True):
+
+        if method is None:
+            method = self._method
+        if path is None:
+            path = self._path
+        if timeout is None:
+            timeout = self._timeout
+
+        # if all hosts marked as failed try first from failed
+        if not self._hosts:
+            self._hosts.append(self._failed.popleft()[:-1])
+
+        hosts = self._hosts
+
+        while hosts:
+            idx = random.randint(0, len(hosts)-1)
+
+            host, port = hosts[idx]
+            url = urllib.parse.urljoin(
+                '%s://%s:%s' % (self._schema, host, port), path)
+
+            try:
+                resp = yield from request(
+                    method, url,
+                    params=params, data=data, headers=headers,
+                    cookies=cookies, files=files, auth=auth,
+                    allow_redirects=allow_redirects,
+                    max_redirects=max_redirects, encoding=encoding,
+                    version=version, timeout=timeout,
+                    compress=compress, chunked=chunked, verify_ssl=verify_ssl,
+                    session=self._session, loop=self._loop)
+            except (aiohttp.ConnectionError, aiohttp.TimeoutError):
+                hosts.pop(idx)
+                self._failed.append((host, port, int(time.time())))
+                if not self._failed_handle:
+                    self._failed_handle = self._loop.call_later(
+                        self._failed_timeout, self._resurrect_failed)
+            else:
+                return resp
+
+        raise aiohttp.ConnectionError('All hosts are unreachable.')
 
 
 class HttpRequest:

@@ -65,7 +65,7 @@ class HttpSessionTests(unittest.TestCase):
 
     def test_release_close(self):
         session = Session()
-        req =  unittest.mock.Mock()
+        req = unittest.mock.Mock()
         resp = unittest.mock.Mock()
         resp.message.should_close = True
         req.response = resp
@@ -81,7 +81,7 @@ class HttpSessionTests(unittest.TestCase):
 
     def test_release_not_started(self):
         session = Session()
-        req =  unittest.mock.Mock()
+        req = unittest.mock.Mock()
         req.response = None
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()

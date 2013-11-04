@@ -98,7 +98,7 @@ class WorkerTests(unittest.TestCase):
 
     def test_portmapper_worker(self):
         wsgi = {1: object(), 2: object()}
-        
+
         class Worker(worker.PortMapperWorker):
 
             def __init__(self, wsgi):
@@ -108,7 +108,6 @@ class WorkerTests(unittest.TestCase):
                 return wsgi
 
         w = Worker(wsgi)
-        
         self.assertIs(
             wsgi[1], w.get_factory(object(), '', 1)())
         self.assertIs(
