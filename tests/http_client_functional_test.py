@@ -443,7 +443,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
     def test_request_conn_error(self):
         self.assertRaises(
-            OSError,
+            aiohttp.ConnectionError,
             self.loop.run_until_complete,
             client.request('get', 'http://0.0.0.0:1',
                            timeout=0.1, loop=self.loop))

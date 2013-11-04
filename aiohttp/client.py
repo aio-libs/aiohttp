@@ -84,19 +84,25 @@ def request(method, url, *,
             version=version, compress=compress, chunked=chunked,
             verify_ssl=verify_ssl, loop=loop)
 
-        if session is None:
-            conn = start(req, loop)
-        else:
-            conn = session.start(req, loop)
+        try:
+            if session is None:
+                transport, proto = yield from loop.create_connection(
+                    functools.partial(aiohttp.StreamProtocol, loop=loop),
+                    req.host, req.port, ssl=req.ssl)
+                wrp = TransportWrapper(transport)
+            else:
+                transport, proto, wrp = yield from session.start(req, loop)
+        except OSError as exc:
+            raise aiohttp.ConnectionError(exc)
 
+        conn = make_request(transport, proto, req, wrp)
         if timeout:
-            # connection timeout
             conn = asyncio.wait_for(conn, timeout, loop=loop)
 
         try:
             resp = yield from conn
         except asyncio.TimeoutError:
-            raise asyncio.TimeoutError from None
+            raise aiohttp.TimeoutError from None
 
         # redirects
         if resp.status in (301, 302) and allow_redirects:
@@ -124,19 +130,24 @@ def request(method, url, *,
 
 
 @asyncio.coroutine
-def start(req, loop):
-    transport, p = yield from loop.create_connection(
-        functools.partial(aiohttp.StreamProtocol, loop=loop),
-        req.host, req.port, ssl=req.ssl)
-
+def make_request(transport, proto, req, wrapper):
     try:
         resp = req.send(transport)
-        yield from resp.start(p, transport)
+        yield from resp.start(proto, wrapper)
     except:
         transport.close()
         raise
 
     return resp
+
+
+class TransportWrapper:
+
+    def __init__(self, transport):
+        self.transport = transport
+
+    def close(self, force=False):
+        self.transport.close()
 
 
 class HttpRequest:
@@ -152,6 +163,8 @@ class HttpRequest:
 
     body = b''
     auth = None
+    response = None
+
     _writer = None  # async task for streaming body
 
     def __init__(self, method, url, *,
@@ -475,7 +488,8 @@ class HttpRequest:
 
             request.write_eof()
 
-        return HttpResponse(self.method, self.path, self.host)
+        self.response = HttpResponse(self.method, self.path, self.host)
+        return self.response
 
     @asyncio.coroutine
     def close(self):
@@ -554,7 +568,7 @@ class HttpResponse(http.client.HTTPMessage):
 
     def close(self, force=False):
         if self.transport is not None:
-            self.transport.close()
+            self.transport.close(force)
             self.transport = None
 
     @asyncio.coroutine

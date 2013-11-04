@@ -49,26 +49,13 @@ class Session:
                 transport = None
 
         if new_conn or transport is None:
-            new = True
             transport, proto = yield from loop.create_connection(
                 functools.partial(aiohttp.StreamProtocol, loop=loop),
                 req.host, req.port, ssl=req.ssl)
-        else:
-            new = False
 
-        try:
-            resp = req.send(transport)
-            yield from resp.start(
-                proto, TransportWrapper(
-                    self._release, key, transport, proto, resp))
-        except:
-            if new:
-                transport.close()
-                raise
+        wrp = TransportWrapper(self._release, key, transport, proto, req)
 
-            return (yield from self.start(req, loop, set_cookies=False))
-
-        return resp
+        return transport, proto, wrp
 
     def _get(self, key):
         conns = self._conns.get(key)
@@ -77,9 +64,16 @@ class Session:
 
         return None, None
 
-    def _release(self, resp, key, conn):
-        msg = resp.message
-        if msg.should_close:
+    def _release(self, req, key, conn):
+        resp = req.response
+        should_close = False
+
+        if resp is not None:
+            should_close = resp.message.should_close
+            if resp.cookies:
+                self.update_cookies(resp.cookies.items())
+
+        if should_close:
             conn[0].close()
         else:
             conns = self._conns.get(key)
@@ -88,22 +82,19 @@ class Session:
             conns.append(conn)
             conn[1].unset_parser()
 
-        if resp.cookies:
-            self.update_cookies(resp.cookies.items())
-
 
 class TransportWrapper:
 
-    def __init__(self, release, key, transport, protocol, response):
+    def __init__(self, release, key, transport, protocol, request):
         self.release = release
         self.key = key
         self.transport = transport
         self.protocol = protocol
-        self.response = response
+        self.request = request
 
     def close(self, force=False):
         if force:
             self.transport.close()
         else:
-            self.release(self.response, self.key,
+            self.release(self.request, self.key,
                          (self.transport, self.protocol))
