@@ -26,15 +26,17 @@ Getting started
 
 To retrieve something from the web::
 
-  from aiohttp import request
+  mport aiohttp
 
   def get_body(url):
       response = yield from request('GET', url)
-      return response.read()
+      return (yield from response.read())
 
 You can use the get command like this anywhere in your ``asyncio`` powered program::
 
-  data = yield from get_body('http://python.org')
+  response = yield from aiohttp.request('GET', 'http://python.org')
+  body = yield from response.read()
+  print (body)
 
 The signature of request is the following::
 
@@ -50,6 +52,7 @@ The signature of request is the following::
           encoding='utf-8',
           version=(1, 1),
           timeout=None,
+          conn_timeout=None,
           compress=None,
           chunked=None,
           session=None,
@@ -71,6 +74,7 @@ It constructs and sends a request. It returns response object. Parameters are ex
   for multipart encoding upload
 - ``auth``: (optional) Auth tuple to enable Basic HTTP Auth
 - ``timeout``: (optional) Float describing the timeout of the request
+- ``conn_timeout``: (optional) Float describing the timeout of the tcp connection
 - ``allow_redirects``: (optional) Boolean. Set to True if POST/PUT/DELETE
   redirect following is allowed.
 - ``compress``: Boolean. Set to True if request has to be compressed

@@ -8,7 +8,11 @@ CHANGES
 
 - Added HttpClient
 
+- Added tcp connection timeout to http client
+
 - Better client connection errors handling
+
+- Gracefully handle process exit
 
 
 0.2

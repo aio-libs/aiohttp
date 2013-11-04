@@ -37,6 +37,7 @@ def request(method, url, *,
             encoding='utf-8',
             version=(1, 1),
             timeout=None,
+            conn_timeout=None,
             compress=None,
             chunked=None,
             session=None,
@@ -56,6 +57,8 @@ def request(method, url, *,
        for multipart encoding upload
     auth: (optional) Auth tuple to enable Basic HTTP Auth
     timeout: (optional) Float describing the timeout of the request
+    conn_timeout: (optional) Float describing the timeout
+       of the host connection
     allow_redirects: (optional) Boolean. Set to True if POST/PUT/DELETE
        redirect following is allowed.
     compress: Boolean. Set to True if request has to be compressed
@@ -87,25 +90,30 @@ def request(method, url, *,
             version=version, compress=compress, chunked=chunked,
             verify_ssl=verify_ssl, loop=loop)
 
+        if session is None:
+            conn = _connect(req, loop)
+        else:
+            conn = session.start(req, loop)
+
+        if conn_timeout is None and timeout is not None:
+            conn_timeout = timeout
+
+        conn_task = asyncio.async(conn, loop=loop)
         try:
-            if session is None:
-                transport, proto = yield from loop.create_connection(
-                    functools.partial(aiohttp.StreamProtocol, loop=loop),
-                    req.host, req.port, ssl=req.ssl)
-                wrp = TransportWrapper(transport)
+            if conn_timeout:
+                transport, proto, wrp = yield from asyncio.wait_for(
+                    conn_task, conn_timeout, loop=loop)
             else:
-                transport, proto, wrp = yield from session.start(req, loop)
-        except OSError as exc:
-            raise aiohttp.ConnectionError(exc)
+                transport, proto, wrp = yield from conn_task
 
-        conn = make_request(transport, proto, req, wrp)
-        if timeout:
-            conn = asyncio.wait_for(conn, timeout, loop=loop)
-
-        try:
-            resp = yield from conn
+            resp = yield from _make_request(
+                transport, proto, req, wrp, timeout, loop)
         except asyncio.TimeoutError:
             raise aiohttp.TimeoutError from None
+        except OSError as exc:
+            raise aiohttp.ConnectionError(exc)
+        finally:
+            conn_task.cancel()
 
         # redirects
         if resp.status in (301, 302) and allow_redirects:
@@ -133,15 +141,28 @@ def request(method, url, *,
 
 
 @asyncio.coroutine
-def make_request(transport, proto, req, wrapper):
+def _connect(req, loop):
+    transport, proto = yield from loop.create_connection(
+        functools.partial(aiohttp.StreamProtocol, loop=loop),
+        req.host, req.port, ssl=req.ssl)
+    wrp = TransportWrapper(transport)
+    return transport, proto, wrp
+
+
+@asyncio.coroutine
+def _make_request(transport, proto, req, wrapper, timeout, loop):
     try:
         resp = req.send(transport)
-        yield from resp.start(proto, wrapper)
+        if timeout:
+            yield from asyncio.wait_for(
+                resp.start(proto, wrapper), timeout, loop=loop)
+        else:
+            yield from resp.start(proto, wrapper)
     except:
         transport.close()
         raise
-
-    return resp
+    else:
+        return resp
 
 
 class TransportWrapper:
@@ -158,11 +179,11 @@ class HttpClient:
     mark failed hosts.
     """
 
-    def __init__(self, hosts, *, method=None, path=None, ssl=False,
-                 timeout=None, failed_timeout=5.0, loop=None):
+    def __init__(self, hosts, *,
+                 method=None, path=None, ssl=False,
+                 timeout=None, conn_timeout=None, failed_timeout=5.0,
+                 loop=None):
         super().__init__()
-
-        self._hosts = []
 
         if isinstance(hosts, str):
             hosts = (hosts,)
@@ -170,6 +191,7 @@ class HttpClient:
         if not hosts:
             raise ValueError('Hosts are required')
 
+        self._hosts = []
         for host in hosts:
             if isinstance(host, str):
                 if ':' in host:
@@ -189,6 +211,7 @@ class HttpClient:
         self._path = path
         self._ssl = ssl
         self._timeout = timeout
+        self._conn_timeout = conn_timeout
         self._schema = 'https' if ssl else 'http'
         self._session = aiohttp.Session()
 
@@ -231,6 +254,7 @@ class HttpClient:
                 version=(1, 1),
                 compress=None,
                 timeout=None,
+                conn_timeout=None,
                 chunked=None,
                 verify_ssl=True):
 
@@ -240,6 +264,8 @@ class HttpClient:
             path = self._path
         if timeout is None:
             timeout = self._timeout
+        if conn_timeout is None:
+            conn_timeout = self._conn_timeout
 
         # if all hosts marked as failed try first from failed
         if not self._hosts:
@@ -260,8 +286,9 @@ class HttpClient:
                     params=params, data=data, headers=headers,
                     cookies=cookies, files=files, auth=auth,
                     allow_redirects=allow_redirects,
-                    max_redirects=max_redirects, encoding=encoding,
-                    version=version, timeout=timeout,
+                    max_redirects=max_redirects,
+                    encoding=encoding, version=version,
+                    timeout=timeout, conn_timeout=conn_timeout,
                     compress=compress, chunked=chunked, verify_ssl=verify_ssl,
                     session=self._session, loop=self._loop)
             except (aiohttp.ConnectionError, aiohttp.TimeoutError):

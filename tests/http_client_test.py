@@ -418,6 +418,15 @@ class HttpClientTests(unittest.TestCase):
             self.loop.run_until_complete,
             c.request('get', path='/', timeout=0.0001))
 
+    def test_failed_request_conn(self):
+        c = HttpClient(
+            [('localhost', 56777), ('localhost', 56778)], loop=self.loop)
+
+        self.assertRaises(
+            aiohttp.ConnectionError,
+            self.loop.run_until_complete,
+            c.request('get', path='/', conn_timeout=0.0001))
+
     def test_failed_request_one_failed(self):
         now = int(time.time())
 
