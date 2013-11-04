@@ -115,8 +115,8 @@ class PortMapperWorker(AsyncGunicornWorker):
     def close(self):
         for port, wsgi in self.wsgi.items():
             try:
-                if hasattr(self.wsgi, 'close'):
-                    yield from self.wsgi.close()
+                if hasattr(wsgi, 'close'):
+                    yield from wsgi.close()
             except:
                 self.log.exception('Process shutdown exception')
 
