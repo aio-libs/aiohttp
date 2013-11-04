@@ -1,6 +1,16 @@
 CHANGES
 =======
 
+0.3 (Unreleased)
+----------------
+
+- Added PortMapperWorker
+
+- Added HttpClient
+
+- Better client connection errors handling
+
+
 0.2
 ---
 
