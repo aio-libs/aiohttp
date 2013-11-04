@@ -1,6 +1,12 @@
 CHANGES
 =======
 
+0.4 (Unreleased)
+----------------
+
+- Added custom wsgi application close procedure
+
+
 0.3 (11-04-2013)
 ----------------
 

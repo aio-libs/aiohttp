@@ -52,6 +52,14 @@ class AsyncGunicornWorker(base.Worker):
         return functools.partial(self.factory, self.wsgi, host, port)
 
     @asyncio.coroutine
+    def close(self):
+        try:
+            if hasattr(self.wsgi, 'close'):
+                yield from self.wsgi.close()
+        except:
+            self.log.exception('Process shutdown exception')
+
+    @asyncio.coroutine
     def _run(self):
         def add_server(t):
             self.servers.append(t.result())
@@ -91,6 +99,8 @@ class AsyncGunicornWorker(base.Worker):
             for server in self.servers:
                 server.close()
 
+        yield from self.close()
+
 
 class PortMapperWorker(AsyncGunicornWorker):
     """Special worker that uses different wsgi application depends on port.
@@ -100,6 +110,15 @@ class PortMapperWorker(AsyncGunicornWorker):
 
     def get_factory(self, sock, host, port):
         return functools.partial(self.factory, self.wsgi[port], host, port)
+
+    @asyncio.coroutine
+    def close(self):
+        for port, wsgi in self.wsgi.items():
+            try:
+                if hasattr(self.wsgi, 'close'):
+                    yield from self.wsgi.close()
+            except:
+                self.log.exception('Process shutdown exception')
 
 
 class _wrp:
