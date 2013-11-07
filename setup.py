@@ -1,7 +1,7 @@
 import os
 from setuptools import setup, find_packages
 
-version = '0.3'
+version = '0.4'
 
 install_requires = ['asyncio']
 tests_require = install_requires + ['nose', 'gunicorn']
@@ -20,6 +20,7 @@ setup(name='aiohttp',
           'Intended Audience :: Developers',
           'Programming Language :: Python',
           'Programming Language :: Python :: 3.3',
+          'Programming Language :: Python :: 3.4',
           'Topic :: Internet :: WWW/HTTP'],
       author='Nikolay Kim',
       author_email='fafhrd91@gmail.com',
