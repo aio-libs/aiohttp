@@ -119,6 +119,31 @@ class WorkerTests(unittest.TestCase):
         self.assertTrue(m_sleep.called)
         self.assertTrue(self.worker.servers[0].close.called)
 
+    def test_close_wsgi_app(self):
+        self.worker.ppid = 1
+        self.worker.alive = False
+        self.worker.servers = [unittest.mock.Mock()]
+        self.worker.connections = {}
+        self.worker.sockets = []
+        self.worker.log = unittest.mock.Mock()
+        self.worker.loop = self.loop
+        self.worker.loop.create_server = unittest.mock.Mock()
+        self.worker.notify = unittest.mock.Mock()
+
+        self.worker.wsgi = unittest.mock.Mock()
+        self.worker.wsgi.close.return_value = asyncio.Future(loop=self.loop)
+        self.worker.wsgi.close.return_value.set_result(1)
+
+        self.loop.run_until_complete(self.worker._run())
+        self.assertTrue(self.worker.wsgi.close.called)
+
+        self.worker.wsgi = unittest.mock.Mock()
+        self.worker.wsgi.close.return_value = asyncio.Future(loop=self.loop)
+        self.worker.wsgi.close.return_value.set_exception(ValueError())
+
+        self.loop.run_until_complete(self.worker._run())
+        self.assertTrue(self.worker.wsgi.close.called)
+
     def test_portmapper_worker(self):
         wsgi = {1: object(), 2: object()}
 
@@ -135,6 +160,33 @@ class WorkerTests(unittest.TestCase):
             wsgi[1], w.get_factory(object(), '', 1)())
         self.assertIs(
             wsgi[2], w.get_factory(object(), '', 2)())
+
+    def test_portmapper_close_wsgi_app(self):
+
+        class Worker(worker.PortMapperWorker):
+            def __init__(self, wsgi):
+                self.wsgi = wsgi
+
+        wsgi = {1: unittest.mock.Mock(), 2: unittest.mock.Mock()}
+        wsgi[1].close.return_value = asyncio.Future(loop=self.loop)
+        wsgi[1].close.return_value.set_result(1)
+        wsgi[2].close.return_value = asyncio.Future(loop=self.loop)
+        wsgi[2].close.return_value.set_exception(ValueError())
+
+        w = Worker(wsgi)
+        w.ppid = 1
+        w.alive = False
+        w.servers = [unittest.mock.Mock()]
+        w.connections = {}
+        w.sockets = []
+        w.log = unittest.mock.Mock()
+        w.loop = self.loop
+        w.loop.create_server = unittest.mock.Mock()
+        w.notify = unittest.mock.Mock()
+
+        self.loop.run_until_complete(w._run())
+        self.assertTrue(wsgi[1].close.called)
+        self.assertTrue(wsgi[2].close.called)
 
     def test_wrp(self):
         tracking = {}
