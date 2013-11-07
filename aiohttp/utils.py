@@ -22,7 +22,7 @@ def atoms(message, environ, response, request_time):
         'f': environ.get('HTTP_REFERER', '-'),
         'a': environ.get('HTTP_USER_AGENT', '-'),
         'T': str(int(request_time)),
-        'D': str(request_time).split('.', 1)[-1],
+        'D': str(request_time).split('.', 1)[-1][:5],
         'p': "<%s>" % os.getpid()
     }
 

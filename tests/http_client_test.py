@@ -384,9 +384,9 @@ class HttpClientTests(unittest.TestCase):
 
         c = HttpClient([('localhost', 1000), ('localhost', 1000)])
         c._hosts = []
-        c._failed.append(('localhost', 1000, now - 10))
-        c._failed.append(('localhost', 1001, now - 10))
-        c._failed.append(('localhost', 1002, now + 10))
+        c._failed.append((('localhost', 1000), now - 10))
+        c._failed.append((('localhost', 1001), now - 10))
+        c._failed.append((('localhost', 1002), now + 10))
         c._resurrect_failed()
 
         self.assertEqual(
@@ -400,8 +400,8 @@ class HttpClientTests(unittest.TestCase):
 
         c = HttpClient([('localhost', 1000), ('localhost', 1000)])
         c._hosts = []
-        c._failed.append(('localhost', 1000, now - 10))
-        c._failed.append(('localhost', 1001, now - 10))
+        c._failed.append((('localhost', 1000), now - 10))
+        c._failed.append((('localhost', 1001), now - 10))
         c._resurrect_failed()
 
         self.assertEqual(
@@ -433,8 +433,8 @@ class HttpClientTests(unittest.TestCase):
         c = HttpClient(
             [('localhost', 56777), ('localhost', 56778)], loop=self.loop)
         c._hosts = []
-        c._failed.append(('localhost', 1000, now - 10))
-        c._failed.append(('localhost', 1001, now - 10))
+        c._failed.append((('localhost', 1000), now - 10))
+        c._failed.append((('localhost', 1001), now - 10))
 
         self.assertRaises(
             aiohttp.ConnectionError,

@@ -227,10 +227,8 @@ class HttpClient:
         now = int(time.time())
 
         while self._failed:
-            host, port, ts = self._failed[0]
-            if (now - ts) >= self._failed_timeout:
-                self._hosts.append((host, port))
-                self._failed.popleft()
+            if (now - self._failed[0][1]) >= self._failed_timeout:
+                self._hosts.append(self._failed.popleft()[0])
             else:
                 break
 
@@ -269,17 +267,17 @@ class HttpClient:
 
         # if all hosts marked as failed try first from failed
         if not self._hosts:
-            self._hosts.append(self._failed.popleft()[:-1])
+            self._hosts.append(self._failed.popleft()[0])
 
         hosts = self._hosts
 
         while hosts:
             idx = random.randint(0, len(hosts)-1)
 
-            host, port = hosts[idx]
+            host_info = hosts[idx]
             url = urllib.parse.urljoin(
-                '%s://%s:%s' % (self._schema, host, port), path)
-
+                '{}://{}:{}'.format(
+                    self._schema, host_info[0], host_info[1]), path)
             try:
                 resp = yield from request(
                     method, url,
@@ -292,11 +290,13 @@ class HttpClient:
                     compress=compress, chunked=chunked, verify_ssl=verify_ssl,
                     session=self._session, loop=self._loop)
             except (aiohttp.ConnectionError, aiohttp.TimeoutError):
-                hosts.pop(idx)
-                self._failed.append((host, port, int(time.time())))
-                if not self._failed_handle:
-                    self._failed_handle = self._loop.call_later(
-                        self._failed_timeout, self._resurrect_failed)
+                if host_info in hosts:
+                    # could be removed concurrently
+                    hosts.remove(host_info)
+                    self._failed.append((host_info, int(time.time())))
+                    if not self._failed_handle:
+                        self._failed_handle = self._loop.call_later(
+                            self._failed_timeout, self._resurrect_failed)
             else:
                 return resp
 

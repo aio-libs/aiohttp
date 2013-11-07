@@ -6,6 +6,8 @@ CHANGES
 
 - Added custom wsgi application close procedure
 
+- Fixed concurrent host failure in HttpClient
+
 
 0.3 (11-04-2013)
 ----------------
