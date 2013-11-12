@@ -40,6 +40,7 @@ def request(method, url, *,
             conn_timeout=None,
             compress=None,
             chunked=None,
+            expect100=False,
             session=None,
             verify_ssl=True,
             loop=None):
@@ -65,6 +66,7 @@ def request(method, url, *,
        with deflate encoding.
     chunked: Boolean or Integer. Set to chunk size for chunked
        transfer encoding.
+    expect100: Boolean. Expect 100-continue response from server.
     session: aiohttp.Session instance to support connection pooling and
        session cookies.
     loop: Optional event loop.
@@ -88,7 +90,7 @@ def request(method, url, *,
             method, url, params=params, headers=headers, data=data,
             cookies=cookies, files=files, auth=auth, encoding=encoding,
             version=version, compress=compress, chunked=chunked,
-            verify_ssl=verify_ssl, loop=loop)
+            verify_ssl=verify_ssl, loop=loop, expect100=expect100)
 
         if session is None:
             conn = _connect(req, loop)
@@ -254,6 +256,7 @@ class HttpClient:
                 timeout=None,
                 conn_timeout=None,
                 chunked=None,
+                expect100=False,
                 verify_ssl=True):
 
         if method is None:
@@ -280,14 +283,12 @@ class HttpClient:
                     self._schema, host_info[0], host_info[1]), path)
             try:
                 resp = yield from request(
-                    method, url,
-                    params=params, data=data, headers=headers,
-                    cookies=cookies, files=files, auth=auth,
-                    allow_redirects=allow_redirects,
-                    max_redirects=max_redirects,
-                    encoding=encoding, version=version,
-                    timeout=timeout, conn_timeout=conn_timeout,
-                    compress=compress, chunked=chunked, verify_ssl=verify_ssl,
+                    method, url, params=params, data=data, headers=headers,
+                    cookies=cookies, files=files, auth=auth, encoding=encoding,
+                    allow_redirects=allow_redirects, version=version,
+                    max_redirects=max_redirects, conn_timeout=conn_timeout,
+                    timeout=timeout, compress=compress, chunked=chunked,
+                    verify_ssl=verify_ssl, expect100=expect100,
                     session=self._session, loop=self._loop)
             except (aiohttp.ConnectionError, aiohttp.TimeoutError):
                 if host_info in hosts:
@@ -319,11 +320,13 @@ class HttpRequest:
     response = None
 
     _writer = None  # async task for streaming body
+    _continue = None  # waiter future for '100 Continue' response
 
     def __init__(self, method, url, *,
                  params=None, headers=None, data=None, cookies=None,
                  files=None, auth=None, encoding='utf-8', version=(1, 1),
-                 compress=None, chunked=None, verify_ssl=True, loop=None):
+                 compress=None, chunked=None, expect100=False,
+                 verify_ssl=True, loop=None):
         self.url = url
         self.method = method.upper()
         self.encoding = encoding
@@ -347,6 +350,13 @@ class HttpRequest:
             self.update_body_from_files(files, data)
 
         self.update_transfer_encoding()
+        self.update_expect_continue(expect100)
+
+    def __del__(self):
+        """Close request on GC"""
+        if self._writer is not None:
+            self._writer.cancel()
+            self._writer = None
 
     def update_host(self, url):
         """Update destination host, port and connection type (ssl)."""
@@ -592,26 +602,47 @@ class HttpRequest:
                 if 'content-length' not in self.headers:
                     self.headers['content-length'] = str(len(self.body))
 
+    def update_expect_continue(self, expect=False):
+        if expect:
+            self.headers['expect'] = '100-continue'
+        elif self.headers.get('expect', '').lower() == '100-continue':
+            expect = True
+
+        if expect:
+            self._continue = asyncio.Future(loop=self.loop)
+
     @asyncio.coroutine
-    def write_bytes(self, request, stream):
+    def write_bytes(self, request, is_stream):
         """Support coroutines that yields bytes objects."""
-        value = None
+        # 100 response
+        if self._continue is not None:
+            yield from self._continue
 
-        while True:
-            try:
-                result = stream.send(value)
-            except StopIteration as exc:
-                if isinstance(exc.value, bytes):
-                    request.write(exc.value)
-                break
+        if is_stream:
+            value = None
+            stream = self.body
 
-            if isinstance(result, asyncio.Future):
-                value = yield from result
-            elif isinstance(result, bytes):
-                request.write(result)
-                value = None
-            else:
-                raise ValueError('Bytes object is expected.')
+            while True:
+                try:
+                    result = stream.send(value)
+                except StopIteration as exc:
+                    if isinstance(exc.value, bytes):
+                        request.write(exc.value)
+                    break
+
+                if isinstance(result, asyncio.Future):
+                    value = yield from result
+                elif isinstance(result, bytes):
+                    request.write(result)
+                    value = None
+                else:
+                    raise ValueError('Bytes object is expected.')
+        else:
+            if isinstance(self.body, bytes):
+                self.body = (self.body,)
+
+            for chunk in self.body:
+                request.write(chunk)
 
         request.write_eof()
         self._writer = None
@@ -629,9 +660,11 @@ class HttpRequest:
         request.add_headers(*self.headers.items())
         request.send_headers()
 
-        if inspect.isgenerator(self.body):
+        is_stream = inspect.isgenerator(self.body)
+
+        if is_stream or self._continue is not None:
             self._writer = asyncio.async(
-                self.write_bytes(request, self.body), loop=self.loop)
+                self.write_bytes(request, is_stream), loop=self.loop)
         else:
             if isinstance(self.body, bytes):
                 self.body = (self.body,)
@@ -641,7 +674,8 @@ class HttpRequest:
 
             request.write_eof()
 
-        self.response = HttpResponse(self.method, self.path, self.host)
+        self.response = HttpResponse(
+            self.method, self.path, self.host, self._continue)
         return self.response
 
     @asyncio.coroutine
@@ -670,13 +704,14 @@ class HttpResponse(http.client.HTTPMessage):
 
     _response_parser = aiohttp.HttpResponseParser()
 
-    def __init__(self, method, url, host=''):
+    def __init__(self, method, url, host='', continue100=None):
         super().__init__()
 
         self.method = method
         self.url = url
         self.host = host
         self._content = None
+        self._continue = continue100
 
     def __del__(self):
         self.close()
@@ -693,10 +728,17 @@ class HttpResponse(http.client.HTTPMessage):
         self.stream = stream
         self.transport = transport
 
-        httpstream = stream.set_parser(self._response_parser)
+        while True:
+            httpstream = stream.set_parser(self._response_parser)
 
-        # read response
-        self.message = yield from httpstream.read()
+            # read response
+            self.message = yield from httpstream.read()
+            if self.message.code != 100:
+                break
+
+            if self._continue is not None and not self._continue.done():
+                self._continue.set_result(True)
+                self._continue = None
 
         # response status
         self.version = self.message.version

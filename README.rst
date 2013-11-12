@@ -55,6 +55,7 @@ The signature of request is the following::
           conn_timeout=None,
           compress=None,
           chunked=None,
+          expect100=False,
           session=None,
           verify_ssl=True,
           loop=None
@@ -81,6 +82,7 @@ It constructs and sends a request. It returns response object. Parameters are ex
   with deflate encoding.
 - ``chunked``: Boolean or Integer. Set to chunk size for chunked
   transfer encoding.
+- ``expect100``: Boolean. Expect 100-continue response from server.
 - ``session``: ``aiohttp.Session`` instance to support connection pooling and
   session cookies.
 - ``loop``: Optional event loop.

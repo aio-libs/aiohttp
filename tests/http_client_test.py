@@ -304,6 +304,19 @@ class HttpRequestTests(unittest.TestCase):
         self.assertEqual(req.headers['Transfer-Encoding'], 'chunked')
         self.assertNotIn('Content-Length', req.headers)
 
+    def test_expect100(self):
+        req = HttpRequest('get', 'http://python.org/',
+                          expect100=True, loop=self.loop)
+        req.send(self.transport)
+        self.assertEqual('100-continue', req.headers['expect'])
+        self.assertIsNotNone(req._continue)
+
+        req = HttpRequest('get', 'http://python.org/',
+                          headers={'expect': '100-continue'}, loop=self.loop)
+        req.send(self.transport)
+        self.assertEqual('100-continue', req.headers['expect'])
+        self.assertIsNotNone(req._continue)
+
     def test_data_stream(self):
         def gen():
             yield b'binary data'
@@ -334,6 +347,50 @@ class HttpRequestTests(unittest.TestCase):
         req.send(self.transport)
         self.assertRaises(
             ValueError, self.loop.run_until_complete, req._writer)
+
+    def test_data_stream_continue(self):
+        def gen():
+            yield b'binary data'
+            return b' result'
+
+        req = HttpRequest(
+            'POST', 'http://python.org/', data=gen(),
+            expect100=True, loop=self.loop)
+        self.assertTrue(req.chunked)
+        self.assertTrue(inspect.isgenerator(req.body))
+
+        def coro():
+            yield from asyncio.sleep(0.0001, loop=self.loop)
+            req._continue.set_result(1)
+
+        asyncio.async(coro(), loop=self.loop)
+
+        req.send(self.transport)
+        self.loop.run_until_complete(req._writer)
+        self.assertEqual(
+            self.transport.write.mock_calls[-3:],
+            [unittest.mock.call(b'binary data result'),
+             unittest.mock.call(b'\r\n'),
+             unittest.mock.call(b'0\r\n\r\n')])
+
+    def test_data_continue(self):
+        req = HttpRequest(
+            'POST', 'http://python.org/', data=b'data',
+            expect100=True, loop=self.loop)
+
+        def coro():
+            yield from asyncio.sleep(0.0001, loop=self.loop)
+            req._continue.set_result(1)
+
+        asyncio.async(coro(), loop=self.loop)
+
+        req.send(self.transport)
+        self.assertEqual(1, len(self.transport.write.mock_calls))
+
+        self.loop.run_until_complete(req._writer)
+        self.assertEqual(
+            self.transport.write.mock_calls[-1],
+            unittest.mock.call(b'data'))
 
     def test_close(self):
         @asyncio.coroutine

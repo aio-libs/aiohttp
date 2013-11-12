@@ -67,6 +67,11 @@ def run_server(loop, *, host='127.0.0.1', port=0, use_ssl=False, router=None):
             if properties.get('noresponse', False):
                 yield from asyncio.sleep(99999)
 
+            for hdr, val in message.headers:
+                if (hdr == 'EXPECT') and (val == '100-continue'):
+                    self.transport.write(b'HTTP/1.0 100 Continue\r\n\r\n')
+                    break
+
             if router is not None:
                 body = bytearray()
                 try:

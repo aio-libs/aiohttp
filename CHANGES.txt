@@ -1,6 +1,12 @@
 CHANGES
 =======
 
+0.4.1 (11-12-2013)
+------------------
+
+- Added client support for `expect: 100-continue` header.
+
+
 0.4 (11-06-2013)
 ----------------
 
