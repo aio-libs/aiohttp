@@ -636,7 +636,8 @@ class HttpRequest:
                     request.write(result)
                     value = None
                 else:
-                    raise ValueError('Bytes object is expected.')
+                    raise ValueError(
+                        'Bytes object is expected, got: %s.' % type(result))
         else:
             if isinstance(self.body, bytes):
                 self.body = (self.body,)
