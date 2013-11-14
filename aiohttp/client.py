@@ -619,19 +619,31 @@ class HttpRequest:
             yield from self._continue
 
         if is_stream:
+            exc = None
             value = None
             stream = self.body
 
             while True:
                 try:
-                    result = stream.send(value)
+                    if exc is not None:
+                        result = stream.throw(exc)
+                    else:
+                        result = stream.send(value)
                 except StopIteration as exc:
                     if isinstance(exc.value, bytes):
                         request.write(exc.value)
                     break
+                except:
+                    self.response.close(True)
+                    raise
 
                 if isinstance(result, asyncio.Future):
-                    value = yield from result
+                    exc = None
+                    value = None
+                    try:
+                        value = yield result
+                    except Exception as err:
+                        exc = err
                 elif isinstance(result, bytes):
                     request.write(result)
                     value = None

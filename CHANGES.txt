@@ -1,6 +1,12 @@
 CHANGES
 =======
 
+0.4.2 (11-14-2013)
+------------------
+
+- Handle exception in client request stream.
+
+
 0.4.1 (11-12-2013)
 ------------------
 

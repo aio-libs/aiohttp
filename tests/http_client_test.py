@@ -336,6 +336,32 @@ class HttpRequestTests(unittest.TestCase):
              unittest.mock.call(b'\r\n'),
              unittest.mock.call(b'0\r\n\r\n')])
 
+    def test_data_stream_exc(self):
+        fut = asyncio.Future(loop=self.loop)
+
+        def gen():
+            yield b'binary data'
+            yield from fut
+            return b' result'
+
+        req = HttpRequest(
+            'POST', 'http://python.org/', data=gen(), loop=self.loop)
+        self.assertTrue(req.chunked)
+        self.assertTrue(inspect.isgenerator(req.body))
+        self.assertEqual(req.headers['transfer-encoding'], 'chunked')
+
+        @asyncio.coroutine
+        def exc():
+            yield from asyncio.sleep(0.01, loop=self.loop)
+            fut.set_exception(ValueError)
+
+        asyncio.async(exc(), loop=self.loop)
+
+        req.send(self.transport)
+        self.assertRaises(
+            ValueError, self.loop.run_until_complete, req._writer)
+        self.assertRaises(self.transport.close.called)
+
     def test_data_stream_not_bytes(self):
         @asyncio.coroutine
         def gen():
