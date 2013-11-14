@@ -182,7 +182,7 @@ class HttpClient:
     """
 
     def __init__(self, hosts, *,
-                 method=None, path=None, ssl=False,
+                 method=None, path=None, ssl=False, session=False,
                  timeout=None, conn_timeout=None, failed_timeout=5.0,
                  loop=None):
         super().__init__()
@@ -215,7 +215,7 @@ class HttpClient:
         self._timeout = timeout
         self._conn_timeout = conn_timeout
         self._schema = 'https' if ssl else 'http'
-        self._session = aiohttp.Session()
+        self._session = aiohttp.Session() if session else None
 
         self._failed = collections.deque()
         self._failed_handle = None
