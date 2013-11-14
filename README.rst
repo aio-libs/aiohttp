@@ -87,3 +87,14 @@ It constructs and sends a request. It returns response object. Parameters are ex
   session cookies.
 - ``loop``: Optional event loop.
 
+
+Gunicorn worker
+---------------
+
+Paster configuration example::
+
+   [server:main]
+   use = egg:gunicorn#main
+   host = 0.0.0.0
+   port = 8080
+   worker_class = aiohttp.worker.AsyncGunicornWorker
