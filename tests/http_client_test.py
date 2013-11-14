@@ -461,6 +461,19 @@ class HttpClientTests(unittest.TestCase):
         c = HttpClient([('localhost', 1000)])
         self.assertIs(c._loop, asyncio.get_event_loop.return_value)
 
+    def test_cleanup_resolved_hosts(self):
+        loop = unittest.mock.Mock()
+        c = HttpClient('localhost:8080', loop=loop, resolve=True)
+        c._resolved_hosts[('localhost', 123)] = object()
+        loop.call_later.assert_called_with(
+            c._resolve_timeout, c._cleanup_resolved_host)
+        loop.reset_mock()
+
+        c._cleanup_resolved_host()
+        self.assertFalse(bool(c._resolved_hosts))
+        loop.call_later.assert_called_with(
+            c._resolve_timeout, c._cleanup_resolved_host)
+
     @unittest.mock.patch('aiohttp.client.asyncio')
     def test_resurrect_failed(self, asyncio):
         now = int(time.time())
@@ -481,7 +494,8 @@ class HttpClientTests(unittest.TestCase):
     def test_resurrect_failed_all(self, asyncio):
         now = int(time.time())
 
-        c = HttpClient([('localhost', 1000), ('localhost', 1000)])
+        c = HttpClient(
+            [('localhost', 1000), ('localhost', 1000)], resolve=False)
         c._hosts = []
         c._failed.append((('localhost', 1000), now - 10))
         c._failed.append((('localhost', 1001), now - 10))

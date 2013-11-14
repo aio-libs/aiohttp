@@ -6,6 +6,8 @@ CHANGES
 
 - Handle exception in client request stream.
 
+- Prevent host resolving for each client request.
+
 
 0.4.1 (11-12-2013)
 ------------------

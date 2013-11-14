@@ -37,7 +37,7 @@ class Session:
                 self.cookies[name] = value
 
     @asyncio.coroutine
-    def start(self, req, loop, new_conn=False, set_cookies=True):
+    def start(self, req, loop, params=None, new_conn=False, set_cookies=True):
         key = (req.host, req.port, req.ssl)
 
         if set_cookies and self.cookies:
@@ -49,9 +49,16 @@ class Session:
                 transport = None
 
         if new_conn or transport is None:
-            transport, proto = yield from loop.create_connection(
-                functools.partial(aiohttp.StreamProtocol, loop=loop),
-                req.host, req.port, ssl=req.ssl)
+            if params is not None:
+                transport, proto = yield from loop.create_connection(
+                    functools.partial(aiohttp.StreamProtocol, loop=loop),
+                    params['host'], params['port'],
+                    ssl=params['ssl'], family=params['family'],
+                    proto=params['proto'], flags=params['flags'])
+            else:
+                transport, proto = yield from loop.create_connection(
+                    functools.partial(aiohttp.StreamProtocol, loop=loop),
+                    req.host, req.port, ssl=req.ssl)
 
         wrp = TransportWrapper(self._release, key, transport, proto, req)
 

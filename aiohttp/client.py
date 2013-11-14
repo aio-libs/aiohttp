@@ -17,6 +17,7 @@ import mimetypes
 import os
 import random
 import ssl
+import socket
 import time
 import uuid
 import urllib.parse
@@ -43,6 +44,7 @@ def request(method, url, *,
             expect100=False,
             session=None,
             verify_ssl=True,
+            connection_params=None,
             loop=None):
     """Constructs and sends a request. Returns response object.
 
@@ -93,9 +95,9 @@ def request(method, url, *,
             verify_ssl=verify_ssl, loop=loop, expect100=expect100)
 
         if session is None:
-            conn = _connect(req, loop)
+            conn = _connect(req, loop, connection_params)
         else:
-            conn = session.start(req, loop)
+            conn = session.start(req, loop, connection_params)
 
         if conn_timeout is None and timeout is not None:
             conn_timeout = timeout
@@ -143,10 +145,17 @@ def request(method, url, *,
 
 
 @asyncio.coroutine
-def _connect(req, loop):
-    transport, proto = yield from loop.create_connection(
-        functools.partial(aiohttp.StreamProtocol, loop=loop),
-        req.host, req.port, ssl=req.ssl)
+def _connect(req, loop, params):
+    if params is not None:
+        transport, proto = yield from loop.create_connection(
+            functools.partial(aiohttp.StreamProtocol, loop=loop),
+            params['host'], params['port'],
+            ssl=params['ssl'], family=params['family'],
+            proto=params['proto'], flags=params['flags'])
+    else:
+        transport, proto = yield from loop.create_connection(
+            functools.partial(aiohttp.StreamProtocol, loop=loop),
+            req.host, req.port, ssl=req.ssl)
     wrp = TransportWrapper(transport)
     return transport, proto, wrp
 
@@ -181,10 +190,12 @@ class HttpClient:
     mark failed hosts.
     """
 
+    _resolve_timeout = 360.0  # update dns info every 5 minutes
+
     def __init__(self, hosts, *,
                  method=None, path=None, ssl=False, session=False,
                  timeout=None, conn_timeout=None, failed_timeout=5.0,
-                 loop=None):
+                 resolve=True, loop=None):
         super().__init__()
 
         if isinstance(hosts, str):
@@ -224,6 +235,38 @@ class HttpClient:
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
+
+        self._resolve = resolve
+        self._resolved_hosts = {}
+        if resolve:
+            self._resolve_handle = self._loop.call_later(
+                self._resolve_timeout, self._cleanup_resolved_host)
+
+    def _cleanup_resolved_host(self):
+        self._resolved_hosts.clear()
+        self._resolve_handle = self._loop.call_later(
+            self._resolve_timeout, self._cleanup_resolved_host)
+
+    @asyncio.coroutine
+    def _resolve_host(self, host, port):
+        if self._resolve:
+            key = (host, port)
+            if key not in self._resolved_hosts:
+                infos = yield from self._loop.getaddrinfo(
+                    host, port, type=socket.SOCK_STREAM)
+
+                hosts = []
+                for family, _, proto, _, address in infos:
+                    hosts.append(
+                        {'host': host, 'port': port,
+                         'ssl': self._ssl, 'family': family,
+                         'proto': proto, 'flags': socket.AI_NUMERICHOST})
+                self._resolved_hosts[key] = hosts
+
+            return self._resolved_hosts[key]
+        else:
+            return [{'host': host, 'port': port,
+                     'ssl': self._ssl, 'family': 0, 'proto': 0, 'flags': 0}]
 
     def _resurrect_failed(self):
         now = int(time.time())
@@ -277,29 +320,40 @@ class HttpClient:
         while hosts:
             idx = random.randint(0, len(hosts)-1)
 
-            host_info = hosts[idx]
+            h_info = hosts[idx]
             url = urllib.parse.urljoin(
                 '{}://{}:{}'.format(
-                    self._schema, host_info[0], host_info[1]), path)
-            try:
-                resp = yield from request(
-                    method, url, params=params, data=data, headers=headers,
-                    cookies=cookies, files=files, auth=auth, encoding=encoding,
-                    allow_redirects=allow_redirects, version=version,
-                    max_redirects=max_redirects, conn_timeout=conn_timeout,
-                    timeout=timeout, compress=compress, chunked=chunked,
-                    verify_ssl=verify_ssl, expect100=expect100,
-                    session=self._session, loop=self._loop)
-            except (aiohttp.ConnectionError, aiohttp.TimeoutError):
-                if host_info in hosts:
-                    # could be removed concurrently
-                    hosts.remove(host_info)
-                    self._failed.append((host_info, int(time.time())))
-                    if not self._failed_handle:
-                        self._failed_handle = self._loop.call_later(
-                            self._failed_timeout, self._resurrect_failed)
-            else:
-                return resp
+                    self._schema, h_info[0], h_info[1]), path)
+            host_params = yield from self._resolve_host(h_info[0], h_info[1])
+
+            for conn_params in host_params:
+                try:
+                    resp = yield from request(
+                        method, url, params=params, data=data, headers=headers,
+                        cookies=cookies, files=files, auth=auth,
+                        encoding=encoding, allow_redirects=allow_redirects,
+                        version=version, max_redirects=max_redirects,
+                        conn_timeout=conn_timeout, timeout=timeout,
+                        compress=compress, chunked=chunked,
+                        verify_ssl=verify_ssl, expect100=expect100,
+                        session=self._session, connection_params=conn_params,
+                        loop=self._loop)
+                except (aiohttp.ConnectionError, aiohttp.TimeoutError):
+                    pass
+                else:
+                    return resp
+
+            if h_info in hosts:
+                # could be removed concurrently
+                hosts.remove(h_info)
+                self._failed.append((h_info, int(time.time())))
+                if not self._failed_handle:
+                    self._failed_handle = self._loop.call_later(
+                        self._failed_timeout, self._resurrect_failed)
+
+                key = (h_info[0], h_info[1])
+                if key in self._resolved_hosts:
+                    del self._resolved_hosts[key]
 
         raise aiohttp.ConnectionError('All hosts are unreachable.')
 
