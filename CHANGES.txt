@@ -1,6 +1,12 @@
 CHANGES
 =======
 
+0.4.3 (11-15-2013)
+------------------
+
+- Allow to wait completion of request with `HttpResponse.wait_for_close()`
+
+
 0.4.2 (11-14-2013)
 ------------------
 

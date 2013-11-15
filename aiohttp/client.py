@@ -373,7 +373,7 @@ class HttpRequest:
     auth = None
     response = None
 
-    _writer = None  # async task for streaming body
+    _writer = None  # async task for streaming data
     _continue = None  # waiter future for '100 Continue' response
 
     def __init__(self, method, url, *,
@@ -742,7 +742,8 @@ class HttpRequest:
             request.write_eof()
 
         self.response = HttpResponse(
-            self.method, self.path, self.host, self._continue)
+            self.method, self.path, self.host,
+            writer=self._writer, continue100=self._continue)
         return self.response
 
     @asyncio.coroutine
@@ -771,13 +772,14 @@ class HttpResponse(http.client.HTTPMessage):
 
     _response_parser = aiohttp.HttpResponseParser()
 
-    def __init__(self, method, url, host='', continue100=None):
+    def __init__(self, method, url, host='', *, writer=None, continue100=None):
         super().__init__()
 
         self.method = method
         self.url = url
         self.host = host
         self._content = None
+        self._writer = writer
         self._continue = continue100
 
     def __del__(self):
@@ -832,6 +834,18 @@ class HttpResponse(http.client.HTTPMessage):
         if self.transport is not None:
             self.transport.close(force)
             self.transport = None
+        if (self._writer is not None) and not self._writer.done():
+            self._writer.cancel()
+            self._writer = None
+
+    @asyncio.coroutine
+    def wait_for_close(self):
+        if self._writer is not None:
+            try:
+                yield from self._writer
+            finally:
+                self._writer = None
+        self.close()
 
     @asyncio.coroutine
     def read(self, decode=False):

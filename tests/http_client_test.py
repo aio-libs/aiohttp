@@ -328,8 +328,10 @@ class HttpRequestTests(unittest.TestCase):
         self.assertTrue(inspect.isgenerator(req.body))
         self.assertEqual(req.headers['transfer-encoding'], 'chunked')
 
-        req.send(self.transport)
-        self.loop.run_until_complete(req._writer)
+        resp = req.send(self.transport)
+        self.assertIsInstance(req._writer, asyncio.Future)
+        self.loop.run_until_complete(resp.wait_for_close())
+        self.assertIsNone(req._writer)
         self.assertEqual(
             self.transport.write.mock_calls[-3:],
             [unittest.mock.call(b'binary data result'),
