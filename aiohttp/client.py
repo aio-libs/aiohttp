@@ -114,8 +114,10 @@ def request(method, url, *,
                 transport, proto, req, wrp, timeout, loop)
         except asyncio.TimeoutError:
             raise aiohttp.TimeoutError from None
+        except aiohttp.BadStatusLine as exc:
+            raise aiohttp.ClientConnectionError(exc)
         except OSError as exc:
-            raise aiohttp.ConnectionError(exc)
+            raise aiohttp.OsConnectionError(exc)
         finally:
             conn_task.cancel()
 
@@ -253,12 +255,12 @@ class HttpClient:
             key = (host, port)
             if key not in self._resolved_hosts:
                 infos = yield from self._loop.getaddrinfo(
-                    host, port, type=socket.SOCK_STREAM)
+                    host, port, type=socket.SOCK_STREAM, family=socket.AF_INET)
 
                 hosts = []
                 for family, _, proto, _, address in infos:
                     hosts.append(
-                        {'host': host, 'port': port,
+                        {'host': address[0], 'port': address[1],
                          'ssl': self._ssl, 'family': family,
                          'proto': proto, 'flags': socket.AI_NUMERICHOST})
                 self._resolved_hosts[key] = hosts
@@ -338,8 +340,7 @@ class HttpClient:
                         verify_ssl=verify_ssl, expect100=expect100,
                         session=self._session, connection_params=conn_params,
                         loop=self._loop)
-                except (aiohttp.ConnectionError,
-                        aiohttp.TimeoutError, aiohttp.BadStatusLine):
+                except (aiohttp.ConnectionError, aiohttp.TimeoutError):
                     pass
                 else:
                     return resp
@@ -792,6 +793,8 @@ class HttpResponse(http.client.HTTPMessage):
             self.host, self.url, self.status, self.reason), file=out)
         print(super().__str__(), file=out)
         return out.getvalue()
+
+    __str__ = __repr__
 
     def start(self, stream, transport):
         """Start response processing."""

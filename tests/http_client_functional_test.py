@@ -534,7 +534,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             httpd['close'] = True
             self.assertRaises(
-                aiohttp.HttpException,
+                aiohttp.ClientConnectionError,
                 self.loop.run_until_complete,
                 client.request('get', httpd.url('method', 'get'),
                                loop=self.loop))

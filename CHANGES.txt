@@ -1,6 +1,12 @@
 CHANGES
 =======
 
+0.4.4 (11-15-2013)
+------------------
+
+- Resolve only AF_INET family, because it is not clear how to pass extra info to asyncio.
+
+
 0.4.3 (11-15-2013)
 ------------------
 

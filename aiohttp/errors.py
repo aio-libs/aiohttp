@@ -2,7 +2,8 @@
 
 __all__ = ['HttpException', 'HttpErrorException', 'BadRequestException',
            'IncompleteRead', 'BadStatusLine', 'LineTooLong', 'InvalidHeader',
-           'ConnectionError', 'TimeoutError']
+           'ConnectionError', 'OsConnectionError', 'ClientConnectionError',
+           'TimeoutError']
 
 import http.client
 from asyncio import TimeoutError
@@ -10,6 +11,14 @@ from asyncio import TimeoutError
 
 class ConnectionError(Exception):
     """http connection error"""
+
+
+class OsConnectionError(ConnectionError):
+    """OSError error"""
+
+
+class ClientConnectionError(ConnectionError):
+    """BadStatusLine error """
 
 
 class HttpException(http.client.HTTPException):
