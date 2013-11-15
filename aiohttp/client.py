@@ -338,7 +338,8 @@ class HttpClient:
                         verify_ssl=verify_ssl, expect100=expect100,
                         session=self._session, connection_params=conn_params,
                         loop=self._loop)
-                except (aiohttp.ConnectionError, aiohttp.TimeoutError):
+                except (aiohttp.ConnectionError,
+                        aiohttp.TimeoutError, aiohttp.BadStatusLine):
                     pass
                 else:
                     return resp
