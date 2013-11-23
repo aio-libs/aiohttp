@@ -159,20 +159,36 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
         response = self.create_wsgi_response(message)
 
         riter = self.wsgi(environ, response.start_response)
-        if isinstance(riter, asyncio.Future) or inspect.isgenerator(riter):
+        if isinstance(riter, asyncio.Future):
             riter = yield from riter
+        elif inspect.isgenerator(riter):
+            while True:
+                try:
+                    item = next(riter)
+                except StopIteration as e:
+                    riter = e.value
+                    break
+                if isinstance(item, asyncio.Future):
+                    yield item
+                else:
+                    try:
+                        resp.write(item)
+                    except UnboundLocalError:
+                        resp = response.response
+                        resp.write(item)
 
         resp = response.response
-        try:
-            for item in riter:
-                if isinstance(item, asyncio.Future):
-                    item = yield from item
-                resp.write(item)
+        if riter:
+            try:
+                for item in riter:
+                    if isinstance(item, asyncio.Future):
+                        item = yield from item
+                    resp.write(item)
 
-            resp.write_eof()
-        finally:
-            if hasattr(riter, 'close'):
-                riter.close()
+                resp.write_eof()
+            finally:
+                if hasattr(riter, 'close'):
+                    riter.close()
 
         if resp.keep_alive():
             self.keep_alive(True)
