@@ -169,7 +169,10 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
                     riter = e.value
                     break
                 if isinstance(item, asyncio.Future):
-                    yield item
+                    try:
+                        yield item
+                    except:
+                        pass
                 else:
                     try:
                         resp.write(item)
