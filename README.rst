@@ -26,7 +26,7 @@ Getting started
 
 To retrieve something from the web::
 
-  mport aiohttp
+  import aiohttp
 
   def get_body(url):
       response = yield from request('GET', url)
