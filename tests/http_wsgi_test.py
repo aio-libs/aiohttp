@@ -300,3 +300,24 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
             [c[1][0] for c in self.transport.write.mock_calls])
         self.assertTrue(content.startswith(b'HTTP/1.0 200 OK'))
         self.assertTrue(content.endswith(b'data'))
+
+    def test_generator_app(self):
+
+        def wsgi_app(env, start):
+            start('200 OK', [('Content-Type', 'text/plain')])
+            yield b'1'
+            yield b'2'
+
+        srv = wsgi.WSGIServerHttpProtocol(
+            wsgi_app, readpayload=True, loop=self.loop)
+        srv.stream = self.stream
+        srv.transport = self.transport
+
+        self.loop.run_until_complete(
+            srv.handle_request(self.message, self.payload))
+
+        content = b''.join(
+            [c[1][0] for c in self.transport.write.mock_calls])
+        self.assertTrue(content.startswith(b'HTTP/1.0 200 OK'))
+        self.assertTrue(content.endswith(b'2'))
+
