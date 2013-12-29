@@ -4,7 +4,7 @@ python:
 
 install:
   - pip install coveralls --use-mirrors
-  - python setup.py develop --allow-hosts='pypi.python.org'
+  - python setup.py develop
 
 script:
   coverage run --source=aiohttp setup.py test
