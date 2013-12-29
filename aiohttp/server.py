@@ -151,9 +151,13 @@ class ServerHttpProtocol(asyncio.Protocol):
             finally:
                 if self._request_handler:
                     if self._keep_alive and self._keep_alive_period:
+                        self.log_debug(
+                                'Start keep-alive timer for %s sec.',
+                                self._keep_alive_period)
                         self._keep_alive_handle = self._loop.call_later(
                             self._keep_alive_period, self.transport.close)
                     else:
+                        self.log_debug('Close client connection.')
                         self.transport.close()
                         self._request_handler = None
                         break

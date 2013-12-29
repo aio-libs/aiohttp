@@ -44,6 +44,8 @@ class AsyncGunicornWorker(base.Worker):
         proto = WSGIServerHttpProtocol(
             wsgi, loop=self.loop,
             log=self.log,
+            debug=self.cfg.debug,
+            keep_alive=self.cfg.keepalive,
             access_log=self.log.access_log,
             access_log_format=self.cfg.access_log_format)
         return self.wrap_protocol(proto)

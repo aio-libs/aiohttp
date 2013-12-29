@@ -1,6 +1,14 @@
 CHANGES
 =======
 
+0.4.5 (Unreleased)
+------------------
+
+- Use gunicorn keepalive setting for async worker.
+
+- Log leaking responses.
+
+
 0.4.4 (11-15-2013)
 ------------------
 

@@ -13,6 +13,7 @@ import json
 import io
 import inspect
 import itertools
+import logging
 import mimetypes
 import os
 import random
@@ -785,7 +786,9 @@ class HttpResponse(http.client.HTTPMessage):
         self._continue = continue100
 
     def __del__(self):
-        self.close()
+        if self.transport is not None:
+            logging.warn('HttpResponse has to be closed explicitly!')
+            self.close()
 
     def __repr__(self):
         out = io.StringIO()
