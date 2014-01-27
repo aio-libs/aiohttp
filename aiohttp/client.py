@@ -46,7 +46,8 @@ def request(method, url, *,
             session=None,
             verify_ssl=True,
             connection_params=None,
-            loop=None):
+            loop=None,
+            request_class=None):
     """Constructs and sends a request. Returns response object.
 
     method: http method
@@ -87,9 +88,11 @@ def request(method, url, *,
     redirects = 0
     if loop is None:
         loop = asyncio.get_event_loop()
+    if request_class is None:
+        request_class = HttpRequest
 
     while True:
-        req = HttpRequest(
+        req = request_class(
             method, url, params=params, headers=headers, data=data,
             cookies=cookies, files=files, auth=auth, encoding=encoding,
             version=version, compress=compress, chunked=chunked,
