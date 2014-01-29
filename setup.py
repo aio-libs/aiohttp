@@ -1,9 +1,13 @@
 import os
+import sys
 from setuptools import setup, find_packages
 
 version = '0.4.5dev'
 
-install_requires = ['asyncio']
+if sys.version_info >= (3,4):
+    install_requires = []
+else:
+    install_requires = ['asyncio']
 tests_require = install_requires + ['nose', 'gunicorn']
 
 
