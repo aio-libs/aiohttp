@@ -1,12 +1,16 @@
 CHANGES
 =======
 
-0.4.5 (Unreleased)
+0.5.0 (Unreleased)
 ------------------
+
+- Allow to use custom HttpRequest client class.
 
 - Use gunicorn keepalive setting for async worker.
 
 - Log leaking responses.
+
+- python 3.4 compatibility
 
 
 0.4.4 (11-15-2013)
