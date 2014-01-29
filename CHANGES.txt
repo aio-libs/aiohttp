@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-0.5.0 (Unreleased)
+0.5.0 (01-29-2014)
 ------------------
 
 - Allow to use custom HttpRequest client class.
