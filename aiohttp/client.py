@@ -890,6 +890,15 @@ class HttpResponse(http.client.HTTPMessage):
 
         return data
 
+    @asyncio.coroutine
+    def read_and_close(self, decode=False):
+        """Read response payload and then close response."""
+        try:
+            payload = yield from self.read(decode)
+            return payload
+        finally:
+            self.close()
+
 
 def str_to_bytes(s, encoding='utf-8'):
     if isinstance(s, str):

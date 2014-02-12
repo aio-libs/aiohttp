@@ -39,6 +39,17 @@ class HttpResponseTests(unittest.TestCase):
         self.assertIn(
             '<HttpResponse(http://python.org) [200 Ok]>', repr(self.response))
 
+    def test_read_and_close(self):
+        self.response.read = unittest.mock.Mock()
+        self.response.read.return_value = asyncio.Future(loop=self.loop)
+        self.response.read.return_value.set_result(b'payload')
+        self.response.close = unittest.mock.Mock()
+
+        res = self.loop.run_until_complete(self.response.read_and_close())
+        self.assertEqual(res, b'payload')
+        self.assertTrue(self.response.read.called)
+        self.assertTrue(self.response.close.called)
+
 
 class HttpRequestTests(unittest.TestCase):
 

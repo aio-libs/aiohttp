@@ -1,6 +1,12 @@
 CHANGES
 =======
 
+0.6.1 (Unreleased)
+------------------
+
+- Added utility method HttpResponse.read_and_close()
+
+
 0.6.0 (02-12-2014)
 ------------------
 
