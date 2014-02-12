@@ -66,6 +66,19 @@ class ServerHttpProtocol(asyncio.Protocol):
         self.debug = debug
         self.access_log = access_log
         self.access_log_format = access_log_format
+        self.transport = None
+
+    def closing(self):
+        """Worker process is about to exit, we need cleanup everything and
+        stop accepting requests. It is especially important for keep-alive
+        connections."""
+        self._keep_alive = False
+        if self._keep_alive_handle is not None:
+            self._keep_alive_handle.cancel()
+            self._keep_alive_handle = None
+
+        if self._request_handler is None and self.transport is not None:
+            self.transport.close()
 
     def connection_made(self, transport):
         self.transport = transport
@@ -152,8 +165,8 @@ class ServerHttpProtocol(asyncio.Protocol):
                 if self._request_handler:
                     if self._keep_alive and self._keep_alive_period:
                         self.log_debug(
-                                'Start keep-alive timer for %s sec.',
-                                self._keep_alive_period)
+                            'Start keep-alive timer for %s sec.',
+                            self._keep_alive_period)
                         self._keep_alive_handle = self._loop.call_later(
                             self._keep_alive_period, self.transport.close)
                     else:

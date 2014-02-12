@@ -75,10 +75,11 @@ class WorkerTests(unittest.TestCase):
         self.assertTrue(self.worker.notify.called)
 
     def test__run_connections(self):
+        conn = unittest.mock.Mock()
         self.worker.ppid = 1
         self.worker.alive = False
         self.worker.servers = [unittest.mock.Mock()]
-        self.worker.connections = {1: object()}
+        self.worker.connections = {1: conn}
         self.worker.sockets = []
         self.worker.wsgi = unittest.mock.Mock()
         self.worker.log = unittest.mock.Mock()
@@ -96,6 +97,7 @@ class WorkerTests(unittest.TestCase):
         self.assertTrue(self.worker.log.info.called)
         self.assertTrue(self.worker.notify.called)
         self.assertFalse(self.worker.servers)
+        self.assertTrue(conn.closing.called)
 
     @unittest.mock.patch('aiohttp.worker.os')
     @unittest.mock.patch('aiohttp.worker.asyncio.sleep')
@@ -189,16 +191,17 @@ class WorkerTests(unittest.TestCase):
         self.assertTrue(wsgi[2].close.called)
 
     def test_wrp(self):
+        conn = object()
         tracking = {}
         meth = unittest.mock.Mock()
-        wrp = worker._wrp(1, meth, tracking)
+        wrp = worker._wrp(conn, meth, tracking)
         wrp()
 
-        self.assertIn(1, tracking)
+        self.assertIn(id(conn), tracking)
         self.assertTrue(meth.called)
 
         meth = unittest.mock.Mock()
-        wrp = worker._wrp(1, meth, tracking, False)
+        wrp = worker._wrp(conn, meth, tracking, False)
         wrp()
 
         self.assertNotIn(1, tracking)

@@ -35,9 +35,9 @@ class AsyncGunicornWorker(base.Worker):
 
     def wrap_protocol(self, proto):
         proto.connection_made = _wrp(
-            id(proto), proto.connection_made, self.connections)
+            proto, proto.connection_made, self.connections)
         proto.connection_lost = _wrp(
-            id(proto), proto.connection_lost, self.connections, False)
+            proto, proto.connection_lost, self.connections, False)
         return proto
 
     def factory(self, wsgi, host, port):
@@ -85,13 +85,18 @@ class AsyncGunicornWorker(base.Worker):
                     self.alive = False
 
                 # stop accepting requests
-                if not self.alive and self.servers:
-                    self.log.info(
-                        "Stopping server: %s, connections: %s",
-                        pid, len(self.connections))
-                    for server in self.servers:
-                        server.close()
-                    self.servers.clear()
+                if not self.alive:
+                    if self.servers:
+                        self.log.info(
+                            "Stopping server: %s, connections: %s",
+                            pid, len(self.connections))
+                        for server in self.servers:
+                            server.close()
+                        self.servers.clear()
+
+                    # prepare connections for closing
+                    for conn in self.connections.values():
+                        conn.closing()
 
                 yield from asyncio.sleep(1.0, loop=self.loop)
         except KeyboardInterrupt:
@@ -125,16 +130,18 @@ class PortMapperWorker(AsyncGunicornWorker):
 
 class _wrp:
 
-    def __init__(self, id, meth, tracking, add=True):
-        self._id = id
+    def __init__(self, proto, meth, tracking, add=True):
+        self._proto = proto
+        self._id = id(proto)
         self._meth = meth
         self._tracking = tracking
         self._add = add
 
     def __call__(self, *args):
         if self._add:
-            self._tracking[self._id] = 1
+            self._tracking[self._id] = self._proto
         elif self._id in self._tracking:
             del self._tracking[self._id]
 
-        return self._meth(*args)
+        conn = self._meth(*args)
+        return conn
