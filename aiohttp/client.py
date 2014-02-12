@@ -790,7 +790,8 @@ class HttpResponse(http.client.HTTPMessage):
 
     def __del__(self):
         if self.transport is not None:
-            logging.warn('HttpResponse has to be closed explicitly!')
+            logging.warn('HttpResponse has to be closed explicitly! %s:%s:%s',
+                         self.method, self.host, self.url)
             self.close()
 
     def __repr__(self):
