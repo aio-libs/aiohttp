@@ -8,6 +8,7 @@ import inspect
 import logging
 import time
 import traceback
+import socket
 
 import aiohttp
 from aiohttp import errors, utils
@@ -55,8 +56,12 @@ class ServerHttpProtocol(asyncio.Protocol):
 
     def __init__(self, *, loop=None,
                  keep_alive=None, debug=False, log=logging,
-                 access_log=ACCESS_LOG, access_log_format=ACCESS_LOG_FORMAT):
+                 access_log=ACCESS_LOG, access_log_format=ACCESS_LOG_FORMAT,
+                 tcp_keepalive=None):
         self._keep_alive_period = keep_alive  # number of seconds to keep alive
+        if tcp_keepalive is None:
+            tcp_keepalive = True
+        self._tcp_keepalive = tcp_keepalive # use detection of broken tcp-socket
 
         if keep_alive and loop is None:
             loop = asyncio.get_event_loop()
@@ -81,6 +86,10 @@ class ServerHttpProtocol(asyncio.Protocol):
             self.transport.close()
 
     def connection_made(self, transport):
+        if self._tcp_keepalive and hasattr(socket, 'SO_KEEPALIVE'):
+            sock = transport.get_extra_info('socket')
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+
         self.transport = transport
         self.stream = aiohttp.StreamParser(loop=self._loop)
         self._request_handler = asyncio.async(self.start(), loop=self._loop)
