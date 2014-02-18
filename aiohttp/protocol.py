@@ -125,7 +125,7 @@ class HttpPrefixParser:
     def __call__(self, out, buf):
         try:
             raw_data = yield from buf.waituntil(b' ', 24)
-            method = raw_data.decode('ascii', 'surrogateescape')
+            method = raw_data.decode('ascii', 'surrogateescape').strip()
 
             # method
             method = method.upper()

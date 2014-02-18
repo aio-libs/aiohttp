@@ -136,11 +136,25 @@ class HttpServerProtocolTests(unittest.TestCase):
 
         srv.stream.feed_data(
             b'POST / HTTP/1.0\r\n'
-            b'Host: example.com\r\n')
+            b'Host: example.com\r\n\r\n')
 
         self.loop.run_until_complete(srv._request_handler)
         self.assertTrue(transport.write.mock_calls[0][1][0].startswith(
             b'HTTP/1.1 405 Method Not Allowed\r\n'))
+
+    def test_allowed_methods(self):
+        transport = unittest.mock.Mock()
+        srv = server.ServerHttpProtocol(
+            timeout=0.01, allowed_methods=('GET',), loop=self.loop)
+        srv.connection_made(transport)
+
+        srv.stream.feed_data(
+            b'GET / HTTP/1.0\r\n'
+            b'Host: example.com\r\n\r\n')
+
+        self.loop.run_until_complete(srv._request_handler)
+        self.assertTrue(transport.write.mock_calls[0][1][0].startswith(
+            b'HTTP/1.0 404 Not Found\r\n'))
 
     def test_bad_method(self):
         transport = unittest.mock.Mock()

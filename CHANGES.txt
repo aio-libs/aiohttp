@@ -1,6 +1,14 @@
 CHANGES
 =======
 
+0.6.2 (02-18-2014)
+------------------
+
+- Fix trailing char in allowed_methods.
+
+- Start slow request timer for first request.
+
+
 0.6.1 (02-17-2014)
 ------------------
 
