@@ -194,30 +194,30 @@ def do_handshake(method, headers, transport):
     headers = dict(((hdr, val) for hdr, val in headers if hdr in WS_HDRS))
 
     if 'websocket' != headers.get('UPGRADE', '').lower().strip():
-        raise errors.BadRequestException(
+        raise errors.HttpBadRequest(
             'No WebSocket UPGRADE hdr: {}\n'
             'Can "Upgrade" only to "WebSocket".'.format(
                 headers.get('UPGRADE')))
 
     if 'upgrade' not in headers.get('CONNECTION', '').lower():
-        raise errors.BadRequestException(
+        raise errors.HttpBadRequest(
             'No CONNECTION upgrade hdr: {}'.format(
                 headers.get('CONNECTION')))
 
     # check supported version
     version = headers.get('SEC-WEBSOCKET-VERSION')
     if version not in ('13', '8', '7'):
-        raise errors.BadRequestException(
+        raise errors.HttpBadRequest(
             'Unsupported version: {}'.format(version))
 
     # check client handshake for validity
     key = headers.get('SEC-WEBSOCKET-KEY')
     try:
         if not key or len(base64.b64decode(key)) != 16:
-            raise errors.BadRequestException(
+            raise errors.HttpBadRequest(
                 'Handshake error: {!r}'.format(key))
     except binascii.Error:
-        raise errors.BadRequestException(
+        raise errors.HttpBadRequest(
             'Handshake error: {!r}'.format(key)) from None
 
     # response code, headers, parser, writer

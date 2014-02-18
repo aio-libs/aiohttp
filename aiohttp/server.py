@@ -45,27 +45,26 @@ class ServerHttpProtocol(asyncio.Protocol):
     log: custom logging object
     debug: enable debug mode
     keep_alive: number of seconds before closing keep alive connection
+    timeout: slow request timeout
     loop: event loop object
     """
     _request_count = 0
     _request_handler = None
     _keep_alive = False  # keep transport open
     _keep_alive_handle = None  # keep alive timer handle
+    _timeout_handle = None  # slow request timer handle
 
     _request_parser = aiohttp.HttpRequestParser()  # default request parser
 
     def __init__(self, *, loop=None,
-                 keep_alive=None, debug=False, log=logging,
-                 access_log=ACCESS_LOG, access_log_format=ACCESS_LOG_FORMAT,
-                 tcp_keepalive=None):
+                 keep_alive=None, timeout=15, tcp_keepalive=True,
+                 allowed_methods=(),  debug=False, log=logging,
+                 access_log=ACCESS_LOG, access_log_format=ACCESS_LOG_FORMAT):
         self._keep_alive_period = keep_alive  # number of seconds to keep alive
-        if tcp_keepalive is None:
-            tcp_keepalive = True
+        self._timeout = timeout  # slow request timeout
         self._tcp_keepalive = tcp_keepalive # use detection of broken tcp-socket
-
-        if keep_alive and loop is None:
-            loop = asyncio.get_event_loop()
-        self._loop = loop
+        self._request_prefix = aiohttp.HttpPrefixParser(allowed_methods)
+        self._loop = loop if loop is not None else asyncio.get_event_loop()
 
         self.log = log
         self.debug = debug
@@ -81,6 +80,9 @@ class ServerHttpProtocol(asyncio.Protocol):
         if self._keep_alive_handle is not None:
             self._keep_alive_handle.cancel()
             self._keep_alive_handle = None
+        if self._timeout_handle is not None:
+            self._timeout_handle.cancel()
+            self._timeout_handle = None
 
         if self._request_handler is None and self.transport is not None:
             self.transport.close()
@@ -109,6 +111,9 @@ class ServerHttpProtocol(asyncio.Protocol):
         if self._keep_alive_handle is not None:
             self._keep_alive_handle.cancel()
             self._keep_alive_handle = None
+        if self._timeout_handle is not None:
+            self._timeout_handle.cancel()
+            self._timeout_handle = None
 
     def keep_alive(self, val):
         self._keep_alive = val
@@ -130,6 +135,16 @@ class ServerHttpProtocol(asyncio.Protocol):
     def log_exception(self, *args, **kw):
         self.log.exception(*args, **kw)
 
+    def cancel_slow_request(self):
+        if self._request_handler is not None:
+            self._request_handler.cancel()
+            self._request_handler = None
+
+        if self.transport is not None:
+            self.transport.close()
+
+        self.log_debug('Cancel slow request.')
+
     @asyncio.coroutine
     def start(self):
         """Start processing of incoming requests.
@@ -147,13 +162,27 @@ class ServerHttpProtocol(asyncio.Protocol):
             self._keep_alive = False
 
             try:
-                httpstream = self.stream.set_parser(self._request_parser)
-                message = yield from httpstream.read()
+                prefix = self.stream.set_parser(self._request_prefix)
+                yield from prefix.read()
 
-                # cancel keep-alive timer
+                # stop keep-alive timer
                 if self._keep_alive_handle is not None:
                     self._keep_alive_handle.cancel()
                     self._keep_alive_handle = None
+
+                # start slow request timer
+                if self._timeout:
+                    self._timeout_handle = self._loop.call_later(
+                        self._timeout, self.cancel_slow_request)
+
+                # read request headers
+                httpstream = self.stream.set_parser(self._request_parser)
+                message = yield from httpstream.read()
+
+                # cancel slow request timer
+                if self._timeout_handle is not None:
+                    self._timeout_handle.cancel()
+                    self._timeout_handle = None
 
                 payload = self.stream.set_parser(
                     aiohttp.HttpPayloadParser(message))

@@ -497,6 +497,19 @@ class ParserBufferTests(unittest.TestCase):
         self.assertEqual(res, b'23')
         self.assertEqual(b'4', bytes(buf))
 
+    def test_wait(self):
+        buf = self._make_one()
+        p = buf.wait(3)
+        next(p)
+        p.send(b'1')
+        try:
+            p.send(b'234')
+        except StopIteration as exc:
+            res = exc.value
+
+        self.assertEqual(res, b'123')
+        self.assertEqual(b'1234', bytes(buf))
+
     def test_skip(self):
         buf = self._make_one()
         p = buf.skip(3)
@@ -548,6 +561,45 @@ class ParserBufferTests(unittest.TestCase):
 
         self.assertEqual(res, b'123\n')
         self.assertEqual(b'456', bytes(buf))
+
+    def test_waituntil_limit(self):
+        buf = self._make_one()
+        p = buf.waituntil(b'\n', 4)
+        next(p)
+        p.send(b'1')
+        p.send(b'234')
+        self.assertRaises(ValueError, p.send, b'5')
+
+        buf = parsers.ParserBuffer()
+        p = buf.waituntil(b'\n', 4)
+        next(p)
+        self.assertRaises(ValueError, p.send, b'12345\n6')
+
+        buf = parsers.ParserBuffer()
+        p = buf.waituntil(b'\n', 4)
+        next(p)
+        self.assertRaises(ValueError, p.send, b'12345\n6')
+
+        class CustomExc(Exception):
+            pass
+
+        buf = parsers.ParserBuffer()
+        p = buf.waituntil(b'\n', 4, CustomExc)
+        next(p)
+        self.assertRaises(CustomExc, p.send, b'12345\n6')
+
+    def test_waituntil(self):
+        buf = self._make_one()
+        p = buf.waituntil(b'\n', 4)
+        next(p)
+        p.send(b'123')
+        try:
+            p.send(b'\n456')
+        except StopIteration as exc:
+            res = exc.value
+
+        self.assertEqual(res, b'123\n')
+        self.assertEqual(b'123\n456', bytes(buf))
 
     def test_skipuntil(self):
         buf = self._make_one()

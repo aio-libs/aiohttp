@@ -6,6 +6,10 @@ CHANGES
 
 - Added utility method HttpResponse.read_and_close()
 
+- Added slow request timeout.
+
+- Enable socket SO_KEEPALIVE if available. (@polymorphm)
+
 
 0.6.0 (02-12-2014)
 ------------------

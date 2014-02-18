@@ -349,6 +349,38 @@ class ParserBuffer(bytearray):
 
             self._writer.send((yield))
 
+    def wait(self, size):
+        """wait() waits for specified amount of bytes
+        then returns data without changing internal buffer."""
+
+        while True:
+            if self.size >= size:
+                return self[self.offset:self.offset + size]
+
+            self._writer.send((yield))
+
+    def waituntil(self, stop, limit=None, exc=ValueError):
+        """waituntil() reads until `stop` bytes sequence."""
+        assert isinstance(stop, bytes) and stop, \
+            'bytes is required: {!r}'.format(stop)
+
+        stop_len = len(stop)
+
+        while True:
+            pos = self.find(stop, self.offset)
+            if pos >= 0:
+                end = pos + stop_len
+                size = end - self.offset
+                if limit is not None and size > limit:
+                    raise exc('Line is too long.')
+
+                return self[self.offset:end]
+            else:
+                if limit is not None and self.size > limit:
+                    raise exc('Line is too long.')
+
+            self._writer.send((yield))
+
     def skip(self, size):
         """skip() skips specified amount of bytes."""
 

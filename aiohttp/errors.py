@@ -1,6 +1,7 @@
 """http related errors."""
 
 __all__ = ['HttpException', 'HttpErrorException', 'BadRequestException',
+           'HttpBadRequest', 'HttpMethodNotAllowed',
            'IncompleteRead', 'BadStatusLine', 'LineTooLong', 'InvalidHeader',
            'ConnectionError', 'OsConnectionError', 'ClientConnectionError',
            'TimeoutError']
@@ -36,25 +37,34 @@ class HttpErrorException(HttpException):
         self.message = message
 
 
-class BadRequestException(HttpException):
+class HttpBadRequest(HttpException):
 
     code = 400
     message = 'Bad Request'
 
 
-class IncompleteRead(BadRequestException, http.client.IncompleteRead):
+BadRequestException = HttpBadRequest
+
+
+class HttpMethodNotAllowed(HttpException):
+
+    code = 405
+    message = 'Method Not Allowed'
+
+
+class IncompleteRead(HttpBadRequest, http.client.IncompleteRead):
     pass
 
 
-class BadStatusLine(BadRequestException, http.client.BadStatusLine):
+class BadStatusLine(HttpBadRequest, http.client.BadStatusLine):
     pass
 
 
-class LineTooLong(BadRequestException, http.client.LineTooLong):
+class LineTooLong(HttpBadRequest, http.client.LineTooLong):
     pass
 
 
-class InvalidHeader(BadRequestException):
+class InvalidHeader(HttpBadRequest):
 
     def __init__(self, hdr):
         super().__init__('Invalid HTTP Header: {}'.format(hdr))

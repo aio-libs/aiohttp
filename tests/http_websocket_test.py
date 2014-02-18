@@ -363,7 +363,7 @@ class WebSocketHandshakeTests(unittest.TestCase):
 
     def test_no_upgrade(self):
         self.assertRaises(
-            errors.BadRequestException,
+            errors.HttpBadRequest,
             websocket.do_handshake,
             self.message.method, self.message.headers, self.transport)
 
@@ -371,7 +371,7 @@ class WebSocketHandshakeTests(unittest.TestCase):
         self.headers.extend([('UPGRADE', 'websocket'),
                              ('CONNECTION', 'keep-alive')])
         self.assertRaises(
-            errors.BadRequestException,
+            errors.HttpBadRequest,
             websocket.do_handshake,
             self.message.method, self.message.headers, self.transport)
 
@@ -379,7 +379,7 @@ class WebSocketHandshakeTests(unittest.TestCase):
         self.headers.extend([('UPGRADE', 'websocket'),
                              ('CONNECTION', 'upgrade')])
         self.assertRaises(
-            errors.BadRequestException,
+            errors.HttpBadRequest,
             websocket.do_handshake,
             self.message.method, self.message.headers, self.transport)
 
@@ -387,7 +387,7 @@ class WebSocketHandshakeTests(unittest.TestCase):
                              ('CONNECTION', 'upgrade'),
                              ('SEC-WEBSOCKET-VERSION', '1')])
         self.assertRaises(
-            errors.BadRequestException,
+            errors.HttpBadRequest,
             websocket.do_handshake,
             self.message.method, self.message.headers, self.transport)
 
@@ -396,7 +396,7 @@ class WebSocketHandshakeTests(unittest.TestCase):
                              ('CONNECTION', 'upgrade'),
                              ('SEC-WEBSOCKET-VERSION', '13')])
         self.assertRaises(
-            errors.BadRequestException,
+            errors.HttpBadRequest,
             websocket.do_handshake,
             self.message.method, self.message.headers, self.transport)
 
@@ -405,7 +405,7 @@ class WebSocketHandshakeTests(unittest.TestCase):
                              ('SEC-WEBSOCKET-VERSION', '13'),
                              ('SEC-WEBSOCKET-KEY', '123')])
         self.assertRaises(
-            errors.BadRequestException,
+            errors.HttpBadRequest,
             websocket.do_handshake,
             self.message.method, self.message.headers, self.transport)
 
@@ -415,7 +415,7 @@ class WebSocketHandshakeTests(unittest.TestCase):
                              ('SEC-WEBSOCKET-VERSION', '13'),
                              ('SEC-WEBSOCKET-KEY', sec_key.decode())])
         self.assertRaises(
-            errors.BadRequestException,
+            errors.HttpBadRequest,
             websocket.do_handshake,
             self.message.method, self.message.headers, self.transport)
 
