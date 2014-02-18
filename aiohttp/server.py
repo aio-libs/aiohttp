@@ -62,7 +62,7 @@ class ServerHttpProtocol(asyncio.Protocol):
                  access_log=ACCESS_LOG, access_log_format=ACCESS_LOG_FORMAT):
         self._keep_alive_period = keep_alive  # number of seconds to keep alive
         self._timeout = timeout  # slow request timeout
-        self._tcp_keepalive = tcp_keepalive # use detection of broken tcp-socket
+        self._tcp_keepalive = tcp_keepalive  # use detection of broken socket
         self._request_prefix = aiohttp.HttpPrefixParser(allowed_methods)
         self._loop = loop if loop is not None else asyncio.get_event_loop()
 
@@ -95,6 +95,11 @@ class ServerHttpProtocol(asyncio.Protocol):
         self.transport = transport
         self.stream = aiohttp.StreamParser(loop=self._loop)
         self._request_handler = asyncio.async(self.start(), loop=self._loop)
+
+        # start slow request timer
+        if self._timeout:
+            self._timeout_handle = self._loop.call_later(
+                self._timeout, self.cancel_slow_request)
 
     def data_received(self, data):
         self.stream.feed_data(data)
@@ -171,7 +176,7 @@ class ServerHttpProtocol(asyncio.Protocol):
                     self._keep_alive_handle = None
 
                 # start slow request timer
-                if self._timeout:
+                if self._timeout and self._timeout_handle is None:
                     self._timeout_handle = self._loop.call_later(
                         self._timeout, self.cancel_slow_request)
 
