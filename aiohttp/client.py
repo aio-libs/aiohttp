@@ -47,6 +47,7 @@ def request(method, url, *,
             verify_ssl=True,
             connection_params=None,
             loop=None,
+            read_until_eof=True,
             request_class=None):
     """Constructs and sends a request. Returns response object.
 
@@ -73,6 +74,9 @@ def request(method, url, *,
     expect100: Boolean. Expect 100-continue response from server.
     session: aiohttp.Session instance to support connection pooling and
        session cookies.
+    read_until_eof: Read response until eof if response
+       does not have Content-Length header.
+    request_class: Custom Request class implementation.
     loop: Optional event loop.
 
     Usage:
@@ -115,7 +119,7 @@ def request(method, url, *,
                 transport, proto, wrp = yield from conn_task
 
             resp = yield from _make_request(
-                transport, proto, req, wrp, timeout, loop)
+                transport, proto, req, wrp, timeout, read_until_eof, loop)
         except asyncio.TimeoutError:
             raise aiohttp.TimeoutError from None
         except aiohttp.BadStatusLine as exc:
@@ -167,14 +171,15 @@ def _connect(req, loop, params):
 
 
 @asyncio.coroutine
-def _make_request(transport, proto, req, wrapper, timeout, loop):
+def _make_request(transport, proto, req,
+                  wrapper, timeout, read_until_eof, loop):
     try:
         resp = req.send(transport)
         if timeout:
             yield from asyncio.wait_for(
-                resp.start(proto, wrapper), timeout, loop=loop)
+                resp.start(proto, wrapper, read_until_eof), timeout, loop=loop)
         else:
-            yield from resp.start(proto, wrapper)
+            yield from resp.start(proto, wrapper, read_until_eof)
     except:
         transport.close()
         raise
@@ -306,7 +311,8 @@ class HttpClient:
                 conn_timeout=None,
                 chunked=None,
                 expect100=False,
-                verify_ssl=True):
+                verify_ssl=True,
+                read_until_eof=True):
 
         if method is None:
             method = self._method
@@ -343,7 +349,7 @@ class HttpClient:
                         compress=compress, chunked=chunked,
                         verify_ssl=verify_ssl, expect100=expect100,
                         session=self._session, connection_params=conn_params,
-                        loop=self._loop)
+                        read_until_eof=read_until_eof, loop=self._loop)
                 except (aiohttp.ConnectionError, aiohttp.TimeoutError):
                     pass
                 else:
@@ -803,7 +809,7 @@ class HttpResponse(http.client.HTTPMessage):
 
     __str__ = __repr__
 
-    def start(self, stream, transport):
+    def start(self, stream, transport, read_until_eof=False):
         """Start response processing."""
         self.stream = stream
         self.transport = transport
@@ -831,7 +837,7 @@ class HttpResponse(http.client.HTTPMessage):
 
         # payload
         self.content = stream.set_parser(
-            aiohttp.HttpPayloadParser(self.message))
+            aiohttp.HttpPayloadParser(self.message, readall=read_until_eof))
 
         # cookies
         self.cookies = http.cookies.SimpleCookie()

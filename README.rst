@@ -2,8 +2,8 @@ http client/server for asyncio
 ==============================
 
 
-.. image:: https://secure.travis-ci.org/fafhrd91/aiohttp.png
-  :target:  https://secure.travis-ci.org/fafhrd91/aiohttp
+.. image:: https://secure.travis-ci.org/KeepSafe/aiohttp.png
+  :target:  https://secure.travis-ci.org/KeepSafe/aiohttp
 
 .. image:: https://coveralls.io/repos/fafhrd91/aiohttp/badge.png?branch=master
   :target: https://coveralls.io/r/fafhrd91/aiohttp?branch=master
@@ -58,6 +58,7 @@ The signature of request is the following::
           expect100=False,
           session=None,
           verify_ssl=True,
+          read_until_eof=True,
           loop=None
   )
 
@@ -85,6 +86,8 @@ It constructs and sends a request. It returns response object. Parameters are ex
 - ``expect100``: Boolean. Expect 100-continue response from server.
 - ``session``: ``aiohttp.Session`` instance to support connection pooling and
   session cookies.
+- ``read_until_eof``: Read response until eof if response
+  does not have Content-Length header.
 - ``loop``: Optional event loop.
 
 

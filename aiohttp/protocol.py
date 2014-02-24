@@ -9,6 +9,7 @@ import collections
 import functools
 import http.server
 import itertools
+import logging
 import re
 import sys
 import zlib
@@ -292,6 +293,9 @@ class HttpPayloadParser:
         else:
             if self.readall:
                 yield from self.parse_eof_payload(out, buf)
+            else:
+                logging.warn(
+                    'Content-Length or Transfer-Encoding header is required')
 
         out.feed_eof()
 
