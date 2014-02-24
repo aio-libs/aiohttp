@@ -253,7 +253,7 @@ class HttpResponseParser(HttpParser):
 
 class HttpPayloadParser:
 
-    def __init__(self, message, length=None, compression=True, readall=False):
+    def __init__(self, message, length=None, compression=True, readall=True):
         self.message = message
         self.length = length
         self.compression = compression
