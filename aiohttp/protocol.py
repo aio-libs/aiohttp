@@ -293,7 +293,7 @@ class HttpPayloadParser:
         else:
             if self.readall:
                 yield from self.parse_eof_payload(out, buf)
-            else:
+            elif self.message.method in ('PUT', 'POST'):
                 logging.warn(
                     'Content-Length or Transfer-Encoding header is required')
 

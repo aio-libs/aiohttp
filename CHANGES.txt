@@ -1,6 +1,12 @@
 CHANGES
 =======
 
+0.6.4 (02-27-2014)
+------------------
+
+- Log content-length missing warning only for put and post requests.
+
+
 0.6.3 (02-27-2014)
 ------------------
 
