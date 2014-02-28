@@ -50,11 +50,11 @@ class HttpServerProtocolTests(unittest.TestCase):
         srv.closing()
         self.assertTrue(srv.transport.close.called)
 
-        self.assertIsNone(srv._keep_alive_handle)
-        self.assertTrue(keep_alive_handle.cancel.called)
+        self.assertIsNotNone(srv._keep_alive_handle)
+        self.assertFalse(keep_alive_handle.cancel.called)
 
-        self.assertIsNone(srv._timeout_handle)
-        self.assertTrue(timeout_handle.cancel.called)
+        self.assertIsNotNone(srv._timeout_handle)
+        self.assertFalse(timeout_handle.cancel.called)
 
     def test_connection_made(self):
         srv = server.ServerHttpProtocol(loop=self.loop)

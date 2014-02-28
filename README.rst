@@ -5,8 +5,8 @@ http client/server for asyncio
 .. image:: https://secure.travis-ci.org/KeepSafe/aiohttp.png
   :target:  https://secure.travis-ci.org/KeepSafe/aiohttp
 
-.. image:: https://coveralls.io/repos/fafhrd91/aiohttp/badge.png?branch=master
-  :target: https://coveralls.io/r/fafhrd91/aiohttp?branch=master
+.. image:: https://coveralls.io/repos/KeepSafe/aiohttp/badge.png?branch=master
+  :target: https://coveralls.io/r/KeepSafe/aiohttp?branch=master
 
 
 Requirements

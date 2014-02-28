@@ -1,6 +1,14 @@
 CHANGES
 =======
 
+0.6.3 (02-27-2014)
+------------------
+
+- Better support for server exit.
+
+- Read response body until eof if content-length is not defined #14
+
+
 0.6.2 (02-18-2014)
 ------------------
 

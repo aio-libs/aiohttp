@@ -50,6 +50,7 @@ class ServerHttpProtocol(asyncio.Protocol):
     """
     _request_count = 0
     _request_handler = None
+    _reading_request = False
     _keep_alive = False  # keep transport open
     _keep_alive_handle = None  # keep alive timer handle
     _timeout_handle = None  # slow request timer handle
@@ -58,7 +59,7 @@ class ServerHttpProtocol(asyncio.Protocol):
 
     def __init__(self, *, loop=None,
                  keep_alive=None, timeout=15, tcp_keepalive=True,
-                 allowed_methods=(),  debug=False, log=logging,
+                 allowed_methods=(), debug=False, log=logging,
                  access_log=ACCESS_LOG, access_log_format=ACCESS_LOG_FORMAT):
         self._keep_alive_period = keep_alive  # number of seconds to keep alive
         self._timeout = timeout  # slow request timeout
@@ -77,14 +78,9 @@ class ServerHttpProtocol(asyncio.Protocol):
         stop accepting requests. It is especially important for keep-alive
         connections."""
         self._keep_alive = False
-        if self._keep_alive_handle is not None:
-            self._keep_alive_handle.cancel()
-            self._keep_alive_handle = None
-        if self._timeout_handle is not None:
-            self._timeout_handle.cancel()
-            self._timeout_handle = None
 
-        if self._request_handler is None and self.transport is not None:
+        if ((not self._reading_request or self._request_handler is None) and
+                self.transport is not None):
             self.transport.close()
 
     def connection_made(self, transport):
@@ -148,7 +144,7 @@ class ServerHttpProtocol(asyncio.Protocol):
         if self.transport is not None:
             self.transport.close()
 
-        self.log_debug('Cancel slow request.')
+        self.log_debug('Close slow request.')
 
     @asyncio.coroutine
     def start(self):
@@ -163,12 +159,14 @@ class ServerHttpProtocol(asyncio.Protocol):
         while True:
             info = None
             message = None
-            self._request_count += 1
             self._keep_alive = False
+            self._request_count += 1
+            self._reading_request = False
 
             try:
                 prefix = self.stream.set_parser(self._request_prefix)
                 yield from prefix.read()
+                self._reading_request = True
 
                 # stop keep-alive timer
                 if self._keep_alive_handle is not None:
