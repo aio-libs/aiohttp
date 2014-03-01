@@ -76,9 +76,12 @@ class Session:
         should_close = False
 
         if resp is not None:
-            should_close = resp.message.should_close
-            if resp.cookies:
-                self.update_cookies(resp.cookies.items())
+            if resp.message is None:
+                should_close = True
+            else:
+                should_close = resp.message.should_close
+                if resp.cookies:
+                    self.update_cookies(resp.cookies.items())
 
         if should_close:
             conn[0].close()

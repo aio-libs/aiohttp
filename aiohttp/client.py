@@ -173,14 +173,15 @@ def _connect(req, loop, params):
 @asyncio.coroutine
 def _make_request(transport, proto, req,
                   wrapper, timeout, read_until_eof, loop):
+    resp = req.send(transport)
     try:
-        resp = req.send(transport)
         if timeout:
             yield from asyncio.wait_for(
                 resp.start(proto, wrapper, read_until_eof), timeout, loop=loop)
         else:
             yield from resp.start(proto, wrapper, read_until_eof)
     except:
+        resp.close()
         transport.close()
         raise
     else:
