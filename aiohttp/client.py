@@ -51,42 +51,41 @@ def request(method, url, *,
             request_class=None):
     """Constructs and sends a request. Returns response object.
 
-    method: http method
-    url: request url
-    params: (optional) Dictionary or bytes to be sent in the query string
+    :param method: http method
+    :param url: request url
+    :param params: (optional) Dictionary or bytes to be sent in the query string
       of the new request
-    data: (optional) Dictionary, bytes, or file-like object to
+    :param data: (optional) Dictionary, bytes, or file-like object to
       send in the body of the request
-    headers: (optional) Dictionary of HTTP Headers to send with the request
-    cookies: (optional) Dict object to send with the request
-    files: (optional) Dictionary of 'name': file-like-objects
+    :param headers: (optional) Dictionary of HTTP Headers to send with the request
+    :param cookies: (optional) Dict object to send with the request
+    :param files: (optional) Dictionary of 'name': file-like-objects
        for multipart encoding upload
-    auth: (optional) Auth tuple to enable Basic HTTP Auth
-    timeout: (optional) Float describing the timeout of the request
-    conn_timeout: (optional) Float describing the timeout
+    :param auth: (optional) Auth tuple to enable Basic HTTP Auth
+    :param timeout: (optional) Float describing the timeout of the request
+    :param conn_timeout: (optional) Float describing the timeout
        of the host connection
-    allow_redirects: (optional) Boolean. Set to True if POST/PUT/DELETE
+    :param allow_redirects: (optional) Boolean. Set to True if POST/PUT/DELETE
        redirect following is allowed.
-    compress: Boolean. Set to True if request has to be compressed
+    :param compress: Boolean. Set to True if request has to be compressed
        with deflate encoding.
-    chunked: Boolean or Integer. Set to chunk size for chunked
+    :param chunked: Boolean or Integer. Set to chunk size for chunked
        transfer encoding.
-    expect100: Boolean. Expect 100-continue response from server.
-    session: aiohttp.Session instance to support connection pooling and
+    :param expect100: Boolean. Expect 100-continue response from server.
+    :param session: aiohttp.Session instance to support connection pooling and
        session cookies.
-    read_until_eof: Read response until eof if response
+    :param read_until_eof: Read response until eof if response
        does not have Content-Length header.
-    request_class: Custom Request class implementation.
-    loop: Optional event loop.
+    :param request_class: Custom Request class implementation.
+    :param loop: Optional event loop.
 
-    Usage:
+    Usage::
 
-      import aiohttp
-      >> resp = yield from aiohttp.request('GET', 'http://python.org/')
-      >> resp
+      >>> import aiohttp
+      >>> resp = yield from aiohttp.request('GET', 'http://python.org/')
+      >>> resp
       <HttpResponse(python.org/) [200]>
-
-      >> data = yield from resp.read()
+      >>> data = yield from resp.read()
 
     """
     redirects = 0
