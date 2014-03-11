@@ -550,3 +550,35 @@ class HttpClientTests(unittest.TestCase):
             aiohttp.ConnectionError,
             self.loop.run_until_complete,
             c.request('get', path='/', timeout=0.0001))
+
+    @unittest.mock.patch('aiohttp.client.request')
+    def test_cleanup_resolved_hosts_on_500(self, m_request):
+        c = HttpClient(
+            [('localhost', 56777), ('localhost', 56778)], loop=self.loop)
+
+        called = False
+
+        class m:
+
+            def clear(self):
+                nonlocal called
+                called = True
+
+            def __contains__(self, key):
+                return True
+
+            def __getitem__(self, key):
+                return 'localhost'
+
+        c._resolved_hosts = m()
+
+        resp = unittest.mock.Mock()
+        resp.status = 500
+
+        m_request.return_value = asyncio.Future(loop=self.loop)
+        m_request.return_value.set_result(resp)
+
+        self.loop.run_until_complete(
+            c.request('get', path='/', conn_timeout=0.0001))
+
+        self.assertTrue(called)
