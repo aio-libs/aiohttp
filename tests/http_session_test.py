@@ -1,7 +1,8 @@
 """Tests for aiohttp/session.py"""
 
-import http.cookies
 import asyncio
+import http.cookies
+import time
 import unittest
 import unittest.mock
 
@@ -34,7 +35,7 @@ class HttpSessionTests(unittest.TestCase):
         tr = unittest.mock.Mock()
 
         session = Session()
-        session._conns[1] = [(tr, object())]
+        session._conns[1] = [(tr, object(), object())]
         session.close()
 
         self.assertFalse(session._conns)
@@ -42,7 +43,7 @@ class HttpSessionTests(unittest.TestCase):
 
     def test_get(self):
         session = Session()
-        self.assertEqual(session._get(1), (None, None))
+        self.assertEqual(session._get(1), (None, None, None))
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
         session._conns[1] = [(tr, proto)]
@@ -59,8 +60,8 @@ class HttpSessionTests(unittest.TestCase):
         cookies['c2'] = 'cookie2'
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        session._release(req, 1, (tr, proto))
-        self.assertEqual(session._conns[1][0], (tr, proto))
+        session._release(req, 1, (tr, proto, 0))
+        self.assertEqual(session._conns[1][0], (tr, proto, 0))
         self.assertEqual(session.cookies, dict(cookies.items()))
 
     def test_release_close(self):
@@ -75,7 +76,7 @@ class HttpSessionTests(unittest.TestCase):
         cookies['c2'] = 'cookie2'
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        session._release(req, 1, (tr, proto))
+        session._release(req, 1, (tr, proto, 0))
         self.assertFalse(session._conns)
         self.assertTrue(tr.close.called)
 
@@ -85,8 +86,8 @@ class HttpSessionTests(unittest.TestCase):
         req.response = None
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        session._release(req, 1, (tr, proto))
-        self.assertEqual(session._conns, {1: [(tr, proto)]})
+        session._release(req, 1, (tr, proto, 0))
+        self.assertEqual(session._conns, {1: [(tr, proto, 0)]})
         self.assertFalse(tr.close.called)
 
     def test_transport_wrapper_force_close(self):
@@ -122,10 +123,36 @@ class HttpSessionTests(unittest.TestCase):
 
         session = Session()
         key = ('host', 80, False)
-        session._conns[key] = [(unittest.mock.Mock(), proto)]
+        session._conns[key] = [(unittest.mock.Mock(), proto, 10)]
 
         self.loop.run_until_complete(session.start(Req(), Loop()))
         self.assertTrue(new_connection)
+
+    def test_start_existing_timedout(self):
+        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+        proto.is_connected.return_value = True
+        new_connection = False
+
+        class Req:
+            host = 'host'
+            port = 80
+            ssl = False
+
+        class Loop:
+            @asyncio.coroutine
+            def create_connection(self, *args, **kw):
+                nonlocal new_connection
+                new_connection = True
+                return tr, proto
+
+        session = Session()
+        key = ('host', 80, False)
+        transport = unittest.mock.Mock()
+        session._conns[key] = [(transport, proto, time.time()-40)]
+
+        self.loop.run_until_complete(session.start(Req(), Loop()))
+        self.assertTrue(new_connection)
+        self.assertTrue(transport.close.called)
 
     def test_start_existing(self):
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
@@ -138,7 +165,7 @@ class HttpSessionTests(unittest.TestCase):
 
         session = Session()
         key = ('host', 80, False)
-        session._conns[key] = [(tr, proto)]
+        session._conns[key] = [(tr, proto, time.time())]
 
         loop = unittest.mock.Mock()
 

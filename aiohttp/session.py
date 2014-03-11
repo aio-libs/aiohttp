@@ -6,12 +6,14 @@ import asyncio
 import aiohttp
 import functools
 import http.cookies
+import time
 
 
 class Session:
 
-    def __init__(self):
+    def __init__(self, reuse_timeout=30):
         self._conns = {}
+        self._reuse_timeout = 30
         self.cookies = http.cookies.SimpleCookie()
 
     def __del__(self):
@@ -20,7 +22,7 @@ class Session:
     def close(self):
         """Close all opened transports."""
         for key, data in self._conns.items():
-            for transport, proto in data:
+            for transport, proto, td in data:
                 transport.close()
 
         self._conns.clear()
@@ -44,9 +46,13 @@ class Session:
             req.update_cookies(self.cookies.items())
 
         if not new_conn:
-            transport, proto = self._get(key)
-            if proto and not proto.is_connected():
-                transport = None
+            transport, proto, t0 = self._get(key)
+            if transport is not None:
+                if proto and not proto.is_connected():
+                    transport = None
+                elif (time.time() - t0) > self._reuse_timeout:
+                    transport.close()
+                    transport = None
 
         if new_conn or transport is None:
             if params is not None:
@@ -69,7 +75,7 @@ class Session:
         if conns:
             return conns.pop()
 
-        return None, None
+        return None, None, None
 
     def _release(self, req, key, conn):
         resp = req.response
@@ -107,4 +113,4 @@ class TransportWrapper:
             self.transport.close()
         else:
             self.release(self.request, self.key,
-                         (self.transport, self.protocol))
+                         (self.transport, self.protocol, time.time()))

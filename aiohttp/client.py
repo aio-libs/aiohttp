@@ -354,6 +354,9 @@ class HttpClient:
                 except (aiohttp.ConnectionError, aiohttp.TimeoutError):
                     pass
                 else:
+                    if resp.status >= 500:
+                        self._resolved_hosts.clear()
+
                     return resp
 
             if h_info in hosts:

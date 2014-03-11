@@ -2,7 +2,7 @@ import os
 import sys
 from setuptools import setup, find_packages
 
-version = '0.6.5dev'
+version = '0.6.5'
 
 if sys.version_info >= (3,4):
     install_requires = []

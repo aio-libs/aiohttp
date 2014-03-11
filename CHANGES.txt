@@ -1,6 +1,11 @@
 CHANGES
 =======
 
+0.6.5 (03-11-2014)
+------------------
+
+- Added client session reuse timeout.
+
 - Better client request cancellation support.
 
 
