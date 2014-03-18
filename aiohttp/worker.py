@@ -91,7 +91,8 @@ class AsyncGunicornWorker(base.Worker):
 
                     # prepare connections for closing
                     for conn in self.connections.values():
-                        conn.closing()
+                        if hasattr(conn, 'closing'):
+                            conn.closing()
 
                 yield from asyncio.sleep(1.0, loop=self.loop)
         except KeyboardInterrupt:
