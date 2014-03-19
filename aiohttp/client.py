@@ -53,11 +53,12 @@ def request(method, url, *,
 
     :param method: http method
     :param url: request url
-    :param params: (optional) Dictionary or bytes to be sent in the query string
-      of the new request
+    :param params: (optional) Dictionary or bytes to be sent in the query
+      string of the new request
     :param data: (optional) Dictionary, bytes, or file-like object to
       send in the body of the request
-    :param headers: (optional) Dictionary of HTTP Headers to send with the request
+    :param headers: (optional) Dictionary of HTTP Headers to send with
+      the request
     :param cookies: (optional) Dict object to send with the request
     :param files: (optional) Dictionary of 'name': file-like-objects
        for multipart encoding upload
@@ -246,7 +247,8 @@ class HttpClient:
         self._verify_ssl = verify_ssl
 
         if self._ssl and not self._verify_ssl:
-            sslcontext = self._ssl = ssl_mod.SSLContext(ssl_mod.PROTOCOL_SSLv23)
+            sslcontext = self._ssl = ssl_mod.SSLContext(
+                ssl_mod.PROTOCOL_SSLv23)
             sslcontext.options |= ssl_mod.OP_NO_SSLv2
             sslcontext.set_default_verify_paths()
 
