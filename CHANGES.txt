@@ -1,12 +1,14 @@
 CHANGES
 =======
 
-0.6.5 (03-11-2014)
+0.6.5 (Unreleased)
 ------------------
 
 - Added client session reuse timeout.
 
 - Better client request cancellation support.
+
+- Added HttpClient verify_ssl parameter support.
 
 
 0.6.4 (02-27-2014)

@@ -17,7 +17,7 @@ import logging
 import mimetypes
 import os
 import random
-import ssl
+import ssl as ssl_mod
 import socket
 import time
 import uuid
@@ -206,7 +206,7 @@ class HttpClient:
     def __init__(self, hosts, *,
                  method=None, path=None, ssl=False, session=False,
                  timeout=None, conn_timeout=None, failed_timeout=5.0,
-                 resolve=True, loop=None):
+                 resolve=True, verify_ssl=True, loop=None):
         super().__init__()
 
         if isinstance(hosts, str):
@@ -233,7 +233,6 @@ class HttpClient:
 
         self._method = method
         self._path = path
-        self._ssl = ssl
         self._timeout = timeout
         self._conn_timeout = conn_timeout
         self._schema = 'https' if ssl else 'http'
@@ -242,6 +241,14 @@ class HttpClient:
         self._failed = collections.deque()
         self._failed_handle = None
         self._failed_timeout = failed_timeout
+
+        self._ssl = ssl
+        self._verify_ssl = verify_ssl
+
+        if self._ssl and not self._verify_ssl:
+            sslcontext = self._ssl = ssl_mod.SSLContext(ssl_mod.PROTOCOL_SSLv23)
+            sslcontext.options |= ssl_mod.OP_NO_SSLv2
+            sslcontext.set_default_verify_paths()
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -262,6 +269,7 @@ class HttpClient:
     def _resolve_host(self, host, port):
         if self._resolve:
             key = (host, port)
+
             if key not in self._resolved_hosts:
                 infos = yield from self._loop.getaddrinfo(
                     host, port, type=socket.SOCK_STREAM, family=socket.AF_INET)
@@ -311,7 +319,6 @@ class HttpClient:
                 conn_timeout=None,
                 chunked=None,
                 expect100=False,
-                verify_ssl=True,
                 read_until_eof=True):
 
         if method is None:
@@ -347,7 +354,7 @@ class HttpClient:
                         version=version, max_redirects=max_redirects,
                         conn_timeout=conn_timeout, timeout=timeout,
                         compress=compress, chunked=chunked,
-                        verify_ssl=verify_ssl, expect100=expect100,
+                        verify_ssl=self._verify_ssl, expect100=expect100,
                         session=self._session, connection_params=conn_params,
                         read_until_eof=read_until_eof, loop=self._loop)
                 except (aiohttp.ConnectionError, aiohttp.TimeoutError):
@@ -449,8 +456,8 @@ class HttpRequest:
         # extract host and port
         self.ssl = scheme == 'https'
         if self.ssl and not self.verify_ssl:
-            sslcontext = self.ssl = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-            sslcontext.options |= ssl.OP_NO_SSLv2
+            sslcontext = self.ssl = ssl_mod.SSLContext(ssl_mod.PROTOCOL_SSLv23)
+            sslcontext.options |= ssl_mod.OP_NO_SSLv2
             sslcontext.set_default_verify_paths()
 
         if ':' in netloc:
