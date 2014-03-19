@@ -7,6 +7,7 @@ import time
 import unittest
 import unittest.mock
 import urllib.parse
+import ssl
 
 import aiohttp
 from aiohttp.client import HttpRequest, HttpResponse, HttpClient
@@ -473,6 +474,9 @@ class HttpClientTests(unittest.TestCase):
 
         c = HttpClient([('localhost', 1000)])
         self.assertIs(c._loop, asyncio.get_event_loop.return_value)
+
+        c = HttpClient([('localhost', 1000)], ssl=True, verify_ssl=False)
+        self.assertIsInstance(c._ssl, ssl.SSLContext)
 
     def test_cleanup_resolved_hosts(self):
         loop = unittest.mock.Mock()

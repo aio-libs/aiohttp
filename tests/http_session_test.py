@@ -90,7 +90,7 @@ class HttpSessionTests(unittest.TestCase):
         self.assertEqual(session._conns, {1: [(tr, proto, 0)]})
         self.assertFalse(tr.close.called)
 
-    def test_release_halp_opened(self):
+    def test_release_not_opened(self):
         session = Session()
         req = unittest.mock.Mock()
         req.response = unittest.mock.Mock()
@@ -98,7 +98,7 @@ class HttpSessionTests(unittest.TestCase):
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
         session._release(req, 1, (tr, proto, 0))
-        self.assertFalse(tr.close.called)
+        self.assertTrue(tr.close.called)
 
     def test_transport_wrapper_force_close(self):
         m = unittest.mock.Mock()
