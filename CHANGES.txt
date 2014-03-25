@@ -8,6 +8,8 @@ CHANGES
 
 - Better client request cancellation support.
 
+- Better handling responses without content length.
+
 - Added HttpClient verify_ssl parameter support.
 
 
