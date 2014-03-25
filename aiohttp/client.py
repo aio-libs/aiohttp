@@ -821,6 +821,9 @@ class HttpResponse(http.client.HTTPMessage):
 
     __str__ = __repr__
 
+    def wait_for_100(self):
+        return self._continue is not None
+
     def start(self, stream, transport, read_until_eof=False):
         """Start response processing."""
         self.stream = stream

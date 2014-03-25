@@ -34,6 +34,14 @@ class HttpResponseTests(unittest.TestCase):
         self.response.close()
         self.response.close()
 
+    def test_wait_for_100(self):
+        response = HttpResponse(
+            'get', 'http://python.org', continue100=object())
+        self.assertTrue(response.wait_for_100())
+        response = HttpResponse(
+            'get', 'http://python.org')
+        self.assertFalse(response.wait_for_100())
+
     def test_repr(self):
         self.response.status = 200
         self.response.reason = 'Ok'
