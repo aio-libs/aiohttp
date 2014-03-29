@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-0.6.5 (Unreleased)
+0.6.5 (03-29-2014)
 ------------------
 
 - Added client session reuse timeout.
