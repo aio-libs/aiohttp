@@ -486,6 +486,13 @@ class HttpClientTests(unittest.TestCase):
         c = HttpClient([('localhost', 1000)], ssl=True, verify_ssl=False)
         self.assertIsInstance(c._ssl, ssl.SSLContext)
 
+        c = HttpClient([('localhost', 1000)], session=True, loop=self.loop)
+        self.assertIsInstance(c._session, aiohttp.Session)
+
+        s = aiohttp.Session(loop=self.loop)
+        c = HttpClient([('localhost', 1000)], session=s, loop=self.loop)
+        self.assertIs(c._session, s)
+
     def test_cleanup_resolved_hosts(self):
         loop = unittest.mock.Mock()
         c = HttpClient('localhost:8080', loop=loop, resolve=True)
