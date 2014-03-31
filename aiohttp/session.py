@@ -13,7 +13,7 @@ class Session:
 
     def __init__(self, reuse_timeout=30):
         self._conns = {}
-        self._reuse_timeout = 30
+        self._reuse_timeout = reuse_timeout
         self.cookies = http.cookies.SimpleCookie()
 
     def __del__(self):
