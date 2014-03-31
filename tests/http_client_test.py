@@ -67,6 +67,8 @@ class HttpRequestTests(unittest.TestCase):
         asyncio.set_event_loop(None)
 
         self.transport = unittest.mock.Mock()
+        self.protocol = unittest.mock.Mock()
+        self.protocol.drain.return_value = ()
         self.stream = aiohttp.StreamParser(loop=self.loop)
 
     def tearDown(self):
@@ -173,12 +175,12 @@ class HttpRequestTests(unittest.TestCase):
             'get', 'http://python.org', auth=(1, 2, 3))
 
     def test_no_content_length(self):
-        req = HttpRequest('get', 'http://python.org')
-        req.send(self.transport)
+        req = HttpRequest('get', 'http://python.org', loop=self.loop)
+        req.send(self.transport, self.protocol)
         self.assertEqual('0', req.headers.get('Content-Length'))
 
-        req = HttpRequest('head', 'http://python.org')
-        req.send(self.transport)
+        req = HttpRequest('head', 'http://python.org', loop=self.loop)
+        req.send(self.transport, self.protocol)
         self.assertEqual('0', req.headers.get('Content-Length'))
 
     def test_path_is_not_double_encoded(self):
@@ -235,10 +237,12 @@ class HttpRequestTests(unittest.TestCase):
 
     def test_post_data(self):
         for meth in HttpRequest.POST_METHODS:
-            req = HttpRequest(meth, 'http://python.org/', data={'life': '42'})
-            req.send(self.transport)
+            req = HttpRequest(
+                meth, 'http://python.org/',
+                data={'life': '42'}, loop=self.loop)
+            req.send(self.transport, self.protocol)
             self.assertEqual('/', req.path)
-            self.assertEqual(b'life=42', req.body[0])
+            self.assertEqual(b'life=42', req.body)
             self.assertEqual('application/x-www-form-urlencoded',
                              req.headers['content-type'])
 
@@ -249,10 +253,12 @@ class HttpRequestTests(unittest.TestCase):
 
     def test_bytes_data(self):
         for meth in HttpRequest.POST_METHODS:
-            req = HttpRequest(meth, 'http://python.org/', data=b'binary data')
-            req.send(self.transport)
+            req = HttpRequest(
+                meth, 'http://python.org/',
+                data=b'binary data', loop=self.loop)
+            req.send(self.transport, self.protocol)
             self.assertEqual('/', req.path)
-            self.assertEqual((b'binary data',), req.body)
+            self.assertEqual(b'binary data', req.body)
             self.assertEqual('application/octet-stream',
                              req.headers['content-type'])
 
@@ -264,8 +270,9 @@ class HttpRequestTests(unittest.TestCase):
 
     @unittest.mock.patch('aiohttp.client.aiohttp')
     def test_content_encoding(self, m_http):
-        req = HttpRequest('get', 'http://python.org/', compress='deflate')
-        req.send(self.transport)
+        req = HttpRequest('get', 'http://python.org/',
+                          compress='deflate', loop=self.loop)
+        req.send(self.transport, self.protocol)
         self.assertEqual(req.headers['Transfer-encoding'], 'chunked')
         self.assertEqual(req.headers['Content-encoding'], 'deflate')
         m_http.Request.return_value\
@@ -273,9 +280,10 @@ class HttpRequestTests(unittest.TestCase):
 
     @unittest.mock.patch('aiohttp.client.aiohttp')
     def test_content_encoding_header(self, m_http):
-        req = HttpRequest('get', 'http://python.org/',
-                          headers={'Content-Encoding': 'deflate'})
-        req.send(self.transport)
+        req = HttpRequest(
+            'get', 'http://python.org/',
+            headers={'Content-Encoding': 'deflate'}, loop=self.loop)
+        req.send(self.transport, self.protocol)
         self.assertEqual(req.headers['Transfer-encoding'], 'chunked')
         self.assertEqual(req.headers['Content-encoding'], 'deflate')
 
@@ -287,21 +295,21 @@ class HttpRequestTests(unittest.TestCase):
     def test_chunked(self):
         req = HttpRequest(
             'get', 'http://python.org/',
-            headers={'Transfer-encoding': 'gzip'})
-        req.send(self.transport)
+            headers={'Transfer-encoding': 'gzip'}, loop=self.loop)
+        req.send(self.transport, self.protocol)
         self.assertEqual('gzip', req.headers['Transfer-encoding'])
 
         req = HttpRequest(
             'get', 'http://python.org/',
-            headers={'Transfer-encoding': 'chunked'})
-        req.send(self.transport)
+            headers={'Transfer-encoding': 'chunked'}, loop=self.loop)
+        req.send(self.transport, self.protocol)
         self.assertEqual('chunked', req.headers['Transfer-encoding'])
 
     @unittest.mock.patch('aiohttp.client.aiohttp')
     def test_chunked_explicit(self, m_http):
         req = HttpRequest(
-            'get', 'http://python.org/', chunked=True)
-        req.send(self.transport)
+            'get', 'http://python.org/', chunked=True, loop=self.loop)
+        req.send(self.transport, self.protocol)
 
         self.assertEqual('chunked', req.headers['Transfer-encoding'])
         m_http.Request.return_value\
@@ -310,8 +318,8 @@ class HttpRequestTests(unittest.TestCase):
     @unittest.mock.patch('aiohttp.client.aiohttp')
     def test_chunked_explicit_size(self, m_http):
         req = HttpRequest(
-            'get', 'http://python.org/', chunked=1024)
-        req.send(self.transport)
+            'get', 'http://python.org/', chunked=1024, loop=self.loop)
+        req.send(self.transport, self.protocol)
         self.assertEqual('chunked', req.headers['Transfer-encoding'])
         m_http.Request.return_value\
                       .add_chunking_filter.assert_called_with(1024)
@@ -319,21 +327,21 @@ class HttpRequestTests(unittest.TestCase):
     def test_chunked_length(self):
         req = HttpRequest(
             'get', 'http://python.org/',
-            headers={'Content-Length': '1000'}, chunked=1024)
-        req.send(self.transport)
+            headers={'Content-Length': '1000'}, chunked=1024, loop=self.loop)
+        req.send(self.transport, self.protocol)
         self.assertEqual(req.headers['Transfer-Encoding'], 'chunked')
         self.assertNotIn('Content-Length', req.headers)
 
     def test_expect100(self):
         req = HttpRequest('get', 'http://python.org/',
                           expect100=True, loop=self.loop)
-        req.send(self.transport)
+        req.send(self.transport, self.protocol)
         self.assertEqual('100-continue', req.headers['expect'])
         self.assertIsNotNone(req._continue)
 
         req = HttpRequest('get', 'http://python.org/',
                           headers={'expect': '100-continue'}, loop=self.loop)
-        req.send(self.transport)
+        req.send(self.transport, self.protocol)
         self.assertEqual('100-continue', req.headers['expect'])
         self.assertIsNotNone(req._continue)
 
@@ -348,7 +356,7 @@ class HttpRequestTests(unittest.TestCase):
         self.assertTrue(inspect.isgenerator(req.body))
         self.assertEqual(req.headers['transfer-encoding'], 'chunked')
 
-        resp = req.send(self.transport)
+        resp = req.send(self.transport, self.protocol)
         self.assertIsInstance(req._writer, asyncio.Future)
         self.loop.run_until_complete(resp.wait_for_close())
         self.assertIsNone(req._writer)
@@ -379,7 +387,7 @@ class HttpRequestTests(unittest.TestCase):
 
         asyncio.async(exc(), loop=self.loop)
 
-        req.send(self.transport)
+        req.send(self.transport, self.protocol)
         self.assertRaises(
             ValueError, self.loop.run_until_complete, req._writer)
         self.assertRaises(self.transport.close.called)
@@ -392,7 +400,7 @@ class HttpRequestTests(unittest.TestCase):
 
         req = HttpRequest(
             'POST', 'http://python.org/', data=gen(), loop=self.loop)
-        req.send(self.transport)
+        req.send(self.transport, self.protocol)
         self.assertRaises(
             ValueError, self.loop.run_until_complete, req._writer)
 
@@ -413,7 +421,7 @@ class HttpRequestTests(unittest.TestCase):
 
         asyncio.async(coro(), loop=self.loop)
 
-        req.send(self.transport)
+        req.send(self.transport, self.protocol)
         self.loop.run_until_complete(req._writer)
         self.assertEqual(
             self.transport.write.mock_calls[-3:],
@@ -432,7 +440,7 @@ class HttpRequestTests(unittest.TestCase):
 
         asyncio.async(coro(), loop=self.loop)
 
-        req.send(self.transport)
+        req.send(self.transport, self.protocol)
         self.assertEqual(1, len(self.transport.write.mock_calls))
 
         self.loop.run_until_complete(req._writer)
@@ -448,7 +456,7 @@ class HttpRequestTests(unittest.TestCase):
 
         req = HttpRequest(
             'POST', 'http://python.org/', data=gen(), loop=self.loop)
-        req.send(self.transport)
+        req.send(self.transport, self.protocol)
         self.loop.run_until_complete(req.close())
         self.assertEqual(
             self.transport.write.mock_calls[-3:],

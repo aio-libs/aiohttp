@@ -29,8 +29,7 @@ WS_FILE = os.path.join(os.path.dirname(__file__), 'websocket.html')
 class HttpServer(aiohttp.server.ServerHttpProtocol):
 
     clients = None  # list of all active connections
-    parent = None  # process supervisor
-                   # we use it as broadcaster to all workers
+    parent = None  # supervisor, we use it as broadcaster to all workers
 
     @asyncio.coroutine
     def handle_request(self, message, payload):

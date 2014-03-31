@@ -409,16 +409,16 @@ class StreamProtocolTests(unittest.TestCase):
         tr = unittest.mock.Mock()
 
         proto = parsers.StreamProtocol()
-        self.assertIsNone(proto.transport)
+        self.assertIsNone(proto._transport)
 
         proto.connection_made(tr)
-        self.assertIs(proto.transport, tr)
+        self.assertIs(proto._transport, tr)
 
     def test_connection_lost(self):
         proto = parsers.StreamProtocol()
         proto.connection_made(unittest.mock.Mock())
         proto.connection_lost(None)
-        self.assertIsNone(proto.transport)
+        self.assertIsNone(proto._transport)
         self.assertTrue(proto._eof)
 
     def test_connection_lost_exc(self):
@@ -428,6 +428,25 @@ class StreamProtocolTests(unittest.TestCase):
         exc = ValueError()
         proto.connection_lost(exc)
         self.assertIs(proto.exception(), exc)
+
+    def test_drain_exc(self):
+        proto = parsers.StreamProtocol()
+        proto.connection_made(unittest.mock.Mock())
+
+        exc = ValueError()
+        proto.set_exception(exc)
+
+        self.assertRaises(ValueError, proto.drain)
+
+    def test_drain(self):
+        proto = parsers.StreamProtocol()
+        proto._transport = None
+        self.assertEqual(proto.drain(), ())
+
+        proto._transport = unittest.mock.Mock()
+        proto._make_drain_waiter = unittest.mock.Mock()
+        res = proto._make_drain_waiter.return_value = object()
+        self.assertIs(proto.drain(), res)
 
 
 class ParserBufferTests(unittest.TestCase):

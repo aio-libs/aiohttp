@@ -59,8 +59,11 @@ __all__ = ['EofStream', 'StreamParser', 'StreamProtocol',
            'ParserBuffer', 'DataQueue', 'LinesParser', 'ChunksParser']
 
 import asyncio
+import asyncio.streams
 import collections
 import inspect
+
+DEFAULT_LIMIT = 2**16
 
 
 class EofStream(Exception):
@@ -189,25 +192,45 @@ class StreamParser:
             self._parser = None
 
 
-class StreamProtocol(StreamParser, asyncio.Protocol):
+class StreamProtocol(StreamParser,
+                     asyncio.streams.FlowControlMixin, asyncio.Protocol):
     """asyncio's stream protocol based on StreamParser"""
-
-    transport = None
-
-    data_received = StreamParser.feed_data
 
     eof_received = StreamParser.feed_eof
 
+    def __init__(self, *, limit=DEFAULT_LIMIT, **kwargs):
+        super().__init__(**kwargs)
+
+        self._limit = limit
+        self._paused = False
+        self._transport = None
+        self._drain_waiter = None
+
     def connection_made(self, transport):
-        self.transport = transport
+        self._transport = transport
 
     def connection_lost(self, exc):
-        self.transport = None
+        super().connection_lost(exc)
+
+        self._transport = None
 
         if exc is not None:
             self.set_exception(exc)
         else:
             self.feed_eof()
+
+    def data_received(self, data):
+        self.feed_data(data)
+
+    def drain(self):
+        exc = self.exception()
+        if exc:
+            raise exc
+
+        if self._transport is not None:
+            return self._make_drain_waiter()
+
+        return ()
 
 
 class DataQueue:

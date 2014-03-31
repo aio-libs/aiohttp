@@ -173,7 +173,7 @@ def _connect(req, loop, params):
 @asyncio.coroutine
 def _make_request(transport, proto, req,
                   wrapper, timeout, read_until_eof, loop):
-    resp = req.send(transport)
+    resp = req.send(transport, proto)
     try:
         if timeout:
             yield from asyncio.wait_for(
@@ -693,7 +693,7 @@ class HttpRequest:
             self._continue = asyncio.Future(loop=self.loop)
 
     @asyncio.coroutine
-    def write_bytes(self, request, is_stream):
+    def write_bytes(self, request, is_stream, protocol):
         """Support coroutines that yields bytes objects."""
         # 100 response
         if self._continue is not None:
@@ -727,6 +727,8 @@ class HttpRequest:
                         exc = err
                 elif isinstance(result, bytes):
                     request.write(result)
+                    yield from protocol.drain()
+
                     value = None
                 else:
                     raise ValueError(
@@ -741,7 +743,7 @@ class HttpRequest:
         request.write_eof()
         self._writer = None
 
-    def send(self, transport):
+    def send(self, transport, protocol):
         request = aiohttp.Request(
             transport, self.method, self.path, self.version)
 
@@ -755,18 +757,8 @@ class HttpRequest:
         request.send_headers()
 
         is_stream = inspect.isgenerator(self.body)
-
-        if is_stream or self._continue is not None:
-            self._writer = asyncio.async(
-                self.write_bytes(request, is_stream), loop=self.loop)
-        else:
-            if isinstance(self.body, bytes):
-                self.body = (self.body,)
-
-            for chunk in self.body:
-                request.write(chunk)
-
-            request.write_eof()
+        self._writer = asyncio.async(
+            self.write_bytes(request, is_stream, protocol), loop=self.loop)
 
         self.response = HttpResponse(
             self.method, self.path, self.host,

@@ -4,6 +4,8 @@ CHANGES
 0.7.0 (Unreleased)
 ------------------
 
+- Http client flow control.
+
 - Periodically cleanup session's stale connections
 
 
