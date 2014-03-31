@@ -213,7 +213,7 @@ class HttpSessionTests(unittest.TestCase):
         }
         testset[1][0][1].is_connected.return_value = True
         testset[1][1][1].is_connected.return_value = False
-        
+
         loop = unittest.mock.Mock()
         session = Session(loop=loop)
         session._conns = testset
@@ -226,11 +226,11 @@ class HttpSessionTests(unittest.TestCase):
 
         testset = {1: [(unittest.mock.Mock(), unittest.mock.Mock(), 300)]}
         testset[1][0][1].is_connected.return_value = True
-        
+
         session = Session(loop=loop)
         session._conns = testset
         session._cleanup()
         self.assertEqual(session._conns, testset)
-                         
+
         self.assertIsNotNone(session._cleanup_handle)
         

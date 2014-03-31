@@ -446,11 +446,11 @@ class ParserBufferTests(unittest.TestCase):
         buf = parsers.ParserBuffer()
         buf.feed_data(b'data')
 
-        buf._shrink()
+        buf.shrink()
         self.assertEqual(bytes(buf), b'data')
 
         buf.offset = 2
-        buf._shrink()
+        buf.shrink()
         self.assertEqual(bytes(buf), b'ta')
         self.assertEqual(2, len(buf))
         self.assertEqual(2, buf.size)

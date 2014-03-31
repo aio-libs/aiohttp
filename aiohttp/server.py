@@ -203,6 +203,8 @@ class ServerHttpProtocol(asyncio.Protocol):
             except Exception as exc:
                 self.handle_error(500, info, message, exc)
             finally:
+                self.stream.unset_parser()
+
                 if self._request_handler:
                     if self._keep_alive and self._keep_alive_period:
                         self.log_debug(

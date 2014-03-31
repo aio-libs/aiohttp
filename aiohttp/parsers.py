@@ -134,6 +134,7 @@ class StreamParser:
             self._parser = None
             self._output = None
 
+        self._input.shrink()
         self._eof = True
 
     def set_parser(self, parser):
@@ -169,6 +170,9 @@ class StreamParser:
 
     def unset_parser(self):
         """unset parser, send eof to the parser and then remove it."""
+        if self._input:
+            self._input.shrink()
+
         if self._parser is None:
             return
 
@@ -276,7 +280,7 @@ class ParserBuffer(bytearray):
         self._writer = self._feed_data()
         next(self._writer)
 
-    def _shrink(self):
+    def shrink(self):
         if self.offset:
             del self[:self.offset]
             self.offset = 0
@@ -292,7 +296,7 @@ class ParserBuffer(bytearray):
 
                 # shrink buffer
                 if (self.offset and len(self) > 8196):
-                    self._shrink()
+                    self.shrink()
 
     def feed_data(self, data):
         self._writer.send(data)
