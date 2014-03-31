@@ -1,6 +1,12 @@
 CHANGES
 =======
 
+0.7.0 (Unreleased)
+------------------
+
+- Periodically cleanup session's stale connections
+
+
 0.6.5 (03-29-2014)
 ------------------
 

@@ -541,7 +541,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
     def test_keepalive(self):
         from aiohttp import session
-        s = session.Session()
+        s = session.Session(loop=self.loop)
 
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
@@ -562,7 +562,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
     def test_session_close(self):
         from aiohttp import session
-        s = session.Session()
+        s = session.Session(loop=self.loop)
 
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
@@ -584,7 +584,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
     def test_session_cookies(self):
         from aiohttp import session
-        s = session.Session()
+        s = session.Session(loop=self.loop)
 
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             s.update_cookies({'test': '1'})

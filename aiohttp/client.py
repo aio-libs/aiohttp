@@ -237,7 +237,10 @@ class HttpClient:
         self._timeout = timeout
         self._conn_timeout = conn_timeout
         self._schema = 'https' if ssl else 'http'
-        self._session = aiohttp.Session() if session else None
+        if isinstance(session, aiohttp.Session):
+            self._session = session
+        else:
+            self._session = aiohttp.Session(loop=loop) if session else None
 
         self._failed = collections.deque()
         self._failed_handle = None

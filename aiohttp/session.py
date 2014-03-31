@@ -11,13 +11,52 @@ import time
 
 class Session:
 
-    def __init__(self, reuse_timeout=30):
+    def __init__(self, reuse_timeout=30, loop=None):
         self._conns = {}
         self._reuse_timeout = reuse_timeout
+        self._cleanup_handle = None
         self.cookies = http.cookies.SimpleCookie()
+
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        self._loop = loop
 
     def __del__(self):
         self.close()
+
+    def _cleanup(self):
+        if self._cleanup_handle:
+            self._cleanup_handle.cancel()
+            self._cleanup_handle = None
+
+        now = time.time()
+
+        connections = {}
+        for key, conns in self._conns.items():
+            alive = []
+            for transport, proto, t0 in conns:
+                if transport is not None:
+                    if proto and not proto.is_connected():
+                        transport = None
+                    elif (now - t0) > self._reuse_timeout:
+                        transport.close()
+                        transport = None
+
+                if transport:
+                    alive.append((transport, proto, t0))
+            if alive:
+                connections[key] = alive
+
+        if connections:
+            self._cleanup_handle = self._loop.call_later(
+                self._reuse_timeout, self._cleanup)
+
+        self._conns = connections
+
+    def _start_cleanup_task(self):
+        if self._cleanup_handle is None:
+            self._cleanup_handle = self._loop.call_later(
+                self._reuse_timeout, self._cleanup)
 
     def close(self):
         """Close all opened transports."""
@@ -97,6 +136,8 @@ class Session:
                 conns = self._conns[key] = []
             conns.append(conn)
             conn[1].unset_parser()
+
+            self._start_cleanup_task()
 
 
 class TransportWrapper:
