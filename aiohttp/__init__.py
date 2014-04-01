@@ -11,4 +11,7 @@ __all__ = (client.__all__ +
            errors.__all__ +
            parsers.__all__ +
            protocol.__all__ +
-           session.__all__)
+           session.__all__ +
+           ['__version__'])
+
+__version__ = '0.6.5'
