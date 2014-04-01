@@ -63,6 +63,7 @@ import asyncio.streams
 import collections
 import inspect
 
+BUF_LIMIT = 2**14
 DEFAULT_LIMIT = 2**16
 
 
@@ -218,7 +219,7 @@ class StreamProtocol(StreamParser,
         self._drain_waiter = None
 
     def resume_stream(self):
-        if self._paused and len(self._buffer) <= self._limit:
+        if self._paused and self._buffer.size <= self._limit:
             self._paused = False
             self._transport.resume_reading()
 
@@ -241,7 +242,7 @@ class StreamProtocol(StreamParser,
         self.feed_data(data)
 
         if (self._transport is not None and not self._paused and
-                len(self._buffer) > 2*self._limit):
+                self._buffer.size > 2*self._limit):
             try:
                 self._transport.pause_reading()
             except NotImplementedError:
@@ -330,11 +331,12 @@ class ParserBuffer(bytearray):
     ParserBuffer provides helper methods for parsers.
     """
 
-    def __init__(self, *args):
+    def __init__(self, *args, limit=BUF_LIMIT):
         super().__init__(*args)
 
         self.offset = 0
         self.size = 0
+        self._limit = limit
         self._writer = self._feed_data()
         next(self._writer)
 
@@ -352,9 +354,9 @@ class ParserBuffer(bytearray):
                 self.size += chunk_len
                 self.extend(chunk)
 
-                # shrink buffer
-                if (self.offset and len(self) > 8196):
-                    self.shrink()
+            # shrink buffer
+            if (self.offset and len(self) > self._limit):
+                self.shrink()
 
     def feed_data(self, data):
         self._writer.send(data)
