@@ -32,7 +32,7 @@ class StreamParserTests(unittest.TestCase):
         stream = parsers.StreamParser()
 
         stream._parser = self.lines_parser
-        buf = stream._output = parsers.DataQueue(loop=self.loop)
+        buf = stream._output = parsers.DataQueue(stream, loop=self.loop)
 
         exc = ValueError()
         stream.set_exception(exc)
@@ -42,13 +42,13 @@ class StreamParserTests(unittest.TestCase):
         stream = parsers.StreamParser()
 
         stream.feed_data(self.DATA)
-        self.assertEqual(self.DATA, bytes(stream._input))
+        self.assertEqual(self.DATA, bytes(stream._buffer))
 
-    def test_feed_empty_data(self):
+    def test_feed_none_data(self):
         stream = parsers.StreamParser()
 
-        stream.feed_data(b'')
-        self.assertEqual(b'', bytes(stream._input))
+        stream.feed_data(None)
+        self.assertEqual(b'', bytes(stream._buffer))
 
     def test_set_parser_unset_prev(self):
         stream = parsers.StreamParser()
@@ -75,12 +75,12 @@ class StreamParserTests(unittest.TestCase):
 
         self.assertEqual([bytearray(b'line1\r\n'), bytearray(b'line2\r\n')],
                          list(s._buffer))
-        self.assertEqual(b'data', bytes(stream._input))
+        self.assertEqual(b'data', bytes(stream._buffer))
         self.assertIsNotNone(stream._parser)
 
         stream.unset_parser()
         self.assertIsNone(stream._parser)
-        self.assertEqual(b'data', bytes(stream._input))
+        self.assertEqual(b'data', bytes(stream._buffer))
         self.assertTrue(s._eof)
 
     def test_set_parser_feed_existing_exc(self):
@@ -102,7 +102,7 @@ class StreamParserTests(unittest.TestCase):
 
         self.assertEqual([bytearray(b'line1\r\n'), bytearray(b'line2\r\n')],
                          list(s._buffer))
-        self.assertEqual(b'data', bytes(stream._input))
+        self.assertEqual(b'data', bytes(stream._buffer))
         self.assertIsNone(stream._parser)
 
     def test_set_parser_feed_existing_eof_exc(self):
@@ -132,17 +132,17 @@ class StreamParserTests(unittest.TestCase):
         self.assertTrue(s._eof)
 
     def test_set_parser_unset(self):
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(paused=False)
         s = stream.set_parser(self.lines_parser)
 
         stream.feed_data(b'line1\r\nline2\r\n')
         self.assertEqual(
             [bytearray(b'line1\r\n'), bytearray(b'line2\r\n')],
             list(s._buffer))
-        self.assertEqual(b'', bytes(stream._input))
+        self.assertEqual(b'', bytes(stream._buffer))
         stream.unset_parser()
         self.assertTrue(s._eof)
-        self.assertEqual(b'', bytes(stream._input))
+        self.assertEqual(b'', bytes(stream._buffer))
 
     def test_set_parser_feed_existing_stop(self):
         def LinesParser(out, buf):
@@ -158,22 +158,22 @@ class StreamParserTests(unittest.TestCase):
         s = stream.set_parser(LinesParser)
 
         self.assertEqual(b'line1\r\nline2\r\n', b''.join(s._buffer))
-        self.assertEqual(b'data', bytes(stream._input))
+        self.assertEqual(b'data', bytes(stream._buffer))
         self.assertIsNone(stream._parser)
         self.assertTrue(s._eof)
 
     def test_feed_parser(self):
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(paused=False)
         s = stream.set_parser(self.lines_parser)
 
         stream.feed_data(b'line1')
         stream.feed_data(b'\r\nline2\r\ndata')
-        self.assertEqual(b'data', bytes(stream._input))
+        self.assertEqual(b'data', bytes(stream._buffer))
 
         stream.feed_eof()
         self.assertEqual([bytearray(b'line1\r\n'), bytearray(b'line2\r\n')],
                          list(s._buffer))
-        self.assertEqual(b'data', bytes(stream._input))
+        self.assertEqual(b'data', bytes(stream._buffer))
         self.assertTrue(s._eof)
 
     def test_feed_parser_exc(self):
@@ -181,23 +181,23 @@ class StreamParserTests(unittest.TestCase):
             yield  # read chunk
             raise ValueError()
 
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(paused=False)
         s = stream.set_parser(p)
 
         stream.feed_data(b'line1')
         self.assertIsInstance(s.exception(), ValueError)
-        self.assertEqual(b'', bytes(stream._input))
+        self.assertEqual(b'', bytes(stream._buffer))
 
     def test_feed_parser_stop(self):
         def p(out, buf):
             yield  # chunk
 
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(paused=False)
         stream.set_parser(p)
 
         stream.feed_data(b'line1')
         self.assertIsNone(stream._parser)
-        self.assertEqual(b'', bytes(stream._input))
+        self.assertEqual(b'', bytes(stream._buffer))
 
     def test_feed_eof_exc(self):
         def p(out, buf):
@@ -253,7 +253,7 @@ class StreamParserTests(unittest.TestCase):
         self.assertEqual(
             [bytearray(b'line1\r\n'), bytearray(b'line2\r\n')],
             list(s._buffer))
-        self.assertEqual(b'', bytes(stream._input))
+        self.assertEqual(b'', bytes(stream._buffer))
         self.assertTrue(s._eof)
 
     def test_unset_parser_eof_exc(self):
@@ -304,6 +304,7 @@ class StreamParserTests(unittest.TestCase):
 class DataQueueTests(unittest.TestCase):
 
     def setUp(self):
+        self.stream = unittest.mock.Mock()
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
 
@@ -311,20 +312,33 @@ class DataQueueTests(unittest.TestCase):
         self.loop.close()
 
     def test_feed_data(self):
-        buffer = parsers.DataQueue(loop=self.loop)
+        buffer = parsers.DataQueue(self.stream, loop=self.loop)
 
         item = object()
         buffer.feed_data(item)
         self.assertEqual([item], list(buffer._buffer))
 
     def test_feed_eof(self):
-        buffer = parsers.DataQueue(loop=self.loop)
+        buffer = parsers.DataQueue(self.stream, loop=self.loop)
         buffer.feed_eof()
         self.assertTrue(buffer._eof)
 
+    def test_stream(self):
+        item = object()
+        buffer = parsers.DataQueue(self.stream, loop=self.loop)
+        read_task = asyncio.Task(buffer.read(), loop=self.loop)
+
+        def cb():
+            buffer.feed_data(item)
+        self.loop.call_soon(cb)
+        self.loop.run_until_complete(read_task)
+
+        self.assertTrue(self.stream.resume_stream.called)
+        self.assertTrue(self.stream.pause_stream.called)
+
     def test_read(self):
         item = object()
-        buffer = parsers.DataQueue(loop=self.loop)
+        buffer = parsers.DataQueue(self.stream, loop=self.loop)
         read_task = asyncio.Task(buffer.read(), loop=self.loop)
 
         def cb():
@@ -335,7 +349,7 @@ class DataQueueTests(unittest.TestCase):
         self.assertIs(item, data)
 
     def test_read_eof(self):
-        buffer = parsers.DataQueue(loop=self.loop)
+        buffer = parsers.DataQueue(self.stream, loop=self.loop)
         read_task = asyncio.Task(buffer.read(), loop=self.loop)
 
         def cb():
@@ -346,7 +360,7 @@ class DataQueueTests(unittest.TestCase):
             parsers.EofStream, self.loop.run_until_complete, read_task)
 
     def test_read_cancelled(self):
-        buffer = parsers.DataQueue(loop=self.loop)
+        buffer = parsers.DataQueue(self.stream, loop=self.loop)
         read_task = asyncio.Task(buffer.read(), loop=self.loop)
         test_utils.run_briefly(self.loop)
         self.assertIsInstance(buffer._waiter, asyncio.Future)
@@ -362,7 +376,7 @@ class DataQueueTests(unittest.TestCase):
 
     def test_read_until_eof(self):
         item = object()
-        buffer = parsers.DataQueue(loop=self.loop)
+        buffer = parsers.DataQueue(self.stream, loop=self.loop)
         buffer.feed_data(item)
         buffer.feed_eof()
 
@@ -373,7 +387,7 @@ class DataQueueTests(unittest.TestCase):
             parsers.EofStream, self.loop.run_until_complete, buffer.read())
 
     def test_read_exception(self):
-        buffer = parsers.DataQueue(loop=self.loop)
+        buffer = parsers.DataQueue(self.stream, loop=self.loop)
         buffer.feed_data(object())
         buffer.set_exception(ValueError())
 
@@ -381,7 +395,7 @@ class DataQueueTests(unittest.TestCase):
             ValueError, self.loop.run_until_complete, buffer.read())
 
     def test_exception(self):
-        buffer = parsers.DataQueue(loop=self.loop)
+        buffer = parsers.DataQueue(self.stream, loop=self.loop)
         self.assertIsNone(buffer.exception())
 
         exc = ValueError()
@@ -389,7 +403,7 @@ class DataQueueTests(unittest.TestCase):
         self.assertIs(buffer.exception(), exc)
 
     def test_exception_waiter(self):
-        buffer = parsers.DataQueue(loop=self.loop)
+        buffer = parsers.DataQueue(self.stream, loop=self.loop)
 
         @asyncio.coroutine
         def set_err():
@@ -429,6 +443,44 @@ class StreamProtocolTests(unittest.TestCase):
         proto.connection_lost(exc)
         self.assertIs(proto.exception(), exc)
 
+    def test_resume_stream(self):
+        transp = unittest.mock.Mock()
+
+        proto = parsers.StreamProtocol()
+        proto.connection_made(transp)
+        proto._paused = True
+        proto.resume_stream()
+
+        transp.resume_reading.assert_called_with()
+        self.assertFalse(proto._paused)
+
+    def test_data_received(self):
+        proto = parsers.StreamProtocol()
+        proto.connection_made(unittest.mock.Mock())
+        proto.feed_data = unittest.mock.Mock()
+
+        proto.data_received(b'data')
+        proto.feed_data.assert_called_with(b'data')
+
+    def test_data_received_pause_reading(self):
+        transp = unittest.mock.Mock()
+
+        proto = parsers.StreamProtocol()
+        proto.connection_made(transp)
+        proto.data_received(b'1' * (2**16 * 3))
+        transp.pause_reading.assert_called_with()
+        self.assertTrue(proto._paused)
+
+    def test_data_received_pause_reading_not_supported(self):
+        transp = unittest.mock.Mock()
+
+        proto = parsers.StreamProtocol()
+        proto.connection_made(transp)
+
+        transp.pause_reading.side_effect = NotImplementedError()
+        proto.data_received(b'1' * (2**16 * 3))
+        self.assertIsNone(proto._transport)
+
     def test_drain_exc(self):
         proto = parsers.StreamProtocol()
         proto.connection_made(unittest.mock.Mock())
@@ -452,6 +504,7 @@ class StreamProtocolTests(unittest.TestCase):
 class ParserBufferTests(unittest.TestCase):
 
     def setUp(self):
+        self.stream = unittest.mock.Mock()
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
 
@@ -639,7 +692,7 @@ class ParserBufferTests(unittest.TestCase):
         self.assertEqual(b'', bytes(buf))
 
     def test_lines_parser(self):
-        out = parsers.DataQueue(loop=self.loop)
+        out = parsers.DataQueue(self.stream, loop=self.loop)
         buf = self._make_one()
 
         p = parsers.LinesParser()(out, buf)
@@ -658,7 +711,7 @@ class ParserBufferTests(unittest.TestCase):
         self.assertEqual(bytes(buf), b'data')
 
     def test_chunks_parser(self):
-        out = parsers.DataQueue(loop=self.loop)
+        out = parsers.DataQueue(self.stream, loop=self.loop)
         buf = self._make_one()
 
         p = parsers.ChunksParser(5)(out, buf)

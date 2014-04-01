@@ -81,16 +81,25 @@ class StreamParser:
     unset_parser() sends EofStream into parser and then removes it.
     """
 
-    def __init__(self, *, loop=None, inbuf=None):
+    def __init__(self, *, loop=None, buf=None, paused=True):
         self._loop = loop
         self._eof = False
         self._exception = None
         self._parser = None
+        self._stream_paused = paused
         self._output = None
-        self._input = inbuf if inbuf is not None else ParserBuffer()
+        self._buffer = buf if buf is not None else ParserBuffer()
 
     def is_connected(self):
         return not self._eof
+
+    def pause_stream(self):
+        self._stream_paused = True
+
+    def resume_stream(self):
+        self._stream_paused = False
+        if self._parser and self._buffer:
+            self.feed_data(b'')
 
     def exception(self):
         return self._exception
@@ -105,10 +114,10 @@ class StreamParser:
 
     def feed_data(self, data):
         """send data to current parser or store in buffer."""
-        if not data:
+        if data is None:
             return
 
-        if self._parser:
+        if self._parser and not self._stream_paused:
             try:
                 self._parser.send(data)
             except StopIteration:
@@ -120,12 +129,14 @@ class StreamParser:
                 self._output = None
                 self._parser = None
         else:
-            self._input.feed_data(data)
+            self._buffer.feed_data(data)
 
     def feed_eof(self):
         """send eof to all parsers, recursively."""
         if self._parser:
             try:
+                if self._buffer:
+                    self._parser.send(b'')
                 self._parser.throw(EofStream())
             except StopIteration:
                 pass
@@ -137,7 +148,7 @@ class StreamParser:
             self._parser = None
             self._output = None
 
-        self._input.shrink()
+        self._buffer.shrink()
         self._eof = True
 
     def set_parser(self, parser):
@@ -145,13 +156,13 @@ class StreamParser:
         if self._parser:
             self.unset_parser()
 
-        output = DataQueue(loop=self._loop)
+        output = DataQueue(self, loop=self._loop)
         if self._exception:
             output.set_exception(self._exception)
             return output
 
         # init parser
-        p = parser(output, self._input)
+        p = parser(output, self._buffer)
         assert inspect.isgenerator(p), 'Generator is required'
 
         try:
@@ -173,8 +184,8 @@ class StreamParser:
 
     def unset_parser(self):
         """unset parser, send eof to the parser and then remove it."""
-        if self._input:
-            self._input.shrink()
+        if self._buffer:
+            self._buffer.shrink()
 
         if self._parser is None:
             return
@@ -206,6 +217,13 @@ class StreamProtocol(StreamParser,
         self._transport = None
         self._drain_waiter = None
 
+    def resume_stream(self):
+        if self._paused and len(self._buffer) <= self._limit:
+            self._paused = False
+            self._transport.resume_reading()
+
+        super().resume_stream()
+
     def connection_made(self, transport):
         self._transport = transport
 
@@ -222,6 +240,18 @@ class StreamProtocol(StreamParser,
     def data_received(self, data):
         self.feed_data(data)
 
+        if (self._transport is not None and not self._paused and
+                len(self._buffer) > 2*self._limit):
+            try:
+                self._transport.pause_reading()
+            except NotImplementedError:
+                # The transport can't be paused.
+                # We'll just have to buffer all data.
+                # Forget the transport so we don't keep trying.
+                self._transport = None
+            else:
+                self._paused = True
+
     def drain(self):
         exc = self.exception()
         if exc:
@@ -236,7 +266,8 @@ class StreamProtocol(StreamParser,
 class DataQueue:
     """DataQueue is a destination for parsed data."""
 
-    def __init__(self, *, loop=None):
+    def __init__(self, stream, *, loop=None):
+        self._stream = stream
         self._loop = loop
         self._buffer = collections.deque()
         self._eof = False
@@ -278,15 +309,19 @@ class DataQueue:
         if self._exception is not None:
             raise self._exception
 
-        if not self._buffer and not self._eof:
-            assert not self._waiter
-            self._waiter = asyncio.Future(loop=self._loop)
-            yield from self._waiter
+        self._stream.resume_stream()
+        try:
+            if not self._buffer and not self._eof:
+                assert not self._waiter
+                self._waiter = asyncio.Future(loop=self._loop)
+                yield from self._waiter
 
-        if self._buffer:
-            return self._buffer.popleft()
-        else:
-            raise EofStream
+            if self._buffer:
+                return self._buffer.popleft()
+            else:
+                raise EofStream
+        finally:
+            self._stream.pause_stream()
 
 
 class ParserBuffer(bytearray):
