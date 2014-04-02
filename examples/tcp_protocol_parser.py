@@ -107,7 +107,7 @@ class EchoServer(asyncio.Protocol):
 def start_client(loop, host, port):
     transport, stream = yield from loop.create_connection(
         aiohttp.StreamProtocol, host, port)
-    reader = stream.set_parser(my_protocol_parser)
+    reader = stream.reader.set_parser(my_protocol_parser)
     writer = MyProtocolWriter(transport)
     writer.ping()
 

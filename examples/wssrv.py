@@ -49,7 +49,7 @@ class HttpServer(aiohttp.server.ServerHttpProtocol):
             resp.send_headers()
 
             # install websocket parser
-            dataqueue = self.stream.set_parser(parser)
+            dataqueue = self.stream.reader.set_parser(parser)
 
             # notify everybody
             print('{}: Someone joined.'.format(os.getpid()))
@@ -136,13 +136,13 @@ class ChildProcess:
 
     @asyncio.coroutine
     def start_server(self, writer):
-        socks = yield from self.loop.start_serving(
+        socks = yield from self.loop.create_server(
             lambda: HttpServer(
                 debug=True, keep_alive=75,
                 parent=writer, clients=self.clients),
             sock=self.sock)
         print('Starting srv worker process {} on {}'.format(
-            os.getpid(), socks[0].getsockname()))
+            os.getpid(), socks.sockets[0].getsockname()))
 
     @asyncio.coroutine
     def heartbeat(self):
@@ -152,7 +152,7 @@ class ChildProcess:
         write_transport, _ = yield from self.loop.connect_write_pipe(
             aiohttp.StreamProtocol, os.fdopen(self.down_write, 'wb'))
 
-        reader = read_proto.set_parser(websocket.WebSocketParser)
+        reader = read_proto.reader.set_parser(websocket.WebSocketParser)
         writer = websocket.WebSocketWriter(write_transport)
 
         asyncio.Task(self.start_server(writer))
@@ -257,7 +257,7 @@ class Worker:
             aiohttp.StreamProtocol, os.fdopen(up_write, 'wb'))
 
         # websocket protocol
-        reader = proto.set_parser(websocket.WebSocketParser)
+        reader = proto.reader.set_parser(websocket.WebSocketParser)
         writer = websocket.WebSocketWriter(write_transport)
 
         # store info

@@ -8,7 +8,7 @@ import signal
 import sys
 
 import asyncio
-import asyncio.selectors
+import selectors
 
 import aiohttp
 from aiohttp import websocket
@@ -93,7 +93,7 @@ if __name__ == '__main__':
 
     url = 'http://{}:{}'.format(args.host, args.port)
 
-    loop = asyncio.SelectorEventLoop(asyncio.selectors.SelectSelector())
+    loop = asyncio.SelectorEventLoop(selectors.SelectSelector())
     asyncio.set_event_loop(loop)
 
     loop.add_signal_handler(signal.SIGINT, loop.stop)
