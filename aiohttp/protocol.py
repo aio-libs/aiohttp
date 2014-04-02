@@ -540,6 +540,7 @@ class HttpMessage:
         self.headers = collections.deque()
         self.headers_sent = False
         self.output_length = 0
+        self._output_size = 0
 
     def force_close(self):
         self.closing = True
@@ -652,9 +653,12 @@ class HttpMessage:
         """write() writes chunk of data to a steram by using different writers.
         writer uses filter to modify chunk of data. write_eof() indicates
         end of stream. writer can't be used after write_eof() method
-        being called."""
+        being called. write() return drain future.
+        """
         assert (isinstance(chunk, (bytes, bytearray)) or
                 chunk is EOF_MARKER), chunk
+
+        size = self.output_length
 
         if self._send_headers and not self.headers_sent:
             self.send_headers()
@@ -669,6 +673,14 @@ class HttpMessage:
         else:
             if chunk is not EOF_MARKER:
                 self.writer.send(chunk)
+
+        self._output_size += self.output_length - size
+
+        if self._output_size > 64 * 1024:
+            self._output_size = 0
+            return self.transport.drain()
+        else:
+            return ()
 
     def write_eof(self):
         self.write(EOF_MARKER)

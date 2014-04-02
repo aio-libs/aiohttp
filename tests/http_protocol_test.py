@@ -407,3 +407,14 @@ class HttpMessageTests(unittest.TestCase):
         content = b''.join([c[1][0] for c in list(write.mock_calls)])
         self.assertEqual(
             self._COMPRESSED, content.split(b'\r\n\r\n', 1)[-1])
+
+    def test_write_drain(self):
+        msg = protocol.Response(self.transport, 200, http_version=(1, 0))
+        msg._send_headers = True
+
+        res = msg.write(b'1' * (64 * 1024 * 2))
+        self.assertTrue(self.transport.drain.called)
+        self.assertEqual(msg._output_size, 0)
+
+        res = msg.write(b'1')
+        self.assertEqual(res, ())

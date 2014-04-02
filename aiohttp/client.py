@@ -712,7 +712,7 @@ class HttpRequest:
                         result = stream.send(value)
                 except StopIteration as exc:
                     if isinstance(exc.value, bytes):
-                        request.write(exc.value)
+                        yield from request.write(exc.value)
                     break
                 except:
                     self.response.close(True)
@@ -726,8 +726,7 @@ class HttpRequest:
                     except Exception as err:
                         exc = err
                 elif isinstance(result, bytes):
-                    request.write(result)
-                    yield from writer.drain()
+                    yield from request.write(result)
 
                     value = None
                 else:

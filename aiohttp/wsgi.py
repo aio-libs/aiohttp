@@ -167,7 +167,7 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
             for item in riter:
                 if isinstance(item, asyncio.Future):
                     item = yield from item
-                resp.write(item)
+                yield from resp.write(item)
 
             resp.write_eof()
         finally:
