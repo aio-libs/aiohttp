@@ -173,13 +173,13 @@ def _connect(req, loop, params):
 @asyncio.coroutine
 def _make_request(transport, proto, req,
                   wrapper, timeout, read_until_eof, loop):
-    resp = req.send(transport, proto)
+    resp = req.send(proto.writer, proto.reader)
     try:
         if timeout:
             yield from asyncio.wait_for(
-                resp.start(proto, wrapper, read_until_eof), timeout, loop=loop)
+                resp.start(wrapper, proto, read_until_eof), timeout, loop=loop)
         else:
-            yield from resp.start(proto, wrapper, read_until_eof)
+            yield from resp.start(wrapper, proto, read_until_eof)
     except:
         resp.close()
         transport.close()
@@ -693,13 +693,13 @@ class HttpRequest:
             self._continue = asyncio.Future(loop=self.loop)
 
     @asyncio.coroutine
-    def write_bytes(self, request, is_stream, writer):
+    def write_bytes(self, request):
         """Support coroutines that yields bytes objects."""
         # 100 response
         if self._continue is not None:
             yield from self._continue
 
-        if is_stream:
+        if inspect.isgenerator(self.body):
             exc = None
             value = None
             stream = self.body
@@ -742,9 +742,8 @@ class HttpRequest:
         request.write_eof()
         self._writer = None
 
-    def send(self, transport, protocol):
-        request = aiohttp.Request(
-            transport, self.method, self.path, self.version)
+    def send(self, writer, reader):
+        request = aiohttp.Request(writer, self.method, self.path, self.version)
 
         if self.compress:
             request.add_compression_filter(self.compress)
@@ -755,10 +754,7 @@ class HttpRequest:
         request.add_headers(*self.headers.items())
         request.send_headers()
 
-        is_stream = inspect.isgenerator(self.body)
-        self._writer = asyncio.async(
-            self.write_bytes(request, is_stream, protocol.writer),
-            loop=self.loop)
+        self._writer = asyncio.async(self.write_bytes(request), loop=self.loop)
 
         self.response = HttpResponse(
             self.method, self.path, self.host,
@@ -786,7 +782,7 @@ class HttpResponse(http.client.HTTPMessage):
     cookies = None  # Response cookies (Set-Cookie)
 
     content = None  # payload stream
-    stream = None   # input stream
+    reader = None   # input stream
     transport = None  # current transport
 
     _response_parser = aiohttp.HttpResponseParser()
@@ -819,14 +815,13 @@ class HttpResponse(http.client.HTTPMessage):
     def wait_for_100(self):
         return self._continue is not None
 
-    def start(self, protocol, transport, read_until_eof=False):
+    def start(self, transport, protocol, read_until_eof=False):
         """Start response processing."""
-        stream = protocol.reader
-        self.stream = protocol.reader
+        self.reader = protocol.reader
         self.transport = transport
 
         while True:
-            httpstream = stream.set_parser(self._response_parser)
+            httpstream = self.reader.set_parser(self._response_parser)
 
             # read response
             self.message = yield from httpstream.read()
@@ -847,7 +842,7 @@ class HttpResponse(http.client.HTTPMessage):
             self.add_header(hdr, val)
 
         # payload
-        self.content = stream.set_parser(
+        self.content = self.reader.set_parser(
             aiohttp.HttpPayloadParser(self.message, readall=read_until_eof))
 
         # cookies

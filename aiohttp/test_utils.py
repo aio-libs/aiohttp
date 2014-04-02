@@ -197,7 +197,7 @@ class Router:
         return self._response(self._start_response(404))
 
     def _start_response(self, code):
-        return aiohttp.Response(self._transport, code)
+        return aiohttp.Response(self._srv.writer, code)
 
     def _response(self, response, body=None, headers=None, chunked=False):
         r_headers = {}
