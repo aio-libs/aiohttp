@@ -68,7 +68,7 @@ class HttpRequestTests(unittest.TestCase):
 
         self.transport = unittest.mock.Mock()
         self.protocol = unittest.mock.Mock()
-        self.protocol.drain.return_value = ()
+        self.protocol.writer.drain.return_value = ()
         self.stream = aiohttp.StreamParser(loop=self.loop)
 
     def tearDown(self):

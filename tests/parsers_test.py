@@ -20,6 +20,26 @@ class StreamParserTests(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
+    def test_at_eof(self):
+        proto = parsers.StreamParser()
+        self.assertFalse(proto.at_eof())
+
+        proto.feed_eof()
+        self.assertTrue(proto.at_eof())
+
+    def test_resume_stream(self):
+        transp = unittest.mock.Mock()
+
+        proto = parsers.StreamParser()
+        proto.set_transport(transp)
+        proto._paused = True
+        proto._stream_paused = True
+        proto.resume_stream()
+
+        transp.resume_reading.assert_called_with()
+        self.assertFalse(proto._paused)
+        self.assertFalse(proto._stream_paused)
+
     def test_exception(self):
         stream = parsers.StreamParser()
         self.assertIsNone(stream.exception())
@@ -49,6 +69,25 @@ class StreamParserTests(unittest.TestCase):
 
         stream.feed_data(None)
         self.assertEqual(b'', bytes(stream._buffer))
+
+    def test_feed_data_pause_reading(self):
+        transp = unittest.mock.Mock()
+
+        proto = parsers.StreamParser()
+        proto.set_transport(transp)
+        proto.feed_data(b'1' * (2**16 * 3))
+        transp.pause_reading.assert_called_with()
+        self.assertTrue(proto._paused)
+
+    def test_feed_data_pause_reading_not_supported(self):
+        transp = unittest.mock.Mock()
+
+        proto = parsers.StreamParser()
+        proto.set_transport(transp)
+
+        transp.pause_reading.side_effect = NotImplementedError()
+        proto.feed_data(b'1' * (2**16 * 3))
+        self.assertIsNone(proto._transport)
 
     def test_set_parser_unset_prev(self):
         stream = parsers.StreamParser()
@@ -423,17 +462,17 @@ class StreamProtocolTests(unittest.TestCase):
         tr = unittest.mock.Mock()
 
         proto = parsers.StreamProtocol()
-        self.assertIsNone(proto._transport)
+        self.assertIsNone(proto.transport)
 
         proto.connection_made(tr)
-        self.assertIs(proto._transport, tr)
+        self.assertIs(proto.transport, tr)
 
     def test_connection_lost(self):
         proto = parsers.StreamProtocol()
         proto.connection_made(unittest.mock.Mock())
         proto.connection_lost(None)
-        self.assertIsNone(proto._transport)
-        self.assertTrue(proto._eof)
+        self.assertIsNone(proto.transport)
+        self.assertTrue(proto.reader._eof)
 
     def test_connection_lost_exc(self):
         proto = parsers.StreamProtocol()
@@ -441,64 +480,15 @@ class StreamProtocolTests(unittest.TestCase):
 
         exc = ValueError()
         proto.connection_lost(exc)
-        self.assertIs(proto.exception(), exc)
-
-    def test_resume_stream(self):
-        transp = unittest.mock.Mock()
-
-        proto = parsers.StreamProtocol()
-        proto.connection_made(transp)
-        proto._paused = True
-        proto.resume_stream()
-
-        transp.resume_reading.assert_called_with()
-        self.assertFalse(proto._paused)
+        self.assertIs(proto.reader.exception(), exc)
 
     def test_data_received(self):
         proto = parsers.StreamProtocol()
         proto.connection_made(unittest.mock.Mock())
-        proto.feed_data = unittest.mock.Mock()
+        proto.reader = unittest.mock.Mock()
 
         proto.data_received(b'data')
-        proto.feed_data.assert_called_with(b'data')
-
-    def test_data_received_pause_reading(self):
-        transp = unittest.mock.Mock()
-
-        proto = parsers.StreamProtocol()
-        proto.connection_made(transp)
-        proto.data_received(b'1' * (2**16 * 3))
-        transp.pause_reading.assert_called_with()
-        self.assertTrue(proto._paused)
-
-    def test_data_received_pause_reading_not_supported(self):
-        transp = unittest.mock.Mock()
-
-        proto = parsers.StreamProtocol()
-        proto.connection_made(transp)
-
-        transp.pause_reading.side_effect = NotImplementedError()
-        proto.data_received(b'1' * (2**16 * 3))
-        self.assertIsNone(proto._transport)
-
-    def test_drain_exc(self):
-        proto = parsers.StreamProtocol()
-        proto.connection_made(unittest.mock.Mock())
-
-        exc = ValueError()
-        proto.set_exception(exc)
-
-        self.assertRaises(ValueError, proto.drain)
-
-    def test_drain(self):
-        proto = parsers.StreamProtocol()
-        proto._transport = None
-        self.assertEqual(proto.drain(), ())
-
-        proto._transport = unittest.mock.Mock()
-        proto._make_drain_waiter = unittest.mock.Mock()
-        res = proto._make_drain_waiter.return_value = object()
-        self.assertIs(proto.drain(), res)
+        proto.reader.feed_data.assert_called_with(b'data')
 
 
 class ParserBufferTests(unittest.TestCase):

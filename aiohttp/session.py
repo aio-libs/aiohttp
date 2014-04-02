@@ -135,7 +135,7 @@ class Session:
             if conns is None:
                 conns = self._conns[key] = []
             conns.append(conn)
-            conn[1].unset_parser()
+            conn[1].reader.unset_parser()
 
             self._start_cleanup_task()
 

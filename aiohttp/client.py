@@ -693,7 +693,7 @@ class HttpRequest:
             self._continue = asyncio.Future(loop=self.loop)
 
     @asyncio.coroutine
-    def write_bytes(self, request, is_stream, protocol):
+    def write_bytes(self, request, is_stream, writer):
         """Support coroutines that yields bytes objects."""
         # 100 response
         if self._continue is not None:
@@ -727,7 +727,7 @@ class HttpRequest:
                         exc = err
                 elif isinstance(result, bytes):
                     request.write(result)
-                    yield from protocol.drain()
+                    yield from writer.drain()
 
                     value = None
                 else:
@@ -758,7 +758,8 @@ class HttpRequest:
 
         is_stream = inspect.isgenerator(self.body)
         self._writer = asyncio.async(
-            self.write_bytes(request, is_stream, protocol), loop=self.loop)
+            self.write_bytes(request, is_stream, protocol.writer),
+            loop=self.loop)
 
         self.response = HttpResponse(
             self.method, self.path, self.host,
@@ -819,9 +820,10 @@ class HttpResponse(http.client.HTTPMessage):
     def wait_for_100(self):
         return self._continue is not None
 
-    def start(self, stream, transport, read_until_eof=False):
+    def start(self, protocol, transport, read_until_eof=False):
         """Start response processing."""
-        self.stream = stream
+        stream = protocol.reader
+        self.stream = protocol.reader
         self.transport = transport
 
         while True:

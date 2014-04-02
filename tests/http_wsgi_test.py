@@ -199,7 +199,8 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
             return fut
 
         srv = wsgi.WSGIServerHttpProtocol(wsgi_app, loop=self.loop)
-        srv.stream = self.stream
+        srv.reader = self.stream
+        srv.writer = self.transport
         srv.transport = self.transport
 
         self.loop.run_until_complete(
@@ -225,7 +226,8 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
 
         srv = wsgi.WSGIServerHttpProtocol(
             wsgi_app, readpayload=True, loop=self.loop)
-        srv.stream = self.stream
+        srv.reader = self.stream
+        srv.writer = self.transport
         srv.transport = self.transport
 
         self.loop.run_until_complete(
@@ -244,7 +246,8 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
             return io.BytesIO(b'data')
 
         srv = wsgi.WSGIServerHttpProtocol(wsgi_app, loop=self.loop)
-        srv.stream = self.stream
+        srv.reader = self.stream
+        srv.writer = self.transport
         srv.transport = self.transport
 
         self.loop.run_until_complete(
@@ -270,7 +273,8 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
 
         srv = wsgi.WSGIServerHttpProtocol(
             wsgi_app, readpayload=True, loop=self.loop)
-        srv.stream = self.stream
+        srv.reader = self.stream
+        srv.writer = self.transport
         srv.transport = self.transport
 
         self.loop.run_until_complete(
@@ -290,7 +294,8 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
 
         srv = wsgi.WSGIServerHttpProtocol(
             wsgi_app, readpayload=True, loop=self.loop)
-        srv.stream = self.stream
+        srv.reader = self.stream
+        srv.writer = self.transport
         srv.transport = self.transport
 
         self.loop.run_until_complete(

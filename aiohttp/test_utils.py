@@ -58,6 +58,7 @@ def run_server(loop, *, host='127.0.0.1', port=0, use_ssl=False, router=None):
 
         def connection_made(self, transport):
             transports.append(transport)
+
             super().connection_made(transport)
 
         def handle_request(self, message, payload):
@@ -81,13 +82,11 @@ def run_server(loop, *, host='127.0.0.1', port=0, use_ssl=False, router=None):
                     pass
 
                 rob = router(
-                    self, properties,
-                    self.transport, message, bytes(body))
+                    self, properties, self.transport, message, bytes(body))
                 rob.dispatch()
 
             else:
-                response = aiohttp.Response(
-                    self.transport, 200, message.version)
+                response = aiohttp.Response(self.writer, 200, message.version)
 
                 text = b'Test message'
                 response.add_header('Content-type', 'text/plain')

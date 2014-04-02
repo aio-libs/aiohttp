@@ -41,7 +41,7 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
         self.readpayload = readpayload
 
     def create_wsgi_response(self, message):
-        return WsgiResponse(self.transport, message)
+        return WsgiResponse(self.writer, message)
 
     def create_wsgi_environ(self, message, payload):
         uri_parts = urlsplit(message.path)
@@ -135,8 +135,8 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
         environ['PATH_INFO'] = unquote(path_info)
         environ['SCRIPT_NAME'] = script_name
 
-        environ['async.reader'] = self.stream
-        environ['async.writer'] = self.transport
+        environ['async.reader'] = self.reader
+        environ['async.writer'] = self.writer
 
         return environ
 
@@ -205,8 +205,8 @@ class WsgiResponse:
 
     status = None
 
-    def __init__(self, transport, message):
-        self.transport = transport
+    def __init__(self, writer, message):
+        self.writer = writer
         self.message = message
 
     def start_response(self, status, headers, exc_info=None):
@@ -221,7 +221,7 @@ class WsgiResponse:
 
         self.status = status
         resp = self.response = aiohttp.Response(
-            self.transport, status_code,
+            self.writer, status_code,
             self.message.version, self.message.should_close)
         resp.add_headers(*headers)
 

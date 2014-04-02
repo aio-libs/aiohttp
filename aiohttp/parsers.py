@@ -82,22 +82,34 @@ class StreamParser:
     unset_parser() sends EofStream into parser and then removes it.
     """
 
-    def __init__(self, *, loop=None, buf=None, paused=True):
+    def __init__(self, *, loop=None, buf=None,
+                 paused=True, limit=DEFAULT_LIMIT):
         self._loop = loop
         self._eof = False
         self._exception = None
         self._parser = None
+        self._transport = None
+        self._limit = limit
+        self._paused = False
         self._stream_paused = paused
         self._output = None
         self._buffer = buf if buf is not None else ParserBuffer()
 
-    def is_connected(self):
-        return not self._eof
+    def set_transport(self, transport):
+        assert self._transport is None, 'Transport already set'
+        self._transport = transport
+
+    def at_eof(self):
+        return self._eof
 
     def pause_stream(self):
         self._stream_paused = True
 
     def resume_stream(self):
+        if self._paused and self._buffer.size <= self._limit:
+            self._paused = False
+            self._transport.resume_reading()
+
         self._stream_paused = False
         if self._parser and self._buffer:
             self.feed_data(b'')
@@ -131,6 +143,18 @@ class StreamParser:
                 self._parser = None
         else:
             self._buffer.feed_data(data)
+
+        if (self._transport is not None and not self._paused and
+                self._buffer.size > 2*self._limit):
+            try:
+                self._transport.pause_reading()
+            except NotImplementedError:
+                # The transport can't be paused.
+                # We'll just have to buffer all data.
+                # Forget the transport so we don't keep trying.
+                self._transport = None
+            else:
+                self._paused = True
 
     def feed_eof(self):
         """send eof to all parsers, recursively."""
@@ -204,64 +228,40 @@ class StreamParser:
             self._parser = None
 
 
-class StreamProtocol(StreamParser,
-                     asyncio.streams.FlowControlMixin, asyncio.Protocol):
-    """asyncio's stream protocol based on StreamParser"""
+class StreamProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
+    """Helper class to adapt between Protocol and StreamReader."""
 
-    eof_received = StreamParser.feed_eof
+    def __init__(self, *, loop=None, **kwargs):
+        super().__init__(loop=loop)
 
-    def __init__(self, *, limit=DEFAULT_LIMIT, **kwargs):
-        super().__init__(**kwargs)
+        self.transport = None
+        self.writer = None
+        self.reader = StreamParser(loop=loop, **kwargs)
 
-        self._limit = limit
-        self._paused = False
-        self._transport = None
-        self._drain_waiter = None
-
-    def resume_stream(self):
-        if self._paused and self._buffer.size <= self._limit:
-            self._paused = False
-            self._transport.resume_reading()
-
-        super().resume_stream()
+    def is_connected(self):
+        return self.transport is not None
 
     def connection_made(self, transport):
-        self._transport = transport
+        self.transport = transport
+        self.reader.set_transport(transport)
+        self.writer = asyncio.streams.StreamWriter(
+            transport, self, self.reader, self._loop)
 
     def connection_lost(self, exc):
+        self.transport = None
+
+        if exc is None:
+            self.reader.feed_eof()
+        else:
+            self.reader.set_exception(exc)
+
         super().connection_lost(exc)
 
-        self._transport = None
-
-        if exc is not None:
-            self.set_exception(exc)
-        else:
-            self.feed_eof()
-
     def data_received(self, data):
-        self.feed_data(data)
+        self.reader.feed_data(data)
 
-        if (self._transport is not None and not self._paused and
-                self._buffer.size > 2*self._limit):
-            try:
-                self._transport.pause_reading()
-            except NotImplementedError:
-                # The transport can't be paused.
-                # We'll just have to buffer all data.
-                # Forget the transport so we don't keep trying.
-                self._transport = None
-            else:
-                self._paused = True
-
-    def drain(self):
-        exc = self.exception()
-        if exc:
-            raise exc
-
-        if self._transport is not None:
-            return self._make_drain_waiter()
-
-        return ()
+    def eof_received(self):
+        self.reader.feed_eof()
 
 
 class DataQueue:

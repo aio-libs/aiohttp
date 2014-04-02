@@ -68,16 +68,16 @@ class HttpServerProtocolTests(unittest.TestCase):
         srv.connection_made(unittest.mock.Mock())
 
         srv.data_received(b'123')
-        self.assertEqual(b'123', bytes(srv.stream._buffer))
+        self.assertEqual(b'123', bytes(srv.reader._buffer))
 
         srv.data_received(b'456')
-        self.assertEqual(b'123456', bytes(srv.stream._buffer))
+        self.assertEqual(b'123456', bytes(srv.reader._buffer))
 
     def test_eof_received(self):
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.connection_made(unittest.mock.Mock())
         srv.eof_received()
-        self.assertTrue(srv.stream._eof)
+        self.assertTrue(srv.reader._eof)
 
     def test_connection_lost(self):
         srv = server.ServerHttpProtocol(loop=self.loop)
@@ -119,7 +119,7 @@ class HttpServerProtocolTests(unittest.TestCase):
         srv = server.ServerHttpProtocol(timeout=0.01, loop=self.loop)
         srv.connection_made(transport)
 
-        srv.stream.feed_data(
+        srv.reader.feed_data(
             b'GET / HTTP/1.0\r\n'
             b'Host: example.com\r\n')
 
@@ -134,7 +134,7 @@ class HttpServerProtocolTests(unittest.TestCase):
             timeout=0.01, allowed_methods=('GET',), loop=self.loop)
         srv.connection_made(transport)
 
-        srv.stream.feed_data(
+        srv.reader.feed_data(
             b'POST / HTTP/1.0\r\n'
             b'Host: example.com\r\n\r\n')
 
@@ -148,7 +148,7 @@ class HttpServerProtocolTests(unittest.TestCase):
             timeout=0.01, allowed_methods=('GET',), loop=self.loop)
         srv.connection_made(transport)
 
-        srv.stream.feed_data(
+        srv.reader.feed_data(
             b'GET / HTTP/1.0\r\n'
             b'Host: example.com\r\n\r\n')
 
@@ -161,7 +161,7 @@ class HttpServerProtocolTests(unittest.TestCase):
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.connection_made(transport)
 
-        srv.stream.feed_data(
+        srv.reader.feed_data(
             b'!@#$ / HTTP/1.0\r\n'
             b'Host: example.com\r\n')
 
@@ -229,7 +229,7 @@ class HttpServerProtocolTests(unittest.TestCase):
 
         handle = srv.handle_request = unittest.mock.Mock()
 
-        srv.stream.feed_data(
+        srv.reader.feed_data(
             b'GET / HTTP/1.0\r\n'
             b'Host: example.com\r\n\r\n')
 
@@ -252,7 +252,7 @@ class HttpServerProtocolTests(unittest.TestCase):
         srv.handle_request = coro
         srv.connection_made(transport)
 
-        srv.stream.feed_data(
+        srv.reader.feed_data(
             b'GET / HTTP/1.0\r\n'
             b'Host: example.com\r\n\r\n')
         self.loop.run_until_complete(srv._request_handler)
@@ -285,7 +285,7 @@ class HttpServerProtocolTests(unittest.TestCase):
         srv.handle_request = unittest.mock.Mock()
         test_utils.run_briefly(self.loop)  # start request_handler task
 
-        srv.stream.feed_data(
+        srv.reader.feed_data(
             b'GET / HTTP/1.0\r\n'
             b'Host: example.com\r\n\r\n')
 
@@ -300,7 +300,7 @@ class HttpServerProtocolTests(unittest.TestCase):
         srv.connection_made(transport)
         srv.handle_error = unittest.mock.Mock()
         srv.keep_alive(True)
-        srv.stream.feed_data(b'GET / HT/asd\r\n\r\n')
+        srv.reader.feed_data(b'GET / HT/asd\r\n\r\n')
 
         self.loop.run_until_complete(srv._request_handler)
         self.assertTrue(srv.handle_error.called)
@@ -316,7 +316,7 @@ class HttpServerProtocolTests(unittest.TestCase):
         handle.side_effect = ValueError
         srv.handle_error = unittest.mock.Mock()
 
-        srv.stream.feed_data(
+        srv.reader.feed_data(
             b'GET / HTTP/1.0\r\n'
             b'Host: example.com\r\n\r\n')
         self.loop.run_until_complete(srv._request_handler)
@@ -351,7 +351,7 @@ class HttpServerProtocolTests(unittest.TestCase):
 
         handle = srv.handle_request = unittest.mock.Mock()
 
-        srv.stream.feed_data(
+        srv.reader.feed_data(
             b'GET / HTTP/1.1\r\n'
             b'CONNECTION: keep-alive\r\n'
             b'HOST: example.com\r\n\r\n')
@@ -370,7 +370,7 @@ class HttpServerProtocolTests(unittest.TestCase):
         keep_alive_handle = srv._keep_alive_handle = unittest.mock.Mock()
         srv.handle_request = unittest.mock.Mock()
 
-        srv.stream.feed_data(
+        srv.reader.feed_data(
             b'GET / HTTP/1.0\r\n'
             b'HOST: example.com\r\n\r\n')
 

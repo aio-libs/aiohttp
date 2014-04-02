@@ -139,8 +139,8 @@ def parse_message(buf):
 
 class WebSocketWriter:
 
-    def __init__(self, transport):
-        self.transport = transport
+    def __init__(self, writer):
+        self.writer = writer
 
     def _send_frame(self, message, opcode):
         """Send a frame over the websocket with message as its payload."""
@@ -154,7 +154,7 @@ class WebSocketWriter:
         else:
             header += bytes([127]) + struct.pack('!Q', msg_length)
 
-        self.transport.write(header + message)
+        self.writer.write(header + message)
 
     def pong(self):
         """Send pong message."""
