@@ -693,53 +693,57 @@ class HttpRequest:
             self._continue = asyncio.Future(loop=self.loop)
 
     @asyncio.coroutine
-    def write_bytes(self, request):
+    def write_bytes(self, request, reader):
         """Support coroutines that yields bytes objects."""
         # 100 response
         if self._continue is not None:
             yield from self._continue
 
-        if inspect.isgenerator(self.body):
-            exc = None
-            value = None
-            stream = self.body
+        try:
+            if inspect.isgenerator(self.body):
+                exc = None
+                value = None
+                stream = self.body
 
-            while True:
-                try:
-                    if exc is not None:
-                        result = stream.throw(exc)
-                    else:
-                        result = stream.send(value)
-                except StopIteration as exc:
-                    if isinstance(exc.value, bytes):
-                        yield from request.write(exc.value)
-                    break
-                except:
-                    self.response.close(True)
-                    raise
-
-                if isinstance(result, asyncio.Future):
-                    exc = None
-                    value = None
+                while True:
                     try:
-                        value = yield result
-                    except Exception as err:
-                        exc = err
-                elif isinstance(result, (bytes, bytearray)):
-                    yield from request.write(result)
+                        if exc is not None:
+                            result = stream.throw(exc)
+                        else:
+                            result = stream.send(value)
+                    except StopIteration as exc:
+                        if isinstance(exc.value, bytes):
+                            yield from request.write(exc.value)
+                        break
+                    except:
+                        self.response.close(True)
+                        raise
 
-                    value = None
-                else:
-                    raise ValueError(
-                        'Bytes object is expected, got: %s.' % type(result))
+                    if isinstance(result, asyncio.Future):
+                        exc = None
+                        value = None
+                        try:
+                            value = yield result
+                        except Exception as err:
+                            exc = err
+                    elif isinstance(result, (bytes, bytearray)):
+                        yield from request.write(result)
+                        value = None
+                    else:
+                        raise ValueError(
+                            'Bytes object is expected, got: %s.' %
+                            type(result))
+            else:
+                if isinstance(self.body, bytes):
+                    self.body = (self.body,)
+
+                for chunk in self.body:
+                    request.write(chunk)
+        except Exception as exc:
+            reader.set_exception(exc)
         else:
-            if isinstance(self.body, bytes):
-                self.body = (self.body,)
+            request.write_eof()
 
-            for chunk in self.body:
-                request.write(chunk)
-
-        request.write_eof()
         self._writer = None
 
     def send(self, writer, reader):
@@ -754,7 +758,8 @@ class HttpRequest:
         request.add_headers(*self.headers.items())
         request.send_headers()
 
-        self._writer = asyncio.async(self.write_bytes(request), loop=self.loop)
+        self._writer = asyncio.async(
+            self.write_bytes(request, reader), loop=self.loop)
 
         self.response = HttpResponse(
             self.method, self.path, self.host,

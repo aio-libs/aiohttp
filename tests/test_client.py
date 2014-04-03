@@ -387,10 +387,11 @@ class HttpRequestTests(unittest.TestCase):
 
         asyncio.async(exc(), loop=self.loop)
 
-        req.send(self.transport, self.protocol)
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, req._writer)
-        self.assertRaises(self.transport.close.called)
+        resp = req.send(self.transport, self.protocol)
+        resp.transport = self.transport
+        self.loop.run_until_complete(req._writer)
+        self.assertTrue(self.transport.close.called)
+        self.assertTrue(self.protocol.set_exception.called)
 
     def test_data_stream_not_bytes(self):
         @asyncio.coroutine
@@ -401,8 +402,8 @@ class HttpRequestTests(unittest.TestCase):
         req = HttpRequest(
             'POST', 'http://python.org/', data=gen(), loop=self.loop)
         req.send(self.transport, self.protocol)
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, req._writer)
+        self.loop.run_until_complete(req._writer)
+        self.assertTrue(self.protocol.set_exception.called)
 
     def test_data_stream_continue(self):
         def gen():
