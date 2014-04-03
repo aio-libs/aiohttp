@@ -198,7 +198,13 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             except Exception as exc:
                 self.handle_error(500, info, message, exc)
             finally:
-                reader.unset_parser()
+                if reader.output and not reader.output.at_eof():
+                    self.log_debug('Uncompleted request.')
+                    self._request_handler = None
+                    self.transport.close()
+                    break
+                else:
+                    reader.unset_parser()
 
                 if self._request_handler:
                     if self._keep_alive and self._keep_alive_period:

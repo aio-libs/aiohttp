@@ -14,4 +14,4 @@ __all__ = (client.__all__ +
            session.__all__ +
            ['__version__'])
 
-__version__ = '0.7.0'
+__version__ = '0.7.0b5'

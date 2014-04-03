@@ -725,7 +725,7 @@ class HttpRequest:
                         value = yield result
                     except Exception as err:
                         exc = err
-                elif isinstance(result, bytes):
+                elif isinstance(result, (bytes, bytearray)):
                     yield from request.write(result)
 
                     value = None

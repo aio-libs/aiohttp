@@ -95,6 +95,10 @@ class StreamParser:
         self._output = None
         self._buffer = buf if buf is not None else ParserBuffer()
 
+    @property
+    def output(self):
+        return self._output
+
     def set_transport(self, transport):
         assert self._transport is None, 'Transport already set'
         self._transport = transport
@@ -274,6 +278,9 @@ class DataQueue:
         self._eof = False
         self._waiter = None
         self._exception = None
+
+    def at_eof(self):
+        return self._eof
 
     def exception(self):
         return self._exception
