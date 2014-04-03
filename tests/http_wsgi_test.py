@@ -60,16 +60,6 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
         self.assertEqual(environ['RAW_URI'], '/path')
         self.assertEqual(environ['wsgi.async'], True)
 
-    def test_environ_except_header(self):
-        self.headers.append(('EXPECT', '101-continue'))
-        self._make_one()
-        self.assertFalse(self.transport.write.called)
-
-        self.headers[0] = ('EXPECT', '100-continue')
-        self._make_one()
-        self.transport.write.assert_called_with(
-            b'HTTP/1.1 100 Continue\r\n\r\n')
-
     def test_environ_headers(self):
         self.headers.extend(
             (('HOST', 'python.org'),

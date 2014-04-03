@@ -72,11 +72,7 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
         server = forward
 
         for hdr_name, hdr_value in message.headers:
-            if hdr_name == 'EXPECT':
-                # handle expect
-                if hdr_value.lower() == '100-continue':
-                    self.transport.write(b'HTTP/1.1 100 Continue\r\n\r\n')
-            elif hdr_name == 'HOST':
+            if hdr_name == 'HOST':
                 server = hdr_value
             elif hdr_name == 'SCRIPT_NAME':
                 script_name = hdr_value
