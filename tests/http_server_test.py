@@ -28,13 +28,15 @@ class HttpServerProtocolTests(unittest.TestCase):
 
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.connection_made(transport)
+        srv.writer = unittest.mock.Mock()
 
         message = unittest.mock.Mock()
         message.headers = []
         message.version = (1, 1)
         srv.handle_request(message, unittest.mock.Mock())
 
-        content = b''.join([c[1][0] for c in list(transport.write.mock_calls)])
+        content = b''.join(
+            [c[1][0] for c in list(srv.writer.write.mock_calls)])
         self.assertTrue(content.startswith(b'HTTP/1.1 404 Not Found\r\n'))
 
     def test_closing(self):
@@ -46,6 +48,7 @@ class HttpServerProtocolTests(unittest.TestCase):
         timeout_handle = unittest.mock.Mock()
         srv._timeout_handle = timeout_handle
         srv.transport = unittest.mock.Mock()
+        srv.writer = unittest.mock.Mock()
 
         srv.closing()
         self.assertTrue(srv.transport.close.called)
@@ -174,9 +177,11 @@ class HttpServerProtocolTests(unittest.TestCase):
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.connection_made(transport)
         srv.keep_alive(True)
+        srv.writer = unittest.mock.Mock()
 
         srv.handle_error(404, headers=(('X-Server', 'asyncio'),))
-        content = b''.join([c[1][0] for c in list(transport.write.mock_calls)])
+        content = b''.join(
+            [c[1][0] for c in list(srv.writer.write.mock_calls)])
         self.assertIn(b'HTTP/1.1 404 Not Found', content)
         self.assertIn(b'X-SERVER: asyncio', content)
         self.assertFalse(srv._keep_alive)
@@ -187,11 +192,13 @@ class HttpServerProtocolTests(unittest.TestCase):
         log = unittest.mock.Mock()
         srv = server.ServerHttpProtocol(debug=True, log=log, loop=self.loop)
         srv.connection_made(transport)
+        srv.writer = unittest.mock.Mock()
 
         m_trace.format_exc.side_effect = ValueError
 
         srv.handle_error(500, exc=object())
-        content = b''.join([c[1][0] for c in list(transport.write.mock_calls)])
+        content = b''.join(
+            [c[1][0] for c in list(srv.writer.write.mock_calls)])
         self.assertTrue(
             content.startswith(b'HTTP/1.1 500 Internal Server Error'))
         self.assertTrue(log.exception.called)
@@ -201,13 +208,15 @@ class HttpServerProtocolTests(unittest.TestCase):
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.debug = True
         srv.connection_made(transport)
+        srv.writer = unittest.mock.Mock()
 
         try:
             raise ValueError()
         except Exception as exc:
             srv.handle_error(999, exc=exc)
 
-        content = b''.join([c[1][0] for c in list(transport.write.mock_calls)])
+        content = b''.join(
+            [c[1][0] for c in list(srv.writer.write.mock_calls)])
 
         self.assertIn(b'HTTP/1.1 500 Internal', content)
         self.assertIn(b'Traceback (most recent call last):', content)
@@ -218,6 +227,7 @@ class HttpServerProtocolTests(unittest.TestCase):
 
         srv = server.ServerHttpProtocol(log=log, loop=self.loop)
         srv.connection_made(transport)
+        srv.writer = unittest.mock.Mock()
 
         srv.handle_error(500)
         self.assertTrue(log.exception.called)
@@ -264,7 +274,7 @@ class HttpServerProtocolTests(unittest.TestCase):
 
         srv = server.ServerHttpProtocol(log=log, debug=True, loop=self.loop)
         srv.connection_made(transport)
-
+        srv.writer = unittest.mock.Mock()
         srv.handle_request = unittest.mock.Mock()
 
         @asyncio.coroutine

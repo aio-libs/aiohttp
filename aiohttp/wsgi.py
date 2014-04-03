@@ -169,7 +169,7 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
                     item = yield from item
                 yield from resp.write(item)
 
-            resp.write_eof()
+            yield from resp.write_eof()
         finally:
             if hasattr(riter, 'close'):
                 riter.close()

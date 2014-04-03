@@ -287,7 +287,9 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             ('Content-Length', str(len(body))))
         response.send_headers()
         response.write(body)
-        response.write_eof()
+        drain = response.write_eof()
 
         self.keep_alive(False)
         self.log_access(message, None, response, time.time() - now)
+
+        return drain

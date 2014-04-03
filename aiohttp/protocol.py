@@ -689,6 +689,8 @@ class HttpMessage:
         except StopIteration:
             pass
 
+        return self.transport.drain()
+
     def _write_chunked_payload(self):
         """Write data in chunked transfer encoding."""
         while True:
