@@ -51,7 +51,7 @@ class HttpServer(aiohttp.server.ServerHttpProtocol):
             raise aiohttp.HttpErrorException(
                 302, headers=(('URI', path), ('Location', path)))
 
-        response = aiohttp.Response(self.transport, 200)
+        response = aiohttp.Response(self.writer, 200)
         response.add_header('Transfer-Encoding', 'chunked')
 
         # content encoding

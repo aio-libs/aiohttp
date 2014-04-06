@@ -31,6 +31,11 @@ class HttpServer(aiohttp.server.ServerHttpProtocol):
     clients = None  # list of all active connections
     parent = None  # supervisor, we use it as broadcaster to all workers
 
+    def __init__(self, *args, parent=None, clients=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.parent = parent
+        self.clients = clients
+
     @asyncio.coroutine
     def handle_request(self, message, payload):
         upgrade = False
@@ -44,12 +49,12 @@ class HttpServer(aiohttp.server.ServerHttpProtocol):
             status, headers, parser, writer = websocket.do_handshake(
                 message.method, message.headers, self.transport)
 
-            resp = aiohttp.Response(self.transport, status)
+            resp = aiohttp.Response(self.writer, status)
             resp.add_headers(*headers)
             resp.send_headers()
 
             # install websocket parser
-            dataqueue = self.stream.reader.set_parser(parser)
+            dataqueue = self.reader.set_parser(parser)
 
             # notify everybody
             print('{}: Someone joined.'.format(os.getpid()))
@@ -89,7 +94,7 @@ class HttpServer(aiohttp.server.ServerHttpProtocol):
 
         else:
             # send html page with js chat
-            response = aiohttp.Response(self.transport, 200)
+            response = aiohttp.Response(self.writer, 200)
             response.add_header('Transfer-Encoding', 'chunked')
             response.add_header('Content-type', 'text/html')
             response.send_headers()
