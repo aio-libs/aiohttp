@@ -31,16 +31,22 @@ def run_briefly(loop):
 
 
 @contextlib.contextmanager
-def run_server(loop, *, host='127.0.0.1', port=0, use_ssl=False, router=None):
+def run_server(loop, *,
+    listen_addr=('127.0.0.1', 8), use_ssl=False, router=None):
     properties = {}
     transports = []
 
     class HttpServer:
 
-        def __init__(self, host, port):
-            self.host = host
-            self.port = port
-            self.address = (host, port)
+        def __init__(self, addr):
+            if isinstance(addr, tuple):
+                host, port = addr
+                self.host = host
+                self.port = port
+            else:
+                self.host = host = 'localhost'
+                self.port = port = 0
+            self.address = addr
             self._url = '{}://{}:{}'.format(
                 'https' if use_ssl else 'http', host, port)
 
@@ -108,10 +114,20 @@ def run_server(loop, *, host='127.0.0.1', port=0, use_ssl=False, router=None):
         thread_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(thread_loop)
 
-        server = thread_loop.run_until_complete(
-            thread_loop.create_server(
+        if isinstance(listen_addr, tuple):
+            host, port = listen_addr
+            server_coroutine = thread_loop.create_server(
                 lambda: TestHttpServer(keep_alive=0.5),
-                host, port, ssl=sslcontext))
+                host, port, ssl=sslcontext)
+        else:
+            try:
+                os.unlink(listen_addr)
+            except FileNotFoundError:
+                pass
+            server_coroutine = thread_loop.create_unix_server(
+                lambda: TestHttpServer(keep_alive=0.5),
+                listen_addr, ssl=sslcontext)
+        server = thread_loop.run_until_complete(server_coroutine)
 
         waiter = asyncio.Future(loop=thread_loop)
         loop.call_soon_threadsafe(
@@ -141,7 +157,7 @@ def run_server(loop, *, host='127.0.0.1', port=0, use_ssl=False, router=None):
 
     thread_loop, waiter, addr = loop.run_until_complete(fut)
     try:
-        yield HttpServer(*addr)
+        yield HttpServer(addr)
     finally:
         thread_loop.call_soon_threadsafe(waiter.set_result, None)
         server_thread.join()
