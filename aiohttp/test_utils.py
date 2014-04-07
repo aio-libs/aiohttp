@@ -31,8 +31,8 @@ def run_briefly(loop):
 
 
 @contextlib.contextmanager
-def run_server(loop, *,
-    listen_addr=('127.0.0.1', 8), use_ssl=False, router=None):
+def run_server(loop, *, listen_addr=('127.0.0.1', 0),
+               use_ssl=False, router=None):
     properties = {}
     transports = []
 

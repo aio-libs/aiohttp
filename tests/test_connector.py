@@ -1,9 +1,6 @@
 """Tests of http client with custom Connector"""
 
 import gc
-import io
-import os.path
-import http.cookies
 import asyncio
 import unittest
 
@@ -19,11 +16,12 @@ class UnixSocketConnector(aiohttp.DefaultConnector):
     def __init__(self, path):
         self.path = path
 
-    def create_connection(self, proto, host, port, *, loop=None, **kwargs):
+    def create_connection(self, protocol_factory, host, port, *,
+                          loop=None, **kwargs):
         if loop is None:
             loop = asyncio.get_event_loop()
         conn = yield from loop.create_unix_connection(
-            proto, self.path, **kwargs)
+            protocol_factory, self.path, **kwargs)
         return conn
 
 
@@ -40,13 +38,12 @@ class HttpClientConnectorTests(unittest.TestCase):
         self.loop.close()
         gc.collect()
 
-
     def test_default_connector(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
-            r = self.loop.run_until_complete(client.request('get',
-                httpd.url('method', 'get'),
-                connector=aiohttp.DefaultConnector(),
-                loop=self.loop))
+            r = self.loop.run_until_complete(
+                client.request('get', httpd.url('method', 'get'),
+                               connector=aiohttp.DefaultConnector(),
+                               loop=self.loop))
             content = self.loop.run_until_complete(r.content.read())
             content = content.decode()
             self.assertEqual(r.status, 200)
@@ -54,12 +51,13 @@ class HttpClientConnectorTests(unittest.TestCase):
 
     def test_unix_connector(self):
         path = '/tmp/aiohttp_unix.sock'
-        with test_utils.run_server(self.loop,
-            listen_addr=path, router=Functional) as httpd:
-            r = self.loop.run_until_complete(client.request('get',
-                httpd.url('method', 'get'),
-                connector=UnixSocketConnector(path),
-                loop=self.loop))
+
+        with test_utils.run_server(
+                self.loop, listen_addr=path, router=Functional) as httpd:
+            r = self.loop.run_until_complete(
+                client.request('get', httpd.url('method', 'get'),
+                               connector=UnixSocketConnector(path),
+                               loop=self.loop))
             content = self.loop.run_until_complete(r.content.read())
             content = content.decode()
             self.assertEqual(r.status, 200)
