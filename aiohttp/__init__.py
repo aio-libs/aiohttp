@@ -1,6 +1,7 @@
 # This relies on each of the submodules having an __all__ variable.
 
 from .protocol import *
+from .connector import *
 from .client import *
 from .errors import *
 from .parsers import *
@@ -12,6 +13,7 @@ __all__ = (client.__all__ +
            parsers.__all__ +
            protocol.__all__ +
            session.__all__ +
+           connector.__all__ +
            ['__version__'])
 
 __version__ = '0.7.0b6'

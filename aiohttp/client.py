@@ -46,6 +46,7 @@ def request(method, url, *,
             session=None,
             verify_ssl=True,
             connection_params=None,
+            connector=aiohttp.DefaultConnector(),
             loop=None,
             read_until_eof=True,
             request_class=None):
@@ -103,7 +104,7 @@ def request(method, url, *,
             verify_ssl=verify_ssl, loop=loop, expect100=expect100)
 
         if session is None:
-            conn = _connect(req, loop, connection_params)
+            conn = _connect(req, loop, connection_params, connector=connector)
         else:
             conn = session.start(req, loop, connection_params)
 
@@ -155,17 +156,18 @@ def request(method, url, *,
 
 
 @asyncio.coroutine
-def _connect(req, loop, params):
+def _connect(req, loop, params, connector):
     if params is not None:
-        transport, proto = yield from loop.create_connection(
+        transport, proto = yield from connector.create_connection(
             functools.partial(aiohttp.StreamProtocol, loop=loop),
             params['host'], params['port'],
+            loop=loop,
             ssl=params['ssl'], family=params['family'],
             proto=params['proto'], flags=params['flags'])
     else:
-        transport, proto = yield from loop.create_connection(
+        transport, proto = yield from connector.create_connection(
             functools.partial(aiohttp.StreamProtocol, loop=loop),
-            req.host, req.port, ssl=req.ssl)
+            req.host, req.port, ssl=req.ssl, loop=loop)
     wrp = TransportWrapper(transport)
     return transport, proto, wrp
 
