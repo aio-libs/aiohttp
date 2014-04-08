@@ -500,6 +500,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 client.request('get', httpd.url('cookies'), loop=self.loop))
             self.assertEqual(resp.status, 200)
 
+            self.assertEqual(list(resp.cookies.keys()), ['c1', 'c2'])
             self.assertEqual(resp.cookies['c1'].value, 'cookie1')
             self.assertEqual(resp.cookies['c2'].value, 'cookie2')
             resp.close()
@@ -670,4 +671,8 @@ class Functional(test_utils.Router):
         for cookie in cookies.output(header='').split('\n'):
             resp.add_header('Set-Cookie', cookie.strip())
 
+        resp.add_header(
+            'Set-Cookie',
+            'ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}='
+            '{925EC0B8-CB17-4BEB-8A35-1033813B0523}; HttpOnly; Path=/')
         self._response(resp)

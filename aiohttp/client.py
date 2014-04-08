@@ -856,7 +856,10 @@ class HttpResponse(http.client.HTTPMessage):
         self.cookies = http.cookies.SimpleCookie()
         if 'Set-Cookie' in self:
             for hdr in self.get_all('Set-Cookie'):
-                self.cookies.load(hdr)
+                try:
+                    self.cookies.load(hdr)
+                except http.cookies.CookieError as exc:
+                    logging.warn('Can not load response cookies: %s', exc)
 
         return self
 
