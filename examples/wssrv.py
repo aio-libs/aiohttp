@@ -49,7 +49,8 @@ class HttpServer(aiohttp.server.ServerHttpProtocol):
             status, headers, parser, writer = websocket.do_handshake(
                 message.method, message.headers, self.transport)
 
-            resp = aiohttp.Response(self.writer, status)
+            resp = aiohttp.Response(
+                self.writer, status, http_version=message.version)
             resp.add_headers(*headers)
             resp.send_headers()
 
@@ -94,7 +95,8 @@ class HttpServer(aiohttp.server.ServerHttpProtocol):
 
         else:
             # send html page with js chat
-            response = aiohttp.Response(self.writer, 200)
+            response = aiohttp.Response(
+                self.writer, 200, http_version=message.version)
             response.add_header('Transfer-Encoding', 'chunked')
             response.add_header('Content-type', 'text/html')
             response.send_headers()

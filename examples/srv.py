@@ -51,7 +51,8 @@ class HttpServer(aiohttp.server.ServerHttpProtocol):
             raise aiohttp.HttpErrorException(
                 302, headers=(('URI', path), ('Location', path)))
 
-        response = aiohttp.Response(self.writer, 200)
+        response = aiohttp.Response(
+            self.writer, 200, http_version=message.version)
         response.add_header('Transfer-Encoding', 'chunked')
 
         # content encoding
@@ -97,7 +98,7 @@ class HttpServer(aiohttp.server.ServerHttpProtocol):
             except OSError:
                 response.write(b'Cannot open')
 
-        response.write_eof()
+        yield from response.write_eof()
         if response.keep_alive():
             self.keep_alive(True)
 
