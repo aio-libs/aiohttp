@@ -30,12 +30,12 @@ To retrieve something from the web::
 
   def get_body(url):
       response = yield from request('GET', url)
-      return (yield from response.read())
+      return (yield from response.read_and_close())
 
 You can use the get command like this anywhere in your ``asyncio`` powered program::
 
   response = yield from aiohttp.request('GET', 'http://python.org')
-  body = yield from response.read()
+  body = yield from response.read_and_close()
   print (body)
 
 The signature of request is the following::
