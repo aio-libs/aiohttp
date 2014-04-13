@@ -6,11 +6,9 @@ CHANGES
 
 - Connection flow control.
 
-- Http client session/connection pooling refactoring.
+- Http client session/connection pool refactoring.
 
 - Better handling for bad server requests.
-
-- Periodically cleanup session's stale connections
 
 
 0.6.5 (03-29-2014)

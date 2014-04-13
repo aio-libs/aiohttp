@@ -215,7 +215,8 @@ class Router:
     def _start_response(self, code):
         return aiohttp.Response(self._srv.writer, code)
 
-    def _response(self, response, body=None, headers=None, chunked=False):
+    def _response(self, response, body=None,
+                  headers=None, chunked=False, write_body=None):
         r_headers = {}
         for key, val in self._headers.items():
             key = '-'.join(p.capitalize() for p in key.split('-'))
@@ -294,7 +295,14 @@ class Router:
         response.send_headers()
 
         # write payload
-        response.write(client.str_to_bytes(body))
+        if write_body:
+            try:
+                write_body(response, body)
+            except:
+                return
+        else:
+            response.write(client.str_to_bytes(body))
+
         response.write_eof()
 
         # keep-alive

@@ -527,6 +527,15 @@ class ParserBufferTests(unittest.TestCase):
         self.assertEqual(len(buf), 4)
         self.assertEqual(bytes(buf), b'data')
 
+    def test_read_exc(self):
+        buf = self._make_one()
+        exc = ValueError()
+        buf.set_exception(exc)
+        self.assertIs(buf.exception(), exc)
+        p = buf.read(3)
+        next(p)
+        self.assertRaises(ValueError, p.send, b'1')
+
     def test_read(self):
         buf = self._make_one()
         p = buf.read(3)

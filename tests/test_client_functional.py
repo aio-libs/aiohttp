@@ -3,6 +3,7 @@
 import gc
 import io
 import os.path
+import json
 import http.cookies
 import asyncio
 import unittest
@@ -526,6 +527,16 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 client.request('get', httpd.url('method', 'get'),
                                timeout=0.1, loop=self.loop))
 
+    def test_broken_connection(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            r = self.loop.run_until_complete(
+                client.request('get', httpd.url('broken'), loop=self.loop))
+            self.assertEqual(r.status, 200)
+            self.assertRaises(
+                aiohttp.IncompleteRead,
+                self.loop.run_until_complete, r.read(True))
+            r.close()
+
     def test_request_conn_error(self):
         self.assertRaises(
             aiohttp.ConnectionError,
@@ -677,3 +688,16 @@ class Functional(test_utils.Router):
             'ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}='
             '{925EC0B8-CB17-4BEB-8A35-1033813B0523}; HttpOnly; Path=/')
         self._response(resp)
+
+    @test_utils.Router.define('/broken$')
+    def broken(self, match):
+        resp = self._start_response(200)
+
+        def write_body(resp, body):
+            self._transport.close()
+            raise ValueError()
+
+        self._response(
+            resp,
+            body=json.dumps({'t': (b'0'*1024).decode('utf-8')}),
+            write_body=write_body)

@@ -344,8 +344,15 @@ class ParserBuffer(bytearray):
         self.offset = 0
         self.size = 0
         self._limit = limit
+        self._exception = None
         self._writer = self._feed_data()
         next(self._writer)
+
+    def exception(self):
+        return self._exception
+
+    def set_exception(self, exc):
+        self._exception = exc
 
     def shrink(self):
         if self.offset:
@@ -364,6 +371,11 @@ class ParserBuffer(bytearray):
             # shrink buffer
             if (self.offset and len(self) > self._limit):
                 self.shrink()
+
+            if self._exception:
+                self._writer = self._feed_data()
+                next(self._writer)
+                raise self._exception
 
     def feed_data(self, data):
         self._writer.send(data)
