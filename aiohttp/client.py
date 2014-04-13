@@ -6,7 +6,6 @@ import asyncio
 import base64
 import collections
 import email.message
-import functools
 import http.client
 import http.cookies
 import json
@@ -17,8 +16,6 @@ import logging
 import mimetypes
 import os
 import random
-import ssl as ssl_mod
-import socket
 import time
 import uuid
 import urllib.parse
@@ -39,14 +36,10 @@ def request(method, url, *,
             encoding='utf-8',
             version=(1, 1),
             timeout=None,
-            conn_timeout=None,
             compress=None,
             chunked=None,
             expect100=False,
-            session=None,
-            verify_ssl=True,
-            connection_params=None,
-            connector=aiohttp.DefaultConnector(),
+            connector=None,
             loop=None,
             read_until_eof=True,
             request_class=None):
@@ -65,8 +58,6 @@ def request(method, url, *,
        for multipart encoding upload
     :param auth: (optional) Auth tuple to enable Basic HTTP Auth
     :param timeout: (optional) Float describing the timeout of the request
-    :param conn_timeout: (optional) Float describing the timeout
-       of the host connection
     :param allow_redirects: (optional) Boolean. Set to True if POST/PUT/DELETE
        redirect following is allowed.
     :param compress: Boolean. Set to True if request has to be compressed
@@ -74,8 +65,8 @@ def request(method, url, *,
     :param chunked: Boolean or Integer. Set to chunk size for chunked
        transfer encoding.
     :param expect100: Boolean. Expect 100-continue response from server.
-    :param session: aiohttp.Session instance to support connection pooling and
-       session cookies.
+    :param connector: aiohttp.conntect.SocketConnector instance to support
+       connection pooling and session cookies.
     :param read_until_eof: Read response until eof if response
        does not have Content-Length header.
     :param request_class: Custom Request class implementation.
@@ -87,7 +78,7 @@ def request(method, url, *,
       >>> resp = yield from aiohttp.request('GET', 'http://python.org/')
       >>> resp
       <HttpResponse(python.org/) [200]>
-      >>> data = yield from resp.read()
+      >>> data = yield from resp.read_and_close()
 
     """
     redirects = 0
@@ -95,40 +86,36 @@ def request(method, url, *,
         loop = asyncio.get_event_loop()
     if request_class is None:
         request_class = HttpRequest
+    if connector is None:
+        connector = aiohttp.SocketConnector(loop=loop)
 
     while True:
         req = request_class(
             method, url, params=params, headers=headers, data=data,
             cookies=cookies, files=files, auth=auth, encoding=encoding,
             version=version, compress=compress, chunked=chunked,
-            verify_ssl=verify_ssl, loop=loop, expect100=expect100)
+            loop=loop, expect100=expect100)
 
-        if session is None:
-            conn = _connect(req, loop, connection_params, connector=connector)
-        else:
-            conn = session.start(req, loop, connection_params)
-
-        if conn_timeout is None and timeout is not None:
-            conn_timeout = timeout
-
-        conn_task = asyncio.async(conn, loop=loop)
         try:
-            if conn_timeout:
-                transport, proto, wrp = yield from asyncio.wait_for(
-                    conn_task, conn_timeout, loop=loop)
-            else:
-                transport, proto, wrp = yield from conn_task
+            conn = yield from connector.connect(req)
 
-            resp = yield from _make_request(
-                transport, proto, req, wrp, timeout, read_until_eof, loop)
+            resp = req.send(conn.writer, conn.reader)
+            try:
+                if timeout:
+                    yield from asyncio.wait_for(
+                        resp.start(conn, read_until_eof), timeout, loop=loop)
+                else:
+                    yield from resp.start(conn, read_until_eof)
+            except:
+                resp.close()
+                conn.close()
+                raise
         except asyncio.TimeoutError:
             raise aiohttp.TimeoutError from None
         except aiohttp.BadStatusLine as exc:
             raise aiohttp.ClientConnectionError(exc)
         except OSError as exc:
             raise aiohttp.OsConnectionError(exc)
-        finally:
-            conn_task.cancel()
 
         # redirects
         if resp.status in (301, 302) and allow_redirects:
@@ -153,238 +140,6 @@ def request(method, url, *,
         break
 
     return resp
-
-
-@asyncio.coroutine
-def _connect(req, loop, params, connector):
-    if params is not None:
-        transport, proto = yield from connector.create_connection(
-            functools.partial(aiohttp.StreamProtocol, loop=loop),
-            params['host'], params['port'],
-            loop=loop,
-            ssl=params['ssl'], family=params['family'],
-            proto=params['proto'], flags=params['flags'])
-    else:
-        transport, proto = yield from connector.create_connection(
-            functools.partial(aiohttp.StreamProtocol, loop=loop),
-            req.host, req.port, ssl=req.ssl, loop=loop)
-    wrp = TransportWrapper(transport)
-    return transport, proto, wrp
-
-
-@asyncio.coroutine
-def _make_request(transport, proto, req,
-                  wrapper, timeout, read_until_eof, loop):
-    resp = req.send(proto.writer, proto.reader)
-    try:
-        if timeout:
-            yield from asyncio.wait_for(
-                resp.start(wrapper, proto, read_until_eof), timeout, loop=loop)
-        else:
-            yield from resp.start(wrapper, proto, read_until_eof)
-    except:
-        resp.close()
-        transport.close()
-        raise
-    else:
-        return resp
-
-
-class TransportWrapper:
-
-    def __init__(self, transport):
-        self.transport = transport
-
-    def close(self, force=False):
-        self.transport.close()
-
-
-class HttpClient:
-    """Allow to use mutiple hosts with same path. And automatically
-    mark failed hosts.
-    """
-
-    _resolve_timeout = 360.0  # update dns info every 5 minutes
-
-    def __init__(self, hosts, *,
-                 method=None, path=None, ssl=False, session=False,
-                 timeout=None, conn_timeout=None, failed_timeout=5.0,
-                 resolve=True, verify_ssl=True, loop=None):
-        super().__init__()
-
-        if isinstance(hosts, str):
-            hosts = (hosts,)
-
-        if not hosts:
-            raise ValueError('Hosts are required')
-
-        self._hosts = []
-        for host in hosts:
-            if isinstance(host, str):
-                if ':' in host:
-                    host, port = host.split(':')
-                    try:
-                        port = int(port)
-                    except:
-                        raise ValueError('Port has to be integer: %s' % host)
-                else:
-                    port = 80
-            else:
-                host, port = host
-
-            self._hosts.append((host, port))
-
-        self._method = method
-        self._path = path
-        self._timeout = timeout
-        self._conn_timeout = conn_timeout
-        self._schema = 'https' if ssl else 'http'
-        if isinstance(session, aiohttp.Session):
-            self._session = session
-        else:
-            self._session = aiohttp.Session(loop=loop) if session else None
-
-        self._failed = collections.deque()
-        self._failed_handle = None
-        self._failed_timeout = failed_timeout
-
-        self._ssl = ssl
-        self._verify_ssl = verify_ssl
-
-        if self._ssl and not self._verify_ssl:
-            sslcontext = self._ssl = ssl_mod.SSLContext(
-                ssl_mod.PROTOCOL_SSLv23)
-            sslcontext.options |= ssl_mod.OP_NO_SSLv2
-            sslcontext.set_default_verify_paths()
-
-        if loop is None:
-            loop = asyncio.get_event_loop()
-        self._loop = loop
-
-        self._resolve = resolve
-        self._resolved_hosts = {}
-        if resolve:
-            self._resolve_handle = self._loop.call_later(
-                self._resolve_timeout, self._cleanup_resolved_host)
-
-    def _cleanup_resolved_host(self):
-        self._resolved_hosts.clear()
-        self._resolve_handle = self._loop.call_later(
-            self._resolve_timeout, self._cleanup_resolved_host)
-
-    @asyncio.coroutine
-    def _resolve_host(self, host, port):
-        if self._resolve:
-            key = (host, port)
-
-            if key not in self._resolved_hosts:
-                infos = yield from self._loop.getaddrinfo(
-                    host, port, type=socket.SOCK_STREAM, family=socket.AF_INET)
-
-                hosts = []
-                for family, _, proto, _, address in infos:
-                    hosts.append(
-                        {'host': address[0], 'port': address[1],
-                         'ssl': self._ssl, 'family': family,
-                         'proto': proto, 'flags': socket.AI_NUMERICHOST})
-                self._resolved_hosts[key] = hosts
-
-            return self._resolved_hosts[key]
-        else:
-            return [{'host': host, 'port': port,
-                     'ssl': self._ssl, 'family': 0, 'proto': 0, 'flags': 0}]
-
-    def _resurrect_failed(self):
-        now = int(time.time())
-
-        while self._failed:
-            if (now - self._failed[0][1]) >= self._failed_timeout:
-                self._hosts.append(self._failed.popleft()[0])
-            else:
-                break
-
-        if self._failed:
-            self._failed_handle = self._loop.call_later(
-                self._failed_timeout, self._resurrect_failed)
-        else:
-            self._failed_handle = None
-
-    @asyncio.coroutine
-    def request(self, method=None, path=None, *,
-                params=None,
-                data=None,
-                headers=None,
-                cookies=None,
-                files=None,
-                auth=None,
-                allow_redirects=True,
-                max_redirects=10,
-                encoding='utf-8',
-                version=(1, 1),
-                compress=None,
-                timeout=None,
-                conn_timeout=None,
-                chunked=None,
-                expect100=False,
-                read_until_eof=True):
-
-        if method is None:
-            method = self._method
-        if path is None:
-            path = self._path
-        if timeout is None:
-            timeout = self._timeout
-        if conn_timeout is None:
-            conn_timeout = self._conn_timeout
-
-        # if all hosts marked as failed try first from failed
-        if not self._hosts:
-            self._hosts.append(self._failed.popleft()[0])
-
-        hosts = self._hosts
-
-        while hosts:
-            idx = random.randint(0, len(hosts)-1)
-
-            h_info = hosts[idx]
-            url = urllib.parse.urljoin(
-                '{}://{}:{}'.format(
-                    self._schema, h_info[0], h_info[1]), path)
-            host_params = yield from self._resolve_host(h_info[0], h_info[1])
-
-            for conn_params in host_params:
-                try:
-                    resp = yield from request(
-                        method, url, params=params, data=data, headers=headers,
-                        cookies=cookies, files=files, auth=auth,
-                        encoding=encoding, allow_redirects=allow_redirects,
-                        version=version, max_redirects=max_redirects,
-                        conn_timeout=conn_timeout, timeout=timeout,
-                        compress=compress, chunked=chunked,
-                        verify_ssl=self._verify_ssl, expect100=expect100,
-                        session=self._session, connection_params=conn_params,
-                        read_until_eof=read_until_eof, loop=self._loop)
-                except (aiohttp.ConnectionError, aiohttp.TimeoutError):
-                    pass
-                else:
-                    if resp.status >= 500:
-                        self._resolved_hosts.clear()
-
-                    return resp
-
-            if h_info in hosts:
-                # could be removed concurrently
-                hosts.remove(h_info)
-                self._failed.append((h_info, int(time.time())))
-                if not self._failed_handle:
-                    self._failed_handle = self._loop.call_later(
-                        self._failed_timeout, self._resurrect_failed)
-
-                key = (h_info[0], h_info[1])
-                if key in self._resolved_hosts:
-                    del self._resolved_hosts[key]
-
-        raise aiohttp.ConnectionError('All hosts are unreachable.')
 
 
 class HttpRequest:
@@ -462,11 +217,6 @@ class HttpRequest:
 
         # extract host and port
         self.ssl = scheme == 'https'
-        if self.ssl and not self.verify_ssl:
-            sslcontext = self.ssl = ssl_mod.SSLContext(ssl_mod.PROTOCOL_SSLv23)
-            sslcontext.options |= ssl_mod.OP_NO_SSLv2
-            sslcontext.set_default_verify_paths()
-
         if ':' in netloc:
             netloc, port_s = netloc.split(':', 1)
             try:
@@ -787,11 +537,10 @@ class HttpResponse(http.client.HTTPMessage):
     reason = None   # Reason-Phrase
 
     cookies = None  # Response cookies (Set-Cookie)
+    content = None  # Payload stream
 
-    content = None  # payload stream
-    reader = None   # input stream
-    transport = None  # current transport
-
+    _reader = None   # input stream
+    _connection = None  # current connection
     _response_parser = aiohttp.HttpResponseParser()
 
     def __init__(self, method, url, host='', *, writer=None, continue100=None):
@@ -805,10 +554,10 @@ class HttpResponse(http.client.HTTPMessage):
         self._continue = continue100
 
     def __del__(self):
-        if self.transport is not None:
+        if self._connection is not None:
             logging.warn('HttpResponse has to be closed explicitly! %s:%s:%s',
                          self.method, self.host, self.url)
-            self.close()
+            self.close(True)
 
     def __repr__(self):
         out = io.StringIO()
@@ -822,13 +571,13 @@ class HttpResponse(http.client.HTTPMessage):
     def wait_for_100(self):
         return self._continue is not None
 
-    def start(self, transport, protocol, read_until_eof=False):
+    def start(self, connection, read_until_eof=False):
         """Start response processing."""
-        self.reader = protocol.reader
-        self.transport = transport
+        self._reader = connection.reader
+        self._connection = connection
 
         while True:
-            httpstream = self.reader.set_parser(self._response_parser)
+            httpstream = self._reader.set_parser(self._response_parser)
 
             # read response
             self.message = yield from httpstream.read()
@@ -849,7 +598,7 @@ class HttpResponse(http.client.HTTPMessage):
             self.add_header(hdr, val)
 
         # payload
-        self.content = self.reader.set_parser(
+        self.content = self._reader.set_parser(
             aiohttp.HttpPayloadParser(self.message, readall=read_until_eof))
 
         # cookies
@@ -864,9 +613,12 @@ class HttpResponse(http.client.HTTPMessage):
         return self
 
     def close(self, force=False):
-        if self.transport is not None:
-            self.transport.close(force)
-            self.transport = None
+        if self._connection is not None:
+            if force:
+                self._connection.close()
+            else:
+                self._connection.release()
+            self._connection = None
         if (self._writer is not None) and not self._writer.done():
             self._writer.cancel()
             self._writer = None
@@ -981,3 +733,152 @@ def encode_multipart_data(fields, boundary, encoding='utf-8', chunk_size=8196):
             yield b'\r\n'
 
     yield b'--' + boundary + b'--\r\n'
+
+
+class HttpClient:
+    """Allow to use mutiple hosts with same path. And automatically
+    mark failed hosts.
+    """
+
+    def __init__(self, hosts, *, method=None, path=None,
+                 ssl=False, timeout=None,
+                 conn_pool=True, conn_timeout=None, failed_timeout=5.0,
+                 resolve=True, resolve_timeout=360.0, verify_ssl=True,
+                 loop=None):
+        super().__init__()
+
+        if isinstance(hosts, str):
+            hosts = (hosts,)
+
+        if not hosts:
+            raise ValueError('Hosts are required')
+
+        self._hosts = []
+        for host in hosts:
+            if isinstance(host, str):
+                if ':' in host:
+                    host, port = host.split(':')
+                    try:
+                        port = int(port)
+                    except:
+                        raise ValueError('Port has to be integer: %s' % host)
+                else:
+                    port = 80
+            else:
+                host, port = host
+
+            self._hosts.append((host, port))
+
+        self._method = method
+        self._path = path
+        self._timeout = timeout
+        self._schema = 'https' if ssl else 'http'
+
+        self._failed = collections.deque()
+        self._failed_handle = None
+        self._failed_timeout = failed_timeout
+
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        self._loop = loop
+
+        if conn_pool:
+            self._connector = aiohttp.SocketConnector(
+                share_cookies=True, conn_timeout=conn_timeout,
+                resolve=resolve, verify_ssl=verify_ssl, loop=loop)
+
+            self._resolve_timeout = resolve_timeout
+            self._resolve_handle = self._loop.call_later(
+                self._resolve_timeout, self._cleanup_resolved_host)
+        else:
+            self._connector = None
+
+    def _cleanup_resolved_host(self):
+        if self._connector:
+            self._connector.clear_resolved_hosts()
+            self._resolve_handle.cancel()
+            self._resolve_handle = self._loop.call_later(
+                self._resolve_timeout, self._cleanup_resolved_host)
+
+    def _resurrect_failed(self):
+        now = int(time.time())
+
+        while self._failed:
+            if (now - self._failed[0][1]) >= self._failed_timeout:
+                self._hosts.append(self._failed.popleft()[0])
+            else:
+                break
+
+        if self._failed:
+            self._failed_handle = self._loop.call_later(
+                self._failed_timeout, self._resurrect_failed)
+        else:
+            self._failed_handle = None
+
+    @asyncio.coroutine
+    def request(self, method=None, path=None, *,
+                params=None,
+                data=None,
+                headers=None,
+                cookies=None,
+                files=None,
+                auth=None,
+                allow_redirects=True,
+                max_redirects=10,
+                encoding='utf-8',
+                version=(1, 1),
+                compress=None,
+                timeout=None,
+                chunked=None,
+                expect100=False,
+                read_until_eof=True):
+
+        if method is None:
+            method = self._method
+        if path is None:
+            path = self._path
+        if timeout is None:
+            timeout = self._timeout
+
+        # if all hosts marked as failed try first from failed
+        if not self._hosts:
+            self._hosts.append(self._failed.popleft()[0])
+
+        hosts = self._hosts
+
+        while hosts:
+            idx = random.randint(0, len(hosts)-1)
+
+            info = hosts[idx]
+            url = urllib.parse.urljoin(
+                '{}://{}:{}'.format(self._schema, info[0], info[1]), path)
+
+            try:
+                resp = yield from request(
+                    method, url, params=params, data=data, headers=headers,
+                    cookies=cookies, files=files, auth=auth,
+                    encoding=encoding, allow_redirects=allow_redirects,
+                    version=version, max_redirects=max_redirects,
+                    timeout=timeout, compress=compress, chunked=chunked,
+                    expect100=expect100, read_until_eof=read_until_eof,
+                    connector=self._connector, loop=self._loop)
+            except (aiohttp.ConnectionError, aiohttp.TimeoutError):
+                pass
+            else:
+                if 500 <= resp.status <= 600:
+                    self._cleanup_resolved_host()
+
+                return resp
+
+            if info in hosts:
+                # could be removed concurrently
+                hosts.remove(info)
+                self._failed.append((info, int(time.time())))
+                if not self._failed_handle:
+                    self._failed_handle = self._loop.call_later(
+                        self._failed_timeout, self._resurrect_failed)
+
+                if self._connector:
+                    self._connector.clear_resolved_hosts(info[0], info[1])
+
+        raise aiohttp.ConnectionError('All hosts are unreachable.')

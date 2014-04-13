@@ -7,7 +7,6 @@ import time
 import unittest
 import unittest.mock
 import urllib.parse
-import ssl
 
 import aiohttp
 from aiohttp.client import HttpRequest, HttpResponse, HttpClient
@@ -19,18 +18,26 @@ class HttpResponseTests(unittest.TestCase):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
 
-        self.transport = unittest.mock.Mock()
+        self.connection = unittest.mock.Mock()
         self.stream = aiohttp.StreamParser(loop=self.loop)
         self.response = HttpResponse('get', 'http://python.org')
 
     def tearDown(self):
         self.loop.close()
 
+    def test_del(self):
+        response = HttpResponse('get', 'http://python.org')
+
+        response._connection = unittest.mock.Mock()
+        close = response.close = unittest.mock.Mock()
+        del response
+        self.assertTrue(close.called)
+
     def test_close(self):
-        self.response.transport = self.transport
+        self.response._connection = self.connection
         self.response.close()
-        self.assertIsNone(self.response.transport)
-        self.assertTrue(self.transport.close.called)
+        self.assertIsNone(self.response._connection)
+        self.assertTrue(self.connection.release.called)
         self.response.close()
         self.response.close()
 
@@ -67,6 +74,7 @@ class HttpRequestTests(unittest.TestCase):
         asyncio.set_event_loop(None)
 
         self.transport = unittest.mock.Mock()
+        self.connection = unittest.mock.Mock()
         self.protocol = unittest.mock.Mock()
         self.protocol.writer.drain.return_value = ()
         self.stream = aiohttp.StreamParser(loop=self.loop)
@@ -388,9 +396,9 @@ class HttpRequestTests(unittest.TestCase):
         asyncio.async(exc(), loop=self.loop)
 
         resp = req.send(self.transport, self.protocol)
-        resp.transport = self.transport
+        resp._connection = self.connection
         self.loop.run_until_complete(req._writer)
-        self.assertTrue(self.transport.close.called)
+        self.assertTrue(self.connection.close.called)
         self.assertTrue(self.protocol.set_exception.called)
 
     def test_data_stream_not_bytes(self):
@@ -493,33 +501,30 @@ class HttpClientTests(unittest.TestCase):
         self.assertIs(c._loop, asyncio.get_event_loop.return_value)
 
         c = HttpClient([('localhost', 1000)], ssl=True, verify_ssl=False)
-        self.assertIsInstance(c._ssl, ssl.SSLContext)
+        self.assertFalse(c._connector._verify_ssl)
 
-        c = HttpClient([('localhost', 1000)], session=True, loop=self.loop)
-        self.assertIsInstance(c._session, aiohttp.Session)
-
-        s = aiohttp.Session(loop=self.loop)
-        c = HttpClient([('localhost', 1000)], session=s, loop=self.loop)
-        self.assertIs(c._session, s)
+        c = HttpClient([('localhost', 1000)], conn_pool=False, loop=self.loop)
+        self.assertIsNone(c._connector)
 
     def test_cleanup_resolved_hosts(self):
         loop = unittest.mock.Mock()
         c = HttpClient('localhost:8080', loop=loop, resolve=True)
-        c._resolved_hosts[('localhost', 123)] = object()
+        c._connector._resolved_hosts[('localhost', 123)] = object()
         loop.call_later.assert_called_with(
             c._resolve_timeout, c._cleanup_resolved_host)
         loop.reset_mock()
 
         c._cleanup_resolved_host()
-        self.assertFalse(bool(c._resolved_hosts))
+        self.assertFalse(bool(c._connector._resolved_hosts))
         loop.call_later.assert_called_with(
             c._resolve_timeout, c._cleanup_resolved_host)
 
-    @unittest.mock.patch('aiohttp.client.asyncio')
-    def test_resurrect_failed(self, asyncio):
+    def test_resurrect_failed(self):
         now = int(time.time())
+        loop = unittest.mock.Mock()
 
-        c = HttpClient([('localhost', 1000), ('localhost', 1000)])
+        c = HttpClient(
+            [('localhost', 1000), ('localhost', 1000)], loop=loop)
         c._hosts = []
         c._failed.append((('localhost', 1000), now - 10))
         c._failed.append((('localhost', 1001), now - 10))
@@ -528,15 +533,15 @@ class HttpClientTests(unittest.TestCase):
 
         self.assertEqual(
             c._hosts, [('localhost', 1000), ('localhost', 1001)])
-        self.assertTrue(
-            asyncio.get_event_loop.return_value.call_later.called)
+        self.assertTrue(loop.call_later.called)
 
     @unittest.mock.patch('aiohttp.client.asyncio')
     def test_resurrect_failed_all(self, asyncio):
         now = int(time.time())
 
         c = HttpClient(
-            [('localhost', 1000), ('localhost', 1000)], resolve=False)
+            [('localhost', 1000), ('localhost', 1000)],
+            resolve=False, loop=self.loop)
         c._hosts = []
         c._failed.append((('localhost', 1000), now - 10))
         c._failed.append((('localhost', 1001), now - 10))
@@ -558,12 +563,12 @@ class HttpClientTests(unittest.TestCase):
 
     def test_failed_request_conn(self):
         c = HttpClient(
-            [('localhost', 56777), ('localhost', 56778)], loop=self.loop)
+            [('localhost', 56777), ('localhost', 56778)],
+            conn_timeout=0.0001, loop=self.loop)
 
         self.assertRaises(
             aiohttp.ConnectionError,
-            self.loop.run_until_complete,
-            c.request('get', path='/', conn_timeout=0.0001))
+            self.loop.run_until_complete, c.request('get', path='/'))
 
     def test_failed_request_one_failed(self):
         now = int(time.time())
@@ -582,7 +587,8 @@ class HttpClientTests(unittest.TestCase):
     @unittest.mock.patch('aiohttp.client.request')
     def test_cleanup_resolved_hosts_on_500(self, m_request):
         c = HttpClient(
-            [('localhost', 56777), ('localhost', 56778)], loop=self.loop)
+            [('localhost', 56777), ('localhost', 56778)],
+            conn_timeout=0.0001, loop=self.loop)
 
         called = False
 
@@ -598,7 +604,7 @@ class HttpClientTests(unittest.TestCase):
             def __getitem__(self, key):
                 return 'localhost'
 
-        c._resolved_hosts = m()
+        c._connector._resolved_hosts = m()
 
         resp = unittest.mock.Mock()
         resp.status = 500
@@ -606,7 +612,5 @@ class HttpClientTests(unittest.TestCase):
         m_request.return_value = asyncio.Future(loop=self.loop)
         m_request.return_value.set_result(resp)
 
-        self.loop.run_until_complete(
-            c.request('get', path='/', conn_timeout=0.0001))
-
+        self.loop.run_until_complete(c.request('get', path='/'))
         self.assertTrue(called)

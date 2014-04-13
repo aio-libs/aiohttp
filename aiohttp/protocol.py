@@ -510,8 +510,8 @@ class HttpMessage:
 
     HOP_HEADERS = None  # Must be set by subclass.
 
-    SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} asyncio/0.1'.format(
-        sys.version_info)
+    SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} aiohttp/{1}'.format(
+        sys.version_info, aiohttp.__version__)
 
     status = None
     status_line = b''

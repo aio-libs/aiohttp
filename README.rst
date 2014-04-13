@@ -1,7 +1,6 @@
 http client/server for asyncio
 ==============================
 
-
 .. image:: https://secure.travis-ci.org/KeepSafe/aiohttp.png
   :target:  https://secure.travis-ci.org/KeepSafe/aiohttp
 
@@ -13,7 +12,7 @@ Requirements
 ------------
 
 - Python >= 3.3
-- asyncio https://pypi.python.org/pypi/asyncio/0.3.1
+- asyncio https://pypi.python.org/pypi/asyncio/0.4.1
 
 
 License
@@ -52,12 +51,10 @@ The signature of request is the following::
           encoding='utf-8',
           version=(1, 1),
           timeout=None,
-          conn_timeout=None,
           compress=None,
           chunked=None,
           expect100=False,
-          session=None,
-          verify_ssl=True,
+          connector=None,
           read_until_eof=True,
           loop=None
   )
@@ -76,7 +73,6 @@ It constructs and sends a request. It returns response object. Parameters are ex
   for multipart encoding upload
 - ``auth``: (optional) Auth tuple to enable Basic HTTP Auth
 - ``timeout``: (optional) Float describing the timeout of the request
-- ``conn_timeout``: (optional) Float describing the timeout of the tcp connection
 - ``allow_redirects``: (optional) Boolean. Set to True if POST/PUT/DELETE
   redirect following is allowed.
 - ``compress``: Boolean. Set to True if request has to be compressed
@@ -84,8 +80,8 @@ It constructs and sends a request. It returns response object. Parameters are ex
 - ``chunked``: Boolean or Integer. Set to chunk size for chunked
   transfer encoding.
 - ``expect100``: Boolean. Expect 100-continue response from server.
-- ``session``: ``aiohttp.Session`` instance to support connection pooling and
-  session cookies.
+- ``connector``: ``aiohttp.connector.SocketConnector`` instance to support
+  connection pooling and session cookies.
 - ``read_until_eof``: Read response until eof if response
   does not have Content-Length header.
 - ``loop``: Optional event loop.

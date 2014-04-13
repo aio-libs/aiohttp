@@ -4,7 +4,9 @@ CHANGES
 0.7.0 (Unreleased)
 ------------------
 
-- Http client flow control.
+- Connection flow control.
+
+- Http client session/connection pooling refactoring.
 
 - Better handling for bad server requests.
 
