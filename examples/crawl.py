@@ -21,8 +21,8 @@ class Crawler:
         self.tasks = set()
         self.sem = asyncio.Semaphore(maxtasks)
 
-        # session stores cookies between requests and uses connection pool
-        self.session = aiohttp.Session()
+        # connector stores cookies between requests and uses connection pool
+        self.connector = aiohttp.SocketConnector(share_cookies=True, loop=loop)
 
     @asyncio.coroutine
     def run(self):
@@ -31,7 +31,7 @@ class Crawler:
         while self.busy:
             yield from asyncio.sleep(1)
 
-        self.session.close()
+        self.connector.close()
         self.loop.stop()
 
     @asyncio.coroutine
@@ -58,7 +58,7 @@ class Crawler:
         self.busy.add(url)
         try:
             resp = yield from aiohttp.request(
-                'get', url, session=self.session)
+                'get', url, connector=self.connector)
         except Exception as exc:
             print('...', url, 'has error', repr(str(exc)))
             self.done[url] = False
