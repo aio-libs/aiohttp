@@ -28,7 +28,7 @@ To retrieve something from the web::
   import aiohttp
 
   def get_body(url):
-      response = yield from request('GET', url)
+      response = yield from aiohttp.request('GET', url)
       return (yield from response.read_and_close())
 
 You can use the get command like this anywhere in your ``asyncio`` powered program::
