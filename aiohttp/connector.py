@@ -119,7 +119,7 @@ class BaseConnector(object):
         transport, proto = self._get(key)
         if transport is None:
             if self._conn_timeout:
-                transport, proto, wrp = yield from asyncio.wait_for(
+                transport, proto = yield from asyncio.wait_for(
                     self._create_connection(req),
                     self._conn_timeout, loop=self._loop)
             else:
