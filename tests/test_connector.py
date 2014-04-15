@@ -2,9 +2,9 @@
 
 import asyncio
 import http.cookies
-import sys
 import gc
 import time
+import socket
 import unittest
 from unittest import mock
 
@@ -258,7 +258,7 @@ class HttpClientConnectorTests(unittest.TestCase):
             self.assertEqual(r.status, 200)
             r.close()
 
-    @unittest.skipUnless(sys.platform.startswith("linux"), "requires unix")
+    @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'requires unix')
     def test_unix_connector(self):
         path = '/tmp/aiohttp_unix.sock'
 

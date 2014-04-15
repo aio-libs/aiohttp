@@ -5,10 +5,11 @@ import unittest.mock
 
 try:
     from aiohttp import worker
-except Exception as error:
-    raise unittest.SkipTest("gunicorn required") from error
+except ImportError as error:
+    raise unittest.SkipTest('gunicorn required') from error
 
 from aiohttp.wsgi import WSGIServerHttpProtocol
+
 
 class TestWorker(worker.AsyncGunicornWorker):
 
