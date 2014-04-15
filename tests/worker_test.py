@@ -3,9 +3,12 @@ import asyncio
 import unittest
 import unittest.mock
 
-from aiohttp import worker
-from aiohttp.wsgi import WSGIServerHttpProtocol
+try:
+    from aiohttp import worker
+except Exception as error:
+    raise unittest.SkipTest("gunicorn required") from error
 
+from aiohttp.wsgi import WSGIServerHttpProtocol
 
 class TestWorker(worker.AsyncGunicornWorker):
 
