@@ -1,6 +1,6 @@
 # This relies on each of the submodules having an __all__ variable.
 
-__version__ = '0.7.0b8'
+__version__ = '0.7.0'
 
 
 from .protocol import *

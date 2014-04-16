@@ -44,10 +44,10 @@ class HttpResponseTests(unittest.TestCase):
     def test_wait_for_100(self):
         response = HttpResponse(
             'get', 'http://python.org', continue100=object())
-        self.assertTrue(response.wait_for_100())
+        self.assertTrue(response.waiting_for_continue())
         response = HttpResponse(
             'get', 'http://python.org')
-        self.assertFalse(response.wait_for_100())
+        self.assertFalse(response.waiting_for_continue())
 
     def test_repr(self):
         self.response.status = 200

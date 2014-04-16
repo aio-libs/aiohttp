@@ -568,7 +568,7 @@ class HttpResponse(http.client.HTTPMessage):
 
     __str__ = __repr__
 
-    def wait_for_100(self):
+    def waiting_for_continue(self):
         return self._continue is not None
 
     def start(self, connection, read_until_eof=False):
