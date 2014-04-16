@@ -199,14 +199,15 @@ class SocketConnector(BaseConnector):
                 hosts = []
                 for family, _, proto, _, address in infos:
                     hosts.append(
-                        {'host': address[0], 'port': address[1],
+                        {'hostname': host,
+                         'host': address[0], 'port': address[1],
                          'family': family, 'proto': proto,
                          'flags': socket.AI_NUMERICHOST})
                 self._resolved_hosts[key] = hosts
 
             return list(self._resolved_hosts[key])
         else:
-            return [{'host': host, 'port': port,
+            return [{'hostname': host, 'host': host, 'port': port,
                      'family': self._family, 'proto': 0, 'flags': 0}]
 
     def _create_connection(self, req, **kwargs):
@@ -227,7 +228,9 @@ class SocketConnector(BaseConnector):
                 return (yield from self._loop.create_connection(
                     self._factory, hinfo['host'], hinfo['port'],
                     ssl=sslcontext, family=hinfo['family'],
-                    proto=hinfo['proto'], flags=hinfo['flags'], **kwargs))
+                    proto=hinfo['proto'], flags=hinfo['flags'],
+                    server_hostname=hinfo['hostname'] if sslcontext else None,
+                    **kwargs))
             except OSError:
                 if not hosts:
                     raise
