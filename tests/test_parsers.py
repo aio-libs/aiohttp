@@ -490,6 +490,18 @@ class StreamProtocolTests(unittest.TestCase):
         proto.data_received(b'data')
         proto.reader.feed_data.assert_called_with(b'data')
 
+    def test_drain_waiter(self):
+        proto = parsers.StreamProtocol(loop=unittest.mock.Mock())
+        proto._paused = False
+        self.assertEqual(proto._make_drain_waiter(), ())
+
+        proto._paused = True
+        fut = proto._make_drain_waiter()
+        self.assertIsInstance(fut, asyncio.Future)
+
+        fut2 = proto._make_drain_waiter()
+        self.assertIs(fut, fut2)
+
 
 class ParserBufferTests(unittest.TestCase):
 

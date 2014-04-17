@@ -1,6 +1,12 @@
 CHANGES
 =======
 
+0.7.1 (Unreleased)
+------------------
+
+- Allow multple waiters on transport drain.
+
+
 0.7.0 (04-16-2014)
 ------------------
 

@@ -267,6 +267,15 @@ class StreamProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     def eof_received(self):
         self.reader.feed_eof()
 
+    def _make_drain_waiter(self):
+        if not self._paused:
+            return ()
+        waiter = self._drain_waiter
+        if waiter is None or waiter.cancelled():
+            waiter = asyncio.Future(loop=self._loop)
+            self._drain_waiter = waiter
+        return waiter
+
 
 class DataQueue:
     """DataQueue is a destination for parsed data."""
