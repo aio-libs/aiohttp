@@ -4,7 +4,6 @@ __all__ = ['ServerHttpProtocol']
 
 import asyncio
 import http.server
-import inspect
 import logging
 import time
 import traceback
@@ -186,7 +185,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                 payload = reader.set_parser(aiohttp.HttpPayloadParser(message))
 
                 handler = self.handle_request(message, payload)
-                if (inspect.isgenerator(handler) or
+                if (asyncio.iscoroutine(handler) or
                         isinstance(handler, asyncio.Future)):
                     yield from handler
 
