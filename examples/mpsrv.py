@@ -25,7 +25,7 @@ ARGS.add_argument(
     default=2, type=int, help='Number of workers.')
 
 
-class HttpServer(aiohttp.server.ServerHttpProtocol):
+class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
@@ -126,7 +126,8 @@ class ChildProcess:
         loop.add_signal_handler(signal.SIGINT, stop)
 
         f = loop.create_server(
-            lambda: HttpServer(debug=True, keep_alive=75), sock=self.sock)
+            lambda: HttpRequestHandler(debug=True, keep_alive=75),
+            sock=self.sock)
         srv = loop.run_until_complete(f)
         x = srv.sockets[0]
         print('Starting srv worker process {} on {}'.format(
