@@ -4,6 +4,8 @@ CHANGES
 0.7.1 (Unreleased)
 ------------------
 
+- Do not unquote client request urls.
+
 - Allow multple waiters on transport drain.
 
 

@@ -195,6 +195,9 @@ class HttpRequestTests(unittest.TestCase):
         req = HttpRequest('get', "http://0.0.0.0/get/test case")
         self.assertEqual(req.path, "/get/test%20case")
 
+        req = HttpRequest('get', "http://0.0.0.0/get/test%2fcase")
+        self.assertEqual(req.path, "/get/test%2fcase")
+
         req = HttpRequest('get', "http://0.0.0.0/get/test%20case")
         self.assertEqual(req.path, "/get/test%20case")
 
