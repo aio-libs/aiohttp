@@ -36,7 +36,7 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
     properties = {}
     transports = []
 
-    class HttpServer:
+    class HttpRequestHandler:
 
         def __init__(self, addr):
             if isinstance(addr, tuple):
@@ -157,7 +157,7 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
 
     thread_loop, waiter, addr = loop.run_until_complete(fut)
     try:
-        yield HttpServer(addr)
+        yield HttpRequestHandler(addr)
     finally:
         thread_loop.call_soon_threadsafe(waiter.set_result, None)
         server_thread.join()

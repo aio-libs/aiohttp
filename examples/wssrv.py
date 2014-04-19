@@ -26,7 +26,7 @@ ARGS.add_argument(
 WS_FILE = os.path.join(os.path.dirname(__file__), 'websocket.html')
 
 
-class HttpServer(aiohttp.server.ServerHttpProtocol):
+class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
 
     clients = None  # list of all active connections
     parent = None  # supervisor, we use it as broadcaster to all workers
@@ -144,7 +144,7 @@ class ChildProcess:
     @asyncio.coroutine
     def start_server(self, writer):
         socks = yield from self.loop.create_server(
-            lambda: HttpServer(
+            lambda: HttpRequestHandler(
                 debug=True, keep_alive=75,
                 parent=writer, clients=self.clients),
             sock=self.sock)

@@ -18,7 +18,7 @@ import aiohttp
 import aiohttp.server
 
 
-class HttpServer(aiohttp.server.ServerHttpProtocol):
+class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
@@ -151,7 +151,8 @@ def main():
 
     loop = asyncio.get_event_loop()
     f = loop.create_server(
-        lambda: HttpServer(debug=True, keep_alive=75), args.host, args.port,
+        lambda: HttpRequestHandler(debug=True, keep_alive=75),
+        args.host, args.port,
         ssl=sslcontext)
     svr = loop.run_until_complete(f)
     socks = svr.sockets
