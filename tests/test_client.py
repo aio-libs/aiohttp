@@ -198,6 +198,9 @@ class HttpRequestTests(unittest.TestCase):
         req = HttpRequest('get', "http://0.0.0.0/get/test%20case")
         self.assertEqual(req.path, "/get/test%20case")
 
+        req = HttpRequest('get', "http://0.0.0.0/get/test%2fcase")
+        self.assertEqual(req.path, "/get/test%2fcase")
+
     def test_params_are_added_before_fragment(self):
         req = HttpRequest(
             'GET', "http://example.com/path#fragment", params={"a": "b"})
