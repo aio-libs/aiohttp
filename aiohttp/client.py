@@ -22,6 +22,7 @@ import urllib.parse
 
 import aiohttp
 
+from requests.utils import requote_uri
 
 @asyncio.coroutine
 def request(method, url, *,
@@ -253,8 +254,6 @@ class HttpRequest:
         scheme, netloc, path, query, fragment = urllib.parse.urlsplit(self.url)
         if not path:
             path = '/'
-        else:
-            path = urllib.parse.unquote(path)
 
         if isinstance(params, dict):
             params = list(params.items())
@@ -273,7 +272,7 @@ class HttpRequest:
                 query = params
 
         self.path = urllib.parse.urlunsplit(
-            ('', '', urllib.parse.quote(path), query, fragment))
+            ('', '', requote_uri(path), query, fragment))
 
     def update_headers(self, headers):
         """Update request headers."""

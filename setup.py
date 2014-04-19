@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import codecs
 import os
 import re
@@ -12,11 +14,9 @@ with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
     except IndexError:
         raise RuntimeError('Unable to determine version.')
 
-
-if sys.version_info >= (3,4):
-    install_requires = []
-else:
-    install_requires = ['asyncio']
+install_requires = ['requests']
+if sys.version_info < (3,4):
+    install_requires += ['asyncio']
 
 tests_require = install_requires + ['nose', 'gunicorn']
 
