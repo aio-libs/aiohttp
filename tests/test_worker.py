@@ -19,7 +19,7 @@ class TestStreamWorker(worker.AsyncGunicornWorker):
 
 
 class TestNoStreamWorker(worker.AsyncNoStreamGunicornWorker):
-    """Worker wchich reads payload into wsgi.input as bytes."""
+    """Worker which reads payload into wsgi.input as bytes."""
 
     def __init__(self):
         self.connections = {}
