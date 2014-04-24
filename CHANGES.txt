@@ -8,6 +8,10 @@ CHANGES
 
 - Allow multple waiters on transport drain.
 
+- Added AsyncNoStreamGunicornWorker for wsgi.input as BytesIO object.
+
+- AsyncGunicornWorker doesn't share event loop with forked process.
+
 
 0.7.0 (04-16-2014)
 ------------------
