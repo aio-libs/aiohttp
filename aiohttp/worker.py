@@ -10,6 +10,7 @@ from aiohttp.wsgi import WSGIServerHttpProtocol
 
 
 class AsyncGunicornWorker(base.Worker):
+    readpayload = False  # Provide wsgi.input as a StreamReader
 
     def __init__(self, *args, **kw):  # pragma: no cover
         super().__init__(*args, **kw)
@@ -18,11 +19,7 @@ class AsyncGunicornWorker(base.Worker):
 
     def init_process(self):
         # create new event_loop after fork
-        asyncio.get_event_loop().close()
-
         self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-
         super().init_process()
 
     def run(self):
@@ -47,7 +44,8 @@ class AsyncGunicornWorker(base.Worker):
             debug=self.cfg.debug,
             keep_alive=self.cfg.keepalive,
             access_log=self.log.access_log,
-            access_log_format=self.cfg.access_log_format)
+            access_log_format=self.cfg.access_log_format,
+            readpayload=self.readpayload)
         return self.wrap_protocol(proto)
 
     def get_factory(self, sock, host, port):
@@ -103,6 +101,10 @@ class AsyncGunicornWorker(base.Worker):
                 server.close()
 
         yield from self.close()
+
+
+class AsyncNoStreamGunicornWorker(AsyncGunicornWorker):
+    readpayload = True  # wsgi.input will be a BytesIO object
 
 
 class PortMapperWorker(AsyncGunicornWorker):

@@ -11,7 +11,15 @@ except ImportError as error:
 from aiohttp.wsgi import WSGIServerHttpProtocol
 
 
-class TestWorker(worker.AsyncGunicornWorker):
+class TestStreamWorker(worker.AsyncGunicornWorker):
+    """Standard worker with StreamReader wsgi.input."""
+
+    def __init__(self):
+        self.connections = {}
+
+
+class TestNoStreamWorker(worker.AsyncNoStreamGunicornWorker):
+    """Worker which reads payload into wsgi.input as bytes."""
 
     def __init__(self):
         self.connections = {}
@@ -22,7 +30,7 @@ class WorkerTests(unittest.TestCase):
     def setUp(self):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
-        self.worker = TestWorker()
+        self.worker = TestStreamWorker()
 
     def tearDown(self):
         self.loop.close()
@@ -34,9 +42,9 @@ class WorkerTests(unittest.TestCase):
         except AttributeError:
             pass
 
-        self.assertTrue(m_asyncio.get_event_loop.return_value.close.called)
+        self.assertFalse(m_asyncio.get_event_loop.return_value.close.called)
         self.assertTrue(m_asyncio.new_event_loop.called)
-        self.assertTrue(m_asyncio.set_event_loop.called)
+        self.assertFalse(m_asyncio.set_event_loop.called)
 
     @unittest.mock.patch('aiohttp.worker.asyncio')
     def test_run(self, m_asyncio):
@@ -56,6 +64,7 @@ class WorkerTests(unittest.TestCase):
         f = self.worker.factory(
             self.worker.wsgi, 'localhost', 8080)
         self.assertIsInstance(f, WSGIServerHttpProtocol)
+        self.assertFalse(f.readpayload)
 
     @unittest.mock.patch('aiohttp.worker.asyncio')
     def test__run(self, m_asyncio):
@@ -209,3 +218,25 @@ class WorkerTests(unittest.TestCase):
 
         self.assertNotIn(1, tracking)
         self.assertTrue(meth.called)
+
+
+class NoStreamWorkerTests(unittest.TestCase):
+
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+        self.worker = TestNoStreamWorker()
+
+    def tearDown(self):
+        self.loop.close()
+
+    def test_factory(self):
+        self.worker.wsgi = unittest.mock.Mock()
+        self.worker.loop = unittest.mock.Mock()
+        self.worker.log = unittest.mock.Mock()
+        self.worker.cfg = unittest.mock.Mock()
+
+        f = self.worker.factory(
+            self.worker.wsgi, 'localhost', 8080)
+        self.assertIsInstance(f, WSGIServerHttpProtocol)
+        self.assertTrue(f.readpayload)
