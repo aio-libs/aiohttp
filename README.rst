@@ -90,10 +90,13 @@ It constructs and sends a request. It returns response object. Parameters are ex
 Gunicorn worker
 ---------------
 
-Paster configuration example::
+Paster configuration example for a worker which provides ``wsgi.input`` as a ``StreamReader`` and requires to use ``"yield from environ['wsgi.input'].read()"`` to read icoming data::
 
    [server:main]
    use = egg:gunicorn#main
    host = 0.0.0.0
    port = 8080
    worker_class = aiohttp.worker.AsyncGunicornWorker
+
+
+``aiohttp.worker.AsyncNoStreamGunicornWorker`` reads all incoming data into ``wsgi.input`` as ``BytesIO`` object.
