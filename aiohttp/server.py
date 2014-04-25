@@ -152,7 +152,6 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         reader = self.reader
 
         while True:
-            info = None
             message = None
             self._keep_alive = False
             self._request_count += 1
@@ -193,9 +192,9 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                 self.log_debug('Ignored premature client disconnection.')
                 break
             except errors.HttpException as exc:
-                self.handle_error(exc.code, info, message, exc, exc.headers)
+                self.handle_error(exc.code, message, None, exc, exc.headers)
             except Exception as exc:
-                self.handle_error(500, info, message, exc)
+                self.handle_error(500, message, None, exc)
             finally:
                 if reader.output and not reader.output.at_eof():
                     self.log_debug('Uncompleted request.')
