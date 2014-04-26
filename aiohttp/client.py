@@ -65,7 +65,7 @@ def request(method, url, *,
     :param chunked: Boolean or Integer. Set to chunk size for chunked
        transfer encoding.
     :param expect100: Boolean. Expect 100-continue response from server.
-    :param connector: aiohttp.conntect.SocketConnector instance to support
+    :param connector: aiohttp.conntect.BaseConnector instance to support
        connection pooling and session cookies.
     :param read_until_eof: Read response until eof if response
        does not have Content-Length header.
@@ -87,7 +87,7 @@ def request(method, url, *,
     if request_class is None:
         request_class = HttpRequest
     if connector is None:
-        connector = aiohttp.SocketConnector(loop=loop)
+        connector = aiohttp.TCPConnector(loop=loop)
 
     while True:
         req = request_class(
@@ -781,7 +781,7 @@ class HttpClient:
         self._loop = loop
 
         if conn_pool:
-            self._connector = aiohttp.SocketConnector(
+            self._connector = aiohttp.TCPConnector(
                 share_cookies=True, conn_timeout=conn_timeout,
                 resolve=resolve, verify_ssl=verify_ssl, loop=loop)
 

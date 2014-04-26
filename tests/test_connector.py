@@ -251,7 +251,7 @@ class HttpClientConnectorTests(unittest.TestCase):
             r = self.loop.run_until_complete(
                 client.request(
                     'get', httpd.url('method', 'get'),
-                    connector=aiohttp.SocketConnector(loop=self.loop),
+                    connector=aiohttp.TCPConnector(loop=self.loop),
                     loop=self.loop))
             content = self.loop.run_until_complete(r.content.read())
             content = content.decode()
@@ -267,7 +267,7 @@ class HttpClientConnectorTests(unittest.TestCase):
             r = self.loop.run_until_complete(
                 client.request(
                     'get', httpd.url('method', 'get'),
-                    connector=aiohttp.UnixSocketConnector(
+                    connector=aiohttp.UnixConnector(
                         path, loop=self.loop),
                     loop=self.loop))
             content = self.loop.run_until_complete(r.content.read())
