@@ -22,7 +22,7 @@ class Crawler:
         self.sem = asyncio.Semaphore(maxtasks)
 
         # connector stores cookies between requests and uses connection pool
-        self.connector = aiohttp.SocketConnector(share_cookies=True, loop=loop)
+        self.connector = aiohttp.TCPConnector(share_cookies=True, loop=loop)
 
     @asyncio.coroutine
     def run(self):
