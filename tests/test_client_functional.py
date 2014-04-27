@@ -151,7 +151,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertEqual(2, httpd['redirects'])
             r.close()
 
-    def _test_HTTP_302_REDIRECT_NON_HTTP(self):
+    def test_HTTP_302_REDIRECT_NON_HTTP(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             self.assertRaises(
                 ValueError,
@@ -469,7 +469,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertEqual(r.status, 200)
             r.close()
 
-    def _test_encoding(self):
+    def test_encoding(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
                 client.request('get', httpd.url('encoding', 'deflate'),

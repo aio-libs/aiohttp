@@ -8,6 +8,9 @@ CHANGES
 
 - Allow multple waiters on transport drain.
 
+- Do not return client connection to pool in case of exceptions.
+
+- Rename SocketConnector to TCPConnector and UnixSocketConnector to UnixConnector.
 
 0.7.0 (04-16-2014)
 ------------------

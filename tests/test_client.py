@@ -66,6 +66,18 @@ class HttpResponseTests(unittest.TestCase):
         self.assertTrue(self.response.read.called)
         self.assertTrue(self.response.close.called)
 
+    def test_read_and_close_with_error(self):
+        self.response.read = unittest.mock.Mock()
+        self.response.read.return_value = asyncio.Future(loop=self.loop)
+        self.response.read.return_value.set_exception(ValueError)
+        self.response.close = unittest.mock.Mock()
+
+        self.assertRaises(
+            ValueError,
+            self.loop.run_until_complete, self.response.read_and_close())
+        self.assertTrue(self.response.read.called)
+        self.response.close.assert_called_with(True)
+
 
 class HttpRequestTests(unittest.TestCase):
 
@@ -81,6 +93,13 @@ class HttpRequestTests(unittest.TestCase):
 
     def tearDown(self):
         self.loop.close()
+
+    def test_del(self):
+        req = HttpRequest('get', 'http://python.org/')
+        writer = req._writer = unittest.mock.Mock()
+        del req
+
+        writer.cancel.assert_called_with()
 
     def test_method(self):
         req = HttpRequest('get', 'http://python.org/')

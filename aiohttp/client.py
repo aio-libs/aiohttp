@@ -667,9 +667,13 @@ class HttpResponse(http.client.HTTPMessage):
         """Read response payload and then close response."""
         try:
             payload = yield from self.read(decode)
-            return payload
-        finally:
+        except:
+            self.close(True)
+            raise
+        else:
             self.close()
+
+        return payload
 
 
 def str_to_bytes(s, encoding='utf-8'):
