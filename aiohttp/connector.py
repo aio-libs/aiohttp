@@ -1,4 +1,5 @@
-__all__ = ['BaseConnector', 'TCPConnector', 'UnixConnector']
+__all__ = ['BaseConnector', 'TCPConnector', 'UnixConnector',
+           'SocketConnector', 'UnixSocketConnector']
 
 import asyncio
 import aiohttp
@@ -247,3 +248,7 @@ class UnixConnector(BaseConnector):
     def _create_connection(self, req, **kwargs):
         return (yield from self._loop.create_unix_connection(
             self._factory, self.path, **kwargs))
+
+
+SocketConnector = TCPConnector
+UnixSocketConnector = UnixConnector
