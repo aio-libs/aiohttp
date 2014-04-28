@@ -8,7 +8,10 @@ import signal
 import sys
 
 import asyncio
-import selectors
+try:
+    import selectors
+except ImportError:
+    from asyncio import selectors
 
 import aiohttp
 from aiohttp import websocket
@@ -45,8 +48,9 @@ def start_client(loop, url):
         raise ValueError("Handshake error - Invalid challenge response")
 
     # switch to websocket protocol
-    stream = response.stream.set_parser(websocket.WebSocketParser)
-    writer = websocket.WebSocketWriter(response.transport)
+    connection = response.connection
+    stream = connection.reader.set_parser(websocket.WebSocketParser)
+    writer = websocket.WebSocketWriter(connection.writer)
 
     # input reader
     def stdin_callback():

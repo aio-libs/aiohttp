@@ -35,7 +35,7 @@ You can use the get command like this anywhere in your ``asyncio`` powered progr
 
   response = yield from aiohttp.request('GET', 'http://python.org')
   body = yield from response.read_and_close()
-  print (body)
+  print(body)
 
 The signature of request is the following::
 
@@ -80,7 +80,7 @@ It constructs and sends a request. It returns response object. Parameters are ex
 - ``chunked``: Boolean or Integer. Set to chunk size for chunked
   transfer encoding.
 - ``expect100``: Boolean. Expect 100-continue response from server.
-- ``connector``: ``aiohttp.connector.SocketConnector`` instance to support
+- ``connector``: ``aiohttp.connector.BaseConnector`` instance to support
   connection pooling and session cookies.
 - ``read_until_eof``: Read response until eof if response
   does not have Content-Length header.

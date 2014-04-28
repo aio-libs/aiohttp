@@ -28,15 +28,15 @@ class HttpResponseTests(unittest.TestCase):
     def test_del(self):
         response = HttpResponse('get', 'http://python.org')
 
-        response._connection = unittest.mock.Mock()
+        response.connection = unittest.mock.Mock()
         close = response.close = unittest.mock.Mock()
         del response
         self.assertTrue(close.called)
 
     def test_close(self):
-        self.response._connection = self.connection
+        self.response.connection = self.connection
         self.response.close()
-        self.assertIsNone(self.response._connection)
+        self.assertIsNone(self.response.connection)
         self.assertTrue(self.connection.release.called)
         self.response.close()
         self.response.close()
@@ -418,7 +418,7 @@ class HttpRequestTests(unittest.TestCase):
         asyncio.async(exc(), loop=self.loop)
 
         resp = req.send(self.transport, self.protocol)
-        resp._connection = self.connection
+        resp.connection = self.connection
         self.loop.run_until_complete(req._writer)
         self.assertTrue(self.connection.close.called)
         self.assertTrue(self.protocol.set_exception.called)

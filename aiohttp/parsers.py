@@ -464,12 +464,12 @@ class ParserBuffer(bytearray):
                 end = pos + stop_len
                 size = end - self.offset
                 if limit is not None and size > limit:
-                    raise exc('Line is too long.')
+                    raise exc('Line is too long. %s' % bytes(self))
 
                 return self[self.offset:end]
             else:
                 if limit is not None and self.size > limit:
-                    raise exc('Line is too long.')
+                    raise exc('Line is too long. %s' % bytes(self))
 
             self._writer.send((yield))
 

@@ -537,8 +537,8 @@ class HttpResponse(http.client.HTTPMessage):
     cookies = None  # Response cookies (Set-Cookie)
     content = None  # Payload stream
 
-    _reader = None   # input stream
-    _connection = None  # current connection
+    connection = None  # current connection
+    _reader = None     # input stream
     _response_parser = aiohttp.HttpResponseParser()
 
     def __init__(self, method, url, host='', *, writer=None, continue100=None):
@@ -552,7 +552,7 @@ class HttpResponse(http.client.HTTPMessage):
         self._continue = continue100
 
     def __del__(self):
-        if self._connection is not None:
+        if self.connection is not None:
             logging.warn('HttpResponse has to be closed explicitly! %s:%s:%s',
                          self.method, self.host, self.url)
             self.close(True)
@@ -572,7 +572,7 @@ class HttpResponse(http.client.HTTPMessage):
     def start(self, connection, read_until_eof=False):
         """Start response processing."""
         self._reader = connection.reader
-        self._connection = connection
+        self.connection = connection
 
         while True:
             httpstream = self._reader.set_parser(self._response_parser)
@@ -611,12 +611,12 @@ class HttpResponse(http.client.HTTPMessage):
         return self
 
     def close(self, force=False):
-        if self._connection is not None:
+        if self.connection is not None:
             if force:
-                self._connection.close()
+                self.connection.close()
             else:
-                self._connection.release()
-            self._connection = None
+                self.connection.release()
+            self.connection = None
         if (self._writer is not None) and not self._writer.done():
             self._writer.cancel()
             self._writer = None
