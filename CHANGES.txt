@@ -1,7 +1,11 @@
 CHANGES
 =======
 
-0.7.1 (Unreleased)
+0.7.2 (Unreleased)
+------------------
+
+
+0.7.1 (04-28-2014)
 ------------------
 
 - Do not unquote client request urls.
@@ -11,6 +15,7 @@ CHANGES
 - Do not return client connection to pool in case of exceptions.
 
 - Rename SocketConnector to TCPConnector and UnixSocketConnector to UnixConnector.
+
 
 0.7.0 (04-16-2014)
 ------------------
