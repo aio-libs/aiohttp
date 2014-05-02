@@ -8,6 +8,7 @@ import http.cookies
 import time
 import ssl
 import socket
+import weakref
 
 
 class Connection(object):
@@ -20,20 +21,20 @@ class Connection(object):
         self._protocol = protocol
         self.reader = protocol.reader
         self.writer = protocol.writer
-
-    def __del__(self):
-        self.close()
+        self._wr = weakref.ref(self, lambda wr, tr=self._transport: tr.close())
 
     def close(self):
         if self._transport is not None:
             self._transport.close()
             self._transport = None
+            self._wr = None
 
     def release(self):
         if self._transport:
             self._connector._release(
                 self._key, self._request, self._transport, self._protocol)
             self._transport = None
+            self._wr = None
 
 
 class BaseConnector(object):
@@ -52,9 +53,9 @@ class BaseConnector(object):
         self._factory = functools.partial(aiohttp.StreamProtocol, loop=loop)
 
         self.cookies = http.cookies.SimpleCookie()
-
-    def __del__(self):
-        self.close()
+        self._wr = weakref.ref(self,
+                               lambda wr, f=self._do_close, conns=self._conns:
+                               f(conns))
 
     def _cleanup(self):
         """Cleanup unused transports."""
@@ -85,6 +86,9 @@ class BaseConnector(object):
                 self._reuse_timeout, self._cleanup)
 
         self._conns = connections
+        self._wr = weakref.ref(self,
+                               lambda wr, f=self._do_close, conns=self._conns:
+                               f(conns))
 
     def _start_cleanup_task(self):
         if self._cleanup_handle is None:
@@ -93,11 +97,15 @@ class BaseConnector(object):
 
     def close(self):
         """Close all opened transports."""
-        for key, data in self._conns.items():
+        self._do_close(self._conns)
+
+    @staticmethod
+    def _do_close(conns):
+        for key, data in conns.items():
             for transport, proto, td in data:
                 transport.close()
 
-        self._conns.clear()
+        conns.clear()
 
     def update_cookies(self, cookies):
         if isinstance(cookies, dict):

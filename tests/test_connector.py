@@ -67,10 +67,13 @@ class BaseConncetorTests(unittest.TestCase):
 
     def test_del(self):
         conn = aiohttp.BaseConnector(loop=self.loop)
-        close = conn.close = unittest.mock.Mock()
+        transp = unittest.mock.Mock()
+        conn._conns['a'] = [(transp, 'proto', 123)]
 
+        conns_impl = conn._conns
         del conn
-        self.assertTrue(close.called)
+        self.assertFalse(conns_impl)
+        transp.close.assert_called_with()
 
     def test_create_conn(self):
         conn = aiohttp.BaseConnector(loop=self.loop)
