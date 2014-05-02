@@ -4,6 +4,10 @@ CHANGES
 0.7.2 (Unreleased)
 ------------------
 
+- Get rid of __del__ methods
+
+- Use ResourceWarning instead of logging warning record.
+
 
 0.7.1 (04-28-2014)
 ------------------
