@@ -110,9 +110,12 @@ ARGS.add_argument(
 ARGS.add_argument(
     '--port', action="store", dest='port',
     default=8080, type=int, help='Port number')
-ARGS.add_argument(
+# make iocp and ssl mutually exclusive because ProactorEventLoop is
+# incompatible with SSL
+group = ARGS.add_mutually_exclusive_group()
+group.add_argument(
     '--iocp', action="store_true", dest='iocp', help='Windows IOCP event loop')
-ARGS.add_argument(
+group.add_argument(
     '--ssl', action="store_true", dest='ssl', help='Run ssl mode.')
 ARGS.add_argument(
     '--sslcert', action="store", dest='certfile', help='SSL cert file.')
