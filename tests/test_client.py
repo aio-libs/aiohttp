@@ -7,6 +7,7 @@ import time
 import unittest
 import unittest.mock
 import urllib.parse
+import gc
 
 import aiohttp
 from aiohttp.client import HttpRequest, HttpResponse, HttpClient
@@ -28,10 +29,11 @@ class HttpResponseTests(unittest.TestCase):
     def test_del(self):
         response = HttpResponse('get', 'http://python.org')
 
-        response.connection = unittest.mock.Mock()
-        close = response.close = unittest.mock.Mock()
+        connection = unittest.mock.Mock()
+        response._setup_connection(connection)
         del response
-        self.assertTrue(close.called)
+
+        connection.close.assert_called_with()
 
     def test_close(self):
         self.response.connection = self.connection
@@ -93,13 +95,6 @@ class HttpRequestTests(unittest.TestCase):
 
     def tearDown(self):
         self.loop.close()
-
-    def test_del(self):
-        req = HttpRequest('get', 'http://python.org/')
-        writer = req._writer = unittest.mock.Mock()
-        del req
-
-        writer.cancel.assert_called_with()
 
     def test_method(self):
         req = HttpRequest('get', 'http://python.org/')

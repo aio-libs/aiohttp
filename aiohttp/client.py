@@ -19,6 +19,8 @@ import random
 import time
 import uuid
 import urllib.parse
+import weakref
+import warnings
 
 import aiohttp
 
@@ -160,6 +162,15 @@ class HttpRequest:
     _writer = None  # async task for streaming data
     _continue = None  # waiter future for '100 Continue' response
 
+    # Adding weakref to self for _writer cancelling doesn't make sense:
+    # _writer exists until .write_bytes coro is finished,
+    # .write_bytes generator has strong reference to self and `del request`
+    # doesn't produce request finalization.
+    # After .write_bytes is done _writer has set to None and we have nothing
+    # to cancel.
+    # Maybe we need to add .cancel() method to HttpRequest through for
+    # forced closing request sending.
+
     def __init__(self, method, url, *,
                  params=None, headers=None, data=None, cookies=None,
                  files=None, auth=None, encoding='utf-8', version=(1, 1),
@@ -189,12 +200,6 @@ class HttpRequest:
 
         self.update_transfer_encoding()
         self.update_expect_continue(expect100)
-
-    def __del__(self):
-        """Close request on GC"""
-        if self._writer is not None:
-            self._writer.cancel()
-            self._writer = None
 
     def update_host(self, url):
         """Update destination host, port and connection type (ssl)."""
@@ -540,6 +545,8 @@ class HttpResponse(http.client.HTTPMessage):
     connection = None  # current connection
     _reader = None     # input stream
     _response_parser = aiohttp.HttpResponseParser()
+    _connection_wr = None  # weakref to self for releasing connection on del
+    _writer_wr = None  # weakref to self for cancelling writer on del
 
     def __init__(self, method, url, host='', *, writer=None, continue100=None):
         super().__init__()
@@ -549,13 +556,9 @@ class HttpResponse(http.client.HTTPMessage):
         self.host = host
         self._content = None
         self._writer = writer
+        if writer is not None:
+            self._writer_wr = weakref.ref(self, lambda wr: writer.cancel())
         self._continue = continue100
-
-    def __del__(self):
-        if self.connection is not None:
-            logging.warn('HttpResponse has to be closed explicitly! %s:%s:%s',
-                         self.method, self.host, self.url)
-            self.close(True)
 
     def __repr__(self):
         out = io.StringIO()
@@ -569,10 +572,23 @@ class HttpResponse(http.client.HTTPMessage):
     def waiting_for_continue(self):
         return self._continue is not None
 
-    def start(self, connection, read_until_eof=False):
-        """Start response processing."""
+    def _setup_connection(self, connection):
         self._reader = connection.reader
         self.connection = connection
+
+        msg = ('HttpResponse has to be closed explicitly! {}:{}:{}'
+               .format(self.method, self.host, self.url))
+
+        def _do_close_connection(wr, connection=connection, msg=msg):
+            warnings.warn(msg, ResourceWarning)
+            connection.close()
+
+        self._connection_wr = weakref.ref(self, _do_close_connection)
+
+    @asyncio.coroutine
+    def start(self, connection, read_until_eof=False):
+        """Start response processing."""
+        self._setup_connection(connection)
 
         while True:
             httpstream = self._reader.set_parser(self._response_parser)
@@ -617,9 +633,11 @@ class HttpResponse(http.client.HTTPMessage):
             else:
                 self.connection.release()
             self.connection = None
-        if (self._writer is not None) and not self._writer.done():
+            self._connection_wr = None
+        if self._writer is not None and not self._writer.done():
             self._writer.cancel()
             self._writer = None
+            self._writer_wr = None
 
     @asyncio.coroutine
     def wait_for_close(self):
@@ -628,6 +646,7 @@ class HttpResponse(http.client.HTTPMessage):
                 yield from self._writer
             finally:
                 self._writer = None
+                self._writer_wr = None
         self.close()
 
     @asyncio.coroutine
