@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-0.7.2 (Unreleased)
+0.7.2 (05-14-2014)
 ------------------
 
 - Get rid of __del__ methods

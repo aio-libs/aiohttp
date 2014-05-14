@@ -7,7 +7,6 @@ import time
 import unittest
 import unittest.mock
 import urllib.parse
-import gc
 
 import aiohttp
 from aiohttp.client import HttpRequest, HttpResponse, HttpClient
