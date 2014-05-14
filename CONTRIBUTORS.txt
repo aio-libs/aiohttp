@@ -1,2 +1,18 @@
 Contributors
 ------------
+
+Alejandro Gómez
+Alexey Popravka
+Andrew Svetlov
+Andrej Antonov
+Eugene Chernyshov
+Georges Dubus
+Greg Holt
+Ludovic Gasc
+Lukasz Marcin Dobrzanski
+Mikhail Lukyanchenko
+Olaf Conradi
+Paul Colomiets
+Sebastian Hanula
+Simon Kennedy
+Vaibhav Sagar
