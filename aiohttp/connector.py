@@ -1,5 +1,5 @@
 __all__ = ['BaseConnector', 'TCPConnector', 'UnixConnector',
-           'SocketConnector', 'UnixSocketConnector']
+           'SocketConnector', 'UnixSocketConnector', 'ProxyConnector']
 
 import asyncio
 import aiohttp
@@ -243,6 +243,34 @@ class TCPConnector(BaseConnector):
             except OSError:
                 if not hosts:
                     raise
+
+
+class ProxyConnector(TCPConnector):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.proxies = kwargs['proxies']
+        if 'https' in self.proxies:
+            raise NotImplementedError('Only http connections are supported via proxy now.')
+
+    @asyncio.coroutine
+    def connect(self, req):
+        proxy_req = aiohttp.client.HttpRequest(
+            method='GET',
+            url=self.proxies[req.scheme],
+        )
+        key = (proxy_req.host, proxy_req.port, proxy_req.ssl)
+
+        transport, proto = self._get(key)
+        if transport is None:
+            if self._conn_timeout:
+                transport, proto = yield from asyncio.wait_for(
+                    self._create_connection(proxy_req),
+                    self._conn_timeout, loop=self._loop)
+            else:
+                transport, proto = yield from self._create_connection(proxy_req)
+
+        return aiohttp.connector.Connection(self, key, req, transport, proto)
 
 
 class UnixConnector(BaseConnector):
