@@ -255,22 +255,14 @@ class ProxyConnector(TCPConnector):
 
     @asyncio.coroutine
     def connect(self, req):
+        # substite reuest for proxy reqeust to make initial connection
         proxy_req = aiohttp.client.HttpRequest(
             method='GET',
             url=self.proxies[req.scheme],
         )
-        key = (proxy_req.host, proxy_req.port, proxy_req.ssl)
-
-        transport, proto = self._get(key)
-        if transport is None:
-            if self._conn_timeout:
-                transport, proto = yield from asyncio.wait_for(
-                    self._create_connection(proxy_req),
-                    self._conn_timeout, loop=self._loop)
-            else:
-                transport, proto = yield from self._create_connection(proxy_req)
-
-        return aiohttp.connector.Connection(self, key, req, transport, proto)
+        proxy_conn = yield from super().connect(proxy_req)
+        proxy_conn._request = req  # putting original request back
+        return proxy_conn
 
 
 class UnixConnector(BaseConnector):
