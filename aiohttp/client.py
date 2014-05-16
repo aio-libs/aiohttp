@@ -92,11 +92,12 @@ def request(method, url, *,
         connector = aiohttp.TCPConnector(loop=loop)
 
     while True:
+        using_proxy = isinstance(connector, aiohttp.ProxyConnector)
         req = request_class(
             method, url, params=params, headers=headers, data=data,
             cookies=cookies, files=files, auth=auth, encoding=encoding,
             version=version, compress=compress, chunked=chunked,
-            loop=loop, expect100=expect100, use_proxy=bool(proxies))
+            loop=loop, expect100=expect100, using_proxy=using_proxy)
 
         try:
             conn = yield from connector.connect(req)
@@ -175,7 +176,7 @@ class HttpRequest:
                  params=None, headers=None, data=None, cookies=None,
                  files=None, auth=None, encoding='utf-8', version=(1, 1),
                  compress=None, chunked=None, expect100=False,
-                 verify_ssl=True, loop=None, use_proxy=False):
+                 verify_ssl=True, loop=None, using_proxy=False):
         self.url = url
         self.method = method.upper()
         self.encoding = encoding
@@ -183,7 +184,7 @@ class HttpRequest:
         self.compress = compress
         self.verify_ssl = verify_ssl
         self.loop = loop
-        self.use_proxy = use_proxy
+        self.using_proxy = using_proxy
 
         self.update_version(version)
         self.update_host(url)
@@ -277,7 +278,7 @@ class HttpRequest:
             else:
                 query = params
 
-        if not self.use_proxy:
+        if not self.using_proxy:
             scheme = ''
             netloc = ''
 
