@@ -171,6 +171,10 @@ class HttpRequestTests(unittest.TestCase):
         req = HttpRequest('get', 'http://python.org')
         self.assertEqual('/', req.path)
 
+    def test_path_with_proxy(self):
+        req = HttpRequest('get', 'http://python.org', using_proxy=True)
+        self.assertEqual('http://python.org/', req.path)
+
     def test_basic_auth(self):
         req = HttpRequest('get', 'http://python.org', auth=('nkim', '1234'))
         self.assertIn('Authorization', req.headers)
