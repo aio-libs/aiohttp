@@ -44,8 +44,7 @@ def request(method, url, *,
             connector=None,
             loop=None,
             read_until_eof=True,
-            request_class=None,
-            proxies=False):
+            request_class=None):
     """Constructs and sends a request. Returns response object.
 
     :param method: http method
@@ -90,10 +89,7 @@ def request(method, url, *,
     if request_class is None:
         request_class = HttpRequest
     if connector is None:
-        if not proxies:
-            connector = aiohttp.TCPConnector(loop=loop)
-        else:
-            connector = aiohttp.ProxyConnector(loop=loop, proxies=proxies)
+        connector = aiohttp.TCPConnector(loop=loop)
 
     while True:
         req = request_class(

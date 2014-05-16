@@ -255,7 +255,7 @@ class ProxyConnector(TCPConnector):
 
     @asyncio.coroutine
     def connect(self, req):
-        # substite reuest for proxy reqeust to make initial connection
+        # substite request for proxy request to make initial connection
         proxy_req = aiohttp.client.HttpRequest(
             method='GET',
             url=self.proxies[req.scheme],
