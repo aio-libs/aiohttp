@@ -251,7 +251,8 @@ class ProxyConnector(TCPConnector):
         super().__init__(*args, **kwargs)
         self.proxies = kwargs['proxies']
         if 'https' in self.proxies:
-            raise NotImplementedError('Only http connections are supported via proxy now.')
+            raise NotImplementedError(
+                'Only http connections are supported via proxy now.')
 
     @asyncio.coroutine
     def connect(self, req):

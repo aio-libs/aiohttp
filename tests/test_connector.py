@@ -278,12 +278,34 @@ class HttpClientConnectorTests(unittest.TestCase):
             self.assertEqual(r.status, 200)
             r.close()
 
+
+class ProxyConnectorTests(unittest.TestCase):
+
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+    def tearDown(self):
+        # just in case if we have transport close callbacks
+        test_utils.run_briefly(self.loop)
+
+        self.loop.close()
+        gc.collect()
+
+    def test_ctor(self):
+        proxies = {
+            'https': 'https://localhost:8118',
+        }
+        self.assertRaises(
+            NotImplementedError,
+            aiohttp.connector.ProxyConnector, loop=self.loop, proxies=proxies)
+
     def test_proxy_connector(self):
         proxies = {
             'http': 'http://localhost:8118',
         }
         proxy_connector = aiohttp.connector.ProxyConnector(
-                loop=self.loop, proxies=proxies)
+            loop=self.loop, proxies=proxies)
         req = HttpRequest('get', 'http://python.org/')
 
         @asyncio.coroutine
@@ -292,9 +314,13 @@ class HttpClientConnectorTests(unittest.TestCase):
                 mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock()
             )
 
-        with mock.patch('aiohttp.connector.BaseConnector.connect') as mocked_base_connect:
+        with mock.patch('aiohttp.connector.BaseConnector.connect') \
+                as mocked_base_connect:
+
             mocked_base_connect.return_value = connect_coroutine()
-            connection = self.loop.run_until_complete(proxy_connector.connect(req))
+            connection = self.loop.run_until_complete(
+                proxy_connector.connect(req))
             self.assertEqual(connection._request.url, req.url)
             self.assertTrue(mocked_base_connect.called)
-            self.assertEqual(mocked_base_connect.call_args[0][0].url, proxies[req.scheme])
+            self.assertEqual(
+                mocked_base_connect.call_args[0][0].url, proxies[req.scheme])

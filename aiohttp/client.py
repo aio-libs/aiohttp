@@ -283,7 +283,8 @@ class HttpRequest:
             netloc = ''
 
         self.path = urllib.parse.urlunsplit(
-            (scheme, netloc, urllib.parse.quote(path, safe='/%'), query, fragment))
+            (scheme, netloc,
+             urllib.parse.quote(path, safe='/%'), query, fragment))
 
     def update_headers(self, headers):
         """Update request headers."""
