@@ -11,7 +11,7 @@ from unittest import mock
 import aiohttp
 from aiohttp import client
 from aiohttp import test_utils
-from aiohttp.client import HttpResponse
+from aiohttp.client import HttpResponse, HttpRequest
 from aiohttp.connector import Connection
 
 from tests.test_client_functional import Functional
@@ -52,7 +52,7 @@ class HttpConnectionTests(unittest.TestCase):
             self.key, self.request, self.transport, self.protocol)
 
 
-class BaseConncetorTests(unittest.TestCase):
+class BaseConnectorTests(unittest.TestCase):
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
@@ -277,3 +277,24 @@ class HttpClientConnectorTests(unittest.TestCase):
             content = content.decode()
             self.assertEqual(r.status, 200)
             r.close()
+
+    def test_proxy_connector(self):
+        proxies = {
+            'http': 'http://localhost:8118',
+        }
+        proxy_connector = aiohttp.connector.ProxyConnector(
+                loop=self.loop, proxies=proxies)
+        req = HttpRequest('get', 'http://python.org/')
+
+        @asyncio.coroutine
+        def connect_coroutine(*args, **kwargs):
+            return Connection(
+                mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock()
+            )
+
+        with mock.patch('aiohttp.connector.BaseConnector.connect') as mocked_base_connect:
+            mocked_base_connect.return_value = connect_coroutine()
+            connection = self.loop.run_until_complete(proxy_connector.connect(req))
+            self.assertEqual(connection._request.url, req.url)
+            self.assertTrue(mocked_base_connect.called)
+            self.assertEqual(mocked_base_connect.call_args[0][0].url, proxies[req.scheme])
