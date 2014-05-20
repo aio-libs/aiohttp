@@ -43,7 +43,7 @@ There are three stages:
     3. StreamParser sends data into parser with generator's send() method.
     4. Parser processes incoming data and sends parsed data
        to DataQueue with feed_data()
-    4. Application received parsed data from DataQueue.read()
+    5. Application received parsed data from DataQueue.read()
 
  * Eof:
 
@@ -509,8 +509,8 @@ class ParserBuffer(bytearray):
 class LinesParser:
     """Lines parser.
 
-    lines parser splits a bytes stream into a chunks of data, each chunk ends
-    with \n symbol."""
+    Lines parser splits a bytes stream into a chunks of data, each chunk ends
+    with \\n symbol."""
 
     def __init__(self, limit=2**16, exc=ValueError):
         self._limit = limit
@@ -525,7 +525,7 @@ class LinesParser:
 class ChunksParser:
     """Chunks parser.
 
-    chunks parser splits a bytes stream into a specified
+    Chunks parser splits a bytes stream into a specified
     size chunks of data."""
 
     def __init__(self, size=8196):

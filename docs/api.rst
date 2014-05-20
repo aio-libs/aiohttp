@@ -44,18 +44,10 @@ aiohttp.server module
     :undoc-members:
     :show-inheritance:
 
-aiohttp.session module
-----------------------
+aiohttp.connector module
+------------------------
 
-.. automodule:: aiohttp.session
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-aiohttp.test_utils module
--------------------------
-
-.. automodule:: aiohttp.test_utils
+.. automodule:: aiohttp.connector
     :members:
     :undoc-members:
     :show-inheritance:
