@@ -17,6 +17,7 @@ var/*
 *.egg
 *.tar.gz
 *.so
+build/
 .tox
 .DS_Store
 .coverage
