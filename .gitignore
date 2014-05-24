@@ -4,6 +4,7 @@ parts
 coverage
 eggs
 sources
+build
 dist
 venv
 .installed.cfg
