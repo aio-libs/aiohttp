@@ -209,3 +209,17 @@ class WorkerTests(unittest.TestCase):
 
         self.assertNotIn(1, tracking)
         self.assertTrue(meth.called)
+
+    @unittest.mock.patch('aiohttp.worker.signal')
+    def test_init_signals(self, m_signal):
+        self.worker.loop = unittest.mock.Mock()
+        self.worker.init_signals()
+        self.assertTrue(self.worker.loop.add_signal_handler.called)
+        self.assertTrue(m_signal.siginterrupt.called)
+
+    @unittest.mock.patch('aiohttp.worker.sys')
+    def test_handle_exit(self, m_sys):
+        self.worker.close = unittest.mock.Mock()
+        self.loop.run_until_complete(self.worker.handle_exit())
+        self.assertTrue(self.worker.close.called)
+        self.assertTrue(m_sys.exit.called)

@@ -4,6 +4,9 @@ __all__ = ['AsyncGunicornWorker', 'PortMapperWorker']
 import asyncio
 import functools
 import os
+import sys
+import signal
+
 import gunicorn.workers.base as base
 
 from aiohttp.wsgi import WSGIServerHttpProtocol
@@ -26,12 +29,8 @@ class AsyncGunicornWorker(base.Worker):
         super().init_process()
 
     def run(self):
-        self._runner = asyncio.async(self._run(), loop=self.loop)
-
-        try:
-            self.loop.run_until_complete(self._runner)
-        finally:
-            self.loop.close()
+        asyncio.async(self._run(), loop=self.loop)
+        self.loop.run_forever()
 
     def wrap_protocol(self, proto):
         proto.connection_made = _wrp(
@@ -70,39 +69,66 @@ class AsyncGunicornWorker(base.Worker):
 
         # If our parent changed then we shut down.
         pid = os.getpid()
-        try:
-            while self.alive or self.connections:
-                self.notify()
+        while self.alive or self.connections:
+            self.notify()
 
-                if (self.alive and
-                        pid == os.getpid() and self.ppid != os.getppid()):
-                    self.log.info("Parent changed, shutting down: %s", self)
-                    self.alive = False
+            if (self.alive and
+                    pid == os.getpid() and self.ppid != os.getppid()):
+                self.log.info("Parent changed, shutting down: %s", self)
+                self.alive = False
 
-                # stop accepting requests
-                if not self.alive:
-                    if self.servers:
-                        self.log.info(
-                            "Stopping server: %s, connections: %s",
-                            pid, len(self.connections))
-                        for server in self.servers:
-                            server.close()
-                        self.servers.clear()
+            # stop accepting requests
+            if not self.alive:
+                if self.servers:
+                    self.log.info(
+                        "Stopping server: %s, connections: %s",
+                        pid, len(self.connections))
+                    for server in self.servers:
+                        server.close()
+                    self.servers.clear()
 
-                    # prepare connections for closing
-                    for conn in self.connections.values():
-                        if hasattr(conn, 'closing'):
-                            conn.closing()
+                # prepare connections for closing
+                for conn in self.connections.values():
+                    if hasattr(conn, 'closing'):
+                        conn.closing()
 
-                yield from asyncio.sleep(1.0, loop=self.loop)
-        except KeyboardInterrupt:
-            pass
+            yield from asyncio.sleep(1.0, loop=self.loop)
+
+    def init_signals(self):
+        # init new signaling
+
+        self.loop.add_signal_handler(signal.SIGQUIT,
+            lambda: self.handle_quit(signal.SIGQUIT, sys._getframe(0)))
+
+        for signame in ('SIGTERM', 'SIGINT'):
+            self.loop.add_signal_handler(getattr(signal, signame),
+                lambda: asyncio.async(self.handle_exit(signame),
+                                      loop=self.loop))
+            self.loop.add_signal_handler(getattr(signal, signame),
+                lambda: asyncio.async(self.handle_exit(signame),
+                                      loop=self.loop))
+
+        self.loop.add_signal_handler(signal.SIGWINCH, self.handle_winch)
+        self.loop.add_signal_handler(signal.SIGUSR1, self.handle_usr1)
+
+        # Don't let SIGQUIT and SIGUSR1 disturb active requests
+        signal.siginterrupt(signal.SIGQUIT, False)
+        signal.siginterrupt(signal.SIGUSR1, False)
+
+    @asyncio.coroutine
+    def handle_exit(self, signal):
+        if not self.alive:  # XXX gunicorn arbitrer spam signal every 100ms
+            return
+        self.log.info('Reveice %s signal, exiting' % signal)
+        self.alive = False
 
         if self.servers:
             for server in self.servers:
                 server.close()
 
         yield from self.close()
+        self.loop.stop()
+        #sys.exit(0)
 
 
 class PortMapperWorker(AsyncGunicornWorker):
