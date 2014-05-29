@@ -579,7 +579,7 @@ class HttpClientTests(unittest.TestCase):
         self.assertRaises(
             aiohttp.ConnectionError,
             self.loop.run_until_complete,
-            c.request('get', path='/', timeout=0.0001))
+            c.request('get', path='/'))
 
     def test_failed_request_conn(self):
         c = HttpClient(
@@ -602,7 +602,7 @@ class HttpClientTests(unittest.TestCase):
         self.assertRaises(
             aiohttp.ConnectionError,
             self.loop.run_until_complete,
-            c.request('get', path='/', timeout=0.0001))
+            c.request('get', path='/'))
 
     @unittest.mock.patch('aiohttp.client.request')
     def test_cleanup_resolved_hosts_on_500(self, m_request):

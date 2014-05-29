@@ -32,7 +32,7 @@ def start_client(loop, url):
             'CONNECTION': 'Upgrade',
             'SEC-WEBSOCKET-VERSION': '13',
             'SEC-WEBSOCKET-KEY': sec_key.decode(),
-        }, timeout=1.0)
+        })
 
     # websocket handshake
     if response.status != 101:

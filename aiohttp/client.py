@@ -37,7 +37,6 @@ def request(method, url, *,
             max_redirects=10,
             encoding='utf-8',
             version=(1, 1),
-            timeout=None,
             compress=None,
             chunked=None,
             expect100=False,
@@ -59,7 +58,6 @@ def request(method, url, *,
     :param files: (optional) Dictionary of 'name': file-like-objects
        for multipart encoding upload
     :param auth: (optional) Auth tuple to enable Basic HTTP Auth
-    :param timeout: (optional) Float describing the timeout of the request
     :param allow_redirects: (optional) Boolean. Set to True if POST/PUT/DELETE
        redirect following is allowed.
     :param compress: Boolean. Set to True if request has to be compressed
@@ -104,17 +102,11 @@ def request(method, url, *,
 
             resp = req.send(conn.writer, conn.reader)
             try:
-                if timeout:
-                    yield from asyncio.wait_for(
-                        resp.start(conn, read_until_eof), timeout, loop=loop)
-                else:
-                    yield from resp.start(conn, read_until_eof)
+                yield from resp.start(conn, read_until_eof)
             except:
                 resp.close()
                 conn.close()
                 raise
-        except asyncio.TimeoutError:
-            raise aiohttp.TimeoutError from None
         except aiohttp.BadStatusLine as exc:
             raise aiohttp.ClientConnectionError(exc)
         except OSError as exc:
@@ -770,7 +762,7 @@ class HttpClient:
     """
 
     def __init__(self, hosts, *, method=None, path=None,
-                 ssl=False, timeout=None,
+                 ssl=False,
                  conn_pool=True, conn_timeout=None, failed_timeout=5.0,
                  resolve=True, resolve_timeout=360.0, verify_ssl=True,
                  loop=None):
@@ -800,7 +792,6 @@ class HttpClient:
 
         self._method = method
         self._path = path
-        self._timeout = timeout
         self._schema = 'https' if ssl else 'http'
 
         self._failed = collections.deque()
@@ -857,7 +848,6 @@ class HttpClient:
                 encoding='utf-8',
                 version=(1, 1),
                 compress=None,
-                timeout=None,
                 chunked=None,
                 expect100=False,
                 read_until_eof=True):
@@ -866,8 +856,6 @@ class HttpClient:
             method = self._method
         if path is None:
             path = self._path
-        if timeout is None:
-            timeout = self._timeout
 
         # if all hosts marked as failed try first from failed
         if not self._hosts:
@@ -888,7 +876,7 @@ class HttpClient:
                     cookies=cookies, files=files, auth=auth,
                     encoding=encoding, allow_redirects=allow_redirects,
                     version=version, max_redirects=max_redirects,
-                    timeout=timeout, compress=compress, chunked=chunked,
+                    compress=compress, chunked=chunked,
                     expect100=expect100, read_until_eof=read_until_eof,
                     connector=self._connector, loop=self._loop)
             except (aiohttp.ConnectionError, aiohttp.TimeoutError):

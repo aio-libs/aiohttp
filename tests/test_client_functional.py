@@ -518,15 +518,6 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertEqual(content['path'], '/chunked')
             r.close()
 
-    def test_timeout(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            httpd['noresponse'] = True
-            self.assertRaises(
-                asyncio.TimeoutError,
-                self.loop.run_until_complete,
-                client.request('get', httpd.url('method', 'get'),
-                               timeout=0.1, loop=self.loop))
-
     def test_broken_connection(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
@@ -542,7 +533,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             aiohttp.ConnectionError,
             self.loop.run_until_complete,
             client.request('get', 'http://0.0.0.0:1',
-                           timeout=0.1, loop=self.loop))
+                           loop=self.loop))
 
     def test_request_conn_closed(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
