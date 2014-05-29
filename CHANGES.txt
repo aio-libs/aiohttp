@@ -1,6 +1,10 @@
 CHANGES
 =======
 
+X.X.X (XX-XX-XXXX)
+
+- Get rid of timeout parameter in aiohttp.client API
+
 0.7.3 (05-20-2014)
 ------------------
 
