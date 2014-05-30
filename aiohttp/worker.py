@@ -104,6 +104,9 @@ class AsyncGunicornWorker(base.Worker):
 
         yield from self.close()
 
+    def handle_exit(self, sig, frame):
+        self.alive = False
+
 
 class PortMapperWorker(AsyncGunicornWorker):
     """Special worker that uses different wsgi application depends on port.
