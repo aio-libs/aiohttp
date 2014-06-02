@@ -12,6 +12,27 @@ import aiohttp
 from aiohttp.client import HttpRequest, HttpResponse, HttpClient
 
 
+class RequestTests(unittest.TestCase):
+
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+    def tearDown(self):
+        self.loop.close()
+
+    def test_bad_status_response(self):
+        connector = unittest.mock.Mock()
+        connector.connect.side_effect = aiohttp.BadStatusLine
+
+        self.assertRaises(
+            aiohttp.ClientConnectionError,
+            self.loop.run_until_complete,
+            aiohttp.request(
+                'get', 'http://example.com',
+                connector=connector, loop=self.loop))
+
+
 class HttpResponseTests(unittest.TestCase):
 
     def setUp(self):

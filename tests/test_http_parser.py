@@ -158,7 +158,7 @@ class ParsePayloadTests(unittest.TestCase):
         p.send(b'data')
         try:
             p.throw(aiohttp.EofStream())
-        except aiohttp.EofStream:
+        except StopIteration:
             pass
 
         self.assertEqual([b'data'], list(out._buffer))
@@ -219,7 +219,7 @@ class ParsePayloadTests(unittest.TestCase):
         p = protocol.HttpPayloadParser(None).parse_chunked_payload(out, buf)
         next(p)
         p.send(b'4\r\ndata\r\n')
-        self.assertRaises(errors.IncompleteRead, p.throw, aiohttp.EofStream)
+        self.assertRaises(errors.ConnectionError, p.throw, aiohttp.EofStream)
 
     def test_parse_chunked_payload_extension(self):
         out = aiohttp.DataQueue(self.stream)
@@ -337,7 +337,7 @@ class ParsePayloadTests(unittest.TestCase):
         next(p)
         p.send(b'data')
         p.send(b'line')
-        self.assertRaises(aiohttp.EofStream, p.throw, aiohttp.EofStream())
+        self.assertRaises(StopIteration, p.throw, aiohttp.EofStream())
         self.assertEqual(b'dataline', b''.join(out._buffer))
 
     def test_http_payload_parser_length_zero(self):
@@ -445,13 +445,22 @@ class ParseResponseTests(unittest.TestCase):
         next(p)
         self.assertRaises(errors.BadStatusLine, p.send, b'\r\n\r\n')
 
+    def test_http_response_parser_bad_status_line_too_long(self):
+        out = aiohttp.DataQueue(self.stream)
+        buf = aiohttp.ParserBuffer()
+        p = protocol.HttpResponseParser(
+            max_headers=2, max_line_size=2)(out, buf)
+        next(p)
+        self.assertRaises(
+            errors.LineTooLong, p.send, b'HTTP/1.1 200 Ok\r\n\r\n')
+
     def test_http_response_parser_bad_status_line_eof(self):
         out = aiohttp.DataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpResponseParser()(out, buf)
         next(p)
         self.assertRaises(
-            errors.BadStatusLine, p.throw, aiohttp.EofStream())
+            errors.ConnectionError, p.throw, aiohttp.EofStream())
 
     def test_http_response_parser_bad_version(self):
         out = aiohttp.DataQueue(self.stream)

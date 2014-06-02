@@ -154,8 +154,12 @@ class HttpRequestParser(HttpParser):
     def __call__(self, out, buf):
         try:
             # read http message (request line + headers)
-            raw_data = yield from buf.readuntil(
-                b'\r\n\r\n', self.max_headers, errors.LineTooLong)
+            try:
+                raw_data = yield from buf.readuntil(
+                    b'\r\n\r\n', self.max_headers)
+            except errors.LineLimitExceededParserError as exc:
+                raise errors.LineTooLong(exc.limit) from None
+
             lines = raw_data.decode(
                 'ascii', 'surrogateescape').splitlines(True)
 
@@ -203,9 +207,12 @@ class HttpResponseParser(HttpParser):
     def __call__(self, out, buf):
         try:
             # read http message (response line + headers)
-            raw_data = yield from buf.readuntil(
-                b'\r\n\r\n', self.max_line_size+self.max_headers,
-                errors.LineTooLong)
+            try:
+                raw_data = yield from buf.readuntil(
+                    b'\r\n\r\n', self.max_line_size+self.max_headers)
+            except errors.LineLimitExceededParserError as exc:
+                raise errors.LineTooLong(exc.limit) from None
+
             lines = raw_data.decode(
                 'ascii', 'surrogateescape').splitlines(True)
 
@@ -249,7 +256,8 @@ class HttpResponseParser(HttpParser):
         except aiohttp.EofStream:
             # Presumably, the server closed the connection before
             # sending a valid response.
-            raise errors.BadStatusLine(b'') from None
+            raise errors.ClientConnectionError(
+                'Can not read status line') from None
 
 
 class HttpPayloadParser:
@@ -332,22 +340,26 @@ class HttpPayloadParser:
             yield from buf.skipuntil(b'\r\n')
 
         except aiohttp.EofStream:
-            raise errors.IncompleteRead(b'') from None
+            raise errors.ConnectionError('Broken chunked payload.') from None
 
-    def parse_length_payload(self, out, buf, length):
+    def parse_length_payload(self, out, buf, length=0):
         """Read specified amount of bytes."""
+        required = length
         try:
-            while length:
-                chunk = yield from buf.readsome(length)
+            while required:
+                chunk = yield from buf.readsome(required)
                 out.feed_data(chunk)
-                length -= len(chunk)
+                required -= len(chunk)
         except aiohttp.EofStream:
-            raise errors.IncompleteRead(b'') from None
+            raise errors.IncompleteRead(required, length-required)
 
     def parse_eof_payload(self, out, buf):
         """Read all bytes untile eof."""
-        while True:
-            out.feed_data((yield from buf.readsome()))
+        try:
+            while True:
+                out.feed_data((yield from buf.readsome()))
+        except aiohttp.EofStream:
+            pass
 
 
 class DeflateBuffer:

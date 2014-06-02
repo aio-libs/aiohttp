@@ -1,9 +1,13 @@
 CHANGES
 =======
 
-X.X.X (XX-XX-XXXX)
+0.8.0 (XX-XX-XXXX)
+------------------
 
 - Get rid of timeout parameter in aiohttp.client API
+
+- Exceptions refactoring
+
 
 0.7.3 (05-20-2014)
 ------------------
