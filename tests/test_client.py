@@ -159,9 +159,19 @@ class HttpRequestTests(unittest.TestCase):
         req = HttpRequest('get', 'http://python.org/')
         self.assertEqual(req.headers['host'], 'python.org')
 
+        req = HttpRequest('get', 'http://python.org:80/')
+        self.assertEqual(req.headers['host'], 'python.org:80')
+
+        req = HttpRequest('get', 'http://python.org:99/')
+        self.assertEqual(req.headers['host'], 'python.org:99')
+
         req = HttpRequest('get', 'http://python.org/',
                           headers={'host': 'example.com'})
         self.assertEqual(req.headers['host'], 'example.com')
+
+        req = HttpRequest('get', 'http://python.org/',
+                          headers={'host': 'example.com:99'})
+        self.assertEqual(req.headers['host'], 'example.com:99')
 
     def test_headers(self):
         req = HttpRequest('get', 'http://python.org/',
