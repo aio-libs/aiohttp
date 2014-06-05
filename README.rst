@@ -50,7 +50,6 @@ The signature of request is the following::
           max_redirects=10,
           encoding='utf-8',
           version=(1, 1),
-          timeout=None,
           compress=None,
           chunked=None,
           expect100=False,
@@ -72,7 +71,6 @@ It constructs and sends a request. It returns response object. Parameters are ex
 - ``files``: (optional) Dictionary of 'name': file-like-objects
   for multipart encoding upload
 - ``auth``: (optional) Auth tuple to enable Basic HTTP Auth
-- ``timeout``: (optional) Float describing the timeout of the request
 - ``allow_redirects``: (optional) Boolean. Set to True if POST/PUT/DELETE
   redirect following is allowed.
 - ``compress``: Boolean. Set to True if request has to be compressed
@@ -86,6 +84,10 @@ It constructs and sends a request. It returns response object. Parameters are ex
   does not have Content-Length header.
 - ``loop``: Optional event loop.
 
+If you want to use timeouts for aiohttp client side please use standard
+asyncio approach::
+
+   yield from asyncio.wait_for(request('GET', url), 10))
 
 Gunicorn worker
 ---------------
