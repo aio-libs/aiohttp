@@ -4,6 +4,7 @@ import asyncio
 import unittest
 import unittest.mock
 
+from aiohttp import errors
 from aiohttp import parsers
 from aiohttp import test_utils
 
@@ -167,8 +168,8 @@ class StreamParserTests(unittest.TestCase):
         stream.feed_data(b'line1')
         stream.feed_eof()
         s = stream.set_parser(p)
-        self.assertIsNone(s.exception())
-        self.assertTrue(s._eof)
+        self.assertFalse(s.at_eof())
+        self.assertIsInstance(s.exception(), errors.ConnectionError)
 
     def test_set_parser_unset(self):
         stream = parsers.StreamParser(paused=False)
@@ -213,7 +214,7 @@ class StreamParserTests(unittest.TestCase):
         self.assertEqual([bytearray(b'line1\r\n'), bytearray(b'line2\r\n')],
                          list(s._buffer))
         self.assertEqual(b'data', bytes(stream._buffer))
-        self.assertTrue(s._eof)
+        self.assertTrue(s.at_eof())
 
     def test_feed_parser_exc(self):
         def p(out, buf):
@@ -280,8 +281,8 @@ class StreamParserTests(unittest.TestCase):
 
         stream.feed_data(b'line1')
         stream.feed_eof()
-        self.assertIsNone(s.exception())
-        self.assertTrue(s._eof)
+        self.assertFalse(s.at_eof())
+        self.assertIsInstance(s.exception(), errors.ConnectionError)
 
     def test_feed_parser2(self):
         stream = parsers.StreamParser()
@@ -321,8 +322,8 @@ class StreamParserTests(unittest.TestCase):
 
         stream.feed_data(b'line1')
         stream.unset_parser()
-        self.assertIsNone(s.exception(), ValueError)
-        self.assertTrue(s._eof)
+        self.assertIsInstance(s.exception(), errors.ConnectionError)
+        self.assertFalse(s.at_eof())
 
     def test_unset_parser_stop(self):
         def p(out, buf):
@@ -612,25 +613,19 @@ class ParserBufferTests(unittest.TestCase):
         next(p)
         p.send(b'1')
         p.send(b'234')
-        self.assertRaises(ValueError, p.send, b'5')
+        self.assertRaises(errors.LineLimitExceededParserError, p.send, b'5')
 
         buf = parsers.ParserBuffer()
         p = buf.readuntil(b'\n', 4)
         next(p)
-        self.assertRaises(ValueError, p.send, b'12345\n6')
+        self.assertRaises(
+            errors.LineLimitExceededParserError, p.send, b'12345\n6')
 
         buf = parsers.ParserBuffer()
         p = buf.readuntil(b'\n', 4)
         next(p)
-        self.assertRaises(ValueError, p.send, b'12345\n6')
-
-        class CustomExc(Exception):
-            pass
-
-        buf = parsers.ParserBuffer()
-        p = buf.readuntil(b'\n', 4, CustomExc)
-        next(p)
-        self.assertRaises(CustomExc, p.send, b'12345\n6')
+        self.assertRaises(
+            errors.LineLimitExceededParserError, p.send, b'12345\n6')
 
     def test_readuntil(self):
         buf = self._make_one()
@@ -651,25 +646,19 @@ class ParserBufferTests(unittest.TestCase):
         next(p)
         p.send(b'1')
         p.send(b'234')
-        self.assertRaises(ValueError, p.send, b'5')
+        self.assertRaises(errors.LineLimitExceededParserError, p.send, b'5')
 
         buf = parsers.ParserBuffer()
         p = buf.waituntil(b'\n', 4)
         next(p)
-        self.assertRaises(ValueError, p.send, b'12345\n6')
+        self.assertRaises(
+            errors.LineLimitExceededParserError, p.send, b'12345\n6')
 
         buf = parsers.ParserBuffer()
         p = buf.waituntil(b'\n', 4)
         next(p)
-        self.assertRaises(ValueError, p.send, b'12345\n6')
-
-        class CustomExc(Exception):
-            pass
-
-        buf = parsers.ParserBuffer()
-        p = buf.waituntil(b'\n', 4, CustomExc)
-        next(p)
-        self.assertRaises(CustomExc, p.send, b'12345\n6')
+        self.assertRaises(
+            errors.LineLimitExceededParserError, p.send, b'12345\n6')
 
     def test_waituntil(self):
         buf = self._make_one()
@@ -716,7 +705,7 @@ class ParserBufferTests(unittest.TestCase):
             list(out._buffer))
         try:
             p.throw(parsers.EofStream())
-        except parsers.EofStream:
+        except StopIteration:
             pass
 
         self.assertEqual(bytes(buf), b'data')
@@ -734,7 +723,7 @@ class ParserBufferTests(unittest.TestCase):
             [bytearray(b'line1'), bytearray(b'line2')], list(out._buffer))
         try:
             p.throw(parsers.EofStream())
-        except parsers.EofStream:
+        except StopIteration:
             pass
 
         self.assertEqual(bytes(buf), b'data')

@@ -33,6 +33,17 @@ class _BaseTest(unittest.TestCase):
         self.assertEqual(list(d.items()), [('key', 'value1')])
         self.assertEqual(list(d.items(getall=True)), [('key', 'value1')])
 
+    def test_instantiate__from_arg0_dict(self):
+        d = self.make_dict({'key': 'value1'})
+
+        self.assertEqual(d, {'key': 'value1'})
+        self.assertEqual(len(d), 1)
+        self.assertEqual(list(d.keys()), ['key'])
+        self.assertEqual(list(d.values()), ['value1'])
+        self.assertEqual(list(d.values(getall=True)), ['value1'])
+        self.assertEqual(list(d.items()), [('key', 'value1')])
+        self.assertEqual(list(d.items(getall=True)), [('key', 'value1')])
+
     def test_instantiate__with_kwargs(self):
         d = self.make_dict([('key', 'value1')], key2='value2')
 
@@ -105,7 +116,7 @@ class MultiDictTests(_BaseTest):
         self.assertEqual(str(d), "<MultiDict OrderedDict()>")
         d = self.make_dict([('key', 'one'), ('key', 'two')])
         self.assertEqual(str(d),
-            "<MultiDict OrderedDict([('key', ['one', 'two'])])>")
+                         "<MultiDict OrderedDict([('key', ['one', 'two'])])>")
 
     def test_getall(self):
         d = self.make_dict([('key', 'value1')], key='value2')
@@ -128,7 +139,8 @@ class MutableMultiDictTests(_BaseTest):
         d = self.make_dict()
         self.assertEqual(str(d), "<MutableMultiDict OrderedDict()>")
         d = self.make_dict([('key', 'one'), ('key', 'two')])
-        self.assertEqual(str(d),
+        self.assertEqual(
+            str(d),
             "<MutableMultiDict OrderedDict([('key', ['one', 'two'])])>")
 
     def test_getall(self):
@@ -162,7 +174,7 @@ class MutableMultiDictTests(_BaseTest):
         self.assertEqual(d, {'key': 'two', 'foo': 'bar'})
         self.assertEqual(d.getall('foo'), ['bar'])
 
-    def test_extend(self):  
+    def test_extend(self):
         d = self.make_dict()
         self.assertEqual(d, {})
 

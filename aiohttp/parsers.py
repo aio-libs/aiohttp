@@ -62,6 +62,7 @@ import asyncio
 import asyncio.streams
 import collections
 import inspect
+from . import errors
 
 BUF_LIMIT = 2**14
 DEFAULT_LIMIT = 2**16
@@ -168,9 +169,9 @@ class StreamParser:
                     self._parser.send(b'')
                 self._parser.throw(EofStream())
             except StopIteration:
-                pass
-            except EofStream:
                 self._output.feed_eof()
+            except EofStream:
+                self._output.set_exception(errors.ConnectionError())
             except Exception as exc:
                 self._output.set_exception(exc)
 
@@ -222,9 +223,9 @@ class StreamParser:
         try:
             self._parser.throw(EofStream())
         except StopIteration:
-            pass
-        except EofStream:
             self._output.feed_eof()
+        except EofStream:
+            self._output.set_exception(errors.ConnectionError())
         except Exception as exc:
             self._output.set_exception(exc)
         finally:
@@ -417,7 +418,7 @@ class ParserBuffer(bytearray):
 
             self._writer.send((yield))
 
-    def readuntil(self, stop, limit=None, exc=ValueError):
+    def readuntil(self, stop, limit=None):
         assert isinstance(stop, bytes) and stop, \
             'bytes is required: {!r}'.format(stop)
 
@@ -429,7 +430,8 @@ class ParserBuffer(bytearray):
                 end = pos + stop_len
                 size = end - self.offset
                 if limit is not None and size > limit:
-                    raise exc('Line is too long.')
+                    raise errors.LineLimitExceededParserError(
+                        'Line is too long.', limit)
 
                 start, self.offset = self.offset, end
                 self.size = self.size - size
@@ -437,7 +439,8 @@ class ParserBuffer(bytearray):
                 return self[start:end]
             else:
                 if limit is not None and self.size > limit:
-                    raise exc('Line is too long.')
+                    raise errors.LineLimitExceededParserError(
+                        'Line is too long.', limit)
 
             self._writer.send((yield))
 
@@ -451,7 +454,7 @@ class ParserBuffer(bytearray):
 
             self._writer.send((yield))
 
-    def waituntil(self, stop, limit=None, exc=ValueError):
+    def waituntil(self, stop, limit=None):
         """waituntil() reads until `stop` bytes sequence."""
         assert isinstance(stop, bytes) and stop, \
             'bytes is required: {!r}'.format(stop)
@@ -464,12 +467,14 @@ class ParserBuffer(bytearray):
                 end = pos + stop_len
                 size = end - self.offset
                 if limit is not None and size > limit:
-                    raise exc('Line is too long. %s' % bytes(self))
+                    raise errors.LineLimitExceededParserError(
+                        'Line is too long. %s' % bytes(self), limit)
 
                 return self[self.offset:end]
             else:
                 if limit is not None and self.size > limit:
-                    raise exc('Line is too long. %s' % bytes(self))
+                    raise errors.LineLimitExceededParserError(
+                        'Line is too long. %s' % bytes(self), limit)
 
             self._writer.send((yield))
 
@@ -512,14 +517,15 @@ class LinesParser:
     Lines parser splits a bytes stream into a chunks of data, each chunk ends
     with \\n symbol."""
 
-    def __init__(self, limit=2**16, exc=ValueError):
+    def __init__(self, limit=2**16):
         self._limit = limit
-        self._exc = exc
 
     def __call__(self, out, buf):
-        while True:
-            out.feed_data(
-                (yield from buf.readuntil(b'\n', self._limit, self._exc)))
+        try:
+            while True:
+                out.feed_data((yield from buf.readuntil(b'\n', self._limit)))
+        except EofStream:
+            pass
 
 
 class ChunksParser:
@@ -532,5 +538,8 @@ class ChunksParser:
         self._size = size
 
     def __call__(self, out, buf):
-        while True:
-            out.feed_data((yield from buf.read(self._size)))
+        try:
+            while True:
+                out.feed_data((yield from buf.read(self._size)))
+        except EofStream:
+            pass

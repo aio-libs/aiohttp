@@ -541,8 +541,8 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertRaises(
                 aiohttp.ClientConnectionError,
                 self.loop.run_until_complete,
-                client.request('get', httpd.url('method', 'get'),
-                               loop=self.loop))
+                client.request(
+                    'get', httpd.url('method', 'get'), loop=self.loop))
 
     def test_keepalive(self):
         from aiohttp import connector

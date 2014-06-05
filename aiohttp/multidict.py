@@ -24,29 +24,26 @@ class MultiDict(abc.Mapping):
             else:
                 self._items[key] = [value]
 
-    ### multidict interface suitable for wtforms ###
+    # multidict interface suitable for wtforms #
 
     def getall(self, key):
         """Returns all values stored at key as a tuple.
 
-        Raises KeyError if key doesn't exist.
-        """
+        Raises KeyError if key doesn't exist."""
         return tuple(self._items[key])
 
     def getone(self, key):
-        """Return first value stored at key.
-        """
+        """Return first value stored at key."""
         return self._items[key][0]
 
-    ### extra methods ###
+    # extra methods #
 
     def copy(self):
-        """Returns a copy itself.
-        """
+        """Returns a copy itself."""
         cls = self.__class__
         return cls(self.items(getall=True))
 
-    ### Mapping interface ###
+    # Mapping interface #
 
     def __getitem__(self, key):
         return self._items[key][0]
@@ -75,8 +72,7 @@ class MultiDict(abc.Mapping):
 
 
 class MutableMultiDict(abc.MutableMapping, MultiDict):
-    """An ordered dictionary that can have multiple values for each key.
-    """
+    """An ordered dictionary that can have multiple values for each key."""
 
     def getall(self, key):
         """Returns all values stored at key as list.
@@ -86,8 +82,7 @@ class MutableMultiDict(abc.MutableMapping, MultiDict):
         return list(self._items[key])
 
     def add(self, key, value):
-        """Adds value to a key.
-        """
+        """Adds value to a key."""
         if key in self._items:
             self._items[key].append(value)
         else:
@@ -114,11 +109,10 @@ class MutableMultiDict(abc.MutableMapping, MultiDict):
             self.add(key, value)
 
     def clear(self):
-        """Remove all items from MutableMultiDict
-        """
+        """Remove all items from MutableMultiDict"""
         self._items.clear()
 
-    ### MutableMapping interface ###
+    # MutableMapping interface #
 
     def __setitem__(self, key, value):
         self._items[key] = [value]

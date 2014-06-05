@@ -12,6 +12,27 @@ import aiohttp
 from aiohttp.client import HttpRequest, HttpResponse, HttpClient
 
 
+class RequestTests(unittest.TestCase):
+
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+    def tearDown(self):
+        self.loop.close()
+
+    def test_bad_status_response(self):
+        connector = unittest.mock.Mock()
+        connector.connect.side_effect = aiohttp.BadStatusLine
+
+        self.assertRaises(
+            aiohttp.ClientConnectionError,
+            self.loop.run_until_complete,
+            aiohttp.request(
+                'get', 'http://example.com',
+                connector=connector, loop=self.loop))
+
+
 class HttpResponseTests(unittest.TestCase):
 
     def setUp(self):
@@ -138,9 +159,19 @@ class HttpRequestTests(unittest.TestCase):
         req = HttpRequest('get', 'http://python.org/')
         self.assertEqual(req.headers['host'], 'python.org')
 
+        req = HttpRequest('get', 'http://python.org:80/')
+        self.assertEqual(req.headers['host'], 'python.org:80')
+
+        req = HttpRequest('get', 'http://python.org:99/')
+        self.assertEqual(req.headers['host'], 'python.org:99')
+
         req = HttpRequest('get', 'http://python.org/',
                           headers={'host': 'example.com'})
         self.assertEqual(req.headers['host'], 'example.com')
+
+        req = HttpRequest('get', 'http://python.org/',
+                          headers={'host': 'example.com:99'})
+        self.assertEqual(req.headers['host'], 'example.com:99')
 
     def test_headers(self):
         req = HttpRequest('get', 'http://python.org/',

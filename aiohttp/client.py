@@ -214,6 +214,9 @@ class HttpRequest:
             if len(self.auth) == 1:
                 self.auth.append('')
 
+        # Record entire netloc for usage in host header
+        self.netloc = netloc
+
         # extract host and port
         self.ssl = scheme == 'https'
         if ':' in netloc:
@@ -294,7 +297,7 @@ class HttpRequest:
 
         # add host
         if 'host' not in self.headers:
-            self.headers['Host'] = self.host
+            self.headers['Host'] = self.netloc
 
     def update_cookies(self, cookies):
         """Update request cookies header."""
