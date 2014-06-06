@@ -43,7 +43,8 @@ def request(method, url, *,
             connector=None,
             loop=None,
             read_until_eof=True,
-            request_class=None):
+            request_class=None,
+            response_class=None):
     """Constructs and sends a request. Returns response object.
 
     :param method: http method
@@ -70,6 +71,7 @@ def request(method, url, *,
     :param read_until_eof: Read response until eof if response
        does not have Content-Length header.
     :param request_class: Custom Request class implementation.
+    :param response_class: Custom Response class implementation.
     :param loop: Optional event loop.
 
     Usage::
@@ -95,7 +97,8 @@ def request(method, url, *,
             method, url, params=params, headers=headers, data=data,
             cookies=cookies, files=files, auth=auth, encoding=encoding,
             version=version, compress=compress, chunked=chunked,
-            loop=loop, expect100=expect100, using_proxy=using_proxy)
+            loop=loop, expect100=expect100, using_proxy=using_proxy,
+            response_class=response_class)
 
         try:
             conn = yield from connector.connect(req)
@@ -151,6 +154,7 @@ class HttpRequest:
     body = b''
     auth = None
     response = None
+    response_class = None
 
     _writer = None  # async task for streaming data
     _continue = None  # waiter future for '100 Continue' response
@@ -168,7 +172,8 @@ class HttpRequest:
                  params=None, headers=None, data=None, cookies=None,
                  files=None, auth=None, encoding='utf-8', version=(1, 1),
                  compress=None, chunked=None, expect100=False,
-                 verify_ssl=True, loop=None, using_proxy=False):
+                 verify_ssl=True, loop=None, using_proxy=False,
+                 response_class=None):
         self.url = url
         self.method = method.upper()
         self.encoding = encoding
@@ -177,6 +182,7 @@ class HttpRequest:
         self.verify_ssl = verify_ssl
         self.loop = loop
         self.using_proxy = using_proxy
+        self.response_class = response_class or HttpResponse
 
         self.update_version(version)
         self.update_host(url)
@@ -519,7 +525,7 @@ class HttpRequest:
         self._writer = asyncio.async(
             self.write_bytes(request, reader), loop=self.loop)
 
-        self.response = HttpResponse(
+        self.response = self.response_class(
             self.method, self.path, self.host,
             writer=self._writer, continue100=self._continue)
         return self.response
