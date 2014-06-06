@@ -524,6 +524,17 @@ class HttpRequestTests(unittest.TestCase):
              unittest.mock.call(b'\r\n'),
              unittest.mock.call(b'0\r\n\r\n')])
 
+    def test_custom_response_class(self):
+        class CustomResponse(HttpResponse):
+            def read(self, decode=False):
+                return 'customized!'
+
+        req = HttpRequest(
+            'GET', 'http://python.org/', response_class=CustomResponse,
+            loop=self.loop)
+        resp = req.send(self.transport, self.protocol)
+        self.assertEqual('customized!', resp.read())
+
 
 class HttpClientTests(unittest.TestCase):
 
