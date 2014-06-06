@@ -2,6 +2,7 @@ Contributors
 ------------
 
 Alejandro Gómez
+Alexander Shorin
 Alexey Popravka
 Andrew Svetlov
 Andrej Antonov

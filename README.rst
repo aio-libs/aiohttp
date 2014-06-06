@@ -31,7 +31,8 @@ To retrieve something from the web::
       response = yield from aiohttp.request('GET', url)
       return (yield from response.read_and_close())
 
-You can use the get command like this anywhere in your ``asyncio`` powered program::
+You can use the get command like this anywhere in your ``asyncio``
+powered program::
 
   response = yield from aiohttp.request('GET', 'http://python.org')
   body = yield from response.read_and_close()
@@ -55,6 +56,8 @@ The signature of request is the following::
           expect100=False,
           connector=None,
           read_until_eof=True,
+          request_class=None,
+          response_class=None,
           loop=None
   )
 
@@ -82,6 +85,8 @@ It constructs and sends a request. It returns response object. Parameters are ex
   connection pooling and session cookies.
 - ``read_until_eof``: Read response until eof if response
   does not have Content-Length header.
+- ``request_class``: Custom Request class implementation.
+- ``response_class``: Custom Response class implementation.
 - ``loop``: Optional event loop.
 
 If you want to use timeouts for aiohttp client side please use standard
