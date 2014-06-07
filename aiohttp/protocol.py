@@ -575,6 +575,8 @@ class HttpMessage:
         removes hop headers, etc."""
         assert not self.headers_sent, 'headers have been sent already'
         assert isinstance(name, str), '{!r} is not a string'.format(name)
+        assert isinstance(value, str), '{!r} is not a string'.format(value)
+        value = value.strip()
 
         name = name.strip().upper()
 
@@ -642,7 +644,7 @@ class HttpMessage:
         hdrs = ''.join(itertools.chain(
             (self.status_line,),
             *((k, ': ', v, '\r\n') for k, v in self.headers)))
-        hdrs = hdrs.encode('ascii') + b'\r\n'
+        hdrs = hdrs.encode('utf-8') + b'\r\n'
 
         self.output_length += len(hdrs)
         self.transport.write(hdrs)
