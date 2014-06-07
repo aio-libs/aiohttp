@@ -576,9 +576,9 @@ class HttpMessage:
         assert not self.headers_sent, 'headers have been sent already'
         assert isinstance(name, str), '{!r} is not a string'.format(name)
         assert isinstance(value, str), '{!r} is not a string'.format(value)
-        value = value.strip()
 
         name = name.strip().upper()
+        value = value.strip()
 
         if name == 'CONTENT-LENGTH':
             self.length = int(value)
