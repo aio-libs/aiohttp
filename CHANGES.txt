@@ -4,6 +4,8 @@ CHANGES
 0.8.0 (XX-XX-XXXX)
 ------------------
 
+- Add support for utf-8 values in HTTP headers
+
 - Allow to use custom response class instead of HttpResponse
 
 - Get rid of timeout parameter in aiohttp.client API
