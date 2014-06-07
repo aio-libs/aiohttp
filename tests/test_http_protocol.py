@@ -67,6 +67,20 @@ class HttpMessageTests(unittest.TestCase):
         msg.add_header('content-type', 'plain/html')
         self.assertEqual([('CONTENT-TYPE', 'plain/html')], list(msg.headers))
 
+    def test_add_header_with_spaces(self):
+        msg = protocol.Response(self.transport, 200)
+        self.assertEqual([], list(msg.headers))
+
+        msg.add_header('content-type', '  plain/html  ')
+        self.assertEqual([('CONTENT-TYPE', 'plain/html')], list(msg.headers))
+
+    def test_add_header_invalid_value_type(self):
+        msg = protocol.Response(self.transport, 200)
+        self.assertEqual([], list(msg.headers))
+
+        with self.assertRaises(AssertionError):
+            msg.add_header('content-type', b'value')
+
     def test_add_headers(self):
         msg = protocol.Response(self.transport, 200)
         self.assertEqual([], list(msg.headers))
@@ -196,6 +210,25 @@ class HttpMessageTests(unittest.TestCase):
 
         self.assertTrue(content.startswith(b'HTTP/1.1 200 OK\r\n'))
         self.assertIn(b'CONTENT-TYPE: plain/html', content)
+        self.assertTrue(msg.headers_sent)
+        self.assertTrue(msg.is_headers_sent())
+        # cleanup
+        msg.writer.close()
+
+    def test_send_headers_non_ascii(self):
+        write = self.transport.write = unittest.mock.Mock()
+
+        msg = protocol.Response(self.transport, 200)
+        msg.add_headers(('x-header', 'текст'))
+        self.assertFalse(msg.is_headers_sent())
+
+        msg.send_headers()
+
+        content = b''.join([arg[1][0] for arg in list(write.mock_calls)])
+
+        self.assertTrue(content.startswith(b'HTTP/1.1 200 OK\r\n'))
+        self.assertIn(b'X-HEADER: \xd1\x82\xd0\xb5\xd0\xba\xd1\x81\xd1\x82',
+                      content)
         self.assertTrue(msg.headers_sent)
         self.assertTrue(msg.is_headers_sent())
         # cleanup
