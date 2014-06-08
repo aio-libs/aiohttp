@@ -8,6 +8,10 @@ CHANGES
 
 - Allow to use custom response class instead of HttpResponse
 
+- Use MultiDict for client request headers
+
+- Store response headers in ClientResponse.headers attribute
+
 - Get rid of timeout parameter in aiohttp.client API
 
 - Exceptions refactoring

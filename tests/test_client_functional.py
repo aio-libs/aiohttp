@@ -513,7 +513,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             r = self.loop.run_until_complete(
                 client.request('get', httpd.url('chunked'), loop=self.loop))
             self.assertEqual(r.status, 200)
-            self.assertEqual(r['Transfer-Encoding'], 'chunked')
+            self.assertEqual(r.headers.getone('TRANSFER-ENCODING'), 'chunked')
             content = self.loop.run_until_complete(r.read(True))
             self.assertEqual(content['path'], '/chunked')
             r.close()

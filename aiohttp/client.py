@@ -5,8 +5,6 @@ __all__ = ['request', 'HttpClient']
 import asyncio
 import base64
 import collections
-import email.message
-import http.client
 import http.cookies
 import json
 import io
@@ -23,6 +21,10 @@ import weakref
 import warnings
 
 import aiohttp
+from .multidict import CaseInsensitiveMultiDict, MutableMultiDict
+
+HTTP_PORT = 80
+HTTPS_PORT = 443
 
 
 @asyncio.coroutine
@@ -79,7 +81,7 @@ def request(method, url, *,
       >>> import aiohttp
       >>> resp = yield from aiohttp.request('GET', 'http://python.org/')
       >>> resp
-      <HttpResponse(python.org/) [200]>
+      <ClientResponse(python.org/) [200]>
       >>> data = yield from resp.read_and_close()
 
     """
@@ -87,7 +89,7 @@ def request(method, url, *,
     if loop is None:
         loop = asyncio.get_event_loop()
     if request_class is None:
-        request_class = HttpRequest
+        request_class = ClientRequest
     if connector is None:
         connector = aiohttp.TCPConnector(loop=loop)
 
@@ -122,7 +124,7 @@ def request(method, url, *,
                 resp.close()
                 break
 
-            r_url = resp.get('location') or resp.get('uri')
+            r_url = resp.headers.get('LOCATION') or resp.headers.get('URI')
 
             scheme = urllib.parse.urlsplit(r_url)[0]
             if scheme not in ('http', 'https', ''):
@@ -140,15 +142,15 @@ def request(method, url, *,
     return resp
 
 
-class HttpRequest:
+class ClientRequest:
 
     GET_METHODS = {'DELETE', 'GET', 'HEAD', 'OPTIONS'}
     POST_METHODS = {'PATCH', 'POST', 'PUT', 'TRACE'}
     ALL_METHODS = GET_METHODS.union(POST_METHODS)
 
     DEFAULT_HEADERS = {
-        'Accept': '*/*',
-        'Accept-Encoding': 'gzip, deflate',
+        'ACCEPT': '*/*',
+        'ACCEPT-ENCODING': 'gzip, deflate',
     }
 
     body = b''
@@ -165,7 +167,7 @@ class HttpRequest:
     # doesn't produce request finalization.
     # After .write_bytes is done _writer has set to None and we have nothing
     # to cancel.
-    # Maybe we need to add .cancel() method to HttpRequest through for
+    # Maybe we need to add .cancel() method to ClientRequest through for
     # forced closing request sending.
 
     def __init__(self, method, url, *,
@@ -182,7 +184,7 @@ class HttpRequest:
         self.verify_ssl = verify_ssl
         self.loop = loop
         self.using_proxy = using_proxy
-        self.response_class = response_class or HttpResponse
+        self.response_class = response_class or ClientResponse
 
         self.update_version(version)
         self.update_host(url)
@@ -234,9 +236,9 @@ class HttpRequest:
                     'Port number could not be converted.') from None
         else:
             if self.ssl:
-                self.port = http.client.HTTPS_PORT
+                self.port = HTTPS_PORT
             else:
-                self.port = http.client.HTTP_PORT
+                self.port = HTTP_PORT
 
         self.scheme = scheme
         self.host = netloc
@@ -289,21 +291,21 @@ class HttpRequest:
 
     def update_headers(self, headers):
         """Update request headers."""
-        self.headers = email.message.Message()
+        self.headers = MutableMultiDict()
         if headers:
             if isinstance(headers, dict):
                 headers = headers.items()
 
             for key, value in headers:
-                self.headers.add_header(key, value)
+                self.headers.add(key.upper(), value)
 
         for hdr, val in self.DEFAULT_HEADERS.items():
             if hdr not in self.headers:
                 self.headers[hdr] = val
 
         # add host
-        if 'host' not in self.headers:
-            self.headers['Host'] = self.netloc
+        if 'HOST' not in self.headers:
+            self.headers['HOST'] = self.netloc
 
     def update_cookies(self, cookies):
         """Update request cookies header."""
@@ -311,9 +313,9 @@ class HttpRequest:
             return
 
         c = http.cookies.SimpleCookie()
-        if 'cookie' in self.headers:
-            c.load(self.headers.get('cookie', ''))
-            del self.headers['cookie']
+        if 'COOKIE' in self.headers:
+            c.load(self.headers.get('COOKIE', ''))
+            del self.headers['COOKIE']
 
         if isinstance(cookies, dict):
             cookies = cookies.items()
@@ -325,18 +327,18 @@ class HttpRequest:
             else:
                 c[name] = value
 
-        self.headers['cookie'] = c.output(header='', sep=';').strip()
+        self.headers['COOKIE'] = c.output(header='', sep=';').strip()
 
     def update_content_encoding(self):
         """Set request content encoding."""
-        enc = self.headers.get('content-encoding', '').lower()
+        enc = self.headers.get('CONTENT-ENCODING', '').lower()
         if enc:
             self.compress = enc
             self.chunked = True  # enable chunked, no need to deal with length
         elif self.compress:
             if not isinstance(self.compress, str):
                 self.compress = 'deflate'
-            self.headers['content-encoding'] = self.compress
+            self.headers['CONTENT-ENCODING'] = self.compress
             self.chunked = True  # enable chunked, no need to deal with length
 
     def update_auth(self, auth):
@@ -347,7 +349,7 @@ class HttpRequest:
         if auth:
             if isinstance(auth, (tuple, list)) and len(auth) == 2:
                 # basic auth
-                self.headers['Authorization'] = 'Basic %s' % (
+                self.headers['AUTHORIZATION'] = 'Basic %s' % (
                     base64.b64encode(
                         ('%s:%s' % (auth[0], auth[1])).encode('latin1'))
                     .strip().decode('latin1'))
@@ -358,13 +360,13 @@ class HttpRequest:
         if (hasattr(data, '__iter__') and not isinstance(
                 data, (bytes, bytearray, str, list, dict))):
             self.body = data
-            if 'content-length' not in self.headers and self.chunked is None:
+            if 'CONTENT-LENGTH' not in self.headers and self.chunked is None:
                 self.chunked = True
         else:
             if isinstance(data, (bytes, bytearray)):
                 self.body = data
-                if 'content-type' not in self.headers:
-                    self.headers['content-type'] = 'application/octet-stream'
+                if 'CONTENT-TYPE' not in self.headers:
+                    self.headers['CONTENT-TYPE'] = 'application/octet-stream'
             else:
                 # form data (x-www-form-urlencoded)
                 if isinstance(data, dict):
@@ -375,12 +377,12 @@ class HttpRequest:
 
                 self.body = data.encode(self.encoding)
 
-                if 'content-type' not in self.headers:
-                    self.headers['content-type'] = (
+                if 'CONTENT-TYPE' not in self.headers:
+                    self.headers['CONTENT-TYPE'] = (
                         'application/x-www-form-urlencoded')
 
-            if 'content-length' not in self.headers and not self.chunked:
-                self.headers['content-length'] = str(len(self.body))
+            if 'CONTENT-LENGTH' not in self.headers and not self.chunked:
+                self.headers['CONTENT-LENGTH'] = str(len(self.body))
 
     def update_body_from_files(self, files, data):
         """Generate multipart/form-data body."""
@@ -425,18 +427,18 @@ class HttpRequest:
         self.body = encode_multipart_data(
             fields, bytes(boundary, 'latin1'))
 
-        self.headers['content-type'] = (
+        self.headers['CONTENT-TYPE'] = (
             'multipart/form-data; boundary=%s' % boundary)
 
     def update_transfer_encoding(self):
         """Analyze transfer-encoding header."""
-        te = self.headers.get('transfer-encoding', '').lower()
+        te = self.headers.get('TRANSFER-ENCODING', '').lower()
 
         if self.chunked:
-            if 'content-length' in self.headers:
-                del self.headers['content-length']
+            if 'CONTENT-LENGTH' in self.headers:
+                del self.headers['CONTENT-LENGTH']
             if 'chunked' not in te:
-                self.headers['transfer-encoding'] = 'chunked'
+                self.headers['TRANSFER-ENCODING'] = 'chunked'
 
             self.chunked = self.chunked if type(self.chunked) is int else 8196
         else:
@@ -444,13 +446,13 @@ class HttpRequest:
                 self.chunked = 8196
             else:
                 self.chunked = None
-                if 'content-length' not in self.headers:
-                    self.headers['content-length'] = str(len(self.body))
+                if 'CONTENT-LENGTH' not in self.headers:
+                    self.headers['CONTENT-LENGTH'] = str(len(self.body))
 
     def update_expect_continue(self, expect=False):
         if expect:
-            self.headers['expect'] = '100-continue'
-        elif self.headers.get('expect', '').lower() == '100-continue':
+            self.headers['EXPECT'] = '100-continue'
+        elif self.headers.get('EXPECT', '').lower() == '100-continue':
             expect = True
 
         if expect:
@@ -539,7 +541,7 @@ class HttpRequest:
                 self._writer = None
 
 
-class HttpResponse(http.client.HTTPMessage):
+class ClientResponse:
 
     message = None  # RawResponseMessage object
 
@@ -563,6 +565,7 @@ class HttpResponse(http.client.HTTPMessage):
         self.method = method
         self.url = url
         self.host = host
+        self.headers = None
         self._content = None
         self._writer = writer
         if writer is not None:
@@ -571,9 +574,9 @@ class HttpResponse(http.client.HTTPMessage):
 
     def __repr__(self):
         out = io.StringIO()
-        print('<HttpResponse({}{}) [{} {}]>'.format(
+        print('<ClientResponse({}{}) [{} {}]>'.format(
             self.host, self.url, self.status, self.reason), file=out)
-        print(super().__str__(), file=out)
+        print(self.headers, file=out)
         return out.getvalue()
 
     __str__ = __repr__
@@ -585,7 +588,7 @@ class HttpResponse(http.client.HTTPMessage):
         self._reader = connection.reader
         self.connection = connection
 
-        msg = ('HttpResponse has to be closed explicitly! {}:{}:{}'
+        msg = ('ClientResponse has to be closed explicitly! {}:{}:{}'
                .format(self.method, self.host, self.url))
 
         def _do_close_connection(wr, connection=connection, msg=msg):
@@ -617,8 +620,7 @@ class HttpResponse(http.client.HTTPMessage):
         self.reason = self.message.reason
 
         # headers
-        for hdr, val in self.message.headers:
-            self.add_header(hdr, val)
+        self.headers = CaseInsensitiveMultiDict(self.message.headers)
 
         # payload
         self.content = self._reader.set_parser(
@@ -626,8 +628,8 @@ class HttpResponse(http.client.HTTPMessage):
 
         # cookies
         self.cookies = http.cookies.SimpleCookie()
-        if 'Set-Cookie' in self:
-            for hdr in self.get_all('Set-Cookie'):
+        if 'SET-COOKIE' in self.headers:
+            for hdr in self.headers.getall('SET-COOKIE'):
                 try:
                     self.cookies.load(hdr)
                 except http.cookies.CookieError as exc:
@@ -684,7 +686,7 @@ class HttpResponse(http.client.HTTPMessage):
         data = self._content
 
         if decode:
-            ct = self.get('content-type', '').lower()
+            ct = self.headers.get('CONTENT-TYPE', '').lower()
             if ct == 'application/json':
                 data = json.loads(data.decode('utf-8'))
 

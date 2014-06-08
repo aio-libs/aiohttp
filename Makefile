@@ -12,7 +12,7 @@ build:
 	$(PYTHON) ./setup.py develop
 
 venv:
-	curl -O https://raw.github.com/pypa/virtualenv/1.10.X/virtualenv.py
+	curl -O https://raw.githubusercontent.com/pypa/virtualenv/1.10.X/virtualenv.py
 	python3.3 virtualenv.py venv
 	rm -f ./virtualenv.py
 	curl -O https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py

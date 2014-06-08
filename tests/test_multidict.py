@@ -1,6 +1,7 @@
 import unittest
 
-from aiohttp.multidict import MultiDict, MutableMultiDict
+from aiohttp.multidict import \
+    MultiDict, MutableMultiDict, CaseInsensitiveMultiDict
 
 
 class _BaseTest(unittest.TestCase):
@@ -127,6 +128,36 @@ class MultiDictTests(_BaseTest):
         self.assertEqual(d.getall('key'), ('value1', 'value2'))
 
         with self.assertRaisesRegex(KeyError, "some_key"):
+            d.getall('some_key')
+
+
+class CaseInsensitiveMultiDictTests(unittest.TestCase):
+
+    def make_dict(self, *args, **kwargs):
+        return CaseInsensitiveMultiDict(*args, **kwargs)
+
+    def test_basics(self):
+        d = self.make_dict([('KEY', 'value1')], KEY='value2')
+        self.assertEqual(d.getone('key'), 'value1')
+        self.assertEqual(d.get('key'), 'value1')
+        self.assertEqual(d.get('key2', 'val'), 'val')
+        self.assertEqual(d['key'], 'value1')
+        self.assertIn('key', d)
+
+        with self.assertRaises(KeyError):
+            d['key2']
+        with self.assertRaises(KeyError):
+            d.getone('key2')
+
+    def test_getall(self):
+        d = self.make_dict([('KEY', 'value1')], KEY='value2')
+
+        self.assertEqual(d, {'KEY': 'value1'})
+        self.assertEqual(len(d), 1)
+
+        self.assertEqual(d.getall('key'), ('value1', 'value2'))
+
+        with self.assertRaisesRegex(KeyError, "SOME_KEY"):
             d.getall('some_key')
 
 

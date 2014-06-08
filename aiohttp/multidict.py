@@ -24,13 +24,18 @@ class MultiDict(abc.Mapping):
             else:
                 self._items[key] = [value]
 
-    # multidict interface suitable for wtforms #
-
     def getall(self, key):
         """Returns all values stored at key as a tuple.
 
         Raises KeyError if key doesn't exist."""
         return tuple(self._items[key])
+
+    def get(self, key, default=None):
+        """Return first value stored at key."""
+        if key in self._items and self._items[key]:
+            return self._items[key][0]
+        else:
+            return default
 
     def getone(self, key):
         """Return first value stored at key."""
@@ -67,8 +72,34 @@ class MultiDict(abc.Mapping):
             return self._items == other._items
         return dict(self.items()) == dict(other.items())
 
+    def __contains__(self, key):
+        return key in self._items
+
     def __repr__(self):
         return '<{} {!r}>'.format(self.__class__.__name__, self._items)
+
+
+class CaseInsensitiveMultiDict(MultiDict):
+    """Case insensitive multi dict."""
+
+    def getall(self, key):
+        return tuple(self._items[key.upper()])
+
+    def get(self, key, default=None):
+        key = key.upper()
+        if key in self._items and self._items[key]:
+            return self._items[key][0]
+        else:
+            return default
+
+    def getone(self, key):
+        return self._items[key.upper()][0]
+
+    def __getitem__(self, key):
+        return self._items[key.upper()][0]
+
+    def __contains__(self, key):
+        return key.upper() in self._items
 
 
 class MutableMultiDict(abc.MutableMapping, MultiDict):

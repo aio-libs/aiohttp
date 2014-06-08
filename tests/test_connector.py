@@ -11,7 +11,7 @@ from unittest import mock
 import aiohttp
 from aiohttp import client
 from aiohttp import test_utils
-from aiohttp.client import HttpResponse, HttpRequest
+from aiohttp.client import ClientResponse, ClientRequest
 from aiohttp.connector import Connection
 
 from tests.test_client_functional import Functional
@@ -60,7 +60,7 @@ class BaseConnectorTests(unittest.TestCase):
 
         self.transport = unittest.mock.Mock()
         self.stream = aiohttp.StreamParser()
-        self.response = HttpResponse('get', 'http://python.org')
+        self.response = ClientResponse('get', 'http://python.org')
 
     def tearDown(self):
         self.loop.close()
@@ -306,7 +306,7 @@ class ProxyConnectorTests(unittest.TestCase):
         }
         proxy_connector = aiohttp.connector.ProxyConnector(
             loop=self.loop, proxies=proxies)
-        req = HttpRequest('get', 'http://python.org/')
+        req = ClientRequest('get', 'http://python.org/')
 
         @asyncio.coroutine
         def connect_coroutine(*args, **kwargs):
