@@ -428,11 +428,32 @@ class DataQueueTests(unittest.TestCase):
 
     def test_read_exception(self):
         buffer = parsers.DataQueue(self.stream, loop=self.loop)
-        buffer.feed_data(object())
         buffer.set_exception(ValueError())
 
         self.assertRaises(
             ValueError, self.loop.run_until_complete, buffer.read())
+
+    def test_read_exception_with_data(self):
+        val = object()
+        buffer = parsers.DataQueue(self.stream, loop=self.loop)
+        buffer.feed_data(val)
+        buffer.set_exception(ValueError())
+
+        self.assertIs(val, self.loop.run_until_complete(buffer.read()))
+        self.assertRaises(
+            ValueError, self.loop.run_until_complete, buffer.read())
+
+    def test_read_exception_on_wait(self):
+        buffer = parsers.DataQueue(self.stream, loop=self.loop)
+        read_task = asyncio.Task(buffer.read(), loop=self.loop)
+        test_utils.run_briefly(self.loop)
+        self.assertIsInstance(buffer._waiter, asyncio.Future)
+
+        buffer.feed_eof()
+        buffer.set_exception(ValueError())
+
+        self.assertRaises(
+            ValueError, self.loop.run_until_complete, read_task)
 
     def test_exception(self):
         buffer = parsers.DataQueue(self.stream, loop=self.loop)

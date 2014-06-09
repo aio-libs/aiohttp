@@ -324,12 +324,12 @@ class DataQueue:
 
     @asyncio.coroutine
     def read(self):
-        if self._exception is not None:
-            raise self._exception
-
         self._stream.resume_stream()
         try:
             if not self._buffer and not self._eof:
+                if self._exception is not None:
+                    raise self._exception
+
                 assert not self._waiter
                 self._waiter = asyncio.Future(loop=self._loop)
                 yield from self._waiter
@@ -337,7 +337,10 @@ class DataQueue:
             if self._buffer:
                 return self._buffer.popleft()
             else:
-                raise EofStream
+                if self._exception is not None:
+                    raise self._exception
+                else:
+                    raise EofStream
         finally:
             self._stream.pause_stream()
 
