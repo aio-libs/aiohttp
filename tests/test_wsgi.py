@@ -6,6 +6,7 @@ import unittest
 import unittest.mock
 
 import aiohttp
+from aiohttp import multidict
 from aiohttp import wsgi
 from aiohttp import protocol
 
@@ -23,7 +24,7 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
         self.transport = unittest.mock.Mock()
         self.transport.get_extra_info.return_value = '127.0.0.1'
 
-        self.headers = []
+        self.headers = multidict.MutableMultiDict()
         self.message = protocol.RawRequestMessage(
             'GET', '/path', (1, 0), self.headers, True, 'deflate')
         self.payload = aiohttp.DataQueue(self.reader)
@@ -77,7 +78,7 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
         self.assertEqual(environ['SERVER_PORT'], '443')
 
     def test_environ_host_header(self):
-        self.headers.append(('HOST', 'python.org'))
+        self.headers.add('HOST', 'python.org')
         environ = self._make_one()
 
         self.assertEqual(environ['HTTP_HOST'], 'python.org')
@@ -88,7 +89,7 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
     def test_environ_host_port_header(self):
         self.message = protocol.RawRequestMessage(
             'GET', '/path', (1, 1), self.headers, True, 'deflate')
-        self.headers.append(('HOST', 'python.org:443'))
+        self.headers.add('HOST', 'python.org:443')
         environ = self._make_one()
 
         self.assertEqual(environ['HTTP_HOST'], 'python.org:443')
