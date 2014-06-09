@@ -191,8 +191,6 @@ def do_handshake(method, headers, transport):
     if method.upper() != 'GET':
         raise errors.HttpErrorException(405, headers=(('Allow', 'GET'),))
 
-    headers = dict(((hdr, val) for hdr, val in headers if hdr in WS_HDRS))
-
     if 'websocket' != headers.get('UPGRADE', '').lower().strip():
         raise errors.HttpBadRequest(
             'No WebSocket UPGRADE hdr: {}\n'

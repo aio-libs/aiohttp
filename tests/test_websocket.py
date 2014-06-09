@@ -8,7 +8,7 @@ import unittest
 import unittest.mock
 
 import aiohttp
-from aiohttp import websocket, protocol, errors
+from aiohttp import websocket, multidict, protocol, errors
 
 
 class WebsocketParserTests(unittest.TestCase):
@@ -351,7 +351,7 @@ class WebSocketHandshakeTests(unittest.TestCase):
 
     def setUp(self):
         self.transport = unittest.mock.Mock()
-        self.headers = []
+        self.headers = multidict.MutableMultiDict()
         self.message = protocol.RawRequestMessage(
             'GET', '/path', (1, 0), self.headers, True, None)
 
