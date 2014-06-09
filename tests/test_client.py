@@ -554,13 +554,13 @@ class HttpClientTests(unittest.TestCase):
         self.assertRaises(ValueError, HttpClient, ('test:test',))
 
         c = HttpClient('localhost:8080', loop=self.loop)
-        self.assertEqual(c._hosts, [('localhost', 8080)])
+        self.assertEqual(c._hosts, [('localhost', 8080, True)])
 
         c = HttpClient('localhost', loop=self.loop)
-        self.assertEqual(c._hosts, [('localhost', 80)])
+        self.assertEqual(c._hosts, [('localhost', 80, False)])
 
         c = HttpClient([('localhost', 1000)], loop=self.loop)
-        self.assertEqual(c._hosts, [('localhost', 1000)])
+        self.assertEqual(c._hosts, [('localhost', 1000, True)])
 
         c = HttpClient([('localhost', 1000)])
         self.assertIs(c._loop, asyncio.get_event_loop.return_value)
@@ -641,8 +641,8 @@ class HttpClientTests(unittest.TestCase):
         c = HttpClient(
             [('localhost', 56777), ('localhost', 56778)], loop=self.loop)
         c._hosts = []
-        c._failed.append((('localhost', 1000), now - 10))
-        c._failed.append((('localhost', 1001), now - 10))
+        c._failed.append((('localhost', 1000, False), now - 10))
+        c._failed.append((('localhost', 1001, True), now - 10))
 
         self.assertRaises(
             aiohttp.ConnectionError,

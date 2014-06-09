@@ -521,7 +521,10 @@ class ClientRequest:
         if self.chunked is not None:
             request.add_chunking_filter(self.chunked)
 
-        request.add_headers(*self.headers.items(getall=True))
+        request.add_headers(
+            *((k, v)
+              for k, v in ((k, value)
+                           for k, value in self.headers.items(getall=True))))
         request.send_headers()
 
         self._writer = asyncio.async(
@@ -788,19 +791,22 @@ class HttpClient:
 
         self._hosts = []
         for host in hosts:
+            has_port = False
             if isinstance(host, str):
                 if ':' in host:
                     host, port = host.split(':')
                     try:
                         port = int(port)
+                        has_port = True
                     except:
                         raise ValueError('Port has to be integer: %s' % host)
                 else:
                     port = 80
             else:
+                has_port = True
                 host, port = host
 
-            self._hosts.append((host, port))
+            self._hosts.append((host, port, has_port))
 
         self._method = method
         self._path = path
@@ -879,8 +885,12 @@ class HttpClient:
             idx = random.randint(0, len(hosts)-1)
 
             info = hosts[idx]
-            url = urllib.parse.urljoin(
-                '{}://{}:{}'.format(self._schema, info[0], info[1]), path)
+            if info[2]:
+                url = urllib.parse.urljoin(
+                    '{}://{}:{}'.format(self._schema, info[0], info[1]), path)
+            else:
+                url = urllib.parse.urljoin(
+                    '{}://{}'.format(self._schema, info[0]), path)
 
             try:
                 resp = yield from request(
