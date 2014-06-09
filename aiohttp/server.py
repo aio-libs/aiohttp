@@ -190,7 +190,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                         isinstance(handler, asyncio.Future)):
                     yield from handler
 
-            except (asyncio.CancelledError, ConnectionError):
+            except (asyncio.CancelledError, errors.ConnectionError):
                 self.log_debug('Ignored premature client disconnection.')
                 break
             except errors.HttpException as exc:
