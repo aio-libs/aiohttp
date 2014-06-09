@@ -10,6 +10,8 @@ CHANGES
 
 - Use MultiDict for client request headers
 
+- Use MultiDict for server request/response headers
+
 - Store response headers in ClientResponse.headers attribute
 
 - Get rid of timeout parameter in aiohttp.client API
