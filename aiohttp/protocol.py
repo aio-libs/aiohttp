@@ -125,25 +125,20 @@ class HttpPrefixParser:
         self.allowed_methods = [m.upper() for m in allowed_methods]
 
     def __call__(self, out, buf):
-        try:
-            raw_data = yield from buf.waituntil(b' ', 24)
-            method = raw_data.decode('ascii', 'surrogateescape').strip()
+        raw_data = yield from buf.waituntil(b' ', 24)
+        method = raw_data.decode('ascii', 'surrogateescape').strip()
 
-            # method
-            method = method.upper()
-            if not METHRE.match(method):
-                raise errors.BadStatusLine(method)
+        # method
+        method = method.upper()
+        if not METHRE.match(method):
+            raise errors.BadStatusLine(method)
 
-            # allowed method
-            if self.allowed_methods and method not in self.allowed_methods:
-                raise errors.HttpMethodNotAllowed(method)
+        # allowed method
+        if self.allowed_methods and method not in self.allowed_methods:
+            raise errors.HttpMethodNotAllowed(method)
 
-            out.feed_data(method)
-            out.feed_eof()
-        except aiohttp.EofStream:
-            # Presumably, the server closed the connection before
-            # sending a valid response.
-            pass
+        out.feed_data(method)
+        out.feed_eof()
 
 
 class HttpRequestParser(HttpParser):
@@ -153,50 +148,45 @@ class HttpRequestParser(HttpParser):
     """
 
     def __call__(self, out, buf):
+        # read http message (request line + headers)
         try:
-            # read http message (request line + headers)
-            try:
-                raw_data = yield from buf.readuntil(
-                    b'\r\n\r\n', self.max_headers)
-            except errors.LineLimitExceededParserError as exc:
-                raise errors.LineTooLong(exc.limit) from None
+            raw_data = yield from buf.readuntil(
+                b'\r\n\r\n', self.max_headers)
+        except errors.LineLimitExceededParserError as exc:
+            raise errors.LineTooLong(exc.limit) from None
 
-            lines = raw_data.decode(
-                'ascii', 'surrogateescape').splitlines(True)
+        lines = raw_data.decode(
+            'ascii', 'surrogateescape').splitlines(True)
 
-            # request line
-            line = lines[0]
-            try:
-                method, path, version = line.split(None, 2)
-            except ValueError:
-                raise errors.BadStatusLine(line) from None
+        # request line
+        line = lines[0]
+        try:
+            method, path, version = line.split(None, 2)
+        except ValueError:
+            raise errors.BadStatusLine(line) from None
 
-            # method
-            method = method.upper()
-            if not METHRE.match(method):
-                raise errors.BadStatusLine(method)
+        # method
+        method = method.upper()
+        if not METHRE.match(method):
+            raise errors.BadStatusLine(method)
 
-            # version
-            match = VERSRE.match(version)
-            if match is None:
-                raise errors.BadStatusLine(version)
-            version = (int(match.group(1)), int(match.group(2)))
+        # version
+        match = VERSRE.match(version)
+        if match is None:
+            raise errors.BadStatusLine(version)
+        version = (int(match.group(1)), int(match.group(2)))
 
-            # read headers
-            headers, close, compression = self.parse_headers(lines)
-            if version <= (1, 0):
-                close = True
-            elif close is None:
-                close = False
+        # read headers
+        headers, close, compression = self.parse_headers(lines)
+        if version <= (1, 0):
+            close = True
+        elif close is None:
+            close = False
 
-            out.feed_data(
-                RawRequestMessage(
-                    method, path, version, headers, close, compression))
-            out.feed_eof()
-        except aiohttp.EofStream:
-            # Presumably, the server closed the connection before
-            # sending a valid response.
-            pass
+        out.feed_data(
+            RawRequestMessage(
+                method, path, version, headers, close, compression))
+        out.feed_eof()
 
 
 class HttpResponseParser(HttpParser):

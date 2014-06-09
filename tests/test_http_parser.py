@@ -391,7 +391,7 @@ class ParseRequestTests(unittest.TestCase):
             result)
 
     def test_http_request_parser_eof(self):
-        # HttpRequestParser does not fail on EofStream()
+        # HttpRequestParser does fail on EofStream()
         out = aiohttp.DataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpRequestParser()(out, buf)
@@ -399,7 +399,7 @@ class ParseRequestTests(unittest.TestCase):
         p.send(b'get /path HTTP/1.1\r\n')
         try:
             p.throw(aiohttp.EofStream())
-        except StopIteration:
+        except aiohttp.EofStream:
             pass
         self.assertFalse(out._buffer)
 
