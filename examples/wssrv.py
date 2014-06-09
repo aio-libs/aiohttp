@@ -38,11 +38,7 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
-        upgrade = False
-        for hdr, val in message.headers:
-            if hdr == 'UPGRADE':
-                upgrade = 'websocket' in val.lower()
-                break
+        upgrade = 'websocket' in message.headers.get('UPGRADE', '').lower()
 
         if upgrade:
             # websocket handshake

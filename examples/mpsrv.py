@@ -46,10 +46,6 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
         if not path:
             raise aiohttp.HttpErrorException(404)
 
-        headers = email.message.Message()
-        for hdr, val in message.headers:
-            headers.add_header(hdr, val)
-
         if isdir and not path.endswith('/'):
             path = path + '/'
             raise aiohttp.HttpErrorException(
@@ -60,7 +56,7 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
         response.add_header('Transfer-Encoding', 'chunked')
 
         # content encoding
-        accept_encoding = headers.get('accept-encoding', '').lower()
+        accept_encoding = message.headers.get('accept-encoding', '').lower()
         if 'deflate' in accept_encoding:
             response.add_header('Content-Encoding', 'deflate')
             response.add_compression_filter('deflate')

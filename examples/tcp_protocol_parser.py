@@ -88,7 +88,7 @@ class EchoServer(asyncio.Protocol):
         while True:
             try:
                 msg = yield from reader.read()
-            except aiohttp.EofStream:
+            except aiohttp.ConnectionError:
                 # client has been disconnected
                 break
 
