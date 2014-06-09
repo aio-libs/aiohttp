@@ -521,7 +521,7 @@ class ClientRequest:
         if self.chunked is not None:
             request.add_chunking_filter(self.chunked)
 
-        request.add_headers(*self.headers.items())
+        request.add_headers(*self.headers.items(getall=True))
         request.send_headers()
 
         self._writer = asyncio.async(
@@ -620,7 +620,8 @@ class ClientResponse:
         self.reason = self.message.reason
 
         # headers
-        self.headers = CaseInsensitiveMultiDict(self.message.headers)
+        self.headers = CaseInsensitiveMultiDict(
+            self.message.headers.items(getall=True))
 
         # payload
         self.content = self._reader.set_parser(

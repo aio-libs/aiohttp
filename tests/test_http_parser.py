@@ -1,6 +1,5 @@
 """Tests for aiohttp/protocol.py"""
 
-from collections import deque
 import asyncio
 import zlib
 import unittest
@@ -9,6 +8,7 @@ import unittest.mock
 import aiohttp
 from aiohttp import errors
 from aiohttp import protocol
+from aiohttp import multidict
 
 
 class ParseHeadersTests(unittest.TestCase):
@@ -24,7 +24,7 @@ class ParseHeadersTests(unittest.TestCase):
 
         headers, close, compression = self.parser.parse_headers(hdrs)
 
-        self.assertEqual(list(headers),
+        self.assertEqual(list(headers.items()),
                          [('TEST', 'line\r\n continue'), ('TEST2', 'data')])
         self.assertIsNone(close)
         self.assertIsNone(compression)
@@ -36,7 +36,7 @@ class ParseHeadersTests(unittest.TestCase):
 
         headers, close, compression = self.parser.parse_headers(hdrs)
 
-        self.assertEqual(list(headers),
+        self.assertEqual(list(headers.items(getall=True)),
                          [('SET-COOKIE', 'c1=cookie1'),
                           ('SET-COOKIE', 'c2=cookie2')])
         self.assertIsNone(close)
@@ -241,7 +241,8 @@ class ParsePayloadTests(unittest.TestCase):
 
     def test_http_payload_parser_length_broken(self):
         msg = protocol.RawRequestMessage(
-            'GET', '/', (1, 1), [('CONTENT-LENGTH', 'qwe')], None, None)
+            'GET', '/', (1, 1),
+            multidict.MultiDict([('CONTENT-LENGTH', 'qwe')]), None, None)
         out = aiohttp.DataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg)(out, buf)
@@ -249,7 +250,8 @@ class ParsePayloadTests(unittest.TestCase):
 
     def test_http_payload_parser_length_wrong(self):
         msg = protocol.RawRequestMessage(
-            'GET', '/', (1, 1), [('CONTENT-LENGTH', '-1')], None, None)
+            'GET', '/', (1, 1),
+            multidict.MultiDict([('CONTENT-LENGTH', '-1')]), None, None)
         out = aiohttp.DataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg)(out, buf)
@@ -257,7 +259,8 @@ class ParsePayloadTests(unittest.TestCase):
 
     def test_http_payload_parser_length(self):
         msg = protocol.RawRequestMessage(
-            'GET', '/', (1, 1), [('CONTENT-LENGTH', '2')], None, None)
+            'GET', '/', (1, 1),
+            multidict.MultiDict([('CONTENT-LENGTH', '2')]), None, None)
         out = aiohttp.DataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg)(out, buf)
@@ -272,7 +275,7 @@ class ParsePayloadTests(unittest.TestCase):
 
     def test_http_payload_parser_no_length(self):
         msg = protocol.RawRequestMessage(
-            'GET', '/', (1, 1), [], None, None)
+            'GET', '/', (1, 1), multidict.MultiDict(), None, None)
         out = aiohttp.DataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg, readall=False)(out, buf)
@@ -285,7 +288,8 @@ class ParsePayloadTests(unittest.TestCase):
 
     def test_http_payload_parser_deflate(self):
         msg = protocol.RawRequestMessage(
-            'GET', '/', (1, 1), [('CONTENT-LENGTH', len(self._COMPRESSED))],
+            'GET', '/', (1, 1),
+            multidict.MultiDict([('CONTENT-LENGTH', len(self._COMPRESSED))]),
             None, 'deflate')
 
         out = aiohttp.DataQueue(self.stream)
@@ -297,7 +301,8 @@ class ParsePayloadTests(unittest.TestCase):
 
     def test_http_payload_parser_deflate_disabled(self):
         msg = protocol.RawRequestMessage(
-            'GET', '/', (1, 1), [('CONTENT-LENGTH', len(self._COMPRESSED))],
+            'GET', '/', (1, 1),
+            multidict.MultiDict([('CONTENT-LENGTH', len(self._COMPRESSED))]),
             None, 'deflate')
 
         out = aiohttp.DataQueue(self.stream)
@@ -309,7 +314,8 @@ class ParsePayloadTests(unittest.TestCase):
 
     def test_http_payload_parser_websocket(self):
         msg = protocol.RawRequestMessage(
-            'GET', '/', (1, 1), [('SEC-WEBSOCKET-KEY1', '13')], None, None)
+            'GET', '/', (1, 1),
+            multidict.MultiDict([('SEC-WEBSOCKET-KEY1', '13')]), None, None)
         out = aiohttp.DataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg)(out, buf)
@@ -319,7 +325,9 @@ class ParsePayloadTests(unittest.TestCase):
 
     def test_http_payload_parser_chunked(self):
         msg = protocol.RawRequestMessage(
-            'GET', '/', (1, 1), [('TRANSFER-ENCODING', 'chunked')], None, None)
+            'GET', '/', (1, 1),
+            multidict.MultiDict([('TRANSFER-ENCODING', 'chunked')]),
+            None, None)
         out = aiohttp.DataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg)(out, buf)
@@ -330,7 +338,7 @@ class ParsePayloadTests(unittest.TestCase):
 
     def test_http_payload_parser_eof(self):
         msg = protocol.RawRequestMessage(
-            'GET', '/', (1, 1), [], None, None)
+            'GET', '/', (1, 1), multidict.MultiDict(), None, None)
         out = aiohttp.DataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg, readall=True)(out, buf)
@@ -342,7 +350,8 @@ class ParsePayloadTests(unittest.TestCase):
 
     def test_http_payload_parser_length_zero(self):
         msg = protocol.RawRequestMessage(
-            'GET', '/', (1, 1), [('CONTENT-LENGTH', '0')], None, None)
+            'GET', '/', (1, 1),
+            multidict.MultiDict([('CONTENT-LENGTH', '0')]), None, None)
         out = aiohttp.DataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg)(out, buf)
@@ -378,7 +387,8 @@ class ParseRequestTests(unittest.TestCase):
             pass
         result = out._buffer[0]
         self.assertEqual(
-            ('GET', '/path', (1, 1), deque(), False, None), result)
+            ('GET', '/path', (1, 1), multidict.MultiDict(), False, None),
+            result)
 
     def test_http_request_parser_eof(self):
         # HttpRequestParser does not fail on EofStream()
@@ -403,7 +413,8 @@ class ParseRequestTests(unittest.TestCase):
         except StopIteration:
             pass
         self.assertEqual(
-            ('GET', '//path', (1, 1), deque(), False, None), out._buffer[0])
+            ('GET', '//path', (1, 1), multidict.MultiDict(), False, None),
+            out._buffer[0])
 
     def test_http_request_parser_bad_status_line(self):
         out = aiohttp.DataQueue(self.stream)

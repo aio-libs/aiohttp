@@ -18,17 +18,12 @@ class MultiDict(abc.Mapping):
                 args = list(args[0].items())
             else:
                 args = list(args[0])
+
         for key, value in chain(args, kwargs.items()):
             if key in self._items:
                 self._items[key].append(value)
             else:
                 self._items[key] = [value]
-
-    def getall(self, key):
-        """Returns all values stored at key as a tuple.
-
-        Raises KeyError if key doesn't exist."""
-        return tuple(self._items[key])
 
     def get(self, key, default=None):
         """Return first value stored at key."""
@@ -36,6 +31,12 @@ class MultiDict(abc.Mapping):
             return self._items[key][0]
         else:
             return default
+
+    def getall(self, key):
+        """Returns all values stored at key as a tuple.
+
+        Raises KeyError if key doesn't exist."""
+        return tuple(self._items[key])
 
     def getone(self, key):
         """Return first value stored at key."""

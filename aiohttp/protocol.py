@@ -17,6 +17,7 @@ from wsgiref.handlers import format_date_time
 
 import aiohttp
 from aiohttp import errors
+from aiohttp import multidict
 
 METHRE = re.compile('[A-Z0-9$-_.]+')
 VERSRE = re.compile('HTTP/(\d+).(\d+)')
@@ -54,7 +55,7 @@ class HttpParser:
         """
         close_conn = None
         encoding = None
-        headers = collections.deque()
+        headers = []
 
         lines_idx = 1
         line = lines[1]
@@ -114,7 +115,7 @@ class HttpParser:
 
             headers.append((name, value))
 
-        return headers, close_conn, encoding
+        return multidict.MultiDict(headers), close_conn, encoding
 
 
 class HttpPrefixParser:
@@ -270,22 +271,16 @@ class HttpPayloadParser:
 
     def __call__(self, out, buf):
         # payload params
-        chunked = False
-        length = self.length
-        for name, value in self.message.headers:
-            if name == 'CONTENT-LENGTH':
-                length = value
-            elif name == 'TRANSFER-ENCODING':
-                chunked = value.lower() == 'chunked'
-            elif name == 'SEC-WEBSOCKET-KEY1':
-                length = 8
+        length = self.message.headers.get('CONTENT-LENGTH', self.length)
+        if 'SEC-WEBSOCKET-KEY1' in self.message.headers:
+            length = 8
 
         # payload decompression wrapper
         if self.compression and self.message.compression:
             out = DeflateBuffer(out, self.message.compression)
 
         # payload parser
-        if chunked:
+        if 'chunked' in self.message.headers.get('TRANSFER-ENCODING', ''):
             yield from self.parse_chunked_payload(out, buf)
 
         elif length is not None:
@@ -549,7 +544,7 @@ class HttpMessage:
 
         self.chunked = False
         self.length = None
-        self.headers = collections.deque()
+        self.headers = multidict.MutableMultiDict()
         self.headers_sent = False
         self.output_length = 0
         self._output_size = 0
@@ -597,7 +592,7 @@ class HttpMessage:
         elif name == 'UPGRADE':
             if 'websocket' in value.lower():
                 self.websocket = True
-                self.headers.append((name, value))
+                self.headers[name] = value
 
         elif name == 'TRANSFER-ENCODING' and not self.chunked:
             self.chunked = value.lower().strip() == 'chunked'
@@ -607,7 +602,7 @@ class HttpMessage:
                 self._has_user_agent = True
 
             # ignore hopbyhop headers
-            self.headers.append((name, value))
+            self.headers.add(name, value)
 
     def add_headers(self, *headers):
         """Adds headers to a http message."""
@@ -643,7 +638,9 @@ class HttpMessage:
         # status + headers
         hdrs = ''.join(itertools.chain(
             (self.status_line,),
-            *((k, ': ', v, '\r\n') for k, v in self.headers)))
+            *((k, ': ', v, '\r\n')
+              for k, v in ((k, value)
+                           for k, value in self.headers.items(getall=True)))))
         hdrs = hdrs.encode('utf-8') + b'\r\n'
 
         self.output_length += len(hdrs)
@@ -659,9 +656,9 @@ class HttpMessage:
             connection = 'close'
 
         if self.chunked:
-            self.headers.appendleft(('TRANSFER-ENCODING', 'chunked'))
+            self.headers['TRANSFER-ENCODING'] = 'chunked'
 
-        self.headers.appendleft(('CONNECTION', connection))
+        self.headers['CONNECTION'] = connection
 
     def write(self, chunk):
         """write() writes chunk of data to a steram by using different writers.
@@ -823,6 +820,7 @@ class Response(HttpMessage):
 
     def _add_default_headers(self):
         super()._add_default_headers()
+
         self.headers.extend((('DATE', format_date_time(None)),
                              ('SERVER', self.SERVER_SOFTWARE),))
 
@@ -842,5 +840,6 @@ class Request(HttpMessage):
 
     def _add_default_headers(self):
         super()._add_default_headers()
+
         if not self._has_user_agent:
-            self.headers.append(('USER-AGENT', self.SERVER_SOFTWARE))
+            self.headers['USER-AGENT'] = self.SERVER_SOFTWARE

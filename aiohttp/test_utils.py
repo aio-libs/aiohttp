@@ -74,7 +74,7 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
             if properties.get('noresponse', False):
                 yield from asyncio.sleep(99999)
 
-            for hdr, val in message.headers:
+            for hdr, val in message.headers.items(getall=True):
                 if (hdr == 'EXPECT') and (val == '100-continue'):
                     self.transport.write(b'HTTP/1.0 100 Continue\r\n\r\n')
                     break
@@ -171,7 +171,7 @@ class Router:
     def __init__(self, srv, props, transport, message, payload):
         # headers
         self._headers = http.client.HTTPMessage()
-        for hdr, val in message.headers:
+        for hdr, val in message.headers.items(getall=True):
             self._headers.add_header(hdr, val)
 
         self._srv = srv

@@ -118,7 +118,9 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             try:
                 environ = environ if environ is not None else {}
                 atoms = utils.SafeAtoms(
-                    utils.atoms(message, environ, response, time))
+                    utils.atoms(message, environ, response, time),
+                    getattr(message, 'headers', None),
+                    getattr(response, 'headers', None))
                 self.access_log.info(self.access_log_format % atoms)
             except:
                 self.log.error(traceback.format_exc())
@@ -252,8 +254,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
             response = aiohttp.Response(self.writer, status, close=True)
             response.add_headers(
-                ('Content-Type', 'text/html'),
-                ('Content-Length', str(len(html))))
+                ('CONTENT-TYPE', 'text/html'),
+                ('CONTENT-LENGTH', str(len(html))))
             if headers is not None:
                 response.add_headers(*headers)
             response.send_headers()
@@ -281,8 +283,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         body = b'Page Not Found!'
 
         response.add_headers(
-            ('Content-Type', 'text/plain'),
-            ('Content-Length', str(len(body))))
+            ('CONTENT-TYPE', 'text/plain'),
+            ('CONTENT-LENGTH', str(len(body))))
         response.send_headers()
         response.write(body)
         drain = response.write_eof()

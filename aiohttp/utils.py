@@ -26,33 +26,33 @@ def atoms(message, environ, response, request_time):
         'p': "<%s>" % os.getpid()
     }
 
-    # add request headers
-    if message:
-        atoms.update(
-            dict([("{%s}i" % k.lower(), v) for k, v in message.headers]))
-
-    # add response headers
-    atoms.update(
-        dict([("{%s}o" % k.lower(), v) for k, v in response.headers]))
-
     return atoms
 
 
 class SafeAtoms(dict):
     """Copy from gunicorn"""
 
-    def __init__(self, atoms):
+    def __init__(self, atoms, i_headers, o_headers):
         dict.__init__(self)
+
+        self._i_headers = i_headers
+        self._o_headers = o_headers
+
         for key, value in atoms.items():
             self[key] = value.replace('"', '\\"')
 
     def __getitem__(self, k):
-        if k.startswith("{"):
-            kl = k.lower()
-            if kl in self:
-                return super(SafeAtoms, self).__getitem__(kl)
+        if k.startswith('{'):
+            if k.endswith('}i'):
+                headers = self._i_headers
+            elif k.endswith('}o'):
+                headers = self._o_headers
             else:
-                return "-"
+                headers = None
+
+            if headers is not None:
+                return headers.get(k[1:-2], '-')
+
         if k in self:
             return super(SafeAtoms, self).__getitem__(k)
         else:
