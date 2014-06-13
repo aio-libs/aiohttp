@@ -10,6 +10,8 @@ import ssl
 import socket
 import weakref
 
+from .client import ClientRequest
+
 
 class Connection(object):
 
@@ -246,24 +248,47 @@ class TCPConnector(BaseConnector):
 
 
 class ProxyConnector(TCPConnector):
+    """Http Proxy connector."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, proxy, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.proxies = kwargs['proxies']
-        if 'https' in self.proxies:
-            raise NotImplementedError(
-                'Only http connections are supported via proxy now.')
+        self.proxy = proxy
+        assert proxy.startswith('http://'), (
+            "Only http proxy supported", proxy)
 
     @asyncio.coroutine
-    def connect(self, req):
-        # substite request for proxy request to make initial connection
-        proxy_req = aiohttp.client.ClientRequest(
-            method='GET',
-            url=self.proxies[req.scheme],
-        )
-        proxy_conn = yield from super().connect(proxy_req)
-        proxy_conn._request = req  # putting original request back
-        return proxy_conn
+    def _create_connection(self, req, **kwargs):
+        proxy_req = ClientRequest('GET', self.proxy,
+                                  headers={'Host': req.host})
+
+        transport, proto = yield from super()._create_connection(proxy_req)
+        if req.ssl:
+            # For HTTPS requests over HTTP proxy
+            # we must notify proxy to tunnel connection
+            # so we send CONNECT command:
+            #   CONNECT www.python.org:443 HTTP/1.1
+            #   Host: www.python.org
+            #
+            # next we must do TLS handshake and so on
+            # to do this we must wrap raw socket into secure one
+            # asyncio handles this perfectly
+            proxy_req.method = 'CONNECT'
+            proxy_req.path = '{}:{}'.format(req.host, req.port)
+            key = (req.host, req.port, req.ssl)
+            conn = Connection(self, key, proxy_req, transport, proto)
+            proxy_resp = proxy_req.send(conn.writer, conn.reader)
+            try:
+                yield from proxy_resp.start(conn, True)
+            except:
+                proxy_resp.close()
+                conn.close()
+                raise
+            else:
+                rawsock = transport.get_extra_info('socket')
+                transport, proto = yield from self._loop.create_connection(
+                    self._factory, ssl=True, sock=rawsock,
+                    server_hostname=req.host, **kwargs)
+        return transport, proto
 
 
 class UnixConnector(BaseConnector):
