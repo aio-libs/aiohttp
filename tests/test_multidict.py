@@ -130,6 +130,9 @@ class MultiDictTests(_BaseTest):
         with self.assertRaisesRegex(KeyError, "some_key"):
             d.getall('some_key')
 
+        default = object()
+        self.assertIs(d.getall('some_key', default), default)
+
 
 class CaseInsensitiveMultiDictTests(unittest.TestCase):
 

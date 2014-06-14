@@ -1,6 +1,8 @@
 from itertools import chain
 from collections import OrderedDict, abc
 
+_marker = object()
+
 
 class MultiDict(abc.Mapping):
     """Read-only ordered dictionary that can hava multiple values for each key.
@@ -32,11 +34,17 @@ class MultiDict(abc.Mapping):
         else:
             return default
 
-    def getall(self, key):
+    def getall(self, key, default=_marker):
         """Returns all values stored at key as a tuple.
 
         Raises KeyError if key doesn't exist."""
-        return tuple(self._items[key])
+        if key in self._items:
+            return tuple(self._items[key])
+        else:
+            if default is not _marker:
+                return default
+            else:
+                raise KeyError(key)
 
     def getone(self, key):
         """Return first value stored at key."""

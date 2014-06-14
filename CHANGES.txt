@@ -1,6 +1,12 @@
 CHANGES
 =======
 
+0.8.1 (unreleased)
+------------------
+
+- MultiDict.getall() accepts default value.
+
+
 0.8.0 (06-06-2014)
 ------------------
 
