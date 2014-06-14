@@ -91,8 +91,8 @@ class MultiDict(abc.Mapping):
 class CaseInsensitiveMultiDict(MultiDict):
     """Case insensitive multi dict."""
 
-    def getall(self, key):
-        return tuple(self._items[key.upper()])
+    def getall(self, key, default=_marker):
+        return super().getall(key.upper(), default)
 
     def get(self, key, default=None):
         key = key.upper()
@@ -111,15 +111,18 @@ class CaseInsensitiveMultiDict(MultiDict):
         return key.upper() in self._items
 
 
-class MutableMultiDict(abc.MutableMapping, MultiDict):
-    """An ordered dictionary that can have multiple values for each key."""
+class BaseMutableMultiDict(abc.MutableMapping):
 
-    def getall(self, key):
+    def getall(self, key, default=_marker):
         """Returns all values stored at key as list.
 
         Raises KeyError if key doesn't exist.
         """
-        return list(self._items[key])
+        result = super().getall(key, default)
+        if result is not default:
+            return list(result)
+        else:
+            return result
 
     def add(self, key, value):
         """Adds value to a key."""
@@ -171,6 +174,18 @@ class MutableMultiDict(abc.MutableMapping, MultiDict):
     def update(self, *args, **kw):
         """Method not allowed."""
         raise NotImplementedError("Use extend method instead")
+
+
+class MutableMultiDict(BaseMutableMultiDict, MultiDict):
+    """An ordered dictionary that can have multiple values for each key."""
+
+
+class CaseInsensitiveMutableMultiDict(
+        BaseMutableMultiDict, CaseInsensitiveMultiDict):
+    """An ordered dictionary that can have multiple values for each key."""
+
+    def getall(self, key, default=_marker):
+        return super().getall(key.upper(), default)
 
 
 class _ItemsView(abc.ItemsView):

@@ -1,7 +1,8 @@
 import unittest
 
 from aiohttp.multidict import \
-    MultiDict, MutableMultiDict, CaseInsensitiveMultiDict
+    MultiDict, MutableMultiDict, \
+    CaseInsensitiveMultiDict, CaseInsensitiveMutableMultiDict
 
 
 class _BaseTest(unittest.TestCase):
@@ -164,10 +165,7 @@ class CaseInsensitiveMultiDictTests(unittest.TestCase):
             d.getall('some_key')
 
 
-class MutableMultiDictTests(_BaseTest):
-
-    def make_dict(self, *args, **kwargs):
-        return MutableMultiDict(*args, **kwargs)
+class _BaseMutableMultiDictTests(_BaseTest):
 
     def test__repr__(self):
         d = self.make_dict()
@@ -187,6 +185,9 @@ class MutableMultiDictTests(_BaseTest):
 
         with self.assertRaisesRegex(KeyError, "some_key"):
             d.getall('some_key')
+
+        default = object()
+        self.assertIs(d.getall('some_key', default), default)
 
     def test_add(self):
         d = self.make_dict()
@@ -276,3 +277,26 @@ class MutableMultiDictTests(_BaseTest):
             d.popitem()
         with self.assertRaises(NotImplementedError):
             d.update(bar='baz')
+
+
+class MutableMultiDictTests(_BaseMutableMultiDictTests):
+
+    def make_dict(self, *args, **kwargs):
+        return MutableMultiDict(*args, **kwargs)
+
+
+class CaseInsensitiveMutableMultiDictTests(unittest.TestCase):
+
+    def make_dict(self, *args, **kwargs):
+        return CaseInsensitiveMutableMultiDict(*args, **kwargs)
+
+    def test_getall(self):
+        d = self.make_dict([('KEY', 'value1')], KEY='value2')
+
+        self.assertEqual(d, {'KEY': 'value1'})
+        self.assertEqual(len(d), 1)
+
+        self.assertEqual(d.getall('key'), ('value1', 'value2'))
+
+        with self.assertRaisesRegex(KeyError, "SOME_KEY"):
+            d.getall('some_key')
