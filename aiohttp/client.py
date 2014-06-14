@@ -500,7 +500,7 @@ class ClientRequest:
                             'Bytes object is expected, got: %s.' %
                             type(result))
             else:
-                if isinstance(self.body, bytes):
+                if isinstance(self.body, (bytes, bytearray)):
                     self.body = (self.body,)
 
                 for chunk in self.body:
