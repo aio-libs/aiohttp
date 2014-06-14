@@ -534,7 +534,7 @@ class HttpMessage:
 
         self.chunked = False
         self.length = None
-        self.headers = multidict.MutableMultiDict()
+        self.headers = multidict.CaseInsensitiveMutableMultiDict()
         self.headers_sent = False
         self.output_length = 0
         self._output_size = 0

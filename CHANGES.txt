@@ -4,6 +4,8 @@ CHANGES
 0.8.1 (unreleased)
 ------------------
 
+- Use case insensitive multidict for server request/response headers.
+
 - MultiDict.getall() accepts default value.
 
 - Catch server ConnectionError.

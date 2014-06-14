@@ -296,7 +296,7 @@ class CaseInsensitiveMutableMultiDictTests(unittest.TestCase):
         self.assertEqual(d, {'KEY': 'value1'})
         self.assertEqual(len(d), 1)
 
-        self.assertEqual(d.getall('key'), ('value1', 'value2'))
+        self.assertEqual(d.getall('key'), ['value1', 'value2'])
 
         with self.assertRaisesRegex(KeyError, "SOME_KEY"):
             d.getall('some_key')
