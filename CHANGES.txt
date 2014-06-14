@@ -6,6 +6,8 @@ CHANGES
 
 - MultiDict.getall() accepts default value.
 
+- Catch server ConnectionError.
+
 
 0.8.0 (06-06-2014)
 ------------------

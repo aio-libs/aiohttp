@@ -921,3 +921,8 @@ class HttpClient:
                     self._connector.clear_resolved_hosts(info[0], info[1])
 
         raise aiohttp.ConnectionError('All hosts are unreachable.')
+
+
+# backward compatibility
+HttpRequest = ClientRequest
+HttpResponse = ClientResponse
