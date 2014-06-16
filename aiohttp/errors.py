@@ -4,7 +4,7 @@ __all__ = ['HttpException', 'HttpErrorException',
            'HttpBadRequest', 'HttpMethodNotAllowed',
            'IncompleteRead', 'BadStatusLine', 'LineTooLong', 'InvalidHeader',
            'ConnectionError', 'OsConnectionError', 'ClientConnectionError',
-           'TimeoutError']
+           'TimeoutError', 'ProxyConnectionError']
 
 from asyncio import TimeoutError
 
@@ -34,6 +34,10 @@ class HttpErrorException(HttpException):
         self.code = code
         self.headers = headers
         self.message = message
+
+
+class ProxyConnectionError(HttpErrorException):
+    """Proxy connection error"""
 
 
 class HttpBadRequest(HttpException):

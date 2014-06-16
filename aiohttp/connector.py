@@ -10,6 +10,7 @@ import ssl
 import socket
 import weakref
 
+from .errors import ProxyConnectionError
 from .client import ClientRequest
 
 
@@ -278,13 +279,19 @@ class ProxyConnector(TCPConnector):
             conn = Connection(self, key, proxy_req, transport, proto)
             proxy_resp = proxy_req.send(conn.writer, conn.reader)
             try:
-                yield from proxy_resp.start(conn, True)
+                resp = yield from proxy_resp.start(conn, True)
             except:
                 proxy_resp.close()
                 conn.close()
                 raise
             else:
-                rawsock = transport.get_extra_info('socket')
+                if resp.status != 200:
+                    raise ProxyConnectionError(resp.status, resp.reason)
+                rawsock = transport.get_extra_info('socket', default=None)
+                if rawsock is None:
+                    raise RuntimeError(
+                        "Transport does not expose socket instance")
+                transport.pause_reading()
                 transport, proto = yield from self._loop.create_connection(
                     self._factory, ssl=True, sock=rawsock,
                     server_hostname=req.host, **kwargs)
