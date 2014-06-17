@@ -10,6 +10,7 @@ import ssl
 import socket
 import weakref
 
+from .errors import HttpProxyError
 from .errors import ProxyConnectionError
 from .client import ClientRequest
 
@@ -262,7 +263,11 @@ class ProxyConnector(TCPConnector):
         proxy_req = ClientRequest('GET', self.proxy,
                                   headers={'Host': req.host})
 
-        transport, proto = yield from super()._create_connection(proxy_req)
+        try:
+            transport, proto = yield from super()._create_connection(proxy_req)
+        except OSError:
+            raise ProxyConnectionError()
+
         if req.ssl:
             # For HTTPS requests over HTTP proxy
             # we must notify proxy to tunnel connection
@@ -286,7 +291,7 @@ class ProxyConnector(TCPConnector):
                 raise
             else:
                 if resp.status != 200:
-                    raise ProxyConnectionError(resp.status, resp.reason)
+                    raise HttpProxyError(resp.status, resp.reason)
                 rawsock = transport.get_extra_info('socket', default=None)
                 if rawsock is None:
                     raise RuntimeError(
@@ -295,6 +300,7 @@ class ProxyConnector(TCPConnector):
                 transport, proto = yield from self._loop.create_connection(
                     self._factory, ssl=True, sock=rawsock,
                     server_hostname=req.host, **kwargs)
+
         return transport, proto
 
 

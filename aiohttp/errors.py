@@ -18,7 +18,11 @@ class OsConnectionError(ConnectionError):
 
 
 class ClientConnectionError(ConnectionError):
-    """BadStatusLine error """
+    """BadStatusLine error"""
+
+
+class ProxyConnectionError(ClientConnectionError):
+    """Proxy connection error"""
 
 
 class HttpException(Exception):
@@ -36,8 +40,8 @@ class HttpErrorException(HttpException):
         self.message = message
 
 
-class ProxyConnectionError(HttpErrorException):
-    """Proxy connection error"""
+class HttpProxyError(HttpErrorException):
+    """Http proxy error"""
 
 
 class HttpBadRequest(HttpException):
