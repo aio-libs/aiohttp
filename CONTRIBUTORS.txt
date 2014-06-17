@@ -10,6 +10,7 @@ Anton Kasyanov
 Eugene Chernyshov
 Georges Dubus
 Greg Holt
+Junjie Tao
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
 Mikhail Lukyanchenko
