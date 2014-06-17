@@ -12,7 +12,7 @@ def curl(url):
     while True:
         try:
             chunk = yield from response.content.read()
-            print('Downloaded: %s', len(chunk))
+            print('Downloaded: %s' % len(chunk))
         except aiohttp.EofStream:
             break
 
