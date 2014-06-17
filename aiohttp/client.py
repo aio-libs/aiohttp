@@ -879,6 +879,7 @@ class HttpClient:
         if not self._hosts:
             self._hosts.append(self._failed.popleft()[0])
 
+        url = ''
         hosts = self._hosts
 
         while hosts:
@@ -920,7 +921,7 @@ class HttpClient:
                 if self._connector:
                     self._connector.clear_resolved_hosts(info[0], info[1])
 
-        raise aiohttp.ConnectionError('All hosts are unreachable.')
+        raise aiohttp.ConnectionError('All hosts are unreachable %s' % url)
 
 
 # backward compatibility
