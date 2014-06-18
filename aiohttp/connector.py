@@ -261,7 +261,8 @@ class ProxyConnector(TCPConnector):
     @asyncio.coroutine
     def _create_connection(self, req, **kwargs):
         proxy_req = ClientRequest('GET', self.proxy,
-                                  headers={'Host': req.host})
+                                  headers={'Host': req.host},
+                                  loop=self._loop)
         try:
             transport, proto = yield from super()._create_connection(proxy_req)
         except OSError:

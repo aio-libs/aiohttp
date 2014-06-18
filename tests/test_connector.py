@@ -331,7 +331,8 @@ class ProxyConnectorTests(unittest.TestCase):
 
         ClientRequestMock.assert_called_with(
             'GET', 'http://proxy.example.com',
-            headers={'Host': 'www.python.org'})
+            headers={'Host': 'www.python.org'},
+            loop=loop_mock)
 
     def test_proxy_connection_error(self):
         connector = aiohttp.ProxyConnector('http://proxy.example.com',
