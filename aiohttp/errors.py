@@ -4,7 +4,7 @@ __all__ = ['HttpException', 'HttpErrorException',
            'HttpBadRequest', 'HttpMethodNotAllowed',
            'IncompleteRead', 'BadStatusLine', 'LineTooLong', 'InvalidHeader',
            'ConnectionError', 'OsConnectionError', 'ClientConnectionError',
-           'TimeoutError', 'ProxyConnectionError']
+           'TimeoutError', 'ProxyConnectionError', 'HttpProxyError']
 
 from asyncio import TimeoutError
 

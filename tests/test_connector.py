@@ -393,3 +393,105 @@ class ProxyConnectorTests(unittest.TestCase):
         self.assertEqual(req.headers, req_headers)
         self.assertEqual(req.path, '/')
         self.assertEqual(proxy_req.headers, proxy_req_headers)
+
+    @unittest.mock.patch('aiohttp.connector.ClientRequest')
+    def test_https_connect(self, ClientRequestMock):
+        loop_mock = unittest.mock.Mock()
+        proxy_req = ClientRequest('GET', 'http://proxy.example.com',
+                                  loop=loop_mock)
+        ClientRequestMock.return_value = proxy_req
+
+        proxy_resp = ClientResponse('get', 'http://proxy.example.com')
+        proxy_req.send = send_mock = unittest.mock.Mock()
+        send_mock.return_value = proxy_resp
+        proxy_resp.start = start_mock = unittest.mock.Mock()
+        self._fake_coroutine(start_mock, unittest.mock.Mock(status=200))
+
+        connector = aiohttp.ProxyConnector(
+            'http://proxy.example.com', loop=loop_mock)
+
+        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+        self._fake_coroutine(loop_mock.create_connection, (tr, proto))
+
+        req = ClientRequest('GET', 'https://www.python.org')
+        self.loop.run_until_complete(connector._create_connection(req))
+
+        self.assertEqual(proxy_req.method, 'CONNECT')
+        self.assertEqual(proxy_req.path, 'www.python.org:443')
+        tr.pause_reading.assert_called_once_with()
+        tr.get_extra_info.assert_called_once_with('socket', default=None)
+
+    @unittest.mock.patch('aiohttp.connector.ClientRequest')
+    def test_https_connect_runtime_error(self, ClientRequestMock):
+        loop_mock = unittest.mock.Mock()
+        proxy_req = ClientRequest('GET', 'http://proxy.example.com',
+                                  loop=loop_mock)
+        ClientRequestMock.return_value = proxy_req
+
+        proxy_resp = ClientResponse('get', 'http://proxy.example.com')
+        proxy_req.send = send_mock = unittest.mock.Mock()
+        send_mock.return_value = proxy_resp
+        proxy_resp.start = start_mock = unittest.mock.Mock()
+        self._fake_coroutine(start_mock, unittest.mock.Mock(status=200))
+
+        connector = aiohttp.ProxyConnector(
+            'http://proxy.example.com', loop=loop_mock)
+
+        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+        tr.get_extra_info.return_value = None
+        self._fake_coroutine(loop_mock.create_connection, (tr, proto))
+
+        req = ClientRequest('GET', 'https://www.python.org')
+        with self.assertRaisesRegex(RuntimeError,
+                "Transport does not expose socket instance"):
+            self.loop.run_until_complete(connector._create_connection(req))
+
+    @unittest.mock.patch('aiohttp.connector.ClientRequest')
+    def test_https_connect_http_proxy_error(self, ClientRequestMock):
+        loop_mock = unittest.mock.Mock()
+        proxy_req = ClientRequest('GET', 'http://proxy.example.com',
+                                  loop=loop_mock)
+        ClientRequestMock.return_value = proxy_req
+
+        proxy_resp = ClientResponse('get', 'http://proxy.example.com')
+        proxy_req.send = send_mock = unittest.mock.Mock()
+        send_mock.return_value = proxy_resp
+        proxy_resp.start = start_mock = unittest.mock.Mock()
+        self._fake_coroutine(
+            start_mock, unittest.mock.Mock(status=400, reason='bad request'))
+
+        connector = aiohttp.ProxyConnector(
+            'http://proxy.example.com', loop=loop_mock)
+
+        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+        tr.get_extra_info.return_value = None
+        self._fake_coroutine(loop_mock.create_connection, (tr, proto))
+
+        req = ClientRequest('GET', 'https://www.python.org')
+        with self.assertRaisesRegex(
+                aiohttp.HttpProxyError, "(400, 'bad request')"):
+            self.loop.run_until_complete(connector._create_connection(req))
+
+    @unittest.mock.patch('aiohttp.connector.ClientRequest')
+    def test_https_connect_resp_start_error(self, ClientRequestMock):
+        loop_mock = unittest.mock.Mock()
+        proxy_req = ClientRequest('GET', 'http://proxy.example.com',
+                                  loop=loop_mock)
+        ClientRequestMock.return_value = proxy_req
+
+        proxy_resp = ClientResponse('get', 'http://proxy.example.com')
+        proxy_req.send = send_mock = unittest.mock.Mock()
+        send_mock.return_value = proxy_resp
+        proxy_resp.start = start_mock = unittest.mock.Mock()
+        self._fake_coroutine(start_mock, OSError("error message"))
+
+        connector = aiohttp.ProxyConnector(
+            'http://proxy.example.com', loop=loop_mock)
+
+        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+        tr.get_extra_info.return_value = None
+        self._fake_coroutine(loop_mock.create_connection, (tr, proto))
+
+        req = ClientRequest('GET', 'https://www.python.org')
+        with self.assertRaisesRegex(OSError, "error message"):
+            self.loop.run_until_complete(connector._create_connection(req))
