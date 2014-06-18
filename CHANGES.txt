@@ -10,6 +10,7 @@ CHANGES
 
 - Catch server ConnectionError.
 
+- Accept MultiDict (and derived) instances in aiohttp.request header argument.
 
 0.8.0 (06-06-2014)
 ------------------

@@ -21,7 +21,7 @@ import weakref
 import warnings
 
 import aiohttp
-from .multidict import CaseInsensitiveMultiDict, MutableMultiDict
+from .multidict import CaseInsensitiveMultiDict, MultiDict, MutableMultiDict
 
 HTTP_PORT = 80
 HTTPS_PORT = 443
@@ -295,6 +295,8 @@ class ClientRequest:
         if headers:
             if isinstance(headers, dict):
                 headers = headers.items()
+            elif isinstance(headers, MultiDict):
+                headers = headers.items(getall=True)
 
             for key, value in headers:
                 self.headers.add(key.upper(), value)

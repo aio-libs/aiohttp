@@ -11,6 +11,7 @@ import unittest
 import aiohttp
 from aiohttp import client
 from aiohttp import test_utils
+from aiohttp.multidict import MultiDict
 
 
 class HttpClientFunctionalTests(unittest.TestCase):
@@ -604,6 +605,23 @@ class HttpClientFunctionalTests(unittest.TestCase):
             cookies = sorted([(k, v.value) for k, v in conn.cookies.items()])
             self.assertEqual(
                 cookies, [('c1', 'cookie1'), ('c2', 'cookie2'), ('test', '1')])
+
+    def test_multidict_headers(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+
+            data = b'sample data'
+
+            r = self.loop.run_until_complete(
+                client.request(
+                    'post', url, data=data,
+                    headers=MultiDict({'Content-Length': str(len(data))}),
+                    loop=self.loop))
+            content = self.loop.run_until_complete(r.read(True))
+            r.close()
+
+            self.assertEqual(str(len(data)),
+                             content['headers']['Content-Length'])
 
 
 class Functional(test_utils.Router):
