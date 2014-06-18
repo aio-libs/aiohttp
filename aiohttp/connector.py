@@ -260,6 +260,9 @@ class ProxyConnector(TCPConnector):
 
     @asyncio.coroutine
     def _create_connection(self, req, **kwargs):
+        req.path = '{scheme}://{host}{path}'.format(scheme=req.scheme,
+                                                    host=req.host,
+                                                    path=req.path)
         proxy_req = ClientRequest('GET', self.proxy,
                                   headers={'Host': req.host})
 
