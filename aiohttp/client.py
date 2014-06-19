@@ -94,12 +94,11 @@ def request(method, url, *,
         connector = aiohttp.TCPConnector(loop=loop)
 
     while True:
-        using_proxy = isinstance(connector, aiohttp.ProxyConnector)
         req = request_class(
             method, url, params=params, headers=headers, data=data,
             cookies=cookies, files=files, auth=auth, encoding=encoding,
             version=version, compress=compress, chunked=chunked,
-            loop=loop, expect100=expect100, using_proxy=using_proxy,
+            loop=loop, expect100=expect100,
             response_class=response_class)
 
         try:
@@ -174,8 +173,7 @@ class ClientRequest:
                  params=None, headers=None, data=None, cookies=None,
                  files=None, auth=None, encoding='utf-8', version=(1, 1),
                  compress=None, chunked=None, expect100=False,
-                 verify_ssl=True, loop=None, using_proxy=False,
-                 response_class=None):
+                 verify_ssl=True, loop=None, response_class=None):
         self.url = url
         self.method = method.upper()
         self.encoding = encoding
@@ -183,7 +181,6 @@ class ClientRequest:
         self.compress = compress
         self.verify_ssl = verify_ssl
         self.loop = loop
-        self.using_proxy = using_proxy
         self.response_class = response_class or ClientResponse
 
         self.update_version(version)
@@ -281,13 +278,8 @@ class ClientRequest:
             else:
                 query = params
 
-        if not self.using_proxy:
-            scheme = ''
-            netloc = ''
-
         self.path = urllib.parse.urlunsplit(
-            (scheme, netloc,
-             urllib.parse.quote(path, safe='/%'), query, fragment))
+            ('', '', urllib.parse.quote(path, safe='/%'), query, fragment))
 
     def update_headers(self, headers):
         """Update request headers."""

@@ -261,12 +261,20 @@ class ProxyConnector(TCPConnector):
     @asyncio.coroutine
     def _create_connection(self, req, **kwargs):
         proxy_req = ClientRequest('GET', self.proxy,
-                                  headers={'Host': req.host})
-
+                                  headers={'Host': req.host},
+                                  loop=self._loop)
         try:
             transport, proto = yield from super()._create_connection(proxy_req)
         except OSError:
             raise ProxyConnectionError()
+        req.path = '{scheme}://{host}{path}'.format(scheme=req.scheme,
+                                                    host=req.host,
+                                                    path=req.path)
+        if proxy_req.auth:
+            auth = proxy_req.headers['AUTHORIZATION']
+            del proxy_req.headers['AUTHORIZATION']
+            req.headers['PROXY-AUTHORIZATION'] = auth
+            proxy_req.headers['PROXY-AUTHORIZATION'] = auth
 
         if req.ssl:
             # For HTTPS requests over HTTP proxy
