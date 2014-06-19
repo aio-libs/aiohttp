@@ -442,8 +442,8 @@ class ProxyConnectorTests(unittest.TestCase):
         self._fake_coroutine(loop_mock.create_connection, (tr, proto))
 
         req = ClientRequest('GET', 'https://www.python.org')
-        with self.assertRaisesRegex(RuntimeError,
-                "Transport does not expose socket instance"):
+        with self.assertRaisesRegex(
+                RuntimeError, "Transport does not expose socket instance"):
             self.loop.run_until_complete(connector._create_connection(req))
 
     @unittest.mock.patch('aiohttp.connector.ClientRequest')

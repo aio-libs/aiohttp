@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-0.8.1 (unreleased)
+0.8.1 (06-18-2014)
 ------------------
 
 - Use case insensitive multidict for server request/response headers.
@@ -11,6 +11,9 @@ CHANGES
 - Catch server ConnectionError.
 
 - Accept MultiDict (and derived) instances in aiohttp.request header argument.
+
+- Proxy 'CONNECT' support.
+
 
 0.8.0 (06-06-2014)
 ------------------
