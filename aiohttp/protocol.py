@@ -336,7 +336,7 @@ class HttpPayloadParser:
                 out.feed_data(chunk)
                 required -= len(chunk)
         except aiohttp.EofStream:
-            raise errors.IncompleteRead(required, length-required)
+            raise errors.IncompleteRead(length-required, required)
 
     def parse_eof_payload(self, out, buf):
         """Read all bytes untile eof."""
