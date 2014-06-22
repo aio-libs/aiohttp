@@ -773,8 +773,8 @@ class HttpClient:
     def __init__(self, hosts, *, method=None, path=None,
                  ssl=False,
                  conn_pool=True, conn_timeout=None, failed_timeout=5.0,
-                 resolve=True, resolve_timeout=360.0, verify_ssl=True,
-                 loop=None):
+                 resolve=True, resolve_timeout=360.0, keepalive_timeout=30,
+                 verify_ssl=True, loop=None):
         super().__init__()
 
         if isinstance(hosts, str):
@@ -817,6 +817,7 @@ class HttpClient:
         if conn_pool:
             self._connector = aiohttp.TCPConnector(
                 share_cookies=True, conn_timeout=conn_timeout,
+                keepalive_timeout=keepalive_timeout,
                 resolve=resolve, verify_ssl=verify_ssl, loop=loop)
 
             self._resolve_timeout = resolve_timeout

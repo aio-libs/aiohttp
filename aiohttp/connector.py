@@ -43,11 +43,11 @@ class Connection(object):
 
 class BaseConnector(object):
 
-    def __init__(self, *, reuse_timeout=30, conn_timeout=None,
+    def __init__(self, *, conn_timeout=None, keepalive_timeout=30,
                  share_cookies=False, force_close=False, loop=None, **kwargs):
         self._conns = {}
-        self._reuse_timeout = reuse_timeout
         self._conn_timeout = conn_timeout
+        self._keepalive_timeout = keepalive_timeout
         self._share_cookies = share_cookies
         self._cleanup_handle = None
         self._force_close = force_close
@@ -58,9 +58,8 @@ class BaseConnector(object):
         self._factory = functools.partial(aiohttp.StreamProtocol, loop=loop)
 
         self.cookies = http.cookies.SimpleCookie()
-        self._wr = weakref.ref(self,
-                               lambda wr, f=self._do_close, conns=self._conns:
-                               f(conns))
+        self._wr = weakref.ref(
+            self, lambda wr, f=self._do_close, conns=self._conns: f(conns))
 
     def _cleanup(self):
         """Cleanup unused transports."""
@@ -77,7 +76,7 @@ class BaseConnector(object):
                 if transport is not None:
                     if proto and not proto.is_connected():
                         transport = None
-                    elif (now - t0) > self._reuse_timeout:
+                    elif (now - t0) > self._keepalive_timeout:
                         transport.close()
                         transport = None
 
@@ -88,17 +87,16 @@ class BaseConnector(object):
 
         if connections:
             self._cleanup_handle = self._loop.call_later(
-                self._reuse_timeout, self._cleanup)
+                self._keepalive_timeout, self._cleanup)
 
         self._conns = connections
-        self._wr = weakref.ref(self,
-                               lambda wr, f=self._do_close, conns=self._conns:
-                               f(conns))
+        self._wr = weakref.ref(
+            self, lambda wr, f=self._do_close, conns=self._conns: f(conns))
 
     def _start_cleanup_task(self):
         if self._cleanup_handle is None:
             self._cleanup_handle = self._loop.call_later(
-                self._reuse_timeout, self._cleanup)
+                self._keepalive_timeout, self._cleanup)
 
     def close(self):
         """Close all opened transports."""
@@ -146,7 +144,7 @@ class BaseConnector(object):
         while conns:
             transport, proto, t0 = conns.pop()
             if transport is not None and proto.is_connected():
-                if (time.time() - t0) > self._reuse_timeout:
+                if (time.time() - t0) > self._keepalive_timeout:
                     transport.close()
                     transport = None
                 else:

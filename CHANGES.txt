@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-0.8.2 (XX-XX-2014)
+0.8.2 (06-22-2014)
 ------------------
 
 - Make ProxyConnector.proxy immutable property.
@@ -9,6 +9,9 @@ CHANGES
 - Make UnixConnector.path immutable property.
 
 - Fix resource leak for aiohttp.request() with implicit connector.
+
+- Rename Connector's reuse_timeout to keepalive_timeout.
+
 
 0.8.1 (06-18-2014)
 ------------------

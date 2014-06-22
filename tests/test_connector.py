@@ -201,7 +201,7 @@ class BaseConnectorTests(unittest.TestCase):
         conn._start_cleanup_task()
         self.assertIsNotNone(conn._cleanup_handle)
         loop.call_later.assert_called_with(
-            conn._reuse_timeout, conn._cleanup)
+            conn._keepalive_timeout, conn._cleanup)
 
     @unittest.mock.patch('aiohttp.connector.time')
     def test_cleanup(self, time):
