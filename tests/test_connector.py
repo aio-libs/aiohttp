@@ -265,13 +265,15 @@ class HttpClientConnectorTests(unittest.TestCase):
     def test_unix_connector(self):
         path = '/tmp/aiohttp_unix.sock'
 
+        connector = aiohttp.UnixConnector(path, loop=self.loop)
+        self.assertEqual(path, connector.path)
+
         with test_utils.run_server(
                 self.loop, listen_addr=path, router=Functional) as httpd:
             r = self.loop.run_until_complete(
                 client.request(
                     'get', httpd.url('method', 'get'),
-                    connector=aiohttp.UnixConnector(
-                        path, loop=self.loop),
+                    connector=connector,
                     loop=self.loop))
             content = self.loop.run_until_complete(r.content.read())
             content = content.decode()
@@ -304,6 +306,12 @@ class ProxyConnectorTests(unittest.TestCase):
     def test_ctor(self):
         with self.assertRaises(AssertionError):
             aiohttp.ProxyConnector('https://localhost:8118', loop=self.loop)
+
+    def test_ctor2(self):
+        connector = aiohttp.ProxyConnector('http://localhost:8118',
+                                           loop=self.loop)
+
+        self.assertEqual('http://localhost:8118', connector.proxy)
 
     @unittest.mock.patch('aiohttp.connector.ClientRequest')
     def test_connect(self, ClientRequestMock):
