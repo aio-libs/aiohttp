@@ -92,6 +92,9 @@ def request(method, url, *,
         request_class = ClientRequest
     if connector is None:
         connector = aiohttp.TCPConnector(loop=loop)
+        force_close = True
+    else:
+        force_close = False
 
     while True:
         req = request_class(
@@ -99,7 +102,7 @@ def request(method, url, *,
             cookies=cookies, files=files, auth=auth, encoding=encoding,
             version=version, compress=compress, chunked=chunked,
             loop=loop, expect100=expect100,
-            response_class=response_class)
+            response_class=response_class, force_close=force_close)
 
         try:
             conn = yield from connector.connect(req)
@@ -173,7 +176,8 @@ class ClientRequest:
                  params=None, headers=None, data=None, cookies=None,
                  files=None, auth=None, encoding='utf-8', version=(1, 1),
                  compress=None, chunked=None, expect100=False,
-                 verify_ssl=True, loop=None, response_class=None):
+                 verify_ssl=True, loop=None, response_class=None,
+                 force_close=False):
         self.url = url
         self.method = method.upper()
         self.encoding = encoding
@@ -182,6 +186,7 @@ class ClientRequest:
         self.verify_ssl = verify_ssl
         self.loop = loop
         self.response_class = response_class or ClientResponse
+        self.force_close = force_close
 
         self.update_version(version)
         self.update_host(url)
@@ -526,7 +531,8 @@ class ClientRequest:
 
         self.response = self.response_class(
             self.method, self.path, self.host,
-            writer=self._writer, continue100=self._continue)
+            writer=self._writer, continue100=self._continue,
+            force_close=self.force_close)
         return self.response
 
     @asyncio.coroutine
@@ -556,7 +562,8 @@ class ClientResponse:
     _connection_wr = None  # weakref to self for releasing connection on del
     _writer_wr = None  # weakref to self for cancelling writer on del
 
-    def __init__(self, method, url, host='', *, writer=None, continue100=None):
+    def __init__(self, method, url, host='', *, writer=None, continue100=None,
+                 force_close=False):
         super().__init__()
 
         self.method = method
@@ -568,6 +575,7 @@ class ClientResponse:
         if writer is not None:
             self._writer_wr = weakref.ref(self, lambda wr: writer.cancel())
         self._continue = continue100
+        self.force_close = force_close
 
     def __repr__(self):
         out = io.StringIO()
@@ -637,6 +645,8 @@ class ClientResponse:
 
     def close(self, force=False):
         if self.connection is not None:
+            if not force and self.force_close:
+                force = True
             if force:
                 self.connection.close()
             else:

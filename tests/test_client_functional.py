@@ -623,6 +623,39 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertEqual(str(len(data)),
                              content['headers']['Content-Length'])
 
+    def test_close_implicit_connector(self):
+
+        @asyncio.coroutine
+        def go(url):
+            r = yield from client.request('GET', url, loop=self.loop)
+
+            connection = r.connection
+            self.assertIsNotNone(connection)
+            connector = connection._connector
+            self.assertIsNotNone(connector)
+            yield from r.read_and_close()
+            self.assertEqual(0, len(connector._conns))
+
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('keepalive')
+            self.loop.run_until_complete(go(url))
+
+    def test_dont_close_explicit_connector(self):
+
+        @asyncio.coroutine
+        def go(url):
+            connector = aiohttp.TCPConnector(loop=self.loop)
+
+            r = yield from client.request('GET', url,
+                                          connector=connector,
+                                          loop=self.loop)
+            yield from r.read_and_close()
+            self.assertEqual(1, len(connector._conns))
+
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('keepalive')
+            self.loop.run_until_complete(go(url))
+
 
 class Functional(test_utils.Router):
 
