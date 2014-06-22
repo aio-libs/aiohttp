@@ -258,13 +258,17 @@ class ProxyConnector(TCPConnector):
 
     def __init__(self, proxy, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.proxy = proxy
+        self._proxy = proxy
         assert proxy.startswith('http://'), (
             "Only http proxy supported", proxy)
 
+    @property
+    def proxy(self):
+        return self._proxy
+
     @asyncio.coroutine
     def _create_connection(self, req, **kwargs):
-        proxy_req = ClientRequest('GET', self.proxy,
+        proxy_req = ClientRequest('GET', self._proxy,
                                   headers={'Host': req.host},
                                   loop=self._loop)
         try:
