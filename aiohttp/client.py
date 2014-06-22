@@ -91,7 +91,7 @@ def request(method, url, *,
     if request_class is None:
         request_class = ClientRequest
     if connector is None:
-        connector = aiohttp.TCPConnector(loop=loop)
+        connector = aiohttp.TCPConnector(force_close=True, loop=loop)
 
     while True:
         req = request_class(

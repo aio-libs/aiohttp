@@ -44,12 +44,13 @@ class Connection(object):
 class BaseConnector(object):
 
     def __init__(self, *, reuse_timeout=30, conn_timeout=None,
-                 share_cookies=False, loop=None, **kwargs):
+                 share_cookies=False, force_close=False, loop=None, **kwargs):
         self._conns = {}
         self._reuse_timeout = reuse_timeout
         self._conn_timeout = conn_timeout
         self._share_cookies = share_cookies
         self._cleanup_handle = None
+        self._force_close = force_close
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -164,6 +165,9 @@ class BaseConnector(object):
                 should_close = resp.message.should_close
                 if self._share_cookies and resp.cookies:
                     self.update_cookies(resp.cookies.items())
+
+        if self._force_close:
+            should_close = True
 
         reader = protocol.reader
         if should_close or (reader.output and not reader.output.at_eof()):
