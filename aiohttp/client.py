@@ -143,8 +143,8 @@ def request(method, url, *,
 
 class ClientRequest:
 
-    GET_METHODS = {'DELETE', 'GET', 'HEAD', 'OPTIONS'}
-    POST_METHODS = {'PATCH', 'POST', 'PUT', 'TRACE'}
+    GET_METHODS = {'GET', 'HEAD', 'OPTIONS'}
+    POST_METHODS = {'PATCH', 'POST', 'PUT', 'TRACE', 'DELETE'}
     ALL_METHODS = GET_METHODS.union(POST_METHODS)
 
     DEFAULT_HEADERS = {
