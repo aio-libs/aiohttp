@@ -205,7 +205,9 @@ class ClientRequestTests(unittest.TestCase):
         self.assertEqual('/', req.path)
 
     def test_basic_auth(self):
-        req = ClientRequest('get', 'http://python.org', auth=('nkim', '1234'))
+        req = ClientRequest('get', 'http://python.org',
+                            basic_login='nkim',
+                            basic_passwd='1234')
         self.assertIn('AUTHORIZATION', req.headers)
         self.assertEqual('Basic bmtpbToxMjM0', req.headers['AUTHORIZATION'])
 
@@ -214,19 +216,17 @@ class ClientRequestTests(unittest.TestCase):
         self.assertIn('AUTHORIZATION', req.headers)
         self.assertEqual('Basic bmtpbToxMjM0', req.headers['AUTHORIZATION'])
 
-        req = ClientRequest('get', 'http://nkim@python.org')
-        self.assertIn('AUTHORIZATION', req.headers)
-        self.assertEqual('Basic bmtpbTo=', req.headers['AUTHORIZATION'])
-
         req = ClientRequest(
-            'get', 'http://nkim@python.org', auth=('nkim', '1234'))
+            'get', 'http://nkim@python.org',
+            basic_login='nkim', basic_passwd='1234')
         self.assertIn('AUTHORIZATION', req.headers)
         self.assertEqual('Basic bmtpbToxMjM0', req.headers['AUTHORIZATION'])
 
     def test_basic_auth_err(self):
+        # missing password here
         self.assertRaises(
             ValueError, ClientRequest,
-            'get', 'http://python.org', auth=(1, 2, 3))
+            'get', 'http://python.org', basic_login='nkim')
 
     def test_no_content_length(self):
         req = ClientRequest('get', 'http://python.org', loop=self.loop)

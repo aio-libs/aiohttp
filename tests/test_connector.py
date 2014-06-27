@@ -339,6 +339,7 @@ class ProxyConnectorTests(unittest.TestCase):
 
         ClientRequestMock.assert_called_with(
             'GET', 'http://proxy.example.com',
+            basic_login=None, basic_passwd=None,
             headers={'Host': 'www.python.org'},
             loop=loop_mock)
 
@@ -357,6 +358,35 @@ class ProxyConnectorTests(unittest.TestCase):
 
     @unittest.mock.patch('aiohttp.connector.ClientRequest')
     def test_auth(self, ClientRequestMock):
+        proxy_req = ClientRequest('GET', 'http://proxy.example.com',
+                                  basic_login='user', basic_passwd='pass')
+        ClientRequestMock.return_value = proxy_req
+        self.assertIn('AUTHORIZATION', proxy_req.headers)
+        self.assertNotIn('PROXY-AUTHORIZATION', proxy_req.headers)
+
+        loop_mock = unittest.mock.Mock()
+        connector = aiohttp.ProxyConnector(
+            'http://proxy.example.com', loop=loop_mock,
+            proxy_login='user', proxy_passwd='pass')
+        connector._resolve_host = resolve_mock = unittest.mock.Mock()
+        self._fake_coroutine(resolve_mock, [unittest.mock.MagicMock()])
+
+        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+        self._fake_coroutine(loop_mock.create_connection, (tr, proto))
+
+        req = ClientRequest('GET', 'http://www.python.org')
+        self.assertNotIn('AUTHORIZATION', req.headers)
+        self.assertNotIn('PROXY-AUTHORIZATION', req.headers)
+        self.loop.run_until_complete(connector.connect(req))
+
+        self.assertEqual(req.path, 'http://www.python.org/')
+        self.assertNotIn('AUTHORIZATION', req.headers)
+        self.assertIn('PROXY-AUTHORIZATION', req.headers)
+        self.assertNotIn('AUTHORIZATION', proxy_req.headers)
+        self.assertNotIn('PROXY-AUTHORIZATION', proxy_req.headers)
+
+    @unittest.mock.patch('aiohttp.connector.ClientRequest')
+    def test_auth_from_url(self, ClientRequestMock):
         proxy_req = ClientRequest('GET', 'http://user:pass@proxy.example.com')
         ClientRequestMock.return_value = proxy_req
         self.assertIn('AUTHORIZATION', proxy_req.headers)
@@ -380,7 +410,7 @@ class ProxyConnectorTests(unittest.TestCase):
         self.assertNotIn('AUTHORIZATION', req.headers)
         self.assertIn('PROXY-AUTHORIZATION', req.headers)
         self.assertNotIn('AUTHORIZATION', proxy_req.headers)
-        self.assertIn('PROXY-AUTHORIZATION', proxy_req.headers)
+        self.assertNotIn('PROXY-AUTHORIZATION', proxy_req.headers)
 
     @unittest.mock.patch('aiohttp.connector.ClientRequest')
     def test_auth__not_modifying_request(self, ClientRequestMock):

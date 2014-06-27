@@ -254,9 +254,12 @@ class TCPConnector(BaseConnector):
 class ProxyConnector(TCPConnector):
     """Http Proxy connector."""
 
-    def __init__(self, proxy, *args, **kwargs):
+    def __init__(self, proxy, proxy_login=None, proxy_passwd=None,
+                 *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._proxy = proxy
+        self._basic_login = proxy_login
+        self._basic_passwd = proxy_passwd
         assert proxy.startswith('http://'), (
             "Only http proxy supported", proxy)
 
@@ -268,6 +271,8 @@ class ProxyConnector(TCPConnector):
     def _create_connection(self, req, **kwargs):
         proxy_req = ClientRequest('GET', self._proxy,
                                   headers={'Host': req.host},
+                                  basic_login=self._basic_login,
+                                  basic_passwd=self._basic_passwd,
                                   loop=self._loop)
         try:
             transport, proto = yield from super()._create_connection(proxy_req)
@@ -276,11 +281,10 @@ class ProxyConnector(TCPConnector):
         req.path = '{scheme}://{host}{path}'.format(scheme=req.scheme,
                                                     host=req.host,
                                                     path=req.path)
-        if proxy_req.auth:
+        if 'AUTHORIZATION' in proxy_req.headers:
             auth = proxy_req.headers['AUTHORIZATION']
             del proxy_req.headers['AUTHORIZATION']
             req.headers['PROXY-AUTHORIZATION'] = auth
-            proxy_req.headers['PROXY-AUTHORIZATION'] = auth
 
         if req.ssl:
             # For HTTPS requests over HTTP proxy

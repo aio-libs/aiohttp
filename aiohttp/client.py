@@ -34,7 +34,8 @@ def request(method, url, *,
             headers=None,
             cookies=None,
             files=None,
-            auth=None,
+            basic_login=None,
+            basic_passwd=None,
             allow_redirects=True,
             max_redirects=10,
             encoding='utf-8',
@@ -60,7 +61,8 @@ def request(method, url, *,
     :param cookies: (optional) Dict object to send with the request
     :param files: (optional) Dictionary of 'name': file-like-objects
        for multipart encoding upload
-    :param auth: (optional) Auth tuple to enable Basic HTTP Auth
+    :param basic_login: (optional) Basic HTTP Auth login
+    :param basic_passwd: (optional) Basic HTTP Auth password
     :param allow_redirects: (optional) Boolean. Set to True if POST/PUT/DELETE
        redirect following is allowed.
     :param compress: Boolean. Set to True if request has to be compressed
@@ -96,7 +98,8 @@ def request(method, url, *,
     while True:
         req = request_class(
             method, url, params=params, headers=headers, data=data,
-            cookies=cookies, files=files, auth=auth, encoding=encoding,
+            cookies=cookies, files=files, basic_login=basic_login,
+            basic_passwd=basic_passwd, encoding=encoding,
             version=version, compress=compress, chunked=chunked,
             loop=loop, expect100=expect100,
             response_class=response_class)
@@ -153,7 +156,8 @@ class ClientRequest:
     }
 
     body = b''
-    auth = None
+    basic_login = None
+    basic_passwd = None
     response = None
     response_class = None
 
@@ -171,9 +175,10 @@ class ClientRequest:
 
     def __init__(self, method, url, *,
                  params=None, headers=None, data=None, cookies=None,
-                 files=None, auth=None, encoding='utf-8', version=(1, 1),
-                 compress=None, chunked=None, expect100=False,
-                 verify_ssl=True, loop=None, response_class=None):
+                 files=None, basic_login=None, basic_passwd=None,
+                 encoding='utf-8', version=(1, 1), compress=None,
+                 chunked=None, expect100=False, verify_ssl=True,
+                 loop=None, response_class=None):
         self.url = url
         self.method = method.upper()
         self.encoding = encoding
@@ -189,7 +194,7 @@ class ClientRequest:
         self.update_headers(headers)
         self.update_cookies(cookies)
         self.update_content_encoding()
-        self.update_auth(auth)
+        self.update_auth(basic_login, basic_passwd)
 
         if data and not files:
             if self.method not in self.GET_METHODS:
@@ -215,9 +220,10 @@ class ClientRequest:
         # basic auth info
         if '@' in netloc:
             authinfo, netloc = netloc.split('@', 1)
-            self.auth = authinfo.split(':', 1)
-            if len(self.auth) == 1:
-                self.auth.append('')
+            creds = authinfo.split(':', 1)
+            self.basic_login = creds[0]
+            if len(creds) > 1:
+                self.basic_passwd = creds[1]
 
         # Record entire netloc for usage in host header
         self.netloc = netloc
@@ -335,20 +341,20 @@ class ClientRequest:
             self.headers['CONTENT-ENCODING'] = self.compress
             self.chunked = True  # enable chunked, no need to deal with length
 
-    def update_auth(self, auth):
+    def update_auth(self, basic_login, basic_passwd):
         """Set basic auth."""
-        if not auth:
-            auth = self.auth
+        if not basic_login:
+            basic_login = self.basic_login
+        if not basic_passwd:
+            basic_passwd = self.basic_passwd
 
-        if auth:
-            if isinstance(auth, (tuple, list)) and len(auth) == 2:
-                # basic auth
-                self.headers['AUTHORIZATION'] = 'Basic %s' % (
-                    base64.b64encode(
-                        ('%s:%s' % (auth[0], auth[1])).encode('latin1'))
-                    .strip().decode('latin1'))
-            else:
-                raise ValueError("Only basic auth is supported")
+        if basic_login is not None and basic_passwd is not None:
+            self.headers['AUTHORIZATION'] = 'Basic %s' % (
+                base64.b64encode(
+                    ('%s:%s' % (basic_login, basic_passwd)).encode('latin1'))
+                .strip().decode('latin1'))
+        elif basic_login is not None or basic_passwd is not None:
+            raise ValueError("HTTP Auth login of password is missing")
 
     def update_body_from_data(self, data):
         if (hasattr(data, '__iter__') and not isinstance(
@@ -855,7 +861,8 @@ class HttpClient:
                 headers=None,
                 cookies=None,
                 files=None,
-                auth=None,
+                basic_login=None,
+                basic_passwd=None,
                 allow_redirects=True,
                 max_redirects=10,
                 encoding='utf-8',
@@ -891,8 +898,9 @@ class HttpClient:
             try:
                 resp = yield from request(
                     method, url, params=params, data=data, headers=headers,
-                    cookies=cookies, files=files, auth=auth,
-                    encoding=encoding, allow_redirects=allow_redirects,
+                    cookies=cookies, files=files, basic_login=basic_login,
+                    basic_passwd=basic_passwd, encoding=encoding,
+                    allow_redirects=allow_redirects,
                     version=version, max_redirects=max_redirects,
                     compress=compress, chunked=chunked,
                     expect100=expect100, read_until_eof=read_until_eof,
