@@ -34,6 +34,7 @@ def request(method, url, *,
             headers=None,
             cookies=None,
             files=None,
+            auth=None,
             basic_login=None,
             basic_passwd=None,
             allow_redirects=True,
@@ -61,6 +62,7 @@ def request(method, url, *,
     :param cookies: (optional) Dict object to send with the request
     :param files: (optional) Dictionary of 'name': file-like-objects
        for multipart encoding upload
+    :param auth: (optional) Basic HTTP Auth tuple, Deprecated!
     :param basic_login: (optional) Basic HTTP Auth login
     :param basic_passwd: (optional) Basic HTTP Auth password
     :param allow_redirects: (optional) Boolean. Set to True if POST/PUT/DELETE
@@ -94,6 +96,13 @@ def request(method, url, *,
         request_class = ClientRequest
     if connector is None:
         connector = aiohttp.TCPConnector(force_close=True, loop=loop)
+
+    if auth is not None and basic_login is None and basic_passwd is None:
+        basic_login, basic_passwd = auth
+        warnings.warn(
+            'auth is deprecated, use basic_login and basic_passwd instead',
+            DeprecationWarning
+        )
 
     while True:
         req = request_class(
