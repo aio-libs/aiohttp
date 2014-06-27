@@ -97,12 +97,18 @@ def request(method, url, *,
     if connector is None:
         connector = aiohttp.TCPConnector(force_close=True, loop=loop)
 
-    if auth is not None and basic_login is None and basic_passwd is None:
-        basic_login, basic_passwd = auth
+    if auth is not None:
         warnings.warn(
             'auth is deprecated, use basic_login and basic_passwd instead',
             DeprecationWarning
         )
+        if basic_login is None and basic_passwd is None:
+            basic_login, basic_passwd = auth
+        elif basic_login is not None and basic_passwd is not None:
+            if not auth == (basic_login, basic_passwd):
+                raise ValueError(
+                    "auth and (basic_login, basic_passwd) are different"
+                )
 
     while True:
         req = request_class(
