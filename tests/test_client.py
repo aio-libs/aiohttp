@@ -637,7 +637,7 @@ class HttpClientTests(unittest.TestCase):
         c = HttpClient(
             [('localhost', 56777), ('localhost', 56778)], loop=self.loop)
         c._hosts = []
-        c._failed.append((('localhost', 1000, False), now - 10))
+        c._failed.append((('localhost', 1000, True), now - 10))
         c._failed.append((('localhost', 1001, True), now - 10))
 
         self.assertRaises(
