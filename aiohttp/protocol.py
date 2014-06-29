@@ -339,7 +339,7 @@ class HttpPayloadParser:
             raise errors.IncompleteRead(length-required, required)
 
     def parse_eof_payload(self, out, buf):
-        """Read all bytes untile eof."""
+        """Read all bytes until eof."""
         try:
             while True:
                 out.feed_data((yield from buf.readsome()))
@@ -348,7 +348,7 @@ class HttpPayloadParser:
 
 
 class DeflateBuffer:
-    """DeflateStream decomress stream and feed data into specified stream."""
+    """DeflateStream decompress stream and feed data into specified stream."""
 
     def __init__(self, out, encoding):
         self.out = out
@@ -377,7 +377,7 @@ class DeflateBuffer:
 def wrap_payload_filter(func):
     """Wraps payload filter and piped filters.
 
-    Filter is a generatator that accepts arbitrary chunks of data,
+    Filter is a generator that accepts arbitrary chunks of data,
     modify data and emit new stream of data.
 
     For example we have stream of chunks: ['1', '2', '3', '4', '5'],
@@ -403,7 +403,7 @@ def wrap_payload_filter(func):
 
       1. If filter receives bytes object, it should process data
          and yield processed data then yield EOL_MARKER object.
-      2. If Filter recevied EOF_MARKER, it should yield remaining
+      2. If Filter received EOF_MARKER, it should yield remaining
          data (buffered) and then yield EOF_MARKER.
     """
     @functools.wraps(func)
@@ -433,7 +433,7 @@ def filter_pipe(filter, filter2):
       2. Reads yielded values from the first filter until it receives
          EOF_MARKER or EOL_MARKER.
       3. Each of this values is being send to second filter.
-      4. Reads yielded values from second filter until it recives EOF_MARKER or
+      4. Reads yielded values from second filter until it receives EOF_MARKER or
          EOL_MARKER. Each of this values yields to writer.
     """
     chunk = yield
@@ -487,7 +487,7 @@ class HttpMessage:
 
     Now we can use chunked writer to write stream to a network stream.
     First call to write() method sends response status line and headers,
-    add_header() and add_headers() method unavailble at this stage:
+    add_header() and add_headers() method unavailable at this stage:
 
     >> with open('...', 'rb') as f:
     ..     chunk = fp.read(8196)
@@ -500,7 +500,7 @@ class HttpMessage:
 
     writer = None
 
-    # 'filter' is being used for altering write() bahaviour,
+    # 'filter' is being used for altering write() behaviour,
     # add_chunking_filter adds deflate/gzip compression and
     # add_compression_filter splits incoming data into a chunks.
     filter = None
@@ -591,7 +591,7 @@ class HttpMessage:
             if name == 'USER-AGENT':
                 self._has_user_agent = True
 
-            # ignore hopbyhop headers
+            # ignore hop-by-hop headers
             self.headers.add(name, value)
 
     def add_headers(self, *headers):
@@ -651,7 +651,7 @@ class HttpMessage:
         self.headers['CONNECTION'] = connection
 
     def write(self, chunk):
-        """write() writes chunk of data to a steram by using different writers.
+        """write() writes chunk of data to a stream by using different writers.
         writer uses filter to modify chunk of data. write_eof() indicates
         end of stream. writer can't be used after write_eof() method
         being called. write() return drain future.
