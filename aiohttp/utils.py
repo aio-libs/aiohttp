@@ -3,7 +3,7 @@ from wsgiref.handlers import format_date_time
 
 
 def atoms(message, environ, response, request_time):
-    """Gets atoms for log formating."""
+    """Gets atoms for log formatting."""
     if message:
         r = '{} {} HTTP/{}.{}'.format(
             message.method, message.path,

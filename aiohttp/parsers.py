@@ -3,7 +3,7 @@
 Parser receives data with generator's send() method and sends data to
 destination DataQueue. Parser receives ParserBuffer and DataQueue objects
 as a parameters of the parser call, all subsequent send() calls should
-send bytes objects. Parser sends parsed `term` to desitnation buffer with
+send bytes objects. Parser sends parsed `term` to destination buffer with
 DataQueue.feed_data() method. DataQueue object should implement two methods.
 feed_data() - parser uses this method to send parsed protocol data.
 feed_eof() - parser uses this method for indication of end of parsing stream.
@@ -47,7 +47,7 @@ There are three stages:
 
  * Eof:
 
-    1. StreamParser recevies eof with feed_eof() call.
+    1. StreamParser receives eof with feed_eof() call.
     2. StreamParser throws EofStream exception into parser.
     3. Then it unsets parser.
 

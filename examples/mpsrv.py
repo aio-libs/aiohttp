@@ -150,7 +150,7 @@ class ChildProcess:
             try:
                 msg = yield from reader.read()
             except aiohttp.EofStream:
-                print('Superviser is dead, {} stopping...'.format(os.getpid()))
+                print('Supervisor is dead, {} stopping...'.format(os.getpid()))
                 self.loop.stop()
                 break
 
@@ -257,7 +257,7 @@ class Worker:
         os.kill(self.pid, signal.SIGTERM)
 
 
-class Superviser:
+class Supervisor:
 
     def __init__(self, args):
         self.loop = asyncio.get_event_loop()
@@ -286,8 +286,8 @@ def main():
         args.host, port = args.host.split(':', 1)
         args.port = int(port)
 
-    superviser = Superviser(args)
-    superviser.start()
+    supervisor = Supervisor(args)
+    supervisor.start()
 
 
 if __name__ == '__main__':

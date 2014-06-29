@@ -35,7 +35,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
     ServerHttpProtocol handles incoming http request. It reads request line,
     request headers and request payload and calls handler_request() method.
-    By default it always returns with 404 respose.
+    By default it always returns with 404 response.
 
     ServerHttpProtocol handles errors in incoming request, like bad
     status line, bad headers or incomplete payload. If any error occurs,
@@ -147,7 +147,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         """Start processing of incoming requests.
         It reads request line, request headers and request payload, then
         calls handle_request() method. Subclass has to override
-        handle_request(). start() handles various excetions in request
+        handle_request(). start() handles various exceptions in request
         or response handling. Connection is being closed always unless
         keep_alive(True) specified.
         """

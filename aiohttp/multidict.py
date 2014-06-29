@@ -5,7 +5,7 @@ _marker = object()
 
 
 class MultiDict(abc.Mapping):
-    """Read-only ordered dictionary that can hava multiple values for each key.
+    """Read-only ordered dictionary that can have multiple values for each key.
 
     This type of MultiDict must be used for request headers and query args.
     """

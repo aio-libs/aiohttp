@@ -140,7 +140,7 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
             # call pending connection_made if present
             run_briefly(thread_loop)
 
-            # close opened trnsports
+            # close opened transports
             for tr in transports:
                 tr.close()
 

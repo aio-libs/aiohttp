@@ -72,7 +72,7 @@ def request(method, url, *,
     :param chunked: Boolean or Integer. Set to chunk size for chunked
        transfer encoding.
     :param expect100: Boolean. Expect 100-continue response from server.
-    :param connector: aiohttp.conntect.BaseConnector instance to support
+    :param connector: aiohttp.connector.BaseConnector instance to support
        connection pooling and session cookies.
     :param read_until_eof: Read response until eof if response
        does not have Content-Length header.
@@ -369,7 +369,7 @@ class ClientRequest:
                     ('%s:%s' % (basic_login, basic_passwd)).encode('latin1'))
                 .strip().decode('latin1'))
         elif basic_login is not None or basic_passwd is not None:
-            raise ValueError("HTTP Auth login of password is missing")
+            raise ValueError("HTTP Auth login or password is missing")
 
     def update_body_from_data(self, data):
         if (hasattr(data, '__iter__') and not isinstance(
@@ -787,7 +787,7 @@ def encode_multipart_data(fields, boundary, encoding='utf-8', chunk_size=8196):
 
 
 class HttpClient:
-    """Allow to use mutiple hosts with same path. And automatically
+    """Allow to use multiple hosts with same path. And automatically
     mark failed hosts.
     """
 
