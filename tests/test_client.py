@@ -51,7 +51,8 @@ class ClientResponseTests(unittest.TestCase):
 
         connection = unittest.mock.Mock()
         response._setup_connection(connection)
-        del response
+        with self.assertWarns(ResourceWarning):
+            del response
 
         connection.close.assert_called_with()
 
