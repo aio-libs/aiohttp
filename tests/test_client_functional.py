@@ -566,6 +566,8 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertEqual(content['content'], 'requests=2')
             r.close()
 
+        c.close()
+
     def test_session_close(self):
         conn = aiohttp.TCPConnector(loop=self.loop)
 
@@ -586,6 +588,8 @@ class HttpClientFunctionalTests(unittest.TestCase):
             content = self.loop.run_until_complete(r.read(True))
             self.assertEqual(content['content'], 'requests=1')
             r.close()
+
+        conn.close()
 
     def test_session_cookies(self):
         from aiohttp import connector
@@ -651,6 +655,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                                           loop=self.loop)
             yield from r.read_and_close()
             self.assertEqual(1, len(connector._conns))
+            connector.close()
 
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('keepalive')
