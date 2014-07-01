@@ -194,6 +194,26 @@ class TCPConnector(BaseConnector):
         self._resolve = resolve
         self._resolved_hosts = {}
 
+    @property
+    def verify_ssl(self):
+        """Do check for ssl certifications?"""
+        return self._verify_ssl
+
+    @property
+    def family(self):
+        """Socket family like AF_INET"""
+        return self._family
+
+    @property
+    def resolve(self):
+        """Do DNS lookup for host name?"""
+        return self._resolve
+
+    @property
+    def resolved_hosts(self):
+        """The dict of (host, port) -> (ipaddr, port) pairs"""
+        return dict(self._resolved_hosts)
+
     def clear_resolved_hosts(self, host=None, port=None):
         if host is not None and port is not None:
             key = (host, port)
