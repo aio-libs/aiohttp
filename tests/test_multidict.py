@@ -5,7 +5,7 @@ from aiohttp.multidict import \
     CaseInsensitiveMultiDict, CaseInsensitiveMutableMultiDict
 
 
-class _BaseTest(unittest.TestCase):
+class _BaseTest:
 
     def make_dict(self, *args, **kwargs):
         raise NotImplementedError
@@ -108,7 +108,7 @@ class _BaseTest(unittest.TestCase):
         self.assertNotIn(('foo', 'bar'), d.items(getall=True))
 
 
-class MultiDictTests(_BaseTest):
+class MultiDictTests(_BaseTest, unittest.TestCase):
 
     def make_dict(self, *args, **kwargs):
         return MultiDict(*args, **kwargs)
@@ -279,7 +279,7 @@ class _BaseMutableMultiDictTests(_BaseTest):
             d.update(bar='baz')
 
 
-class MutableMultiDictTests(_BaseMutableMultiDictTests):
+class MutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
 
     def make_dict(self, *args, **kwargs):
         return MutableMultiDict(*args, **kwargs)

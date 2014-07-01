@@ -652,7 +652,7 @@ class ClientResponse:
                 try:
                     self.cookies.load(hdr)
                 except http.cookies.CookieError as exc:
-                    logging.warn('Can not load response cookies: %s', exc)
+                    logging.warning('Can not load response cookies: %s', exc)
 
         return self
 
