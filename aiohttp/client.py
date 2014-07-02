@@ -153,7 +153,7 @@ def request(method, url, *,
 
             url = urllib.parse.urldefrag(r_url)[0]
             if url:
-                resp.close()
+                yield from asyncio.Task(resp.read_and_close(), loop=loop)
                 continue
 
         break
