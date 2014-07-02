@@ -145,6 +145,8 @@ def request(method, url, *,
 
             scheme = urllib.parse.urlsplit(r_url)[0]
             if scheme not in ('http', 'https', ''):
+                resp.close()
+                conn.close()
                 raise ValueError('Can redirect only to http or https')
             elif not scheme:
                 r_url = urllib.parse.urljoin(url, r_url)

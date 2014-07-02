@@ -116,14 +116,22 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
         with test_utils.run_server(self.loop, use_ssl=True) as httpd:
             for meth in ('get', 'post', 'put', 'delete', 'head'):
-                r = self.loop.run_until_complete(
-                    client.request(meth, httpd.url('method', meth),
-                                   loop=self.loop, connector=connector))
-                content = self.loop.run_until_complete(r.read())
+                @asyncio.coroutine
+                def go():
+                    r = yield from client.request(
+                        meth, httpd.url('method', meth),
+                        loop=self.loop, connector=connector)
+                    content = yield from r.read()
 
-                self.assertEqual(r.status, 200)
-                self.assertEqual(content, b'Test message')
-                r.close()
+                    self.assertEqual(r.status, 200)
+                    self.assertEqual(content, b'Test message')
+                    r.close()
+                    # let loop to make one iteration to call connection_lost
+                    # and close socket
+                    yield from asyncio.sleep(0, loop=self.loop)
+
+                self.loop.run_until_complete(go())
+
 
     def test_use_global_loop(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
@@ -144,21 +152,28 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
     def test_HTTP_302_REDIRECT_GET(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
-            r = self.loop.run_until_complete(
-                client.request('get', httpd.url('redirect', 2),
-                               loop=self.loop))
+            @asyncio.coroutine
+            def go():
+                r = yield from client.request('get',
+                                              httpd.url('redirect', 2),
+                                              loop=self.loop)
 
-            self.assertEqual(r.status, 200)
-            self.assertEqual(2, httpd['redirects'])
-            r.close()
+                self.assertEqual(r.status, 200)
+                self.assertEqual(2, httpd['redirects'])
+                r.close()
+            self.loop.run_until_complete(go())
 
     def test_HTTP_302_REDIRECT_NON_HTTP(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
-            self.assertRaises(
-                ValueError,
-                self.loop.run_until_complete,
-                client.request('get', httpd.url('redirect_err'),
-                               loop=self.loop))
+            @asyncio.coroutine
+            def go():
+                with self.assertRaises(ValueError) as ctx:
+                    yield from client.request('get',
+                                              httpd.url('redirect_err'),
+                                              loop=self.loop)
+                print(ctx.exception)
+
+            self.loop.run_until_complete(go())
 
     def test_HTTP_302_REDIRECT_POST(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
@@ -197,16 +212,21 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
     def test_HTTP_200_GET_WITH_MIXED_PARAMS(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
-            r = self.loop.run_until_complete(
-                client.request(
+            @asyncio.coroutine
+            def go():
+                r = yield from client.request(
                     'get', httpd.url('method', 'get') + '?test=true',
-                    params={'q': 'test'}, loop=self.loop))
-            content = self.loop.run_until_complete(r.content.read())
-            content = content.decode()
+                    params={'q': 'test'}, loop=self.loop)
+                content = yield from r.content.read()
+                content = content.decode()
 
-            self.assertIn('"query": "test=true&q=test"', content)
-            self.assertEqual(r.status, 200)
-            r.close()
+                self.assertIn('"query": "test=true&q=test"', content)
+                self.assertEqual(r.status, 200)
+                r.close()
+                # let loop to make one iteration to call connection_lost
+                # and close socket
+                yield from asyncio.sleep(0, loop=self.loop)
+            self.loop.run_until_complete(go())
 
     def test_POST_DATA(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
