@@ -4,13 +4,13 @@ __all__ = ['ServerHttpProtocol']
 
 import asyncio
 import http.server
-import logging
 import time
 import traceback
 import socket
 
 import aiohttp
 from aiohttp import errors, utils
+from aiohttp.log import server_log, access_log
 
 
 RESPONSES = http.server.BaseHTTPRequestHandler.responses
@@ -25,7 +25,6 @@ DEFAULT_ERROR_MESSAGE = """
   </body>
 </html>"""
 
-ACCESS_LOG = logging.getLogger('http.access')
 ACCESS_LOG_FORMAT = (
     '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"')
 
@@ -58,7 +57,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
     def __init__(self, *, loop=None, keep_alive=None,
                  timeout=15, tcp_keepalive=True, allowed_methods=(),
-                 debug=False, log=logging, access_log=ACCESS_LOG,
+                 debug=False, log=server_log, access_log=access_log,
                  access_log_format=ACCESS_LOG_FORMAT, **kwargs):
         super().__init__(loop=loop, **kwargs)
 
