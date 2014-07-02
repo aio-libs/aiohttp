@@ -287,7 +287,7 @@ class HttpPayloadParser:
             if self.readall and getattr(self.message, 'code', 0) != 204:
                 yield from self.parse_eof_payload(out, buf)
             elif getattr(self.message, 'method', None) in ('PUT', 'POST'):
-                logging.warn(  # pragma: no cover
+                logging.warning(  # pragma: no cover
                     'Content-Length or Transfer-Encoding header is required')
 
         out.feed_eof()

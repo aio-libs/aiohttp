@@ -265,7 +265,7 @@ class Router:
             if message.is_multipart():
                 for msg in message.get_payload():
                     if msg.is_multipart():
-                        logging.warn('multipart msg is not expected')
+                        logging.warning('multipart msg is not expected')
                     else:
                         key, params = cgi.parse_header(
                             msg.get('content-disposition', ''))
