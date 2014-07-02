@@ -296,8 +296,8 @@ class ProxyConnector(TCPConnector):
                                   loop=self._loop)
         try:
             transport, proto = yield from super()._create_connection(proxy_req)
-        except OSError:
-            raise ProxyConnectionError()
+        except OSError as exc:
+            raise ProxyConnectionError(*exc.args) from exc
         req.path = '{scheme}://{host}{path}'.format(scheme=req.scheme,
                                                     host=req.host,
                                                     path=req.path)
