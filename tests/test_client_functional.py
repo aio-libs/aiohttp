@@ -167,11 +167,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             @asyncio.coroutine
             def go():
-                with self.assertRaises(ValueError) as ctx:
+                with self.assertRaises(ValueError):
                     yield from client.request('get',
                                               httpd.url('redirect_err'),
                                               loop=self.loop)
-                print(ctx.exception)
 
             self.loop.run_until_complete(go())
 
