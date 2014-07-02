@@ -10,7 +10,6 @@ import json
 import io
 import inspect
 import itertools
-import logging
 import mimetypes
 import os
 import random
@@ -21,6 +20,7 @@ import weakref
 import warnings
 
 import aiohttp
+from .log import client_log
 from .multidict import CaseInsensitiveMultiDict, MultiDict, MutableMultiDict
 
 HTTP_PORT = 80
@@ -654,7 +654,7 @@ class ClientResponse:
                 try:
                     self.cookies.load(hdr)
                 except http.cookies.CookieError as exc:
-                    logging.warning('Can not load response cookies: %s', exc)
+                    client_log.warning('Can not load response cookies: %s', exc)
 
         return self
 

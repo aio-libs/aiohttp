@@ -7,6 +7,7 @@ import json
 import http.cookies
 import asyncio
 import unittest
+from unittest import mock
 
 import aiohttp
 from aiohttp import client
@@ -517,7 +518,8 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertIn(b'"Cookie": "test1=123; test3=456"', bytes(content))
             r.close()
 
-    def test_set_cookies(self):
+    @mock.patch('aiohttp.client.client_log')
+    def test_set_cookies(self, m_log):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             resp = self.loop.run_until_complete(
                 client.request('get', httpd.url('cookies'), loop=self.loop))
@@ -527,6 +529,9 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertEqual(resp.cookies['c1'].value, 'cookie1')
             self.assertEqual(resp.cookies['c2'].value, 'cookie2')
             resp.close()
+
+        m_log.warning.assert_called_with('Can not load response cookies: %s',
+                                         mock.ANY)
 
     def test_chunked(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
@@ -610,7 +615,8 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
         conn.close()
 
-    def test_session_cookies(self):
+    @mock.patch('aiohttp.client.client_log')
+    def test_session_cookies(self, m_log):
         from aiohttp import connector
         conn = connector.TCPConnector(share_cookies=True, loop=self.loop)
 
@@ -628,6 +634,8 @@ class HttpClientFunctionalTests(unittest.TestCase):
             cookies = sorted([(k, v.value) for k, v in conn.cookies.items()])
             self.assertEqual(
                 cookies, [('c1', 'cookie1'), ('c2', 'cookie2'), ('test', '1')])
+        m_log.warning.assert_called_with('Can not load response cookies: %s',
+                                         mock.ANY)
 
     def test_multidict_headers(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:

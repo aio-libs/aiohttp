@@ -9,7 +9,6 @@ import collections
 import functools
 import http.server
 import itertools
-import logging
 import re
 import sys
 import zlib
@@ -18,6 +17,7 @@ from wsgiref.handlers import format_date_time
 import aiohttp
 from aiohttp import errors
 from aiohttp import multidict
+from aiohttp.log import internal_log
 
 METHRE = re.compile('[A-Z0-9$-_.]+')
 VERSRE = re.compile('HTTP/(\d+).(\d+)')
@@ -287,7 +287,7 @@ class HttpPayloadParser:
             if self.readall and getattr(self.message, 'code', 0) != 204:
                 yield from self.parse_eof_payload(out, buf)
             elif getattr(self.message, 'method', None) in ('PUT', 'POST'):
-                logging.warning(  # pragma: no cover
+                internal_log.warning(  # pragma: no cover
                     'Content-Length or Transfer-Encoding header is required')
 
         out.feed_eof()
