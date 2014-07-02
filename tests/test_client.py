@@ -7,6 +7,7 @@ import time
 import unittest
 import unittest.mock
 import urllib.parse
+import socket
 
 import aiohttp
 from aiohttp.client import ClientRequest, ClientResponse, HttpClient
@@ -638,7 +639,17 @@ class HttpClientTests(unittest.TestCase):
         c = HttpClient(
             [('localhost', 56777), ('localhost', 56778)], loop=self.loop)
         c._hosts = []
-        c._failed.append((('localhost', 1000, False), now - 10))
+
+        has_http_server = True
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            sock.connect(('127.0.0.1', 80))
+        except ConnectionError:
+            has_http_server = False
+        finally:
+            sock.close()
+
+        c._failed.append((('localhost', 1000, has_http_server), now - 10))
         c._failed.append((('localhost', 1001, True), now - 10))
 
         self.assertRaises(
