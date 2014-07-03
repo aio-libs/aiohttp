@@ -6,6 +6,9 @@ X.X.X (XX-XX-2014)
 
 - Publish TCPConnector properties: verify_ssl, family, resolve, resolved_hosts.
 
+- Don't parse message body for HEAD responses.
+
+
 0.8.2 (06-22-2014)
 ------------------
 
