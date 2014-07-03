@@ -736,7 +736,7 @@ class ClientResponse:
         return (yield from self.read(decode))
 
     @asyncio.coroutine
-    def json(self):
+    def json(self, *, encoding=None):
         """Reads and decodes JSON response."""
         if self._content is None:
             yield from self.read()
@@ -750,7 +750,8 @@ class ClientResponse:
         if not self._content.strip():
             return None
 
-        return json.loads(self._content.decode(params.get('charset', 'utf-8')))
+        encoding = encoding or params.get('charset', 'utf-8')
+        return json.loads(self._content.decode(encoding))
 
 
 def str_to_bytes(s, encoding='utf-8'):
