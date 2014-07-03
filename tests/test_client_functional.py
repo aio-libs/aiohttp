@@ -679,7 +679,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertIsNotNone(connection)
             connector = connection._connector
             self.assertIsNotNone(connector)
-            yield from r.read_and_close()
+            yield from r.read()
             self.assertEqual(0, len(connector._conns))
 
         with test_utils.run_server(self.loop, router=Functional) as httpd:
@@ -695,7 +695,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             r = yield from client.request('GET', url,
                                           connector=connector,
                                           loop=self.loop)
-            yield from r.read_and_close()
+            yield from r.read()
             self.assertEqual(1, len(connector._conns))
             connector.close()
 

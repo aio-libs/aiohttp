@@ -86,7 +86,7 @@ def request(method, url, *,
       >>> resp = yield from aiohttp.request('GET', 'http://python.org/')
       >>> resp
       <ClientResponse(python.org/) [200]>
-      >>> data = yield from resp.read_and_close()
+      >>> data = yield from resp.read()
 
     """
     redirects = 0
@@ -697,7 +697,10 @@ class ClientResponse:
                     buf.append((chunk, size))
                     total += size
             except aiohttp.EofStream:
-                pass
+                self.close()
+            except:
+                self.close(True)
+                raise
 
             self._content = bytearray(total)
 
@@ -719,15 +722,11 @@ class ClientResponse:
     @asyncio.coroutine
     def read_and_close(self, decode=False):
         """Read response payload and then close response."""
-        try:
-            payload = yield from self.read(decode)
-        except:
-            self.close(True)
-            raise
-        else:
-            self.close()
-
-        return payload
+        warnings.warn(
+            'read_and_close is deprecated, use .read() instead',
+            DeprecationWarning
+        )
+        return (yield from self.read(decode))
 
 
 def str_to_bytes(s, encoding='utf-8'):

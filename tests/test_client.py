@@ -81,26 +81,30 @@ class ClientResponseTests(unittest.TestCase):
             repr(self.response))
 
     def test_read_and_close(self):
-        self.response.read = unittest.mock.Mock()
-        self.response.read.return_value = asyncio.Future(loop=self.loop)
-        self.response.read.return_value.set_result(b'payload')
+        def side_effect(*args, **kwargs):
+            def second_call(*args, **kwargs):
+                raise aiohttp.EofStream
+            fut = asyncio.Future(loop=self.loop)
+            fut.set_result(b'payload')
+            content.read.side_effect = second_call
+            return fut
+        content = self.response.content = unittest.mock.Mock()
+        content.read.side_effect = side_effect
         self.response.close = unittest.mock.Mock()
 
-        res = self.loop.run_until_complete(self.response.read_and_close())
+        res = self.loop.run_until_complete(self.response.read())
         self.assertEqual(res, b'payload')
-        self.assertTrue(self.response.read.called)
         self.assertTrue(self.response.close.called)
 
     def test_read_and_close_with_error(self):
-        self.response.read = unittest.mock.Mock()
-        self.response.read.return_value = asyncio.Future(loop=self.loop)
-        self.response.read.return_value.set_exception(ValueError)
+        content = self.response.content = unittest.mock.Mock()
+        content.read.return_value = asyncio.Future(loop=self.loop)
+        content.read.return_value.set_exception(ValueError)
         self.response.close = unittest.mock.Mock()
 
         self.assertRaises(
             ValueError,
-            self.loop.run_until_complete, self.response.read_and_close())
-        self.assertTrue(self.response.read.called)
+            self.loop.run_until_complete, self.response.read())
         self.response.close.assert_called_with(True)
 
 
