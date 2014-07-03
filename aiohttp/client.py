@@ -20,6 +20,7 @@ import weakref
 import warnings
 
 import aiohttp
+from .helpers import parse_mimetype
 from .log import client_log
 from .multidict import CaseInsensitiveMultiDict, MultiDict, MutableMultiDict
 
@@ -86,7 +87,7 @@ def request(method, url, *,
       >>> resp = yield from aiohttp.request('GET', 'http://python.org/')
       >>> resp
       <ClientResponse(python.org/) [200]>
-      >>> data = yield from resp.read_and_close()
+      >>> data = yield from resp.read()
 
     """
     redirects = 0
@@ -675,6 +676,10 @@ class ClientResponse:
             self._writer_wr = None
 
     @asyncio.coroutine
+    def release(self):
+        yield from self.read()
+
+    @asyncio.coroutine
     def wait_for_close(self):
         if self._writer is not None:
             try:
@@ -697,7 +702,10 @@ class ClientResponse:
                     buf.append((chunk, size))
                     total += size
             except aiohttp.EofStream:
-                pass
+                self.close()
+            except:
+                self.close(True)
+                raise
 
             self._content = bytearray(total)
 
@@ -710,24 +718,40 @@ class ClientResponse:
         data = self._content
 
         if decode:
-            ct = self.headers.get('CONTENT-TYPE', '').lower()
-            if ct == 'application/json':
-                data = json.loads(data.decode('utf-8'))
+            warnings.warn(
+                '.read(True) is deprecated. use .json() instead',
+                DeprecationWarning
+            )
+            return (yield from self.json())
 
         return data
 
     @asyncio.coroutine
     def read_and_close(self, decode=False):
         """Read response payload and then close response."""
-        try:
-            payload = yield from self.read(decode)
-        except:
-            self.close(True)
-            raise
-        else:
-            self.close()
+        warnings.warn(
+            'read_and_close is deprecated, use .read() instead',
+            DeprecationWarning
+        )
+        return (yield from self.read(decode))
 
-        return payload
+    @asyncio.coroutine
+    def json(self, *, encoding=None):
+        """Reads and decodes JSON response."""
+        if self._content is None:
+            yield from self.read()
+
+        ctype = self.headers.get('CONTENT-TYPE', '').lower()
+        mtype, stype, _, params = parse_mimetype(ctype)
+        if not (mtype == 'application' or stype == 'json'):
+            client_log.warning(
+                'Attempt to decode JSON with unexpected mimetype: %s', ctype)
+
+        if not self._content.strip():
+            return None
+
+        encoding = encoding or params.get('charset', 'utf-8')
+        return json.loads(self._content.decode(encoding))
 
 
 def str_to_bytes(s, encoding='utf-8'):
