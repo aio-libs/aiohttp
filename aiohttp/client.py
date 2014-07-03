@@ -675,6 +675,10 @@ class ClientResponse:
             self._writer_wr = None
 
     @asyncio.coroutine
+    def release(self):
+        yield from self.read()
+
+    @asyncio.coroutine
     def wait_for_close(self):
         if self._writer is not None:
             try:

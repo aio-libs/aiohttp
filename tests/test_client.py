@@ -107,6 +107,16 @@ class ClientResponseTests(unittest.TestCase):
             self.loop.run_until_complete, self.response.read())
         self.response.close.assert_called_with(True)
 
+    def test_release(self):
+        fut = asyncio.Future(loop=self.loop)
+        fut.set_exception(aiohttp.EofStream)
+        content = self.response.content = unittest.mock.Mock()
+        content.read.return_value = fut
+        self.response.close = unittest.mock.Mock()
+
+        self.loop.run_until_complete(self.response.release())
+        self.assertTrue(self.response.close.called)
+
 
 class ClientRequestTests(unittest.TestCase):
 
