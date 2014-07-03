@@ -253,11 +253,13 @@ class HttpResponseParser(HttpParser):
 
 class HttpPayloadParser:
 
-    def __init__(self, message, length=None, compression=True, readall=False):
+    def __init__(self, message, length=None, compression=True, readall=False,
+                 response_with_body=True):
         self.message = message
         self.length = length
         self.compression = compression
         self.readall = readall
+        self.response_with_body = response_with_body
 
     def __call__(self, out, buf):
         # payload params
@@ -270,7 +272,11 @@ class HttpPayloadParser:
             out = DeflateBuffer(out, self.message.compression)
 
         # payload parser
-        if 'chunked' in self.message.headers.get('TRANSFER-ENCODING', ''):
+        if not self.response_with_body:
+            # don't parse payload if it's not expected to be received
+            pass
+
+        elif 'chunked' in self.message.headers.get('TRANSFER-ENCODING', ''):
             yield from self.parse_chunked_payload(out, buf)
 
         elif length is not None:

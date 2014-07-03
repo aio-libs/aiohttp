@@ -39,7 +39,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 content = content1.decode()
 
                 self.assertEqual(r.status, 200)
-                self.assertIn('"method": "%s"' % meth.upper(), content)
+                if meth == 'head':
+                    self.assertEqual(b'', content1)
+                else:
+                    self.assertIn('"method": "%s"' % meth.upper(), content)
                 self.assertEqual(content1, content2)
                 r.close()
 
@@ -56,7 +59,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 content = content1.decode()
 
                 self.assertEqual(r.status, 200)
-                self.assertIn('"method": "%s"' % meth.upper(), content)
+                if meth == 'head':
+                    self.assertEqual(b'', content1)
+                else:
+                    self.assertIn('"method": "%s"' % meth.upper(), content)
                 self.assertEqual(content1, content2)
                 r.close()
 
@@ -74,7 +80,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 content = content1.decode()
 
                 self.assertEqual(r.status, 200)
-                self.assertIn('"method": "%s"' % meth.upper(), content)
+                if meth == 'head':
+                    self.assertEqual(b'', content1)
+                else:
+                    self.assertIn('"method": "%s"' % meth.upper(), content)
                 self.assertEqual(content1, content2)
                 r.close()
 
@@ -92,7 +101,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 content = content1.decode()
 
                 self.assertEqual(r.status, 200)
-                self.assertIn('"method": "%s"' % meth.upper(), content)
+                if meth == 'head':
+                    self.assertEqual(b'', content1)
+                else:
+                    self.assertIn('"method": "%s"' % meth.upper(), content)
                 self.assertEqual(content1, content2)
                 r.close()
 
@@ -125,7 +137,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
                     content = yield from r.read()
 
                     self.assertEqual(r.status, 200)
-                    self.assertEqual(content, b'Test message')
+                    if meth == 'head':
+                        self.assertEqual(b'', content)
+                    else:
+                        self.assertEqual(content, b'Test message')
                     r.close()
                     # let loop to make one iteration to call connection_lost
                     # and close socket

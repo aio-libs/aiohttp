@@ -644,8 +644,11 @@ class ClientResponse:
             self.message.headers.items(getall=True))
 
         # payload
+        response_with_body = self.method.lower() != 'head'
         self.content = self._reader.set_parser(
-            aiohttp.HttpPayloadParser(self.message, readall=read_until_eof))
+            aiohttp.HttpPayloadParser(self.message,
+                                      readall=read_until_eof,
+                                      response_with_body=response_with_body))
 
         # cookies
         self.cookies = http.cookies.SimpleCookie()
