@@ -251,7 +251,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                                loop=self.loop))
             self.assertEqual(r.status, 200)
 
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
             self.assertEqual({'some': ['data']}, content['form'])
             self.assertEqual(r.status, 200)
             r.close()
@@ -265,7 +265,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                                loop=self.loop))
             self.assertEqual(r.status, 200)
 
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
             self.assertEqual('deflate', content['compression'])
             self.assertEqual({'some': ['data']}, content['form'])
             self.assertEqual(r.status, 200)
@@ -281,7 +281,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                         'post', url, files={'some': f}, chunked=1024,
                         headers={'Transfer-Encoding': 'chunked'},
                         loop=self.loop))
-                content = self.loop.run_until_complete(r.read(True))
+                content = self.loop.run_until_complete(r.json())
 
                 f.seek(0)
                 filename = os.path.split(f.name)[-1]
@@ -306,7 +306,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                                    chunked=1024, compress='deflate',
                                    loop=self.loop))
 
-                content = self.loop.run_until_complete(r.read(True))
+                content = self.loop.run_until_complete(r.json())
 
                 f.seek(0)
                 filename = os.path.split(f.name)[-1]
@@ -331,7 +331,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                     client.request('post', url, files=[('some', f.read())],
                                    loop=self.loop))
 
-                content = self.loop.run_until_complete(r.read(True))
+                content = self.loop.run_until_complete(r.json())
 
                 f.seek(0)
                 self.assertEqual(1, len(content['multipart-data']))
@@ -353,7 +353,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                     client.request('post', url, files=[('some', f)],
                                    loop=self.loop))
 
-                content = self.loop.run_until_complete(r.read(True))
+                content = self.loop.run_until_complete(r.json())
 
                 f.seek(0)
                 filename = os.path.split(f.name)[-1]
@@ -377,7 +377,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                     client.request('post', url, loop=self.loop,
                                    files=[('some', f, 'text/plain')]))
 
-                content = self.loop.run_until_complete(r.read(True))
+                content = self.loop.run_until_complete(r.json())
 
                 f.seek(0)
                 filename = os.path.split(f.name)[-1]
@@ -402,7 +402,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 r = self.loop.run_until_complete(
                     client.request('post', url, files=[f], loop=self.loop))
 
-                content = self.loop.run_until_complete(r.read(True))
+                content = self.loop.run_until_complete(r.json())
 
                 f.seek(0)
                 filename = os.path.split(f.name)[-1]
@@ -426,7 +426,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             r = self.loop.run_until_complete(
                 client.request('post', url, files=[data], loop=self.loop))
 
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
 
             self.assertEqual(1, len(content['multipart-data']))
             self.assertEqual(
@@ -446,7 +446,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                     client.request('post', url, loop=self.loop,
                                    data={'test': 'true'}, files={'some': f}))
 
-                content = self.loop.run_until_complete(r.read(True))
+                content = self.loop.run_until_complete(r.json())
 
                 self.assertEqual(2, len(content['multipart-data']))
                 self.assertEqual(
@@ -486,7 +486,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                     'post', url, data=stream(),
                     headers={'Content-Length': str(len(data))},
                     loop=self.loop))
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
             r.close()
 
             self.assertEqual(str(len(data)),
@@ -500,7 +500,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                                expect100=True, loop=self.loop))
             self.assertEqual(r.status, 200)
 
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
             self.assertEqual('100-continue', content['headers']['Expect'])
             self.assertEqual(r.status, 200)
             r.close()
@@ -554,7 +554,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 client.request('get', httpd.url('chunked'), loop=self.loop))
             self.assertEqual(r.status, 200)
             self.assertEqual(r.headers.getone('TRANSFER-ENCODING'), 'chunked')
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
             self.assertEqual(content['path'], '/chunked')
             r.close()
 
@@ -565,7 +565,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertEqual(r.status, 200)
             self.assertRaises(
                 aiohttp.IncompleteRead,
-                self.loop.run_until_complete, r.read(True))
+                self.loop.run_until_complete, r.json())
             r.close()
 
     def test_request_conn_error(self):
@@ -593,7 +593,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 client.request('get', httpd.url('keepalive',),
                                connector=c, loop=self.loop))
             self.assertEqual(r.status, 200)
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
             self.assertEqual(content['content'], 'requests=1')
             r.close()
 
@@ -601,7 +601,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 client.request('get', httpd.url('keepalive'),
                                connector=c, loop=self.loop))
             self.assertEqual(r.status, 200)
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
             self.assertEqual(content['content'], 'requests=2')
             r.close()
 
@@ -616,7 +616,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                     'get', httpd.url('keepalive') + '?close=1',
                     connector=conn, loop=self.loop))
             self.assertEqual(r.status, 200)
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
             self.assertEqual(content['content'], 'requests=1')
             r.close()
 
@@ -624,7 +624,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 client.request('get', httpd.url('keepalive'),
                                connector=conn, loop=self.loop))
             self.assertEqual(r.status, 200)
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
             self.assertEqual(content['content'], 'requests=1')
             r.close()
 
@@ -641,7 +641,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 client.request('get', httpd.url('cookies'),
                                connector=conn, loop=self.loop))
             self.assertEqual(r.status, 200)
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
 
             self.assertEqual(content['headers']['Cookie'], 'test=1')
             r.close()
@@ -663,7 +663,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                     'post', url, data=data,
                     headers=MultiDict({'Content-Length': str(len(data))}),
                     loop=self.loop))
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
             r.close()
 
             self.assertEqual(str(len(data)),

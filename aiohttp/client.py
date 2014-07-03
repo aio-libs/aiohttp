@@ -717,9 +717,11 @@ class ClientResponse:
         data = self._content
 
         if decode:
-            ct = self.headers.get('CONTENT-TYPE', '').lower()
-            if ct == 'application/json':
-                data = json.loads(data.decode('utf-8'))
+            warnings.warn(
+                '.read(True) is deprecated. use .json() instead',
+                DeprecationWarning
+            )
+            return (yield from self.json())
 
         return data
 
@@ -731,6 +733,22 @@ class ClientResponse:
             DeprecationWarning
         )
         return (yield from self.read(decode))
+
+    @asyncio.coroutine
+    def json(self):
+        """Reads and decodes JSON response."""
+        if self._content is None:
+            yield from self.read()
+
+        ctype = self.headers.get('CONTENT-TYPE', '').lower()
+        if not ctype.startswith('application/json'):
+            client_log.warning(
+                'Attempt to decode JSON with unexpected mimetype: %s', ctype)
+
+        if not self._content.strip():
+            return None
+
+        return json.loads(self._content.decode('utf-8'))
 
 
 def str_to_bytes(s, encoding='utf-8'):
