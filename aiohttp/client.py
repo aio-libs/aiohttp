@@ -20,6 +20,7 @@ import weakref
 import warnings
 
 import aiohttp
+from .helpers import parse_mimetype
 from .log import client_log
 from .multidict import CaseInsensitiveMultiDict, MultiDict, MutableMultiDict
 
@@ -741,14 +742,15 @@ class ClientResponse:
             yield from self.read()
 
         ctype = self.headers.get('CONTENT-TYPE', '').lower()
-        if not ctype.startswith('application/json'):
+        mtype, stype, _, params = parse_mimetype(ctype)
+        if not (mtype == 'application' or stype == 'json'):
             client_log.warning(
                 'Attempt to decode JSON with unexpected mimetype: %s', ctype)
 
         if not self._content.strip():
             return None
 
-        return json.loads(self._content.decode('utf-8'))
+        return json.loads(self._content.decode(params.get('charset', 'utf-8')))
 
 
 def str_to_bytes(s, encoding='utf-8'):
