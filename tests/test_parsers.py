@@ -1,13 +1,11 @@
-"""Tests for parser.py"""
+"""Tests for parsers.py"""
 
 import asyncio
 import unittest
 import unittest.mock
 
-import aiohttp
 from aiohttp import errors
 from aiohttp import parsers
-from aiohttp import test_utils
 
 
 class StreamParserTests(unittest.TestCase):
@@ -54,7 +52,8 @@ class StreamParserTests(unittest.TestCase):
         stream = parsers.StreamParser()
 
         stream._parser = self.lines_parser
-        buf = stream._output = parsers.DataQueue(stream, loop=self.loop)
+        buf = stream._output = parsers.FlowControlDataQueue(
+            stream, loop=self.loop)
 
         exc = ValueError()
         stream.set_exception(exc)
@@ -342,143 +341,6 @@ class StreamParserTests(unittest.TestCase):
         self.assertTrue(s._eof)
 
 
-class DataQueueTests(unittest.TestCase):
-
-    def setUp(self):
-        self.stream = unittest.mock.Mock()
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
-
-    def test_feed_data(self):
-        buffer = parsers.DataQueue(self.stream, loop=self.loop)
-
-        item = object()
-        buffer.feed_data(item)
-        self.assertEqual([item], list(buffer._buffer))
-
-    def test_feed_eof(self):
-        buffer = parsers.DataQueue(self.stream, loop=self.loop)
-        buffer.feed_eof()
-        self.assertTrue(buffer._eof)
-
-    def test_stream(self):
-        item = object()
-        buffer = parsers.DataQueue(self.stream, loop=self.loop)
-        read_task = asyncio.Task(buffer.read(), loop=self.loop)
-
-        def cb():
-            buffer.feed_data(item)
-        self.loop.call_soon(cb)
-        self.loop.run_until_complete(read_task)
-
-        self.assertTrue(self.stream.resume_stream.called)
-        self.assertTrue(self.stream.pause_stream.called)
-
-    def test_read(self):
-        item = object()
-        buffer = parsers.DataQueue(self.stream, loop=self.loop)
-        read_task = asyncio.Task(buffer.read(), loop=self.loop)
-
-        def cb():
-            buffer.feed_data(item)
-        self.loop.call_soon(cb)
-
-        data = self.loop.run_until_complete(read_task)
-        self.assertIs(item, data)
-
-    def test_read_eof(self):
-        buffer = parsers.DataQueue(self.stream, loop=self.loop)
-        read_task = asyncio.Task(buffer.read(), loop=self.loop)
-
-        def cb():
-            buffer.feed_eof()
-        self.loop.call_soon(cb)
-
-        self.assertRaises(
-            parsers.EofStream, self.loop.run_until_complete, read_task)
-
-    def test_read_cancelled(self):
-        buffer = parsers.DataQueue(self.stream, loop=self.loop)
-        read_task = asyncio.Task(buffer.read(), loop=self.loop)
-        test_utils.run_briefly(self.loop)
-        self.assertIsInstance(buffer._waiter, asyncio.Future)
-
-        read_task.cancel()
-        self.assertRaises(
-            asyncio.CancelledError,
-            self.loop.run_until_complete, read_task)
-        self.assertTrue(buffer._waiter.cancelled())
-
-        buffer.feed_data(b'test')
-        self.assertIsNone(buffer._waiter)
-
-    def test_read_until_eof(self):
-        item = object()
-        buffer = parsers.DataQueue(self.stream, loop=self.loop)
-        buffer.feed_data(item)
-        buffer.feed_eof()
-
-        data = self.loop.run_until_complete(buffer.read())
-        self.assertIs(data, item)
-
-        self.assertRaises(
-            parsers.EofStream, self.loop.run_until_complete, buffer.read())
-
-    def test_read_exception(self):
-        buffer = parsers.DataQueue(self.stream, loop=self.loop)
-        buffer.set_exception(ValueError())
-
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, buffer.read())
-
-    def test_read_exception_with_data(self):
-        val = object()
-        buffer = parsers.DataQueue(self.stream, loop=self.loop)
-        buffer.feed_data(val)
-        buffer.set_exception(ValueError())
-
-        self.assertIs(val, self.loop.run_until_complete(buffer.read()))
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, buffer.read())
-
-    def test_read_exception_on_wait(self):
-        buffer = parsers.DataQueue(self.stream, loop=self.loop)
-        read_task = asyncio.Task(buffer.read(), loop=self.loop)
-        test_utils.run_briefly(self.loop)
-        self.assertIsInstance(buffer._waiter, asyncio.Future)
-
-        buffer.feed_eof()
-        buffer.set_exception(ValueError())
-
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, read_task)
-
-    def test_exception(self):
-        buffer = parsers.DataQueue(self.stream, loop=self.loop)
-        self.assertIsNone(buffer.exception())
-
-        exc = ValueError()
-        buffer.set_exception(exc)
-        self.assertIs(buffer.exception(), exc)
-
-    def test_exception_waiter(self):
-        buffer = parsers.DataQueue(self.stream, loop=self.loop)
-
-        @asyncio.coroutine
-        def set_err():
-            buffer.set_exception(ValueError())
-
-        t1 = asyncio.Task(buffer.read(), loop=self.loop)
-        t2 = asyncio.Task(set_err(), loop=self.loop)
-
-        self.loop.run_until_complete(asyncio.wait([t1, t2], loop=self.loop))
-
-        self.assertRaises(ValueError, t1.result)
-
-
 class StreamProtocolTests(unittest.TestCase):
 
     def test_connection_made(self):
@@ -714,7 +576,7 @@ class ParserBufferTests(unittest.TestCase):
         self.assertEqual(b'', bytes(buf))
 
     def test_lines_parser(self):
-        out = parsers.DataQueue(self.stream, loop=self.loop)
+        out = parsers.FlowControlDataQueue(self.stream, loop=self.loop)
         buf = self._make_one()
 
         p = parsers.LinesParser()(out, buf)
@@ -733,7 +595,7 @@ class ParserBufferTests(unittest.TestCase):
         self.assertEqual(bytes(buf), b'data')
 
     def test_chunks_parser(self):
-        out = parsers.DataQueue(self.stream, loop=self.loop)
+        out = parsers.FlowControlDataQueue(self.stream, loop=self.loop)
         buf = self._make_one()
 
         p = parsers.ChunksParser(5)(out, buf)
@@ -749,55 +611,3 @@ class ParserBufferTests(unittest.TestCase):
             pass
 
         self.assertEqual(bytes(buf), b'data')
-
-
-class StreamReaderTests(unittest.TestCase):
-
-    def setUp(self):
-        self.stream = unittest.mock.Mock()
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
-
-    def test_wait_eof(self):
-        stream = aiohttp.StreamReader(self.stream, loop=self.loop)
-        wait_task = asyncio.Task(stream.wait_eof(), loop=self.loop)
-
-        def cb():
-            yield from asyncio.sleep(0.1, loop=self.loop)
-            stream.feed_eof()
-
-        asyncio.Task(cb(), loop=self.loop)
-        self.loop.run_until_complete(wait_task)
-        self.assertTrue(stream.is_eof())
-        self.assertIsNone(stream._eof_waiter)
-
-    def test_wait_eof_eof(self):
-        stream = aiohttp.StreamReader(self.stream, loop=self.loop)
-        stream.feed_eof()
-        wait_task = asyncio.Task(stream.wait_eof(), loop=self.loop)
-        self.loop.run_until_complete(wait_task)
-        self.assertTrue(stream.is_eof())
-
-    def test_readany_eof(self):
-        stream = aiohttp.StreamReader(self.stream, loop=self.loop)
-        read_task = asyncio.Task(stream.readany(), loop=self.loop)
-        self.loop.call_soon(stream.feed_data, b'chunk1\n')
-
-        data = self.loop.run_until_complete(read_task)
-
-        self.assertEqual(b'chunk1\n', data)
-        self.assertEqual(b'', stream._buffer)
-
-    def test_readany_exception(self):
-        stream = aiohttp.StreamReader(self.stream, loop=self.loop)
-        stream.feed_data(b'line\n')
-
-        data = self.loop.run_until_complete(stream.readany())
-        self.assertEqual(b'line\n', data)
-
-        stream.set_exception(ValueError())
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, stream.readany())

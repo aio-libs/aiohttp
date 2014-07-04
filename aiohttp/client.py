@@ -20,7 +20,7 @@ import warnings
 import aiohttp
 from . import helpers
 from .log import client_log
-from .streams import DataReader
+from .streams import FlowControlStreamReader
 from .multidict import CaseInsensitiveMultiDict, MultiDict, MutableMultiDict
 
 HTTP_PORT = 80
@@ -594,7 +594,8 @@ class ClientResponse:
     def _setup_connection(self, connection):
         self._reader = connection.reader
         self.connection = connection
-        self.content = DataReader(connection.reader, loop=connection.loop)
+        self.content = FlowControlStreamReader(
+            connection.reader, loop=connection.loop)
 
         msg = ('ClientResponse has to be closed explicitly! {}:{}:{}'
                .format(self.method, self.host, self.url))

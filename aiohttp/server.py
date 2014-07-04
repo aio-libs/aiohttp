@@ -183,7 +183,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                     self._timeout_handle.cancel()
                     self._timeout_handle = None
 
-                payload = streams.DataReader(reader, loop=self._loop)
+                payload = streams.FlowControlStreamReader(
+                    reader, loop=self._loop)
                 reader.set_parser(aiohttp.HttpPayloadParser(message), payload)
 
                 handler = self.handle_request(message, payload)

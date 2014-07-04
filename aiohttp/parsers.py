@@ -60,14 +60,12 @@ __all__ = ['EofStream', 'StreamParser', 'StreamProtocol',
 
 import asyncio
 import asyncio.streams
-import collections
 import inspect
 from . import errors
-from .streams import DataQueue, EofStream
+from .streams import FlowControlDataQueue, EofStream
 
 BUF_LIMIT = 2**14
 DEFAULT_LIMIT = 2**16
-
 
 
 class StreamParser:
@@ -185,7 +183,7 @@ class StreamParser:
             self.unset_parser()
 
         if output is None:
-            output = DataQueue(self, loop=self._loop)
+            output = FlowControlDataQueue(self, loop=self._loop)
 
         if self._exception:
             output.set_exception(self._exception)

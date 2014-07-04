@@ -1,4 +1,6 @@
-__all__ = ['EofStream', 'StreamReader', 'DataReader', 'DataQueue']
+__all__ = ['EofStream',
+           'StreamReader', 'DataQueue',
+           'FlowControlStreamReader', 'FlowControlDataQueue']
 
 import asyncio
 import asyncio.streams
@@ -210,7 +212,7 @@ class StreamReader:
         return b''.join(blocks)
 
 
-class DataReader(StreamReader):
+class FlowControlStreamReader(StreamReader):
 
     def __init__(self, stream, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -251,10 +253,9 @@ class DataReader(StreamReader):
 
 
 class DataQueue:
-    """DataQueue is a destination for parsed data."""
+    """DataQueue is a general-purpose blocking queue with one reader."""
 
-    def __init__(self, stream, *, loop=None):
-        self._stream = stream
+    def __init__(self, *, loop=None):
         self._loop = loop
         self._buffer = collections.deque()
         self._eof = False
@@ -263,6 +264,9 @@ class DataQueue:
 
     def is_eof(self):
         return self._eof
+
+    def at_eof(self):
+        return self._eof and not self._buffer
 
     def exception(self):
         return self._exception
@@ -296,22 +300,37 @@ class DataQueue:
 
     @asyncio.coroutine
     def read(self):
+        if not self._buffer and not self._eof:
+            if self._exception is not None:
+                raise self._exception
+
+            assert not self._waiter
+            self._waiter = asyncio.Future(loop=self._loop)
+            yield from self._waiter
+
+        if self._buffer:
+            return self._buffer.popleft()
+        else:
+            if self._exception is not None:
+                raise self._exception
+            else:
+                raise EofStream
+
+
+class FlowControlDataQueue(DataQueue):
+    """FlowControlDataQueue resumes and pauses an underlying stream.
+
+    It is a destination for parsed data."""
+
+    def __init__(self, stream, *, loop=None):
+        super().__init__(loop=loop)
+
+        self._stream = stream
+
+    @asyncio.coroutine
+    def read(self):
         self._stream.resume_stream()
         try:
-            if not self._buffer and not self._eof:
-                if self._exception is not None:
-                    raise self._exception
-
-                assert not self._waiter
-                self._waiter = asyncio.Future(loop=self._loop)
-                yield from self._waiter
-
-            if self._buffer:
-                return self._buffer.popleft()
-            else:
-                if self._exception is not None:
-                    raise self._exception
-                else:
-                    raise EofStream
+            return (yield from super().read())
         finally:
             self._stream.pause_stream()
