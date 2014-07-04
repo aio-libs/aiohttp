@@ -4,9 +4,6 @@ http client/server for asyncio
 .. image:: https://secure.travis-ci.org/KeepSafe/aiohttp.png
   :target:  https://secure.travis-ci.org/KeepSafe/aiohttp
 
-.. image:: https://coveralls.io/repos/KeepSafe/aiohttp/badge.png?branch=master
-  :target: https://coveralls.io/r/KeepSafe/aiohttp?branch=master
-
 
 Requirements
 ------------
@@ -93,6 +90,7 @@ If you want to use timeouts for aiohttp client side please use standard
 asyncio approach::
 
    yield from asyncio.wait_for(request('GET', url), 10))
+
 
 Gunicorn worker
 ---------------
