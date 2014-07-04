@@ -1,6 +1,11 @@
 CHANGES
 =======
 
+0.8.4 (07-04-2014)
+------------------
+
+- Change ProxyConnector authorization parameters.
+
 0.8.3 (07-03-2014)
 ------------------
 
