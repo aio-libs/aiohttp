@@ -131,6 +131,8 @@ class HttpClientFunctionalTests(unittest.TestCase):
             for meth in ('get', 'post', 'put', 'delete', 'head'):
                 @asyncio.coroutine
                 def go():
+                    yield from asyncio.sleep(0.1, loop=self.loop)
+
                     r = yield from client.request(
                         meth, httpd.url('method', meth),
                         loop=self.loop, connector=connector)
@@ -147,7 +149,6 @@ class HttpClientFunctionalTests(unittest.TestCase):
                     yield from asyncio.sleep(0, loop=self.loop)
 
                 self.loop.run_until_complete(go())
-
 
     def test_use_global_loop(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
