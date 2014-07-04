@@ -663,7 +663,14 @@ class ClientResponse:
 
     @asyncio.coroutine
     def release(self):
-        yield from self.read()
+        force = False
+        try:
+            while True:
+                yield from self.content.read()
+        except Exception as exc:
+            force = not isinstance(exc, aiohttp.EofStream)
+        finally:
+            self.close(force=force)
 
     @asyncio.coroutine
     def wait_for_close(self):
