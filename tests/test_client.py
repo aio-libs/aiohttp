@@ -80,7 +80,7 @@ class ClientResponseTests(unittest.TestCase):
             '<ClientResponse(http://python.org) [200 Ok]>',
             repr(self.response))
 
-    def test_read_and_close(self):
+    def test_read_and_release_connection(self):
         def side_effect(*args, **kwargs):
             def second_call(*args, **kwargs):
                 raise aiohttp.EofStream
@@ -96,7 +96,7 @@ class ClientResponseTests(unittest.TestCase):
         self.assertEqual(res, b'payload')
         self.assertTrue(self.response.close.called)
 
-    def test_read_and_close_with_error(self):
+    def test_read_and_release_connection_with_error(self):
         content = self.response.content = unittest.mock.Mock()
         content.read.return_value = asyncio.Future(loop=self.loop)
         content.read.return_value.set_exception(ValueError)
@@ -117,6 +117,25 @@ class ClientResponseTests(unittest.TestCase):
         self.loop.run_until_complete(self.response.release())
         self.assertTrue(self.response.close.called)
 
+    def test_read_and_close(self):
+        self.response.read = unittest.mock.Mock()
+        self.response.read.return_value = asyncio.Future(loop=self.loop)
+        self.response.read.return_value.set_result(b'data')
+
+        res = self.loop.run_until_complete(self.response.read_and_close())
+        self.assertEqual(res, b'data')
+        self.assertTrue(self.response.read.called)
+
+    def test_read_decode_deprecated(self):
+        self.response._content = b'data'
+        self.response.json = unittest.mock.Mock()
+        self.response.json.return_value = asyncio.Future(loop=self.loop)
+        self.response.json.return_value.set_result('json')
+
+        res = self.loop.run_until_complete(self.response.read(decode=True))
+        self.assertEqual(res, 'json')
+        self.assertTrue(self.response.json.called)
+
     def test_json(self):
         def side_effect(*args, **kwargs):
             def second_call(*args, **kwargs):
@@ -134,6 +153,26 @@ class ClientResponseTests(unittest.TestCase):
         res = self.loop.run_until_complete(self.response.json())
         self.assertEqual(res, {'тест': 'пройден'})
         self.assertTrue(self.response.close.called)
+
+    def test_json_custom_loader(self):
+        self.response.headers = {
+            'CONTENT-TYPE': 'application/json;charset=cp1251'}
+        self.response._content = b'data'
+
+        def custom(content):
+            return content + '-custom'
+
+        res = self.loop.run_until_complete(self.response.json(loads=custom))
+        self.assertEqual(res, 'data-custom')
+
+    def test_json_no_content(self):
+        self.response.headers = {
+            'CONTENT-TYPE': 'data/octet-stream'}
+        self.response._content = b''
+        self.response.close = unittest.mock.Mock()
+
+        res = self.loop.run_until_complete(self.response.json())
+        self.assertIsNone(res)
 
     def test_json_override_encoding(self):
         def side_effect(*args, **kwargs):
@@ -259,8 +298,12 @@ class ClientRequestTests(unittest.TestCase):
 
     def test_basic_auth(self):
         req = ClientRequest('get', 'http://python.org',
-                            basic_login='nkim',
-                            basic_passwd='1234')
+                            auth=aiohttp.BasicAuth('nkim', '1234'))
+        self.assertIn('AUTHORIZATION', req.headers)
+        self.assertEqual('Basic bmtpbToxMjM0', req.headers['AUTHORIZATION'])
+
+    def test_basic_auth_tuple_deprecated(self):
+        req = ClientRequest('get', 'http://python.org', auth=('nkim', '1234'))
         self.assertIn('AUTHORIZATION', req.headers)
         self.assertEqual('Basic bmtpbToxMjM0', req.headers['AUTHORIZATION'])
 
@@ -271,7 +314,7 @@ class ClientRequestTests(unittest.TestCase):
 
         req = ClientRequest(
             'get', 'http://nkim@python.org',
-            basic_login='nkim', basic_passwd='1234')
+            auth=aiohttp.BasicAuth('nkim', '1234'))
         self.assertIn('AUTHORIZATION', req.headers)
         self.assertEqual('Basic bmtpbToxMjM0', req.headers['AUTHORIZATION'])
 
@@ -279,7 +322,7 @@ class ClientRequestTests(unittest.TestCase):
         # missing password here
         self.assertRaises(
             ValueError, ClientRequest,
-            'get', 'http://python.org', basic_login='nkim')
+            'get', 'http://python.org', auth=aiohttp.BasicAuth('nkim', None))
 
     def test_no_content_length(self):
         req = ClientRequest('get', 'http://python.org', loop=self.loop)

@@ -73,7 +73,7 @@ It constructs and sends a request. It returns response object. Parameters are ex
 - ``cookies``: (optional) Dict object to send with the request
 - ``files``: (optional) Dictionary of 'name': file-like-objects
   for multipart encoding upload
-- ``auth``: (optional) Auth tuple to enable Basic HTTP Auth
+- ``auth``: (optional) `BasicAuth` tuple to enable Basic HTTP Basic Auth
 - ``allow_redirects``: (optional) Boolean. Set to True if POST/PUT/DELETE
   redirect following is allowed.
 - ``compress``: Boolean. Set to True if request has to be compressed

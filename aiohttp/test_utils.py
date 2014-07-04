@@ -18,8 +18,8 @@ import urllib.parse
 
 import asyncio
 import aiohttp
-from aiohttp import client
 from aiohttp import server
+from aiohttp import helpers
 
 
 def run_briefly(loop):
@@ -301,7 +301,7 @@ class Router:
             except:
                 return
         else:
-            response.write(client.str_to_bytes(body))
+            response.write(helpers.str_to_bytes(body))
 
         response.write_eof()
 

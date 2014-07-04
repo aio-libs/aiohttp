@@ -289,11 +289,11 @@ class ProxyConnector(TCPConnector):
 
     @asyncio.coroutine
     def _create_connection(self, req, **kwargs):
-        proxy_req = ClientRequest('GET', self._proxy,
-                                  headers={'Host': req.host},
-                                  basic_login=self._basic_login,
-                                  basic_passwd=self._basic_passwd,
-                                  loop=self._loop)
+        proxy_req = ClientRequest(
+            'GET', self._proxy,
+            headers={'Host': req.host},
+            auth=aiohttp.BasicAuth(self._basic_login, self._basic_passwd),
+            loop=self._loop)
         try:
             transport, proto = yield from super()._create_connection(proxy_req)
         except OSError as exc:

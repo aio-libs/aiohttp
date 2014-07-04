@@ -1,6 +1,6 @@
 """HTTP Client for asyncio."""
 
-__all__ = ['request', 'HttpClient']
+__all__ = ['request', 'HttpClient', 'BasicAuth']
 
 import asyncio
 import base64
@@ -10,8 +10,6 @@ import json
 import io
 import inspect
 import itertools
-import mimetypes
-import os
 import random
 import time
 import uuid
@@ -27,6 +25,8 @@ from .multidict import CaseInsensitiveMultiDict, MultiDict, MutableMultiDict
 HTTP_PORT = 80
 HTTPS_PORT = 443
 
+BasicAuth = collections.namedtuple('BasicAuth', ['login', 'password'])
+
 
 @asyncio.coroutine
 def request(method, url, *,
@@ -36,8 +36,6 @@ def request(method, url, *,
             cookies=None,
             files=None,
             auth=None,
-            basic_login=None,
-            basic_passwd=None,
             allow_redirects=True,
             max_redirects=10,
             encoding='utf-8',
@@ -63,9 +61,7 @@ def request(method, url, *,
     :param cookies: (optional) Dict object to send with the request
     :param files: (optional) Dictionary of 'name': file-like-objects
        for multipart encoding upload
-    :param auth: (optional) Basic HTTP Auth tuple, Deprecated!
-    :param basic_login: (optional) Basic HTTP Auth login
-    :param basic_passwd: (optional) Basic HTTP Auth password
+    :param auth: (optional) BasicAuth named tuple represent HTTP Basic Auth
     :param allow_redirects: (optional) Boolean. Set to True if POST/PUT/DELETE
        redirect following is allowed.
     :param compress: Boolean. Set to True if request has to be compressed
@@ -98,27 +94,12 @@ def request(method, url, *,
     if connector is None:
         connector = aiohttp.TCPConnector(force_close=True, loop=loop)
 
-    if auth is not None:
-        warnings.warn(
-            'auth is deprecated, use basic_login and basic_passwd instead',
-            DeprecationWarning
-        )
-        if basic_login is None and basic_passwd is None:
-            basic_login, basic_passwd = auth
-        elif basic_login is not None and basic_passwd is not None:
-            if not auth == (basic_login, basic_passwd):
-                raise ValueError(
-                    "auth and (basic_login, basic_passwd) are different"
-                )
-
     while True:
         req = request_class(
             method, url, params=params, headers=headers, data=data,
-            cookies=cookies, files=files, basic_login=basic_login,
-            basic_passwd=basic_passwd, encoding=encoding,
+            cookies=cookies, files=files, encoding=encoding,
             version=version, compress=compress, chunked=chunked,
-            loop=loop, expect100=expect100,
-            response_class=response_class)
+            loop=loop, expect100=expect100, response_class=response_class)
 
         try:
             conn = yield from connector.connect(req)
@@ -139,22 +120,21 @@ def request(method, url, *,
         if resp.status in (301, 302) and allow_redirects:
             redirects += 1
             if max_redirects and redirects >= max_redirects:
-                resp.close()
+                resp.close(force=True)
                 break
 
             r_url = resp.headers.get('LOCATION') or resp.headers.get('URI')
 
             scheme = urllib.parse.urlsplit(r_url)[0]
             if scheme not in ('http', 'https', ''):
-                resp.close()
-                conn.close()
+                resp.close(force=True)
                 raise ValueError('Can redirect only to http or https')
             elif not scheme:
                 r_url = urllib.parse.urljoin(url, r_url)
 
             url = urllib.parse.urldefrag(r_url)[0]
             if url:
-                yield from asyncio.Task(resp.read_and_close(), loop=loop)
+                yield from asyncio.async(resp.release(), loop=loop)
                 continue
 
         break
@@ -174,8 +154,7 @@ class ClientRequest:
     }
 
     body = b''
-    basic_login = None
-    basic_passwd = None
+    auth = None
     response = None
     response_class = None
 
@@ -193,9 +172,8 @@ class ClientRequest:
 
     def __init__(self, method, url, *,
                  params=None, headers=None, data=None, cookies=None,
-                 files=None, basic_login=None, basic_passwd=None,
-                 encoding='utf-8', version=(1, 1), compress=None,
-                 chunked=None, expect100=False, verify_ssl=True,
+                 files=None, auth=None, encoding='utf-8', version=(1, 1),
+                 compress=None, chunked=None, expect100=False, verify_ssl=True,
                  loop=None, response_class=None):
         self.url = url
         self.method = method.upper()
@@ -212,7 +190,7 @@ class ClientRequest:
         self.update_headers(headers)
         self.update_cookies(cookies)
         self.update_content_encoding()
-        self.update_auth(basic_login, basic_passwd)
+        self.update_auth(auth)
 
         if data and not files:
             if self.method not in self.GET_METHODS:
@@ -239,9 +217,10 @@ class ClientRequest:
         if '@' in netloc:
             authinfo, netloc = netloc.split('@', 1)
             creds = authinfo.split(':', 1)
-            self.basic_login = creds[0]
             if len(creds) > 1:
-                self.basic_passwd = creds[1]
+                self.auth = BasicAuth(creds[0], creds[1])
+            else:
+                self.auth = BasicAuth(creds[0], '')
 
         # Record entire netloc for usage in host header
         self.netloc = netloc
@@ -359,12 +338,18 @@ class ClientRequest:
             self.headers['CONTENT-ENCODING'] = self.compress
             self.chunked = True  # enable chunked, no need to deal with length
 
-    def update_auth(self, basic_login, basic_passwd):
+    def update_auth(self, auth):
         """Set basic auth."""
-        if not basic_login:
-            basic_login = self.basic_login
-        if not basic_passwd:
-            basic_passwd = self.basic_passwd
+        if auth is None:
+            auth = self.auth
+        if auth is None:
+            return
+
+        if not isinstance(auth, BasicAuth):
+            warnings.warn(
+                'BasicAuth() tuple is required instead ', DeprecationWarning)
+
+        basic_login, basic_passwd = auth
 
         if basic_login is not None and basic_passwd is not None:
             self.headers['AUTHORIZATION'] = 'Basic %s' % (
@@ -737,7 +722,7 @@ class ClientResponse:
         return (yield from self.read(decode))
 
     @asyncio.coroutine
-    def json(self, *, encoding=None):
+    def json(self, *, encoding=None, loads=json.loads):
         """Reads and decodes JSON response."""
         if self._content is None:
             yield from self.read()
@@ -752,68 +737,7 @@ class ClientResponse:
             return None
 
         encoding = encoding or params.get('charset', 'utf-8')
-        return json.loads(self._content.decode(encoding))
-
-
-def str_to_bytes(s, encoding='utf-8'):
-    if isinstance(s, str):
-        return s.encode(encoding)
-    return s
-
-
-def guess_filename(obj, default=None):
-    name = getattr(obj, 'name', None)
-    if name and name[0] != '<' and name[-1] != '>':
-        return os.path.split(name)[-1]
-    return default
-
-
-def encode_multipart_data(fields, boundary, encoding='utf-8', chunk_size=8196):
-    """
-    Encode a list of fields using the multipart/form-data MIME format.
-
-    fields:
-        List of (name, value) or (name, filename, io) or
-        (name, filename, io, MIME type) field tuples.
-    """
-    for rec in fields:
-        yield b'--' + boundary + b'\r\n'
-
-        field, *rec = rec
-
-        if len(rec) == 1:
-            data = rec[0]
-            yield (('Content-Disposition: form-data; name="%s"\r\n\r\n' %
-                    (field,)).encode(encoding))
-            yield data + b'\r\n'
-
-        else:
-            if len(rec) == 3:
-                fn, fp, ct = rec
-            else:
-                fn, fp = rec
-                ct = (mimetypes.guess_type(fn)[0] or
-                      'application/octet-stream')
-
-            yield ('Content-Disposition: form-data; name="%s"; '
-                   'filename="%s"\r\n' % (field, fn)).encode(encoding)
-            yield ('Content-Type: %s\r\n\r\n' % (ct,)).encode(encoding)
-
-            if isinstance(fp, str):
-                fp = fp.encode(encoding)
-
-            if isinstance(fp, bytes):
-                fp = io.BytesIO(fp)
-
-            while True:
-                chunk = fp.read(chunk_size)
-                if not chunk:
-                    break
-                yield str_to_bytes(chunk)
-
-            yield b'\r\n'
-
-    yield b'--' + boundary + b'--\r\n'
+        return loads(self._content.decode(encoding))
 
 
 class HttpClient:
@@ -821,8 +745,7 @@ class HttpClient:
     mark failed hosts.
     """
 
-    def __init__(self, hosts, *, method=None, path=None,
-                 ssl=False,
+    def __init__(self, hosts, *, method=None, path=None, ssl=False,
                  conn_pool=True, conn_timeout=None, failed_timeout=5.0,
                  resolve=True, resolve_timeout=360.0, keepalive_timeout=30,
                  verify_ssl=True, loop=None):
@@ -906,8 +829,7 @@ class HttpClient:
                 headers=None,
                 cookies=None,
                 files=None,
-                basic_login=None,
-                basic_passwd=None,
+                auth=None,
                 allow_redirects=True,
                 max_redirects=10,
                 encoding='utf-8',
@@ -943,9 +865,8 @@ class HttpClient:
             try:
                 resp = yield from request(
                     method, url, params=params, data=data, headers=headers,
-                    cookies=cookies, files=files, basic_login=basic_login,
-                    basic_passwd=basic_passwd, encoding=encoding,
-                    allow_redirects=allow_redirects,
+                    cookies=cookies, files=files, auth=auth,
+                    encoding=encoding, allow_redirects=allow_redirects,
                     version=version, max_redirects=max_redirects,
                     compress=compress, chunked=chunked,
                     expect100=expect100, read_until_eof=read_until_eof,
