@@ -27,7 +27,7 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
         self.headers = multidict.MutableMultiDict()
         self.message = protocol.RawRequestMessage(
             'GET', '/path', (1, 0), self.headers, True, 'deflate')
-        self.payload = aiohttp.DataQueue(self.reader)
+        self.payload = aiohttp.FlowControlDataQueue(self.reader)
         self.payload.feed_data(b'data')
         self.payload.feed_data(b'data')
         self.payload.feed_eof()

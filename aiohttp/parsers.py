@@ -55,8 +55,8 @@ _SocketSocketTransport ->
    -> "protocol" -> StreamParser -> "parser" -> DataQueue <- "application"
 
 """
-__all__ = ['EofStream', 'StreamParser', 'StreamProtocol',
-           'ParserBuffer', 'DataQueue', 'LinesParser', 'ChunksParser']
+__all__ = ['EofStream', 'StreamParser', 'StreamProtocol', 'ParserBuffer',
+           'FlowControlDataQueue', 'LinesParser', 'ChunksParser', 'DataQueue']
 
 import asyncio
 import asyncio.streams
@@ -186,7 +186,7 @@ class StreamParser:
         if self._parser:
             self.unset_parser()
 
-        output = DataQueue(self, loop=self._loop)
+        output = FlowControlDataQueue(self, loop=self._loop)
         if self._exception:
             output.set_exception(self._exception)
             return output
@@ -279,10 +279,9 @@ class StreamProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
 
 class DataQueue:
-    """DataQueue is a destination for parsed data."""
+    """DataQueue is a general-purpose blocking queue."""
 
-    def __init__(self, stream, *, loop=None):
-        self._stream = stream
+    def __init__(self, *, loop=None):
         self._loop = loop
         self._buffer = collections.deque()
         self._eof = False
@@ -324,23 +323,37 @@ class DataQueue:
 
     @asyncio.coroutine
     def read(self):
+        if not self._buffer and not self._eof:
+            if self._exception is not None:
+                raise self._exception
+
+            assert not self._waiter
+            self._waiter = asyncio.Future(loop=self._loop)
+            yield from self._waiter
+
+        if self._buffer:
+            return self._buffer.popleft()
+        else:
+            if self._exception is not None:
+                raise self._exception
+            else:
+                raise EofStream
+
+
+class FlowControlDataQueue(DataQueue):
+    """FlowControlDataQueue resumes and pauses an underlying stream.
+
+    It is a destination for parsed data."""
+
+    def __init__(self, stream, *, loop=None):
+        super().__init__(loop=loop)
+        self._stream = stream
+
+    @asyncio.coroutine
+    def read(self):
         self._stream.resume_stream()
         try:
-            if not self._buffer and not self._eof:
-                if self._exception is not None:
-                    raise self._exception
-
-                assert not self._waiter
-                self._waiter = asyncio.Future(loop=self._loop)
-                yield from self._waiter
-
-            if self._buffer:
-                return self._buffer.popleft()
-            else:
-                if self._exception is not None:
-                    raise self._exception
-                else:
-                    raise EofStream
+            return (yield from super().read())
         finally:
             self._stream.pause_stream()
 
