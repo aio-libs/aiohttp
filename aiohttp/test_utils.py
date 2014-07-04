@@ -80,15 +80,10 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
                     break
 
             if router is not None:
-                body = bytearray()
-                try:
-                    while True:
-                        body.extend((yield from payload.read()))
-                except aiohttp.EofStream:
-                    pass
+                body = yield from payload.read()
 
                 rob = router(
-                    self, properties, self.transport, message, bytes(body))
+                    self, properties, self.transport, message, body)
                 rob.dispatch()
 
             else:

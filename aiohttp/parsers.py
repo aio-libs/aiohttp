@@ -56,20 +56,18 @@ _SocketSocketTransport ->
 
 """
 __all__ = ['EofStream', 'StreamParser', 'StreamProtocol',
-           'ParserBuffer', 'DataQueue', 'LinesParser', 'ChunksParser']
+           'ParserBuffer', 'LinesParser', 'ChunksParser']
 
 import asyncio
 import asyncio.streams
 import collections
 import inspect
 from . import errors
+from .streams import DataQueue, EofStream
 
 BUF_LIMIT = 2**14
 DEFAULT_LIMIT = 2**16
 
-
-class EofStream(Exception):
-    """eof stream indication."""
 
 
 class StreamParser:
@@ -278,116 +276,6 @@ class StreamProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             waiter = asyncio.Future(loop=self._loop)
             self._drain_waiter = waiter
         return waiter
-
-
-class StreamReader(asyncio.StreamReader):
-
-    _eof_waiter = None
-
-    @asyncio.coroutine
-    def wait_eof(self):
-        if self._eof:
-            return
-
-        assert self._eof_waiter is None
-        self._eof_waiter = asyncio.Future(loop=self._loop)
-        try:
-            yield from self._eof_waiter
-        finally:
-            self._eof_waiter = None
-
-    def feed_eof(self):
-        super().feed_eof()
-
-        waiter = self._eof_waiter
-        if waiter is not None:
-            self._eof_waiter = None
-            if not waiter.cancelled():
-                waiter.set_result(True)
-
-    def readany(self):
-        if self._exception is not None:
-            raise self._exception
-
-        if not self._buffer and not self._eof:
-            self._waiter = self._create_waiter('readany')
-            try:
-                yield from self._waiter
-            finally:
-                self._waiter = None
-
-        data = bytes(self._buffer)
-        del self._buffer[:]
-
-        self._maybe_resume_transport()
-        return data
-
-
-class DataQueue:
-    """DataQueue is a destination for parsed data."""
-
-    def __init__(self, stream, *, loop=None):
-        self._stream = stream
-        self._loop = loop
-        self._buffer = collections.deque()
-        self._eof = False
-        self._waiter = None
-        self._exception = None
-
-    def at_eof(self):
-        return self._eof
-
-    def exception(self):
-        return self._exception
-
-    def set_exception(self, exc):
-        self._exception = exc
-
-        waiter = self._waiter
-        if waiter is not None:
-            self._waiter = None
-            if not waiter.done():
-                waiter.set_exception(exc)
-
-    def feed_data(self, data):
-        self._buffer.append(data)
-
-        waiter = self._waiter
-        if waiter is not None:
-            self._waiter = None
-            if not waiter.cancelled():
-                waiter.set_result(True)
-
-    def feed_eof(self):
-        self._eof = True
-
-        waiter = self._waiter
-        if waiter is not None:
-            self._waiter = None
-            if not waiter.cancelled():
-                waiter.set_result(False)
-
-    @asyncio.coroutine
-    def read(self):
-        self._stream.resume_stream()
-        try:
-            if not self._buffer and not self._eof:
-                if self._exception is not None:
-                    raise self._exception
-
-                assert not self._waiter
-                self._waiter = asyncio.Future(loop=self._loop)
-                yield from self._waiter
-
-            if self._buffer:
-                return self._buffer.popleft()
-            else:
-                if self._exception is not None:
-                    raise self._exception
-                else:
-                    raise EofStream
-        finally:
-            self._stream.pause_stream()
 
 
 class ParserBuffer(bytearray):

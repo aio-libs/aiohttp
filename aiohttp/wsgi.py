@@ -143,11 +143,7 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
 
         if self.readpayload:
             wsgiinput = io.BytesIO()
-            try:
-                while True:
-                    wsgiinput.write((yield from payload.read()))
-            except aiohttp.EofStream:
-                pass
+            wsgiinput.write((yield from payload.read()))
             wsgiinput.seek(0)
             payload = wsgiinput
 

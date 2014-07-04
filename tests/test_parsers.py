@@ -4,6 +4,7 @@ import asyncio
 import unittest
 import unittest.mock
 
+import aiohttp
 from aiohttp import errors
 from aiohttp import parsers
 from aiohttp import test_utils
@@ -168,7 +169,7 @@ class StreamParserTests(unittest.TestCase):
         stream.feed_data(b'line1')
         stream.feed_eof()
         s = stream.set_parser(p)
-        self.assertFalse(s.at_eof())
+        self.assertFalse(s.is_eof())
         self.assertIsInstance(s.exception(), errors.ConnectionError)
 
     def test_set_parser_unset(self):
@@ -214,7 +215,7 @@ class StreamParserTests(unittest.TestCase):
         self.assertEqual([bytearray(b'line1\r\n'), bytearray(b'line2\r\n')],
                          list(s._buffer))
         self.assertEqual(b'data', bytes(stream._buffer))
-        self.assertTrue(s.at_eof())
+        self.assertTrue(s.is_eof())
 
     def test_feed_parser_exc(self):
         def p(out, buf):
@@ -281,7 +282,7 @@ class StreamParserTests(unittest.TestCase):
 
         stream.feed_data(b'line1')
         stream.feed_eof()
-        self.assertFalse(s.at_eof())
+        self.assertFalse(s.is_eof())
         self.assertIsInstance(s.exception(), errors.ConnectionError)
 
     def test_feed_parser2(self):
@@ -323,7 +324,7 @@ class StreamParserTests(unittest.TestCase):
         stream.feed_data(b'line1')
         stream.unset_parser()
         self.assertIsInstance(s.exception(), errors.ConnectionError)
-        self.assertFalse(s.at_eof())
+        self.assertFalse(s.is_eof())
 
     def test_unset_parser_stop(self):
         def p(out, buf):
@@ -753,6 +754,7 @@ class ParserBufferTests(unittest.TestCase):
 class StreamReaderTests(unittest.TestCase):
 
     def setUp(self):
+        self.stream = unittest.mock.Mock()
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
 
@@ -760,7 +762,7 @@ class StreamReaderTests(unittest.TestCase):
         self.loop.close()
 
     def test_wait_eof(self):
-        stream = parsers.StreamReader(loop=self.loop)
+        stream = aiohttp.StreamReader(self.stream, loop=self.loop)
         wait_task = asyncio.Task(stream.wait_eof(), loop=self.loop)
 
         def cb():
@@ -769,18 +771,18 @@ class StreamReaderTests(unittest.TestCase):
 
         asyncio.Task(cb(), loop=self.loop)
         self.loop.run_until_complete(wait_task)
-        self.assertTrue(stream.at_eof())
+        self.assertTrue(stream.is_eof())
         self.assertIsNone(stream._eof_waiter)
 
     def test_wait_eof_eof(self):
-        stream = parsers.StreamReader(loop=self.loop)
+        stream = aiohttp.StreamReader(self.stream, loop=self.loop)
         stream.feed_eof()
         wait_task = asyncio.Task(stream.wait_eof(), loop=self.loop)
         self.loop.run_until_complete(wait_task)
-        self.assertTrue(stream.at_eof())
+        self.assertTrue(stream.is_eof())
 
     def test_readany_eof(self):
-        stream = parsers.StreamReader(loop=self.loop)
+        stream = aiohttp.StreamReader(self.stream, loop=self.loop)
         read_task = asyncio.Task(stream.readany(), loop=self.loop)
         self.loop.call_soon(stream.feed_data, b'chunk1\n')
 
@@ -790,7 +792,7 @@ class StreamReaderTests(unittest.TestCase):
         self.assertEqual(b'', stream._buffer)
 
     def test_readany_exception(self):
-        stream = parsers.StreamReader(loop=self.loop)
+        stream = aiohttp.StreamReader(self.stream, loop=self.loop)
         stream.feed_data(b'line\n')
 
         data = self.loop.run_until_complete(stream.readany())

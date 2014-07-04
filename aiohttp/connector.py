@@ -29,10 +29,6 @@ class Connection(object):
         self._wr = weakref.ref(self, lambda wr, tr=self._transport: tr.close())
 
     @property
-    def transport(self):
-        return self._transport
-
-    @property
     def loop(self):
         return self._loop
 

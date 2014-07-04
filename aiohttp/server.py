@@ -9,7 +9,7 @@ import traceback
 import socket
 
 import aiohttp
-from aiohttp import errors, utils
+from aiohttp import errors, streams, utils
 from aiohttp.log import server_log, access_log
 
 
@@ -158,6 +158,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             self._request_count += 1
             self._reading_request = False
 
+            payload = None
             try:
                 prefix = reader.set_parser(self._request_prefix)
                 yield from prefix.read()
@@ -182,7 +183,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                     self._timeout_handle.cancel()
                     self._timeout_handle = None
 
-                payload = reader.set_parser(aiohttp.HttpPayloadParser(message))
+                payload = streams.DataReader(reader, loop=self._loop)
+                reader.set_parser(aiohttp.HttpPayloadParser(message), payload)
 
                 handler = self.handle_request(message, payload)
                 if (asyncio.iscoroutine(handler) or
@@ -198,7 +200,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             except Exception as exc:
                 self.handle_error(500, message, None, exc)
             finally:
-                if reader.output and not reader.output.at_eof():
+                if payload and not payload.is_eof():
                     self.log_debug('Uncompleted request.')
                     self._request_handler = None
                     self.transport.close()
