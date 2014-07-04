@@ -748,3 +748,54 @@ class ParserBufferTests(unittest.TestCase):
             pass
 
         self.assertEqual(bytes(buf), b'data')
+
+
+class StreamReaderTests(unittest.TestCase):
+
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+    def tearDown(self):
+        self.loop.close()
+
+    def test_wait_eof(self):
+        stream = parsers.StreamReader(loop=self.loop)
+        wait_task = asyncio.Task(stream.wait_eof(), loop=self.loop)
+
+        def cb():
+            yield from asyncio.sleep(0.1, loop=self.loop)
+            stream.feed_eof()
+
+        asyncio.Task(cb(), loop=self.loop)
+        self.loop.run_until_complete(wait_task)
+        self.assertTrue(stream.at_eof())
+        self.assertIsNone(stream._eof_waiter)
+
+    def test_wait_eof_eof(self):
+        stream = parsers.StreamReader(loop=self.loop)
+        stream.feed_eof()
+        wait_task = asyncio.Task(stream.wait_eof(), loop=self.loop)
+        self.loop.run_until_complete(wait_task)
+        self.assertTrue(stream.at_eof())
+
+    def test_readany_eof(self):
+        stream = parsers.StreamReader(loop=self.loop)
+        read_task = asyncio.Task(stream.readany(), loop=self.loop)
+        self.loop.call_soon(stream.feed_data, b'chunk1\n')
+
+        data = self.loop.run_until_complete(read_task)
+
+        self.assertEqual(b'chunk1\n', data)
+        self.assertEqual(b'', stream._buffer)
+
+    def test_readany_exception(self):
+        stream = parsers.StreamReader(loop=self.loop)
+        stream.feed_data(b'line\n')
+
+        data = self.loop.run_until_complete(stream.readany())
+        self.assertEqual(b'line\n', data)
+
+        stream.set_exception(ValueError())
+        self.assertRaises(
+            ValueError, self.loop.run_until_complete, stream.readany())

@@ -109,9 +109,9 @@ class ClientResponseTests(unittest.TestCase):
 
     def test_release(self):
         fut = asyncio.Future(loop=self.loop)
-        fut.set_exception(aiohttp.EofStream)
+        fut.set_result(b'')
         content = self.response.content = unittest.mock.Mock()
-        content.read.return_value = fut
+        content.readany.return_value = fut
         self.response.close = unittest.mock.Mock()
 
         self.loop.run_until_complete(self.response.release())

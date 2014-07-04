@@ -181,12 +181,14 @@ class StreamParser:
         self._buffer.shrink()
         self._eof = True
 
-    def set_parser(self, parser):
+    def set_parser(self, parser, output=None):
         """set parser to stream. return parser's DataQueue."""
         if self._parser:
             self.unset_parser()
 
-        output = DataQueue(self, loop=self._loop)
+        if output is None:
+            output = DataQueue(self, loop=self._loop)
+
         if self._exception:
             output.set_exception(self._exception)
             return output
@@ -276,6 +278,49 @@ class StreamProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             waiter = asyncio.Future(loop=self._loop)
             self._drain_waiter = waiter
         return waiter
+
+
+class StreamReader(asyncio.StreamReader):
+
+    _eof_waiter = None
+
+    @asyncio.coroutine
+    def wait_eof(self):
+        if self._eof:
+            return
+
+        assert self._eof_waiter is None
+        self._eof_waiter = asyncio.Future(loop=self._loop)
+        try:
+            yield from self._eof_waiter
+        finally:
+            self._eof_waiter = None
+
+    def feed_eof(self):
+        super().feed_eof()
+
+        waiter = self._eof_waiter
+        if waiter is not None:
+            self._eof_waiter = None
+            if not waiter.cancelled():
+                waiter.set_result(True)
+
+    def readany(self):
+        if self._exception is not None:
+            raise self._exception
+
+        if not self._buffer and not self._eof:
+            self._waiter = self._create_waiter('readany')
+            try:
+                yield from self._waiter
+            finally:
+                self._waiter = None
+
+        data = bytes(self._buffer)
+        del self._buffer[:]
+
+        self._maybe_resume_transport()
+        return data
 
 
 class DataQueue:

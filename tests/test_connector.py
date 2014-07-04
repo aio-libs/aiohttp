@@ -25,18 +25,19 @@ class HttpConnectionTests(unittest.TestCase):
         self.request = mock.Mock()
         self.transport = mock.Mock()
         self.protocol = mock.Mock()
+        self.loop = mock.Mock()
 
     def test_del(self):
         conn = Connection(
             self.connector, self.key, self.request,
-            self.transport, self.protocol)
+            self.transport, self.protocol, self.loop)
         del conn
         self.assertTrue(self.transport.close.called)
 
     def test_close(self):
         conn = Connection(
             self.connector, self.key, self.request,
-            self.transport, self.protocol)
+            self.transport, self.protocol, self.loop)
         conn.close()
         self.assertTrue(self.transport.close.called)
         self.assertIsNone(conn._transport)
@@ -44,7 +45,7 @@ class HttpConnectionTests(unittest.TestCase):
     def test_release(self):
         conn = Connection(
             self.connector, self.key, self.request,
-            self.transport, self.protocol)
+            self.transport, self.protocol, self.loop)
         conn.release()
         self.assertFalse(self.transport.close.called)
         self.assertIsNone(conn._transport)

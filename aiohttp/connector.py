@@ -17,15 +17,24 @@ from .client import ClientRequest, BasicAuth
 
 class Connection(object):
 
-    def __init__(self, connector, key, request, transport, protocol):
+    def __init__(self, connector, key, request, transport, protocol, loop):
         self._key = key
         self._connector = connector
         self._request = request
         self._transport = transport
         self._protocol = protocol
+        self._loop = loop
         self.reader = protocol.reader
         self.writer = protocol.writer
         self._wr = weakref.ref(self, lambda wr, tr=self._transport: tr.close())
+
+    @property
+    def transport(self):
+        return self._transport
+
+    @property
+    def loop(self):
+        return self._loop
 
     def close(self):
         if self._transport is not None:
@@ -137,7 +146,7 @@ class BaseConnector(object):
             else:
                 transport, proto = yield from self._create_connection(req)
 
-        return Connection(self, key, req, transport, proto)
+        return Connection(self, key, req, transport, proto, self._loop)
 
     def _get(self, key):
         conns = self._conns.get(key)
@@ -319,7 +328,8 @@ class ProxyConnector(TCPConnector):
             proxy_req.method = 'CONNECT'
             proxy_req.path = '{}:{}'.format(req.host, req.port)
             key = (req.host, req.port, req.ssl)
-            conn = Connection(self, key, proxy_req, transport, proto)
+            conn = Connection(self, key, proxy_req,
+                              transport, proto, self._loop)
             proxy_resp = proxy_req.send(conn.writer, conn.reader)
             try:
                 resp = yield from proxy_resp.start(conn, True)

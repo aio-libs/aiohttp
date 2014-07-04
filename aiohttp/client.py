@@ -20,6 +20,7 @@ import warnings
 import aiohttp
 from . import helpers
 from .log import client_log
+from .parsers import StreamReader
 from .multidict import CaseInsensitiveMultiDict, MultiDict, MutableMultiDict
 
 HTTP_PORT = 80
@@ -593,6 +594,8 @@ class ClientResponse:
     def _setup_connection(self, connection):
         self._reader = connection.reader
         self.connection = connection
+        self.content = StreamReader(loop=connection.loop)
+        self.content.set_transport(connection.transport)
 
         msg = ('ClientResponse has to be closed explicitly! {}:{}:{}'
                .format(self.method, self.host, self.url))
@@ -631,10 +634,11 @@ class ClientResponse:
 
         # payload
         response_with_body = self.method.lower() != 'head'
-        self.content = self._reader.set_parser(
+        self._reader.set_parser(
             aiohttp.HttpPayloadParser(self.message,
                                       readall=read_until_eof,
-                                      response_with_body=response_with_body))
+                                      response_with_body=response_with_body),
+            self.content)
 
         # cookies
         self.cookies = http.cookies.SimpleCookie()
@@ -650,6 +654,9 @@ class ClientResponse:
 
     def close(self, force=False):
         if self.connection is not None:
+            if self.content and not self.content.at_eof():
+                force = True
+
             if force:
                 self.connection.close()
             else:
@@ -663,14 +670,12 @@ class ClientResponse:
 
     @asyncio.coroutine
     def release(self):
-        force = False
         try:
-            while True:
-                yield from self.content.read()
-        except Exception as exc:
-            force = not isinstance(exc, aiohttp.EofStream)
+            chunk = self.content.readany()
+            while chunk:
+                chunk = yield from self.content.readany()
         finally:
-            self.close(force=force)
+            self.close()
 
     @asyncio.coroutine
     def wait_for_close(self):
@@ -686,27 +691,13 @@ class ClientResponse:
     def read(self, decode=False):
         """Read response payload. Decode known types of content."""
         if self._content is None:
-            buf = []
-            total = 0
             try:
-                while True:
-                    chunk = yield from self.content.read()
-                    size = len(chunk)
-                    buf.append((chunk, size))
-                    total += size
-            except aiohttp.EofStream:
-                self.close()
+                self._content = yield from self.content.read()
             except:
                 self.close(True)
                 raise
-
-            self._content = bytearray(total)
-
-            idx = 0
-            content = memoryview(self._content)
-            for chunk, size in buf:
-                content[idx:idx+size] = chunk
-                idx += size
+            else:
+                self.close()
 
         data = self._content
 
