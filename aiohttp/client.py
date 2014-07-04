@@ -20,7 +20,7 @@ import weakref
 import warnings
 
 import aiohttp
-from .helpers import parse_mimetype
+from . import helpers
 from .log import client_log
 from .multidict import CaseInsensitiveMultiDict, MultiDict, MutableMultiDict
 
@@ -415,7 +415,7 @@ class ClientRequest:
                 data = data.items()
 
             for field, val in data:
-                fields.append((field, str_to_bytes(val)))
+                fields.append((field, helpers.str_to_bytes(val)))
 
         if isinstance(files, dict):
             files = list(files.items())
@@ -426,23 +426,23 @@ class ClientRequest:
 
             ft = None
             if len(rec) == 1:
-                k = guess_filename(rec[0], 'unknown')
+                k = helpers.guess_filename(rec[0], 'unknown')
                 fields.append((k, k, rec[0]))
 
             elif len(rec) == 2:
                 k, fp = rec
-                fn = guess_filename(fp, k)
+                fn = helpers.guess_filename(fp, k)
                 fields.append((k, fn, fp))
 
             else:
                 k, fp, ft = rec
-                fn = guess_filename(fp, k)
+                fn = helpers.guess_filename(fp, k)
                 fields.append((k, fn, fp, ft))
 
         self.chunked = self.chunked or 8192
         boundary = uuid.uuid4().hex
 
-        self.body = encode_multipart_data(
+        self.body = helpers.encode_multipart_data(
             fields, bytes(boundary, 'latin1'))
 
         self.headers['CONTENT-TYPE'] = (
@@ -658,7 +658,8 @@ class ClientResponse:
                 try:
                     self.cookies.load(hdr)
                 except http.cookies.CookieError as exc:
-                    client_log.warning('Can not load response cookies: %s', exc)
+                    client_log.warning(
+                        'Can not load response cookies: %s', exc)
 
         return self
 
@@ -742,7 +743,7 @@ class ClientResponse:
             yield from self.read()
 
         ctype = self.headers.get('CONTENT-TYPE', '').lower()
-        mtype, stype, _, params = parse_mimetype(ctype)
+        mtype, stype, _, params = helpers.parse_mimetype(ctype)
         if not (mtype == 'application' or stype == 'json'):
             client_log.warning(
                 'Attempt to decode JSON with unexpected mimetype: %s', ctype)

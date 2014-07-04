@@ -235,6 +235,13 @@ class BaseConnectorTests(unittest.TestCase):
 
         self.assertIsNotNone(conn._cleanup_handle)
 
+    def test_tcp_connector_ctor(self):
+        conn = aiohttp.TCPConnector(loop=self.loop)
+        self.assertTrue(conn.verify_ssl)
+        self.assertFalse(conn.resolve)
+        self.assertEqual(conn.family, socket.AF_INET)
+        self.assertEqual(conn.resolved_hosts, {})
+
 
 class HttpClientConnectorTests(unittest.TestCase):
 

@@ -439,8 +439,8 @@ def filter_pipe(filter, filter2):
       2. Reads yielded values from the first filter until it receives
          EOF_MARKER or EOL_MARKER.
       3. Each of this values is being send to second filter.
-      4. Reads yielded values from second filter until it receives EOF_MARKER or
-         EOL_MARKER. Each of this values yields to writer.
+      4. Reads yielded values from second filter until it receives EOF_MARKER
+         or EOL_MARKER. Each of this values yields to writer.
     """
     chunk = yield
 
