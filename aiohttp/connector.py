@@ -12,7 +12,7 @@ import weakref
 
 from .errors import HttpProxyError
 from .errors import ProxyConnectionError
-from .client import ClientRequest
+from .client import ClientRequest, BasicAuth
 
 
 class Connection(object):
@@ -274,14 +274,14 @@ class TCPConnector(BaseConnector):
 class ProxyConnector(TCPConnector):
     """Http Proxy connector."""
 
-    def __init__(self, proxy, proxy_login=None, proxy_passwd=None,
-                 *args, **kwargs):
+    def __init__(self, proxy, *args, proxy_auth=None, **kwargs):
         super().__init__(*args, **kwargs)
         self._proxy = proxy
-        self._basic_login = proxy_login
-        self._basic_passwd = proxy_passwd
+        self._proxy_auth = proxy_auth
         assert proxy.startswith('http://'), (
             "Only http proxy supported", proxy)
+        assert proxy_auth is None or isinstance(proxy_auth, BasicAuth), (
+            "proxy_auth must be None or BasicAuth() tuple", proxy_auth)
 
     @property
     def proxy(self):
@@ -292,7 +292,7 @@ class ProxyConnector(TCPConnector):
         proxy_req = ClientRequest(
             'GET', self._proxy,
             headers={'Host': req.host},
-            auth=aiohttp.BasicAuth(self._basic_login, self._basic_passwd),
+            auth=self._proxy_auth,
             loop=self._loop)
         try:
             transport, proto = yield from super()._create_connection(proxy_req)
