@@ -247,7 +247,7 @@ class FlowControlStreamReader(StreamReader):
     def readexactly(self, n):
         self._stream.resume_stream()
         try:
-            return (yield from super().readexactly())
+            return (yield from super().readexactly(n))
         finally:
             self._stream.pause_stream()
 
