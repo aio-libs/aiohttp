@@ -15,6 +15,8 @@ class EofStream(Exception):
 
 class StreamReader:
 
+    total_bytes = 0
+
     def __init__(self, limit=_DEFAULT_LIMIT, loop=None):
         self._limit = limit
         if loop is None:
@@ -80,6 +82,7 @@ class StreamReader:
             return
 
         self._buffer.extend(data)
+        self.total_bytes += len(data)
 
         waiter = self._waiter
         if waiter is not None:
