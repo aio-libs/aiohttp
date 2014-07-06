@@ -1,6 +1,12 @@
 CHANGES
 =======
 
+0.9.0 (xx-xx-2014)
+------------------
+
+- Backward incompatible: Replace DataQueue with StreamReader for request payload #87
+
+
 0.8.4 (07-04-2014)
 ------------------
 
