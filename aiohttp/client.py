@@ -19,7 +19,7 @@ import warnings
 import aiohttp
 from . import helpers
 from .log import client_log
-from .streams import EOF_STREAM, FlowControlStreamReader
+from .streams import EOF_MARKER, FlowControlStreamReader
 from .multidict import CaseInsensitiveMultiDict, MultiDict, MutableMultiDict
 
 HTTP_PORT = 80
@@ -633,7 +633,7 @@ class ClientResponse:
     def release(self):
         try:
             chunk = yield from self.content.readany()
-            while chunk is not EOF_STREAM or not chunk:
+            while chunk is not EOF_MARKER or chunk:
                 chunk = yield from self.content.readany()
         finally:
             self.close()
