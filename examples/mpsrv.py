@@ -2,7 +2,6 @@
 """Simple multiprocess http server written using an event loop."""
 
 import argparse
-import email.message
 import os
 import socket
 import signal
@@ -149,7 +148,7 @@ class ChildProcess:
         while True:
             try:
                 msg = yield from reader.read()
-            except aiohttp.EofStream:
+            except:
                 print('Supervisor is dead, {} stopping...'.format(os.getpid()))
                 self.loop.stop()
                 break
@@ -218,7 +217,7 @@ class Worker:
         while True:
             try:
                 msg = yield from reader.read()
-            except aiohttp.EofStream:
+            except:
                 print('Restart unresponsive worker process: {}'.format(
                     self.pid))
                 self.kill()

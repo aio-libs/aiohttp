@@ -64,7 +64,7 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
             while True:
                 try:
                     msg = yield from dataqueue.read()
-                except aiohttp.EofStream:
+                except:
                     # client dropped connection
                     break
 
@@ -163,7 +163,7 @@ class ChildProcess:
         while True:
             try:
                 msg = yield from reader.read()
-            except aiohttp.EofStream:
+            except:
                 print('Supervisor is dead, {} stopping...'.format(os.getpid()))
                 self.loop.stop()
                 break
@@ -236,7 +236,7 @@ class Worker:
         while True:
             try:
                 msg = yield from reader.read()
-            except aiohttp.EofStream:
+            except:
                 print('Restart unresponsive worker process: {}'.format(
                     self.pid))
                 self.kill()

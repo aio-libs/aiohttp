@@ -116,7 +116,7 @@ def start_client(loop, host, port):
     while True:
         try:
             msg = yield from reader.read()
-        except aiohttp.EofStream:
+        except aiohttp.ConnectionError:
             print('Server has been disconnected.')
             break
 

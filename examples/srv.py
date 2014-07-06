@@ -2,7 +2,6 @@
 """Simple server written using an event loop."""
 
 import argparse
-import email.message
 import logging
 import os
 import sys

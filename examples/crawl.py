@@ -64,7 +64,7 @@ class Crawler:
             self.done[url] = False
         else:
             if (resp.status == 200 and
-                ('text/html' in resp.headers.get('content-type'))):
+                    ('text/html' in resp.headers.get('content-type'))):
                 data = (yield from resp.read()).decode('utf-8', 'replace')
                 urls = re.findall(r'(?i)href=["\']?([^\s"\'<>]+)', data)
                 asyncio.Task(self.addurls([(u, url) for u in urls]))

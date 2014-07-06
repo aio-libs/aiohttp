@@ -66,7 +66,7 @@ def start_client(loop, url):
         while True:
             try:
                 msg = yield from stream.read()
-            except aiohttp.EofStream:
+            except:
                 # server disconnected
                 break
 

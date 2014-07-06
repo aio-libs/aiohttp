@@ -4,7 +4,6 @@ import asyncio
 import unittest
 from unittest import mock
 
-import aiohttp
 from aiohttp import streams
 from aiohttp import test_utils
 
@@ -202,6 +201,7 @@ class StreamReaderTests(unittest.TestCase):
         # their 'readline' methods are called.
 
         stream = self._make_one(limit=7)
+
         def cb():
             stream.feed_data(b'chunk1')
             stream.feed_data(b'chunk2')
@@ -216,6 +216,7 @@ class StreamReaderTests(unittest.TestCase):
         self.assertEqual(b'', stream._buffer)
 
         stream = self._make_one(limit=7)
+
         def cb():
             stream.feed_data(b'chunk1')
             stream.feed_data(b'chunk2\n')
