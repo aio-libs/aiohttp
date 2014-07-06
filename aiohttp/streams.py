@@ -1,4 +1,4 @@
-__all__ = ['EofStream',
+__all__ = ['EofStream', 'EOF_MARKER',
            'StreamReader', 'DataQueue',
            'FlowControlStreamReader', 'FlowControlDataQueue']
 
@@ -6,7 +6,8 @@ import asyncio
 import asyncio.streams
 import collections
 
-_DEFAULT_LIMIT = 2**16
+EOF_MARKER = b''
+DEFAULT_LIMIT = 2**16
 
 
 class EofStream(Exception):
@@ -17,7 +18,7 @@ class StreamReader:
 
     total_bytes = 0
 
-    def __init__(self, limit=_DEFAULT_LIMIT, loop=None):
+    def __init__(self, limit=DEFAULT_LIMIT, loop=None):
         self._limit = limit
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -133,7 +134,10 @@ class StreamReader:
                 finally:
                     self._waiter = None
 
-        return bytes(line)
+        if line:
+            return bytes(line)
+        else:
+            return EOF_MARKER
 
     @asyncio.coroutine
     def read(self, n=-1):
@@ -141,7 +145,7 @@ class StreamReader:
             raise self._exception
 
         if not n:
-            return b''
+            return EOF_MARKER
 
         if n < 0:
             # This used to just loop creating a new waiter hoping to
@@ -154,7 +158,11 @@ class StreamReader:
                 if not block:
                     break
                 blocks.append(block)
-            return b''.join(blocks)
+            data = b''.join(blocks)
+            if data:
+                return data
+            else:
+                return EOF_MARKER
         else:
             if not self._buffer and not self._eof:
                 self._waiter = self._create_waiter('read')
@@ -171,7 +179,10 @@ class StreamReader:
             data = bytes(self._buffer[:n])
             del self._buffer[:n]
 
-        return data
+        if data:
+            return data
+        else:
+            return EOF_MARKER
 
     @asyncio.coroutine
     def readany(self):
@@ -188,7 +199,10 @@ class StreamReader:
         data = bytes(self._buffer)
         del self._buffer[:]
 
-        return data
+        if data:
+            return data
+        else:
+            return EOF_MARKER
 
     @asyncio.coroutine
     def readexactly(self, n):
