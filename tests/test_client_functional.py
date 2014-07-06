@@ -150,6 +150,8 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
                 self.loop.run_until_complete(go())
 
+        connector.close()
+
     def test_use_global_loop(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             try:
@@ -650,8 +652,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
             cookies = sorted([(k, v.value) for k, v in conn.cookies.items()])
             self.assertEqual(
                 cookies, [('c1', 'cookie1'), ('c2', 'cookie2'), ('test', '1')])
-        m_log.warning.assert_called_with('Can not load response cookies: %s',
-                                         mock.ANY)
+
+        m_log.warning.assert_called_with(
+            'Can not load response cookies: %s', mock.ANY)
+        conn.close()
 
     def test_multidict_headers(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
