@@ -502,8 +502,8 @@ class DataQueueTests(unittest.TestCase):
             buffer.feed_eof()
         self.loop.call_soon(cb)
 
-        self.assertRaises(
-            streams.EofStream, self.loop.run_until_complete, read_task)
+        self.loop.run_until_complete(read_task)
+        self.assertTrue(buffer.at_eof())
 
     def test_read_cancelled(self):
         buffer = streams.DataQueue(loop=self.loop)
@@ -529,8 +529,9 @@ class DataQueueTests(unittest.TestCase):
         data = self.loop.run_until_complete(buffer.read())
         self.assertIs(data, item)
 
-        self.assertRaises(
-            streams.EofStream, self.loop.run_until_complete, buffer.read())
+        thing = self.loop.run_until_complete(buffer.read())
+        self.assertEqual(thing, b'')
+        self.assertTrue(buffer.at_eof())
 
     def test_read_exception(self):
         buffer = streams.DataQueue(loop=self.loop)

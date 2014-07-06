@@ -3,7 +3,6 @@ __all__ = ['EofStream',
            'FlowControlStreamReader', 'FlowControlDataQueue']
 
 import asyncio
-import asyncio.streams
 import collections
 
 _DEFAULT_LIMIT = 2**16
@@ -317,7 +316,7 @@ class DataQueue:
             if self._exception is not None:
                 raise self._exception
             else:
-                raise EofStream
+                return b''
 
 
 class FlowControlDataQueue(DataQueue):
