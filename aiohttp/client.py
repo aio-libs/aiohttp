@@ -12,7 +12,6 @@ import inspect
 import itertools
 import random
 import time
-import uuid
 import urllib.parse
 import weakref
 import warnings
@@ -60,8 +59,6 @@ def request(method, url, *,
     :param headers: (optional) Dictionary of HTTP Headers to send with
       the request
     :param cookies: (optional) Dict object to send with the request
-    :param files: (optional) Dictionary of 'name': file-like-objects
-       for multipart encoding upload
     :param auth: (optional) BasicAuth named tuple represent HTTP Basic Auth
     :param allow_redirects: (optional) Boolean. Set to True if POST/PUT/DELETE
        redirect following is allowed.
@@ -193,11 +190,18 @@ class ClientRequest:
         self.update_content_encoding()
         self.update_auth(auth)
 
-        if data and not files:
-            if self.method not in self.GET_METHODS:
-                self.update_body_from_data(data)
-        elif files:
-            self.update_body_from_files(files, data)
+        if files:
+            warnings.warn(
+                'files parameter is deprecated. use data instead',
+                DeprecationWarning)
+            if data:
+                raise ValueError(
+                    'data and files parameters are '
+                    'not supported at the same time.')
+            data = files
+
+        if data:
+            self.update_body_from_data(data)
 
         self.update_transfer_encoding()
         self.update_expect_continue(expect100)
@@ -361,78 +365,35 @@ class ClientRequest:
             raise ValueError("HTTP Auth login or password is missing")
 
     def update_body_from_data(self, data):
-        if (hasattr(data, '__iter__') and not isinstance(
-                data, (bytes, bytearray, str, list, dict))):
+        if isinstance(data, str):
+            data = data.encode(self.encoding)
+
+        if isinstance(data, (bytes, bytearray)):
+            self.body = data
+            if 'CONTENT-TYPE' not in self.headers:
+                self.headers['CONTENT-TYPE'] = 'application/octet-stream'
+            if 'CONTENT-LENGTH' not in self.headers and not self.chunked:
+                self.headers['CONTENT-LENGTH'] = str(len(self.body))
+
+        elif (hasattr(data, '__iter__') and not
+              isinstance(data, (tuple, list, dict, io.IOBase))):
             self.body = data
             if 'CONTENT-LENGTH' not in self.headers and self.chunked is None:
                 self.chunked = True
         else:
-            if isinstance(data, (bytes, bytearray)):
-                self.body = data
-                if 'CONTENT-TYPE' not in self.headers:
-                    self.headers['CONTENT-TYPE'] = 'application/octet-stream'
+            if not isinstance(data, helpers.FormData):
+                data = helpers.FormData(data)
+
+            self.body = data(self.encoding)
+
+            if 'CONTENT-TYPE' not in self.headers:
+                self.headers['CONTENT-TYPE'] = data.contenttype
+
+            if data.is_form_data():
+                self.chunked = self.chunked or 8196
             else:
-                # form data (x-www-form-urlencoded)
-                if isinstance(data, dict):
-                    data = list(data.items())
-
-                if not isinstance(data, str):
-                    data = urllib.parse.urlencode(data, doseq=True)
-
-                self.body = data.encode(self.encoding)
-
-                if 'CONTENT-TYPE' not in self.headers:
-                    self.headers['CONTENT-TYPE'] = (
-                        'application/x-www-form-urlencoded')
-
-            if 'CONTENT-LENGTH' not in self.headers and not self.chunked:
-                self.headers['CONTENT-LENGTH'] = str(len(self.body))
-
-    def update_body_from_files(self, files, data):
-        """Generate multipart/form-data body."""
-        fields = []
-
-        if data:
-            if not isinstance(data, (list, dict)):
-                raise NotImplementedError(
-                    'Streamed body is not compatible with files.')
-
-            if isinstance(data, dict):
-                data = data.items()
-
-            for field, val in data:
-                fields.append((field, helpers.str_to_bytes(val)))
-
-        if isinstance(files, dict):
-            files = list(files.items())
-
-        for rec in files:
-            if not isinstance(rec, (tuple, list)):
-                rec = (rec,)
-
-            ft = None
-            if len(rec) == 1:
-                k = helpers.guess_filename(rec[0], 'unknown')
-                fields.append((k, k, rec[0]))
-
-            elif len(rec) == 2:
-                k, fp = rec
-                fn = helpers.guess_filename(fp, k)
-                fields.append((k, fn, fp))
-
-            else:
-                k, fp, ft = rec
-                fn = helpers.guess_filename(fp, k)
-                fields.append((k, fn, fp, ft))
-
-        self.chunked = self.chunked or 8192
-        boundary = uuid.uuid4().hex
-
-        self.body = helpers.encode_multipart_data(
-            fields, bytes(boundary, 'latin1'))
-
-        self.headers['CONTENT-TYPE'] = (
-            'multipart/form-data; boundary=%s' % boundary)
+                if 'CONTENT-LENGTH' not in self.headers and not self.chunked:
+                    self.headers['CONTENT-LENGTH'] = str(len(self.body))
 
     def update_transfer_encoding(self):
         """Analyze transfer-encoding header."""

@@ -42,7 +42,6 @@ The signature of request is the following::
           data=None,
           headers=None,
           cookies=None,
-          files=None,
           auth=None,
           allow_redirects=True,
           max_redirects=10,

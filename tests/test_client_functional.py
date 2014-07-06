@@ -281,21 +281,48 @@ class HttpClientFunctionalTests(unittest.TestCase):
             with open(__file__) as f:
                 r = self.loop.run_until_complete(
                     client.request(
-                        'post', url, files={'some': f}, chunked=1024,
+                        'post', url, data={'some': f, 'test': b'data'},
+                        chunked=1024,
                         headers={'Transfer-Encoding': 'chunked'},
                         loop=self.loop))
                 content = self.loop.run_until_complete(r.json())
+                files = list(
+                    sorted(content['multipart-data'],
+                           key=lambda d: d['name']))
 
                 f.seek(0)
                 filename = os.path.split(f.name)[-1]
 
-                self.assertEqual(1, len(content['multipart-data']))
-                self.assertEqual(
-                    'some', content['multipart-data'][0]['name'])
-                self.assertEqual(
-                    filename, content['multipart-data'][0]['filename'])
-                self.assertEqual(
-                    f.read(), content['multipart-data'][0]['data'])
+                self.assertEqual(2, len(content['multipart-data']))
+                self.assertEqual('some', files[0]['name'])
+                self.assertEqual(filename, files[0]['filename'])
+                self.assertEqual(f.read(), files[0]['data'])
+                self.assertEqual(r.status, 200)
+                r.close()
+
+    def test_POST_FILES_DEPRECATED(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+
+            with open(__file__) as f:
+                r = self.loop.run_until_complete(
+                    client.request(
+                        'post', url, files={'some': f, 'test': b'data'},
+                        chunked=1024,
+                        headers={'Transfer-Encoding': 'chunked'},
+                        loop=self.loop))
+                content = self.loop.run_until_complete(r.json())
+                files = list(
+                    sorted(content['multipart-data'],
+                           key=lambda d: d['name']))
+
+                f.seek(0)
+                filename = os.path.split(f.name)[-1]
+
+                self.assertEqual(2, len(content['multipart-data']))
+                self.assertEqual('some', files[0]['name'])
+                self.assertEqual(filename, files[0]['filename'])
+                self.assertEqual(f.read(), files[0]['data'])
                 self.assertEqual(r.status, 200)
                 r.close()
 
@@ -305,7 +332,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
             with open(__file__) as f:
                 r = self.loop.run_until_complete(
-                    client.request('post', url, files={'some': f},
+                    client.request('post', url, data={'some': f},
                                    chunked=1024, compress='deflate',
                                    loop=self.loop))
 
@@ -331,19 +358,30 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
             with open(__file__) as f:
                 r = self.loop.run_until_complete(
-                    client.request('post', url, files=[('some', f.read())],
+                    client.request('post', url, data=[('some', f.read())],
                                    loop=self.loop))
 
                 content = self.loop.run_until_complete(r.json())
 
                 f.seek(0)
-                self.assertEqual(1, len(content['multipart-data']))
-                self.assertEqual(
-                    'some', content['multipart-data'][0]['name'])
-                self.assertEqual(
-                    'some', content['multipart-data'][0]['filename'])
-                self.assertEqual(
-                    f.read(), content['multipart-data'][0]['data'])
+                self.assertEqual(1, len(content['form']))
+                self.assertIn('some', content['form'])
+                self.assertEqual(f.read(), content['form']['some'][0])
+                self.assertEqual(r.status, 200)
+                r.close()
+
+    def test_POST_FILES_STR_SIMPLE(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+
+            with open(__file__) as f:
+                r = self.loop.run_until_complete(
+                    client.request('post', url, data=f.read(), loop=self.loop))
+
+                content = self.loop.run_until_complete(r.json())
+
+                f.seek(0)
+                self.assertEqual(f.read(), content['content'])
                 self.assertEqual(r.status, 200)
                 r.close()
 
@@ -353,7 +391,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
             with open(__file__) as f:
                 r = self.loop.run_until_complete(
-                    client.request('post', url, files=[('some', f)],
+                    client.request('post', url, data=[('some', f)],
                                    loop=self.loop))
 
                 content = self.loop.run_until_complete(r.json())
@@ -378,7 +416,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             with open(__file__) as f:
                 r = self.loop.run_until_complete(
                     client.request('post', url, loop=self.loop,
-                                   files=[('some', f, 'text/plain')]))
+                                   data=[('some', f, 'text/plain')]))
 
                 content = self.loop.run_until_complete(r.json())
 
@@ -403,7 +441,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
             with open(__file__) as f:
                 r = self.loop.run_until_complete(
-                    client.request('post', url, files=[f], loop=self.loop))
+                    client.request('post', url, data=f, loop=self.loop))
 
                 content = self.loop.run_until_complete(r.json())
 
@@ -427,16 +465,42 @@ class HttpClientFunctionalTests(unittest.TestCase):
             data = io.BytesIO(b'data')
 
             r = self.loop.run_until_complete(
-                client.request('post', url, files=[data], loop=self.loop))
+                client.request('post', url, data=[data], loop=self.loop))
 
             content = self.loop.run_until_complete(r.json())
 
             self.assertEqual(1, len(content['multipart-data']))
             self.assertEqual(
-                {'content-type': 'application/octet-stream',
+                {'content-type': 'text/plain',
                  'data': 'data',
                  'filename': 'unknown',
                  'name': 'unknown'}, content['multipart-data'][0])
+            self.assertEqual(r.status, 200)
+            r.close()
+
+    def test_POST_FILES_IO_WITH_PARAMS(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+
+            data = io.BytesIO(b'data')
+
+            r = self.loop.run_until_complete(
+                client.request('post', url,
+                               data=(('test', 'true'), (data,)),
+                               loop=self.loop))
+
+            content = self.loop.run_until_complete(r.json())
+
+            self.assertEqual(2, len(content['multipart-data']))
+            self.assertEqual(
+                {'content-type': 'text/plain',
+                 'data': 'true',
+                 'name': 'test'}, content['multipart-data'][0])
+            self.assertEqual(
+                {'content-type': 'text/plain',
+                 'data': 'data',
+                 'filename': 'unknown',
+                 'name': 'unknown'}, content['multipart-data'][1])
             self.assertEqual(r.status, 200)
             r.close()
 
@@ -447,24 +511,22 @@ class HttpClientFunctionalTests(unittest.TestCase):
             with open(__file__) as f:
                 r = self.loop.run_until_complete(
                     client.request('post', url, loop=self.loop,
-                                   data={'test': 'true'}, files={'some': f}))
+                                   data={'test': 'true', 'some': f}))
 
                 content = self.loop.run_until_complete(r.json())
+                files = list(
+                    sorted(content['multipart-data'],
+                           key=lambda d: d['name']))
 
                 self.assertEqual(2, len(content['multipart-data']))
-                self.assertEqual(
-                    'test', content['multipart-data'][0]['name'])
-                self.assertEqual(
-                    'true', content['multipart-data'][0]['data'])
+                self.assertEqual('test', files[1]['name'])
+                self.assertEqual('true', files[1]['data'])
 
                 f.seek(0)
                 filename = os.path.split(f.name)[-1]
-                self.assertEqual(
-                    'some', content['multipart-data'][1]['name'])
-                self.assertEqual(
-                    filename, content['multipart-data'][1]['filename'])
-                self.assertEqual(
-                    f.read(), content['multipart-data'][1]['data'])
+                self.assertEqual('some', files[0]['name'])
+                self.assertEqual(filename, files[0]['filename'])
+                self.assertEqual(f.read(), files[0]['data'])
                 self.assertEqual(r.status, 200)
                 r.close()
 

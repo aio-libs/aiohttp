@@ -238,6 +238,8 @@ class Router:
         }
         if body:  # pragma: no cover
             resp['content'] = body
+        else:
+            resp['content'] = self._body.decode('utf-8')
 
         ct = self._headers.get('content-type', '').lower()
 

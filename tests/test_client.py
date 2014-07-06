@@ -418,7 +418,7 @@ class ClientRequestTests(unittest.TestCase):
 
     def test_files_and_bytes_data(self):
         self.assertRaises(
-            NotImplementedError, ClientRequest,
+            ValueError, ClientRequest,
             'POST', 'http://python.org/',
             data=b'binary data', files={'file': b'file data'})
 
