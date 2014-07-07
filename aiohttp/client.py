@@ -693,7 +693,16 @@ class ClientResponse:
         return data
 
     @asyncio.coroutine
-    def read_text(self, encoding=None):
+    def read_and_close(self, decode=False):
+        """Read response payload and then close response."""
+        warnings.warn(
+            'read_and_close is deprecated, use .read() instead',
+            DeprecationWarning
+        )
+        return (yield from self.read(decode))
+
+    @asyncio.coroutine
+    def text(self, encoding=None):
         """Read response payload and decode."""
         if self._content is None:
             yield from self.read()
@@ -703,15 +712,6 @@ class ClientResponse:
 
         encoding = encoding or params.get('charset', 'utf-8')
         return self._content.decode(encoding)
-
-    @asyncio.coroutine
-    def read_and_close(self, decode=False):
-        """Read response payload and then close response."""
-        warnings.warn(
-            'read_and_close is deprecated, use .read() instead',
-            DeprecationWarning
-        )
-        return (yield from self.read(decode))
 
     @asyncio.coroutine
     def json(self, *, encoding=None, loads=json.loads):

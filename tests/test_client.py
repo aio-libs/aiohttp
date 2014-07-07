@@ -136,7 +136,7 @@ class ClientResponseTests(unittest.TestCase):
         self.assertEqual(res, 'json')
         self.assertTrue(self.response.json.called)
 
-    def test_read_text(self):
+    def test_text(self):
         def side_effect(*args, **kwargs):
             def second_call(*args, **kwargs):
                 raise aiohttp.EofStream
@@ -150,11 +150,11 @@ class ClientResponseTests(unittest.TestCase):
         content.read.side_effect = side_effect
         self.response.close = unittest.mock.Mock()
 
-        res = self.loop.run_until_complete(self.response.read_text())
+        res = self.loop.run_until_complete(self.response.text())
         self.assertEqual(res, '{"тест": "пройден"}')
         self.assertTrue(self.response.close.called)
 
-    def test_read_text_custom_encoding(self):
+    def test_text_custom_encoding(self):
         def side_effect(*args, **kwargs):
             def second_call(*args, **kwargs):
                 raise aiohttp.EofStream
@@ -169,7 +169,7 @@ class ClientResponseTests(unittest.TestCase):
         self.response.close = unittest.mock.Mock()
 
         res = self.loop.run_until_complete(
-            self.response.read_text(encoding='cp1251'))
+            self.response.text(encoding='cp1251'))
         self.assertEqual(res, '{"тест": "пройден"}')
         self.assertTrue(self.response.close.called)
 
