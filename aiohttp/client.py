@@ -15,6 +15,10 @@ import time
 import urllib.parse
 import weakref
 import warnings
+try:
+    import chardet
+except ImportError:  # pragma: no cover
+    chardet = None
 
 import aiohttp
 from . import helpers, streams
@@ -701,17 +705,26 @@ class ClientResponse:
         )
         return (yield from self.read(decode))
 
+    def _get_encoding(self, encoding):
+        ctype = self.headers.get('CONTENT-TYPE', '').lower()
+        mtype, stype, _, params = helpers.parse_mimetype(ctype)
+
+        if not encoding:
+            encoding = params.get('charset')
+            if not encoding and chardet:
+                encoding = chardet.detect(self._content)['encoding']
+            if not encoding:  # pragma: no cover
+                encoding = 'utf-8'
+
+        return encoding
+
     @asyncio.coroutine
     def text(self, encoding=None):
         """Read response payload and decode."""
         if self._content is None:
             yield from self.read()
 
-        ctype = self.headers.get('CONTENT-TYPE', '').lower()
-        mtype, stype, _, params = helpers.parse_mimetype(ctype)
-
-        encoding = encoding or params.get('charset', 'utf-8')
-        return self._content.decode(encoding)
+        return self._content.decode(self._get_encoding(encoding))
 
     @asyncio.coroutine
     def json(self, *, encoding=None, loads=json.loads):
@@ -720,16 +733,14 @@ class ClientResponse:
             yield from self.read()
 
         ctype = self.headers.get('CONTENT-TYPE', '').lower()
-        mtype, stype, _, params = helpers.parse_mimetype(ctype)
-        if not (mtype == 'application' or stype == 'json'):
+        if 'json' not in ctype:
             client_log.warning(
                 'Attempt to decode JSON with unexpected mimetype: %s', ctype)
 
         if not self._content.strip():
             return None
 
-        encoding = encoding or params.get('charset', 'utf-8')
-        return loads(self._content.decode(encoding))
+        return loads(self._content.decode(self._get_encoding(encoding)))
 
 
 class HttpClient:

@@ -18,7 +18,7 @@ if sys.version_info >= (3,4):
 else:
     install_requires = ['asyncio']
 
-tests_require = install_requires + ['nose', 'gunicorn']
+tests_require = install_requires + ['nose', 'gunicorn', 'chardet']
 
 
 def read(f):
