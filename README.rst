@@ -63,12 +63,10 @@ It constructs and sends a request. It returns response object. Parameters are ex
 - ``url``: Request url
 - ``params``: (optional) Dictionary or bytes to be sent in the query string
   of the new request
-- ``data``: (optional) Dictionary, bytes, or file-like object to
+- ``data``: (optional) Dictionary, bytes, StreamReader or file-like object to
   send in the body of the request
 - ``headers``: (optional) Dictionary of HTTP Headers to send with the request
 - ``cookies``: (optional) Dict object to send with the request
-- ``files``: (optional) Dictionary of 'name': file-like-objects
-  for multipart encoding upload
 - ``auth``: (optional) `BasicAuth` tuple to enable Basic HTTP Basic Auth
 - ``allow_redirects``: (optional) Boolean. Set to True if POST/PUT/DELETE
   redirect following is allowed.
@@ -93,6 +91,8 @@ asyncio approach::
 
 Gunicorn worker
 ---------------
+
+Since version 0.19.0 gunicorn has native support for aiohttp.
 
 Paster configuration example::
 
