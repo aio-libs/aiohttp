@@ -96,7 +96,7 @@ def request(method, url, *,
         req = request_class(
             method, url, params=params, headers=headers, data=data,
             cookies=cookies, files=files, encoding=encoding,
-            version=version, compress=compress, chunked=chunked,
+            auth=auth, version=version, compress=compress, chunked=chunked,
             loop=loop, expect100=expect100, response_class=response_class)
 
         try:
