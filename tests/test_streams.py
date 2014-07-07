@@ -453,131 +453,117 @@ class DataQueueTests(unittest.TestCase):
     def setUp(self):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
+        self.buffer = streams.DataQueue(loop=self.loop)
 
     def tearDown(self):
         self.loop.close()
 
     def test_is_eof(self):
-        q = streams.DataQueue(loop=self.loop)
-        self.assertFalse(q.is_eof())
-        q.feed_eof()
-        self.assertTrue(q.is_eof())
+        self.assertFalse(self.buffer.is_eof())
+        self.buffer.feed_eof()
+        self.assertTrue(self.buffer.is_eof())
 
     def test_at_eof(self):
-        q = streams.DataQueue(loop=self.loop)
-        self.assertFalse(q.at_eof())
-        q.feed_eof()
-        self.assertTrue(q.at_eof())
-        q._buffer.append(object())
-        self.assertFalse(q.at_eof())
+        self.assertFalse(self.buffer.at_eof())
+        self.buffer.feed_eof()
+        self.assertTrue(self.buffer.at_eof())
+        self.buffer._buffer.append(object())
+        self.assertFalse(self.buffer.at_eof())
 
     def test_feed_data(self):
-        buffer = streams.DataQueue(loop=self.loop)
-
         item = object()
-        buffer.feed_data(item)
-        self.assertEqual([item], list(buffer._buffer))
+        self.buffer.feed_data(item)
+        self.assertEqual([item], list(self.buffer._buffer))
 
     def test_feed_eof(self):
-        buffer = streams.DataQueue(loop=self.loop)
-        buffer.feed_eof()
-        self.assertTrue(buffer._eof)
+        self.buffer.feed_eof()
+        self.assertTrue(self.buffer._eof)
 
     def test_read(self):
         item = object()
-        buffer = streams.DataQueue(loop=self.loop)
-        read_task = asyncio.Task(buffer.read(), loop=self.loop)
+        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
 
         def cb():
-            buffer.feed_data(item)
+            self.buffer.feed_data(item)
         self.loop.call_soon(cb)
 
         data = self.loop.run_until_complete(read_task)
         self.assertIs(item, data)
 
     def test_read_eof(self):
-        buffer = streams.DataQueue(loop=self.loop)
-        read_task = asyncio.Task(buffer.read(), loop=self.loop)
+        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
 
         def cb():
-            buffer.feed_eof()
+            self.buffer.feed_eof()
         self.loop.call_soon(cb)
 
         self.assertRaises(
             streams.EofStream, self.loop.run_until_complete, read_task)
 
     def test_read_cancelled(self):
-        buffer = streams.DataQueue(loop=self.loop)
-        read_task = asyncio.Task(buffer.read(), loop=self.loop)
+        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
         test_utils.run_briefly(self.loop)
-        self.assertIsInstance(buffer._waiter, asyncio.Future)
+        self.assertIsInstance(self.buffer._waiter, asyncio.Future)
 
         read_task.cancel()
         self.assertRaises(
             asyncio.CancelledError,
             self.loop.run_until_complete, read_task)
-        self.assertTrue(buffer._waiter.cancelled())
+        self.assertTrue(self.buffer._waiter.cancelled())
 
-        buffer.feed_data(b'test')
-        self.assertIsNone(buffer._waiter)
+        self.buffer.feed_data(b'test')
+        self.assertIsNone(self.buffer._waiter)
 
     def test_read_until_eof(self):
         item = object()
-        buffer = streams.DataQueue(loop=self.loop)
-        buffer.feed_data(item)
-        buffer.feed_eof()
+        self.buffer.feed_data(item)
+        self.buffer.feed_eof()
 
-        data = self.loop.run_until_complete(buffer.read())
+        data = self.loop.run_until_complete(self.buffer.read())
         self.assertIs(data, item)
 
         self.assertRaises(
-            streams.EofStream, self.loop.run_until_complete, buffer.read())
+            streams.EofStream, self.loop.run_until_complete, self.buffer.read())
 
     def test_read_exception(self):
-        buffer = streams.DataQueue(loop=self.loop)
-        buffer.set_exception(ValueError())
+        self.buffer.set_exception(ValueError())
 
         self.assertRaises(
-            ValueError, self.loop.run_until_complete, buffer.read())
+            ValueError, self.loop.run_until_complete, self.buffer.read())
 
     def test_read_exception_with_data(self):
         val = object()
-        buffer = streams.DataQueue(loop=self.loop)
-        buffer.feed_data(val)
-        buffer.set_exception(ValueError())
+        self.buffer.feed_data(val)
+        self.buffer.set_exception(ValueError())
 
-        self.assertIs(val, self.loop.run_until_complete(buffer.read()))
+        self.assertIs(val, self.loop.run_until_complete(self.buffer.read()))
         self.assertRaises(
-            ValueError, self.loop.run_until_complete, buffer.read())
+            ValueError, self.loop.run_until_complete, self.buffer.read())
 
     def test_read_exception_on_wait(self):
-        buffer = streams.DataQueue(loop=self.loop)
-        read_task = asyncio.Task(buffer.read(), loop=self.loop)
+        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
         test_utils.run_briefly(self.loop)
-        self.assertIsInstance(buffer._waiter, asyncio.Future)
+        self.assertIsInstance(self.buffer._waiter, asyncio.Future)
 
-        buffer.feed_eof()
-        buffer.set_exception(ValueError())
+        self.buffer.feed_eof()
+        self.buffer.set_exception(ValueError())
 
         self.assertRaises(
             ValueError, self.loop.run_until_complete, read_task)
 
     def test_exception(self):
-        buffer = streams.DataQueue(loop=self.loop)
-        self.assertIsNone(buffer.exception())
+        self.assertIsNone(self.buffer.exception())
 
         exc = ValueError()
-        buffer.set_exception(exc)
-        self.assertIs(buffer.exception(), exc)
+        self.buffer.set_exception(exc)
+        self.assertIs(self.buffer.exception(), exc)
 
     def test_exception_waiter(self):
-        buffer = streams.DataQueue(loop=self.loop)
-
         @asyncio.coroutine
         def set_err():
-            buffer.set_exception(ValueError())
+            self.buffer.set_exception(ValueError())
 
-        t1 = asyncio.Task(buffer.read(), loop=self.loop)
+        t1 = asyncio.Task(self.buffer.read(), loop=self.loop)
         t2 = asyncio.Task(set_err(), loop=self.loop)
 
         self.loop.run_until_complete(asyncio.wait([t1, t2], loop=self.loop))
@@ -591,19 +577,56 @@ class FlowControlDataQueueTests(unittest.TestCase):
         self.stream = unittest.mock.Mock()
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
+        self.buffer = streams.FlowControlDataQueue(self.stream, loop=self.loop)
 
     def tearDown(self):
         self.loop.close()
 
     def test_stream(self):
         item = object()
-        buffer = streams.FlowControlDataQueue(self.stream, loop=self.loop)
-        read_task = asyncio.Task(buffer.read(), loop=self.loop)
+        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
 
         def cb():
-            buffer.feed_data(item)
+            self.buffer.feed_data(item)
         self.loop.call_soon(cb)
         self.loop.run_until_complete(read_task)
 
         self.assertTrue(self.stream.resume_stream.called)
         self.assertTrue(self.stream.pause_stream.called)
+
+
+class ChunksQueueTests(DataQueueTests):
+
+    def setUp(self):
+        super().setUp()
+        self.buffer = streams.ChunksQueue(loop=self.loop)
+
+    def test_read_eof(self):
+        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
+
+        def cb():
+            self.buffer.feed_eof()
+        self.loop.call_soon(cb)
+
+        self.loop.run_until_complete(read_task)
+        self.assertTrue(self.buffer.at_eof())
+
+    def test_read_until_eof(self):
+        item = object()
+        self.buffer.feed_data(item)
+        self.buffer.feed_eof()
+
+        data = self.loop.run_until_complete(self.buffer.read())
+        self.assertIs(data, item)
+
+        thing = self.loop.run_until_complete(self.buffer.read())
+        self.assertEqual(thing, b'')
+        self.assertTrue(self.buffer.at_eof())
+
+
+class FlowControlChunksQueueTests(FlowControlDataQueueTests):
+
+    def setUp(self):
+        super().setUp()
+        self.buffer = streams.FlowControlChunksQueue(self.stream,
+                                                     loop=self.loop)
