@@ -193,6 +193,13 @@ class ClientResponseTests(unittest.TestCase):
         self.assertEqual(res, {'тест': 'пройден'})
         self.assertTrue(self.response.close.called)
 
+    def test_override_flow_control(self):
+        class MyResponse(ClientResponse):
+            flow_control_class = aiohttp.FlowControlDataQueue
+        response = MyResponse('get', 'http://python.org')
+        response._setup_connection(self.connection)
+        self.assertIsInstance(response.content, aiohttp.FlowControlDataQueue)
+
 
 class ClientRequestTests(unittest.TestCase):
 

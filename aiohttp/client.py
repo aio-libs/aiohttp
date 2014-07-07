@@ -522,6 +522,7 @@ class ClientResponse:
     content = None  # Payload stream
 
     connection = None  # current connection
+    flow_control_class = FlowControlStreamReader  # reader flow control
     _reader = None     # input stream
     _response_parser = aiohttp.HttpResponseParser()
     _connection_wr = None  # weakref to self for releasing connection on del
@@ -555,7 +556,7 @@ class ClientResponse:
     def _setup_connection(self, connection):
         self._reader = connection.reader
         self.connection = connection
-        self.content = FlowControlStreamReader(
+        self.content = self.flow_control_class(
             connection.reader, loop=connection.loop)
 
         msg = ('ClientResponse has to be closed explicitly! {}:{}:{}'

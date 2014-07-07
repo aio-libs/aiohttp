@@ -1,9 +1,9 @@
-__all__ = ['EofStream', 'EOF_MARKER',
-           'StreamReader', 'DataQueue',
-           'FlowControlStreamReader', 'FlowControlDataQueue']
+__all__ = ['EofStream',
+           'StreamReader', 'DataQueue', 'ChunksQueue',
+           'FlowControlStreamReader', 'FlowControlDataQueue',
+           'FlowControlChunksQueue']
 
 import asyncio
-import asyncio.streams
 import collections
 
 EOF_MARKER = b''
@@ -351,3 +351,18 @@ class FlowControlDataQueue(DataQueue):
             return (yield from super().read())
         finally:
             self._stream.pause_stream()
+
+
+class ChunksQueue(DataQueue):
+    """Like a :class:`DataQueue`, but for binary chunked data transfer."""
+
+    @asyncio.coroutine
+    def read(self):
+        try:
+            return (yield from super().read())
+        except EofStream:
+            return EOF_MARKER
+
+
+class FlowControlChunksQueue(FlowControlDataQueue, ChunksQueue):
+    """FlowControlChunksQueue resumes and pauses an underlying stream."""
