@@ -557,6 +557,74 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertEqual(str(len(data)),
                              content['headers']['Content-Length'])
 
+    def test_POST_StreamReader(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+
+            with open(__file__, 'rb') as f:
+                data = f.read()
+
+            stream = aiohttp.StreamReader(loop=self.loop)
+            stream.feed_data(data)
+            stream.feed_eof()
+
+            r = self.loop.run_until_complete(
+                client.request(
+                    'post', url, data=stream,
+                    headers={'Content-Length': str(len(data))},
+                    loop=self.loop))
+            content = self.loop.run_until_complete(r.json())
+            r.close()
+
+            self.assertEqual(str(len(data)),
+                             content['headers']['Content-Length'])
+
+    def test_POST_DataQueue(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+
+            with open(__file__, 'rb') as f:
+                data = f.read()
+
+            stream = aiohttp.DataQueue(loop=self.loop)
+            stream.feed_data(data[:100])
+            stream.feed_data(data[100:])
+            stream.feed_eof()
+
+            r = self.loop.run_until_complete(
+                client.request(
+                    'post', url, data=stream,
+                    headers={'Content-Length': str(len(data))},
+                    loop=self.loop))
+            content = self.loop.run_until_complete(r.json())
+            r.close()
+
+            self.assertEqual(str(len(data)),
+                             content['headers']['Content-Length'])
+
+    def test_POST_ChunksQueue(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+
+            with open(__file__, 'rb') as f:
+                data = f.read()
+
+            stream = aiohttp.ChunksQueue(loop=self.loop)
+            stream.feed_data(data[:100])
+            stream.feed_data(data[100:])
+            stream.feed_eof()
+
+            r = self.loop.run_until_complete(
+                client.request(
+                    'post', url, data=stream,
+                    headers={'Content-Length': str(len(data))},
+                    loop=self.loop))
+            content = self.loop.run_until_complete(r.json())
+            r.close()
+
+            self.assertEqual(str(len(data)),
+                             content['headers']['Content-Length'])
+
     def test_expect_continue(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')

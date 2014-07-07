@@ -17,7 +17,7 @@ import weakref
 import warnings
 
 import aiohttp
-from . import helpers
+from . import helpers, streams
 from .log import client_log
 from .streams import EOF_MARKER, FlowControlStreamReader
 from .multidict import CaseInsensitiveMultiDict, MultiDict, MutableMultiDict
@@ -375,6 +375,9 @@ class ClientRequest:
             if 'CONTENT-LENGTH' not in self.headers and not self.chunked:
                 self.headers['CONTENT-LENGTH'] = str(len(self.body))
 
+        elif isinstance(data, (asyncio.StreamReader, streams.DataQueue)):
+            self.body = data
+
         elif (hasattr(data, '__iter__') and not
               isinstance(data, (tuple, list, dict, io.IOBase))):
             self.body = data
@@ -464,6 +467,23 @@ class ClientRequest:
                         raise ValueError(
                             'Bytes object is expected, got: %s.' %
                             type(result))
+
+            elif isinstance(self.body, asyncio.StreamReader):
+                chunk = yield from self.body.read(streams.DEFAULT_LIMIT)
+                while chunk:
+                    yield from request.write(chunk)
+                    chunk = yield from self.body.read(streams.DEFAULT_LIMIT)
+
+            elif isinstance(self.body, streams.DataQueue):
+                while True:
+                    try:
+                        chunk = yield from self.body.read()
+                        if chunk is EOF_MARKER:
+                            break
+                        yield from request.write(chunk)
+                    except streams.EofStream:
+                        break
+
             else:
                 if isinstance(self.body, (bytes, bytearray)):
                     self.body = (self.body,)

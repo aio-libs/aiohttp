@@ -6,6 +6,8 @@ CHANGES
 
 - Fixed client basic authentication.
 
+- Support StreamReader and DataQueue as request data.
+
 - Client files handling refactoring #20
 
 - Backward incompatible: Replace DataQueue with StreamReader for request payload #87

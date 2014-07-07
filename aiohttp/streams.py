@@ -14,7 +14,7 @@ class EofStream(Exception):
     """eof stream indication."""
 
 
-class StreamReader:
+class StreamReader(asyncio.StreamReader):
 
     total_bytes = 0
 
