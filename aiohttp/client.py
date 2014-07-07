@@ -671,7 +671,7 @@ class ClientResponse:
 
     @asyncio.coroutine
     def read(self, decode=False):
-        """Read response payload. Decode known types of content."""
+        """Read response payload."""
         if self._content is None:
             try:
                 self._content = yield from self.content.read()
@@ -691,6 +691,18 @@ class ClientResponse:
             return (yield from self.json())
 
         return data
+
+    @asyncio.coroutine
+    def read_text(self, encoding=None):
+        """Read response payload and decode."""
+        if self._content is None:
+            yield from self.read()
+
+        ctype = self.headers.get('CONTENT-TYPE', '').lower()
+        mtype, stype, _, params = helpers.parse_mimetype(ctype)
+
+        encoding = encoding or params.get('charset', 'utf-8')
+        return self._content.decode(encoding)
 
     @asyncio.coroutine
     def read_and_close(self, decode=False):
