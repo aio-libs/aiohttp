@@ -1,8 +1,24 @@
 """Various helper functions"""
+import base64
 import io
 import os
 import uuid
 import urllib.parse
+from collections import namedtuple
+
+
+class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
+    def __new__(cls, login, password=None, encoding='latin1'):
+        return super().__new__(cls, login, password, encoding)
+
+    def __bool__(self):
+        return self.login is not None and self.password is not None
+
+    def encode(self):
+        if not self:
+            raise ValueError("HTTP Auth login or password is missing")
+        creds = ('%s:%s' % (self.login, self.password)).encode(self.encoding)
+        return 'Basic %s' % base64.b64encode(creds).decode(self.encoding)
 
 
 class FormData:

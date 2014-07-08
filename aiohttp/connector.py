@@ -10,9 +10,10 @@ import ssl
 import socket
 import weakref
 
+from .client import ClientRequest
 from .errors import HttpProxyError
 from .errors import ProxyConnectionError
-from .client import ClientRequest, BasicAuth, BasicAuthEx
+from .helpers import BasicAuth
 
 
 class Connection(object):
@@ -285,10 +286,8 @@ class ProxyConnector(TCPConnector):
         self._proxy_auth = proxy_auth
         assert proxy.startswith('http://'), (
             "Only http proxy supported", proxy)
-        assert (proxy_auth is None
-                or isinstance(proxy_auth, (BasicAuth, BasicAuthEx))), \
-            ("proxy_auth must be None, BasicAuth() or BasicAuthEx()",
-             proxy_auth)
+        assert proxy_auth is None or isinstance(proxy_auth, BasicAuth), (
+            "proxy_auth must be None or BasicAuth() tuple", proxy_auth)
 
     @property
     def proxy(self):
