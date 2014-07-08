@@ -1,6 +1,6 @@
 """HTTP Client for asyncio."""
 
-__all__ = ['request', 'HttpClient', 'BasicAuth']
+__all__ = ['request', 'HttpClient', 'BasicAuth', 'BasicAuthEx']
 
 import asyncio
 import base64
@@ -30,6 +30,8 @@ HTTP_PORT = 80
 HTTPS_PORT = 443
 
 BasicAuth = collections.namedtuple('BasicAuth', ['login', 'password'])
+BasicAuthEx = collections.namedtuple('BasicAuthEx',
+                                     ['login', 'password', 'encoding'])
 
 
 @asyncio.coroutine
@@ -354,17 +356,22 @@ class ClientRequest:
         if auth is None:
             return
 
-        if not isinstance(auth, BasicAuth):
+        if not isinstance(auth, (BasicAuth, BasicAuthEx)):
             warnings.warn(
-                'BasicAuth() tuple is required instead ', DeprecationWarning)
+                'BasicAuth() or BasicAuthEx() tuple is required instead ',
+                DeprecationWarning)
 
-        basic_login, basic_passwd = auth
+        if isinstance(auth, BasicAuthEx):
+            basic_login, basic_passwd, encoding = auth
+        else:
+            basic_login, basic_passwd = auth
+            encoding = 'latin1'
 
         if basic_login is not None and basic_passwd is not None:
             self.headers['AUTHORIZATION'] = 'Basic %s' % (
                 base64.b64encode(
-                    ('%s:%s' % (basic_login, basic_passwd)).encode('latin1'))
-                .strip().decode('latin1'))
+                    ('%s:%s' % (basic_login, basic_passwd)).encode(encoding))
+                .strip().decode(encoding))
         elif basic_login is not None or basic_passwd is not None:
             raise ValueError("HTTP Auth login or password is missing")
 

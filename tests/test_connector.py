@@ -353,7 +353,8 @@ class ProxyConnectorTests(unittest.TestCase):
 
     def test_proxy_auth(self):
         with self.assertRaisesRegex(AssertionError,
-                                    "must be None or BasicAuth"):
+                                    "must be None, BasicAuth() "
+                                    "or BasicAuthEx()"):
             aiohttp.ProxyConnector('http://proxy.example.com',
                                    proxy_auth=('user', 'pass'),
                                    loop=unittest.mock.Mock())
@@ -425,6 +426,14 @@ class ProxyConnectorTests(unittest.TestCase):
             'GET', 'http://proxy.example.com',
             auth=aiohttp.BasicAuth('user', 'pass'),
             loop=unittest.mock.ANY, headers=unittest.mock.ANY)
+
+    @unittest.mock.patch('aiohttp.connector.ClientRequest')
+    def test_auth_utf8(self, ClientRequestMock):
+        proxy_req = ClientRequest(
+            'GET', 'http://proxy.example.com',
+            auth=aiohttp.BasicAuthEx('юзер', 'пасс', 'utf-8'))
+        ClientRequestMock.return_value = proxy_req
+        self.assertIn('AUTHORIZATION', proxy_req.headers)
 
     @unittest.mock.patch('aiohttp.connector.ClientRequest')
     def test_auth_from_url(self, ClientRequestMock):

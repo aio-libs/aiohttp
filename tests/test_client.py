@@ -395,6 +395,13 @@ class ClientRequestTests(unittest.TestCase):
         self.assertIn('AUTHORIZATION', req.headers)
         self.assertEqual('Basic bmtpbToxMjM0', req.headers['AUTHORIZATION'])
 
+    def test_basic_auth_utf8(self):
+        req = ClientRequest('get', 'http://python.org',
+                            auth=aiohttp.BasicAuthEx('nkim', 'секрет', 'utf-8'))
+        self.assertIn('AUTHORIZATION', req.headers)
+        self.assertEqual('Basic bmtpbTrRgdC10LrRgNC10YI=',
+                         req.headers['AUTHORIZATION'])
+
     def test_basic_auth_tuple_deprecated(self):
         req = ClientRequest('get', 'http://python.org', auth=('nkim', '1234'))
         self.assertIn('AUTHORIZATION', req.headers)
