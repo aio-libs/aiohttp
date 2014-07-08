@@ -357,8 +357,8 @@ class ProxyConnectorTests(unittest.TestCase):
                                    proxy_auth=('user', 'pass'),
                                    loop=unittest.mock.Mock())
         self.assertEqual(ctx.exception.args[0],
-                         ("proxy_auth must be None, BasicAuth() "
-                          "or BasicAuthEx()", ('user', 'pass')))
+                         ("proxy_auth must be None or BasicAuth() tuple",
+                          ('user', 'pass')))
 
 
     @unittest.mock.patch('aiohttp.connector.ClientRequest')
@@ -371,7 +371,7 @@ class ProxyConnectorTests(unittest.TestCase):
 
         connector = aiohttp.ProxyConnector(
             'http://user:pass@proxy.example.com',
-            proxy_auth=aiohttp.BasicAuth(None, None),
+            proxy_auth=aiohttp.helpers.BasicAuth(None, None),
             loop=loop_mock)
 
         def check_proxy_req(*args, **kw):
@@ -398,7 +398,8 @@ class ProxyConnectorTests(unittest.TestCase):
     @unittest.mock.patch('aiohttp.connector.ClientRequest')
     def test_auth(self, ClientRequestMock):
         proxy_req = ClientRequest('GET', 'http://proxy.example.com',
-                                  auth=aiohttp.BasicAuth('user', 'pass'))
+                                  auth=aiohttp.helpers.BasicAuth('user',
+                                                                 'pass'))
         ClientRequestMock.return_value = proxy_req
         self.assertIn('AUTHORIZATION', proxy_req.headers)
         self.assertNotIn('PROXY-AUTHORIZATION', proxy_req.headers)
@@ -406,7 +407,7 @@ class ProxyConnectorTests(unittest.TestCase):
         loop_mock = unittest.mock.Mock()
         connector = aiohttp.ProxyConnector(
             'http://proxy.example.com', loop=loop_mock,
-            proxy_auth=aiohttp.BasicAuth('user', 'pass'))
+            proxy_auth=aiohttp.helpers.BasicAuth('user', 'pass'))
         connector._resolve_host = resolve_mock = unittest.mock.Mock()
         self._fake_coroutine(resolve_mock, [unittest.mock.MagicMock()])
 
@@ -426,15 +427,13 @@ class ProxyConnectorTests(unittest.TestCase):
 
         ClientRequestMock.assert_called_with(
             'GET', 'http://proxy.example.com',
-            auth=aiohttp.BasicAuth('user', 'pass'),
+            auth=aiohttp.helpers.BasicAuth('user', 'pass'),
             loop=unittest.mock.ANY, headers=unittest.mock.ANY)
 
-    @unittest.mock.patch('aiohttp.connector.ClientRequest')
-    def test_auth_utf8(self, ClientRequestMock):
+    def test_auth_utf8(self):
         proxy_req = ClientRequest(
             'GET', 'http://proxy.example.com',
-            auth=aiohttp.BasicAuthEx('юзер', 'пасс', 'utf-8'))
-        ClientRequestMock.return_value = proxy_req
+            auth=aiohttp.helpers.BasicAuth('юзер', 'пасс', 'utf-8'))
         self.assertIn('AUTHORIZATION', proxy_req.headers)
 
     @unittest.mock.patch('aiohttp.connector.ClientRequest')

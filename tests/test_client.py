@@ -391,13 +391,14 @@ class ClientRequestTests(unittest.TestCase):
 
     def test_basic_auth(self):
         req = ClientRequest('get', 'http://python.org',
-                            auth=aiohttp.BasicAuth('nkim', '1234'))
+                            auth=aiohttp.helpers.BasicAuth('nkim', '1234'))
         self.assertIn('AUTHORIZATION', req.headers)
         self.assertEqual('Basic bmtpbToxMjM0', req.headers['AUTHORIZATION'])
 
     def test_basic_auth_utf8(self):
         req = ClientRequest('get', 'http://python.org',
-                            auth=aiohttp.BasicAuthEx('nkim', 'секрет', 'utf-8'))
+                            auth=aiohttp.helpers.BasicAuth('nkim', 'секрет',
+                                                           'utf-8'))
         self.assertIn('AUTHORIZATION', req.headers)
         self.assertEqual('Basic bmtpbTrRgdC10LrRgNC10YI=',
                          req.headers['AUTHORIZATION'])
@@ -414,7 +415,7 @@ class ClientRequestTests(unittest.TestCase):
 
         req = ClientRequest(
             'get', 'http://nkim@python.org',
-            auth=aiohttp.BasicAuth('nkim', '1234'))
+            auth=aiohttp.helpers.BasicAuth('nkim', '1234'))
         self.assertIn('AUTHORIZATION', req.headers)
         self.assertEqual('Basic bmtpbToxMjM0', req.headers['AUTHORIZATION'])
 
@@ -422,7 +423,8 @@ class ClientRequestTests(unittest.TestCase):
         # missing password here
         self.assertRaises(
             ValueError, ClientRequest,
-            'get', 'http://python.org', auth=aiohttp.BasicAuth('nkim', None))
+            'get', 'http://python.org',
+            auth=aiohttp.helpers.BasicAuth('nkim', None))
 
     def test_no_content_length(self):
         req = ClientRequest('get', 'http://python.org', loop=self.loop)

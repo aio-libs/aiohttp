@@ -1,9 +1,8 @@
 """HTTP Client for asyncio."""
 
-__all__ = ['request', 'HttpClient', 'BasicAuth', 'BasicAuthEx']
+__all__ = ['request', 'HttpClient']
 
 import asyncio
-import base64
 import collections
 import http.cookies
 import json
@@ -28,10 +27,6 @@ from .multidict import CaseInsensitiveMultiDict, MultiDict, MutableMultiDict
 
 HTTP_PORT = 80
 HTTPS_PORT = 443
-
-BasicAuth = collections.namedtuple('BasicAuth', ['login', 'password'])
-BasicAuthEx = collections.namedtuple('BasicAuthEx',
-                                     ['login', 'password', 'encoding'])
 
 
 @asyncio.coroutine
@@ -227,11 +222,7 @@ class ClientRequest:
         # basic auth info
         if '@' in netloc:
             authinfo, netloc = netloc.split('@', 1)
-            creds = authinfo.split(':', 1)
-            if len(creds) > 1:
-                self.auth = BasicAuth(creds[0], creds[1])
-            else:
-                self.auth = BasicAuth(creds[0], '')
+            self.auth = helpers.BasicAuth(*authinfo.split(':', 1))
 
         # Record entire netloc for usage in host header
         self.netloc = netloc
@@ -356,24 +347,15 @@ class ClientRequest:
         if auth is None:
             return
 
-        if not isinstance(auth, (BasicAuth, BasicAuthEx)):
+        if not isinstance(auth, helpers.BasicAuth):
             warnings.warn(
-                'BasicAuth() or BasicAuthEx() tuple is required instead ',
-                DeprecationWarning)
+                'BasicAuth() tuple is required instead ', DeprecationWarning)
 
-        if isinstance(auth, BasicAuthEx):
-            basic_login, basic_passwd, encoding = auth
-        else:
-            basic_login, basic_passwd = auth
-            encoding = 'latin1'
+        if not isinstance(auth, helpers.BasicAuth):
+            auth = helpers.BasicAuth(*auth)
 
-        if basic_login is not None and basic_passwd is not None:
-            self.headers['AUTHORIZATION'] = 'Basic %s' % (
-                base64.b64encode(
-                    ('%s:%s' % (basic_login, basic_passwd)).encode(encoding))
-                .strip().decode(encoding))
-        elif basic_login is not None or basic_passwd is not None:
-            raise ValueError("HTTP Auth login or password is missing")
+        if auth.login:
+            self.headers['AUTHORIZATION'] = auth.encode()
 
     def update_body_from_data(self, data):
         if isinstance(data, str):
