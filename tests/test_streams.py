@@ -636,6 +636,9 @@ class ChunksQueueTests(DataQueueTests):
         self.assertEqual(thing, b'')
         self.assertTrue(self.buffer.at_eof())
 
+    def test_readany(self):
+        self.assertIs(self.buffer.read.__func__, self.buffer.readany.__func__)
+
 
 class FlowControlChunksQueueTests(FlowControlDataQueueTests):
 
@@ -643,3 +646,6 @@ class FlowControlChunksQueueTests(FlowControlDataQueueTests):
         super().setUp()
         self.buffer = streams.FlowControlChunksQueue(self.stream,
                                                      loop=self.loop)
+
+    def test_readany(self):
+        self.assertIs(self.buffer.read.__func__, self.buffer.readany.__func__)
