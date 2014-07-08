@@ -60,7 +60,7 @@ class HttpParser:
         lines_idx = 1
         line = lines[1]
 
-        while line not in ('\r\n', '\n'):
+        while line:
             header_length = len(line)
 
             # Parse initial header name : value pair.
@@ -78,7 +78,7 @@ class HttpParser:
             line = lines[lines_idx]
 
             # consume continuation lines
-            continuation = line[0] in CONTINUATION
+            continuation = line and line[0] in CONTINUATION
 
             if continuation:
                 value = [value]
@@ -93,7 +93,7 @@ class HttpParser:
                     lines_idx += 1
                     line = lines[lines_idx]
                     continuation = line[0] in CONTINUATION
-                value = ''.join(value)
+                value = '\r\n'.join(value)
             else:
                 if header_length > self.max_field_size:
                     raise errors.LineTooLong(
@@ -156,7 +156,7 @@ class HttpRequestParser(HttpParser):
             raise errors.LineTooLong(exc.limit) from None
 
         lines = raw_data.decode(
-            'ascii', 'surrogateescape').splitlines(True)
+            'ascii', 'surrogateescape').split('\r\n')
 
         # request line
         line = lines[0]
@@ -205,7 +205,7 @@ class HttpResponseParser(HttpParser):
                 raise errors.LineTooLong(exc.limit) from None
 
             lines = raw_data.decode(
-                'ascii', 'surrogateescape').splitlines(True)
+                'ascii', 'surrogateescape').split('\r\n')
 
             line = lines[0]
             try:

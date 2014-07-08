@@ -19,8 +19,8 @@ class ParseHeadersTests(unittest.TestCase):
         self.parser = protocol.HttpParser(8190, 32768, 8190)
 
     def test_parse_headers(self):
-        hdrs = ('', 'test: line\r\n', ' continue\r\n',
-                'test2: data\r\n', '\r\n')
+        hdrs = ('', 'test: line', ' continue',
+                'test2: data', '', '')
 
         headers, close, compression = self.parser.parse_headers(hdrs)
 
@@ -31,8 +31,8 @@ class ParseHeadersTests(unittest.TestCase):
 
     def test_parse_headers_multi(self):
         hdrs = ('',
-                'Set-Cookie: c1=cookie1\r\n',
-                'Set-Cookie: c2=cookie2\r\n', '\r\n')
+                'Set-Cookie: c1=cookie1',
+                'Set-Cookie: c2=cookie2', '')
 
         headers, close, compression = self.parser.parse_headers(hdrs)
 
@@ -44,32 +44,32 @@ class ParseHeadersTests(unittest.TestCase):
 
     def test_conn_close(self):
         headers, close, compression = self.parser.parse_headers(
-            ['', 'connection: close\r\n', '\r\n'])
+            ['', 'connection: close', ''])
         self.assertTrue(close)
 
     def test_conn_keep_alive(self):
         headers, close, compression = self.parser.parse_headers(
-            ['', 'connection: keep-alive\r\n', '\r\n'])
+            ['', 'connection: keep-alive', ''])
         self.assertFalse(close)
 
     def test_conn_other(self):
         headers, close, compression = self.parser.parse_headers(
-            ['', 'connection: test\r\n', '\r\n'])
+            ['', 'connection: test', '', ''])
         self.assertIsNone(close)
 
     def test_compression_gzip(self):
         headers, close, compression = self.parser.parse_headers(
-            ['', 'content-encoding: gzip\r\n', '\r\n'])
+            ['', 'content-encoding: gzip', '', ''])
         self.assertEqual('gzip', compression)
 
     def test_compression_deflate(self):
         headers, close, compression = self.parser.parse_headers(
-            ['', 'content-encoding: deflate\r\n', '\r\n'])
+            ['', 'content-encoding: deflate', '', ''])
         self.assertEqual('deflate', compression)
 
     def test_compression_unknown(self):
         headers, close, compression = self.parser.parse_headers(
-            ['', 'content-encoding: compress\r\n', '\r\n'])
+            ['', 'content-encoding: compress', '', ''])
         self.assertIsNone(compression)
 
     def test_max_field_size(self):
@@ -480,7 +480,7 @@ class ParseResponseTests(unittest.TestCase):
         next(p)
         with self.assertRaises(errors.BadStatusLine) as cm:
             p.send(b'HT/11 200 Ok\r\n\r\n')
-        self.assertEqual('HT/11 200 Ok\r\n', cm.exception.args[0])
+        self.assertEqual('HT/11 200 Ok', cm.exception.args[0])
 
     def test_http_response_parser_no_reason(self):
         out = aiohttp.FlowControlDataQueue(self.stream)
