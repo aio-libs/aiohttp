@@ -88,7 +88,7 @@ class EchoServer(asyncio.Protocol):
         while True:
             try:
                 msg = yield from reader.read()
-            except aiohttp.EofStream:
+            except aiohttp.ConnectionError:
                 # client has been disconnected
                 break
 
@@ -107,7 +107,7 @@ class EchoServer(asyncio.Protocol):
 def start_client(loop, host, port):
     transport, stream = yield from loop.create_connection(
         aiohttp.StreamProtocol, host, port)
-    reader = stream.set_parser(my_protocol_parser)
+    reader = stream.reader.set_parser(my_protocol_parser)
     writer = MyProtocolWriter(transport)
     writer.ping()
 
@@ -116,7 +116,7 @@ def start_client(loop, host, port):
     while True:
         try:
             msg = yield from reader.read()
-        except aiohttp.EofStream:
+        except aiohttp.ConnectionError:
             print('Server has been disconnected.')
             break
 

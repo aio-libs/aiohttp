@@ -41,7 +41,7 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
         self.readpayload = readpayload
 
     def create_wsgi_response(self, message):
-        return WsgiResponse(self.transport, message)
+        return WsgiResponse(self.writer, message)
 
     def create_wsgi_environ(self, message, payload):
         uri_parts = urlsplit(message.path)
@@ -71,12 +71,8 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
         script_name = self.SCRIPT_NAME
         server = forward
 
-        for hdr_name, hdr_value in message.headers:
-            if hdr_name == 'EXPECT':
-                # handle expect
-                if hdr_value.lower() == '100-continue':
-                    self.transport.write(b'HTTP/1.1 100 Continue\r\n\r\n')
-            elif hdr_name == 'HOST':
+        for hdr_name, hdr_value in message.headers.items(getall=True):
+            if hdr_name == 'HOST':
                 server = hdr_value
             elif hdr_name == 'SCRIPT_NAME':
                 script_name = hdr_value
@@ -135,8 +131,8 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
         environ['PATH_INFO'] = unquote(path_info)
         environ['SCRIPT_NAME'] = script_name
 
-        environ['async.reader'] = self.stream
-        environ['async.writer'] = self.transport
+        environ['async.reader'] = self.reader
+        environ['async.writer'] = self.writer
 
         return environ
 
@@ -147,11 +143,7 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
 
         if self.readpayload:
             wsgiinput = io.BytesIO()
-            try:
-                while True:
-                    wsgiinput.write((yield from payload.read()))
-            except aiohttp.EofStream:
-                pass
+            wsgiinput.write((yield from payload.read()))
             wsgiinput.seek(0)
             payload = wsgiinput
 
@@ -167,9 +159,9 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
             for item in riter:
                 if isinstance(item, asyncio.Future):
                     item = yield from item
-                resp.write(item)
+                yield from resp.write(item)
 
-            resp.write_eof()
+            yield from resp.write_eof()
         finally:
             if hasattr(riter, 'close'):
                 riter.close()
@@ -205,8 +197,8 @@ class WsgiResponse:
 
     status = None
 
-    def __init__(self, transport, message):
-        self.transport = transport
+    def __init__(self, writer, message):
+        self.writer = writer
         self.message = message
 
     def start_response(self, status, headers, exc_info=None):
@@ -221,7 +213,7 @@ class WsgiResponse:
 
         self.status = status
         resp = self.response = aiohttp.Response(
-            self.transport, status_code,
+            self.writer, status_code,
             self.message.version, self.message.should_close)
         resp.add_headers(*headers)
 

@@ -63,15 +63,10 @@ class AsyncGunicornWorker(base.Worker):
 
     @asyncio.coroutine
     def _run(self):
-        def add_server(t):
-            self.servers.append(t.result())
-
         for sock in self.sockets:
             factory = self.get_factory(sock.sock, *sock.cfg_addr)
-
-            t = asyncio.async(
-                self.loop.create_server(factory, sock=sock.sock))
-            t.add_done_callback(add_server)
+            self.servers.append(
+                (yield from self.loop.create_server(factory, sock=sock.sock)))
 
         # If our parent changed then we shut down.
         pid = os.getpid()
@@ -96,7 +91,8 @@ class AsyncGunicornWorker(base.Worker):
 
                     # prepare connections for closing
                     for conn in self.connections.values():
-                        conn.closing()
+                        if hasattr(conn, 'closing'):
+                            conn.closing()
 
                 yield from asyncio.sleep(1.0, loop=self.loop)
         except KeyboardInterrupt:

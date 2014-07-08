@@ -8,7 +8,10 @@ import signal
 import sys
 
 import asyncio
-import asyncio.selectors
+try:
+    import selectors
+except ImportError:
+    from asyncio import selectors
 
 import aiohttp
 from aiohttp import websocket
@@ -29,7 +32,7 @@ def start_client(loop, url):
             'CONNECTION': 'Upgrade',
             'SEC-WEBSOCKET-VERSION': '13',
             'SEC-WEBSOCKET-KEY': sec_key.decode(),
-        }, timeout=1.0)
+        })
 
     # websocket handshake
     if response.status != 101:
@@ -45,8 +48,9 @@ def start_client(loop, url):
         raise ValueError("Handshake error - Invalid challenge response")
 
     # switch to websocket protocol
-    stream = response.stream.set_parser(websocket.WebSocketParser)
-    writer = websocket.WebSocketWriter(response.transport)
+    connection = response.connection
+    stream = connection.reader.set_parser(websocket.WebSocketParser)
+    writer = websocket.WebSocketWriter(connection.writer)
 
     # input reader
     def stdin_callback():
@@ -62,7 +66,7 @@ def start_client(loop, url):
         while True:
             try:
                 msg = yield from stream.read()
-            except aiohttp.EofStream:
+            except:
                 # server disconnected
                 break
 
@@ -93,7 +97,7 @@ if __name__ == '__main__':
 
     url = 'http://{}:{}'.format(args.host, args.port)
 
-    loop = asyncio.SelectorEventLoop(asyncio.selectors.SelectSelector())
+    loop = asyncio.SelectorEventLoop(selectors.SelectSelector())
     asyncio.set_event_loop(loop)
 
     loop.add_signal_handler(signal.SIGINT, loop.stop)

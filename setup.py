@@ -1,15 +1,24 @@
+import codecs
 import os
+import re
 import sys
 from setuptools import setup, find_packages
 
-version = '0.6.3dev'
+
+with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
+        __file__)), 'aiohttp', '__init__.py'), 'r', 'latin1') as fp:
+    try:
+        version = re.findall(r"^__version__ = '([^']+)'$", fp.read(), re.M)[0]
+    except IndexError:
+        raise RuntimeError('Unable to determine version.')
+
 
 if sys.version_info >= (3,4):
     install_requires = []
 else:
     install_requires = ['asyncio']
 
-tests_require = install_requires + ['nose', 'gunicorn']
+tests_require = install_requires + ['nose', 'gunicorn', 'chardet']
 
 
 def read(f):

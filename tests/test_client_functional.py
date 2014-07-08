@@ -3,13 +3,16 @@
 import gc
 import io
 import os.path
+import json
 import http.cookies
 import asyncio
 import unittest
+from unittest import mock
 
 import aiohttp
 from aiohttp import client
 from aiohttp import test_utils
+from aiohttp.multidict import MultiDict
 
 
 class HttpClientFunctionalTests(unittest.TestCase):
@@ -36,7 +39,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 content = content1.decode()
 
                 self.assertEqual(r.status, 200)
-                self.assertIn('"method": "%s"' % meth.upper(), content)
+                if meth == 'head':
+                    self.assertEqual(b'', content1)
+                else:
+                    self.assertIn('"method": "%s"' % meth.upper(), content)
                 self.assertEqual(content1, content2)
                 r.close()
 
@@ -53,16 +59,19 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 content = content1.decode()
 
                 self.assertEqual(r.status, 200)
-                self.assertIn('"method": "%s"' % meth.upper(), content)
+                if meth == 'head':
+                    self.assertEqual(b'', content1)
+                else:
+                    self.assertIn('"method": "%s"' % meth.upper(), content)
                 self.assertEqual(content1, content2)
                 r.close()
 
-    def test_client_HTTP_200_OK_METHOD_with_session(self):
+    def test_client_HTTP_200_OK_METHOD_no_conn_pool(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             for meth in ('get', 'post', 'put', 'delete', 'head'):
                 host = httpd.url().split('://', 1)[-1]
                 httpclient = client.HttpClient(
-                    host, loop=self.loop, session=True)
+                    host, loop=self.loop, conn_pool=False)
 
                 r = self.loop.run_until_complete(
                     httpclient.request(meth, '/method/%s' % meth))
@@ -71,7 +80,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 content = content1.decode()
 
                 self.assertEqual(r.status, 200)
-                self.assertIn('"method": "%s"' % meth.upper(), content)
+                if meth == 'head':
+                    self.assertEqual(b'', content1)
+                else:
+                    self.assertIn('"method": "%s"' % meth.upper(), content)
                 self.assertEqual(content1, content2)
                 r.close()
 
@@ -89,7 +101,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 content = content1.decode()
 
                 self.assertEqual(r.status, 200)
-                self.assertIn('"method": "%s"' % meth.upper(), content)
+                if meth == 'head':
+                    self.assertEqual(b'', content1)
+                else:
+                    self.assertIn('"method": "%s"' % meth.upper(), content)
                 self.assertEqual(content1, content2)
                 r.close()
 
@@ -110,16 +125,32 @@ class HttpClientFunctionalTests(unittest.TestCase):
             r.close()
 
     def test_HTTP_200_OK_METHOD_ssl(self):
+        connector = aiohttp.TCPConnector(verify_ssl=False, loop=self.loop)
+
         with test_utils.run_server(self.loop, use_ssl=True) as httpd:
             for meth in ('get', 'post', 'put', 'delete', 'head'):
-                r = self.loop.run_until_complete(
-                    client.request(meth, httpd.url('method', meth),
-                                   loop=self.loop, verify_ssl=False))
-                content = self.loop.run_until_complete(r.read())
+                @asyncio.coroutine
+                def go():
+                    yield from asyncio.sleep(0.1, loop=self.loop)
 
-                self.assertEqual(r.status, 200)
-                self.assertEqual(content, b'Test message')
-                r.close()
+                    r = yield from client.request(
+                        meth, httpd.url('method', meth),
+                        loop=self.loop, connector=connector)
+                    content = yield from r.read()
+
+                    self.assertEqual(r.status, 200)
+                    if meth == 'head':
+                        self.assertEqual(b'', content)
+                    else:
+                        self.assertEqual(content, b'Test message')
+                    r.close()
+                    # let loop to make one iteration to call connection_lost
+                    # and close socket
+                    yield from asyncio.sleep(0, loop=self.loop)
+
+                self.loop.run_until_complete(go())
+
+        connector.close()
 
     def test_use_global_loop(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
@@ -140,21 +171,27 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
     def test_HTTP_302_REDIRECT_GET(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
-            r = self.loop.run_until_complete(
-                client.request('get', httpd.url('redirect', 2),
-                               loop=self.loop))
+            @asyncio.coroutine
+            def go():
+                r = yield from client.request('get',
+                                              httpd.url('redirect', 2),
+                                              loop=self.loop)
 
-            self.assertEqual(r.status, 200)
-            self.assertEqual(2, httpd['redirects'])
-            r.close()
+                self.assertEqual(r.status, 200)
+                self.assertEqual(2, httpd['redirects'])
+                r.close()
+            self.loop.run_until_complete(go())
 
     def test_HTTP_302_REDIRECT_NON_HTTP(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
-            self.assertRaises(
-                ValueError,
-                self.loop.run_until_complete,
-                client.request('get', httpd.url('redirect_err'),
-                               loop=self.loop))
+            @asyncio.coroutine
+            def go():
+                with self.assertRaises(ValueError):
+                    yield from client.request('get',
+                                              httpd.url('redirect_err'),
+                                              loop=self.loop)
+
+            self.loop.run_until_complete(go())
 
     def test_HTTP_302_REDIRECT_POST(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
@@ -193,16 +230,21 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
     def test_HTTP_200_GET_WITH_MIXED_PARAMS(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
-            r = self.loop.run_until_complete(
-                client.request(
+            @asyncio.coroutine
+            def go():
+                r = yield from client.request(
                     'get', httpd.url('method', 'get') + '?test=true',
-                    params={'q': 'test'}, loop=self.loop))
-            content = self.loop.run_until_complete(r.content.read())
-            content = content.decode()
+                    params={'q': 'test'}, loop=self.loop)
+                content = yield from r.content.read()
+                content = content.decode()
 
-            self.assertIn('"query": "test=true&q=test"', content)
-            self.assertEqual(r.status, 200)
-            r.close()
+                self.assertIn('"query": "test=true&q=test"', content)
+                self.assertEqual(r.status, 200)
+                r.close()
+                # let loop to make one iteration to call connection_lost
+                # and close socket
+                yield from asyncio.sleep(0, loop=self.loop)
+            self.loop.run_until_complete(go())
 
     def test_POST_DATA(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
@@ -212,7 +254,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                                loop=self.loop))
             self.assertEqual(r.status, 200)
 
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
             self.assertEqual({'some': ['data']}, content['form'])
             self.assertEqual(r.status, 200)
             r.close()
@@ -226,7 +268,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                                loop=self.loop))
             self.assertEqual(r.status, 200)
 
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
             self.assertEqual('deflate', content['compression'])
             self.assertEqual({'some': ['data']}, content['form'])
             self.assertEqual(r.status, 200)
@@ -239,21 +281,48 @@ class HttpClientFunctionalTests(unittest.TestCase):
             with open(__file__) as f:
                 r = self.loop.run_until_complete(
                     client.request(
-                        'post', url, files={'some': f}, chunked=1024,
+                        'post', url, data={'some': f, 'test': b'data'},
+                        chunked=1024,
                         headers={'Transfer-Encoding': 'chunked'},
                         loop=self.loop))
-                content = self.loop.run_until_complete(r.read(True))
+                content = self.loop.run_until_complete(r.json())
+                files = list(
+                    sorted(content['multipart-data'],
+                           key=lambda d: d['name']))
 
                 f.seek(0)
                 filename = os.path.split(f.name)[-1]
 
-                self.assertEqual(1, len(content['multipart-data']))
-                self.assertEqual(
-                    'some', content['multipart-data'][0]['name'])
-                self.assertEqual(
-                    filename, content['multipart-data'][0]['filename'])
-                self.assertEqual(
-                    f.read(), content['multipart-data'][0]['data'])
+                self.assertEqual(2, len(content['multipart-data']))
+                self.assertEqual('some', files[0]['name'])
+                self.assertEqual(filename, files[0]['filename'])
+                self.assertEqual(f.read(), files[0]['data'])
+                self.assertEqual(r.status, 200)
+                r.close()
+
+    def test_POST_FILES_DEPRECATED(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+
+            with open(__file__) as f:
+                r = self.loop.run_until_complete(
+                    client.request(
+                        'post', url, files={'some': f, 'test': b'data'},
+                        chunked=1024,
+                        headers={'Transfer-Encoding': 'chunked'},
+                        loop=self.loop))
+                content = self.loop.run_until_complete(r.json())
+                files = list(
+                    sorted(content['multipart-data'],
+                           key=lambda d: d['name']))
+
+                f.seek(0)
+                filename = os.path.split(f.name)[-1]
+
+                self.assertEqual(2, len(content['multipart-data']))
+                self.assertEqual('some', files[0]['name'])
+                self.assertEqual(filename, files[0]['filename'])
+                self.assertEqual(f.read(), files[0]['data'])
                 self.assertEqual(r.status, 200)
                 r.close()
 
@@ -263,11 +332,11 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
             with open(__file__) as f:
                 r = self.loop.run_until_complete(
-                    client.request('post', url, files={'some': f},
+                    client.request('post', url, data={'some': f},
                                    chunked=1024, compress='deflate',
                                    loop=self.loop))
 
-                content = self.loop.run_until_complete(r.read(True))
+                content = self.loop.run_until_complete(r.json())
 
                 f.seek(0)
                 filename = os.path.split(f.name)[-1]
@@ -289,19 +358,30 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
             with open(__file__) as f:
                 r = self.loop.run_until_complete(
-                    client.request('post', url, files=[('some', f.read())],
+                    client.request('post', url, data=[('some', f.read())],
                                    loop=self.loop))
 
-                content = self.loop.run_until_complete(r.read(True))
+                content = self.loop.run_until_complete(r.json())
 
                 f.seek(0)
-                self.assertEqual(1, len(content['multipart-data']))
-                self.assertEqual(
-                    'some', content['multipart-data'][0]['name'])
-                self.assertEqual(
-                    'some', content['multipart-data'][0]['filename'])
-                self.assertEqual(
-                    f.read(), content['multipart-data'][0]['data'])
+                self.assertEqual(1, len(content['form']))
+                self.assertIn('some', content['form'])
+                self.assertEqual(f.read(), content['form']['some'][0])
+                self.assertEqual(r.status, 200)
+                r.close()
+
+    def test_POST_FILES_STR_SIMPLE(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+
+            with open(__file__) as f:
+                r = self.loop.run_until_complete(
+                    client.request('post', url, data=f.read(), loop=self.loop))
+
+                content = self.loop.run_until_complete(r.json())
+
+                f.seek(0)
+                self.assertEqual(f.read(), content['content'])
                 self.assertEqual(r.status, 200)
                 r.close()
 
@@ -311,10 +391,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
             with open(__file__) as f:
                 r = self.loop.run_until_complete(
-                    client.request('post', url, files=[('some', f)],
+                    client.request('post', url, data=[('some', f)],
                                    loop=self.loop))
 
-                content = self.loop.run_until_complete(r.read(True))
+                content = self.loop.run_until_complete(r.json())
 
                 f.seek(0)
                 filename = os.path.split(f.name)[-1]
@@ -336,9 +416,9 @@ class HttpClientFunctionalTests(unittest.TestCase):
             with open(__file__) as f:
                 r = self.loop.run_until_complete(
                     client.request('post', url, loop=self.loop,
-                                   files=[('some', f, 'text/plain')]))
+                                   data=[('some', f, 'text/plain')]))
 
-                content = self.loop.run_until_complete(r.read(True))
+                content = self.loop.run_until_complete(r.json())
 
                 f.seek(0)
                 filename = os.path.split(f.name)[-1]
@@ -361,9 +441,9 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
             with open(__file__) as f:
                 r = self.loop.run_until_complete(
-                    client.request('post', url, files=[f], loop=self.loop))
+                    client.request('post', url, data=f, loop=self.loop))
 
-                content = self.loop.run_until_complete(r.read(True))
+                content = self.loop.run_until_complete(r.json())
 
                 f.seek(0)
                 filename = os.path.split(f.name)[-1]
@@ -385,16 +465,42 @@ class HttpClientFunctionalTests(unittest.TestCase):
             data = io.BytesIO(b'data')
 
             r = self.loop.run_until_complete(
-                client.request('post', url, files=[data], loop=self.loop))
+                client.request('post', url, data=[data], loop=self.loop))
 
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
 
             self.assertEqual(1, len(content['multipart-data']))
             self.assertEqual(
-                {'content-type': 'application/octet-stream',
+                {'content-type': 'text/plain',
                  'data': 'data',
                  'filename': 'unknown',
                  'name': 'unknown'}, content['multipart-data'][0])
+            self.assertEqual(r.status, 200)
+            r.close()
+
+    def test_POST_FILES_IO_WITH_PARAMS(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+
+            data = io.BytesIO(b'data')
+
+            r = self.loop.run_until_complete(
+                client.request('post', url,
+                               data=(('test', 'true'), (data,)),
+                               loop=self.loop))
+
+            content = self.loop.run_until_complete(r.json())
+
+            self.assertEqual(2, len(content['multipart-data']))
+            self.assertEqual(
+                {'content-type': 'text/plain',
+                 'data': 'true',
+                 'name': 'test'}, content['multipart-data'][0])
+            self.assertEqual(
+                {'content-type': 'text/plain',
+                 'data': 'data',
+                 'filename': 'unknown',
+                 'name': 'unknown'}, content['multipart-data'][1])
             self.assertEqual(r.status, 200)
             r.close()
 
@@ -405,24 +511,22 @@ class HttpClientFunctionalTests(unittest.TestCase):
             with open(__file__) as f:
                 r = self.loop.run_until_complete(
                     client.request('post', url, loop=self.loop,
-                                   data={'test': 'true'}, files={'some': f}))
+                                   data={'test': 'true', 'some': f}))
 
-                content = self.loop.run_until_complete(r.read(True))
+                content = self.loop.run_until_complete(r.json())
+                files = list(
+                    sorted(content['multipart-data'],
+                           key=lambda d: d['name']))
 
                 self.assertEqual(2, len(content['multipart-data']))
-                self.assertEqual(
-                    'test', content['multipart-data'][0]['name'])
-                self.assertEqual(
-                    'true', content['multipart-data'][0]['data'])
+                self.assertEqual('test', files[1]['name'])
+                self.assertEqual('true', files[1]['data'])
 
                 f.seek(0)
                 filename = os.path.split(f.name)[-1]
-                self.assertEqual(
-                    'some', content['multipart-data'][1]['name'])
-                self.assertEqual(
-                    filename, content['multipart-data'][1]['filename'])
-                self.assertEqual(
-                    f.read(), content['multipart-data'][1]['data'])
+                self.assertEqual('some', files[0]['name'])
+                self.assertEqual(filename, files[0]['filename'])
+                self.assertEqual(f.read(), files[0]['data'])
                 self.assertEqual(r.status, 200)
                 r.close()
 
@@ -447,7 +551,75 @@ class HttpClientFunctionalTests(unittest.TestCase):
                     'post', url, data=stream(),
                     headers={'Content-Length': str(len(data))},
                     loop=self.loop))
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
+            r.close()
+
+            self.assertEqual(str(len(data)),
+                             content['headers']['Content-Length'])
+
+    def test_POST_StreamReader(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+
+            with open(__file__, 'rb') as f:
+                data = f.read()
+
+            stream = aiohttp.StreamReader(loop=self.loop)
+            stream.feed_data(data)
+            stream.feed_eof()
+
+            r = self.loop.run_until_complete(
+                client.request(
+                    'post', url, data=stream,
+                    headers={'Content-Length': str(len(data))},
+                    loop=self.loop))
+            content = self.loop.run_until_complete(r.json())
+            r.close()
+
+            self.assertEqual(str(len(data)),
+                             content['headers']['Content-Length'])
+
+    def test_POST_DataQueue(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+
+            with open(__file__, 'rb') as f:
+                data = f.read()
+
+            stream = aiohttp.DataQueue(loop=self.loop)
+            stream.feed_data(data[:100])
+            stream.feed_data(data[100:])
+            stream.feed_eof()
+
+            r = self.loop.run_until_complete(
+                client.request(
+                    'post', url, data=stream,
+                    headers={'Content-Length': str(len(data))},
+                    loop=self.loop))
+            content = self.loop.run_until_complete(r.json())
+            r.close()
+
+            self.assertEqual(str(len(data)),
+                             content['headers']['Content-Length'])
+
+    def test_POST_ChunksQueue(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+
+            with open(__file__, 'rb') as f:
+                data = f.read()
+
+            stream = aiohttp.ChunksQueue(loop=self.loop)
+            stream.feed_data(data[:100])
+            stream.feed_data(data[100:])
+            stream.feed_eof()
+
+            r = self.loop.run_until_complete(
+                client.request(
+                    'post', url, data=stream,
+                    headers={'Content-Length': str(len(data))},
+                    loop=self.loop))
+            content = self.loop.run_until_complete(r.json())
             r.close()
 
             self.assertEqual(str(len(data)),
@@ -461,7 +633,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                                expect100=True, loop=self.loop))
             self.assertEqual(r.status, 200)
 
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
             self.assertEqual('100-continue', content['headers']['Expect'])
             self.assertEqual(r.status, 200)
             r.close()
@@ -494,41 +666,47 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertIn(b'"Cookie": "test1=123; test3=456"', bytes(content))
             r.close()
 
-    def test_set_cookies(self):
+    @mock.patch('aiohttp.client.client_log')
+    def test_set_cookies(self, m_log):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             resp = self.loop.run_until_complete(
                 client.request('get', httpd.url('cookies'), loop=self.loop))
             self.assertEqual(resp.status, 200)
 
+            self.assertEqual(list(sorted(resp.cookies.keys())), ['c1', 'c2'])
             self.assertEqual(resp.cookies['c1'].value, 'cookie1')
             self.assertEqual(resp.cookies['c2'].value, 'cookie2')
             resp.close()
+
+        m_log.warning.assert_called_with('Can not load response cookies: %s',
+                                         mock.ANY)
 
     def test_chunked(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
                 client.request('get', httpd.url('chunked'), loop=self.loop))
             self.assertEqual(r.status, 200)
-            self.assertEqual(r['Transfer-Encoding'], 'chunked')
-            content = self.loop.run_until_complete(r.read(True))
+            self.assertEqual(r.headers.getone('TRANSFER-ENCODING'), 'chunked')
+            content = self.loop.run_until_complete(r.json())
             self.assertEqual(content['path'], '/chunked')
             r.close()
 
-    def test_timeout(self):
+    def test_broken_connection(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
-            httpd['noresponse'] = True
+            r = self.loop.run_until_complete(
+                client.request('get', httpd.url('broken'), loop=self.loop))
+            self.assertEqual(r.status, 200)
             self.assertRaises(
-                asyncio.TimeoutError,
-                self.loop.run_until_complete,
-                client.request('get', httpd.url('method', 'get'),
-                               timeout=0.1, loop=self.loop))
+                aiohttp.IncompleteRead,
+                self.loop.run_until_complete, r.json())
+            r.close()
 
     def test_request_conn_error(self):
         self.assertRaises(
             aiohttp.ConnectionError,
             self.loop.run_until_complete,
             client.request('get', 'http://0.0.0.0:1',
-                           timeout=0.1, loop=self.loop))
+                           loop=self.loop))
 
     def test_request_conn_closed(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
@@ -536,70 +714,129 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertRaises(
                 aiohttp.ClientConnectionError,
                 self.loop.run_until_complete,
-                client.request('get', httpd.url('method', 'get'),
-                               loop=self.loop))
+                client.request(
+                    'get', httpd.url('method', 'get'), loop=self.loop))
 
     def test_keepalive(self):
-        from aiohttp import session
-        s = session.Session()
+        from aiohttp import connector
+        c = connector.TCPConnector(share_cookies=True, loop=self.loop)
 
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
                 client.request('get', httpd.url('keepalive',),
-                               session=s, loop=self.loop))
+                               connector=c, loop=self.loop))
             self.assertEqual(r.status, 200)
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
             self.assertEqual(content['content'], 'requests=1')
             r.close()
 
             r = self.loop.run_until_complete(
                 client.request('get', httpd.url('keepalive'),
-                               session=s, loop=self.loop))
+                               connector=c, loop=self.loop))
             self.assertEqual(r.status, 200)
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
             self.assertEqual(content['content'], 'requests=2')
             r.close()
 
+        c.close()
+
     def test_session_close(self):
-        from aiohttp import session
-        s = session.Session()
+        conn = aiohttp.TCPConnector(loop=self.loop)
 
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
                 client.request(
                     'get', httpd.url('keepalive') + '?close=1',
-                    session=s, loop=self.loop))
+                    connector=conn, loop=self.loop))
             self.assertEqual(r.status, 200)
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
             self.assertEqual(content['content'], 'requests=1')
             r.close()
 
             r = self.loop.run_until_complete(
                 client.request('get', httpd.url('keepalive'),
-                               session=s, loop=self.loop))
+                               connector=conn, loop=self.loop))
             self.assertEqual(r.status, 200)
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
             self.assertEqual(content['content'], 'requests=1')
             r.close()
 
-    def test_session_cookies(self):
-        from aiohttp import session
-        s = session.Session()
+        conn.close()
+
+    @mock.patch('aiohttp.client.client_log')
+    def test_session_cookies(self, m_log):
+        from aiohttp import connector
+        conn = connector.TCPConnector(share_cookies=True, loop=self.loop)
 
         with test_utils.run_server(self.loop, router=Functional) as httpd:
-            s.update_cookies({'test': '1'})
+            conn.update_cookies({'test': '1'})
             r = self.loop.run_until_complete(
                 client.request('get', httpd.url('cookies'),
-                               session=s, loop=self.loop))
+                               connector=conn, loop=self.loop))
             self.assertEqual(r.status, 200)
-            content = self.loop.run_until_complete(r.read(True))
+            content = self.loop.run_until_complete(r.json())
 
             self.assertEqual(content['headers']['Cookie'], 'test=1')
             r.close()
 
-            cookies = sorted([(k, v.value) for k, v in s.cookies.items()])
+            cookies = sorted([(k, v.value) for k, v in conn.cookies.items()])
             self.assertEqual(
                 cookies, [('c1', 'cookie1'), ('c2', 'cookie2'), ('test', '1')])
+
+        m_log.warning.assert_called_with(
+            'Can not load response cookies: %s', mock.ANY)
+        conn.close()
+
+    def test_multidict_headers(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+
+            data = b'sample data'
+
+            r = self.loop.run_until_complete(
+                client.request(
+                    'post', url, data=data,
+                    headers=MultiDict({'Content-Length': str(len(data))}),
+                    loop=self.loop))
+            content = self.loop.run_until_complete(r.json())
+            r.close()
+
+            self.assertEqual(str(len(data)),
+                             content['headers']['Content-Length'])
+
+    def test_close_implicit_connector(self):
+
+        @asyncio.coroutine
+        def go(url):
+            r = yield from client.request('GET', url, loop=self.loop)
+
+            connection = r.connection
+            self.assertIsNotNone(connection)
+            connector = connection._connector
+            self.assertIsNotNone(connector)
+            yield from r.read()
+            self.assertEqual(0, len(connector._conns))
+
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('keepalive')
+            self.loop.run_until_complete(go(url))
+
+    def test_dont_close_explicit_connector(self):
+
+        @asyncio.coroutine
+        def go(url):
+            connector = aiohttp.TCPConnector(loop=self.loop)
+
+            r = yield from client.request('GET', url,
+                                          connector=connector,
+                                          loop=self.loop)
+            yield from r.read()
+            self.assertEqual(1, len(connector._conns))
+            connector.close()
+
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('keepalive')
+            self.loop.run_until_complete(go(url))
 
 
 class Functional(test_utils.Router):
@@ -670,4 +907,21 @@ class Functional(test_utils.Router):
         for cookie in cookies.output(header='').split('\n'):
             resp.add_header('Set-Cookie', cookie.strip())
 
+        resp.add_header(
+            'Set-Cookie',
+            'ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}='
+            '{925EC0B8-CB17-4BEB-8A35-1033813B0523}; HttpOnly; Path=/')
         self._response(resp)
+
+    @test_utils.Router.define('/broken$')
+    def broken(self, match):
+        resp = self._start_response(200)
+
+        def write_body(resp, body):
+            self._transport.close()
+            raise ValueError()
+
+        self._response(
+            resp,
+            body=json.dumps({'t': (b'0'*1024).decode('utf-8')}),
+            write_body=write_body)

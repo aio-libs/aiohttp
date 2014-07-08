@@ -139,8 +139,8 @@ def parse_message(buf):
 
 class WebSocketWriter:
 
-    def __init__(self, transport):
-        self.transport = transport
+    def __init__(self, writer):
+        self.writer = writer
 
     def _send_frame(self, message, opcode):
         """Send a frame over the websocket with message as its payload."""
@@ -154,7 +154,7 @@ class WebSocketWriter:
         else:
             header += bytes([127]) + struct.pack('!Q', msg_length)
 
-        self.transport.write(header + message)
+        self.writer.write(header + message)
 
     def pong(self):
         """Send pong message."""
@@ -190,8 +190,6 @@ def do_handshake(method, headers, transport):
     # WebSocket accepts only GET
     if method.upper() != 'GET':
         raise errors.HttpErrorException(405, headers=(('Allow', 'GET'),))
-
-    headers = dict(((hdr, val) for hdr, val in headers if hdr in WS_HDRS))
 
     if 'websocket' != headers.get('UPGRADE', '').lower().strip():
         raise errors.HttpBadRequest(

@@ -16,6 +16,8 @@ from wsgiref.handlers import format_date_time
 
 import aiohttp
 from aiohttp import errors
+from aiohttp import multidict
+from aiohttp.log import internal_log
 
 METHRE = re.compile('[A-Z0-9$-_.]+')
 VERSRE = re.compile('HTTP/(\d+).(\d+)')
@@ -53,12 +55,12 @@ class HttpParser:
         """
         close_conn = None
         encoding = None
-        headers = collections.deque()
+        headers = []
 
         lines_idx = 1
         line = lines[1]
 
-        while line not in ('\r\n', '\n'):
+        while line:
             header_length = len(line)
 
             # Parse initial header name : value pair.
@@ -76,7 +78,7 @@ class HttpParser:
             line = lines[lines_idx]
 
             # consume continuation lines
-            continuation = line[0] in CONTINUATION
+            continuation = line and line[0] in CONTINUATION
 
             if continuation:
                 value = [value]
@@ -91,7 +93,7 @@ class HttpParser:
                     lines_idx += 1
                     line = lines[lines_idx]
                     continuation = line[0] in CONTINUATION
-                value = ''.join(value)
+                value = '\r\n'.join(value)
             else:
                 if header_length > self.max_field_size:
                     raise errors.LineTooLong(
@@ -113,7 +115,7 @@ class HttpParser:
 
             headers.append((name, value))
 
-        return headers, close_conn, encoding
+        return multidict.MultiDict(headers), close_conn, encoding
 
 
 class HttpPrefixParser:
@@ -123,25 +125,20 @@ class HttpPrefixParser:
         self.allowed_methods = [m.upper() for m in allowed_methods]
 
     def __call__(self, out, buf):
-        try:
-            raw_data = yield from buf.waituntil(b' ', 24)
-            method = raw_data.decode('ascii', 'surrogateescape').strip()
+        raw_data = yield from buf.waituntil(b' ', 24)
+        method = raw_data.decode('ascii', 'surrogateescape').strip()
 
-            # method
-            method = method.upper()
-            if not METHRE.match(method):
-                raise errors.BadStatusLine(method)
+        # method
+        method = method.upper()
+        if not METHRE.match(method):
+            raise errors.BadStatusLine(method)
 
-            # allowed method
-            if self.allowed_methods and method not in self.allowed_methods:
-                raise errors.HttpMethodNotAllowed(method)
+        # allowed method
+        if self.allowed_methods and method not in self.allowed_methods:
+            raise errors.HttpMethodNotAllowed(method)
 
-            out.feed_data(method)
-            out.feed_eof()
-        except aiohttp.EofStream:
-            # Presumably, the server closed the connection before
-            # sending a valid response.
-            pass
+        out.feed_data(method)
+        out.feed_eof()
 
 
 class HttpRequestParser(HttpParser):
@@ -151,46 +148,45 @@ class HttpRequestParser(HttpParser):
     """
 
     def __call__(self, out, buf):
+        # read http message (request line + headers)
         try:
-            # read http message (request line + headers)
             raw_data = yield from buf.readuntil(
-                b'\r\n\r\n', self.max_headers, errors.LineTooLong)
-            lines = raw_data.decode(
-                'ascii', 'surrogateescape').splitlines(True)
+                b'\r\n\r\n', self.max_headers)
+        except errors.LineLimitExceededParserError as exc:
+            raise errors.LineTooLong(exc.limit) from None
 
-            # request line
-            line = lines[0]
-            try:
-                method, path, version = line.split(None, 2)
-            except ValueError:
-                raise errors.BadStatusLine(line) from None
+        lines = raw_data.decode(
+            'ascii', 'surrogateescape').split('\r\n')
 
-            # method
-            method = method.upper()
-            if not METHRE.match(method):
-                raise errors.BadStatusLine(method)
+        # request line
+        line = lines[0]
+        try:
+            method, path, version = line.split(None, 2)
+        except ValueError:
+            raise errors.BadStatusLine(line) from None
 
-            # version
-            match = VERSRE.match(version)
-            if match is None:
-                raise errors.BadStatusLine(version)
-            version = (int(match.group(1)), int(match.group(2)))
+        # method
+        method = method.upper()
+        if not METHRE.match(method):
+            raise errors.BadStatusLine(method)
 
-            # read headers
-            headers, close, compression = self.parse_headers(lines)
-            if version <= (1, 0):
-                close = True
-            elif close is None:
-                close = False
+        # version
+        match = VERSRE.match(version)
+        if match is None:
+            raise errors.BadStatusLine(version)
+        version = (int(match.group(1)), int(match.group(2)))
 
-            out.feed_data(
-                RawRequestMessage(
-                    method, path, version, headers, close, compression))
-            out.feed_eof()
-        except aiohttp.EofStream:
-            # Presumably, the server closed the connection before
-            # sending a valid response.
-            pass
+        # read headers
+        headers, close, compression = self.parse_headers(lines)
+        if version <= (1, 0):
+            close = True
+        elif close is None:
+            close = False
+
+        out.feed_data(
+            RawRequestMessage(
+                method, path, version, headers, close, compression))
+        out.feed_eof()
 
 
 class HttpResponseParser(HttpParser):
@@ -202,11 +198,14 @@ class HttpResponseParser(HttpParser):
     def __call__(self, out, buf):
         try:
             # read http message (response line + headers)
-            raw_data = yield from buf.readuntil(
-                b'\r\n\r\n', self.max_line_size+self.max_headers,
-                errors.LineTooLong)
+            try:
+                raw_data = yield from buf.readuntil(
+                    b'\r\n\r\n', self.max_line_size+self.max_headers)
+            except errors.LineLimitExceededParserError as exc:
+                raise errors.LineTooLong(exc.limit) from None
+
             lines = raw_data.decode(
-                'ascii', 'surrogateescape').splitlines(True)
+                'ascii', 'surrogateescape').split('\r\n')
 
             line = lines[0]
             try:
@@ -248,35 +247,36 @@ class HttpResponseParser(HttpParser):
         except aiohttp.EofStream:
             # Presumably, the server closed the connection before
             # sending a valid response.
-            raise errors.BadStatusLine(b'') from None
+            raise errors.ClientConnectionError(
+                'Can not read status line') from None
 
 
 class HttpPayloadParser:
 
-    def __init__(self, message, length=None, compression=True, readall=True):
+    def __init__(self, message, length=None, compression=True,
+                 readall=False, response_with_body=True):
         self.message = message
         self.length = length
         self.compression = compression
         self.readall = readall
+        self.response_with_body = response_with_body
 
     def __call__(self, out, buf):
         # payload params
-        chunked = False
-        length = self.length
-        for name, value in self.message.headers:
-            if name == 'CONTENT-LENGTH':
-                length = value
-            elif name == 'TRANSFER-ENCODING':
-                chunked = value.lower() == 'chunked'
-            elif name == 'SEC-WEBSOCKET-KEY1':
-                length = 8
+        length = self.message.headers.get('CONTENT-LENGTH', self.length)
+        if 'SEC-WEBSOCKET-KEY1' in self.message.headers:
+            length = 8
 
         # payload decompression wrapper
         if self.compression and self.message.compression:
             out = DeflateBuffer(out, self.message.compression)
 
         # payload parser
-        if chunked:
+        if not self.response_with_body:
+            # don't parse payload if it's not expected to be received
+            pass
+
+        elif 'chunked' in self.message.headers.get('TRANSFER-ENCODING', ''):
             yield from self.parse_chunked_payload(out, buf)
 
         elif length is not None:
@@ -290,8 +290,11 @@ class HttpPayloadParser:
             elif length > 0:
                 yield from self.parse_length_payload(out, buf, length)
         else:
-            if self.readall:
+            if self.readall and getattr(self.message, 'code', 0) != 204:
                 yield from self.parse_eof_payload(out, buf)
+            elif getattr(self.message, 'method', None) in ('PUT', 'POST'):
+                internal_log.warning(  # pragma: no cover
+                    'Content-Length or Transfer-Encoding header is required')
 
         out.feed_eof()
 
@@ -328,26 +331,30 @@ class HttpPayloadParser:
             yield from buf.skipuntil(b'\r\n')
 
         except aiohttp.EofStream:
-            raise errors.IncompleteRead(b'') from None
+            raise errors.ConnectionError('Broken chunked payload.') from None
 
-    def parse_length_payload(self, out, buf, length):
+    def parse_length_payload(self, out, buf, length=0):
         """Read specified amount of bytes."""
+        required = length
         try:
-            while length:
-                chunk = yield from buf.readsome(length)
+            while required:
+                chunk = yield from buf.readsome(required)
                 out.feed_data(chunk)
-                length -= len(chunk)
+                required -= len(chunk)
         except aiohttp.EofStream:
-            raise errors.IncompleteRead(b'') from None
+            raise errors.IncompleteRead(length-required, required)
 
     def parse_eof_payload(self, out, buf):
-        """Read all bytes untile eof."""
-        while True:
-            out.feed_data((yield from buf.readsome()))
+        """Read all bytes until eof."""
+        try:
+            while True:
+                out.feed_data((yield from buf.readsome()))
+        except aiohttp.EofStream:
+            pass
 
 
 class DeflateBuffer:
-    """DeflateStream decomress stream and feed data into specified stream."""
+    """DeflateStream decompress stream and feed data into specified stream."""
 
     def __init__(self, out, encoding):
         self.out = out
@@ -376,7 +383,7 @@ class DeflateBuffer:
 def wrap_payload_filter(func):
     """Wraps payload filter and piped filters.
 
-    Filter is a generatator that accepts arbitrary chunks of data,
+    Filter is a generator that accepts arbitrary chunks of data,
     modify data and emit new stream of data.
 
     For example we have stream of chunks: ['1', '2', '3', '4', '5'],
@@ -402,7 +409,7 @@ def wrap_payload_filter(func):
 
       1. If filter receives bytes object, it should process data
          and yield processed data then yield EOL_MARKER object.
-      2. If Filter recevied EOF_MARKER, it should yield remaining
+      2. If Filter received EOF_MARKER, it should yield remaining
          data (buffered) and then yield EOF_MARKER.
     """
     @functools.wraps(func)
@@ -432,8 +439,8 @@ def filter_pipe(filter, filter2):
       2. Reads yielded values from the first filter until it receives
          EOF_MARKER or EOL_MARKER.
       3. Each of this values is being send to second filter.
-      4. Reads yielded values from second filter until it recives EOF_MARKER or
-         EOL_MARKER. Each of this values yields to writer.
+      4. Reads yielded values from second filter until it receives EOF_MARKER
+         or EOL_MARKER. Each of this values yields to writer.
     """
     chunk = yield
 
@@ -486,7 +493,7 @@ class HttpMessage:
 
     Now we can use chunked writer to write stream to a network stream.
     First call to write() method sends response status line and headers,
-    add_header() and add_headers() method unavailble at this stage:
+    add_header() and add_headers() method unavailable at this stage:
 
     >> with open('...', 'rb') as f:
     ..     chunk = fp.read(8196)
@@ -499,15 +506,15 @@ class HttpMessage:
 
     writer = None
 
-    # 'filter' is being used for altering write() bahaviour,
+    # 'filter' is being used for altering write() behaviour,
     # add_chunking_filter adds deflate/gzip compression and
     # add_compression_filter splits incoming data into a chunks.
     filter = None
 
     HOP_HEADERS = None  # Must be set by subclass.
 
-    SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} asyncio/0.1'.format(
-        sys.version_info)
+    SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} aiohttp/{1}'.format(
+        sys.version_info, aiohttp.__version__)
 
     status = None
     status_line = b''
@@ -533,9 +540,10 @@ class HttpMessage:
 
         self.chunked = False
         self.length = None
-        self.headers = collections.deque()
+        self.headers = multidict.CaseInsensitiveMutableMultiDict()
         self.headers_sent = False
         self.output_length = 0
+        self._output_size = 0
 
     def force_close(self):
         self.closing = True
@@ -558,8 +566,10 @@ class HttpMessage:
         removes hop headers, etc."""
         assert not self.headers_sent, 'headers have been sent already'
         assert isinstance(name, str), '{!r} is not a string'.format(name)
+        assert isinstance(value, str), '{!r} is not a string'.format(value)
 
         name = name.strip().upper()
+        value = value.strip()
 
         if name == 'CONTENT-LENGTH':
             self.length = int(value)
@@ -578,7 +588,7 @@ class HttpMessage:
         elif name == 'UPGRADE':
             if 'websocket' in value.lower():
                 self.websocket = True
-                self.headers.append((name, value))
+                self.headers[name] = value
 
         elif name == 'TRANSFER-ENCODING' and not self.chunked:
             self.chunked = value.lower().strip() == 'chunked'
@@ -587,8 +597,8 @@ class HttpMessage:
             if name == 'USER-AGENT':
                 self._has_user_agent = True
 
-            # ignore hopbyhop headers
-            self.headers.append((name, value))
+            # ignore hop-by-hop headers
+            self.headers.add(name, value)
 
     def add_headers(self, *headers):
         """Adds headers to a http message."""
@@ -624,8 +634,10 @@ class HttpMessage:
         # status + headers
         hdrs = ''.join(itertools.chain(
             (self.status_line,),
-            *((k, ': ', v, '\r\n') for k, v in self.headers)))
-        hdrs = hdrs.encode('ascii') + b'\r\n'
+            *((k, ': ', v, '\r\n')
+              for k, v in ((k, value)
+                           for k, value in self.headers.items(getall=True)))))
+        hdrs = hdrs.encode('utf-8') + b'\r\n'
 
         self.output_length += len(hdrs)
         self.transport.write(hdrs)
@@ -640,17 +652,20 @@ class HttpMessage:
             connection = 'close'
 
         if self.chunked:
-            self.headers.appendleft(('TRANSFER-ENCODING', 'chunked'))
+            self.headers['TRANSFER-ENCODING'] = 'chunked'
 
-        self.headers.appendleft(('CONNECTION', connection))
+        self.headers['CONNECTION'] = connection
 
     def write(self, chunk):
-        """write() writes chunk of data to a steram by using different writers.
+        """write() writes chunk of data to a stream by using different writers.
         writer uses filter to modify chunk of data. write_eof() indicates
         end of stream. writer can't be used after write_eof() method
-        being called."""
+        being called. write() return drain future.
+        """
         assert (isinstance(chunk, (bytes, bytearray)) or
                 chunk is EOF_MARKER), chunk
+
+        size = self.output_length
 
         if self._send_headers and not self.headers_sent:
             self.send_headers()
@@ -666,12 +681,22 @@ class HttpMessage:
             if chunk is not EOF_MARKER:
                 self.writer.send(chunk)
 
+        self._output_size += self.output_length - size
+
+        if self._output_size > 64 * 1024:
+            self._output_size = 0
+            return self.transport.drain()
+        else:
+            return ()
+
     def write_eof(self):
         self.write(EOF_MARKER)
         try:
             self.writer.throw(aiohttp.EofStream())
         except StopIteration:
             pass
+
+        return self.transport.drain()
 
     def _write_chunked_payload(self):
         """Write data in chunked transfer encoding."""
@@ -791,6 +816,7 @@ class Response(HttpMessage):
 
     def _add_default_headers(self):
         super()._add_default_headers()
+
         self.headers.extend((('DATE', format_date_time(None)),
                              ('SERVER', self.SERVER_SOFTWARE),))
 
@@ -810,5 +836,6 @@ class Request(HttpMessage):
 
     def _add_default_headers(self):
         super()._add_default_headers()
+
         if not self._has_user_agent:
-            self.headers.append(('USER-AGENT', self.SERVER_SOFTWARE))
+            self.headers['USER-AGENT'] = self.SERVER_SOFTWARE

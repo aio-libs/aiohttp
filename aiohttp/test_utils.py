@@ -18,8 +18,8 @@ import urllib.parse
 
 import asyncio
 import aiohttp
-from aiohttp import client
 from aiohttp import server
+from aiohttp import helpers
 
 
 def run_briefly(loop):
@@ -31,16 +31,22 @@ def run_briefly(loop):
 
 
 @contextlib.contextmanager
-def run_server(loop, *, host='127.0.0.1', port=0, use_ssl=False, router=None):
+def run_server(loop, *, listen_addr=('127.0.0.1', 0),
+               use_ssl=False, router=None):
     properties = {}
     transports = []
 
-    class HttpServer:
+    class HttpRequestHandler:
 
-        def __init__(self, host, port):
-            self.host = host
-            self.port = port
-            self.address = (host, port)
+        def __init__(self, addr):
+            if isinstance(addr, tuple):
+                host, port = addr
+                self.host = host
+                self.port = port
+            else:
+                self.host = host = 'localhost'
+                self.port = port = 0
+            self.address = addr
             self._url = '{}://{}:{}'.format(
                 'https' if use_ssl else 'http', host, port)
 
@@ -58,6 +64,7 @@ def run_server(loop, *, host='127.0.0.1', port=0, use_ssl=False, router=None):
 
         def connection_made(self, transport):
             transports.append(transport)
+
             super().connection_made(transport)
 
         def handle_request(self, message, payload):
@@ -67,27 +74,20 @@ def run_server(loop, *, host='127.0.0.1', port=0, use_ssl=False, router=None):
             if properties.get('noresponse', False):
                 yield from asyncio.sleep(99999)
 
-            for hdr, val in message.headers:
+            for hdr, val in message.headers.items(getall=True):
                 if (hdr == 'EXPECT') and (val == '100-continue'):
                     self.transport.write(b'HTTP/1.0 100 Continue\r\n\r\n')
                     break
 
             if router is not None:
-                body = bytearray()
-                try:
-                    while True:
-                        body.extend((yield from payload.read()))
-                except aiohttp.EofStream:
-                    pass
+                body = yield from payload.read()
 
                 rob = router(
-                    self, properties,
-                    self.transport, message, bytes(body))
+                    self, properties, self.transport, message, body)
                 rob.dispatch()
 
             else:
-                response = aiohttp.Response(
-                    self.transport, 200, message.version)
+                response = aiohttp.Response(self.writer, 200, message.version)
 
                 text = b'Test message'
                 response.add_header('Content-type', 'text/plain')
@@ -109,10 +109,20 @@ def run_server(loop, *, host='127.0.0.1', port=0, use_ssl=False, router=None):
         thread_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(thread_loop)
 
-        server = thread_loop.run_until_complete(
-            thread_loop.create_server(
+        if isinstance(listen_addr, tuple):
+            host, port = listen_addr
+            server_coroutine = thread_loop.create_server(
                 lambda: TestHttpServer(keep_alive=0.5),
-                host, port, ssl=sslcontext))
+                host, port, ssl=sslcontext)
+        else:
+            try:
+                os.unlink(listen_addr)
+            except FileNotFoundError:
+                pass
+            server_coroutine = thread_loop.create_unix_server(
+                lambda: TestHttpServer(keep_alive=0.5),
+                listen_addr, ssl=sslcontext)
+        server = thread_loop.run_until_complete(server_coroutine)
 
         waiter = asyncio.Future(loop=thread_loop)
         loop.call_soon_threadsafe(
@@ -125,7 +135,7 @@ def run_server(loop, *, host='127.0.0.1', port=0, use_ssl=False, router=None):
             # call pending connection_made if present
             run_briefly(thread_loop)
 
-            # close opened trnsports
+            # close opened transports
             for tr in transports:
                 tr.close()
 
@@ -142,7 +152,7 @@ def run_server(loop, *, host='127.0.0.1', port=0, use_ssl=False, router=None):
 
     thread_loop, waiter, addr = loop.run_until_complete(fut)
     try:
-        yield HttpServer(*addr)
+        yield HttpRequestHandler(addr)
     finally:
         thread_loop.call_soon_threadsafe(waiter.set_result, None)
         server_thread.join()
@@ -156,7 +166,7 @@ class Router:
     def __init__(self, srv, props, transport, message, payload):
         # headers
         self._headers = http.client.HTTPMessage()
-        for hdr, val in message.headers:
+        for hdr, val in message.headers.items(getall=True):
             self._headers.add_header(hdr, val)
 
         self._srv = srv
@@ -198,9 +208,10 @@ class Router:
         return self._response(self._start_response(404))
 
     def _start_response(self, code):
-        return aiohttp.Response(self._transport, code)
+        return aiohttp.Response(self._srv.writer, code)
 
-    def _response(self, response, body=None, headers=None, chunked=False):
+    def _response(self, response, body=None,
+                  headers=None, chunked=False, write_body=None):
         r_headers = {}
         for key, val in self._headers.items():
             key = '-'.join(p.capitalize() for p in key.split('-'))
@@ -227,6 +238,8 @@ class Router:
         }
         if body:  # pragma: no cover
             resp['content'] = body
+        else:
+            resp['content'] = self._body.decode('utf-8')
 
         ct = self._headers.get('content-type', '').lower()
 
@@ -249,7 +262,7 @@ class Router:
             if message.is_multipart():
                 for msg in message.get_payload():
                     if msg.is_multipart():
-                        logging.warn('multipart msg is not expected')
+                        logging.warning('multipart msg is not expected')
                     else:
                         key, params = cgi.parse_header(
                             msg.get('content-disposition', ''))
@@ -279,7 +292,14 @@ class Router:
         response.send_headers()
 
         # write payload
-        response.write(client.str_to_bytes(body))
+        if write_body:
+            try:
+                write_body(response, body)
+            except:
+                return
+        else:
+            response.write(helpers.str_to_bytes(body))
+
         response.write_eof()
 
         # keep-alive

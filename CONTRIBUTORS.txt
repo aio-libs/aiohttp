@@ -1,0 +1,22 @@
+Contributors
+------------
+
+Alejandro Gómez
+Alexander Shorin
+Alexey Popravka
+Andrew Svetlov
+Andrej Antonov
+Anton Kasyanov
+Ben Bader
+Eugene Chernyshov
+Georges Dubus
+Greg Holt
+Junjie Tao
+Ludovic Gasc
+Lukasz Marcin Dobrzanski
+Mikhail Lukyanchenko
+Olaf Conradi
+Paul Colomiets
+Sebastian Hanula
+Simon Kennedy
+Vaibhav Sagar

@@ -4,6 +4,7 @@ parts
 coverage
 eggs
 sources
+build
 dist
 venv
 .installed.cfg
@@ -22,3 +23,4 @@ var/*
 .noseids
 docs/_build/
 nosetests.xml
+cover

@@ -1,6 +1,140 @@
 CHANGES
 =======
 
+0.9.0 (xx-xx-2014)
+------------------
+
+- Fixed client basic authentication.
+
+- Support StreamReader and DataQueue as request data.
+
+- Client files handling refactoring #20
+
+- Backward incompatible: Replace DataQueue with StreamReader for request payload #87
+
+
+0.8.4 (07-04-2014)
+------------------
+
+- Change ProxyConnector authorization parameters.
+
+
+0.8.3 (07-03-2014)
+------------------
+
+- Publish TCPConnector properties: verify_ssl, family, resolve, resolved_hosts.
+
+- Don't parse message body for HEAD responses.
+
+- Refactor client response decoding.
+
+
+0.8.2 (06-22-2014)
+------------------
+
+- Make ProxyConnector.proxy immutable property.
+
+- Make UnixConnector.path immutable property.
+
+- Fix resource leak for aiohttp.request() with implicit connector.
+
+- Rename Connector's reuse_timeout to keepalive_timeout.
+
+
+0.8.1 (06-18-2014)
+------------------
+
+- Use case insensitive multidict for server request/response headers.
+
+- MultiDict.getall() accepts default value.
+
+- Catch server ConnectionError.
+
+- Accept MultiDict (and derived) instances in aiohttp.request header argument.
+
+- Proxy 'CONNECT' support.
+
+
+0.8.0 (06-06-2014)
+------------------
+
+- Add support for utf-8 values in HTTP headers
+
+- Allow to use custom response class instead of HttpResponse
+
+- Use MultiDict for client request headers
+
+- Use MultiDict for server request/response headers
+
+- Store response headers in ClientResponse.headers attribute
+
+- Get rid of timeout parameter in aiohttp.client API
+
+- Exceptions refactoring
+
+
+0.7.3 (05-20-2014)
+------------------
+
+- Simple HTTP proxy support.
+
+
+0.7.2 (05-14-2014)
+------------------
+
+- Get rid of __del__ methods
+
+- Use ResourceWarning instead of logging warning record.
+
+
+0.7.1 (04-28-2014)
+------------------
+
+- Do not unquote client request urls.
+
+- Allow multple waiters on transport drain.
+
+- Do not return client connection to pool in case of exceptions.
+
+- Rename SocketConnector to TCPConnector and UnixSocketConnector to UnixConnector.
+
+
+0.7.0 (04-16-2014)
+------------------
+
+- Connection flow control.
+
+- Http client session/connection pool refactoring.
+
+- Better handling for bad server requests.
+
+
+0.6.5 (03-29-2014)
+------------------
+
+- Added client session reuse timeout.
+
+- Better client request cancellation support.
+
+- Better handling responses without content length.
+
+- Added HttpClient verify_ssl parameter support.
+
+
+0.6.4 (02-27-2014)
+------------------
+
+- Log content-length missing warning only for put and post requests.
+
+
+0.6.3 (02-27-2014)
+------------------
+
+- Better support for server exit.
+
+- Read response body until eof if content-length is not defined #14
+
+
 0.6.2 (02-18-2014)
 ------------------
 

@@ -9,8 +9,10 @@ def curl(url):
     response = yield from aiohttp.request('GET', url)
     print(repr(response))
 
-    data = yield from response.read()
-    print(data.decode('utf-8', 'replace'))
+    chunk = yield from response.content.read()
+    print('Downloaded: %s' % len(chunk))
+
+    response.close()
 
 
 if __name__ == '__main__':

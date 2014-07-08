@@ -2,7 +2,6 @@
 """Simple server written using an event loop."""
 
 import argparse
-import email.message
 import logging
 import os
 import sys
@@ -18,7 +17,7 @@ import aiohttp
 import aiohttp.server
 
 
-class HttpServer(aiohttp.server.ServerHttpProtocol):
+class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
@@ -41,21 +40,20 @@ class HttpServer(aiohttp.server.ServerHttpProtocol):
         if not path:
             raise aiohttp.HttpErrorException(404)
 
-        headers = email.message.Message()
-        for hdr, val in message.headers:
+        for hdr, val in message.headers.items(getall=True):
             print(hdr, val)
-            headers.add_header(hdr, val)
 
         if isdir and not path.endswith('/'):
             path = path + '/'
             raise aiohttp.HttpErrorException(
                 302, headers=(('URI', path), ('Location', path)))
 
-        response = aiohttp.Response(self.transport, 200)
+        response = aiohttp.Response(
+            self.writer, 200, http_version=message.version)
         response.add_header('Transfer-Encoding', 'chunked')
 
         # content encoding
-        accept_encoding = headers.get('accept-encoding', '').lower()
+        accept_encoding = message.headers.get('accept-encoding', '').lower()
         if 'deflate' in accept_encoding:
             response.add_header('Content-Encoding', 'deflate')
             response.add_compression_filter('deflate')
@@ -97,7 +95,7 @@ class HttpServer(aiohttp.server.ServerHttpProtocol):
             except OSError:
                 response.write(b'Cannot open')
 
-        response.write_eof()
+        yield from response.write_eof()
         if response.keep_alive():
             self.keep_alive(True)
 
@@ -109,9 +107,12 @@ ARGS.add_argument(
 ARGS.add_argument(
     '--port', action="store", dest='port',
     default=8080, type=int, help='Port number')
-ARGS.add_argument(
+# make iocp and ssl mutually exclusive because ProactorEventLoop is
+# incompatible with SSL
+group = ARGS.add_mutually_exclusive_group()
+group.add_argument(
     '--iocp', action="store_true", dest='iocp', help='Windows IOCP event loop')
-ARGS.add_argument(
+group.add_argument(
     '--ssl', action="store_true", dest='ssl', help='Run ssl mode.')
 ARGS.add_argument(
     '--sslcert', action="store", dest='certfile', help='SSL cert file.')
@@ -150,7 +151,8 @@ def main():
 
     loop = asyncio.get_event_loop()
     f = loop.create_server(
-        lambda: HttpServer(debug=True, keep_alive=75), args.host, args.port,
+        lambda: HttpRequestHandler(debug=True, keep_alive=75),
+        args.host, args.port,
         ssl=sslcontext)
     svr = loop.run_until_complete(f)
     socks = svr.sockets

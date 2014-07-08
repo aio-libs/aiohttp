@@ -2,7 +2,6 @@
 """Simple multiprocess http server written using an event loop."""
 
 import argparse
-import email.message
 import os
 import socket
 import signal
@@ -25,7 +24,7 @@ ARGS.add_argument(
     default=2, type=int, help='Number of workers.')
 
 
-class HttpServer(aiohttp.server.ServerHttpProtocol):
+class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
@@ -46,20 +45,17 @@ class HttpServer(aiohttp.server.ServerHttpProtocol):
         if not path:
             raise aiohttp.HttpErrorException(404)
 
-        headers = email.message.Message()
-        for hdr, val in message.headers:
-            headers.add_header(hdr, val)
-
         if isdir and not path.endswith('/'):
             path = path + '/'
             raise aiohttp.HttpErrorException(
                 302, headers=(('URI', path), ('Location', path)))
 
-        response = aiohttp.Response(self.transport, 200)
+        response = aiohttp.Response(
+            self.writer, 200, http_version=message.version)
         response.add_header('Transfer-Encoding', 'chunked')
 
         # content encoding
-        accept_encoding = headers.get('accept-encoding', '').lower()
+        accept_encoding = message.headers.get('accept-encoding', '').lower()
         if 'deflate' in accept_encoding:
             response.add_header('Content-Encoding', 'deflate')
             response.add_compression_filter('deflate')
@@ -125,7 +121,8 @@ class ChildProcess:
         loop.add_signal_handler(signal.SIGINT, stop)
 
         f = loop.create_server(
-            lambda: HttpServer(debug=True, keep_alive=75), sock=self.sock)
+            lambda: HttpRequestHandler(debug=True, keep_alive=75),
+            sock=self.sock)
         srv = loop.run_until_complete(f)
         x = srv.sockets[0]
         print('Starting srv worker process {} on {}'.format(
@@ -145,14 +142,14 @@ class ChildProcess:
         write_transport, _ = yield from self.loop.connect_write_pipe(
             aiohttp.StreamProtocol, os.fdopen(self.down_write, 'wb'))
 
-        reader = read_proto.set_parser(websocket.WebSocketParser)
+        reader = read_proto.reader.set_parser(websocket.WebSocketParser)
         writer = websocket.WebSocketWriter(write_transport)
 
         while True:
             try:
                 msg = yield from reader.read()
-            except aiohttp.EofStream:
-                print('Superviser is dead, {} stopping...'.format(os.getpid()))
+            except:
+                print('Supervisor is dead, {} stopping...'.format(os.getpid()))
                 self.loop.stop()
                 break
 
@@ -220,7 +217,7 @@ class Worker:
         while True:
             try:
                 msg = yield from reader.read()
-            except aiohttp.EofStream:
+            except:
                 print('Restart unresponsive worker process: {}'.format(
                     self.pid))
                 self.kill()
@@ -239,7 +236,7 @@ class Worker:
             aiohttp.StreamProtocol, os.fdopen(up_write, 'wb'))
 
         # websocket protocol
-        reader = proto.set_parser(websocket.WebSocketParser)
+        reader = proto.reader.set_parser(websocket.WebSocketParser)
         writer = websocket.WebSocketWriter(write_transport)
 
         # store info
@@ -259,7 +256,7 @@ class Worker:
         os.kill(self.pid, signal.SIGTERM)
 
 
-class Superviser:
+class Supervisor:
 
     def __init__(self, args):
         self.loop = asyncio.get_event_loop()
@@ -288,8 +285,8 @@ def main():
         args.host, port = args.host.split(':', 1)
         args.port = int(port)
 
-    superviser = Superviser(args)
-    superviser.start()
+    supervisor = Supervisor(args)
+    supervisor.start()
 
 
 if __name__ == '__main__':

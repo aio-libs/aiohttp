@@ -3,7 +3,7 @@
 Parser receives data with generator's send() method and sends data to
 destination DataQueue. Parser receives ParserBuffer and DataQueue objects
 as a parameters of the parser call, all subsequent send() calls should
-send bytes objects. Parser sends parsed `term` to desitnation buffer with
+send bytes objects. Parser sends parsed `term` to destination buffer with
 DataQueue.feed_data() method. DataQueue object should implement two methods.
 feed_data() - parser uses this method to send parsed protocol data.
 feed_eof() - parser uses this method for indication of end of parsing stream.
@@ -43,11 +43,11 @@ There are three stages:
     3. StreamParser sends data into parser with generator's send() method.
     4. Parser processes incoming data and sends parsed data
        to DataQueue with feed_data()
-    4. Application received parsed data from DataQueue.read()
+    5. Application received parsed data from DataQueue.read()
 
  * Eof:
 
-    1. StreamParser recevies eof with feed_eof() call.
+    1. StreamParser receives eof with feed_eof() call.
     2. StreamParser throws EofStream exception into parser.
     3. Then it unsets parser.
 
@@ -56,15 +56,16 @@ _SocketSocketTransport ->
 
 """
 __all__ = ['EofStream', 'StreamParser', 'StreamProtocol',
-           'ParserBuffer', 'DataQueue', 'LinesParser', 'ChunksParser']
+           'ParserBuffer', 'LinesParser', 'ChunksParser']
 
 import asyncio
-import collections
+import asyncio.streams
 import inspect
+from . import errors
+from .streams import FlowControlDataQueue, EofStream
 
-
-class EofStream(Exception):
-    """eof stream indication."""
+BUF_LIMIT = 2**14
+DEFAULT_LIMIT = 2**16
 
 
 class StreamParser:
@@ -78,16 +79,41 @@ class StreamParser:
     unset_parser() sends EofStream into parser and then removes it.
     """
 
-    def __init__(self, *, loop=None, inbuf=None):
+    def __init__(self, *, loop=None, buf=None,
+                 paused=True, limit=DEFAULT_LIMIT):
         self._loop = loop
         self._eof = False
         self._exception = None
         self._parser = None
+        self._transport = None
+        self._limit = limit
+        self._paused = False
+        self._stream_paused = paused
         self._output = None
-        self._input = inbuf if inbuf is not None else ParserBuffer()
+        self._buffer = buf if buf is not None else ParserBuffer()
 
-    def is_connected(self):
-        return not self._eof
+    @property
+    def output(self):
+        return self._output
+
+    def set_transport(self, transport):
+        assert self._transport is None, 'Transport already set'
+        self._transport = transport
+
+    def at_eof(self):
+        return self._eof
+
+    def pause_stream(self):
+        self._stream_paused = True
+
+    def resume_stream(self):
+        if self._paused and self._buffer.size <= self._limit:
+            self._paused = False
+            self._transport.resume_reading()
+
+        self._stream_paused = False
+        if self._parser and self._buffer:
+            self.feed_data(b'')
 
     def exception(self):
         return self._exception
@@ -102,10 +128,10 @@ class StreamParser:
 
     def feed_data(self, data):
         """send data to current parser or store in buffer."""
-        if not data:
+        if data is None:
             return
 
-        if self._parser:
+        if self._parser and not self._stream_paused:
             try:
                 self._parser.send(data)
             except StopIteration:
@@ -117,37 +143,54 @@ class StreamParser:
                 self._output = None
                 self._parser = None
         else:
-            self._input.feed_data(data)
+            self._buffer.feed_data(data)
+
+        if (self._transport is not None and not self._paused and
+                self._buffer.size > 2*self._limit):
+            try:
+                self._transport.pause_reading()
+            except NotImplementedError:
+                # The transport can't be paused.
+                # We'll just have to buffer all data.
+                # Forget the transport so we don't keep trying.
+                self._transport = None
+            else:
+                self._paused = True
 
     def feed_eof(self):
         """send eof to all parsers, recursively."""
         if self._parser:
             try:
+                if self._buffer:
+                    self._parser.send(b'')
                 self._parser.throw(EofStream())
             except StopIteration:
-                pass
-            except EofStream:
                 self._output.feed_eof()
+            except EofStream:
+                self._output.set_exception(errors.ConnectionError())
             except Exception as exc:
                 self._output.set_exception(exc)
 
             self._parser = None
             self._output = None
 
+        self._buffer.shrink()
         self._eof = True
 
-    def set_parser(self, parser):
+    def set_parser(self, parser, output=None):
         """set parser to stream. return parser's DataQueue."""
         if self._parser:
             self.unset_parser()
 
-        output = DataQueue(loop=self._loop)
+        if output is None:
+            output = FlowControlDataQueue(self, loop=self._loop)
+
         if self._exception:
             output.set_exception(self._exception)
             return output
 
         # init parser
-        p = parser(output, self._input)
+        p = parser(output, self._buffer)
         assert inspect.isgenerator(p), 'Generator is required'
 
         try:
@@ -169,15 +212,18 @@ class StreamParser:
 
     def unset_parser(self):
         """unset parser, send eof to the parser and then remove it."""
+        if self._buffer:
+            self._buffer.shrink()
+
         if self._parser is None:
             return
 
         try:
             self._parser.throw(EofStream())
         except StopIteration:
-            pass
-        except EofStream:
             self._output.feed_eof()
+        except EofStream:
+            self._output.set_exception(errors.ConnectionError())
         except Exception as exc:
             self._output.set_exception(exc)
         finally:
@@ -185,81 +231,49 @@ class StreamParser:
             self._parser = None
 
 
-class StreamProtocol(StreamParser, asyncio.Protocol):
-    """asyncio's stream protocol based on StreamParser"""
+class StreamProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
+    """Helper class to adapt between Protocol and StreamReader."""
 
-    transport = None
+    def __init__(self, *, loop=None, **kwargs):
+        super().__init__(loop=loop)
 
-    data_received = StreamParser.feed_data
+        self.transport = None
+        self.writer = None
+        self.reader = StreamParser(loop=loop, **kwargs)
 
-    eof_received = StreamParser.feed_eof
+    def is_connected(self):
+        return self.transport is not None
 
     def connection_made(self, transport):
         self.transport = transport
+        self.reader.set_transport(transport)
+        self.writer = asyncio.streams.StreamWriter(
+            transport, self, self.reader, self._loop)
 
     def connection_lost(self, exc):
         self.transport = None
 
-        if exc is not None:
-            self.set_exception(exc)
+        if exc is None:
+            self.reader.feed_eof()
         else:
-            self.feed_eof()
+            self.reader.set_exception(exc)
 
+        super().connection_lost(exc)
 
-class DataQueue:
-    """DataQueue is a destination for parsed data."""
+    def data_received(self, data):
+        self.reader.feed_data(data)
 
-    def __init__(self, *, loop=None):
-        self._loop = loop
-        self._buffer = collections.deque()
-        self._eof = False
-        self._waiter = None
-        self._exception = None
+    def eof_received(self):
+        self.reader.feed_eof()
 
-    def exception(self):
-        return self._exception
-
-    def set_exception(self, exc):
-        self._exception = exc
-
-        waiter = self._waiter
-        if waiter is not None:
-            self._waiter = None
-            if not waiter.done():
-                waiter.set_exception(exc)
-
-    def feed_data(self, data):
-        self._buffer.append(data)
-
-        waiter = self._waiter
-        if waiter is not None:
-            self._waiter = None
-            if not waiter.cancelled():
-                waiter.set_result(True)
-
-    def feed_eof(self):
-        self._eof = True
-
-        waiter = self._waiter
-        if waiter is not None:
-            self._waiter = None
-            if not waiter.cancelled():
-                waiter.set_result(False)
-
-    @asyncio.coroutine
-    def read(self):
-        if self._exception is not None:
-            raise self._exception
-
-        if not self._buffer and not self._eof:
-            assert not self._waiter
-            self._waiter = asyncio.Future(loop=self._loop)
-            yield from self._waiter
-
-        if self._buffer:
-            return self._buffer.popleft()
-        else:
-            raise EofStream
+    def _make_drain_waiter(self):
+        if not self._paused:
+            return ()
+        waiter = self._drain_waiter
+        if waiter is None or waiter.cancelled():
+            waiter = asyncio.Future(loop=self._loop)
+            self._drain_waiter = waiter
+        return waiter
 
 
 class ParserBuffer(bytearray):
@@ -268,15 +282,23 @@ class ParserBuffer(bytearray):
     ParserBuffer provides helper methods for parsers.
     """
 
-    def __init__(self, *args):
+    def __init__(self, *args, limit=BUF_LIMIT):
         super().__init__(*args)
 
         self.offset = 0
         self.size = 0
+        self._limit = limit
+        self._exception = None
         self._writer = self._feed_data()
         next(self._writer)
 
-    def _shrink(self):
+    def exception(self):
+        return self._exception
+
+    def set_exception(self, exc):
+        self._exception = exc
+
+    def shrink(self):
         if self.offset:
             del self[:self.offset]
             self.offset = 0
@@ -290,9 +312,14 @@ class ParserBuffer(bytearray):
                 self.size += chunk_len
                 self.extend(chunk)
 
-                # shrink buffer
-                if (self.offset and len(self) > 8196):
-                    self._shrink()
+            # shrink buffer
+            if (self.offset and len(self) > self._limit):
+                self.shrink()
+
+            if self._exception:
+                self._writer = self._feed_data()
+                next(self._writer)
+                raise self._exception
 
     def feed_data(self, data):
         self._writer.send(data)
@@ -325,7 +352,7 @@ class ParserBuffer(bytearray):
 
             self._writer.send((yield))
 
-    def readuntil(self, stop, limit=None, exc=ValueError):
+    def readuntil(self, stop, limit=None):
         assert isinstance(stop, bytes) and stop, \
             'bytes is required: {!r}'.format(stop)
 
@@ -337,7 +364,8 @@ class ParserBuffer(bytearray):
                 end = pos + stop_len
                 size = end - self.offset
                 if limit is not None and size > limit:
-                    raise exc('Line is too long.')
+                    raise errors.LineLimitExceededParserError(
+                        'Line is too long.', limit)
 
                 start, self.offset = self.offset, end
                 self.size = self.size - size
@@ -345,7 +373,8 @@ class ParserBuffer(bytearray):
                 return self[start:end]
             else:
                 if limit is not None and self.size > limit:
-                    raise exc('Line is too long.')
+                    raise errors.LineLimitExceededParserError(
+                        'Line is too long.', limit)
 
             self._writer.send((yield))
 
@@ -359,7 +388,7 @@ class ParserBuffer(bytearray):
 
             self._writer.send((yield))
 
-    def waituntil(self, stop, limit=None, exc=ValueError):
+    def waituntil(self, stop, limit=None):
         """waituntil() reads until `stop` bytes sequence."""
         assert isinstance(stop, bytes) and stop, \
             'bytes is required: {!r}'.format(stop)
@@ -372,12 +401,14 @@ class ParserBuffer(bytearray):
                 end = pos + stop_len
                 size = end - self.offset
                 if limit is not None and size > limit:
-                    raise exc('Line is too long.')
+                    raise errors.LineLimitExceededParserError(
+                        'Line is too long. %s' % bytes(self), limit)
 
                 return self[self.offset:end]
             else:
                 if limit is not None and self.size > limit:
-                    raise exc('Line is too long.')
+                    raise errors.LineLimitExceededParserError(
+                        'Line is too long. %s' % bytes(self), limit)
 
             self._writer.send((yield))
 
@@ -417,28 +448,32 @@ class ParserBuffer(bytearray):
 class LinesParser:
     """Lines parser.
 
-    lines parser splits a bytes stream into a chunks of data, each chunk ends
-    with \n symbol."""
+    Lines parser splits a bytes stream into a chunks of data, each chunk ends
+    with \\n symbol."""
 
-    def __init__(self, limit=2**16, exc=ValueError):
+    def __init__(self, limit=2**16):
         self._limit = limit
-        self._exc = exc
 
     def __call__(self, out, buf):
-        while True:
-            out.feed_data(
-                (yield from buf.readuntil(b'\n', self._limit, self._exc)))
+        try:
+            while True:
+                out.feed_data((yield from buf.readuntil(b'\n', self._limit)))
+        except EofStream:
+            pass
 
 
 class ChunksParser:
     """Chunks parser.
 
-    chunks parser splits a bytes stream into a specified
+    Chunks parser splits a bytes stream into a specified
     size chunks of data."""
 
     def __init__(self, size=8196):
         self._size = size
 
     def __call__(self, out, buf):
-        while True:
-            out.feed_data((yield from buf.read(self._size)))
+        try:
+            while True:
+                out.feed_data((yield from buf.read(self._size)))
+        except EofStream:
+            pass

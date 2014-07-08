@@ -26,31 +26,32 @@ ARGS.add_argument(
 WS_FILE = os.path.join(os.path.dirname(__file__), 'websocket.html')
 
 
-class HttpServer(aiohttp.server.ServerHttpProtocol):
+class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
 
     clients = None  # list of all active connections
-    parent = None  # process supervisor
-                   # we use it as broadcaster to all workers
+    parent = None  # supervisor, we use it as broadcaster to all workers
+
+    def __init__(self, *args, parent=None, clients=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.parent = parent
+        self.clients = clients
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
-        upgrade = False
-        for hdr, val in message.headers:
-            if hdr == 'UPGRADE':
-                upgrade = 'websocket' in val.lower()
-                break
+        upgrade = 'websocket' in message.headers.get('UPGRADE', '').lower()
 
         if upgrade:
             # websocket handshake
             status, headers, parser, writer = websocket.do_handshake(
                 message.method, message.headers, self.transport)
 
-            resp = aiohttp.Response(self.transport, status)
+            resp = aiohttp.Response(
+                self.writer, status, http_version=message.version)
             resp.add_headers(*headers)
             resp.send_headers()
 
             # install websocket parser
-            dataqueue = self.stream.set_parser(parser)
+            dataqueue = self.reader.set_parser(parser)
 
             # notify everybody
             print('{}: Someone joined.'.format(os.getpid()))
@@ -63,8 +64,8 @@ class HttpServer(aiohttp.server.ServerHttpProtocol):
             while True:
                 try:
                     msg = yield from dataqueue.read()
-                except aiohttp.EofStream:
-                    # client droped connection
+                except:
+                    # client dropped connection
                     break
 
                 if msg.tp == websocket.MSG_PING:
@@ -90,7 +91,8 @@ class HttpServer(aiohttp.server.ServerHttpProtocol):
 
         else:
             # send html page with js chat
-            response = aiohttp.Response(self.transport, 200)
+            response = aiohttp.Response(
+                self.writer, 200, http_version=message.version)
             response.add_header('Transfer-Encoding', 'chunked')
             response.add_header('Content-type', 'text/html')
             response.send_headers()
@@ -137,13 +139,13 @@ class ChildProcess:
 
     @asyncio.coroutine
     def start_server(self, writer):
-        socks = yield from self.loop.start_serving(
-            lambda: HttpServer(
+        socks = yield from self.loop.create_server(
+            lambda: HttpRequestHandler(
                 debug=True, keep_alive=75,
                 parent=writer, clients=self.clients),
             sock=self.sock)
         print('Starting srv worker process {} on {}'.format(
-            os.getpid(), socks[0].getsockname()))
+            os.getpid(), socks.sockets[0].getsockname()))
 
     @asyncio.coroutine
     def heartbeat(self):
@@ -153,7 +155,7 @@ class ChildProcess:
         write_transport, _ = yield from self.loop.connect_write_pipe(
             aiohttp.StreamProtocol, os.fdopen(self.down_write, 'wb'))
 
-        reader = read_proto.set_parser(websocket.WebSocketParser)
+        reader = read_proto.reader.set_parser(websocket.WebSocketParser)
         writer = websocket.WebSocketWriter(write_transport)
 
         asyncio.Task(self.start_server(writer))
@@ -161,8 +163,8 @@ class ChildProcess:
         while True:
             try:
                 msg = yield from reader.read()
-            except aiohttp.EofStream:
-                print('Superviser is dead, {} stopping...'.format(os.getpid()))
+            except:
+                print('Supervisor is dead, {} stopping...'.format(os.getpid()))
                 self.loop.stop()
                 break
 
@@ -234,7 +236,7 @@ class Worker:
         while True:
             try:
                 msg = yield from reader.read()
-            except aiohttp.EofStream:
+            except:
                 print('Restart unresponsive worker process: {}'.format(
                     self.pid))
                 self.kill()
@@ -258,7 +260,7 @@ class Worker:
             aiohttp.StreamProtocol, os.fdopen(up_write, 'wb'))
 
         # websocket protocol
-        reader = proto.set_parser(websocket.WebSocketParser)
+        reader = proto.reader.set_parser(websocket.WebSocketParser)
         writer = websocket.WebSocketWriter(write_transport)
 
         # store info
@@ -279,7 +281,7 @@ class Worker:
         os.kill(self.pid, signal.SIGTERM)
 
 
-class Superviser:
+class Supervisor:
 
     def __init__(self, args):
         self.loop = asyncio.get_event_loop()
@@ -308,8 +310,8 @@ def main():
         args.host, port = args.host.split(':', 1)
         args.port = int(port)
 
-    superviser = Superviser(args)
-    superviser.start()
+    supervisor = Supervisor(args)
+    supervisor.start()
 
 
 if __name__ == '__main__':

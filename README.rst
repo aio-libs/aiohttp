@@ -1,19 +1,15 @@
 http client/server for asyncio
 ==============================
 
-
-.. image:: https://secure.travis-ci.org/fafhrd91/aiohttp.png
-  :target:  https://secure.travis-ci.org/fafhrd91/aiohttp
-
-.. image:: https://coveralls.io/repos/fafhrd91/aiohttp/badge.png?branch=master
-  :target: https://coveralls.io/r/fafhrd91/aiohttp?branch=master
+.. image:: https://secure.travis-ci.org/KeepSafe/aiohttp.png
+  :target:  https://secure.travis-ci.org/KeepSafe/aiohttp
 
 
 Requirements
 ------------
 
 - Python >= 3.3
-- asyncio https://pypi.python.org/pypi/asyncio/0.3.1
+- asyncio https://pypi.python.org/pypi/asyncio/0.4.1
 
 
 License
@@ -29,14 +25,15 @@ To retrieve something from the web::
   import aiohttp
 
   def get_body(url):
-      response = yield from request('GET', url)
+      response = yield from aiohttp.request('GET', url)
       return (yield from response.read())
 
-You can use the get command like this anywhere in your ``asyncio`` powered program::
+You can use the get command like this anywhere in your ``asyncio``
+powered program::
 
   response = yield from aiohttp.request('GET', 'http://python.org')
   body = yield from response.read()
-  print (body)
+  print(body)
 
 The signature of request is the following::
 
@@ -45,19 +42,18 @@ The signature of request is the following::
           data=None,
           headers=None,
           cookies=None,
-          files=None,
           auth=None,
           allow_redirects=True,
           max_redirects=10,
           encoding='utf-8',
           version=(1, 1),
-          timeout=None,
-          conn_timeout=None,
           compress=None,
           chunked=None,
           expect100=False,
-          session=None,
-          verify_ssl=True,
+          connector=None,
+          read_until_eof=True,
+          request_class=None,
+          response_class=None,
           loop=None
   )
 
@@ -67,15 +63,11 @@ It constructs and sends a request. It returns response object. Parameters are ex
 - ``url``: Request url
 - ``params``: (optional) Dictionary or bytes to be sent in the query string
   of the new request
-- ``data``: (optional) Dictionary, bytes, or file-like object to
+- ``data``: (optional) Dictionary, bytes, StreamReader or file-like object to
   send in the body of the request
 - ``headers``: (optional) Dictionary of HTTP Headers to send with the request
 - ``cookies``: (optional) Dict object to send with the request
-- ``files``: (optional) Dictionary of 'name': file-like-objects
-  for multipart encoding upload
-- ``auth``: (optional) Auth tuple to enable Basic HTTP Auth
-- ``timeout``: (optional) Float describing the timeout of the request
-- ``conn_timeout``: (optional) Float describing the timeout of the tcp connection
+- ``auth``: (optional) `BasicAuth` tuple to enable Basic HTTP Basic Auth
 - ``allow_redirects``: (optional) Boolean. Set to True if POST/PUT/DELETE
   redirect following is allowed.
 - ``compress``: Boolean. Set to True if request has to be compressed
@@ -83,13 +75,24 @@ It constructs and sends a request. It returns response object. Parameters are ex
 - ``chunked``: Boolean or Integer. Set to chunk size for chunked
   transfer encoding.
 - ``expect100``: Boolean. Expect 100-continue response from server.
-- ``session``: ``aiohttp.Session`` instance to support connection pooling and
-  session cookies.
+- ``connector``: ``aiohttp.connector.BaseConnector`` instance to support
+  connection pooling and session cookies.
+- ``read_until_eof``: Read response until eof if response
+  does not have Content-Length header.
+- ``request_class``: Custom Request class implementation.
+- ``response_class``: Custom Response class implementation.
 - ``loop``: Optional event loop.
+
+If you want to use timeouts for aiohttp client side please use standard
+asyncio approach::
+
+   yield from asyncio.wait_for(request('GET', url), 10))
 
 
 Gunicorn worker
 ---------------
+
+Since version 0.19.0 gunicorn has native support for aiohttp.
 
 Paster configuration example::
 
