@@ -17,6 +17,7 @@ License
 
 ``aiohttp`` is offered under the BSD license.
 
+
 Getting started
 ---------------
 
@@ -46,7 +47,7 @@ The signature of request is the following::
           allow_redirects=True,
           max_redirects=10,
           encoding='utf-8',
-          version=(1, 1),
+          version=aiohttp.HttpVersion11,
           compress=None,
           chunked=None,
           expect100=False,
@@ -70,6 +71,7 @@ It constructs and sends a request. It returns response object. Parameters are ex
 - ``auth``: (optional) `BasicAuth` tuple to enable Basic HTTP Basic Auth
 - ``allow_redirects``: (optional) Boolean. Set to True if POST/PUT/DELETE
   redirect following is allowed.
+- ``version``: Request http version.
 - ``compress``: Boolean. Set to True if request has to be compressed
   with deflate encoding.
 - ``chunked``: Boolean or Integer. Set to chunk size for chunked

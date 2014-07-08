@@ -40,7 +40,7 @@ def request(method, url, *,
             allow_redirects=True,
             max_redirects=10,
             encoding='utf-8',
-            version=(1, 1),
+            version=aiohttp.HttpVersion11,
             compress=None,
             chunked=None,
             expect100=False,
@@ -63,6 +63,7 @@ def request(method, url, *,
     :param auth: (optional) BasicAuth named tuple represent HTTP Basic Auth
     :param allow_redirects: (optional) Boolean. Set to True if POST/PUT/DELETE
        redirect following is allowed.
+    :param version: Request http version.
     :param compress: Boolean. Set to True if request has to be compressed
        with deflate encoding.
     :param chunked: Boolean or Integer. Set to chunk size for chunked
@@ -171,8 +172,9 @@ class ClientRequest:
 
     def __init__(self, method, url, *,
                  params=None, headers=None, data=None, cookies=None,
-                 files=None, auth=None, encoding='utf-8', version=(1, 1),
-                 compress=None, chunked=None, expect100=False, verify_ssl=True,
+                 files=None, auth=None, encoding='utf-8',
+                 version=aiohttp.HttpVersion11, compress=None,
+                 chunked=None, expect100=False, verify_ssl=True,
                  loop=None, response_class=None):
         self.url = url
         self.method = method.upper()
@@ -822,7 +824,7 @@ class HttpClient:
                 allow_redirects=True,
                 max_redirects=10,
                 encoding='utf-8',
-                version=(1, 1),
+                version=aiohttp.HttpVersion11,
                 compress=None,
                 chunked=None,
                 expect100=False,
