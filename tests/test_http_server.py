@@ -267,6 +267,23 @@ class HttpServerProtocolTests(unittest.TestCase):
         self.assertTrue(handle.called)
         self.assertTrue(transport.close.called)
 
+    def test_handle_uncompleted(self):
+        transport = unittest.mock.Mock()
+        srv = server.ServerHttpProtocol(loop=self.loop)
+        srv.connection_made(transport)
+
+        handle = srv.handle_request = unittest.mock.Mock()
+        handle.side_effect = ValueError
+
+        srv.reader.feed_data(
+            b'GET / HTTP/1.0\r\n'
+            b'Host: example.com\r\n'
+            b'Content-Length: 50000\r\n\r\n')
+
+        self.loop.run_until_complete(srv._request_handler)
+        self.assertTrue(handle.called)
+        self.assertTrue(transport.close.called)
+
     def test_handle_coro(self):
         transport = unittest.mock.Mock()
         srv = server.ServerHttpProtocol(loop=self.loop)
