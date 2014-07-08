@@ -287,7 +287,7 @@ class ProxyConnector(TCPConnector):
             "Only http proxy supported", proxy)
         assert (proxy_auth is None
                 or isinstance(proxy_auth, (BasicAuth, BasicAuthEx))), \
-            ("proxy_auth must be None, BasicAuth() or BasicAuthEx() tuple",
+            ("proxy_auth must be None, BasicAuth() or BasicAuthEx()",
              proxy_auth)
 
     @property
