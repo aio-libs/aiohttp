@@ -360,28 +360,6 @@ class ProxyConnectorTests(unittest.TestCase):
                          ("proxy_auth must be None or BasicAuth() tuple",
                           ('user', 'pass')))
 
-
-    @unittest.mock.patch('aiohttp.connector.ClientRequest')
-    def test_proxy_override_auth(self, ClientRequestMock):
-        req = ClientRequest('GET', 'http://www.python.org')
-
-        loop_mock = unittest.mock.Mock()
-        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        self._fake_coroutine(loop_mock.create_connection, (tr, proto))
-
-        connector = aiohttp.ProxyConnector(
-            'http://user:pass@proxy.example.com',
-            proxy_auth=aiohttp.helpers.BasicAuth(None, None),
-            loop=loop_mock)
-
-        def check_proxy_req(*args, **kw):
-            proxy_req = ClientRequest(*args, **kw)
-            self.assertNotIn('AUTHORIZATION', proxy_req.headers)
-            return proxy_req
-
-        ClientRequestMock.side_effect = check_proxy_req
-        self.loop.run_until_complete(connector._create_connection(req))
-
     def test_proxy_connection_error(self):
         connector = aiohttp.ProxyConnector('http://proxy.example.com',
                                            loop=self.loop)

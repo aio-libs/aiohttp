@@ -350,12 +350,9 @@ class ClientRequest:
         if not isinstance(auth, helpers.BasicAuth):
             warnings.warn(
                 'BasicAuth() tuple is required instead ', DeprecationWarning)
-
-        if not isinstance(auth, helpers.BasicAuth):
             auth = helpers.BasicAuth(*auth)
 
-        if auth.login:
-            self.headers['AUTHORIZATION'] = auth.encode()
+        self.headers['AUTHORIZATION'] = auth.encode()
 
     def update_body_from_data(self, data):
         if isinstance(data, str):

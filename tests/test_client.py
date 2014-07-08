@@ -419,13 +419,6 @@ class ClientRequestTests(unittest.TestCase):
         self.assertIn('AUTHORIZATION', req.headers)
         self.assertEqual('Basic bmtpbToxMjM0', req.headers['AUTHORIZATION'])
 
-    def test_basic_auth_err(self):
-        # missing password here
-        self.assertRaises(
-            ValueError, ClientRequest,
-            'get', 'http://python.org',
-            auth=aiohttp.helpers.BasicAuth('nkim', None))
-
     def test_no_content_length(self):
         req = ClientRequest('get', 'http://python.org', loop=self.loop)
         req.send(self.transport, self.protocol)

@@ -8,15 +8,17 @@ from collections import namedtuple
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
-    def __new__(cls, login, password=None, encoding='latin1'):
+
+    def __new__(cls, login, password='', encoding='latin1'):
+        if login is None:
+            raise ValueError('None is not allowed as login value')
+
+        if password is None:
+            raise ValueError('None is not allowed as login value')
+
         return super().__new__(cls, login, password, encoding)
 
-    def __bool__(self):
-        return self.login is not None and self.password is not None
-
     def encode(self):
-        if not self:
-            raise ValueError("HTTP Auth login or password is missing")
         creds = ('%s:%s' % (self.login, self.password)).encode(self.encoding)
         return 'Basic %s' % base64.b64encode(creds).decode(self.encoding)
 
