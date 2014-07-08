@@ -12,6 +12,11 @@ import socket
 import aiohttp
 from aiohttp.client import ClientRequest, ClientResponse, HttpClient
 
+try:
+    import chardet
+except ImportError:
+    chardet = None
+
 
 class RequestTests(unittest.TestCase):
 
@@ -186,9 +191,14 @@ class ClientResponseTests(unittest.TestCase):
         content.read.side_effect = side_effect
         self.response.close = unittest.mock.Mock()
 
-        res = self.loop.run_until_complete(self.response.text())
-        self.assertEqual(res, '{"тест": "пройден"}')
-        self.assertTrue(self.response.close.called)
+        if chardet is None:
+            self.assertRaises(UnicodeDecodeError,
+                              self.loop.run_until_complete,
+                              self.response.text())
+        else:
+            res = self.loop.run_until_complete(self.response.text())
+            self.assertEqual(res, '{"тест": "пройден"}')
+            self.assertTrue(self.response.close.called)
 
     def test_json(self):
         def side_effect(*args, **kwargs):
@@ -260,9 +270,14 @@ class ClientResponseTests(unittest.TestCase):
         content.read.side_effect = side_effect
         self.response.close = unittest.mock.Mock()
 
-        res = self.loop.run_until_complete(self.response.json())
-        self.assertEqual(res, {'тест': 'пройден'})
-        self.assertTrue(self.response.close.called)
+        if chardet is None:
+            self.assertRaises(UnicodeDecodeError,
+                              self.loop.run_until_complete,
+                              self.response.json())
+        else:
+            res = self.loop.run_until_complete(self.response.json())
+            self.assertEqual(res, {'тест': 'пройден'})
+            self.assertTrue(self.response.close.called)
 
     def test_override_flow_control(self):
         class MyResponse(ClientResponse):
