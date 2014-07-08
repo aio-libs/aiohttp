@@ -253,17 +253,17 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                     pass
 
             html = DEFAULT_ERROR_MESSAGE.format(
-                status=status, reason=reason, message=msg)
+                status=status, reason=reason, message=msg).encode('utf-8')
 
             response = aiohttp.Response(self.writer, status, close=True)
             response.add_headers(
-                ('CONTENT-TYPE', 'text/html'),
+                ('CONTENT-TYPE', 'text/html; charset=utf-8'),
                 ('CONTENT-LENGTH', str(len(html))))
             if headers is not None:
                 response.add_headers(*headers)
             response.send_headers()
 
-            response.write(html.encode('ascii'))
+            response.write(html)
             response.write_eof()
 
             self.log_access(message, None, response, time.time() - now)

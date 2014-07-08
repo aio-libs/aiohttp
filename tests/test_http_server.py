@@ -186,6 +186,26 @@ class HttpServerProtocolTests(unittest.TestCase):
         self.assertIn(b'X-SERVER: asyncio', content)
         self.assertFalse(srv._keep_alive)
 
+    def test_handle_error__utf(self):
+        transport = unittest.mock.Mock()
+        srv = server.ServerHttpProtocol(debug=True, loop=self.loop)
+        srv.connection_made(transport)
+        srv.keep_alive(True)
+        srv.writer = unittest.mock.Mock()
+
+        try:
+            raise RuntimeError('что-то пошло не так')
+        except RuntimeError as exc:
+            srv.handle_error(exc=exc)
+        content = b''.join(
+            [c[1][0] for c in list(srv.writer.write.mock_calls)])
+        self.assertIn(b'HTTP/1.1 500 Internal Server Error', content)
+        self.assertIn(b'CONTENT-TYPE: text/html; charset=utf-8', content)
+        self.assertIn(
+            "raise RuntimeError('что-то пошло не так')".encode('utf-8'),
+            content)
+        self.assertFalse(srv._keep_alive)
+
     @unittest.mock.patch('aiohttp.server.traceback')
     def test_handle_error_traceback_exc(self, m_trace):
         transport = unittest.mock.Mock()
