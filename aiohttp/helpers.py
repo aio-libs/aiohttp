@@ -14,7 +14,7 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
             raise ValueError('None is not allowed as login value')
 
         if password is None:
-            raise ValueError('None is not allowed as login value')
+            raise ValueError('None is not allowed as password value')
 
         return super().__new__(cls, login, password, encoding)
 
