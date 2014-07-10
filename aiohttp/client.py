@@ -271,6 +271,8 @@ class ClientRequest:
 
         if isinstance(params, dict):
             params = list(params.items())
+        elif isinstance(params, MultiDict):
+            params = list(params.items(getall=True))
 
         # for GET request include data to query params
         if data and self.method in self.GET_METHODS:
@@ -370,11 +372,11 @@ class ClientRequest:
         elif isinstance(data, (asyncio.StreamReader, streams.DataQueue)):
             self.body = data
 
-        elif (hasattr(data, '__iter__') and not
-              isinstance(data, (tuple, list, dict, io.IOBase))):
+        elif inspect.isgenerator(data):
             self.body = data
             if 'CONTENT-LENGTH' not in self.headers and self.chunked is None:
                 self.chunked = True
+
         else:
             if not isinstance(data, helpers.FormData):
                 data = helpers.FormData(data)

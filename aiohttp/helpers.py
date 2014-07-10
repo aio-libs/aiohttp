@@ -9,6 +9,8 @@ import urllib.parse
 from collections import namedtuple
 from wsgiref.handlers import format_date_time
 
+from . import multidict
+
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
     """Http basic authentication helper."""
@@ -60,11 +62,18 @@ class FormData:
         self._fields.append((name, value, contenttype, filename))
 
     def add_fields(self, *fields):
-        for rec in fields:
+        to_add = list(fields)
+
+        while to_add:
+            rec = to_add.pop(0)
+
             if isinstance(rec, io.IOBase):
                 k = guess_filename(rec, 'unknown')
                 self.add_field(k, rec)
                 self._has_io = True
+
+            elif isinstance(rec, multidict.MultiDict):
+                to_add.extend(rec.items(getall=True))
 
             elif len(rec) == 1:
                 k = guess_filename(rec[0], 'unknown')

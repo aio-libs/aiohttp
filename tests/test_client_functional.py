@@ -11,6 +11,7 @@ from unittest import mock
 
 import aiohttp
 from aiohttp import client
+from aiohttp import multidict
 from aiohttp import test_utils
 from aiohttp.multidict import MultiDict
 
@@ -228,6 +229,20 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertEqual(r.status, 200)
             r.close()
 
+    def test_HTTP_200_GET_MultiDict_PARAMS(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            r = self.loop.run_until_complete(
+                client.request('get', httpd.url('method', 'get'),
+                               params=multidict.MultiDict(
+                                   [('q', 'test1'), ('q', 'test2')]),
+                               loop=self.loop))
+            content = self.loop.run_until_complete(r.content.read())
+            content = content.decode()
+
+            self.assertIn('"query": "q=test1&q=test2"', content)
+            self.assertEqual(r.status, 200)
+            r.close()
+
     def test_HTTP_200_GET_WITH_MIXED_PARAMS(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             @asyncio.coroutine
@@ -256,6 +271,20 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
             content = self.loop.run_until_complete(r.json())
             self.assertEqual({'some': ['data']}, content['form'])
+            self.assertEqual(r.status, 200)
+            r.close()
+
+    def test_POST_MultiDict(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+            r = self.loop.run_until_complete(
+                client.request('post', url, data=multidict.MultiDict(
+                    [('q', 'test1'), ('q', 'test2')]),
+                    loop=self.loop))
+            self.assertEqual(r.status, 200)
+
+            content = self.loop.run_until_complete(r.json())
+            self.assertEqual({'q': ['test1', 'test2']}, content['form'])
             self.assertEqual(r.status, 200)
             r.close()
 
@@ -486,12 +515,15 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
             r = self.loop.run_until_complete(
                 client.request('post', url,
-                               data=(('test', 'true'), (data,)),
+                               data=(('test', 'true'),
+                                     multidict.MultiDict(
+                                         [('q', 't1'), ('q', 't2')]),
+                                     (data,)),
                                loop=self.loop))
 
             content = self.loop.run_until_complete(r.json())
 
-            self.assertEqual(2, len(content['multipart-data']))
+            self.assertEqual(4, len(content['multipart-data']))
             self.assertEqual(
                 {'content-type': 'text/plain',
                  'data': 'true',
@@ -501,6 +533,14 @@ class HttpClientFunctionalTests(unittest.TestCase):
                  'data': 'data',
                  'filename': 'unknown',
                  'name': 'unknown'}, content['multipart-data'][1])
+            self.assertEqual(
+                {'content-type': 'text/plain',
+                 'data': 't1',
+                 'name': 'q'}, content['multipart-data'][2])
+            self.assertEqual(
+                {'content-type': 'text/plain',
+                 'data': 't2',
+                 'name': 'q'}, content['multipart-data'][3])
             self.assertEqual(r.status, 200)
             r.close()
 
