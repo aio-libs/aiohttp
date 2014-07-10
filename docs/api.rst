@@ -31,7 +31,7 @@ aiohttp.errors module
     :show-inheritance:
 
 aiohttp.helpers module
----------------------
+----------------------
 
 .. automodule:: aiohttp.helpers
     :members:
@@ -63,7 +63,7 @@ aiohttp.server module
     :show-inheritance:
 
 aiohttp.streams module
----------------------
+----------------------
 
 .. automodule:: aiohttp.streams
     :members:
