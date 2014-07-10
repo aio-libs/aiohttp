@@ -7,12 +7,14 @@ from .protocol import *
 from .connector import *
 from .client import *
 from .errors import *
+from .helpers import *
 from .parsers import *
 from .streams import *
 
 
 __all__ = (client.__all__ +
            errors.__all__ +
+           helpers.__all__ +
            parsers.__all__ +
            protocol.__all__ +
            connector.__all__ +

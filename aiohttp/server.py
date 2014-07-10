@@ -9,7 +9,7 @@ import traceback
 import socket
 
 import aiohttp
-from aiohttp import errors, streams, utils
+from aiohttp import errors, streams, helpers
 from aiohttp.log import server_log, access_log
 
 
@@ -116,8 +116,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         if self.access_log and self.access_log_format:
             try:
                 environ = environ if environ is not None else {}
-                atoms = utils.SafeAtoms(
-                    utils.atoms(message, environ, response, time),
+                atoms = helpers.SafeAtoms(
+                    helpers.atoms(message, environ, response, time),
                     getattr(message, 'headers', None),
                     getattr(response, 'headers', None))
                 self.access_log.info(self.access_log_format % atoms)

@@ -1,13 +1,17 @@
 """Various helper functions"""
+__all__ = ['BasicAuth', 'FormData', 'parse_mimetype']
+
 import base64
 import io
 import os
 import uuid
 import urllib.parse
 from collections import namedtuple
+from wsgiref.handlers import format_date_time
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
+    """Http basic authentication helper."""
 
     def __new__(cls, login, password='', encoding='latin1'):
         if login is None:
@@ -19,12 +23,14 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
         return super().__new__(cls, login, password, encoding)
 
     def encode(self):
+        """Encode credentials."""
         creds = ('%s:%s' % (self.login, self.password)).encode(self.encoding)
         return 'Basic %s' % base64.b64encode(creds).decode(self.encoding)
 
 
 class FormData:
-    """Generate multipart/form-data body."""
+    """Helper class for multipart/form-data and
+    application/x-www-form-urlencoded body generation."""
 
     def __init__(self, fields):
         self._fields = []
@@ -176,3 +182,60 @@ def guess_filename(obj, default=None):
     if name and name[0] != '<' and name[-1] != '>':
         return os.path.split(name)[-1]
     return default
+
+
+def atoms(message, environ, response, request_time):
+    """Gets atoms for log formatting."""
+    if message:
+        r = '{} {} HTTP/{}.{}'.format(
+            message.method, message.path,
+            message.version[0], message.version[1])
+    else:
+        r = ''
+
+    atoms = {
+        'h': environ.get('REMOTE_ADDR', '-'),
+        'l': '-',
+        'u': '-',
+        't': format_date_time(None),
+        'r': r,
+        's': str(response.status),
+        'b': str(response.output_length),
+        'f': environ.get('HTTP_REFERER', '-'),
+        'a': environ.get('HTTP_USER_AGENT', '-'),
+        'T': str(int(request_time)),
+        'D': str(request_time).split('.', 1)[-1][:5],
+        'p': "<%s>" % os.getpid()
+    }
+
+    return atoms
+
+
+class SafeAtoms(dict):
+    """Copy from gunicorn"""
+
+    def __init__(self, atoms, i_headers, o_headers):
+        dict.__init__(self)
+
+        self._i_headers = i_headers
+        self._o_headers = o_headers
+
+        for key, value in atoms.items():
+            self[key] = value.replace('"', '\\"')
+
+    def __getitem__(self, k):
+        if k.startswith('{'):
+            if k.endswith('}i'):
+                headers = self._i_headers
+            elif k.endswith('}o'):
+                headers = self._o_headers
+            else:
+                headers = None
+
+            if headers is not None:
+                return headers.get(k[1:-2], '-')
+
+        if k in self:
+            return super(SafeAtoms, self).__getitem__(k)
+        else:
+            return '-'
