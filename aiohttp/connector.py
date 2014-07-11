@@ -1,5 +1,5 @@
-__all__ = ['BaseConnector', 'TCPConnector', 'UnixConnector',
-           'SocketConnector', 'UnixSocketConnector', 'ProxyConnector']
+__all__ = ['BaseConnector', 'TCPConnector', 'ProxyConnector',
+           'UnixConnector', 'SocketConnector', 'UnixSocketConnector']
 
 import asyncio
 import aiohttp
@@ -48,6 +48,15 @@ class Connection(object):
 
 
 class BaseConnector(object):
+    """Base connector class.
+
+    :param conn_timeout: (optional) Connect timeout.
+    :param keepalive_timeout: (optional) Keep-alive timeout.
+    :param bool share_cookies: Set to True to keep cookies between requests.
+    :param bool force_close: Set to True to froce close and do reconnect
+        after each request (and between redirects).
+    :param loop: Optional event loop.
+    """
 
     def __init__(self, *, conn_timeout=None, keepalive_timeout=30,
                  share_cookies=False, force_close=False, loop=None, **kwargs):
@@ -117,6 +126,7 @@ class BaseConnector(object):
         conns.clear()
 
     def update_cookies(self, cookies):
+        """Update shared cookies."""
         if isinstance(cookies, dict):
             cookies = cookies.items()
 
@@ -129,6 +139,7 @@ class BaseConnector(object):
 
     @asyncio.coroutine
     def connect(self, req):
+        """Get from pool or create new connection."""
         key = (req.host, req.port, req.ssl)
 
         if self._share_cookies:
@@ -190,6 +201,14 @@ class BaseConnector(object):
 
 
 class TCPConnector(BaseConnector):
+    """TCP connector.
+
+    :param bool verify_ssl: Set to True to check ssl certifications.
+    :param bool resolve: Set to True to do DNS lookup for host name.
+    :param familiy: socket address family
+    :param args: see :class:`BaseConnector`
+    :param kwargs: see :class:`BaseConnector`
+    """
 
     def __init__(self, *args, verify_ssl=True,
                  resolve=False, family=socket.AF_INET, **kwargs):
@@ -207,7 +226,7 @@ class TCPConnector(BaseConnector):
 
     @property
     def family(self):
-        """Socket family like AF_INET"""
+        """Socket family like AF_INET."""
         return self._family
 
     @property
@@ -217,10 +236,11 @@ class TCPConnector(BaseConnector):
 
     @property
     def resolved_hosts(self):
-        """The dict of (host, port) -> (ipaddr, port) pairs"""
+        """The dict of (host, port) -> (ipaddr, port) pairs."""
         return dict(self._resolved_hosts)
 
     def clear_resolved_hosts(self, host=None, port=None):
+        """Remove specified host/port from resolved cache or clear all."""
         if host is not None and port is not None:
             key = (host, port)
             if key in self._resolved_hosts:
@@ -252,8 +272,9 @@ class TCPConnector(BaseConnector):
                      'family': self._family, 'proto': 0, 'flags': 0}]
 
     def _create_connection(self, req, **kwargs):
-        """Create connection. Has same keyword arguments
-        as BaseEventLoop.create_connection
+        """Create connection.
+
+        Has same keyword arguments as BaseEventLoop.create_connection.
         """
         sslcontext = req.ssl
         if req.ssl and not self._verify_ssl:
@@ -278,7 +299,20 @@ class TCPConnector(BaseConnector):
 
 
 class ProxyConnector(TCPConnector):
-    """Http Proxy connector."""
+    """Http Proxy connector.
+
+    :param str proxy: Proxy URL address. Only http proxy supported.
+    :param proxy_auth: (optional) Proxy HTTP Basic Auth
+    :type proxy_auth: aiohttp.helpers.BasicAuth
+    :param args: see :class:`TCPConnector`
+    :param kwargs: see :class:`TCPConnector`
+
+    Usage:
+
+    >>> conn = ProxyConnector(proxy="http://some.proxy.com")
+    >>> resp = yield from request('GET', 'http://python.org', connector=conn)
+
+    """
 
     def __init__(self, proxy, *args, proxy_auth=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -291,6 +325,7 @@ class ProxyConnector(TCPConnector):
 
     @property
     def proxy(self):
+        """Proxy URL."""
         return self._proxy
 
     @asyncio.coroutine
@@ -350,15 +385,26 @@ class ProxyConnector(TCPConnector):
 
 
 class UnixConnector(BaseConnector):
+    """Unix socket connector.
+
+    :param str path: Unix socket path.
+    :param args: see :class:`BaseConnector`
+    :param kwargs: see :class:`BaseConnector`
+
+    Usage:
+
+    >>> conn = UnixConnector(path='/path/to/socket')
+    >>> resp = yield from request('GET', 'http://python.org', connector=conn)
+
+    """
 
     def __init__(self, path, *args, **kw):
         super().__init__(*args, **kw)
-
         self._path = path
 
     @property
     def path(self):
-        """Path to unix socket"""
+        """Path to unix socket."""
         return self._path
 
     @asyncio.coroutine
@@ -368,4 +414,17 @@ class UnixConnector(BaseConnector):
 
 
 SocketConnector = TCPConnector
+"""Alias of TCPConnector.
+
+.. note::
+   Keeped for backward compatibility.
+   May be deprecated in future.
+"""
+
 UnixSocketConnector = UnixConnector
+"""Alias of UnixConnector.
+
+.. note::
+   Keeped for backward compatibility.
+   May be deprecated in future.
+"""
