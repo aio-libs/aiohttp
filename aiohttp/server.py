@@ -33,18 +33,35 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     """Simple http protocol implementation.
 
     ServerHttpProtocol handles incoming http request. It reads request line,
-    request headers and request payload and calls handler_request() method.
+    request headers and request payload and calls handle_request() method.
     By default it always returns with 404 response.
 
     ServerHttpProtocol handles errors in incoming request, like bad
     status line, bad headers or incomplete payload. If any error occurs,
     connection gets closed.
 
-    log: custom logging object
-    debug: enable debug mode
-    keep_alive: number of seconds before closing keep alive connection
-    timeout: slow request timeout
-    loop: event loop object
+    :param keep_alive: number of seconds before closing keep-alive connection
+    :type keep_alive: int or None
+
+    :param int timeout: slow request timeout
+
+    :param bool tcp_keepalive: TCP socket keep-alive flag
+
+    :param allowed_methods: (optional) List of allowed request methods.
+                            Set to empty list to allow all methods.
+    :type allowed_methods: tuple
+
+    :param bool debug: enable debug mode
+
+    :param log: custom logging object
+    :type log: aiohttp.log.server_log
+
+    :param access_log: custom logging object
+    :type access_log: aiohttp.log.server_log
+
+    :param str access_log_format: access log format string
+
+    :param loop: Optional event loop
     """
     _request_count = 0
     _request_handler = None
@@ -110,6 +127,10 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             self._timeout_handle = None
 
     def keep_alive(self, val):
+        """Set keep-alive connection mode.
+
+        :param bool val: new state.
+        """
         self._keep_alive = val
 
     def log_access(self, message, environ, response, time):
@@ -144,6 +165,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     @asyncio.coroutine
     def start(self):
         """Start processing of incoming requests.
+
         It reads request line, request headers and request payload, then
         calls handle_request() method. Subclass has to override
         handle_request(). start() handles various exceptions in request
@@ -276,8 +298,10 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         Subclass should override this method. By default it always
         returns 404 response.
 
-        info: aiohttp.RequestLine instance
-        message: aiohttp.RawHttpMessage instance
+        :param message: Request headers
+        :type message: aiohttp.protocol.HttpRequestParser
+        :param payload: Request payload
+        :type payload: aiohttp.streams.FlowControlStreamReader
         """
         now = time.time()
         response = aiohttp.Response(

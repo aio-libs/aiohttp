@@ -240,7 +240,7 @@ class TCPConnector(BaseConnector):
         return dict(self._resolved_hosts)
 
     def clear_resolved_hosts(self, host=None, port=None):
-        """Remove specified host/port from resolved cache or clear all."""
+        """Remove specified host/port or clear all resolve cache."""
         if host is not None and port is not None:
             key = (host, port)
             if key in self._resolved_hosts:

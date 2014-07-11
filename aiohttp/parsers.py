@@ -1,4 +1,4 @@
-"""Parser is a generator function.
+"""Parser is a generator function (NOT coroutine).
 
 Parser receives data with generator's send() method and sends data to
 destination DataQueue. Parser receives ParserBuffer and DataQueue objects
