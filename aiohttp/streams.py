@@ -244,6 +244,21 @@ class StreamReader(asyncio.StreamReader):
 
         return b''.join(blocks)
 
+    def read_nowait(self):
+        if self._exception is not None:
+            raise self._exception
+
+        if self._waiter and not self._waiter.done():
+            raise RuntimeError(
+                'Called while some coroutine is waiting for incoming data.')
+
+        if not self._buffer:
+            return EOF_MARKER
+        else:
+            data = bytes(self._buffer)
+            del self._buffer[:]
+            return data
+
 
 class FlowControlStreamReader(StreamReader):
 
