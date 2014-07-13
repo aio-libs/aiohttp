@@ -334,12 +334,13 @@ class HttpClientFunctionalTests(unittest.TestCase):
             url = httpd.url('method', 'post')
 
             with open(__file__) as f:
-                r = self.loop.run_until_complete(
-                    client.request(
-                        'post', url, files={'some': f, 'test': b'data'},
-                        chunked=1024,
-                        headers={'Transfer-Encoding': 'chunked'},
-                        loop=self.loop))
+                with self.assertWarns(DeprecationWarning):
+                    r = self.loop.run_until_complete(
+                        client.request(
+                            'post', url, files={'some': f, 'test': b'data'},
+                            chunked=1024,
+                            headers={'Transfer-Encoding': 'chunked'},
+                            loop=self.loop))
                 content = self.loop.run_until_complete(r.json())
                 files = list(
                     sorted(content['multipart-data'],

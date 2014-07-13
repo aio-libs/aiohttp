@@ -51,30 +51,33 @@ def request(method, url, *,
             response_class=None):
     """Constructs and sends a request. Returns response object.
 
-    :param method: http method
-    :param url: request url
+    :param str method: http method
+    :param str url: request url
     :param params: (optional) Dictionary or bytes to be sent in the query
       string of the new request
     :param data: (optional) Dictionary, bytes, or file-like object to
       send in the body of the request
-    :param headers: (optional) Dictionary of HTTP Headers to send with
+    :param dict headers: (optional) Dictionary of HTTP Headers to send with
       the request
-    :param cookies: (optional) Dict object to send with the request
+    :param dict cookies: (optional) Dict object to send with the request
     :param auth: (optional) BasicAuth named tuple represent HTTP Basic Auth
-    :param allow_redirects: (optional) Boolean. Set to True if POST/PUT/DELETE
+    :type auth: aiohttp.helpers.BasicAuth
+    :param bool allow_redirects: (optional) Set to True if POST/PUT/DELETE
        redirect following is allowed.
     :param version: Request http version.
-    :param compress: Boolean. Set to True if request has to be compressed
+    :type version: aiohttp.protocol.HttpVersion
+    :param bool compress: Set to True if request has to be compressed
        with deflate encoding.
-    :param chunked: Boolean or Integer. Set to chunk size for chunked
-       transfer encoding.
-    :param expect100: Boolean. Expect 100-continue response from server.
-    :param connector: aiohttp.connector.BaseConnector instance to support
+    :param chunked: Set to chunk size for chunked transfer encoding.
+    :type chunked: bool or int
+    :param bool expect100: Expect 100-continue response from server.
+    :param connector: BaseConnector sub-class instance to support
        connection pooling and session cookies.
-    :param read_until_eof: Read response until eof if response
+    :type connector: aiohttp.connector.BaseConnector
+    :param bool read_until_eof: Read response until eof if response
        does not have Content-Length header.
-    :param request_class: Custom Request class implementation.
-    :param response_class: Custom Response class implementation.
+    :param request_class: (optional) Custom Request class implementation.
+    :param response_class: (optional) Custom Response class implementation.
     :param loop: Optional event loop.
 
     Usage::

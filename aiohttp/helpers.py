@@ -13,7 +13,12 @@ from . import multidict
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
-    """Http basic authentication helper."""
+    """Http basic authentication helper.
+
+    :param str login: Login
+    :param str password: Password
+    :param str encoding: (optional) encoding ('latin1' by default)
+    """
 
     def __new__(cls, login, password='', encoding='latin1'):
         if login is None:
@@ -149,12 +154,17 @@ class FormData:
 
 
 def parse_mimetype(mimetype):
-    """Parses a MIME type into it components.
+    """Parses a MIME type into its components.
 
     :param str mimetype: MIME type
 
     :returns: 4 element tuple for MIME type, subtype, suffix and parameters
     :rtype: tuple
+
+    Example:
+
+    >>> parse_mimetype('text/html; charset=utf-8')
+    ('text', 'html', '', {'charset': 'utf-8'})
 
     """
     if not mimetype:

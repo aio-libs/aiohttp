@@ -10,22 +10,27 @@ from asyncio import TimeoutError
 
 
 class ConnectionError(Exception):
-    """http connection error"""
+    """http connection error."""
 
 
 class OsConnectionError(ConnectionError):
-    """OSError error"""
+    """OSError error."""
 
 
 class ClientConnectionError(ConnectionError):
-    """BadStatusLine error"""
+    """BadStatusLine error."""  # ???
 
 
 class ProxyConnectionError(ClientConnectionError):
-    """Proxy connection error"""
+    """Proxy connection error.
+
+    Raised in :class:`aiohttp.connector.ProxyConnector` if
+    connection to proxy can not be established.
+    """
 
 
 class HttpException(Exception):
+    """Base http exception class."""
 
     code = None
     headers = ()
@@ -33,6 +38,14 @@ class HttpException(Exception):
 
 
 class HttpErrorException(HttpException):
+    """Http error.
+
+    Shortcut for raising http errors with custom code, message and headers.
+
+    :param int code: HTTP Error code.
+    :param str message: (optional) Error message.
+    :param dict headers: (optional) Headers to be sent in response.
+    """
 
     def __init__(self, code, message='', headers=None):
         self.code = code
@@ -41,7 +54,12 @@ class HttpErrorException(HttpException):
 
 
 class HttpProxyError(HttpErrorException):
-    """Http proxy error"""
+    """Http proxy error.
+
+    Raised in :class:`aiohttp.connector.ProxyConnector` if
+    proxy responds with status other than ``200 OK``
+    on ``CONNECT`` request.
+    """
 
 
 class HttpBadRequest(HttpException):
