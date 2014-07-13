@@ -127,7 +127,8 @@ class ClientResponseTests(unittest.TestCase):
         self.response.read.return_value = asyncio.Future(loop=self.loop)
         self.response.read.return_value.set_result(b'data')
 
-        res = self.loop.run_until_complete(self.response.read_and_close())
+        with self.assertWarns(DeprecationWarning):
+            res = self.loop.run_until_complete(self.response.read_and_close())
         self.assertEqual(res, b'data')
         self.assertTrue(self.response.read.called)
 
@@ -137,7 +138,8 @@ class ClientResponseTests(unittest.TestCase):
         self.response.json.return_value = asyncio.Future(loop=self.loop)
         self.response.json.return_value.set_result('json')
 
-        res = self.loop.run_until_complete(self.response.read(decode=True))
+        with self.assertWarns(DeprecationWarning):
+            res = self.loop.run_until_complete(self.response.read(decode=True))
         self.assertEqual(res, 'json')
         self.assertTrue(self.response.json.called)
 
@@ -404,7 +406,9 @@ class ClientRequestTests(unittest.TestCase):
                          req.headers['AUTHORIZATION'])
 
     def test_basic_auth_tuple_deprecated(self):
-        req = ClientRequest('get', 'http://python.org', auth=('nkim', '1234'))
+        with self.assertWarns(DeprecationWarning):
+            req = ClientRequest('get', 'http://python.org',
+                                auth=('nkim', '1234'))
         self.assertIn('AUTHORIZATION', req.headers)
         self.assertEqual('Basic bmtpbToxMjM0', req.headers['AUTHORIZATION'])
 
@@ -512,10 +516,10 @@ class ClientRequestTests(unittest.TestCase):
                              req.headers['CONTENT-TYPE'])
 
     def test_files_and_bytes_data(self):
-        self.assertRaises(
-            ValueError, ClientRequest,
-            'POST', 'http://python.org/',
-            data=b'binary data', files={'file': b'file data'})
+        with self.assertRaises(ValueError):
+            with self.assertWarns(DeprecationWarning):
+                ClientRequest('POST', 'http://python.org/',
+                              data=b'binary data', files={'file': b'file data'})
 
     @unittest.mock.patch('aiohttp.client.aiohttp')
     def test_content_encoding(self, m_http):
