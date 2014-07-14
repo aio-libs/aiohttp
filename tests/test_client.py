@@ -287,6 +287,8 @@ class ClientResponseTests(unittest.TestCase):
         response = MyResponse('get', 'http://python.org')
         response._setup_connection(self.connection)
         self.assertIsInstance(response.content, aiohttp.FlowControlDataQueue)
+        with self.assertWarns(ResourceWarning):
+            del response
 
 
 class ClientRequestTests(unittest.TestCase):
