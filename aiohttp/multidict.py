@@ -1,3 +1,4 @@
+import pprint
 from itertools import chain
 from collections import OrderedDict, abc
 
@@ -85,7 +86,9 @@ class MultiDict(abc.Mapping):
         return key in self._items
 
     def __repr__(self):
-        return '<{} {!r}>'.format(self.__class__.__name__, self._items)
+        return '<{}>\n{}'.format(
+            self.__class__.__name__, pprint.pformat(
+                list(self.items(getall=True))))
 
 
 class CaseInsensitiveMultiDict(MultiDict):
