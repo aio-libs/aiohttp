@@ -294,6 +294,10 @@ Most widly used is :class:`aiohttp.connector.TcpConnector`::
   >>> conn = aiohttp.TcpConnector()
   >>> r = yield from aiohttp.request('get', 'http://python.org', connector=conn)
 
+
+Unix domain sockets
+-------------------
+
 If your http server uses unix domain socket you can use :class:`aiohttp.connector.UnixConnector`::
 
   >>> conn = aiohttp.UnixConnector(path='/path/to/socket')
