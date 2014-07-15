@@ -231,7 +231,8 @@ class ClientResponseTests(unittest.TestCase):
         res = self.loop.run_until_complete(self.response.json(loads=custom))
         self.assertEqual(res, 'data-custom')
 
-    def test_json_no_content(self):
+    @unittest.mock.patch('aiohttp.client.client_log')
+    def test_json_no_content(self, m_log):
         self.response.headers = {
             'CONTENT-TYPE': 'data/octet-stream'}
         self.response._content = b''
@@ -239,6 +240,9 @@ class ClientResponseTests(unittest.TestCase):
 
         res = self.loop.run_until_complete(self.response.json())
         self.assertIsNone(res)
+        m_log.warning.assert_called_with(
+            'Attempt to decode JSON with unexpected mimetype: %s',
+            'data/octet-stream')
 
     def test_json_override_encoding(self):
         def side_effect(*args, **kwargs):
@@ -287,6 +291,8 @@ class ClientResponseTests(unittest.TestCase):
         response = MyResponse('get', 'http://python.org')
         response._setup_connection(self.connection)
         self.assertIsInstance(response.content, aiohttp.FlowControlDataQueue)
+        with self.assertWarns(ResourceWarning):
+            del response
 
 
 class ClientRequestTests(unittest.TestCase):

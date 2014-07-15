@@ -319,7 +319,7 @@ class HttpPayloadParser:
                 try:
                     size = int(line, 16)
                 except ValueError:
-                    raise errors.IncompleteRead(b'') from None
+                    raise errors.IncompleteRead(0) from None
 
                 if size == 0:  # eof marker
                     break
@@ -373,7 +373,7 @@ class DeflateBuffer:
         try:
             chunk = self.zlib.decompress(chunk)
         except Exception:
-            raise errors.IncompleteRead(b'') from None
+            raise errors.IncompleteRead(0) from None
 
         if chunk:
             self.out.feed_data(chunk)
@@ -381,7 +381,7 @@ class DeflateBuffer:
     def feed_eof(self):
         self.out.feed_data(self.zlib.flush())
         if not self.zlib.eof:
-            raise errors.IncompleteRead(b'')
+            raise errors.IncompleteRead(0)
 
         self.out.feed_eof()
 
