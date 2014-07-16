@@ -56,5 +56,8 @@ clean:
 	rm -rf coverage
 	rm -rf build
 
+doc:
+	cd docs && make html
+	echo "open file://`pwd`/docs/_build/html/index.html"
 
-.PHONY: all build venv flake test vtest testloop cov clean
+.PHONY: all build venv flake test vtest testloop cov clean doc
