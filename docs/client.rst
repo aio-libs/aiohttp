@@ -241,7 +241,7 @@ If you want, you can send strings to be received as files::
 
 If you pass file object as data parameter, aiohttp will stream it to server
 automatically. Check :class:`aiohttp.stream.StreamReader` for supported format
-information. 
+information.
 
 
 Streaming uploads
@@ -389,4 +389,3 @@ time to wait for a response from a server::
     rather, an exception is raised if the server has not issued a
     response for ``timeout`` seconds (more precisely, if no bytes have been
     received on the underlying socket for ``timeout`` seconds).
-
