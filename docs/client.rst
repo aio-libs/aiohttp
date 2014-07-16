@@ -244,7 +244,7 @@ automatically. Check :class:`aiohttp.stream.StreamReader` for supported format
 information. 
 
 
-Streamimng uploads
+Streaming uploads
 ------------------
 
 aiohttp support multiple types of streamimng uploads, which allows you to
