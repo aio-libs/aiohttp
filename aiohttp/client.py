@@ -108,6 +108,8 @@ def request(method, url, *,
             conn = yield from connector.connect(req)
 
             resp = req.send(conn.writer, conn.reader)
+            resp.final_url = url
+            
             try:
                 yield from resp.start(conn, read_until_eof)
             except:
@@ -550,6 +552,7 @@ class ClientResponse:
 
         self.method = method
         self.url = url
+        self.final_url = None
         self.host = host
         self.headers = None
         self._content = None
