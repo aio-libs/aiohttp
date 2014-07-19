@@ -284,6 +284,8 @@ post requests togethere::
    >>> r = yield from aiohttp.request('get', 'http://python.org')
    >>> yield from aiohttp.request('post', 'http://httpbin.org/post', data=r.content)
 
+.. _client-keep-alive:
+
 Keep-Alive and connection pooling
 ---------------------------------
 
@@ -309,8 +311,20 @@ Proxy support
 
 aiohttp supports proxy. You have to use :class:`aiohttp.connector.ProxyConnector`::
 
-  >>> conn = aiohttp.ProxyConnector(proxy="http://some.proxy.com")
-  >>> r = yield from aiohttp.request('get', 'http://python.org', connector=conn)
+   >>> conn = aiohttp.ProxyConnector(proxy="http://some.proxy.com")
+   >>> r = yield from aiohttp.request('get', 'http://python.org', connector=conn)
+
+``ProxyConnector`` also supports proxy authorization::
+
+   >>> conn = aiohttp.ProxyConnector(
+   ...   proxy="http://some.proxy.com",
+   ...   proxy_auth=aiohttp.BasicAuth('user', 'pass'))
+   >>> r = yield from aiohttp.request('get', 'http://python.org', connector=conn)
+
+Auth credentials can be passed in proxy URL::
+
+   >>> conn = aiohttp.ProxyConnector(proxy="http://user:pass@some.proxy.com")
+   >>> r = yield from aiohttp.request('get', 'http://python.org', connector=conn)
 
 
 Response Status Codes
@@ -318,9 +332,9 @@ Response Status Codes
 
 We can check the response status code::
 
-    >>> r = aiohttp.request('get', 'http://httpbin.org/get')
-    >>> r.status
-    200
+   >>> r = aiohttp.request('get', 'http://httpbin.org/get')
+   >>> r.status
+   200
 
 
 Response Headers
@@ -369,6 +383,22 @@ parameter::
     >>> r = yield from aiohttp.request('get', url, cookies=cookies)
     >>> r.text
     '{"cookies": {"cookies_are": "working"}}'
+
+With :ref:`connection pooling<client-keep-alive>` you can share cookies between
+requests::
+
+    >>> conn = aiohttp.connector.TCPConnector(share_cookies=True)
+    >>> r = yield from aiohttp.request('get', 'http://httpbin.org/cookies/set?k1=v1',
+    ...                                connector=conn)
+    >>> r.text
+    '{"cookies": {"k1": "v1"}}'
+    >>> r = yield from aiohttp.request('get', 'http://httpbin.org/cookies',
+    ...                                connection=conn)
+    >>> r.text
+    '{"cookies": {"k1": "v1"}}'
+
+.. note::
+   By default ``share_cookies`` set to ``False``.
 
 
 Timeouts
