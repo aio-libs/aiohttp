@@ -513,7 +513,7 @@ class ClientRequest:
             self.write_bytes(request, reader), loop=self.loop)
 
         self.response = self.response_class(
-            self.method, self.path, self.host,
+            self.method, self.url, self.host,
             writer=self._writer, continue100=self._continue)
         return self.response
 
