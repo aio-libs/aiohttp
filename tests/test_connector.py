@@ -566,3 +566,19 @@ class ProxyConnectorTests(unittest.TestCase):
         req = ClientRequest('GET', 'https://www.python.org')
         with self.assertRaisesRegex(OSError, "error message"):
             self.loop.run_until_complete(connector._create_connection(req))
+
+    @unittest.mock.patch('aiohttp.connector.ClientRequest')
+    def test_request_port(self, ClientRequestMock):
+        proxy_req = ClientRequest('GET', 'http://proxy.example.com')
+        ClientRequestMock.return_value = proxy_req
+
+        loop_mock = unittest.mock.Mock()
+        connector = aiohttp.ProxyConnector('http://proxy.example.com', loop=loop_mock)
+
+        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+        tr.get_extra_info.return_value = None
+        self._fake_coroutine(loop_mock.create_connection, (tr, proto))
+
+        req = ClientRequest('GET', 'http://localhost:1234/path')
+        self.loop.run_until_complete(connector._create_connection(req))
+        self.assertEqual(req.path, 'http://localhost:1234/path')
