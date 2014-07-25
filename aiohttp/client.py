@@ -177,14 +177,13 @@ class ClientRequest:
                  params=None, headers=None, data=None, cookies=None,
                  files=None, auth=None, encoding='utf-8',
                  version=aiohttp.HttpVersion11, compress=None,
-                 chunked=None, expect100=False, verify_ssl=True,
+                 chunked=None, expect100=False,
                  loop=None, response_class=None):
         self.url = url
         self.method = method.upper()
         self.encoding = encoding
         self.chunked = chunked
         self.compress = compress
-        self.verify_ssl = verify_ssl
         self.loop = loop
         self.response_class = response_class or ClientResponse
 
