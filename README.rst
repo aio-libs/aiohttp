@@ -18,6 +18,12 @@ License
 ``aiohttp`` is offered under the BSD license.
 
 
+Documentation
+-------------
+
+http://aiohttp.readthedocs.org/
+
+
 Getting started
 ---------------
 

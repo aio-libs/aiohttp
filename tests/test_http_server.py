@@ -192,6 +192,7 @@ class HttpServerProtocolTests(unittest.TestCase):
         srv.connection_made(transport)
         srv.keep_alive(True)
         srv.writer = unittest.mock.Mock()
+        srv.log = unittest.mock.Mock()
 
         try:
             raise RuntimeError('что-то пошло не так')
@@ -205,6 +206,8 @@ class HttpServerProtocolTests(unittest.TestCase):
             "raise RuntimeError('что-то пошло не так')".encode('utf-8'),
             content)
         self.assertFalse(srv._keep_alive)
+
+        srv.log.exception.assert_called_with("Error handling request")
 
     @unittest.mock.patch('aiohttp.server.traceback')
     def test_handle_error_traceback_exc(self, m_trace):
@@ -271,6 +274,7 @@ class HttpServerProtocolTests(unittest.TestCase):
         transport = unittest.mock.Mock()
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.connection_made(transport)
+        srv.log.exception = unittest.mock.Mock()
 
         handle = srv.handle_request = unittest.mock.Mock()
         handle.side_effect = ValueError
@@ -283,6 +287,7 @@ class HttpServerProtocolTests(unittest.TestCase):
         self.loop.run_until_complete(srv._request_handler)
         self.assertTrue(handle.called)
         self.assertTrue(transport.close.called)
+        srv.log.exception.assert_called_with("Error handling request")
 
     def test_handle_coro(self):
         transport = unittest.mock.Mock()

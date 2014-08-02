@@ -241,10 +241,10 @@ If you want, you can send strings to be received as files::
 
 If you pass file object as data parameter, aiohttp will stream it to server
 automatically. Check :class:`aiohttp.stream.StreamReader` for supported format
-information. 
+information.
 
 
-Streamimng uploads
+Streaming uploads
 ------------------
 
 aiohttp support multiple types of streamimng uploads, which allows you to
@@ -284,6 +284,8 @@ post requests togethere::
    >>> r = yield from aiohttp.request('get', 'http://python.org')
    >>> yield from aiohttp.request('post', 'http://httpbin.org/post', data=r.content)
 
+.. _client-keep-alive:
+
 Keep-Alive and connection pooling
 ---------------------------------
 
@@ -309,8 +311,20 @@ Proxy support
 
 aiohttp supports proxy. You have to use :class:`aiohttp.connector.ProxyConnector`::
 
-  >>> conn = aiohttp.ProxyConnector(proxy="http://some.proxy.com")
-  >>> r = yield from aiohttp.request('get', 'http://python.org', connector=conn)
+   >>> conn = aiohttp.ProxyConnector(proxy="http://some.proxy.com")
+   >>> r = yield from aiohttp.request('get', 'http://python.org', connector=conn)
+
+``ProxyConnector`` also supports proxy authorization::
+
+   >>> conn = aiohttp.ProxyConnector(
+   ...   proxy="http://some.proxy.com",
+   ...   proxy_auth=aiohttp.BasicAuth('user', 'pass'))
+   >>> r = yield from aiohttp.request('get', 'http://python.org', connector=conn)
+
+Auth credentials can be passed in proxy URL::
+
+   >>> conn = aiohttp.ProxyConnector(proxy="http://user:pass@some.proxy.com")
+   >>> r = yield from aiohttp.request('get', 'http://python.org', connector=conn)
 
 
 Response Status Codes
@@ -318,9 +332,9 @@ Response Status Codes
 
 We can check the response status code::
 
-    >>> r = aiohttp.request('get', 'http://httpbin.org/get')
-    >>> r.status
-    200
+   >>> r = aiohttp.request('get', 'http://httpbin.org/get')
+   >>> r.status
+   200
 
 
 Response Headers
@@ -370,6 +384,22 @@ parameter::
     >>> r.text
     '{"cookies": {"cookies_are": "working"}}'
 
+With :ref:`connection pooling<client-keep-alive>` you can share cookies between
+requests::
+
+    >>> conn = aiohttp.connector.TCPConnector(share_cookies=True)
+    >>> r = yield from aiohttp.request('get', 'http://httpbin.org/cookies/set?k1=v1',
+    ...                                connector=conn)
+    >>> r.text
+    '{"cookies": {"k1": "v1"}}'
+    >>> r = yield from aiohttp.request('get', 'http://httpbin.org/cookies',
+    ...                                connection=conn)
+    >>> r.text
+    '{"cookies": {"k1": "v1"}}'
+
+.. note::
+   By default ``share_cookies`` set to ``False``.
+
 
 Timeouts
 --------
@@ -389,4 +419,3 @@ time to wait for a response from a server::
     rather, an exception is raised if the server has not issued a
     response for ``timeout`` seconds (more precisely, if no bytes have been
     received on the underlying socket for ``timeout`` seconds).
-
