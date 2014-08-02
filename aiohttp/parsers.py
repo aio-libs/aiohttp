@@ -68,7 +68,7 @@ BUF_LIMIT = 2**14
 DEFAULT_LIMIT = 2**16
 
 
-class StreamParser:
+class StreamParser(asyncio.streams.StreamReader):
     """StreamParser manages incoming bytes stream and protocol parsers.
 
     StreamParser uses ParserBuffer as internal buffer.
