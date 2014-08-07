@@ -15,8 +15,12 @@ be a coroutine to handle requests asynchronously
 
  .. code-block:: python
 
+      from urllib.parse import urlparse, parse_qsl
+
       import aiohttp
       import aiohttp.server
+      from aiohttp.multidict import MultiDict
+
 
       import asyncio
 
@@ -27,20 +31,11 @@ be a coroutine to handle requests asynchronously
             response = aiohttp.Response(
                 self.writer, 200, http_version=message.version
             )
-            response.add_header('Content-type', 'text/plain')
+            response.add_header('Content-Type', 'text/html')
+            response.add_header('Content-Length', '18')
             response.send_headers()
-            response.write(b'Hello world!')
+            response.write(b'<h1>It Works!</h1>')
             yield from response.write_eof()
-
-All necessary data is passed to handle request in message and payload params.
-Message contains HTTP request headers 'as is', payload is the body of the requests
-wrapped in FlowControlStreamReader. To read the body of the request, you should
-yield from payload's read method like so:
-
- .. code-block:: python
-
-    msg = yield from payload.read()
-
 
 Next step is creating a loop and registering your handler within a server. 
 KeyboardInterrupt exception handling is necessary so you can stop 
@@ -59,3 +54,60 @@ your server with Ctrl+C at any time.
             loop.run_forever()
         except KeyboardInterrupt:
             pass
+
+Headers
+-------
+Request data is passed to handler in  the ``message`` , while request body is passed in ``payload`` param.
+HTTP headers are accessed through ``headers`` member of the message.
+To check what current request method is, use ``method`` member of the ``message``. It should be one of
+``GET``, ``POST``, ``PUT`` or ``DELETE`` strings.
+
+Handling GET params
+-------
+
+Currently aiohttp does not provide automatical parsing of incoming GET params. 
+However aiohttp does provide a nice MulitiDict wrapper for already parsed params.
+
+
+ .. code-block:: python
+
+    from urllib.parse import urlparse, parse_qsl
+
+    from aiohttp.multidict import MultiDict
+
+    class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
+
+        @asyncio.coroutine
+        def handle_request(self, message, payload):
+            response = aiohttp.Response(
+                self.writer, 200, http_version=message.version
+            )
+            get_params = MultiDict(parse_qsl(urlparse(message.path).query))
+            print("Passed in GET", get_params)
+
+
+Handling POST data
+-------
+
+POST data is accessed through the ``payload.read()`` generator method. 
+If you have form data in the request body, you can parse it the same way as
+GET params.
+
+ .. code-block:: python
+
+    from urllib.parse import urlparse, parse_qsl
+
+    from aiohttp.multidict import MultiDict
+
+    class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
+
+        @asyncio.coroutine
+        def handle_request(self, message, payload):
+            response = aiohttp.Response(
+                self.writer, 200, http_version=message.version
+            )
+            data = yield from payload.read()
+            post_params = MultiDict(parse_qsl(data))
+            print("Passed in POST", post_params)
+
+
