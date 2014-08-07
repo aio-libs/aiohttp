@@ -55,7 +55,7 @@ your server with Ctrl+C at any time.
         except KeyboardInterrupt:
             pass
 
-Headers ------- Request data is passed to handler in the ``message`` ,
+Headers data is passed to handler in the ``message`` ,
 while request body is passed in ``payload`` param.  HTTP headers are
 accessed through ``headers`` member of the message.  To check what
 current request method is, use ``method`` member of the
