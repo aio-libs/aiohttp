@@ -110,3 +110,17 @@ GET params.
             data = yield from payload.read()
             post_params = MultiDict(parse_qsl(data))
             print("Passed in POST", post_params)
+
+SSL
+---------
+To use asyncio's SSL support, just pass an SSLContext object to the ``create_server`` method of the loop.
+
+ .. code-block:: python
+
+    import ssl
+
+    sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+    sslcontext.load_cert_chain('sample.crt', 'sample.key')
+
+    loop = asyncio.get_event_loop()
+    loop.create_server(lambda: handler, "0.0.0.0", "8080", ssl=sslcontext)
