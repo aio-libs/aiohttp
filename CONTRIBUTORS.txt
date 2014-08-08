@@ -21,3 +21,4 @@ Paul Colomiets
 Sebastian Hanula
 Simon Kennedy
 Vaibhav Sagar
+Vitaly Haritonsky
