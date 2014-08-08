@@ -487,9 +487,16 @@ class ClientRequest:
                 for chunk in self.body:
                     request.write(chunk)
         except Exception as exc:
-            reader.set_exception(exc)
+            reader.set_exception(
+                aiohttp.ClientConnectionError(
+                    'Can not write request body for %s' % self.url))
         else:
-            request.write_eof()
+            try:
+                request.write_eof()
+            except Exception as exc:
+                reader.set_exception(
+                    aiohttp.ClientConnectionError(
+                        'Can not write request body for %s' % self.url))
 
         self._writer = None
 

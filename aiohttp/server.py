@@ -223,6 +223,10 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             except Exception as exc:
                 self.handle_error(500, message, None, exc)
             finally:
+                if self.transport is None:
+                    self.log_debug('Ignored premature client disconnection.')
+                    break
+
                 if payload and not payload.is_eof():
                     self.log_debug('Uncompleted request.')
                     self._request_handler = None
