@@ -89,7 +89,7 @@ However aiohttp does provide a nice MulitiDict wrapper for already parsed params
 Handling POST data
 -------
 
-POST data is accessed through the ``payload.read()`` generator method. 
+POST data is accessed through the ``payload.read()``  generator method. 
 If you have form data in the request body, you can parse it the same way as
 GET params.
 
@@ -111,3 +111,16 @@ GET params.
             print("Passed in POST", post_params)
 
 
+SSL
+---------
+To use asyncio's SSL support, just pass an SSLContext object to the ``create_server`` method of the loop.
+
+ .. code-block:: python
+
+    import ssl
+
+    sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+    sslcontext.load_cert_chain('sample.crt', 'sample.key')
+
+    loop = asyncio.get_event_loop()
+    loop.create_server(lambda: handler, "0.0.0.0", "8080", ssl=sslcontext)
