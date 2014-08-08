@@ -55,12 +55,14 @@ your server with Ctrl+C at any time.
         except KeyboardInterrupt:
             pass
 
-Headers data is passed to handler in the ``message`` ,
-while request body is passed in ``payload`` param.  HTTP headers are
-accessed through ``headers`` member of the message.  To check what
-current request method is, use ``method`` member of the
-``message``. It should be one of ``GET``, ``POST``, ``PUT`` or
-``DELETE`` strings.
+Headers
+-------
+
+Data is passed to handler in the ``message``, while request body is
+passed in ``payload`` param.  HTTP headers are accessed through
+``headers`` member of the message.  To check what current request
+method is, use ``method`` member of the ``message``. It should be one
+of ``GET``, ``POST``, ``PUT`` or ``DELETE`` strings.
 
 Handling GET params
 -------------------
@@ -113,7 +115,9 @@ GET params.
 
 SSL
 ---------
-To use asyncio's SSL support, just pass an SSLContext object to the ``create_server`` method of the loop.
+
+To use asyncio's SSL support, just pass an SSLContext object to the
+``create_server`` method of the loop.
 
  .. code-block:: python
 
