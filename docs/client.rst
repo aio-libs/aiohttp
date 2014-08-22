@@ -1,5 +1,7 @@
 .. _client:
 
+.. highlight:: python
+
 HTTP Client
 ===========
 
@@ -15,7 +17,8 @@ to wrap code into functions and run it with asyncio loop. For example::
 
   >>> def run():
   ...   r = yield from aiohttp.request('get', 'http://python.org')
-  ...   print (r.text())
+  ...   raw = yield from r.text()
+  ...   print(raw)
 
   >>> if __name__ == '__main__':
   ...    asyncio.get_event_loop().run_until_complete(run())
@@ -97,6 +100,8 @@ again::
 aiohttp will automatically decode content from the server. You can
 specify custom encoding for ``text()`` method.
 
+.. code::
+
     >>> yield from r.text(encoding='windows-1251')
 
 
@@ -137,6 +142,8 @@ For example if you want to download several gigabyte sized file, this methods
 will load whole data into memory. But you can use ``ClientResponse.content``
 attribute. It is instance of ``aiohttp.StreamReader`` class. The ``gzip``
 and ``deflate`` transfer-encodings are automatically decoded for you.
+
+.. code::
 
     >>> r = yield from aiohttp.request('get',
     ...                                'https://github.com/timeline.json')
@@ -229,7 +236,7 @@ To upload Multipart-encoded files::
       ...
     }
 
-You can set the filename, content_type explicitly:
+You can set the filename, content_type explicitly::
 
     >>> url = 'http://httpbin.org/post'
     >>> files = {'file': ('report.xls',
@@ -273,7 +280,7 @@ Streaming uploads
 aiohttp support multiple types of streamimng uploads, which allows you to
 send large files without reading them into memory.
 
-In simple case, simply provide a file-like object for your body:
+In simple case, simply provide a file-like object for your body::
 
     >>> with open('massive-body', 'rb') as f:
     ...   yield from aiohttp.request('post', 'http://some.url/streamed', data=f)
@@ -288,6 +295,11 @@ Or you can provide ``asyncio`` coroutine that yields bytes objects::
    ...       return
    ...    yield chunk
 
+.. note::
+   It is not a standard ``asyncio`` coroutine as it yields values so it
+   can not be used like ``yield from my_coroutine()``.
+   ``aiohttp`` internally handles such a coroutines.
+
 Also it is possible to use ``StreamReader`` object::
 
    >>> def feed_stream(stream):
@@ -295,7 +307,7 @@ Also it is possible to use ``StreamReader`` object::
    ...    if not chunk:
    ...       stream.feed_eof()
    ...       return
-   ...    stream.ffed_data(chunk)
+   ...    stream.feed_data(chunk)
 
    >>> stream = StreamReader()
    >>> asyncio.async(feed_stream(stream))
@@ -318,9 +330,9 @@ Keep-Alive and connection pooling
 
 By default aiohttp does not use connection pooling. To enable connection pooling
 you should use one of the ``connector`` objects. There are several of them.
-Most widly used is :class:`aiohttp.connector.TcpConnector`::
+Most widly used is :class:`aiohttp.connector.TCPConnector`::
 
-  >>> conn = aiohttp.TcpConnector()
+  >>> conn = aiohttp.TCPConnector()
   >>> r = yield from aiohttp.request('get', 'http://python.org', connector=conn)
 
 
@@ -416,26 +428,67 @@ parameter::
     >>> cookies = dict(cookies_are='working')
 
     >>> r = yield from aiohttp.request('get', url, cookies=cookies)
-    >>> r.text
+    >>> yield from r.text()
     '{"cookies": {"cookies_are": "working"}}'
 
 With :ref:`connection pooling<client-keep-alive>` you can share cookies between
-requests::
+requests:
+
+.. code-block:: python
+   :emphasize-lines: 1
 
     >>> conn = aiohttp.connector.TCPConnector(share_cookies=True)
     >>> r = yield from aiohttp.request('get',
     ...                                'http://httpbin.org/cookies/set?k1=v1',
     ...                                connector=conn)
-    >>> r.text
+    >>> yield from r.text()
     '{"cookies": {"k1": "v1"}}'
     >>> r = yield from aiohttp.request('get',
     ...                                'http://httpbin.org/cookies',
     ...                                connection=conn)
-    >>> r.text
+    >>> yield from r.text()
     '{"cookies": {"k1": "v1"}}'
 
 .. note::
-   By default ``share_cookies`` set to ``False``.
+   By default ``share_cookies`` is set to ``False``.
+
+.. _issue-139: https://github.com/KeepSafe/aiohttp/issues/139
+
+.. note::
+   Sharing cookies between requests must be clarified a bit.
+   You might get into a `situation <issue-139_>`_ when it seems like cookies are
+   not being shared between requests::
+
+      >>> conn = aiohttp.connector.TCPConnector(share_cookies=True)
+      >>> # we assume example.com sets cookies on GET without redirect
+      >>> resp1 = yield from aiohttp.request('get', 'http://example.com/',
+      ...                                    connector=conn)
+      >>> assert 'set-cookie' in resp1.headers  # assume we got cookies in response
+      >>> assert dict(conn.cookies) == {}       # but no cookies to share!
+      >>> resp2 = yield from aiohttp.request('get', 'http://example.com/',
+      ...                                    connector=conn)
+      >>> assert 'set-cookie' in resp2.headers  # cookies again!
+
+   This happens because underlying connection handled by ``TCPConnector`` still
+   belongs to ``resp1`` (because you might want to do something with response's body).
+   As soon as you release that connection by ``yield'ing from`` ``resp.read()``,
+   ``resp.text()``, ``resp.json()`` or ``resp.release()`` the connection
+   will become available (with cookies) for sebsequent requests::
+
+      >>> conn = aiohttp.connection.TCPConnector(share_cookies=True)
+      >>> # assume the same
+      >>> resp1 = yield from aiohttp.request('get', 'http://example.com/',
+      ...                                    connector=conn)
+      >>> assert 'set-cookie' in resp1.headers
+      >>> assert dict(conn.cookies) == {}
+      >>> # process response
+      >>> do_something_with_response_or_release(resp1)
+      >>> assert dict(conn.cookies) != {}
+      >>> #
+      >>> resp2 = yield from aiohttp.request('get', 'http://example.com/',
+      ...                                    connector=conn)
+      >>> assert 'set-cookie' not in resp2.headers
+      >>> assert dict(conn.cookies) != {}
 
 
 Timeouts
@@ -447,7 +500,7 @@ time to wait for a response from a server::
     >>> yield from asyncio.wait_for(aiohttp.request('get',
     ...                                             'http://github.com'),
     ...                                             0.001)
-    Traceback (most recent call last):
+    Traceback (most recent call last)\:
       File "<stdin>", line 1, in <module>
     asyncio.TimeoutError()
 
