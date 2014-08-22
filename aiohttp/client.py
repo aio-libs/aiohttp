@@ -846,6 +846,9 @@ class HttpClient:
         if path is None:
             path = self._path
 
+        assert method is not None, 'request "method" is required.'
+        assert path is not None, 'request "path" is required.'
+
         # if all hosts marked as failed try first from failed
         if not self._hosts:
             self._hosts.append(self._failed.popleft()[0])
