@@ -566,8 +566,8 @@ class ClientResponse:
 
     def __repr__(self):
         out = io.StringIO()
-        print('<ClientResponse({}{}) [{} {}]>'.format(
-            self.host, self.url, self.status, self.reason), file=out)
+        print('<ClientResponse({}) [{} {}]>'.format(
+            self.url, self.status, self.reason), file=out)
         print(self.headers, file=out)
         return out.getvalue()
 
