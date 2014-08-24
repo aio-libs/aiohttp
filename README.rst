@@ -94,7 +94,7 @@ It constructs and sends a request. It returns response object. Parameters are ex
 If you want to use timeouts for aiohttp client side please use standard
 asyncio approach::
 
-   yield from asyncio.wait_for(request('GET', url), 10))
+   yield from asyncio.wait_for(request('GET', url), 10)
 
 
 Gunicorn worker
