@@ -46,6 +46,10 @@ class Connection(object):
             self._transport = None
             self._wr = None
 
+    def share_cookies(self, cookies):
+        if self._connector._share_cookies:  # XXX
+            self._connector.update_cookies(cookies)
+
 
 class BaseConnector(object):
     """Base connector class.
@@ -178,8 +182,6 @@ class BaseConnector(object):
                 should_close = True
             else:
                 should_close = resp.message.should_close
-                if self._share_cookies and resp.cookies:
-                    self.update_cookies(resp.cookies.items())
 
         if self._force_close:
             should_close = True
