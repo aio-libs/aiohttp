@@ -31,6 +31,7 @@ HTTPS_PORT = 443
 
 @asyncio.coroutine
 def request(method, url, *,
+            quote_path=True,
             params=None,
             data=None,
             headers=None,
@@ -53,6 +54,8 @@ def request(method, url, *,
 
     :param str method: http method
     :param str url: request url
+    :param bool quote_path: (optional) Set to False if the path part in the
+      request url should not to be quoted/escaped
     :param params: (optional) Dictionary or bytes to be sent in the query
       string of the new request
     :param data: (optional) Dictionary, bytes, or file-like object to
@@ -99,7 +102,8 @@ def request(method, url, *,
 
     while True:
         req = request_class(
-            method, url, params=params, headers=headers, data=data,
+            method, url, quote_path=quote_path, params=params,
+            headers=headers, data=data,
             cookies=cookies, files=files, encoding=encoding,
             auth=auth, version=version, compress=compress, chunked=chunked,
             loop=loop, expect100=expect100, response_class=response_class)
@@ -174,12 +178,14 @@ class ClientRequest:
     # forced closing request sending.
 
     def __init__(self, method, url, *,
+                 quote_path=True,
                  params=None, headers=None, data=None, cookies=None,
                  files=None, auth=None, encoding='utf-8',
                  version=aiohttp.HttpVersion11, compress=None,
                  chunked=None, expect100=False,
                  loop=None, response_class=None):
         self.url = url
+        self.quote_path = quote_path
         self.method = method.upper()
         self.encoding = encoding
         self.chunked = chunked
@@ -289,8 +295,12 @@ class ClientRequest:
             else:
                 query = params
 
+        if self.quote_path:
+            quoted_path = urllib.parse.quote(path, safe='/%')
+        else:
+            quoted_path = path
         self.path = urllib.parse.urlunsplit(
-            ('', '', urllib.parse.quote(path, safe='/%'), query, fragment))
+            ('', '', quoted_path, query, fragment))
 
     def update_headers(self, headers):
         """Update request headers."""

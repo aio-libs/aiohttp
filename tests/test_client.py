@@ -448,6 +448,14 @@ class ClientRequestTests(unittest.TestCase):
         req = ClientRequest('get', "http://0.0.0.0/get/test%20case")
         self.assertEqual(req.path, "/get/test%20case")
 
+    def test_path_encoding_is_skipped(self):
+        req = ClientRequest('get', "http://0.0.0.0/get/test case")
+        self.assertEqual(req.path, "/get/test%20case")
+
+        req = ClientRequest('get', "http://0.0.0.0/get/test case",
+                            quote_path=False)
+        self.assertEqual(req.path, "/get/test case")
+
     def test_params_are_added_before_fragment(self):
         req = ClientRequest(
             'GET', "http://example.com/path#fragment", params={"a": "b"})
