@@ -504,6 +504,13 @@ class ClientRequestTests(unittest.TestCase):
             self.assertEqual('application/x-www-form-urlencoded',
                              req.headers['CONTENT-TYPE'])
 
+    @unittest.mock.patch('aiohttp.client.ClientRequest.update_body_from_data')
+    def test_pass_falsy_data(self, _):
+        req = ClientRequest(
+            'post', 'http://python.org/',
+            data={}, loop=self.loop)
+        req.update_body_from_data.assert_called_once_with({})
+
     def test_get_with_data(self):
         for meth in ClientRequest.GET_METHODS:
             req = ClientRequest(
