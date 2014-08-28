@@ -189,7 +189,7 @@ class ClientRequest:
 
         self.update_version(version)
         self.update_host(url)
-        self.update_path(params, data)
+        self.update_path(params)
         self.update_headers(headers)
         self.update_cookies(cookies)
         self.update_content_encoding()
@@ -264,7 +264,7 @@ class ClientRequest:
                     .format(version)) from None
         self.version = version
 
-    def update_path(self, params, data):
+    def update_path(self, params):
         """Build path."""
         # extract path
         scheme, netloc, path, query, fragment = urllib.parse.urlsplit(self.url)
@@ -275,12 +275,6 @@ class ClientRequest:
             params = list(params.items())
         elif isinstance(params, MultiDict):
             params = list(params.items(getall=True))
-
-        # for GET request include data to query params
-        if data and self.method in self.GET_METHODS:
-            if isinstance(data, dict):
-                data = data.items()
-            params = list(itertools.chain(params or (), data))
 
         if params:
             params = urllib.parse.urlencode(params)

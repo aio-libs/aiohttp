@@ -508,7 +508,8 @@ class ClientRequestTests(unittest.TestCase):
         for meth in ClientRequest.GET_METHODS:
             req = ClientRequest(
                 meth, 'http://python.org/', data={'life': '42'})
-            self.assertEqual('/?life=42', req.path)
+            self.assertEqual('/', req.path)
+            self.assertEqual(b'life=42', req.body)
 
     def test_bytes_data(self):
         for meth in ClientRequest.POST_METHODS:
