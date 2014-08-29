@@ -205,9 +205,7 @@ class ClientRequest:
                     'not supported at the same time.')
             data = files
 
-        if data:
-            self.update_body_from_data(data)
-
+        self.update_body_from_data(data)
         self.update_transfer_encoding()
         self.update_expect_continue(expect100)
 
@@ -355,6 +353,9 @@ class ClientRequest:
         self.headers['AUTHORIZATION'] = auth.encode()
 
     def update_body_from_data(self, data):
+        if not data:
+            return
+
         if isinstance(data, str):
             data = data.encode(self.encoding)
 
