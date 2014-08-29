@@ -452,44 +452,6 @@ requests:
 .. note::
    By default ``share_cookies`` is set to ``False``.
 
-.. _issue-139: https://github.com/KeepSafe/aiohttp/issues/139
-
-.. note::
-   Sharing cookies between requests must be clarified a bit.
-   You might get into a `situation <issue-139_>`_ when it seems like cookies are
-   not being shared between requests::
-
-      >>> conn = aiohttp.connector.TCPConnector(share_cookies=True)
-      >>> # we assume example.com sets cookies on GET without redirect
-      >>> resp1 = yield from aiohttp.request('get', 'http://example.com/',
-      ...                                    connector=conn)
-      >>> assert 'set-cookie' in resp1.headers  # assume we got cookies in response
-      >>> assert dict(conn.cookies) == {}       # but no cookies to share!
-      >>> resp2 = yield from aiohttp.request('get', 'http://example.com/',
-      ...                                    connector=conn)
-      >>> assert 'set-cookie' in resp2.headers  # cookies again!
-
-   This happens because underlying connection handled by ``TCPConnector`` still
-   belongs to ``resp1`` (because you might want to do something with response's body).
-   As soon as you release that connection by ``yield'ing from`` ``resp.read()``,
-   ``resp.text()``, ``resp.json()`` or ``resp.release()`` the connection
-   will become available (with cookies) for sebsequent requests::
-
-      >>> conn = aiohttp.connection.TCPConnector(share_cookies=True)
-      >>> # assume the same
-      >>> resp1 = yield from aiohttp.request('get', 'http://example.com/',
-      ...                                    connector=conn)
-      >>> assert 'set-cookie' in resp1.headers
-      >>> assert dict(conn.cookies) == {}
-      >>> # process response
-      >>> do_something_with_response_or_release(resp1)
-      >>> assert dict(conn.cookies) != {}
-      >>> #
-      >>> resp2 = yield from aiohttp.request('get', 'http://example.com/',
-      ...                                    connector=conn)
-      >>> assert 'set-cookie' not in resp2.headers
-      >>> assert dict(conn.cookies) != {}
-
 
 Timeouts
 --------
