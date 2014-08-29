@@ -722,6 +722,25 @@ class HttpClientFunctionalTests(unittest.TestCase):
         m_log.warning.assert_called_with('Can not load response cookies: %s',
                                          mock.ANY)
 
+    def test_share_cookies(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            conn = aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
+            resp = self.loop.run_until_complete(
+                client.request('get', httpd.url('cookies'),
+                               connector=conn, loop=self.loop))
+            self.assertIn('SET-COOKIE', resp.headers)
+            self.assertEqual(resp.cookies['c1'].value, 'cookie1')
+            self.assertEqual(resp.cookies['c2'].value, 'cookie2')
+            self.assertEqual(conn.cookies, resp.cookies)
+
+            resp2 = self.loop.run_until_complete(
+                client.request('get', httpd.url('method', 'get'),
+                               connector=conn, loop=self.loop))
+            self.assertNotIn('SET-COOKIE', resp2.headers)
+            data = self.loop.run_until_complete(resp2.json())
+            self.assertEqual(data['headers']['Cookie'],
+                             'c1=cookie1; c2=cookie2')
+
     def test_chunked(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(

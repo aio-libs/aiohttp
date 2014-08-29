@@ -629,7 +629,7 @@ class ClientResponse:
                 except http.cookies.CookieError as exc:
                     client_log.warning(
                         'Can not load response cookies: %s', exc)
-
+            connection.share_cookies(self.cookies)
         return self
 
     def close(self, force=False):

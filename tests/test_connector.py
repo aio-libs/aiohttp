@@ -52,6 +52,27 @@ class HttpConnectionTests(unittest.TestCase):
         self.connector._release.assert_called_with(
             self.key, self.request, self.transport, self.protocol)
 
+    def test_no_share_cookies(self):
+        connector = aiohttp.BaseConnector(share_cookies=False, loop=self.loop)
+
+        conn = Connection(
+            connector, self.key, self.request,
+            self.transport, self.protocol, self.loop)
+        self.assertEqual(connector.cookies, {})
+        conn.share_cookies({'c1': 'cookie1'})
+        self.assertEqual(connector.cookies, {})
+
+    def test_share_cookies(self):
+        connector = aiohttp.BaseConnector(share_cookies=True, loop=self.loop)
+
+        conn = Connection(
+            connector, self.key, self.request,
+            self.transport, self.protocol, self.loop)
+        self.assertEqual(connector.cookies, {})
+        conn.share_cookies({'c1': 'cookie1'})
+        self.assertEqual(connector.cookies,
+                         http.cookies.SimpleCookie({'c1': 'cookie1'}))
+
 
 class BaseConnectorTests(unittest.TestCase):
 
@@ -123,14 +144,14 @@ class BaseConnectorTests(unittest.TestCase):
         resp = req.response = unittest.mock.Mock()
         resp.message.should_close = False
 
-        cookies = resp.cookies = http.cookies.SimpleCookie()
-        cookies['c1'] = 'cookie1'
-        cookies['c2'] = 'cookie2'
+        # cookies = resp.cookies = http.cookies.SimpleCookie()
+        # cookies['c1'] = 'cookie1'
+        # cookies['c2'] = 'cookie2'
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
         conn._release(1, req, tr, proto)
         self.assertEqual(conn._conns[1][0], (tr, proto, 10))
-        self.assertEqual(conn.cookies, dict(cookies.items()))
+        # self.assertEqual(conn.cookies, dict(cookies.items()))
         self.assertTrue(conn._start_cleanup_task.called)
 
     def test_release_close(self):
@@ -573,7 +594,8 @@ class ProxyConnectorTests(unittest.TestCase):
         ClientRequestMock.return_value = proxy_req
 
         loop_mock = unittest.mock.Mock()
-        connector = aiohttp.ProxyConnector('http://proxy.example.com', loop=loop_mock)
+        connector = aiohttp.ProxyConnector('http://proxy.example.com',
+                                           loop=loop_mock)
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
         tr.get_extra_info.return_value = None
