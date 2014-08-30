@@ -532,8 +532,9 @@ class ClientRequestTests(unittest.TestCase):
     def test_files_and_bytes_data(self):
         with self.assertRaises(ValueError):
             with self.assertWarns(DeprecationWarning):
-                ClientRequest('POST', 'http://python.org/',
-                              data=b'binary data', files={'file': b'file data'})
+                ClientRequest(
+                    'POST', 'http://python.org/',
+                    data=b'binary data', files={'file': b'file data'})
 
     @unittest.mock.patch('aiohttp.client.aiohttp')
     def test_content_encoding(self, m_http):

@@ -1,12 +1,14 @@
 CHANGES
 =======
 
-0.9.1 (unreleased)
+0.9.1 (08-30-2014)
 ------------------
 
 - Added MultiDict support for client request params and data #114.
 
 - Fixed parameter type for IncompleteRead exception #118.
+
+- Strictly require ASCII headers names and values #137
 
 - Keep port in ProxyConnector #128.
 

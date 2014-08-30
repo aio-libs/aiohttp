@@ -8,7 +8,6 @@ import http.cookies
 import json
 import io
 import inspect
-import itertools
 import random
 import time
 import urllib.parse
