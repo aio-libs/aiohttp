@@ -11,6 +11,7 @@ import functools
 import http.server
 import itertools
 import re
+import string
 import sys
 import zlib
 from wsgiref.handlers import format_date_time
@@ -20,6 +21,7 @@ from aiohttp import errors
 from aiohttp import multidict
 from aiohttp.log import internal_log
 
+ASCIISET = set(string.printable)
 METHRE = re.compile('[A-Z0-9$-_.]+')
 VERSRE = re.compile('HTTP/(\d+).(\d+)')
 HDRRE = re.compile('[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]')
@@ -572,8 +574,12 @@ class HttpMessage:
         """Analyze headers. Calculate content length,
         removes hop headers, etc."""
         assert not self.headers_sent, 'headers have been sent already'
-        assert isinstance(name, str), '{!r} is not a string'.format(name)
-        assert isinstance(value, str), '{!r} is not a string'.format(value)
+        assert isinstance(name, str), \
+            'Header name should be a string, got {!r}'.format(name)
+        assert set(name).issubset(ASCIISET), \
+            'Header name should contain ASCII chars, got {!r}'.format(name)
+        assert isinstance(value, str), \
+            'Header {!r} should have string value, got {!r}'.format(name, value)
 
         name = name.strip().upper()
         value = value.strip()

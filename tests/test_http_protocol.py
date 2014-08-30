@@ -76,12 +76,22 @@ class HttpMessageTests(unittest.TestCase):
         self.assertEqual(
             [('CONTENT-TYPE', 'plain/html')], list(msg.headers.items()))
 
+    def test_add_header_non_ascii(self):
+        msg = protocol.Response(self.transport, 200)
+        self.assertEqual([], list(msg.headers))
+
+        with self.assertRaises(AssertionError):
+            msg.add_header('тип-контента', 'текст/плейн')
+
     def test_add_header_invalid_value_type(self):
         msg = protocol.Response(self.transport, 200)
         self.assertEqual([], list(msg.headers))
 
         with self.assertRaises(AssertionError):
-            msg.add_header('content-type', b'value')
+            msg.add_header('content-type', {'test': 'plain'})
+
+        with self.assertRaises(AssertionError):
+            msg.add_header(list('content-type'), 'text/plain')
 
     def test_add_headers(self):
         msg = protocol.Response(self.transport, 200)
