@@ -63,7 +63,7 @@ class BaseConnector(object):
     """
 
     def __init__(self, *, conn_timeout=None, keepalive_timeout=30,
-                 share_cookies=False, force_close=False, loop=None, **kwargs):
+                 share_cookies=False, force_close=False, loop=None):
         self._conns = {}
         self._conn_timeout = conn_timeout
         self._keepalive_timeout = keepalive_timeout
