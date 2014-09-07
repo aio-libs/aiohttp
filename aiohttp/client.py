@@ -330,12 +330,10 @@ class ClientRequest:
         enc = self.headers.get('CONTENT-ENCODING', '').lower()
         if enc:
             self.compress = enc
-            self.chunked = True  # enable chunked, no need to deal with length
         elif self.compress:
             if not isinstance(self.compress, str):
                 self.compress = 'deflate'
             self.headers['CONTENT-ENCODING'] = self.compress
-            self.chunked = True  # enable chunked, no need to deal with length
 
     def update_auth(self, auth):
         """Set basic auth."""
@@ -391,6 +389,12 @@ class ClientRequest:
     def update_transfer_encoding(self):
         """Analyze transfer-encoding header."""
         te = self.headers.get('TRANSFER-ENCODING', '').lower()
+
+        if self.compress:
+            if self.chunked is False:
+                raise ValueError("Compress is enabled while chunked is disabled.")
+            if self.chunked is None:
+                self.chunked = True
 
         if self.chunked:
             if 'CONTENT-LENGTH' in self.headers:
