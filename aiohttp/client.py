@@ -389,7 +389,7 @@ class ClientRequest:
         if isinstance(self.body, helpers.FormData):
             form_data = self.body
             data = form_data(self.encoding, self.chunked)
-            if self.chunked is False and form_data.is_form_data:
+            if self.chunked is False and form_data.is_form_data():
                 self.body = b"".join(data)
             else:
                 self.body = data
