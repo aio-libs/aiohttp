@@ -360,8 +360,6 @@ class ClientRequest:
             self.body = data
             if 'CONTENT-TYPE' not in self.headers:
                 self.headers['CONTENT-TYPE'] = 'application/octet-stream'
-            if 'CONTENT-LENGTH' not in self.headers and not self.chunked:
-                self.headers['CONTENT-LENGTH'] = str(len(self.body))
 
         elif isinstance(data, (asyncio.StreamReader, streams.DataQueue)):
             self.body = data
@@ -377,10 +375,6 @@ class ClientRequest:
 
             if 'CONTENT-TYPE' not in self.headers:
                 self.headers['CONTENT-TYPE'] = data.contenttype
-
-            if not data.is_form_data():
-                if 'CONTENT-LENGTH' not in self.headers and not self.chunked:
-                    self.headers['CONTENT-LENGTH'] = str(len(self.body))
 
     def update_transfer_encoding(self):
         """Analyze transfer-encoding header."""
