@@ -407,6 +407,11 @@ class ClientRequest:
             self.chunked = self.chunked if type(self.chunked) is int else 8196
         else:
             if 'chunked' in te:
+                if self.chunked is False:
+                    raise ValueError(
+                        "Conflict options: "
+                        "chunked in TRANSFER-ENCODING, chunked set to False"
+                    )
                 self.chunked = 8196
             else:
                 self.chunked = None
