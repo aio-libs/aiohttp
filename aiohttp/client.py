@@ -368,8 +368,6 @@ class ClientRequest:
 
         elif inspect.isgenerator(data):
             self.body = data
-            if 'CONTENT-LENGTH' not in self.headers and self.chunked is None:
-                self.chunked = True
 
         else:
             if not isinstance(data, helpers.FormData):
@@ -380,9 +378,7 @@ class ClientRequest:
             if 'CONTENT-TYPE' not in self.headers:
                 self.headers['CONTENT-TYPE'] = data.contenttype
 
-            if data.is_form_data():
-                self.chunked = True
-            else:
+            if not data.is_form_data():
                 if 'CONTENT-LENGTH' not in self.headers and not self.chunked:
                     self.headers['CONTENT-LENGTH'] = str(len(self.body))
 
@@ -394,6 +390,12 @@ class ClientRequest:
             if self.chunked is False:
                 raise ValueError("Compress is enabled while chunked is disabled.")
             if self.chunked is None:
+                self.chunked = True
+
+        if inspect.isgenerator(self.body):
+            if self.chunked is False:
+                raise ValueError("Chunked is disabled but getting a generator.")
+            if 'CONTENT-LENGTH' not in self.headers and self.chunked is None:
                 self.chunked = True
 
         if self.chunked:
