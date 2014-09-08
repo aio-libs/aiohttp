@@ -412,6 +412,9 @@ class ClientRequest:
                 if 'CONTENT-LENGTH' not in self.headers:
                     self.headers['CONTENT-LENGTH'] = str(len(self.body))
 
+        if self.version == aiohttp.HttpVersion10 and self.chunked:
+            raise ValueError("Http1.0 doesn't support chunked transfer encoding.")
+
     def update_expect_continue(self, expect=False):
         if expect:
             self.headers['EXPECT'] = '100-continue'
