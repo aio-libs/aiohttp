@@ -381,7 +381,7 @@ class ClientRequest:
                 self.headers['CONTENT-TYPE'] = data.contenttype
 
             if data.is_form_data():
-                self.chunked = self.chunked or 8196
+                self.chunked = True
             else:
                 if 'CONTENT-LENGTH' not in self.headers and not self.chunked:
                     self.headers['CONTENT-LENGTH'] = str(len(self.body))
