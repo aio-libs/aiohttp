@@ -371,7 +371,7 @@ class ClientRequest:
             if not isinstance(data, helpers.FormData):
                 data = helpers.FormData(data)
 
-            self.body = data(self.encoding)
+            self.body = data
 
             if 'CONTENT-TYPE' not in self.headers:
                 self.headers['CONTENT-TYPE'] = data.contenttype
@@ -385,6 +385,14 @@ class ClientRequest:
                 raise ValueError("Compress is enabled while chunked is disabled.")
             if self.chunked is None:
                 self.chunked = True
+
+        if isinstance(self.body, helpers.FormData):
+            form_data = self.body
+            data = form_data(self.encoding, self.chunked)
+            if self.chunked is False and form_data.is_form_data:
+                self.body = b"".join(data)
+            else:
+                self.body = data
 
         if inspect.isgenerator(self.body):
             if self.chunked is False:
