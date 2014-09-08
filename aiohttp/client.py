@@ -330,12 +330,10 @@ class ClientRequest:
         enc = self.headers.get('CONTENT-ENCODING', '').lower()
         if enc:
             self.compress = enc
-            self.chunked = True  # enable chunked, no need to deal with length
         elif self.compress:
             if not isinstance(self.compress, str):
                 self.compress = 'deflate'
             self.headers['CONTENT-ENCODING'] = self.compress
-            self.chunked = True  # enable chunked, no need to deal with length
 
     def update_auth(self, auth):
         """Set basic auth."""
@@ -362,35 +360,45 @@ class ClientRequest:
             self.body = data
             if 'CONTENT-TYPE' not in self.headers:
                 self.headers['CONTENT-TYPE'] = 'application/octet-stream'
-            if 'CONTENT-LENGTH' not in self.headers and not self.chunked:
-                self.headers['CONTENT-LENGTH'] = str(len(self.body))
 
         elif isinstance(data, (asyncio.StreamReader, streams.DataQueue)):
             self.body = data
 
         elif inspect.isgenerator(data):
             self.body = data
-            if 'CONTENT-LENGTH' not in self.headers and self.chunked is None:
-                self.chunked = True
 
         else:
             if not isinstance(data, helpers.FormData):
                 data = helpers.FormData(data)
 
-            self.body = data(self.encoding)
+            self.body = data
 
             if 'CONTENT-TYPE' not in self.headers:
                 self.headers['CONTENT-TYPE'] = data.contenttype
 
-            if data.is_form_data():
-                self.chunked = self.chunked or 8196
-            else:
-                if 'CONTENT-LENGTH' not in self.headers and not self.chunked:
-                    self.headers['CONTENT-LENGTH'] = str(len(self.body))
-
     def update_transfer_encoding(self):
         """Analyze transfer-encoding header."""
         te = self.headers.get('TRANSFER-ENCODING', '').lower()
+
+        if self.compress:
+            if self.chunked is False:
+                raise ValueError("Compress is enabled while chunked is disabled.")
+            if self.chunked is None:
+                self.chunked = True
+
+        if isinstance(self.body, helpers.FormData):
+            form_data = self.body
+            data = form_data(self.encoding, self.chunked)
+            if self.chunked is False and form_data.is_form_data:
+                self.body = b"".join(data)
+            else:
+                self.body = data
+
+        if inspect.isgenerator(self.body):
+            if self.chunked is False:
+                raise ValueError("Chunked is disabled but getting a generator.")
+            if 'CONTENT-LENGTH' not in self.headers and self.chunked is None:
+                self.chunked = True
 
         if self.chunked:
             if 'CONTENT-LENGTH' in self.headers:
@@ -401,11 +409,19 @@ class ClientRequest:
             self.chunked = self.chunked if type(self.chunked) is int else 8196
         else:
             if 'chunked' in te:
+                if self.chunked is False:
+                    raise ValueError(
+                        "Conflict options: "
+                        "chunked in TRANSFER-ENCODING, chunked set to False"
+                    )
                 self.chunked = 8196
             else:
                 self.chunked = None
                 if 'CONTENT-LENGTH' not in self.headers:
                     self.headers['CONTENT-LENGTH'] = str(len(self.body))
+
+        if self.version == aiohttp.HttpVersion10 and self.chunked:
+            raise ValueError("Http1.0 doesn't support chunked transfer encoding.")
 
     def update_expect_continue(self, expect=False):
         if expect:
