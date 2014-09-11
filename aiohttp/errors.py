@@ -44,7 +44,7 @@ class HttpErrorException(HttpException):
 
     :param int code: HTTP Error code.
     :param str message: (optional) Error message.
-    :param dict headers: (optional) Headers to be sent in response.
+    :param list of [tuple] headers: (optional) Headers to be sent in response.
     """
 
     def __init__(self, code, message='', headers=None):
