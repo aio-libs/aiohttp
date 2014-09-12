@@ -218,7 +218,7 @@ def do_handshake(method, headers, transport, protocols=()):
                 break
         else:
             raise errors.HttpBadRequest(
-                'Client protocols {} don’t overlap server-known ones {}'
+                'Client protocols {!r} don’t overlap server-known ones {!r}'
                 .format(protocols, req_protocols))
 
     # check supported version
@@ -246,8 +246,9 @@ def do_handshake(method, headers, transport, protocols=()):
     if protocol:
         response_headers.append(('SEC-WEBSOCKET-PROTOCOL', protocol))
 
-    # response code, headers, parser, writer
+    # response code, headers, parser, writer, protocol
     return (101,
             response_headers,
             WebSocketParser,
-            WebSocketWriter(transport))
+            WebSocketWriter(transport),
+            protocol)
