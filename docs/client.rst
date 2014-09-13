@@ -123,7 +123,7 @@ JSON Response Content
 There's also a builtin JSON decoder, in case you're dealing with JSON data::
 
     >>> import aiohttp
-    >>> r = tiled from aiohttp.request('get',
+    >>> r = yield from aiohttp.request('get',
     ...                                'https://github.com/timeline.json')
     >>> yield from r.json()
     [{'repository': {u'open_issues': 0, u'url': 'https://github.com/...
