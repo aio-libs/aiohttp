@@ -312,6 +312,18 @@ class ParsePayloadTests(unittest.TestCase):
         self.assertRaises(StopIteration, p.send, self._COMPRESSED)
         self.assertEqual(self._COMPRESSED, b''.join(out._buffer))
 
+    def test_http_payload_parser_deflate_disabled_for_no_response_body(self):
+        msg = protocol.RawRequestMessage(
+            'HEAD', '/', (1, 1),
+            multidict.MultiDict([('CONTENT-LENGTH', len(self._COMPRESSED))]),
+            None, 'deflate')
+
+        out = aiohttp.FlowControlDataQueue(self.stream)
+        buf = aiohttp.ParserBuffer()
+        p = protocol.HttpPayloadParser(msg, response_with_body=False)(out, buf)
+        self.assertRaises(StopIteration, next, p)
+        self.assertEqual(b'', b''.join(out._buffer))
+
     def test_http_payload_parser_websocket(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1),
