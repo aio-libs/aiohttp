@@ -3,6 +3,7 @@
 
 import asyncio
 import inspect
+import io
 import time
 import unittest
 import unittest.mock
@@ -631,6 +632,24 @@ class ClientRequestTests(unittest.TestCase):
         self.assertEqual(
             self.transport.write.mock_calls[-3:],
             [unittest.mock.call(b'binary data result'),
+             unittest.mock.call(b'\r\n'),
+             unittest.mock.call(b'0\r\n\r\n')])
+
+    def test_data_file(self):
+        req = ClientRequest(
+            'POST', 'http://python.org/', data=io.BytesIO(b'*' * 2),
+            loop=self.loop)
+        self.assertTrue(req.chunked)
+        self.assertTrue(isinstance(req.body, io.IOBase))
+        self.assertEqual(req.headers['TRANSFER-ENCODING'], 'chunked')
+
+        resp = req.send(self.transport, self.protocol)
+        self.assertIsInstance(req._writer, asyncio.Future)
+        self.loop.run_until_complete(resp.wait_for_close())
+        self.assertIsNone(req._writer)
+        self.assertEqual(
+            self.transport.write.mock_calls[-3:],
+            [unittest.mock.call(b'*' * 2),
              unittest.mock.call(b'\r\n'),
              unittest.mock.call(b'0\r\n\r\n')])
 

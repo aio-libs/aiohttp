@@ -5,9 +5,10 @@ __all__ = ['request', 'HttpClient']
 import asyncio
 import collections
 import http.cookies
-import json
-import io
 import inspect
+import io
+import json
+import mimetypes
 import random
 import time
 import urllib.parse
@@ -373,6 +374,20 @@ class ClientRequest:
             if 'CONTENT-LENGTH' not in self.headers and self.chunked is None:
                 self.chunked = True
 
+        elif isinstance(data, io.IOBase):
+            assert not isinstance(data, io.StringIO), \
+                'attempt to send text data instead of binary'
+            self.body = data
+            self.chunked = True
+            if hasattr(data, 'mode'):
+                if data.mode == 'r':
+                    raise ValueError('file {!r} should be open in binary mode'
+                                     ''.format(data))
+            if 'CONTENT-TYPE' not in self.headers and hasattr(data, 'name'):
+                mime = mimetypes.guess_type(data.name)[0]
+                mime = 'application/octet-stream' if mime is None else mime
+                self.headers['CONTENT-TYPE'] = mime
+
         else:
             if not isinstance(data, helpers.FormData):
                 data = helpers.FormData(data)
@@ -473,6 +488,12 @@ class ClientRequest:
                         yield from request.write(chunk)
                     except streams.EofStream:
                         break
+
+            elif isinstance(self.body, io.IOBase):
+                chunk = self.body.read(self.chunked)
+                while chunk:
+                    request.write(chunk)
+                    chunk = self.body.read(self.chunked)
 
             else:
                 if isinstance(self.body, (bytes, bytearray)):

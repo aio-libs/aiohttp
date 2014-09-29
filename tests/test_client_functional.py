@@ -470,21 +470,25 @@ class HttpClientFunctionalTests(unittest.TestCase):
             url = httpd.url('method', 'post')
 
             with open(__file__) as f:
+                with self.assertRaises(ValueError):
+                    self.loop.run_until_complete(
+                        client.request('post', url, data=f, loop=self.loop))
+
+    def test_POST_FILES_SINGLE_BINARY(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+
+            with open(__file__, 'rb') as f:
                 r = self.loop.run_until_complete(
                     client.request('post', url, data=f, loop=self.loop))
 
                 content = self.loop.run_until_complete(r.json())
 
                 f.seek(0)
-                filename = os.path.split(f.name)[-1]
-
-                self.assertEqual(1, len(content['multipart-data']))
-                self.assertEqual(
-                    filename, content['multipart-data'][0]['name'])
-                self.assertEqual(
-                    filename, content['multipart-data'][0]['filename'])
-                self.assertEqual(
-                    f.read(), content['multipart-data'][0]['data'])
+                self.assertEqual(0, len(content['multipart-data']))
+                self.assertEqual(content['content'], f.read().decode())
+                self.assertEqual(content['headers']['Content-Type'],
+                                 'text/x-python')
                 self.assertEqual(r.status, 200)
                 r.close()
 
