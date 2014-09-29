@@ -612,7 +612,10 @@ class ClientResponse:
             self.message.headers.items(getall=True))
 
         # payload
-        response_with_body = self.method.lower() != 'head'
+        if self.method.lower() == 'head' or self.status == 204:
+            response_with_body = False
+        else:
+            response_with_body = True
         self._reader.set_parser(
             aiohttp.HttpPayloadParser(self.message,
                                       readall=read_until_eof,

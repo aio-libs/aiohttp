@@ -11,6 +11,8 @@ import socket
 
 import aiohttp
 from aiohttp.client import ClientRequest, ClientResponse, HttpClient
+from aiohttp.protocol import RawResponseMessage
+from aiohttp.multidict import CaseInsensitiveMultiDict
 
 try:
     import chardet
@@ -293,6 +295,26 @@ class ClientResponseTests(unittest.TestCase):
         self.assertIsInstance(response.content, aiohttp.FlowControlDataQueue)
         with self.assertWarns(ResourceWarning):
             del response
+
+    def test_response_with_gzip_encoding_and_204_status(self):
+        self.response._setup_connection = unittest.mock.Mock()
+        msg = RawResponseMessage(
+            version='1.1',
+            code=204,
+            reason='No Content',
+            headers=CaseInsensitiveMultiDict({'Content-Encoding': 'gzip'}),
+            should_close=True,
+            compression=True)
+        httpstream = unittest.mock.Mock()
+        fut = asyncio.Future(loop=self.loop)
+        fut.set_result(msg)
+        httpstream.read.return_value = fut
+        self.response._reader = unittest.mock.Mock()
+        self.response._reader.set_parser.return_value = httpstream
+        self.loop.run_until_complete(self.response.start(self.connection))
+        args, kwargs = self.response._reader.set_parser.call_args
+        parser = args[0]
+        self.assertFalse(parser.response_with_body)
 
 
 class ClientRequestTests(unittest.TestCase):
