@@ -1,6 +1,7 @@
 """Http related parsers and protocol."""
 
 __all__ = ['HttpMessage', 'Request', 'Response',
+           'HttpVersion', 'HttpVersion10', 'HttpVersion11',
            'RawRequestMessage', 'RawResponseMessage',
            'HttpPrefixParser', 'HttpRequestParser', 'HttpResponseParser',
            'HttpPayloadParser']
@@ -10,6 +11,7 @@ import functools
 import http.server
 import itertools
 import re
+import string
 import sys
 import zlib
 from wsgiref.handlers import format_date_time
@@ -19,6 +21,7 @@ from aiohttp import errors
 from aiohttp import multidict
 from aiohttp.log import internal_log
 
+ASCIISET = set(string.printable)
 METHRE = re.compile('[A-Z0-9$-_.]+')
 VERSRE = re.compile('HTTP/(\d+).(\d+)')
 HDRRE = re.compile('[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]')
@@ -27,6 +30,11 @@ EOF_MARKER = object()
 EOL_MARKER = object()
 
 RESPONSES = http.server.BaseHTTPRequestHandler.responses
+
+HttpVersion = collections.namedtuple(
+    'HttpVersion', ['major', 'minor'])
+HttpVersion10 = HttpVersion(1, 0)
+HttpVersion11 = HttpVersion(1, 1)
 
 
 RawRequestMessage = collections.namedtuple(
@@ -174,11 +182,11 @@ class HttpRequestParser(HttpParser):
         match = VERSRE.match(version)
         if match is None:
             raise errors.BadStatusLine(version)
-        version = (int(match.group(1)), int(match.group(2)))
+        version = HttpVersion(int(match.group(1)), int(match.group(2)))
 
         # read headers
         headers, close, compression = self.parse_headers(lines)
-        if version <= (1, 0):
+        if version <= HttpVersion10:
             close = True
         elif close is None:
             close = False
@@ -222,7 +230,7 @@ class HttpResponseParser(HttpParser):
             match = VERSRE.match(version)
             if match is None:
                 raise errors.BadStatusLine(line)
-            version = (int(match.group(1)), int(match.group(2)))
+            version = HttpVersion(int(match.group(1)), int(match.group(2)))
 
             # The status code is a three-digit number
             try:
@@ -237,7 +245,7 @@ class HttpResponseParser(HttpParser):
             headers, close, compression = self.parse_headers(lines)
 
             if close is None:
-                close = version <= (1, 0)
+                close = version <= HttpVersion10
 
             out.feed_data(
                 RawResponseMessage(
@@ -313,7 +321,7 @@ class HttpPayloadParser:
                 try:
                     size = int(line, 16)
                 except ValueError:
-                    raise errors.IncompleteRead(b'') from None
+                    raise errors.IncompleteRead(0) from None
 
                 if size == 0:  # eof marker
                     break
@@ -367,7 +375,7 @@ class DeflateBuffer:
         try:
             chunk = self.zlib.decompress(chunk)
         except Exception:
-            raise errors.IncompleteRead(b'') from None
+            raise errors.IncompleteRead(0) from None
 
         if chunk:
             self.out.feed_data(chunk)
@@ -375,7 +383,7 @@ class DeflateBuffer:
     def feed_eof(self):
         self.out.feed_data(self.zlib.flush())
         if not self.zlib.eof:
-            raise errors.IncompleteRead(b'')
+            raise errors.IncompleteRead(0)
 
         self.out.feed_eof()
 
@@ -400,8 +408,8 @@ def wrap_payload_filter(func):
     For a example to compress incoming stream with 'deflate' encoding
     and then split data and emit chunks of 8196 bytes size chunks:
 
-      >> response.add_compression_filter('deflate')
-      >> response.add_chunking_filter(8196)
+      >>> response.add_compression_filter('deflate')
+      >>> response.add_chunking_filter(8196)
 
     Filters do not alter transfer encoding.
 
@@ -473,35 +481,36 @@ class HttpMessage:
     compression and then send it with chunked transfer encoding, code may look
     like this:
 
-       >> response = aiohttp.Response(transport, 200)
+       >>> response = aiohttp.Response(transport, 200)
 
     We have to use deflate compression first:
 
-      >> response.add_compression_filter('deflate')
+      >>> response.add_compression_filter('deflate')
 
     Then we want to split output stream into chunks of 1024 bytes size:
 
-      >> response.add_chunking_filter(1024)
+      >>> response.add_chunking_filter(1024)
 
     We can add headers to response with add_headers() method. add_headers()
     does not send data to transport, send_headers() sends request/response
     line and then sends headers:
 
-      >> response.add_headers(
-      ..     ('Content-Disposition', 'attachment; filename="..."'))
-      >> response.send_headers()
+      >>> response.add_headers(
+      ...     ('Content-Disposition', 'attachment; filename="..."'))
+      >>> response.send_headers()
 
     Now we can use chunked writer to write stream to a network stream.
     First call to write() method sends response status line and headers,
     add_header() and add_headers() method unavailable at this stage:
 
-    >> with open('...', 'rb') as f:
-    ..     chunk = fp.read(8196)
-    ..     while chunk:
-    ..         response.write(chunk)
-    ..         chunk = fp.read(8196)
+    >>> with open('...', 'rb') as f:
+    ...     chunk = fp.read(8196)
+    ...     while chunk:
+    ...         response.write(chunk)
+    ...         chunk = fp.read(8196)
 
-    >> response.write_eof()
+    >>> response.write_eof()
+
     """
 
     writer = None
@@ -533,7 +542,7 @@ class HttpMessage:
         self.closing = close
 
         # disable keep-alive for http/1.0
-        if version <= (1, 0):
+        if version <= HttpVersion10:
             self.keepalive = False
         else:
             self.keepalive = None
@@ -565,8 +574,12 @@ class HttpMessage:
         """Analyze headers. Calculate content length,
         removes hop headers, etc."""
         assert not self.headers_sent, 'headers have been sent already'
-        assert isinstance(name, str), '{!r} is not a string'.format(name)
-        assert isinstance(value, str), '{!r} is not a string'.format(value)
+        assert isinstance(name, str), \
+            'Header name should be a string, got {!r}'.format(name)
+        assert set(name).issubset(ASCIISET), \
+            'Header name should contain ASCII chars, got {!r}'.format(name)
+        assert isinstance(value, str), \
+            'Header {!r} should have string value, got {!r}'.format(name, value)
 
         name = name.strip().upper()
         value = value.strip()
@@ -582,7 +595,7 @@ class HttpMessage:
             # connection keep-alive
             elif 'close' in val:
                 self.keepalive = False
-            elif 'keep-alive' in val and self.version >= (1, 1):
+            elif 'keep-alive' in val and self.version >= HttpVersion11:
                 self.keepalive = True
 
         elif name == 'UPGRADE':
@@ -616,7 +629,7 @@ class HttpMessage:
 
         if (self.chunked is True) or (
                 self.length is None and
-                self.version >= (1, 1) and
+                self.version >= HttpVersion11 and
                 self.status not in (304, 204)):
             self.chunked = True
             self.writer = self._write_chunked_payload()
@@ -657,10 +670,12 @@ class HttpMessage:
         self.headers['CONNECTION'] = connection
 
     def write(self, chunk):
-        """write() writes chunk of data to a stream by using different writers.
-        writer uses filter to modify chunk of data. write_eof() indicates
-        end of stream. writer can't be used after write_eof() method
-        being called. write() return drain future.
+        """Writes chunk of data to a stream by using different writers.
+
+        writer uses filter to modify chunk of data.
+        write_eof() indicates end of stream.
+        writer can't be used after write_eof() method being called.
+        write() return drain future.
         """
         assert (isinstance(chunk, (bytes, bytearray)) or
                 chunk is EOF_MARKER), chunk
@@ -806,7 +821,8 @@ class Response(HttpMessage):
         'DATE',
     }
 
-    def __init__(self, transport, status, http_version=(1, 1), close=False):
+    def __init__(self, transport, status,
+                 http_version=HttpVersion11, close=False):
         super().__init__(transport, http_version, close)
 
         self.status = status
@@ -826,7 +842,7 @@ class Request(HttpMessage):
     HOP_HEADERS = ()
 
     def __init__(self, transport, method, path,
-                 http_version=(1, 1), close=False):
+                 http_version=HttpVersion11, close=False):
         super().__init__(transport, http_version, close)
 
         self.method = method

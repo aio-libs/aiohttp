@@ -5,6 +5,9 @@ __all__ = ['EofStream',
 
 import asyncio
 import collections
+import traceback
+
+from .log import internal_log
 
 EOF_MARKER = b''
 DEFAULT_LIMIT = 2**16
@@ -144,6 +147,19 @@ class StreamReader(asyncio.StreamReader):
         if self._exception is not None:
             raise self._exception
 
+        # migration problem; with DataQueue you have to catch
+        # EofStream exception, so common way is to run payload.read() inside
+        # infinite loop. what can cause real infinite loop with StreamReader
+        # lets keep this code one major release.
+        if __debug__:
+            if self._eof and not self._buffer:
+                self._eof_counter = getattr(self, '_eof_counter', 0) + 1
+                if self._eof_counter > 5:
+                    stack = traceback.format_stack()
+                    internal_log.warning(
+                        'Multiple access to StreamReader in eof state, '
+                        'might be infinite loop: \n%s', stack)
+
         if not n:
             return EOF_MARKER
 
@@ -227,6 +243,21 @@ class StreamReader(asyncio.StreamReader):
             n -= len(block)
 
         return b''.join(blocks)
+
+    def read_nowait(self):
+        if self._exception is not None:
+            raise self._exception
+
+        if self._waiter and not self._waiter.done():
+            raise RuntimeError(
+                'Called while some coroutine is waiting for incoming data.')
+
+        if not self._buffer:
+            return EOF_MARKER
+        else:
+            data = bytes(self._buffer)
+            del self._buffer[:]
+            return data
 
 
 class FlowControlStreamReader(StreamReader):

@@ -11,6 +11,7 @@ from unittest import mock
 
 import aiohttp
 from aiohttp import client
+from aiohttp import multidict
 from aiohttp import test_utils
 from aiohttp.multidict import MultiDict
 
@@ -228,6 +229,20 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertEqual(r.status, 200)
             r.close()
 
+    def test_HTTP_200_GET_MultiDict_PARAMS(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            r = self.loop.run_until_complete(
+                client.request('get', httpd.url('method', 'get'),
+                               params=multidict.MultiDict(
+                                   [('q', 'test1'), ('q', 'test2')]),
+                               loop=self.loop))
+            content = self.loop.run_until_complete(r.content.read())
+            content = content.decode()
+
+            self.assertIn('"query": "q=test1&q=test2"', content)
+            self.assertEqual(r.status, 200)
+            r.close()
+
     def test_HTTP_200_GET_WITH_MIXED_PARAMS(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             @asyncio.coroutine
@@ -256,6 +271,20 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
             content = self.loop.run_until_complete(r.json())
             self.assertEqual({'some': ['data']}, content['form'])
+            self.assertEqual(r.status, 200)
+            r.close()
+
+    def test_POST_MultiDict(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+            r = self.loop.run_until_complete(
+                client.request('post', url, data=multidict.MultiDict(
+                    [('q', 'test1'), ('q', 'test2')]),
+                    loop=self.loop))
+            self.assertEqual(r.status, 200)
+
+            content = self.loop.run_until_complete(r.json())
+            self.assertEqual({'q': ['test1', 'test2']}, content['form'])
             self.assertEqual(r.status, 200)
             r.close()
 
@@ -305,12 +334,13 @@ class HttpClientFunctionalTests(unittest.TestCase):
             url = httpd.url('method', 'post')
 
             with open(__file__) as f:
-                r = self.loop.run_until_complete(
-                    client.request(
-                        'post', url, files={'some': f, 'test': b'data'},
-                        chunked=1024,
-                        headers={'Transfer-Encoding': 'chunked'},
-                        loop=self.loop))
+                with self.assertWarns(DeprecationWarning):
+                    r = self.loop.run_until_complete(
+                        client.request(
+                            'post', url, files={'some': f, 'test': b'data'},
+                            chunked=1024,
+                            headers={'Transfer-Encoding': 'chunked'},
+                            loop=self.loop))
                 content = self.loop.run_until_complete(r.json())
                 files = list(
                     sorted(content['multipart-data'],
@@ -440,21 +470,25 @@ class HttpClientFunctionalTests(unittest.TestCase):
             url = httpd.url('method', 'post')
 
             with open(__file__) as f:
+                with self.assertRaises(ValueError):
+                    self.loop.run_until_complete(
+                        client.request('post', url, data=f, loop=self.loop))
+
+    def test_POST_FILES_SINGLE_BINARY(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+
+            with open(__file__, 'rb') as f:
                 r = self.loop.run_until_complete(
                     client.request('post', url, data=f, loop=self.loop))
 
                 content = self.loop.run_until_complete(r.json())
 
                 f.seek(0)
-                filename = os.path.split(f.name)[-1]
-
-                self.assertEqual(1, len(content['multipart-data']))
-                self.assertEqual(
-                    filename, content['multipart-data'][0]['name'])
-                self.assertEqual(
-                    filename, content['multipart-data'][0]['filename'])
-                self.assertEqual(
-                    f.read(), content['multipart-data'][0]['data'])
+                self.assertEqual(0, len(content['multipart-data']))
+                self.assertEqual(content['content'], f.read().decode())
+                self.assertEqual(content['headers']['Content-Type'],
+                                 'text/x-python')
                 self.assertEqual(r.status, 200)
                 r.close()
 
@@ -486,12 +520,15 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
             r = self.loop.run_until_complete(
                 client.request('post', url,
-                               data=(('test', 'true'), (data,)),
+                               data=(('test', 'true'),
+                                     multidict.MultiDict(
+                                         [('q', 't1'), ('q', 't2')]),
+                                     (data,)),
                                loop=self.loop))
 
             content = self.loop.run_until_complete(r.json())
 
-            self.assertEqual(2, len(content['multipart-data']))
+            self.assertEqual(4, len(content['multipart-data']))
             self.assertEqual(
                 {'content-type': 'text/plain',
                  'data': 'true',
@@ -501,6 +538,14 @@ class HttpClientFunctionalTests(unittest.TestCase):
                  'data': 'data',
                  'filename': 'unknown',
                  'name': 'unknown'}, content['multipart-data'][1])
+            self.assertEqual(
+                {'content-type': 'text/plain',
+                 'data': 't1',
+                 'name': 'q'}, content['multipart-data'][2])
+            self.assertEqual(
+                {'content-type': 'text/plain',
+                 'data': 't2',
+                 'name': 'q'}, content['multipart-data'][3])
             self.assertEqual(r.status, 200)
             r.close()
 
@@ -680,6 +725,25 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
         m_log.warning.assert_called_with('Can not load response cookies: %s',
                                          mock.ANY)
+
+    def test_share_cookies(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            conn = aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
+            resp = self.loop.run_until_complete(
+                client.request('get', httpd.url('cookies'),
+                               connector=conn, loop=self.loop))
+            self.assertIn('SET-COOKIE', resp.headers)
+            self.assertEqual(resp.cookies['c1'].value, 'cookie1')
+            self.assertEqual(resp.cookies['c2'].value, 'cookie2')
+            self.assertEqual(conn.cookies, resp.cookies)
+
+            resp2 = self.loop.run_until_complete(
+                client.request('get', httpd.url('method', 'get'),
+                               connector=conn, loop=self.loop))
+            self.assertNotIn('SET-COOKIE', resp2.headers)
+            data = self.loop.run_until_complete(resp2.json())
+            self.assertEqual(data['headers']['Cookie'],
+                             'c1=cookie1; c2=cookie2')
 
     def test_chunked(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:

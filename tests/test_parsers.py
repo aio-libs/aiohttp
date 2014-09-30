@@ -401,20 +401,6 @@ class ParserBufferTests(unittest.TestCase):
     def _make_one(self):
         return parsers.ParserBuffer()
 
-    def test_shrink(self):
-        buf = parsers.ParserBuffer()
-        buf.feed_data(b'data')
-
-        buf.shrink()
-        self.assertEqual(bytes(buf), b'data')
-
-        buf.offset = 2
-        buf.shrink()
-        self.assertEqual(bytes(buf), b'ta')
-        self.assertEqual(2, len(buf))
-        self.assertEqual(2, buf.size)
-        self.assertEqual(0, buf.offset)
-
     def test_feed_data(self):
         buf = self._make_one()
         buf.feed_data(b'')

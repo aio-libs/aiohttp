@@ -3,6 +3,7 @@
 
 import asyncio
 import inspect
+import io
 import time
 import unittest
 import unittest.mock
@@ -127,7 +128,8 @@ class ClientResponseTests(unittest.TestCase):
         self.response.read.return_value = asyncio.Future(loop=self.loop)
         self.response.read.return_value.set_result(b'data')
 
-        res = self.loop.run_until_complete(self.response.read_and_close())
+        with self.assertWarns(DeprecationWarning):
+            res = self.loop.run_until_complete(self.response.read_and_close())
         self.assertEqual(res, b'data')
         self.assertTrue(self.response.read.called)
 
@@ -137,7 +139,8 @@ class ClientResponseTests(unittest.TestCase):
         self.response.json.return_value = asyncio.Future(loop=self.loop)
         self.response.json.return_value.set_result('json')
 
-        res = self.loop.run_until_complete(self.response.read(decode=True))
+        with self.assertWarns(DeprecationWarning):
+            res = self.loop.run_until_complete(self.response.read(decode=True))
         self.assertEqual(res, 'json')
         self.assertTrue(self.response.json.called)
 
@@ -229,7 +232,8 @@ class ClientResponseTests(unittest.TestCase):
         res = self.loop.run_until_complete(self.response.json(loads=custom))
         self.assertEqual(res, 'data-custom')
 
-    def test_json_no_content(self):
+    @unittest.mock.patch('aiohttp.client.client_log')
+    def test_json_no_content(self, m_log):
         self.response.headers = {
             'CONTENT-TYPE': 'data/octet-stream'}
         self.response._content = b''
@@ -237,6 +241,9 @@ class ClientResponseTests(unittest.TestCase):
 
         res = self.loop.run_until_complete(self.response.json())
         self.assertIsNone(res)
+        m_log.warning.assert_called_with(
+            'Attempt to decode JSON with unexpected mimetype: %s',
+            'data/octet-stream')
 
     def test_json_override_encoding(self):
         def side_effect(*args, **kwargs):
@@ -285,6 +292,8 @@ class ClientResponseTests(unittest.TestCase):
         response = MyResponse('get', 'http://python.org')
         response._setup_connection(self.connection)
         self.assertIsInstance(response.content, aiohttp.FlowControlDataQueue)
+        with self.assertWarns(ResourceWarning):
+            del response
 
 
 class ClientRequestTests(unittest.TestCase):
@@ -391,12 +400,22 @@ class ClientRequestTests(unittest.TestCase):
 
     def test_basic_auth(self):
         req = ClientRequest('get', 'http://python.org',
-                            auth=aiohttp.BasicAuth('nkim', '1234'))
+                            auth=aiohttp.helpers.BasicAuth('nkim', '1234'))
         self.assertIn('AUTHORIZATION', req.headers)
         self.assertEqual('Basic bmtpbToxMjM0', req.headers['AUTHORIZATION'])
 
+    def test_basic_auth_utf8(self):
+        req = ClientRequest('get', 'http://python.org',
+                            auth=aiohttp.helpers.BasicAuth('nkim', 'секрет',
+                                                           'utf-8'))
+        self.assertIn('AUTHORIZATION', req.headers)
+        self.assertEqual('Basic bmtpbTrRgdC10LrRgNC10YI=',
+                         req.headers['AUTHORIZATION'])
+
     def test_basic_auth_tuple_deprecated(self):
-        req = ClientRequest('get', 'http://python.org', auth=('nkim', '1234'))
+        with self.assertWarns(DeprecationWarning):
+            req = ClientRequest('get', 'http://python.org',
+                                auth=('nkim', '1234'))
         self.assertIn('AUTHORIZATION', req.headers)
         self.assertEqual('Basic bmtpbToxMjM0', req.headers['AUTHORIZATION'])
 
@@ -407,15 +426,9 @@ class ClientRequestTests(unittest.TestCase):
 
         req = ClientRequest(
             'get', 'http://nkim@python.org',
-            auth=aiohttp.BasicAuth('nkim', '1234'))
+            auth=aiohttp.helpers.BasicAuth('nkim', '1234'))
         self.assertIn('AUTHORIZATION', req.headers)
         self.assertEqual('Basic bmtpbToxMjM0', req.headers['AUTHORIZATION'])
-
-    def test_basic_auth_err(self):
-        # missing password here
-        self.assertRaises(
-            ValueError, ClientRequest,
-            'get', 'http://python.org', auth=aiohttp.BasicAuth('nkim', None))
 
     def test_no_content_length(self):
         req = ClientRequest('get', 'http://python.org', loop=self.loop)
@@ -492,11 +505,19 @@ class ClientRequestTests(unittest.TestCase):
             self.assertEqual('application/x-www-form-urlencoded',
                              req.headers['CONTENT-TYPE'])
 
+    @unittest.mock.patch('aiohttp.client.ClientRequest.update_body_from_data')
+    def test_pass_falsy_data(self, _):
+        req = ClientRequest(
+            'post', 'http://python.org/',
+            data={}, loop=self.loop)
+        req.update_body_from_data.assert_called_once_with({})
+
     def test_get_with_data(self):
         for meth in ClientRequest.GET_METHODS:
             req = ClientRequest(
                 meth, 'http://python.org/', data={'life': '42'})
-            self.assertEqual('/?life=42', req.path)
+            self.assertEqual('/', req.path)
+            self.assertEqual(b'life=42', req.body)
 
     def test_bytes_data(self):
         for meth in ClientRequest.POST_METHODS:
@@ -510,10 +531,11 @@ class ClientRequestTests(unittest.TestCase):
                              req.headers['CONTENT-TYPE'])
 
     def test_files_and_bytes_data(self):
-        self.assertRaises(
-            ValueError, ClientRequest,
-            'POST', 'http://python.org/',
-            data=b'binary data', files={'file': b'file data'})
+        with self.assertRaises(ValueError):
+            with self.assertWarns(DeprecationWarning):
+                ClientRequest(
+                    'POST', 'http://python.org/',
+                    data=b'binary data', files={'file': b'file data'})
 
     @unittest.mock.patch('aiohttp.client.aiohttp')
     def test_content_encoding(self, m_http):
@@ -610,6 +632,24 @@ class ClientRequestTests(unittest.TestCase):
         self.assertEqual(
             self.transport.write.mock_calls[-3:],
             [unittest.mock.call(b'binary data result'),
+             unittest.mock.call(b'\r\n'),
+             unittest.mock.call(b'0\r\n\r\n')])
+
+    def test_data_file(self):
+        req = ClientRequest(
+            'POST', 'http://python.org/', data=io.BytesIO(b'*' * 2),
+            loop=self.loop)
+        self.assertTrue(req.chunked)
+        self.assertTrue(isinstance(req.body, io.IOBase))
+        self.assertEqual(req.headers['TRANSFER-ENCODING'], 'chunked')
+
+        resp = req.send(self.transport, self.protocol)
+        self.assertIsInstance(req._writer, asyncio.Future)
+        self.loop.run_until_complete(resp.wait_for_close())
+        self.assertIsNone(req._writer)
+        self.assertEqual(
+            self.transport.write.mock_calls[-3:],
+            [unittest.mock.call(b'*' * 2),
              unittest.mock.call(b'\r\n'),
              unittest.mock.call(b'0\r\n\r\n')])
 

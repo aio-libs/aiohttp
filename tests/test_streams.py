@@ -126,6 +126,20 @@ class StreamReaderTests(unittest.TestCase):
         self.assertEqual(b'', stream._buffer)
         self.assertIs(data, streams.EOF_MARKER)
 
+    @mock.patch('aiohttp.streams.internal_log')
+    def test_read_eof_infinit(self, internal_log):
+        # Read bytes.
+        stream = self._make_one()
+        stream.feed_eof()
+
+        self.loop.run_until_complete(stream.read())
+        self.loop.run_until_complete(stream.read())
+        self.loop.run_until_complete(stream.read())
+        self.loop.run_until_complete(stream.read())
+        self.loop.run_until_complete(stream.read())
+        self.loop.run_until_complete(stream.read())
+        self.assertTrue(internal_log.warning.called)
+
     def test_read_until_eof(self):
         # Read all bytes until eof.
         stream = self._make_one()
@@ -411,6 +425,32 @@ class StreamReaderTests(unittest.TestCase):
         stream.set_exception(ValueError())
         self.assertRaises(
             ValueError, self.loop.run_until_complete, stream.readany())
+
+    def test_read_nowait(self):
+        stream = self._make_one()
+        stream.feed_data(b'line1\n')
+        stream.feed_data(b'line2\n')
+
+        self.assertEqual(
+            stream.read_nowait(), b'line1\nline2\n')
+        self.assertIs(
+            stream.read_nowait(), streams.EOF_MARKER)
+        self.assertEqual(
+            bytes(stream._buffer), b'')
+
+    def test_read_nowait_exception(self):
+        stream = self._make_one()
+        stream.feed_data(b'line\n')
+        stream.set_exception(ValueError())
+
+        self.assertRaises(ValueError, stream.read_nowait)
+
+    def test_read_nowait_waiter(self):
+        stream = self._make_one()
+        stream.feed_data(b'line\n')
+        stream._waiter = stream._create_waiter('readany')
+
+        self.assertRaises(RuntimeError, stream.read_nowait)
 
 
 class FlowControlStreamReaderTests(unittest.TestCase):

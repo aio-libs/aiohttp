@@ -1,16 +1,32 @@
 CHANGES
 =======
 
-0.9.0 (xx-xx-2014)
+0.9.1 (08-30-2014)
 ------------------
 
-- Fixed client basic authentication.
+- Added MultiDict support for client request params and data #114.
+
+- Fixed parameter type for IncompleteRead exception #118.
+
+- Strictly require ASCII headers names and values #137
+
+- Keep port in ProxyConnector #128.
+
+- Python 3.4.1 compatibility #131.
+
+
+0.9.0 (07-08-2014)
+------------------
+
+- Better client basic authentication support #112.
+
+- Fixed incorrect line splitting in HttpRequestParser #97.
 
 - Support StreamReader and DataQueue as request data.
 
-- Client files handling refactoring #20
+- Client files handling refactoring #20.
 
-- Backward incompatible: Replace DataQueue with StreamReader for request payload #87
+- Backward incompatible: Replace DataQueue with StreamReader for request payload #87.
 
 
 0.8.4 (07-04-2014)

@@ -30,6 +30,14 @@ aiohttp.errors module
     :undoc-members:
     :show-inheritance:
 
+aiohttp.helpers module
+----------------------
+
+.. automodule:: aiohttp.helpers
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 aiohttp.parsers module
 ----------------------
 
@@ -54,10 +62,10 @@ aiohttp.server module
     :undoc-members:
     :show-inheritance:
 
-aiohttp.utils module
---------------------
+aiohttp.streams module
+----------------------
 
-.. automodule:: aiohttp.utils
+.. automodule:: aiohttp.streams
     :members:
     :undoc-members:
     :show-inheritance:
