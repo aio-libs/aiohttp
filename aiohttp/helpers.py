@@ -108,9 +108,14 @@ class FormData:
         data = urllib.parse.urlencode(data, doseq=True)
         return data.encode(encoding)
 
-    def gen_form_data(self, encoding='utf-8', chunk_size=8196):
+    def gen_form_data(self, encoding='utf-8', chunk_size=True):
         """Encode a list of fields using the multipart/form-data MIME format"""
         boundary = self._boundary.encode('latin1')
+
+        if chunk_size in (None, True):
+            chunk_size = 8196
+        elif chunk_size is False:
+            chunk_size = None
 
         for name, value, ctype, fname in self._fields:
             yield b'--' + boundary + b'\r\n'
@@ -129,6 +134,8 @@ class FormData:
                     ('Content-Type: %s\r\n\r\n' % ctype).encode(encoding))
 
             yield b''.join(headers)
+            if not chunk_size:
+                yield b'\r\n'
 
             if isinstance(value, str):
                 yield value.encode(encoding)
@@ -146,9 +153,9 @@ class FormData:
 
         yield b'--' + boundary + b'--\r\n'
 
-    def __call__(self, encoding):
+    def __call__(self, encoding, chunked):
         if self._has_io:
-            return self.gen_form_data(encoding)
+            return self.gen_form_data(encoding, chunked)
         else:
             return self.gen_form_urlencoded(encoding)
 

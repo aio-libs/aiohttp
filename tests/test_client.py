@@ -537,6 +537,158 @@ class ClientRequestTests(unittest.TestCase):
                     'POST', 'http://python.org/',
                     data=b'binary data', files={'file': b'file data'})
 
+    def test_files_chunked_basic(self):
+        # chunked by default
+        c = ClientRequest(
+            "POST",
+            "http://python.org/upload",
+            data = dict(file=open(__file__)),
+        )
+        self.assertTrue(c.chunked)
+        self.assertNotIn("CONTENT-LENGTH", c.headers)
+        self.assertEqual(c.headers['TRANSFER-ENCODING'], 'chunked')
+
+        # chunked can be disabled
+        c = ClientRequest(
+            "POST",
+            "http://python.org/upload",
+            data = dict(file=open(__file__)),
+            chunked = False,
+        )
+        self.assertFalse(c.chunked)
+        self.assertIn("CONTENT-LENGTH", c.headers)
+
+        # chunked = True
+        c = ClientRequest(
+            "POST",
+            "http://python.org/upload",
+            data = dict(file=open(__file__)),
+            chunked = True,
+        )
+        self.assertTrue(c.chunked)
+        self.assertNotIn("CONTENT-LENGTH", c.headers)
+        self.assertEqual(c.headers['TRANSFER-ENCODING'], 'chunked')
+
+        # chunked = int
+        c = ClientRequest(
+            "POST",
+            "http://python.org/upload",
+            data = dict(file=open(__file__)),
+            chunked = 2048,
+        )
+        self.assertTrue(c.chunked)
+        self.assertNotIn("CONTENT-LENGTH", c.headers)
+        self.assertEqual(c.headers['TRANSFER-ENCODING'], 'chunked')
+
+    def test_files_chunked_content(self):
+        class FakeBoundrary(object):
+            hex = "A" * 32
+
+        import uuid
+        with unittest.mock.patch("uuid.uuid4", new_callable=unittest.mock.PropertyMock) as m:
+            m.return_value = FakeBoundrary()
+
+            c1 = ClientRequest(
+                "POST",
+                "http://python.org/upload",
+                data = dict(file=open(__file__, "rb")),
+            )
+            c2 = ClientRequest(
+                "POST",
+                "http://python.org/upload",
+                data = dict(file=open(__file__, "rb")),
+                chunked = False
+            )
+
+        # non-chunked body is a bytes
+        c2_content = c2.body
+        self.assertEqual(len(c2_content), int(c2.headers["CONTENT-LENGTH"]))
+
+        # non-chunked version should be 2-bytes larger than its chunked counterpart.
+        c1_content = b"".join(c1.body)
+        self.assertTrue(len(c1_content) == len(c2.body) - 2)
+
+        # test actual body
+        def get_content(chunked: bool):
+            import os
+            boundary = b'A' * 32
+            name = b"file"
+            fname = os.path.basename(__file__).encode("utf-8")
+            chunked = b"\r\n" if not chunked else b""
+            content = open(__file__, 'rb').read()
+            return \
+                b'--' + boundary + b'\r\n' \
+                b'Content-Disposition: form-data; name="' + name + b'"; ' \
+                b'filename="' + fname + b'"\r\n' \
+                b'' + chunked + content + \
+                b'\r\n' \
+                b'--' + boundary + b'--\r\n'
+        self.assertEqual(get_content(chunked = True), c1_content)
+        self.assertEqual(get_content(chunked = False), c2_content)
+
+    def test_files_chunked_http_version(self):
+        # Http 1.0 shouldn't work
+        with self.assertRaises(ValueError):
+            ClientRequest(
+                "POST",
+                "http://python.org/upload",
+                data = dict(file=open(__file__, "rb")),
+                version = aiohttp.HttpVersion10,
+            )
+
+        # Http 1.1 should work
+        ClientRequest(
+            "POST",
+            "http://python.org/upload",
+            data = dict(file=open(__file__, "rb")),
+        )
+
+    def test_files_chunked_header_conflict(self):
+        # header says TRANSFER-ENCODING: chunked, and chunked says False
+        with self.assertRaises(ValueError):
+            ClientRequest(
+                "POST",
+                "http://python.org/upload",
+                data = dict(file=open(__file__, "rb")),
+                headers = {
+                    "TRANSFER-ENCODING": "chunked",
+                },
+                chunked = False,
+            )
+
+        # chunked is None, shouldn't cause conflict
+        ClientRequest(
+            "POST",
+            "http://python.org/upload",
+            data = dict(file=open(__file__, "rb")),
+            headers = {
+                "TRANSFER-ENCODING": "chunked",
+            },
+            chunked = None,
+        )
+
+        # chunked is int, shouldn't cause conflict
+        ClientRequest(
+            "POST",
+            "http://python.org/upload",
+            data = dict(file=open(__file__, "rb")),
+            headers = {
+                "TRANSFER-ENCODING": "chunked",
+            },
+            chunked = 2048,
+        )
+
+        # chunked is True, shouldn't cause conflict
+        ClientRequest(
+            "POST",
+            "http://python.org/upload",
+            data = dict(file=open(__file__, "rb")),
+            headers = {
+                "TRANSFER-ENCODING": "chunked",
+            },
+            chunked = True,
+        )
+
     @unittest.mock.patch('aiohttp.client.aiohttp')
     def test_content_encoding(self, m_http):
         req = ClientRequest('get', 'http://python.org/',
