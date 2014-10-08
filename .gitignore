@@ -24,3 +24,5 @@ var/*
 docs/_build/
 nosetests.xml
 cover
+.idea
+pyvenv
