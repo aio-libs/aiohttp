@@ -203,6 +203,19 @@ class HttpClientFunctionalTests(unittest.TestCase):
             content = content.decode()
 
             self.assertEqual(r.status, 200)
+            self.assertIn('"method": "GET"', content)
+            self.assertEqual(2, httpd['redirects'])
+            r.close()
+
+    def test_HTTP_307_REDIRECT_POST(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            r = self.loop.run_until_complete(
+                client.request('post', httpd.url('redirect_307', 2),
+                               data={'some': 'data'}, loop=self.loop))
+            content = self.loop.run_until_complete(r.content.read())
+            content = content.decode()
+
+            self.assertEqual(r.status, 200)
             self.assertIn('"method": "POST"', content)
             self.assertEqual(2, httpd['redirects'])
             r.close()
@@ -931,6 +944,20 @@ class Functional(test_utils.Router):
         else:
             self._response(
                 self._start_response(302),
+                headers={'Location': self._path})
+
+    @test_utils.Router.define('/redirect_307/([0-9]+)$')
+    def redirect_307(self, match):
+        no = int(match.group(1).upper())
+        rno = self._props['redirects'] = self._props.get('redirects', 0) + 1
+
+        if rno >= no:
+            self._response(
+                self._start_response(307),
+                headers={'Location': '/method/%s' % self._method.lower()})
+        else:
+            self._response(
+                self._start_response(307),
                 headers={'Location': self._path})
 
     @test_utils.Router.define('/encoding/(gzip|deflate)$')

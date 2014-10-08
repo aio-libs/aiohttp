@@ -90,6 +90,7 @@ def request(method, url, *,
 
     """
     redirects = 0
+    method = method.upper()
     if loop is None:
         loop = asyncio.get_event_loop()
     if request_class is None:
@@ -120,11 +121,17 @@ def request(method, url, *,
             raise aiohttp.OsConnectionError(exc)
 
         # redirects
-        if resp.status in (301, 302) and allow_redirects:
+        if resp.status in (301, 302, 303, 307) and allow_redirects:
             redirects += 1
             if max_redirects and redirects >= max_redirects:
                 resp.close(force=True)
                 break
+
+            # For 301 and 302, mimic IE behaviour, now changed in RFC. Details: https://github.com/kennethreitz/requests/pull/269
+            if resp.status != 307:
+                method = 'GET'
+                data = None
+            cookies = resp.cookies
 
             r_url = resp.headers.get('LOCATION') or resp.headers.get('URI')
 
