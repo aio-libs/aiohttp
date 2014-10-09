@@ -1,6 +1,13 @@
 CHANGES
 =======
 
+- Improve redirect handling #157
+
+- Send raw files as is #153
+
+- Better websocket support #150
+
+
 0.9.1 (08-30-2014)
 ------------------
 
