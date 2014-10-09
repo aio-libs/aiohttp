@@ -42,7 +42,7 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
 
         if upgrade:
             # websocket handshake
-            status, headers, parser, writer = websocket.do_handshake(
+            status, headers, parser, writer, protocol = websocket.do_handshake(
                 message.method, message.headers, self.transport)
 
             resp = aiohttp.Response(
