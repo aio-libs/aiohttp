@@ -21,7 +21,7 @@ MSG_PONG = OPCODE_PONG = 0xa
 
 WS_KEY = b'258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 WS_HDRS = ('UPGRADE', 'CONNECTION',
-           'SEC-WEBSOCKET-VERSION', 'SEC-WEBSOCKET-KEY')
+           'SEC-WEBSOCKET-VERSION', 'SEC-WEBSOCKET-KEY', 'SEC-WEBSOCKET-PROTOCOL')
 
 Message = collections.namedtuple('Message', ['tp', 'data', 'extra'])
 
@@ -182,10 +182,14 @@ class WebSocketWriter:
             opcode=OPCODE_CLOSE)
 
 
-def do_handshake(method, headers, transport):
+def do_handshake(method, headers, transport, protocols=()):
     """Prepare WebSocket handshake. It return http response code,
     response headers, websocket parser, websocket writer. It does not
-    perform any IO."""
+    perform any IO.
+
+    `protocols` is a sequence of known protocols. On successful handshake,
+    the returned response headers contain the first protocol in this list
+    which the server also knows."""
 
     # WebSocket accepts only GET
     if method.upper() != 'GET':
@@ -201,6 +205,21 @@ def do_handshake(method, headers, transport):
         raise errors.HttpBadRequest(
             'No CONNECTION upgrade hdr: {}'.format(
                 headers.get('CONNECTION')))
+    
+    # find common sub-protocol between client and server
+    protocol = None
+    if 'SEC-WEBSOCKET-PROTOCOL' in headers:
+        req_protocols = {str(proto.strip()) for proto in
+            headers['SEC-WEBSOCKET-PROTOCOL'].split(',')}
+        
+        for proto in protocols:
+            if proto in req_protocols:
+                protocol = proto
+                break
+        else:
+            raise errors.HttpBadRequest(
+                'Client protocols {!r} don’t overlap server-known ones {!r}'
+                .format(protocols, req_protocols))
 
     # check supported version
     version = headers.get('SEC-WEBSOCKET-VERSION')
@@ -218,12 +237,18 @@ def do_handshake(method, headers, transport):
         raise errors.HttpBadRequest(
             'Handshake error: {!r}'.format(key)) from None
 
-    # response code, headers, parser, writer
-    return (101,
-            (('UPGRADE', 'websocket'),
+    response_headers = [('UPGRADE', 'websocket'),
              ('CONNECTION', 'upgrade'),
              ('TRANSFER-ENCODING', 'chunked'),
              ('SEC-WEBSOCKET-ACCEPT', base64.b64encode(
-                 hashlib.sha1(key.encode() + WS_KEY).digest()).decode())),
+                 hashlib.sha1(key.encode() + WS_KEY).digest()).decode())]
+    
+    if protocol:
+        response_headers.append(('SEC-WEBSOCKET-PROTOCOL', protocol))
+
+    # response code, headers, parser, writer, protocol
+    return (101,
+            response_headers,
             WebSocketParser,
-            WebSocketWriter(transport))
+            WebSocketWriter(transport),
+            protocol)
