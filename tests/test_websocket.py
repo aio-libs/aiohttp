@@ -473,14 +473,10 @@ class WebSocketHandshakeTests(unittest.TestCase):
 
     def test_handshake_protocol_unsupported(self):
         proto = 'chat'
-
         self.headers.extend(self.gen_ws_headers('test')[0])
-        _, resp_headers, _, _, protocol = websocket.do_handshake(
+
+        self.assertRaises(
+            errors.HttpBadRequest,
+            websocket.do_handshake,
             self.message.method, self.message.headers, self.transport,
             protocols=[proto])
-
-        self.assertEqual(protocol, proto)
-
-        # also test if we reply with the protocol
-        resp_headers = dict(resp_headers)
-        self.assertEqual(resp_headers['SEC-WEBSOCKET-PROTOCOL'], proto)
