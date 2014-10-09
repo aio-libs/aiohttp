@@ -127,7 +127,8 @@ def request(method, url, *,
                 resp.close(force=True)
                 break
 
-            # For 301 and 302, mimic IE behaviour, now changed in RFC. Details: https://github.com/kennethreitz/requests/pull/269
+            # For 301 and 302, mimic IE behaviour, now changed in RFC.
+            # Details: https://github.com/kennethreitz/requests/pull/269
             if resp.status != 307:
                 method = 'GET'
                 data = None

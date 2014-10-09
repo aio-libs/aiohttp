@@ -579,7 +579,8 @@ class HttpMessage:
         assert set(name).issubset(ASCIISET), \
             'Header name should contain ASCII chars, got {!r}'.format(name)
         assert isinstance(value, str), \
-            'Header {!r} should have string value, got {!r}'.format(name, value)
+            'Header {!r} should have string value, got {!r}'.format(
+                name, value)
 
         name = name.strip().upper()
         value = value.strip()

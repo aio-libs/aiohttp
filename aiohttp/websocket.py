@@ -20,8 +20,11 @@ MSG_PING = OPCODE_PING = 0x9
 MSG_PONG = OPCODE_PONG = 0xa
 
 WS_KEY = b'258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
-WS_HDRS = ('UPGRADE', 'CONNECTION',
-           'SEC-WEBSOCKET-VERSION', 'SEC-WEBSOCKET-KEY', 'SEC-WEBSOCKET-PROTOCOL')
+WS_HDRS = ('UPGRADE',
+           'CONNECTION',
+           'SEC-WEBSOCKET-VERSION',
+           'SEC-WEBSOCKET-KEY',
+           'SEC-WEBSOCKET-PROTOCOL')
 
 Message = collections.namedtuple('Message', ['tp', 'data', 'extra'])
 
@@ -205,13 +208,13 @@ def do_handshake(method, headers, transport, protocols=()):
         raise errors.HttpBadRequest(
             'No CONNECTION upgrade hdr: {}'.format(
                 headers.get('CONNECTION')))
-    
+
     # find common sub-protocol between client and server
     protocol = None
     if 'SEC-WEBSOCKET-PROTOCOL' in headers:
         req_protocols = {str(proto.strip()) for proto in
-            headers['SEC-WEBSOCKET-PROTOCOL'].split(',')}
-        
+                         headers['SEC-WEBSOCKET-PROTOCOL'].split(',')}
+
         for proto in protocols:
             if proto in req_protocols:
                 protocol = proto
@@ -237,12 +240,13 @@ def do_handshake(method, headers, transport, protocols=()):
         raise errors.HttpBadRequest(
             'Handshake error: {!r}'.format(key)) from None
 
-    response_headers = [('UPGRADE', 'websocket'),
-             ('CONNECTION', 'upgrade'),
-             ('TRANSFER-ENCODING', 'chunked'),
-             ('SEC-WEBSOCKET-ACCEPT', base64.b64encode(
-                 hashlib.sha1(key.encode() + WS_KEY).digest()).decode())]
-    
+    response_headers = [
+        ('UPGRADE', 'websocket'),
+        ('CONNECTION', 'upgrade'),
+        ('TRANSFER-ENCODING', 'chunked'),
+        ('SEC-WEBSOCKET-ACCEPT', base64.b64encode(
+            hashlib.sha1(key.encode() + WS_KEY).digest()).decode())]
+
     if protocol:
         response_headers.append(('SEC-WEBSOCKET-PROTOCOL', protocol))
 

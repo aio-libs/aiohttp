@@ -454,7 +454,7 @@ class WebSocketHandshakeTests(unittest.TestCase):
 
         self.assertEqual(protocol, proto)
 
-        #also test if we reply with the protocol
+        # also test if we reply with the protocol
         resp_headers = dict(resp_headers)
         self.assertEqual(resp_headers['SEC-WEBSOCKET-PROTOCOL'], proto)
 
