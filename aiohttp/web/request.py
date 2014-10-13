@@ -111,7 +111,7 @@ class ServerResponse:
             raise RuntimeError("HTTP headers are already sent")
         self._headers_sent = True
         resp_impl = self._resp_impl = Response(self._writer,
-                                               self.status_code,
+                                               self._status_code,
                                                self._version)
 
         self._copy_cookies()
@@ -201,10 +201,10 @@ class ServerRequest:
 
     @asyncio.coroutine
     def text(self, *, encoding='utf-8'):
-        bbody = yield from self.read()
-        if bbody is None:
+        bytes_body = yield from self.read()
+        if bytes_body is None:
             return None
-        return bbody.encode(encoding)
+        return bytes_body.encode(encoding)
 
     @asyncio.coroutine
     def json(self, *, encoding='utf-8', loader=json.loads):

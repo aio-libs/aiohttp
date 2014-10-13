@@ -4,8 +4,8 @@ from abc import ABCMeta, abstractmethod
 class AbstractRouter(metaclass=ABCMeta):
 
     @abstractmethod
-    def route(self, url):
-        """Return ENDPOINT for given url/request"""
+    def match(self, url):
+        """Return (HANDLER, MATCH) for given url/request"""
 
     @abstractmethod
     def reverse(self, endpoint):
