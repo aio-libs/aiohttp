@@ -10,6 +10,7 @@ from .errors import *
 from .helpers import *
 from .parsers import *
 from .streams import *
+from .web import *
 
 
 __all__ = (client.__all__ +
@@ -19,4 +20,5 @@ __all__ = (client.__all__ +
            protocol.__all__ +
            connector.__all__ +
            streams.__all__ +
+           web.__all__ +
            ['__version__'])

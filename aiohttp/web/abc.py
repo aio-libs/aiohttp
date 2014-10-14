@@ -1,35 +1,41 @@
+import asyncio
 from abc import ABCMeta, abstractmethod
 
 
 class AbstractRouter(metaclass=ABCMeta):
 
     @abstractmethod
-    def match(self, url):
-        """Return (HANDLER, MATCH) for given url/request"""
+    @asyncio.coroutine
+    def resolve(self, request):
+        """Return MATCH_INFO for given request"""
 
+
+class AbstractMatchInfo(metaclass=ABCMeta):
+
+    @property
     @abstractmethod
-    def reverse(self, endpoint):
-        """Return URL for given endpoint"""
+    def kind(self):
+        pass
+
+    @property
+    @abstractmethod
+    def handler(self):
+        pass
 
 
-class AbstractMatch(metaclass=ABCMeta):
+class UrlMappingMatchInfo(AbstractMatchInfo):
 
-    def __init__(self, kind):
-        self._kind = kind
+    def __init__(self, matchdict, entry):
+        self._matchdict = matchdict
+        self._entry = entry
 
     @property
     def kind(self):
-        return self._kind
+        return 'urlmapping'
 
-
-class UrlMappingMatch(AbstractMatch):
-
-    def __init__(self, matchdict, route_name, route_spec, handler):
-        super().__init__('urlmapping')
-        self._matchdict = matchdict
-        self._route_name = route_name
-        self._route_spec = route_spec
-        self._handler = handler
+    @property
+    def handler(self):
+        return self._entry.handler
 
     @property
     def matchdict(self):
@@ -37,4 +43,4 @@ class UrlMappingMatch(AbstractMatch):
 
     @property
     def route_name(self):
-        return self._route_name
+        return self._entry.name

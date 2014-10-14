@@ -2,11 +2,11 @@ import asyncio
 import http.cookies
 import json
 
-from urllib.parse import urlsplit, parse_qsl
+from urllib.parse import urlsplit, parse_qsl, unquote
 
-from aiohttp.multidict import MultiDict, MutableMultiDict
-from aiohttp.protocol import Response
-from aiohttp.streams import EOF_MARKER
+from ..multidict import MultiDict, MutableMultiDict
+from ..protocol import Response
+from ..streams import EOF_MARKER
 
 
 __all__ = [
@@ -17,12 +17,11 @@ __all__ = [
 
 class ServerResponse:
 
-    def __init__(self, host, writer, version, server_http_protocol):
+    def __init__(self, host, server_http_protocol, version):
         self.headers = MutableMultiDict({'Host': host})
         self._status_code = 200
         self._cookies = http.cookies.SimpleCookie()
         self._deleted_cookies = set()
-        self._writer = writer
         self._version = version
         self._server_http_protocol = server_http_protocol
         self._resp_impl = None
@@ -123,9 +122,10 @@ class ServerResponse:
         if self._eof_sent:
             raise RuntimeError("Cannot call send_header() after write_eof()")
 
-        resp_impl = self._resp_impl = Response(self._writer,
-                                               self._status_code,
-                                               self._version)
+        resp_impl = self._resp_impl = Response(
+            self._server_http_protocol.writer,
+            self._status_code,
+            self._version)
 
         self._copy_cookies()
 
@@ -134,6 +134,25 @@ class ServerResponse:
             resp_impl.add_header(key, val)
 
         resp_impl.send_headers()
+
+    def set_chunked(self, chunk_size, buffered=True):
+        pass
+
+    @property
+    def content_length(self):
+        l = self.headers.get('Content-Length')
+        if l is None:
+            return None
+        else:
+            return int(l)
+
+    @content_length.setter
+    def content_length(self, value):
+        value = int(value)
+        if self.content_length is not None:
+            raise RuntimeError("Content-Length is already set")
+        # raise error if chunked enabled
+        self.headers['Content-Length'] = str(value)
 
     def write(self, data):
         if not isinstance(data, (bytes, bytearray, memoryview)):
@@ -151,7 +170,7 @@ class ServerResponse:
 
     @asyncio.coroutine
     def write_eof(self):
-        if self._headers_sent is None:
+        if self._resp_impl is None:
             self._send_headers()
         if self._eof_sent:
             return
@@ -159,22 +178,24 @@ class ServerResponse:
         yield from self._resp_impl.write_eof()
         if self._resp_impl.keep_alive():
             self._server_http_protocol.keep_alive(self._keep_alive)
+        self._eof_sent = True
 
 
 class ServerRequest:
 
-    def __init__(self, registry, match_info, host, message, payload, writer, *,
+    def __init__(self, application, message, payload, protocol, *,
                  loop=None):
         if loop is None:
             loop = asyncio.get_event_loop()
-        res = urlsplit(message.path)
-        self._registry = registry
+        path = unquote(message.path)
+        res = urlsplit(path)
+        self._application = application
         self._loop = loop
         self.version = message.version
         self.method = message.method.upper()
-        self.host = message.headers.get('HOST', host)
+        self.host = message.headers.get('HOST', application.host)
         self.host_url = 'http://' + self.host
-        self.path_qs = message.path
+        self.path_qs = path
         self.path = res.path
         self.path_url = self.host_url + self.path
         self.url = self.host_url + self.path_qs
@@ -184,11 +205,15 @@ class ServerRequest:
 
         # matchdict, route_name, handler
         # or information about traversal lookup
-        self.match_info = match_info
+        self._match_info = None  # initialized after route resolving
 
         self._payload = payload
-        self._response = ServerResponse(host, writer, self.version)
+        self._response = ServerResponse(self.host, protocol, self.version)
         self._cookies = None
+
+    @property
+    def match_info(self):
+        return self._match_info
 
     @property
     def response(self):
@@ -196,9 +221,9 @@ class ServerRequest:
         return self._response
 
     @property
-    def registry(self):
-        """Registry instance."""
-        return self._registry
+    def application(self):
+        """Application instance."""
+        return self._application
 
     @property
     def cookies(self):
@@ -224,9 +249,9 @@ class ServerRequest:
 
         Eat unread part of HTTP BODY if present.
         """
-        chunk = yield from self.content.readany()
+        chunk = yield from self._payload.readany()
         while chunk is not EOF_MARKER or chunk:
-            chunk = yield from self.content.readany()
+            chunk = yield from self._payload.readany()
 
     @asyncio.coroutine
     def read(self):
