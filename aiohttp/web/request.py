@@ -163,7 +163,7 @@ class ServerResponse:
 
 class ServerRequest:
 
-    def __init__(self, registry, match, host, message, payload, writer, *,
+    def __init__(self, registry, match_info, host, message, payload, writer, *,
                  loop=None):
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -184,7 +184,7 @@ class ServerRequest:
 
         # matchdict, route_name, handler
         # or information about traversal lookup
-        self.match = match
+        self.match_info = match_info
 
         self._payload = payload
         self._response = ServerResponse(host, writer, self.version)
