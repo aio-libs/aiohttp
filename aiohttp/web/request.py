@@ -17,15 +17,17 @@ __all__ = [
 
 class ServerResponse:
 
-    def __init__(self, host, writer, version):
+    def __init__(self, host, writer, version, server_http_protocol):
         self.headers = MutableMultiDict({'Host': host})
         self._status_code = 200
         self._cookies = http.cookies.SimpleCookie()
         self._deleted_cookies = set()
-        self._headers_sent = False
         self._writer = writer
         self._version = version
+        self._server_http_protocol = server_http_protocol
         self._resp_impl = None
+        self._keep_alive = True
+        self._eof_sent = False
 
     def _copy_cookies(self):
         for cookie in self._cookies.values():
@@ -45,9 +47,8 @@ class ServerResponse:
         Also updates only those params which are not None.
         """
 
-        if self._headers_sent:
-            raise RuntimeError("Cannot change cookie "
-                               "after sending response headers")
+        if self._resp_impl is not None:
+            raise RuntimeError("Cannot change cookie after send_headers()")
         if name in self._deleted_cookies:
             self._deleted_cookies.remove(name)
             self._cookies.pop(name, None)
@@ -75,9 +76,8 @@ class ServerResponse:
         Creates new empty expired cookie.
         """
         # TODO: do we need domain/path here?
-        if self._headers_sent:
-            raise RuntimeError("Cannot delete cookie "
-                               "after sending response headers")
+        if self._resp_impl is not None:
+            raise RuntimeError("Cannot delete cookie after send_headers()")
         self._cookies.pop(name, None)
         self.set_cookie(name, '', max_age=0, domain=domain, path=path)
         self._deleted_cookies.add(name)
@@ -88,9 +88,9 @@ class ServerResponse:
 
     @status_code.setter
     def status_code(self, value):
-        if self._headers_sent:
+        if self._resp_impl is not None:
             raise RuntimeError("Cannot change HTTP status code "
-                               "after sending response headers")
+                               "after send_headers()")
         assert isinstance(value, int), "Status code must be int"
         self._status_code = value
 
@@ -100,28 +100,65 @@ class ServerResponse:
 
     @version.setter
     def version(self, value):
-        if self._headers_sent:
+        if self._resp_impl is not None:
             raise RuntimeError("Cannot change HTTP version "
-                               "after sending response headers")
-        assert isinstance(value, ), "HTTP version must be str"
+                               "after send_headers()")
+        assert isinstance(value, str), "HTTP version must be str"
         self._version = value
 
+    @property
+    def keep_alive(self):
+        return self._keep_alive
+
+    @keep_alive.setter
+    def keep_alive(self, value):
+        if self._resp_impl is not None:
+            raise RuntimeError("Cannot change HTTP keepalive "
+                               "after send_headers()")
+        self._keep_alive = bool(value)
+
     def send_headers(self):
-        if self._headers_sent:
+        if self._resp_impl is not None:
             raise RuntimeError("HTTP headers are already sent")
-        self._headers_sent = True
+        if self._eof_sent:
+            raise RuntimeError("Cannot call send_header() after write_eof()")
+
         resp_impl = self._resp_impl = Response(self._writer,
                                                self._status_code,
                                                self._version)
 
         self._copy_cookies()
+
+        headers = self.headers.items(getall=True)
+        for key, val in headers:
+            resp_impl.add_header(key, val)
+
         resp_impl.send_headers()
 
-    def write(self, binary):
-        pass
+    def write(self, data):
+        if not isinstance(data, (bytes, bytearray, memoryview)):
+            raise TypeError('data argument must be byte-ish (%r)',
+                            type(data))
 
+        if self._eof_sent:
+            raise RuntimeError("Cannot call write() after send_eof()")
+        if not data:
+            return
+
+        if self._resp_impl is None:
+            self.send_headers()
+        self._resp_impl.write(data)
+
+    @asyncio.coroutine
     def write_eof(self):
-        pass
+        if self._headers_sent is None:
+            self._send_headers()
+        if self._eof_sent:
+            return
+
+        yield from self._resp_impl.write_eof()
+        if self._resp_impl.keep_alive():
+            self._server_http_protocol.keep_alive(self._keep_alive)
 
 
 class ServerRequest:
@@ -145,9 +182,9 @@ class ServerRequest:
         self.args = MultiDict(parse_qsl(res.query))
         self.headers = message.headers
 
-        # TODO: Do we need this? What is matchdict for traversal?
-        # self.matchdict = {}
-        self.match = match  # matchdict, route_name, handler
+        # matchdict, route_name, handler
+        # or information about traversal lookup
+        self.match = match
 
         self._payload = payload
         self._response = ServerResponse(host, writer, self.version)
@@ -157,6 +194,11 @@ class ServerRequest:
     def response(self):
         """Response object."""
         return self._response
+
+    @property
+    def registry(self):
+        """Registry instance."""
+        return self._registry
 
     @property
     def cookies(self):
@@ -173,10 +215,15 @@ class ServerRequest:
 
     @property
     def payload(self):
+        """Return raw paiload stream."""
         return self._payload
 
     @asyncio.coroutine
     def release(self):
+        """Release request.
+
+        Eat unread part of HTTP BODY if present.
+        """
         chunk = yield from self.content.readany()
         while chunk is not EOF_MARKER or chunk:
             chunk = yield from self.content.readany()
@@ -218,6 +265,9 @@ class ServerRequest:
         body = yield from self.text(encoding=encoding)
         return parse_x_www_form_encoding(body)
 
+    @asyncio.coroutine
+    def start_websocket(self):
+        """Upgrade connection to websocket.
 
-class UrlMatchRequest(ServerRequest):
-    pass
+        Returns (reader, writer) pair.
+        """
