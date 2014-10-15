@@ -3,7 +3,7 @@ import asyncio
 from ..errors import HttpErrorException
 from ..server import ServerHttpProtocol
 
-from .request import ServerRequest, ServerResponse
+from .request import Request, Response
 from .urldispatch import UrlDispatch
 
 
@@ -12,15 +12,15 @@ __all__ = ['Application']
 
 class RequestHandler(ServerHttpProtocol):
 
-    def __init__(self, application, **kwargs):
+    def __init__(self, app, **kwargs):
         super().__init__(**kwargs)
-        self._application = application
+        self._app = app
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
-        request = ServerRequest(self._application, message, payload,
-                                self, loop=self._loop)
-        match_info = yield from self._application.router.resolve(request)
+        request = Request(self._app, message, payload,
+                          self, loop=self._loop)
+        match_info = yield from self._app.router.resolve(request)
         if match_info is not None:
             request._match_info = match_info
             handler = match_info.handler
@@ -32,11 +32,12 @@ class RequestHandler(ServerHttpProtocol):
             yield from request.release()
 
             if resp is not None:
-                if not isinstance(resp, ServerResponse):
-                    raise RuntimeError(("Handler should return ServerResponse "
+                if isinstance(resp, Response):
+                    yield from resp.render()
+                else:
+                    raise RuntimeError(("Handler should return Response "
                                        "instance, got {!r}")
                                        .format(type(resp)))
-                yield from resp.render()
             else:
                 resp = request._response
             yield from resp.write_eof()
@@ -54,6 +55,7 @@ class Application(dict, asyncio.AbstractServer):
         if router is None:
             router = UrlDispatch(loop=loop)
         self._router = router
+        self._loop = loop
 
     @property
     def host(self):
@@ -64,7 +66,7 @@ class Application(dict, asyncio.AbstractServer):
         return self._router
 
     def make_handler(self):
-        return RequestHandler(self, **self._kwargs)
+        return RequestHandler(self, lop=self._loop, **self._kwargs)
 
     def close(self):
         pass

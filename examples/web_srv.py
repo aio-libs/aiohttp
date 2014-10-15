@@ -1,6 +1,6 @@
 import asyncio
 import textwrap
-from aiohttp import Application, ServerResponse, ServerStreamResponse
+from aiohttp.web import Application, Response, StreamResponse
 
 
 def intro(request):
@@ -9,24 +9,24 @@ def intro(request):
         in browser url bar
     """).format(url=request.host_url)
     binary = txt.encode('utf8')
-    resp = ServerStreamResponse(request)
+    resp = StreamResponse(request)
     resp.content_length = len(binary)
     resp.write(binary)
 
 
 def simple(request):
-    return ServerResponse(request, b'Simple answer')
+    return Response(request, b'Simple answer')
 
 
 def change_body(request):
-    resp = ServerResponse(request)
+    resp = Response(request)
     resp.body = b"Body changed"
     return resp
 
 
 @asyncio.coroutine
 def hello(request):
-    resp = ServerStreamResponse(request)
+    resp = StreamResponse(request)
     name = request.match_info.matchdict.get('name', 'Anonimous')
     answer = ('Hello, ' + name).encode('utf8')
     resp.content_length = len(answer)

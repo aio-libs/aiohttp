@@ -6,18 +6,18 @@ from urllib.parse import urlsplit, parse_qsl, unquote
 
 from ..helpers import parse_mimetype
 from ..multidict import MultiDict, MutableMultiDict
-from ..protocol import Response
+from ..protocol import Response as ResponseImpl
 from ..streams import EOF_MARKER
 
 
 __all__ = [
-    'ServerRequest',
-    'ServerStreamResponse',
-    'ServerResponse',
+    'Request',
+    'StreamResponse',
+    'Response',
     ]
 
 
-class ServerStreamResponse:
+class StreamResponse:
 
     def __init__(self, request):
         self._request = request
@@ -149,7 +149,7 @@ class ServerStreamResponse:
         self._check_sending_started()
         self._request._response = self
 
-        resp_impl = self._resp_impl = Response(
+        resp_impl = self._resp_impl = ResponseImpl(
             self._request._server_http_protocol.writer,
             self._status_code,
             self._request.version)
@@ -188,7 +188,7 @@ class ServerStreamResponse:
         self._eof_sent = True
 
 
-class ServerResponse(ServerStreamResponse):
+class Response(StreamResponse):
 
     def __init__(self, request, body=b'', *, status_code=200, headers=None):
         super().__init__(request)
@@ -216,20 +216,20 @@ class ServerResponse(ServerStreamResponse):
         self.write(body)
 
 
-class ServerRequest:
+class Request:
 
-    def __init__(self, application, message, payload, protocol, *,
+    def __init__(self, app, message, payload, protocol, *,
                  loop=None):
         if loop is None:
             loop = asyncio.get_event_loop()
         path = unquote(message.path)
         res = urlsplit(path)
-        self._application = application
+        self._app = app
         self._loop = loop
         self.version = message.version
         self._server_http_protocol = protocol
         self.method = message.method.upper()
-        self.host = message.headers.get('HOST', application.host)
+        self.host = message.headers.get('HOST', app.host)
         self.host_url = 'http://' + self.host
         self.path_qs = path
         self.path = res.path
@@ -252,9 +252,9 @@ class ServerRequest:
         return self._match_info
 
     @property
-    def application(self):
+    def app(self):
         """Application instance."""
-        return self._application
+        return self._app
 
     @property
     def cookies(self):
