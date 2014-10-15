@@ -26,3 +26,4 @@ nosetests.xml
 cover
 .idea
 pyvenv
+virtualenv.py

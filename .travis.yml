@@ -1,6 +1,7 @@
 language: python
 python:
   - 3.3
+  - 3.4
 
 install:
   - pip install --upgrade setuptools
