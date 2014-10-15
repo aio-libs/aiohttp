@@ -4,6 +4,7 @@ import json
 
 from urllib.parse import urlsplit, parse_qsl, unquote
 
+from ..helpers import parse_mimetype
 from ..multidict import MultiDict, MutableMultiDict
 from ..protocol import Response
 from ..streams import EOF_MARKER
@@ -136,7 +137,9 @@ class ServerResponse:
         resp_impl.send_headers()
 
     def set_chunked(self, chunk_size, buffered=True):
-        pass
+        if self.content_length is not None:
+            raise RuntimeError(
+                "Cannot use chunked encoding with Content-Length set up")
 
     @property
     def content_length(self):
@@ -145,6 +148,19 @@ class ServerResponse:
             return None
         else:
             return int(l)
+
+    @content_length.setter
+    def content_length(self, value):
+        value = int(value)
+        if self.content_length is not None:
+            raise RuntimeError("Content-Length is already set")
+        # raise error if chunked enabled
+        self.headers['Content-Length'] = str(value)
+
+    @property
+    def content_type(self):
+        ctype = self.headers.get('Content-Type')
+        mtype, stype, _, params = parse_mimetype(ctype)
 
     @content_length.setter
     def content_length(self, value):
