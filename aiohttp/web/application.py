@@ -3,7 +3,7 @@ import asyncio
 from ..errors import HttpErrorException
 from ..server import ServerHttpProtocol
 
-from .request import ServerRequest
+from .request import ServerRequest, ServerResponse
 from .urldispatch import UrlDispatch
 
 
@@ -23,9 +23,22 @@ class RequestHandler(ServerHttpProtocol):
         match_info = yield from self._application.router.resolve(request)
         if match_info is not None:
             request._match_info = match_info
-            yield from match_info.handler(request)
+            handler = match_info.handler
+
+            if asyncio.iscoroutinefunction(handler):
+                resp = yield from handler(request)
+            else:
+                resp = handler(request)
             yield from request.release()
-            resp = request.response
+
+            if resp is not None:
+                if not isinstance(resp, ServerResponse):
+                    raise RuntimeError(("Handler should return ServerResponse "
+                                       "instance, got {!r}")
+                                       .format(type(resp)))
+                yield from resp.render()
+            else:
+                resp = request._response
             yield from resp.write_eof()
         else:
             raise HttpErrorException(404, "Not Found")

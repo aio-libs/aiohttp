@@ -1,16 +1,32 @@
 import asyncio
-from aiohttp import Application
+import textwrap
+from aiohttp import Application, ServerResponse, ServerStreamResponse
 
 
 def intro(request):
-    txt = 'Type {}/hello/John in browser url bar'.format(request.host_url)
+    txt = textwrap.dedent("""\
+        Type {url}/hello/John  {url}/simple or {url}/change_body
+        in browser url bar
+    """).format(url=request.host_url)
     binary = txt.encode('utf8')
-    request.response.content_length = len(binary)
-    request.response.write(binary)
+    resp = ServerStreamResponse(request)
+    resp.content_length = len(binary)
+    resp.write(binary)
 
 
+def simple(request):
+    return ServerResponse(request, body=b'Simple answer')
+
+
+def change_body(request):
+    resp = ServerResponse(request)
+    resp.body = b"Body changed"
+    return resp
+
+
+@asyncio.coroutine
 def hello(request):
-    resp = request.response
+    resp = ServerStreamResponse(request)
     name = request.match_info.matchdict.get('name', 'Anonimous')
     answer = ('Hello, ' + name).encode('utf8')
     resp.content_length = len(answer)
@@ -23,6 +39,8 @@ def hello(request):
 def init(loop):
     app = Application('localhost:8080', loop=loop)
     app.router.add_route('GET', '/', intro)
+    app.router.add_route('GET', '/simple', simple)
+    app.router.add_route('GET', '/change_body', change_body)
     app.router.add_route('GET', '/hello/{name}', hello)
     app.router.add_route('GET', '/hello', hello)
 

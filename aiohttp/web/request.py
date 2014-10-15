@@ -12,27 +12,33 @@ from ..streams import EOF_MARKER
 
 __all__ = [
     'ServerRequest',
+    'ServerStreamResponse',
     'ServerResponse',
     ]
 
 
-class ServerResponse:
+class ServerStreamResponse:
 
-    def __init__(self, host, server_http_protocol, version):
-        self.headers = MutableMultiDict({'Host': host})
+    def __init__(self, request):
+        self._request = request
+        self.headers = MutableMultiDict({'Host': request.host})
         self._status_code = 200
         self._cookies = http.cookies.SimpleCookie()
         self._deleted_cookies = set()
-        self._version = version
-        self._server_http_protocol = server_http_protocol
-        self._resp_impl = None
         self._keep_alive = True
+
+        self._resp_impl = None
         self._eof_sent = False
 
     def _copy_cookies(self):
         for cookie in self._cookies.values():
             value = cookie.output(header='')[1:]
             self.headers.add('Set-Cookie', value)
+
+    def _check_sending_started(self):
+        if self._request._response is not None:
+            raise RuntimeError(("Response {!r} already started to send"
+                                " data").format(self._request._response))
 
     @property
     def cookies(self):
@@ -47,8 +53,7 @@ class ServerResponse:
         Also updates only those params which are not None.
         """
 
-        if self._resp_impl is not None:
-            raise RuntimeError("Cannot change cookie after send_headers()")
+        self._check_sending_started()
         if name in self._deleted_cookies:
             self._deleted_cookies.remove(name)
             self._cookies.pop(name, None)
@@ -76,8 +81,7 @@ class ServerResponse:
         Creates new empty expired cookie.
         """
         # TODO: do we need domain/path here?
-        if self._resp_impl is not None:
-            raise RuntimeError("Cannot delete cookie after send_headers()")
+        self._check_sending_started()
         self._cookies.pop(name, None)
         self.set_cookie(name, '', max_age=0, domain=domain, path=path)
         self._deleted_cookies.add(name)
@@ -88,9 +92,7 @@ class ServerResponse:
 
     @status_code.setter
     def status_code(self, value):
-        if self._resp_impl is not None:
-            raise RuntimeError("Cannot change HTTP status code "
-                               "after send_headers()")
+        self._check_sending_started()
         assert isinstance(value, int), "Status code must be int"
         self._status_code = value
 
@@ -100,9 +102,7 @@ class ServerResponse:
 
     @version.setter
     def version(self, value):
-        if self._resp_impl is not None:
-            raise RuntimeError("Cannot change HTTP version "
-                               "after send_headers()")
+        self._check_sending_started()
         assert isinstance(value, str), "HTTP version must be str"
         self._version = value
 
@@ -112,34 +112,8 @@ class ServerResponse:
 
     @keep_alive.setter
     def keep_alive(self, value):
-        if self._resp_impl is not None:
-            raise RuntimeError("Cannot change HTTP keepalive "
-                               "after send_headers()")
+        self._check_sending_started()
         self._keep_alive = bool(value)
-
-    def send_headers(self):
-        if self._resp_impl is not None:
-            raise RuntimeError("HTTP headers are already sent")
-        if self._eof_sent:
-            raise RuntimeError("Cannot call send_header() after write_eof()")
-
-        resp_impl = self._resp_impl = Response(
-            self._server_http_protocol.writer,
-            self._status_code,
-            self._version)
-
-        self._copy_cookies()
-
-        headers = self.headers.items(getall=True)
-        for key, val in headers:
-            resp_impl.add_header(key, val)
-
-        resp_impl.send_headers()
-
-    def set_chunked(self, chunk_size, buffered=True):
-        if self.content_length is not None:
-            raise RuntimeError(
-                "Cannot use chunked encoding with Content-Length set up")
 
     @property
     def content_length(self):
@@ -151,9 +125,8 @@ class ServerResponse:
 
     @content_length.setter
     def content_length(self, value):
+        self._check_sending_started()
         value = int(value)
-        if self.content_length is not None:
-            raise RuntimeError("Content-Length is already set")
         # raise error if chunked enabled
         self.headers['Content-Length'] = str(value)
 
@@ -162,13 +135,32 @@ class ServerResponse:
         ctype = self.headers.get('Content-Type')
         mtype, stype, _, params = parse_mimetype(ctype)
 
-    @content_length.setter
-    def content_length(self, value):
-        value = int(value)
+    def set_chunked(self, chunk_size, buffered=True):
         if self.content_length is not None:
-            raise RuntimeError("Content-Length is already set")
-        # raise error if chunked enabled
-        self.headers['Content-Length'] = str(value)
+            raise RuntimeError(
+                "Cannot use chunked encoding with Content-Length set up")
+
+    def send_headers(self):
+        if self._resp_impl is not None:
+            raise RuntimeError("HTTP headers are already sent")
+        if self._eof_sent:
+            raise RuntimeError("Cannot call send_header() after write_eof()")
+
+        self._check_sending_started()
+        self._request._response = self
+
+        resp_impl = self._resp_impl = Response(
+            self._request._server_http_protocol.writer,
+            self._status_code,
+            self._request.version)
+
+        self._copy_cookies()
+
+        headers = self.headers.items(getall=True)
+        for key, val in headers:
+            resp_impl.add_header(key, val)
+
+        resp_impl.send_headers()
 
     def write(self, data):
         if not isinstance(data, (bytes, bytearray, memoryview)):
@@ -177,24 +169,51 @@ class ServerResponse:
 
         if self._eof_sent:
             raise RuntimeError("Cannot call write() after send_eof()")
-        if not data:
-            return
-
         if self._resp_impl is None:
             self.send_headers()
-        self._resp_impl.write(data)
+
+        if data:
+            self._resp_impl.write(data)
 
     @asyncio.coroutine
     def write_eof(self):
         if self._resp_impl is None:
-            self._send_headers()
+            raise RuntimeError("No data has been sent")
         if self._eof_sent:
             return
 
         yield from self._resp_impl.write_eof()
         if self._resp_impl.keep_alive():
-            self._server_http_protocol.keep_alive(self._keep_alive)
+            self._request._server_http_protocol.keep_alive(self._keep_alive)
         self._eof_sent = True
+
+
+class ServerResponse(ServerStreamResponse):
+
+    def __init__(self, request, *, status_code=200, body=b'', headers=None):
+        super().__init__(request)
+        self.status_code = status_code
+        self.body = body
+        if headers is not None:
+            self.headers.extend(headers)
+
+    @property
+    def body(self):
+        return self._body
+
+    @body.setter
+    def body(self, body):
+        if not isinstance(body, (bytes, bytearray, memoryview)):
+            raise TypeError('body argument must be byte-ish (%r)',
+                            type(body))
+        self._check_sending_started()
+        self._body = body
+
+    @asyncio.coroutine
+    def render(self):
+        body = self._body
+        self.content_length = len(body)
+        self.write(body)
 
 
 class ServerRequest:
@@ -208,6 +227,7 @@ class ServerRequest:
         self._application = application
         self._loop = loop
         self.version = message.version
+        self._server_http_protocol = protocol
         self.method = message.method.upper()
         self.host = message.headers.get('HOST', application.host)
         self.host_url = 'http://' + self.host
@@ -224,17 +244,12 @@ class ServerRequest:
         self._match_info = None  # initialized after route resolving
 
         self._payload = payload
-        self._response = ServerResponse(self.host, protocol, self.version)
+        self._response = None
         self._cookies = None
 
     @property
     def match_info(self):
         return self._match_info
-
-    @property
-    def response(self):
-        """Response object."""
-        return self._response
 
     @property
     def application(self):
