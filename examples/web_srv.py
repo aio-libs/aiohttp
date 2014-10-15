@@ -22,9 +22,9 @@ def hello(request):
 @asyncio.coroutine
 def init(loop):
     app = Application('localhost:8080', loop=loop)
-    app.router.add_url('GET', '/', intro)
-    app.router.add_url('GET', '/hello/{name}', hello)
-    app.router.add_url('GET', '/hello', hello)
+    app.router.add_route('GET', '/', intro)
+    app.router.add_route('GET', '/hello/{name}', hello)
+    app.router.add_route('GET', '/hello', hello)
 
     srv = yield from loop.create_server(app.make_handler, '127.0.0.1', 8080)
     print("Server started at http://{}".format(app.host))

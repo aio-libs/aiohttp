@@ -50,7 +50,7 @@ class UrlDispatch(AbstractRouter):
         matchdict = match.groupdict()
         return UrlMappingMatchInfo(matchdict, entry)
 
-    def add_url(self, method, path, handler):
+    def add_route(self, method, path, handler):
         assert callable(handler), handler
 
         assert path.startswith('/')
