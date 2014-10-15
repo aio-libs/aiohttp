@@ -1,5 +1,8 @@
 import asyncio
+import binascii
+import cgi
 import http.cookies
+import io
 import json
 
 from urllib.parse import urlsplit, parse_qsl, unquote
@@ -218,6 +221,9 @@ class Response(StreamResponse):
 
 class Request:
 
+    _content_type = None
+    _content_dict = None
+
     def __init__(self, app, message, payload, protocol, *,
                  loop=None):
         if loop is None:
@@ -301,33 +307,91 @@ class Request:
         return bytes(body)
 
     @asyncio.coroutine
-    def text(self, *, encoding='utf-8'):
+    def text(self):
         bytes_body = yield from self.read()
         if bytes_body is None:
             return None
-        return bytes_body.encode(encoding)
+        encoding = self.charset
+        return bytes_body.decode(encoding)
 
     @asyncio.coroutine
-    def json(self, *, encoding='utf-8', loader=json.loads):
-        body = yield from self.text(encoding=encoding)
+    def json(self, *, loader=json.loads):
+        body = yield from self.text()
         if body is None:
             return None
         return loader(body)
 
     @asyncio.coroutine
-    def POST(self, *, encoding='utf-8'):
+    def POST(self):
         if self._post is not None:
             return self._post
         if self.method not in ('POST', 'PUT', 'PATCH'):
             self._post = MultiDict()
             return
         content_type = self.content_type
-        body = yield from self.text(encoding=encoding)
-        return parse_x_www_form_encoding(body)
+        if (content_type not in ('',
+                                 'application/x-www-form-urlencoded',
+                                 'multipart/form-data')):
+            self._post = MultiDict()
+            return
+
+        body = yield from self.text()
+        fs = cgi.FieldStorage(fp=io.StringIO(body),
+                              environ={'CONTENT_LENGTH': '0',
+                                       'QUERY_STRING': '',
+                                       'REQUEST_METHOD': self.method,
+                                       'CONTENT_TYPE': content_type},
+                              keep_blank_values=True,
+                              encoding='utf8')
+
+        out = MutableMultiDict()
+        for field in fs.list or ():
+            charset = field.type_options.get('charset', 'utf8')
+            transfer_encoding = field.headers.get('Content-Transfer-Encoding',
+                                                  None)
+            supported_tranfer_encoding = {
+                'base64': binascii.a2b_base64,
+                'quoted-printable': binascii.a2b_qp
+                }
+            if charset == 'utf8':
+                decode = lambda b: b
+            else:
+                decode = lambda b: b.encode('utf8').decode(charset)
+            if field.filename:
+                field.filename = decode(field.filename)
+                out.add(field.name, field)
+            else:
+                value = field.value
+                if transfer_encoding in supported_tranfer_encoding:
+                    # binascii accepts bytes
+                    value = value.encode('utf8')
+                    value = supported_tranfer_encoding[
+                        transfer_encoding](value)
+                    # binascii returns bytes
+                    value = value.decode('utf8')
+                out.add(field.name, decode(value))
+        self._post = MultiDict(out)
+        return self._post
 
     @property
     def content_type(self):
-        parse_mimetype
+        if self._content_type is not None:
+            return self._content_type
+        raw = self.headers.get('Content-Type')
+        if raw is None:
+            # default value according to RFC 2616
+            self._content_type = 'application/octet-stream'
+            self._content_dict = {}
+        else:
+            self._content_type, self._content_dict = cgi.parse_header(raw)
+        return self._content_type
+
+    @property
+    def charset(self):
+        # Assumes that charset is UTF8 if not specified
+        if self._content_type is None:
+            self.content_type  # calculates _content_dict also
+        return self._content_dict.get('charset', 'utf-8')
 
     @asyncio.coroutine
     def start_websocket(self):
