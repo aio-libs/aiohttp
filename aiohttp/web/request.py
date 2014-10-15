@@ -21,7 +21,7 @@ class StreamResponse:
 
     def __init__(self, request):
         self._request = request
-        self.headers = MutableMultiDict({'Host': request.host})
+        self.headers = MutableMultiDict()
         self._status_code = 200
         self._cookies = http.cookies.SimpleCookie()
         self._deleted_cookies = set()
@@ -230,13 +230,11 @@ class Request:
         self._server_http_protocol = protocol
         self.method = message.method.upper()
         self.host = message.headers.get('HOST', app.host)
-        self.host_url = 'http://' + self.host
         self.path_qs = path
         self.path = res.path
-        self.path_url = self.host_url + self.path
-        self.url = self.host_url + self.path_qs
         self.query_string = res.query
-        self.args = MultiDict(parse_qsl(res.query))
+        self.GET = MultiDict(parse_qsl(res.query))
+        self._post = None
         self.headers = message.headers
 
         # matchdict, route_name, handler
@@ -318,8 +316,18 @@ class Request:
 
     @asyncio.coroutine
     def POST(self, *, encoding='utf-8'):
+        if self._post is not None:
+            return self._post
+        if self.method not in ('POST', 'PUT', 'PATCH'):
+            self._post = MultiDict()
+            return
+        content_type = self.content_type
         body = yield from self.text(encoding=encoding)
         return parse_x_www_form_encoding(body)
+
+    @property
+    def content_type(self):
+        parse_mimetype
 
     @asyncio.coroutine
     def start_websocket(self):

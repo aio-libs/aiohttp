@@ -47,8 +47,7 @@ class RequestHandler(ServerHttpProtocol):
 
 class Application(dict, asyncio.AbstractServer):
 
-    def __init__(self, host, *, loop=None, router=None, **kwargs):
-        self._host = host
+    def __init__(self, *, loop=None, router=None, **kwargs):
         self._kwargs = kwargs
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -56,10 +55,6 @@ class Application(dict, asyncio.AbstractServer):
             router = UrlDispatch(loop=loop)
         self._router = router
         self._loop = loop
-
-    @property
-    def host(self):
-        return self._host
 
     @property
     def router(self):
