@@ -15,7 +15,7 @@ def intro(request):
 
 
 def simple(request):
-    return ServerResponse(request, body=b'Simple answer')
+    return ServerResponse(request, b'Simple answer')
 
 
 def change_body(request):

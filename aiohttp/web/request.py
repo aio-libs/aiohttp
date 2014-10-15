@@ -190,7 +190,7 @@ class ServerStreamResponse:
 
 class ServerResponse(ServerStreamResponse):
 
-    def __init__(self, request, *, status_code=200, body=b'', headers=None):
+    def __init__(self, request, body=b'', *, status_code=200, headers=None):
         super().__init__(request)
         self.status_code = status_code
         self.body = body
