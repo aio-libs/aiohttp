@@ -309,3 +309,15 @@ class CaseInsensitiveMutableMultiDictTests(unittest.TestCase):
         d = self.make_dict()
         d.add('k1', 'v1')
         self.assertEqual('v1', d['K1'])
+
+    def test_setitem(self):
+        d = self.make_dict()
+        d['k1'] = 'v1'
+        self.assertEqual('v1', d['K1'])
+
+    def test_delitem(self):
+        d = self.make_dict()
+        d['k1'] = 'v1'
+        self.assertIn('K1', d)
+        del d['k1']
+        self.assertNotIn('K1', d)

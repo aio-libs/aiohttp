@@ -204,6 +204,12 @@ class CaseInsensitiveMutableMultiDict(
     def add(self, key, value):
         super().add(key.upper(), value)
 
+    def __setitem__(self, key, value):
+        self._items[key.upper()] = [value]
+
+    def __delitem__(self, key):
+        del self._items[key.upper()]
+
 
 class _ItemsView(abc.ItemsView):
 
