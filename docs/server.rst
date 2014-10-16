@@ -1,7 +1,7 @@
 .. _server:
 
-HTTP Server
-===========
+Low-level HTTP Server
+=====================
 
 .. module:: aiohttp.server
 

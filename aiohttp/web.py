@@ -574,6 +574,7 @@ class RequestHandler(ServerHttpProtocol):
 class Application(dict, asyncio.AbstractServer):
 
     def __init__(self, *, loop=None, router=None, **kwargs):
+        # TODO: explicitly accept *debug* param
         self._kwargs = kwargs
         if loop is None:
             loop = asyncio.get_event_loop()
