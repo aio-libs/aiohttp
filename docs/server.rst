@@ -3,7 +3,7 @@
 HTTP Server
 ===========
 
-.. module:: aiohttp.client
+.. module:: aiohttp.server
 
 Run a basic server
 ------------------
