@@ -6,6 +6,9 @@ http client/server for asyncio
 
 
 .. image:: https://raw.github.com/KeepSafe/aiohttp/master/docs/aiohttp-icon.png
+  :height: 128px
+  :width: 128px
+  :alt: aiohttp logo
 
 
 Requirements
