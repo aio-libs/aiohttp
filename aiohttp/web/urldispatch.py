@@ -15,7 +15,7 @@ class UrlDispatch(AbstractRouter):
     GOOD = r'[^{}/]+'
     PLAIN = re.compile('^'+GOOD+'$')
 
-    METHODS = {'POST', 'GET', 'PUT', 'DELETE', 'PATCH', 'HEAD'}
+    METHODS = {'POST', 'GET', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'}
 
     def __init__(self, *, loop=None):
         if loop is None:
