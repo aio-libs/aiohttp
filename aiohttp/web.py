@@ -244,16 +244,16 @@ class Request:
         res = urlsplit(path)
         self._app = app
         self._loop = loop
-        self.version = message.version
+        self._version = message.version
         self._server_http_protocol = protocol
-        self.method = message.method.upper()
-        self.host = message.headers.get('HOST', app.host)
-        self.path_qs = path
-        self.path = res.path
-        self.query_string = res.query
-        self.GET = MultiDict(parse_qsl(res.query))
+        self._method = message.method.upper()
+        self._host = message.headers.get('HOST')
+        self._path_qs = path
+        self._path = res.path
+        self._query_string = res.query
+        self._get = MultiDict(parse_qsl(res.query))
         self._post = None
-        self.headers = message.headers
+        self._headers = message.headers
 
         # matchdict, route_name, handler
         # or information about traversal lookup
@@ -262,6 +262,38 @@ class Request:
         self._payload = payload
         self._response = None
         self._cookies = None
+
+    @property
+    def method(self):
+        return self._method
+
+    @property
+    def version(self):
+        return self._version
+
+    @property
+    def host(self):
+        return self._host
+
+    @property
+    def path_qs(self):
+        return self._path_qs
+
+    @property
+    def path(self):
+        return self._path
+
+    @property
+    def query_string(self):
+        return self._query_string
+
+    @property
+    def GET(self):
+        return self._get
+
+    @property
+    def headers(self):
+        return self._headers
 
     @property
     def match_info(self):
@@ -359,21 +391,21 @@ class Request:
                                        'REQUEST_METHOD': self.method,
                                        'CONTENT_TYPE': content_type},
                               keep_blank_values=True,
-                              encoding='utf8')
+                              encoding='utf-8')
 
         out = MutableMultiDict()
         for field in fs.list or ():
-            charset = field.type_options.get('charset', 'utf8')
+            charset = field.type_options.get('charset', 'utf-8')
             transfer_encoding = field.headers.get('Content-Transfer-Encoding',
                                                   None)
             supported_tranfer_encoding = {
                 'base64': binascii.a2b_base64,
                 'quoted-printable': binascii.a2b_qp
                 }
-            if charset == 'utf8':
+            if charset == 'utf-8':
                 decode = lambda b: b
             else:
-                decode = lambda b: b.encode('utf8').decode(charset)
+                decode = lambda b: b.encode('utf-8').decode(charset)
             if field.filename:
                 field.filename = decode(field.filename)
                 out.add(field.name, field)
@@ -381,11 +413,11 @@ class Request:
                 value = field.value
                 if transfer_encoding in supported_tranfer_encoding:
                     # binascii accepts bytes
-                    value = value.encode('utf8')
+                    value = value.encode('utf-8')
                     value = supported_tranfer_encoding[
                         transfer_encoding](value)
                     # binascii returns bytes
-                    value = value.decode('utf8')
+                    value = value.decode('utf-8')
                 out.add(field.name, decode(value))
         self._post = MultiDict(out)
         return self._post
