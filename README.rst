@@ -5,7 +5,7 @@ http client/server for asyncio
   :target:  https://secure.travis-ci.org/KeepSafe/aiohttp
 
 
-.. image:: https://raw.github.com/KeepSafe/aiohttp/master/docs/aiohttp-icon.svg
+.. image:: https://raw.github.com/KeepSafe/aiohttp/master/docs/aiohttp-icon.png
 
 
 Requirements
