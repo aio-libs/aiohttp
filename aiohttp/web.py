@@ -14,16 +14,17 @@ from .abc import AbstractRouter, AbstractMatchInfo
 from .errors import HttpErrorException
 from .helpers import parse_mimetype
 from .multidict import MultiDict, MutableMultiDict
-from .protocol import Response as ResponseImpl
+from .protocol import Response as ResponseImpl, HttpVersion
 from .server import ServerHttpProtocol
 from .streams import EOF_MARKER
 
 
 __all__ = [
+    'Application',
+    'HttpVersion',
     'Request',
     'StreamResponse',
     'Response',
-    'Application',
     'UrlDispatch',
     'UrlMappingMatchInfo',
     ]
@@ -38,6 +39,7 @@ class StreamResponse:
         self._cookies = http.cookies.SimpleCookie()
         self._deleted_cookies = set()
         self._keep_alive = True
+        self._version = request.version
 
         self._resp_impl = None
         self._eof_sent = False
@@ -119,7 +121,8 @@ class StreamResponse:
     @version.setter
     def version(self, value):
         self._check_sending_started()
-        assert isinstance(value, str), "HTTP version must be str"
+        if not isinstance(value, HttpVersion):
+            raise TypeError("HTTP version must be HttpVersion instance")
         self._version = value
 
     @property

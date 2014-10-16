@@ -1,7 +1,7 @@
 import unittest
 from unittest import mock
 from aiohttp.web import Request, StreamResponse
-from aiohttp.protocol import Request as RequestImpl
+from aiohttp.protocol import Request as RequestImpl, HttpVersion
 
 
 class TestStreamResponse(unittest.TestCase):
@@ -24,7 +24,7 @@ class TestStreamResponse(unittest.TestCase):
         self.assertIsNone(req._response)
         self.assertEqual(200, resp.status_code)
         self.assertTrue(resp.keep_alive)
-        # self.assertEqual(123, resp.version)
+        self.assertEqual(HttpVersion(1, 1), resp.version)
 
     def test_status_code_cannot_assign_nonint(self):
         req = self.make_request('GET', '/')
@@ -49,3 +49,27 @@ class TestStreamResponse(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             resp.status_code = 300
         self.assertEqual(200, resp.status_code)
+
+    def test_change_version(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        resp.version = HttpVersion(1, 0)
+        self.assertEqual(HttpVersion(1, 0), resp.version)
+
+    def test_change_version_bad_type(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        with self.assertRaises(TypeError):
+            resp.version = 123
+        self.assertEqual(HttpVersion(1, 1), resp.version)
+
+    def test_cannot_change_version_after_sending_headers(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        resp.send_headers()
+        with self.assertRaises(RuntimeError):
+            resp.version = HttpVersion(1, 0)
+        self.assertEqual(HttpVersion(1, 1), resp.version)
