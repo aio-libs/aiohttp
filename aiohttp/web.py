@@ -30,7 +30,33 @@ __all__ = [
     ]
 
 
-class StreamResponse:
+class HeadersMixin:
+
+    _content_type = None
+    _content_dict = None
+
+    @property
+    def content_type(self):
+        if self._content_type is not None:
+            return self._content_type
+        raw = self.headers.get('Content-Type')
+        if raw is None:
+            # default value according to RFC 2616
+            self._content_type = 'application/octet-stream'
+            self._content_dict = {}
+        else:
+            self._content_type, self._content_dict = cgi.parse_header(raw)
+        return self._content_type
+
+    @property
+    def charset(self):
+        # Assumes that charset is UTF8 if not specified
+        if self._content_type is None:
+            self.content_type  # calculates _content_dict also
+        return self._content_dict.get('charset', 'utf-8')
+
+
+class StreamResponse(HeadersMixin):
 
     def __init__(self, request):
         self._request = request
@@ -146,13 +172,8 @@ class StreamResponse:
     def content_length(self, value):
         self._check_sending_started()
         value = int(value)
-        # raise error if chunked enabled
+        # TODO: raise error if chunked enabled
         self.headers['Content-Length'] = str(value)
-
-    @property
-    def content_type(self):
-        ctype = self.headers.get('Content-Type')
-        mtype, stype, _, params = parse_mimetype(ctype)
 
     def set_chunked(self, chunk_size, buffered=True):
         if self.content_length is not None:
@@ -235,10 +256,7 @@ class Response(StreamResponse):
         self.write(body)
 
 
-class Request:
-
-    _content_type = None
-    _content_dict = None
+class Request(HeadersMixin):
 
     def __init__(self, app, message, payload, protocol):
         path = unquote(message.path)
@@ -421,26 +439,6 @@ class Request:
                 out.add(field.name, decode(value))
         self._post = MultiDict(out)
         return self._post
-
-    @property
-    def content_type(self):
-        if self._content_type is not None:
-            return self._content_type
-        raw = self.headers.get('Content-Type')
-        if raw is None:
-            # default value according to RFC 2616
-            self._content_type = 'application/octet-stream'
-            self._content_dict = {}
-        else:
-            self._content_type, self._content_dict = cgi.parse_header(raw)
-        return self._content_type
-
-    @property
-    def charset(self):
-        # Assumes that charset is UTF8 if not specified
-        if self._content_type is None:
-            self.content_type  # calculates _content_dict also
-        return self._content_dict.get('charset', 'utf-8')
 
     @asyncio.coroutine
     def start_websocket(self):
