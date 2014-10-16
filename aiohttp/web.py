@@ -300,6 +300,11 @@ class Request:
         while chunk is not EOF_MARKER or chunk:
             chunk = yield from self._payload.readany()
 
+    def terminate(self):
+        # TODO: the method should close connection after sending response
+        # the main reason is to don't read request body as release() does
+        pass
+
     @asyncio.coroutine
     def read(self):
         """Read request body if present.
