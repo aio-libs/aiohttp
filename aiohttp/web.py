@@ -533,19 +533,12 @@ class RequestHandler(ServerHttpProtocol):
                 resp = handler(request)
             yield from request.release()
 
-            if resp is not None:
-                if isinstance(resp, Response):
-                    yield from resp.render()
-                else:
-                    raise RuntimeError(("Handler should return Response "
-                                       "instance, got {!r}")
-                                       .format(type(resp)))
+            if isinstance(resp, Response):
+                yield from resp.render()
             else:
-                resp = request._response
-                if resp is not None:
-                    resp = resp()  # dereference weakref
-                if resp is None:
-                    raise RuntimeError("Handler should create a response")
+                raise RuntimeError(("Handler should return Response "
+                                    "instance, got {!r}")
+                                   .format(type(resp)))
             yield from resp.write_eof()
         else:
             raise HttpErrorException(404, "Not Found")

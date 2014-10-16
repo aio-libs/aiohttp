@@ -12,6 +12,7 @@ def intro(request):
     resp = StreamResponse(request)
     resp.content_length = len(binary)
     resp.write(binary)
+    return resp
 
 
 def simple(request):
@@ -33,6 +34,7 @@ def hello(request):
     resp.send_headers()
     resp.write(answer)
     yield from resp.write_eof()
+    return resp
 
 
 @asyncio.coroutine
