@@ -51,3 +51,13 @@ class TestWebRequest(unittest.TestCase):
                                 {'content-type': 'text/html; charset=UTF-8'})
         self.assertEqual('UTF-8', req.charset)
         self.assertEqual('text/html', req.content_type)
+
+    def test_urlencoded_querystring(self):
+        req = self.make_request(
+            'GET',
+            '/yandsearch?text=%D1%82%D0%B5%D0%BA%D1%81%D1%82')
+        self.assertEqual({'text': 'текст'}, req.GET)
+
+    def test_non_ascii_path(self):
+        req = self.make_request('GET', '/путь')
+        self.assertEqual('/путь', req.path)
