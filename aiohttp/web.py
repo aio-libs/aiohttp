@@ -1,23 +1,31 @@
 import asyncio
 import binascii
+import collections
 import cgi
 import http.cookies
 import io
 import json
+import re
 import weakref
 
 from urllib.parse import urlsplit, parse_qsl, unquote
 
-from ..helpers import parse_mimetype
-from ..multidict import MultiDict, MutableMultiDict
-from ..protocol import Response as ResponseImpl
-from ..streams import EOF_MARKER
+from .abc import AbstractRouter, AbstractMatchInfo
+from .errors import HttpErrorException
+from .helpers import parse_mimetype
+from .multidict import MultiDict, MutableMultiDict
+from .protocol import Response as ResponseImpl
+from .server import ServerHttpProtocol
+from .streams import EOF_MARKER
 
 
 __all__ = [
     'Request',
     'StreamResponse',
     'Response',
+    'Application',
+    'UrlDispatch',
+    'UrlMappingMatchInfo',
     ]
 
 
@@ -403,3 +411,165 @@ class Request:
 
         Returns (reader, writer) pair.
         """
+
+
+class UrlMappingMatchInfo(AbstractMatchInfo):
+
+    def __init__(self, matchdict, entry):
+        self._matchdict = matchdict
+        self._entry = entry
+
+    @property
+    def kind(self):
+        return 'urlmapping'
+
+    @property
+    def handler(self):
+        return self._entry.handler
+
+    @property
+    def matchdict(self):
+        return self._matchdict
+
+    @property
+    def route_name(self):
+        return self._entry.name
+
+
+Entry = collections.namedtuple('Entry', 'regex method handler')
+
+
+class UrlDispatch(AbstractRouter):
+
+    DYN = re.compile(r'^\{[_a-zA-Z][_a-zA-Z0-9]*\}$')
+    GOOD = r'[^{}/]+'
+    PLAIN = re.compile('^'+GOOD+'$')
+
+    METHODS = {'POST', 'GET', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'}
+
+    def __init__(self, *, loop=None):
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        self._loop = loop
+        super().__init__()
+        self._urls = []
+
+    @asyncio.coroutine
+    def resolve(self, request):
+        path = request.path
+        method = request.method
+        allowed_methods = set()
+        for entry in self._urls:
+            match = entry.regex.match(path)
+            if match is None:
+                continue
+            if entry.method != method:
+                allowed_methods.add(entry.method)
+            else:
+                break
+        else:
+            if allowed_methods:
+                allow = ', '.join(sorted(allowed_methods))
+                # add log
+                raise HttpErrorException(405, "Method Not Allowed",
+                                         headers=(('Allow', allow),))
+            else:
+                # add log
+                raise HttpErrorException(404, "Not Found")
+
+        matchdict = match.groupdict()
+        return UrlMappingMatchInfo(matchdict, entry)
+
+    def add_route(self, method, path, handler):
+        assert callable(handler), handler
+
+        assert path.startswith('/')
+        assert callable(handler), handler
+        method = method.upper()
+        assert method in self.METHODS, method
+        regexp = []
+        for part in path.split('/'):
+            if not part:
+                continue
+            if self.DYN.match(part):
+                regexp.append('(?P<'+part[1:-1]+'>'+self.GOOD+')')
+            elif self.PLAIN.match(part):
+                regexp.append(part)
+            else:
+                raise ValueError("Invalid path '{}'['{}']".format(path, part))
+        pattern = '/' + '/'.join(regexp)
+        if path.endswith('/') and pattern != '/':
+            pattern += '/'
+        try:
+            compiled = re.compile('^' + pattern + '$')
+        except re.error:
+            raise ValueError("Invalid path '{}'".format(path))
+        self._urls.append(Entry(compiled, method, handler))
+
+
+class RequestHandler(ServerHttpProtocol):
+
+    def __init__(self, app, **kwargs):
+        super().__init__(**kwargs)
+        self._app = app
+
+    @asyncio.coroutine
+    def handle_request(self, message, payload):
+        request = Request(self._app, message, payload,
+                          self, loop=self._loop)
+        match_info = yield from self._app.router.resolve(request)
+        if match_info is not None:
+            request._match_info = match_info
+            handler = match_info.handler
+
+            if asyncio.iscoroutinefunction(handler):
+                resp = yield from handler(request)
+            else:
+                resp = handler(request)
+            yield from request.release()
+
+            if resp is not None:
+                if isinstance(resp, Response):
+                    yield from resp.render()
+                else:
+                    raise RuntimeError(("Handler should return Response "
+                                       "instance, got {!r}")
+                                       .format(type(resp)))
+            else:
+                resp = request._response
+                if resp is not None:
+                    resp = resp()  # dereference weakref
+                if resp is None:
+                    raise RuntimeError("Handler should create a response")
+            yield from resp.write_eof()
+        else:
+            raise HttpErrorException(404, "Not Found")
+
+
+class Application(dict, asyncio.AbstractServer):
+
+    def __init__(self, *, loop=None, router=None, **kwargs):
+        self._kwargs = kwargs
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        if router is None:
+            router = UrlDispatch(loop=loop)
+        self._router = router
+        self._loop = loop
+
+    @property
+    def router(self):
+        return self._router
+
+    def make_handler(self):
+        return RequestHandler(self, lop=self._loop, **self._kwargs)
+
+    def close(self):
+        pass
+
+    def register_on_close(self, cb):
+        pass
+
+    @asyncio.coroutine
+    def wait_closed(self):
+        pass
