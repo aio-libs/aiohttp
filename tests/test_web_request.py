@@ -29,6 +29,7 @@ class TestWebRequest(unittest.TestCase):
         self.assertEqual('/path/to', req.path)
         self.assertEqual('a=1&b=2', req.query_string)
         self.assertEqual(MultiDict([('a', '1'), ('b', '2')]), req.GET)
+        self.assertIs(self.payload, req.payload)
 
     def test_content_type_not_specified(self):
         req = self.make_request('Get', '/')
