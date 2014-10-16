@@ -22,7 +22,10 @@ class MultiDict(abc.Mapping):
             else:
                 args = list(args[0])
 
-        for key, value in chain(args, kwargs.items()):
+        self._fill(chain(args, kwargs.items()))
+
+    def _fill(self, ipairs):
+        for key, value in ipairs:
             if key in self._items:
                 self._items[key].append(value)
             else:
@@ -93,6 +96,14 @@ class MultiDict(abc.Mapping):
 
 class CaseInsensitiveMultiDict(MultiDict):
     """Case insensitive multi dict."""
+
+    def _fill(self, ipairs):
+        for key, value in ipairs:
+            key = key.upper()
+            if key in self._items:
+                self._items[key].append(value)
+            else:
+                self._items[key] = [value]
 
     def getall(self, key, default=_marker):
         return super().getall(key.upper(), default)
@@ -189,6 +200,9 @@ class CaseInsensitiveMutableMultiDict(
 
     def getall(self, key, default=_marker):
         return super().getall(key.upper(), default)
+
+    def add(self, key, value):
+        super().add(key.upper(), value)
 
 
 class _ItemsView(abc.ItemsView):

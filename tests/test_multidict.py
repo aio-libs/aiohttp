@@ -300,3 +300,12 @@ class CaseInsensitiveMutableMultiDictTests(unittest.TestCase):
 
         with self.assertRaisesRegex(KeyError, "SOME_KEY"):
             d.getall('some_key')
+
+    def test_ctor(self):
+        d = self.make_dict(k1='v1')
+        self.assertEqual('v1', d['K1'])
+
+    def test_add(self):
+        d = self.make_dict()
+        d.add('k1', 'v1')
+        self.assertEqual('v1', d['K1'])
