@@ -15,9 +15,7 @@ class TestWebRequest(unittest.TestCase):
         message.headers.extend(headers)
         self.payload = mock.Mock()
         self.protocol = mock.Mock()
-        self.loop = mock.Mock()
-        req = Request(self.app, message, self.payload, self.protocol,
-                      loop=self.loop)
+        req = Request(self.app, message, self.payload, self.protocol)
         return req
 
     def test_ctor(self):
@@ -46,3 +44,9 @@ class TestWebRequest(unittest.TestCase):
                                 {'content-type': 'text/html; charset=UTF-8'})
         self.assertEqual('text/html', req.content_type)
         self.assertEqual('UTF-8', req.charset)
+
+    def test_calc_content_type_on_getting_charset(self):
+        req = self.make_request('Get', '/',
+                                {'content-type': 'text/html; charset=UTF-8'})
+        self.assertEqual('UTF-8', req.charset)
+        self.assertEqual('text/html', req.content_type)

@@ -236,14 +236,10 @@ class Request:
     _content_type = None
     _content_dict = None
 
-    def __init__(self, app, message, payload, protocol, *,
-                 loop=None):
-        if loop is None:
-            loop = asyncio.get_event_loop()
+    def __init__(self, app, message, payload, protocol):
         path = unquote(message.path)
         res = urlsplit(path)
         self._app = app
-        self._loop = loop
         self._version = message.version
         self._server_http_protocol = protocol
         self._method = message.method.upper()
@@ -552,8 +548,7 @@ class RequestHandler(ServerHttpProtocol):
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
-        request = Request(self._app, message, payload,
-                          self, loop=self._loop)
+        request = Request(self._app, message, payload, self)
         match_info = yield from self._app.router.resolve(request)
         if match_info is not None:
             request._match_info = match_info
@@ -592,7 +587,7 @@ class Application(dict, asyncio.AbstractServer):
         return self._router
 
     def make_handler(self):
-        return RequestHandler(self, lop=self._loop, **self._kwargs)
+        return RequestHandler(self, loop=self._loop, **self._kwargs)
 
     def close(self):
         pass
