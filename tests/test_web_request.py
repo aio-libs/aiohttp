@@ -40,3 +40,9 @@ class TestWebRequest(unittest.TestCase):
         req = self.make_request('Get', '/',
                                 {'content-type': 'application/json'})
         self.assertEqual('application/json', req.content_type)
+
+    def test_content_type_from_spec_with_charset(self):
+        req = self.make_request('Get', '/',
+                                {'content-type': 'text/html; charset=UTF-8'})
+        self.assertEqual('text/html', req.content_type)
+        self.assertEqual('UTF-8', req.charset)
