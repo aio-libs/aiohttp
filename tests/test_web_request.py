@@ -61,3 +61,8 @@ class TestWebRequest(unittest.TestCase):
     def test_non_ascii_path(self):
         req = self.make_request('GET', '/путь')
         self.assertEqual('/путь', req.path)
+
+    def test_content_length(self):
+        req = self.make_request('Get', '/', {'Content-Length': '123'})
+
+        self.assertEqual(123, req.content_length)

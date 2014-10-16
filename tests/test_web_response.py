@@ -73,3 +73,25 @@ class TestStreamResponse(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             resp.version = HttpVersion(1, 0)
         self.assertEqual(HttpVersion(1, 1), resp.version)
+
+    def test_content_length(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        self.assertIsNone(resp.content_length)
+
+    def test_content_length_setter(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        resp.content_length = 234
+        self.assertEqual(234, resp.content_length)
+
+    def test_cannot_change_content_length_after_sending_headers(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        resp.send_headers()
+        with self.assertRaises(RuntimeError):
+            resp.content_length = 123
+        self.assertIsNone(resp.content_length)

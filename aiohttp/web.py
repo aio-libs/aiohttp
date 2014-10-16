@@ -55,6 +55,14 @@ class HeadersMixin:
             self.content_type  # calculates _content_dict also
         return self._content_dict.get('charset', 'utf-8')
 
+    @property
+    def content_length(self):
+        l = self.headers.get('Content-Length')
+        if l is None:
+            return None
+        else:
+            return int(l)
+
 
 class StreamResponse(HeadersMixin):
 
@@ -162,11 +170,8 @@ class StreamResponse(HeadersMixin):
 
     @property
     def content_length(self):
-        l = self.headers.get('Content-Length')
-        if l is None:
-            return None
-        else:
-            return int(l)
+        # Just a placeholder for adding setter
+        return super().content_length
 
     @content_length.setter
     def content_length(self, value):
