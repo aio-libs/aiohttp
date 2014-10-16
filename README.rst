@@ -1,14 +1,14 @@
 http client/server for asyncio
 ==============================
 
-.. image:: https://secure.travis-ci.org/KeepSafe/aiohttp.png
-  :target:  https://secure.travis-ci.org/KeepSafe/aiohttp
-
-
 .. image:: https://raw.github.com/KeepSafe/aiohttp/master/docs/aiohttp-icon.png
   :height: 128px
   :width: 128px
   :alt: aiohttp logo
+
+.. image:: https://secure.travis-ci.org/KeepSafe/aiohttp.png
+  :target:  https://secure.travis-ci.org/KeepSafe/aiohttp
+  :align: right
 
 
 Requirements
