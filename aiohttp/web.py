@@ -12,8 +12,9 @@ from urllib.parse import urlsplit, parse_qsl, unquote
 
 from .abc import AbstractRouter, AbstractMatchInfo
 from .errors import HttpErrorException
-from .helpers import parse_mimetype
-from .multidict import MultiDict, MutableMultiDict
+from .multidict import (MultiDict,
+                        CaseInsensitiveMutableMultiDict,
+                        MutableMultiDict)
 from .protocol import Response as ResponseImpl, HttpVersion
 from .server import ServerHttpProtocol
 from .streams import EOF_MARKER
@@ -68,7 +69,7 @@ class StreamResponse(HeadersMixin):
 
     def __init__(self, request):
         self._request = request
-        self.headers = MutableMultiDict()
+        self.headers = CaseInsensitiveMutableMultiDict()
         self._status_code = 200
         self._cookies = http.cookies.SimpleCookie()
         self._deleted_cookies = set()
@@ -179,6 +180,26 @@ class StreamResponse(HeadersMixin):
         value = int(value)
         # TODO: raise error if chunked enabled
         self.headers['Content-Length'] = str(value)
+
+    @property
+    def content_type(self):
+        # Just a placeholder for adding setter
+        return super().content_type
+
+    @content_type.setter
+    def content_type(self, value):
+        self._check_sending_started()
+        self.content_type  # read header values if needed
+        self._content_type = str(value)
+        self._generate_content_type_header()
+
+    def _generate_content_type_header(self):
+        params = '; '.join("%s=%s" % i for i in self._content_dict.items())
+        if params:
+            ctype = self._content_type + '; ' + params
+        else:
+            ctype = self._content_type
+        self.headers['Content-Type'] = ctype
 
     def set_chunked(self, chunk_size, buffered=True):
         if self.content_length is not None:

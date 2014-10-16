@@ -95,3 +95,11 @@ class TestStreamResponse(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             resp.content_length = 123
         self.assertIsNone(resp.content_length)
+
+    def test_setting_content_type(self):
+
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        resp.content_type = 'text/html'
+        self.assertEqual('text/html', resp.headers['content-type'])
