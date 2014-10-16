@@ -9,7 +9,7 @@ Requirements
 ------------
 
 - Python >= 3.3
-- asyncio https://pypi.python.org/pypi/asyncio/0.4.1
+- asyncio https://pypi.python.org/pypi/asyncio
 
 
 License
