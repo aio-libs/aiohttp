@@ -1,6 +1,9 @@
 CHANGES
 =======
 
+0.9.2 (10-16-2014)
+------------------
+
 - Improve redirect handling #157
 
 - Send raw files as is #153
