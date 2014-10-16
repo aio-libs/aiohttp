@@ -455,10 +455,6 @@ class UrlMappingMatchInfo(AbstractMatchInfo):
         self._entry = entry
 
     @property
-    def kind(self):
-        return 'urlmapping'
-
-    @property
     def handler(self):
         return self._entry.handler
 

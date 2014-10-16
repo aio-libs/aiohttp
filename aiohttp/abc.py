@@ -14,10 +14,5 @@ class AbstractMatchInfo(metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def kind(self):
-        pass
-
-    @property
-    @abstractmethod
     def handler(self):
         pass
