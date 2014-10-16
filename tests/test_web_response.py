@@ -24,3 +24,28 @@ class TestStreamResponse(unittest.TestCase):
         self.assertIsNone(req._response)
         self.assertEqual(200, resp.status_code)
         self.assertTrue(resp.keep_alive)
+        # self.assertEqual(123, resp.version)
+
+    def test_status_code_cannot_assign_nonint(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        with self.assertRaises(TypeError):
+            resp.status_code = 'abc'
+        self.assertEqual(200, resp.status_code)
+
+    def test_status_code_setter(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        resp.status_code = 300
+        self.assertEqual(300, resp.status_code)
+
+    def test_status_code_cannot_assing_after_sending_headers(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        resp.send_headers()
+        with self.assertRaises(RuntimeError):
+            resp.status_code = 300
+        self.assertEqual(200, resp.status_code)

@@ -108,7 +108,8 @@ class StreamResponse:
     @status_code.setter
     def status_code(self, value):
         self._check_sending_started()
-        assert isinstance(value, int), "Status code must be int"
+        if not isinstance(value, int):
+            raise TypeError("Status code must be int")
         self._status_code = value
 
     @property
