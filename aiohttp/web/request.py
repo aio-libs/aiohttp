@@ -4,6 +4,7 @@ import cgi
 import http.cookies
 import io
 import json
+import weakref
 
 from urllib.parse import urlsplit, parse_qsl, unquote
 
@@ -39,9 +40,12 @@ class StreamResponse:
             self.headers.add('Set-Cookie', value)
 
     def _check_sending_started(self):
-        if self._request._response is not None:
+        resp = self._request._response
+        if resp is not None:
+            resp = resp()  # dereference weakref
+        if resp is not None:
             raise RuntimeError(("Response {!r} already started to send"
-                                " data").format(self._request._response))
+                                " data").format(resp))
 
     @property
     def cookies(self):
@@ -150,7 +154,7 @@ class StreamResponse:
             raise RuntimeError("Cannot call send_header() after write_eof()")
 
         self._check_sending_started()
-        self._request._response = self
+        self._request._response = weakref.ref(self)
 
         resp_impl = self._resp_impl = ResponseImpl(
             self._request._server_http_protocol.writer,

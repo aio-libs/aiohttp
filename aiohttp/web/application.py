@@ -40,6 +40,10 @@ class RequestHandler(ServerHttpProtocol):
                                        .format(type(resp)))
             else:
                 resp = request._response
+                if resp is not None:
+                    resp = resp()  # dereference weakref
+                if resp is None:
+                    raise RuntimeError("Handler should create a response")
             yield from resp.write_eof()
         else:
             raise HttpErrorException(404, "Not Found")
