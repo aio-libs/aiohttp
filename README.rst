@@ -8,7 +8,7 @@ http client/server for asyncio
 
 .. image:: https://secure.travis-ci.org/KeepSafe/aiohttp.png
   :target:  https://secure.travis-ci.org/KeepSafe/aiohttp
-  :align: top right
+  :align: right
 
 
 Requirements
