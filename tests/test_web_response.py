@@ -248,6 +248,17 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(CaseInsensitiveMultiDict([('CONTENT-LENGTH', '0')]),
                          resp.headers)
 
+    def test_ctor_with_headers_and_status_code(self):
+        req = self.make_request('GET', '/')
+        resp = Response(req, b'body', status_code=201, headers={'Age': '12'})
+
+        self.assertEqual(201, resp.status_code)
+        self.assertEqual(b'body', resp.body)
+        self.assertEqual(4, resp.content_length)
+        self.assertEqual(CaseInsensitiveMultiDict([('CONTENT-LENGTH', '4'),
+                                                   ('AGE', '12')]),
+                         resp.headers)
+
     def test_send_headers_for_empty_body(self):
         req = self.make_request('GET', '/')
         resp = Response(req)
