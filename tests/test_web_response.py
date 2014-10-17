@@ -80,6 +80,15 @@ class TestStreamResponse(unittest.TestCase):
             resp.content_length = 123
         self.assertIsNone(resp.content_length)
 
+    def test_drop_content_length_header_on_setting_len_to_None(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        resp.content_length = 1
+        self.assertEqual("1", resp.headers['Content-Length'])
+        resp.content_length = None
+        self.assertNotIn('Content-Length', resp.headers)
+
     def test_setting_content_type(self):
 
         req = self.make_request('GET', '/')
