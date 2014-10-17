@@ -245,7 +245,7 @@ class StreamResponse(HeadersMixin):
         resp_impl = self._resp_impl = ResponseImpl(
             self._request._server_http_protocol.writer,
             self._status_code,
-            self._request.version)
+            self._version)
 
         self._copy_cookies()
 
