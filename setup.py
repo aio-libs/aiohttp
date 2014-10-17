@@ -13,7 +13,7 @@ with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
         raise RuntimeError('Unable to determine version.')
 
 
-if sys.version_info >= (3,4):
+if sys.version_info >= (3, 4):
     install_requires = []
 else:
     install_requires = ['asyncio']
