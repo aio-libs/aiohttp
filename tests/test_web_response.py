@@ -169,3 +169,18 @@ class TestStreamResponse(unittest.TestCase):
         resp.write_eof()
         with self.assertRaises(RuntimeError):
             resp.send_headers()
+
+    def xtest_write_before_sending_headers(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        # import ipdb;ipdb.set_trace()
+        resp.write(b'data')
+        self.protocol.write.assert_called_with(b'')
+
+    def test_write_non_byteish(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        with self.assertRaises(TypeError):
+            resp.write(123)
