@@ -554,8 +554,6 @@ class UrlDispatch(AbstractRouter):
         return UrlMappingMatchInfo(matchdict, entry)
 
     def add_route(self, method, path, handler):
-        assert callable(handler), handler
-
         assert path.startswith('/')
         assert callable(handler), handler
         method = method.upper()
