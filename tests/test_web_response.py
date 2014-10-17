@@ -204,3 +204,23 @@ class TestStreamResponse(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             resp.write(b'next data')
         self.assertFalse(self.protocol.writer.write.called)
+
+    def test_cannot_write_eof_before_headers(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        with self.assertRaises(RuntimeError):
+            self.loop.run_until_complete(resp.write_eof())
+
+    def test_cannot_write_eof_twice(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        resp.write(b'data')
+        self.protocol.writer.drain.return_value = ()
+        self.loop.run_until_complete(resp.write_eof())
+        self.assertTrue(self.protocol.writer.write.called)
+
+        self.protocol.writer.write.reset_mock()
+        self.loop.run_until_complete(resp.write_eof())
+        self.assertFalse(self.protocol.writer.write.called)
