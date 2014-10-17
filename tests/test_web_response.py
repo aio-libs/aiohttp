@@ -1,3 +1,4 @@
+import asyncio
 import unittest
 from unittest import mock
 from aiohttp.web import Request, StreamResponse
@@ -5,6 +6,13 @@ from aiohttp.protocol import Request as RequestImpl, HttpVersion
 
 
 class TestStreamResponse(unittest.TestCase):
+
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+    def tearDown(self):
+        self.loop.close()
 
     def make_request(self, method, path, headers=()):
         self.app = mock.Mock()
@@ -170,17 +178,29 @@ class TestStreamResponse(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             resp.send_headers()
 
-    def xtest_write_before_sending_headers(self):
-        req = self.make_request('GET', '/')
-        resp = StreamResponse(req)
-
-        # import ipdb;ipdb.set_trace()
-        resp.write(b'data')
-        self.protocol.write.assert_called_with(b'')
-
     def test_write_non_byteish(self):
         req = self.make_request('GET', '/')
         resp = StreamResponse(req)
 
         with self.assertRaises(TypeError):
             resp.write(123)
+
+    def test_write_before_sending_headers(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        resp.write(b'data')
+        self.assertTrue(self.protocol.writer.write.called)
+
+    def test_cannot_write_after_eof(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        resp.write(b'data')
+        self.protocol.writer.drain.return_value = ()
+        self.loop.run_until_complete(resp.write_eof())
+        self.protocol.writer.write.reset_mock()
+
+        with self.assertRaises(RuntimeError):
+            resp.write(b'next data')
+        self.assertFalse(self.protocol.writer.write.called)
