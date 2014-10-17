@@ -160,3 +160,12 @@ class TestStreamResponse(unittest.TestCase):
         resp.send_headers()
         with self.assertRaises(RuntimeError):
             resp.send_headers()
+
+    def test_cannot_send_headers_after_eof(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        resp.send_headers()
+        resp.write_eof()
+        with self.assertRaises(RuntimeError):
+            resp.send_headers()

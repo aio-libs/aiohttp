@@ -227,8 +227,6 @@ class StreamResponse(HeadersMixin):
     def send_headers(self):
         if self._resp_impl is not None:
             raise RuntimeError("HTTP headers are already sent")
-        if self._eof_sent:
-            raise RuntimeError("Cannot call send_header() after write_eof()")
 
         self._check_sending_started()
         self._request._response = weakref.ref(self)
