@@ -8,10 +8,11 @@ from aiohttp.protocol import Request as RequestImpl
 
 class TestWebRequest(unittest.TestCase):
 
-    def make_request(self, method, path, headers=()):
+    def make_request(self, method, path, headers=(), *,
+                     version=HttpVersion(1, 1), closing=False):
         self.app = mock.Mock()
         self.transport = mock.Mock()
-        message = RequestImpl(self.transport, method, path)
+        message = RequestImpl(self.transport, method, path, version, closing)
         message.headers.extend(headers)
         self.payload = mock.Mock()
         self.writer = mock.Mock()
@@ -67,3 +68,11 @@ class TestWebRequest(unittest.TestCase):
         req = self.make_request('Get', '/', {'Content-Length': '123'})
 
         self.assertEqual(123, req.content_length)
+
+    def test_non_keepalive_on_http10(self):
+        req = self.make_request('GET', '/', version=HttpVersion(1, 0))
+        self.assertFalse(req.keep_alive)
+
+    def test_non_keepalive_on_closing(self):
+        req = self.make_request('GET', '/', closing=True)
+        self.assertFalse(req.keep_alive)
