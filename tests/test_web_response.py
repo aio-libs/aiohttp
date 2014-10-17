@@ -103,3 +103,23 @@ class TestStreamResponse(unittest.TestCase):
 
         resp.content_type = 'text/html'
         self.assertEqual('text/html', resp.headers['content-type'])
+
+    def test_cannot_change_content_type_after_sending_headers(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        resp.content_type = 'text/plain'
+        resp.send_headers()
+        with self.assertRaises(RuntimeError):
+            resp.content_type = 'text/html'
+        self.assertEqual('text/plain', resp.content_type)
+
+    def test_setting_charset(self):
+
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        resp.content_type = 'text/html'
+        resp.charset = 'koi8-r'
+        self.assertEqual('text/html; charset=koi8-r',
+                         resp.headers['content-type'])

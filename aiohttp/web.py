@@ -193,6 +193,18 @@ class StreamResponse(HeadersMixin):
         self._content_type = str(value)
         self._generate_content_type_header()
 
+    @property
+    def charset(self):
+        # Just a placeholder for adding setter
+        return super().charset
+
+    @charset.setter
+    def charset(self, value):
+        self._check_sending_started()
+        self.content_type  # read header values if needed
+        self._content_dict['charset'] = str(value)
+        self._generate_content_type_header()
+
     def _generate_content_type_header(self):
         params = '; '.join("%s=%s" % i for i in self._content_dict.items())
         if params:
