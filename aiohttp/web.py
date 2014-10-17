@@ -81,22 +81,10 @@ class StreamResponse(HeadersMixin):
         self._status_code = 200
         self._cookies = http.cookies.SimpleCookie()
         self._deleted_cookies = set()
-        self._keep_alive = True
-        self._version = request.version
-        self._calc_default_keepalive()
+        self._keep_alive = request.keep_alive
 
         self._resp_impl = None
         self._eof_sent = False
-
-    def _calc_default_keepalive(self):
-        if self._version < HttpVersion11:
-            self._default_keepalive = False
-        elif self._request.closing:
-            self._default_keepalive = False
-        else:
-            self._default_keepalive = True
-        if self._keep_alive and not self._default_keepalive:
-            self._keep_alive = False
 
     def _copy_cookies(self):
         for cookie in self._cookies.values():
@@ -169,29 +157,11 @@ class StreamResponse(HeadersMixin):
         self._status_code = value
 
     @property
-    def version(self):
-        return self._version
-
-    @version.setter
-    def version(self, value):
-        self._check_sending_started()
-        if not isinstance(value, HttpVersion):
-            raise TypeError("HTTP version must be HttpVersion instance")
-        self._version = value
-        self._calc_default_keepalive()
-
-    @property
     def keep_alive(self):
         return self._keep_alive
 
-    @keep_alive.setter
-    def keep_alive(self, value):
-        if value and not self._default_keepalive:
-            raise RuntimeError("Cannot enable keepalive for connection "
-                               "that should be unconditionally closed")
-        self._check_sending_started()
-        self._keep_alive = bool(value)
-        self._calc_default_keepalive()
+    def force_close(self):
+        self._keep_alive = False
 
     @property
     def content_length(self):
@@ -259,9 +229,9 @@ class StreamResponse(HeadersMixin):
         self._request._response = weakref.ref(self)
 
         resp_impl = self._resp_impl = ResponseImpl(
-            self._request._server_http_protocol.writer,
+            self._request._writer,
             self._status_code,
-            self._version)
+            self._request.version)
 
         self._copy_cookies()
 
@@ -293,7 +263,6 @@ class StreamResponse(HeadersMixin):
 
         yield from self._resp_impl.write_eof()
 
-        self._request._server_http_protocol.keep_alive(self._keep_alive)
         self._eof_sent = True
 
 
@@ -334,12 +303,12 @@ class Response(StreamResponse):
 
 class Request(HeadersMixin):
 
-    def __init__(self, app, message, payload, protocol):
+    def __init__(self, app, message, payload, writer):
         path = unquote(message.path)
         res = urlsplit(path)
         self._app = app
         self._version = message.version
-        self._server_http_protocol = protocol
+        self._writer = writer
         self._method = message.method.upper()
         self._host = message.headers.get('HOST')
         self._path_qs = path
@@ -348,7 +317,13 @@ class Request(HeadersMixin):
         self._get = MultiDict(parse_qsl(res.query))
         self._post = None
         self._headers = message.headers
-        self._closing = message.closing
+
+        if self._version < HttpVersion11:
+            self._keep_alive = False
+        elif message.closing:
+            self._keep_alive = False
+        else:
+            self._keep_alive = True
 
         # matchdict, route_name, handler
         # or information about traversal lookup
@@ -391,8 +366,9 @@ class Request(HeadersMixin):
         return self._headers
 
     @property
-    def closing(self):
-        return self._closing
+    def keep_alive(self):
+        """Is keepalive enabled by client?"""
+        return self._keep_alive
 
     @property
     def match_info(self):
@@ -625,7 +601,7 @@ class RequestHandler(ServerHttpProtocol):
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
-        request = Request(self._app, message, payload, self)
+        request = Request(self._app, message, payload, self.writer)
         match_info = yield from self._app.router.resolve(request)
         if match_info is not None:
             request._match_info = match_info
@@ -644,6 +620,7 @@ class RequestHandler(ServerHttpProtocol):
                                     "instance, got {!r}")
                                    .format(type(resp)))
             yield from resp.write_eof()
+            self.keep_alive(resp.keep_alive)
         else:
             raise HttpErrorException(404, "Not Found")
 

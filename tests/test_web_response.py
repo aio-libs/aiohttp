@@ -3,7 +3,7 @@ import unittest
 from unittest import mock
 from aiohttp.multidict import CaseInsensitiveMultiDict
 from aiohttp.web import Request, StreamResponse, Response
-from aiohttp.protocol import Request as RequestImpl, HttpVersion
+from aiohttp.protocol import Request as RequestImpl
 
 
 class TestStreamResponse(unittest.TestCase):
@@ -21,8 +21,8 @@ class TestStreamResponse(unittest.TestCase):
         message = RequestImpl(self.transport, method, path)
         message.headers.extend(headers)
         self.payload = mock.Mock()
-        self.protocol = mock.Mock()
-        req = Request(self.app, message, self.payload, self.protocol)
+        self.writer = mock.Mock()
+        req = Request(self.app, message, self.payload, self.writer)
         return req
 
     def test_ctor(self):
@@ -33,7 +33,6 @@ class TestStreamResponse(unittest.TestCase):
         self.assertIsNone(req._response)
         self.assertEqual(200, resp.status_code)
         self.assertTrue(resp.keep_alive)
-        self.assertEqual(HttpVersion(1, 1), resp.version)
 
     def test_status_code_cannot_assign_nonint(self):
         req = self.make_request('GET', '/')
@@ -58,30 +57,6 @@ class TestStreamResponse(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             resp.status_code = 300
         self.assertEqual(200, resp.status_code)
-
-    def test_change_version(self):
-        req = self.make_request('GET', '/')
-        resp = StreamResponse(req)
-
-        resp.version = HttpVersion(1, 0)
-        self.assertEqual(HttpVersion(1, 0), resp.version)
-
-    def test_change_version_bad_type(self):
-        req = self.make_request('GET', '/')
-        resp = StreamResponse(req)
-
-        with self.assertRaises(TypeError):
-            resp.version = 123
-        self.assertEqual(HttpVersion(1, 1), resp.version)
-
-    def test_cannot_change_version_after_sending_headers(self):
-        req = self.make_request('GET', '/')
-        resp = StreamResponse(req)
-
-        resp.send_headers()
-        with self.assertRaises(RuntimeError):
-            resp.version = HttpVersion(1, 0)
-        self.assertEqual(HttpVersion(1, 1), resp.version)
 
     def test_content_length(self):
         req = self.make_request('GET', '/')
@@ -191,20 +166,20 @@ class TestStreamResponse(unittest.TestCase):
         resp = StreamResponse(req)
 
         resp.write(b'data')
-        self.assertTrue(self.protocol.writer.write.called)
+        self.assertTrue(self.writer.write.called)
 
     def test_cannot_write_after_eof(self):
         req = self.make_request('GET', '/')
         resp = StreamResponse(req)
 
         resp.write(b'data')
-        self.protocol.writer.drain.return_value = ()
+        self.writer.drain.return_value = ()
         self.loop.run_until_complete(resp.write_eof())
-        self.protocol.writer.write.reset_mock()
+        self.writer.write.reset_mock()
 
         with self.assertRaises(RuntimeError):
             resp.write(b'next data')
-        self.assertFalse(self.protocol.writer.write.called)
+        self.assertFalse(self.writer.write.called)
 
     def test_cannot_write_eof_before_headers(self):
         req = self.make_request('GET', '/')
@@ -218,13 +193,13 @@ class TestStreamResponse(unittest.TestCase):
         resp = StreamResponse(req)
 
         resp.write(b'data')
-        self.protocol.writer.drain.return_value = ()
+        self.writer.drain.return_value = ()
         self.loop.run_until_complete(resp.write_eof())
-        self.assertTrue(self.protocol.writer.write.called)
+        self.assertTrue(self.writer.write.called)
 
-        self.protocol.writer.write.reset_mock()
+        self.writer.write.reset_mock()
         self.loop.run_until_complete(resp.write_eof())
-        self.assertFalse(self.protocol.writer.write.called)
+        self.assertFalse(self.writer.write.called)
 
 
 class TestResponse(unittest.TestCase):
@@ -242,8 +217,8 @@ class TestResponse(unittest.TestCase):
         message = RequestImpl(self.transport, method, path)
         message.headers.extend(headers)
         self.payload = mock.Mock()
-        self.protocol = mock.Mock()
-        req = Request(self.app, message, self.payload, self.protocol)
+        self.writer = mock.Mock()
+        req = Request(self.app, message, self.payload, self.writer)
         return req
 
     def test_ctor(self):
@@ -260,15 +235,14 @@ class TestResponse(unittest.TestCase):
         req = self.make_request('GET', '/')
         resp = Response(req)
 
-        writer = self.protocol.writer
-        writer.drain.return_value = ()
+        self.writer.drain.return_value = ()
         buf = b''
 
         def append(data):
             nonlocal buf
             buf += data
 
-        writer.write.side_effect = append
+        self.writer.write.side_effect = append
 
         self.loop.run_until_complete(resp.render())
         txt = buf.decode('utf8')
