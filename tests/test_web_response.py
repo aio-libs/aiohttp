@@ -128,3 +128,18 @@ class TestStreamResponse(unittest.TestCase):
         resp = StreamResponse(req)
 
         self.assertIsNone(resp.charset)
+
+    def test_reset_charset(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        resp.charset = None
+        self.assertIsNone(resp.charset)
+
+    def test_reset_charset_after_setting(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        resp.charset = 'koi8-r'
+        resp.charset = None
+        self.assertIsNone(resp.charset)

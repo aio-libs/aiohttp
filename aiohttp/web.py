@@ -202,7 +202,10 @@ class StreamResponse(HeadersMixin):
     def charset(self, value):
         self._check_sending_started()
         self.content_type  # read header values if needed
-        self._content_dict['charset'] = str(value)
+        if value is None:
+            self._content_dict.pop('charset', None)
+        else:
+            self._content_dict['charset'] = str(value)
         self._generate_content_type_header()
 
     def _generate_content_type_header(self):
