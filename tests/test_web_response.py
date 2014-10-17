@@ -201,6 +201,14 @@ class TestStreamResponse(unittest.TestCase):
         self.loop.run_until_complete(resp.write_eof())
         self.assertFalse(self.writer.write.called)
 
+    def test_force_close(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        self.assertTrue(resp.keep_alive)
+        resp.force_close()
+        self.assertFalse(resp.keep_alive)
+
 
 class TestResponse(unittest.TestCase):
 
