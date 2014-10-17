@@ -152,3 +152,11 @@ class TestStreamResponse(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             resp.charset = 'koi8-r'
+
+    def test_cannot_send_headers_twice(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        resp.send_headers()
+        with self.assertRaises(RuntimeError):
+            resp.send_headers()
