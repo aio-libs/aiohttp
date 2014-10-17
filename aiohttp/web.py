@@ -201,7 +201,10 @@ class StreamResponse(HeadersMixin):
     @charset.setter
     def charset(self, value):
         self._check_sending_started()
-        self.content_type  # read header values if needed
+        ctype = self.content_type  # read header values if needed
+        if ctype == 'application/octet-stream':
+            raise RuntimeError("Setting charset for application/octet-stream "
+                               "doesn't make sense, setup content_type first")
         if value is None:
             self._content_dict.pop('charset', None)
         else:

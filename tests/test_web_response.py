@@ -133,6 +133,7 @@ class TestStreamResponse(unittest.TestCase):
         req = self.make_request('GET', '/')
         resp = StreamResponse(req)
 
+        resp.content_type = 'text/html'
         resp.charset = None
         self.assertIsNone(resp.charset)
 
@@ -140,6 +141,14 @@ class TestStreamResponse(unittest.TestCase):
         req = self.make_request('GET', '/')
         resp = StreamResponse(req)
 
+        resp.content_type = 'text/html'
         resp.charset = 'koi8-r'
         resp.charset = None
         self.assertIsNone(resp.charset)
+
+    def test_charset_without_content_type(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        with self.assertRaises(RuntimeError):
+            resp.charset = 'koi8-r'
