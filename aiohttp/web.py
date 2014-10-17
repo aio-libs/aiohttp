@@ -15,7 +15,7 @@ from .errors import HttpErrorException
 from .multidict import (MultiDict,
                         CaseInsensitiveMutableMultiDict,
                         MutableMultiDict)
-from .protocol import Response as ResponseImpl, HttpVersion
+from .protocol import Response as ResponseImpl, HttpVersion, HttpVersion11
 from .server import ServerHttpProtocol
 from .streams import EOF_MARKER
 
@@ -81,11 +81,22 @@ class StreamResponse(HeadersMixin):
         self._status_code = 200
         self._cookies = http.cookies.SimpleCookie()
         self._deleted_cookies = set()
-        self._keep_alive = not request.closing
+        self._keep_alive = True
         self._version = request.version
+        self._calc_default_keepalive()
 
         self._resp_impl = None
         self._eof_sent = False
+
+    def _calc_default_keepalive(self):
+        if self._version < HttpVersion11:
+            self._default_keepalive = False
+        elif self._request.closing:
+            self._default_keepalive = False
+        else:
+            self._default_keepalive = True
+        if self._keep_alive and not self._default_keepalive:
+            self._keep_alive = False
 
     def _copy_cookies(self):
         for cookie in self._cookies.values():
@@ -167,6 +178,7 @@ class StreamResponse(HeadersMixin):
         if not isinstance(value, HttpVersion):
             raise TypeError("HTTP version must be HttpVersion instance")
         self._version = value
+        self._calc_default_keepalive()
 
     @property
     def keep_alive(self):
@@ -174,8 +186,12 @@ class StreamResponse(HeadersMixin):
 
     @keep_alive.setter
     def keep_alive(self, value):
+        if value and not self._default_keepalive:
+            raise RuntimeError("Cannot enable keepalive for connection "
+                               "that should be unconditionally closed")
         self._check_sending_started()
         self._keep_alive = bool(value)
+        self._calc_default_keepalive()
 
     @property
     def content_length(self):
@@ -277,10 +293,7 @@ class StreamResponse(HeadersMixin):
 
         yield from self._resp_impl.write_eof()
 
-        if self._resp_impl.keep_alive():
-            self._request._server_http_protocol.keep_alive(self._keep_alive)
-        else:
-            self._request._server_http_protocol.keep_alive(False)
+        self._request._server_http_protocol.keep_alive(self._keep_alive)
         self._eof_sent = True
 
 
