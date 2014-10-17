@@ -31,29 +31,37 @@ __all__ = [
     ]
 
 
+sentinel = object()
+
+
 class HeadersMixin:
 
     _content_type = None
     _content_dict = None
+    _stored_content_type = sentinel
 
-    @property
-    def content_type(self):
-        if self._content_type is not None:
-            return self._content_type
-        raw = self.headers.get('Content-Type')
+    def _parse_content_type(self, raw):
+        self._stored_content_type = raw
         if raw is None:
             # default value according to RFC 2616
             self._content_type = 'application/octet-stream'
             self._content_dict = {}
         else:
             self._content_type, self._content_dict = cgi.parse_header(raw)
+
+    @property
+    def content_type(self):
+        raw = self.headers.get('Content-Type')
+        if self._stored_content_type != raw:
+            self._parse_content_type(raw)
         return self._content_type
 
     @property
     def charset(self):
         # Assumes that charset is UTF8 if not specified
-        if self._content_type is None:
-            self.content_type  # calculates _content_dict also
+        raw = self.headers.get('Content-Type')
+        if self._stored_content_type != raw:
+            self._parse_content_type(raw)
         return self._content_dict.get('charset')
 
     @property

@@ -41,3 +41,9 @@ After that create server and run *asyncio loop* as usual::
        pass
 
 That's it.
+
+
+Content Type
+------------
+
+Content-Type header is case-insensitive by :rfc:`2045`, BTW.
