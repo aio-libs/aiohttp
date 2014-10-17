@@ -81,7 +81,7 @@ class StreamResponse(HeadersMixin):
         self._status_code = 200
         self._cookies = http.cookies.SimpleCookie()
         self._deleted_cookies = set()
-        self._keep_alive = True
+        self._keep_alive = not request.closing
         self._version = request.version
 
         self._resp_impl = None
@@ -335,6 +335,7 @@ class Request(HeadersMixin):
         self._get = MultiDict(parse_qsl(res.query))
         self._post = None
         self._headers = message.headers
+        self._closing = message.closing
 
         # matchdict, route_name, handler
         # or information about traversal lookup
@@ -375,6 +376,10 @@ class Request(HeadersMixin):
     @property
     def headers(self):
         return self._headers
+
+    @property
+    def closing(self):
+        return self._closing
 
     @property
     def match_info(self):
