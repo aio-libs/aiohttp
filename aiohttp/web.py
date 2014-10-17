@@ -185,9 +185,12 @@ class StreamResponse(HeadersMixin):
     @content_length.setter
     def content_length(self, value):
         self._check_sending_started()
-        value = int(value)
-        # TODO: raise error if chunked enabled
-        self.headers['Content-Length'] = str(value)
+        if value is not None:
+            value = int(value)
+            # TODO: raise error if chunked enabled
+            self.headers['Content-Length'] = str(value)
+        elif 'Content-Length' in self.headers:
+            del self.headers['Content-Length']
 
     @property
     def content_type(self):
@@ -273,8 +276,11 @@ class StreamResponse(HeadersMixin):
             return
 
         yield from self._resp_impl.write_eof()
+
         if self._resp_impl.keep_alive():
             self._request._server_http_protocol.keep_alive(self._keep_alive)
+        else:
+            self._request._server_http_protocol.keep_alive(False)
         self._eof_sent = True
 
 
@@ -299,14 +305,18 @@ class Response(StreamResponse):
                             type(body))
         self._check_sending_started()
         self._body = body
+        if body is not None:
+            self.content_length = len(body)
+        else:
+            self.content_length = 0
 
     @asyncio.coroutine
     def render(self):
         body = self._body
-        if body is None:
-            return
-        self.content_length = len(body)
-        self.write(body)
+        self.send_headers()
+        if body is not None:
+            self.write(body)
+        yield from self.write_eof()
 
 
 class Request(HeadersMixin):

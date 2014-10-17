@@ -1,6 +1,7 @@
 import asyncio
 import unittest
 from unittest import mock
+from aiohttp.multidict import CaseInsensitiveMultiDict
 from aiohttp.web import Request, StreamResponse, Response
 from aiohttp.protocol import Request as RequestImpl, HttpVersion
 
@@ -251,4 +252,26 @@ class TestResponse(unittest.TestCase):
 
         self.assertEqual(200, resp.status_code)
         self.assertIsNone(resp.body)
-        self.assertEqual(0, len(resp.headers))
+        self.assertEqual(0, resp.content_length)
+        self.assertEqual(CaseInsensitiveMultiDict([('CONTENT-LENGTH', '0')]),
+                         resp.headers)
+
+    def test_send_headers_for_empty_body(self):
+        req = self.make_request('GET', '/')
+        resp = Response(req)
+
+        writer = self.protocol.writer
+        writer.drain.return_value = ()
+        buf = b''
+
+        def append(data):
+            nonlocal buf
+            buf += data
+
+        writer.write.side_effect = append
+
+        self.loop.run_until_complete(resp.render())
+        txt = buf.decode('utf8')
+        self.assertRegex(txt, 'HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 0\r\n'
+                         'CONNECTION: keep-alive\r\n'
+                         'DATE: .+\r\nSERVER: .+\r\n\r\n')
