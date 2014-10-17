@@ -115,7 +115,6 @@ class TestStreamResponse(unittest.TestCase):
         self.assertEqual('text/plain', resp.content_type)
 
     def test_setting_charset(self):
-
         req = self.make_request('GET', '/')
         resp = StreamResponse(req)
 
@@ -123,3 +122,9 @@ class TestStreamResponse(unittest.TestCase):
         resp.charset = 'koi8-r'
         self.assertEqual('text/html; charset=koi8-r',
                          resp.headers['content-type'])
+
+    def test_default_charset(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        self.assertIsNone(resp.charset)

@@ -54,7 +54,7 @@ class HeadersMixin:
         # Assumes that charset is UTF8 if not specified
         if self._content_type is None:
             self.content_type  # calculates _content_dict also
-        return self._content_dict.get('charset', 'utf-8')
+        return self._content_dict.get('charset')
 
     @property
     def content_length(self):
