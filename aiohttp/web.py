@@ -280,7 +280,7 @@ class StreamResponse(HeadersMixin):
 
 class Response(StreamResponse):
 
-    def __init__(self, request, body=b'', *, status_code=200, headers=None):
+    def __init__(self, request, body=None, *, status_code=200, headers=None):
         super().__init__(request)
         self.status_code = status_code
         self.body = body
@@ -293,7 +293,8 @@ class Response(StreamResponse):
 
     @body.setter
     def body(self, body):
-        if not isinstance(body, (bytes, bytearray, memoryview)):
+        if body is not None and not isinstance(body,
+                                               (bytes, bytearray, memoryview)):
             raise TypeError('body argument must be byte-ish (%r)',
                             type(body))
         self._check_sending_started()
@@ -302,6 +303,8 @@ class Response(StreamResponse):
     @asyncio.coroutine
     def render(self):
         body = self._body
+        if body is None:
+            return
         self.content_length = len(body)
         self.write(body)
 

@@ -1,7 +1,7 @@
 import asyncio
 import unittest
 from unittest import mock
-from aiohttp.web import Request, StreamResponse
+from aiohttp.web import Request, StreamResponse, Response
 from aiohttp.protocol import Request as RequestImpl, HttpVersion
 
 
@@ -224,3 +224,31 @@ class TestStreamResponse(unittest.TestCase):
         self.protocol.writer.write.reset_mock()
         self.loop.run_until_complete(resp.write_eof())
         self.assertFalse(self.protocol.writer.write.called)
+
+
+class TestResponse(unittest.TestCase):
+
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+    def tearDown(self):
+        self.loop.close()
+
+    def make_request(self, method, path, headers=()):
+        self.app = mock.Mock()
+        self.transport = mock.Mock()
+        message = RequestImpl(self.transport, method, path)
+        message.headers.extend(headers)
+        self.payload = mock.Mock()
+        self.protocol = mock.Mock()
+        req = Request(self.app, message, self.payload, self.protocol)
+        return req
+
+    def test_ctor(self):
+        req = self.make_request('GET', '/')
+        resp = Response(req)
+
+        self.assertEqual(200, resp.status_code)
+        self.assertIsNone(resp.body)
+        self.assertEqual(0, len(resp.headers))
