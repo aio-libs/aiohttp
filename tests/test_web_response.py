@@ -259,6 +259,15 @@ class TestResponse(unittest.TestCase):
                                                    ('AGE', '12')]),
                          resp.headers)
 
+    def test_assign_nonbyteish_body(self):
+        req = self.make_request('GET', '/')
+        resp = Response(req, b'data')
+
+        with self.assertRaises(TypeError):
+            resp.body = 123
+        self.assertEqual(b'data', resp.body)
+        self.assertEqual(4, resp.content_length)
+
     def test_send_headers_for_empty_body(self):
         req = self.make_request('GET', '/')
         resp = Response(req)
@@ -277,3 +286,22 @@ class TestResponse(unittest.TestCase):
         self.assertRegex(txt, 'HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 0\r\n'
                          'CONNECTION: keep-alive\r\n'
                          'DATE: .+\r\nSERVER: .+\r\n\r\n')
+
+    def test_render_with_body(self):
+        req = self.make_request('GET', '/')
+        resp = Response(req, b'data')
+
+        self.writer.drain.return_value = ()
+        buf = b''
+
+        def append(data):
+            nonlocal buf
+            buf += data
+
+        self.writer.write.side_effect = append
+
+        self.loop.run_until_complete(resp.render())
+        txt = buf.decode('utf8')
+        self.assertRegex(txt, 'HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 4\r\n'
+                         'CONNECTION: keep-alive\r\n'
+                         'DATE: .+\r\nSERVER: .+\r\n\r\ndata')
