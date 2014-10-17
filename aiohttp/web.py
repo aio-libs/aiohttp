@@ -262,7 +262,7 @@ class StreamResponse(HeadersMixin):
     @asyncio.coroutine
     def write_eof(self):
         if self._resp_impl is None:
-            raise RuntimeError("No data has been sent")
+            raise RuntimeError("No headers has been sent")
         if self._eof_sent:
             return
 
