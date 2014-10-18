@@ -594,10 +594,10 @@ class RequestHandler(ServerHttpProtocol):
             request._match_info = match_info
             handler = match_info.handler
 
-            if asyncio.iscoroutinefunction(handler):
-                resp = yield from handler(request)
-            else:
-                resp = handler(request)
+            resp = handler(request)
+            if (asyncio.iscoroutine(resp) or
+                    isinstance(resp, asyncio.Future)):
+                resp = yield from resp
 
             if isinstance(resp, Response):
                 yield from resp.render()
