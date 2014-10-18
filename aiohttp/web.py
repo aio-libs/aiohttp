@@ -415,8 +415,6 @@ class Request(HeadersMixin):
         request has no BODY.
         """
 
-        if self._payload is None:
-            return None
         body = bytearray()
         while True:
             chunk = yield from self._payload.readany()
