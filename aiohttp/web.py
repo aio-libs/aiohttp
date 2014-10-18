@@ -407,11 +407,6 @@ class Request(HeadersMixin):
         while chunk is not EOF_MARKER or chunk:
             chunk = yield from self._payload.readany()
 
-    def terminate(self):
-        # TODO: the method should close connection after sending response
-        # the main reason is to don't read request body as release() does
-        pass
-
     @asyncio.coroutine
     def read(self):
         """Read request body if present.
@@ -607,7 +602,6 @@ class RequestHandler(ServerHttpProtocol):
                 resp = yield from handler(request)
             else:
                 resp = handler(request)
-            yield from request.release()
 
             if isinstance(resp, Response):
                 yield from resp.render()
@@ -615,6 +609,11 @@ class RequestHandler(ServerHttpProtocol):
                 raise RuntimeError(("Handler should return Response "
                                     "instance, got {!r}")
                                    .format(type(resp)))
+
+            if resp.keep_alive:
+                # Don't need to read request body if any on closing connection
+                yield from request.release()
+
             yield from resp.write_eof()
             self.keep_alive(resp.keep_alive)
         else:
