@@ -19,7 +19,7 @@ class TestWebRequest(unittest.TestCase):
         return req
 
     def test_ctor(self):
-        req = self.make_request('GeT', '/path/to?a=1&b=2')
+        req = self.make_request('GET', '/path/to?a=1&b=2')
 
         self.assertIs(self.app, req.app)
         self.assertEqual('GET', req.method)

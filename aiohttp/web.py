@@ -307,7 +307,7 @@ class Request(HeadersMixin):
         self._app = app
         self._version = message.version
         self._writer = writer
-        self._method = message.method.upper()
+        self._method = message.method
         self._host = message.headers.get('HOST')
         path = unquote(message.path)
         self._path_qs = path
