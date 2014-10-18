@@ -430,7 +430,7 @@ class Request(HeadersMixin):
         bytes_body = yield from self.read()
         if bytes_body is None:
             return None
-        encoding = self.charset
+        encoding = self.charset or 'utf-8'
         return bytes_body.decode(encoding)
 
     @asyncio.coroutine
@@ -454,12 +454,10 @@ class Request(HeadersMixin):
             self._post = MultiDict()
             return
 
-        body = yield from self.text()
-        fs = cgi.FieldStorage(fp=io.StringIO(body),
-                              environ={'CONTENT_LENGTH': '0',
-                                       'QUERY_STRING': '',
-                                       'REQUEST_METHOD': self.method,
-                                       'CONTENT_TYPE': content_type},
+        body = yield from self.read()
+        fs = cgi.FieldStorage(fp=io.BytesIO(body),
+                              environ={'REQUEST_METHOD': self.method},
+                              headers=self._headers,
                               keep_blank_values=True,
                               encoding='utf-8')
 

@@ -2,6 +2,7 @@ import asyncio
 import socket
 import unittest
 from aiohttp import web, request
+from aiohttp.multidict import MultiDict
 
 
 class TestWebFunctional(unittest.TestCase):
@@ -41,6 +42,25 @@ class TestWebFunctional(unittest.TestCase):
         def go():
             _, _, url = yield from self.create_server('GET', '/', handler)
             resp = yield from request('GET', url, loop=self.loop)
+            self.assertEqual(200, resp.status)
+            txt = yield from resp.text()
+            self.assertEqual('OK', txt)
+
+        self.loop.run_until_complete(go())
+
+    def test_post_form(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            data = yield from request.POST()
+            self.assertEqual({'a': '1', 'b': '2'}, dict(data))
+            return web.Response(request, b'OK')
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('POST', '/', handler)
+            resp = yield from request('POST', url, data={'a': 1, 'b': 2},
+                                      loop=self.loop)
             self.assertEqual(200, resp.status)
             txt = yield from resp.text()
             self.assertEqual('OK', txt)
