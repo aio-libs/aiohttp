@@ -314,7 +314,7 @@ class Request(HeadersMixin):
         self._path_qs = path
         self._path = res.path
         self._query_string = res.query
-        self._get = MultiDict(parse_qsl(res.query))
+        self._get = None
         self._post = None
         self._headers = CaseInsensitiveMultiDict(message.headers)
 
@@ -359,6 +359,8 @@ class Request(HeadersMixin):
 
     @property
     def GET(self):
+        if self._get is None:
+            self._get = MultiDict(parse_qsl(self._query_string))
         return self._get
 
     @property
