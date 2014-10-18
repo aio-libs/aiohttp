@@ -93,3 +93,11 @@ class TestWebRequest(unittest.TestCase):
 
         ret = self.loop.run_until_complete(req.POST())
         self.assertEqual(MultiDict(), ret)
+
+    def test_call_POST_on_weird_content_type(self):
+        req = self.make_request(
+            'POST', '/',
+            headers=MultiDict({'CONTENT-TYPE': 'something/weird'}))
+
+        ret = self.loop.run_until_complete(req.POST())
+        self.assertEqual(MultiDict(), ret)
