@@ -1,8 +1,8 @@
 import asyncio
+import json
 import socket
 import unittest
 from aiohttp import web, request
-from aiohttp.multidict import MultiDict
 
 
 class TestWebFunctional(unittest.TestCase):
@@ -86,5 +86,31 @@ class TestWebFunctional(unittest.TestCase):
             self.assertEqual(200, resp.status)
             txt = yield from resp.text()
             self.assertEqual('русский', txt)
+
+        self.loop.run_until_complete(go())
+
+    def test_post_json(self):
+
+        dct = {'key': 'текст'}
+
+        @asyncio.coroutine
+        def handler(request):
+            data = yield from request.json()
+            self.assertEqual(dct, data)
+            resp = web.Response(request)
+            resp.content_type = 'application/json'
+            resp.body = json.dumps(data).encode('utf8')
+            return resp
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('POST', '/', handler)
+            headers = {'Content-Type': 'application/json'}
+            resp = yield from request('POST', url, data=json.dumps(dct),
+                                      headers=headers,
+                                      loop=self.loop)
+            self.assertEqual(200, resp.status)
+            data = yield from resp.json()
+            self.assertEqual(dct, data)
 
         self.loop.run_until_complete(go())

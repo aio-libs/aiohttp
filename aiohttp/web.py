@@ -435,8 +435,6 @@ class Request(HeadersMixin):
     @asyncio.coroutine
     def json(self, *, loader=json.loads):
         body = yield from self.text()
-        if body is None:
-            return None
         return loader(body)
 
     @asyncio.coroutine
