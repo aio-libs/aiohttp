@@ -461,15 +461,15 @@ class Request(HeadersMixin):
                               keep_blank_values=True,
                               encoding='utf-8')
 
+        supported_tranfer_encoding = {
+            'base64': binascii.a2b_base64,
+            'quoted-printable': binascii.a2b_qp
+        }
         out = MutableMultiDict()
         for field in fs.list or ():
             charset = field.type_options.get('charset', 'utf-8')
             transfer_encoding = field.headers.get('Content-Transfer-Encoding',
                                                   None)
-            supported_tranfer_encoding = {
-                'base64': binascii.a2b_base64,
-                'quoted-printable': binascii.a2b_qp
-                }
             if charset == 'utf-8':
                 decode = lambda b: b
             else:
