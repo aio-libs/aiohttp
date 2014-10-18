@@ -101,3 +101,10 @@ class TestWebRequest(unittest.TestCase):
 
         ret = self.loop.run_until_complete(req.POST())
         self.assertEqual(MultiDict(), ret)
+
+    def test_call_POST_twice(self):
+        req = self.make_request('GET', '/')
+
+        ret1 = self.loop.run_until_complete(req.POST())
+        ret2 = self.loop.run_until_complete(req.POST())
+        self.assertIs(ret1, ret2)
