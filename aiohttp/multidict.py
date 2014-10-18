@@ -11,6 +11,8 @@ class MultiDict(abc.Mapping):
     This type of MultiDict must be used for request headers and query args.
     """
 
+    __slots__ = ('_items',)
+
     def __init__(self, *args, **kwargs):
         if len(args) > 1:
             raise TypeError("MultiDict takes at most 2 positional "
