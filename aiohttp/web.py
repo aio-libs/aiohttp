@@ -519,10 +519,6 @@ class UrlMappingMatchInfo(AbstractMatchInfo):
     def matchdict(self):
         return self._matchdict
 
-    @property
-    def route_name(self):
-        return self._entry.name
-
 
 Entry = collections.namedtuple('Entry', 'regex method handler')
 
