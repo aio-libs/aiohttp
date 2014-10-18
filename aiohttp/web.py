@@ -429,8 +429,6 @@ class Request(HeadersMixin):
     @asyncio.coroutine
     def text(self):
         bytes_body = yield from self.read()
-        if bytes_body is None:
-            return None
         encoding = self.charset or 'utf-8'
         return bytes_body.decode(encoding)
 

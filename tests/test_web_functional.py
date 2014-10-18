@@ -69,3 +69,22 @@ class TestWebFunctional(unittest.TestCase):
             self.assertEqual('OK', txt)
 
         self.loop.run_until_complete(go())
+
+    def test_post_text(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            data = yield from request.text()
+            self.assertEqual('русский', data)
+            return web.Response(request, data.encode('utf8'))
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('POST', '/', handler)
+            resp = yield from request('POST', url, data='русский',
+                                      loop=self.loop)
+            self.assertEqual(200, resp.status)
+            txt = yield from resp.text()
+            self.assertEqual('русский', txt)
+
+        self.loop.run_until_complete(go())
