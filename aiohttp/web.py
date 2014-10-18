@@ -304,14 +304,14 @@ class Response(StreamResponse):
 class Request(HeadersMixin):
 
     def __init__(self, app, message, payload, writer):
-        path = unquote(message.path)
-        res = urlsplit(path)
         self._app = app
         self._version = message.version
         self._writer = writer
         self._method = message.method.upper()
         self._host = message.headers.get('HOST')
+        path = unquote(message.path)
         self._path_qs = path
+        res = urlsplit(path)
         self._path = res.path
         self._query_string = res.query
         self._get = None
