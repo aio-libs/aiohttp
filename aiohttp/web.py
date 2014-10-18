@@ -12,8 +12,9 @@ from urllib.parse import urlsplit, parse_qsl, unquote
 
 from .abc import AbstractRouter, AbstractMatchInfo
 from .errors import HttpErrorException
-from .multidict import (MultiDict,
+from .multidict import (CaseInsensitiveMultiDict,
                         CaseInsensitiveMutableMultiDict,
+                        MultiDict,
                         MutableMultiDict)
 from .protocol import Response as ResponseImpl, HttpVersion, HttpVersion11
 from .server import ServerHttpProtocol
@@ -315,11 +316,11 @@ class Request(HeadersMixin):
         self._query_string = res.query
         self._get = MultiDict(parse_qsl(res.query))
         self._post = None
-        self._headers = message.headers
+        self._headers = CaseInsensitiveMultiDict(message.headers)
 
         if self._version < HttpVersion11:
             self._keep_alive = False
-        elif message.closing:
+        elif message.should_close:
             self._keep_alive = False
         else:
             self._keep_alive = True

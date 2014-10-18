@@ -7,7 +7,7 @@ def intro(request):
     txt = textwrap.dedent("""\
         Type {url}/hello/John  {url}/simple or {url}/change_body
         in browser url bar
-    """).format(url=request.host_url)
+    """).format(url='127.0.0.1:8080')
     binary = txt.encode('utf8')
     resp = StreamResponse(request)
     resp.content_length = len(binary)
@@ -39,7 +39,7 @@ def hello(request):
 
 @asyncio.coroutine
 def init(loop):
-    app = Application('localhost:8080', loop=loop)
+    app = Application(loop=loop)
     app.router.add_route('GET', '/', intro)
     app.router.add_route('GET', '/simple', simple)
     app.router.add_route('GET', '/change_body', change_body)
@@ -47,7 +47,7 @@ def init(loop):
     app.router.add_route('GET', '/hello', hello)
 
     srv = yield from loop.create_server(app.make_handler, '127.0.0.1', 8080)
-    print("Server started at http://{}".format(app.host))
+    print("Server started at http://127.0.0.1:8080")
     return srv
 
 loop = asyncio.get_event_loop()

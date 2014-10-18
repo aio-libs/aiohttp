@@ -1,9 +1,9 @@
 import asyncio
 import unittest
 from unittest import mock
-from aiohttp.multidict import CaseInsensitiveMultiDict
+from aiohttp.multidict import MultiDict, CaseInsensitiveMultiDict
 from aiohttp.web import Request, StreamResponse, Response
-from aiohttp.protocol import Request as RequestImpl
+from aiohttp.protocol import RawRequestMessage, HttpVersion11
 
 
 class TestStreamResponse(unittest.TestCase):
@@ -15,11 +15,10 @@ class TestStreamResponse(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
-    def make_request(self, method, path, headers=()):
+    def make_request(self, method, path, headers=MultiDict()):
         self.app = mock.Mock()
-        self.transport = mock.Mock()
-        message = RequestImpl(self.transport, method, path)
-        message.headers.extend(headers)
+        message = RawRequestMessage(method, path, HttpVersion11, headers,
+                                    False, False)
         self.payload = mock.Mock()
         self.writer = mock.Mock()
         req = Request(self.app, message, self.payload, self.writer)
@@ -228,11 +227,10 @@ class TestResponse(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
-    def make_request(self, method, path, headers=()):
+    def make_request(self, method, path, headers=MultiDict()):
         self.app = mock.Mock()
-        self.transport = mock.Mock()
-        message = RequestImpl(self.transport, method, path)
-        message.headers.extend(headers)
+        message = RawRequestMessage(method, path, HttpVersion11, headers,
+                                    False, False)
         self.payload = mock.Mock()
         self.writer = mock.Mock()
         req = Request(self.app, message, self.payload, self.writer)
