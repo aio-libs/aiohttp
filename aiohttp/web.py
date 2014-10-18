@@ -79,7 +79,7 @@ class StreamResponse(HeadersMixin):
     def __init__(self, request):
         self._request = request
         self.headers = CaseInsensitiveMutableMultiDict()
-        self._status_code = 200
+        self._status = 200
         self._cookies = http.cookies.SimpleCookie()
         self._deleted_cookies = set()
         self._keep_alive = request.keep_alive
@@ -147,15 +147,15 @@ class StreamResponse(HeadersMixin):
         self._deleted_cookies.add(name)
 
     @property
-    def status_code(self):
-        return self._status_code
+    def status(self):
+        return self._status
 
-    @status_code.setter
-    def status_code(self, value):
+    @status.setter
+    def status(self, value):
         self._check_sending_started()
         if not isinstance(value, int):
             raise TypeError("Status code must be int")
-        self._status_code = value
+        self._status = value
 
     @property
     def keep_alive(self):
@@ -231,7 +231,7 @@ class StreamResponse(HeadersMixin):
 
         resp_impl = self._resp_impl = ResponseImpl(
             self._request._writer,
-            self._status_code,
+            self._status,
             self._request.version)
 
         self._copy_cookies()
@@ -268,9 +268,9 @@ class StreamResponse(HeadersMixin):
 
 class Response(StreamResponse):
 
-    def __init__(self, request, body=None, *, status_code=200, headers=None):
+    def __init__(self, request, body=None, *, status=200, headers=None):
         super().__init__(request)
-        self.status_code = status_code
+        self.status = status
         self.body = body
         if headers is not None:
             self.headers.extend(headers)

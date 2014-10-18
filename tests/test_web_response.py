@@ -30,32 +30,32 @@ class TestStreamResponse(unittest.TestCase):
 
         self.assertEqual(req, resp._request)
         self.assertIsNone(req._response)
-        self.assertEqual(200, resp.status_code)
+        self.assertEqual(200, resp.status)
         self.assertTrue(resp.keep_alive)
 
-    def test_status_code_cannot_assign_nonint(self):
+    def test_status_cannot_assign_nonint(self):
         req = self.make_request('GET', '/')
         resp = StreamResponse(req)
 
         with self.assertRaises(TypeError):
-            resp.status_code = 'abc'
-        self.assertEqual(200, resp.status_code)
+            resp.status = 'abc'
+        self.assertEqual(200, resp.status)
 
-    def test_status_code_setter(self):
+    def test_status_setter(self):
         req = self.make_request('GET', '/')
         resp = StreamResponse(req)
 
-        resp.status_code = 300
-        self.assertEqual(300, resp.status_code)
+        resp.status = 300
+        self.assertEqual(300, resp.status)
 
-    def test_status_code_cannot_assing_after_sending_headers(self):
+    def test_status_cannot_assing_after_sending_headers(self):
         req = self.make_request('GET', '/')
         resp = StreamResponse(req)
 
         resp.send_headers()
         with self.assertRaises(RuntimeError):
-            resp.status_code = 300
-        self.assertEqual(200, resp.status_code)
+            resp.status = 300
+        self.assertEqual(200, resp.status)
 
     def test_content_length(self):
         req = self.make_request('GET', '/')
@@ -240,17 +240,17 @@ class TestResponse(unittest.TestCase):
         req = self.make_request('GET', '/')
         resp = Response(req)
 
-        self.assertEqual(200, resp.status_code)
+        self.assertEqual(200, resp.status)
         self.assertIsNone(resp.body)
         self.assertEqual(0, resp.content_length)
         self.assertEqual(CaseInsensitiveMultiDict([('CONTENT-LENGTH', '0')]),
                          resp.headers)
 
-    def test_ctor_with_headers_and_status_code(self):
+    def test_ctor_with_headers_and_status(self):
         req = self.make_request('GET', '/')
-        resp = Response(req, b'body', status_code=201, headers={'Age': '12'})
+        resp = Response(req, b'body', status=201, headers={'Age': '12'})
 
-        self.assertEqual(201, resp.status_code)
+        self.assertEqual(201, resp.status)
         self.assertEqual(b'body', resp.body)
         self.assertEqual(4, resp.content_length)
         self.assertEqual(CaseInsensitiveMultiDict([('CONTENT-LENGTH', '4'),
