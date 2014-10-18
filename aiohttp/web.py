@@ -443,13 +443,13 @@ class Request(HeadersMixin):
             return self._post
         if self.method not in ('POST', 'PUT', 'PATCH'):
             self._post = MultiDict()
-            return
+            return self._post
         content_type = self.content_type
         if (content_type not in ('',
                                  'application/x-www-form-urlencoded',
                                  'multipart/form-data')):
             self._post = MultiDict()
-            return
+            return self._post
 
         body = yield from self.read()
         content_charset = self.charset or 'utf-8'

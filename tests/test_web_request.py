@@ -1,3 +1,4 @@
+import asyncio
 import unittest
 from unittest import mock
 from aiohttp.web import Request
@@ -7,6 +8,13 @@ from aiohttp.protocol import RawRequestMessage
 
 
 class TestWebRequest(unittest.TestCase):
+
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+    def tearDown(self):
+        self.loop.close()
 
     def make_request(self, method, path, headers=MultiDict(), *,
                      version=HttpVersion(1, 1), closing=False):
@@ -79,3 +87,9 @@ class TestWebRequest(unittest.TestCase):
     def test_non_keepalive_on_closing(self):
         req = self.make_request('GET', '/', closing=True)
         self.assertFalse(req.keep_alive)
+
+    def test_call_POST_on_GET_request(self):
+        req = self.make_request('GET', '/')
+
+        ret = self.loop.run_until_complete(req.POST())
+        self.assertEqual(MultiDict(), ret)
