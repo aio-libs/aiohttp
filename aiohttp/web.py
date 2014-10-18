@@ -445,7 +445,6 @@ class Request(HeadersMixin):
             self._post = MultiDict()
             return
         content_type = self.content_type
-        content_charset = self.charset or 'utf-8'
         if (content_type not in ('',
                                  'application/x-www-form-urlencoded',
                                  'multipart/form-data')):
@@ -453,6 +452,7 @@ class Request(HeadersMixin):
             return
 
         body = yield from self.read()
+        content_charset = self.charset or 'utf-8'
         fs = cgi.FieldStorage(fp=io.BytesIO(body),
                               environ={'REQUEST_METHOD': self.method},
                               headers=self._headers,
