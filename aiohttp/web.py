@@ -606,11 +606,10 @@ class RequestHandler(ServerHttpProtocol):
                                     "instance, got {!r}")
                                    .format(type(resp)))
 
+            yield from resp.write_eof()
             if resp.keep_alive:
                 # Don't need to read request body if any on closing connection
                 yield from request.release()
-
-            yield from resp.write_eof()
             self.keep_alive(resp.keep_alive)
         else:
             raise HttpErrorException(404, "Not Found")
