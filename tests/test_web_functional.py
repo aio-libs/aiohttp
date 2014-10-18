@@ -39,7 +39,6 @@ class TestWebFunctional(unittest.TestCase):
         def handler(request):
             body = yield from request.read()
             self.assertEqual(b'', body)
-            self.assertIsNone(request.payload)
             return web.Response(request, b'OK')
 
         @asyncio.coroutine

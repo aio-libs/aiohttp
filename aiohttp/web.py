@@ -446,6 +446,7 @@ class Request(HeadersMixin):
             self._post = MultiDict()
             return
         content_type = self.content_type
+        content_charset = self.charset or 'utf-8'
         if (content_type not in ('',
                                  'application/x-www-form-urlencoded',
                                  'multipart/form-data')):
@@ -457,7 +458,7 @@ class Request(HeadersMixin):
                               environ={'REQUEST_METHOD': self.method},
                               headers=self._headers,
                               keep_blank_values=True,
-                              encoding='utf-8')
+                              encoding=content_charset)
 
         supported_tranfer_encoding = {
             'base64': binascii.a2b_base64,
