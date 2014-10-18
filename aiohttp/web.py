@@ -316,7 +316,8 @@ class Request(HeadersMixin):
         self._query_string = res.query
         self._get = None
         self._post = None
-        self._headers = CaseInsensitiveMultiDict(message.headers)
+        self._headers = CaseInsensitiveMultiDict._from_uppercase_multidict(
+            message.headers)
 
         if self._version < HttpVersion11:
             self._keep_alive = False

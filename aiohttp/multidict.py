@@ -97,6 +97,13 @@ class MultiDict(abc.Mapping):
 class CaseInsensitiveMultiDict(MultiDict):
     """Case insensitive multi dict."""
 
+    @classmethod
+    def _from_uppercase_multidict(cls, dct):
+        # NB: doesn't check for uppercase keys!
+        ret = cls.__new__(cls)
+        ret._items = dct._items
+        return ret
+
     def _fill(self, ipairs):
         for key, value in ipairs:
             key = key.upper()
