@@ -61,3 +61,7 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIsNotNone(info)
         self.assertEqual({}, info.matchdict)
         self.assertIs(handler, info.handler)
+
+    def test_add_invalid_path(self):
+        with self.assertRaises(ValueError):
+            self.router.add_route('GET', '/{/', lambda req: None)
