@@ -522,10 +522,7 @@ class UrlDispatcher(AbstractRouter):
 
     METHODS = {'POST', 'GET', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'}
 
-    def __init__(self, *, loop=None):
-        if loop is None:
-            loop = asyncio.get_event_loop()
-        self._loop = loop
+    def __init__(self):
         super().__init__()
         self._urls = []
 
@@ -623,7 +620,7 @@ class Application(dict, asyncio.AbstractServer):
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:
-            router = UrlDispatcher(loop=loop)
+            router = UrlDispatcher()
         self._router = router
         self._loop = loop
 

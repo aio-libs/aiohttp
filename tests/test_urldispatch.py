@@ -11,7 +11,7 @@ class TestUrlDispatcher(unittest.TestCase):
     def setUp(self):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
-        self.router = UrlDispatcher(loop=self.loop)
+        self.router = UrlDispatcher()
 
     def tearDown(self):
         self.loop.close()
