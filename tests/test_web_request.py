@@ -108,3 +108,29 @@ class TestWebRequest(unittest.TestCase):
         ret1 = self.loop.run_until_complete(req.POST())
         ret2 = self.loop.run_until_complete(req.POST())
         self.assertIs(ret1, ret2)
+
+    def test_no_request_cookies(self):
+        req = self.make_request('GET', '/')
+
+        self.assertEqual(req.cookies, {})
+
+        cookies = req.cookies
+        self.assertIs(cookies, req.cookies)
+
+    def test_request_cookie(self):
+        headers = MultiDict(COOKIE='cookie1=value1; cookie2=value2')
+        req = self.make_request('GET', '/', headers=headers)
+
+        self.assertEqual(req.cookies, {
+            'cookie1': 'value1',
+            'cookie2': 'value2',
+            })
+
+    def test_request_cookie__set_item(self):
+        headers = MultiDict(COOKIE='name=value')
+        req = self.make_request('GET', '/', headers=headers)
+
+        self.assertEqual(req.cookies, {'name': 'value'})
+
+        with self.assertRaises(TypeError):
+            req.cookies['my'] = 'value'
