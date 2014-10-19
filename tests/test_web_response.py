@@ -217,6 +217,66 @@ class TestStreamResponse(unittest.TestCase):
         resp.force_close()
         self.assertFalse(resp.keep_alive)
 
+    def test_response_cookies(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        self.assertEqual(resp.cookies, {})
+        self.assertEqual(str(resp.cookies), '')
+
+        resp.set_cookie('name', 'value')
+        self.assertEqual(str(resp.cookies), 'Set-Cookie: name=value')
+        resp.set_cookie('name', 'other_value')
+        self.assertEqual(str(resp.cookies), 'Set-Cookie: name=other_value')
+
+        resp.cookies['name'] = 'another_other_value'
+        resp.cookies['name']['max-age'] = 10
+        self.assertEqual(str(resp.cookies),
+                         'Set-Cookie: name=another_other_value; Max-Age=10')
+
+        resp.del_cookie('name')
+        self.assertEqual(str(resp.cookies), 'Set-Cookie: name=; Max-Age=0')
+
+        resp.set_cookie('name', 'value', domain='local.host')
+        self.assertEqual(str(resp.cookies),
+                         'Set-Cookie: name=value; Domain=local.host')
+
+    def test_response_cookie_path(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        self.assertEqual(resp.cookies, {})
+
+        resp.set_cookie('name', 'value', path='/some/path')
+        self.assertEqual(str(resp.cookies),
+                         'Set-Cookie: name=value; Path=/some/path')
+        resp.set_cookie('name', 'value', expires='123')
+        self.assertEqual(str(resp.cookies),
+                         'Set-Cookie: name=value; expires=123;'
+                         ' Path=/some/path')
+        resp.set_cookie('name', 'value', domain='example.com',
+                        path='/home', expires='123', max_age='10',
+                        secure=True, httponly=True, version='2.0')
+        self.assertEqual(str(resp.cookies),
+                         'Set-Cookie: name=value; '
+                         'Domain=example.com; '
+                         'expires=123; '
+                         'httponly; '
+                         'Max-Age=10; '
+                         'Path=/home; '
+                         'secure; '
+                         'Version=2.0')
+
+    def test_response_cookie__issue_del_cookie(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        self.assertEqual(resp.cookies, {})
+        self.assertEqual(str(resp.cookies), '')
+
+        resp.del_cookie('name')
+        self.assertEqual(str(resp.cookies), 'Set-Cookie: name=; Max-Age=0')
+
 
 class TestResponse(unittest.TestCase):
 
