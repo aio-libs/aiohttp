@@ -514,7 +514,7 @@ class UrlMappingMatchInfo(AbstractMatchInfo):
 Entry = collections.namedtuple('Entry', 'regex method handler')
 
 
-class UrlDispatch(AbstractRouter):
+class UrlDispatcher(AbstractRouter):
 
     DYN = re.compile(r'^\{[_a-zA-Z][_a-zA-Z0-9]*\}$')
     GOOD = r'[^{}/]+'
@@ -623,7 +623,7 @@ class Application(dict, asyncio.AbstractServer):
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:
-            router = UrlDispatch(loop=loop)
+            router = UrlDispatcher(loop=loop)
         self._router = router
         self._loop = loop
 
