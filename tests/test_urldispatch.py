@@ -52,3 +52,12 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIsNotNone(info)
         self.assertEqual({'to': 'tail'}, info.matchdict)
         self.assertIs(handler, info.handler)
+
+    def test_add_with_tailing_slash(self):
+        handler = lambda req: Response(req)
+        self.router.add_route('GET', '/handler/to/path/', handler)
+        req = self.make_request('GET', '/handler/to/path/')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info)
+        self.assertEqual({}, info.matchdict)
+        self.assertIs(handler, info.handler)
