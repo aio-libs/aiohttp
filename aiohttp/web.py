@@ -336,36 +336,68 @@ class Request(HeadersMixin):
 
     @property
     def method(self):
+        """Read only property for getting HTTP method.
+
+        The value is upper-cased str like 'GET', 'POST', 'PUT' etc.
+        """
         return self._method
 
     @property
     def version(self):
+        """Read only property for getting HTTP version of request.
+
+        Returns aiohttp.protocol.HttpVersion instance.
+        """
         return self._version
 
     @property
     def host(self):
+        """Read only property for getting *HOST* header of request.
+
+        Returns str or None if HTTP request has no HOST header.
+        """
         return self._host
 
     @property
     def path_qs(self):
+        """The URL including PATH_INFO and the query string.
+
+        E.g, /app/blog?id=10
+        """
         return self._path_qs
 
     @property
     def path(self):
+        """The URL including *PATH INFO* without the host or scheme.
+
+        E.g., ``/app/blog``
+        """
         return self._path
 
     @property
     def query_string(self):
+        """The query string in the URL.
+
+        E.g., id=10
+        """
         return self._query_string
 
     @property
     def GET(self):
+        """A multidict with all the variables in the query string.
+
+        Lazy property.
+        """
         if self._get is None:
             self._get = MultiDict(parse_qsl(self._query_string))
         return self._get
 
     @property
     def headers(self):
+        """A case-insensitive multidict with all headers.
+
+        Lazy property.
+        """
         return self._headers
 
     @property
@@ -375,6 +407,7 @@ class Request(HeadersMixin):
 
     @property
     def match_info(self):
+        """Result of route resolving."""
         return self._match_info
 
     @property
