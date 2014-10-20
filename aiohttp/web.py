@@ -447,8 +447,7 @@ class Request(HeadersMixin):
     def read(self):
         """Read request body if present.
 
-        Returns bytes object with full request content or None if
-        request has no BODY.
+        Returns bytes object with full request content.
         """
 
         body = bytearray()
@@ -461,17 +460,20 @@ class Request(HeadersMixin):
 
     @asyncio.coroutine
     def text(self):
+        """Return BODY as text using encoding from .charset."""
         bytes_body = yield from self.read()
         encoding = self.charset or 'utf-8'
         return bytes_body.decode(encoding)
 
     @asyncio.coroutine
     def json(self, *, loader=json.loads):
+        """Return BODY as JSON."""
         body = yield from self.text()
         return loader(body)
 
     @asyncio.coroutine
     def POST(self):
+        """Return POST parameters."""
         if self._post is not None:
             return self._post
         if self.method not in ('POST', 'PUT', 'PATCH'):
@@ -531,8 +533,8 @@ class Request(HeadersMixin):
 
 class UrlMappingMatchInfo(AbstractMatchInfo):
 
-    def __init__(self, matchdict, entry):
-        self._matchdict = matchdict
+    def __init__(self, match_dict, entry):
+        self._match_dict = match_dict
         self._entry = entry
 
     @property
@@ -540,8 +542,8 @@ class UrlMappingMatchInfo(AbstractMatchInfo):
         return self._entry.handler
 
     @property
-    def matchdict(self):
-        return self._matchdict
+    def match_dict(self):
+        return self._match_dict
 
 
 Entry = collections.namedtuple('Entry', 'regex method handler')

@@ -80,7 +80,7 @@ connecting routes::
 
        @asyncio.coroutine
        def handle_greeting(self, request):
-           name = request.match_info.matchdict.get('name')
+           name = request.match_info.match_dict.get('name')
            txt = "Hello, {}".format(name)
            return web.Response(request, txt.encode('utf-8')
 
@@ -194,7 +194,79 @@ positional parameter.
 
       Read only property.
 
+   .. method:: release()
 
+      Release request.
+
+      Eat unread part of HTTP BODY if present.
+
+      The method is a :ref:`coroutine <coroutine>`.
+
+      .. note::
+
+          User code may never call :meth:`~Request.release`, all
+          required work will be processed by :mod:`aiohttp.web`
+          internal machinery.
+
+   .. method:: read()
+
+      Read request body, returns :class:`bytes` object with body content.
+
+      The method is a :ref:`coroutine <coroutine>`.
+
+      .. warning::
+
+         The method doesn't store read data internally, subsequent
+         :meth:`~Request.read` call will return empty bytes ``b''``.
+
+   .. method:: text()
+
+      Read request body, decode it using :attr:`charset` encoding or
+      ``UTF-8`` if no encoding was specified in *MIME-type*.
+
+      Returns :class:`str` with body content.
+
+      The method is a :ref:`coroutine <coroutine>`.
+
+      .. warning::
+
+         The method doesn't store read data internally, subsequent
+         :meth:`~Request.text` call will return empty string ``''``.
+
+   .. method:: json(*, loader=json.loads)
+
+      Read request body decoded as *json*.
+
+      The method is just a boilerplate :ref:`coroutine <coroutine>`
+      implemented as::
+
+         @asyncio.coroutine
+         def json(self, *, loader=json.loads):
+             body = yield from self.text()
+             return loader(body)
+
+      .. warning::
+
+         The method doesn't store read data internally, subsequent
+         :meth:`~Request.json` call will raise an exception.
+
+   .. method:: POST()
+
+      A :ref:`coroutine <coroutine>` that reads POST parameters from
+      request body.
+
+      Returns :class:`~aiohttp.multidict.MultiDict` instance filled
+      with parsed data.
+
+      If :attr:`method` is not *POST*, *PUT* or *PATCH* or
+      :attr:`content_type` is not empty or
+      *application/x-www-form-urlencoded* or *multipart/form-data*
+      returns empty multidict.
+
+      .. warning::
+
+         The method **does** store read data internally, subsequent
+         :meth:`~Request.POST` call will return the same value.
 
 
 Content Type
