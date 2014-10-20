@@ -173,13 +173,28 @@ positional parameter.
       .. note::
 
          Exact type of property depends on used router.  If
-         ``app.router`` is :class:`UrlDispatcher` the property contains is
+         ``app.router`` is :class:`UrlDispatcher` the property contains
          :class:`UrlMappingMatchInfo` instance.
 
    .. attribute:: app
 
-      :class:`Application` instance used to call :ref:`request handler
-      <web-handler>`.
+      An :class:`Application` instance used to call :ref:`request handler
+      <web-handler>`, read only property.
+
+   .. attribute:: cookies
+
+      A multidict of all request's cookies.
+
+      Read only :class:`~aiohttp.multidict.MultiDict` lazy property.
+
+   .. attribute:: payload
+
+      A :class:`~aiohttp.streams.FlowControlStreamReader` instance,
+      input stream for reading request's *BODY*.
+
+      Read only property.
+
+
 
 
 Content Type
