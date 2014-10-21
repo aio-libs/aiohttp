@@ -32,7 +32,7 @@ class TestUrlDispatcher(unittest.TestCase):
         req = self.make_request('GET', '/')
         info = self.loop.run_until_complete(self.router.resolve(req))
         self.assertIsNotNone(info)
-        self.assertEqual({}, info.match_dict)
+        self.assertEqual(0, len(info))
         self.assertIs(handler, info.handler)
 
     def test_add_route_simple(self):
@@ -41,7 +41,7 @@ class TestUrlDispatcher(unittest.TestCase):
         req = self.make_request('GET', '/handler/to/path')
         info = self.loop.run_until_complete(self.router.resolve(req))
         self.assertIsNotNone(info)
-        self.assertEqual({}, info.match_dict)
+        self.assertEqual(0, len(info))
         self.assertIs(handler, info.handler)
 
     def test_add_with_matchdict(self):
@@ -50,7 +50,7 @@ class TestUrlDispatcher(unittest.TestCase):
         req = self.make_request('GET', '/handler/tail')
         info = self.loop.run_until_complete(self.router.resolve(req))
         self.assertIsNotNone(info)
-        self.assertEqual({'to': 'tail'}, info.match_dict)
+        self.assertEqual({'to': 'tail'}, info)
         self.assertIs(handler, info.handler)
 
     def test_add_with_tailing_slash(self):
@@ -59,7 +59,7 @@ class TestUrlDispatcher(unittest.TestCase):
         req = self.make_request('GET', '/handler/to/path/')
         info = self.loop.run_until_complete(self.router.resolve(req))
         self.assertIsNotNone(info)
-        self.assertEqual({}, info.match_dict)
+        self.assertEqual({}, info)
         self.assertIs(handler, info.handler)
 
     def test_add_invalid_path(self):

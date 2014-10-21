@@ -339,7 +339,7 @@ class TestResponse(unittest.TestCase):
 
         self.writer.write.side_effect = append
 
-        self.loop.run_until_complete(resp.render())
+        self.loop.run_until_complete(resp.write_eof())
         txt = buf.decode('utf8')
         self.assertRegex(txt, 'HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 0\r\n'
                          'CONNECTION: keep-alive\r\n'
@@ -358,7 +358,7 @@ class TestResponse(unittest.TestCase):
 
         self.writer.write.side_effect = append
 
-        self.loop.run_until_complete(resp.render())
+        self.loop.run_until_complete(resp.write_eof())
         txt = buf.decode('utf8')
         self.assertRegex(txt, 'HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 4\r\n'
                          'CONNECTION: keep-alive\r\n'

@@ -9,6 +9,7 @@ import re
 import weakref
 
 from urllib.parse import urlsplit, parse_qsl, unquote
+from string import Template
 
 from .abc import AbstractRouter, AbstractMatchInfo
 from .errors import HttpErrorException
@@ -288,9 +289,8 @@ class Response(StreamResponse):
 
     @body.setter
     def body(self, body):
-        if body is not None and not isinstance(body,
-                                               (bytes, bytearray, memoryview)):
-            raise TypeError('body argument must be byte-ish (%r)',
+        if body is not None and not isinstance(body, bytes):
+            raise TypeError('body argument must be bytes (%r)',
                             type(body))
         self._check_sending_started()
         self._body = body
@@ -300,12 +300,13 @@ class Response(StreamResponse):
             self.content_length = 0
 
     @asyncio.coroutine
-    def render(self):
+    def write_eof(self):
         body = self._body
-        self.send_headers()
+        if self._resp_impl is None:
+            self.send_headers()
         if body is not None:
             self.write(body)
-        yield from self.write_eof()
+        yield from super().write_eof()
 
 
 class Request(HeadersMixin):
@@ -538,19 +539,15 @@ class Request(HeadersMixin):
         """
 
 
-class UrlMappingMatchInfo(AbstractMatchInfo):
+class UrlMappingMatchInfo(dict, AbstractMatchInfo):
 
     def __init__(self, match_dict, entry):
-        self._match_dict = match_dict
+        super().__init__(match_dict)
         self._entry = entry
 
     @property
     def handler(self):
         return self._entry.handler
-
-    @property
-    def match_dict(self):
-        return self._match_dict
 
 
 Entry = collections.namedtuple('Entry', 'regex method handler')
@@ -619,6 +616,124 @@ class UrlDispatcher(AbstractRouter):
         self._urls.append(Entry(compiled, method, handler))
 
 
+class HTTPException(Response, Exception):
+
+    ## You should set in subclasses:
+    # status = 200
+    # title = 'OK'
+    # explanation = 'why this happens'
+    # body_template_obj = Template('response template')
+
+    # differences from webob.exc.WSGIHTTPException:
+    #
+    # - doesn't use "strip_tags" (${br} placeholder for <br/>, no other html
+    #   in default body template)
+    #
+    # - __call__ never generates a new Response, it always mutates self
+    #
+    # - explicitly sets self.message = detail to prevent whining by Python
+    #   2.6.5+ access of Exception.message
+    #
+    # - its base class of HTTPException is no longer a Python 2.4 compatibility
+    #   shim; it's purely a base class that inherits from Exception.  This
+    #   implies that this class' ``exception`` property always returns
+    #   ``self`` (it exists only for bw compat at this point).
+    #
+    # - documentation improvements (Pyramid-specific docstrings where necessary)
+    #
+    status = None
+    title = None
+    explanation = ''
+    body_template_obj = Template('''\
+${explanation}${br}${br}
+${detail}
+${html_comment}
+''')
+
+    plain_template_obj = Template('''\
+${status}
+
+${body}''')
+
+    html_template_obj = Template('''\
+<html>
+ <head>
+  <title>${status}</title>
+ </head>
+ <body>
+  <h1>${status}</h1>
+  ${body}
+ </body>
+</html>''')
+
+    ## Set this to True for responses that should have no request body
+    empty_body = False
+
+    def __init__(self, detail=None, headers=None, comment=None,
+                 body_template=None, **kw):
+        status = '%s %s' % (self.status, self.title)
+        Response.__init__(self, status=status, **kw)
+        Exception.__init__(self, detail)
+        self.detail = self.message = detail
+        if headers:
+            self.headers.extend(headers)
+        self.comment = comment
+        if body_template is not None:
+            self.body_template = body_template
+            self.body_template_obj = Template(body_template)
+
+        if self.empty_body:
+            del self.content_type
+            del self.content_length
+
+    def __str__(self):
+        return self.detail or self.explanation
+
+    def prepare(self, environ):
+        if not self.body and not self.empty_body:
+            html_comment = ''
+            comment = self.comment or ''
+            accept = environ.get('HTTP_ACCEPT', '')
+            if accept and 'html' in accept or '*/*' in accept:
+                self.content_type = 'text/html'
+                escape = _html_escape
+                page_template = self.html_template_obj
+                br = '<br/>'
+                if comment:
+                    html_comment = '<!-- %s -->' % escape(comment)
+            else:
+                self.content_type = 'text/plain'
+                escape = _no_escape
+                page_template = self.plain_template_obj
+                br = '\n'
+                if comment:
+                    html_comment = escape(comment)
+            args = {
+                'br': br,
+                'explanation': escape(self.explanation),
+                'detail': escape(self.detail or ''),
+                'comment': escape(comment),
+                'html_comment': html_comment,
+                }
+            body_tmpl = self.body_template_obj
+            if HTTPException.body_template_obj is not body_tmpl:
+                # Custom template; add headers to args
+                for k, v in environ.items():
+                    if (not k.startswith('wsgi.')) and ('.' in k):
+                        # omit custom environ variables, stringifying them may
+                        # trigger code that should not be executed here; see
+                        # https://github.com/Pylons/pyramid/issues/239
+                        continue
+                    args[k] = escape(v)
+                for k, v in self.headers.items():
+                    args[k.lower()] = escape(v)
+            body = body_tmpl.substitute(args)
+            page = page_template.substitute(status=self.status, body=body)
+            if isinstance(page, str):
+                page = page.encode(self.charset)
+            self.body = page
+
+
 class RequestHandler(ServerHttpProtocol):
 
     def __init__(self, app, **kwargs):
@@ -628,8 +743,9 @@ class RequestHandler(ServerHttpProtocol):
     @asyncio.coroutine
     def handle_request(self, message, payload):
         request = Request(self._app, message, payload, self.writer)
-        match_info = yield from self._app.router.resolve(request)
-        if match_info is not None:
+        try:
+            match_info = yield from self._app.router.resolve(request)
+
             request._match_info = match_info
             handler = match_info.handler
 
@@ -637,10 +753,7 @@ class RequestHandler(ServerHttpProtocol):
             if (asyncio.iscoroutine(resp) or
                     isinstance(resp, asyncio.Future)):
                 resp = yield from resp
-
-            if isinstance(resp, Response):
-                yield from resp.render()
-            else:
+            if not isinstance(resp, StreamResponse):
                 raise RuntimeError(("Handler should return Response "
                                     "instance, got {!r}")
                                    .format(type(resp)))
@@ -650,35 +763,53 @@ class RequestHandler(ServerHttpProtocol):
                 # Don't need to read request body if any on closing connection
                 yield from request.release()
             self.keep_alive(resp.keep_alive)
-        else:
-            raise HttpErrorException(404, "Not Found")
+
+        except HttpException as exc:
+            yield from exc.write_eof()
+            if exc.keep_alive:
+                # Don't need to read request body if any on closing connection
+                yield from request.release()
+            self.keep_alive(exc.keep_alive)
 
 
-class Application(dict, asyncio.AbstractServer):
+class Application(dict):
 
-    def __init__(self, *, loop=None, router=None, **kwargs):
+    def __init__(self, loop=None, *, router=None, **kwargs):
         # TODO: explicitly accept *debug* param
-        self._kwargs = kwargs
         if loop is None:
             loop = asyncio.get_event_loop()
+        self._kwargs = kwargs
         if router is None:
             router = UrlDispatcher()
         self._router = router
         self._loop = loop
+        self._finish_callbacks = []
 
     @property
     def router(self):
         return self._router
 
+    @property
+    def loop(self):
+        return self._loop
+
     def make_handler(self):
         return RequestHandler(self, loop=self._loop, **self._kwargs)
 
-    def close(self):
-        pass
-
-    def register_on_close(self, cb):
-        pass
-
     @asyncio.coroutine
-    def wait_closed(self):
-        pass
+    def finish(self):
+        for (cb, args, kwargs) in self._finish_callbacks:
+            try:
+                res = cb(*args, **kwargs)
+                if (asyncio.iscoroutine(res) or
+                        isinstance(res, asyncio.Future)):
+                    yield from res
+            except Exception as exc:
+                self._loop.call_exception_handler({
+                    'message': "Error in finish callback",
+                    'exception': exc,
+                    'application': self,
+                })
+
+    def register_on_finish(self, cb, *args, **kwargs):
+        self._finish_callbacks.append((cb, args, kwargs))

@@ -80,7 +80,7 @@ connecting routes::
 
        @asyncio.coroutine
        def handle_greeting(self, request):
-           name = request.match_info.match_dict.get('name')
+           name = request.match_info.get('name')
            txt = "Hello, {}".format(name)
            return web.Response(request, txt.encode('utf-8')
 
@@ -269,6 +269,10 @@ Request's methods
              body = yield from self.text()
              return loader(body)
 
+      :param callable loader: any callable that accepts :class:`str`
+                              and returns :class:`dict` with parsed
+                              JSON (:func:`json.loads` by default).
+
       .. warning::
 
          The method doesn't store read data internally, subsequent
@@ -358,6 +362,8 @@ StreamResponse
 
    Any :meth:`write` call after :meth:`write_eof` is forbidden also.
 
+   :param Request request: HTTP request object on that the response answers.
+
    .. attribute:: status
 
       Read-write property for *HTTP response status code*, :class:`int`.
@@ -400,9 +406,34 @@ StreamResponse
       Convenient way for setting :attr:`cookies`, allows to point
       additional cookie properties like *max_age* in single call.
 
+      :param str name: cookie name
+
+      :param str value: cookie value (will be converted to
+                        :class:`str` if value has another type).
+
+      :param expries: expiration date (optional)
+
+      :param str domain: cookie domain (optional)
+
+      :param max_age: maximum age for cookie (optional)
+
+      :param str path: cookie's path (optional)
+
+      :param bool secure: is cookie secure (optional)?
+
+      :param bool httponly: is cookie for HTTP only (optional)?
+
+      :param int version: cookie version (optional)
+
    .. method:: del_cookie(name, *, domain=None, path=None)
 
       Deletes cookie.
+
+      :param str name: cookie name
+
+      :param str domain: optional cookie domain
+
+      :param str path: optional cookie path
 
       .. warning::
 
@@ -445,7 +476,36 @@ StreamResponse
       A :ref:`coroutine<coroutine>` *may* be called as mark of finish
       *HTTP response* processing.
 
-      Will be called by *internal machinery* otherwise.
+      *Internal machinery* will call the method at the end of request
+       processing if needed.
+
+      After :meth:`write_eof` call any manipulations with *response*
+      object are forbidden.
+
+Response
+^^^^^^^^
+
+.. class:: Response(request, body=None, *, status=200, headers=None)
+
+   The most common response class.
+
+   Accepts *body* argument for setting *HTTP response BODY*.
+
+   :param Request request: *HTTP request* object used for creation the response.
+
+   :param bytes body: response's BODY
+
+   :param int status: HTTP status code, 200 OK by default.
+
+   :param Mapping headers: HTTP headers that should be added to
+                           response's ones.
+
+   .. attribute:: body
+
+      Read-write attribute for storing response's content aka BODY,
+      :class:`bytes`.
+
+      Setting :attr:`body` also recalculates :attr:`content_length` value.
 
 Content Type
 ------------
