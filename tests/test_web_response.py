@@ -32,6 +32,7 @@ class TestStreamResponse(unittest.TestCase):
         self.assertIsNone(req._response)
         self.assertEqual(200, resp.status)
         self.assertTrue(resp.keep_alive)
+        self.assertIs(req, resp.request)
 
     def test_status_cannot_assign_nonint(self):
         req = self.make_request('GET', '/')
@@ -363,3 +364,24 @@ class TestResponse(unittest.TestCase):
         self.assertRegex(txt, 'HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 4\r\n'
                          'CONNECTION: keep-alive\r\n'
                          'DATE: .+\r\nSERVER: .+\r\n\r\ndata')
+
+    def test_send_set_cookie_header(self):
+        req = self.make_request('GET', '/')
+        resp = Response(req)
+        resp.cookies['name'] = 'value'
+
+        self.writer.drain.return_value = ()
+        buf = b''
+
+        def append(data):
+            nonlocal buf
+            buf += data
+
+        self.writer.write.side_effect = append
+
+        self.loop.run_until_complete(resp.write_eof())
+        txt = buf.decode('utf8')
+        self.assertRegex(txt, 'HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 0\r\n'
+                         'SET-COOKIE: name=value\r\n'
+                         'CONNECTION: keep-alive\r\n'
+                         'DATE: .+\r\nSERVER: .+\r\n\r\n')
