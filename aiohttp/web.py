@@ -105,6 +105,10 @@ class StreamResponse(HeadersMixin):
                                 " data").format(resp))
 
     @property
+    def request(self):
+        return self._request
+
+    @property
     def status(self):
         return self._status
 
@@ -666,13 +670,13 @@ ${body}''')
  </body>
 </html>''')
 
-    ## Set this to True for responses that should have no request body
+    # Set this to True for responses that should have no request body
     empty_body = False
 
-    def __init__(self, detail=None, headers=None, comment=None,
+    def __init__(self, request, detail=None, headers=None, comment=None,
                  body_template=None, **kw):
-        status = '%s %s' % (self.status, self.title)
-        Response.__init__(self, status=status, **kw)
+        # status = '%s %s' % (self.status, self.title)
+        Response.__init__(self, status=self.status, **kw)
         Exception.__init__(self, detail)
         self.detail = self.message = detail
         if headers:
@@ -689,11 +693,12 @@ ${body}''')
     def __str__(self):
         return self.detail or self.explanation
 
-    def prepare(self, environ):
+    @asyncio.coroutine
+    def write_eof(self):
         if not self.body and not self.empty_body:
             html_comment = ''
             comment = self.comment or ''
-            accept = environ.get('HTTP_ACCEPT', '')
+            accept = self.request.headers.get('HTTP_ACCEPT', '')
             if accept and 'html' in accept or '*/*' in accept:
                 self.content_type = 'text/html'
                 escape = _html_escape

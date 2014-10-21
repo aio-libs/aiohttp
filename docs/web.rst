@@ -362,7 +362,13 @@ StreamResponse
 
    Any :meth:`write` call after :meth:`write_eof` is forbidden also.
 
-   :param Request request: HTTP request object on that the response answers.
+   :param aiohttp.web.Request request: HTTP request object on that the
+                                       response answers.
+
+   .. attribute:: request
+
+      Read-only property for :class:`Request` object used for creating
+      the response.
 
    .. attribute:: status
 
@@ -415,15 +421,36 @@ StreamResponse
 
       :param str domain: cookie domain (optional)
 
-      :param max_age: maximum age for cookie (optional)
+      :param int max_age: defines the lifetime of the cookie, in
+                          seconds.  The delta-seconds value is a
+                          decimal non- negative integer.  After
+                          delta-seconds seconds elapse, the client
+                          should discard the cookie.  A value of zero
+                          means the cookie should be discarded
+                          immediately.  (optional)
 
-      :param str path: cookie's path (optional)
+      :param str path: specifies the subset of URLs to
+                       which this cookie applies. (optional)
 
-      :param bool secure: is cookie secure (optional)?
+      :param bool secure: attribute (with no value) directs
+                          the user agent to use only (unspecified)
+                          secure means to contact the origin server
+                          whenever it sends back this cookie.
+                          The user agent (possibly under the user's
+                          control) may determine what level of
+                          security it considers appropriate for
+                          "secure" cookies.  The *secure* should be
+                          considered security advice from the server
+                          to the user agent, indicating that it is in
+                          the session's interest to protect the cookie
+                          contents. (optional)
 
-      :param bool httponly: is cookie for HTTP only (optional)?
+      :param bool httponly: ``True`` if the cookie HTTP only (optional)
 
-      :param int version: cookie version (optional)
+      :param int version: a decimal integer, identifies to which
+                          version of the state management
+                          specification the cookie
+                          conforms. (Optional, *version*=1 by default)
 
    .. method:: del_cookie(name, *, domain=None, path=None)
 
@@ -477,7 +504,7 @@ StreamResponse
       *HTTP response* processing.
 
       *Internal machinery* will call the method at the end of request
-       processing if needed.
+      processing if needed.
 
       After :meth:`write_eof` call any manipulations with *response*
       object are forbidden.
@@ -487,9 +514,12 @@ Response
 
 .. class:: Response(request, body=None, *, status=200, headers=None)
 
-   The most common response class.
+   The most usable response class.
 
    Accepts *body* argument for setting *HTTP response BODY*.
+
+   Actual :attr:`body` sending is done in overridden
+   :meth:`~StreamResponse.write_eof`.
 
    :param Request request: *HTTP request* object used for creation the response.
 
@@ -497,7 +527,7 @@ Response
 
    :param int status: HTTP status code, 200 OK by default.
 
-   :param Mapping headers: HTTP headers that should be added to
+   :param collections.abc.Mapping headers: HTTP headers that should be added to
                            response's ones.
 
    .. attribute:: body
@@ -506,6 +536,10 @@ Response
       :class:`bytes`.
 
       Setting :attr:`body` also recalculates :attr:`content_length` value.
+
+      Resetting :attr:`body` (assigning ``None``) set
+      :attr:`content_length` no ``None`` also, dropping
+      *Content-Length* HTTP header.
 
 Content Type
 ------------
