@@ -28,8 +28,24 @@ class HttpMessageTests(unittest.TestCase):
 
         self.assertIs(msg.transport, self.transport)
         self.assertEqual(msg.status, 200)
+        self.assertEqual(msg.reason, "OK")
         self.assertTrue(msg.closing)
         self.assertEqual(msg.status_line, 'HTTP/1.1 200 OK\r\n')
+
+    def test_start_response_with_reason(self):
+        msg = protocol.Response(self.transport, 333, close=True,
+                                reason="My Reason")
+
+        self.assertEqual(msg.status, 333)
+        self.assertEqual(msg.reason, "My Reason")
+        self.assertEqual(msg.status_line, 'HTTP/1.1 333 My Reason\r\n')
+
+    def test_start_response_with_unknown_reason(self):
+        msg = protocol.Response(self.transport, 777, close=True)
+
+        self.assertEqual(msg.status, 777)
+        self.assertEqual(msg.reason, "777")
+        self.assertEqual(msg.status_line, 'HTTP/1.1 777 777\r\n')
 
     def test_force_close(self):
         msg = protocol.Response(self.transport, 200)
