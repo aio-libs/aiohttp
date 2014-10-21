@@ -134,3 +134,10 @@ class TestWebRequest(unittest.TestCase):
 
         with self.assertRaises(TypeError):
             req.cookies['my'] = 'value'
+
+    def test_match_info(self):
+        req = self.make_request('GET', '/')
+        self.assertIsNone(req.match_info)
+        match = {'a': 'b'}
+        req._match_info = match
+        self.assertIs(match, req.match_info)
