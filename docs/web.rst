@@ -412,6 +412,41 @@ StreamResponse
 
          [TBD]: explain it.
 
+   .. attribute:: content_length
+
+      *Content-Length* for outgoing response.
+
+   .. attribute:: content_type
+
+      *Content* part of *Content-Type* for outgoing response.
+
+   .. attribute:: charset
+
+      *Charset* aka *encoding* part of *Content-Type* for outgoing response.
+
+   .. method:: send_headers()
+
+      Send *HTTP header*. You should not change any header data after
+      calling the method.
+
+   .. method:: write(data)
+
+      Send byte-ish data as part of *response BODY*.
+
+      Calls :meth:`send_headers` if not been called.
+
+      Raises :exc:`TypeError` if data is not :class:`bytes`,
+      :class:`bytearray` or :class:`memoryview` instance.
+
+      Raises :exc:`RuntimeError` if :meth:`write_eof` has been called.
+
+   .. method:: write_eof()
+
+      A :ref:`coroutine<coroutine>` *may* be called as mark of finish
+      *HTTP response* processing.
+
+      Will be called by *internal machinery* otherwise.
+
 Content Type
 ------------
 
