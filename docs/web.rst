@@ -16,7 +16,7 @@ For implementing web server at first create :ref:`request handler<web-handler>`.
 
 Handler is a :ref:`coroutine<coroutine>` or regular function that
 accepts only *request* parameter of type :class:`Request`
-and returns *response* instance::
+and returns :class:`Response` instance::
 
    import asyncio
    from aiohttp import web
@@ -50,8 +50,8 @@ Handler
 -------
 
 Handler is an any *callable* that accepts single :class:`Request`
-argument and returns :class:`StreamResponse` or :class:`Response`
-instance.
+argument and returns :class:`StreamResponse` derived
+(e.g. :class:`Response`) instance.
 
 Handler **can** be a :ref:`coroutine<coroutine>`, :mod:`aiohttp.web` will
 **unyield** returned result by applying ``yield from`` to handler.
@@ -106,6 +106,9 @@ positional parameter.
    :mod:`aiohttp.web` does it for you.
 
 .. class:: Request
+
+Common properties
+^^^^^^^^^^^^^^^^^
 
    .. attribute:: method
 
@@ -194,19 +197,40 @@ positional parameter.
 
       Read only property.
 
-   .. method:: release()
+Shortcuts for request headers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-      Release request.
+   .. attribute:: content_type
 
-      Eat unread part of HTTP BODY if present.
+      Read only property with *content* part of *Content-Type* header.
 
-      The method is a :ref:`coroutine <coroutine>`.
+      Returns :class:`str` like ``'text/html'``
 
       .. note::
 
-          User code may never call :meth:`~Request.release`, all
-          required work will be processed by :mod:`aiohttp.web`
-          internal machinery.
+         Returns value is ``'application/octet-stream'`` if no
+         Content-Type header present in HTTP headers according to
+         :rfc:`2616`
+
+   .. attribute:: charset
+
+      Read only property that specifies *encoding* for request BODY.
+
+      The value is parsed from *Content-Type* HTTP header.
+
+      Returns :class:`str` like ``'utf-8'`` or ``None`` if
+      *Content-Type* has no charset information.
+
+   .. attribute:: content_length
+
+      Read only property that returns length of request BODY.
+
+      The value is parsed from *Content-Length* HTTP header.
+
+      Returns :class:`int` or ``None`` if *Content-Length* is absent.
+
+Request's methods
+^^^^^^^^^^^^^^^^^
 
    .. method:: read()
 
@@ -268,6 +292,125 @@ positional parameter.
          The method **does** store read data internally, subsequent
          :meth:`~Request.POST` call will return the same value.
 
+   .. method:: release()
+
+      Release request.
+
+      Eat unread part of HTTP BODY if present.
+
+      The method is a :ref:`coroutine <coroutine>`.
+
+      .. note::
+
+          User code may never call :meth:`~Request.release`, all
+          required work will be processed by :mod:`aiohttp.web`
+          internal machinery.
+
+
+.. _web-response:
+
+
+Response
+--------
+
+For now :mod:`aiohttp.web` has two classes for *HTTP response*:
+:class:`StreamResponse` and :class:`Response`.
+
+Usually you need to use the second one. :class:`StreamResponse`
+intended for streaming data, :class:`Response` contains *HTTP BODY* as
+attribute and sends own content as single piece with correct
+*Content-Length HTTP header*.
+
+For sake of design decisions :class:`Response` is derived from
+:class:`StreamResponse` parent class.
+
+The response supports *keep-alive* handling out-of-the-box if
+*request* supports it.
+
+You can disable *keep-alive* by :meth:`~StreamResponse.force_close` though.
+
+The common case for sending answer from :ref:`web
+handler<web-handler>` is returning :class:`Response` instance::
+
+   def handler(request):
+       return Response(request, "All right!")
+
+
+StreamResponse
+^^^^^^^^^^^^^^
+
+.. class:: StreamResponse(request)
+
+   The base class for *HTTP response* handling.
+
+   Contains methods for setting *HTTP response headers*, *cookies*,
+   *response status code*, writing *HTTP response BODY* and so on.
+
+   The most important thing you should to know about *response* --- it
+   is *Finite State Machine*.
+
+   That means you can do any manipulations on *headers*,
+   *cookies* and *status code* only before :meth:`send_headers`
+   called.
+
+   Once you call :meth:`send_headers` or :meth:`write` any change of
+   *HTTP header* part will raise :exc:`RuntimeError` exception.
+
+   Any :meth:`write` call after :meth:`write_eof` is forbidden also.
+
+   .. attribute:: status
+
+      Read-write property for *HTTP response status code*, :class:`int`.
+
+      ``200`` (OK) by default.
+
+   .. attribute:: keep_alive
+
+      Read-only property, copy of :attr:`Request.keep_alive` by default.
+
+      Can be switched to ``False`` by :meth:`force_close` call.
+
+   .. method:: force_close
+
+      Disable :attr:`keep_alive` for connection. There are no ways to
+      enable it back.
+
+   .. attribute:: headers
+
+      :class:`~aiohttp.multidict.CaseInsensitiveMultiDict` instance
+      for *outgoing* *HTTP headers*.
+
+   .. attribute:: cookies
+
+      An instance of :class:`http.cookies.SimpleCookie` for *outgoing* cookies.
+
+      .. warning::
+
+         Direct setting up *Set-Cookie* header may be overwritten by
+         explicit calls to cookie manipulation.
+
+         We are encourage using of :attr:`cookies` and
+         :meth:`set_cookie`, :meth:`del_cookie` for cookie
+         manipulations.
+
+   .. method:: set_cookie(name, value, *, expires=None, \
+                   domain=None, max_age=None, path=None, \
+                   secure=None, httponly=None, version=None)
+
+      Convenient way for setting :attr:`cookies`, allows to point
+      additional cookie properties like *max_age* in single call.
+
+   .. method:: del_cookie(name, *, domain=None, path=None)
+
+      Deletes cookie.
+
+      .. warning::
+
+         The method is a bit inconsistent.
+
+         It allows to delete cookie not exists on class creation time.
+
+         [TBD]: explain it.
 
 Content Type
 ------------

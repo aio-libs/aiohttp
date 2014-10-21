@@ -52,6 +52,7 @@ class HeadersMixin:
 
     @property
     def content_type(self):
+        """The value of content part for Content-Type HTTP header."""
         raw = self.headers.get('Content-Type')
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
@@ -59,6 +60,7 @@ class HeadersMixin:
 
     @property
     def charset(self):
+        """The value of charset part for Content-Type HTTP header."""
         # Assumes that charset is UTF8 if not specified
         raw = self.headers.get('Content-Type')
         if self._stored_content_type != raw:
@@ -67,6 +69,7 @@ class HeadersMixin:
 
     @property
     def content_length(self):
+        """The value of Content-Length HTTP header."""
         l = self.headers.get('Content-Length')
         if l is None:
             return None
@@ -78,7 +81,7 @@ class StreamResponse(HeadersMixin):
 
     def __init__(self, request):
         self._request = request
-        self.headers = CaseInsensitiveMutableMultiDict()
+        self._headers = CaseInsensitiveMutableMultiDict()
         self._status = 200
         self._cookies = http.cookies.SimpleCookie()
         self._deleted_cookies = set()
@@ -99,6 +102,28 @@ class StreamResponse(HeadersMixin):
         if resp is not None:
             raise RuntimeError(("Response {!r} already started to send"
                                 " data").format(resp))
+
+    @property
+    def status(self):
+        return self._status
+
+    @status.setter
+    def status(self, value):
+        self._check_sending_started()
+        if not isinstance(value, int):
+            raise TypeError("Status code must be int")
+        self._status = value
+
+    @property
+    def keep_alive(self):
+        return self._keep_alive
+
+    def force_close(self):
+        self._keep_alive = False
+
+    @property
+    def headers(self):
+        return self._headers
 
     @property
     def cookies(self):
@@ -145,24 +170,6 @@ class StreamResponse(HeadersMixin):
         self._cookies.pop(name, None)
         self.set_cookie(name, '', max_age=0, domain=domain, path=path)
         self._deleted_cookies.add(name)
-
-    @property
-    def status(self):
-        return self._status
-
-    @status.setter
-    def status(self, value):
-        self._check_sending_started()
-        if not isinstance(value, int):
-            raise TypeError("Status code must be int")
-        self._status = value
-
-    @property
-    def keep_alive(self):
-        return self._keep_alive
-
-    def force_close(self):
-        self._keep_alive = False
 
     @property
     def content_length(self):
