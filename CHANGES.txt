@@ -3,6 +3,8 @@ CHANGES
 
 - Add aiohttp.web subpackage for highlevel http server support.
 
+- Add *reason* optional parameter to aiohttp.protocol.Response ctor.
+
 0.9.2 (10-16-2014)
 ------------------
 
