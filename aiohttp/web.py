@@ -8,8 +8,9 @@ import json
 import re
 import weakref
 
-from urllib.parse import urlsplit, parse_qsl, unquote
+from html import escape as _html_escape
 from string import Template
+from urllib.parse import urlsplit, parse_qsl, unquote
 
 from .abc import AbstractRouter, AbstractMatchInfo
 from .errors import HttpErrorException
@@ -620,31 +621,25 @@ class UrlDispatcher(AbstractRouter):
         self._urls.append(Entry(compiled, method, handler))
 
 
+def _no_escape(value):
+    if value is None:
+        return ''
+    if not isinstance(value, str):
+        if isinstance(value, bytes):
+            value = value.decode('utf-8')
+        else:
+            value = str(value)
+    return value
+
+
 class HTTPException(Response, Exception):
 
-    ## You should set in subclasses:
+    # You should set in subclasses:
     # status = 200
     # title = 'OK'
     # explanation = 'why this happens'
     # body_template_obj = Template('response template')
 
-    # differences from webob.exc.WSGIHTTPException:
-    #
-    # - doesn't use "strip_tags" (${br} placeholder for <br/>, no other html
-    #   in default body template)
-    #
-    # - __call__ never generates a new Response, it always mutates self
-    #
-    # - explicitly sets self.message = detail to prevent whining by Python
-    #   2.6.5+ access of Exception.message
-    #
-    # - its base class of HTTPException is no longer a Python 2.4 compatibility
-    #   shim; it's purely a base class that inherits from Exception.  This
-    #   implies that this class' ``exception`` property always returns
-    #   ``self`` (it exists only for bw compat at this point).
-    #
-    # - documentation improvements (Pyramid-specific docstrings where necessary)
-    #
     status = None
     title = None
     explanation = ''
@@ -721,21 +716,9 @@ ${body}''')
                 'html_comment': html_comment,
                 }
             body_tmpl = self.body_template_obj
-            if HTTPException.body_template_obj is not body_tmpl:
-                # Custom template; add headers to args
-                for k, v in environ.items():
-                    if (not k.startswith('wsgi.')) and ('.' in k):
-                        # omit custom environ variables, stringifying them may
-                        # trigger code that should not be executed here; see
-                        # https://github.com/Pylons/pyramid/issues/239
-                        continue
-                    args[k] = escape(v)
-                for k, v in self.headers.items():
-                    args[k.lower()] = escape(v)
             body = body_tmpl.substitute(args)
             page = page_template.substitute(status=self.status, body=body)
-            if isinstance(page, str):
-                page = page.encode(self.charset)
+            page = page.encode(self.charset)
             self.body = page
 
 
