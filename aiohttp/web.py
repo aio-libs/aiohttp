@@ -648,10 +648,9 @@ class HTTPPartialContent(HTTPSuccessful):
 class _HTTPMove(HTTPRedirection):
 
     def __init__(self, request, location, *,  headers=None, reason=None):
-        if location is None:
+        if not location:
             raise ValueError("HTTP redirects need a location to redirect to.")
-        super().__init__(request, headers=headers, location=location,
-                         reason=reason)
+        super().__init__(request, headers=headers, reason=reason)
         self.headers['Location'] = location
         self.location = location
 
@@ -722,7 +721,7 @@ class HTTPMethodNotAllowed(HTTPClientError):
     def __init__(self, request, method, allowed_methods, *,
                  headers=None, reason=None):
         allow = ','.join(allowed_methods)
-        super().__init(request, headers=headers, reason=reason)
+        super().__init__(request, headers=headers, reason=reason)
         self.headers['Allow'] = allow
         self.allowed_methods = allowed_methods
         self.method = method.upper()

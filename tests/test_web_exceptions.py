@@ -73,3 +73,41 @@ class TestHTTPExceptions(unittest.TestCase):
         codes = collections.Counter(cls.status_code for cls in terminals)
         self.assertNotIn(None, codes)
         self.assertEqual(1, codes.most_common(1)[0][1])
+
+    def test_HTTPFound(self):
+        req = self.make_request()
+        resp = web.HTTPFound(req, location='/redirect')
+        self.assertEqual('/redirect', resp.location)
+        self.assertEqual('/redirect', resp.headers['location'])
+        self.loop.run_until_complete(resp.write_eof())
+        txt = self.buf.decode('utf8')
+        self.assertRegex(txt, ('HTTP/1.1 302 Found\r\n'
+                               'CONTENT-LENGTH: 0\r\n'
+                               'LOCATION: /redirect\r\n'
+                               'CONNECTION: keep-alive\r\n'
+                               'DATE: .+\r\n'
+                               'SERVER: .+\r\n\r\n'))
+
+    def test_HTTPFound_empty_location(self):
+        req = self.make_request()
+
+        with self.assertRaises(ValueError):
+            web.HTTPFound(req, location='')
+
+        with self.assertRaises(ValueError):
+            web.HTTPFound(req, location=None)
+
+    def test_HTTPMethodNotAllowed(self):
+        req = self.make_request()
+        resp = web.HTTPMethodNotAllowed(req, 'get', ['POST', 'PUT'])
+        self.assertEqual('GET', resp.method)
+        self.assertEqual(['POST', 'PUT'], resp.allowed_methods)
+        self.assertEqual('POST,PUT', resp.headers['allow'])
+        self.loop.run_until_complete(resp.write_eof())
+        txt = self.buf.decode('utf8')
+        self.assertRegex(txt, ('HTTP/1.1 405 Method Not Allowed\r\n'
+                               'CONTENT-LENGTH: 0\r\n'
+                               'ALLOW: POST,PUT\r\n'
+                               'CONNECTION: keep-alive\r\n'
+                               'DATE: .+\r\n'
+                               'SERVER: .+\r\n\r\n'))
