@@ -114,3 +114,21 @@ class TestWebFunctional(unittest.TestCase):
             self.assertEqual(dct, data)
 
         self.loop.run_until_complete(go())
+
+    def test_render_redirect(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            raise web.HTTPMovedPermanently(request, location='/path')
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('GET', '/', handler)
+            resp = yield from request('GET', url, loop=self.loop,
+                                      allow_redirects=False)
+            self.assertEqual(301, resp.status)
+            txt = yield from resp.text()
+            self.assertEqual('', txt)
+            self.assertEqual('/path', resp.headers['location'])
+
+        self.loop.run_until_complete(go())

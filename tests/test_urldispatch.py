@@ -1,8 +1,8 @@
 import asyncio
 import unittest
 from unittest import mock
-from aiohttp.web import (UrlDispatcher, Request, Response, HTTPMethodNotAllowed,
-                         HTTPNotFound)
+from aiohttp.web import (UrlDispatcher, Request, Response,
+                         HTTPMethodNotAllowed, HTTPNotFound)
 from aiohttp.multidict import MultiDict
 from aiohttp.protocol import HttpVersion, RawRequestMessage
 
