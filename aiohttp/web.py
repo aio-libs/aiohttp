@@ -710,9 +710,8 @@ ${html_comment}''')
                  body_template=None, **kw):
         if location is None:
             raise ValueError("HTTP redirects need a location to redirect to.")
-        super(_HTTPMove, self).__init__(
-            detail=detail, headers=headers, comment=comment,
-            body_template=body_template, location=location, **kw)
+        super().__init__(detail=detail, headers=headers, comment=comment,
+                         body_template=body_template, location=location, **kw)
 
 
 class HTTPMultipleChoices(_HTTPMove):
@@ -785,9 +784,9 @@ class HTTPForbidden(HTTPClientError):
 
     def __init__(self, detail=None, headers=None, comment=None,
                  body_template=None, result=None, **kw):
-        HTTPClientError.__init__(self, detail=detail, headers=headers,
-                                 comment=comment, body_template=body_template,
-                                 **kw)
+        super().__init__(detail=detail, headers=headers,
+                         comment=comment, body_template=body_template,
+                         **kw)
         self.result = result
 
 
@@ -962,7 +961,7 @@ class UrlDispatcher(AbstractRouter):
                     headers={'ALLOW', allow})
             else:
                 # add log
-                raise HttpErrorException(404, "Not Found")
+                raise HTTPNotFound()
 
         matchdict = match.groupdict()
         return UrlMappingMatchInfo(matchdict, entry)
