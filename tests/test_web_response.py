@@ -34,30 +34,6 @@ class TestStreamResponse(unittest.TestCase):
         self.assertTrue(resp.keep_alive)
         self.assertIs(req, resp.request)
 
-    def test_status_cannot_assign_nonint(self):
-        req = self.make_request('GET', '/')
-        resp = StreamResponse(req)
-
-        with self.assertRaises(TypeError):
-            resp.status = 'abc'
-        self.assertEqual(200, resp.status)
-
-    def test_status_setter(self):
-        req = self.make_request('GET', '/')
-        resp = StreamResponse(req)
-
-        resp.status = 300
-        self.assertEqual(300, resp.status)
-
-    def test_status_cannot_assing_after_sending_headers(self):
-        req = self.make_request('GET', '/')
-        resp = StreamResponse(req)
-
-        resp.send_headers()
-        with self.assertRaises(RuntimeError):
-            resp.status = 300
-        self.assertEqual(200, resp.status)
-
     def test_content_length(self):
         req = self.make_request('GET', '/')
         resp = StreamResponse(req)
@@ -302,6 +278,7 @@ class TestResponse(unittest.TestCase):
         resp = Response(req)
 
         self.assertEqual(200, resp.status)
+        self.assertEqual('OK', resp.reason)
         self.assertIsNone(resp.body)
         self.assertEqual(0, resp.content_length)
         self.assertEqual(CaseInsensitiveMultiDict([('CONTENT-LENGTH', '0')]),

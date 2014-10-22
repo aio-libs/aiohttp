@@ -29,8 +29,12 @@ __all__ = [
     'Request',
     'StreamResponse',
     'Response',
-    'UrlDispatch',
+    'UrlDispatcher',
     'UrlMappingMatchInfo',
+    'HTTPException',
+    'HTTPError',
+    'HTTPRedirection',
+    'HTTPSuccessful',
     ]
 
 
@@ -81,10 +85,13 @@ class HeadersMixin:
 
 class StreamResponse(HeadersMixin):
 
-    def __init__(self, request):
+    def __init__(self, request, *, status=200, reason=None):
         self._request = request
         self._headers = CaseInsensitiveMutableMultiDict()
-        self._status = 200
+        self._status = int(status)
+        if reason is None:
+            reason = ResponseImpl.calc_reason(status)
+        self._reason = reason
         self._cookies = http.cookies.SimpleCookie()
         self._deleted_cookies = set()
         self._keep_alive = request.keep_alive
@@ -113,12 +120,9 @@ class StreamResponse(HeadersMixin):
     def status(self):
         return self._status
 
-    @status.setter
-    def status(self, value):
-        self._check_sending_started()
-        if not isinstance(value, int):
-            raise TypeError("Status code must be int")
-        self._status = value
+    @property
+    def reason(self):
+        return self._reason
 
     @property
     def keep_alive(self):
@@ -245,7 +249,9 @@ class StreamResponse(HeadersMixin):
         resp_impl = self._resp_impl = ResponseImpl(
             self._request._writer,
             self._status,
-            self._request.version)
+            self._request.version,
+            not self._keep_alive,
+            self._reason)
 
         self._copy_cookies()
 
@@ -281,9 +287,9 @@ class StreamResponse(HeadersMixin):
 
 class Response(StreamResponse):
 
-    def __init__(self, request, body=None, *, status=200, headers=None):
-        super().__init__(request)
-        self.status = status
+    def __init__(self, request, body=None, *,
+                 status=200, reason=None, headers=None):
+        super().__init__(request, status=status, reason=reason)
         self.body = body
         if headers is not None:
             self.headers.extend(headers)
@@ -544,83 +550,6 @@ class Request(HeadersMixin):
         """
 
 
-class UrlMappingMatchInfo(dict, AbstractMatchInfo):
-
-    def __init__(self, match_dict, entry):
-        super().__init__(match_dict)
-        self._entry = entry
-
-    @property
-    def handler(self):
-        return self._entry.handler
-
-
-Entry = collections.namedtuple('Entry', 'regex method handler')
-
-
-class UrlDispatcher(AbstractRouter):
-
-    DYN = re.compile(r'^\{[_a-zA-Z][_a-zA-Z0-9]*\}$')
-    GOOD = r'[^{}/]+'
-    PLAIN = re.compile('^'+GOOD+'$')
-
-    METHODS = {'POST', 'GET', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'}
-
-    def __init__(self):
-        super().__init__()
-        self._urls = []
-
-    @asyncio.coroutine
-    def resolve(self, request):
-        path = request.path
-        method = request.method
-        allowed_methods = set()
-        for entry in self._urls:
-            match = entry.regex.match(path)
-            if match is None:
-                continue
-            if entry.method != method:
-                allowed_methods.add(entry.method)
-            else:
-                break
-        else:
-            if allowed_methods:
-                allow = ', '.join(sorted(allowed_methods))
-                # add log
-                raise HttpErrorException(405, "Method Not Allowed",
-                                         headers=(('Allow', allow),))
-            else:
-                # add log
-                raise HttpErrorException(404, "Not Found")
-
-        matchdict = match.groupdict()
-        return UrlMappingMatchInfo(matchdict, entry)
-
-    def add_route(self, method, path, handler):
-        assert path.startswith('/')
-        assert callable(handler), handler
-        method = method.upper()
-        assert method in self.METHODS, method
-        regexp = []
-        for part in path.split('/'):
-            if not part:
-                continue
-            if self.DYN.match(part):
-                regexp.append('(?P<'+part[1:-1]+'>'+self.GOOD+')')
-            elif self.PLAIN.match(part):
-                regexp.append(part)
-            else:
-                raise ValueError("Invalid path '{}'['{}']".format(path, part))
-        pattern = '/' + '/'.join(regexp)
-        if path.endswith('/') and pattern != '/':
-            pattern += '/'
-        try:
-            compiled = re.compile('^' + pattern + '$')
-        except re.error:
-            raise ValueError("Invalid path '{}'".format(path))
-        self._urls.append(Entry(compiled, method, handler))
-
-
 def _no_escape(value):
     if value is None:
         return ''
@@ -640,8 +569,7 @@ class HTTPException(Response, Exception):
     # explanation = 'why this happens'
     # body_template_obj = Template('response template')
 
-    status = None
-    title = None
+    status_code = None
     explanation = ''
     body_template_obj = Template('''\
 ${explanation}${br}${br}
@@ -670,8 +598,7 @@ ${body}''')
 
     def __init__(self, request, detail=None, headers=None, comment=None,
                  body_template=None, **kw):
-        # status = '%s %s' % (self.status, self.title)
-        Response.__init__(self, status=self.status, **kw)
+        Response.__init__(self, status=self.status_code, **kw)
         Exception.__init__(self, detail)
         self.detail = self.message = detail
         if headers:
@@ -717,10 +644,357 @@ ${body}''')
                 }
             body_tmpl = self.body_template_obj
             body = body_tmpl.substitute(args)
-            page = page_template.substitute(status=self.status, body=body)
+            status = "{} {}".format(self.status, self.reason)
+            page = page_template.substitute(status=status, body=body)
             page = page.encode(self.charset)
             self.body = page
 
+
+class HTTPError(HTTPException):
+    """Base class for exceptions with status codes in the 400s and 500s."""
+
+
+class HTTPRedirection(HTTPException):
+    """Base class for exceptions with status codes in the 300s."""
+
+
+class HTTPSuccessful(HTTPException):
+    """Base class for exceptions with status codes in the 200s."""
+
+
+class HTTPOk(HTTPSuccessful):
+    status_code = 200
+
+
+class HTTPCreated(HTTPSuccessful):
+    status_code = 201
+
+
+class HTTPAccepted(HTTPSuccessful):
+    status_code = 202
+    explanation = 'The request is accepted for processing.'
+
+
+class HTTPNonAuthoritativeInformation(HTTPSuccessful):
+    status_code = 203
+
+
+class HTTPNoContent(HTTPSuccessful):
+    status_code = 204
+    empty_body = True
+
+
+class HTTPResetContent(HTTPSuccessful):
+    status_code = 205
+    empty_body = True
+
+
+class HTTPPartialContent(HTTPSuccessful):
+    status_code = 206
+
+
+############################################################
+# 3xx redirection
+############################################################
+
+
+class _HTTPMove(HTTPRedirection):
+
+    explanation = 'The resource has been moved to'
+    body_template_obj = Template('''\
+${explanation} ${location}; you should be redirected automatically.
+${detail}
+${html_comment}''')
+
+    def __init__(self, location='', detail=None, headers=None, comment=None,
+                 body_template=None, **kw):
+        if location is None:
+            raise ValueError("HTTP redirects need a location to redirect to.")
+        super(_HTTPMove, self).__init__(
+            detail=detail, headers=headers, comment=comment,
+            body_template=body_template, location=location, **kw)
+
+
+class HTTPMultipleChoices(_HTTPMove):
+    status_code = 300
+
+
+class HTTPMovedPermanently(_HTTPMove):
+    status_code = 301
+
+
+class HTTPFound(_HTTPMove):
+    status_code = 302
+    explanation = 'The resource was found at'
+
+
+# This one is safe after a POST (the redirected location will be
+# retrieved with GET):
+class HTTPSeeOther(_HTTPMove):
+    status_code = 303
+
+
+class HTTPNotModified(HTTPRedirection):
+    # FIXME: this should include a date or etag header
+    status_code = 304
+    empty_body = True
+
+
+class HTTPUseProxy(_HTTPMove):
+    # Not a move, but looks a little like one
+    status_code = 305
+    explanation = (
+        'The resource must be accessed through a proxy located at')
+
+
+class HTTPTemporaryRedirect(_HTTPMove):
+    status_code = 307
+
+############################################################
+# 4xx client error
+############################################################
+
+
+class HTTPClientError(HTTPError):
+    status_code = 400
+    explanation = ('The server could not comply with the request since '
+                   'it is either malformed or otherwise incorrect.')
+
+
+class HTTPBadRequest(HTTPClientError):
+    pass
+
+
+class HTTPUnauthorized(HTTPClientError):
+    status_code = 401
+    explanation = (
+        'This server could not verify that you are authorized to '
+        'access the document you requested.  Either you supplied the '
+        'wrong credentials (e.g., bad password), or your browser '
+        'does not understand how to supply the credentials required.')
+
+
+class HTTPPaymentRequired(HTTPClientError):
+    status_code = 402
+    explanation = ('Access was denied for financial reasons.')
+
+
+class HTTPForbidden(HTTPClientError):
+    status_code = 403
+    explanation = ('Access was denied to this resource.')
+
+    def __init__(self, detail=None, headers=None, comment=None,
+                 body_template=None, result=None, **kw):
+        HTTPClientError.__init__(self, detail=detail, headers=headers,
+                                 comment=comment, body_template=body_template,
+                                 **kw)
+        self.result = result
+
+
+class HTTPNotFound(HTTPClientError):
+    status_code = 404
+    explanation = ('The resource could not be found.')
+
+
+class HTTPMethodNotAllowed(HTTPClientError):
+    status_code = 405
+    body_template_obj = Template('''\
+The method ${REQUEST_METHOD} is not allowed for this resource. ${br}${br}
+${detail}''')
+
+
+class HTTPNotAcceptable(HTTPClientError):
+    status_code = 406
+
+
+class HTTPProxyAuthenticationRequired(HTTPClientError):
+    status_code = 407
+    explanation = ('Authentication with a local proxy is needed.')
+
+
+class HTTPRequestTimeout(HTTPClientError):
+    status_code = 408
+    explanation = ('The server has waited too long for the request to '
+                   'be sent by the client.')
+
+
+class HTTPConflict(HTTPClientError):
+    status_code = 409
+    explanation = ('There was a conflict when trying to complete '
+                   'your request.')
+
+
+class HTTPGone(HTTPClientError):
+    status_code = 410
+    explanation = ('This resource is no longer available.  No forwarding '
+                   'address is given.')
+
+
+class HTTPLengthRequired(HTTPClientError):
+    status_code = 411
+    explanation = ('Content-Length header required.')
+
+
+class HTTPPreconditionFailed(HTTPClientError):
+    status_code = 412
+    explanation = ('Request precondition failed.')
+
+
+class HTTPRequestEntityTooLarge(HTTPClientError):
+    status_code = 413
+    explanation = ('The body of your request was too large for this server.')
+
+
+class HTTPRequestURITooLong(HTTPClientError):
+    status_code = 414
+    explanation = ('The request URI was too long for this server.')
+
+
+class HTTPUnsupportedMediaType(HTTPClientError):
+    status_code = 415
+
+
+class HTTPRequestRangeNotSatisfiable(HTTPClientError):
+    status_code = 416
+    explanation = ('The Range requested is not available.')
+
+
+class HTTPExpectationFailed(HTTPClientError):
+    status_code = 417
+    explanation = ('Expectation failed.')
+
+############################################################
+# 5xx Server Error
+############################################################
+#  Response status codes beginning with the digit "5" indicate cases in
+#  which the server is aware that it has erred or is incapable of
+#  performing the request. Except when responding to a HEAD request, the
+#  server SHOULD include an entity containing an explanation of the error
+#  situation, and whether it is a temporary or permanent condition. User
+#  agents SHOULD display any included entity to the user. These response
+#  codes are applicable to any request method.
+
+
+class HTTPServerError(HTTPError):
+    status_code = 500
+    explanation = (
+        'The server has either erred or is incapable of performing '
+        'the requested operation.')
+
+
+class HTTPInternalServerError(HTTPServerError):
+    pass
+
+
+class HTTPNotImplemented(HTTPServerError):
+    status_code = 501
+
+
+class HTTPBadGateway(HTTPServerError):
+    status_code = 502
+    explanation = ('Bad gateway.')
+
+
+class HTTPServiceUnavailable(HTTPServerError):
+    status_code = 503
+    explanation = ('The server is currently unavailable. '
+                   'Please try again at a later time.')
+
+
+class HTTPGatewayTimeout(HTTPServerError):
+    status_code = 504
+    explanation = ('The gateway has timed out.')
+
+
+class HTTPVersionNotSupported(HTTPServerError):
+    status_code = 505
+    explanation = ('The HTTP version is not supported.')
+
+
+############################################################
+# UrlDispatcher implementation
+############################################################
+
+class UrlMappingMatchInfo(dict, AbstractMatchInfo):
+
+    def __init__(self, match_dict, entry):
+        super().__init__(match_dict)
+        self._entry = entry
+
+    @property
+    def handler(self):
+        return self._entry.handler
+
+
+Entry = collections.namedtuple('Entry', 'regex method handler')
+
+
+class UrlDispatcher(AbstractRouter):
+
+    DYN = re.compile(r'^\{[_a-zA-Z][_a-zA-Z0-9]*\}$')
+    GOOD = r'[^{}/]+'
+    PLAIN = re.compile('^'+GOOD+'$')
+
+    METHODS = {'POST', 'GET', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'}
+
+    def __init__(self):
+        super().__init__()
+        self._urls = []
+
+    @asyncio.coroutine
+    def resolve(self, request):
+        path = request.path
+        method = request.method
+        allowed_methods = set()
+        for entry in self._urls:
+            match = entry.regex.match(path)
+            if match is None:
+                continue
+            if entry.method != method:
+                allowed_methods.add(entry.method)
+            else:
+                break
+        else:
+            if allowed_methods:
+                allow = ', '.join(sorted(allowed_methods))
+                # add log
+                raise HTTPMethodNotAllowed(
+                    headers={'ALLOW', allow})
+            else:
+                # add log
+                raise HttpErrorException(404, "Not Found")
+
+        matchdict = match.groupdict()
+        return UrlMappingMatchInfo(matchdict, entry)
+
+    def add_route(self, method, path, handler):
+        assert path.startswith('/')
+        assert callable(handler), handler
+        method = method.upper()
+        assert method in self.METHODS, method
+        regexp = []
+        for part in path.split('/'):
+            if not part:
+                continue
+            if self.DYN.match(part):
+                regexp.append('(?P<'+part[1:-1]+'>'+self.GOOD+')')
+            elif self.PLAIN.match(part):
+                regexp.append(part)
+            else:
+                raise ValueError("Invalid path '{}'['{}']".format(path, part))
+        pattern = '/' + '/'.join(regexp)
+        if path.endswith('/') and pattern != '/':
+            pattern += '/'
+        try:
+            compiled = re.compile('^' + pattern + '$')
+        except re.error:
+            raise ValueError("Invalid path '{}'".format(path))
+        self._urls.append(Entry(compiled, method, handler))
+
+
+############################################################
+# Application implementation
+############################################################
 
 class RequestHandler(ServerHttpProtocol):
 
@@ -752,7 +1026,7 @@ class RequestHandler(ServerHttpProtocol):
                 yield from request.release()
             self.keep_alive(resp.keep_alive)
 
-        except HttpException as exc:
+        except HTTPException as exc:
             yield from exc.write_eof()
             if exc.keep_alive:
                 # Don't need to read request body if any on closing connection

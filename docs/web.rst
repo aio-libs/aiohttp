@@ -343,7 +343,7 @@ handler<web-handler>` is returning :class:`Response` instance::
 StreamResponse
 ^^^^^^^^^^^^^^
 
-.. class:: StreamResponse(request)
+.. class:: StreamResponse(request. *, status=200, reason=None)
 
    The base class for *HTTP response* handling.
 
@@ -365,6 +365,13 @@ StreamResponse
    :param aiohttp.web.Request request: HTTP request object on that the
                                        response answers.
 
+   :param int status: HTTP status code, ``200`` by default.
+
+   :param str reason: HTTP reason. If param is ``None`` reason will be
+                      calculated basing on *status*
+                      parameter. Otherwise pass :class:`str` with
+                      arbitrary *status* explanation..
+
    .. attribute:: request
 
       Read-only property for :class:`Request` object used for creating
@@ -372,9 +379,16 @@ StreamResponse
 
    .. attribute:: status
 
-      Read-write property for *HTTP response status code*, :class:`int`.
+      Read-only property for *HTTP response status code*, :class:`int`.
 
       ``200`` (OK) by default.
+
+   .. attribute:: reason
+
+      Read-only property for *HTTP response reason*, :class:`str`.
+
+      By default auto calculated basing on :attr:`status`, may be
+      overridden in constructor of :class:`StreamResponse`.
 
    .. attribute:: keep_alive
 
