@@ -720,7 +720,7 @@ class HTTPMethodNotAllowed(HTTPClientError):
 
     def __init__(self, request, method, allowed_methods, *,
                  headers=None, reason=None):
-        allow = ','.join(allowed_methods)
+        allow = ','.join(sorted(allowed_methods))
         super().__init__(request, headers=headers, reason=reason)
         self.headers['Allow'] = allow
         self.allowed_methods = allowed_methods
@@ -859,11 +859,8 @@ class UrlDispatcher(AbstractRouter):
                 break
         else:
             if allowed_methods:
-                allow = ', '.join(sorted(allowed_methods))
-                # add log
-                raise HTTPMethodNotAllowed(request, headers={'ALLOW', allow})
+                raise HTTPMethodNotAllowed(request, method, allowed_methods)
             else:
-                # add log
                 raise HTTPNotFound(request)
 
         matchdict = match.groupdict()

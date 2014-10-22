@@ -1,7 +1,8 @@
 import asyncio
 import unittest
 from unittest import mock
-from aiohttp.web import UrlDispatcher, Request, Response
+from aiohttp.web import (UrlDispatcher, Request, Response, HTTPMethodNotAllowed,
+                         HTTPNotFound)
 from aiohttp.multidict import MultiDict
 from aiohttp.protocol import HttpVersion, RawRequestMessage
 
@@ -65,3 +66,40 @@ class TestUrlDispatcher(unittest.TestCase):
     def test_add_invalid_path(self):
         with self.assertRaises(ValueError):
             self.router.add_route('GET', '/{/', lambda req: None)
+
+    def test_match_second_result_in_table(self):
+        handler1 = lambda req: Response(req)
+        handler2 = lambda req: Response(req)
+        self.router.add_route('GET', '/h1', handler1)
+        self.router.add_route('POST', '/h2', handler2)
+        req = self.make_request('POST', '/h2')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info)
+        self.assertEqual({}, info)
+        self.assertIs(handler2, info.handler)
+
+    def test_raise_method_not_allowed(self):
+        handler1 = lambda req: Response(req)
+        handler2 = lambda req: Response(req)
+        self.router.add_route('GET', '/', handler1)
+        self.router.add_route('POST', '/', handler2)
+        req = self.make_request('PUT', '/')
+
+        with self.assertRaises(HTTPMethodNotAllowed) as ctx:
+            self.loop.run_until_complete(self.router.resolve(req))
+
+        exc = ctx.exception
+        self.assertEqual('PUT', exc.method)
+        self.assertEqual(405, exc.status)
+        self.assertEqual({'POST', 'GET'}, exc.allowed_methods)
+
+    def test_raise_method_not_found(self):
+        handler = lambda req: Response(req)
+        self.router.add_route('GET', '/a', handler)
+        req = self.make_request('GET', '/b')
+
+        with self.assertRaises(HTTPNotFound) as ctx:
+            self.loop.run_until_complete(self.router.resolve(req))
+
+        exc = ctx.exception
+        self.assertEqual(404, exc.status)
