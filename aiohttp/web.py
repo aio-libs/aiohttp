@@ -8,8 +8,6 @@ import json
 import re
 import weakref
 
-from html import escape as _html_escape
-from string import Template
 from urllib.parse import urlsplit, parse_qsl, unquote
 
 from .abc import AbstractRouter, AbstractMatchInfo
@@ -594,70 +592,13 @@ class HTTPException(Response, Exception):
 
     # You should set in subclasses:
     # status = 200
-    # title = 'OK'
-    # explanation = 'why this happens'
-    # body_template = Template('response template')
 
     status_code = None
-    explanation = ''
-    body_template = Template('''\
-${explanation}${br}${br}
-''')
 
-    plain_template = Template('''\
-${status}
-
-${body}''')
-
-    html_template = Template('''\
-<html>
- <head>
-  <title>${status}</title>
- </head>
- <body>
-  <h1>${status}</h1>
-  ${body}
- </body>
-</html>''')
-
-    # Set this to True for responses that should have no request body
-    empty_body = False
-
-    def __init__(self, request, *, headers=None, reason=None, **kwargs):
+    def __init__(self, request, *, headers=None, reason=None):
         Response.__init__(self, request, status=self.status_code,
                           headers=headers, reason=reason)
         Exception.__init__(self, self.reason)
-
-        self.kwargs = kwargs
-
-        if self.empty_body:
-            self.content_length = 0
-
-    @asyncio.coroutine
-    def write_eof(self):
-        if self.body is None and not self.empty_body:
-            accept = self.request.headers.get('ACCEPT', '').lower()
-            if accept and 'html' in accept or '*/*' in accept:
-                self.content_type = 'text/html'
-                escape = _html_escape
-                page_template = self.html_template
-                br = '<br/>'
-            else:
-                self.content_type = 'text/plain'
-                escape = lambda x: x
-                page_template = self.plain_template
-                br = '\n'
-            args = {
-                'br': br,
-                'explanation': escape(self.explanation),
-                }
-            args.update(self.kwargs)
-            body = self.body_template.substitute(args)
-            status = "{} {}".format(self.status, self.reason)
-            page = page_template.substitute(status=status, body=body)
-            page = page.encode(self.charset or 'utf-8')
-            self.body = page
-            yield from super().write_eof()
 
 
 class HTTPError(HTTPException):
@@ -682,7 +623,6 @@ class HTTPCreated(HTTPSuccessful):
 
 class HTTPAccepted(HTTPSuccessful):
     status_code = 202
-    explanation = 'The request is accepted for processing.'
 
 
 class HTTPNonAuthoritativeInformation(HTTPSuccessful):
@@ -691,12 +631,10 @@ class HTTPNonAuthoritativeInformation(HTTPSuccessful):
 
 class HTTPNoContent(HTTPSuccessful):
     status_code = 204
-    empty_body = True
 
 
 class HTTPResetContent(HTTPSuccessful):
     status_code = 205
-    empty_body = True
 
 
 class HTTPPartialContent(HTTPSuccessful):
@@ -707,19 +645,15 @@ class HTTPPartialContent(HTTPSuccessful):
 # 3xx redirection
 ############################################################
 
-
 class _HTTPMove(HTTPRedirection):
 
-    explanation = 'The resource has been moved to'
-    body_template = Template('''\
-${explanation} ${location}; you should be redirected automatically.
-''')
-
-    def __init__(self, request, location, *,  headers=None, **kwargs):
+    def __init__(self, request, location, *,  headers=None, reason=None):
         if location is None:
             raise ValueError("HTTP redirects need a location to redirect to.")
-        super().__init__(request, headers=headers, location=location, **kwargs)
+        super().__init__(request, headers=headers, location=location,
+                         reason=reason)
         self.headers['Location'] = location
+        self.location = location
 
 
 class HTTPMultipleChoices(_HTTPMove):
@@ -732,7 +666,6 @@ class HTTPMovedPermanently(_HTTPMove):
 
 class HTTPFound(_HTTPMove):
     status_code = 302
-    explanation = 'The resource was found at'
 
 
 # This one is safe after a POST (the redirected location will be
@@ -744,14 +677,11 @@ class HTTPSeeOther(_HTTPMove):
 class HTTPNotModified(HTTPRedirection):
     # FIXME: this should include a date or etag header
     status_code = 304
-    empty_body = True
 
 
 class HTTPUseProxy(_HTTPMove):
     # Not a move, but looks a little like one
     status_code = 305
-    explanation = (
-        'The resource must be accessed through a proxy located at')
 
 
 class HTTPTemporaryRedirect(_HTTPMove):
@@ -768,52 +698,34 @@ class HTTPClientError(HTTPError):
 
 class HTTPBadRequest(HTTPClientError):
     status_code = 400
-    explanation = ('The server could not comply with the request since '
-                   'it is either malformed or otherwise incorrect.')
 
 
 class HTTPUnauthorized(HTTPClientError):
     status_code = 401
-    explanation = (
-        'This server could not verify that you are authorized to '
-        'access the document you requested.  Either you supplied the '
-        'wrong credentials (e.g., bad password), or your browser '
-        'does not understand how to supply the credentials required.')
 
 
 class HTTPPaymentRequired(HTTPClientError):
     status_code = 402
-    explanation = ('Access was denied for financial reasons.')
 
 
 class HTTPForbidden(HTTPClientError):
     status_code = 403
-    explanation = ('Access was denied to this resource.')
-
-    def __init__(self, request, *, headers=None,
-                 result=None):
-        super().__init__(request, headers=headers)
-        self.result = result
 
 
 class HTTPNotFound(HTTPClientError):
     status_code = 404
-    explanation = ('The resource could not be found.')
 
 
 class HTTPMethodNotAllowed(HTTPClientError):
     status_code = 405
-    body_template = Template('''\
-The method ${method} is not allowed for this resource.
-${br}${br}
-Allowed methods are: ${allow}
-''')
 
-    def __init__(self, request, method, allowed_methods, *, headers=None):
+    def __init__(self, request, method, allowed_methods, *,
+                 headers=None, reason=None):
         allow = ','.join(allowed_methods)
-        super().__init(request, headers=headers, method=method.upper(),
-                       allow=allow)
+        super().__init(request, headers=headers, reason=reason)
         self.headers['Allow'] = allow
+        self.allowed_methods = allowed_methods
+        self.method = method.upper()
 
 
 class HTTPNotAcceptable(HTTPClientError):
@@ -822,45 +734,34 @@ class HTTPNotAcceptable(HTTPClientError):
 
 class HTTPProxyAuthenticationRequired(HTTPClientError):
     status_code = 407
-    explanation = ('Authentication with a local proxy is needed.')
 
 
 class HTTPRequestTimeout(HTTPClientError):
     status_code = 408
-    explanation = ('The server has waited too long for the request to '
-                   'be sent by the client.')
 
 
 class HTTPConflict(HTTPClientError):
     status_code = 409
-    explanation = ('There was a conflict when trying to complete '
-                   'your request.')
 
 
 class HTTPGone(HTTPClientError):
     status_code = 410
-    explanation = ('This resource is no longer available.  No forwarding '
-                   'address is given.')
 
 
 class HTTPLengthRequired(HTTPClientError):
     status_code = 411
-    explanation = ('Content-Length header required.')
 
 
 class HTTPPreconditionFailed(HTTPClientError):
     status_code = 412
-    explanation = ('Request precondition failed.')
 
 
 class HTTPRequestEntityTooLarge(HTTPClientError):
     status_code = 413
-    explanation = ('The body of your request was too large for this server.')
 
 
 class HTTPRequestURITooLong(HTTPClientError):
     status_code = 414
-    explanation = ('The request URI was too long for this server.')
 
 
 class HTTPUnsupportedMediaType(HTTPClientError):
@@ -869,12 +770,10 @@ class HTTPUnsupportedMediaType(HTTPClientError):
 
 class HTTPRequestRangeNotSatisfiable(HTTPClientError):
     status_code = 416
-    explanation = ('The Range requested is not available.')
 
 
 class HTTPExpectationFailed(HTTPClientError):
     status_code = 417
-    explanation = ('Expectation failed.')
 
 ############################################################
 # 5xx Server Error
@@ -894,35 +793,26 @@ class HTTPServerError(HTTPError):
 
 class HTTPInternalServerError(HTTPServerError):
     status_code = 500
-    explanation = (
-        'The server has either erred or is incapable of performing '
-        'the requested operation.')
 
 
 class HTTPNotImplemented(HTTPServerError):
     status_code = 501
-    explanation = ('Requested operation is not implemented.')
 
 
 class HTTPBadGateway(HTTPServerError):
     status_code = 502
-    explanation = ('Bad gateway.')
 
 
 class HTTPServiceUnavailable(HTTPServerError):
     status_code = 503
-    explanation = ('The server is currently unavailable. '
-                   'Please try again at a later time.')
 
 
 class HTTPGatewayTimeout(HTTPServerError):
     status_code = 504
-    explanation = ('The gateway has timed out.')
 
 
 class HTTPVersionNotSupported(HTTPServerError):
     status_code = 505
-    explanation = ('The HTTP version is not supported.')
 
 
 ############################################################
