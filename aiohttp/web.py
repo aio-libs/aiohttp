@@ -550,39 +550,28 @@ class Request(HeadersMixin):
         """
 
 
-def _no_escape(value):
-    if value is None:
-        return ''
-    if not isinstance(value, str):
-        if isinstance(value, bytes):
-            value = value.decode('utf-8')
-        else:
-            value = str(value)
-    return value
-
-
 class HTTPException(Response, Exception):
 
     # You should set in subclasses:
     # status = 200
     # title = 'OK'
     # explanation = 'why this happens'
-    # body_template_obj = Template('response template')
+    # body_template = Template('response template')
 
     status_code = None
     explanation = ''
-    body_template_obj = Template('''\
+    body_template = Template('''\
 ${explanation}${br}${br}
 ${detail}
 ${html_comment}
 ''')
 
-    plain_template_obj = Template('''\
+    plain_template = Template('''\
 ${status}
 
 ${body}''')
 
-    html_template_obj = Template('''\
+    html_template = Template('''\
 <html>
  <head>
   <title>${status}</title>
@@ -597,27 +586,22 @@ ${body}''')
     empty_body = False
 
     def __init__(self, request, detail=None, headers=None, comment=None,
-                 body_template=None, **kw):
-        Response.__init__(self, request, status=self.status_code, **kw)
+                 reason=None):
+        Response.__init__(self, request, status=self.status_code,
+                          headers=headers, reason=reason)
         Exception.__init__(self, detail)
-        self.detail = self.message = detail
-        if headers:
-            self.headers.extend(headers)
+        self.detail = detail
         self.comment = comment
-        if body_template is not None:
-            self.body_template = body_template
-            self.body_template_obj = Template(body_template)
 
         if self.empty_body:
-            del self.content_type
-            del self.content_length
+            self.content_length = 0
 
     def __str__(self):
         return self.detail or self.explanation
 
     @asyncio.coroutine
     def write_eof(self):
-        if not self.body and not self.empty_body:
+        if self.body is None and not self.empty_body:
             html_comment = ''
             comment = self.comment or ''
             accept = self.request.headers.get('HTTP_ACCEPT', '')
@@ -630,7 +614,7 @@ ${body}''')
                     html_comment = '<!-- %s -->' % escape(comment)
             else:
                 self.content_type = 'text/plain'
-                escape = _no_escape
+                escape = lambda x: x
                 page_template = self.plain_template_obj
                 br = '\n'
                 if comment:
@@ -642,12 +626,12 @@ ${body}''')
                 'comment': escape(comment),
                 'html_comment': html_comment,
                 }
-            body_tmpl = self.body_template_obj
-            body = body_tmpl.substitute(args)
+            body = self.body_template.substitute(args)
             status = "{} {}".format(self.status, self.reason)
             page = page_template.substitute(status=status, body=body)
             page = page.encode(self.charset)
             self.body = page
+            yield from super().write_eof()
 
 
 class HTTPError(HTTPException):
@@ -701,18 +685,18 @@ class HTTPPartialContent(HTTPSuccessful):
 class _HTTPMove(HTTPRedirection):
 
     explanation = 'The resource has been moved to'
-    body_template_obj = Template('''\
+    body_template = Template('''\
 ${explanation} ${location}; you should be redirected automatically.
 ${detail}
 ${html_comment}''')
 
     def __init__(self, request, location='', detail=None, headers=None,
-                 comment=None, body_template=None, **kw):
+                 comment=None, reason=None):
         if location is None:
             raise ValueError("HTTP redirects need a location to redirect to.")
         super().__init__(request, detail=detail, headers=headers,
-                         comment=comment, body_template=body_template,
-                         location=location, **kw)
+                         comment=comment,
+                         location=location, reason=reason)
 
 
 class HTTPMultipleChoices(_HTTPMove):
@@ -784,10 +768,9 @@ class HTTPForbidden(HTTPClientError):
     explanation = ('Access was denied to this resource.')
 
     def __init__(self, request, detail=None, headers=None, comment=None,
-                 body_template=None, result=None, **kw):
+                 result=None, reason=None):
         super().__init__(request, detail=detail, headers=headers,
-                         comment=comment, body_template=body_template,
-                         **kw)
+                         comment=comment, reason=reason)
         self.result = result
 
 
@@ -798,7 +781,7 @@ class HTTPNotFound(HTTPClientError):
 
 class HTTPMethodNotAllowed(HTTPClientError):
     status_code = 405
-    body_template_obj = Template('''\
+    body_template = Template('''\
 The method ${REQUEST_METHOD} is not allowed for this resource. ${br}${br}
 ${detail}''')
 
@@ -876,18 +859,19 @@ class HTTPExpectationFailed(HTTPClientError):
 
 
 class HTTPServerError(HTTPError):
+    pass
+
+
+class HTTPInternalServerError(HTTPServerError):
     status_code = 500
     explanation = (
         'The server has either erred or is incapable of performing '
         'the requested operation.')
 
 
-class HTTPInternalServerError(HTTPServerError):
-    pass
-
-
 class HTTPNotImplemented(HTTPServerError):
     status_code = 501
+    explanation = ('Requested operation is not implemented.')
 
 
 class HTTPBadGateway(HTTPServerError):
