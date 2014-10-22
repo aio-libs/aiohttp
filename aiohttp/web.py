@@ -598,7 +598,7 @@ ${body}''')
 
     def __init__(self, request, detail=None, headers=None, comment=None,
                  body_template=None, **kw):
-        Response.__init__(self, status=self.status_code, **kw)
+        Response.__init__(self, request, status=self.status_code, **kw)
         Exception.__init__(self, detail)
         self.detail = self.message = detail
         if headers:
@@ -706,12 +706,13 @@ ${explanation} ${location}; you should be redirected automatically.
 ${detail}
 ${html_comment}''')
 
-    def __init__(self, location='', detail=None, headers=None, comment=None,
-                 body_template=None, **kw):
+    def __init__(self, request, location='', detail=None, headers=None,
+                 comment=None, body_template=None, **kw):
         if location is None:
             raise ValueError("HTTP redirects need a location to redirect to.")
-        super().__init__(detail=detail, headers=headers, comment=comment,
-                         body_template=body_template, location=location, **kw)
+        super().__init__(request, detail=detail, headers=headers,
+                         comment=comment, body_template=body_template,
+                         location=location, **kw)
 
 
 class HTTPMultipleChoices(_HTTPMove):
@@ -782,9 +783,9 @@ class HTTPForbidden(HTTPClientError):
     status_code = 403
     explanation = ('Access was denied to this resource.')
 
-    def __init__(self, detail=None, headers=None, comment=None,
+    def __init__(self, request, detail=None, headers=None, comment=None,
                  body_template=None, result=None, **kw):
-        super().__init__(detail=detail, headers=headers,
+        super().__init__(request, detail=detail, headers=headers,
                          comment=comment, body_template=body_template,
                          **kw)
         self.result = result
@@ -957,11 +958,10 @@ class UrlDispatcher(AbstractRouter):
             if allowed_methods:
                 allow = ', '.join(sorted(allowed_methods))
                 # add log
-                raise HTTPMethodNotAllowed(
-                    headers={'ALLOW', allow})
+                raise HTTPMethodNotAllowed(request, headers={'ALLOW', allow})
             else:
                 # add log
-                raise HTTPNotFound()
+                raise HTTPNotFound(request)
 
         matchdict = match.groupdict()
         return UrlMappingMatchInfo(matchdict, entry)
@@ -1015,7 +1015,7 @@ class RequestHandler(ServerHttpProtocol):
                     isinstance(resp, asyncio.Future)):
                 resp = yield from resp
             if not isinstance(resp, StreamResponse):
-                raise RuntimeError(("Handler should return Response "
+                raise RuntimeError(("Handler should return response "
                                     "instance, got {!r}")
                                    .format(type(resp)))
 
