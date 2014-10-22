@@ -15,4 +15,4 @@ class AbstractMatchInfo(metaclass=ABCMeta):
     @property
     @abstractmethod
     def handler(self):
-        pass
+        """Return handler for match info"""

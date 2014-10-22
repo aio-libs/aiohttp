@@ -30,3 +30,12 @@ class TestWeb(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             self.loop.run_until_complete(h.handle_request(message, payload))
+
+    def test_app_loop(self):
+        app = web.Application(loop=self.loop)
+        self.assertIs(self.loop, app.loop)
+
+    def test_app_default_loop(self):
+        asyncio.set_event_loop(self.loop)
+        app = web.Application()
+        self.assertIs(self.loop, app.loop)
