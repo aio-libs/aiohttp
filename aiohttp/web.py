@@ -35,6 +35,46 @@ __all__ = [
     'HTTPError',
     'HTTPRedirection',
     'HTTPSuccessful',
+    'HTTPOk',
+    'HTTPCreated',
+    'HTTPAccepted',
+    'HTTPNonAuthoritativeInformation',
+    'HTTPNoContent',
+    'HTTPResetContent',
+    'HTTPPartialContent',
+    'HTTPMultipleChoices',
+    'HTTPMovedPermanently',
+    'HTTPFound',
+    'HTTPSeeOther',
+    'HTTPNotModified',
+    'HTTPUseProxy',
+    'HTTPTemporaryRedirect',
+    'HTTPClientError',
+    'HTTPBadRequest',
+    'HTTPUnauthorized',
+    'HTTPPaymentRequired',
+    'HTTPForbidden',
+    'HTTPNotFound',
+    'HTTPMethodNotAllowed',
+    'HTTPNotAcceptable',
+    'HTTPProxyAuthenticationRequired',
+    'HTTPRequestTimeout',
+    'HTTPConflict',
+    'HTTPGone',
+    'HTTPLengthRequired',
+    'HTTPPreconditionFailed',
+    'HTTPRequestEntityTooLarge',
+    'HTTPRequestURITooLong',
+    'HTTPUnsupportedMediaType',
+    'HTTPRequestRangeNotSatisfiable',
+    'HTTPExpectationFailed',
+    'HTTPServerError',
+    'HTTPInternalServerError',
+    'HTTPNotImplemented',
+    'HTTPBadGateway',
+    'HTTPServiceUnavailable',
+    'HTTPGatewayTimeout',
+    'HTTPVersionNotSupported',
     ]
 
 
@@ -562,8 +602,6 @@ class HTTPException(Response, Exception):
     explanation = ''
     body_template = Template('''\
 ${explanation}${br}${br}
-${detail}
-${html_comment}
 ''')
 
     plain_template = Template('''\
@@ -585,51 +623,39 @@ ${body}''')
     # Set this to True for responses that should have no request body
     empty_body = False
 
-    def __init__(self, request, detail=None, headers=None, comment=None,
-                 reason=None):
+    def __init__(self, request, *, headers=None, reason=None, **kwargs):
         Response.__init__(self, request, status=self.status_code,
                           headers=headers, reason=reason)
-        Exception.__init__(self, detail)
-        self.detail = detail
-        self.comment = comment
+        Exception.__init__(self, self.reason)
+
+        self.kwargs = kwargs
 
         if self.empty_body:
             self.content_length = 0
 
-    def __str__(self):
-        return self.detail or self.explanation
-
     @asyncio.coroutine
     def write_eof(self):
         if self.body is None and not self.empty_body:
-            html_comment = ''
-            comment = self.comment or ''
-            accept = self.request.headers.get('HTTP_ACCEPT', '')
+            accept = self.request.headers.get('ACCEPT', '').lower()
             if accept and 'html' in accept or '*/*' in accept:
                 self.content_type = 'text/html'
                 escape = _html_escape
-                page_template = self.html_template_obj
+                page_template = self.html_template
                 br = '<br/>'
-                if comment:
-                    html_comment = '<!-- %s -->' % escape(comment)
             else:
                 self.content_type = 'text/plain'
                 escape = lambda x: x
-                page_template = self.plain_template_obj
+                page_template = self.plain_template
                 br = '\n'
-                if comment:
-                    html_comment = escape(comment)
             args = {
                 'br': br,
                 'explanation': escape(self.explanation),
-                'detail': escape(self.detail or ''),
-                'comment': escape(comment),
-                'html_comment': html_comment,
                 }
+            args.update(self.kwargs)
             body = self.body_template.substitute(args)
             status = "{} {}".format(self.status, self.reason)
             page = page_template.substitute(status=status, body=body)
-            page = page.encode(self.charset)
+            page = page.encode(self.charset or 'utf-8')
             self.body = page
             yield from super().write_eof()
 
@@ -687,16 +713,13 @@ class _HTTPMove(HTTPRedirection):
     explanation = 'The resource has been moved to'
     body_template = Template('''\
 ${explanation} ${location}; you should be redirected automatically.
-${detail}
-${html_comment}''')
+''')
 
-    def __init__(self, request, location='', detail=None, headers=None,
-                 comment=None, reason=None):
+    def __init__(self, request, location, *,  headers=None, **kwargs):
         if location is None:
             raise ValueError("HTTP redirects need a location to redirect to.")
-        super().__init__(request, detail=detail, headers=headers,
-                         comment=comment,
-                         location=location, reason=reason)
+        super().__init__(request, headers=headers, location=location, **kwargs)
+        self.headers['Location'] = location
 
 
 class HTTPMultipleChoices(_HTTPMove):
@@ -740,13 +763,13 @@ class HTTPTemporaryRedirect(_HTTPMove):
 
 
 class HTTPClientError(HTTPError):
-    status_code = 400
-    explanation = ('The server could not comply with the request since '
-                   'it is either malformed or otherwise incorrect.')
+    pass
 
 
 class HTTPBadRequest(HTTPClientError):
-    pass
+    status_code = 400
+    explanation = ('The server could not comply with the request since '
+                   'it is either malformed or otherwise incorrect.')
 
 
 class HTTPUnauthorized(HTTPClientError):
@@ -767,10 +790,9 @@ class HTTPForbidden(HTTPClientError):
     status_code = 403
     explanation = ('Access was denied to this resource.')
 
-    def __init__(self, request, detail=None, headers=None, comment=None,
-                 result=None, reason=None):
-        super().__init__(request, detail=detail, headers=headers,
-                         comment=comment, reason=reason)
+    def __init__(self, request, *, headers=None,
+                 result=None):
+        super().__init__(request, headers=headers)
         self.result = result
 
 
@@ -782,8 +804,16 @@ class HTTPNotFound(HTTPClientError):
 class HTTPMethodNotAllowed(HTTPClientError):
     status_code = 405
     body_template = Template('''\
-The method ${REQUEST_METHOD} is not allowed for this resource. ${br}${br}
-${detail}''')
+The method ${method} is not allowed for this resource.
+${br}${br}
+Allowed methods are: ${allow}
+''')
+
+    def __init__(self, request, method, allowed_methods, *, headers=None):
+        allow = ','.join(allowed_methods)
+        super().__init(request, headers=headers, method=method.upper(),
+                       allow=allow)
+        self.headers['Allow'] = allow
 
 
 class HTTPNotAcceptable(HTTPClientError):
