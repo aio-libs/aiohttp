@@ -18,8 +18,9 @@ Mikhail Lukyanchenko
 Nicolas Braem
 Olaf Conradi
 Paul Colomiets
+Philipp A.
 Sebastian Hanula
 Simon Kennedy
+W. Trevor King
 Vaibhav Sagar
 Vitaly Haritonsky
-Philipp A.
