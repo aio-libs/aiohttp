@@ -905,10 +905,7 @@ class UrlDispatcher(AbstractRouter):
         pattern = '/' + '/'.join(regexp)
         if path.endswith('/') and pattern != '/':
             pattern += '/'
-        try:
-            compiled = re.compile('^' + pattern + '$')
-        except re.error:
-            raise ValueError("Invalid path '{}'".format(path))
+        compiled = re.compile('^' + pattern + '$')
         self._urls.append(Entry(compiled, method, handler))
 
 
