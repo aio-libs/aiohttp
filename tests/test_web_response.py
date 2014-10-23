@@ -166,6 +166,18 @@ class TestStreamResponse(unittest.TestCase):
         self.loop.run_until_complete(resp.write_eof())
         self.assertFalse(self.writer.write.called)
 
+    def test_write_returns_drain(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        self.assertEqual((), resp.write(b'data'))
+
+    def test_write_returns_empty_tuple_on_empty_data(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        self.assertEqual((), resp.write(b''))
+
     def test_force_close(self):
         req = self.make_request('GET', '/')
         resp = StreamResponse(req)
