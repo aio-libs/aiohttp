@@ -548,7 +548,7 @@ class StreamResponse(HeadersMixin):
                             type(data))
 
         if self._eof_sent:
-            raise RuntimeError("Cannot call write() after send_eof()")
+            raise RuntimeError("Cannot call write() after write_eof()")
         if self._resp_impl is None:
             self.send_headers()
 
