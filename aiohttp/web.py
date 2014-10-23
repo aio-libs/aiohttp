@@ -531,7 +531,9 @@ class StreamResponse(HeadersMixin):
             self.send_headers()
 
         if data:
-            self._resp_impl.write(data)
+            yield from self._resp_impl.write(data)
+        else:
+            return ()
 
     @asyncio.coroutine
     def write_eof(self):
