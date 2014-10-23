@@ -922,7 +922,6 @@ class RequestHandler(ServerHttpProtocol):
                 raise RuntimeError(("Handler should return response "
                                     "instance, got {!r}")
                                    .format(type(resp)))
-
         except HTTPException as exc:
             resp = exc
 
