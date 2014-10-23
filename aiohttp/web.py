@@ -155,7 +155,6 @@ class Request(HeadersMixin):
         self._match_info = None  # initialized after route resolving
 
         self._payload = payload
-        self._response = None
         self._cookies = None
 
     @property
@@ -385,14 +384,6 @@ class StreamResponse(HeadersMixin):
             value = cookie.output(header='')[1:]
             self.headers.add('Set-Cookie', value)
 
-    def _check_sending_started(self):
-        resp = self._request._response
-        if resp is not None:
-            resp = resp()  # dereference weakref
-        if resp is not None:
-            raise RuntimeError(("Response {!r} already started to send"
-                                " data").format(resp))
-
     @property
     def request(self):
         return self._request
@@ -429,7 +420,6 @@ class StreamResponse(HeadersMixin):
         Also updates only those params which are not None.
         """
 
-        self._check_sending_started()
         if name in self._deleted_cookies:
             self._deleted_cookies.remove(name)
             self._cookies.pop(name, None)
@@ -457,7 +447,6 @@ class StreamResponse(HeadersMixin):
         Creates new empty expired cookie.
         """
         # TODO: do we need domain/path here?
-        self._check_sending_started()
         self._cookies.pop(name, None)
         self.set_cookie(name, '', max_age=0, domain=domain, path=path)
         self._deleted_cookies.add(name)
@@ -469,7 +458,6 @@ class StreamResponse(HeadersMixin):
 
     @content_length.setter
     def content_length(self, value):
-        self._check_sending_started()
         if value is not None:
             value = int(value)
             # TODO: raise error if chunked enabled
@@ -484,7 +472,6 @@ class StreamResponse(HeadersMixin):
 
     @content_type.setter
     def content_type(self, value):
-        self._check_sending_started()
         self.content_type  # read header values if needed
         self._content_type = str(value)
         self._generate_content_type_header()
@@ -496,7 +483,6 @@ class StreamResponse(HeadersMixin):
 
     @charset.setter
     def charset(self, value):
-        self._check_sending_started()
         ctype = self.content_type  # read header values if needed
         if ctype == 'application/octet-stream':
             raise RuntimeError("Setting charset for application/octet-stream "
@@ -515,17 +501,9 @@ class StreamResponse(HeadersMixin):
             ctype = self._content_type
         self.headers['Content-Type'] = ctype
 
-    def set_chunked(self, chunk_size, buffered=True):
-        if self.content_length is not None:
-            raise RuntimeError(
-                "Cannot use chunked encoding with Content-Length set up")
-
     def send_headers(self):
         if self._resp_impl is not None:
             raise RuntimeError("HTTP headers are already sent")
-
-        self._check_sending_started()
-        self._request._response = weakref.ref(self)
 
         resp_impl = self._resp_impl = ResponseImpl(
             self._request._writer,
@@ -584,7 +562,6 @@ class Response(StreamResponse):
         if body is not None and not isinstance(body, bytes):
             raise TypeError('body argument must be bytes (%r)',
                             type(body))
-        self._check_sending_started()
         self._body = body
         if body is not None:
             self.content_length = len(body)

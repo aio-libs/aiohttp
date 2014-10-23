@@ -29,7 +29,6 @@ class TestStreamResponse(unittest.TestCase):
         resp = StreamResponse(req)
 
         self.assertEqual(req, resp._request)
-        self.assertIsNone(req._response)
         self.assertEqual(200, resp.status)
         self.assertTrue(resp.keep_alive)
         self.assertIs(req, resp.request)
@@ -47,15 +46,6 @@ class TestStreamResponse(unittest.TestCase):
         resp.content_length = 234
         self.assertEqual(234, resp.content_length)
 
-    def test_cannot_change_content_length_after_sending_headers(self):
-        req = self.make_request('GET', '/')
-        resp = StreamResponse(req)
-
-        resp.send_headers()
-        with self.assertRaises(RuntimeError):
-            resp.content_length = 123
-        self.assertIsNone(resp.content_length)
-
     def test_drop_content_length_header_on_setting_len_to_None(self):
         req = self.make_request('GET', '/')
         resp = StreamResponse(req)
@@ -72,16 +62,6 @@ class TestStreamResponse(unittest.TestCase):
 
         resp.content_type = 'text/html'
         self.assertEqual('text/html', resp.headers['content-type'])
-
-    def test_cannot_change_content_type_after_sending_headers(self):
-        req = self.make_request('GET', '/')
-        resp = StreamResponse(req)
-
-        resp.content_type = 'text/plain'
-        resp.send_headers()
-        with self.assertRaises(RuntimeError):
-            resp.content_type = 'text/html'
-        self.assertEqual('text/plain', resp.content_type)
 
     def test_setting_charset(self):
         req = self.make_request('GET', '/')
