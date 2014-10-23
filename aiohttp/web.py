@@ -373,7 +373,6 @@ class StreamResponse(HeadersMixin):
             reason = ResponseImpl.calc_reason(status)
         self._reason = reason
         self._cookies = http.cookies.SimpleCookie()
-        self._deleted_cookies = set()
         self._keep_alive = request.keep_alive
 
         self._resp_impl = None
@@ -420,8 +419,9 @@ class StreamResponse(HeadersMixin):
         Also updates only those params which are not None.
         """
 
-        if name in self._deleted_cookies:
-            self._deleted_cookies.remove(name)
+        old = self._cookies.get(name)
+        if old is not None and old.coded_value == '':
+            # deleted cookie
             self._cookies.pop(name, None)
 
         self._cookies[name] = value
@@ -449,7 +449,6 @@ class StreamResponse(HeadersMixin):
         # TODO: do we need domain/path here?
         self._cookies.pop(name, None)
         self.set_cookie(name, '', max_age=0, domain=domain, path=path)
-        self._deleted_cookies.add(name)
 
     @property
     def content_length(self):

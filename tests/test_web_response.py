@@ -246,6 +246,15 @@ class TestStreamResponse(unittest.TestCase):
         resp.del_cookie('name')
         self.assertEqual(str(resp.cookies), 'Set-Cookie: name=; Max-Age=0')
 
+    def test_cookie_set_after_del(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        resp.del_cookie('name')
+        resp.set_cookie('name', 'val')
+        # check for Max-Age dropped
+        self.assertEqual(str(resp.cookies), 'Set-Cookie: name=val')
+
 
 class TestResponse(unittest.TestCase):
 
