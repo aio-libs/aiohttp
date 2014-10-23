@@ -67,6 +67,26 @@ class TestUrlDispatcher(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.router.add_route('GET', '/{/', lambda req: None)
 
+    def test_add_url_invalid1(self):
+        with self.assertRaises(ValueError):
+            self.router.add_route('post', '/post/{id', lambda: None)
+
+    def test_add_url_invalid2(self):
+        with self.assertRaises(ValueError):
+            self.router.add_route('post', '/post/{id{}}', lambda: None)
+
+    def test_add_url_invalid3(self):
+        with self.assertRaises(ValueError):
+            self.router.add_route('post', '/post/{id{}', lambda: None)
+
+    def test_add_url_invalid4(self):
+        with self.assertRaises(ValueError):
+            self.router.add_route('post', '/post/{id"}', lambda: None)
+
+    def test_add_url_invalid5(self):
+        with self.assertRaises(ValueError):
+            self.router.add_route('post', '/post"{id}', lambda: None)
+
     def test_match_second_result_in_table(self):
         handler1 = lambda req: Response(req)
         handler2 = lambda req: Response(req)
