@@ -899,7 +899,7 @@ class UrlDispatcher(AbstractRouter):
             if self.DYN.match(part):
                 regexp.append('(?P<'+part[1:-1]+'>'+self.GOOD+')')
             elif self.PLAIN.match(part):
-                regexp.append(part)
+                regexp.append(re.escape(part))
             else:
                 raise ValueError("Invalid path '{}'['{}']".format(path, part))
         pattern = '/' + '/'.join(regexp)

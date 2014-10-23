@@ -87,6 +87,15 @@ class TestUrlDispatcher(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.router.add_route('post', '/post"{id}', lambda: None)
 
+    def test_add_url_escaping(self):
+        handler = lambda req: Response(req)
+        self.router.add_route('GET', '/+$', handler)
+
+        req = self.make_request('GET', '/+$')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info)
+        self.assertIs(handler, info.handler)
+
     def test_match_second_result_in_table(self):
         handler1 = lambda req: Response(req)
         handler2 = lambda req: Response(req)
