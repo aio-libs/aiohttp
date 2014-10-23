@@ -11,7 +11,6 @@ import weakref
 from urllib.parse import urlsplit, parse_qsl, unquote
 
 from .abc import AbstractRouter, AbstractMatchInfo
-from .errors import HttpErrorException
 from .multidict import (CaseInsensitiveMultiDict,
                         CaseInsensitiveMutableMultiDict,
                         MultiDict,
@@ -545,9 +544,14 @@ class Request(HeadersMixin):
 
         body = yield from self.read()
         content_charset = self.charset or 'utf-8'
+
+        environ = {'REQUEST_METHOD': self.method,
+                   'CONTENT_LENGTH': str(len(body)),
+                   'QUERY_STRING': '',
+                   'CONTENT_TYPE': self.headers.get('CONTENT-TYPE')}
+
         fs = cgi.FieldStorage(fp=io.BytesIO(body),
-                              environ={'REQUEST_METHOD': self.method},
-                              headers=self._headers,
+                              environ=environ,
                               keep_blank_values=True,
                               encoding=content_charset)
 

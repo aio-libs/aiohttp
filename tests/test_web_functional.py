@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os.path
 import socket
 import unittest
 from aiohttp import web, request
@@ -130,5 +131,67 @@ class TestWebFunctional(unittest.TestCase):
             txt = yield from resp.text()
             self.assertEqual('', txt)
             self.assertEqual('/path', resp.headers['location'])
+
+        self.loop.run_until_complete(go())
+
+    def test_post_single_file(self):
+
+        here = os.path.dirname(__file__)
+
+        def check_file(fs):
+            fullname = os.path.join(here, fs.filename)
+            with open(fullname, 'rb') as f:
+                test_data = f.read()
+                data = fs.file.read()
+                self.assertEqual(test_data, data)
+
+        @asyncio.coroutine
+        def handler(request):
+            data = yield from request.POST()
+            self.assertEqual(['sample.crt'], list(data.keys()))
+            for fs in data.values():
+                check_file(fs)
+            resp = web.Response(request, b'OK')
+            return resp
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('POST', '/', handler)
+            f = open(os.path.join(here, 'sample.crt'))
+            resp = yield from request('POST', url, data=[f],
+                                      loop=self.loop)
+            self.assertEqual(200, resp.status)
+
+        self.loop.run_until_complete(go())
+
+    def test_post_files(self):
+
+        here = os.path.dirname(__file__)
+
+        f1 = open(os.path.join(here, 'sample.crt'))
+        f2 = open(os.path.join(here, 'sample.key'))
+
+        def check_file(fs):
+            fullname = os.path.join(here, fs.filename)
+            with open(fullname, 'rb') as f:
+                test_data = f.read()
+                data = fs.file.read()
+                self.assertEqual(test_data, data)
+
+        @asyncio.coroutine
+        def handler(request):
+            data = yield from request.POST()
+            self.assertEqual(['sample.crt', 'sample.key'], list(data.keys()))
+            for fs in data.values():
+                check_file(fs)
+            resp = web.Response(request, b'OK')
+            return resp
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('POST', '/', handler)
+            resp = yield from request('POST', url, data=[f1, f2],
+                                      loop=self.loop)
+            self.assertEqual(200, resp.status)
 
         self.loop.run_until_complete(go())

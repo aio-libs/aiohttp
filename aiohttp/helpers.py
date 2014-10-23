@@ -122,11 +122,13 @@ class FormData:
                      'filename="%s"\r\n' % (name, fname)).encode(encoding))
             else:
                 headers.append(
-                    ('Content-Disposition: form-data; name="%s"\r\n\r\n' %
+                    ('Content-Disposition: form-data; name="%s"\r\n' %
                      name).encode(encoding))
             if ctype:
                 headers.append(
-                    ('Content-Type: %s\r\n\r\n' % ctype).encode(encoding))
+                    ('Content-Type: %s\r\n' % ctype).encode(encoding))
+
+            headers.append(b'\r\n')
 
             yield b''.join(headers)
 
