@@ -120,241 +120,9 @@ class HeadersMixin:
             return int(l)
 
 
-class StreamResponse(HeadersMixin):
-
-    def __init__(self, request, *, status=200, reason=None):
-        self._request = request
-        self._headers = CaseInsensitiveMutableMultiDict()
-        self._status = int(status)
-        if reason is None:
-            reason = ResponseImpl.calc_reason(status)
-        self._reason = reason
-        self._cookies = http.cookies.SimpleCookie()
-        self._deleted_cookies = set()
-        self._keep_alive = request.keep_alive
-
-        self._resp_impl = None
-        self._eof_sent = False
-
-    def _copy_cookies(self):
-        for cookie in self._cookies.values():
-            value = cookie.output(header='')[1:]
-            self.headers.add('Set-Cookie', value)
-
-    def _check_sending_started(self):
-        resp = self._request._response
-        if resp is not None:
-            resp = resp()  # dereference weakref
-        if resp is not None:
-            raise RuntimeError(("Response {!r} already started to send"
-                                " data").format(resp))
-
-    @property
-    def request(self):
-        return self._request
-
-    @property
-    def status(self):
-        return self._status
-
-    @property
-    def reason(self):
-        return self._reason
-
-    @property
-    def keep_alive(self):
-        return self._keep_alive
-
-    def force_close(self):
-        self._keep_alive = False
-
-    @property
-    def headers(self):
-        return self._headers
-
-    @property
-    def cookies(self):
-        return self._cookies
-
-    def set_cookie(self, name, value, *, expires=None,
-                   domain=None, max_age=None, path=None,
-                   secure=None, httponly=None, version=None):
-        """Set or update response cookie.
-
-        Sets new cookie or updates existent with new value.
-        Also updates only those params which are not None.
-        """
-
-        self._check_sending_started()
-        if name in self._deleted_cookies:
-            self._deleted_cookies.remove(name)
-            self._cookies.pop(name, None)
-
-        self._cookies[name] = value
-        c = self._cookies[name]
-        if expires is not None:
-            c['expires'] = expires
-        if domain is not None:
-            c['domain'] = domain
-        if max_age is not None:
-            c['max-age'] = max_age
-        if path is not None:
-            c['path'] = path
-        if secure is not None:
-            c['secure'] = secure
-        if httponly is not None:
-            c['httponly'] = httponly
-        if version is not None:
-            c['version'] = version
-
-    def del_cookie(self, name, *, domain=None, path=None):
-        """Delete cookie.
-
-        Creates new empty expired cookie.
-        """
-        # TODO: do we need domain/path here?
-        self._check_sending_started()
-        self._cookies.pop(name, None)
-        self.set_cookie(name, '', max_age=0, domain=domain, path=path)
-        self._deleted_cookies.add(name)
-
-    @property
-    def content_length(self):
-        # Just a placeholder for adding setter
-        return super().content_length
-
-    @content_length.setter
-    def content_length(self, value):
-        self._check_sending_started()
-        if value is not None:
-            value = int(value)
-            # TODO: raise error if chunked enabled
-            self.headers['Content-Length'] = str(value)
-        elif 'Content-Length' in self.headers:
-            del self.headers['Content-Length']
-
-    @property
-    def content_type(self):
-        # Just a placeholder for adding setter
-        return super().content_type
-
-    @content_type.setter
-    def content_type(self, value):
-        self._check_sending_started()
-        self.content_type  # read header values if needed
-        self._content_type = str(value)
-        self._generate_content_type_header()
-
-    @property
-    def charset(self):
-        # Just a placeholder for adding setter
-        return super().charset
-
-    @charset.setter
-    def charset(self, value):
-        self._check_sending_started()
-        ctype = self.content_type  # read header values if needed
-        if ctype == 'application/octet-stream':
-            raise RuntimeError("Setting charset for application/octet-stream "
-                               "doesn't make sense, setup content_type first")
-        if value is None:
-            self._content_dict.pop('charset', None)
-        else:
-            self._content_dict['charset'] = str(value)
-        self._generate_content_type_header()
-
-    def _generate_content_type_header(self):
-        params = '; '.join("%s=%s" % i for i in self._content_dict.items())
-        if params:
-            ctype = self._content_type + '; ' + params
-        else:
-            ctype = self._content_type
-        self.headers['Content-Type'] = ctype
-
-    def set_chunked(self, chunk_size, buffered=True):
-        if self.content_length is not None:
-            raise RuntimeError(
-                "Cannot use chunked encoding with Content-Length set up")
-
-    def send_headers(self):
-        if self._resp_impl is not None:
-            raise RuntimeError("HTTP headers are already sent")
-
-        self._check_sending_started()
-        self._request._response = weakref.ref(self)
-
-        resp_impl = self._resp_impl = ResponseImpl(
-            self._request._writer,
-            self._status,
-            self._request.version,
-            not self._keep_alive,
-            self._reason)
-
-        self._copy_cookies()
-
-        headers = self.headers.items(getall=True)
-        for key, val in headers:
-            resp_impl.add_header(key, val)
-
-        resp_impl.send_headers()
-
-    def write(self, data):
-        if not isinstance(data, (bytes, bytearray, memoryview)):
-            raise TypeError('data argument must be byte-ish (%r)',
-                            type(data))
-
-        if self._eof_sent:
-            raise RuntimeError("Cannot call write() after send_eof()")
-        if self._resp_impl is None:
-            self.send_headers()
-
-        if data:
-            self._resp_impl.write(data)
-
-    @asyncio.coroutine
-    def write_eof(self):
-        if self._eof_sent:
-            return
-        if self._resp_impl is None:
-            raise RuntimeError("No headers has been sent")
-
-        yield from self._resp_impl.write_eof()
-        self._eof_sent = True
-
-
-class Response(StreamResponse):
-
-    def __init__(self, request, body=None, *,
-                 status=200, reason=None, headers=None):
-        super().__init__(request, status=status, reason=reason)
-        self.body = body
-        if headers is not None:
-            self.headers.extend(headers)
-
-    @property
-    def body(self):
-        return self._body
-
-    @body.setter
-    def body(self, body):
-        if body is not None and not isinstance(body, bytes):
-            raise TypeError('body argument must be bytes (%r)',
-                            type(body))
-        self._check_sending_started()
-        self._body = body
-        if body is not None:
-            self.content_length = len(body)
-        else:
-            self.content_length = 0
-
-    @asyncio.coroutine
-    def write_eof(self):
-        body = self._body
-        if self._resp_impl is None:
-            self.send_headers()
-        if body is not None:
-            self.write(body)
-        yield from super().write_eof()
+############################################################
+# HTTP Request
+############################################################
 
 
 class Request(HeadersMixin):
@@ -591,6 +359,251 @@ class Request(HeadersMixin):
         Returns (reader, writer) pair.
         """
 
+############################################################
+# HTTP Response classes
+############################################################
+
+
+class StreamResponse(HeadersMixin):
+
+    def __init__(self, request, *, status=200, reason=None):
+        self._request = request
+        self._headers = CaseInsensitiveMutableMultiDict()
+        self._status = int(status)
+        if reason is None:
+            reason = ResponseImpl.calc_reason(status)
+        self._reason = reason
+        self._cookies = http.cookies.SimpleCookie()
+        self._deleted_cookies = set()
+        self._keep_alive = request.keep_alive
+
+        self._resp_impl = None
+        self._eof_sent = False
+
+    def _copy_cookies(self):
+        for cookie in self._cookies.values():
+            value = cookie.output(header='')[1:]
+            self.headers.add('Set-Cookie', value)
+
+    def _check_sending_started(self):
+        resp = self._request._response
+        if resp is not None:
+            resp = resp()  # dereference weakref
+        if resp is not None:
+            raise RuntimeError(("Response {!r} already started to send"
+                                " data").format(resp))
+
+    @property
+    def request(self):
+        return self._request
+
+    @property
+    def status(self):
+        return self._status
+
+    @property
+    def reason(self):
+        return self._reason
+
+    @property
+    def keep_alive(self):
+        return self._keep_alive
+
+    def force_close(self):
+        self._keep_alive = False
+
+    @property
+    def headers(self):
+        return self._headers
+
+    @property
+    def cookies(self):
+        return self._cookies
+
+    def set_cookie(self, name, value, *, expires=None,
+                   domain=None, max_age=None, path=None,
+                   secure=None, httponly=None, version=None):
+        """Set or update response cookie.
+
+        Sets new cookie or updates existent with new value.
+        Also updates only those params which are not None.
+        """
+
+        self._check_sending_started()
+        if name in self._deleted_cookies:
+            self._deleted_cookies.remove(name)
+            self._cookies.pop(name, None)
+
+        self._cookies[name] = value
+        c = self._cookies[name]
+        if expires is not None:
+            c['expires'] = expires
+        if domain is not None:
+            c['domain'] = domain
+        if max_age is not None:
+            c['max-age'] = max_age
+        if path is not None:
+            c['path'] = path
+        if secure is not None:
+            c['secure'] = secure
+        if httponly is not None:
+            c['httponly'] = httponly
+        if version is not None:
+            c['version'] = version
+
+    def del_cookie(self, name, *, domain=None, path=None):
+        """Delete cookie.
+
+        Creates new empty expired cookie.
+        """
+        # TODO: do we need domain/path here?
+        self._check_sending_started()
+        self._cookies.pop(name, None)
+        self.set_cookie(name, '', max_age=0, domain=domain, path=path)
+        self._deleted_cookies.add(name)
+
+    @property
+    def content_length(self):
+        # Just a placeholder for adding setter
+        return super().content_length
+
+    @content_length.setter
+    def content_length(self, value):
+        self._check_sending_started()
+        if value is not None:
+            value = int(value)
+            # TODO: raise error if chunked enabled
+            self.headers['Content-Length'] = str(value)
+        elif 'Content-Length' in self.headers:
+            del self.headers['Content-Length']
+
+    @property
+    def content_type(self):
+        # Just a placeholder for adding setter
+        return super().content_type
+
+    @content_type.setter
+    def content_type(self, value):
+        self._check_sending_started()
+        self.content_type  # read header values if needed
+        self._content_type = str(value)
+        self._generate_content_type_header()
+
+    @property
+    def charset(self):
+        # Just a placeholder for adding setter
+        return super().charset
+
+    @charset.setter
+    def charset(self, value):
+        self._check_sending_started()
+        ctype = self.content_type  # read header values if needed
+        if ctype == 'application/octet-stream':
+            raise RuntimeError("Setting charset for application/octet-stream "
+                               "doesn't make sense, setup content_type first")
+        if value is None:
+            self._content_dict.pop('charset', None)
+        else:
+            self._content_dict['charset'] = str(value)
+        self._generate_content_type_header()
+
+    def _generate_content_type_header(self):
+        params = '; '.join("%s=%s" % i for i in self._content_dict.items())
+        if params:
+            ctype = self._content_type + '; ' + params
+        else:
+            ctype = self._content_type
+        self.headers['Content-Type'] = ctype
+
+    def set_chunked(self, chunk_size, buffered=True):
+        if self.content_length is not None:
+            raise RuntimeError(
+                "Cannot use chunked encoding with Content-Length set up")
+
+    def send_headers(self):
+        if self._resp_impl is not None:
+            raise RuntimeError("HTTP headers are already sent")
+
+        self._check_sending_started()
+        self._request._response = weakref.ref(self)
+
+        resp_impl = self._resp_impl = ResponseImpl(
+            self._request._writer,
+            self._status,
+            self._request.version,
+            not self._keep_alive,
+            self._reason)
+
+        self._copy_cookies()
+
+        headers = self.headers.items(getall=True)
+        for key, val in headers:
+            resp_impl.add_header(key, val)
+
+        resp_impl.send_headers()
+
+    def write(self, data):
+        if not isinstance(data, (bytes, bytearray, memoryview)):
+            raise TypeError('data argument must be byte-ish (%r)',
+                            type(data))
+
+        if self._eof_sent:
+            raise RuntimeError("Cannot call write() after send_eof()")
+        if self._resp_impl is None:
+            self.send_headers()
+
+        if data:
+            self._resp_impl.write(data)
+
+    @asyncio.coroutine
+    def write_eof(self):
+        if self._eof_sent:
+            return
+        if self._resp_impl is None:
+            raise RuntimeError("No headers has been sent")
+
+        yield from self._resp_impl.write_eof()
+        self._eof_sent = True
+
+
+class Response(StreamResponse):
+
+    def __init__(self, request, body=None, *,
+                 status=200, reason=None, headers=None):
+        super().__init__(request, status=status, reason=reason)
+        self.body = body
+        if headers is not None:
+            self.headers.extend(headers)
+
+    @property
+    def body(self):
+        return self._body
+
+    @body.setter
+    def body(self, body):
+        if body is not None and not isinstance(body, bytes):
+            raise TypeError('body argument must be bytes (%r)',
+                            type(body))
+        self._check_sending_started()
+        self._body = body
+        if body is not None:
+            self.content_length = len(body)
+        else:
+            self.content_length = 0
+
+    @asyncio.coroutine
+    def write_eof(self):
+        body = self._body
+        if self._resp_impl is None:
+            self.send_headers()
+        if body is not None:
+            self.write(body)
+        yield from super().write_eof()
+
+############################################################
+# HTTP Exceptions
+############################################################
+
 
 class HTTPException(Response, Exception):
 
@@ -649,6 +662,7 @@ class HTTPPartialContent(HTTPSuccessful):
 # 3xx redirection
 ############################################################
 
+
 class _HTTPMove(HTTPRedirection):
 
     def __init__(self, request, location, *,  headers=None, reason=None):
@@ -689,6 +703,7 @@ class HTTPUseProxy(_HTTPMove):
 
 class HTTPTemporaryRedirect(_HTTPMove):
     status_code = 307
+
 
 ############################################################
 # 4xx client error
@@ -778,6 +793,7 @@ class HTTPRequestRangeNotSatisfiable(HTTPClientError):
 class HTTPExpectationFailed(HTTPClientError):
     status_code = 417
 
+
 ############################################################
 # 5xx Server Error
 ############################################################
@@ -821,6 +837,7 @@ class HTTPVersionNotSupported(HTTPServerError):
 ############################################################
 # UrlDispatcher implementation
 ############################################################
+
 
 class UrlMappingMatchInfo(dict, AbstractMatchInfo):
 
@@ -898,6 +915,7 @@ class UrlDispatcher(AbstractRouter):
 ############################################################
 # Application implementation
 ############################################################
+
 
 class RequestHandler(ServerHttpProtocol):
 
