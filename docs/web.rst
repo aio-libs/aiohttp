@@ -25,8 +25,9 @@ and returns :class:`Response` instance::
    def hello(request):
        return web.Response(request, b"Hello, world")
 
-Next you have to create *application* and register *handler* in
-application's router pointing *HTTP method*, *path* and *handler*::
+Next you have to create :class:`Application` instance and register
+:ref:`handler<web-handler>` in application's router pointing *HTTP
+method*, *path* and *handler*::
 
    app = web.Application()
    app.router.add_route('GET', '/', hello)
@@ -43,6 +44,18 @@ After that create server and run *asyncio loop* as usual::
        pass
 
 That's it.
+
+
+.. _web-router:
+
+Router
+------
+
+Router is any object that implements :class:`AbstractRouter` interface.
+
+:mod:`aiohttp.web` provides single implementation called :class:`UrlDispatcher`.
+
+:class:`Application` uses :class:`UrlDispatcher` as :meth:`router` by default.
 
 .. _web-handler:
 
@@ -66,9 +79,8 @@ Handlers can be first-class functions like::
 
 Sometimes you would like to group logically coupled handlers into python class.
 
-:mod:`aiohttp.web` doesn't dictate any implementation details on that
-class: library user is responsible for instantiating and
-connecting routes::
+:mod:`aiohttp.web` doesn't dictate any implementation details,
+application developer can use classes if he want::
 
    class Handler:
 
@@ -87,6 +99,57 @@ connecting routes::
    handler = Handler()
    app.router.add_route('GET', '/intro', handler.handle_intro)
    app.router.add_route('GET', '/greet/{name}', handler.handle_greeting)
+
+
+.. _web-file-upload:
+
+File Uploads
+------------
+
+There are two parts necessary for handling file uploads. The first is
+to make sure you have a form that’s been setup correctly to accept
+files. This means adding enctype attribute to your form element with
+the value of *multipart/form-data*. A very simple example would be a
+form that accepts an mp3 file. Notice we’ve setup the form as
+previously explained and also added an *input* element of the *file*
+type::
+
+   <form action="/store_mp3" method="post" accept-charset="utf-8"
+         enctype="multipart/form-data">
+
+       <label for="mp3">Mp3</label>
+       <input id="mp3" name="mp3" type="file" value="" />
+
+       <input type="submit" value="submit" />
+   </form>
+
+The second part is handling the file upload in your :ref:`request
+handler<web-handler>` (above, assumed to answer on
+*/store_mp3*). The uploaded file is added to the request object as
+a :class:`cgi.FieldStorage` object accessible through the :meth:`Request.POST`
+coroutine. The two properties we’re interested in are the *file* and
+*filename* and we’ll use those to read file name and content::
+
+    import os
+    import uuid
+    from pyramid.response import Response
+
+    def store_mp3_view(request):
+
+        data = yield from request.POST()
+
+        # ``filename`` contains the name of the file in string format.
+        filename = data['mp3'].filename
+
+        # ``input_file`` contains the actual file data which needs to be
+        # stored somewhere.
+
+        input_file = data['mp3'].file
+
+        content = input_file.read()
+
+        return aiohttp.web.Response(request, content,
+            headers=MultiDict([('CONTENT-DISPOSITION', input-file)])
 
 
 .. _web-request:
