@@ -923,18 +923,14 @@ class RequestHandler(ServerHttpProtocol):
                                     "instance, got {!r}")
                                    .format(type(resp)))
 
-            yield from resp.write_eof()
-            if resp.keep_alive:
-                # Don't need to read request body if any on closing connection
-                yield from request.release()
-            self.keep_alive(resp.keep_alive)
-
         except HTTPException as exc:
-            yield from exc.write_eof()
-            if exc.keep_alive:
-                # Don't need to read request body if any on closing connection
-                yield from request.release()
-            self.keep_alive(exc.keep_alive)
+            resp = exc
+
+        yield from resp.write_eof()
+        if resp.keep_alive:
+            # Don't need to read request body if any on closing connection
+            yield from request.release()
+        self.keep_alive(resp.keep_alive)
 
 
 class Application(dict):
