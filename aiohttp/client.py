@@ -403,9 +403,9 @@ class ClientRequest:
             self.body = data(self.encoding)
 
             if 'CONTENT-TYPE' not in self.headers:
-                self.headers['CONTENT-TYPE'] = data.contenttype
+                self.headers['CONTENT-TYPE'] = data.content_type
 
-            if data.is_form_data():
+            if data.is_multipart:
                 self.chunked = self.chunked or 8196
             else:
                 if 'CONTENT-LENGTH' not in self.headers and not self.chunked:
@@ -712,8 +712,7 @@ class ClientResponse:
         if decode:
             warnings.warn(
                 '.read(True) is deprecated. use .json() instead',
-                DeprecationWarning
-            )
+                DeprecationWarning)
             return (yield from self.json())
 
         return data
@@ -723,8 +722,7 @@ class ClientResponse:
         """Read response payload and then close response."""
         warnings.warn(
             'read_and_close is deprecated, use .read() instead',
-            DeprecationWarning
-        )
+            DeprecationWarning)
         return (yield from self.read(decode))
 
     def _get_encoding(self, encoding):

@@ -2,6 +2,7 @@
 __all__ = ['BasicAuth', 'FormData', 'parse_mimetype']
 
 import base64
+import binascii
 import io
 import os
 import uuid
@@ -41,7 +42,7 @@ class FormData:
 
     def __init__(self, fields):
         self._fields = []
-        self._has_io = False
+        self._is_multipart = False
         self._boundary = uuid.uuid4().hex
 
         if isinstance(fields, dict):
@@ -50,21 +51,50 @@ class FormData:
             fields = (fields,)
         self.add_fields(*fields)
 
-    def is_form_data(self):
-        return self._has_io
+    @property
+    def is_multipart(self):
+        return self._is_multipart
 
     @property
-    def contenttype(self):
-        if self._has_io:
+    def content_type(self):
+        if self._is_multipart:
             return 'multipart/form-data; boundary=%s' % self._boundary
         else:
             return 'application/x-www-form-urlencoded'
 
-    def add_field(self, name, value, contenttype=None, filename=None):
+    def add_field(self, name, value, *, content_type=None, filename=None,
+                  charset=None, content_transfer_encoding=None):
+
+        if isinstance(value, io.IOBase):
+            self._is_multipart = True
+
+        type_options = multidict.MutableMultiDict({'name': name})
         if filename is None and isinstance(value, io.IOBase):
             filename = name
+        if filename is not None:
+            type_options['filename'] = filename
+            self._is_multipart = True
+        if charset is not None:
+            type_options['charset'] = charset
+            self._is_multipart = True
+            value = value.encode(charset)
 
-        self._fields.append((name, value, contenttype, filename))
+        headers = {}
+        if content_type is not None:
+            headers['Content-Type'] = content_type
+            self._is_multipart = True
+        if content_transfer_encoding is not None:
+            headers['Content-Transfer-Encoding'] = content_transfer_encoding
+            self._is_multipart = True
+            supported_tranfer_encoding = {
+                'base64': binascii.b2a_base64,
+                'quoted-printable': binascii.b2a_qp
+            }
+            conv = supported_tranfer_encoding.get(content_transfer_encoding)
+            if conv is not None:
+                value = conv(value)
+
+        self._fields.append((type_options, headers, value))
 
     def add_fields(self, *fields):
         to_add = list(fields)
@@ -75,7 +105,6 @@ class FormData:
             if isinstance(rec, io.IOBase):
                 k = guess_filename(rec, 'unknown')
                 self.add_field(k, rec)
-                self._has_io = True
 
             elif isinstance(rec, multidict.MultiDict):
                 to_add.extend(rec.items(getall=True))
@@ -83,54 +112,48 @@ class FormData:
             elif len(rec) == 1:
                 k = guess_filename(rec[0], 'unknown')
                 self.add_field(k, rec[0])
-                if isinstance(rec[0], io.IOBase):
-                    self._has_io = True
 
             elif len(rec) == 2:
                 k, fp = rec
                 fn = guess_filename(fp)
                 self.add_field(k, fp, filename=fn)
-                if isinstance(fp, io.IOBase):
-                    self._has_io = True
 
             else:
                 k, fp, ft = rec
                 fn = guess_filename(fp, k)
-                self.add_field(k, fp, contenttype=ft, filename=fn)
-                self._has_io = True
+                self.add_field(k, fp, content_type=ft, filename=fn)
 
-    def gen_form_urlencoded(self, encoding):
+    def _gen_form_urlencoded(self, encoding):
         # form data (x-www-form-urlencoded)
         data = []
-        for name, value, contenttype, filename in self._fields:
-            data.append((name, value))
+        for type_options, headers, value in self._fields:
+            data.append((type_options['name'], value))
 
         data = urllib.parse.urlencode(data, doseq=True)
         return data.encode(encoding)
 
-    def gen_form_data(self, encoding='utf-8', chunk_size=8196):
+    def _gen_form_data(self, encoding='utf-8', chunk_size=8196):
         """Encode a list of fields using the multipart/form-data MIME format"""
         boundary = self._boundary.encode('latin1')
 
-        for name, value, ctype, fname in self._fields:
+        for type_options, headers, value in self._fields:
             yield b'--' + boundary + b'\r\n'
 
-            headers = []
-            if fname:
-                headers.append(
-                    ('Content-Disposition: form-data; name="%s"; '
-                     'filename="%s"\r\n' % (name, fname)).encode(encoding))
-            else:
-                headers.append(
-                    ('Content-Disposition: form-data; name="%s"\r\n' %
-                     name).encode(encoding))
-            if ctype:
-                headers.append(
-                    ('Content-Type: %s\r\n' % ctype).encode(encoding))
+            out_headers = []
 
-            headers.append(b'\r\n')
+            opts = '; '.join('{0[0]}="{0[1]}"'.format(i)
+                             for i in type_options.items())
 
-            yield b''.join(headers)
+            out_headers.append(
+                ('Content-Disposition: form-data; ' + opts).encode(encoding)
+                + b'\r\n')
+
+            for k, v in headers.items():
+                out_headers.append('{}: {}\r\n'.format(k, v).encode(encoding))
+
+            out_headers.append(b'\r\n')
+
+            yield b''.join(out_headers)
 
             if isinstance(value, str):
                 yield value.encode(encoding)
@@ -149,10 +172,10 @@ class FormData:
         yield b'--' + boundary + b'--\r\n'
 
     def __call__(self, encoding):
-        if self._has_io:
-            return self.gen_form_data(encoding)
+        if self._is_multipart:
+            return self._gen_form_data(encoding)
         else:
-            return self.gen_form_urlencoded(encoding)
+            return self._gen_form_urlencoded(encoding)
 
 
 def parse_mimetype(mimetype):
