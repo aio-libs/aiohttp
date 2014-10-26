@@ -40,7 +40,7 @@ class FormData:
     """Helper class for multipart/form-data and
     application/x-www-form-urlencoded body generation."""
 
-    def __init__(self, fields):
+    def __init__(self, fields=()):
         self._fields = []
         self._is_multipart = False
         self._boundary = uuid.uuid4().hex
@@ -63,21 +63,17 @@ class FormData:
             return 'application/x-www-form-urlencoded'
 
     def add_field(self, name, value, *, content_type=None, filename=None,
-                  charset=None, content_transfer_encoding=None):
+                  content_transfer_encoding=None):
 
         if isinstance(value, io.IOBase):
             self._is_multipart = True
 
         type_options = multidict.MutableMultiDict({'name': name})
         if filename is None and isinstance(value, io.IOBase):
-            filename = name
+            filename = guess_filename(value, name)
         if filename is not None:
             type_options['filename'] = filename
             self._is_multipart = True
-        if charset is not None:
-            type_options['charset'] = charset
-            self._is_multipart = True
-            value = value.encode(charset)
 
         headers = {}
         if content_type is not None:
@@ -109,19 +105,14 @@ class FormData:
             elif isinstance(rec, multidict.MultiDict):
                 to_add.extend(rec.items(getall=True))
 
-            elif len(rec) == 1:
-                k = guess_filename(rec[0], 'unknown')
-                self.add_field(k, rec[0])
-
             elif len(rec) == 2:
                 k, fp = rec
-                fn = guess_filename(fp)
-                self.add_field(k, fp, filename=fn)
+                self.add_field(k, fp)
 
             else:
-                k, fp, ft = rec
-                fn = guess_filename(fp, k)
-                self.add_field(k, fp, content_type=ft, filename=fn)
+                raise TypeError('Only io.IOBase, multidict and (name, file) '
+                                'pairs allowed, use .add_field() for passing '
+                                'more complex parameters')
 
     def _gen_form_urlencoded(self, encoding):
         # form data (x-www-form-urlencoded)

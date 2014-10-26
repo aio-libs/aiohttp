@@ -239,7 +239,7 @@ class Router:
         if body:  # pragma: no cover
             resp['content'] = body
         else:
-            resp['content'] = self._body.decode('utf-8')
+            resp['content'] = self._body.decode('utf-8', 'ignore')
 
         ct = self._headers.get('content-type', '').lower()
 
@@ -268,8 +268,10 @@ class Router:
                             msg.get('content-disposition', ''))
                         params['data'] = msg.get_payload()
                         params['content-type'] = msg.get_content_type()
+                        cte = msg.get('Content-Transfer-Encoding')
+                        if cte is not None:
+                            resp['content-transfer-encoding'] = cte
                         resp['multipart-data'].append(params)
-
         body = json.dumps(resp, indent=4, sort_keys=True)
 
         # default headers

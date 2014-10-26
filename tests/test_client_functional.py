@@ -1,5 +1,6 @@
 """Http client functional tests."""
 
+import binascii
 import gc
 import io
 import os.path
@@ -287,6 +288,63 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertEqual(r.status, 200)
             r.close()
 
+    def test_POST_DATA_with_explicit_formdata(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+            form = aiohttp.FormData()
+            form.add_field('name', 'text')
+            r = self.loop.run_until_complete(
+                client.request('post', url,
+                               data=form,
+                               loop=self.loop))
+            self.assertEqual(r.status, 200)
+
+            content = self.loop.run_until_complete(r.json())
+            self.assertEqual({'name': ['text']}, content['form'])
+            self.assertEqual(r.status, 200)
+            r.close()
+
+    def xtest_POST_DATA_with_charset(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+
+            form = aiohttp.FormData()
+            form.add_field('name', 'текст', charset='koi8-r')
+
+            r = self.loop.run_until_complete(
+                client.request(
+                    'post', url, data=form,
+                    loop=self.loop))
+            content = self.loop.run_until_complete(r.json())
+
+            self.assertEqual(1, len(content['multipart-data']))
+            field = content['multipart-data'][0]
+            self.assertEqual('name', field['name'])
+            self.assertEqual('текст', field['data'])
+            self.assertEqual(r.status, 200)
+
+    def xtest_POST_DATA_with_content_transfer_encoding(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+
+            form = aiohttp.FormData()
+            form.add_field('name', b'123',
+                           content_transfer_encoding='base64')
+
+            r = self.loop.run_until_complete(
+                client.request(
+                    'post', url, data=form,
+                    loop=self.loop))
+            content = self.loop.run_until_complete(r.json())
+
+            self.assertEqual(1, len(content['multipart-data']))
+            field = content['multipart-data'][0]
+            print(field)
+            self.assertEqual('name', field['name'])
+            self.assertEqual(b'123', binascii.a2b_base64(field['data']))
+            self.assertEqual('base64', field['content-transfer-encoding'])
+            self.assertEqual(r.status, 200)
+
     def test_POST_MultiDict(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
@@ -320,7 +378,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
-            with open(__file__) as f:
+            here = os.path.dirname(__file__)
+            fname = os.path.join(here, 'sample.key')
+
+            with open(fname) as f:
                 r = self.loop.run_until_complete(
                     client.request(
                         'post', url, data={'some': f, 'test': b'data'},
@@ -346,7 +407,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
-            with open(__file__) as f:
+            here = os.path.dirname(__file__)
+            fname = os.path.join(here, 'sample.key')
+
+            with open(fname) as f:
                 with self.assertWarns(DeprecationWarning):
                     r = self.loop.run_until_complete(
                         client.request(
@@ -373,7 +437,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
-            with open(__file__) as f:
+            here = os.path.dirname(__file__)
+            fname = os.path.join(here, 'sample.key')
+
+            with open(fname) as f:
                 r = self.loop.run_until_complete(
                     client.request('post', url, data={'some': f},
                                    chunked=1024, compress='deflate',
@@ -399,7 +466,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
-            with open(__file__) as f:
+            here = os.path.dirname(__file__)
+            fname = os.path.join(here, 'sample.key')
+
+            with open(fname) as f:
                 r = self.loop.run_until_complete(
                     client.request('post', url, data=[('some', f.read())],
                                    loop=self.loop))
@@ -417,7 +487,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
-            with open(__file__) as f:
+            here = os.path.dirname(__file__)
+            fname = os.path.join(here, 'sample.key')
+
+            with open(fname) as f:
                 r = self.loop.run_until_complete(
                     client.request('post', url, data=f.read(), loop=self.loop))
 
@@ -432,7 +505,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
-            with open(__file__) as f:
+            here = os.path.dirname(__file__)
+            fname = os.path.join(here, 'sample.key')
+
+            with open(fname) as f:
                 r = self.loop.run_until_complete(
                     client.request('post', url, data=[('some', f)],
                                    loop=self.loop))
@@ -456,10 +532,15 @@ class HttpClientFunctionalTests(unittest.TestCase):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
-            with open(__file__) as f:
+            here = os.path.dirname(__file__)
+            fname = os.path.join(here, 'sample.key')
+
+            with open(fname) as f:
+                form = aiohttp.FormData()
+                form.add_field('some', f, content_type='text/plain')
                 r = self.loop.run_until_complete(
                     client.request('post', url, loop=self.loop,
-                                   data=[('some', f, 'text/plain')]))
+                                   data=form))
 
                 content = self.loop.run_until_complete(r.json())
 
@@ -482,7 +563,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
-            with open(__file__) as f:
+            here = os.path.dirname(__file__)
+            fname = os.path.join(here, 'sample.key')
+
+            with open(fname) as f:
                 with self.assertRaises(ValueError):
                     self.loop.run_until_complete(
                         client.request('post', url, data=f, loop=self.loop))
@@ -491,7 +575,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
-            with open(__file__, 'rb') as f:
+            here = os.path.dirname(__file__)
+            fname = os.path.join(here, 'sample.key')
+
+            with open(fname, 'rb') as f:
                 r = self.loop.run_until_complete(
                     client.request('post', url, data=f, loop=self.loop))
 
@@ -501,7 +588,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 self.assertEqual(0, len(content['multipart-data']))
                 self.assertEqual(content['content'], f.read().decode())
                 self.assertEqual(content['headers']['Content-Type'],
-                                 'text/x-python')
+                                 'application/pgp-keys')
                 self.assertEqual(r.status, 200)
                 r.close()
 
@@ -536,7 +623,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                                data=(('test', 'true'),
                                      multidict.MultiDict(
                                          [('q', 't1'), ('q', 't2')]),
-                                     (data,)),
+                                     data),
                                loop=self.loop))
 
             content = self.loop.run_until_complete(r.json())
@@ -566,7 +653,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
-            with open(__file__) as f:
+            here = os.path.dirname(__file__)
+            fname = os.path.join(here, 'sample.key')
+
+            with open(fname) as f:
                 r = self.loop.run_until_complete(
                     client.request('post', url, loop=self.loop,
                                    data={'test': 'true', 'some': f}))
@@ -592,7 +682,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
-            with open(__file__, 'rb') as f:
+            here = os.path.dirname(__file__)
+            fname = os.path.join(here, 'sample.key')
+
+            with open(fname, 'rb') as f:
                 data = f.read()
 
             fut = asyncio.Future(loop=self.loop)
@@ -619,7 +712,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
-            with open(__file__, 'rb') as f:
+            here = os.path.dirname(__file__)
+            fname = os.path.join(here, 'sample.key')
+
+            with open(fname, 'rb') as f:
                 data = f.read()
 
             stream = aiohttp.StreamReader(loop=self.loop)
@@ -641,7 +737,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
-            with open(__file__, 'rb') as f:
+            here = os.path.dirname(__file__)
+            fname = os.path.join(here, 'sample.key')
+
+            with open(fname, 'rb') as f:
                 data = f.read()
 
             stream = aiohttp.DataQueue(loop=self.loop)
@@ -664,7 +763,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
-            with open(__file__, 'rb') as f:
+            here = os.path.dirname(__file__)
+            fname = os.path.join(here, 'sample.key')
+
+            with open(fname, 'rb') as f:
                 data = f.read()
 
             stream = aiohttp.ChunksQueue(loop=self.loop)
