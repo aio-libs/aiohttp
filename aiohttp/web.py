@@ -6,7 +6,6 @@ import http.cookies
 import io
 import json
 import re
-import weakref
 
 from urllib.parse import urlsplit, parse_qsl, unquote
 
