@@ -54,6 +54,14 @@ class HelpersTests(unittest.TestCase):
         self.assertEqual(auth.password, 'pwd')
         self.assertEqual(auth.encode(), 'Basic bmtpbTpwd2Q=')
 
+    def test_invalid_formdata_params(self):
+        with self.assertRaises(TypeError):
+            helpers.FormData('asdasf')
+
+    def test_invalid_formdata_params2(self):
+        with self.assertRaises(TypeError):
+            helpers.FormData('as')
+
 
 class SafeAtomsTests(unittest.TestCase):
 

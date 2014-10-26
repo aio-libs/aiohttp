@@ -105,7 +105,7 @@ class FormData:
             elif isinstance(rec, multidict.MultiDict):
                 to_add.extend(rec.items(getall=True))
 
-            elif len(rec) == 2:
+            elif isinstance(rec, (list, tuple)) and len(rec) == 2:
                 k, fp = rec
                 self.add_field(k, fp)
 
