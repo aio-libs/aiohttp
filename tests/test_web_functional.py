@@ -195,3 +195,21 @@ class TestWebFunctional(unittest.TestCase):
             self.assertEqual(200, resp.status)
 
         self.loop.run_until_complete(go())
+
+    def test_release_post_data(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            yield from request.release()
+            chunk = yield from request.payload.readany()
+            self.assertIs(web.EOF_MARKER, chunk)
+            return web.Response(request, b'OK')
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('POST', '/', handler)
+            resp = yield from request('POST', url, data='post text',
+                                      loop=self.loop)
+            self.assertEqual(200, resp.status)
+
+        self.loop.run_until_complete(go())
