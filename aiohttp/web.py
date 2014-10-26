@@ -343,12 +343,17 @@ class Request(HeadersMixin):
         self._post = MultiDict(out)
         return self._post
 
-    @asyncio.coroutine
-    def start_websocket(self):
-        """Upgrade connection to websocket.
+    # @asyncio.coroutine
+    # def start_websocket(self):
+    #     """Upgrade connection to websocket.
 
-        Returns (reader, writer) pair.
-        """
+    #     Returns (reader, writer) pair.
+    #     """
+
+    #     upgrade = 'websocket' in message.headers.get('UPGRADE', '').lower()
+    #     if not upgrade:
+    #         pass
+
 
 ############################################################
 # HTTP Response classes
