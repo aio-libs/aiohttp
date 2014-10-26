@@ -268,7 +268,7 @@ class Router:
                             msg.get('content-disposition', ''))
                         params['data'] = msg.get_payload()
                         params['content-type'] = msg.get_content_type()
-                        cte = msg.get('Content-Transfer-Encoding')
+                        cte = msg.get('content-transfer-encoding')
                         if cte is not None:
                             resp['content-transfer-encoding'] = cte
                         resp['multipart-data'].append(params)

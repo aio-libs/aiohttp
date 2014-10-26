@@ -328,15 +328,9 @@ class Request(HeadersMixin):
         }
         out = MutableMultiDict()
         for field in fs.list or ():
-            charset = field.type_options.get('charset', 'utf-8')
             transfer_encoding = field.headers.get('Content-Transfer-Encoding',
                                                   None)
-            if charset == 'utf-8':
-                decode = lambda b: b
-            else:
-                decode = lambda b: b.encode('utf-8').decode(charset)
             if field.filename:
-                field.filename = decode(field.filename)
                 out.add(field.name, field)
             else:
                 value = field.value
@@ -345,9 +339,7 @@ class Request(HeadersMixin):
                     value = value.encode('utf-8')
                     value = supported_tranfer_encoding[
                         transfer_encoding](value)
-                    # binascii returns bytes
-                    value = value.decode('utf-8')
-                out.add(field.name, decode(value))
+                out.add(field.name, value)
         self._post = MultiDict(out)
         return self._post
 

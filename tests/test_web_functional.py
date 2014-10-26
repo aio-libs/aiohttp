@@ -3,7 +3,7 @@ import json
 import os.path
 import socket
 import unittest
-from aiohttp import web, request
+from aiohttp import web, request, FormData
 
 
 class TestWebFunctional(unittest.TestCase):
@@ -24,7 +24,7 @@ class TestWebFunctional(unittest.TestCase):
 
     @asyncio.coroutine
     def create_server(self, method, path, handler):
-        app = web.Application(loop=self.loop)
+        app = web.Application(loop=self.loop, debug=True)
         app.router.add_route(method, path, handler)
 
         port = self.find_unused_port()
@@ -210,6 +210,29 @@ class TestWebFunctional(unittest.TestCase):
             _, _, url = yield from self.create_server('POST', '/', handler)
             resp = yield from request('POST', url, data='post text',
                                       loop=self.loop)
+            self.assertEqual(200, resp.status)
+
+        self.loop.run_until_complete(go())
+
+    def test_POST_DATA_with_content_transfer_encoding(self):
+        @asyncio.coroutine
+        def handler(request):
+            data = yield from request.POST()
+            self.assertEqual(b'123', data['name'])
+            return web.Response(request)
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('POST', '/', handler)
+
+            form = FormData()
+            form.add_field('name', b'123',
+                           content_transfer_encoding='base64')
+
+            resp = yield from request(
+                'post', url, data=form,
+                loop=self.loop)
+
             self.assertEqual(200, resp.status)
 
         self.loop.run_until_complete(go())
