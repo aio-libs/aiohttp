@@ -119,6 +119,9 @@ class HeadersMixin:
             return int(l)
 
 
+FileField = collections.namedtuple('Field', 'name filename file content_type')
+
+
 ############################################################
 # HTTP Request
 ############################################################
@@ -330,6 +333,10 @@ class Request(HeadersMixin):
             transfer_encoding = field.headers.get('Content-Transfer-Encoding',
                                                   None)
             if field.filename:
+                # ff = FileField(field.name,
+                #                field.filename,
+                #                field.file,  # N.B. file closed error
+                #                field.type)
                 out.add(field.name, field)
             else:
                 value = field.value
