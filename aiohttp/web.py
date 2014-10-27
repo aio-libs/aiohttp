@@ -1,11 +1,13 @@
 import asyncio
 import binascii
 import collections
+import mimetypes
 import cgi
 import http.cookies
 import io
 import json
 import re
+import os
 
 from urllib.parse import urlsplit, parse_qsl, unquote
 
@@ -892,6 +894,53 @@ class UrlDispatcher(AbstractRouter):
             pattern += '/'
         compiled = re.compile('^' + pattern + '$')
         self._urls.append(Entry(compiled, method, handler))
+
+    def _static_file_handler_maker(self, path):
+        @asyncio.coroutine
+        def _handler(request):
+            resp = StreamResponse(request)
+            filename = request.match_info['filename']
+            filepath = os.path.join(path, filename)
+            if '..' in filename:
+                raise HTTPNotFound(request)
+            if not os.path.exists(filepath) or os.path.isdir(filepath):
+                raise HTTPNotFound(request)
+
+            ct = mimetypes.guess_type(filename)[0]
+            if not ct:
+                ct = 'application/octet-stream'
+            resp.content_type = ct
+
+            resp.headers['transfer-encoding'] = 'chunked'
+            resp.send_headers()
+
+            with open(filepath, 'rb') as f:
+                chunk = f.read(1024)
+                while chunk:
+                    resp.write(chunk)
+                    chunk = f.read(1024)
+
+            yield from resp.write_eof()
+            return resp
+
+        return _handler
+
+    def add_static(self, prefix, path):
+        """
+        Adds static files view
+        :param prefix - url prefix
+        :param path - folder with files
+        """
+        assert prefix.startswith('/')
+        assert os.path.exists(path), 'Path does not exist'
+        method = 'GET'
+        suffix = r'(?P<filename>.*)'  # match everything after static prefix
+        if not prefix.endswith('/'):
+            prefix += '/'
+        compiled = re.compile('^' + prefix + suffix + '$')
+        self._urls.append(Entry(
+            compiled, method, self._static_file_handler_maker(path)
+        ))
 
 
 ############################################################

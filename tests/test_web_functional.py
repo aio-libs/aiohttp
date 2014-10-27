@@ -3,6 +3,7 @@ import json
 import os.path
 import socket
 import unittest
+import tempfile
 from aiohttp import web, request, FormData
 
 
@@ -23,9 +24,10 @@ class TestWebFunctional(unittest.TestCase):
         return port
 
     @asyncio.coroutine
-    def create_server(self, method, path, handler):
+    def create_server(self, method, path, handler=None):
         app = web.Application(loop=self.loop, debug=True)
-        app.router.add_route(method, path, handler)
+        if handler:
+            app.router.add_route(method, path, handler)
 
         port = self.find_unused_port()
         srv = yield from self.loop.create_server(app.make_handler,
@@ -236,3 +238,32 @@ class TestWebFunctional(unittest.TestCase):
             self.assertEqual(200, resp.status)
 
         self.loop.run_until_complete(go())
+
+    def test_static_file(self):
+
+        @asyncio.coroutine
+        def go(tmpdirname, filename):
+            app, _, url = yield from self.create_server(
+                'GET', '/static/' + filename
+            )
+            app.router.add_static('/static', tmpdirname)
+
+            resp = yield from request('GET', url, loop=self.loop)
+            self.assertEqual(200, resp.status)
+            txt = yield from resp.text()
+            self.assertEqual('file content', txt)
+            ct = resp.headers['CONTENT-TYPE']
+            self.assertEqual('application/octet-stream', ct)
+
+            resp = yield from request('GET', url+'fake', loop=self.loop)
+            self.assertEqual(404, resp.status)
+            resp = yield from request('GET', url+'/../../', loop=self.loop)
+            self.assertEqual(404, resp.status)
+
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            with tempfile.NamedTemporaryFile(dir=tmpdirname) as fp:
+                filename = os.path.basename(fp.name)
+                fp.write(b'file content')
+                fp.flush()
+                fp.seek(0)
+                self.loop.run_until_complete(go(tmpdirname, filename))
