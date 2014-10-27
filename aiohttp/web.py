@@ -142,6 +142,7 @@ class Request(HeadersMixin):
         self._query_string = res.query
         self._get = None
         self._post = None
+        self._post_files_cache = None
         self._headers = CaseInsensitiveMultiDict._from_uppercase_multidict(
             message.headers)
 
@@ -333,11 +334,14 @@ class Request(HeadersMixin):
             transfer_encoding = field.headers.get('Content-Transfer-Encoding',
                                                   None)
             if field.filename:
-                # ff = FileField(field.name,
-                #                field.filename,
-                #                field.file,  # N.B. file closed error
-                #                field.type)
-                out.add(field.name, field)
+                ff = FileField(field.name,
+                               field.filename,
+                               field.file,  # N.B. file closed error
+                               field.type)
+                if self._post_files_cache is None:
+                    self._post_files_cache = {}
+                self._post_files_cache[field.name] = field
+                out.add(field.name, ff)
             else:
                 value = field.value
                 if transfer_encoding in supported_tranfer_encoding:
