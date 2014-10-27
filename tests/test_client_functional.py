@@ -586,8 +586,12 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 f.seek(0)
                 self.assertEqual(0, len(content['multipart-data']))
                 self.assertEqual(content['content'], f.read().decode())
-                self.assertEqual(content['headers']['Content-Type'],
-                                 'application/pgp-keys')
+
+                # if system cannot determine 'application/pgp-keys' MIME type
+                # then use 'application/octet-stream' default
+                self.assertIn(content['headers']['Content-Type'],
+                              ('application/pgp-keys',
+                               'application/octet-stream'))
                 self.assertEqual(r.status, 200)
                 r.close()
 
