@@ -842,7 +842,7 @@ Entry = collections.namedtuple('Entry', 'regex method handler')
 
 class UrlDispatcher(AbstractRouter):
 
-    DYN = re.compile(r'^\{[_a-zA-Z][_a-zA-Z0-9]*\}$')
+    DYN = re.compile(r'^\{[a-zA-Z][_a-zA-Z0-9]*\}$')
     GOOD = r'[^{}/]+'
     PLAIN = re.compile('^'+GOOD+'$')
 
@@ -1021,5 +1021,5 @@ class Application(dict):
                     'application': self,
                 })
 
-    def register_on_finish(self, cb, *args, **kwargs):
-        self._finish_callbacks.append((cb, args, kwargs))
+    def register_on_finish(self, func, *args, **kwargs):
+        self._finish_callbacks.insert(0, (func, args, kwargs))

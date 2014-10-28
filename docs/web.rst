@@ -35,7 +35,7 @@ method*, *path* and *handler*::
 After that create server and run *asyncio loop* as usual::
 
    loop = asyncio.get_event_loop()
-   f = loop.create_server(app.make_handler, '0.0.0.0', '8080')
+   f = loop.create_server(app.make_handler, '0.0.0.0', 8080)
    srv = loop.run_until_complete(f)
    print('serving on', srv.sockets[0].getsockname())
    try:
@@ -44,18 +44,6 @@ After that create server and run *asyncio loop* as usual::
        pass
 
 That's it.
-
-
-.. _web-router:
-
-Router
-------
-
-Router is any object that implements :class:`AbstractRouter` interface.
-
-:mod:`aiohttp.web` provides single implementation called :class:`UrlDispatcher`.
-
-:class:`Application` uses :class:`UrlDispatcher` as :meth:`router` by default.
 
 .. _web-handler:
 
@@ -368,8 +356,8 @@ positional parameter.
 .. _web-response:
 
 
-Response
---------
+Response classes
+-----------------
 
 For now :mod:`aiohttp.web` has two classes for *HTTP response*:
 :class:`StreamResponse` and :class:`Response`.
@@ -606,22 +594,35 @@ Response
 Application and Router
 ----------------------
 
+
 Application
 ^^^^^^^^^^^
 
+Application is a synonym for web-server.
+
+To get fully working example you have to make *application*, register
+supported url in *router* and create *server socket* with
+:meth:`make_handler` as *protocol factory*.
+
+*Application* contains *router* instance and list of callbacks that
+will be called on application finishing.
+
+*Application* is a :class:`dict`, so you can use it as registry for
+arbitrary properies for later acceess to registered values from
+:ref:`handler<web-handler>` via :attr:`Request.app` property::
+
+   app = Application(loop=loop)
+   app['database'] = yield from aiopg.create_engine(**db_config)
+
+   @asyncio.coroutine
+   def handler(request):
+       with (yield from request.app['database']) as conn:
+           conn.execute("DELETE * FROM table")
+
+
 .. class:: Application(*, loop=None, router=None, **kwargs)
 
-   Application is a synonym for web-server.
-
-   The class inherited from :class:`dict`, so you can use it as
-   registry for arbitrary properies.
-
-   To get fully working example you have to make *application*, register
-   supported url in *router* and create *server socket* with
-   :meth:`make_handler` as *protocol factory*.
-
-   *Application* contains *router* instance and list of callbacks that
-   will be called on application finishing.  I
+   The class inherits :class:`dict`.
 
    :param loop: :ref:`event loop<asyncio-event-loop>` used
                 for processing HTTP requests.
@@ -653,7 +654,72 @@ Application
 
       You should never call the method by hands but pass it to
       :meth:`~asyncio.BaseEventLoop.create_server` instead as
-      *protocol_factory* parameter.
+      *protocol_factory* parameter like::
+
+
+         loop = asyncio.get_event_loop()
+
+         app = Application(loop=loop)
+
+         # setup route table
+         # app.router.add_route(...)
+
+         yield from loop.create_server(app.make_handler, '0.0.0.0', 8080)
+
+   .. method:: finish()
+
+      A :ref:`coroutine<coroutine>` that should be called after on
+      server stopping.
+
+      The method executes functions registered by
+      :meth:`register_on_finish` in LIFO order.
+
+      If callback raises exception the error will be stored by
+      :meth:`~asyncio.BaseEventLoop.call_exception_handler` with keys:
+      *message*, *exception*, *application*.
+
+   .. method:: register_on_finish(self, func, *args, **kwargs):
+
+      Register *func* as a function to be executed at termination.
+      Any optional arguments that are to be passed to *func* must be
+      passed as arguments to :meth:`register_on_finish`.  It is possible to
+      register the same function and arguments more than once.
+
+      At call of :meth:`finish` all functions registered are called in
+      last in, first out order.
+
+      *func* may be either regular function or :ref:`coroutine<coroutine>`,
+      :meth:`finish` will un-yield (`yield from`) the later.
+
+
+Router
+^^^^^^
+
+For dispatching URLs to :ref:`handlers<web-handler>`
+:mod:`aiohttp.web` uses *routers*.
+
+Router is any object that implements :class:`AbstractRouter` interface.
+
+:mod:`aiohttp.web` provides single implementation called :class:`UrlDispatcher`.
+
+:class:`Application` uses :class:`UrlDispatcher` as :meth:`router` by default.
+
+.. class:: UrlDispatcher()
+
+   Straightforward url-mathing router.
+
+   Before running :class:`Application` you should to fill *route
+   table* first by :meth:`add_route` and :meth:`add_static` calls.
+
+   :ref:`Handler<web-handler>` lookup is performed by iterating on
+   added *routes* in FIFO order. The first matching *route* will be used
+   to call corresponding *handler*.
+
+   .. method:: add_route(method, path, handler)
+
+      Append :ref:`handler<web-handler>` to end of route table.
+
+      *path* may be either [TBD]
 
 Utilities
 ---------
