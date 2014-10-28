@@ -903,7 +903,7 @@ class UrlDispatcher(AbstractRouter):
             filepath = os.path.join(path, filename)
             if '..' in filename:
                 raise HTTPNotFound(request)
-            if not os.path.exists(filepath) or os.path.isdir(filepath):
+            if not os.path.exists(filepath) or not os.path.isfile(filepath):
                 raise HTTPNotFound(request)
 
             ct = mimetypes.guess_type(filename)[0]
@@ -932,7 +932,8 @@ class UrlDispatcher(AbstractRouter):
         :param path - folder with files
         """
         assert prefix.startswith('/')
-        assert os.path.exists(path), 'Path does not exist'
+        assert os.path.exists(path), 'Path does not exist %s' % path
+        path = os.path.abspath(path)
         method = 'GET'
         suffix = r'(?P<filename>.*)'  # match everything after static prefix
         if not prefix.endswith('/'):
