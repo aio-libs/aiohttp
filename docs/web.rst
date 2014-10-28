@@ -603,6 +603,55 @@ Response
       *Content-Length* HTTP header.
 
 
+Application and Router
+----------------------
+
+Application
+^^^^^^^^^^^
+
+.. class:: Application(*, loop=None, router=None, **kwargs)
+
+   Application is a synonym for web-server.
+
+   To get fully working example you have to make *application*, register
+   supported url in *router* and create *server socket* with
+   :meth:`make_handler` as *protocol factory*.
+
+   *Application* contains *router* instance and list of callbacks that
+   will be called on application finishing.  I
+
+   :param loop: :ref:`event loop<asyncio-event-loop>` used
+                for processing HTTP requests.
+
+                If param is ``None`` :func:`asyncio.get_event_loop`
+                used for getting default event loop, but we strongly
+                recommend to use explicit loops everywhere.
+
+   :param router: :class:`aiohttp.abc.AbstractRouter` instance, system
+                  creates :class:`UrlDispatcher` by default if
+                  *router* is ``None``.
+
+   :param kwargs: :class:`dict` of optional arguments that will be
+                  passed to underlying
+                  :class:`aiohttp.server.ServerHttpProtocol`
+                  constructor at :meth:`make_handler` call.
+
+   .. attribute:: router
+
+      Readonly property that returns *router instance*.
+
+   .. attribute:: loop
+
+      Readonly property that returns :ref:`event loop<asyncio-event-loop>`.
+
+   .. method:: make_handler()
+
+      Creates HTTP protocol for handling requests.
+
+      You should never call the method by hands but pass it to
+      :meth:`~asyncio.BaseEventLoop.create_server` instead as
+      *protocol_factory* parameter.
+
 Utilities
 ---------
 
