@@ -613,6 +613,9 @@ Application
 
    Application is a synonym for web-server.
 
+   The class inherited from :class:`dict`, so you can use it as
+   registry for arbitrary properies.
+
    To get fully working example you have to make *application*, register
    supported url in *router* and create *server socket* with
    :meth:`make_handler` as *protocol factory*.
