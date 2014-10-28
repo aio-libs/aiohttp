@@ -131,7 +131,7 @@ FileField = collections.namedtuple('Field', 'name filename file content_type')
 
 class Request(HeadersMixin):
 
-    def __init__(self, app, message, payload, writer):
+    def __init__(self, app, message, payload, transport, writer):
         self._app = app
         self._version = message.version
         self._writer = writer
@@ -142,6 +142,8 @@ class Request(HeadersMixin):
         res = urlsplit(path)
         self._path = res.path
         self._query_string = res.query
+        peername = transport.get_extra_info('peername')
+        self._remote_addr = peername[0] if peername else None
         self._get = None
         self._post = None
         self._post_files_cache = None
@@ -209,6 +211,11 @@ class Request(HeadersMixin):
         E.g., id=10
         """
         return self._query_string
+
+    @property
+    def remote_addr(self):
+        """The remote address."""
+        return self._remote_addr
 
     @property
     def GET(self):
@@ -957,7 +964,7 @@ class RequestHandler(ServerHttpProtocol):
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
-        request = Request(self._app, message, payload, self.writer)
+        request = Request(self._app, message, payload, self.transport, self.writer)
         try:
             match_info = yield from self._app.router.resolve(request)
 
