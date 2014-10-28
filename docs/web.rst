@@ -518,7 +518,7 @@ StreamResponse
       :param int version: a decimal integer, identifies to which
                           version of the state management
                           specification the cookie
-                          conforms. (Optional, *version*=1 by default)
+                          conforms. (Optional, *version=1* by default)
 
    .. method:: del_cookie(name, *, domain=None, path=None)
 
@@ -655,6 +655,7 @@ Application
       :meth:`~asyncio.BaseEventLoop.create_server` instead as
       *protocol_factory* parameter.
 
+
 Utilities
 ---------
 
@@ -680,10 +681,3 @@ Utilities
       *MIME type* of uploaded file, ``'text/plain'`` by default.
 
    .. seealso:: :ref:`web-file-upload`
-
-
-
-Content Type
-------------
-
-Content-Type header is case-insensitive by :rfc:`2045`, BTW.
