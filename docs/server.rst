@@ -5,6 +5,11 @@ Low-level HTTP Server
 
 .. module:: aiohttp.server
 
+.. note::
+
+   The topic describes low-level HTTP support. For high-level
+   interface please take a look on :mod:`aiohttp.web`.
+
 Run a basic server
 ------------------
 
