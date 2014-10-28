@@ -126,7 +126,7 @@ type::
 The second part is handling the file upload in your :ref:`request
 handler<web-handler>` (above, assumed to answer on
 */store_mp3*). The uploaded file is added to the request object as
-a :class:`cgi.FieldStorage` object accessible through the :meth:`Request.POST`
+a :class:`FileField` object accessible through the :meth:`Request.POST`
 coroutine. The two properties we’re interested in are the *file* and
 *filename* and we’ll use those to read file name and content::
 
@@ -169,9 +169,6 @@ positional parameter.
    :mod:`aiohttp.web` does it for you.
 
 .. class:: Request
-
-Common properties
-^^^^^^^^^^^^^^^^^
 
    .. attribute:: method
 
@@ -260,9 +257,6 @@ Common properties
 
       Read only property.
 
-Shortcuts for request headers
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
    .. attribute:: content_type
 
       Read only property with *content* part of *Content-Type* header.
@@ -291,9 +285,6 @@ Shortcuts for request headers
       The value is parsed from *Content-Length* HTTP header.
 
       Returns :class:`int` or ``None`` if *Content-Length* is absent.
-
-Request's methods
-^^^^^^^^^^^^^^^^^
 
    .. method:: read()
 
@@ -539,14 +530,6 @@ StreamResponse
 
       :param str path: optional cookie path
 
-      .. warning::
-
-         The method is a bit inconsistent.
-
-         It allows to delete cookie not exists on class creation time.
-
-         [TBD]: explain it.
-
    .. attribute:: content_length
 
       *Content-Length* for outgoing response.
@@ -591,7 +574,7 @@ Response
 
 .. class:: Response(request, body=None, *, status=200, headers=None)
 
-   The most usable response class.
+   The most usable response class, inherited from :class:`StreamResponse`.
 
    Accepts *body* argument for setting *HTTP response BODY*.
 
@@ -612,11 +595,41 @@ Response
       Read-write attribute for storing response's content aka BODY,
       :class:`bytes`.
 
-      Setting :attr:`body` also recalculates :attr:`content_length` value.
+      Setting :attr:`body` also recalculates
+      :attr:`~StreamResponse.content_length` value.
 
       Resetting :attr:`body` (assigning ``None``) set
-      :attr:`content_length` no ``None`` also, dropping
+      :attr:`~StreamResponse.content_length` to ``None`` also, dropping
       *Content-Length* HTTP header.
+
+
+Utilities
+---------
+
+.. class:: FileField
+
+   A :func:`~collections.namedtuple` that returned as multidict value
+   by :meth:`Request.POST` if field is uploaded file.
+
+   .. attribute:: name
+
+      Field name
+
+   .. attribute:: filename
+
+      File name as specified by uploading (client) side.
+
+   .. attribute:: file
+
+      An :class:`io.IOBase` instance with content of uploaded file.
+
+   .. attribute:: content_type
+
+      *MIME type* of uploaded file, ``'text/plain'`` by default.
+
+   .. seealso:: :ref:`web-file-upload`
+
+
 
 Content Type
 ------------
