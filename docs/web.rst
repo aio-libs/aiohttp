@@ -1,4 +1,4 @@
-.. _web:
+.. _aiohttp-web:
 
 .. highlight:: python
 
@@ -12,7 +12,8 @@ High-level HTTP Server
 Run a simple web server
 -----------------------
 
-For implementing web server at first create :ref:`request handler<web-handler>`.
+For implementing web server at first create :ref:`request
+handler<aiohttp-web-handler>`.
 
 Handler is a :ref:`coroutine<coroutine>` or regular function that
 accepts only *request* parameter of type :class:`Request`
@@ -26,7 +27,7 @@ and returns :class:`Response` instance::
        return web.Response(request, b"Hello, world")
 
 Next you have to create :class:`Application` instance and register
-:ref:`handler<web-handler>` in application's router pointing *HTTP
+:ref:`handler<aiohttp-web-handler>` in application's router pointing *HTTP
 method*, *path* and *handler*::
 
    app = web.Application()
@@ -45,7 +46,7 @@ After that create server and run *asyncio loop* as usual::
 
 That's it.
 
-.. _web-handler:
+.. _aiohttp-web-handler:
 
 Handler
 -------
@@ -89,7 +90,7 @@ application developer can use classes if he want::
    app.router.add_route('GET', '/greet/{name}', handler.handle_greeting)
 
 
-.. _web-file-upload:
+.. _aiohttp-web-file-upload:
 
 File Uploads
 ------------
@@ -112,7 +113,7 @@ type::
    </form>
 
 The second part is handling the file upload in your :ref:`request
-handler<web-handler>` (above, assumed to answer on
+handler<aiohttp-web-handler>` (above, assumed to answer on
 */store_mp3*). The uploaded file is added to the request object as
 a :class:`FileField` object accessible through the :meth:`Request.POST`
 coroutine. The two properties we’re interested in are the *file* and
@@ -140,7 +141,7 @@ coroutine. The two properties we’re interested in are the *file* and
             headers=MultiDict([('CONTENT-DISPOSITION', input-file)])
 
 
-.. _web-request:
+.. _aiohttp-web-request:
 
 
 Request
@@ -148,7 +149,7 @@ Request
 
 Request object contains all information about incoming HTTP request.
 
-Every :ref:`handler<web-handler>` accepts request instance as first
+Every :ref:`handler<aiohttp-web-handler>` accepts request instance as first
 positional parameter.
 
 .. note::
@@ -230,7 +231,7 @@ positional parameter.
    .. attribute:: app
 
       An :class:`Application` instance used to call :ref:`request handler
-      <web-handler>`, read only property.
+      <aiohttp-web-handler>`, read only property.
 
    .. attribute:: transport
 
@@ -365,7 +366,7 @@ positional parameter.
           internal machinery.
 
 
-.. _web-response:
+.. _aiohttp-web-response:
 
 
 Response classes
@@ -388,7 +389,7 @@ The response supports *keep-alive* handling out-of-the-box if
 You can disable *keep-alive* by :meth:`~StreamResponse.force_close` though.
 
 The common case for sending answer from :ref:`web
-handler<web-handler>` is returning :class:`Response` instance::
+handler<aiohttp-web-handler>` is returning :class:`Response` instance::
 
    def handler(request):
        return Response(request, "All right!")
@@ -624,7 +625,7 @@ will be called on application finishing.
 
 *Application* is a :class:`dict`, so you can use it as registry for
 arbitrary properies for later acceess to registered values from
-:ref:`handler<web-handler>` via :attr:`Request.app` property::
+:ref:`handler<aiohttp-web-handler>` via :attr:`Request.app` property::
 
    app = Application(loop=loop)
    app['database'] = yield from aiopg.create_engine(**db_config)
@@ -710,7 +711,7 @@ arbitrary properies for later acceess to registered values from
 Router
 ^^^^^^
 
-For dispatching URLs to :ref:`handlers<web-handler>`
+For dispatching URLs to :ref:`handlers<aiohttp-web-handler>`
 :mod:`aiohttp.web` uses *routers*.
 
 Router is any object that implements :class:`AbstractRouter` interface.
@@ -726,13 +727,13 @@ Router is any object that implements :class:`AbstractRouter` interface.
    Before running :class:`Application` you should to fill *route
    table* first by :meth:`add_route` and :meth:`add_static` calls.
 
-   :ref:`Handler<web-handler>` lookup is performed by iterating on
+   :ref:`Handler<aiohttp-web-handler>` lookup is performed by iterating on
    added *routes* in FIFO order. The first matching *route* will be used
    to call corresponding *handler*.
 
    .. method:: add_route(method, path, handler)
 
-      Append :ref:`handler<web-handler>` to end of route table.
+      Append :ref:`handler<aiohttp-web-handler>` to end of route table.
 
       *path* may be either [TBD]
 
@@ -761,4 +762,4 @@ Utilities
 
       *MIME type* of uploaded file, ``'text/plain'`` by default.
 
-   .. seealso:: :ref:`web-file-upload`
+   .. seealso:: :ref:`aiohttp-web-file-upload`

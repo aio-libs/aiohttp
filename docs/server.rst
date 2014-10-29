@@ -1,4 +1,4 @@
-.. _server:
+.. _aiohttp-server:
 
 Low-level HTTP Server
 =====================

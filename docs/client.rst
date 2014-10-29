@@ -1,4 +1,4 @@
-.. _client:
+.. _aiohttp-client:
 
 .. highlight:: python
 
@@ -325,7 +325,7 @@ post requests togethere::
    ...                            'http://httpbin.org/post',
    ...                            data=r.content)
 
-.. _client-keep-alive:
+.. _aiohttp-client-keep-alive:
 
 Keep-Alive and connection pooling
 ---------------------------------
@@ -433,8 +433,8 @@ parameter::
     >>> yield from r.text()
     '{"cookies": {"cookies_are": "working"}}'
 
-With :ref:`connection pooling<client-keep-alive>` you can share cookies between
-requests:
+With :ref:`connection pooling<aiohttp-client-keep-alive>` you can
+share cookies between requests:
 
 .. code-block:: python
    :emphasize-lines: 1
