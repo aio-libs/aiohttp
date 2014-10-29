@@ -383,10 +383,7 @@ class StreamResponse(HeadersMixin):
     def __init__(self, request, *, status=200, reason=None):
         self._request = request
         self._headers = CaseInsensitiveMutableMultiDict()
-        self._status = int(status)
-        if reason is None:
-            reason = ResponseImpl.calc_reason(status)
-        self._reason = reason
+        self.set_status(status, reason)
         self._cookies = http.cookies.SimpleCookie()
         self._keep_alive = request.keep_alive
 
@@ -409,6 +406,12 @@ class StreamResponse(HeadersMixin):
     @property
     def reason(self):
         return self._reason
+
+    def set_status(self, status, reason=None):
+        self._status = int(status)
+        if reason is None:
+            reason = ResponseImpl.calc_reason(status)
+        self._reason = reason
 
     @property
     def keep_alive(self):

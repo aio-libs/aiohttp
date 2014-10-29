@@ -441,8 +441,11 @@ StreamResponse
 
       Read-only property for *HTTP response reason*, :class:`str`.
 
-      By default auto calculated basing on :attr:`status`, may be
-      overridden in constructor of :class:`StreamResponse`.
+   .. method:: set_status(status, reason=None)
+
+      Set :attr:`status` and :attr:`reason`.
+
+      *reason* value is autocalculated if not specified (``None``).
 
    .. attribute:: keep_alive
 
