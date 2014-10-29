@@ -10,10 +10,12 @@ HTTP Client
 Example
 -------
 
-Because most of aiohttp methods are generators, they are not allowed to
-use in simple python repl. But for convenience we are going to use repl
-as examples. To run example from this text you need
-to wrap code into functions and run it with asyncio loop. For example::
+Because most of *aiohttp* methods are generators, they will not work
+in the interactive python interpreter like regular functions
+would. For convenience, we show our examples as if they were run in
+the interactive interpreter, but please remember that actually running
+them requires that you wrap them in functions and run them with an
+:ref:`asyncio loop<asyncio-event-loop>`. For example::
 
   >>> def run():
   ...   r = yield from aiohttp.request('get', 'http://python.org')
