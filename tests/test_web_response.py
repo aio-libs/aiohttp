@@ -20,8 +20,10 @@ class TestStreamResponse(unittest.TestCase):
         message = RawRequestMessage(method, path, HttpVersion11, headers,
                                     False, False)
         self.payload = mock.Mock()
+        self.transport = mock.Mock()
         self.writer = mock.Mock()
-        req = Request(self.app, message, self.payload, self.writer)
+        req = Request(self.app, message, self.payload,
+                      self.transport, self.writer)
         return req
 
     def test_ctor(self):
@@ -270,8 +272,10 @@ class TestResponse(unittest.TestCase):
         message = RawRequestMessage(method, path, HttpVersion11, headers,
                                     False, False)
         self.payload = mock.Mock()
+        self.transport = mock.Mock()
         self.writer = mock.Mock()
-        req = Request(self.app, message, self.payload, self.writer)
+        req = Request(self.app, message, self.payload,
+                      self.transport, self.writer)
         return req
 
     def test_ctor(self):

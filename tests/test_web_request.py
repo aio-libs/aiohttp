@@ -22,8 +22,10 @@ class TestWebRequest(unittest.TestCase):
         message = RawRequestMessage(method, path, version, headers, closing,
                                     False)
         self.payload = mock.Mock()
+        self.transport = mock.Mock()
         self.writer = mock.Mock()
-        req = Request(self.app, message, self.payload, self.writer)
+        req = Request(self.app, message, self.payload,
+                      self.transport, self.writer)
         return req
 
     def test_ctor(self):
@@ -38,6 +40,7 @@ class TestWebRequest(unittest.TestCase):
         self.assertEqual('a=1&b=2', req.query_string)
         self.assertEqual(MultiDict([('a', '1'), ('b', '2')]), req.GET)
         self.assertIs(self.payload, req.payload)
+        self.assertIs(self.transport, req.transport)
         self.assertTrue(req.keep_alive)
 
     def test_content_type_not_specified(self):

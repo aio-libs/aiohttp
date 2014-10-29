@@ -232,6 +232,18 @@ positional parameter.
       An :class:`Application` instance used to call :ref:`request handler
       <web-handler>`, read only property.
 
+   .. attribute:: transport
+
+      An :ref:`transport<asyncio-transport>` used to process request,
+      read only property.
+
+      The property can be used, for example, for getting IP address of
+      client peer::
+
+         peername = request.transport.get_extra('peername')
+         if peername is not None:
+             host, port = peername
+
    .. attribute:: cookies
 
       A multidict of all request's cookies.

@@ -23,8 +23,10 @@ class TestUrlDispatcher(unittest.TestCase):
         message = RawRequestMessage(method, path, version, headers, closing,
                                     False)
         self.payload = mock.Mock()
+        self.transport = mock.Mock()
         self.writer = mock.Mock()
-        req = Request(self.app, message, self.payload, self.writer)
+        req = Request(self.app, message, self.payload,
+                      self.transport, self.writer)
         return req
 
     def test_add_route_root(self):

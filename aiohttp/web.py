@@ -131,9 +131,10 @@ FileField = collections.namedtuple('Field', 'name filename file content_type')
 
 class Request(HeadersMixin):
 
-    def __init__(self, app, message, payload, writer):
+    def __init__(self, app, message, payload, transport, writer):
         self._app = app
         self._version = message.version
+        self._transport = transport
         self._writer = writer
         self._method = message.method
         self._host = message.headers.get('HOST')
@@ -242,6 +243,11 @@ class Request(HeadersMixin):
     def app(self):
         """Application instance."""
         return self._app
+
+    @property
+    def transport(self):
+        """Transport used for request processing."""
+        return self._transport
 
     @property
     def cookies(self):
@@ -957,7 +963,8 @@ class RequestHandler(ServerHttpProtocol):
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
-        request = Request(self._app, message, payload, self.writer)
+        request = Request(self._app, message, payload,
+                          self.transport, self.writer)
         try:
             match_info = yield from self._app.router.resolve(request)
 

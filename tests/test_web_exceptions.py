@@ -15,6 +15,8 @@ class TestHTTPExceptions(unittest.TestCase):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
 
+        self.payload = mock.Mock()
+        self.transport = mock.Mock()
         self.writer = mock.Mock()
         self.writer.drain.return_value = ()
         self.buf = b''
@@ -31,8 +33,8 @@ class TestHTTPExceptions(unittest.TestCase):
         self.app = mock.Mock()
         message = RawRequestMessage(method, path, HttpVersion11, headers,
                                     False, False)
-        self.payload = mock.Mock()
-        req = Request(self.app, message, self.payload, self.writer)
+        req = Request(self.app, message, self.payload,
+                      self.transport, self.writer)
         return req
 
     def test_all_http_exceptions_exported(self):
