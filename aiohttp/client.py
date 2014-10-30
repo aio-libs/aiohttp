@@ -377,7 +377,7 @@ class ClientRequest:
         elif isinstance(data, (asyncio.StreamReader, streams.DataQueue)):
             self.body = data
 
-        elif inspect.isgenerator(data):
+        elif asyncio.iscoroutine(data):
             self.body = data
             if 'CONTENT-LENGTH' not in self.headers and self.chunked is None:
                 self.chunked = True
@@ -447,7 +447,7 @@ class ClientRequest:
             yield from self._continue
 
         try:
-            if inspect.isgenerator(self.body):
+            if asyncio.iscoroutine(self.body):
                 exc = None
                 value = None
                 stream = self.body
