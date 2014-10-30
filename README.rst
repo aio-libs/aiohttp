@@ -101,17 +101,3 @@ If you want to use timeouts for aiohttp client side please use standard
 asyncio approach::
 
    yield from asyncio.wait_for(request('GET', url), 10)
-
-
-Gunicorn worker
----------------
-
-Since version 0.19.0 gunicorn has native support for aiohttp.
-
-Paster configuration example::
-
-   [server:main]
-   use = egg:gunicorn#main
-   host = 0.0.0.0
-   port = 8080
-   worker_class = aiohttp.worker.AsyncGunicornWorker
