@@ -12,3 +12,8 @@ script:
   coverage run --source=aiohttp setup.py test
 after_success:
   coveralls
+
+env:
+  matrix:
+    - PYTHONASYNCIODEBUG=1
+    - PYTHONASYNCIODEBUG=0
