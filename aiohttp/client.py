@@ -515,7 +515,12 @@ class ClientRequest:
                     'Can not write request body for %s' % self.url))
         else:
             try:
-                request.write_eof()
+                ret = request.write_eof()
+                # NB: in asyncio 3.4.1+ StreamWriter.drain() is coroutine
+                # see bug #170
+                if (asyncio.iscoroutine(ret) or
+                        isinstance(ret, asyncio.Future)):
+                    yield from ret
             except Exception as exc:
                 reader.set_exception(
                     aiohttp.ClientConnectionError(

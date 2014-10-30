@@ -219,9 +219,10 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                 self.log_debug('Ignored premature client disconnection.')
                 break
             except errors.HttpException as exc:
-                self.handle_error(exc.code, message, None, exc, exc.headers)
+                yield from self.handle_error(exc.code, message,
+                                             None, exc, exc.headers)
             except Exception as exc:
-                self.handle_error(500, message, None, exc)
+                yield from self.handle_error(500, message, None, exc)
             finally:
                 if self.transport is None:
                     self.log_debug('Ignored premature client disconnection.')
@@ -290,9 +291,10 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             response.send_headers()
 
             response.write(html)
-            response.write_eof()
+            drain = response.write_eof()
 
             self.log_access(message, None, response, time.time() - now)
+            return drain
         finally:
             self.keep_alive(False)
 

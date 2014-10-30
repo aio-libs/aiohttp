@@ -97,7 +97,7 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
             except OSError:
                 response.write(b'Cannot open')
 
-        response.write_eof()
+        yield from response.write_eof()
         if response.keep_alive():
             self.keep_alive(True)
 
