@@ -377,7 +377,7 @@ class ClientRequest:
         elif isinstance(data, (asyncio.StreamReader, streams.DataQueue)):
             self.body = data
 
-        elif inspect.isgenerator(data):
+        elif asyncio.iscoroutine(data):
             self.body = data
             if 'CONTENT-LENGTH' not in self.headers and self.chunked is None:
                 self.chunked = True
@@ -447,7 +447,7 @@ class ClientRequest:
             yield from self._continue
 
         try:
-            if inspect.isgenerator(self.body):
+            if asyncio.iscoroutine(self.body):
                 exc = None
                 value = None
                 stream = self.body
@@ -515,7 +515,12 @@ class ClientRequest:
                     'Can not write request body for %s' % self.url))
         else:
             try:
-                request.write_eof()
+                ret = request.write_eof()
+                # NB: in asyncio 3.4.1+ StreamWriter.drain() is coroutine
+                # see bug #170
+                if (asyncio.iscoroutine(ret) or
+                        isinstance(ret, asyncio.Future)):
+                    yield from ret
             except Exception as exc:
                 reader.set_exception(
                     aiohttp.ClientConnectionError(
