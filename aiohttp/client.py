@@ -5,7 +5,6 @@ __all__ = ['request', 'HttpClient']
 import asyncio
 import collections
 import http.cookies
-import inspect
 import io
 import json
 import mimetypes
