@@ -38,7 +38,12 @@ class TestWebRequest(unittest.TestCase):
         self.assertEqual('/path/to?a=1&b=2', req.path_qs)
         self.assertEqual('/path/to', req.path)
         self.assertEqual('a=1&b=2', req.query_string)
-        self.assertEqual(MultiDict([('a', '1'), ('b', '2')]), req.GET)
+
+        get = req.GET
+        self.assertEqual(MultiDict([('a', '1'), ('b', '2')]), get)
+        # second call should return the same object
+        self.assertIs(get, req.GET)
+
         self.assertIs(self.payload, req.payload)
         self.assertIs(self.transport, req.transport)
         self.assertTrue(req.keep_alive)
