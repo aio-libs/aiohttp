@@ -257,6 +257,14 @@ class TestStreamResponse(unittest.TestCase):
         # check for Max-Age dropped
         self.assertEqual(str(resp.cookies), 'Set-Cookie: name=val')
 
+    def test_set_status_with_reason(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse(req)
+
+        resp.set_status(200, "Everithing is fine!")
+        self.assertEqual(200, resp.status)
+        self.assertEqual("Everithing is fine!", resp.reason)
+
 
 class TestResponse(unittest.TestCase):
 
