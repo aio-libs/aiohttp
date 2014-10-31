@@ -77,3 +77,8 @@ class TestWeb(unittest.TestCase):
                     'application': app,
                     'message': 'Error in finish callback'}
         handler.assert_called_once_with(self.loop, exc_info)
+
+    def test_non_default_router(self):
+        router = web.UrlDispatcher()
+        app = web.Application(loop=self.loop, router=router)
+        self.assertIs(router, app.router)
