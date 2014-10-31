@@ -4,8 +4,8 @@ from abc import ABCMeta, abstractmethod
 
 class AbstractRouter(metaclass=ABCMeta):
 
-    @abstractmethod
     @asyncio.coroutine
+    @abstractmethod
     def resolve(self, request):
         """Return MATCH_INFO for given request"""
 
