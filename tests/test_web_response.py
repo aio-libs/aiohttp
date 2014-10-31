@@ -367,3 +367,24 @@ class TestResponse(unittest.TestCase):
                          'SET-COOKIE: name=value\r\n'
                          'CONNECTION: keep-alive\r\n'
                          'DATE: .+\r\nSERVER: .+\r\n\r\n')
+
+    def test_explicitly_send_headers(self):
+        req = self.make_request('GET', '/')
+        resp = Response(req)
+
+        self.writer.drain.return_value = ()
+        buf = b''
+
+        def append(data):
+            nonlocal buf
+            buf += data
+
+        self.writer.write.side_effect = append
+
+        resp.send_headers()
+
+        self.loop.run_until_complete(resp.write_eof())
+        txt = buf.decode('utf8')
+        self.assertRegex(txt, 'HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 0\r\n'
+                         'CONNECTION: keep-alive\r\n'
+                         'DATE: .+\r\nSERVER: .+\r\n\r\n')
