@@ -4,12 +4,12 @@ FLAGS=
 
 
 flake:
-	flake8 --exclude=./venv ./
+	flake8 aiohttp tests examples
 
-test:
+test: flake
 	nosetests -s $(FLAGS) ./tests/
 
-vtest:
+vtest: flake
 	nosetests -s -v $(FLAGS) ./tests/
 
 testloop:
