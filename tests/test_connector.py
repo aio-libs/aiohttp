@@ -52,6 +52,17 @@ class HttpConnectionTests(unittest.TestCase):
         self.connector._release.assert_called_with(
             self.key, self.request, self.transport, self.protocol)
 
+    def test_release_released(self):
+        conn = Connection(
+            self.connector, self.key, self.request,
+            self.transport, self.protocol, self.loop)
+        conn.release()
+        self.connector._release.reset_mock()
+        conn.release()
+        self.assertFalse(self.transport.close.called)
+        self.assertIsNone(conn._transport)
+        self.assertFalse(self.connector._release.called)
+
     def test_no_share_cookies(self):
         connector = aiohttp.BaseConnector(share_cookies=False, loop=self.loop)
 
