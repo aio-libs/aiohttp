@@ -5,6 +5,7 @@ import socket
 import unittest
 import tempfile
 from aiohttp import web, request, FormData
+from aiohttp.multidict import MultiDict
 
 
 class TestWebFunctional(unittest.TestCase):
@@ -267,3 +268,24 @@ class TestWebFunctional(unittest.TestCase):
                 fp.flush()
                 fp.seek(0)
                 self.loop.run_until_complete(go(tmpdirname, filename))
+
+    def test_post_form_with_duplicate_keys(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            data = yield from request.POST()
+            lst = list(sorted(data.items(getall=True)))
+            self.assertEqual([('a', '1'), ('a', '2')], lst)
+            return web.Response(request, b'OK')
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('POST', '/', handler)
+            resp = yield from request('POST', url,
+                                      data=MultiDict([('a', 1), ('a', 2)]),
+                                      loop=self.loop)
+            self.assertEqual(200, resp.status)
+            txt = yield from resp.text()
+            self.assertEqual('OK', txt)
+
+        self.loop.run_until_complete(go())

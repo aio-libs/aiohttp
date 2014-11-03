@@ -358,7 +358,7 @@ class Request(HeadersMixin):
                     value = supported_tranfer_encoding[
                         transfer_encoding](value)
                 out.add(field.name, value)
-        self._post = MultiDict(out)
+        self._post = MultiDict(out.items(getall=True))
         return self._post
 
     # @asyncio.coroutine
