@@ -58,6 +58,29 @@ argument and returns :class:`StreamResponse` derived
 Handler **can** be a :ref:`coroutine<coroutine>`, :mod:`aiohttp.web` will
 **unyield** returned result by applying ``yield from`` to handler.
 
+Handlers connected to :class:`Application` via routes::
+
+   handler = Handler()
+   app.router.add_route('GET', '/', handler)
+
+.. _aiohttp-web-variable-handler:
+
+You can also use *variable routes*. If route contains string like
+``'/a/{name}/c'`` that means the route matches to path like
+``'/a/b/c'`` or ``'/a/1/c'``.
+
+Parsed *path part* will be available in *request handler* as
+``request.match_info['name']``::
+
+   @asyncio.coroutine
+   def variable_handler(request):
+       return web.Response(
+           request,
+           "Hello, {}".format(request.match_info['name']).encode('utf8'))
+
+   app.router.add_route('GET', '/{name}', variable_handler)
+
+
 Handlers can be first-class functions like::
 
    @asyncio.coroutine
@@ -735,8 +758,37 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       Append :ref:`handler<aiohttp-web-handler>` to end of route table.
 
-      *path* may be either [TBD]
+      *path* may be either *contant* string like ``'/a/b/c'`` or
+       *variable rule* like ``'/a/{var}'`` (see
+       :ref:`handling variable pathes<aiohttp-web-variable-handler>`)
 
+      :param str path: route path
+
+      :param callable handler: route handler
+
+   .. method:: add_static(prefix, path)
+
+      Adds router for returning static files.
+
+      Useful for handling static content like images, java script and css files.
+
+      .. warning::
+
+         Use :meth:`add_static` for development only, in production
+         static content usually processed by web servers like *nginx*
+         or *apache*.
+
+      :param str prefix: URL path prefix for handled static files
+
+      :param str path: path to folder in file system that contains
+                       handled static files.
+
+   .. method:: resolve(requst)
+
+      A :ref:`coroutine<coroutine>` that returns
+      :class:`AbstractMatchInfo` for *request* or raises http
+      exception like :exc:`HTTPNotFound` if there is no registered
+      route for *request*.
 
 Utilities
 ---------
