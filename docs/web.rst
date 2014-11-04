@@ -815,3 +815,100 @@ Utilities
       *MIME type* of uploaded file, ``'text/plain'`` by default.
 
    .. seealso:: :ref:`aiohttp-web-file-upload`
+
+
+Exceptions
+-----------
+
+:mod:`aiohttp.web` defines exceptions for list of *HTTP status codes*.
+
+Each class relates to a single HTTP status code.  Each class is a
+subclass of the :class:`~HTTPException`.
+
+Those exceptions are derived from :class:`Response` also, so you can
+eighter return exception object from :ref:`aiohttp-web-handler` or raise it.
+
+The follow snippets are equals::
+
+    @asyncio.coroutine
+    def handler(request):
+        return aiohttp.web.HTTPFound(request, '/redirect')
+
+and::
+
+    @asyncio.coroutine
+    def handler(request):
+        raise aiohttp.web.HTTPFound(request, '/redirect')
+
+
+Each exception class has a status code according to :rfc:`2068`:
+codes with 100-300 are not really errors; 400s are client errors,
+and 500s are server errors.
+
+Http Exception hierarchy chart::
+
+   Exception
+     HTTPException
+       HTTPSuccessful
+         * 200 - HTTPOk
+         * 201 - HTTPCreated
+         * 202 - HTTPAccepted
+         * 203 - HTTPNonAuthoritativeInformation
+         * 204 - HTTPNoContent
+         * 205 - HTTPResetContent
+         * 206 - HTTPPartialContent
+       HTTPRedirection
+         * 300 - HTTPMultipleChoices
+         * 301 - HTTPMovedPermanently
+         * 302 - HTTPFound
+         * 303 - HTTPSeeOther
+         * 304 - HTTPNotModified
+         * 305 - HTTPUseProxy
+         * 307 - HTTPTemporaryRedirect
+       HTTPError
+         HTTPClientError
+           * 400 - HTTPBadRequest
+           * 401 - HTTPUnauthorized
+           * 402 - HTTPPaymentRequired
+           * 403 - HTTPForbidden
+           * 404 - HTTPNotFound
+           * 405 - HTTPMethodNotAllowed
+           * 406 - HTTPNotAcceptable
+           * 407 - HTTPProxyAuthenticationRequired
+           * 408 - HTTPRequestTimeout
+           * 409 - HTTPConflict
+           * 410 - HTTPGone
+           * 411 - HTTPLengthRequired
+           * 412 - HTTPPreconditionFailed
+           * 413 - HTTPRequestEntityTooLarge
+           * 414 - HTTPRequestURITooLong
+           * 415 - HTTPUnsupportedMediaType
+           * 416 - HTTPRequestRangeNotSatisfiable
+           * 417 - HTTPExpectationFailed
+         HTTPServerError
+           * 500 - HTTPInternalServerError
+           * 501 - HTTPNotImplemented
+           * 502 - HTTPBadGateway
+           * 503 - HTTPServiceUnavailable
+           * 504 - HTTPGatewayTimeout
+           * 505 - HTTPVersionNotSupported
+
+All http exceptions has constructor like::
+
+    HTTPNotFound(request, *, headers=None, reason=None)
+
+if other not directly specified. *headers* will be added to *default
+response headers*.
+
+Classes :class:`HTTPMultipleChoices`, :class:`HTTPMovedPermanently`,
+:class:`HTTPFound`, :class:`HTTPSeeOther`, :class:`HTTPUseProxy`,
+:class:`HTTPTemporaryRedirect` has constructor signature like::
+
+    HTTPFound(request, location, *, headers=None, reason=None)
+
+where *location* is value for *Location HTTP header*.
+
+:class:`HTTPMethodNotAllowed` constructed with pointing trial method
+and list of allowed methods::
+
+    HTTPMethodNotAllowed(request, method, allowed_methods, *, headers=None, reason=None)
