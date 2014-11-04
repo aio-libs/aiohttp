@@ -102,7 +102,8 @@ class MultiDict(abc.Mapping):
     def __repr__(self):
         return '<{}>\n{}'.format(
             self.__class__.__name__, pprint.pformat(
-                list(self.items())))
+                list(self.items(getall=True)))
+        )
 
 
 class CaseInsensitiveMultiDict(MultiDict):
