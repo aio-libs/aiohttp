@@ -77,14 +77,14 @@ class MultiDict(abc.Mapping):
     def __len__(self):
         return len(self._items)
 
-    def keys(self):
-        return _KeysView(self._items)
+    def keys(self, *, getall=False):
+        return _KeysView(self._items, getall=getall)
 
-    def items(self):
-        return _ItemsView(self._items)
+    def items(self, *, getall=False):
+        return _ItemsView(self._items, getall=getall)
 
-    def values(self):
-        return _ValuesView(self._items)
+    def values(self, *, getall=False):
+        return _ValuesView(self._items, getall=getall)
 
     def __eq__(self, other):
         if not isinstance(other, abc.Mapping):
@@ -217,6 +217,25 @@ class CaseInsensitiveMutableMultiDict(
 
 class _ItemsView(abc.ItemsView):
 
+    def __init__(self, items, *, getall=False):
+        self._getall = getall
+        self._keys = [item[0] for item in items]
+        if not getall:
+            self._keys = set(self._keys)
+
+        items_to_use = []
+        if getall:
+            items_to_use = items
+        else:
+            for key in self._keys:
+                for k, v in items:
+                    if k == key:
+                        items_to_use.append((k, v))
+                        break
+        assert len(items_to_use) == len(self._keys)
+
+        super().__init__(items_to_use)
+
     def __contains__(self, item):
         assert isinstance(item, tuple) or isinstance(item, list)
         assert len(item) == 2
@@ -228,21 +247,58 @@ class _ItemsView(abc.ItemsView):
 
 class _ValuesView(abc.ValuesView):
 
+    def __init__(self, items, *, getall=False):
+        self._getall = getall
+        self._keys = [item[0] for item in items]
+        if not getall:
+            self._keys = set(self._keys)
+
+        items_to_use = []
+        if getall:
+            items_to_use = items
+        else:
+            for key in self._keys:
+                for k, v in items:
+                    if k == key:
+                        items_to_use.append((k, v))
+                        break
+
+        assert len(items_to_use) == len(self._keys)
+
+        super().__init__(items_to_use)
+
     def __contains__(self, value):
         values = [item[1] for item in self._mapping]
         return value in values
 
     def __iter__(self):
-        values = [item[1] for item in self._mapping]
+        values = (item[1] for item in self._mapping)
         yield from values
 
 
 class _KeysView(abc.KeysView):
 
+    def __init__(self, items, *, getall=False):
+        self._getall = getall
+        self._keys = [item[0] for item in items]
+        if not getall:
+            self._keys = set(self._keys)
+
+        items_to_use = []
+        if getall:
+            items_to_use = items
+        else:
+            for key in self._keys:
+                for k, v in items:
+                    if k == key:
+                        items_to_use.append((k, v))
+                        break
+        assert len(items_to_use) == len(self._keys)
+
+        super().__init__(items_to_use)
+
     def __contains__(self, key):
-        keys = set([item[0] for item in self._mapping])
-        return key in keys
+        return key in self._keys
 
     def __iter__(self):
-        keys = set([item[0] for item in self._mapping])
-        yield from keys
+        yield from self._keys
