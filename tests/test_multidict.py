@@ -21,7 +21,7 @@ class _BaseTest:
         self.assertEqual(list(d.items(getall=True)), [])
 
         self.assertNotEqual(self.make_dict(), list())
-        with self.assertRaisesRegex(TypeError, "\(3 given\)"):
+        with self.assertRaisesRegex(TypeError, "\(2 given\)"):
             self.make_dict(('key1', 'value1'), ('key2', 'value2'))
 
     def test_instantiate__from_arg0(self):
