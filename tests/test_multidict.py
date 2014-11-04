@@ -58,8 +58,7 @@ class _BaseTest:
 
     def test_getone(self):
         d = self.make_dict([('key', 'value1')], key='value2')
-        with self.assertRaises(KeyError):
-            self.assertEqual(d.getone('key'), 'value1')
+        self.assertEqual(d.getone('key'), 'value1')
         self.assertEqual(d.get('key'), 'value1')
         self.assertEqual(d['key'], 'value1')
 
@@ -143,8 +142,7 @@ class CaseInsensitiveMultiDictTests(unittest.TestCase):
 
     def test_basics(self):
         d = self.make_dict([('KEY', 'value1')], KEY='value2')
-        with self.assertRaises(KeyError):
-            self.assertEqual(d.getone('key'), 'value1')
+        self.assertEqual(d.getone('key'), 'value1')
         self.assertEqual(d.get('key'), 'value1')
         self.assertEqual(d.get('key2', 'val'), 'val')
         self.assertEqual(d['key'], 'value1')
