@@ -42,19 +42,20 @@ class MultiDict(abc.Mapping):
         res = tuple([v for k, v in self._items if k == key])
         if res:
             return res
-        if not res and default != _marker:
+        if not res and default is not _marker:
             return default
         raise KeyError('Key not found: %r' % key)
 
     def getone(self, key, default=_marker):
         """
-        Get one value matching the key, raising a KeyError if multiple
-        values were found.
+        Get first value matching the key
         """
-        v = self.getall(key, default=_marker)
-        if len(v) > 1 and v != default:
-            raise KeyError('Multiple values match %r: %r' % (key, v))
-        return v[0]
+        for k, v in self._items:
+            if k == key:
+                return v
+        if default is not _marker:
+            return default
+        raise KeyError('Key not found: %r' % key)
 
     # extra methods #
 
@@ -269,12 +270,14 @@ class _ValuesView(abc.ValuesView):
         super().__init__(items_to_use)
 
     def __contains__(self, value):
-        values = [item[1] for item in self._mapping]
-        return value in values
+        for item in self._mapping:
+            if item[1] == value:
+                return True
+        return False
 
     def __iter__(self):
-        values = (item[1] for item in self._mapping)
-        yield from values
+        for item in self._mapping:
+            yield item[1]
 
 
 class _KeysView(abc.KeysView):
