@@ -15,8 +15,8 @@ class MultiDict(abc.Mapping):
 
     def __init__(self, *args, **kwargs):
         if len(args) > 1:
-            raise TypeError("MultiDict takes at most 2 positional "
-                            "arguments ({} given)".format(len(args) + 1))
+            raise TypeError("MultiDict takes at most 1 positional "
+                            "argument ({} given)".format(len(args)))
         self._items = []
         if args:
             if hasattr(args[0], 'items'):
