@@ -67,12 +67,28 @@ class _BaseTest:
         with self.assertRaises(KeyError):
             d.getone('key2')
 
+        self.assertEqual('default', d.getone('key2', 'default'))
+
     def test_copy(self):
         d1 = self.make_dict(key='value', a='b')
 
         d2 = d1.copy()
         self.assertEqual(d1, d2)
         self.assertIsNot(d1, d2)
+
+    def test_keys__contains(self):
+        d = self.make_dict([('key', 'one'), ('key2', 'two'), ('key', 3)])
+        self.assertEqual(list(d.keys()), ['key', 'key2'])
+        self.assertEqual(list(d.keys(getall=True)), ['key', 'key2', 'key'])
+
+        self.assertIn('key', d.keys())
+        self.assertIn('key2', d.keys())
+
+        self.assertIn('key', d.keys(getall=True))
+        self.assertIn('key2', d.keys(getall=True))
+
+        self.assertNotIn('foo', d.keys())
+        self.assertNotIn('foo', d.keys(getall=True))
 
     def test_values__contains(self):
         d = self.make_dict([('key', 'one'), ('key', 'two'), ('key', 3)])
@@ -107,6 +123,10 @@ class _BaseTest:
         self.assertNotIn(('foo', 'bar'), d.items())
         self.assertNotIn(('foo', 'bar'), d.items(getall=True))
 
+    def test_cannot_create_from_unaccepted(self):
+        with self.assertRaises(TypeError):
+            self.make_dict([(1, 2, 3)])
+
 
 class MultiDictTests(_BaseTest, unittest.TestCase):
 
@@ -124,7 +144,7 @@ class MultiDictTests(_BaseTest, unittest.TestCase):
         d = self.make_dict([('key', 'value1')], key='value2')
 
         self.assertEqual(d, {'key': 'value1'})
-        self.assertEqual(len(d), 1)
+        self.assertEqual(len(d), 2)
 
         self.assertEqual(d.getall('key'), ('value1', 'value2'))
 
@@ -133,6 +153,12 @@ class MultiDictTests(_BaseTest, unittest.TestCase):
 
         default = object()
         self.assertIs(d.getall('some_key', default), default)
+
+    def test_preserve_stable_ordering(self):
+        d = self.make_dict([('a', 1), ('b', '2'), ('a', 3)])
+        s = '&'.join('{}={}'.format(k, v) for k, v in d.items(getall=True))
+
+        self.assertEqual('a=1&b=2&a=3', s)
 
 
 class CaseInsensitiveMultiDictTests(unittest.TestCase):
@@ -157,7 +183,7 @@ class CaseInsensitiveMultiDictTests(unittest.TestCase):
         d = self.make_dict([('KEY', 'value1')], KEY='value2')
 
         self.assertEqual(d, {'KEY': 'value1'})
-        self.assertEqual(len(d), 1)
+        self.assertEqual(len(d), 2)
 
         self.assertEqual(d.getall('key'), ('value1', 'value2'))
 
@@ -170,18 +196,18 @@ class _BaseMutableMultiDictTests(_BaseTest):
     def test__repr__(self):
         d = self.make_dict()
         self.assertEqual(str(d), "<MutableMultiDict>\n[]")
+
         d = self.make_dict([('key', 'one'), ('key', 'two')])
+
         self.assertEqual(
             str(d),
             "<MutableMultiDict>\n[('key', 'one'), ('key', 'two')]")
 
     def test_getall(self):
         d = self.make_dict([('key', 'value1')], key='value2')
+        self.assertEqual(len(d), 2)
 
-        self.assertEqual(d, {'key': 'value1'})
-        self.assertEqual(len(d), 1)
-
-        self.assertEqual(d.getall('key'), ['value1', 'value2'])
+        self.assertEqual(d.getall('key'), ('value1', 'value2'))
 
         with self.assertRaisesRegex(KeyError, "some_key"):
             d.getall('some_key')
@@ -195,19 +221,19 @@ class _BaseMutableMultiDictTests(_BaseTest):
         self.assertEqual(d, {})
         d['key'] = 'one'
         self.assertEqual(d, {'key': 'one'})
-        self.assertEqual(d.getall('key'), ['one'])
+        self.assertEqual(d.getall('key'), ('one',))
 
         d['key'] = 'two'
         self.assertEqual(d, {'key': 'two'})
-        self.assertEqual(d.getall('key'), ['two'])
+        self.assertEqual(d.getall('key'), ('two',))
 
         d.add('key', 'one')
         self.assertEqual(d, {'key': 'two'})
-        self.assertEqual(d.getall('key'), ['two', 'one'])
+        self.assertEqual(d.getall('key'), ('two', 'one'))
 
         d.add('foo', 'bar')
         self.assertEqual(d, {'key': 'two', 'foo': 'bar'})
-        self.assertEqual(d.getall('foo'), ['bar'])
+        self.assertEqual(d.getall('foo'), ('bar',))
 
     def test_extend(self):
         d = self.make_dict()
@@ -215,36 +241,26 @@ class _BaseMutableMultiDictTests(_BaseTest):
 
         d.extend([('key', 'one'), ('key', 'two')], key=3, foo='bar')
         self.assertEqual(d, {'key': 'one', 'foo': 'bar'})
-        self.assertEqual(list(d.items(getall=True)), [
-            ('key', 'one'), ('key', 'two'),
-            ('key', 3), ('foo', 'bar')])
+        itms = d.items(getall=True)
+        # we can't guarantee order of kwargs
+        self.assertTrue(('key', 'one') in itms)
+        self.assertTrue(('key', 'two') in itms)
+        self.assertTrue(('key', 3) in itms)
+        self.assertTrue(('foo', 'bar') in itms)
 
         other = self.make_dict(bar='baz')
         self.assertEqual(other, {'bar': 'baz'})
 
         d.extend(other)
         self.assertEqual(d, {'key': 'one', 'foo': 'bar', 'bar': 'baz'})
-        self.assertEqual(list(d.items(getall=True)), [
-            ('key', 'one'), ('key', 'two'),
-            ('key', 3), ('foo', 'bar'),
-            ('bar', 'baz'),
-            ])
+        self.assertIn(('bar', 'baz'), d.items(getall=True))
 
         d.extend({'foo': 'moo'})
         self.assertEqual(d, {'key': 'one', 'foo': 'bar', 'bar': 'baz'})
-        self.assertEqual(list(d.items(getall=True)), [
-            ('key', 'one'), ('key', 'two'),
-            ('key', 3), ('foo', 'bar'),
-            ('foo', 'moo'), ('bar', 'baz'),
-            ])
+        self.assertIn(('foo', 'moo'), d.items(getall=True))
 
         d.extend()
         self.assertEqual(d, {'key': 'one', 'foo': 'bar', 'bar': 'baz'})
-        self.assertEqual(list(d.items(getall=True)), [
-            ('key', 'one'), ('key', 'two'),
-            ('key', 3), ('foo', 'bar'),
-            ('foo', 'moo'), ('bar', 'baz'),
-            ])
 
         with self.assertRaises(TypeError):
             d.extend('foo', 'bar')
@@ -294,9 +310,9 @@ class CaseInsensitiveMutableMultiDictTests(unittest.TestCase):
         d = self.make_dict([('KEY', 'value1')], KEY='value2')
 
         self.assertEqual(d, {'KEY': 'value1'})
-        self.assertEqual(len(d), 1)
+        self.assertEqual(len(d), 2)
 
-        self.assertEqual(d.getall('key'), ['value1', 'value2'])
+        self.assertEqual(d.getall('key'), ('value1', 'value2'))
 
         with self.assertRaisesRegex(KeyError, "SOME_KEY"):
             d.getall('some_key')
