@@ -1,6 +1,7 @@
 """Tests for aiohttp/server.py"""
 
 import asyncio
+import socket
 import unittest
 import unittest.mock
 
@@ -65,6 +66,32 @@ class HttpServerProtocolTests(unittest.TestCase):
 
         srv.connection_made(unittest.mock.Mock())
         self.assertIsNotNone(srv._request_handler)
+        self.assertIsNotNone(srv._timeout_handle)
+
+    def test_connection_made_without_timeout(self):
+        srv = server.ServerHttpProtocol(loop=self.loop, timeout=0)
+
+        srv.connection_made(unittest.mock.Mock())
+        self.assertIsNone(srv._timeout_handle)
+
+    def test_connection_made_with_keepaplive(self):
+        srv = server.ServerHttpProtocol(loop=self.loop)
+
+        sock = unittest.mock.Mock()
+        transport = unittest.mock.Mock()
+        transport.get_extra_info.return_value = sock
+        srv.connection_made(transport)
+        sock.setsockopt.assert_called_with(socket.SOL_SOCKET,
+                                           socket.SO_KEEPALIVE, 1)
+
+    def test_connection_made_without_keepaplive(self):
+        srv = server.ServerHttpProtocol(loop=self.loop, tcp_keepalive=False)
+
+        sock = unittest.mock.Mock()
+        transport = unittest.mock.Mock()
+        transport.get_extra_info.return_value = sock
+        srv.connection_made(transport)
+        self.assertFalse(sock.setsockopt.called)
 
     def test_data_received(self):
         srv = server.ServerHttpProtocol(loop=self.loop)
