@@ -67,12 +67,28 @@ class _BaseTest:
         with self.assertRaises(KeyError):
             d.getone('key2')
 
+        self.assertEqual('default', d.getone('key2', 'default'))
+
     def test_copy(self):
         d1 = self.make_dict(key='value', a='b')
 
         d2 = d1.copy()
         self.assertEqual(d1, d2)
         self.assertIsNot(d1, d2)
+
+    def test_keys__contains(self):
+        d = self.make_dict([('key', 'one'), ('key2', 'two'), ('key', 3)])
+        self.assertEqual(list(d.keys()), ['key', 'key2'])
+        self.assertEqual(list(d.keys(getall=True)), ['key', 'key2', 'key'])
+
+        self.assertIn('key', d.keys())
+        self.assertIn('key2', d.keys())
+
+        self.assertIn('key', d.keys(getall=True))
+        self.assertIn('key2', d.keys(getall=True))
+
+        self.assertNotIn('foo', d.keys())
+        self.assertNotIn('foo', d.keys(getall=True))
 
     def test_values__contains(self):
         d = self.make_dict([('key', 'one'), ('key', 'two'), ('key', 3)])
@@ -107,6 +123,10 @@ class _BaseTest:
         self.assertNotIn(('foo', 'bar'), d.items())
         self.assertNotIn(('foo', 'bar'), d.items(getall=True))
 
+    def test_cannot_create_from_unaccepted(self):
+        with self.assertRaises(TypeError):
+            self.make_dict([(1, 2, 3)])
+
 
 class MultiDictTests(_BaseTest, unittest.TestCase):
 
@@ -133,6 +153,12 @@ class MultiDictTests(_BaseTest, unittest.TestCase):
 
         default = object()
         self.assertIs(d.getall('some_key', default), default)
+
+    def test_preserve_stable_ordering(self):
+        d = self.make_dict([('a', 1), ('b', '2'), ('a', 3)])
+        s = '&'.join('{}={}'.format(k, v) for k, v in d.items(getall=True))
+
+        self.assertEqual('a=1&b=2&a=3', s)
 
 
 class CaseInsensitiveMultiDictTests(unittest.TestCase):
