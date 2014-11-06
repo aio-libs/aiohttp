@@ -486,3 +486,21 @@ class HttpServerProtocolTests(unittest.TestCase):
         srv.log_access(None, None, None, None)
 
         self.assertFalse(srv.log.error.called)
+
+    def test_cancel_not_connected_handler(self):
+        srv = server.ServerHttpProtocol(loop=self.loop)
+        srv.cancel_slow_request()
+
+    def test_srv_process_request_without_timeout(self):
+        transport = unittest.mock.Mock()
+        srv = server.ServerHttpProtocol(timeout=0, loop=self.loop)
+        srv.connection_made(transport)
+        self.assertIsNone(srv._timeout_handle)
+
+        srv.reader.feed_data(
+            b'GET / HTTP/1.0\r\n'
+            b'Host: example.com\r\n\r\n')
+
+        self.loop.run_until_complete(srv._request_handler)
+        self.assertTrue(transport.close.called)
+        self.assertIsNone(srv._timeout_handle)
