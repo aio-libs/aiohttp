@@ -421,14 +421,14 @@ handler<aiohttp-web-handler>` is returning :class:`Response` instance::
 StreamResponse
 ^^^^^^^^^^^^^^
 
-.. class:: StreamResponse(request. *, status=200, reason=None)
+.. class:: StreamResponse(request, *, status=200, reason=None)
 
    The base class for *HTTP response* handling.
 
    Contains methods for setting *HTTP response headers*, *cookies*,
    *response status code*, writing *HTTP response BODY* and so on.
 
-   The most important thing you should to know about *response* --- it
+   The most important thing you should know about *response* --- it
    is *Finite State Machine*.
 
    That means you can do any manipulations on *headers*,
