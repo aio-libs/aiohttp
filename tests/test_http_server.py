@@ -472,3 +472,17 @@ class HttpServerProtocolTests(unittest.TestCase):
         srv.log_access(None, None, None, None)
 
         self.assertTrue(srv.log.error.called)
+
+    def test_log_access_disabled(self):
+        transport = unittest.mock.Mock()
+
+        srv = server.ServerHttpProtocol(loop=self.loop, access_log=None)
+        srv.connection_made(transport)
+        srv.log = unittest.mock.Mock()
+
+        message = unittest.mock.Mock()
+        message.headers = []
+        message.version = (1, 1)
+        srv.log_access(None, None, None, None)
+
+        self.assertFalse(srv.log.error.called)
