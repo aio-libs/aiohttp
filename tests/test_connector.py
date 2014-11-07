@@ -39,8 +39,10 @@ class HttpConnectionTests(unittest.TestCase):
             self.connector, self.key, self.request,
             self.transport, self.protocol, self.loop)
         conn.close()
-        self.assertTrue(self.transport.close.called)
         self.assertIsNone(conn._transport)
+        self.connector._release.assert_called_with(
+            self.key, self.request, self.transport, self.protocol,
+            should_close=True)
 
     def test_release(self):
         conn = Connection(

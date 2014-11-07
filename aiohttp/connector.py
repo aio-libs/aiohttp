@@ -35,7 +35,9 @@ class Connection(object):
 
     def close(self):
         if self._transport is not None:
-            self._transport.close()
+            self._connector._release(
+                self._key, self._request, self._transport, self._protocol,
+                should_close=True)
             self._transport = None
             self._wr = None
 
@@ -173,21 +175,22 @@ class BaseConnector(object):
 
         return None, None
 
-    def _release(self, key, req, transport, protocol):
+    def _release(self, key, req, transport, protocol, *, should_close=False):
         resp = req.response
-        should_close = False
 
-        if resp is not None:
-            if resp.message is None:
+        if not should_close:
+            if resp is not None:
+                if resp.message is None:
+                    should_close = True
+                else:
+                    should_close = resp.message.should_close
+
+            if self._force_close:
                 should_close = True
-            else:
-                should_close = resp.message.should_close
-
-        if self._force_close:
-            should_close = True
 
         reader = protocol.reader
         if should_close or (reader.output and not reader.output.at_eof()):
+            self._conns.pop(key, None)
             transport.close()
         else:
             conns = self._conns.get(key)
