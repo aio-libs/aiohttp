@@ -1095,12 +1095,21 @@ class HttpClientFunctionalTests(unittest.TestCase):
             connector = aiohttp.TCPConnector(loop=self.loop)
 
             url = 'http://{}:{}/'.format(*addr)
-            for i in range(2):
-                r = yield from client.request('GET', url,
-                                              connector=connector,
-                                              loop=self.loop)
-                yield from r.read()
-                self.assertEqual(1, len(connector._conns))
+
+            r = yield from client.request('GET', url,
+                                          connector=connector,
+                                          loop=self.loop)
+            yield from r.read()
+            self.assertEqual(1, len(connector._conns))
+
+            with self.assertRaisesRegex(
+                    aiohttp.ClientConnectionError,
+                    'Connection closed by server'):
+                yield from client.request('GET', url,
+                                          connector=connector,
+                                          loop=self.loop)
+            self.assertEqual(0, len(connector._conns))
+
             connector.close()
             server.close()
             yield from server.wait_closed()
