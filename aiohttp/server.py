@@ -89,6 +89,10 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         self.access_log = access_log
         self.access_log_format = access_log_format
 
+    @property
+    def keep_alive_timeout(self):
+        return self._keep_alive_period
+
     def closing(self):
         """Worker process is about to exit, we need cleanup everything and
         stop accepting requests. It is especially important for keep-alive

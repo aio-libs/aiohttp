@@ -131,7 +131,8 @@ FileField = collections.namedtuple('Field', 'name filename file content_type')
 
 class Request(HeadersMixin):
 
-    def __init__(self, app, message, payload, transport, writer):
+    def __init__(self, app, message, payload, transport, writer,
+                 keep_alive_timeout):
         self._app = app
         self._version = message.version
         self._transport = transport
@@ -154,7 +155,7 @@ class Request(HeadersMixin):
         elif message.should_close:
             self._keep_alive = False
         else:
-            self._keep_alive = True
+            self._keep_alive = bool(keep_alive_timeout)
 
         # matchdict, route_name, handler
         # or information about traversal lookup
@@ -967,7 +968,7 @@ class RequestHandler(ServerHttpProtocol):
     @asyncio.coroutine
     def handle_request(self, message, payload):
         request = Request(self._app, message, payload,
-                          self.transport, self.writer)
+                          self.transport, self.writer, self.keep_alive_timeout)
         try:
             match_info = yield from self._app.router.resolve(request)
 
