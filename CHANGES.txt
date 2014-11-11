@@ -10,6 +10,12 @@ CHANGES
 
 - Fix aiohttp.client bug for sending file without content-type.
 
+- Change error text for connection closed between server responses
+  from 'Can not read status line' to explicit 'Connection closed by
+  server'
+
+- Drop closed connections from connector #173
+
 0.9.3 (10-30-2014)
 ------------------
 
