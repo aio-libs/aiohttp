@@ -34,7 +34,7 @@ class TestHTTPExceptions(unittest.TestCase):
         message = RawRequestMessage(method, path, HttpVersion11, headers,
                                     False, False)
         req = Request(self.app, message, self.payload,
-                      self.transport, self.writer)
+                      self.transport, self.writer, 15)
         return req
 
     def test_all_http_exceptions_exported(self):

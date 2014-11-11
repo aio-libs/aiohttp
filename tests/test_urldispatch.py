@@ -17,16 +17,15 @@ class TestUrlDispatcher(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
-    def make_request(self, method, path, headers=MultiDict(), *,
-                     version=HttpVersion(1, 1), closing=False):
+    def make_request(self, method, path):
         self.app = mock.Mock()
-        message = RawRequestMessage(method, path, version, headers, closing,
-                                    False)
+        message = RawRequestMessage(method, path, HttpVersion(1, 1),
+                                    MultiDict(), False, False)
         self.payload = mock.Mock()
         self.transport = mock.Mock()
         self.writer = mock.Mock()
         req = Request(self.app, message, self.payload,
-                      self.transport, self.writer)
+                      self.transport, self.writer, 15)
         return req
 
     def test_add_route_root(self):
