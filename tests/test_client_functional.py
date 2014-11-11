@@ -1020,6 +1020,102 @@ class HttpClientFunctionalTests(unittest.TestCase):
             url = httpd.url('keepalive')
             self.loop.run_until_complete(go(url))
 
+    def test_server_close_keepalive_connection(self):
+
+        class Proto(asyncio.Protocol):
+
+            def connection_made(self, transport):
+                self.transp = transport
+                self.data = b''
+
+            def data_received(self, data):
+                self.data += data
+                if data.endswith(b'\r\n\r\n'):
+                    self.transp.write(
+                        b'HTTP/1.1 200 OK\r\n'
+                        b'CONTENT-LENGTH: 2\r\n'
+                        b'CONNECTION: close\r\n'
+                        b'\r\n'
+                        b'ok')
+                    self.transp.close()
+
+            def connection_lost(self, exc):
+                self.transp = None
+
+        @asyncio.coroutine
+        def go():
+            server = yield from self.loop.create_server(
+                Proto, '127.0.0.1')
+
+            addr = server.sockets[0].getsockname()
+
+            connector = aiohttp.TCPConnector(loop=self.loop)
+
+            url = 'http://{}:{}/'.format(*addr)
+            for i in range(2):
+                r = yield from client.request('GET', url,
+                                              connector=connector,
+                                              loop=self.loop)
+                yield from r.read()
+                self.assertEqual(0, len(connector._conns))
+            connector.close()
+            server.close()
+            yield from server.wait_closed()
+
+        self.loop.run_until_complete(go())
+
+    def test_handle_keepalive_on_closed_connection(self):
+
+        class Proto(asyncio.Protocol):
+
+            def connection_made(self, transport):
+                self.transp = transport
+                self.data = b''
+
+            def data_received(self, data):
+                self.data += data
+                if data.endswith(b'\r\n\r\n'):
+                    self.transp.write(
+                        b'HTTP/1.1 200 OK\r\n'
+                        b'CONTENT-LENGTH: 2\r\n'
+                        b'\r\n'
+                        b'ok')
+                    self.transp.close()
+
+            def connection_lost(self, exc):
+                self.transp = None
+
+        @asyncio.coroutine
+        def go():
+            server = yield from self.loop.create_server(
+                Proto, '127.0.0.1')
+
+            addr = server.sockets[0].getsockname()
+
+            connector = aiohttp.TCPConnector(loop=self.loop)
+
+            url = 'http://{}:{}/'.format(*addr)
+
+            r = yield from client.request('GET', url,
+                                          connector=connector,
+                                          loop=self.loop)
+            yield from r.read()
+            self.assertEqual(1, len(connector._conns))
+
+            with self.assertRaisesRegex(
+                    aiohttp.ClientConnectionError,
+                    'Connection closed by server'):
+                yield from client.request('GET', url,
+                                          connector=connector,
+                                          loop=self.loop)
+            self.assertEqual(0, len(connector._conns))
+
+            connector.close()
+            server.close()
+            yield from server.wait_closed()
+
+        self.loop.run_until_complete(go())
+
 
 class Functional(test_utils.Router):
 

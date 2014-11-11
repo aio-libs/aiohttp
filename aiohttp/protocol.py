@@ -205,6 +205,11 @@ class HttpResponseParser(HttpParser):
 
     def __call__(self, out, buf):
         try:
+            yield from buf.wait(1)
+        except aiohttp.EofStream:
+            raise errors.ClientConnectionError(
+                'Connection closed by server') from None
+        try:
             # read http message (response line + headers)
             try:
                 raw_data = yield from buf.readuntil(
