@@ -16,6 +16,8 @@ CHANGES
 
 - Drop closed connections from connector #173
 
+- Set server.transport to None on .closing() #172
+
 0.9.3 (10-30-2014)
 ------------------
 

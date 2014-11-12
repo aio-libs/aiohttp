@@ -102,6 +102,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         if ((not self._reading_request or self._request_handler is None) and
                 self.transport is not None):
             self.transport.close()
+            self.transport = None
 
     def connection_made(self, transport):
         super().connection_made(transport)

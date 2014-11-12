@@ -48,11 +48,38 @@ class HttpServerProtocolTests(unittest.TestCase):
         srv._keep_alive_handle = keep_alive_handle
         timeout_handle = unittest.mock.Mock()
         srv._timeout_handle = timeout_handle
-        srv.transport = unittest.mock.Mock()
+        transport = srv.transport = unittest.mock.Mock()
         srv.writer = unittest.mock.Mock()
 
         srv.closing()
-        self.assertTrue(srv.transport.close.called)
+        self.assertTrue(transport.close.called)
+        self.assertIsNone(srv.transport)
+
+        self.assertIsNotNone(srv._keep_alive_handle)
+        self.assertFalse(keep_alive_handle.cancel.called)
+
+        self.assertIsNotNone(srv._timeout_handle)
+        self.assertFalse(timeout_handle.cancel.called)
+
+    def test_double_closing(self):
+        srv = server.ServerHttpProtocol(loop=self.loop)
+        srv._keep_alive = True
+
+        keep_alive_handle = unittest.mock.Mock()
+        srv._keep_alive_handle = keep_alive_handle
+        timeout_handle = unittest.mock.Mock()
+        srv._timeout_handle = timeout_handle
+        transport = srv.transport = unittest.mock.Mock()
+        srv.writer = unittest.mock.Mock()
+
+        srv.closing()
+        self.assertTrue(transport.close.called)
+        self.assertIsNone(srv.transport)
+
+        transport.reset_mock()
+        srv.closing()
+        self.assertFalse(transport.close.called)
+        self.assertIsNone(srv.transport)
 
         self.assertIsNotNone(srv._keep_alive_handle)
         self.assertFalse(keep_alive_handle.cancel.called)
