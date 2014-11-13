@@ -33,6 +33,9 @@ http://aiohttp.readthedocs.org/
 Getting started
 ---------------
 
+Client
+^^^^^^
+
 To retrieve something from the web::
 
   import aiohttp
@@ -48,56 +51,38 @@ powered program::
   body = yield from response.read()
   print(body)
 
-The signature of request is the following::
-
-  request(method, url, *,
-          params=None,
-          data=None,
-          headers=None,
-          cookies=None,
-          auth=None,
-          allow_redirects=True,
-          max_redirects=10,
-          encoding='utf-8',
-          version=aiohttp.HttpVersion11,
-          compress=None,
-          chunked=None,
-          expect100=False,
-          connector=None,
-          read_until_eof=True,
-          request_class=None,
-          response_class=None,
-          loop=None
-  )
-
-It constructs and sends a request. It returns response object. Parameters are explained as follow:
-
-- ``method``: HTTP method
-- ``url``: Request url
-- ``params``: (optional) Dictionary or bytes to be sent in the query string
-  of the new request
-- ``data``: (optional) Dictionary, bytes, StreamReader or file-like object to
-  send in the body of the request
-- ``headers``: (optional) Dictionary of HTTP Headers to send with the request
-- ``cookies``: (optional) Dict object to send with the request
-- ``auth``: (optional) `BasicAuth` tuple to enable Basic HTTP Basic Auth
-- ``allow_redirects``: (optional) Boolean. Set to True if POST/PUT/DELETE
-  redirect following is allowed.
-- ``version``: Request http version.
-- ``compress``: Boolean. Set to True if request has to be compressed
-  with deflate encoding.
-- ``chunked``: Boolean or Integer. Set to chunk size for chunked
-  transfer encoding.
-- ``expect100``: Boolean. Expect 100-continue response from server.
-- ``connector``: ``aiohttp.connector.BaseConnector`` instance to support
-  connection pooling and session cookies.
-- ``read_until_eof``: Read response until eof if response
-  does not have Content-Length header.
-- ``request_class``: Custom Request class implementation.
-- ``response_class``: Custom Response class implementation.
-- ``loop``: Optional event loop.
-
 If you want to use timeouts for aiohttp client side please use standard
 asyncio approach::
 
    yield from asyncio.wait_for(request('GET', url), 10)
+
+Server (experimental)
+^^^^^^^^^^^^^^^^^^^^^
+
+In aiohttp 0.10 we've added highlevel API for web HTTP server.
+
+There is simple usage example::
+
+    import asyncio
+    from aiohttp import web
+
+
+    @asyncio.coroutine
+    def handle(request):
+        name = request.match_info.get('name', "Anonymous")
+        text = "Hello, " + name
+        return web.Response(body=text.encode('utf-8')
+
+
+    @asyncio.coroutine
+    def init(loop):
+        app = Application(loop=loop)
+        app.router.add_route('GET', '/{name}', handle)
+
+        srv = yield from loop.create_server(app.make_handler, '127.0.0.1', 8080)
+        print("Server started at http://127.0.0.1:8080")
+        return srv
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(init(loop))
+    loop.run_forever()
