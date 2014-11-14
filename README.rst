@@ -21,7 +21,7 @@ Requirements
 License
 -------
 
-``aiohttp`` is offered under the BSD license.
+``aiohttp`` is offered under the Apache 2 license.
 
 
 Documentation
