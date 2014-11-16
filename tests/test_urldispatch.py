@@ -192,3 +192,11 @@ class TestUrlDispatcher(unittest.TestCase):
                 ValueError,
                 "Dynamic endpoint requires nonempty parts parameter"):
             self.loop.run_until_complete(self.router.reverse('GET', 'name'))
+
+    def test_reverse_with_qs(self):
+        self.router.add_route('GET', '/get', lambda r: None, endpoint='name')
+
+        url = self.loop.run_until_complete(
+            self.router.reverse('GET', 'name', query=[('a', 'b'), ('c', 1)]))
+
+        self.assertEqual('/get?a=b&c=1', url)
