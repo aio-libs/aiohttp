@@ -9,6 +9,11 @@ class AbstractRouter(metaclass=ABCMeta):
     def resolve(self, request):
         """Return MATCH_INFO for given request"""
 
+    @asyncio.coroutine
+    @abstractmethod
+    def reverse(self, method, endpoint, **kwargs):
+        """Return URL string for """
+
 
 class AbstractMatchInfo(metaclass=ABCMeta):
 

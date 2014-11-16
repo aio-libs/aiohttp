@@ -9,7 +9,7 @@ import json
 import re
 import os
 
-from urllib.parse import urlsplit, parse_qsl, unquote
+from urllib.parse import urlsplit, parse_qsl, unquote, urlencode
 
 from .abc import AbstractRouter, AbstractMatchInfo
 from .multidict import (CaseInsensitiveMultiDict,
@@ -852,7 +852,14 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
         return self._entry.endpoint
 
 
-Entry = collections.namedtuple('Entry', 'regex method handler endpoint path')
+BaseEntry = collections.namedtuple('BaseEntry',
+                                   'regex method handler endpoint path type')
+
+
+class Entry(BaseEntry):
+    DYNAMIC = "DYNAMIC"
+    STATIC = "STATIC"
+    PLAIN = "PLAIN"
 
 
 class UrlDispatcher(AbstractRouter):
@@ -890,17 +897,45 @@ class UrlDispatcher(AbstractRouter):
         matchdict = match.groupdict()
         return UrlMappingMatchInfo(matchdict, entry)
 
+    @asyncio.coroutine
+    def reverse(self, method, endpoint, *, parts=None, query=None):
+        method = method.upper()
+        entry = self._endpoints.get((method, endpoint))
+        if entry is None:
+            raise KeyError("[{}] {!r} endpoint not found"
+                           .format(method, endpoint))
+        if entry.type is Entry.DYNAMIC:
+            if parts is None:
+                raise ValueError(
+                    "Dynamic endpoint requires nonempty parts parameter")
+            url = entry.path.format_map(parts)
+        elif entry.type is Entry.PLAIN:
+            if parts:
+                raise ValueError(
+                    "Plain endpoint doesn't allow parts parameter")
+            url = entry.path
+        else:
+            raise ValueError(
+                "Not supported endpoint type {}".format(entry.type))
+        if query is not None:
+            qs = "?" + urlencode(query)
+        else:
+            qs = ""
+        return url + qs
+
     def add_route(self, method, path, handler, *, endpoint=None):
         assert path.startswith('/')
         assert callable(handler), handler
         method = method.upper()
         assert method in self.METHODS, method
         regexp = []
+        entry_type = Entry.PLAIN
         for part in path.split('/'):
             if not part:
                 continue
             if self.DYN.match(part):
                 regexp.append('(?P<'+part[1:-1]+'>'+self.GOOD+')')
+                entry_type = Entry.DYNAMIC
             elif self.PLAIN.match(part):
                 regexp.append(re.escape(part))
             else:
@@ -909,10 +944,12 @@ class UrlDispatcher(AbstractRouter):
         if path.endswith('/') and pattern != '/':
             pattern += '/'
         compiled = re.compile('^' + pattern + '$')
-        new_entry = Entry(compiled, method, handler, endpoint, path)
+        new_entry = Entry(compiled, method, handler,
+                          endpoint, path, entry_type)
         if endpoint is not None:
-            if endpoint in self._endpoints:
-                entry = self._endpoints[endpoint]
+            key = (method, endpoint)
+            if key in self._endpoints:
+                entry = self._endpoints[key]
                 raise ValueError('Duplicate endpoint {!r}, '
                                  'already handled by [{}] {} -> {!r}'
                                  .format(endpoint,
@@ -920,7 +957,7 @@ class UrlDispatcher(AbstractRouter):
                                          entry.path,
                                          entry.handler))
             else:
-                self._endpoints[endpoint] = new_entry
+                self._endpoints[key] = new_entry
         self._urls.append(new_entry)
 
     def _static_file_handler_maker(self, path):
@@ -970,7 +1007,7 @@ class UrlDispatcher(AbstractRouter):
         self._urls.append(Entry(
             compiled, method,
             self._static_file_handler_maker(path),
-            None, path))
+            None, prefix, Entry.STATIC))
 
 
 ############################################################
