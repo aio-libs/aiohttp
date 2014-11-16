@@ -1,8 +1,10 @@
 import asyncio
+import os
 import unittest
 from unittest import mock
+import aiohttp.web
 from aiohttp.web import (UrlDispatcher, Request, Response,
-                         HTTPMethodNotAllowed, HTTPNotFound)
+                         HTTPMethodNotAllowed, HTTPNotFound, Entry)
 from aiohttp.multidict import MultiDict
 from aiohttp.protocol import HttpVersion, RawRequestMessage
 
@@ -200,3 +202,40 @@ class TestUrlDispatcher(unittest.TestCase):
             self.router.reverse('GET', 'name', query=[('a', 'b'), ('c', 1)]))
 
         self.assertEqual('/get?a=b&c=1', url)
+
+    def test_reverse_nonstatic_with_filename(self):
+        self.router.add_route('GET', '/get', lambda r: None, endpoint='name')
+
+        with self.assertRaisesRegex(
+                ValueError,
+                "Cannot use filename with non-static route"):
+            self.loop.run_until_complete(self.router.reverse('GET', 'name',
+                                                             filename='a.txt'))
+
+    def test_reverse_static(self):
+        self.router.add_static('/st', os.path.dirname(aiohttp.__file__),
+                               endpoint='static')
+
+        url = self.loop.run_until_complete(
+            self.router.reverse('GET', 'static', filename='/dir/a.txt'))
+
+        self.assertEqual('/st/dir/a.txt', url)
+
+    def test_reverse_static_without_filename(self):
+        self.router.add_static('/st', os.path.dirname(aiohttp.__file__),
+                               endpoint='static')
+
+        with self.assertRaisesRegex(
+                ValueError,
+                'filename must be not empty for static routes'):
+            self.loop.run_until_complete(self.router.reverse('GET', 'static'))
+
+    def test_reverse_unknown_endpoint_type(self):
+        self.router._register_endpoint(Entry('compiled', 'GET', 'handler',
+                                             'endpoint', '/path', 'UNKNOWN'))
+
+        with self.assertRaisesRegex(
+                ValueError,
+                'Not supported endpoint type UNKNOWN'):
+            self.loop.run_until_complete(
+                self.router.reverse('GET', 'endpoint'))

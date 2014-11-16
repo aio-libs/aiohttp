@@ -898,12 +898,17 @@ class UrlDispatcher(AbstractRouter):
         return UrlMappingMatchInfo(matchdict, entry)
 
     @asyncio.coroutine
-    def reverse(self, method, endpoint, *, parts=None, query=None):
+    def reverse(self, method, endpoint, *, parts=None, filename=None,
+                query=None):
         method = method.upper()
         entry = self._endpoints.get((method, endpoint))
         if entry is None:
             raise KeyError("[{}] {!r} endpoint not found"
                            .format(method, endpoint))
+
+        if filename is not None and entry.type is not Entry.STATIC:
+            raise ValueError("Cannot use filename with non-static route")
+
         if entry.type is Entry.DYNAMIC:
             if parts is None:
                 raise ValueError(
@@ -914,14 +919,39 @@ class UrlDispatcher(AbstractRouter):
                 raise ValueError(
                     "Plain endpoint doesn't allow parts parameter")
             url = entry.path
+        elif entry.type is Entry.STATIC:
+            if filename is None:
+                raise ValueError(
+                    "filename must be not empty for static routes")
+            while filename.startswith('/'):
+                filename = filename[1:]
+            url = entry.path + filename
         else:
             raise ValueError(
                 "Not supported endpoint type {}".format(entry.type))
+
         if query is not None:
             qs = "?" + urlencode(query)
         else:
             qs = ""
         return url + qs
+
+    def _register_endpoint(self, new_entry):
+        endpoint = new_entry.endpoint
+        method = new_entry.method
+        if endpoint is not None:
+            key = (method, endpoint)
+            if key in self._endpoints:
+                entry = self._endpoints[key]
+                raise ValueError('Duplicate endpoint {!r}, '
+                                 'already handled by [{}] {} -> {!r}'
+                                 .format(endpoint,
+                                         entry.method,
+                                         entry.path,
+                                         entry.handler))
+            else:
+                self._endpoints[key] = new_entry
+        self._urls.append(new_entry)
 
     def add_route(self, method, path, handler, *, endpoint=None):
         assert path.startswith('/')
@@ -946,19 +976,7 @@ class UrlDispatcher(AbstractRouter):
         compiled = re.compile('^' + pattern + '$')
         new_entry = Entry(compiled, method, handler,
                           endpoint, path, entry_type)
-        if endpoint is not None:
-            key = (method, endpoint)
-            if key in self._endpoints:
-                entry = self._endpoints[key]
-                raise ValueError('Duplicate endpoint {!r}, '
-                                 'already handled by [{}] {} -> {!r}'
-                                 .format(endpoint,
-                                         entry.method,
-                                         entry.path,
-                                         entry.handler))
-            else:
-                self._endpoints[key] = new_entry
-        self._urls.append(new_entry)
+        self._register_endpoint(new_entry)
 
     def _static_file_handler_maker(self, path):
         @asyncio.coroutine
@@ -990,7 +1008,7 @@ class UrlDispatcher(AbstractRouter):
 
         return _handler
 
-    def add_static(self, prefix, path):
+    def add_static(self, prefix, path, *, endpoint=None):
         """
         Adds static files view
         :param prefix - url prefix
@@ -1004,10 +1022,11 @@ class UrlDispatcher(AbstractRouter):
         if not prefix.endswith('/'):
             prefix += '/'
         compiled = re.compile('^' + prefix + suffix + '$')
-        self._urls.append(Entry(
+        new_entry = Entry(
             compiled, method,
             self._static_file_handler_maker(path),
-            None, prefix, Entry.STATIC))
+            endpoint, prefix, Entry.STATIC)
+        self._register_endpoint(new_entry)
 
 
 ############################################################
