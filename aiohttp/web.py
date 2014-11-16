@@ -847,8 +847,12 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
     def handler(self):
         return self._entry.handler
 
+    @property
+    def endpoint(self):
+        return self._entry.endpoint
 
-Entry = collections.namedtuple('Entry', 'regex method handler')
+
+Entry = collections.namedtuple('Entry', 'regex method handler endpoint path')
 
 
 class UrlDispatcher(AbstractRouter):
@@ -862,6 +866,7 @@ class UrlDispatcher(AbstractRouter):
     def __init__(self):
         super().__init__()
         self._urls = []
+        self._endpoints = {}
 
     @asyncio.coroutine
     def resolve(self, request):
@@ -885,7 +890,7 @@ class UrlDispatcher(AbstractRouter):
         matchdict = match.groupdict()
         return UrlMappingMatchInfo(matchdict, entry)
 
-    def add_route(self, method, path, handler):
+    def add_route(self, method, path, handler, *, endpoint=None):
         assert path.startswith('/')
         assert callable(handler), handler
         method = method.upper()
@@ -904,7 +909,19 @@ class UrlDispatcher(AbstractRouter):
         if path.endswith('/') and pattern != '/':
             pattern += '/'
         compiled = re.compile('^' + pattern + '$')
-        self._urls.append(Entry(compiled, method, handler))
+        new_entry = Entry(compiled, method, handler, endpoint, path)
+        if endpoint is not None:
+            if endpoint in self._endpoints:
+                entry = self._endpoints[endpoint]
+                raise ValueError('Duplicate endpoint {!r}, '
+                                 'already handled by [{}] {} -> {!r}'
+                                 .format(endpoint,
+                                         entry.method,
+                                         entry.path,
+                                         entry.handler))
+            else:
+                self._endpoints[endpoint] = new_entry
+        self._urls.append(new_entry)
 
     def _static_file_handler_maker(self, path):
         @asyncio.coroutine
@@ -951,8 +968,9 @@ class UrlDispatcher(AbstractRouter):
             prefix += '/'
         compiled = re.compile('^' + prefix + suffix + '$')
         self._urls.append(Entry(
-            compiled, method, self._static_file_handler_maker(path)
-        ))
+            compiled, method,
+            self._static_file_handler_maker(path),
+            None, path))
 
 
 ############################################################
