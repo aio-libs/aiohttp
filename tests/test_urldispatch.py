@@ -169,3 +169,26 @@ class TestUrlDispatcher(unittest.TestCase):
                 "Plain endpoint doesn't allow parts parameter"):
             self.loop.run_until_complete(
                 self.router.reverse('GET', 'name', parts={'a': 'b'}))
+
+    def test_reverse_unknown_endpoint(self):
+        with self.assertRaisesRegex(
+                KeyError,
+                r"\[GET\] 'unknown' endpoint not found"):
+            self.loop.run_until_complete(self.router.reverse('GET', 'unknown'))
+
+    def test_reverse_dynamic(self):
+        self.router.add_route('GET', '/get/{name}',
+                              lambda r: None, endpoint='name')
+
+        url = self.loop.run_until_complete(
+            self.router.reverse('GET', 'name', parts={'name': 'John'}))
+        self.assertEqual('/get/John', url)
+
+    def test_reverse_dynamic_without_parts(self):
+        self.router.add_route('GET', '/get/{name}',
+                              lambda r: None, endpoint='name')
+
+        with self.assertRaisesRegex(
+                ValueError,
+                "Dynamic endpoint requires nonempty parts parameter"):
+            self.loop.run_until_complete(self.router.reverse('GET', 'name'))
