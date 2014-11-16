@@ -972,6 +972,8 @@ class RequestHandler(ServerHttpProtocol):
         try:
             match_info = yield from self._app.router.resolve(request)
 
+            assert isinstance(match_info, AbstractMatchInfo), match_info
+
             request._match_info = match_info
             handler = match_info.handler
 
@@ -1002,6 +1004,7 @@ class Application(dict):
         self._kwargs = kwargs
         if router is None:
             router = UrlDispatcher()
+        assert isinstance(router, AbstractRouter), router
         self._router = router
         self._loop = loop
         self._finish_callbacks = []
