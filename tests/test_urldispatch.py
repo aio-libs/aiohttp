@@ -147,13 +147,25 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertEqual(404, exc.status)
 
     def test_double_add_url_with_the_same_endpoint(self):
-        def handler(request):
-            pass
-
-        self.router.add_route('GET', '/get', handler, endpoint='name')
+        self.router.add_route('GET', '/get', lambda r: None, endpoint='name')
 
         regexp = ("Duplicate endpoint 'name', "
                   r"already handled by \[GET\] /get -> ")
         with self.assertRaisesRegex(ValueError, regexp):
-            self.router.add_route('GET', '/get_other', handler,
+            self.router.add_route('GET', '/get_other', lambda r: None,
                                   endpoint='name')
+
+    def test_reverse_plain(self):
+        self.router.add_route('GET', '/get', lambda r: None, endpoint='name')
+
+        url = self.loop.run_until_complete(self.router.reverse('GET', 'name'))
+        self.assertEqual('/get', url)
+
+    def test_reverse_plain_with_parts(self):
+        self.router.add_route('GET', '/get', lambda r: None, endpoint='name')
+
+        with self.assertRaisesRegex(
+                ValueError,
+                "Plain endpoint doesn't allow parts parameter"):
+            self.loop.run_until_complete(
+                self.router.reverse('GET', 'name', parts={'a': 'b'}))
