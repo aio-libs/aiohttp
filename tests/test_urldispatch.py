@@ -36,6 +36,7 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIsNotNone(info)
         self.assertEqual(0, len(info))
         self.assertIs(handler, info.handler)
+        self.assertIsNone(info.endpoint)
 
     def test_add_route_simple(self):
         handler = lambda req: Response(req)
@@ -45,6 +46,7 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIsNotNone(info)
         self.assertEqual(0, len(info))
         self.assertIs(handler, info.handler)
+        self.assertIsNone(info.endpoint)
 
     def test_add_with_matchdict(self):
         handler = lambda req: Response(req)
@@ -54,6 +56,16 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIsNotNone(info)
         self.assertEqual({'to': 'tail'}, info)
         self.assertIs(handler, info.handler)
+        self.assertIsNone(info.endpoint)
+
+    def test_add_with_endpoint(self):
+        handler = lambda req: Response(req)
+        self.router.add_route('GET', '/handler/to/path', handler,
+                              endpoint='endpoint')
+        req = self.make_request('GET', '/handler/to/path')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info)
+        self.assertEqual('endpoint', info.endpoint)
 
     def test_add_with_tailing_slash(self):
         handler = lambda req: Response(req)
@@ -133,3 +145,15 @@ class TestUrlDispatcher(unittest.TestCase):
 
         exc = ctx.exception
         self.assertEqual(404, exc.status)
+
+    def test_double_add_url_with_the_same_endpoint(self):
+        def handler(request):
+            pass
+
+        self.router.add_route('GET', '/get', handler, endpoint='name')
+
+        regexp = ("Duplicate endpoint 'name', "
+                  r"already handled by \[GET\] /get -> ")
+        with self.assertRaisesRegex(ValueError, regexp):
+            self.router.add_route('GET', '/get_other', handler,
+                                  endpoint='name')

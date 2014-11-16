@@ -16,3 +16,8 @@ class AbstractMatchInfo(metaclass=ABCMeta):
     @abstractmethod
     def handler(self):
         """Return handler for match info"""
+
+    @property
+    @abstractmethod
+    def endpoint(self):
+        """Return endpoint for match info"""
