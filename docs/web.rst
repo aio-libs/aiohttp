@@ -754,7 +754,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
    added *routes* in FIFO order. The first matching *route* will be used
    to call corresponding *handler*.
 
-   .. method:: add_route(method, path, handler)
+   .. method:: add_route(method, path, handler, *, endpoint=None)
 
       Append :ref:`handler<aiohttp-web-handler>` to end of route table.
 
@@ -766,7 +766,9 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       :param callable handler: route handler
 
-   .. method:: add_static(prefix, path)
+      :param str endpoint: route name for :meth:`reverse` lookup.
+
+   .. method:: add_static(prefix, path, *, endpoint=None)
 
       Adds router for returning static files.
 
@@ -782,6 +784,30 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       :param str path: path to folder in file system that contains
                        handled static files.
+
+      :param str endpoint: route name for :meth:`reverse` lookup.
+
+   .. method:: reverse(method, endpoint, *, parts=None, filename=None, \
+                       query=None)
+
+      A :ref:`coroutine<coroutine>` that returns *URL* for given
+      (*method*, *endpoint*) pair.
+
+      :param mapping parts: :class:`dict` or other mapping for
+                            substitute into *dynamic endpoint* template
+                            (created by :meth:`add_route` with
+                            *path* like ``'/a/{var}'``)
+
+      :param str filename: file name for specifying file for *static
+                           endpoint* (created by :meth:`add_static`)
+
+      :param query: mapping or list of *(name, value)* pairs for
+                    specifying *query* part of url (parameter is
+                    processed by :func:`~urllib.parse.urlencode`).
+
+      :returns str: matched URL.
+      :raises KeyError: *endpoint* is not registered.
+      :raises ValueError: params combination is not acceptable.
 
    .. method:: resolve(requst)
 
