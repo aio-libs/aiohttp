@@ -76,6 +76,10 @@ class _BaseTest:
         self.assertEqual(d1, d2)
         self.assertIsNot(d1, d2)
 
+    def test__iter__(self):
+        d = self.make_dict([('key', 'one'), ('key2', 'two'), ('key', 3)])
+        self.assertEqual(['key', 'key2'], list(d))
+
     def test_keys__contains(self):
         d = self.make_dict([('key', 'one'), ('key2', 'two'), ('key', 3)])
         self.assertEqual(list(d.keys()), ['key', 'key2'])

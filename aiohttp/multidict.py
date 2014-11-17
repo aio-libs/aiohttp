@@ -86,7 +86,7 @@ class MultiDict(abc.Mapping):
         raise KeyError(key)
 
     def __iter__(self):
-        return iter(self._items)
+        return iter(self.keys())
 
     def __len__(self):
         return len(self._items)
