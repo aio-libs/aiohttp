@@ -4,6 +4,9 @@ CHANGES
 0.10.1 (XX-XX-XXXX)
 -------------------
 
+- aiohttp.web.HTTPException and descendants now files response body
+  with string like `400: NotFound`
+
 0.10.0 (11-13-2014)
 -------------------
 
