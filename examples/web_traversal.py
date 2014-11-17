@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+"""
+Filesytem browser that demponstrates usage of traversal routing
+and non-string endpoints.
+"""
+
 import asyncio
 import os
 import string
