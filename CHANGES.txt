@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-0.10.1 (XX-XX-XXXX)
+0.10.1 (11-17-2014)
 -------------------
 
 - aiohttp.web.HTTPException and descendants now files response body
