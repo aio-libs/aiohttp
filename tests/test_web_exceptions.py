@@ -52,10 +52,11 @@ class TestHTTPExceptions(unittest.TestCase):
         self.loop.run_until_complete(resp.write_eof())
         txt = self.buf.decode('utf8')
         self.assertRegex(txt, ('HTTP/1.1 200 OK\r\n'
-                               'CONTENT-LENGTH: 0\r\n'
+                               'CONTENT-LENGTH: 7\r\n'
                                'CONNECTION: keep-alive\r\n'
                                'DATE: .+\r\n'
-                               'SERVER: .+\r\n\r\n'))
+                               'SERVER: .+\r\n\r\n'
+                               '200: OK'))
 
     def test_terminal_classes_has_status_code(self):
         terminals = set()
@@ -84,11 +85,12 @@ class TestHTTPExceptions(unittest.TestCase):
         self.loop.run_until_complete(resp.write_eof())
         txt = self.buf.decode('utf8')
         self.assertRegex(txt, ('HTTP/1.1 302 Found\r\n'
-                               'CONTENT-LENGTH: 0\r\n'
+                               'CONTENT-LENGTH: 10\r\n'
                                'LOCATION: /redirect\r\n'
                                'CONNECTION: keep-alive\r\n'
                                'DATE: .+\r\n'
-                               'SERVER: .+\r\n\r\n'))
+                               'SERVER: .+\r\n\r\n'
+                               '302: Found'))
 
     def test_HTTPFound_empty_location(self):
         req = self.make_request()
@@ -108,8 +110,9 @@ class TestHTTPExceptions(unittest.TestCase):
         self.loop.run_until_complete(resp.write_eof())
         txt = self.buf.decode('utf8')
         self.assertRegex(txt, ('HTTP/1.1 405 Method Not Allowed\r\n'
-                               'CONTENT-LENGTH: 0\r\n'
+                               'CONTENT-LENGTH: 23\r\n'
                                'ALLOW: POST,PUT\r\n'
                                'CONNECTION: keep-alive\r\n'
                                'DATE: .+\r\n'
-                               'SERVER: .+\r\n\r\n'))
+                               'SERVER: .+\r\n\r\n'
+                               '405: Method Not Allowed'))

@@ -132,7 +132,7 @@ class TestWebFunctional(unittest.TestCase):
                                       allow_redirects=False)
             self.assertEqual(301, resp.status)
             txt = yield from resp.text()
-            self.assertEqual('', txt)
+            self.assertEqual('301: Moved Permanently', txt)
             self.assertEqual('/path', resp.headers['location'])
 
         self.loop.run_until_complete(go())
