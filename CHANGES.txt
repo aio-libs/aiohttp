@@ -7,7 +7,7 @@ CHANGES
 - aiohttp.web.HTTPException and descendants now files response body
   with string like `404: NotFound`
 
-- Fix multidict __iter__, the method should iterate over keys, not (key, value) pairs.
+- Fix multidict `__iter__`, the method should iterate over keys, not (key, value) pairs.
 
 0.10.0 (11-13-2014)
 -------------------
