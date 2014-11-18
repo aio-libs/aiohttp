@@ -1,6 +1,11 @@
 CHANGES
 =======
 
+0.10.2 (XX-XX-XXXX)
+-------------------
+
+- Add *endpoint* to aiohttp.web.UrlDispatcher
+
 0.10.1 (11-17-2014)
 -------------------
 
