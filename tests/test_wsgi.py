@@ -273,3 +273,11 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
             [c[1][0] for c in self.writer.write.mock_calls])
         self.assertTrue(content.startswith(b'HTTP/1.0 200 OK'))
         self.assertTrue(content.endswith(b'data'))
+
+    def test_dont_unquote_environ_path_info(self):
+        path = '/path/some%20text'
+        print(path)
+        self.message = protocol.RawRequestMessage(
+            'GET', path, (1, 0), self.headers, True, 'deflate')
+        environ = self._make_one()
+        self.assertEqual(environ['PATH_INFO'], path)
