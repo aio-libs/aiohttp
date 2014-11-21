@@ -276,7 +276,6 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
 
     def test_dont_unquote_environ_path_info(self):
         path = '/path/some%20text'
-        print(path)
         self.message = protocol.RawRequestMessage(
             'GET', path, (1, 0), self.headers, True, 'deflate')
         environ = self._make_one()
