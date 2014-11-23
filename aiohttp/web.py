@@ -1,3 +1,4 @@
+import abc
 import asyncio
 import binascii
 import collections
@@ -839,30 +840,158 @@ class HTTPVersionNotSupported(HTTPServerError):
 
 class UrlMappingMatchInfo(dict, AbstractMatchInfo):
 
-    def __init__(self, match_dict, entry):
+    def __init__(self, match_dict, route):
         super().__init__(match_dict)
-        self._entry = entry
+        self._route = route
 
     @property
     def handler(self):
-        return self._entry.handler
+        return self._route.handler
 
     @property
-    def endpoint(self):
-        return self._entry.endpoint
+    def route(self):
+        return self._route
 
 
-BaseEntry = collections.namedtuple('BaseEntry',
-                                   'regex method handler endpoint path type')
+class Route(metaclass=abc.ABCMeta):
+
+    def __init__(self, method, handler, name):
+        self._method = method
+        self._handler = handler
+        self._name = name
+
+    @property
+    def method(self):
+        return self._method
+
+    @property
+    def handler(self):
+        return self._handler
+
+    @property
+    def name(self):
+        return self._name
+
+    @abc.abstractmethod
+    def match(self, path):
+        """Return dict with info for given path or
+        None if route cannot process path."""
+
+    @abc.abstractmethod
+    def url(self, **kwargs):
+        """Construct url for route with additional params."""
+
+    @staticmethod
+    def _append_query(url, query):
+        if query is not None:
+            return url + "?" + urlencode(query)
+        else:
+            return url
 
 
-class Entry(BaseEntry):
-    DYNAMIC = "DYNAMIC"
-    STATIC = "STATIC"
-    PLAIN = "PLAIN"
+class PlainRoute(Route):
+    def __init__(self, method, handler, name, path):
+        super().__init__(method, handler, name)
+        self._path = path
+
+    def match(self, path):
+        # string comparsion about 10 times faster than regexp matching
+        if self._path == path:
+            return {}
+        else:
+            return None
+
+    def url(self, *, query=None):
+        return self._append_query(self._path, query)
+
+    def __repr__(self):
+        name = "'" + self.name + "' " if self.name is not None else ""
+        return "<PlainRoute {name}[{method}] {path} -> {handler!r}".format(
+            name=name, method=self.method, path=self._path,
+            handler=self.handler)
 
 
-class UrlDispatcher(AbstractRouter):
+class DynamicRoute(Route):
+
+    def __init__(self, method, handler, name, pattern, formatter):
+        super().__init__(method, handler, name)
+        self._pattern = pattern
+        self._formatter = formatter
+
+    def match(self, path):
+        match = self._pattern.match(path)
+        if match is None:
+            return None
+        else:
+            return match.groupdict()
+
+    def url(self, *, parts, query=None):
+        url = self._formatter.format_map(parts)
+        return self._append_query(url, query)
+
+    def __repr__(self):
+        name = "'" + self.name + "' " if self.name is not None else ""
+        return ("<DynamicRoute {name}[{method}] {formatter} -> {handler!r}"
+                .format(name=name, method=self.method,
+                        formatter=self._formatter, handler=self.handler))
+
+
+class StaticRoute(Route):
+
+    def __init__(self, name, prefix, directory):
+        assert prefix.startswith('/'), prefix
+        assert prefix.endswith('/'), prefix
+        super().__init__('GET', self.handle, name)
+        self._prefix = prefix
+        self._prefix_len = len(self._prefix)
+        self._directory = directory
+
+    def match(self, path):
+        if not path.startswith(self._prefix):
+            return None
+        return {'filename': path[self._prefix_len:]}
+
+    def url(self, *, filename, query=None):
+        while filename.startswith('/'):
+            filename = filename[1:]
+        url = self._prefix + filename
+        return self._append_query(url, query)
+
+    @asyncio.coroutine
+    def handle(self, request):
+        resp = StreamResponse(request)
+        filename = request.match_info['filename']
+        filepath = os.path.join(self._directory, filename)
+        if '..' in filename:
+            raise HTTPNotFound(request)
+        if not os.path.exists(filepath) or not os.path.isfile(filepath):
+            raise HTTPNotFound(request)
+
+        ct = mimetypes.guess_type(filename)[0]
+        if not ct:
+            ct = 'application/octet-stream'
+        resp.content_type = ct
+
+        resp.headers['transfer-encoding'] = 'chunked'
+        resp.send_headers()
+
+        with open(filepath, 'rb') as f:
+            chunk = f.read(1024)
+            while chunk:
+                resp.write(chunk)
+                chunk = f.read(1024)
+
+        yield from resp.write_eof()
+        return resp
+
+    def __repr__(self):
+        name = "'" + self.name + "' " if self.name is not None else ""
+        return "<StaticRoute {name}[{method}] {path} -> {directory!r}".format(
+            name=name, method=self.method, path=self._prefix,
+            directory=self._directory)
+
+
+class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     DYN = re.compile(r'^\{[a-zA-Z][_a-zA-Z0-9]*\}$')
     GOOD = r'[^{}/]+'
@@ -873,160 +1002,91 @@ class UrlDispatcher(AbstractRouter):
     def __init__(self):
         super().__init__()
         self._urls = []
-        self._endpoints = {}
+        self._routes = {}
 
     @asyncio.coroutine
     def resolve(self, request):
         path = request.path
         method = request.method
         allowed_methods = set()
-        for entry in self._urls:
-            match = entry.regex.match(path)
-            if match is None:
+        for route in self._urls:
+            match_dict = route.match(path)
+            if match_dict is None:
                 continue
-            if entry.method != method:
-                allowed_methods.add(entry.method)
+            route_method = route.method
+            if route_method != method:
+                allowed_methods.add(route_method)
             else:
-                break
+                return UrlMappingMatchInfo(match_dict, route)
         else:
             if allowed_methods:
                 raise HTTPMethodNotAllowed(request, method, allowed_methods)
             else:
                 raise HTTPNotFound(request)
 
-        matchdict = match.groupdict()
-        return UrlMappingMatchInfo(matchdict, entry)
+    def __iter__(self):
+        return iter(self._routes)
 
-    @asyncio.coroutine
-    def reverse(self, method, endpoint, *, parts=None, filename=None,
-                query=None):
-        method = method.upper()
-        entry = self._endpoints.get((method, endpoint))
-        if entry is None:
-            raise KeyError("[{}] {!r} endpoint not found"
-                           .format(method, endpoint))
+    def __len__(self):
+        return len(self._routes)
 
-        if filename is not None and entry.type is not Entry.STATIC:
-            raise ValueError("Cannot use filename with non-static route")
+    def __contains__(self, name):
+        return name in self._routes
 
-        if entry.type is Entry.DYNAMIC:
-            if parts is None:
-                raise ValueError(
-                    "Dynamic endpoint requires nonempty parts parameter")
-            url = entry.path.format_map(parts)
-        elif entry.type is Entry.PLAIN:
-            if parts:
-                raise ValueError(
-                    "Plain endpoint doesn't allow parts parameter")
-            url = entry.path
-        elif entry.type is Entry.STATIC:
-            if filename is None:
-                raise ValueError(
-                    "filename must be not empty for static routes")
-            while filename.startswith('/'):
-                filename = filename[1:]
-            url = entry.path + filename
-        else:
-            raise ValueError(
-                "Not supported endpoint type {}".format(entry.type))
+    def __getitem__(self, name):
+        return self._routes[name]
 
-        if query is not None:
-            qs = "?" + urlencode(query)
-        else:
-            qs = ""
-        return url + qs
-
-    def _register_endpoint(self, new_entry):
-        endpoint = new_entry.endpoint
-        method = new_entry.method
-        if endpoint is not None:
-            key = (method, endpoint)
-            if key in self._endpoints:
-                entry = self._endpoints[key]
-                raise ValueError('Duplicate endpoint {!r}, '
-                                 'already handled by [{}] {} -> {!r}'
-                                 .format(endpoint,
-                                         entry.method,
-                                         entry.path,
-                                         entry.handler))
+    def _register_endpoint(self, route):
+        name = route.name
+        if name is not None:
+            if name in self._routes:
+                raise ValueError('Duplicate {!r}, '
+                                 'already handled by {!r}'
+                                 .format(name, self._routes[name]))
             else:
-                self._endpoints[key] = new_entry
-        self._urls.append(new_entry)
+                self._routes[name] = route
+        self._urls.append(route)
 
-    def add_route(self, method, path, handler, *, endpoint=None):
+    def add_route(self, method, path, handler, *, name=None):
         assert path.startswith('/')
         assert callable(handler), handler
         method = method.upper()
         assert method in self.METHODS, method
-        regexp = []
-        entry_type = Entry.PLAIN
+        parts = []
+        factory = PlainRoute
         for part in path.split('/'):
             if not part:
                 continue
             if self.DYN.match(part):
-                regexp.append('(?P<'+part[1:-1]+'>'+self.GOOD+')')
-                entry_type = Entry.DYNAMIC
+                parts.append('(?P<'+part[1:-1]+'>'+self.GOOD+')')
+                factory = DynamicRoute
             elif self.PLAIN.match(part):
-                regexp.append(re.escape(part))
+                parts.append(re.escape(part))
             else:
                 raise ValueError("Invalid path '{}'['{}']".format(path, part))
-        pattern = '/' + '/'.join(regexp)
-        if path.endswith('/') and pattern != '/':
-            pattern += '/'
-        compiled = re.compile('^' + pattern + '$')
-        new_entry = Entry(compiled, method, handler,
-                          endpoint, path, entry_type)
-        self._register_endpoint(new_entry)
+        if factory is PlainRoute:
+            route = PlainRoute(method, handler, name, path)
+        else:
+            pattern = '/' + '/'.join(parts)
+            if path.endswith('/') and pattern != '/':
+                pattern += '/'
+            compiled = re.compile('^' + pattern + '$')
+            route = DynamicRoute(method, handler, name, compiled, path)
+        self._register_endpoint(route)
 
-    def _static_file_handler_maker(self, path):
-        @asyncio.coroutine
-        def _handler(request):
-            resp = StreamResponse(request)
-            filename = request.match_info['filename']
-            filepath = os.path.join(path, filename)
-            if '..' in filename:
-                raise HTTPNotFound(request)
-            if not os.path.exists(filepath) or not os.path.isfile(filepath):
-                raise HTTPNotFound(request)
-
-            ct = mimetypes.guess_type(filename)[0]
-            if not ct:
-                ct = 'application/octet-stream'
-            resp.content_type = ct
-
-            resp.headers['transfer-encoding'] = 'chunked'
-            resp.send_headers()
-
-            with open(filepath, 'rb') as f:
-                chunk = f.read(1024)
-                while chunk:
-                    resp.write(chunk)
-                    chunk = f.read(1024)
-
-            yield from resp.write_eof()
-            return resp
-
-        return _handler
-
-    def add_static(self, prefix, path, *, endpoint=None):
+    def add_static(self, prefix, path, *, name=None):
         """
         Adds static files view
         :param prefix - url prefix
         :param path - folder with files
         """
         assert prefix.startswith('/')
-        assert os.path.exists(path), 'Path does not exist %s' % path
+        assert os.path.isdir(path), 'Path does not directory %s' % path
         path = os.path.abspath(path)
-        method = 'GET'
-        suffix = r'(?P<filename>.*)'  # match everything after static prefix
         if not prefix.endswith('/'):
             prefix += '/'
-        compiled = re.compile('^' + prefix + suffix + '$')
-        new_entry = Entry(
-            compiled, method,
-            self._static_file_handler_maker(path),
-            endpoint, prefix, Entry.STATIC)
-        self._register_endpoint(new_entry)
+        route = StaticRoute(name, prefix, path)
+        self._register_endpoint(route)
 
 
 ############################################################
