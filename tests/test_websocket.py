@@ -471,12 +471,21 @@ class WebSocketHandshakeTests(unittest.TestCase):
 
         self.assertEqual(protocol, best_proto)
 
-    def test_handshake_protocol_unsupported(self):
+    @unittest.mock.patch('aiohttp.websocket.websocket_log.warning')
+    def test_handshake_protocol_unsupported(self, m_websocket_warn):
+        '''Tests if a protocol mismatch handshake warns and returns None'''
+        warn_called = False
+        def websocket_warn(msg, *fmts):
+            nonlocal warn_called
+            warn_called = True
+        m_websocket_warn.side_effect = websocket_warn
+
         proto = 'chat'
         self.headers.extend(self.gen_ws_headers('test')[0])
 
-        self.assertRaises(
-            errors.HttpBadRequest,
-            websocket.do_handshake,
+        _, _, _, _, protocol = websocket.do_handshake(
             self.message.method, self.message.headers, self.transport,
             protocols=[proto])
+
+        self.assertTrue(warn_called, 'protocol mismatch didn’t warn')
+        self.assertIsNone(protocol)

@@ -10,6 +10,7 @@ import collections
 import hashlib
 import struct
 from aiohttp import errors
+from aiohttp.log import websocket_log
 
 # Frame opcodes defined in the spec.
 OPCODE_CONTINUATION = 0x0
@@ -220,9 +221,9 @@ def do_handshake(method, headers, transport, protocols=()):
                 protocol = proto
                 break
         else:
-            raise errors.HttpBadRequest(
-                'Client protocols {!r} don’t overlap server-known ones {!r}'
-                .format(protocols, req_protocols))
+            websocket_log.warning(  # No overlap found: Return no protocol as per spec
+                'Client protocols %r don’t overlap server-known ones %r',
+                protocols, req_protocols)
 
     # check supported version
     version = headers.get('SEC-WEBSOCKET-VERSION')
