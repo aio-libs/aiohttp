@@ -164,7 +164,7 @@ class WebSocketWriter:
         self._send_frame(b'', OPCODE_PONG)
 
     def ping(self):
-        """Send pong message."""
+        """Send ping message."""
         self._send_frame(b'', OPCODE_PING)
 
     def send(self, message, binary=False):
