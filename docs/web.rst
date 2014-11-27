@@ -12,10 +12,10 @@ High-level HTTP Server
 Run a simple web server
 -----------------------
 
-For implementing web server at first create :ref:`request
+For implementing a web server, first create a :ref:`request
 handler<aiohttp-web-handler>`.
 
-Handler is a :ref:`coroutine<coroutine>` or regular function that
+Handler is a :ref:`coroutine<coroutine>` or a regular function that
 accepts only *request* parameter of type :class:`Request`
 and returns :class:`Response` instance::
 
@@ -26,14 +26,14 @@ and returns :class:`Response` instance::
    def hello(request):
        return web.Response(request, b"Hello, world")
 
-Next you have to create :class:`Application` instance and register
-:ref:`handler<aiohttp-web-handler>` in application's router pointing *HTTP
+Next, you have to create a :class:`Application` instance and register
+:ref:`handler<aiohttp-web-handler>` in the application's router pointing *HTTP
 method*, *path* and *handler*::
 
    app = web.Application()
    app.router.add_route('GET', '/', hello)
 
-After that create server and run *asyncio loop* as usual::
+After that, create a server and run the *asyncio loop* as usual::
 
    loop = asyncio.get_event_loop()
    f = loop.create_server(app.make_handler, '0.0.0.0', 8080)
@@ -51,14 +51,14 @@ That's it.
 Handler
 -------
 
-Handler is an any *callable* that accepts single :class:`Request`
-argument and returns :class:`StreamResponse` derived
+Handler is an any *callable* that accepts a single :class:`Request`
+argument and returns a :class:`StreamResponse` derived
 (e.g. :class:`Response`) instance.
 
 Handler **can** be a :ref:`coroutine<coroutine>`, :mod:`aiohttp.web` will
-**unyield** returned result by applying ``yield from`` to handler.
+**unyield** returned result by applying ``yield from`` to the handler.
 
-Handlers connected to :class:`Application` via routes::
+Handlers are connected to the :class:`Application` via routes::
 
    handler = Handler()
    app.router.add_route('GET', '/', handler)
@@ -66,10 +66,10 @@ Handlers connected to :class:`Application` via routes::
 .. _aiohttp-web-variable-handler:
 
 You can also use *variable routes*. If route contains string like
-``'/a/{name}/c'`` that means the route matches to path like
+``'/a/{name}/c'`` that means the route matches to the path like
 ``'/a/b/c'`` or ``'/a/1/c'``.
 
-Parsed *path part* will be available in *request handler* as
+Parsed *path part* will be available in the *request handler* as
 ``request.match_info['name']``::
 
    @asyncio.coroutine
@@ -81,7 +81,7 @@ Parsed *path part* will be available in *request handler* as
    app.router.add_route('GET', '/{name}', variable_handler)
 
 
-Handlers can be first-class functions like::
+Handlers can be first-class functions, e.g.::
 
    @asyncio.coroutine
    def hello(request):
@@ -89,10 +89,10 @@ Handlers can be first-class functions like::
 
    app.router.add_route('GET', '/', hello)
 
-Sometimes you would like to group logically coupled handlers into python class.
+Sometimes you would like to group logically coupled handlers into a python class.
 
 :mod:`aiohttp.web` doesn't dictate any implementation details,
-application developer can use classes if he want::
+so application developer can use classes if he wants::
 
    class Handler:
 
@@ -118,12 +118,12 @@ application developer can use classes if he want::
 File Uploads
 ------------
 
-There are two parts necessary for handling file uploads. The first is
-to make sure you have a form that’s been setup correctly to accept
+There are two steps necessary for handling file uploads. The first is
+to make sure that you have a form that has been setup correctly to accept
 files. This means adding enctype attribute to your form element with
 the value of *multipart/form-data*. A very simple example would be a
-form that accepts an mp3 file. Notice we’ve setup the form as
-previously explained and also added an *input* element of the *file*
+form that accepts a mp3 file. Notice, we have set up the form as
+previously explained and also added the *input* element of the *file*
 type::
 
    <form action="/store_mp3" method="post" accept-charset="utf-8"
@@ -135,16 +135,16 @@ type::
        <input type="submit" value="submit" />
    </form>
 
-The second part is handling the file upload in your :ref:`request
-handler<aiohttp-web-handler>` (above, assumed to answer on
+The second step is handling the file upload in your :ref:`request
+handler<aiohttp-web-handler>` (here assumed to answer on
 */store_mp3*). The uploaded file is added to the request object as
 a :class:`FileField` object accessible through the :meth:`Request.POST`
-coroutine. The two properties we’re interested in are the *file* and
-*filename* and we’ll use those to read file name and content::
+coroutine. The two properties we are interested in are *file* and
+*filename* and we will use those to read a file's name and a content::
 
     import os
     import uuid
-    from pyramid.response import Response
+    from aiohttp.web import Response
 
     def store_mp3_view(request):
 
@@ -160,7 +160,7 @@ coroutine. The two properties we’re interested in are the *file* and
 
         content = input_file.read()
 
-        return aiohttp.web.Response(request, content,
+        return Response(request, content,
             headers=MultiDict([('CONTENT-DISPOSITION', input-file)])
 
 
@@ -170,34 +170,34 @@ coroutine. The two properties we’re interested in are the *file* and
 Request
 -------
 
-Request object contains all information about incoming HTTP request.
+The Request object contains all the information about an incoming HTTP request.
 
-Every :ref:`handler<aiohttp-web-handler>` accepts request instance as first
-positional parameter.
+Every :ref:`handler<aiohttp-web-handler>` accepts a request instance as the
+first positional parameter.
 
 .. note::
 
-   You should never create :class:`Request` instance by hands --
+   You should never create the :class:`Request` instance manually --
    :mod:`aiohttp.web` does it for you.
 
 .. class:: Request
 
    .. attribute:: method
 
-      *HTTP method*, read only property.
+      *HTTP method*, Read-only property.
 
       The value is upper-cased :class:`str` like ``"GET"``,
       ``"POST"``, ``"PUT"`` etc.
 
    .. attribute:: version
 
-      *HTTP version* of request, read only property.
+      *HTTP version* of request, Read-only property.
 
       Returns :class:`aiohttp.protocol.HttpVersion` instance.
 
    .. attribute:: host
 
-      *HOST* header of request, read only property.
+      *HOST* header of request, Read-only property.
 
       Returns :class:`str` or ``None`` if HTTP request has no *HOST* header.
 
@@ -205,32 +205,32 @@ positional parameter.
 
       The URL including PATH_INFO and the query string. e.g, ``/app/blog?id=10``
 
-      Read only :class:`str` property.
+      Read-only :class:`str` property.
 
    .. attribute:: path
 
       The URL including *PATH INFO* without the host or scheme. e.g.,
       ``/app/blog``
 
-      Read only :class:`str` property.
+      Read-only :class:`str` property.
 
    .. attribute:: query_string
 
       The query string in the URL, e.g., ``id=10``
 
-      Read only :class:`str` property.
+      Read-only :class:`str` property.
 
    .. attribute:: GET
 
       A multidict with all the variables in the query string.
 
-      Read only :class:`~aiohttp.multidict.MultiDict` lazy property.
+      Read-only :class:`~aiohttp.multidict.MultiDict` lazy property.
 
    .. attribute:: headers
 
       A case-insensitive multidict with all headers.
 
-      Read only :class:`~aiohttp.multidict.CaseInsensitiveMultiDict`
+      Read-only :class:`~aiohttp.multidict.CaseInsensitiveMultiDict`
       lazy property.
 
    .. attribute:: keep_alive
@@ -238,11 +238,11 @@ positional parameter.
       ``True`` if keep-alive connection enabled by HTTP client and
       protocol version supports it, otherwise ``False``.
 
-      Read only :class:`bool` property.
+      Read-only :class:`bool` property.
 
    .. attribute:: match_info
 
-      Read only property with :class:`~aiohttp.abc.AbstractMatchInfo`
+      Read-only property with :class:`~aiohttp.abc.AbstractMatchInfo`
       instance for result of route resolving.
 
       .. note::
@@ -254,15 +254,15 @@ positional parameter.
    .. attribute:: app
 
       An :class:`Application` instance used to call :ref:`request handler
-      <aiohttp-web-handler>`, read only property.
+      <aiohttp-web-handler>`, Read-only property.
 
    .. attribute:: transport
 
       An :ref:`transport<asyncio-transport>` used to process request,
-      read only property.
+      Read-only property.
 
       The property can be used, for example, for getting IP address of
-      client peer::
+      client's peer::
 
          peername = request.transport.get_extra('peername')
          if peername is not None:
@@ -272,18 +272,18 @@ positional parameter.
 
       A multidict of all request's cookies.
 
-      Read only :class:`~aiohttp.multidict.MultiDict` lazy property.
+      Read-only :class:`~aiohttp.multidict.MultiDict` lazy property.
 
    .. attribute:: payload
 
       A :class:`~aiohttp.streams.FlowControlStreamReader` instance,
       input stream for reading request's *BODY*.
 
-      Read only property.
+      Read-only property.
 
    .. attribute:: content_type
 
-      Read only property with *content* part of *Content-Type* header.
+      Read-only property with *content* part of *Content-Type* header.
 
       Returns :class:`str` like ``'text/html'``
 
@@ -295,18 +295,18 @@ positional parameter.
 
    .. attribute:: charset
 
-      Read only property that specifies *encoding* for request BODY.
+      Read-only property that specifies the *encoding* for the request's BODY.
 
-      The value is parsed from *Content-Type* HTTP header.
+      The value is parsed from the *Content-Type* HTTP header.
 
       Returns :class:`str` like ``'utf-8'`` or ``None`` if
       *Content-Type* has no charset information.
 
    .. attribute:: content_length
 
-      Read only property that returns length of request BODY.
+      Read-only property that returns length of the request's BODY.
 
-      The value is parsed from *Content-Length* HTTP header.
+      The value is parsed from the *Content-Length* HTTP header.
 
       Returns :class:`int` or ``None`` if *Content-Length* is absent.
 
@@ -395,12 +395,11 @@ positional parameter.
 Response classes
 -----------------
 
-For now :mod:`aiohttp.web` has two classes for *HTTP response*:
+For now, :mod:`aiohttp.web` has two classes for the *HTTP response*:
 :class:`StreamResponse` and :class:`Response`.
 
 Usually you need to use the second one. :class:`StreamResponse`
-intended for streaming data, :class:`Response` contains *HTTP BODY* as
-attribute and sends own content as single piece with correct
+is intended for streaming data, while :class:`Response` contains *HTTP BODY* as an attribute and sends own content as single piece with the correct
 *Content-Length HTTP header*.
 
 For sake of design decisions :class:`Response` is derived from
@@ -411,8 +410,8 @@ The response supports *keep-alive* handling out-of-the-box if
 
 You can disable *keep-alive* by :meth:`~StreamResponse.force_close` though.
 
-The common case for sending answer from :ref:`web
-handler<aiohttp-web-handler>` is returning :class:`Response` instance::
+The common case for sending an answer from
+:ref:`web-handler<aiohttp-web-handler>` is returning a :class:`Response`instance::
 
    def handler(request):
        return Response(request, "All right!")
@@ -423,7 +422,7 @@ StreamResponse
 
 .. class:: StreamResponse(request, *, status=200, reason=None)
 
-   The base class for *HTTP response* handling.
+   The base class for the *HTTP response* handling.
 
    Contains methods for setting *HTTP response headers*, *cookies*,
    *response status code*, writing *HTTP response BODY* and so on.
@@ -431,16 +430,16 @@ StreamResponse
    The most important thing you should know about *response* --- it
    is *Finite State Machine*.
 
-   That means you can do any manipulations on *headers*,
+   That means you can do any manipulations with *headers*,
    *cookies* and *status code* only before :meth:`send_headers`
    called.
 
    Once you call :meth:`send_headers` or :meth:`write` any change of
-   *HTTP header* part will raise :exc:`RuntimeError` exception.
+   the *HTTP header* part will raise :exc:`RuntimeError` exception.
 
-   Any :meth:`write` call after :meth:`write_eof` is forbidden also.
+   Any :meth:`write` call after :meth:`write_eof` is also forbidden.
 
-   :param aiohttp.web.Request request: HTTP request object on that the
+   :param aiohttp.web.Request request: HTTP request object, that the
                                        response answers.
 
    :param int status: HTTP status code, ``200`` by default.
@@ -453,7 +452,7 @@ StreamResponse
    .. attribute:: request
 
       Read-only property for :class:`Request` object used for creating
-      the response.
+      this response.
 
    .. attribute:: status
 
@@ -469,7 +468,7 @@ StreamResponse
 
       Set :attr:`status` and :attr:`reason`.
 
-      *reason* value is autocalculated if not specified (``None``).
+      *reason* value is auto calculated if not specified (``None``).
 
    .. attribute:: keep_alive
 
@@ -504,8 +503,8 @@ StreamResponse
                    domain=None, max_age=None, path=None, \
                    secure=None, httponly=None, version=None)
 
-      Convenient way for setting :attr:`cookies`, allows to point
-      additional cookie properties like *max_age* in single call.
+      Convenient way for setting :attr:`cookies`, allows to specify
+      some additional properties like *max_age* in a single call.
 
       :param str name: cookie name
 
@@ -572,13 +571,13 @@ StreamResponse
    .. method:: send_headers()
 
       Send *HTTP header*. You should not change any header data after
-      calling the method.
+      calling this method.
 
    .. method:: write(data)
 
-      Send byte-ish data as part of *response BODY*.
+      Send byte-ish data as the part of *response BODY*.
 
-      Calls :meth:`send_headers` if not been called.
+      Calls :meth:`send_headers` if it has not been called before.
 
       Raises :exc:`TypeError` if data is not :class:`bytes`,
       :class:`bytearray` or :class:`memoryview` instance.
@@ -587,13 +586,13 @@ StreamResponse
 
    .. method:: write_eof()
 
-      A :ref:`coroutine<coroutine>` *may* be called as mark of finish
-      *HTTP response* processing.
+      A :ref:`coroutine<coroutine>` *may* be called as a mark of the
+      *HTTP response* processing finish.
 
-      *Internal machinery* will call the method at the end of request
-      processing if needed.
+      *Internal machinery* will call this method at the end of
+      the request processing if needed.
 
-      After :meth:`write_eof` call any manipulations with *response*
+      After :meth:`write_eof` call any manipulations with the *response*
       object are forbidden.
 
 Response
@@ -603,12 +602,12 @@ Response
 
    The most usable response class, inherited from :class:`StreamResponse`.
 
-   Accepts *body* argument for setting *HTTP response BODY*.
+   Accepts *body* argument for setting the *HTTP response BODY*.
 
-   Actual :attr:`body` sending is done in overridden
+   The actual :attr:`body` sending happens in overridden
    :meth:`~StreamResponse.write_eof`.
 
-   :param Request request: *HTTP request* object used for creation the response.
+   :param Request request: *HTTP request* object used for this response creation.
 
    :param bytes body: response's BODY
 
@@ -625,8 +624,8 @@ Response
       Setting :attr:`body` also recalculates
       :attr:`~StreamResponse.content_length` value.
 
-      Resetting :attr:`body` (assigning ``None``) set
-      :attr:`~StreamResponse.content_length` to ``None`` also, dropping
+      Resetting :attr:`body` (assigning ``None``) sets
+      :attr:`~StreamResponse.content_length` to ``None`` too, dropping
       *Content-Length* HTTP header.
 
 
@@ -639,15 +638,15 @@ Application
 
 Application is a synonym for web-server.
 
-To get fully working example you have to make *application*, register
-supported url in *router* and create *server socket* with
-:meth:`make_handler` as *protocol factory*.
+To get fully working example, you have to make *application*, register
+supported urls in *router* and create a *server socket* with
+:meth:`make_handler` as a *protocol factory*.
 
-*Application* contains *router* instance and list of callbacks that
-will be called on application finishing.
+*Application* contains a *router* instance and a list of callbacks that
+will be called during application finishing.
 
 *Application* is a :class:`dict`, so you can use it as registry for
-arbitrary properies for later acceess to registered values from
+arbitrary properties for later access from
 :ref:`handler<aiohttp-web-handler>` via :attr:`Request.app` property::
 
    app = Application(loop=loop)
@@ -670,30 +669,30 @@ arbitrary properies for later acceess to registered values from
                 used for getting default event loop, but we strongly
                 recommend to use explicit loops everywhere.
 
-   :param router: :class:`aiohttp.abc.AbstractRouter` instance, system
+   :param router: :class:`aiohttp.abc.AbstractRouter` instance, the system
                   creates :class:`UrlDispatcher` by default if
                   *router* is ``None``.
 
    :param kwargs: :class:`dict` of optional arguments that will be
                   passed to underlying
                   :class:`aiohttp.server.ServerHttpProtocol`
-                  constructor at :meth:`make_handler` call.
+                  constructor during :meth:`make_handler` call.
 
    .. attribute:: router
 
-      Readonly property that returns *router instance*.
+      Read-only property that returns *router instance*.
 
    .. attribute:: loop
 
-      Readonly property that returns :ref:`event loop<asyncio-event-loop>`.
+      Read-only property that returns :ref:`event loop<asyncio-event-loop>`.
 
    .. method:: make_handler()
 
       Creates HTTP protocol for handling requests.
 
-      You should never call the method by hands but pass it to
-      :meth:`~asyncio.BaseEventLoop.create_server` instead as
-      *protocol_factory* parameter like::
+      You should never call this method manually, but pass it to
+      :meth:`~asyncio.BaseEventLoop.create_server` as
+      *protocol_factory* parameter instead, like::
 
 
          loop = asyncio.get_event_loop()
@@ -707,13 +706,13 @@ arbitrary properies for later acceess to registered values from
 
    .. method:: finish()
 
-      A :ref:`coroutine<coroutine>` that should be called after on
+      A :ref:`coroutine<coroutine>` that should be called after
       server stopping.
 
-      The method executes functions registered by
+      This method executes functions registered by
       :meth:`register_on_finish` in LIFO order.
 
-      If callback raises exception the error will be stored by
+      If callback raises an exception, the error will be stored by
       :meth:`~asyncio.BaseEventLoop.call_exception_handler` with keys:
       *message*, *exception*, *application*.
 
@@ -724,7 +723,7 @@ arbitrary properies for later acceess to registered values from
       passed as arguments to :meth:`register_on_finish`.  It is possible to
       register the same function and arguments more than once.
 
-      At call of :meth:`finish` all functions registered are called in
+      During the call of :meth:`finish` all functions registered are called in
       last in, first out order.
 
       *func* may be either regular function or :ref:`coroutine<coroutine>`,
@@ -739,7 +738,7 @@ For dispatching URLs to :ref:`handlers<aiohttp-web-handler>`
 
 Router is any object that implements :class:`AbstractRouter` interface.
 
-:mod:`aiohttp.web` provides single implementation called :class:`UrlDispatcher`.
+:mod:`aiohttp.web` provides an implementation called :class:`UrlDispatcher`.
 
 :class:`Application` uses :class:`UrlDispatcher` as :meth:`router` by default.
 
@@ -747,8 +746,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
    Straightforward url-mathing router.
 
-   Before running :class:`Application` you should to fill *route
-   table* first by :meth:`add_route` and :meth:`add_static` calls.
+   Before running :class:`Application` you should fill *route
+   table* first by calling :meth:`add_route` and :meth:`add_static`.
 
    :ref:`Handler<aiohttp-web-handler>` lookup is performed by iterating on
    added *routes* in FIFO order. The first matching *route* will be used
@@ -756,9 +755,9 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
    .. method:: add_route(method, path, handler, *, endpoint=None)
 
-      Append :ref:`handler<aiohttp-web-handler>` to end of route table.
+      Append :ref:`handler<aiohttp-web-handler>` to the end of route table.
 
-      *path* may be either *contant* string like ``'/a/b/c'`` or
+      *path* may be either *constant* string like ``'/a/b/c'`` or
        *variable rule* like ``'/a/{var}'`` (see
        :ref:`handling variable pathes<aiohttp-web-variable-handler>`)
 
@@ -772,17 +771,17 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       Adds router for returning static files.
 
-      Useful for handling static content like images, java script and css files.
+      Useful for handling static content like images, javascript and css files.
 
       .. warning::
 
-         Use :meth:`add_static` for development only, in production
-         static content usually processed by web servers like *nginx*
+         Use :meth:`add_static` for development only. In production,
+         static content should be processed by web servers like *nginx*
          or *apache*.
 
       :param str prefix: URL path prefix for handled static files
 
-      :param str path: path to folder in file system that contains
+      :param str path: path to the folder in file system that contains
                        handled static files.
 
       :param str endpoint: route name for :meth:`reverse` lookup.
@@ -821,7 +820,7 @@ Utilities
 
 .. class:: FileField
 
-   A :func:`~collections.namedtuple` that returned as multidict value
+   A :func:`~collections.namedtuple` that is returned as multidict value
    by :meth:`Request.POST` if field is uploaded file.
 
    .. attribute:: name
@@ -851,10 +850,10 @@ Exceptions
 Each class relates to a single HTTP status code.  Each class is a
 subclass of the :class:`~HTTPException`.
 
-Those exceptions are derived from :class:`Response` also, so you can
-eighter return exception object from :ref:`aiohttp-web-handler` or raise it.
+Those exceptions are derived from :class:`Response` too, so you can
+either return exception object from :ref:`aiohttp-web-handler` or raise it.
 
-The follow snippets are equals::
+The following snippets are equal::
 
     @asyncio.coroutine
     def handler(request):
@@ -919,7 +918,7 @@ Http Exception hierarchy chart::
            * 504 - HTTPGatewayTimeout
            * 505 - HTTPVersionNotSupported
 
-All http exceptions has constructor like::
+All http exceptions have the same constructor::
 
     HTTPNotFound(request, *, headers=None, reason=None)
 
