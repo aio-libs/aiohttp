@@ -475,6 +475,7 @@ class WebSocketHandshakeTests(unittest.TestCase):
     def test_handshake_protocol_unsupported(self, m_websocket_warn):
         '''Tests if a protocol mismatch handshake warns and returns None'''
         warn_called = False
+
         def websocket_warn(msg, *fmts):
             nonlocal warn_called
             warn_called = True
