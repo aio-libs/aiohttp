@@ -4,7 +4,7 @@ import unittest
 from unittest import mock
 import aiohttp.web
 from aiohttp.web import (UrlDispatcher, Request, Response,
-                         HTTPMethodNotAllowed, HTTPNotFound, Entry)
+                         HTTPMethodNotAllowed, HTTPNotFound)
 from aiohttp.multidict import MultiDict
 from aiohttp.protocol import HttpVersion, RawRequestMessage
 
@@ -38,7 +38,7 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIsNotNone(info)
         self.assertEqual(0, len(info))
         self.assertIs(handler, info.handler)
-        self.assertIsNone(info.endpoint)
+        self.assertIsNone(info.route.name)
 
     def test_add_route_simple(self):
         handler = lambda req: Response(req)
@@ -48,7 +48,7 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIsNotNone(info)
         self.assertEqual(0, len(info))
         self.assertIs(handler, info.handler)
-        self.assertIsNone(info.endpoint)
+        self.assertIsNone(info.route.name)
 
     def test_add_with_matchdict(self):
         handler = lambda req: Response(req)
@@ -58,16 +58,16 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIsNotNone(info)
         self.assertEqual({'to': 'tail'}, info)
         self.assertIs(handler, info.handler)
-        self.assertIsNone(info.endpoint)
+        self.assertIsNone(info.route.name)
 
-    def test_add_with_endpoint(self):
+    def test_add_with_name(self):
         handler = lambda req: Response(req)
         self.router.add_route('GET', '/handler/to/path', handler,
-                              endpoint='endpoint')
+                              name='name')
         req = self.make_request('GET', '/handler/to/path')
         info = self.loop.run_until_complete(self.router.resolve(req))
         self.assertIsNotNone(info)
-        self.assertEqual('endpoint', info.endpoint)
+        self.assertEqual('name', info.route.name)
 
     def test_add_with_tailing_slash(self):
         handler = lambda req: Response(req)
@@ -148,94 +148,104 @@ class TestUrlDispatcher(unittest.TestCase):
         exc = ctx.exception
         self.assertEqual(404, exc.status)
 
-    def test_double_add_url_with_the_same_endpoint(self):
-        self.router.add_route('GET', '/get', lambda r: None, endpoint='name')
+    def test_double_add_url_with_the_same_name(self):
+        self.router.add_route('GET', '/get', lambda r: None, name='name')
 
-        regexp = ("Duplicate endpoint 'name', "
-                  r"already handled by \[GET\] /get -> ")
+        regexp = ("Duplicate 'name', already handled by")
         with self.assertRaisesRegex(ValueError, regexp):
             self.router.add_route('GET', '/get_other', lambda r: None,
-                                  endpoint='name')
+                                  name='name')
 
     def test_reverse_plain(self):
-        self.router.add_route('GET', '/get', lambda r: None, endpoint='name')
+        self.router.add_route('GET', '/get', lambda r: None, name='name')
 
-        url = self.loop.run_until_complete(self.router.reverse('GET', 'name'))
+        url = self.router['name'].url()
         self.assertEqual('/get', url)
 
-    def test_reverse_plain_with_parts(self):
-        self.router.add_route('GET', '/get', lambda r: None, endpoint='name')
-
-        with self.assertRaisesRegex(
-                ValueError,
-                "Plain endpoint doesn't allow parts parameter"):
-            self.loop.run_until_complete(
-                self.router.reverse('GET', 'name', parts={'a': 'b'}))
-
-    def test_reverse_unknown_endpoint(self):
-        with self.assertRaisesRegex(
-                KeyError,
-                r"\[GET\] 'unknown' endpoint not found"):
-            self.loop.run_until_complete(self.router.reverse('GET', 'unknown'))
+    def test_reverse_unknown_route_name(self):
+        with self.assertRaises(KeyError):
+            self.router['unknown']
 
     def test_reverse_dynamic(self):
         self.router.add_route('GET', '/get/{name}',
-                              lambda r: None, endpoint='name')
+                              lambda r: None, name='name')
 
-        url = self.loop.run_until_complete(
-            self.router.reverse('GET', 'name', parts={'name': 'John'}))
+        url = self.router['name'].url(parts={'name': 'John'})
         self.assertEqual('/get/John', url)
 
-    def test_reverse_dynamic_without_parts(self):
-        self.router.add_route('GET', '/get/{name}',
-                              lambda r: None, endpoint='name')
-
-        with self.assertRaisesRegex(
-                ValueError,
-                "Dynamic endpoint requires nonempty parts parameter"):
-            self.loop.run_until_complete(self.router.reverse('GET', 'name'))
-
     def test_reverse_with_qs(self):
-        self.router.add_route('GET', '/get', lambda r: None, endpoint='name')
+        self.router.add_route('GET', '/get', lambda r: None, name='name')
 
-        url = self.loop.run_until_complete(
-            self.router.reverse('GET', 'name', query=[('a', 'b'), ('c', 1)]))
-
+        url = self.router['name'].url(query=[('a', 'b'), ('c', 1)])
         self.assertEqual('/get?a=b&c=1', url)
-
-    def test_reverse_nonstatic_with_filename(self):
-        self.router.add_route('GET', '/get', lambda r: None, endpoint='name')
-
-        with self.assertRaisesRegex(
-                ValueError,
-                "Cannot use filename with non-static route"):
-            self.loop.run_until_complete(self.router.reverse('GET', 'name',
-                                                             filename='a.txt'))
 
     def test_reverse_static(self):
         self.router.add_static('/st', os.path.dirname(aiohttp.__file__),
-                               endpoint='static')
+                               name='static')
 
-        url = self.loop.run_until_complete(
-            self.router.reverse('GET', 'static', filename='/dir/a.txt'))
-
+        url = self.router['static'].url(filename='/dir/a.txt')
         self.assertEqual('/st/dir/a.txt', url)
 
-    def test_reverse_static_without_filename(self):
-        self.router.add_static('/st', os.path.dirname(aiohttp.__file__),
-                               endpoint='static')
+    def test_plain_not_match(self):
+        self.router.add_route('GET', '/get/path',
+                              lambda r: None, name='name')
+        route = self.router['name']
+        self.assertIsNone(route.match('/another/path'))
 
-        with self.assertRaisesRegex(
-                ValueError,
-                'filename must be not empty for static routes'):
-            self.loop.run_until_complete(self.router.reverse('GET', 'static'))
+    def test_dynamic_not_match(self):
+        self.router.add_route('GET', '/get/{name}',
+                              lambda r: None, name='name')
+        route = self.router['name']
+        self.assertIsNone(route.match('/another/path'))
 
-    def test_reverse_unknown_endpoint_type(self):
-        self.router._register_endpoint(Entry('compiled', 'GET', 'handler',
-                                             'endpoint', '/path', 'UNKNOWN'))
+    def test_static_not_match(self):
+        self.router.add_static('/pre', os.path.dirname(aiohttp.__file__),
+                               name='name')
+        route = self.router['name']
+        self.assertIsNone(route.match('/another/path'))
 
-        with self.assertRaisesRegex(
-                ValueError,
-                'Not supported endpoint type UNKNOWN'):
-            self.loop.run_until_complete(
-                self.router.reverse('GET', 'endpoint'))
+    def test_dynamic_with_trailing_slash(self):
+        self.router.add_route('GET', '/get/{name}/',
+                              lambda r: None, name='name')
+        route = self.router['name']
+        self.assertEqual({'name': 'John'}, route.match('/get/John/'))
+
+    def test_len(self):
+        self.router.add_route('GET', '/get1',
+                              lambda r: None, name='name1')
+        self.router.add_route('GET', '/get2',
+                              lambda r: None, name='name2')
+        self.assertEqual(2, len(self.router))
+
+    def test_iter(self):
+        self.router.add_route('GET', '/get1',
+                              lambda r: None, name='name1')
+        self.router.add_route('GET', '/get2',
+                              lambda r: None, name='name2')
+        self.assertEqual({'name1', 'name2'}, set(iter(self.router)))
+
+    def test_contains(self):
+        self.router.add_route('GET', '/get1',
+                              lambda r: None, name='name1')
+        self.router.add_route('GET', '/get2',
+                              lambda r: None, name='name2')
+        self.assertIn('name1', self.router)
+        self.assertNotIn('name3', self.router)
+
+    def test_plain_repr(self):
+        self.router.add_route('GET', '/get/path',
+                              lambda r: None, name='name')
+        self.assertRegex(repr(self.router['name']),
+                         r"<PlainRoute 'name' \[GET\] /get/path")
+
+    def test_dynamic_repr(self):
+        self.router.add_route('GET', '/get/{path}',
+                              lambda r: None, name='name')
+        self.assertRegex(repr(self.router['name']),
+                         r"<DynamicRoute 'name' \[GET\] /get/{path}")
+
+    def test_static_repr(self):
+        self.router.add_static('/get', os.path.dirname(aiohttp.__file__),
+                               name='name')
+        self.assertRegex(repr(self.router['name']),
+                         r"<StaticRoute 'name' \[GET\] /get/")
