@@ -221,7 +221,8 @@ def do_handshake(method, headers, transport, protocols=()):
                 protocol = proto
                 break
         else:
-            websocket_log.warning(  # No overlap found: Return no protocol as per spec
+            # No overlap found: Return no protocol as per spec
+            websocket_log.warning(
                 'Client protocols %r don’t overlap server-known ones %r',
                 protocols, req_protocols)
 
