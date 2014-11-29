@@ -910,6 +910,15 @@ urls with :ref:`variable pathes<aiohttp-web-variable-handler>` spec.
 MatchInfo
 ^^^^^^^^^
 
+After route matching web application calls found handler if any.
+
+Matching result can be accessible from handler as
+:attr:`Request.match_info` attribute.
+
+In general the result may be any object derived from
+:class:`AbstractMatchInfo` (:class:`UrlMappingMatchInfo` for default
+:class:`UrlDispatcher` router).
+
 
 Utilities
 ---------
