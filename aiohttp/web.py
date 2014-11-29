@@ -1099,10 +1099,12 @@ class RequestHandler(ServerHttpProtocol):
     def __init__(self, app, **kwargs):
         super().__init__(**kwargs)
         self._app = app
+        self._middlewares = app.middlewares
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
-        request = Request(self._app, message, payload,
+        app = self._app
+        request = Request(app, message, payload,
                           self.transport, self.writer, self.keep_alive_timeout)
         try:
             match_info = yield from self._app.router.resolve(request)
@@ -1111,6 +1113,9 @@ class RequestHandler(ServerHttpProtocol):
 
             request._match_info = match_info
             handler = match_info.handler
+
+            for factory in reversed(self._middlewares):
+                handler = factory(app, handler)
 
             resp = handler(request)
             if (asyncio.iscoroutine(resp) or
@@ -1132,7 +1137,7 @@ class RequestHandler(ServerHttpProtocol):
 
 class Application(dict):
 
-    def __init__(self, *, loop=None, router=None, **kwargs):
+    def __init__(self, *, loop=None, router=None, middlewares=(), **kwargs):
         # TODO: explicitly accept *debug* param
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -1143,6 +1148,7 @@ class Application(dict):
         self._router = router
         self._loop = loop
         self._finish_callbacks = []
+        self._middlewares = tuple(middlewares)
 
     @property
     def router(self):
@@ -1151,6 +1157,10 @@ class Application(dict):
     @property
     def loop(self):
         return self._loop
+
+    @property
+    def middlewares(self):
+        return self._middlewares
 
     def make_handler(self):
         return RequestHandler(self, loop=self._loop, **self._kwargs)
