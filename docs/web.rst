@@ -89,7 +89,8 @@ Handlers can be first-class functions, e.g.::
 
    app.router.add_route('GET', '/', hello)
 
-Sometimes you would like to group logically coupled handlers into a python class.
+Sometimes you would like to group logically coupled handlers into a
+python class.
 
 :mod:`aiohttp.web` doesn't dictate any implementation details,
 so application developer can use classes if he wants::
@@ -398,9 +399,10 @@ Response classes
 For now, :mod:`aiohttp.web` has two classes for the *HTTP response*:
 :class:`StreamResponse` and :class:`Response`.
 
-Usually you need to use the second one. :class:`StreamResponse`
-is intended for streaming data, while :class:`Response` contains *HTTP BODY* as an attribute and sends own content as single piece with the correct
-*Content-Length HTTP header*.
+Usually you need to use the second one. :class:`StreamResponse` is
+intended for streaming data, while :class:`Response` contains *HTTP
+BODY* as an attribute and sends own content as single piece with the
+correct *Content-Length HTTP header*.
 
 For sake of design decisions :class:`Response` is derived from
 :class:`StreamResponse` parent class.
@@ -411,7 +413,8 @@ The response supports *keep-alive* handling out-of-the-box if
 You can disable *keep-alive* by :meth:`~StreamResponse.force_close` though.
 
 The common case for sending an answer from
-:ref:`web-handler<aiohttp-web-handler>` is returning a :class:`Response`instance::
+:ref:`web-handler<aiohttp-web-handler>` is returning a
+:class:`Response` instance::
 
    def handler(request):
        return Response(request, "All right!")
@@ -744,7 +747,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
 .. class:: UrlDispatcher()
 
-   Straightforward url-mathing router.
+   Straightforward url-mathing router, implements
+   :class:`collections.abc.Mapping` for access to *named routes*.
 
    Before running :class:`Application` you should fill *route
    table* first by calling :meth:`add_route` and :meth:`add_static`.
@@ -753,7 +757,15 @@ Router is any object that implements :class:`AbstractRouter` interface.
    added *routes* in FIFO order. The first matching *route* will be used
    to call corresponding *handler*.
 
-   .. method:: add_route(method, path, handler, *, endpoint=None)
+   If on route creation you specify *name* parameter the result is
+   *named route*.
+
+   *Named route* can be retrieved by ``app.router[name]`` call, checked for
+   existence by ``name in app.router`` etc.
+
+   .. seealso:: :ref:`Route classes <aiohttp-web-route>`
+
+   .. method:: add_route(method, path, handler, *, name=None)
 
       Append :ref:`handler<aiohttp-web-handler>` to the end of route table.
 
@@ -765,9 +777,9 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       :param callable handler: route handler
 
-      :param str endpoint: route name for :meth:`reverse` lookup.
+      :param str name: optional route name.
 
-   .. method:: add_static(prefix, path, *, endpoint=None)
+   .. method:: add_static(prefix, path, *, name=None)
 
       Adds router for returning static files.
 
@@ -784,29 +796,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
       :param str path: path to the folder in file system that contains
                        handled static files.
 
-      :param str endpoint: route name for :meth:`reverse` lookup.
-
-   .. method:: reverse(method, endpoint, *, parts=None, filename=None, \
-                       query=None)
-
-      A :ref:`coroutine<coroutine>` that returns *URL* for given
-      (*method*, *endpoint*) pair.
-
-      :param mapping parts: :class:`dict` or other mapping for
-                            substitute into *dynamic endpoint* template
-                            (created by :meth:`add_route` with
-                            *path* like ``'/a/{var}'``)
-
-      :param str filename: file name for specifying file for *static
-                           endpoint* (created by :meth:`add_static`)
-
-      :param query: mapping or list of *(name, value)* pairs for
-                    specifying *query* part of url (parameter is
-                    processed by :func:`~urllib.parse.urlencode`).
-
-      :returns str: matched URL.
-      :raises KeyError: *endpoint* is not registered.
-      :raises ValueError: params combination is not acceptable.
+      :param str name: optional route name.
 
    .. method:: resolve(requst)
 
@@ -814,6 +804,112 @@ Router is any object that implements :class:`AbstractRouter` interface.
       :class:`AbstractMatchInfo` for *request* or raises http
       exception like :exc:`HTTPNotFound` if there is no registered
       route for *request*.
+
+      Used by internal machinery, end user unlikely need to call the method.
+
+.. _aiohttp-web-route:
+
+Route
+^^^^^
+
+Default router :class:`UrlDispatcher` operates with *routes*.
+
+User should not instantiate route classes by hand but can give *named
+route instance* by ``router[name]`` if he have added route by
+:meth:`UrlDispatcher.add_route` or :meth:`UrlDispatcher.add_static`
+calls with non-empty *name* parameter.
+
+The main usage of *named routes* is constructing URL by route name for
+passing it into *template engine* for example::
+
+   url = app.router['route_name'].url(query={'a': 1, 'b': 2})
+
+There are three conctrete route classes:* :class:`DynamicRoute` for
+urls with :ref:`variable pathes<aiohttp-web-variable-handler>` spec.
+
+
+* :class:`PlainRoute` for urls without :ref:`variable
+  pathes<aiohttp-web-variable-handler>`
+
+* :class:`DynamicRoute` for urls with :ref:`variable
+  pathes<aiohttp-web-variable-handler>` spec.
+
+* :class:`StaticRoute` for static file handlers.
+
+.. class:: Route
+
+   Base class for routes served by :class:`UrlDispatcher`.
+
+   .. attribute:: method
+
+   HTTP method handled by the route, e.g. *GET*, *POST* etc.
+
+   .. attribute:: handler
+
+   :ref:`handler<aiohttp-web-handler>` that processes the route.
+
+   .. attribute:: name
+
+   Name of the route.
+
+   .. method:: match(path)
+
+   Abstract method, accepts *URL path* and returns :class:`dict` with
+   parsed *path parts* for :class:`UrlMappingMatchInfo` or ``None`` if
+   the route cannot handle given *path*.
+
+   The method exists for internal usage, end user unlikely need to call it.
+
+   .. method:: url(*, query=None, **kwargs)
+
+   Abstract method for constructing url handled by the route.
+
+   *query* is a mapping or list of *(name, value)* pairs for
+   specifying *query* part of url (parameter is processed by
+   :func:`~urllib.parse.urlencode`).
+
+   Other available parameters depends on concrete route class and
+   described in descendant classes.
+
+.. class:: PlainRoute
+
+   The route class for handling plain *URL path*, e.g. ``"/a/b/c"``
+
+   .. method:: url(*, parts, query=None)
+
+   Construct url, doesn't accepts extra parameters::
+
+      >>> route.url(query={'d': 1, 'e': 2})
+      '/a/b/c/?d=1&e=2'``
+
+.. class:: DynamicRoute
+
+   The route class for handling :ref:`variable
+   path<aiohttp-web-variable-handler>`, e.g. ``"/a/{name1}/{name2}"``
+
+   .. method:: url(*, parts, query=None)
+
+   Construct url with given *dynamic parts*::
+
+       >>> route.url(parts={'name1': 'b', 'name2': 'c'}, query={'d': 1, 'e': 2})
+       '/a/b/c/?d=1&e=2'
+
+
+.. class:: StaticRoute
+
+   The route class for handling static files, created by
+   :meth:`UrlDispatcher.add_static` call.
+
+   .. method:: url(*, filename, query=None)
+
+   Construct url for given *filename*::
+
+      >>> route.url(filename='img/logo.png', query={'param': 1})
+      '/path/to/static/img/logo.png?param=1'
+
+MatchInfo
+^^^^^^^^^
+
 
 Utilities
 ---------
