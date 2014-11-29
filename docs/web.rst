@@ -812,6 +812,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
 Route
 ^^^^^
 
+.. versionadded:: 0.11
+
 Default router :class:`UrlDispatcher` operates with *routes*.
 
 User should not instantiate route classes by hand but can give *named
