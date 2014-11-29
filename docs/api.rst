@@ -3,7 +3,7 @@ aiohttp package
 
 All public names from submodules ``client``, ``connector``,
 ``errors``, ``parsers``, ``protocol``, ``server``, ``utils``,
-``websocket``, ``worker`` and ``wsgi`` are exported into ``aiohttp``
+``websocket`` and ``wsgi`` are exported into ``aiohttp``
 namespace.
 
 aiohttp.client module
@@ -74,14 +74,6 @@ aiohttp.websocket module
 ------------------------
 
 .. automodule:: aiohttp.websocket
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-aiohttp.worker module
----------------------
-
-.. automodule:: aiohttp.worker
     :members:
     :undoc-members:
     :show-inheritance:
