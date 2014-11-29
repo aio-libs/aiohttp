@@ -5,6 +5,7 @@ import asyncio
 import functools
 import os
 import gunicorn.workers.base as base
+import warnings
 
 from aiohttp.wsgi import WSGIServerHttpProtocol
 
@@ -12,6 +13,9 @@ from aiohttp.wsgi import WSGIServerHttpProtocol
 class AsyncGunicornWorker(base.Worker):
 
     def __init__(self, *args, **kw):  # pragma: no cover
+        warnings.warn("AsyncGunicornWorker is deprecated "
+                      "starting from 0.11 release, "
+                      "use standard gaiohttp worker.", DeprecationWarning)
         super().__init__(*args, **kw)
         self.servers = []
         self.connections = {}
