@@ -1,10 +1,12 @@
 CHANGES
 =======
 
-0.10.3 (XX-XX-XXXX)
+0.11.0 (XX-XX-XXXX)
 -------------------
 
-- Add *endpoint* to aiohttp.web.UrlDispatcher
+- Support named routes in `aiohttp.web.UrlDispatcher` #179
+
+- Make websocket subprotocols conform to spec #181
 
 0.10.2 (11-19-2014)
 -------------------
