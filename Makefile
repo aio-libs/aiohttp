@@ -17,7 +17,7 @@ testloop:
 
 cov cover coverage:
 	nosetests -s --with-cover --cover-html --cover-branches --cover-html-dir ./coverage $(FLAGS) ./tests/
-	echo "open file://`pwd`/coverage/index.html"
+	@echo "open file://`pwd`/coverage/index.html"
 
 clean:
 	rm -rf `find . -name __pycache__`
@@ -33,7 +33,7 @@ clean:
 	rm -rf build
 
 doc:
-	cd docs && make html
-	echo "open file://`pwd`/docs/_build/html/index.html"
+	make -C docs html
+	@echo "open file://`pwd`/docs/_build/html/index.html"
 
 .PHONY: all build venv flake test vtest testloop cov clean doc
