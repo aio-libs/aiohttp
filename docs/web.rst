@@ -919,6 +919,16 @@ In general the result may be any object derived from
 :class:`AbstractMatchInfo` (:class:`UrlMappingMatchInfo` for default
 :class:`UrlDispatcher` router).
 
+.. class:: UrlMappingMatchInfo
+
+   Inherited from :class:`dict` and :class:`AbstractMatchInfo`. Dict
+   items are given from :meth:`Route.match` call return value.
+
+   .. attribute:: route
+
+   :class:`Route` instance for url matching.
+
+
 
 Utilities
 ---------
