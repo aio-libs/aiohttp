@@ -1,21 +1,18 @@
 """http related errors."""
 
-__all__ = ['HttpException', 'HttpErrorException',
-           'HttpBadRequest', 'HttpMethodNotAllowed',
+__all__ = ['HttpProcessingError', 'BadHttpMessage',
+           'HttpMethodNotAllowed', 'HttpBadRequest',
            'IncompleteRead', 'BadStatusLine', 'LineTooLong', 'InvalidHeader',
-           'AioHttpConnectionError',
+           'HttpProxyError',
+
            'ClientConnectionError', 'OsConnectionError',
            'ClientRequestError', 'ClientResponseError',
-           'TimeoutError', 'ProxyConnectionError', 'HttpProxyError']
+           'TimeoutError', 'ProxyConnectionError']
 
 from asyncio import TimeoutError
 
 
-class AioHttpConnectionError(Exception):
-    """http connection error."""
-
-
-class ClientConnectionError(AioHttpConnectionError):
+class ClientConnectionError(Exception):
     """Base class for client connection errors."""
 
 
@@ -39,15 +36,7 @@ class ProxyConnectionError(ClientConnectionError):
     """
 
 
-class HttpException(Exception):
-    """Base http exception class."""
-
-    code = None
-    headers = ()
-    message = ''
-
-
-class HttpErrorException(HttpException):
+class HttpProcessingError(Exception):
     """Http error.
 
     Shortcut for raising http errors with custom code, message and headers.
@@ -57,13 +46,20 @@ class HttpErrorException(HttpException):
     :param list of [tuple] headers: (optional) Headers to be sent in response.
     """
 
-    def __init__(self, code, message='', headers=None):
-        self.code = code
+    code = 0
+    message = ''
+    headers = None
+
+    def __init__(self, *, code=None, message='', headers=None):
+        if code is not None:
+            self.code = code
         self.headers = headers
         self.message = message
 
+        super().__init__("%s, message='%s'" % (code, message))
 
-class HttpProxyError(HttpErrorException):
+
+class HttpProxyError(HttpProcessingError):
     """Http proxy error.
 
     Raised in :class:`aiohttp.connector.ProxyConnector` if
@@ -72,33 +68,39 @@ class HttpProxyError(HttpErrorException):
     """
 
 
-class HttpBadRequest(HttpException):
+class BadHttpMessage(HttpProcessingError):
 
     code = 400
     message = 'Bad Request'
 
 
-class HttpMethodNotAllowed(HttpException):
+class HttpMethodNotAllowed(HttpProcessingError):
 
     code = 405
     message = 'Method Not Allowed'
 
 
-class LineTooLong(HttpBadRequest):
+class HttpBadRequest(BadHttpMessage):
+
+    code = 400
+    message = 'Bad Request'
+
+
+class LineTooLong(BadHttpMessage):
 
     def __init__(self, line, limit='Unknown'):
         super().__init__(
-            "got more than %s bytes when reading %s" % (limit, line))
+            message="got more than %s bytes when reading %s" % (limit, line))
 
 
-class InvalidHeader(HttpBadRequest):
+class InvalidHeader(BadHttpMessage):
 
     def __init__(self, hdr):
-        super().__init__('Invalid HTTP Header: {}'.format(hdr))
+        super().__init__(message='Invalid HTTP Header: {}'.format(hdr))
         self.hdr = hdr
 
 
-class IncompleteRead(AioHttpConnectionError):
+class IncompleteRead(BadHttpMessage):
 
     def __init__(self, partial, expected=None):
         self.args = partial,
@@ -116,7 +118,7 @@ class IncompleteRead(AioHttpConnectionError):
         return repr(self)
 
 
-class BadStatusLine(HttpBadRequest):
+class BadStatusLine(BadHttpMessage):
 
     def __init__(self, line=''):
         if not line:

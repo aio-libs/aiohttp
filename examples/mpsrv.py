@@ -43,11 +43,11 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
                 isdir = os.path.isdir(path)
 
         if not path:
-            raise aiohttp.HttpErrorException(404)
+            raise aiohttp.HttpProcessingError(404)
 
         if isdir and not path.endswith('/'):
             path = path + '/'
-            raise aiohttp.HttpErrorException(
+            raise aiohttp.HttpProcessingError(
                 302, headers=(('URI', path), ('Location', path)))
 
         response = aiohttp.Response(

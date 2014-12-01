@@ -114,7 +114,7 @@ def request(method, url, *,
                 resp.close()
                 conn.close()
                 raise
-        except aiohttp.HttpBadRequest as exc:
+        except aiohttp.HttpProcessingError as exc:
             raise aiohttp.ClientResponseError(exc)
         except ConnectionError as exc:
             raise aiohttp.OsConnectionError(exc)
@@ -901,7 +901,7 @@ class HttpClient:
                     compress=compress, chunked=chunked,
                     expect100=expect100, read_until_eof=read_until_eof,
                     connector=self._connector, loop=self._loop)
-            except (aiohttp.AioHttpConnectionError, aiohttp.TimeoutError):
+            except (aiohttp.ClientConnectionError, aiohttp.TimeoutError):
                 pass
             else:
                 if 500 <= resp.status <= 600:

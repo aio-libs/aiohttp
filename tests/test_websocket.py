@@ -357,7 +357,7 @@ class WebSocketHandshakeTests(unittest.TestCase):
 
     def test_not_get(self):
         self.assertRaises(
-            errors.HttpErrorException,
+            errors.HttpProcessingError,
             websocket.do_handshake,
             'POST', self.message.headers, self.transport)
 

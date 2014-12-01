@@ -4,7 +4,9 @@ CHANGES
 Unreleased
 -------------------
 
-- Added access logging to aiohttp.web
+- Add access logging to aiohttp.web
+
+- Exceptions refactoring
 
 - Gunicorn worker for aiohttp.web
 

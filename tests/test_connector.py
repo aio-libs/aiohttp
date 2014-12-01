@@ -574,7 +574,7 @@ class ProxyConnectorTests(unittest.TestCase):
 
         req = ClientRequest('GET', 'https://www.python.org')
         with self.assertRaisesRegex(
-                aiohttp.HttpProxyError, "(400, 'bad request')"):
+                aiohttp.HttpProxyError, "400, message='bad request'"):
             self.loop.run_until_complete(connector._create_connection(req))
 
     @unittest.mock.patch('aiohttp.connector.ClientRequest')

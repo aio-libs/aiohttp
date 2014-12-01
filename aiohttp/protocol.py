@@ -143,7 +143,7 @@ class HttpPrefixParser:
 
         # allowed method
         if self.allowed_methods and method not in self.allowed_methods:
-            raise errors.HttpMethodNotAllowed(method)
+            raise errors.HttpMethodNotAllowed(message=method)
 
         out.feed_data(method)
         out.feed_eof()
@@ -254,8 +254,8 @@ class HttpResponseParser(HttpParser):
             out.feed_eof()
         except aiohttp.EofStream:
             # server closed the connection before sending a valid response.
-            raise errors.ClientResponseError(
-                'Can not read status line') from None
+            raise errors.HttpProcessingError(
+                message='Can not read status line') from None
 
 
 class HttpPayloadParser:
@@ -338,8 +338,8 @@ class HttpPayloadParser:
             yield from buf.skipuntil(b'\r\n')
 
         except aiohttp.EofStream:
-            raise errors.AioHttpConnectionError(
-                'Broken chunked payload.') from None
+            raise errors.BadHttpMessage(
+                message='Broken chunked payload.') from None
 
     def parse_length_payload(self, out, buf, length=0):
         """Read specified amount of bytes."""

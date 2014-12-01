@@ -197,17 +197,17 @@ def do_handshake(method, headers, transport, protocols=()):
 
     # WebSocket accepts only GET
     if method.upper() != 'GET':
-        raise errors.HttpErrorException(405, headers=(('Allow', 'GET'),))
+        raise errors.HttpProcessingError(code=405, headers=(('Allow', 'GET'),))
 
     if 'websocket' != headers.get('UPGRADE', '').lower().strip():
         raise errors.HttpBadRequest(
-            'No WebSocket UPGRADE hdr: {}\n'
+            message='No WebSocket UPGRADE hdr: {}\n'
             'Can "Upgrade" only to "WebSocket".'.format(
                 headers.get('UPGRADE')))
 
     if 'upgrade' not in headers.get('CONNECTION', '').lower():
         raise errors.HttpBadRequest(
-            'No CONNECTION upgrade hdr: {}'.format(
+            message='No CONNECTION upgrade hdr: {}'.format(
                 headers.get('CONNECTION')))
 
     # find common sub-protocol between client and server
@@ -230,17 +230,17 @@ def do_handshake(method, headers, transport, protocols=()):
     version = headers.get('SEC-WEBSOCKET-VERSION')
     if version not in ('13', '8', '7'):
         raise errors.HttpBadRequest(
-            'Unsupported version: {}'.format(version))
+            message='Unsupported version: {}'.format(version))
 
     # check client handshake for validity
     key = headers.get('SEC-WEBSOCKET-KEY')
     try:
         if not key or len(base64.b64decode(key)) != 16:
             raise errors.HttpBadRequest(
-                'Handshake error: {!r}'.format(key))
+                message='Handshake error: {!r}'.format(key))
     except binascii.Error:
         raise errors.HttpBadRequest(
-            'Handshake error: {!r}'.format(key)) from None
+            message='Handshake error: {!r}'.format(key)) from None
 
     response_headers = [
         ('UPGRADE', 'websocket'),

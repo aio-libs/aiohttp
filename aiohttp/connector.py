@@ -377,7 +377,7 @@ class ProxyConnector(TCPConnector):
                 raise
             else:
                 if resp.status != 200:
-                    raise HttpProxyError(resp.status, resp.reason)
+                    raise HttpProxyError(code=resp.status, message=resp.reason)
                 rawsock = transport.get_extra_info('socket', default=None)
                 if rawsock is None:
                     raise RuntimeError(
