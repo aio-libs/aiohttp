@@ -13,6 +13,7 @@ import os
 from urllib.parse import urlsplit, parse_qsl, unquote, urlencode
 
 from .abc import AbstractRouter, AbstractMatchInfo
+from .log import web_log
 from .multidict import (CaseInsensitiveMultiDict,
                         CaseInsensitiveMutableMultiDict,
                         MultiDict,
@@ -1100,6 +1101,16 @@ class RequestHandler(ServerHttpProtocol):
         super().__init__(**kwargs)
         self._app = app
 
+    def connection_made(self, transport):
+        super().connection_made(transport)
+
+        self._app.connection_made(self, transport)
+
+    def connection_lost(self, exc):
+        self._app.connection_lost(self, exc)
+
+        super().connection_lost(exc)
+
     @asyncio.coroutine
     def handle_request(self, message, payload):
         request = Request(self._app, message, payload,
@@ -1136,13 +1147,13 @@ class Application(dict):
         # TODO: explicitly accept *debug* param
         if loop is None:
             loop = asyncio.get_event_loop()
-        self._kwargs = kwargs
         if router is None:
             router = UrlDispatcher()
         assert isinstance(router, AbstractRouter), router
         self._router = router
         self._loop = loop
         self._finish_callbacks = []
+        self._connections = {}
 
     @property
     def router(self):
@@ -1152,12 +1163,26 @@ class Application(dict):
     def loop(self):
         return self._loop
 
-    def make_handler(self):
-        return RequestHandler(self, loop=self._loop, **self._kwargs)
+    def make_handler(self, **kwargs):
+        return RequestHandler(self, loop=self._loop, **kwargs)
+
+    @property
+    def connections(self):
+        return list(self._connections.keys())
+
+    def connection_made(self, handler, transport):
+        self._connections[handler] = transport
+
+    def connection_lost(self, handler, exc=None):
+        if handler in self._connections:
+            del self._connections[handler]
 
     @asyncio.coroutine
     def finish(self):
-        for (cb, args, kwargs) in self._finish_callbacks:
+        callbacks = self._finish_callbacks
+        self._finish_callbacks = []
+
+        for (cb, args, kwargs) in callbacks:
             try:
                 res = cb(*args, **kwargs)
                 if (asyncio.iscoroutine(res) or
@@ -1169,6 +1194,29 @@ class Application(dict):
                     'exception': exc,
                     'application': self,
                 })
+
+    @asyncio.coroutine
+    def finish_connections(self, timeout=None):
+        for handler in self._connections.keys():
+            handler.closing()
+
+        def cleanup():
+            while self._connections:
+                yield from asyncio.sleep(0.5, loop=self._loop)
+
+        if timeout:
+            try:
+                yield from asyncio.wait_for(
+                    cleanup(), timeout, loop=self._loop)
+            except asyncio.TimeoutError:
+                web_log.warn(
+                    "Not all connections closed (pending: %d)",
+                    len(self._connections))
+
+        for transport in self._connections.values():
+            transport.close()
+
+        self._connections.clear()
 
     def register_on_finish(self, func, *args, **kwargs):
         self._finish_callbacks.insert(0, (func, args, kwargs))

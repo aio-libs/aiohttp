@@ -82,3 +82,41 @@ class TestWeb(unittest.TestCase):
         router = web.UrlDispatcher()
         app = web.Application(loop=self.loop, router=router)
         self.assertIs(router, app.router)
+
+    def test_connections(self):
+        app = web.Application(loop=self.loop)
+        self.assertEqual(app.connections, [])
+
+        handler = object()
+        transport = object()
+        app.connection_made(handler, transport)
+        self.assertEqual(app.connections, [handler])
+
+        app.connection_lost(handler, None)
+        self.assertEqual(app.connections, [])
+
+    def test_finish_connection_no_timeout(self):
+        app = web.Application(loop=self.loop)
+        handler = mock.Mock()
+        transport = mock.Mock()
+        app.connection_made(handler, transport)
+
+        self.loop.run_until_complete(app.finish_connections())
+
+        app.connection_lost(handler, None)
+        self.assertEqual(app.connections, [])
+        handler.closing.assert_called_with()
+        transport.close.assert_called_with()
+
+    def test_finish_connection_timeout(self):
+        app = web.Application(loop=self.loop)
+        handler = mock.Mock()
+        transport = mock.Mock()
+        app.connection_made(handler, transport)
+
+        self.loop.run_until_complete(app.finish_connections(timeout=0.1))
+
+        app.connection_lost(handler, None)
+        self.assertEqual(app.connections, [])
+        handler.closing.assert_called_with()
+        transport.close.assert_called_with()

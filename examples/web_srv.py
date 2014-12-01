@@ -32,7 +32,7 @@ def change_body(request):
 @asyncio.coroutine
 def hello(request):
     resp = StreamResponse(request)
-    name = request.match_info.get('name', 'Anonimous')
+    name = request.match_info.get('name', 'Anonymous')
     answer = ('Hello, ' + name).encode('utf8')
     resp.content_length = len(answer)
     resp.send_headers()

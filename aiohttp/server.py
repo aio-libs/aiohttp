@@ -72,10 +72,18 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
     _request_parser = aiohttp.HttpRequestParser()  # default request parser
 
-    def __init__(self, *, loop=None, keep_alive=None,
-                 timeout=15, tcp_keepalive=True, allowed_methods=(),
-                 debug=False, log=server_log, access_log=access_log,
-                 access_log_format=ACCESS_LOG_FORMAT, **kwargs):
+    def __init__(self, *, loop=None,
+                 keep_alive=None,
+                 timeout=15,
+                 tcp_keepalive=True,
+                 allowed_methods=(),
+                 log=server_log,
+                 access_log=access_log,
+                 access_log_format=ACCESS_LOG_FORMAT,
+                 host="",
+                 port=0,
+                 debug=False,
+                 **kwargs):
         super().__init__(loop=loop, **kwargs)
 
         self._keep_alive_period = keep_alive  # number of seconds to keep alive
@@ -84,6 +92,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         self._request_prefix = aiohttp.HttpPrefixParser(allowed_methods)
         self._loop = loop if loop is not None else asyncio.get_event_loop()
 
+        self.host = host
+        self.port = port
         self.log = log
         self.debug = debug
         self.access_log = access_log
