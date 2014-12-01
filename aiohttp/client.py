@@ -114,9 +114,9 @@ def request(method, url, *,
                 resp.close()
                 conn.close()
                 raise
-        except aiohttp.BadStatusLine as exc:
-            raise aiohttp.ClientConnectionError(exc)
-        except OSError as exc:
+        except aiohttp.HttpBadRequest as exc:
+            raise aiohttp.ClientResponseError(exc)
+        except ConnectionError as exc:
             raise aiohttp.OsConnectionError(exc)
 
         # redirects
@@ -510,7 +510,7 @@ class ClientRequest:
                     request.write(chunk)
         except Exception as exc:
             reader.set_exception(
-                aiohttp.ClientConnectionError(
+                aiohttp.ClientRequestError(
                     'Can not write request body for %s' % self.url))
         else:
             try:
@@ -522,7 +522,7 @@ class ClientRequest:
                     yield from ret
             except Exception as exc:
                 reader.set_exception(
-                    aiohttp.ClientConnectionError(
+                    aiohttp.ClientRequestError(
                         'Can not write request body for %s' % self.url))
 
         self._writer = None
@@ -901,7 +901,7 @@ class HttpClient:
                     compress=compress, chunked=chunked,
                     expect100=expect100, read_until_eof=read_until_eof,
                     connector=self._connector, loop=self._loop)
-            except (aiohttp.ConnectionError, aiohttp.TimeoutError):
+            except (aiohttp.AioHttpConnectionError, aiohttp.TimeoutError):
                 pass
             else:
                 if 500 <= resp.status <= 600:
@@ -920,9 +920,5 @@ class HttpClient:
                 if self._connector:
                     self._connector.clear_resolved_hosts(info[0], info[1])
 
-        raise aiohttp.ConnectionError('All hosts are unreachable %s' % url)
-
-
-# backward compatibility
-HttpRequest = ClientRequest
-HttpResponse = ClientResponse
+        raise aiohttp.ClientConnectionError(
+            'All hosts are unreachable %s' % url)

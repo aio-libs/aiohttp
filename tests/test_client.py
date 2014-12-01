@@ -847,7 +847,7 @@ class HttpClientTests(unittest.TestCase):
             [('localhost', 56777), ('localhost', 56778)], loop=self.loop)
 
         self.assertRaises(
-            aiohttp.ConnectionError,
+            aiohttp.ClientConnectionError,
             self.loop.run_until_complete,
             c.request('get', path='/'))
 
@@ -857,7 +857,7 @@ class HttpClientTests(unittest.TestCase):
             conn_timeout=0.0001, loop=self.loop)
 
         self.assertRaises(
-            aiohttp.ConnectionError,
+            aiohttp.ClientConnectionError,
             self.loop.run_until_complete, c.request('get', path='/'))
 
     def test_failed_request_one_failed(self):
@@ -880,7 +880,7 @@ class HttpClientTests(unittest.TestCase):
         c._failed.append((('localhost', 1001, True), now - 10))
 
         self.assertRaises(
-            aiohttp.ConnectionError,
+            aiohttp.ClientConnectionError,
             self.loop.run_until_complete,
             c.request('get', path='/'))
 

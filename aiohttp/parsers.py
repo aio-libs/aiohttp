@@ -167,7 +167,7 @@ class StreamParser(asyncio.streams.StreamReader):
             except StopIteration:
                 self._output.feed_eof()
             except EofStream:
-                self._output.set_exception(errors.ConnectionError())
+                self._output.set_exception(errors.AioHttpConnectionError())
             except Exception as exc:
                 self._output.set_exception(exc)
 
@@ -219,7 +219,7 @@ class StreamParser(asyncio.streams.StreamReader):
         except StopIteration:
             self._output.feed_eof()
         except EofStream:
-            self._output.set_exception(errors.ConnectionError())
+            self._output.set_exception(errors.AioHttpConnectionError())
         except Exception as exc:
             self._output.set_exception(exc)
         finally:

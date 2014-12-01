@@ -885,7 +885,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
     def test_request_conn_error(self):
         self.assertRaises(
-            aiohttp.ConnectionError,
+            aiohttp.ClientConnectionError,
             self.loop.run_until_complete,
             client.request('get', 'http://0.0.0.0:1',
                            loop=self.loop))
@@ -1102,9 +1102,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             yield from r.read()
             self.assertEqual(1, len(connector._conns))
 
-            with self.assertRaisesRegex(
-                    aiohttp.ClientConnectionError,
-                    'Connection closed by server'):
+            with self.assertRaises(aiohttp.OsConnectionError):
                 yield from client.request('GET', url,
                                           connector=connector,
                                           loop=self.loop)

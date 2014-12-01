@@ -3,22 +3,32 @@
 __all__ = ['HttpException', 'HttpErrorException',
            'HttpBadRequest', 'HttpMethodNotAllowed',
            'IncompleteRead', 'BadStatusLine', 'LineTooLong', 'InvalidHeader',
-           'ConnectionError', 'OsConnectionError', 'ClientConnectionError',
+           'AioHttpConnectionError',
+           'ClientConnectionError', 'OsConnectionError',
+           'ClientRequestError', 'ClientResponseError',
            'TimeoutError', 'ProxyConnectionError', 'HttpProxyError']
 
 from asyncio import TimeoutError
 
 
-class ConnectionError(Exception):
+class AioHttpConnectionError(Exception):
     """http connection error."""
 
 
-class OsConnectionError(ConnectionError):
+class ClientConnectionError(AioHttpConnectionError):
+    """Base class for client connection errors."""
+
+
+class ClientRequestError(ClientConnectionError):
+    """Connection error during sending request."""
+
+
+class ClientResponseError(ClientConnectionError):
+    """Connection error during reading response."""
+
+
+class OsConnectionError(ClientConnectionError):
     """OSError error."""
-
-
-class ClientConnectionError(ConnectionError):
-    """BadStatusLine error."""  # ???
 
 
 class ProxyConnectionError(ClientConnectionError):
@@ -88,7 +98,7 @@ class InvalidHeader(HttpBadRequest):
         self.hdr = hdr
 
 
-class IncompleteRead(ConnectionError):
+class IncompleteRead(AioHttpConnectionError):
 
     def __init__(self, partial, expected=None):
         self.args = partial,

@@ -169,7 +169,7 @@ class StreamParserTests(unittest.TestCase):
         stream.feed_eof()
         s = stream.set_parser(p)
         self.assertFalse(s.is_eof())
-        self.assertIsInstance(s.exception(), errors.ConnectionError)
+        self.assertIsInstance(s.exception(), errors.AioHttpConnectionError)
 
     def test_set_parser_unset(self):
         stream = parsers.StreamParser(paused=False)
@@ -282,7 +282,7 @@ class StreamParserTests(unittest.TestCase):
         stream.feed_data(b'line1')
         stream.feed_eof()
         self.assertFalse(s.is_eof())
-        self.assertIsInstance(s.exception(), errors.ConnectionError)
+        self.assertIsInstance(s.exception(), errors.AioHttpConnectionError)
 
     def test_feed_parser2(self):
         stream = parsers.StreamParser()
@@ -322,7 +322,7 @@ class StreamParserTests(unittest.TestCase):
 
         stream.feed_data(b'line1')
         stream.unset_parser()
-        self.assertIsInstance(s.exception(), errors.ConnectionError)
+        self.assertIsInstance(s.exception(), errors.AioHttpConnectionError)
         self.assertFalse(s.is_eof())
 
     def test_unset_parser_stop(self):

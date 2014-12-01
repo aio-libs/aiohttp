@@ -219,7 +219,8 @@ class ParsePayloadTests(unittest.TestCase):
         p = protocol.HttpPayloadParser(None).parse_chunked_payload(out, buf)
         next(p)
         p.send(b'4\r\ndata\r\n')
-        self.assertRaises(errors.ConnectionError, p.throw, aiohttp.EofStream)
+        self.assertRaises(
+            errors.AioHttpConnectionError, p.throw, aiohttp.EofStream)
 
     def test_parse_chunked_payload_extension(self):
         out = aiohttp.FlowControlDataQueue(self.stream)
@@ -471,7 +472,7 @@ class ParseResponseTests(unittest.TestCase):
         p = protocol.HttpResponseParser()(out, buf)
         next(p)
         self.assertRaises(
-            errors.ConnectionError, p.throw, aiohttp.EofStream())
+            errors.AioHttpConnectionError, p.throw, aiohttp.EofStream())
 
     def test_http_response_parser_bad_version(self):
         out = aiohttp.FlowControlDataQueue(self.stream)

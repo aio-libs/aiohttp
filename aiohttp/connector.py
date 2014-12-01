@@ -344,6 +344,7 @@ class ProxyConnector(TCPConnector):
             transport, proto = yield from super()._create_connection(proxy_req)
         except OSError as exc:
             raise ProxyConnectionError(*exc.args) from exc
+
         req.path = '{scheme}://{host}{path}'.format(scheme=req.scheme,
                                                     host=req.netloc,
                                                     path=req.path)

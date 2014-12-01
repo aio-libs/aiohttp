@@ -200,15 +200,10 @@ class HttpRequestParser(HttpParser):
 class HttpResponseParser(HttpParser):
     """Read response status line and headers.
 
-    BadStatusLine  could be raised in case of any errors in status line.
+    BadStatusLine could be raised in case of any errors in status line.
     Returns RawResponseMessage"""
 
     def __call__(self, out, buf):
-        try:
-            yield from buf.wait(1)
-        except aiohttp.EofStream:
-            raise errors.ClientConnectionError(
-                'Connection closed by server') from None
         try:
             # read http message (response line + headers)
             try:
@@ -258,9 +253,8 @@ class HttpResponseParser(HttpParser):
                     headers, close, compression))
             out.feed_eof()
         except aiohttp.EofStream:
-            # Presumably, the server closed the connection before
-            # sending a valid response.
-            raise errors.ClientConnectionError(
+            # server closed the connection before sending a valid response.
+            raise errors.ClientResponseError(
                 'Can not read status line') from None
 
 
@@ -344,7 +338,8 @@ class HttpPayloadParser:
             yield from buf.skipuntil(b'\r\n')
 
         except aiohttp.EofStream:
-            raise errors.ConnectionError('Broken chunked payload.') from None
+            raise errors.AioHttpConnectionError(
+                'Broken chunked payload.') from None
 
     def parse_length_payload(self, out, buf, length=0):
         """Read specified amount of bytes."""
