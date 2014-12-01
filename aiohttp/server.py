@@ -153,7 +153,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             try:
                 environ = environ if environ is not None else {}
                 atoms = helpers.SafeAtoms(
-                    helpers.atoms(message, environ, response, time),
+                    helpers.atoms(
+                        message, environ, response, self.transport, time),
                     getattr(message, 'headers', None),
                     getattr(response, 'headers', None))
                 self.access_log.info(self.access_log_format % atoms)

@@ -265,11 +265,12 @@ class HttpServerProtocolTests(unittest.TestCase):
 
     @unittest.mock.patch('aiohttp.server.traceback')
     def test_handle_error_traceback_exc(self, m_trace):
-        transport = unittest.mock.Mock()
         log = unittest.mock.Mock()
         srv = server.ServerHttpProtocol(debug=True, log=log, loop=self.loop)
-        srv.connection_made(transport)
+        srv.transport = unittest.mock.Mock()
+        srv.transport.get_extra_info.return_value = '127.0.0.1'
         srv.writer = unittest.mock.Mock()
+        srv._request_handler = object()
 
         m_trace.format_exc.side_effect = ValueError
 
@@ -487,9 +488,10 @@ class HttpServerProtocolTests(unittest.TestCase):
 
     def test_log_access_error(self):
         transport = unittest.mock.Mock()
+        transport.get_extra_info.return_value = '127.0.0.1'
 
         srv = server.ServerHttpProtocol(loop=self.loop)
-        srv.connection_made(transport)
+        srv.transport = transport
         srv.log = unittest.mock.Mock()
         srv.access_log = unittest.mock.Mock()
 

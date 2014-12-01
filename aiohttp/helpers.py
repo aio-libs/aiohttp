@@ -219,25 +219,58 @@ def guess_filename(obj, default=None):
     return default
 
 
-def atoms(message, environ, response, request_time):
+def parse_remote_addr(forward):
+    if isinstance(forward, str):
+        # we only took the last one
+        # http://en.wikipedia.org/wiki/X-Forwarded-For
+        if ',' in forward:
+            forward = forward.rsplit(',', 1)[-1].strip()
+
+        # find host and port on ipv6 address
+        if '[' in forward and ']' in forward:
+            host = forward.split(']')[0][1:].lower()
+        elif ':' in forward and forward.count(':') == 1:
+            host = forward.split(':')[0].lower()
+        else:
+            host = forward
+
+        forward = forward.split(']')[-1]
+        if ':' in forward and forward.count(':') == 1:
+            port = forward.split(':', 1)[1]
+        else:
+            port = 80
+
+        remote = (host, port)
+    else:
+        remote = forward
+
+    return remote[0], str(remote[1])
+
+
+def atoms(message, environ, response, transport, request_time):
     """Gets atoms for log formatting."""
     if message:
         r = '{} {} HTTP/{}.{}'.format(
             message.method, message.path,
             message.version[0], message.version[1])
+        headers = message.headers
     else:
         r = ''
+        headers = {}
+
+    remote_addr = parse_remote_addr(
+        transport.get_extra_info('addr', '127.0.0.1'))
 
     atoms = {
-        'h': environ.get('REMOTE_ADDR', '-'),
+        'h': remote_addr[0],
         'l': '-',
         'u': '-',
         't': format_date_time(None),
         'r': r,
-        's': str(response.status),
-        'b': str(response.output_length),
-        'f': environ.get('HTTP_REFERER', '-'),
-        'a': environ.get('HTTP_USER_AGENT', '-'),
+        's': str(getattr(response, 'status', '')),
+        'b': str(getattr(response, 'output_length', '')),
+        'f': headers.get('REFERER', '-'),
+        'a': headers.get('USER-AGENT', '-'),
         'T': str(int(request_time)),
         'D': str(request_time).split('.', 1)[-1][:5],
         'p': "<%s>" % os.getpid()

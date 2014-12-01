@@ -521,6 +521,10 @@ class StreamResponse(HeadersMixin):
             ctype = self._content_type
         self.headers['Content-Type'] = ctype
 
+    @property
+    def server_response(self):
+        return self._resp_impl
+
     def send_headers(self):
         if self._resp_impl is not None:
             raise RuntimeError("HTTP headers are already sent")
@@ -599,10 +603,10 @@ class Response(StreamResponse):
             self.write(body)
         yield from super().write_eof()
 
+
 ############################################################
 # HTTP Exceptions
 ############################################################
-
 
 class HTTPException(Response, Exception):
 
@@ -1113,6 +1117,8 @@ class RequestHandler(ServerHttpProtocol):
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
+        now = self._loop.time()
+
         request = Request(self._app, message, payload,
                           self.transport, self.writer, self.keep_alive_timeout)
         try:
@@ -1139,6 +1145,9 @@ class RequestHandler(ServerHttpProtocol):
             # Don't need to read request body if any on closing connection
             yield from request.release()
         self.keep_alive(resp.keep_alive)
+
+        self.log_access(
+            message, None, resp.server_response, self._loop.time() - now)
 
 
 class Application(dict):
