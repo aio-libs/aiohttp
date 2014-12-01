@@ -80,7 +80,7 @@ class StreamParser(asyncio.streams.StreamReader):
     """
 
     def __init__(self, *, loop=None, buf=None,
-                 paused=True, limit=DEFAULT_LIMIT):
+                 paused=True, limit=DEFAULT_LIMIT, eof_exc_class=RuntimeError):
         self._loop = loop
         self._eof = False
         self._exception = None
@@ -90,6 +90,7 @@ class StreamParser(asyncio.streams.StreamReader):
         self._paused = False
         self._stream_paused = paused
         self._output = None
+        self._eof_exc_class = eof_exc_class
         self._buffer = buf if buf is not None else ParserBuffer()
 
     @property
@@ -167,7 +168,7 @@ class StreamParser(asyncio.streams.StreamReader):
             except StopIteration:
                 self._output.feed_eof()
             except EofStream:
-                self._output.set_exception(RuntimeError())
+                self._output.set_exception(self._eof_exc_class())
             except Exception as exc:
                 self._output.set_exception(exc)
 
@@ -219,7 +220,7 @@ class StreamParser(asyncio.streams.StreamReader):
         except StopIteration:
             self._output.feed_eof()
         except EofStream:
-            self._output.set_exception(RuntimeError())
+            self._output.set_exception(self._eof_exc_class())
         except Exception as exc:
             self._output.set_exception(exc)
         finally:
@@ -235,7 +236,8 @@ class StreamProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
         self.transport = None
         self.writer = None
-        self.reader = StreamParser(loop=loop, **kwargs)
+        self.reader = StreamParser(
+            loop=loop, eof_exc_class=errors.ClientConnectionError, **kwargs)
 
     def is_connected(self):
         return self.transport is not None
