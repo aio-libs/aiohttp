@@ -116,7 +116,7 @@ def request(method, url, *,
                 raise
         except aiohttp.HttpProcessingError as exc:
             raise aiohttp.ClientResponseError(exc)
-        except ConnectionError as exc:
+        except OSError as exc:
             raise aiohttp.OsConnectionError(exc)
 
         # redirects
