@@ -340,10 +340,11 @@ class Request(HeadersMixin):
             'base64': binascii.a2b_base64,
             'quoted-printable': binascii.a2b_qp
         }
+
         out = MutableMultiDict()
         for field in fs.list or ():
-            transfer_encoding = field.headers.get('Content-Transfer-Encoding',
-                                                  None)
+            transfer_encoding = field.headers.get(
+                'Content-Transfer-Encoding', None)
             if field.filename:
                 ff = FileField(field.name,
                                field.filename,
@@ -361,6 +362,7 @@ class Request(HeadersMixin):
                     value = supported_tranfer_encoding[
                         transfer_encoding](value)
                 out.add(field.name, value)
+
         self._post = MultiDict(out.items(getall=True))
         return self._post
 
@@ -384,6 +386,7 @@ class Request(HeadersMixin):
 class StreamResponse(HeadersMixin):
 
     def __init__(self, request, *, status=200, reason=None):
+        self._body = None
         self._request = request
         self._headers = CaseInsensitiveMutableMultiDict()
         self.set_status(status, reason)
@@ -573,11 +576,23 @@ class StreamResponse(HeadersMixin):
 class Response(StreamResponse):
 
     def __init__(self, request, body=None, *,
-                 status=200, reason=None, headers=None):
+                 status=200, reason=None, headers=None,
+                 text=None, content_type=None):
         super().__init__(request, status=status, reason=reason)
-        self.body = body
+
         if headers is not None:
             self.headers.extend(headers)
+        if content_type:
+            self.content_type = content_type
+
+        if body is not None and text is not None:
+            raise ValueError("body and text are not allowed together.")
+        elif body is not None:
+            self.body = body
+        elif text is not None:
+            self.text = text
+        else:
+            self.body = None
 
     @property
     def body(self):
@@ -586,13 +601,28 @@ class Response(StreamResponse):
     @body.setter
     def body(self, body):
         if body is not None and not isinstance(body, bytes):
-            raise TypeError('body argument must be bytes (%r)',
-                            type(body))
+            raise TypeError('body argument must be bytes (%r)', type(body))
         self._body = body
         if body is not None:
             self.content_length = len(body)
         else:
             self.content_length = 0
+
+    @property
+    def text(self):
+        return self._body.decode(self.charset)
+
+    @text.setter
+    def text(self, text):
+        if text is not None and not isinstance(text, str):
+            raise TypeError('text argument must be str (%r)', type(text))
+
+        if self.content_type == 'application/octet-stream':
+            self.content_type = 'plain/text'
+        if self.charset is None:
+            self.charset = 'utf-8'
+
+        self.body = text.encode(self.charset)
 
     @asyncio.coroutine
     def write_eof(self):

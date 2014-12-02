@@ -313,9 +313,40 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(201, resp.status)
         self.assertEqual(b'body', resp.body)
         self.assertEqual(4, resp.content_length)
-        self.assertEqual(CaseInsensitiveMultiDict([('CONTENT-LENGTH', '4'),
-                                                   ('AGE', '12')]),
+        self.assertEqual(CaseInsensitiveMultiDict([('AGE', '12'),
+                                                   ('CONTENT-LENGTH', '4')]),
                          resp.headers)
+
+    def test_ctor_content_type(self):
+        req = self.make_request('GET', '/')
+        resp = Response(req, content_type='application/json')
+
+        self.assertEqual(200, resp.status)
+        self.assertEqual('OK', resp.reason)
+        self.assertEqual(
+            CaseInsensitiveMultiDict([('CONTENT-TYPE', 'application/json'),
+                                      ('CONTENT-LENGTH', '0')]),
+            resp.headers)
+
+    def test_ctor_text_body_combined(self):
+        req = self.make_request('GET', '/')
+        with self.assertRaises(ValueError):
+            Response(req, body=b'123', text='test text')
+
+    def test_ctor_text(self):
+        req = self.make_request('GET', '/')
+        resp = Response(req, text='test text')
+
+        self.assertEqual(200, resp.status)
+        self.assertEqual('OK', resp.reason)
+        self.assertEqual(
+            CaseInsensitiveMultiDict(
+                [('CONTENT-TYPE', 'plain/text; charset=utf-8'),
+                 ('CONTENT-LENGTH', '9')]),
+            resp.headers)
+
+        self.assertEqual(resp.body, b'test text')
+        self.assertEqual(resp.text, 'test text')
 
     def test_assign_nonbyteish_body(self):
         req = self.make_request('GET', '/')
@@ -324,6 +355,15 @@ class TestResponse(unittest.TestCase):
         with self.assertRaises(TypeError):
             resp.body = 123
         self.assertEqual(b'data', resp.body)
+        self.assertEqual(4, resp.content_length)
+
+    def test_assign_nonstr_text(self):
+        req = self.make_request('GET', '/')
+        resp = Response(req, text='test')
+
+        with self.assertRaises(TypeError):
+            resp.text = b'123'
+        self.assertEqual(b'test', resp.body)
         self.assertEqual(4, resp.content_length)
 
     def test_send_headers_for_empty_body(self):
