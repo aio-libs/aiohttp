@@ -1130,9 +1130,10 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
 class RequestHandler(ServerHttpProtocol):
 
-    def __init__(self, app, **kwargs):
+    def __init__(self, app, router, **kwargs):
         super().__init__(**kwargs)
         self._app = app
+        self._router = router
 
     def connection_made(self, transport):
         super().connection_made(transport)
@@ -1151,7 +1152,7 @@ class RequestHandler(ServerHttpProtocol):
         request = Request(self._app, message, payload,
                           self.transport, self.writer, self.keep_alive_timeout)
         try:
-            match_info = yield from self._app.router.resolve(request)
+            match_info = yield from self._router.resolve(request)
 
             assert isinstance(match_info, AbstractMatchInfo), match_info
 
@@ -1178,8 +1179,8 @@ class RequestHandler(ServerHttpProtocol):
             yield from request.release()
         self.keep_alive(keep_alive)
 
-        self.log_access(
-            message, None, resp_msg, self._loop.time() - now)
+        # log access
+        self.log_access(message, None, resp_msg, self._loop.time() - now)
 
 
 class Application(dict):
@@ -1205,7 +1206,7 @@ class Application(dict):
         return self._loop
 
     def make_handler(self, **kwargs):
-        return RequestHandler(self, loop=self._loop, **kwargs)
+        return RequestHandler(self, self._router, loop=self._loop, **kwargs)
 
     @property
     def connections(self):
