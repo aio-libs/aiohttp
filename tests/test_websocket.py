@@ -329,12 +329,12 @@ class WebsocketWriterTests(unittest.TestCase):
         self.transport.write.assert_called_with(b'\x82\x06binary')
 
     def test_send_binary_long(self):
-        self.writer.send(b'b'*127, True)
+        self.writer.send(b'b' * 127, True)
         self.assertTrue(
             self.transport.write.call_args[0][0].startswith(b'\x82~\x00\x7fb'))
 
     def test_send_binary_very_long(self):
-        self.writer.send(b'b'*65537, True)
+        self.writer.send(b'b' * 65537, True)
         self.assertTrue(
             self.transport.write.call_args[0][0].startswith(
                 b'\x82\x7f\x00\x00\x00\x00\x00\x01\x00\x01b'))

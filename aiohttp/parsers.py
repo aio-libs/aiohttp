@@ -64,8 +64,8 @@ import inspect
 from . import errors
 from .streams import FlowControlDataQueue, EofStream
 
-BUF_LIMIT = 2**14
-DEFAULT_LIMIT = 2**16
+BUF_LIMIT = 2 ** 14
+DEFAULT_LIMIT = 2 ** 16
 
 
 class StreamParser(asyncio.streams.StreamReader):
@@ -147,7 +147,7 @@ class StreamParser(asyncio.streams.StreamReader):
             self._buffer.feed_data(data)
 
         if (self._transport is not None and not self._paused and
-                len(self._buffer) > 2*self._limit):
+                len(self._buffer) > 2 * self._limit):
             try:
                 self._transport.pause_reading()
             except NotImplementedError:
@@ -231,8 +231,7 @@ class StreamParser(asyncio.streams.StreamReader):
 class StreamProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     """Helper class to adapt between Protocol and StreamReader."""
 
-    def __init__(self, *, loop=None,
-                 disconnect_error = RuntimeError, **kwargs):
+    def __init__(self, *, loop=None, disconnect_error=RuntimeError, **kwargs):
         super().__init__(loop=loop)
 
         self.transport = None
@@ -424,7 +423,7 @@ class LinesParser:
     Lines parser splits a bytes stream into a chunks of data, each chunk ends
     with \\n symbol."""
 
-    def __init__(self, limit=2**16):
+    def __init__(self, limit=DEFAULT_LIMIT):
         self._limit = limit
 
     def __call__(self, out, buf):

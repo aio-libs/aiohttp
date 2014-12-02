@@ -892,7 +892,7 @@ class HttpClientTests(unittest.TestCase):
 
         called = False
 
-        class m:
+        class M:
 
             def clear(self):
                 nonlocal called
@@ -904,7 +904,7 @@ class HttpClientTests(unittest.TestCase):
             def __getitem__(self, key):
                 return 'localhost'
 
-        c._connector._resolved_hosts = m()
+        c._connector._resolved_hosts = M()
 
         resp = unittest.mock.Mock()
         resp.status = 500

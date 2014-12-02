@@ -137,7 +137,7 @@ class TestWebRequest(unittest.TestCase):
         self.assertEqual(req.cookies, {
             'cookie1': 'value1',
             'cookie2': 'value2',
-            })
+        })
 
     def test_request_cookie__set_item(self):
         headers = MultiDict(COOKIE='name=value')

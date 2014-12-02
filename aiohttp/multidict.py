@@ -192,7 +192,7 @@ class MutableMultiDictMixin(abc.MutableMapping):
     def __delitem__(self, key):
         items = self._items
         found = False
-        for i in range(len(items)-1, -1, -1):
+        for i in range(len(items) - 1, -1, -1):
             if items[i][0] == key:
                 del items[i]
                 found = True

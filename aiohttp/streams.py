@@ -10,7 +10,7 @@ import traceback
 from .log import internal_log
 
 EOF_MARKER = b''
-DEFAULT_LIMIT = 2**16
+DEFAULT_LIMIT = 2 ** 16
 
 
 class EofStream(Exception):

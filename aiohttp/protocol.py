@@ -207,7 +207,7 @@ class HttpResponseParser(HttpParser):
         # read http message (response line + headers)
         try:
             raw_data = yield from buf.readuntil(
-                b'\r\n\r\n', self.max_line_size+self.max_headers)
+                b'\r\n\r\n', self.max_line_size + self.max_headers)
         except errors.LineLimitExceededParserError as exc:
             raise errors.LineTooLong(exc.limit) from None
 

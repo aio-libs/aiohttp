@@ -256,9 +256,9 @@ class TestWebFunctional(unittest.TestCase):
             ct = resp.headers['CONTENT-TYPE']
             self.assertEqual('application/octet-stream', ct)
 
-            resp = yield from request('GET', url+'fake', loop=self.loop)
+            resp = yield from request('GET', url + 'fake', loop=self.loop)
             self.assertEqual(404, resp.status)
-            resp = yield from request('GET', url+'/../../', loop=self.loop)
+            resp = yield from request('GET', url + '/../../', loop=self.loop)
             self.assertEqual(404, resp.status)
 
         with tempfile.TemporaryDirectory() as tmpdirname:

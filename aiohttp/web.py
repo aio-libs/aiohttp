@@ -75,7 +75,7 @@ __all__ = [
     'HTTPServiceUnavailable',
     'HTTPGatewayTimeout',
     'HTTPVersionNotSupported',
-    ]
+]
 
 
 sentinel = object()
@@ -669,7 +669,7 @@ class HTTPPartialContent(HTTPSuccessful):
 
 class _HTTPMove(HTTPRedirection):
 
-    def __init__(self, request, location, *,  headers=None, reason=None):
+    def __init__(self, request, location, *, headers=None, reason=None):
         if not location:
             raise ValueError("HTTP redirects need a location to redirect to.")
         super().__init__(request, headers=headers, reason=reason)
@@ -1000,7 +1000,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     DYN = re.compile(r'^\{[a-zA-Z][_a-zA-Z0-9]*\}$')
     GOOD = r'[^{}/]+'
-    PLAIN = re.compile('^'+GOOD+'$')
+    PLAIN = re.compile('^' + GOOD + '$')
 
     METHODS = {'POST', 'GET', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'}
 
@@ -1063,7 +1063,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             if not part:
                 continue
             if self.DYN.match(part):
-                parts.append('(?P<'+part[1:-1]+'>'+self.GOOD+')')
+                parts.append('(?P<' + part[1:-1] + '>' + self.GOOD + ')')
                 factory = DynamicRoute
             elif self.PLAIN.match(part):
                 parts.append(re.escape(part))

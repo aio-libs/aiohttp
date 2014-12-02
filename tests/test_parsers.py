@@ -76,7 +76,7 @@ class StreamParserTests(unittest.TestCase):
 
         proto = parsers.StreamParser()
         proto.set_transport(transp)
-        proto.feed_data(b'1' * (2**16 * 3))
+        proto.feed_data(b'1' * (2 ** 16 * 3))
         transp.pause_reading.assert_called_with()
         self.assertTrue(proto._paused)
 
@@ -87,7 +87,7 @@ class StreamParserTests(unittest.TestCase):
         proto.set_transport(transp)
 
         transp.pause_reading.side_effect = NotImplementedError()
-        proto.feed_data(b'1' * (2**16 * 3))
+        proto.feed_data(b'1' * (2 ** 16 * 3))
         self.assertIsNone(proto._transport)
 
     def test_set_parser_unset_prev(self):
@@ -347,7 +347,6 @@ class StreamParserTests(unittest.TestCase):
 
         class CustomEofErr(Exception):
             pass
-
 
         stream = parsers.StreamParser(eof_exc_class=CustomEofErr)
         s = stream.set_parser(p)

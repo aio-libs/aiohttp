@@ -1213,5 +1213,5 @@ class Functional(test_utils.Router):
 
         self._response(
             resp,
-            body=json.dumps({'t': (b'0'*1024).decode('utf-8')}),
+            body=json.dumps({'t': (b'0' * 1024).decode('utf-8')}),
             write_body=write_body)

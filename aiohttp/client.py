@@ -902,7 +902,9 @@ class HttpClient:
                     compress=compress, chunked=chunked,
                     expect100=expect100, read_until_eof=read_until_eof,
                     connector=self._connector, loop=self._loop)
-            except (aiohttp.ClientConnectionError, aiohttp.TimeoutError):
+            except (aiohttp.ServerDisconnectedError,
+                    aiohttp.ClientConnectionError,
+                    aiohttp.TimeoutError):
                 pass
             else:
                 if 500 <= resp.status <= 600:
