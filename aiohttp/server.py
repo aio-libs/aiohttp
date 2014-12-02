@@ -84,7 +84,9 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                  port=0,
                  debug=False,
                  **kwargs):
-        super().__init__(loop=loop, **kwargs)
+        super().__init__(
+            loop=loop,
+            disconnect_error=errors.ClientDisconnectedError, **kwargs)
 
         self._keep_alive_period = keep_alive  # number of seconds to keep alive
         self._timeout = timeout  # slow request timeout
@@ -231,7 +233,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                     yield from handler
 
             except (ConnectionError, asyncio.CancelledError,
-                    errors.ClientConnectionError):
+                    errors.ClientDisconnectedError):
                 self.log_debug('Ignored premature client disconnection.')
                 break
             except errors.HttpProcessingError as exc:

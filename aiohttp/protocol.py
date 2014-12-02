@@ -75,11 +75,11 @@ class HttpParser:
             try:
                 name, value = line.split(':', 1)
             except ValueError:
-                raise ValueError('Invalid header: {}'.format(line)) from None
+                raise errors.InvalidHeader(line) from None
 
             name = name.strip(' \t').upper()
             if HDRRE.search(name):
-                raise ValueError('Invalid header name: {}'.format(name))
+                raise errors.InvalidHeader(name)
 
             # next line
             lines_idx += 1
@@ -204,58 +204,53 @@ class HttpResponseParser(HttpParser):
     Returns RawResponseMessage"""
 
     def __call__(self, out, buf):
+        # read http message (response line + headers)
         try:
-            # read http message (response line + headers)
-            try:
-                raw_data = yield from buf.readuntil(
-                    b'\r\n\r\n', self.max_line_size+self.max_headers)
-            except errors.LineLimitExceededParserError as exc:
-                raise errors.LineTooLong(exc.limit) from None
+            raw_data = yield from buf.readuntil(
+                b'\r\n\r\n', self.max_line_size+self.max_headers)
+        except errors.LineLimitExceededParserError as exc:
+            raise errors.LineTooLong(exc.limit) from None
 
-            lines = raw_data.decode(
-                'ascii', 'surrogateescape').split('\r\n')
+        lines = raw_data.decode(
+            'ascii', 'surrogateescape').split('\r\n')
 
-            line = lines[0]
+        line = lines[0]
+        try:
+            version, status = line.split(None, 1)
+        except ValueError:
+            raise errors.BadStatusLine(line) from None
+        else:
             try:
-                version, status = line.split(None, 1)
+                status, reason = status.split(None, 1)
             except ValueError:
-                raise errors.BadStatusLine(line) from None
-            else:
-                try:
-                    status, reason = status.split(None, 1)
-                except ValueError:
-                    reason = ''
+                reason = ''
 
-            # version
-            match = VERSRE.match(version)
-            if match is None:
-                raise errors.BadStatusLine(line)
-            version = HttpVersion(int(match.group(1)), int(match.group(2)))
+        # version
+        match = VERSRE.match(version)
+        if match is None:
+            raise errors.BadStatusLine(line)
+        version = HttpVersion(int(match.group(1)), int(match.group(2)))
 
-            # The status code is a three-digit number
-            try:
-                status = int(status)
-            except ValueError:
-                raise errors.BadStatusLine(line) from None
+        # The status code is a three-digit number
+        try:
+            status = int(status)
+        except ValueError:
+            raise errors.BadStatusLine(line) from None
 
-            if status < 100 or status > 999:
-                raise errors.BadStatusLine(line)
+        if status < 100 or status > 999:
+            raise errors.BadStatusLine(line)
 
-            # read headers
-            headers, close, compression = self.parse_headers(lines)
+        # read headers
+        headers, close, compression = self.parse_headers(lines)
 
-            if close is None:
-                close = version <= HttpVersion10
+        if close is None:
+            close = version <= HttpVersion10
 
-            out.feed_data(
-                RawResponseMessage(
-                    version, status, reason.strip(),
-                    headers, close, compression))
-            out.feed_eof()
-        except aiohttp.EofStream:
-            # server closed the connection before sending a valid response.
-            raise errors.HttpProcessingError(
-                message='Can not read status line') from None
+        out.feed_data(
+            RawResponseMessage(
+                version, status, reason.strip(),
+                headers, close, compression))
+        out.feed_eof()
 
 
 class HttpPayloadParser:
@@ -307,50 +302,42 @@ class HttpPayloadParser:
 
     def parse_chunked_payload(self, out, buf):
         """Chunked transfer encoding parser."""
-        try:
-            while True:
-                # read next chunk size
-                line = yield from buf.readuntil(b'\r\n', 8196)
+        while True:
+            # read next chunk size
+            line = yield from buf.readuntil(b'\r\n', 8196)
 
-                i = line.find(b';')
-                if i >= 0:
-                    line = line[:i]  # strip chunk-extensions
-                else:
-                    line = line.strip()
-                try:
-                    size = int(line, 16)
-                except ValueError:
-                    raise errors.IncompleteRead(0) from None
+            i = line.find(b';')
+            if i >= 0:
+                line = line[:i]  # strip chunk-extensions
+            else:
+                line = line.strip()
+            try:
+                size = int(line, 16)
+            except ValueError:
+                raise errors.TransferEncodingError(line) from None
 
-                if size == 0:  # eof marker
-                    break
+            if size == 0:  # eof marker
+                break
 
-                # read chunk and feed buffer
-                while size:
-                    chunk = yield from buf.readsome(size)
-                    out.feed_data(chunk)
-                    size = size - len(chunk)
+            # read chunk and feed buffer
+            while size:
+                chunk = yield from buf.readsome(size)
+                out.feed_data(chunk)
+                size = size - len(chunk)
 
-                # toss the CRLF at the end of the chunk
-                yield from buf.skip(2)
+            # toss the CRLF at the end of the chunk
+            yield from buf.skip(2)
 
-            # read and discard trailer up to the CRLF terminator
-            yield from buf.skipuntil(b'\r\n')
-
-        except aiohttp.EofStream:
-            raise errors.BadHttpMessage(
-                message='Broken chunked payload.') from None
+        # read and discard trailer up to the CRLF terminator
+        yield from buf.skipuntil(b'\r\n')
 
     def parse_length_payload(self, out, buf, length=0):
         """Read specified amount of bytes."""
         required = length
-        try:
-            while required:
-                chunk = yield from buf.readsome(required)
-                out.feed_data(chunk)
-                required -= len(chunk)
-        except aiohttp.EofStream:
-            raise errors.IncompleteRead(length-required, required)
+        while required:
+            chunk = yield from buf.readsome(required)
+            out.feed_data(chunk)
+            required -= len(chunk)
 
     def parse_eof_payload(self, out, buf):
         """Read all bytes until eof."""
@@ -375,7 +362,7 @@ class DeflateBuffer:
         try:
             chunk = self.zlib.decompress(chunk)
         except Exception:
-            raise errors.IncompleteRead(0) from None
+            raise errors.ContentEncodingError('deflate')
 
         if chunk:
             self.out.feed_data(chunk)
@@ -383,7 +370,7 @@ class DeflateBuffer:
     def feed_eof(self):
         self.out.feed_data(self.zlib.flush())
         if not self.zlib.eof:
-            raise errors.IncompleteRead(0)
+            raise errors.ContentEncodingError('deflate')
 
         self.out.feed_eof()
 

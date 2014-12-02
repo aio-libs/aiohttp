@@ -231,13 +231,14 @@ class StreamParser(asyncio.streams.StreamReader):
 class StreamProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     """Helper class to adapt between Protocol and StreamReader."""
 
-    def __init__(self, *, loop=None, **kwargs):
+    def __init__(self, *, loop=None,
+                 disconnect_error = RuntimeError, **kwargs):
         super().__init__(loop=loop)
 
         self.transport = None
         self.writer = None
         self.reader = StreamParser(
-            loop=loop, eof_exc_class=errors.ClientConnectionError, **kwargs)
+            loop=loop, eof_exc_class=disconnect_error, **kwargs)
 
     def is_connected(self):
         return self.transport is not None

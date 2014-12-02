@@ -1,15 +1,28 @@
 """http related errors."""
 
-__all__ = ['HttpProcessingError', 'BadHttpMessage',
-           'HttpMethodNotAllowed', 'HttpBadRequest',
-           'IncompleteRead', 'BadStatusLine', 'LineTooLong', 'InvalidHeader',
-           'HttpProxyError',
+__all__ = ['ClientDisconnectedError', 'ServerDisconnectedError',
+
+           'HttpProcessingError', 'BadHttpMessage',
+           'HttpMethodNotAllowed', 'HttpBadRequest', 'HttpProxyError',
+           'BadStatusLine', 'LineTooLong', 'InvalidHeader',
 
            'ClientConnectionError', 'OsConnectionError',
            'ClientRequestError', 'ClientResponseError',
            'TimeoutError', 'ProxyConnectionError']
 
 from asyncio import TimeoutError
+
+
+class DisconnectedError(Exception):
+    """disconnected."""
+
+
+class ClientDisconnectedError(DisconnectedError):
+    """Client disconnected."""
+
+
+class ServerDisconnectedError(DisconnectedError):
+    """Server disconnected."""
 
 
 class ClientConnectionError(Exception):
@@ -56,7 +69,7 @@ class HttpProcessingError(Exception):
         self.headers = headers
         self.message = message
 
-        super().__init__("%s, message='%s'" % (code, message))
+        super().__init__("%s, message='%s'" % (self.code, message))
 
 
 class HttpProxyError(HttpProcessingError):
@@ -73,6 +86,9 @@ class BadHttpMessage(HttpProcessingError):
     code = 400
     message = 'Bad Request'
 
+    def __init__(self, message):
+        super().__init__(message=message)
+
 
 class HttpMethodNotAllowed(HttpProcessingError):
 
@@ -86,36 +102,26 @@ class HttpBadRequest(BadHttpMessage):
     message = 'Bad Request'
 
 
+class ContentEncodingError(BadHttpMessage):
+    """Content encoding error."""
+
+
+class TransferEncodingError(BadHttpMessage):
+    """transfer encoding error."""
+
+
 class LineTooLong(BadHttpMessage):
 
     def __init__(self, line, limit='Unknown'):
         super().__init__(
-            message="got more than %s bytes when reading %s" % (limit, line))
+            "got more than %s bytes when reading %s" % (limit, line))
 
 
 class InvalidHeader(BadHttpMessage):
 
     def __init__(self, hdr):
-        super().__init__(message='Invalid HTTP Header: {}'.format(hdr))
+        super().__init__('Invalid HTTP Header: {}'.format(hdr))
         self.hdr = hdr
-
-
-class IncompleteRead(BadHttpMessage):
-
-    def __init__(self, partial, expected=None):
-        self.args = partial,
-        self.partial = partial
-        self.expected = expected
-
-    def __repr__(self):
-        if self.expected is not None:
-            e = ', %i more expected' % self.expected
-        else:
-            e = ''
-        return 'IncompleteRead(%i bytes read%s)' % (self.partial, e)
-
-    def __str__(self):
-        return repr(self)
 
 
 class BadStatusLine(BadHttpMessage):

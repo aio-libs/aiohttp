@@ -340,6 +340,21 @@ class StreamParserTests(unittest.TestCase):
         stream.unset_parser()
         self.assertTrue(s._eof)
 
+    def test_eof_exc(self):
+        def p(out, buf):
+            while True:
+                yield  # read chunk
+
+        class CustomEofErr(Exception):
+            pass
+
+
+        stream = parsers.StreamParser(eof_exc_class=CustomEofErr)
+        s = stream.set_parser(p)
+
+        stream.feed_eof()
+        self.assertIsInstance(s.exception(), CustomEofErr)
+
 
 class StreamProtocolTests(unittest.TestCase):
 

@@ -879,7 +879,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 client.request('get', httpd.url('broken'), loop=self.loop))
             self.assertEqual(r.status, 200)
             self.assertRaises(
-                aiohttp.IncompleteRead,
+                aiohttp.ServerDisconnectedError,
                 self.loop.run_until_complete, r.json())
             r.close()
 
