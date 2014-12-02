@@ -43,7 +43,7 @@ class TestWebFunctional(unittest.TestCase):
         def handler(request):
             body = yield from request.read()
             self.assertEqual(b'', body)
-            return web.Response(request, b'OK')
+            return web.Response(b'OK')
 
         @asyncio.coroutine
         def go():
@@ -61,7 +61,7 @@ class TestWebFunctional(unittest.TestCase):
         def handler(request):
             data = yield from request.POST()
             self.assertEqual({'a': '1', 'b': '2'}, dict(data))
-            return web.Response(request, b'OK')
+            return web.Response(b'OK')
 
         @asyncio.coroutine
         def go():
@@ -80,7 +80,7 @@ class TestWebFunctional(unittest.TestCase):
         def handler(request):
             data = yield from request.text()
             self.assertEqual('русский', data)
-            return web.Response(request, data.encode('utf8'))
+            return web.Response(data.encode('utf8'))
 
         @asyncio.coroutine
         def go():
@@ -101,7 +101,7 @@ class TestWebFunctional(unittest.TestCase):
         def handler(request):
             data = yield from request.json()
             self.assertEqual(dct, data)
-            resp = web.Response(request)
+            resp = web.Response()
             resp.content_type = 'application/json'
             resp.body = json.dumps(data).encode('utf8')
             return resp
@@ -123,7 +123,7 @@ class TestWebFunctional(unittest.TestCase):
 
         @asyncio.coroutine
         def handler(request):
-            raise web.HTTPMovedPermanently(request, location='/path')
+            raise web.HTTPMovedPermanently(location='/path')
 
         @asyncio.coroutine
         def go():
@@ -154,7 +154,7 @@ class TestWebFunctional(unittest.TestCase):
             self.assertEqual(['sample.crt'], list(data.keys()))
             for fs in data.values():
                 check_file(fs)
-            resp = web.Response(request, b'OK')
+            resp = web.Response(b'OK')
             return resp
 
         @asyncio.coroutine
@@ -187,7 +187,7 @@ class TestWebFunctional(unittest.TestCase):
             self.assertEqual(['sample.crt', 'sample.key'], list(data.keys()))
             for fs in data.values():
                 check_file(fs)
-            resp = web.Response(request, b'OK')
+            resp = web.Response(b'OK')
             return resp
 
         @asyncio.coroutine
@@ -206,7 +206,7 @@ class TestWebFunctional(unittest.TestCase):
             yield from request.release()
             chunk = yield from request.payload.readany()
             self.assertIs(web.EOF_MARKER, chunk)
-            return web.Response(request, b'OK')
+            return web.Response(b'OK')
 
         @asyncio.coroutine
         def go():
@@ -222,7 +222,7 @@ class TestWebFunctional(unittest.TestCase):
         def handler(request):
             data = yield from request.POST()
             self.assertEqual(b'123', data['name'])
-            return web.Response(request)
+            return web.Response()
 
         @asyncio.coroutine
         def go():
@@ -276,7 +276,7 @@ class TestWebFunctional(unittest.TestCase):
             data = yield from request.POST()
             lst = list(sorted(data.items(getall=True)))
             self.assertEqual([('a', '1'), ('a', '2')], lst)
-            return web.Response(request, b'OK')
+            return web.Response(b'OK')
 
         @asyncio.coroutine
         def go():

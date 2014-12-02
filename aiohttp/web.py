@@ -385,13 +385,12 @@ class Request(HeadersMixin):
 
 class StreamResponse(HeadersMixin):
 
-    def __init__(self, request, *, status=200, reason=None):
+    def __init__(self, *, status=200, reason=None):
         self._body = None
-        self._request = request
+        self._keep_alive = None
         self._headers = CaseInsensitiveMutableMultiDict()
-        self.set_status(status, reason)
         self._cookies = http.cookies.SimpleCookie()
-        self._keep_alive = request.keep_alive
+        self.set_status(status, reason)
 
         self._resp_impl = None
         self._eof_sent = False
@@ -400,10 +399,6 @@ class StreamResponse(HeadersMixin):
         for cookie in self._cookies.values():
             value = cookie.output(header='')[1:]
             self.headers.add('Set-Cookie', value)
-
-    @property
-    def request(self):
-        return self._request
 
     @property
     def status(self):
@@ -524,19 +519,23 @@ class StreamResponse(HeadersMixin):
             ctype = self._content_type
         self.headers['Content-Type'] = ctype
 
-    @property
-    def server_response(self):
-        return self._resp_impl
-
-    def send_headers(self):
+    def start(self, request, version=None, keep_alive=None):
         if self._resp_impl is not None:
-            raise RuntimeError("HTTP headers are already sent")
+            return self._resp_impl
+
+        if version is None:
+            version = request.version
+
+        if keep_alive is None:
+            keep_alive = self._keep_alive
+        if keep_alive is None:
+            keep_alive = request.keep_alive
 
         resp_impl = self._resp_impl = ResponseImpl(
-            self._request._writer,
+            request._writer,
             self._status,
-            self._request.version,
-            not self._keep_alive,
+            version,
+            not keep_alive,
             self._reason)
 
         self._copy_cookies()
@@ -546,6 +545,7 @@ class StreamResponse(HeadersMixin):
             resp_impl.add_header(key, val)
 
         resp_impl.send_headers()
+        return resp_impl
 
     def write(self, data):
         if not isinstance(data, (bytes, bytearray, memoryview)):
@@ -555,7 +555,7 @@ class StreamResponse(HeadersMixin):
         if self._eof_sent:
             raise RuntimeError("Cannot call write() after write_eof()")
         if self._resp_impl is None:
-            self.send_headers()
+            raise RuntimeError("Cannot call write() before start()")
 
         if data:
             return self._resp_impl.write(data)
@@ -575,10 +575,10 @@ class StreamResponse(HeadersMixin):
 
 class Response(StreamResponse):
 
-    def __init__(self, request, body=None, *,
+    def __init__(self, body=None, *,
                  status=200, reason=None, headers=None,
                  text=None, content_type=None):
-        super().__init__(request, status=status, reason=reason)
+        super().__init__(status=status, reason=reason)
 
         if headers is not None:
             self.headers.extend(headers)
@@ -645,8 +645,8 @@ class HTTPException(Response, Exception):
 
     status_code = None
 
-    def __init__(self, request, *, headers=None, reason=None):
-        Response.__init__(self, request, status=self.status_code,
+    def __init__(self, *, headers=None, reason=None):
+        Response.__init__(self, status=self.status_code,
                           headers=headers, reason=reason)
         Exception.__init__(self, self.reason)
         self.body = "{}: {}".format(self.status, self.reason).encode('utf-8')
@@ -699,10 +699,10 @@ class HTTPPartialContent(HTTPSuccessful):
 
 class _HTTPMove(HTTPRedirection):
 
-    def __init__(self, request, location, *, headers=None, reason=None):
+    def __init__(self, location, *, headers=None, reason=None):
         if not location:
             raise ValueError("HTTP redirects need a location to redirect to.")
-        super().__init__(request, headers=headers, reason=reason)
+        super().__init__(headers=headers, reason=reason)
         self.headers['Location'] = location
         self.location = location
 
@@ -771,10 +771,9 @@ class HTTPNotFound(HTTPClientError):
 class HTTPMethodNotAllowed(HTTPClientError):
     status_code = 405
 
-    def __init__(self, request, method, allowed_methods, *,
-                 headers=None, reason=None):
+    def __init__(self, method, allowed_methods, *, headers=None, reason=None):
         allow = ','.join(sorted(allowed_methods))
-        super().__init__(request, headers=headers, reason=reason)
+        super().__init__(headers=headers, reason=reason)
         self.headers['Allow'] = allow
         self.allowed_methods = allowed_methods
         self.method = method.upper()
@@ -994,13 +993,13 @@ class StaticRoute(Route):
 
     @asyncio.coroutine
     def handle(self, request):
-        resp = StreamResponse(request)
+        resp = StreamResponse()
         filename = request.match_info['filename']
         filepath = os.path.join(self._directory, filename)
         if '..' in filename:
-            raise HTTPNotFound(request)
+            raise HTTPNotFound()
         if not os.path.exists(filepath) or not os.path.isfile(filepath):
-            raise HTTPNotFound(request)
+            raise HTTPNotFound()
 
         ct = mimetypes.guess_type(filename)[0]
         if not ct:
@@ -1008,7 +1007,7 @@ class StaticRoute(Route):
         resp.content_type = ct
 
         resp.headers['transfer-encoding'] = 'chunked'
-        resp.send_headers()
+        resp.start(request)
 
         with open(filepath, 'rb') as f:
             chunk = f.read(1024)
@@ -1055,9 +1054,9 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                 return UrlMappingMatchInfo(match_dict, route)
         else:
             if allowed_methods:
-                raise HTTPMethodNotAllowed(request, method, allowed_methods)
+                raise HTTPMethodNotAllowed(method, allowed_methods)
             else:
-                raise HTTPNotFound(request)
+                raise HTTPNotFound()
 
     def __iter__(self):
         return iter(self._routes)
@@ -1170,14 +1169,16 @@ class RequestHandler(ServerHttpProtocol):
         except HTTPException as exc:
             resp = exc
 
+        resp_msg = resp.start(request)
         yield from resp.write_eof()
+
         if resp.keep_alive:
             # Don't need to read request body if any on closing connection
             yield from request.release()
         self.keep_alive(resp.keep_alive)
 
         self.log_access(
-            message, None, resp.server_response, self._loop.time() - now)
+            message, None, resp_msg, self._loop.time() - now)
 
 
 class Application(dict):

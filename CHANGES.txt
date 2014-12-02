@@ -1,12 +1,14 @@
 CHANGES
 =======
 
-Unreleased
+0.12.0 (Unreleased)
 -------------------
 
-- Add access logging to aiohttp.web
+- Response processing refactoring
 
 - Exceptions refactoring
+
+- Add access logging to aiohttp.web
 
 - Gunicorn worker for aiohttp.web
 
