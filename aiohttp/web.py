@@ -10,7 +10,7 @@ import json
 import re
 import os
 
-from urllib.parse import urlsplit, parse_qsl, urlencode
+from urllib.parse import urlsplit, parse_qsl, urlencode, unquote
 
 from .abc import AbstractRouter, AbstractMatchInfo
 from .log import web_log
@@ -143,7 +143,7 @@ class Request(HeadersMixin):
         self._host = message.headers.get('HOST')
         self._path_qs = message.path
         res = urlsplit(message.path)
-        self._path = res.path
+        self._path = unquote(res.path)
         self._query_string = res.query
         self._get = None
         self._post = None
