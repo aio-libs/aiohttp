@@ -8,6 +8,8 @@ CHANGES
 
 - Exceptions refactoring
 
+- Do not unquote path in aiohttp.web.Request
+
 - Add access logging to aiohttp.web
 
 - Gunicorn worker for aiohttp.web
