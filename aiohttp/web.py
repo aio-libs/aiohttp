@@ -645,11 +645,13 @@ class HTTPException(Response, Exception):
 
     status_code = None
 
-    def __init__(self, *, headers=None, reason=None):
+    def __init__(self, *, headers=None, reason=None, **kwargs):
         Response.__init__(self, status=self.status_code,
-                          headers=headers, reason=reason)
+                          headers=headers, reason=reason, **kwargs)
         Exception.__init__(self, self.reason)
-        self.body = "{}: {}".format(self.status, self.reason).encode('utf-8')
+        if self.body is None:
+            self.body = "{}: {}".format(
+                self.status, self.reason).encode('utf-8')
 
 
 class HTTPError(HTTPException):
