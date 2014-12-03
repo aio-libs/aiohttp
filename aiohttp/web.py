@@ -626,8 +626,6 @@ class Response(StreamResponse):
     @asyncio.coroutine
     def write_eof(self):
         body = self._body
-        if self._resp_impl is None:
-            self.send_headers()
         if body is not None:
             self.write(body)
         yield from super().write_eof()
