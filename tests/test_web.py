@@ -47,8 +47,8 @@ class TestWeb(unittest.TestCase):
         app.register_on_finish(cb1, 1, b=2)
         app.register_on_finish(cb2, 2, c=3)
         self.loop.run_until_complete(app.finish())
-        cb1.assert_called_once_with(1, b=2)
-        cb2.assert_called_once_with(2, c=3)
+        cb1.assert_called_once_with(app, 1, b=2)
+        cb2.assert_called_once_with(app, 2, c=3)
 
     def test_app_register_coro(self):
         app = web.Application(loop=self.loop)
@@ -56,7 +56,7 @@ class TestWeb(unittest.TestCase):
         fut = asyncio.Future(loop=self.loop)
 
         @asyncio.coroutine
-        def cb():
+        def cb(app):
             yield from asyncio.sleep(0.001, loop=self.loop)
             fut.set_result(123)
 

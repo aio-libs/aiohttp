@@ -1222,7 +1222,7 @@ class Application(dict):
 
         for (cb, args, kwargs) in callbacks:
             try:
-                res = cb(*args, **kwargs)
+                res = cb(self, *args, **kwargs)
                 if (asyncio.iscoroutine(res) or
                         isinstance(res, asyncio.Future)):
                     yield from res
