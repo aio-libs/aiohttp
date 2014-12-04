@@ -1172,11 +1172,8 @@ class RequestHandler(ServerHttpProtocol):
         resp_msg = resp.start(request)
         yield from resp.write_eof()
 
-        keep_alive = resp_msg.keep_alive()
-        if keep_alive:
-            # Don't need to read request body if any on closing connection
-            yield from request.release()
-        self.keep_alive(keep_alive)
+        # notify server about keep-alive
+        self.keep_alive(resp_msg.keep_alive())
 
         # log access
         self.log_access(message, None, resp_msg, self._loop.time() - now)

@@ -10,6 +10,8 @@ CHANGES
 
 - Do not unquote path in aiohttp.web.Request
 
+- Fix concurrent access to payload in RequestHandle.handle_request()
+
 - Add access logging to aiohttp.web
 
 - Gunicorn worker for aiohttp.web
