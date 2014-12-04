@@ -49,6 +49,16 @@ class TestWebRequest(unittest.TestCase):
         self.assertIs(self.transport, req.transport)
         self.assertTrue(req.keep_alive)
 
+    def test_POST(self):
+        req = self.make_request('POST', '/')
+        with self.assertRaises(RuntimeError):
+            req.POST
+
+        marker = object()
+        req._post = marker
+        self.assertIs(req.POST, marker)
+        self.assertIs(req.POST, marker)
+
     def test_content_type_not_specified(self):
         req = self.make_request('Get', '/')
         self.assertEqual('application/octet-stream', req.content_type)

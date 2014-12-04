@@ -4,7 +4,13 @@ CHANGES
 0.12.0 (Unreleased)
 -------------------
 
+- Rename Request.POST() function to Request.post()
+
+- Added POST attribute
+
 - Response processing refactoring
+
+- Pass application instance to finish callback
 
 - Exceptions refactoring
 

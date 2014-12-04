@@ -13,6 +13,7 @@ import os
 from urllib.parse import urlsplit, parse_qsl, urlencode, unquote
 
 from .abc import AbstractRouter, AbstractMatchInfo
+from .helpers import reify
 from .log import web_log
 from .multidict import (CaseInsensitiveMultiDict,
                         CaseInsensitiveMutableMultiDict,
@@ -145,7 +146,6 @@ class Request(HeadersMixin):
         res = urlsplit(message.path)
         self._path = unquote(res.path)
         self._query_string = res.query
-        self._get = None
         self._post = None
         self._post_files_cache = None
         self._headers = CaseInsensitiveMultiDict._from_uppercase_multidict(
@@ -213,15 +213,23 @@ class Request(HeadersMixin):
         """
         return self._query_string
 
-    @property
+    @reify
     def GET(self):
         """A multidict with all the variables in the query string.
 
         Lazy property.
         """
-        if self._get is None:
-            self._get = MultiDict(parse_qsl(self._query_string))
-        return self._get
+        return MultiDict(parse_qsl(self._query_string))
+
+    @reify
+    def POST(self):
+        """A multidict with all the variables in the POST parameters.
+
+        post() methods has to be called before using this attribute.
+        """
+        if self._post is None:
+            raise RuntimeError("POST is not available before post()")
+        return self._post
 
     @property
     def headers(self):
