@@ -308,7 +308,7 @@ class Request(HeadersMixin):
         return loader(body)
 
     @asyncio.coroutine
-    def POST(self):
+    def post(self):
         """Return POST parameters."""
         if self._post is not None:
             return self._post

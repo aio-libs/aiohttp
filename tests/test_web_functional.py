@@ -59,7 +59,7 @@ class TestWebFunctional(unittest.TestCase):
 
         @asyncio.coroutine
         def handler(request):
-            data = yield from request.POST()
+            data = yield from request.post()
             self.assertEqual({'a': '1', 'b': '2'}, dict(data))
             return web.Response(b'OK')
 
@@ -150,7 +150,7 @@ class TestWebFunctional(unittest.TestCase):
 
         @asyncio.coroutine
         def handler(request):
-            data = yield from request.POST()
+            data = yield from request.post()
             self.assertEqual(['sample.crt'], list(data.keys()))
             for fs in data.values():
                 check_file(fs)
@@ -183,7 +183,7 @@ class TestWebFunctional(unittest.TestCase):
 
         @asyncio.coroutine
         def handler(request):
-            data = yield from request.POST()
+            data = yield from request.post()
             self.assertEqual(['sample.crt', 'sample.key'], list(data.keys()))
             for fs in data.values():
                 check_file(fs)
@@ -220,7 +220,7 @@ class TestWebFunctional(unittest.TestCase):
     def test_POST_DATA_with_content_transfer_encoding(self):
         @asyncio.coroutine
         def handler(request):
-            data = yield from request.POST()
+            data = yield from request.post()
             self.assertEqual(b'123', data['name'])
             return web.Response()
 
@@ -273,7 +273,7 @@ class TestWebFunctional(unittest.TestCase):
 
         @asyncio.coroutine
         def handler(request):
-            data = yield from request.POST()
+            data = yield from request.post()
             lst = list(sorted(data.items(getall=True)))
             self.assertEqual([('a', '1'), ('a', '2')], lst)
             return web.Response(b'OK')

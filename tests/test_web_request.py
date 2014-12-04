@@ -104,7 +104,7 @@ class TestWebRequest(unittest.TestCase):
     def test_call_POST_on_GET_request(self):
         req = self.make_request('GET', '/')
 
-        ret = self.loop.run_until_complete(req.POST())
+        ret = self.loop.run_until_complete(req.post())
         self.assertEqual(MultiDict(), ret)
 
     def test_call_POST_on_weird_content_type(self):
@@ -112,14 +112,14 @@ class TestWebRequest(unittest.TestCase):
             'POST', '/',
             headers=MultiDict({'CONTENT-TYPE': 'something/weird'}))
 
-        ret = self.loop.run_until_complete(req.POST())
+        ret = self.loop.run_until_complete(req.post())
         self.assertEqual(MultiDict(), ret)
 
     def test_call_POST_twice(self):
         req = self.make_request('GET', '/')
 
-        ret1 = self.loop.run_until_complete(req.POST())
-        ret2 = self.loop.run_until_complete(req.POST())
+        ret1 = self.loop.run_until_complete(req.post())
+        ret2 = self.loop.run_until_complete(req.post())
         self.assertIs(ret1, ret2)
 
     def test_no_request_cookies(self):
