@@ -138,7 +138,7 @@ type::
 The second step is handling the file upload in your :ref:`request
 handler<aiohttp-web-handler>` (here assumed to answer on
 */store_mp3*). The uploaded file is added to the request object as
-a :class:`FileField` object accessible through the :meth:`Request.POST`
+a :class:`FileField` object accessible through the :meth:`Request.post`
 coroutine. The two properties we are interested in are *file* and
 *filename* and we will use those to read a file's name and a content::
 
@@ -148,7 +148,7 @@ coroutine. The two properties we are interested in are *file* and
 
     def store_mp3_view(request):
 
-        data = yield from request.POST()
+        data = yield from request.post()
 
         # ``filename`` contains the name of the file in string format.
         filename = data['mp3'].filename
@@ -223,6 +223,13 @@ first positional parameter.
    .. attribute:: GET
 
       A multidict with all the variables in the query string.
+
+      Read-only :class:`~aiohttp.multidict.MultiDict` lazy property.
+
+   .. attribute:: POST
+
+      A multidict with all the variables in the POST parameters.
+      POST property available only after `post()` coroutine call.
 
       Read-only :class:`~aiohttp.multidict.MultiDict` lazy property.
 
@@ -356,7 +363,7 @@ first positional parameter.
          The method doesn't store read data internally, subsequent
          :meth:`~Request.json` call will raise an exception.
 
-   .. method:: POST()
+   .. method:: post()
 
       A :ref:`coroutine <coroutine>` that reads POST parameters from
       request body.
