@@ -56,8 +56,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     :param logger: custom logger object
     :type logger: aiohttp.log.server_logger
 
-    :param access_logger: custom logging object
-    :type access_logger: aiohttp.log.server_logger
+    :param access_log: custom logging object
+    :type access_log: aiohttp.log.server_logger
 
     :param str access_log_format: access log format string
 
@@ -83,6 +83,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                  host="",
                  port=0,
                  debug=False,
+                 log=None,
                  **kwargs):
         super().__init__(
             loop=loop,
@@ -96,7 +97,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
         self.host = host
         self.port = port
-        self.logger = logger
+        self.logger = log or logger
         self.debug = debug
         self.access_log = access_log
         self.access_log_format = access_log_format

@@ -127,7 +127,7 @@ class TestWeb(unittest.TestCase):
         app = web.Application(loop=self.loop)
         app.set_logger(logger)
         self.assertIs(app._logger, logger)
-    
+
         app.log_info('Info')
         logger.info.assert_called_with('Info')
         app.log_warn('Warn')
