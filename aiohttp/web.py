@@ -293,7 +293,6 @@ class Request(HeadersMixin):
 
         Returns bytes object with full request content.
         """
-
         body = bytearray()
         while True:
             chunk = yield from self._payload.readany()
@@ -323,6 +322,7 @@ class Request(HeadersMixin):
         if self.method not in ('POST', 'PUT', 'PATCH'):
             self._post = MultiDict()
             return self._post
+
         content_type = self.content_type
         if (content_type not in ('',
                                  'application/x-www-form-urlencoded',
@@ -931,6 +931,7 @@ class Route(metaclass=abc.ABCMeta):
 
 
 class PlainRoute(Route):
+
     def __init__(self, method, handler, name, path):
         super().__init__(method, handler, name)
         self._path = path
@@ -1017,10 +1018,10 @@ class StaticRoute(Route):
         resp.start(request)
 
         with open(filepath, 'rb') as f:
-            chunk = f.read(1024)
+            chunk = f.read(8192)
             while chunk:
                 resp.write(chunk)
-                chunk = f.read(1024)
+                chunk = f.read(8192)
 
         yield from resp.write_eof()
         return resp
@@ -1114,6 +1115,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             compiled = re.compile('^' + pattern + '$')
             route = DynamicRoute(method, handler, name, compiled, path)
         self._register_endpoint(route)
+        return route
 
     def add_static(self, prefix, path, *, name=None):
         """
@@ -1171,9 +1173,9 @@ class RequestHandler(ServerHttpProtocol):
                     isinstance(resp, asyncio.Future)):
                 resp = yield from resp
             if not isinstance(resp, StreamResponse):
-                raise RuntimeError(("Handler should return response "
-                                    "instance, got {!r}")
-                                   .format(type(resp)))
+                raise RuntimeError(
+                    ("Handler should return response instance, got {!r}")
+                    .format(type(resp)))
         except HTTPException as exc:
             resp = exc
 
@@ -1256,7 +1258,7 @@ class Application(dict):
                     cleanup(), timeout, loop=self._loop)
             except asyncio.TimeoutError:
                 web_log.warn(
-                    "Not all connections closed (pending: %d)",
+                    "Not all connections are closed (pending: %d)",
                     len(self._connections))
 
         for transport in self._connections.values():
