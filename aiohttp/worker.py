@@ -4,6 +4,8 @@ __all__ = ['GunicornWebWorker']
 import asyncio
 import functools
 import os
+import signal
+import sys
 import gunicorn.workers.base as base
 
 
@@ -13,6 +15,7 @@ class GunicornWebWorker(base.Worker):
         super().__init__(*args, **kw)
 
         self.servers = []
+        self.exit_code = 0
 
     def init_process(self):
         # create new event_loop after fork
@@ -30,6 +33,8 @@ class GunicornWebWorker(base.Worker):
             self.loop.run_until_complete(self._runner)
         finally:
             self.loop.close()
+
+        sys.exit(self.exit_code)
 
     def factory(self, app, host, port):
         return app.make_handler(
@@ -84,3 +89,25 @@ class GunicornWebWorker(base.Worker):
             pass
 
         yield from self.close()
+
+    def init_signal(self):
+        # init new signaling
+        self.loop.add_signal_handler(signal.SIGQUIT, self.handle_quit)
+        self.loop.add_signal_handler(signal.SIGTERM, self.handle_exit)
+        self.loop.add_signal_handler(signal.SIGINT, self.handle_quit)
+        self.loop.add_signal_handler(signal.SIGWINCH, self.handle_winch)
+        self.loop.add_signal_handler(signal.SIGUSR1, self.handle_usr1)
+        self.loop.add_signal_handler(signal.SIGABRT, self.handle_abort)
+
+        # Don't let SIGTERM and SIGUSR1 disturb active requests
+        # by interrupting system calls
+        if hasattr(signal, 'siginterrupt'):  # python >= 2.6
+            signal.siginterrupt(signal.SIGTERM, False)
+            signal.siginterrupt(signal.SIGUSR1, False)
+
+    def handle_quit(self, sig, frame):
+        self.alive = False
+
+    def handle_abort(self, sig, frame):
+        self.alive = False
+        self.exit_code = 1

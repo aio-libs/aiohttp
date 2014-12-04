@@ -13,6 +13,7 @@ class TestWorker(worker.GunicornWebWorker):
 
     def __init__(self):
         self.servers = []
+        self.exit_code = 0
         self.cfg = unittest.mock.Mock()
         self.cfg.graceful_timeout = 100
 
@@ -41,11 +42,27 @@ class WorkerTests(unittest.TestCase):
     @unittest.mock.patch('aiohttp.worker.asyncio')
     def test_run(self, m_asyncio):
         self.worker.loop = unittest.mock.Mock()
-        self.worker.run()
+        with self.assertRaises(SystemExit):
+            self.worker.run()
 
         self.assertTrue(m_asyncio.async.called)
         self.assertTrue(self.worker.loop.run_until_complete.called)
         self.assertTrue(self.worker.loop.close.called)
+
+    def test_handle_quit(self):
+        self.worker.handle_quit(object(), object())
+        self.assertEqual(self.worker.alive, False)
+        self.assertEqual(self.worker.exit_code, 0)
+
+    def test_handle_abort(self):
+        self.worker.handle_abort(object(), object())
+        self.assertEqual(self.worker.alive, False)
+        self.assertEqual(self.worker.exit_code, 1)
+
+    def test_init_signal(self):
+        self.worker.loop = unittest.mock.Mock()
+        self.worker.init_signal()
+        self.assertTrue(self.worker.loop.add_signal_handler.called)
 
     def test_factory(self):
         self.worker.wsgi = unittest.mock.Mock()

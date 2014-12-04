@@ -49,6 +49,7 @@ class HttpServerProtocolTests(unittest.TestCase):
         timeout_handle = unittest.mock.Mock()
         srv._timeout_handle = timeout_handle
         transport = srv.transport = unittest.mock.Mock()
+        request_handler = srv._request_handler = unittest.mock.Mock()
         srv.writer = unittest.mock.Mock()
 
         srv.closing()
@@ -60,6 +61,9 @@ class HttpServerProtocolTests(unittest.TestCase):
 
         self.assertIsNotNone(srv._timeout_handle)
         self.assertFalse(timeout_handle.cancel.called)
+
+        self.assertIsNone(srv._request_handler)
+        self.assertTrue(request_handler.cancel.called)
 
     def test_double_closing(self):
         srv = server.ServerHttpProtocol(loop=self.loop)

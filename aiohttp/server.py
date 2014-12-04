@@ -111,8 +111,11 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         connections."""
         self._keep_alive = False
 
-        if ((not self._reading_request or self._request_handler is None) and
-                self.transport is not None):
+        if (not self._reading_request and self.transport is not None):
+            if self._request_handler:
+                self._request_handler.cancel()
+                self._request_handler = None
+
             self.transport.close()
             self.transport = None
 
@@ -280,7 +283,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         try:
             if self._request_handler is None:
                 # client has been disconnected during writing.
-                return
+                return ()
 
             if status == 500:
                 self.log_exception("Error handling request")
