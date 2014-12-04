@@ -471,7 +471,7 @@ class WebSocketHandshakeTests(unittest.TestCase):
 
         self.assertEqual(protocol, best_proto)
 
-    @unittest.mock.patch('aiohttp.websocket.websocket_log.warning')
+    @unittest.mock.patch('aiohttp.websocket.ws_logger.warning')
     def test_handshake_protocol_unsupported(self, m_websocket_warn):
         '''Tests if a protocol mismatch handshake warns and returns None'''
         warn_called = False

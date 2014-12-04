@@ -126,8 +126,8 @@ class StreamReaderTests(unittest.TestCase):
         self.assertEqual(b'', stream._buffer)
         self.assertIs(data, streams.EOF_MARKER)
 
-    @mock.patch('aiohttp.streams.internal_log')
-    def test_read_eof_infinit(self, internal_log):
+    @mock.patch('aiohttp.streams.internal_logger')
+    def test_read_eof_infinit(self, internal_logger):
         # Read bytes.
         stream = self._make_one()
         stream.feed_eof()
@@ -138,7 +138,7 @@ class StreamReaderTests(unittest.TestCase):
         self.loop.run_until_complete(stream.read())
         self.loop.run_until_complete(stream.read())
         self.loop.run_until_complete(stream.read())
-        self.assertTrue(internal_log.warning.called)
+        self.assertTrue(internal_logger.warning.called)
 
     def test_read_until_eof(self):
         # Read all bytes until eof.

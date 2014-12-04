@@ -20,7 +20,7 @@ except ImportError:  # pragma: no cover
 
 import aiohttp
 from . import helpers, streams
-from .log import client_log
+from .log import client_logger
 from .streams import EOF_MARKER, FlowControlStreamReader
 from .multidict import CaseInsensitiveMultiDict, MultiDict, MutableMultiDict
 
@@ -660,7 +660,7 @@ class ClientResponse:
                 try:
                     self.cookies.load(hdr)
                 except http.cookies.CookieError as exc:
-                    client_log.warning(
+                    client_logger.warning(
                         'Can not load response cookies: %s', exc)
             connection.share_cookies(self.cookies)
         return self
@@ -759,7 +759,7 @@ class ClientResponse:
 
         ctype = self.headers.get('CONTENT-TYPE', '').lower()
         if 'json' not in ctype:
-            client_log.warning(
+            client_logger.warning(
                 'Attempt to decode JSON with unexpected mimetype: %s', ctype)
 
         if not self._content.strip():

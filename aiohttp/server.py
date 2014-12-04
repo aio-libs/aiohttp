@@ -10,7 +10,7 @@ import socket
 
 import aiohttp
 from aiohttp import errors, streams, helpers
-from aiohttp.log import server_log, access_log
+from aiohttp.log import server_logger, access_logger
 
 
 RESPONSES = http.server.BaseHTTPRequestHandler.responses
@@ -53,11 +53,11 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
     :param bool debug: enable debug mode
 
-    :param log: custom logging object
-    :type log: aiohttp.log.server_log
+    :param logger: custom logger object
+    :type logger: aiohttp.log.server_logger
 
-    :param access_log: custom logging object
-    :type access_log: aiohttp.log.server_log
+    :param access_logger: custom logging object
+    :type access_logger: aiohttp.log.server_logger
 
     :param str access_log_format: access log format string
 
@@ -77,8 +77,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                  timeout=15,
                  tcp_keepalive=True,
                  allowed_methods=(),
-                 log=server_log,
-                 access_log=access_log,
+                 logger=server_logger,
+                 access_log=access_logger,
                  access_log_format=ACCESS_LOG_FORMAT,
                  host="",
                  port=0,
@@ -96,7 +96,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
         self.host = host
         self.port = port
-        self.log = log
+        self.logger = logger
         self.debug = debug
         self.access_log = access_log
         self.access_log_format = access_log_format
@@ -164,14 +164,14 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                     getattr(response, 'headers', None))
                 self.access_log.info(self.access_log_format % atoms)
             except:
-                self.log.error(traceback.format_exc())
+                self.logger.error(traceback.format_exc())
 
     def log_debug(self, *args, **kw):
         if self.debug:
-            self.log.debug(*args, **kw)
+            self.logger.debug(*args, **kw)
 
     def log_exception(self, *args, **kw):
-        self.log.exception(*args, **kw)
+        self.logger.exception(*args, **kw)
 
     def cancel_slow_request(self):
         if self._request_handler is not None:

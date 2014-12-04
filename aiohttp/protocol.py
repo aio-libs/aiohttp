@@ -19,7 +19,7 @@ from wsgiref.handlers import format_date_time
 import aiohttp
 from aiohttp import errors
 from aiohttp import multidict
-from aiohttp.log import internal_log
+from aiohttp.log import internal_logger
 
 ASCIISET = set(string.printable)
 METHRE = re.compile('[A-Z0-9$-_.]+')
@@ -295,7 +295,7 @@ class HttpPayloadParser:
             if self.readall and getattr(self.message, 'code', 0) != 204:
                 yield from self.parse_eof_payload(out, buf)
             elif getattr(self.message, 'method', None) in ('PUT', 'POST'):
-                internal_log.warning(  # pragma: no cover
+                internal_logger.warning(  # pragma: no cover
                     'Content-Length or Transfer-Encoding header is required')
 
         out.feed_eof()

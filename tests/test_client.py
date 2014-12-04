@@ -232,7 +232,7 @@ class ClientResponseTests(unittest.TestCase):
         res = self.loop.run_until_complete(self.response.json(loads=custom))
         self.assertEqual(res, 'data-custom')
 
-    @unittest.mock.patch('aiohttp.client.client_log')
+    @unittest.mock.patch('aiohttp.client.client_logger')
     def test_json_no_content(self, m_log):
         self.response.headers = {
             'CONTENT-TYPE': 'data/octet-stream'}

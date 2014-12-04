@@ -40,7 +40,7 @@ class GunicornWebWorker(base.Worker):
         return app.make_handler(
             host=host,
             port=port,
-            log=self.log,
+            logger=self.log,
             debug=self.cfg.debug,
             keep_alive=self.cfg.keepalive,
             access_log=self.log.access_log,

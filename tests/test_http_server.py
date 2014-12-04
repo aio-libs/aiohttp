@@ -250,7 +250,7 @@ class HttpServerProtocolTests(unittest.TestCase):
         srv.connection_made(transport)
         srv.keep_alive(True)
         srv.writer = unittest.mock.Mock()
-        srv.log = unittest.mock.Mock()
+        srv.logger = unittest.mock.Mock()
 
         try:
             raise RuntimeError('что-то пошло не так')
@@ -265,12 +265,12 @@ class HttpServerProtocolTests(unittest.TestCase):
             content)
         self.assertFalse(srv._keep_alive)
 
-        srv.log.exception.assert_called_with("Error handling request")
+        srv.logger.exception.assert_called_with("Error handling request")
 
     @unittest.mock.patch('aiohttp.server.traceback')
     def test_handle_error_traceback_exc(self, m_trace):
         log = unittest.mock.Mock()
-        srv = server.ServerHttpProtocol(debug=True, log=log, loop=self.loop)
+        srv = server.ServerHttpProtocol(debug=True, logger=log, loop=self.loop)
         srv.transport = unittest.mock.Mock()
         srv.transport.get_extra_info.return_value = '127.0.0.1'
         srv.writer = unittest.mock.Mock()
@@ -307,7 +307,7 @@ class HttpServerProtocolTests(unittest.TestCase):
         log = unittest.mock.Mock()
         transport = unittest.mock.Mock()
 
-        srv = server.ServerHttpProtocol(log=log, loop=self.loop)
+        srv = server.ServerHttpProtocol(logger=log, loop=self.loop)
         srv.connection_made(transport)
         srv.writer = unittest.mock.Mock()
 
@@ -333,7 +333,7 @@ class HttpServerProtocolTests(unittest.TestCase):
         transport = unittest.mock.Mock()
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.connection_made(transport)
-        srv.log.exception = unittest.mock.Mock()
+        srv.logger.exception = unittest.mock.Mock()
 
         handle = srv.handle_request = unittest.mock.Mock()
         handle.side_effect = ValueError
@@ -346,7 +346,7 @@ class HttpServerProtocolTests(unittest.TestCase):
         self.loop.run_until_complete(srv._request_handler)
         self.assertTrue(handle.called)
         self.assertTrue(transport.close.called)
-        srv.log.exception.assert_called_with("Error handling request")
+        srv.logger.exception.assert_called_with("Error handling request")
 
     def test_handle_coro(self):
         transport = unittest.mock.Mock()
@@ -373,7 +373,7 @@ class HttpServerProtocolTests(unittest.TestCase):
         log = unittest.mock.Mock()
         transport = unittest.mock.Mock()
 
-        srv = server.ServerHttpProtocol(log=log, debug=True, loop=self.loop)
+        srv = server.ServerHttpProtocol(logger=log, debug=True, loop=self.loop)
         srv.connection_made(transport)
         srv.writer = unittest.mock.Mock()
         srv.handle_request = unittest.mock.Mock()
@@ -390,7 +390,7 @@ class HttpServerProtocolTests(unittest.TestCase):
         log = unittest.mock.Mock()
         transport = unittest.mock.Mock()
 
-        srv = server.ServerHttpProtocol(log=log, debug=True, loop=self.loop)
+        srv = server.ServerHttpProtocol(logger=log, debug=True, loop=self.loop)
         srv.connection_made(transport)
 
         srv.handle_request = unittest.mock.Mock()
@@ -496,7 +496,7 @@ class HttpServerProtocolTests(unittest.TestCase):
 
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.transport = transport
-        srv.log = unittest.mock.Mock()
+        srv.logger = unittest.mock.Mock()
         srv.access_log = unittest.mock.Mock()
 
         message = unittest.mock.Mock()
@@ -504,21 +504,21 @@ class HttpServerProtocolTests(unittest.TestCase):
         message.version = (1, 1)
         srv.log_access(None, None, None, None)
 
-        self.assertTrue(srv.log.error.called)
+        self.assertTrue(srv.logger.error.called)
 
     def test_log_access_disabled(self):
         transport = unittest.mock.Mock()
 
         srv = server.ServerHttpProtocol(loop=self.loop, access_log=None)
         srv.connection_made(transport)
-        srv.log = unittest.mock.Mock()
+        srv.logger = unittest.mock.Mock()
 
         message = unittest.mock.Mock()
         message.headers = []
         message.version = (1, 1)
         srv.log_access(None, None, None, None)
 
-        self.assertFalse(srv.log.error.called)
+        self.assertFalse(srv.logger.error.called)
 
     def test_cancel_not_connected_handler(self):
         srv = server.ServerHttpProtocol(loop=self.loop)

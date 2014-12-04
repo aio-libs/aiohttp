@@ -829,7 +829,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertIn(b'"Cookie": "test1=123; test3=456"', bytes(content))
             r.close()
 
-    @mock.patch('aiohttp.client.client_log')
+    @mock.patch('aiohttp.client.client_logger')
     def test_set_cookies(self, m_log):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             resp = self.loop.run_until_complete(
@@ -945,7 +945,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
         conn.close()
 
-    @mock.patch('aiohttp.client.client_log')
+    @mock.patch('aiohttp.client.client_logger')
     def test_session_cookies(self, m_log):
         from aiohttp import connector
         conn = connector.TCPConnector(share_cookies=True, loop=self.loop)

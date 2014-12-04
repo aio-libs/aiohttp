@@ -14,7 +14,7 @@ from urllib.parse import urlsplit, parse_qsl, urlencode, unquote
 
 from .abc import AbstractRouter, AbstractMatchInfo
 from .helpers import reify
-from .log import web_log
+from .log import web_logger
 from .multidict import (CaseInsensitiveMultiDict,
                         CaseInsensitiveMutableMultiDict,
                         MultiDict,
@@ -1191,7 +1191,7 @@ class RequestHandler(ServerHttpProtocol):
 
 class Application(dict):
 
-    def __init__(self, *, loop=None, router=None, **kwargs):
+    def __init__(self, *, logger=web_logger, loop=None, router=None, **kwargs):
         # TODO: explicitly accept *debug* param
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -1200,8 +1200,11 @@ class Application(dict):
         assert isinstance(router, AbstractRouter), router
         self._router = router
         self._loop = loop
+        self._logger = logger
         self._finish_callbacks = []
         self._connections = {}
+
+        self.update(**kwargs)
 
     @property
     def router(self):
@@ -1211,7 +1214,21 @@ class Application(dict):
     def loop(self):
         return self._loop
 
+    def set_logger(self, logger):
+        self._logger = logger
+
+    def log_info(self, msg, *args, **kwargs):
+        self._logger.info(msg, *args, **kwargs)
+
+    def log_warn(self, msg, *args, **kwargs):
+        self._logger.warn(msg, *args, **kwargs)
+
+    def log_debug(self, msg, *args, **kwargs):
+        self._logger.debug(msg, *args, **kwargs)
+
     def make_handler(self, **kwargs):
+        if 'logger' not in kwargs:
+            kwargs['logger'] = self._logger
         return RequestHandler(self, self._router, loop=self._loop, **kwargs)
 
     @property
@@ -1257,7 +1274,7 @@ class Application(dict):
                 yield from asyncio.wait_for(
                     cleanup(), timeout, loop=self._loop)
             except asyncio.TimeoutError:
-                web_log.warn(
+                self.log_warn(
                     "Not all connections are closed (pending: %d)",
                     len(self._connections))
 

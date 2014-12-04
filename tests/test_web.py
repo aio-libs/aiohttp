@@ -2,7 +2,7 @@ import asyncio
 import unittest
 from unittest import mock
 
-from aiohttp import web
+from aiohttp import web, log
 from aiohttp.multidict import MultiDict
 from aiohttp.protocol import HttpVersion11, RawRequestMessage
 
@@ -31,9 +31,10 @@ class TestWeb(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.loop.run_until_complete(h.handle_request(message, payload))
 
-    def test_app_loop(self):
+    def test_app_ctor(self):
         app = web.Application(loop=self.loop)
         self.assertIs(self.loop, app.loop)
+        self.assertIs(app._logger, log.web_logger)
 
     def test_app_default_loop(self):
         asyncio.set_event_loop(self.loop)
@@ -120,3 +121,16 @@ class TestWeb(unittest.TestCase):
         self.assertEqual(app.connections, [])
         handler.closing.assert_called_with()
         transport.close.assert_called_with()
+
+    def test_logging(self):
+        logger = mock.Mock()
+        app = web.Application(loop=self.loop)
+        app.set_logger(logger)
+        self.assertIs(app._logger, logger)
+    
+        app.log_info('Info')
+        logger.info.assert_called_with('Info')
+        app.log_warn('Warn')
+        logger.warn.assert_called_with('Warn')
+        app.log_debug('Debug')
+        logger.debug.assert_called_with('Debug')
