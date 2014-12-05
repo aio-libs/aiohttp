@@ -90,10 +90,10 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
 
             try:
                 with open(path, 'rb') as fp:
-                    chunk = fp.read(8196)
+                    chunk = fp.read(8192)
                     while chunk:
                         response.write(chunk)
-                        chunk = fp.read(8196)
+                        chunk = fp.read(8192)
             except OSError:
                 response.write(b'Cannot open')
 

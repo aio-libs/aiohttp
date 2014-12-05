@@ -123,7 +123,7 @@ class FormData:
         data = urllib.parse.urlencode(data, doseq=True)
         return data.encode(encoding)
 
-    def _gen_form_data(self, encoding='utf-8', chunk_size=8196):
+    def _gen_form_data(self, encoding='utf-8', chunk_size=8192):
         """Encode a list of fields using the multipart/form-data MIME format"""
         boundary = self._boundary.encode('latin1')
 

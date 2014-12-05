@@ -559,7 +559,7 @@ class ClientRequestTests(unittest.TestCase):
         m_http.Request.return_value\
             .add_compression_filter.assert_called_with('deflate')
         m_http.Request.return_value\
-            .add_chunking_filter.assert_called_with(8196)
+            .add_chunking_filter.assert_called_with(8192)
 
     def test_chunked(self):
         req = ClientRequest(
@@ -582,7 +582,7 @@ class ClientRequestTests(unittest.TestCase):
 
         self.assertEqual('chunked', req.headers['TRANSFER-ENCODING'])
         m_http.Request.return_value\
-                      .add_chunking_filter.assert_called_with(8196)
+                      .add_chunking_filter.assert_called_with(8192)
 
     @unittest.mock.patch('aiohttp.client.aiohttp')
     def test_chunked_explicit_size(self, m_http):

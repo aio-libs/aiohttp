@@ -304,7 +304,7 @@ class HttpPayloadParser:
         """Chunked transfer encoding parser."""
         while True:
             # read next chunk size
-            line = yield from buf.readuntil(b'\r\n', 8196)
+            line = yield from buf.readuntil(b'\r\n', 8192)
 
             i = line.find(b';')
             if i >= 0:
@@ -393,10 +393,10 @@ def wrap_payload_filter(func):
     It is possible to use different filters at the same time.
 
     For a example to compress incoming stream with 'deflate' encoding
-    and then split data and emit chunks of 8196 bytes size chunks:
+    and then split data and emit chunks of 8192 bytes size chunks:
 
       >>> response.add_compression_filter('deflate')
-      >>> response.add_chunking_filter(8196)
+      >>> response.add_chunking_filter(8192)
 
     Filters do not alter transfer encoding.
 
@@ -491,10 +491,10 @@ class HttpMessage:
     add_header() and add_headers() method unavailable at this stage:
 
     >>> with open('...', 'rb') as f:
-    ...     chunk = fp.read(8196)
+    ...     chunk = fp.read(8192)
     ...     while chunk:
     ...         response.write(chunk)
-    ...         chunk = fp.read(8196)
+    ...         chunk = fp.read(8192)
 
     >>> response.write_eof()
 

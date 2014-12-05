@@ -309,7 +309,7 @@ file and calculate file sha1 hash::
    ...    h = hashlib.sha1()
    ...
    ...    with open('some.iso') as f:
-   ...       chunk = f.read(8196)
+   ...       chunk = f.read(8192)
    ...       while chunk:
    ...          h.update(chunk)
    ...          s.feed_data(chunk)

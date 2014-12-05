@@ -440,7 +440,7 @@ class ChunksParser:
     Chunks parser splits a bytes stream into a specified
     size chunks of data."""
 
-    def __init__(self, size=8196):
+    def __init__(self, size=8192):
         self._size = size
 
     def __call__(self, out, buf):

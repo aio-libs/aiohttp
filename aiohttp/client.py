@@ -406,7 +406,7 @@ class ClientRequest:
                 self.headers['CONTENT-TYPE'] = data.content_type
 
             if data.is_multipart:
-                self.chunked = self.chunked or 8196
+                self.chunked = self.chunked or 8192
             else:
                 if 'CONTENT-LENGTH' not in self.headers and not self.chunked:
                     self.headers['CONTENT-LENGTH'] = str(len(self.body))
@@ -421,10 +421,10 @@ class ClientRequest:
             if 'chunked' not in te:
                 self.headers['TRANSFER-ENCODING'] = 'chunked'
 
-            self.chunked = self.chunked if type(self.chunked) is int else 8196
+            self.chunked = self.chunked if type(self.chunked) is int else 8192
         else:
             if 'chunked' in te:
-                self.chunked = 8196
+                self.chunked = 8192
             else:
                 self.chunked = None
                 if 'CONTENT-LENGTH' not in self.headers:
