@@ -12,7 +12,7 @@ import weakref
 from .client import ClientRequest
 from .errors import HttpProxyError
 from .errors import ProxyConnectionError
-from .errors import ServerDisconnectedError
+from .errors import ServerDisconnectedError, OsConnectionError
 from .helpers import BasicAuth
 
 
@@ -302,7 +302,8 @@ class TCPConnector(BaseConnector):
                     **kwargs))
             except OSError:
                 if not hosts:
-                    raise
+                    raise OsConnectionError(
+                        'Can not connect to %s:%s' % (req.host, req.port))
 
 
 class ProxyConnector(TCPConnector):
