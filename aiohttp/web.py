@@ -1227,8 +1227,7 @@ class Application(dict):
         self._logger.debug(msg, *args, **kwargs)
 
     def make_handler(self, **kwargs):
-        if 'logger' not in kwargs:
-            kwargs['logger'] = self._logger
+        kwargs.setdefault('logger', self._logger)
         return RequestHandler(self, self._router, loop=self._loop, **kwargs)
 
     @property
