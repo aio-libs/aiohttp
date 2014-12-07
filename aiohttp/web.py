@@ -1173,7 +1173,7 @@ class RequestHandler(ServerHttpProtocol):
             handler = match_info.handler
 
             for middleware in reversed(self._middlewares):
-                handler = middleware(app, handler)
+                handler = middleware(request, handler)
             resp = yield from handler(request)
 
             if not isinstance(resp, StreamResponse):
