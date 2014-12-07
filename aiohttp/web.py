@@ -539,6 +539,7 @@ class StreamResponse(HeadersMixin):
         keep_alive = self._keep_alive
         if keep_alive is None:
             keep_alive = request.keep_alive
+        self._keep_alive = keep_alive
 
         resp_impl = self._resp_impl = ResponseImpl(
             request._writer,

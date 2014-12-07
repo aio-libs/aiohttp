@@ -101,10 +101,14 @@ class TestStreamResponse(unittest.TestCase):
     def test_start(self, ResponseImpl):
         req = self.make_request('GET', '/')
         resp = StreamResponse()
+        self.assertIsNone(resp.keep_alive)
+
         msg = resp.start(req)
 
         self.assertTrue(msg.send_headers.called)
         self.assertIs(msg, resp.start(req))
+
+        self.assertTrue(resp.keep_alive)
 
         req2 = self.make_request('GET', '/')
         with self.assertRaises(RuntimeError):
