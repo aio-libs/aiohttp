@@ -1173,8 +1173,7 @@ class RequestHandler(ServerHttpProtocol):
     def handle_request(self, message, payload):
         now = self._loop.time()
 
-        app = self._app
-        request = Request(app, message, payload,
+        request = Request(self._app, message, payload,
                           self.transport, self.writer, self.keep_alive_timeout)
         try:
             match_info = yield from self._router.resolve(request)
