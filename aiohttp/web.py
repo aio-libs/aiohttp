@@ -1132,6 +1132,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             prefix += '/'
         route = StaticRoute(name, prefix, path)
         self._register_endpoint(route)
+        return route
 
 
 ############################################################

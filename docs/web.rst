@@ -806,6 +806,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       :param str name: optional route name.
 
+      :returns: new :class:`PlainRoute` or :class:`DynamicRoute` instance.
+
    .. method:: add_static(prefix, path, *, name=None)
 
       Adds router for returning static files.
@@ -824,6 +826,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
                        handled static files.
 
       :param str name: optional route name.
+
+      :returns: new :class:`StaticRoute` instance.
 
    .. method:: resolve(requst)
 
