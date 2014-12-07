@@ -101,9 +101,8 @@ class GunicornWebWorker(base.Worker):
 
         # Don't let SIGTERM and SIGUSR1 disturb active requests
         # by interrupting system calls
-        if hasattr(signal, 'siginterrupt'):  # python >= 2.6
-            signal.siginterrupt(signal.SIGTERM, False)
-            signal.siginterrupt(signal.SIGUSR1, False)
+        signal.siginterrupt(signal.SIGTERM, False)
+        signal.siginterrupt(signal.SIGUSR1, False)
 
     def handle_quit(self, sig, frame):
         self.alive = False
