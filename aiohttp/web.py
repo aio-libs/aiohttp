@@ -1184,10 +1184,10 @@ class RequestHandler(ServerHttpProtocol):
             request._match_info = match_info
             handler = match_info.handler
 
-            for factory in reversed(self._middlewares):
-                handler = factory(app, handler)
-
+            for middleware in reversed(self._middlewares):
+                handler = middleware(app, handler)
             resp = yield from handler(request)
+
             if not isinstance(resp, StreamResponse):
                 raise RuntimeError(
                     ("Handler should return response instance, got {!r}")
