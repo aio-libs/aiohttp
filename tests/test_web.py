@@ -127,10 +127,3 @@ class TestWeb(unittest.TestCase):
         app = web.Application(loop=self.loop)
         app.logger = logger
         self.assertIs(app.logger, logger)
-
-        app.log_info('Info')
-        logger.info.assert_called_with('Info')
-        app.log_warn('Warn')
-        logger.warn.assert_called_with('Warn')
-        app.log_debug('Debug')
-        logger.debug.assert_called_with('Debug')

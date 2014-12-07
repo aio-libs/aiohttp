@@ -1225,15 +1225,6 @@ class Application(dict):
     def logger(self, logger):
         self._logger = logger
 
-    def log_info(self, msg, *args, **kwargs):
-        self._logger.info(msg, *args, **kwargs)
-
-    def log_warn(self, msg, *args, **kwargs):
-        self._logger.warn(msg, *args, **kwargs)
-
-    def log_debug(self, msg, *args, **kwargs):
-        self._logger.debug(msg, *args, **kwargs)
-
     def make_handler(self, **kwargs):
         kwargs.setdefault('logger', self._logger)
         return RequestHandler(self, self._router, loop=self._loop, **kwargs)
@@ -1281,7 +1272,7 @@ class Application(dict):
                 yield from asyncio.wait_for(
                     cleanup(), timeout, loop=self._loop)
             except asyncio.TimeoutError:
-                self.log_warn(
+                self._logger.warning(
                     "Not all connections are closed (pending: %d)",
                     len(self._connections))
 
