@@ -7,10 +7,10 @@ import asyncio
 import collections
 import traceback
 
-from .log import internal_log
+from .log import internal_logger
 
 EOF_MARKER = b''
-DEFAULT_LIMIT = 2**16
+DEFAULT_LIMIT = 2 ** 16
 
 
 class EofStream(Exception):
@@ -156,7 +156,7 @@ class StreamReader(asyncio.StreamReader):
                 self._eof_counter = getattr(self, '_eof_counter', 0) + 1
                 if self._eof_counter > 5:
                     stack = traceback.format_stack()
-                    internal_log.warning(
+                    internal_logger.warning(
                         'Multiple access to StreamReader in eof state, '
                         'might be infinite loop: \n%s', stack)
 

@@ -1,24 +1,21 @@
-"""Async gunicorn worker."""
-__all__ = ['AsyncGunicornWorker', 'PortMapperWorker']
+"""Async gunicorn worker for auihttp.wen.Application."""
+__all__ = ['GunicornWebWorker']
 
 import asyncio
 import functools
 import os
+import signal
+import sys
 import gunicorn.workers.base as base
-import warnings
-
-from aiohttp.wsgi import WSGIServerHttpProtocol
 
 
-class AsyncGunicornWorker(base.Worker):
+class GunicornWebWorker(base.Worker):
 
     def __init__(self, *args, **kw):  # pragma: no cover
-        warnings.warn("AsyncGunicornWorker is deprecated "
-                      "starting from 0.11 release, "
-                      "use standard gaiohttp worker.", DeprecationWarning)
         super().__init__(*args, **kw)
+
         self.servers = []
-        self.connections = {}
+        self.exit_code = 0
 
     def init_process(self):
         # create new event_loop after fork
@@ -37,33 +34,38 @@ class AsyncGunicornWorker(base.Worker):
         finally:
             self.loop.close()
 
-    def wrap_protocol(self, proto):
-        proto.connection_made = _wrp(
-            proto, proto.connection_made, self.connections)
-        proto.connection_lost = _wrp(
-            proto, proto.connection_lost, self.connections, False)
-        return proto
+        sys.exit(self.exit_code)
 
-    def factory(self, wsgi, host, port):
-        proto = WSGIServerHttpProtocol(
-            wsgi, loop=self.loop,
-            log=self.log,
+    def factory(self, app, host, port):
+        return app.make_handler(
+            host=host,
+            port=port,
+            logger=self.log,
             debug=self.cfg.debug,
             keep_alive=self.cfg.keepalive,
             access_log=self.log.access_log,
             access_log_format=self.cfg.access_log_format)
-        return self.wrap_protocol(proto)
 
     def get_factory(self, sock, host, port):
         return functools.partial(self.factory, self.wsgi, host, port)
 
     @asyncio.coroutine
     def close(self):
-        try:
-            if hasattr(self.wsgi, 'close'):
-                yield from self.wsgi.close()
-        except:
-            self.log.exception('Process shutdown exception')
+        if self.servers:
+            self.log.info("Stopping server: %s, connections: %s",
+                          self.pid, len(self.wsgi.connections))
+
+            # stop accepting connections
+            for server in self.servers:
+                server.close()
+            self.servers.clear()
+
+            # stop alive connections
+            yield from self.wsgi.finish_connections(
+                timeout=self.cfg.graceful_timeout / 100 * 80)
+
+            # stop application
+            yield from self.wsgi.finish()
 
     @asyncio.coroutine
     def _run(self):
@@ -75,73 +77,36 @@ class AsyncGunicornWorker(base.Worker):
         # If our parent changed then we shut down.
         pid = os.getpid()
         try:
-            while self.alive or self.connections:
+            while self.alive:
                 self.notify()
 
-                if (self.alive and
-                        pid == os.getpid() and self.ppid != os.getppid()):
-                    self.log.info("Parent changed, shutting down: %s", self)
+                if pid == os.getpid() and self.ppid != os.getppid():
                     self.alive = False
-
-                # stop accepting requests
-                if not self.alive:
-                    if self.servers:
-                        self.log.info(
-                            "Stopping server: %s, connections: %s",
-                            pid, len(self.connections))
-                        for server in self.servers:
-                            server.close()
-                        self.servers.clear()
-
-                    # prepare connections for closing
-                    for conn in self.connections.values():
-                        if hasattr(conn, 'closing'):
-                            conn.closing()
-
-                yield from asyncio.sleep(1.0, loop=self.loop)
-        except KeyboardInterrupt:
+                    self.log.info("Parent changed, shutting down: %s", self)
+                else:
+                    yield from asyncio.sleep(1.0, loop=self.loop)
+        except (Exception, BaseException, GeneratorExit, KeyboardInterrupt):
             pass
-
-        if self.servers:
-            for server in self.servers:
-                server.close()
 
         yield from self.close()
 
+    def init_signal(self):
+        # init new signaling
+        self.loop.add_signal_handler(signal.SIGQUIT, self.handle_quit)
+        self.loop.add_signal_handler(signal.SIGTERM, self.handle_exit)
+        self.loop.add_signal_handler(signal.SIGINT, self.handle_quit)
+        self.loop.add_signal_handler(signal.SIGWINCH, self.handle_winch)
+        self.loop.add_signal_handler(signal.SIGUSR1, self.handle_usr1)
+        self.loop.add_signal_handler(signal.SIGABRT, self.handle_abort)
 
-class PortMapperWorker(AsyncGunicornWorker):
-    """Special worker that uses different wsgi application depends on port.
+        # Don't let SIGTERM and SIGUSR1 disturb active requests
+        # by interrupting system calls
+        signal.siginterrupt(signal.SIGTERM, False)
+        signal.siginterrupt(signal.SIGUSR1, False)
 
-    Main wsgi application object has to be dictionary:
-    """
+    def handle_quit(self, sig, frame):
+        self.alive = False
 
-    def get_factory(self, sock, host, port):
-        return functools.partial(self.factory, self.wsgi[port], host, port)
-
-    @asyncio.coroutine
-    def close(self):
-        for port, wsgi in self.wsgi.items():
-            try:
-                if hasattr(wsgi, 'close'):
-                    yield from wsgi.close()
-            except:
-                self.log.exception('Process shutdown exception')
-
-
-class _wrp:
-
-    def __init__(self, proto, meth, tracking, add=True):
-        self._proto = proto
-        self._id = id(proto)
-        self._meth = meth
-        self._tracking = tracking
-        self._add = add
-
-    def __call__(self, *args):
-        if self._add:
-            self._tracking[self._id] = self._proto
-        elif self._id in self._tracking:
-            del self._tracking[self._id]
-
-        conn = self._meth(*args)
-        return conn
+    def handle_abort(self, sig, frame):
+        self.alive = False
+        self.exit_code = 1

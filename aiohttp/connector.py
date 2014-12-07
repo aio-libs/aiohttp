@@ -1,5 +1,4 @@
-__all__ = ['BaseConnector', 'TCPConnector', 'ProxyConnector',
-           'UnixConnector', 'SocketConnector', 'UnixSocketConnector']
+__all__ = ['BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector']
 
 import asyncio
 import aiohttp
@@ -13,6 +12,7 @@ import weakref
 from .client import ClientRequest
 from .errors import HttpProxyError
 from .errors import ProxyConnectionError
+from .errors import ServerDisconnectedError
 from .helpers import BasicAuth
 
 
@@ -76,7 +76,9 @@ class BaseConnector(object):
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
-        self._factory = functools.partial(aiohttp.StreamProtocol, loop=loop)
+        self._factory = functools.partial(
+            aiohttp.StreamProtocol, loop=loop,
+            disconnect_error=ServerDisconnectedError)
 
         self.cookies = http.cookies.SimpleCookie()
         self._wr = weakref.ref(
@@ -344,6 +346,7 @@ class ProxyConnector(TCPConnector):
             transport, proto = yield from super()._create_connection(proxy_req)
         except OSError as exc:
             raise ProxyConnectionError(*exc.args) from exc
+
         req.path = '{scheme}://{host}{path}'.format(scheme=req.scheme,
                                                     host=req.netloc,
                                                     path=req.path)
@@ -376,7 +379,7 @@ class ProxyConnector(TCPConnector):
                 raise
             else:
                 if resp.status != 200:
-                    raise HttpProxyError(resp.status, resp.reason)
+                    raise HttpProxyError(code=resp.status, message=resp.reason)
                 rawsock = transport.get_extra_info('socket', default=None)
                 if rawsock is None:
                     raise RuntimeError(
@@ -416,20 +419,3 @@ class UnixConnector(BaseConnector):
     def _create_connection(self, req, **kwargs):
         return (yield from self._loop.create_unix_connection(
             self._factory, self._path, **kwargs))
-
-
-SocketConnector = TCPConnector
-"""Alias of TCPConnector.
-
-.. note::
-   Keeped for backward compatibility.
-   May be deprecated in future.
-"""
-
-UnixSocketConnector = UnixConnector
-"""Alias of UnixConnector.
-
-.. note::
-   Keeped for backward compatibility.
-   May be deprecated in future.
-"""

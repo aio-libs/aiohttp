@@ -829,7 +829,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertIn(b'"Cookie": "test1=123; test3=456"', bytes(content))
             r.close()
 
-    @mock.patch('aiohttp.client.client_log')
+    @mock.patch('aiohttp.client.client_logger')
     def test_set_cookies(self, m_log):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             resp = self.loop.run_until_complete(
@@ -879,13 +879,13 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 client.request('get', httpd.url('broken'), loop=self.loop))
             self.assertEqual(r.status, 200)
             self.assertRaises(
-                aiohttp.IncompleteRead,
+                aiohttp.ServerDisconnectedError,
                 self.loop.run_until_complete, r.json())
             r.close()
 
     def test_request_conn_error(self):
         self.assertRaises(
-            aiohttp.ConnectionError,
+            aiohttp.ClientConnectionError,
             self.loop.run_until_complete,
             client.request('get', 'http://0.0.0.0:1',
                            loop=self.loop))
@@ -945,7 +945,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
         conn.close()
 
-    @mock.patch('aiohttp.client.client_log')
+    @mock.patch('aiohttp.client.client_logger')
     def test_session_cookies(self, m_log):
         from aiohttp import connector
         conn = connector.TCPConnector(share_cookies=True, loop=self.loop)
@@ -1102,9 +1102,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             yield from r.read()
             self.assertEqual(1, len(connector._conns))
 
-            with self.assertRaisesRegex(
-                    aiohttp.ClientConnectionError,
-                    'Connection closed by server'):
+            with self.assertRaises(aiohttp.ClientConnectionError):
                 yield from client.request('GET', url,
                                           connector=connector,
                                           loop=self.loop)
@@ -1215,5 +1213,5 @@ class Functional(test_utils.Router):
 
         self._response(
             resp,
-            body=json.dumps({'t': (b'0'*1024).decode('utf-8')}),
+            body=json.dumps({'t': (b'0' * 1024).decode('utf-8')}),
             write_body=write_body)

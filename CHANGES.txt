@@ -1,6 +1,33 @@
 CHANGES
 =======
 
+0.12.0 (Unreleased)
+-------------------
+
+- Automatically force aiohttp.web handlers to coroutines in
+  `UrlDispatcher.add_route()` #186
+
+- Rename `Request.POST()` function to `Request.post()`
+
+- Added POST attribute
+
+- Response processing refactoring
+
+- Pass application instance to finish callback
+
+- Exceptions refactoring
+
+- Do not unquote query string in `aiohttp.web.Request`
+
+- Fix concurrent access to payload in `RequestHandle.handle_request()`
+
+- Add access logging to `aiohttp.web`
+
+- Gunicorn worker for `aiohttp.web`
+
+- Removed deprecated `AsyncGunicornWorker`
+
+
 0.11.0 (11-29-2014)
 -------------------
 
@@ -8,10 +35,12 @@ CHANGES
 
 - Make websocket subprotocols conform to spec #181
 
+
 0.10.2 (11-19-2014)
 -------------------
 
 - Don't unquote `environ['PATH_INFO']` in wsgi.py #177
+
 
 0.10.1 (11-17-2014)
 -------------------
@@ -20,6 +49,7 @@ CHANGES
   with string like `404: NotFound`
 
 - Fix multidict `__iter__`, the method should iterate over keys, not (key, value) pairs.
+
 
 0.10.0 (11-13-2014)
 -------------------
@@ -38,10 +68,12 @@ CHANGES
 
 - Set server.transport to None on .closing() #172
 
+
 0.9.3 (10-30-2014)
 ------------------
 
 - Fix compatibility with asyncio 3.4.1+ #170
+
 
 0.9.2 (10-16-2014)
 ------------------

@@ -49,6 +49,16 @@ class TestWebRequest(unittest.TestCase):
         self.assertIs(self.transport, req.transport)
         self.assertTrue(req.keep_alive)
 
+    def test_POST(self):
+        req = self.make_request('POST', '/')
+        with self.assertRaises(RuntimeError):
+            req.POST
+
+        marker = object()
+        req._post = marker
+        self.assertIs(req.POST, marker)
+        self.assertIs(req.POST, marker)
+
     def test_content_type_not_specified(self):
         req = self.make_request('Get', '/')
         self.assertEqual('application/octet-stream', req.content_type)
@@ -104,7 +114,7 @@ class TestWebRequest(unittest.TestCase):
     def test_call_POST_on_GET_request(self):
         req = self.make_request('GET', '/')
 
-        ret = self.loop.run_until_complete(req.POST())
+        ret = self.loop.run_until_complete(req.post())
         self.assertEqual(MultiDict(), ret)
 
     def test_call_POST_on_weird_content_type(self):
@@ -112,14 +122,14 @@ class TestWebRequest(unittest.TestCase):
             'POST', '/',
             headers=MultiDict({'CONTENT-TYPE': 'something/weird'}))
 
-        ret = self.loop.run_until_complete(req.POST())
+        ret = self.loop.run_until_complete(req.post())
         self.assertEqual(MultiDict(), ret)
 
     def test_call_POST_twice(self):
         req = self.make_request('GET', '/')
 
-        ret1 = self.loop.run_until_complete(req.POST())
-        ret2 = self.loop.run_until_complete(req.POST())
+        ret1 = self.loop.run_until_complete(req.post())
+        ret2 = self.loop.run_until_complete(req.post())
         self.assertIs(ret1, ret2)
 
     def test_no_request_cookies(self):
@@ -137,7 +147,7 @@ class TestWebRequest(unittest.TestCase):
         self.assertEqual(req.cookies, {
             'cookie1': 'value1',
             'cookie2': 'value2',
-            })
+        })
 
     def test_request_cookie__set_item(self):
         headers = MultiDict(COOKIE='name=value')

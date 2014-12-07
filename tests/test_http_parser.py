@@ -86,14 +86,16 @@ class ParseHeadersTests(unittest.TestCase):
         self.assertIn("limit request headers fields size", str(cm.exception))
 
     def test_invalid_header(self):
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaisesRegexp(
+                errors.InvalidHeader,
+                "(400, message='Invalid HTTP Header: test line)"):
             self.parser.parse_headers(['', 'test line\r\n', '\r\n'])
-        self.assertIn("Invalid header: test line", str(cm.exception))
 
     def test_invalid_name(self):
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaisesRegexp(
+                errors.InvalidHeader,
+                "(400, message='Invalid HTTP Header: TEST..)"):
             self.parser.parse_headers(['', 'test[]: line\r\n', '\r\n'])
-        self.assertIn("Invalid header name: TEST[]", str(cm.exception))
 
 
 class DeflateBufferTests(unittest.TestCase):
@@ -120,7 +122,7 @@ class DeflateBufferTests(unittest.TestCase):
         dbuf.zlib = unittest.mock.Mock()
         dbuf.zlib.decompress.side_effect = exc
 
-        self.assertRaises(errors.IncompleteRead, dbuf.feed_data, b'data')
+        self.assertRaises(errors.ContentEncodingError, dbuf.feed_data, b'data')
 
     def test_feed_eof(self):
         buf = aiohttp.FlowControlDataQueue(self.stream)
@@ -141,7 +143,7 @@ class DeflateBufferTests(unittest.TestCase):
         dbuf.zlib.flush.return_value = b'line'
         dbuf.zlib.eof = False
 
-        self.assertRaises(errors.IncompleteRead, dbuf.feed_eof)
+        self.assertRaises(errors.ContentEncodingError, dbuf.feed_eof)
 
 
 class ParsePayloadTests(unittest.TestCase):
@@ -185,8 +187,7 @@ class ParsePayloadTests(unittest.TestCase):
         p = protocol.HttpPayloadParser(None).parse_length_payload(out, buf, 4)
         next(p)
         p.send(b'da')
-        self.assertRaises(
-            errors.IncompleteRead, p.throw, aiohttp.EofStream)
+        self.assertRaises(aiohttp.EofStream, p.throw, aiohttp.EofStream)
 
     def test_parse_chunked_payload(self):
         out = aiohttp.FlowControlDataQueue(self.stream)
@@ -219,7 +220,7 @@ class ParsePayloadTests(unittest.TestCase):
         p = protocol.HttpPayloadParser(None).parse_chunked_payload(out, buf)
         next(p)
         p.send(b'4\r\ndata\r\n')
-        self.assertRaises(errors.ConnectionError, p.throw, aiohttp.EofStream)
+        self.assertRaises(aiohttp.EofStream, p.throw, aiohttp.EofStream)
 
     def test_parse_chunked_payload_extension(self):
         out = aiohttp.FlowControlDataQueue(self.stream)
@@ -237,7 +238,7 @@ class ParsePayloadTests(unittest.TestCase):
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpPayloadParser(None).parse_chunked_payload(out, buf)
         next(p)
-        self.assertRaises(errors.IncompleteRead, p.send, b'blah\r\n')
+        self.assertRaises(errors.TransferEncodingError, p.send, b'blah\r\n')
 
     def test_http_payload_parser_length_broken(self):
         msg = protocol.RawRequestMessage(
@@ -470,8 +471,7 @@ class ParseResponseTests(unittest.TestCase):
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpResponseParser()(out, buf)
         next(p)
-        self.assertRaises(
-            errors.ConnectionError, p.throw, aiohttp.EofStream())
+        self.assertRaises(aiohttp.EofStream, p.throw, aiohttp.EofStream())
 
     def test_http_response_parser_bad_version(self):
         out = aiohttp.FlowControlDataQueue(self.stream)

@@ -24,7 +24,7 @@ and returns :class:`Response` instance::
 
    @asyncio.coroutine
    def hello(request):
-       return web.Response(request, b"Hello, world")
+       return web.Response(b"Hello, world")
 
 Next, you have to create a :class:`Application` instance and register
 :ref:`handler<aiohttp-web-handler>` in the application's router pointing *HTTP
@@ -75,7 +75,6 @@ Parsed *path part* will be available in the *request handler* as
    @asyncio.coroutine
    def variable_handler(request):
        return web.Response(
-           request,
            "Hello, {}".format(request.match_info['name']).encode('utf8'))
 
    app.router.add_route('GET', '/{name}', variable_handler)
@@ -85,7 +84,7 @@ Handlers can be first-class functions, e.g.::
 
    @asyncio.coroutine
    def hello(request):
-       return web.Response(request, b"Hello, world")
+       return web.Response(b"Hello, world")
 
    app.router.add_route('GET', '/', hello)
 
@@ -101,13 +100,13 @@ so application developer can use classes if he wants::
            pass
 
        def handle_intro(self, request):
-           return web.Response(request, b"Hello, world")
+           return web.Response(b"Hello, world")
 
        @asyncio.coroutine
        def handle_greeting(self, request):
            name = request.match_info.get('name')
            txt = "Hello, {}".format(name)
-           return web.Response(request, txt.encode('utf-8')
+           return web.Response(txt.encode('utf-8')
 
    handler = Handler()
    app.router.add_route('GET', '/intro', handler.handle_intro)
@@ -139,7 +138,7 @@ type::
 The second step is handling the file upload in your :ref:`request
 handler<aiohttp-web-handler>` (here assumed to answer on
 */store_mp3*). The uploaded file is added to the request object as
-a :class:`FileField` object accessible through the :meth:`Request.POST`
+a :class:`FileField` object accessible through the :meth:`Request.post`
 coroutine. The two properties we are interested in are *file* and
 *filename* and we will use those to read a file's name and a content::
 
@@ -149,7 +148,7 @@ coroutine. The two properties we are interested in are *file* and
 
     def store_mp3_view(request):
 
-        data = yield from request.POST()
+        data = yield from request.post()
 
         # ``filename`` contains the name of the file in string format.
         filename = data['mp3'].filename
@@ -161,7 +160,7 @@ coroutine. The two properties we are interested in are *file* and
 
         content = input_file.read()
 
-        return Response(request, content,
+        return Response(content,
             headers=MultiDict([('CONTENT-DISPOSITION', input-file)])
 
 
@@ -224,6 +223,13 @@ first positional parameter.
    .. attribute:: GET
 
       A multidict with all the variables in the query string.
+
+      Read-only :class:`~aiohttp.multidict.MultiDict` lazy property.
+
+   .. attribute:: POST
+
+      A multidict with all the variables in the POST parameters.
+      POST property available only after `post()` coroutine call.
 
       Read-only :class:`~aiohttp.multidict.MultiDict` lazy property.
 
@@ -357,7 +363,7 @@ first positional parameter.
          The method doesn't store read data internally, subsequent
          :meth:`~Request.json` call will raise an exception.
 
-   .. method:: POST()
+   .. method:: post()
 
       A :ref:`coroutine <coroutine>` that reads POST parameters from
       request body.
@@ -417,13 +423,13 @@ The common case for sending an answer from
 :class:`Response` instance::
 
    def handler(request):
-       return Response(request, "All right!")
+       return Response("All right!")
 
 
 StreamResponse
 ^^^^^^^^^^^^^^
 
-.. class:: StreamResponse(request, *, status=200, reason=None)
+.. class:: StreamResponse(*, status=200, reason=None)
 
    The base class for the *HTTP response* handling.
 
@@ -434,16 +440,13 @@ StreamResponse
    is *Finite State Machine*.
 
    That means you can do any manipulations with *headers*,
-   *cookies* and *status code* only before :meth:`send_headers`
+   *cookies* and *status code* only before :meth:`start`
    called.
 
-   Once you call :meth:`send_headers` or :meth:`write` any change of
+   Once you call :meth:`start` any change of
    the *HTTP header* part will raise :exc:`RuntimeError` exception.
 
    Any :meth:`write` call after :meth:`write_eof` is also forbidden.
-
-   :param aiohttp.web.Request request: HTTP request object, that the
-                                       response answers.
 
    :param int status: HTTP status code, ``200`` by default.
 
@@ -451,11 +454,6 @@ StreamResponse
                       calculated basing on *status*
                       parameter. Otherwise pass :class:`str` with
                       arbitrary *status* explanation..
-
-   .. attribute:: request
-
-      Read-only property for :class:`Request` object used for creating
-      this response.
 
    .. attribute:: status
 
@@ -571,7 +569,10 @@ StreamResponse
 
       *Charset* aka *encoding* part of *Content-Type* for outgoing response.
 
-   .. method:: send_headers()
+   .. method:: start(request)
+
+      :param aiohttp.web.Request request: HTTP request object, that the
+                                          response answers.
 
       Send *HTTP header*. You should not change any header data after
       calling this method.
@@ -580,10 +581,12 @@ StreamResponse
 
       Send byte-ish data as the part of *response BODY*.
 
-      Calls :meth:`send_headers` if it has not been called before.
+      :meth:`start` must be called before.
 
       Raises :exc:`TypeError` if data is not :class:`bytes`,
       :class:`bytearray` or :class:`memoryview` instance.
+
+      Raises :exc:`RuntimeError` if :meth:`start` has not been called.
 
       Raises :exc:`RuntimeError` if :meth:`write_eof` has been called.
 
@@ -598,10 +601,11 @@ StreamResponse
       After :meth:`write_eof` call any manipulations with the *response*
       object are forbidden.
 
+
 Response
 ^^^^^^^^
 
-.. class:: Response(request, body=None, *, status=200, headers=None)
+.. class:: Response(body=None, *, status=200, headers=None, content_type=None, text=None)
 
    The most usable response class, inherited from :class:`StreamResponse`.
 
@@ -610,14 +614,16 @@ Response
    The actual :attr:`body` sending happens in overridden
    :meth:`~StreamResponse.write_eof`.
 
-   :param Request request: *HTTP request* object used for this response creation.
-
    :param bytes body: response's BODY
 
    :param int status: HTTP status code, 200 OK by default.
 
    :param collections.abc.Mapping headers: HTTP headers that should be added to
                            response's ones.
+
+   :param str text: response's BODY
+
+   :param str content_type: response's content type
 
    .. attribute:: body
 
@@ -626,6 +632,19 @@ Response
 
       Setting :attr:`body` also recalculates
       :attr:`~StreamResponse.content_length` value.
+
+      Resetting :attr:`body` (assigning ``None``) sets
+      :attr:`~StreamResponse.content_length` to ``None`` too, dropping
+      *Content-Length* HTTP header.
+
+   .. attribute:: text
+
+      Read-write attribute for storing response's content, represented as str,
+      :class:`str`.
+
+      Setting :attr:`str` also recalculates
+      :attr:`~StreamResponse.content_length` value and
+      :attr:`~StreamResponse.body` value
 
       Resetting :attr:`body` (assigning ``None``) sets
       :attr:`~StreamResponse.content_length` to ``None`` too, dropping
@@ -689,7 +708,7 @@ arbitrary properties for later access from
 
       Read-only property that returns :ref:`event loop<asyncio-event-loop>`.
 
-   .. method:: make_handler()
+   .. method:: make_handler(**kwargs)
 
       Creates HTTP protocol for handling requests.
 
@@ -732,6 +751,11 @@ arbitrary properties for later access from
       *func* may be either regular function or :ref:`coroutine<coroutine>`,
       :meth:`finish` will un-yield (`yield from`) the later.
 
+   .. method:: finish_connections(timeout)
+
+      A :ref:`coroutine<coroutine>` that should be called to close all opened
+      connections.
+
 
 Router
 ^^^^^^
@@ -772,6 +796,9 @@ Router is any object that implements :class:`AbstractRouter` interface.
       *path* may be either *constant* string like ``'/a/b/c'`` or
        *variable rule* like ``'/a/{var}'`` (see
        :ref:`handling variable pathes<aiohttp-web-variable-handler>`)
+
+      Pay attention please: *handler* is converted to coroutine internally when
+      it is a regular function.
 
       :param str path: route path
 

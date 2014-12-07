@@ -2,7 +2,7 @@ import asyncio
 import unittest
 from unittest import mock
 
-from aiohttp import web
+from aiohttp import web, log
 from aiohttp.multidict import MultiDict
 from aiohttp.protocol import HttpVersion11, RawRequestMessage
 
@@ -31,9 +31,10 @@ class TestWeb(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.loop.run_until_complete(h.handle_request(message, payload))
 
-    def test_app_loop(self):
+    def test_app_ctor(self):
         app = web.Application(loop=self.loop)
         self.assertIs(self.loop, app.loop)
+        self.assertIs(app._logger, log.web_logger)
 
     def test_app_default_loop(self):
         asyncio.set_event_loop(self.loop)
@@ -47,8 +48,8 @@ class TestWeb(unittest.TestCase):
         app.register_on_finish(cb1, 1, b=2)
         app.register_on_finish(cb2, 2, c=3)
         self.loop.run_until_complete(app.finish())
-        cb1.assert_called_once_with(1, b=2)
-        cb2.assert_called_once_with(2, c=3)
+        cb1.assert_called_once_with(app, 1, b=2)
+        cb2.assert_called_once_with(app, 2, c=3)
 
     def test_app_register_coro(self):
         app = web.Application(loop=self.loop)
@@ -56,7 +57,7 @@ class TestWeb(unittest.TestCase):
         fut = asyncio.Future(loop=self.loop)
 
         @asyncio.coroutine
-        def cb():
+        def cb(app):
             yield from asyncio.sleep(0.001, loop=self.loop)
             fut.set_result(123)
 
@@ -82,3 +83,54 @@ class TestWeb(unittest.TestCase):
         router = web.UrlDispatcher()
         app = web.Application(loop=self.loop, router=router)
         self.assertIs(router, app.router)
+
+    def test_connections(self):
+        app = web.Application(loop=self.loop)
+        self.assertEqual(app.connections, [])
+
+        handler = object()
+        transport = object()
+        app.connection_made(handler, transport)
+        self.assertEqual(app.connections, [handler])
+
+        app.connection_lost(handler, None)
+        self.assertEqual(app.connections, [])
+
+    def test_finish_connection_no_timeout(self):
+        app = web.Application(loop=self.loop)
+        handler = mock.Mock()
+        transport = mock.Mock()
+        app.connection_made(handler, transport)
+
+        self.loop.run_until_complete(app.finish_connections())
+
+        app.connection_lost(handler, None)
+        self.assertEqual(app.connections, [])
+        handler.closing.assert_called_with()
+        transport.close.assert_called_with()
+
+    def test_finish_connection_timeout(self):
+        app = web.Application(loop=self.loop)
+        handler = mock.Mock()
+        transport = mock.Mock()
+        app.connection_made(handler, transport)
+
+        self.loop.run_until_complete(app.finish_connections(timeout=0.1))
+
+        app.connection_lost(handler, None)
+        self.assertEqual(app.connections, [])
+        handler.closing.assert_called_with()
+        transport.close.assert_called_with()
+
+    def test_logging(self):
+        logger = mock.Mock()
+        app = web.Application(loop=self.loop)
+        app.set_logger(logger)
+        self.assertIs(app._logger, logger)
+
+        app.log_info('Info')
+        logger.info.assert_called_with('Info')
+        app.log_warn('Warn')
+        logger.warn.assert_called_with('Warn')
+        app.log_debug('Debug')
+        logger.debug.assert_called_with('Debug')

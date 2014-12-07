@@ -20,7 +20,7 @@ except ImportError:  # pragma: no cover
 
 import aiohttp
 from . import helpers, streams
-from .log import client_log
+from .log import client_logger
 from .streams import EOF_MARKER, FlowControlStreamReader
 from .multidict import CaseInsensitiveMultiDict, MultiDict, MutableMultiDict
 
@@ -114,8 +114,9 @@ def request(method, url, *,
                 resp.close()
                 conn.close()
                 raise
-        except aiohttp.BadStatusLine as exc:
-            raise aiohttp.ClientConnectionError(exc)
+        except (aiohttp.HttpProcessingError,
+                aiohttp.ServerDisconnectedError) as exc:
+            raise aiohttp.ClientResponseError(exc)
         except OSError as exc:
             raise aiohttp.OsConnectionError(exc)
 
@@ -405,7 +406,7 @@ class ClientRequest:
                 self.headers['CONTENT-TYPE'] = data.content_type
 
             if data.is_multipart:
-                self.chunked = self.chunked or 8196
+                self.chunked = self.chunked or 8192
             else:
                 if 'CONTENT-LENGTH' not in self.headers and not self.chunked:
                     self.headers['CONTENT-LENGTH'] = str(len(self.body))
@@ -420,10 +421,10 @@ class ClientRequest:
             if 'chunked' not in te:
                 self.headers['TRANSFER-ENCODING'] = 'chunked'
 
-            self.chunked = self.chunked if type(self.chunked) is int else 8196
+            self.chunked = self.chunked if type(self.chunked) is int else 8192
         else:
             if 'chunked' in te:
-                self.chunked = 8196
+                self.chunked = 8192
             else:
                 self.chunked = None
                 if 'CONTENT-LENGTH' not in self.headers:
@@ -510,7 +511,7 @@ class ClientRequest:
                     request.write(chunk)
         except Exception as exc:
             reader.set_exception(
-                aiohttp.ClientConnectionError(
+                aiohttp.ClientRequestError(
                     'Can not write request body for %s' % self.url))
         else:
             try:
@@ -522,7 +523,7 @@ class ClientRequest:
                     yield from ret
             except Exception as exc:
                 reader.set_exception(
-                    aiohttp.ClientConnectionError(
+                    aiohttp.ClientRequestError(
                         'Can not write request body for %s' % self.url))
 
         self._writer = None
@@ -659,7 +660,7 @@ class ClientResponse:
                 try:
                     self.cookies.load(hdr)
                 except http.cookies.CookieError as exc:
-                    client_log.warning(
+                    client_logger.warning(
                         'Can not load response cookies: %s', exc)
             connection.share_cookies(self.cookies)
         return self
@@ -758,7 +759,7 @@ class ClientResponse:
 
         ctype = self.headers.get('CONTENT-TYPE', '').lower()
         if 'json' not in ctype:
-            client_log.warning(
+            client_logger.warning(
                 'Attempt to decode JSON with unexpected mimetype: %s', ctype)
 
         if not self._content.strip():
@@ -901,7 +902,9 @@ class HttpClient:
                     compress=compress, chunked=chunked,
                     expect100=expect100, read_until_eof=read_until_eof,
                     connector=self._connector, loop=self._loop)
-            except (aiohttp.ConnectionError, aiohttp.TimeoutError):
+            except (aiohttp.ServerDisconnectedError,
+                    aiohttp.ClientConnectionError,
+                    aiohttp.TimeoutError):
                 pass
             else:
                 if 500 <= resp.status <= 600:
@@ -920,9 +923,5 @@ class HttpClient:
                 if self._connector:
                     self._connector.clear_resolved_hosts(info[0], info[1])
 
-        raise aiohttp.ConnectionError('All hosts are unreachable %s' % url)
-
-
-# backward compatibility
-HttpRequest = ClientRequest
-HttpResponse = ClientResponse
+        raise aiohttp.ClientConnectionError(
+            'All hosts are unreachable %s' % url)

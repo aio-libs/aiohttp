@@ -232,7 +232,7 @@ class ClientResponseTests(unittest.TestCase):
         res = self.loop.run_until_complete(self.response.json(loads=custom))
         self.assertEqual(res, 'data-custom')
 
-    @unittest.mock.patch('aiohttp.client.client_log')
+    @unittest.mock.patch('aiohttp.client.client_logger')
     def test_json_no_content(self, m_log):
         self.response.headers = {
             'CONTENT-TYPE': 'data/octet-stream'}
@@ -559,7 +559,7 @@ class ClientRequestTests(unittest.TestCase):
         m_http.Request.return_value\
             .add_compression_filter.assert_called_with('deflate')
         m_http.Request.return_value\
-            .add_chunking_filter.assert_called_with(8196)
+            .add_chunking_filter.assert_called_with(8192)
 
     def test_chunked(self):
         req = ClientRequest(
@@ -582,7 +582,7 @@ class ClientRequestTests(unittest.TestCase):
 
         self.assertEqual('chunked', req.headers['TRANSFER-ENCODING'])
         m_http.Request.return_value\
-                      .add_chunking_filter.assert_called_with(8196)
+                      .add_chunking_filter.assert_called_with(8192)
 
     @unittest.mock.patch('aiohttp.client.aiohttp')
     def test_chunked_explicit_size(self, m_http):
@@ -847,7 +847,7 @@ class HttpClientTests(unittest.TestCase):
             [('localhost', 56777), ('localhost', 56778)], loop=self.loop)
 
         self.assertRaises(
-            aiohttp.ConnectionError,
+            aiohttp.ClientConnectionError,
             self.loop.run_until_complete,
             c.request('get', path='/'))
 
@@ -857,7 +857,7 @@ class HttpClientTests(unittest.TestCase):
             conn_timeout=0.0001, loop=self.loop)
 
         self.assertRaises(
-            aiohttp.ConnectionError,
+            aiohttp.ClientConnectionError,
             self.loop.run_until_complete, c.request('get', path='/'))
 
     def test_failed_request_one_failed(self):
@@ -880,7 +880,7 @@ class HttpClientTests(unittest.TestCase):
         c._failed.append((('localhost', 1001, True), now - 10))
 
         self.assertRaises(
-            aiohttp.ConnectionError,
+            aiohttp.ClientConnectionError,
             self.loop.run_until_complete,
             c.request('get', path='/'))
 
@@ -892,7 +892,7 @@ class HttpClientTests(unittest.TestCase):
 
         called = False
 
-        class m:
+        class M:
 
             def clear(self):
                 nonlocal called
@@ -904,7 +904,7 @@ class HttpClientTests(unittest.TestCase):
             def __getitem__(self, key):
                 return 'localhost'
 
-        c._connector._resolved_hosts = m()
+        c._connector._resolved_hosts = M()
 
         resp = unittest.mock.Mock()
         resp.status = 500

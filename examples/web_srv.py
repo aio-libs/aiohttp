@@ -13,29 +13,30 @@ def intro(request):
         in browser url bar
     """).format(url='127.0.0.1:8080')
     binary = txt.encode('utf8')
-    resp = StreamResponse(request)
+    resp = StreamResponse()
     resp.content_length = len(binary)
+    resp.start(request)
     resp.write(binary)
     return resp
 
 
 def simple(request):
-    return Response(request, b'Simple answer')
+    return Response(b'Simple answer')
 
 
 def change_body(request):
-    resp = Response(request)
+    resp = Response()
     resp.body = b"Body changed"
     return resp
 
 
 @asyncio.coroutine
 def hello(request):
-    resp = StreamResponse(request)
-    name = request.match_info.get('name', 'Anonimous')
+    resp = StreamResponse()
+    name = request.match_info.get('name', 'Anonymous')
     answer = ('Hello, ' + name).encode('utf8')
     resp.content_length = len(answer)
-    resp.send_headers()
+    resp.start(request)
     resp.write(answer)
     yield from resp.write_eof()
     return resp

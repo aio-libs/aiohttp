@@ -10,9 +10,11 @@ import json
 import re
 import os
 
-from urllib.parse import urlsplit, parse_qsl, unquote, urlencode
+from urllib.parse import urlsplit, parse_qsl, urlencode, unquote
 
 from .abc import AbstractRouter, AbstractMatchInfo
+from .helpers import reify
+from .log import web_logger
 from .multidict import (CaseInsensitiveMultiDict,
                         CaseInsensitiveMutableMultiDict,
                         MultiDict,
@@ -74,7 +76,7 @@ __all__ = [
     'HTTPServiceUnavailable',
     'HTTPGatewayTimeout',
     'HTTPVersionNotSupported',
-    ]
+]
 
 
 sentinel = object()
@@ -140,12 +142,10 @@ class Request(HeadersMixin):
         self._writer = writer
         self._method = message.method
         self._host = message.headers.get('HOST')
-        path = unquote(message.path)
-        self._path_qs = path
-        res = urlsplit(path)
-        self._path = res.path
+        self._path_qs = message.path
+        res = urlsplit(message.path)
+        self._path = unquote(res.path)
         self._query_string = res.query
-        self._get = None
         self._post = None
         self._post_files_cache = None
         self._headers = CaseInsensitiveMultiDict._from_uppercase_multidict(
@@ -213,15 +213,23 @@ class Request(HeadersMixin):
         """
         return self._query_string
 
-    @property
+    @reify
     def GET(self):
         """A multidict with all the variables in the query string.
 
         Lazy property.
         """
-        if self._get is None:
-            self._get = MultiDict(parse_qsl(self._query_string))
-        return self._get
+        return MultiDict(parse_qsl(self._query_string))
+
+    @reify
+    def POST(self):
+        """A multidict with all the variables in the POST parameters.
+
+        post() methods has to be called before using this attribute.
+        """
+        if self._post is None:
+            raise RuntimeError("POST is not available before post()")
+        return self._post
 
     @property
     def headers(self):
@@ -285,7 +293,6 @@ class Request(HeadersMixin):
 
         Returns bytes object with full request content.
         """
-
         body = bytearray()
         while True:
             chunk = yield from self._payload.readany()
@@ -308,13 +315,14 @@ class Request(HeadersMixin):
         return loader(body)
 
     @asyncio.coroutine
-    def POST(self):
+    def post(self):
         """Return POST parameters."""
         if self._post is not None:
             return self._post
         if self.method not in ('POST', 'PUT', 'PATCH'):
             self._post = MultiDict()
             return self._post
+
         content_type = self.content_type
         if (content_type not in ('',
                                  'application/x-www-form-urlencoded',
@@ -339,10 +347,11 @@ class Request(HeadersMixin):
             'base64': binascii.a2b_base64,
             'quoted-printable': binascii.a2b_qp
         }
+
         out = MutableMultiDict()
         for field in fs.list or ():
-            transfer_encoding = field.headers.get('Content-Transfer-Encoding',
-                                                  None)
+            transfer_encoding = field.headers.get(
+                'Content-Transfer-Encoding', None)
             if field.filename:
                 ff = FileField(field.name,
                                field.filename,
@@ -360,6 +369,7 @@ class Request(HeadersMixin):
                     value = supported_tranfer_encoding[
                         transfer_encoding](value)
                 out.add(field.name, value)
+
         self._post = MultiDict(out.items(getall=True))
         return self._post
 
@@ -382,12 +392,12 @@ class Request(HeadersMixin):
 
 class StreamResponse(HeadersMixin):
 
-    def __init__(self, request, *, status=200, reason=None):
-        self._request = request
+    def __init__(self, *, status=200, reason=None):
+        self._body = None
+        self._keep_alive = None
         self._headers = CaseInsensitiveMutableMultiDict()
-        self.set_status(status, reason)
         self._cookies = http.cookies.SimpleCookie()
-        self._keep_alive = request.keep_alive
+        self.set_status(status, reason)
 
         self._resp_impl = None
         self._eof_sent = False
@@ -396,10 +406,6 @@ class StreamResponse(HeadersMixin):
         for cookie in self._cookies.values():
             value = cookie.output(header='')[1:]
             self.headers.add('Set-Cookie', value)
-
-    @property
-    def request(self):
-        return self._request
 
     @property
     def status(self):
@@ -520,15 +526,23 @@ class StreamResponse(HeadersMixin):
             ctype = self._content_type
         self.headers['Content-Type'] = ctype
 
-    def send_headers(self):
+    def start(self, request, version=None, keep_alive=None):
         if self._resp_impl is not None:
-            raise RuntimeError("HTTP headers are already sent")
+            return self._resp_impl
+
+        if version is None:
+            version = request.version
+
+        if keep_alive is None:
+            keep_alive = self._keep_alive
+        if keep_alive is None:
+            keep_alive = request.keep_alive
 
         resp_impl = self._resp_impl = ResponseImpl(
-            self._request._writer,
+            request._writer,
             self._status,
-            self._request.version,
-            not self._keep_alive,
+            version,
+            not keep_alive,
             self._reason)
 
         self._copy_cookies()
@@ -538,6 +552,7 @@ class StreamResponse(HeadersMixin):
             resp_impl.add_header(key, val)
 
         resp_impl.send_headers()
+        return resp_impl
 
     def write(self, data):
         if not isinstance(data, (bytes, bytearray, memoryview)):
@@ -547,7 +562,7 @@ class StreamResponse(HeadersMixin):
         if self._eof_sent:
             raise RuntimeError("Cannot call write() after write_eof()")
         if self._resp_impl is None:
-            self.send_headers()
+            raise RuntimeError("Cannot call write() before start()")
 
         if data:
             return self._resp_impl.write(data)
@@ -559,7 +574,7 @@ class StreamResponse(HeadersMixin):
         if self._eof_sent:
             return
         if self._resp_impl is None:
-            raise RuntimeError("No headers has been sent")
+            raise RuntimeError("Response has not been started")
 
         yield from self._resp_impl.write_eof()
         self._eof_sent = True
@@ -567,12 +582,24 @@ class StreamResponse(HeadersMixin):
 
 class Response(StreamResponse):
 
-    def __init__(self, request, body=None, *,
-                 status=200, reason=None, headers=None):
-        super().__init__(request, status=status, reason=reason)
-        self.body = body
+    def __init__(self, body=None, *,
+                 status=200, reason=None, headers=None,
+                 text=None, content_type=None):
+        super().__init__(status=status, reason=reason)
+
         if headers is not None:
             self.headers.extend(headers)
+        if content_type:
+            self.content_type = content_type
+
+        if body is not None and text is not None:
+            raise ValueError("body and text are not allowed together.")
+        elif body is not None:
+            self.body = body
+        elif text is not None:
+            self.text = text
+        else:
+            self.body = None
 
     @property
     def body(self):
@@ -581,27 +608,40 @@ class Response(StreamResponse):
     @body.setter
     def body(self, body):
         if body is not None and not isinstance(body, bytes):
-            raise TypeError('body argument must be bytes (%r)',
-                            type(body))
+            raise TypeError('body argument must be bytes (%r)', type(body))
         self._body = body
         if body is not None:
             self.content_length = len(body)
         else:
             self.content_length = 0
 
+    @property
+    def text(self):
+        return self._body.decode(self.charset)
+
+    @text.setter
+    def text(self, text):
+        if text is not None and not isinstance(text, str):
+            raise TypeError('text argument must be str (%r)', type(text))
+
+        if self.content_type == 'application/octet-stream':
+            self.content_type = 'plain/text'
+        if self.charset is None:
+            self.charset = 'utf-8'
+
+        self.body = text.encode(self.charset)
+
     @asyncio.coroutine
     def write_eof(self):
         body = self._body
-        if self._resp_impl is None:
-            self.send_headers()
         if body is not None:
             self.write(body)
         yield from super().write_eof()
 
+
 ############################################################
 # HTTP Exceptions
 ############################################################
-
 
 class HTTPException(Response, Exception):
 
@@ -610,11 +650,13 @@ class HTTPException(Response, Exception):
 
     status_code = None
 
-    def __init__(self, request, *, headers=None, reason=None):
-        Response.__init__(self, request, status=self.status_code,
-                          headers=headers, reason=reason)
+    def __init__(self, *, headers=None, reason=None, **kwargs):
+        Response.__init__(self, status=self.status_code,
+                          headers=headers, reason=reason, **kwargs)
         Exception.__init__(self, self.reason)
-        self.body = "{}: {}".format(self.status, self.reason).encode('utf-8')
+        if self.body is None:
+            self.body = "{}: {}".format(
+                self.status, self.reason).encode('utf-8')
 
 
 class HTTPError(HTTPException):
@@ -664,10 +706,10 @@ class HTTPPartialContent(HTTPSuccessful):
 
 class _HTTPMove(HTTPRedirection):
 
-    def __init__(self, request, location, *,  headers=None, reason=None):
+    def __init__(self, location, *, headers=None, reason=None):
         if not location:
             raise ValueError("HTTP redirects need a location to redirect to.")
-        super().__init__(request, headers=headers, reason=reason)
+        super().__init__(headers=headers, reason=reason)
         self.headers['Location'] = location
         self.location = location
 
@@ -736,10 +778,9 @@ class HTTPNotFound(HTTPClientError):
 class HTTPMethodNotAllowed(HTTPClientError):
     status_code = 405
 
-    def __init__(self, request, method, allowed_methods, *,
-                 headers=None, reason=None):
+    def __init__(self, method, allowed_methods, *, headers=None, reason=None):
         allow = ','.join(sorted(allowed_methods))
-        super().__init__(request, headers=headers, reason=reason)
+        super().__init__(headers=headers, reason=reason)
         self.headers['Allow'] = allow
         self.allowed_methods = allowed_methods
         self.method = method.upper()
@@ -890,6 +931,7 @@ class Route(metaclass=abc.ABCMeta):
 
 
 class PlainRoute(Route):
+
     def __init__(self, method, handler, name, path):
         super().__init__(method, handler, name)
         self._path = path
@@ -959,13 +1001,13 @@ class StaticRoute(Route):
 
     @asyncio.coroutine
     def handle(self, request):
-        resp = StreamResponse(request)
+        resp = StreamResponse()
         filename = request.match_info['filename']
         filepath = os.path.join(self._directory, filename)
         if '..' in filename:
-            raise HTTPNotFound(request)
+            raise HTTPNotFound()
         if not os.path.exists(filepath) or not os.path.isfile(filepath):
-            raise HTTPNotFound(request)
+            raise HTTPNotFound()
 
         ct = mimetypes.guess_type(filename)[0]
         if not ct:
@@ -973,13 +1015,13 @@ class StaticRoute(Route):
         resp.content_type = ct
 
         resp.headers['transfer-encoding'] = 'chunked'
-        resp.send_headers()
+        resp.start(request)
 
         with open(filepath, 'rb') as f:
-            chunk = f.read(1024)
+            chunk = f.read(8192)
             while chunk:
                 resp.write(chunk)
-                chunk = f.read(1024)
+                chunk = f.read(8192)
 
         yield from resp.write_eof()
         return resp
@@ -995,7 +1037,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     DYN = re.compile(r'^\{[a-zA-Z][_a-zA-Z0-9]*\}$')
     GOOD = r'[^{}/]+'
-    PLAIN = re.compile('^'+GOOD+'$')
+    PLAIN = re.compile('^' + GOOD + '$')
 
     METHODS = {'POST', 'GET', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'}
 
@@ -1020,9 +1062,9 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                 return UrlMappingMatchInfo(match_dict, route)
         else:
             if allowed_methods:
-                raise HTTPMethodNotAllowed(request, method, allowed_methods)
+                raise HTTPMethodNotAllowed(method, allowed_methods)
             else:
-                raise HTTPNotFound(request)
+                raise HTTPNotFound()
 
     def __iter__(self):
         return iter(self._routes)
@@ -1050,6 +1092,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     def add_route(self, method, path, handler, *, name=None):
         assert path.startswith('/')
         assert callable(handler), handler
+        if not asyncio.iscoroutinefunction(handler):
+            handler = asyncio.coroutine(handler)
         method = method.upper()
         assert method in self.METHODS, method
         parts = []
@@ -1058,7 +1102,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             if not part:
                 continue
             if self.DYN.match(part):
-                parts.append('(?P<'+part[1:-1]+'>'+self.GOOD+')')
+                parts.append('(?P<' + part[1:-1] + '>' + self.GOOD + ')')
                 factory = DynamicRoute
             elif self.PLAIN.match(part):
                 parts.append(re.escape(part))
@@ -1073,6 +1117,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             compiled = re.compile('^' + pattern + '$')
             route = DynamicRoute(method, handler, name, compiled, path)
         self._register_endpoint(route)
+        return route
 
     def add_static(self, prefix, path, *, name=None):
         """
@@ -1096,18 +1141,31 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
 class RequestHandler(ServerHttpProtocol):
 
-    def __init__(self, app, **kwargs):
+    def __init__(self, app, router, middlewares, **kwargs):
         super().__init__(**kwargs)
         self._app = app
-        self._middlewares = app.middlewares
+        self._router = router
+        self._middlewares = middlewares
+
+    def connection_made(self, transport):
+        super().connection_made(transport)
+
+        self._app.connection_made(self, transport)
+
+    def connection_lost(self, exc):
+        self._app.connection_lost(self, exc)
+
+        super().connection_lost(exc)
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
+        now = self._loop.time()
         app = self._app
+
         request = Request(app, message, payload,
                           self.transport, self.writer, self.keep_alive_timeout)
         try:
-            match_info = yield from self._app.router.resolve(request)
+            match_info = yield from self._router.resolve(request)
 
             assert isinstance(match_info, AbstractMatchInfo), match_info
 
@@ -1116,39 +1174,42 @@ class RequestHandler(ServerHttpProtocol):
 
             for factory in reversed(self._middlewares):
                 handler = factory(app, handler)
+            resp = yield from handler(request)
 
-            resp = handler(request)
-            if (asyncio.iscoroutine(resp) or
-                    isinstance(resp, asyncio.Future)):
-                resp = yield from resp
             if not isinstance(resp, StreamResponse):
-                raise RuntimeError(("Handler should return response "
-                                    "instance, got {!r}")
-                                   .format(type(resp)))
+                raise RuntimeError(
+                    ("Handler should return response instance, got {!r}")
+                    .format(type(resp)))
         except HTTPException as exc:
             resp = exc
 
+        resp_msg = resp.start(request)
         yield from resp.write_eof()
-        if resp.keep_alive:
-            # Don't need to read request body if any on closing connection
-            yield from request.release()
-        self.keep_alive(resp.keep_alive)
+
+        # notify server about keep-alive
+        self.keep_alive(resp_msg.keep_alive())
+
+        # log access
+        self.log_access(message, None, resp_msg, self._loop.time() - now)
 
 
 class Application(dict):
 
-    def __init__(self, *, loop=None, router=None, middlewares=(), **kwargs):
+    def __init__(self, *, logger=web_logger, loop=None, router=None,
+                 middlewares=(), **kwargs):
         # TODO: explicitly accept *debug* param
         if loop is None:
             loop = asyncio.get_event_loop()
-        self._kwargs = kwargs
         if router is None:
             router = UrlDispatcher()
         assert isinstance(router, AbstractRouter), router
         self._router = router
         self._loop = loop
+        self._logger = logger
         self._finish_callbacks = []
         self._middlewares = tuple(middlewares)
+        self._connections = {}
+        self.update(**kwargs)
 
     @property
     def router(self):
@@ -1162,14 +1223,42 @@ class Application(dict):
     def middlewares(self):
         return self._middlewares
 
-    def make_handler(self):
-        return RequestHandler(self, loop=self._loop, **self._kwargs)
+    def set_logger(self, logger):
+        self._logger = logger
+
+    def log_info(self, msg, *args, **kwargs):
+        self._logger.info(msg, *args, **kwargs)
+
+    def log_warn(self, msg, *args, **kwargs):
+        self._logger.warn(msg, *args, **kwargs)
+
+    def log_debug(self, msg, *args, **kwargs):
+        self._logger.debug(msg, *args, **kwargs)
+
+    def make_handler(self, **kwargs):
+        kwargs.setdefault('logger', self._logger)
+        return RequestHandler(self, self._router, self._middlewares,
+                              loop=self._loop, **kwargs)
+
+    @property
+    def connections(self):
+        return list(self._connections.keys())
+
+    def connection_made(self, handler, transport):
+        self._connections[handler] = transport
+
+    def connection_lost(self, handler, exc=None):
+        if handler in self._connections:
+            del self._connections[handler]
 
     @asyncio.coroutine
     def finish(self):
-        for (cb, args, kwargs) in self._finish_callbacks:
+        callbacks = self._finish_callbacks
+        self._finish_callbacks = []
+
+        for (cb, args, kwargs) in callbacks:
             try:
-                res = cb(*args, **kwargs)
+                res = cb(self, *args, **kwargs)
                 if (asyncio.iscoroutine(res) or
                         isinstance(res, asyncio.Future)):
                     yield from res
@@ -1179,6 +1268,29 @@ class Application(dict):
                     'exception': exc,
                     'application': self,
                 })
+
+    @asyncio.coroutine
+    def finish_connections(self, timeout=None):
+        for handler in self._connections.keys():
+            handler.closing()
+
+        def cleanup():
+            while self._connections:
+                yield from asyncio.sleep(0.5, loop=self._loop)
+
+        if timeout:
+            try:
+                yield from asyncio.wait_for(
+                    cleanup(), timeout, loop=self._loop)
+            except asyncio.TimeoutError:
+                self.log_warn(
+                    "Not all connections are closed (pending: %d)",
+                    len(self._connections))
+
+        for transport in self._connections.values():
+            transport.close()
+
+        self._connections.clear()
 
     def register_on_finish(self, func, *args, **kwargs):
         self._finish_callbacks.insert(0, (func, args, kwargs))

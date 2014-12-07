@@ -76,7 +76,7 @@ class StreamParserTests(unittest.TestCase):
 
         proto = parsers.StreamParser()
         proto.set_transport(transp)
-        proto.feed_data(b'1' * (2**16 * 3))
+        proto.feed_data(b'1' * (2 ** 16 * 3))
         transp.pause_reading.assert_called_with()
         self.assertTrue(proto._paused)
 
@@ -87,7 +87,7 @@ class StreamParserTests(unittest.TestCase):
         proto.set_transport(transp)
 
         transp.pause_reading.side_effect = NotImplementedError()
-        proto.feed_data(b'1' * (2**16 * 3))
+        proto.feed_data(b'1' * (2 ** 16 * 3))
         self.assertIsNone(proto._transport)
 
     def test_set_parser_unset_prev(self):
@@ -169,7 +169,7 @@ class StreamParserTests(unittest.TestCase):
         stream.feed_eof()
         s = stream.set_parser(p)
         self.assertFalse(s.is_eof())
-        self.assertIsInstance(s.exception(), errors.ConnectionError)
+        self.assertIsInstance(s.exception(), RuntimeError)
 
     def test_set_parser_unset(self):
         stream = parsers.StreamParser(paused=False)
@@ -282,7 +282,7 @@ class StreamParserTests(unittest.TestCase):
         stream.feed_data(b'line1')
         stream.feed_eof()
         self.assertFalse(s.is_eof())
-        self.assertIsInstance(s.exception(), errors.ConnectionError)
+        self.assertIsInstance(s.exception(), RuntimeError)
 
     def test_feed_parser2(self):
         stream = parsers.StreamParser()
@@ -322,7 +322,7 @@ class StreamParserTests(unittest.TestCase):
 
         stream.feed_data(b'line1')
         stream.unset_parser()
-        self.assertIsInstance(s.exception(), errors.ConnectionError)
+        self.assertIsInstance(s.exception(), RuntimeError)
         self.assertFalse(s.is_eof())
 
     def test_unset_parser_stop(self):
@@ -339,6 +339,20 @@ class StreamParserTests(unittest.TestCase):
         stream.feed_data(b'line1')
         stream.unset_parser()
         self.assertTrue(s._eof)
+
+    def test_eof_exc(self):
+        def p(out, buf):
+            while True:
+                yield  # read chunk
+
+        class CustomEofErr(Exception):
+            pass
+
+        stream = parsers.StreamParser(eof_exc_class=CustomEofErr)
+        s = stream.set_parser(p)
+
+        stream.feed_eof()
+        self.assertIsInstance(s.exception(), CustomEofErr)
 
 
 class StreamProtocolTests(unittest.TestCase):

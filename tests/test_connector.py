@@ -143,7 +143,7 @@ class BaseConnectorTests(unittest.TestCase):
         self.assertEqual(conn._get(1), (None, None))
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        conn._conns[1] = [(tr, proto, time.time()-1000)]
+        conn._conns[1] = [(tr, proto, time.time() - 1000)]
         self.assertEqual(conn._get(1), (None, None))
         self.assertEqual(conn._conns[1], [])
 
@@ -574,7 +574,7 @@ class ProxyConnectorTests(unittest.TestCase):
 
         req = ClientRequest('GET', 'https://www.python.org')
         with self.assertRaisesRegex(
-                aiohttp.HttpProxyError, "(400, 'bad request')"):
+                aiohttp.HttpProxyError, "400, message='bad request'"):
             self.loop.run_until_complete(connector._create_connection(req))
 
     @unittest.mock.patch('aiohttp.connector.ClientRequest')

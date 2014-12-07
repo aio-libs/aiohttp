@@ -329,12 +329,12 @@ class WebsocketWriterTests(unittest.TestCase):
         self.transport.write.assert_called_with(b'\x82\x06binary')
 
     def test_send_binary_long(self):
-        self.writer.send(b'b'*127, True)
+        self.writer.send(b'b' * 127, True)
         self.assertTrue(
             self.transport.write.call_args[0][0].startswith(b'\x82~\x00\x7fb'))
 
     def test_send_binary_very_long(self):
-        self.writer.send(b'b'*65537, True)
+        self.writer.send(b'b' * 65537, True)
         self.assertTrue(
             self.transport.write.call_args[0][0].startswith(
                 b'\x82\x7f\x00\x00\x00\x00\x00\x01\x00\x01b'))
@@ -357,7 +357,7 @@ class WebSocketHandshakeTests(unittest.TestCase):
 
     def test_not_get(self):
         self.assertRaises(
-            errors.HttpErrorException,
+            errors.HttpProcessingError,
             websocket.do_handshake,
             'POST', self.message.headers, self.transport)
 
@@ -471,7 +471,7 @@ class WebSocketHandshakeTests(unittest.TestCase):
 
         self.assertEqual(protocol, best_proto)
 
-    @unittest.mock.patch('aiohttp.websocket.websocket_log.warning')
+    @unittest.mock.patch('aiohttp.websocket.ws_logger.warning')
     def test_handshake_protocol_unsupported(self, m_websocket_warn):
         '''Tests if a protocol mismatch handshake warns and returns None'''
         warn_called = False
