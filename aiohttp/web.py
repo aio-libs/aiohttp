@@ -399,6 +399,7 @@ class StreamResponse(HeadersMixin):
         self._cookies = http.cookies.SimpleCookie()
         self.set_status(status, reason)
 
+        self._req = None
         self._resp_impl = None
         self._eof_sent = False
 
@@ -526,22 +527,23 @@ class StreamResponse(HeadersMixin):
             ctype = self._content_type
         self.headers['Content-Type'] = ctype
 
-    def start(self, request, version=None, keep_alive=None):
+    def start(self, request):
         if self._resp_impl is not None:
+            if self._req is not request:
+                raise RuntimeError(
+                    'Response has been started with different request.')
             return self._resp_impl
 
-        if version is None:
-            version = request.version
+        self._req = request
 
-        if keep_alive is None:
-            keep_alive = self._keep_alive
+        keep_alive = self._keep_alive
         if keep_alive is None:
             keep_alive = request.keep_alive
 
         resp_impl = self._resp_impl = ResponseImpl(
             request._writer,
             self._status,
-            version,
+            request.version,
             not keep_alive,
             self._reason)
 

@@ -106,6 +106,10 @@ class TestStreamResponse(unittest.TestCase):
         self.assertTrue(msg.send_headers.called)
         self.assertIs(msg, resp.start(req))
 
+        req2 = self.make_request('GET', '/')
+        with self.assertRaises(RuntimeError):
+            resp.start(req2)
+
     def test_write_non_byteish(self):
         resp = StreamResponse()
         resp.start(self.make_request('GET', '/'))
