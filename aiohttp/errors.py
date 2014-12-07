@@ -6,9 +6,8 @@ __all__ = ['ClientDisconnectedError', 'ServerDisconnectedError',
            'HttpMethodNotAllowed', 'HttpBadRequest', 'HttpProxyError',
            'BadStatusLine', 'LineTooLong', 'InvalidHeader',
 
-           'ClientConnectionError', 'OsConnectionError',
-           'ClientRequestError', 'ClientResponseError',
-           'ConnectionTimeoutError', 'TimeoutError', 'ProxyConnectionError']
+           'ClientConnectionError', 'ClientOSError', 'ClientTimeoutError',
+           'ClientRequestError', 'ClientResponseError', 'ProxyConnectionError']
 
 from asyncio import TimeoutError
 
@@ -37,12 +36,12 @@ class ClientResponseError(ClientConnectionError):
     """Connection error during reading response."""
 
 
-class OsConnectionError(ClientConnectionError):
+class ClientOSError(ClientConnectionError):
     """OSError error."""
 
 
-class ConnectionTimeoutError(ClientConnectionError, TimeoutError):
-    """Connection timeout error."""
+class ClientTimeoutError(ClientConnectionError, TimeoutError):
+    """Client connection timeout error."""
 
 
 class ProxyConnectionError(ClientConnectionError):

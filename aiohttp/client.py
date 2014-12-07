@@ -117,10 +117,8 @@ def request(method, url, *,
         except (aiohttp.HttpProcessingError,
                 aiohttp.ServerDisconnectedError) as exc:
             raise aiohttp.ClientResponseError(exc)
-        except asyncio.TimeoutError as exc:
-            raise aiohttp.ConnectionTimeoutError(exc)
         except OSError as exc:
-            raise aiohttp.OsConnectionError(exc)
+            raise aiohttp.ClientOSError(exc)
 
         # redirects
         if resp.status in (301, 302, 303, 307) and allow_redirects:
@@ -905,8 +903,7 @@ class HttpClient:
                     expect100=expect100, read_until_eof=read_until_eof,
                     connector=self._connector, loop=self._loop)
             except (aiohttp.ServerDisconnectedError,
-                    aiohttp.ClientConnectionError,
-                    aiohttp.TimeoutError):
+                    aiohttp.ClientConnectionError):
                 pass
             else:
                 if 500 <= resp.status <= 600:

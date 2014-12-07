@@ -10,9 +10,9 @@ import socket
 import weakref
 
 from .client import ClientRequest
-from .errors import HttpProxyError
-from .errors import ProxyConnectionError
-from .errors import ServerDisconnectedError, OsConnectionError
+from .errors import ServerDisconnectedError
+from .errors import HttpProxyError, ProxyConnectionError
+from .errors import ClientOSError, ClientTimeoutError
 from .helpers import BasicAuth
 
 
@@ -155,12 +155,17 @@ class BaseConnector(object):
 
         transport, proto = self._get(key)
         if transport is None:
-            if self._conn_timeout:
-                transport, proto = yield from asyncio.wait_for(
-                    self._create_connection(req),
-                    self._conn_timeout, loop=self._loop)
-            else:
-                transport, proto = yield from self._create_connection(req)
+            try:
+                if self._conn_timeout:
+                    transport, proto = yield from asyncio.wait_for(
+                        self._create_connection(req),
+                        self._conn_timeout, loop=self._loop)
+                else:
+                    transport, proto = yield from self._create_connection(req)
+            except asyncio.TimeoutError as exc:
+                raise ClientTimeoutError(exc)
+            except OSError as exc:
+                raise ClientOSError(exc)
 
         return Connection(self, key, req, transport, proto, self._loop)
 
@@ -302,7 +307,7 @@ class TCPConnector(BaseConnector):
                     **kwargs))
             except OSError:
                 if not hosts:
-                    raise OsConnectionError(
+                    raise ClientOSError(
                         'Can not connect to %s:%s' % (req.host, req.port))
 
 

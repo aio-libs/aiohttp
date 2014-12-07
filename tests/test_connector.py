@@ -228,6 +228,27 @@ class BaseConnectorTests(unittest.TestCase):
         self.assertEqual(connection._protocol, proto)
         self.assertIsInstance(connection, Connection)
 
+    def test_connect_timeout(self):
+        conn = aiohttp.BaseConnector(loop=self.loop)
+        conn._create_connection = unittest.mock.Mock()
+        conn._create_connection.return_value = asyncio.Future(loop=self.loop)
+        conn._create_connection.return_value.set_exception(
+            asyncio.TimeoutError())
+
+        with self.assertRaises(aiohttp.ClientTimeoutError):
+            req = unittest.mock.Mock()
+            self.loop.run_until_complete(conn.connect(req))
+
+    def test_connect_oserr(self):
+        conn = aiohttp.BaseConnector(loop=self.loop)
+        conn._create_connection = unittest.mock.Mock()
+        conn._create_connection.return_value = asyncio.Future(loop=self.loop)
+        conn._create_connection.return_value.set_exception(OSError())
+
+        with self.assertRaises(aiohttp.ClientOSError):
+            req = unittest.mock.Mock()
+            self.loop.run_until_complete(conn.connect(req))
+
     def test_start_cleanup_task(self):
         loop = unittest.mock.Mock()
         conn = aiohttp.BaseConnector(loop=loop)
