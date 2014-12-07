@@ -117,6 +117,8 @@ def request(method, url, *,
         except (aiohttp.HttpProcessingError,
                 aiohttp.ServerDisconnectedError) as exc:
             raise aiohttp.ClientResponseError(exc)
+        except asyncio.TimeoutError as exc:
+            raise aiohttp.ConnectionTimeoutError(exc)
         except OSError as exc:
             raise aiohttp.OsConnectionError(exc)
 

@@ -8,7 +8,7 @@ __all__ = ['ClientDisconnectedError', 'ServerDisconnectedError',
 
            'ClientConnectionError', 'OsConnectionError',
            'ClientRequestError', 'ClientResponseError',
-           'TimeoutError', 'ProxyConnectionError']
+           'ConnectionTimeoutError', 'TimeoutError', 'ProxyConnectionError']
 
 from asyncio import TimeoutError
 
@@ -39,6 +39,10 @@ class ClientResponseError(ClientConnectionError):
 
 class OsConnectionError(ClientConnectionError):
     """OSError error."""
+
+
+class ConnectionTimeoutError(ClientConnectionError, TimeoutError):
+    """Connection timeout error."""
 
 
 class ProxyConnectionError(ClientConnectionError):
