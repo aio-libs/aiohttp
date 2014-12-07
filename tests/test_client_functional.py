@@ -1046,7 +1046,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             yield from r.read()
             self.assertEqual(1, len(connector._conns))
 
-            with self.assertRaises(aiohttp.ClientConnectionError):
+            with self.assertRaises(aiohttp.ClientError):
                 yield from client.request('GET', url,
                                           connector=connector,
                                           loop=self.loop)
