@@ -24,6 +24,8 @@ CHANGES
 
 - Removed deprecated AsyncGunicornWorker
 
+- Removed deprecated HttpClient
+
 
 0.11.0 (11-29-2014)
 -------------------

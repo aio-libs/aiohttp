@@ -298,6 +298,20 @@ class BaseConnectorTests(unittest.TestCase):
         self.assertEqual(conn.family, socket.AF_INET)
         self.assertEqual(conn.resolved_hosts, {})
 
+    def test_tcp_connector_clear_resolved_hosts(self):
+        conn = aiohttp.TCPConnector(loop=self.loop)
+        info = object()
+        conn._resolved_hosts[('localhost', 123)] = info
+        conn._resolved_hosts[('localhost', 124)] = info
+        conn.clear_resolved_hosts('localhost', 123)
+        self.assertEqual(
+            conn.resolved_hosts, {('localhost', 124): info})
+        conn.clear_resolved_hosts('localhost', 123)
+        self.assertEqual(
+            conn.resolved_hosts, {('localhost', 124): info})
+        conn.clear_resolved_hosts()
+        self.assertEqual(conn.resolved_hosts, {})
+
 
 class HttpClientConnectorTests(unittest.TestCase):
 

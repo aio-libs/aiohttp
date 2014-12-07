@@ -48,14 +48,17 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 self.assertEqual(content1, content2)
                 r.close()
 
-    def test_client_HTTP_200_OK_METHOD(self):
+    def test_HTTP_200_OK_METHOD_connector(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
-            for meth in ('get', 'post', 'put', 'delete', 'head'):
-                host = httpd.url().split('://', 1)[-1]
-                httpclient = client.HttpClient(host, loop=self.loop)
+            conn = aiohttp.TCPConnector(
+                conn_timeout=0.2, resolve=True, loop=self.loop)
+            conn.clear_resolved_hosts()
 
+            for meth in ('get', 'post', 'put', 'delete', 'head'):
                 r = self.loop.run_until_complete(
-                    httpclient.request(meth, '/method/%s' % meth))
+                    client.request(
+                        meth, httpd.url('method', meth),
+                        connector=conn, loop=self.loop))
                 content1 = self.loop.run_until_complete(r.read())
                 content2 = self.loop.run_until_complete(r.read())
                 content = content1.decode()
@@ -67,64 +70,6 @@ class HttpClientFunctionalTests(unittest.TestCase):
                     self.assertIn('"method": "%s"' % meth.upper(), content)
                 self.assertEqual(content1, content2)
                 r.close()
-
-    def test_client_HTTP_200_OK_METHOD_no_conn_pool(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            for meth in ('get', 'post', 'put', 'delete', 'head'):
-                host = httpd.url().split('://', 1)[-1]
-                httpclient = client.HttpClient(
-                    host, loop=self.loop, conn_pool=False)
-
-                r = self.loop.run_until_complete(
-                    httpclient.request(meth, '/method/%s' % meth))
-                content1 = self.loop.run_until_complete(r.read())
-                content2 = self.loop.run_until_complete(r.read())
-                content = content1.decode()
-
-                self.assertEqual(r.status, 200)
-                if meth == 'head':
-                    self.assertEqual(b'', content1)
-                else:
-                    self.assertIn('"method": "%s"' % meth.upper(), content)
-                self.assertEqual(content1, content2)
-                r.close()
-
-    def test_client_HTTP_200_OK_METHOD_no_resolve(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            for meth in ('get', 'post', 'put', 'delete', 'head'):
-                host = httpd.url().split('://', 1)[-1]
-                httpclient = client.HttpClient(
-                    host, loop=self.loop, resolve=False)
-
-                r = self.loop.run_until_complete(
-                    httpclient.request(meth, '/method/%s' % meth))
-                content1 = self.loop.run_until_complete(r.read())
-                content2 = self.loop.run_until_complete(r.read())
-                content = content1.decode()
-
-                self.assertEqual(r.status, 200)
-                if meth == 'head':
-                    self.assertEqual(b'', content1)
-                else:
-                    self.assertIn('"method": "%s"' % meth.upper(), content)
-                self.assertEqual(content1, content2)
-                r.close()
-
-    def test_client_defaults_HTTP_200_OK_METHOD(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            host = httpd.url().split('://', 1)[-1]
-            httpclient = client.HttpClient(
-                host, method='GET', path='/method/get', loop=self.loop)
-
-            r = self.loop.run_until_complete(httpclient.request())
-            content1 = self.loop.run_until_complete(r.read())
-            content2 = self.loop.run_until_complete(r.read())
-            content = content1.decode()
-
-            self.assertEqual(r.status, 200)
-            self.assertIn('"method": "GET"', content)
-            self.assertEqual(content1, content2)
-            r.close()
 
     def test_HTTP_200_OK_METHOD_ssl(self):
         connector = aiohttp.TCPConnector(verify_ssl=False, loop=self.loop)
