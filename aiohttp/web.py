@@ -1092,6 +1092,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     def add_route(self, method, path, handler, *, name=None):
         assert path.startswith('/')
         assert callable(handler), handler
+        if not asyncio.iscoroutinefunction(handler):
+            handler = asyncio.coroutine(handler)
         method = method.upper()
         assert method in self.METHODS, method
         parts = []
@@ -1130,6 +1132,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             prefix += '/'
         route = StaticRoute(name, prefix, path)
         self._register_endpoint(route)
+        return route
 
 
 ############################################################
@@ -1168,10 +1171,7 @@ class RequestHandler(ServerHttpProtocol):
             request._match_info = match_info
             handler = match_info.handler
 
-            resp = handler(request)
-            if (asyncio.iscoroutine(resp) or
-                    isinstance(resp, asyncio.Future)):
-                resp = yield from resp
+            resp = yield from handler(request)
             if not isinstance(resp, StreamResponse):
                 raise RuntimeError(
                     ("Handler should return response instance, got {!r}")
