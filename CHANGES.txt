@@ -4,7 +4,10 @@ CHANGES
 0.12.0 (Unreleased)
 -------------------
 
-- Rename Request.POST() function to Request.post()
+- Automatically force aiohttp.web handlers to coroutines in
+  `UrlDispatcher.add_route()` #186
+
+- Rename `Request.POST()` function to `Request.post()`
 
 - Added POST attribute
 
@@ -14,15 +17,15 @@ CHANGES
 
 - Exceptions refactoring
 
-- Do not unquote path in aiohttp.web.Request
+- Do not unquote query string in `aiohttp.web.Request`
 
-- Fix concurrent access to payload in RequestHandle.handle_request()
+- Fix concurrent access to payload in `RequestHandle.handle_request()`
 
-- Add access logging to aiohttp.web
+- Add access logging to `aiohttp.web`
 
-- Gunicorn worker for aiohttp.web
+- Gunicorn worker for `aiohttp.web`
 
-- Removed deprecated AsyncGunicornWorker
+- Removed deprecated `AsyncGunicornWorker`
 
 
 0.11.0 (11-29-2014)
