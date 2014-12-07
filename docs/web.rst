@@ -680,7 +680,7 @@ arbitrary properties for later access from
            conn.execute("DELETE * FROM table")
 
 
-.. class:: Application(*, loop=None, router=None, **kwargs)
+.. class:: Application(*, loop=None, router=None, logger=<default>, **kwargs)
 
    The class inherits :class:`dict`.
 
@@ -695,6 +695,10 @@ arbitrary properties for later access from
                   creates :class:`UrlDispatcher` by default if
                   *router* is ``None``.
 
+   :param logger: :class:`logging.Logger` instance for storing application logs.
+
+                  By default the value is ``logging.getLogger("aiohttp.web")``
+
    :param kwargs: :class:`dict` of optional arguments that will be
                   passed to underlying
                   :class:`aiohttp.server.ServerHttpProtocol`
@@ -704,9 +708,13 @@ arbitrary properties for later access from
 
       Read-only property that returns *router instance*.
 
+   .. attribute:: logger
+
+      Read-only property that returns *router instance*.
+
    .. attribute:: loop
 
-      Read-only property that returns :ref:`event loop<asyncio-event-loop>`.
+      :class:`logging.Logger` instance for storing application logs.
 
    .. method:: make_handler(**kwargs)
 

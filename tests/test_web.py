@@ -125,8 +125,8 @@ class TestWeb(unittest.TestCase):
     def test_logging(self):
         logger = mock.Mock()
         app = web.Application(loop=self.loop)
-        app.set_logger(logger)
-        self.assertIs(app._logger, logger)
+        app.logger = logger
+        self.assertIs(app.logger, logger)
 
         app.log_info('Info')
         logger.info.assert_called_with('Info')

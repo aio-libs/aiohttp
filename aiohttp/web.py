@@ -1216,7 +1216,12 @@ class Application(dict):
     def loop(self):
         return self._loop
 
-    def set_logger(self, logger):
+    @property
+    def logger(self):
+        return self._logger
+
+    @logger.setter
+    def logger(self, logger):
         self._logger = logger
 
     def log_info(self, msg, *args, **kwargs):
