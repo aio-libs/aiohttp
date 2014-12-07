@@ -1144,10 +1144,11 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
 class RequestHandler(ServerHttpProtocol):
 
-    def __init__(self, app, router, **kwargs):
+    def __init__(self, app, router, middlewares, **kwargs):
         super().__init__(**kwargs)
         self._app = app
         self._router = router
+        self._middlewares = middlewares
 
     def connection_made(self, transport):
         super().connection_made(transport)
@@ -1173,7 +1174,10 @@ class RequestHandler(ServerHttpProtocol):
             request._match_info = match_info
             handler = match_info.handler
 
+            for middleware in reversed(self._middlewares):
+                handler = middleware(request, handler)
             resp = yield from handler(request)
+
             if not isinstance(resp, StreamResponse):
                 raise RuntimeError(
                     ("Handler should return response instance, got {!r}")
@@ -1193,7 +1197,8 @@ class RequestHandler(ServerHttpProtocol):
 
 class Application(dict):
 
-    def __init__(self, *, logger=web_logger, loop=None, router=None, **kwargs):
+    def __init__(self, *, logger=web_logger, loop=None, router=None,
+                 middlewares=(), **kwargs):
         # TODO: explicitly accept *debug* param
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -1204,8 +1209,8 @@ class Application(dict):
         self._loop = loop
         self._logger = logger
         self._finish_callbacks = []
+        self._middlewares = tuple(middlewares)
         self._connections = {}
-
         self.update(**kwargs)
 
     @property
@@ -1215,6 +1220,10 @@ class Application(dict):
     @property
     def loop(self):
         return self._loop
+
+    @property
+    def middlewares(self):
+        return self._middlewares
 
     def set_logger(self, logger):
         self._logger = logger
@@ -1230,7 +1239,8 @@ class Application(dict):
 
     def make_handler(self, **kwargs):
         kwargs.setdefault('logger', self._logger)
-        return RequestHandler(self, self._router, loop=self._loop, **kwargs)
+        return RequestHandler(self, self._router, self._middlewares,
+                              loop=self._loop, **kwargs)
 
     @property
     def connections(self):
