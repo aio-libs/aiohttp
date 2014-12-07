@@ -104,9 +104,8 @@ def request(method, url, *,
             auth=auth, version=version, compress=compress, chunked=chunked,
             loop=loop, expect100=expect100, response_class=response_class)
 
+        conn = yield from connector.connect(req)
         try:
-            conn = yield from connector.connect(req)
-
             resp = req.send(conn.writer, conn.reader)
             try:
                 yield from resp.start(conn, read_until_eof)
@@ -902,8 +901,7 @@ class HttpClient:
                     compress=compress, chunked=chunked,
                     expect100=expect100, read_until_eof=read_until_eof,
                     connector=self._connector, loop=self._loop)
-            except (aiohttp.ServerDisconnectedError,
-                    aiohttp.ClientConnectionError):
+            except (aiohttp.ServerDisconnectedError, aiohttp.ClientError):
                 pass
             else:
                 if 500 <= resp.status <= 600:

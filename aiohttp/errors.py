@@ -1,13 +1,15 @@
 """http related errors."""
 
-__all__ = ['ClientDisconnectedError', 'ServerDisconnectedError',
+__all__ = [
+    'ClientDisconnectedError', 'ServerDisconnectedError',
 
-           'HttpProcessingError', 'BadHttpMessage',
-           'HttpMethodNotAllowed', 'HttpBadRequest', 'HttpProxyError',
-           'BadStatusLine', 'LineTooLong', 'InvalidHeader',
+    'HttpProcessingError', 'BadHttpMessage',
+    'HttpMethodNotAllowed', 'HttpBadRequest', 'HttpProxyError',
+    'BadStatusLine', 'LineTooLong', 'InvalidHeader',
 
-           'ClientConnectionError', 'ClientOSError', 'ClientTimeoutError',
-           'ClientRequestError', 'ClientResponseError', 'ProxyConnectionError']
+    'ClientError', 'ClientHttpProcessingError', 'ClientConnectionError',
+    'ClientOSError', 'ClientTimeoutError', 'ProxyConnectionError',
+    'ClientRequestError', 'ClientResponseError']
 
 from asyncio import TimeoutError
 
@@ -24,19 +26,27 @@ class ServerDisconnectedError(DisconnectedError):
     """Server disconnected."""
 
 
-class ClientConnectionError(Exception):
+class ClientError(Exception):
     """Base class for client connection errors."""
 
 
-class ClientRequestError(ClientConnectionError):
+class ClientHttpProcessingError(ClientError):
+    """Base class for client http processing errors."""
+
+
+class ClientRequestError(ClientHttpProcessingError):
     """Connection error during sending request."""
 
 
-class ClientResponseError(ClientConnectionError):
+class ClientResponseError(ClientHttpProcessingError):
     """Connection error during reading response."""
 
 
-class ClientOSError(ClientConnectionError):
+class ClientConnectionError(ClientError):
+    """Base class for client socket errors."""
+
+
+class ClientOSError(ClientConnectionError, OSError):
     """OSError error."""
 
 
