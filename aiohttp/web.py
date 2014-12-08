@@ -1207,7 +1207,7 @@ class Application(dict):
         assert isinstance(router, AbstractRouter), router
         self._router = router
         self._loop = loop
-        self._logger = logger
+        self.logger = logger
         self._finish_callbacks = []
         self._connections = {}
 
@@ -1220,14 +1220,6 @@ class Application(dict):
     @property
     def loop(self):
         return self._loop
-
-    @property
-    def logger(self):
-        return self._logger
-
-    @logger.setter
-    def logger(self, logger):
-        self._logger = logger
 
     def make_handler(self, **kwargs):
         kwargs.setdefault('logger', self._logger)
