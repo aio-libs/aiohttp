@@ -312,7 +312,7 @@ class TestResponse(unittest.TestCase):
         self.assertEqual('OK', resp.reason)
         self.assertEqual(
             CaseInsensitiveMultiDict(
-                [('CONTENT-TYPE', 'plain/text; charset=utf-8'),
+                [('CONTENT-TYPE', 'text/plain; charset=utf-8'),
                  ('CONTENT-LENGTH', '9')]),
             resp.headers)
 

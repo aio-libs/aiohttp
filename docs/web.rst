@@ -1013,13 +1013,13 @@ The following snippets are equal::
 
     @asyncio.coroutine
     def handler(request):
-        return aiohttp.web.HTTPFound(request, '/redirect')
+        return aiohttp.web.HTTPFound('/redirect')
 
 and::
 
     @asyncio.coroutine
     def handler(request):
-        raise aiohttp.web.HTTPFound(request, '/redirect')
+        raise aiohttp.web.HTTPFound('/redirect')
 
 
 Each exception class has a status code according to :rfc:`2068`:
@@ -1076,7 +1076,8 @@ Http Exception hierarchy chart::
 
 All http exceptions have the same constructor::
 
-    HTTPNotFound(request, *, headers=None, reason=None)
+    HTTPNotFound(*, headers=None, reason=None, \
+                 body=None, text=None, content_type=None)
 
 if other not directly specified. *headers* will be added to *default
 response headers*.
@@ -1085,11 +1086,14 @@ Classes :class:`HTTPMultipleChoices`, :class:`HTTPMovedPermanently`,
 :class:`HTTPFound`, :class:`HTTPSeeOther`, :class:`HTTPUseProxy`,
 :class:`HTTPTemporaryRedirect` has constructor signature like::
 
-    HTTPFound(request, location, *, headers=None, reason=None)
+    HTTPFound(location, *, headers=None, reason=None, \
+              body=None, text=None, content_type=None)
 
 where *location* is value for *Location HTTP header*.
 
 :class:`HTTPMethodNotAllowed` constructed with pointing trial method
 and list of allowed methods::
 
-    HTTPMethodNotAllowed(request, method, allowed_methods, *, headers=None, reason=None)
+    HTTPMethodNotAllowed(method, allowed_methods, *,
+                         headers=None, reason=None, \
+                         body=None, text=None, content_type=None)

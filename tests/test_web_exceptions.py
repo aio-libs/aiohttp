@@ -53,6 +53,7 @@ class TestHTTPExceptions(unittest.TestCase):
         self.loop.run_until_complete(resp.write_eof())
         txt = self.buf.decode('utf8')
         self.assertRegex(txt, ('HTTP/1.1 200 OK\r\n'
+                               'CONTENT-TYPE: text/plain; charset=utf-8\r\n'
                                'CONTENT-LENGTH: 7\r\n'
                                'CONNECTION: keep-alive\r\n'
                                'DATE: .+\r\n'
@@ -87,6 +88,7 @@ class TestHTTPExceptions(unittest.TestCase):
         self.loop.run_until_complete(resp.write_eof())
         txt = self.buf.decode('utf8')
         self.assertRegex(txt, ('HTTP/1.1 302 Found\r\n'
+                               'CONTENT-TYPE: text/plain; charset=utf-8\r\n'
                                'CONTENT-LENGTH: 10\r\n'
                                'LOCATION: /redirect\r\n'
                                'CONNECTION: keep-alive\r\n'
@@ -111,9 +113,28 @@ class TestHTTPExceptions(unittest.TestCase):
         self.loop.run_until_complete(resp.write_eof())
         txt = self.buf.decode('utf8')
         self.assertRegex(txt, ('HTTP/1.1 405 Method Not Allowed\r\n'
+                               'CONTENT-TYPE: text/plain; charset=utf-8\r\n'
                                'CONTENT-LENGTH: 23\r\n'
                                'ALLOW: POST,PUT\r\n'
                                'CONNECTION: keep-alive\r\n'
                                'DATE: .+\r\n'
                                'SERVER: .+\r\n\r\n'
                                '405: Method Not Allowed'))
+
+    def test_override_body_with_text(self):
+        resp = web.HTTPNotFound(text="Page not found")
+        self.assertEqual(404, resp.status)
+        self.assertEqual("Page not found".encode('utf-8'), resp.body)
+        self.assertEqual("Page not found", resp.text)
+        self.assertEqual("text/plain", resp.content_type)
+        self.assertEqual("utf-8", resp.charset)
+
+    def test_override_body_with_binary(self):
+        txt = "<html><body>Page not found</body></html>"
+        resp = web.HTTPNotFound(body=txt.encode('utf-8'),
+                                content_type="text/html")
+        self.assertEqual(404, resp.status)
+        self.assertEqual(txt.encode('utf-8'), resp.body)
+        self.assertEqual(txt, resp.text)
+        self.assertEqual("text/html", resp.content_type)
+        self.assertIsNone(resp.charset)

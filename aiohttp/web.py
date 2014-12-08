@@ -108,7 +108,6 @@ class HeadersMixin:
     @property
     def charset(self):
         """The value of charset part for Content-Type HTTP header."""
-        # Assumes that charset is UTF8 if not specified
         raw = self.headers.get('Content-Type')
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
@@ -620,7 +619,7 @@ class Response(StreamResponse):
 
     @property
     def text(self):
-        return self._body.decode(self.charset)
+        return self._body.decode(self.charset or 'utf-8')
 
     @text.setter
     def text(self, text):
@@ -628,7 +627,7 @@ class Response(StreamResponse):
             raise TypeError('text argument must be str (%r)', type(text))
 
         if self.content_type == 'application/octet-stream':
-            self.content_type = 'plain/text'
+            self.content_type = 'text/plain'
         if self.charset is None:
             self.charset = 'utf-8'
 
@@ -653,13 +652,14 @@ class HTTPException(Response, Exception):
 
     status_code = None
 
-    def __init__(self, *, headers=None, reason=None, **kwargs):
+    def __init__(self, *, headers=None, reason=None,
+                 body=None, text=None, content_type=None):
         Response.__init__(self, status=self.status_code,
-                          headers=headers, reason=reason, **kwargs)
+                          headers=headers, reason=reason,
+                          body=body, text=text, content_type=content_type)
         Exception.__init__(self, self.reason)
         if self.body is None:
-            self.body = "{}: {}".format(
-                self.status, self.reason).encode('utf-8')
+            self.text = "{}: {}".format(self.status, self.reason)
 
 
 class HTTPError(HTTPException):
@@ -709,10 +709,12 @@ class HTTPPartialContent(HTTPSuccessful):
 
 class _HTTPMove(HTTPRedirection):
 
-    def __init__(self, location, *, headers=None, reason=None):
+    def __init__(self, location, *, headers=None, reason=None,
+                 body=None, text=None, content_type=None):
         if not location:
             raise ValueError("HTTP redirects need a location to redirect to.")
-        super().__init__(headers=headers, reason=reason)
+        super().__init__(headers=headers, reason=reason,
+                         body=body, text=text, content_type=content_type)
         self.headers['Location'] = location
         self.location = location
 
@@ -781,9 +783,11 @@ class HTTPNotFound(HTTPClientError):
 class HTTPMethodNotAllowed(HTTPClientError):
     status_code = 405
 
-    def __init__(self, method, allowed_methods, *, headers=None, reason=None):
+    def __init__(self, method, allowed_methods, *, headers=None, reason=None,
+                 body=None, text=None, content_type=None):
         allow = ','.join(sorted(allowed_methods))
-        super().__init__(headers=headers, reason=reason)
+        super().__init__(headers=headers, reason=reason,
+                         body=body, text=text, content_type=content_type)
         self.headers['Allow'] = allow
         self.allowed_methods = allowed_methods
         self.method = method.upper()
