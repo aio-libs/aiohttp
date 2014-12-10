@@ -64,13 +64,13 @@ class WorkerTests(unittest.TestCase):
         self.worker.init_signal()
         self.assertTrue(self.worker.loop.add_signal_handler.called)
 
-    def test_factory(self):
+    def test_make_handler(self):
         self.worker.wsgi = unittest.mock.Mock()
         self.worker.loop = unittest.mock.Mock()
         self.worker.log = unittest.mock.Mock()
         self.worker.cfg = unittest.mock.Mock()
 
-        f = self.worker.factory(
+        f = self.worker.make_handler(
             self.worker.wsgi, 'localhost', 8080)
         self.assertIs(f, self.worker.wsgi.make_handler.return_value)
 
@@ -78,7 +78,7 @@ class WorkerTests(unittest.TestCase):
     def test__run(self, m_asyncio):
         self.worker.ppid = 1
         self.worker.alive = True
-        self.worker.servers = []
+        self.worker.servers = {}
         sock = unittest.mock.Mock()
         sock.cfg_addr = ('localhost', 8080)
         self.worker.sockets = [sock]
@@ -125,19 +125,22 @@ class WorkerTests(unittest.TestCase):
 
     def test_close(self):
         srv = unittest.mock.Mock()
-        self.worker.servers = [srv]
+        handler = unittest.mock.Mock()
+        self.worker.servers = {srv: handler}
         self.worker.log = unittest.mock.Mock()
+        self.worker.loop = self.loop
         app = self.worker.wsgi = unittest.mock.Mock()
-        app.connections = [object()]
         app.finish.return_value = asyncio.Future(loop=self.loop)
         app.finish.return_value.set_result(1)
-        app.finish_connections.return_value = asyncio.Future(loop=self.loop)
-        app.finish_connections.return_value.set_result(1)
+        handler.connections = [object()]
+        handler.finish_connections.return_value = asyncio.Future(
+            loop=self.loop)
+        handler.finish_connections.return_value.set_result(1)
 
         self.loop.run_until_complete(self.worker.close())
         app.finish.assert_called_with()
-        app.finish_connections.assert_called_with(timeout=80.0)
+        handler.finish_connections.assert_called_with(timeout=80.0)
         srv.close.assert_called_with()
-        self.assertEqual(self.worker.servers, [])
+        self.assertIsNone(self.worker.servers)
 
         self.loop.run_until_complete(self.worker.close())

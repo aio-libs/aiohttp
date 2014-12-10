@@ -31,8 +31,8 @@ class TestWebFunctional(unittest.TestCase):
             app.router.add_route(method, path, handler)
 
         port = self.find_unused_port()
-        srv = yield from self.loop.create_server(app.make_handler,
-                                                 '127.0.0.1', port)
+        srv = yield from self.loop.create_server(
+            app.make_handler(), '127.0.0.1', port)
         url = "http://127.0.0.1:{}".format(port) + path
         self.addCleanup(srv.close)
         return app, srv, url

@@ -27,6 +27,8 @@ from .streams import EOF_MARKER
 __all__ = [
     'Application',
     'HttpVersion',
+    'HandlerManager',
+    'RequestHandler',
     'Request',
     'StreamResponse',
     'Response',
@@ -1149,18 +1151,20 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
 class RequestHandler(ServerHttpProtocol):
 
-    def __init__(self, app, router, **kwargs):
+    def __init__(self, manager, app, router, **kwargs):
         super().__init__(**kwargs)
+
+        self._manager = manager
         self._app = app
         self._router = router
 
     def connection_made(self, transport):
         super().connection_made(transport)
 
-        self._app.connection_made(self, transport)
+        self._manager.connection_made(self, transport)
 
     def connection_lost(self, exc):
-        self._app.connection_lost(self, exc)
+        self._manager.connection_lost(self, exc)
 
         super().connection_lost(exc)
 
@@ -1196,20 +1200,76 @@ class RequestHandler(ServerHttpProtocol):
         self.log_access(message, None, resp_msg, self._loop.time() - now)
 
 
+class HandlerManager:
+
+    def __init__(self, app, router, *,
+                 handler=RequestHandler, loop=None, **kwargs):
+        self._app = app
+        self._router = router
+        self._handler = handler
+        self._loop = loop
+        self._connections = {}
+        self._kwargs = kwargs
+        self._kwargs.setdefault('logger', app.logger)
+
+    @property
+    def connections(self):
+        return list(self._connections.keys())
+
+    def connection_made(self, handler, transport):
+        self._connections[handler] = transport
+
+    def connection_lost(self, handler, exc=None):
+        if handler in self._connections:
+            del self._connections[handler]
+
+    @asyncio.coroutine
+    def finish_connections(self, timeout=None):
+        for handler in self._connections.keys():
+            handler.closing()
+
+        def cleanup():
+            sleep = 0.05
+            while self._connections:
+                yield from asyncio.sleep(sleep, loop=self._loop)
+                if sleep < 5:
+                    sleep = sleep * 2
+
+        if timeout:
+            try:
+                yield from asyncio.wait_for(
+                    cleanup(), timeout, loop=self._loop)
+            except asyncio.TimeoutError:
+                self._app.logger.warning(
+                    "Not all connections are closed (pending: %d)",
+                    len(self._connections))
+
+        for transport in self._connections.values():
+            transport.close()
+
+        self._connections.clear()
+
+    def __call__(self):
+        return self._handler(
+            self, self._app, self._router, loop=self._loop, **self._kwargs)
+
+
 class Application(dict):
 
-    def __init__(self, *, logger=web_logger, loop=None, router=None, **kwargs):
+    def __init__(self, *, logger=web_logger, loop=None,
+                 router=None, handler=HandlerManager, **kwargs):
         # TODO: explicitly accept *debug* param
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:
             router = UrlDispatcher()
         assert isinstance(router, AbstractRouter), router
+
         self._router = router
+        self._handler = handler
+        self._finish_callbacks = []
         self._loop = loop
         self.logger = logger
-        self._finish_callbacks = []
-        self._connections = {}
 
         self.update(**kwargs)
 
@@ -1222,19 +1282,7 @@ class Application(dict):
         return self._loop
 
     def make_handler(self, **kwargs):
-        kwargs.setdefault('logger', self.logger)
-        return RequestHandler(self, self._router, loop=self._loop, **kwargs)
-
-    @property
-    def connections(self):
-        return list(self._connections.keys())
-
-    def connection_made(self, handler, transport):
-        self._connections[handler] = transport
-
-    def connection_lost(self, handler, exc=None):
-        if handler in self._connections:
-            del self._connections[handler]
+        return self._handler(self, self.router, loop=self.loop, **kwargs)
 
     @asyncio.coroutine
     def finish(self):
@@ -1253,29 +1301,6 @@ class Application(dict):
                     'exception': exc,
                     'application': self,
                 })
-
-    @asyncio.coroutine
-    def finish_connections(self, timeout=None):
-        for handler in self._connections.keys():
-            handler.closing()
-
-        def cleanup():
-            while self._connections:
-                yield from asyncio.sleep(0.5, loop=self._loop)
-
-        if timeout:
-            try:
-                yield from asyncio.wait_for(
-                    cleanup(), timeout, loop=self._loop)
-            except asyncio.TimeoutError:
-                self.logger.warning(
-                    "Not all connections are closed (pending: %d)",
-                    len(self._connections))
-
-        for transport in self._connections.values():
-            transport.close()
-
-        self._connections.clear()
 
     def register_on_finish(self, func, *args, **kwargs):
         self._finish_callbacks.insert(0, (func, args, kwargs))

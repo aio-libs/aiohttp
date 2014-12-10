@@ -23,7 +23,7 @@ class TestWeb(unittest.TestCase):
             return 'abc'
 
         app.router.add_route('GET', '/', handler)
-        h = app.make_handler()
+        h = app.make_handler()()
         message = RawRequestMessage('GET', '/', HttpVersion11,
                                     MultiDict(), False, False)
         payload = mock.Mock()
@@ -84,46 +84,61 @@ class TestWeb(unittest.TestCase):
         app = web.Application(loop=self.loop, router=router)
         self.assertIs(router, app.router)
 
-    def test_connections(self):
-        app = web.Application(loop=self.loop)
-        self.assertEqual(app.connections, [])
-
-        handler = object()
-        transport = object()
-        app.connection_made(handler, transport)
-        self.assertEqual(app.connections, [handler])
-
-        app.connection_lost(handler, None)
-        self.assertEqual(app.connections, [])
-
-    def test_finish_connection_no_timeout(self):
-        app = web.Application(loop=self.loop)
-        handler = mock.Mock()
-        transport = mock.Mock()
-        app.connection_made(handler, transport)
-
-        self.loop.run_until_complete(app.finish_connections())
-
-        app.connection_lost(handler, None)
-        self.assertEqual(app.connections, [])
-        handler.closing.assert_called_with()
-        transport.close.assert_called_with()
-
-    def test_finish_connection_timeout(self):
-        app = web.Application(loop=self.loop)
-        handler = mock.Mock()
-        transport = mock.Mock()
-        app.connection_made(handler, transport)
-
-        self.loop.run_until_complete(app.finish_connections(timeout=0.1))
-
-        app.connection_lost(handler, None)
-        self.assertEqual(app.connections, [])
-        handler.closing.assert_called_with()
-        transport.close.assert_called_with()
-
     def test_logging(self):
         logger = mock.Mock()
         app = web.Application(loop=self.loop)
         app.logger = logger
         self.assertIs(app.logger, logger)
+
+
+class TestHandlerManager(unittest.TestCase):
+
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+    def tearDown(self):
+        self.loop.close()
+
+    def test_connections(self):
+        app = web.Application(loop=self.loop)
+        manager = app.make_handler()
+        self.assertEqual(manager.connections, [])
+
+        handler = object()
+        transport = object()
+        manager.connection_made(handler, transport)
+        self.assertEqual(manager.connections, [handler])
+
+        manager.connection_lost(handler, None)
+        self.assertEqual(manager.connections, [])
+
+    def test_finish_connection_no_timeout(self):
+        app = web.Application(loop=self.loop)
+        manager = app.make_handler()
+
+        handler = mock.Mock()
+        transport = mock.Mock()
+        manager.connection_made(handler, transport)
+
+        self.loop.run_until_complete(manager.finish_connections())
+
+        manager.connection_lost(handler, None)
+        self.assertEqual(manager.connections, [])
+        handler.closing.assert_called_with()
+        transport.close.assert_called_with()
+
+    def test_finish_connection_timeout(self):
+        app = web.Application(loop=self.loop)
+        manager = app.make_handler()
+
+        handler = mock.Mock()
+        transport = mock.Mock()
+        manager.connection_made(handler, transport)
+
+        self.loop.run_until_complete(manager.finish_connections(timeout=0.1))
+
+        manager.connection_lost(handler, None)
+        self.assertEqual(manager.connections, [])
+        handler.closing.assert_called_with()
+        transport.close.assert_called_with()

@@ -2,7 +2,6 @@
 __all__ = ['GunicornWebWorker']
 
 import asyncio
-import functools
 import os
 import signal
 import sys
@@ -14,7 +13,7 @@ class GunicornWebWorker(base.Worker):
     def __init__(self, *args, **kw):  # pragma: no cover
         super().__init__(*args, **kw)
 
-        self.servers = []
+        self.servers = {}
         self.exit_code = 0
 
     def init_process(self):
@@ -36,7 +35,7 @@ class GunicornWebWorker(base.Worker):
 
         sys.exit(self.exit_code)
 
-    def factory(self, app, host, port):
+    def make_handler(self, app, host, port):
         return app.make_handler(
             host=host,
             port=port,
@@ -46,23 +45,24 @@ class GunicornWebWorker(base.Worker):
             access_log=self.log.access_log,
             access_log_format=self.cfg.access_log_format)
 
-    def get_factory(self, sock, host, port):
-        return functools.partial(self.factory, self.wsgi, host, port)
-
     @asyncio.coroutine
     def close(self):
         if self.servers:
-            self.log.info("Stopping server: %s, connections: %s",
-                          self.pid, len(self.wsgi.connections))
+            servers = self.servers
+            self.servers = None
 
             # stop accepting connections
-            for server in self.servers:
+            for server, handler in servers.items():
+                self.log.info("Stopping server: %s, connections: %s",
+                              self.pid, len(handler.connections))
                 server.close()
-            self.servers.clear()
 
             # stop alive connections
-            yield from self.wsgi.finish_connections(
-                timeout=self.cfg.graceful_timeout / 100 * 80)
+            tasks = [
+                handler.finish_connections(
+                    timeout=self.cfg.graceful_timeout / 100 * 80)
+                for handler in servers.values()]
+            yield from asyncio.wait(tasks, loop=self.loop)
 
             # stop application
             yield from self.wsgi.finish()
@@ -70,9 +70,9 @@ class GunicornWebWorker(base.Worker):
     @asyncio.coroutine
     def _run(self):
         for sock in self.sockets:
-            factory = self.get_factory(sock.sock, *sock.cfg_addr)
-            self.servers.append(
-                (yield from self.loop.create_server(factory, sock=sock.sock)))
+            handler = self.make_handler(self.wsgi, *sock.cfg_addr)
+            srv = yield from self.loop.create_server(handler, sock=sock.sock)
+            self.servers[srv] = handler
 
         # If our parent changed then we shut down.
         pid = os.getpid()

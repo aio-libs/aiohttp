@@ -51,7 +51,7 @@ def init(loop):
     app.router.add_route('GET', '/hello/{name}', hello)
     app.router.add_route('GET', '/hello', hello)
 
-    srv = yield from loop.create_server(app.make_handler, '127.0.0.1', 8080)
+    srv = yield from loop.create_server(app.make_handler(), '127.0.0.1', 8080)
     print("Server started at http://127.0.0.1:8080")
     return srv
 
