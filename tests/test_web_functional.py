@@ -43,7 +43,7 @@ class TestWebFunctional(unittest.TestCase):
         def handler(request):
             body = yield from request.read()
             self.assertEqual(b'', body)
-            return web.Response(b'OK')
+            return web.Response(body=b'OK')
 
         @asyncio.coroutine
         def go():
@@ -61,7 +61,7 @@ class TestWebFunctional(unittest.TestCase):
         def handler(request):
             data = yield from request.post()
             self.assertEqual({'a': '1', 'b': '2'}, dict(data))
-            return web.Response(b'OK')
+            return web.Response(body=b'OK')
 
         @asyncio.coroutine
         def go():
@@ -80,7 +80,7 @@ class TestWebFunctional(unittest.TestCase):
         def handler(request):
             data = yield from request.text()
             self.assertEqual('русский', data)
-            return web.Response(data.encode('utf8'))
+            return web.Response(text=data)
 
         @asyncio.coroutine
         def go():
@@ -154,7 +154,7 @@ class TestWebFunctional(unittest.TestCase):
             self.assertEqual(['sample.crt'], list(data.keys()))
             for fs in data.values():
                 check_file(fs)
-            resp = web.Response(b'OK')
+            resp = web.Response(body=b'OK')
             return resp
 
         @asyncio.coroutine
@@ -187,7 +187,7 @@ class TestWebFunctional(unittest.TestCase):
             self.assertEqual(['sample.crt', 'sample.key'], list(data.keys()))
             for fs in data.values():
                 check_file(fs)
-            resp = web.Response(b'OK')
+            resp = web.Response(body=b'OK')
             return resp
 
         @asyncio.coroutine
@@ -206,7 +206,7 @@ class TestWebFunctional(unittest.TestCase):
             yield from request.release()
             chunk = yield from request.payload.readany()
             self.assertIs(web.EOF_MARKER, chunk)
-            return web.Response(b'OK')
+            return web.Response(body=b'OK')
 
         @asyncio.coroutine
         def go():
@@ -276,7 +276,7 @@ class TestWebFunctional(unittest.TestCase):
             data = yield from request.post()
             lst = list(sorted(data.items(getall=True)))
             self.assertEqual([('a', '1'), ('a', '2')], lst)
-            return web.Response(b'OK')
+            return web.Response(body=b'OK')
 
         @asyncio.coroutine
         def go():

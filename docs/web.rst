@@ -75,7 +75,7 @@ Parsed *path part* will be available in the *request handler* as
    @asyncio.coroutine
    def variable_handler(request):
        return web.Response(
-           "Hello, {}".format(request.match_info['name']).encode('utf8'))
+           text="Hello, {}".format(request.match_info['name']))
 
    app.router.add_route('GET', '/{name}', variable_handler)
 
@@ -84,7 +84,7 @@ Handlers can be first-class functions, e.g.::
 
    @asyncio.coroutine
    def hello(request):
-       return web.Response(b"Hello, world")
+       return web.Response(body=b"Hello, world")
 
    app.router.add_route('GET', '/', hello)
 
@@ -100,7 +100,7 @@ so application developer can use classes if he wants::
            pass
 
        def handle_intro(self, request):
-           return web.Response(b"Hello, world")
+           return web.Response(body=b"Hello, world")
 
        @asyncio.coroutine
        def handle_greeting(self, request):
@@ -160,7 +160,7 @@ coroutine. The two properties we are interested in are *file* and
 
         content = input_file.read()
 
-        return Response(content,
+        return Response(body=content,
             headers=MultiDict([('CONTENT-DISPOSITION', input-file)])
 
 
@@ -605,7 +605,8 @@ StreamResponse
 Response
 ^^^^^^^^
 
-.. class:: Response(body=None, *, status=200, headers=None, content_type=None, text=None)
+.. class:: Response(*, status=200, headers=None, content_type=None, \
+                    body=None, text=None)
 
    The most usable response class, inherited from :class:`StreamResponse`.
 

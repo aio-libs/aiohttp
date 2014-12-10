@@ -21,7 +21,7 @@ def intro(request):
 
 
 def simple(request):
-    return Response(b'Simple answer')
+    return Response(body=b'Simple answer')
 
 
 def change_body(request):

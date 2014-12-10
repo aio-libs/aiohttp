@@ -586,8 +586,8 @@ class StreamResponse(HeadersMixin):
 
 class Response(StreamResponse):
 
-    def __init__(self, body=None, *,
-                 status=200, reason=None, headers=None,
+    def __init__(self, *, body=None, status=200,
+                 reason=None, headers=None,
                  text=None, content_type=None):
         super().__init__(status=status, reason=reason)
 

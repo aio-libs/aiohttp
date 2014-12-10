@@ -282,7 +282,7 @@ class TestResponse(unittest.TestCase):
                          resp.headers)
 
     def test_ctor_with_headers_and_status(self):
-        resp = Response(b'body', status=201, headers={'Age': '12'})
+        resp = Response(body=b'body', status=201, headers={'Age': '12'})
 
         self.assertEqual(201, resp.status)
         self.assertEqual(b'body', resp.body)
@@ -320,7 +320,7 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(resp.text, 'test text')
 
     def test_assign_nonbyteish_body(self):
-        resp = Response(b'data')
+        resp = Response(body=b'data')
 
         with self.assertRaises(TypeError):
             resp.body = 123
@@ -357,7 +357,7 @@ class TestResponse(unittest.TestCase):
 
     def test_render_with_body(self):
         req = self.make_request('GET', '/')
-        resp = Response(b'data')
+        resp = Response(body=b'data')
 
         self.writer.drain.return_value = ()
         buf = b''
