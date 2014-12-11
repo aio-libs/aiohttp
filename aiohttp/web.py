@@ -22,6 +22,7 @@ from .multidict import (CaseInsensitiveMultiDict,
 from .protocol import Response as ResponseImpl, HttpVersion, HttpVersion11
 from .server import ServerHttpProtocol
 from .streams import EOF_MARKER
+from .websocket import do_handshake
 
 
 __all__ = [
@@ -135,12 +136,13 @@ FileField = collections.namedtuple('Field', 'name filename file content_type')
 
 class Request(HeadersMixin):
 
-    def __init__(self, app, message, payload, transport, writer,
+    def __init__(self, app, message, payload, transport, writer, reader,
                  keep_alive_timeout):
         self._app = app
         self._version = message.version
         self._transport = transport
         self._writer = writer
+        self._reader = reader
         self._method = message.method
         self._host = message.headers.get('HOST')
         self._path_qs = message.path
@@ -374,16 +376,24 @@ class Request(HeadersMixin):
         self._post = MultiDict(out.items(getall=True))
         return self._post
 
-    # @asyncio.coroutine
-    # def start_websocket(self):
-    #     """Upgrade connection to websocket.
+    @asyncio.coroutine
+    def start_websocket(self):
+        """
+        Upgrade connection to websocket.
+        Returns (reader, writer) pair.
+        """
+        if 'upgrade' in self.headers:
+            response_code, headers, parser, writer, protocol = do_handshake(
+                self.method, self.headers, self._writer
+            )
+            resp = ResponseImpl(self.transport, response_code, self.version)
+            resp.add_headers(headers)
+            resp.send_headers()
+            # In my app the client only initiates when the transport is drained.
+            yield from self.transport.drain()
+            dataqueue = self._reader.set_parser(parser)
 
-    #     Returns (reader, writer) pair.
-    #     """
-
-    #     upgrade = 'websocket' in message.headers.get('UPGRADE', '').lower()
-    #     if not upgrade:
-    #         pass
+            return dataqueue, writer
 
 
 ############################################################
@@ -1173,7 +1183,8 @@ class RequestHandler(ServerHttpProtocol):
         now = self._loop.time()
 
         request = Request(self._app, message, payload,
-                          self.transport, self.writer, self.keep_alive_timeout)
+                          self.transport, self.writer, self.reader,
+                          self.keep_alive_timeout)
         try:
             match_info = yield from self._router.resolve(request)
 
