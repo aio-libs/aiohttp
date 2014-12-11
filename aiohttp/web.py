@@ -1273,6 +1273,12 @@ class Application(dict):
 
         self.update(**kwargs)
 
+    def route(self, path, method='GET'):
+        def decorator(f):
+            self.router.add_route(method, path, f)
+            return f
+        return decorator
+
     @property
     def router(self):
         return self._router

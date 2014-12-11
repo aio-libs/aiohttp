@@ -79,6 +79,13 @@ class TestWeb(unittest.TestCase):
                     'message': 'Error in finish callback'}
         handler.assert_called_once_with(self.loop, exc_info)
 
+    def test_app_route_decorator(self):
+        app = web.Application(loop=self.loop)
+        handler = lambda x: x
+        with mock.patch.object(app.router, 'add_route') as mock_router:
+            app.route('/')(handler)
+            mock_router.assert_called_once_with('GET', '/', handler)
+
     def test_non_default_router(self):
         router = web.UrlDispatcher()
         app = web.Application(loop=self.loop, router=router)
