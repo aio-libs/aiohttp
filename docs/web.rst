@@ -705,6 +705,12 @@ arbitrary properties for later access from
                   :class:`aiohttp.server.ServerHttpProtocol`
                   constructor during :meth:`make_handler` call.
 
+   .. method:: route(rule, method='GET')
+
+      A decorator used to append the decorated function to the router table.
+
+      .. seealso:: :meth:`~UrlDispatcher.add_route`
+
    .. attribute:: router
 
       Read-only property that returns *router instance*.
