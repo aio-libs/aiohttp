@@ -24,7 +24,7 @@ and returns :class:`Response` instance::
 
    @asyncio.coroutine
    def hello(request):
-       return web.Response(b"Hello, world")
+       return web.Response(body=b"Hello, world")
 
 Next, you have to create a :class:`Application` instance and register
 :ref:`handler<aiohttp-web-handler>` in the application's router pointing *HTTP
@@ -36,7 +36,7 @@ method*, *path* and *handler*::
 After that, create a server and run the *asyncio loop* as usual::
 
    loop = asyncio.get_event_loop()
-   f = loop.create_server(app.make_handler, '0.0.0.0', 8080)
+   f = loop.create_server(app.make_handler(), '0.0.0.0', 8080)
    srv = loop.run_until_complete(f)
    print('serving on', srv.sockets[0].getsockname())
    try:
@@ -106,7 +106,7 @@ so application developer can use classes if he wants::
        def handle_greeting(self, request):
            name = request.match_info.get('name')
            txt = "Hello, {}".format(name)
-           return web.Response(txt.encode('utf-8')
+           return web.Response(text=txt)
 
    handler = Handler()
    app.router.add_route('GET', '/intro', handler.handle_intro)
@@ -700,10 +700,7 @@ arbitrary properties for later access from
 
                   By default the value is ``logging.getLogger("aiohttp.web")``
 
-   :param kwargs: :class:`dict` of optional arguments that will be
-                  passed to underlying
-                  :class:`aiohttp.server.ServerHttpProtocol`
-                  constructor during :meth:`make_handler` call.
+   :param kwargs: optional params for initializing self dict.
 
    .. attribute:: router
 
@@ -721,9 +718,11 @@ arbitrary properties for later access from
 
       Creates HTTP protocol for handling requests.
 
-      You should never call this method manually, but pass it to
-      :meth:`~asyncio.BaseEventLoop.create_server` as
-      *protocol_factory* parameter instead, like::
+      :param kwargs: additional parameters for :class:`RequestHandler`
+                     constructor.
+
+      You should pass result of the method as *protocol_factory* to
+      :meth:`~BaseEventLoop.create_server`, e.g.::
 
 
          loop = asyncio.get_event_loop()
@@ -733,7 +732,7 @@ arbitrary properties for later access from
          # setup route table
          # app.router.add_route(...)
 
-         yield from loop.create_server(app.make_handler, '0.0.0.0', 8080)
+         yield from loop.create_server(app.make_handler(), '0.0.0.0', 8080)
 
    .. method:: finish()
 
