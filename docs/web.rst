@@ -663,7 +663,8 @@ Application is a synonym for web-server.
 
 To get fully working example, you have to make *application*, register
 supported urls in *router* and create a *server socket* with
-:meth:`make_handler` as a *protocol factory*.
+:class:`aiohttp.HandlerManager` as a *protocol factory*. *HandlerManager*
+could be constructed with :meth:`make_handler`.
 
 *Application* contains a *router* instance and a list of callbacks that
 will be called during application finishing.
@@ -716,14 +717,13 @@ arbitrary properties for later access from
 
    .. method:: make_handler(**kwargs)
 
-      Creates HTTP protocol for handling requests.
+      Creates HTTP protocol factory for handling requests.
 
-      :param kwargs: additional parameters for :class:`RequestHandler`
+      :param kwargs: additional parameters for :class:`HandlerManager`
                      constructor.
 
       You should pass result of the method as *protocol_factory* to
       :meth:`~BaseEventLoop.create_server`, e.g.::
-
 
          loop = asyncio.get_event_loop()
 
@@ -758,6 +758,17 @@ arbitrary properties for later access from
 
       *func* may be either regular function or :ref:`coroutine<coroutine>`,
       :meth:`finish` will un-yield (`yield from`) the later.
+
+
+HandlerManager
+^^^^^^^^^^^^^^
+
+HandlerManager is responsible for creating HTTP protocol objects that
+can handle http connections.
+
+   .. attribute:: connections
+
+      List of all currently oppened connections.
 
    .. method:: finish_connections(timeout)
 
