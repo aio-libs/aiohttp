@@ -387,13 +387,12 @@ class Request(HeadersMixin):
                 self.method, self.headers, self._writer
             )
             resp = ResponseImpl(self.transport, response_code, self.version)
-            resp.add_headers(headers)
+            resp.add_headers(*headers)
             resp.send_headers()
-            # In my app the client only initiates when the transport is drained.
-            yield from self.transport.drain()
             dataqueue = self._reader.set_parser(parser)
-
             return dataqueue, writer
+
+        return set()
 
 
 ############################################################
