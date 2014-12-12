@@ -4,6 +4,9 @@ CHANGES
 0.12.0 (12-12-2014)
 -------------------
 
+- Deep refactoring of `aiohttp.web` in backward-incompatible manner.
+  Sorry, we have to do this.
+
 - Automatically force aiohttp.web handlers to coroutines in
   `UrlDispatcher.add_route()` #186
 
@@ -11,7 +14,7 @@ CHANGES
 
 - Added POST attribute
 
-- Response processing refactoring
+- Response processing refactoring: constructor does't accept Request instance anymore.
 
 - Pass application instance to finish callback
 

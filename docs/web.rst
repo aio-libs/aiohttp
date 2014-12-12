@@ -120,7 +120,7 @@ File Uploads
 
 There are two steps necessary for handling file uploads. The first is
 to make sure that you have a form that has been setup correctly to accept
-files. This means adding enctype attribute to your form element with
+files. This means adding *enctype* attribute to your form element with
 the value of *multipart/form-data*. A very simple example would be a
 form that accepts a mp3 file. Notice, we have set up the form as
 previously explained and also added the *input* element of the *file*
@@ -137,10 +137,11 @@ type::
 
 The second step is handling the file upload in your :ref:`request
 handler<aiohttp-web-handler>` (here assumed to answer on
-*/store_mp3*). The uploaded file is added to the request object as
-a :class:`FileField` object accessible through the :meth:`Request.post`
-coroutine. The two properties we are interested in are *file* and
-*filename* and we will use those to read a file's name and a content::
+*/store_mp3*). The uploaded file is added to the request object as a
+:class:`FileField` object accessible through the :meth:`Request.post`
+coroutine. The two properties we are interested in are
+:attr:`~FileField.file` and :attr:`~FileField.filename` and we will
+use those to read a file's name and a content::
 
     import os
     import uuid
@@ -161,7 +162,7 @@ coroutine. The two properties we are interested in are *file* and
         content = input_file.read()
 
         return Response(body=content,
-            headers=MultiDict([('CONTENT-DISPOSITION', input-file)])
+                        headers=MultiDict({'CONTENT-DISPOSITION': input_file})
 
 
 .. _aiohttp-web-request:
@@ -229,9 +230,12 @@ first positional parameter.
    .. attribute:: POST
 
       A multidict with all the variables in the POST parameters.
-      POST property available only after `post()` coroutine call.
+      POST property available only after :meth:`Request.post` coroutine call.
 
-      Read-only :class:`~aiohttp.multidict.MultiDict` lazy property.
+      Read-only :class:`~aiohttp.multidict.MultiDict`.
+
+      :raises RuntimeError: if :meth:`Request.post` was not called \
+                            before accessing the property.
 
    .. attribute:: headers
 
@@ -379,7 +383,7 @@ first positional parameter.
       .. warning::
 
          The method **does** store read data internally, subsequent
-         :meth:`~Request.POST` call will return the same value.
+         :meth:`~Request.post` call will return the same value.
 
    .. method:: release()
 
