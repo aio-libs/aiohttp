@@ -104,7 +104,7 @@ so application developer can use classes if he wants::
 
        @asyncio.coroutine
        def handle_greeting(self, request):
-           name = request.match_info.get('name')
+           name = request.match_info.get('name', "Anonymous")
            txt = "Hello, {}".format(name)
            return web.Response(text=txt)
 
