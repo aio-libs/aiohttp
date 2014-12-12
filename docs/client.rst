@@ -303,24 +303,25 @@ Or you can provide ``asyncio`` coroutine that yields bytes objects::
    ``aiohttp`` internally handles such a coroutines.
 
 Also it is possible to use ``StreamReader`` object. Lets say we want to upload
-file and calculate file sha1 hash::
+file from another request and calculate file sha1 hash::
 
-   >>> def feed_stream(stream):
+   >>> def feed_stream(resp, stream):
    ...    h = hashlib.sha1()
    ...
-   ...    with open('some.iso') as f:
-   ...       chunk = f.read(8192)
-   ...       while chunk:
-   ...          h.update(chunk)
-   ...          s.feed_data(chunk)
-   ...          chunk = f.read(8192)
+   ...    with True:
+   ...       chunk = yield from resp.content.readany()
+   ...       if not chunk:
+   ...          break
+   ...       h.update(chunk)
+   ...       s.feed_data(chunk)
    ...
    ...    return h.hexdigest()
 
+   >>> resp = aiohttp.request('get', 'http://httpbin.org/post')
    >>> stream = StreamReader()
    >>> asyncio.async(aiohttp.request('post', 'http://httpbin.org/post', data=stream)
 
-   >>> file_hash = yield from feed_stream(stream)
+   >>> file_hash = yield from feed_stream(resp, stream)
 
 
 Because response's content attribute is a StreamReader, you can chain get and
