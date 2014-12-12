@@ -663,7 +663,7 @@ Application is a synonym for web-server.
 
 To get fully working example, you have to make *application*, register
 supported urls in *router* and create a *server socket* with
-:class:`aiohttp.HandlerManager` as a *protocol factory*. *HandlerManager*
+:class:`aiohttp.RequestHandlerFactory` as a *protocol factory*. *RequestHandlerFactory*
 could be constructed with :meth:`make_handler`.
 
 *Application* contains a *router* instance and a list of callbacks that
@@ -719,7 +719,7 @@ arbitrary properties for later access from
 
       Creates HTTP protocol factory for handling requests.
 
-      :param kwargs: additional parameters for :class:`HandlerManager`
+      :param kwargs: additional parameters for :class:`RequestHandlerFactory`
                      constructor.
 
       You should pass result of the method as *protocol_factory* to
@@ -760,10 +760,10 @@ arbitrary properties for later access from
       :meth:`finish` will un-yield (`yield from`) the later.
 
 
-HandlerManager
-^^^^^^^^^^^^^^
+RequestHandlerFactory
+^^^^^^^^^^^^^^^^^^^^^
 
-HandlerManager is responsible for creating HTTP protocol objects that
+RequestHandlerFactory is responsible for creating HTTP protocol objects that
 can handle http connections.
 
    .. attribute:: connections

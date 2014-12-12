@@ -91,7 +91,7 @@ class TestWeb(unittest.TestCase):
         self.assertIs(app.logger, logger)
 
 
-class TestHandlerManager(unittest.TestCase):
+class TestRequestHandlerFactory(unittest.TestCase):
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()

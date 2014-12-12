@@ -27,8 +27,8 @@ from .streams import EOF_MARKER
 __all__ = [
     'Application',
     'HttpVersion',
-    'HandlerManager',
     'RequestHandler',
+    'RequestHandlerFactory',
     'Request',
     'StreamResponse',
     'Response',
@@ -1200,7 +1200,7 @@ class RequestHandler(ServerHttpProtocol):
         self.log_access(message, None, resp_msg, self._loop.time() - now)
 
 
-class HandlerManager:
+class RequestHandlerFactory:
 
     def __init__(self, app, router, *,
                  handler=RequestHandler, loop=None, **kwargs):
@@ -1257,7 +1257,7 @@ class HandlerManager:
 class Application(dict):
 
     def __init__(self, *, logger=web_logger, loop=None,
-                 router=None, handler=HandlerManager, **kwargs):
+                 router=None, handler_factory=RequestHandlerFactory, **kwargs):
         # TODO: explicitly accept *debug* param
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -1266,7 +1266,7 @@ class Application(dict):
         assert isinstance(router, AbstractRouter), router
 
         self._router = router
-        self._handler = handler
+        self._handler_factory = handler_factory
         self._finish_callbacks = []
         self._loop = loop
         self.logger = logger
@@ -1282,7 +1282,8 @@ class Application(dict):
         return self._loop
 
     def make_handler(self, **kwargs):
-        return self._handler(self, self.router, loop=self.loop, **kwargs)
+        return self._handler_factory(
+            self, self.router, loop=self.loop, **kwargs)
 
     @asyncio.coroutine
     def finish(self):
