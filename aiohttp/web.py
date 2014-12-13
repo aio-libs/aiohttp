@@ -517,7 +517,7 @@ class StreamResponse(HeadersMixin):
         if value is None:
             self._content_dict.pop('charset', None)
         else:
-            self._content_dict['charset'] = str(value)
+            self._content_dict['charset'] = str(value).lower()
         self._generate_content_type_header()
 
     def _generate_content_type_header(self):

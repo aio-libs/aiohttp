@@ -573,6 +573,8 @@ StreamResponse
 
       *Charset* aka *encoding* part of *Content-Type* for outgoing response.
 
+      The value converted to lower-case on attribute assigning.
+
    .. method:: start(request)
 
       :param aiohttp.web.Request request: HTTP request object, that the

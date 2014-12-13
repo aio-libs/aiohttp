@@ -396,3 +396,22 @@ class TestResponse(unittest.TestCase):
                          'SET-COOKIE: name=value\r\n'
                          'CONNECTION: keep-alive\r\n'
                          'DATE: .+\r\nSERVER: .+\r\n\r\n')
+
+    def test_set_text_with_content_type(self):
+        resp = Response()
+        resp.content_type = "text/html"
+        resp.text = "text"
+
+        self.assertEqual("text", resp.text)
+        self.assertEqual(b"text", resp.body)
+        self.assertEqual("text/html", resp.content_type)
+
+    def test_set_text_with_charset(self):
+        resp = Response()
+        resp.content_type = 'text/plain'
+        resp.charset = "KOI8-R"
+        resp.text = "текст"
+
+        self.assertEqual("текст", resp.text)
+        self.assertEqual("текст".encode('koi8-r'), resp.body)
+        self.assertEqual("koi8-r", resp.charset)
