@@ -255,3 +255,13 @@ class TestUrlDispatcher(unittest.TestCase):
                                name='name')
         self.assertRegex(repr(self.router['name']),
                          r"<StaticRoute 'name' \[GET\] /get/")
+
+    def test_static_adds_slash(self):
+        route = self.router.add_static('/prefix',
+                                       os.path.dirname(aiohttp.__file__))
+        self.assertEqual('/prefix/', route._prefix)
+
+    def test_static_dont_add__double_slash(self):
+        route = self.router.add_static('/prefix/',
+                                       os.path.dirname(aiohttp.__file__))
+        self.assertEqual('/prefix/', route._prefix)
