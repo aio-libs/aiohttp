@@ -56,10 +56,10 @@ asyncio approach::
 
    yield from asyncio.wait_for(request('GET', url), 10)
 
-Server (experimental)
-^^^^^^^^^^^^^^^^^^^^^
+Server
+^^^^^^
 
-In aiohttp 0.10 we've added highlevel API for web HTTP server.
+In aiohttp 0.12 we've added highlevel API for web HTTP server.
 
 There is simple usage example::
 
