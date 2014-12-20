@@ -250,7 +250,7 @@ class TestStreamResponse(unittest.TestCase):
         self.assertEqual(200, resp.status)
         self.assertEqual("Everithing is fine!", resp.reason)
 
-    def test_start_focce_close(self):
+    def test_start_force_close(self):
         req = self.make_request('GET', '/')
         resp = StreamResponse()
         resp.force_close()
