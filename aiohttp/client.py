@@ -506,9 +506,7 @@ class ClientRequest:
                 for chunk in self.body:
                     request.write(chunk)
         except Exception as exc:
-            reader.set_exception(
-                aiohttp.ClientRequestError(
-                    'Can not write request body for %s' % self.url))
+            reader.set_exception(exc)
         else:
             try:
                 ret = request.write_eof()
@@ -518,9 +516,7 @@ class ClientRequest:
                         isinstance(ret, asyncio.Future)):
                     yield from ret
             except Exception as exc:
-                reader.set_exception(
-                    aiohttp.ClientRequestError(
-                        'Can not write request body for %s' % self.url))
+                reader.set_exception(exc)
 
         self._writer = None
 
