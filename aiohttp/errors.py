@@ -9,7 +9,7 @@ __all__ = [
 
     'ClientError', 'ClientHttpProcessingError', 'ClientConnectionError',
     'ClientOSError', 'ClientTimeoutError', 'ProxyConnectionError',
-    'ClientRequestError', 'ClientResponseError']
+    'ClientResponseError']
 
 from asyncio import TimeoutError
 
@@ -32,10 +32,6 @@ class ClientError(Exception):
 
 class ClientHttpProcessingError(ClientError):
     """Base class for client http processing errors."""
-
-
-class ClientRequestError(ClientHttpProcessingError):
-    """Connection error during sending request."""
 
 
 class ClientResponseError(ClientHttpProcessingError):
