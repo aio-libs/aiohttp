@@ -669,6 +669,35 @@ class ClientRequestTests(unittest.TestCase):
         self.loop.run_until_complete(req._writer)
         self.assertTrue(self.protocol.set_exception.called)
 
+    def test_data_stream_exc_chain(self):
+        fut = asyncio.Future(loop=self.loop)
+
+        def gen():
+            yield from fut
+            return b' result'
+
+        req = ClientRequest(
+            'POST', 'http://python.org/', data=gen(), loop=self.loop)
+
+        inner_exc = ValueError()
+
+        @asyncio.coroutine
+        def exc():
+            yield from asyncio.sleep(0.01, loop=self.loop)
+            fut.set_exception(inner_exc)
+
+        asyncio.async(exc(), loop=self.loop)
+
+        resp = req.send(self.transport, self.protocol)
+        resp.connection = self.connection
+        self.loop.run_until_complete(req._writer)
+        self.assertTrue(self.connection.close.called)
+        self.assertTrue(self.protocol.set_exception.called)
+        outer_exc = self.protocol.set_exception.call_args[0][0]
+        self.assertIsInstance(outer_exc, aiohttp.ClientRequestError)
+        self.assertIs(inner_exc, outer_exc.__context__)
+        self.assertIs(inner_exc, outer_exc.__cause__)
+
     def test_data_stream_continue(self):
         def gen():
             yield b'binary data'
