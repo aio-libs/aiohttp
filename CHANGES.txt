@@ -6,6 +6,8 @@ CHANGES
 
 - `StreamResponse.charset` converts value to lower-case on assigning.
 
+- Chain exceptions when raise `ClientRequestError`.
+
 
 0.12.0 (12-12-2014)
 -------------------
