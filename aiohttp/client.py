@@ -524,7 +524,7 @@ class ClientRequest:
                     'Can not write request body for %s' % self.url)
                 new_exc.__context__ = exc
                 new_exc.__cause__ = exc
-                reader.set_exception(exc)
+                reader.set_exception(new_exc)
 
         self._writer = None
 
