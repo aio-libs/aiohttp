@@ -112,9 +112,9 @@ def request(method, url, *,
                 raise
         except (aiohttp.HttpProcessingError,
                 aiohttp.ServerDisconnectedError) as exc:
-            raise aiohttp.ClientResponseError(exc)
+            raise aiohttp.ClientResponseError() from exc
         except OSError as exc:
-            raise aiohttp.ClientOSError(exc)
+            raise aiohttp.ClientOSError() from exc
 
         # redirects
         if resp.status in (301, 302, 303, 307) and allow_redirects:

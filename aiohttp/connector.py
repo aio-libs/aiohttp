@@ -163,9 +163,9 @@ class BaseConnector(object):
                 else:
                     transport, proto = yield from self._create_connection(req)
             except asyncio.TimeoutError as exc:
-                raise ClientTimeoutError(exc)
+                raise ClientTimeoutError() from exc
             except OSError as exc:
-                raise ClientOSError(exc)
+                raise ClientOSError() from exc
 
         return Connection(self, key, req, transport, proto, self._loop)
 
@@ -305,10 +305,10 @@ class TCPConnector(BaseConnector):
                     proto=hinfo['proto'], flags=hinfo['flags'],
                     server_hostname=hinfo['hostname'] if sslcontext else None,
                     **kwargs))
-            except OSError:
+            except OSError as exc:
                 if not hosts:
-                    raise ClientOSError(
-                        'Can not connect to %s:%s' % (req.host, req.port))
+                    raise ClientOSError('Can not connect to %s:%s' %
+                                        (req.host, req.port)) from exc
 
 
 class ProxyConnector(TCPConnector):
