@@ -1,6 +1,7 @@
 Contributors
 ------------
 
+A. Jesse Jiryu Davis
 Alejandro Gómez
 Alexander Bayandin
 Alexander Shorin
