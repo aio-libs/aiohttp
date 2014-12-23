@@ -279,7 +279,7 @@ information.
 Streaming uploads
 ------------------
 
-aiohttp support multiple types of streamimng uploads, which allows you to
+aiohttp support multiple types of streaming uploads, which allows you to
 send large files without reading them into memory.
 
 In simple case, simply provide a file-like object for your body::
