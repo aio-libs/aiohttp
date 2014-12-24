@@ -291,3 +291,12 @@ class TestUrlDispatcher(unittest.TestCase):
         info = self.loop.run_until_complete(self.router.resolve(req))
         self.assertIsNotNone(info)
         self.assertEqual({'to': 're/with/slashes'}, info)
+
+    def test_add_route_with_invalid_re(self):
+        handler = asyncio.coroutine(lambda req: Response(req))
+        with self.assertRaises(ValueError) as ctx:
+            self.router.add_route('GET', r'/handler/{to:+++}', handler)
+        self.assertEqual(
+            "Bad pattern '/handler/(?P<to>+++)': nothing to repeat",
+            str(ctx.exception))
+        self.assertIsNone(ctx.exception.__cause__)
