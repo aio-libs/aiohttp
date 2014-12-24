@@ -773,6 +773,22 @@ arbitrary properties for later access from
       *func* may be either regular function or :ref:`coroutine<coroutine>`,
       :meth:`finish` will un-yield (`yield from`) the later.
 
+   .. note::
+
+      Application object has :attr:`route` attribute but has no
+      ``add_router`` method. The reason is: we want to support
+      different route implementations (even maybe not url-matching
+      based but traversal ones).
+
+      For sake of that fact we have very trivial ABC for
+      :class:`AbstractRouter`: it should have only
+      :meth:`AbstractRouter.resolve` coroutine.
+
+      No methods for adding routes or route reversing (getting URL by
+      route name). All those are router implementation details (but,
+      sure, you need to deal with that methods after choosing the
+      router for your application).
+
 
 RequestHandlerFactory
 ^^^^^^^^^^^^^^^^^^^^^
