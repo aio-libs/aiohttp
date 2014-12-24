@@ -8,6 +8,8 @@ CHANGES
 
 - Chain exceptions when raise `ClientRequestError`.
 
+- Support custom regexps in route variables #204
+
 
 0.12.0 (12-12-2014)
 -------------------
