@@ -265,3 +265,20 @@ class TestUrlDispatcher(unittest.TestCase):
         route = self.router.add_static('/prefix/',
                                        os.path.dirname(aiohttp.__file__))
         self.assertEqual('/prefix/', route._prefix)
+
+    def test_add_route_with_re(self):
+        handler = asyncio.coroutine(lambda req: Response(req))
+        self.router.add_route('GET', r'/handler/{to:\d+}', handler)
+
+        req = self.make_request('GET', '/handler/1234')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info)
+        self.assertEqual({'to': '1234'}, info)
+
+    def test_add_route_with_re_not_match(self):
+        handler = asyncio.coroutine(lambda req: Response(req))
+        self.router.add_route('GET', r'/handler/{to:\d+}', handler)
+
+        req = self.make_request('GET', '/handler/tail')
+        with self.assertRaises(HTTPNotFound):
+            self.loop.run_until_complete(self.router.resolve(req))
