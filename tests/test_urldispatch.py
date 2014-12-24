@@ -282,3 +282,12 @@ class TestUrlDispatcher(unittest.TestCase):
         req = self.make_request('GET', '/handler/tail')
         with self.assertRaises(HTTPNotFound):
             self.loop.run_until_complete(self.router.resolve(req))
+
+    def test_add_route_with_re_including_slashes(self):
+        handler = asyncio.coroutine(lambda req: Response(req))
+        self.router.add_route('GET', r'/handler/{to:.+}/tail', handler)
+        
+        req = self.make_request('GET', '/handler/re/with/slashes/tail')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info)
+        self.assertEqual({'to': 're/with/slashes'}, info)
