@@ -80,6 +80,14 @@ Parsed *path part* will be available in the *request handler* as
    app.router.add_route('GET', '/{name}', variable_handler)
 
 
+Also you can specify regexp for variable route in form ``{name:regexp}``::
+
+   app.router.add_route('GET', r'/{name:\d+}', variable_handler)
+
+
+By default regexp is ``[a-zA-Z][_a-zA-Z0-9]*``.
+
+
 Handlers can be first-class functions, e.g.::
 
    @asyncio.coroutine
