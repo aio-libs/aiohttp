@@ -111,6 +111,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         stop accepting requests. It is especially important for keep-alive
         connections."""
         self._keep_alive = False
+        self._keep_alive_period = None
 
         if (not self._reading_request and self.transport is not None):
             if self._request_handler:

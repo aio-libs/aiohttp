@@ -10,6 +10,8 @@ CHANGES
 
 - Support custom regexps in route variables #204
 
+- Fixed graceful shutdown, disable keep-alive on connection closing.
+
 
 0.12.0 (12-12-2014)
 -------------------
