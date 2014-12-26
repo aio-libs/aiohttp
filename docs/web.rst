@@ -283,7 +283,7 @@ first positional parameter.
       The property can be used, for example, for getting IP address of
       client's peer::
 
-         peername = request.transport.get_extra('peername')
+         peername = request.transport.get_extra_info('peername')
          if peername is not None:
              host, port = peername
 
