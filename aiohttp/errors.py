@@ -1,7 +1,7 @@
 """http related errors."""
 
 __all__ = [
-    'ClientDisconnectedError', 'ServerDisconnectedError',
+    'DisconnectedError', 'ClientDisconnectedError', 'ServerDisconnectedError',
 
     'HttpProcessingError', 'BadHttpMessage',
     'HttpMethodNotAllowed', 'HttpBadRequest', 'HttpProxyError',

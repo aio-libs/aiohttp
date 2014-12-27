@@ -80,6 +80,14 @@ Parsed *path part* will be available in the *request handler* as
    app.router.add_route('GET', '/{name}', variable_handler)
 
 
+Also you can specify regexp for variable route in form ``{name:regexp}``::
+
+   app.router.add_route('GET', r'/{name:\d+}', variable_handler)
+
+
+By default regexp is ``[^{}/]+``.
+
+
 Handlers can be first-class functions, e.g.::
 
    @asyncio.coroutine
@@ -275,7 +283,7 @@ first positional parameter.
       The property can be used, for example, for getting IP address of
       client's peer::
 
-         peername = request.transport.get_extra('peername')
+         peername = request.transport.get_extra_info('peername')
          if peername is not None:
              host, port = peername
 
@@ -764,6 +772,22 @@ arbitrary properties for later access from
 
       *func* may be either regular function or :ref:`coroutine<coroutine>`,
       :meth:`finish` will un-yield (`yield from`) the later.
+
+   .. note::
+
+      Application object has :attr:`route` attribute but has no
+      ``add_router`` method. The reason is: we want to support
+      different route implementations (even maybe not url-matching
+      based but traversal ones).
+
+      For sake of that fact we have very trivial ABC for
+      :class:`AbstractRouter`: it should have only
+      :meth:`AbstractRouter.resolve` coroutine.
+
+      No methods for adding routes or route reversing (getting URL by
+      route name). All those are router implementation details (but,
+      sure, you need to deal with that methods after choosing the
+      router for your application).
 
 
 RequestHandlerFactory

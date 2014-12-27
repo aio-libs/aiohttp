@@ -112,9 +112,9 @@ def request(method, url, *,
                 raise
         except (aiohttp.HttpProcessingError,
                 aiohttp.ServerDisconnectedError) as exc:
-            raise aiohttp.ClientResponseError(exc)
+            raise aiohttp.ClientResponseError() from exc
         except OSError as exc:
-            raise aiohttp.ClientOSError(exc)
+            raise aiohttp.ClientOSError() from exc
 
         # redirects
         if resp.status in (301, 302, 303, 307) and allow_redirects:
@@ -506,9 +506,11 @@ class ClientRequest:
                 for chunk in self.body:
                     request.write(chunk)
         except Exception as exc:
-            reader.set_exception(
-                aiohttp.ClientRequestError(
-                    'Can not write request body for %s' % self.url))
+            new_exc = aiohttp.ClientRequestError(
+                'Can not write request body for %s' % self.url)
+            new_exc.__context__ = exc
+            new_exc.__cause__ = exc
+            reader.set_exception(new_exc)
         else:
             try:
                 ret = request.write_eof()
@@ -518,9 +520,11 @@ class ClientRequest:
                         isinstance(ret, asyncio.Future)):
                     yield from ret
             except Exception as exc:
-                reader.set_exception(
-                    aiohttp.ClientRequestError(
-                        'Can not write request body for %s' % self.url))
+                new_exc = aiohttp.ClientRequestError(
+                    'Can not write request body for %s' % self.url)
+                new_exc.__context__ = exc
+                new_exc.__cause__ = exc
+                reader.set_exception(new_exc)
 
         self._writer = None
 
