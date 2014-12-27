@@ -32,7 +32,7 @@ class TestWebFunctional(unittest.TestCase):
         self.addCleanup(srv.close)
         return app, srv, url
 
-    def test_midlleware_modifies_response(self):
+    def test_middleware_modifies_response(self):
 
         @asyncio.coroutine
         def handler(request):
@@ -59,7 +59,7 @@ class TestWebFunctional(unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
-    def test_midlleware_handles_exception(self):
+    def test_middleware_handles_exception(self):
 
         @asyncio.coroutine
         def handler(request):
@@ -86,7 +86,7 @@ class TestWebFunctional(unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
-    def test_midlleware_chain(self):
+    def test_middleware_chain(self):
 
         @asyncio.coroutine
         def handler(request):
