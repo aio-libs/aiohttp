@@ -391,6 +391,22 @@ class ParseRequestTests(unittest.TestCase):
             ('GET', '/path', (1, 1), multidict.MultiDict(), False, None),
             result)
 
+    def test_http_request_parser_utf8(self):
+        out = aiohttp.FlowControlDataQueue(self.stream)
+        buf = aiohttp.ParserBuffer()
+        p = protocol.HttpRequestParser()(out, buf)
+        next(p)
+        msg = 'get /path HTTP/1.1\r\nx-test:тест\r\n\r\n'.encode('utf-8')
+        try:
+            p.send(msg)
+        except StopIteration:
+            pass
+        result = out._buffer[0]
+        self.assertEqual(
+            ('GET', '/path', (1, 1),
+             multidict.MultiDict([('X-TEST', 'тест')]), False, None),
+            result)
+
     def test_http_request_parser_eof(self):
         # HttpRequestParser does fail on EofStream()
         out = aiohttp.FlowControlDataQueue(self.stream)
@@ -449,6 +465,22 @@ class ParseResponseTests(unittest.TestCase):
     def setUp(self):
         self.stream = unittest.mock.Mock()
         asyncio.set_event_loop(None)
+
+    def test_http_response_parser_utf8(self):
+        out = aiohttp.FlowControlDataQueue(self.stream)
+        buf = aiohttp.ParserBuffer()
+        p = protocol.HttpResponseParser()(out, buf)
+        next(p)
+        msg = 'HTTP/1.1 200 Ok\r\nx-test:тест\r\n\r\n'.encode('utf-8')
+        try:
+            p.send(msg)
+        except StopIteration:
+            pass
+        v, s, r, h = out._buffer[0][:4]
+        self.assertEqual(v, (1, 1))
+        self.assertEqual(s, 200)
+        self.assertEqual(r, 'Ok')
+        self.assertEqual(h, multidict.MultiDict([('X-TEST', 'тест')]))
 
     def test_http_response_parser_bad_status_line(self):
         out = aiohttp.FlowControlDataQueue(self.stream)

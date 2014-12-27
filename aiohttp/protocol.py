@@ -164,7 +164,7 @@ class HttpRequestParser(HttpParser):
             raise errors.LineTooLong(exc.limit) from None
 
         lines = raw_data.decode(
-            'ascii', 'surrogateescape').split('\r\n')
+            'utf-8', 'surrogateescape').split('\r\n')
 
         # request line
         line = lines[0]
@@ -212,7 +212,7 @@ class HttpResponseParser(HttpParser):
             raise errors.LineTooLong(exc.limit) from None
 
         lines = raw_data.decode(
-            'ascii', 'surrogateescape').split('\r\n')
+            'utf-8', 'surrogateescape').split('\r\n')
 
         line = lines[0]
         try:
