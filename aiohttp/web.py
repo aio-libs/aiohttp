@@ -1189,7 +1189,8 @@ class RequestHandler(ServerHttpProtocol):
     def handle_request(self, message, payload):
         now = self._loop.time()
 
-        request = Request(self._app, message, payload,
+        app = self._app
+        request = Request(app, message, payload,
                           self.transport, self.writer, self.keep_alive_timeout)
         try:
             match_info = yield from self._router.resolve(request)
@@ -1199,8 +1200,8 @@ class RequestHandler(ServerHttpProtocol):
             request._match_info = match_info
             handler = match_info.handler
 
-            for middleware in reversed(self._middlewares):
-                handler = middleware(request, handler)
+            for factory in reversed(self._middlewares):
+                handler = yield from factory(app, handler)
             resp = yield from handler(request)
 
             if not isinstance(resp, StreamResponse):
@@ -1292,6 +1293,8 @@ class Application(dict):
         self.logger = logger
 
         self.update(**kwargs)
+        for factory in middlewares:
+            assert asyncio.iscoroutinefunction(factory), factory
         self._middlewares = tuple(middlewares)
 
     @property
