@@ -14,6 +14,8 @@ CHANGES
 
 - Decode http message with `utf-8` encoding, some servers send headers in utf-8 encoding #207
 
+- Support `aiohtt.web` middlewares #209
+
 
 0.12.0 (12-12-2014)
 -------------------
