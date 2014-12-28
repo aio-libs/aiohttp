@@ -223,10 +223,17 @@ class TCPConnector(BaseConnector):
     """
 
     def __init__(self, *args, verify_ssl=True,
-                 resolve=False, family=socket.AF_INET, **kwargs):
+                 resolve=False, family=socket.AF_INET, ssl_context=None,
+                 **kwargs):
+        if not verify_ssl and ssl_context is not None:
+            raise ValueError(
+                "Either disable ssl certificate validation by "
+                "verify_ssl=False or specify ssl_context, not both.")
+
         super().__init__(*args, **kwargs)
 
         self._verify_ssl = verify_ssl
+        self._ssl_context = ssl_context
         self._family = family
         self._resolve = resolve
         self._resolved_hosts = {}
@@ -235,6 +242,30 @@ class TCPConnector(BaseConnector):
     def verify_ssl(self):
         """Do check for ssl certifications?"""
         return self._verify_ssl
+
+    @property
+    def ssl_context(self):
+        """SSLContext instance for https requests.
+
+        Lazy property, creates context on demand.
+        """
+        if self._ssl_context is None:
+            if not self._verify_ssl:
+                sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+                sslcontext.options |= ssl.OP_NO_SSLv2
+                sslcontext.set_default_verify_paths()
+            elif hasattr(ssl, 'create_default_context'):
+                # Python 3.4+
+                sslcontext = ssl.create_default_context()
+            else:  # pragma: no cover
+                # Fallback for Python 3.3.
+                sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+                sslcontext.options |= ssl.OP_NO_SSLv2
+                sslcontext.options |= ssl.OP_NO_SSLv3
+                sslcontext.set_default_verify_paths()
+                sslcontext.verify_mode = ssl.CERT_REQUIRED
+            self._ssl_context = sslcontext
+        return self._ssl_context
 
     @property
     def family(self):
@@ -288,11 +319,10 @@ class TCPConnector(BaseConnector):
 
         Has same keyword arguments as BaseEventLoop.create_connection.
         """
-        sslcontext = req.ssl
-        if req.ssl and not self._verify_ssl:
-            sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-            sslcontext.options |= ssl.OP_NO_SSLv2
-            sslcontext.set_default_verify_paths()
+        if req.ssl:
+            sslcontext = self.ssl_context
+        else:
+            sslcontext = None
 
         hosts = yield from self._resolve_host(req.host, req.port)
 

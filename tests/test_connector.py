@@ -6,6 +6,7 @@ import gc
 import time
 import socket
 import unittest
+import ssl
 from unittest import mock
 
 import aiohttp
@@ -311,6 +312,22 @@ class BaseConnectorTests(unittest.TestCase):
             conn.resolved_hosts, {('localhost', 124): info})
         conn.clear_resolved_hosts()
         self.assertEqual(conn.resolved_hosts, {})
+
+    def test_ambigous_verify_ssl_and_ssl_context(self):
+        with self.assertRaises(ValueError):
+            aiohttp.TCPConnector(
+                verify_ssl=False,
+                ssl_context=ssl.SSLContext(ssl.PROTOCOL_SSLv23))
+
+    def test_dont_recreate_ssl_context(self):
+        conn = aiohttp.TCPConnector(loop=self.loop)
+        ctx = conn.ssl_context
+        self.assertIs(ctx, conn.ssl_context)
+
+    def test_respect_precreated_ssl_context(self):
+        ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        conn = aiohttp.TCPConnector(loop=self.loop, ssl_context=ctx)
+        self.assertIs(ctx, conn.ssl_context)
 
 
 class HttpClientConnectorTests(unittest.TestCase):
