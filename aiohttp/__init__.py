@@ -1,6 +1,6 @@
 # This relies on each of the submodules having an __all__ variable.
 
-__version__ = '0.12.1a'
+__version__ = '0.13.0a'
 
 
 from .protocol import *  # noqa

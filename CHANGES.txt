@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-0.12.1 (Unreleased)
+0.13.0 (Unreleased)
 -------------------
 
 - `StreamResponse.charset` converts value to lower-case on assigning.
