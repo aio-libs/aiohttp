@@ -7,7 +7,7 @@ High-level HTTP Server
 
 .. module:: aiohttp.web
 
-.. versionadded:: 0.10
+.. versionchanged:: 0.12
 
 Run a simple web server
 -----------------------
