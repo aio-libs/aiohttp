@@ -6,13 +6,11 @@ python:
 install:
   - pip install --upgrade setuptools
   - pip install coveralls --use-mirrors
-  - pip install pyflakes
-  - pip install pep8
+  - pip install flake8
   - python setup.py develop
 
 script:
-  - pyflakes .
-  - pep8 aiohttp examples tests
+  - flake8 aiohttp examples tests
   - coverage run --source=aiohttp setup.py test
   - python setup.py check -rms
 after_success:
