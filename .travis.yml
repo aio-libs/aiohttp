@@ -10,6 +10,7 @@ install:
 
 script:
   coverage run --source=aiohttp setup.py test
+  python setup.py check -rms
 after_success:
   coveralls
 
