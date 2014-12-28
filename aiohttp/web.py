@@ -1173,6 +1173,7 @@ class RequestHandler(ServerHttpProtocol):
         self._manager = manager
         self._app = app
         self._router = router
+        self._middlewares = app.middlewares
 
     def connection_made(self, transport):
         super().connection_made(transport)
@@ -1188,7 +1189,8 @@ class RequestHandler(ServerHttpProtocol):
     def handle_request(self, message, payload):
         now = self._loop.time()
 
-        request = Request(self._app, message, payload,
+        app = self._app
+        request = Request(app, message, payload,
                           self.transport, self.writer, self.keep_alive_timeout)
         try:
             match_info = yield from self._router.resolve(request)
@@ -1198,7 +1200,10 @@ class RequestHandler(ServerHttpProtocol):
             request._match_info = match_info
             handler = match_info.handler
 
+            for factory in reversed(self._middlewares):
+                handler = yield from factory(app, handler)
             resp = yield from handler(request)
+
             if not isinstance(resp, StreamResponse):
                 raise RuntimeError(
                     ("Handler should return response instance, got {!r}")
@@ -1273,8 +1278,8 @@ class RequestHandlerFactory:
 class Application(dict):
 
     def __init__(self, *, logger=web_logger, loop=None,
-                 router=None, handler_factory=RequestHandlerFactory, **kwargs):
-        # TODO: explicitly accept *debug* param
+                 router=None, handler_factory=RequestHandlerFactory,
+                 middlewares=(), **kwargs):
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:
@@ -1288,6 +1293,9 @@ class Application(dict):
         self.logger = logger
 
         self.update(**kwargs)
+        for factory in middlewares:
+            assert asyncio.iscoroutinefunction(factory), factory
+        self._middlewares = tuple(middlewares)
 
     @property
     def router(self):
@@ -1296,6 +1304,10 @@ class Application(dict):
     @property
     def loop(self):
         return self._loop
+
+    @property
+    def middlewares(self):
+        return self._middlewares
 
     def make_handler(self, **kwargs):
         return self._handler_factory(
