@@ -666,6 +666,8 @@ Response
       *Content-Length* HTTP header.
 
 
+.. _aiohttp-web-app-and-router:
+
 Application and Router
 ----------------------
 
@@ -696,7 +698,8 @@ arbitrary properties for later access from
            conn.execute("DELETE * FROM table")
 
 
-.. class:: Application(*, loop=None, router=None, logger=<default>, **kwargs)
+.. class:: Application(*, loop=None, router=None, logger=<default>, \
+                       middlewares=(), **kwargs)
 
    The class inherits :class:`dict`.
 
@@ -714,6 +717,9 @@ arbitrary properties for later access from
    :param logger: :class:`logging.Logger` instance for storing application logs.
 
                   By default the value is ``logging.getLogger("aiohttp.web")``
+
+   :param middlewares: sequence of middleware factories, see
+                       :ref:`aiohttp-web-middlewares` for details.
 
    :param kwargs: optional params for initializing self dict.
 
@@ -1038,6 +1044,7 @@ Utilities
 
    .. seealso:: :ref:`aiohttp-web-file-upload`
 
+.. _aiohttp-web-exceptions:
 
 Exceptions
 -----------
@@ -1117,7 +1124,7 @@ Http Exception hierarchy chart::
 
 All http exceptions have the same constructor::
 
-    HTTPNotFound(*, headers=None, reason=None, \
+    HTTPNotFound(*, headers=None, reason=None,
                  body=None, text=None, content_type=None)
 
 if other not directly specified. *headers* will be added to *default
@@ -1127,7 +1134,7 @@ Classes :class:`HTTPMultipleChoices`, :class:`HTTPMovedPermanently`,
 :class:`HTTPFound`, :class:`HTTPSeeOther`, :class:`HTTPUseProxy`,
 :class:`HTTPTemporaryRedirect` has constructor signature like::
 
-    HTTPFound(location, *, headers=None, reason=None, \
+    HTTPFound(location, *, headers=None, reason=None,
               body=None, text=None, content_type=None)
 
 where *location* is value for *Location HTTP header*.
@@ -1136,5 +1143,49 @@ where *location* is value for *Location HTTP header*.
 and list of allowed methods::
 
     HTTPMethodNotAllowed(method, allowed_methods, *,
-                         headers=None, reason=None, \
+                         headers=None, reason=None,
                          body=None, text=None, content_type=None)
+
+.. _aiohttp-web-middlewares:
+
+Middlewares
+-----------
+
+:class:`Application` accepts *middlewares* keyword-only parameter,
+which should be sequence of *middleware factories*.
+
+The most trivial *middleware factory* example::
+
+    @asyncio.coroutine
+    def middleware_factory(app, handler):
+        @asyncio.coroutine
+        def middleware(request):
+            return (yield from handler(request))
+        return middleware
+
+Every factory is a coroutine that accepts two parameters: *app*
+(:class:`Application` instance) and *handler* (next handler in
+middleware chain. The last handler is
+:ref:`web-handler<aiohttp-web-handler>` selected by routing itself
+(:meth:`~UrlDispatcher.resolve` call). Middleware should return new
+coroutine by wrapping *handler* parameter. Signature of returned
+handler should be the same as for
+:ref:`web-handler<aiohttp-web-handler>`: accept single *request*
+parameter, return *response* or raise exception. Factory is coroutine,
+thus it can do extra ``yield from`` calls on making new handler.
+
+After constructing outermost handler by applying middleware chain to
+:ref:`web-handler<aiohttp-web-handler>` in reversed order
+:class:`RequestHandler` executes that outermost handler as regular
+*web-handler*.
+
+Middleware usually calls inner handler, but may do something
+other, like displaying *403 Forbidden page* or raising
+:exc:`HTTPForbidden` exception if user has no permissions to access underlying
+resource.  Also middleware may render errors raised by handler, do
+some pre- and post- processing like handling *CORS* and so on.
+
+.. warning::
+
+   Middlewares are executed **after** routing, so it cannot process
+   route exceptions.
