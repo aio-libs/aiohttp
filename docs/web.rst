@@ -474,6 +474,11 @@ StreamResponse
                       parameter. Otherwise pass :class:`str` with
                       arbitrary *status* explanation..
 
+   .. attribute:: started
+
+      Read-only :class:`bool` property, ``True`` if :meth:`start` has
+      been called, ``False`` otherwise.
+
    .. attribute:: status
 
       Read-only property for *HTTP response status code*, :class:`int`.
