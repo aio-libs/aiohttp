@@ -5,7 +5,7 @@ python:
 
 install:
   - pip install --upgrade setuptools
-  - pip install coveralls --use-mirrors
+  - pip install coveralls
   - pip install flake8
   - pip install docutils
   - python setup.py develop
@@ -15,7 +15,7 @@ script:
   - coverage run --source=aiohttp setup.py test
   - python setup.py check -rms
 after_success:
-  coveralls
+  - coveralls
 
 env:
   matrix:
