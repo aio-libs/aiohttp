@@ -254,6 +254,7 @@ class TCPConnector(BaseConnector):
                 sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
                 sslcontext.options |= ssl.OP_NO_SSLv2
                 sslcontext.options |= ssl.OP_NO_SSLv3
+                sslcontext.options |= getattr(ssl, "OP_NO_COMPRESSION", 0)
                 sslcontext.set_default_verify_paths()
             elif hasattr(ssl, 'create_default_context'):
                 # Python 3.4+
