@@ -346,6 +346,32 @@ Most widly used is :class:`aiohttp.connector.TCPConnector`::
   >>> r = yield from aiohttp.request('get', 'http://python.org', connector=conn)
 
 
+SSL control for tcp sockets
+---------------------------
+
+:class:`aiohttp.connector.TCPConnector` constructor accepts mutually
+exclusive *verify_ssl* and *ssl_context* params.
+
+By default it uses strict checks for HTTPS protocol. Certification
+checks can be relaxed by passing ``verify_ssl=False``::
+
+  >>> conn = aiohttp.TCPConnector(verify_ssl=False)
+  >>> r = yield from aiohttp.request('get',
+  ...                                'https://example.com', connector=conn)
+
+
+If you need to setup custom ssl parameters (use own certification
+files for example) you can create :class:`ssl.SSLContext` instance and
+pass it into connector::
+
+  >>> sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+  >>> context.verify_mode = ssl.CERT_REQUIRED
+  >>> context.load_verify_locations("/etc/ssl/certs/ca-bundle.crt")
+  >>> conn = aiohttp.TCPConnector(verify_ssl=False)
+  >>> r = yield from aiohttp.request('get',
+  ...                                'https://example.com', connector=conn)
+
+
 Unix domain sockets
 -------------------
 
