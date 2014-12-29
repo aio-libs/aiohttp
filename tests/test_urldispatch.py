@@ -300,3 +300,20 @@ class TestUrlDispatcher(unittest.TestCase):
             "Bad pattern '/handler/(?P<to>+++)': nothing to repeat",
             str(ctx.exception))
         self.assertIsNone(ctx.exception.__cause__)
+
+    def test_add_plain_route_options(self):
+        handler = asyncio.coroutine(lambda req: Response(req))
+        route = self.router.add_route('GET', r'/handler', handler, cors=True)
+        self.assertEqual({'cors': True}, route.options)
+
+    def test_add_dynamic_route_options(self):
+        handler = asyncio.coroutine(lambda req: Response(req))
+        route = self.router.add_route('GET', r'/handler/{name}',
+                                      handler, cors=True)
+        self.assertEqual({'cors': True}, route.options)
+
+    def test_add_static_route_options(self):
+        route = self.router.add_static('/st',
+                                       os.path.dirname(aiohttp.__file__),
+                                       name='static', cors=True)
+        self.assertEqual({'cors': True}, route.options)
