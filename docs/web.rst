@@ -9,6 +9,8 @@ High-level HTTP Server
 
 .. versionchanged:: 0.12
 
+   The module was deeply refactored in backward incompatible manner.
+
 Run a simple web server
 -----------------------
 
@@ -86,6 +88,11 @@ Also you can specify regexp for variable route in form ``{name:regexp}``::
 
 
 By default regexp is ``[^{}/]+``.
+
+
+.. versionadded:: 0.13
+
+   Support for custom regexps in variable routes.
 
 
 Handlers can be first-class functions, e.g.::
@@ -721,6 +728,8 @@ arbitrary properties for later access from
    :param middlewares: sequence of middleware factories, see
                        :ref:`aiohttp-web-middlewares` for details.
 
+                       .. versionadded:: 0.13
+
    :param kwargs: optional params for initializing self dict.
 
    .. attribute:: router
@@ -897,8 +906,6 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
 Route
 ^^^^^
-
-.. versionadded:: 0.11
 
 Default router :class:`UrlDispatcher` operates with *routes*.
 
@@ -1150,6 +1157,8 @@ and list of allowed methods::
 
 Middlewares
 -----------
+
+.. versionadded:: 0.13
 
 :class:`Application` accepts *middlewares* keyword-only parameter,
 which should be sequence of *middleware factories*.
