@@ -212,6 +212,10 @@ class BaseConnector(object):
         raise NotImplementedError()
 
 
+_SSL_OP_NO_COMPRESSION = getattr(ssl, "OP_NO_COMPRESSION", 0)
+_SSH_HAS_CREATE_DEFAULT_CONTEXT = hasattr(ssl, 'create_default_context')
+
+
 class TCPConnector(BaseConnector):
     """TCP connector.
 
@@ -254,9 +258,9 @@ class TCPConnector(BaseConnector):
                 sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
                 sslcontext.options |= ssl.OP_NO_SSLv2
                 sslcontext.options |= ssl.OP_NO_SSLv3
-                sslcontext.options |= getattr(ssl, "OP_NO_COMPRESSION", 0)
+                sslcontext.options |= _SSL_OP_NO_COMPRESSION
                 sslcontext.set_default_verify_paths()
-            elif hasattr(ssl, 'create_default_context'):
+            elif _SSH_HAS_CREATE_DEFAULT_CONTEXT:
                 # Python 3.4+
                 sslcontext = ssl.create_default_context()
             else:  # pragma: no cover
@@ -264,7 +268,7 @@ class TCPConnector(BaseConnector):
                 sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
                 sslcontext.options |= ssl.OP_NO_SSLv2
                 sslcontext.options |= ssl.OP_NO_SSLv3
-                sslcontext.options |= getattr(ssl, "OP_NO_COMPRESSION", 0)
+                sslcontext.options |= _SSL_OP_NO_COMPRESSION
                 sslcontext.set_default_verify_paths()
                 sslcontext.verify_mode = ssl.CERT_REQUIRED
             self._ssl_context = sslcontext
