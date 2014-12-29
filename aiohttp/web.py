@@ -410,6 +410,10 @@ class StreamResponse(HeadersMixin):
             self.headers.add('Set-Cookie', value)
 
     @property
+    def started(self):
+        return self._resp_impl is not None
+
+    @property
     def status(self):
         return self._status
 
