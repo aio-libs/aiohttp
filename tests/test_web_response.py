@@ -425,3 +425,12 @@ class TestResponse(unittest.TestCase):
         self.assertEqual("текст", resp.text)
         self.assertEqual("текст".encode('koi8-r'), resp.body)
         self.assertEqual("koi8-r", resp.charset)
+
+    def test_started_when_not_started(self):
+        resp = StreamResponse()
+        self.assertFalse(resp.started)
+
+    def test_started_when_started(self):
+        resp = StreamResponse()
+        resp.start(self.make_request('GET', '/'))
+        self.assertTrue(resp.started)
