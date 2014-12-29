@@ -909,10 +909,11 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
 
 class Route(metaclass=abc.ABCMeta):
 
-    def __init__(self, method, handler, name):
+    def __init__(self, method, handler, name, **options):
         self._method = method
         self._handler = handler
         self._name = name
+        self._options = options
 
     @property
     def method(self):
@@ -925,6 +926,12 @@ class Route(metaclass=abc.ABCMeta):
     @property
     def name(self):
         return self._name
+
+    @property
+    def options(self):
+        # return a copy. Should we invite immutable dict?
+        # multidict is slower than dict, btw.
+        return dict(self._options)
 
     @abc.abstractmethod
     def match(self, path):
@@ -945,8 +952,8 @@ class Route(metaclass=abc.ABCMeta):
 
 class PlainRoute(Route):
 
-    def __init__(self, method, handler, name, path):
-        super().__init__(method, handler, name)
+    def __init__(self, method, handler, name, path, **options):
+        super().__init__(method, handler, name, **options)
         self._path = path
 
     def match(self, path):
@@ -968,8 +975,8 @@ class PlainRoute(Route):
 
 class DynamicRoute(Route):
 
-    def __init__(self, method, handler, name, pattern, formatter):
-        super().__init__(method, handler, name)
+    def __init__(self, method, handler, name, pattern, formatter, **options):
+        super().__init__(method, handler, name, **options)
         self._pattern = pattern
         self._formatter = formatter
 
@@ -993,10 +1000,10 @@ class DynamicRoute(Route):
 
 class StaticRoute(Route):
 
-    def __init__(self, name, prefix, directory):
+    def __init__(self, name, prefix, directory, **options):
         assert prefix.startswith('/'), prefix
         assert prefix.endswith('/'), prefix
-        super().__init__('GET', self.handle, name)
+        super().__init__('GET', self.handle, name, **options)
         self._prefix = prefix
         self._prefix_len = len(self._prefix)
         self._directory = directory
@@ -1104,7 +1111,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                 self._routes[name] = route
         self._urls.append(route)
 
-    def add_route(self, method, path, handler, *, name=None):
+    def add_route(self, method, path, handler, *, name=None, **options):
         assert path.startswith('/')
         assert callable(handler), handler
         if not asyncio.iscoroutinefunction(handler):
@@ -1134,7 +1141,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                 continue
             raise ValueError("Invalid path '{}'['{}']".format(path, part))
         if factory is PlainRoute:
-            route = PlainRoute(method, handler, name, path)
+            route = PlainRoute(method, handler, name, path, **options)
         else:
             pattern = '/' + '/'.join(parts)
             if path.endswith('/') and pattern != '/':
@@ -1144,11 +1151,12 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             except re.error as exc:
                 raise ValueError(
                     "Bad pattern '{}': {}".format(pattern, exc)) from None
-            route = DynamicRoute(method, handler, name, compiled, path)
+            route = DynamicRoute(method, handler, name, compiled, path,
+                                 **options)
         self._register_endpoint(route)
         return route
 
-    def add_static(self, prefix, path, *, name=None):
+    def add_static(self, prefix, path, *, name=None, **options):
         """
         Adds static files view
         :param prefix - url prefix
@@ -1159,7 +1167,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         path = os.path.abspath(path)
         if not prefix.endswith('/'):
             prefix += '/'
-        route = StaticRoute(name, prefix, path)
+        route = StaticRoute(name, prefix, path, **options)
         self._register_endpoint(route)
         return route
 
