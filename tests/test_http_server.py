@@ -5,6 +5,8 @@ import socket
 import unittest
 import unittest.mock
 
+from html import escape
+
 from aiohttp import server
 from aiohttp import errors
 from aiohttp import test_utils
@@ -260,9 +262,8 @@ class HttpServerProtocolTests(unittest.TestCase):
             [c[1][0] for c in list(srv.writer.write.mock_calls)])
         self.assertIn(b'HTTP/1.1 500 Internal Server Error', content)
         self.assertIn(b'CONTENT-TYPE: text/html; charset=utf-8', content)
-        self.assertIn(
-            "raise RuntimeError('что-то пошло не так')".encode('utf-8'),
-            content)
+        pattern = escape("raise RuntimeError('что-то пошло не так')")
+        self.assertIn(pattern.encode('utf-8'), content)
         self.assertFalse(srv._keep_alive)
 
         srv.logger.exception.assert_called_with("Error handling request")

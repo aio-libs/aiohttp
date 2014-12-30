@@ -6,6 +6,8 @@ CHANGES
 
 - Add `aiohttp.web.StreamResponse.started` property #213
 
+- Html escape traceback text in `ServerHttpProtocol.handle_error`
+
 
 0.13.0 (12-29-2014)
 -------------------

@@ -8,6 +8,8 @@ import time
 import traceback
 import socket
 
+from html import escape as html_escape
+
 import aiohttp
 from aiohttp import errors, streams, helpers
 from aiohttp.log import server_logger, access_logger
@@ -299,6 +301,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             if self.debug and exc is not None:
                 try:
                     tb = traceback.format_exc()
+                    tb = html_escape(tb)
                     msg += '<br><h2>Traceback:</h2>\n<pre>{}</pre>'.format(tb)
                 except:
                     pass
