@@ -1210,8 +1210,9 @@ class RequestHandler(ServerHttpProtocol):
 
             if not isinstance(resp, StreamResponse):
                 raise RuntimeError(
-                    ("Handler should return response instance, got {!r}")
-                    .format(type(resp)))
+                    ("Handler {!r} should return response instance, got {!r} "
+                     "[middlewares {!r}]")
+                    .format(match_info.handler, type(resp), self._middlewares))
         except HTTPException as exc:
             resp = exc
 

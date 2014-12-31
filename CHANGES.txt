@@ -1,12 +1,15 @@
 CHANGES
 =======
 
-0.13.1 (Unreleased)
+0.13.1 (12-31-2014)
 --------------------
 
 - Add `aiohttp.web.StreamResponse.started` property #213
 
 - Html escape traceback text in `ServerHttpProtocol.handle_error`
+
+- Mention handler and middlewares in `aiohttp.web.RequestHandler.handle_request`
+  on error (#218)
 
 
 0.13.0 (12-29-2014)
