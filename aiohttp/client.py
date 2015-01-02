@@ -58,8 +58,8 @@ def request(method, url, *,
     :param dict cookies: (optional) Dict object to send with the request
     :param auth: (optional) BasicAuth named tuple represent HTTP Basic Auth
     :type auth: aiohttp.helpers.BasicAuth
-    :param bool allow_redirects: (optional) Set to True if POST/PUT/DELETE
-       redirect following is allowed.
+    :param bool allow_redirects: (optional) If set to False, do not follow
+      redirects
     :param version: Request http version.
     :type version: aiohttp.protocol.HttpVersion
     :param bool compress: Set to True if request has to be compressed
