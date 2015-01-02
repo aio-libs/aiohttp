@@ -479,3 +479,18 @@ class HttpMessageTests(unittest.TestCase):
 
         res = msg.write(b'1')
         self.assertEqual(res, ())
+
+    def test_dont_override_request_headers_with_default_values(self):
+        msg = protocol.Request(
+            self.transport, 'GET', '/index.html', close=True)
+        msg.add_header('USER-AGENT', 'custom')
+        msg._add_default_headers()
+        self.assertEqual('custom', msg.headers['USER-AGENT'])
+
+    def test_dont_override_response_headers_with_default_values(self):
+        msg = protocol.Response(self.transport, 200, http_version=(1, 0))
+        msg.add_header('DATE', 'now')
+        msg.add_header('SERVER', 'custom')
+        msg._add_default_headers()
+        self.assertEqual('custom', msg.headers['SERVER'])
+        self.assertEqual('now', msg.headers['DATE'])
