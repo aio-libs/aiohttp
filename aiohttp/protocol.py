@@ -521,8 +521,6 @@ class HttpMessage:
     # this is useful for wsgi's start_response implementation.
     _send_headers = False
 
-    _has_user_agent = False
-
     def __init__(self, transport, version, close):
         self.transport = transport
         self.version = version
@@ -595,9 +593,6 @@ class HttpMessage:
             self.chunked = value.lower().strip() == 'chunked'
 
         elif name not in self.HOP_HEADERS:
-            if name == 'USER-AGENT':
-                self._has_user_agent = True
-
             # ignore hop-by-hop headers
             self.headers.add(name, value)
 
@@ -805,8 +800,6 @@ class Response(HttpMessage):
         'TRAILERS',
         'TRANSFER-ENCODING',
         'UPGRADE',
-        'SERVER',
-        'DATE',
     }
 
     @staticmethod
@@ -833,8 +826,8 @@ class Response(HttpMessage):
     def _add_default_headers(self):
         super()._add_default_headers()
 
-        self.headers.extend((('DATE', format_date_time(None)),
-                             ('SERVER', self.SERVER_SOFTWARE),))
+        self.headers.setdefault('DATE', format_date_time(None))
+        self.headers.setdefault('SERVER', self.SERVER_SOFTWARE)
 
 
 class Request(HttpMessage):
@@ -853,5 +846,4 @@ class Request(HttpMessage):
     def _add_default_headers(self):
         super()._add_default_headers()
 
-        if not self._has_user_agent:
-            self.headers['USER-AGENT'] = self.SERVER_SOFTWARE
+        self.headers.setdefault('USER-AGENT', self.SERVER_SOFTWARE)
