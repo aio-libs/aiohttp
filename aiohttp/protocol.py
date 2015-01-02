@@ -826,7 +826,9 @@ class Response(HttpMessage):
     def _add_default_headers(self):
         super()._add_default_headers()
 
-        self.headers.setdefault('DATE', format_date_time(None))
+        if 'DATE' not in self.headers:
+            # format_date_time(None) is quite expensive
+            self.headers.setdefault('DATE', format_date_time(None))
         self.headers.setdefault('SERVER', self.SERVER_SOFTWARE)
 
 
