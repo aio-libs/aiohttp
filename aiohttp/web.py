@@ -1328,7 +1328,7 @@ class RequestHandler(ServerHttpProtocol):
             self.log_access(message, None, resp_msg, self._loop.time() - now)
 
         except GeneratorExit:
-            # the HTTP protocol probably in invalid state, close connection
+            # the HTTP protocol is probably in invalid state, close connection
             self.transport.close()
             # log access
             self.log_access(message, None, None, self._loop.time() - now)
