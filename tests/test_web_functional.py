@@ -154,6 +154,7 @@ class TestWebFunctional(unittest.TestCase):
             self.assertEqual(['sample.crt'], list(data.keys()))
             for fs in data.values():
                 check_file(fs)
+                fs.file.close()
             resp = web.Response(body=b'OK')
             return resp
 
@@ -187,6 +188,7 @@ class TestWebFunctional(unittest.TestCase):
             self.assertEqual(['sample.crt', 'sample.key'], list(data.keys()))
             for fs in data.values():
                 check_file(fs)
+                fs.file.close()
             resp = web.Response(body=b'OK')
             return resp
 
