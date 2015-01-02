@@ -1,14 +1,28 @@
 import unittest
 
-from aiohttp.multidict import \
-    MultiDict, MutableMultiDict, \
-    CaseInsensitiveMultiDict, CaseInsensitiveMutableMultiDict
+from aiohttp.multidict import (MultiDict,
+                               MutableMultiDict,
+                               CaseInsensitiveMultiDict,
+                               CaseInsensitiveMutableMultiDict)
 
 
-class _BaseTest:
+import aiohttp
+
+
+class _Root:
+
+    cls = None
 
     def make_dict(self, *args, **kwargs):
-        raise NotImplementedError
+        return self.cls(*args, **kwargs)
+
+    def test_exposed_names(self):
+        name = self.cls.__name__
+        self.assertIn(name, aiohttp.__all__)
+        self.assertIs(self.cls, getattr(aiohttp, name))
+
+
+class _BaseTest(_Root):
 
     def test_instantiate__empty(self):
         d = self.make_dict()
@@ -134,8 +148,7 @@ class _BaseTest:
 
 class MultiDictTests(_BaseTest, unittest.TestCase):
 
-    def make_dict(self, *args, **kwargs):
-        return MultiDict(*args, **kwargs)
+    cls = MultiDict
 
     def test__repr__(self):
         d = self.make_dict()
@@ -165,10 +178,9 @@ class MultiDictTests(_BaseTest, unittest.TestCase):
         self.assertEqual('a=1&b=2&a=3', s)
 
 
-class CaseInsensitiveMultiDictTests(unittest.TestCase):
+class CaseInsensitiveMultiDictTests(_Root, unittest.TestCase):
 
-    def make_dict(self, *args, **kwargs):
-        return CaseInsensitiveMultiDict(*args, **kwargs)
+    cls = CaseInsensitiveMultiDict
 
     def test_basics(self):
         d = self.make_dict([('KEY', 'value1')], KEY='value2')
@@ -301,14 +313,12 @@ class _BaseMutableMultiDictTests(_BaseTest):
 
 class MutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
 
-    def make_dict(self, *args, **kwargs):
-        return MutableMultiDict(*args, **kwargs)
+    cls = MutableMultiDict
 
 
-class CaseInsensitiveMutableMultiDictTests(unittest.TestCase):
+class CaseInsensitiveMutableMultiDictTests(_Root, unittest.TestCase):
 
-    def make_dict(self, *args, **kwargs):
-        return CaseInsensitiveMutableMultiDict(*args, **kwargs)
+    cls = CaseInsensitiveMutableMultiDict
 
     def test_getall(self):
         d = self.make_dict([('KEY', 'value1')], KEY='value2')

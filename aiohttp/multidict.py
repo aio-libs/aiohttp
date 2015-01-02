@@ -2,6 +2,9 @@ import pprint
 from itertools import chain, filterfalse
 from collections import abc
 
+__all__ = ['MultiDict', 'CaseInsensitiveMultiDict',
+           'MutableMultiDict', 'CaseInsensitiveMutableMultiDict']
+
 _marker = object()
 
 
