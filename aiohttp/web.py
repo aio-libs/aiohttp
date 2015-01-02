@@ -1337,7 +1337,6 @@ class RequestHandler(ServerHttpProtocol):
             self.log_access(message, None, None, self._loop.time() - now)
 
 
-
 class RequestHandlerFactory:
 
     def __init__(self, app, router, *,
