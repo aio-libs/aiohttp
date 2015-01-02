@@ -730,7 +730,6 @@ class WebSocketResponse(StreamResponse):
             try:
                 msg = yield from self._reader.read()
             except Exception as exc:
-                # client dropped connection
                 raise WebSocketClosed(code=None, message=str(exc)) from exc
 
             if msg.tp == MSG_PING:
