@@ -211,3 +211,20 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             writer.close()
 
         self.loop.run_until_complete(go())
+
+    def test_handle_protocol(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            ws = web.WebSocketResponse('foo', 'bar')
+            ws.start(request)
+            self.assertEqual('bar', ws.protocol)
+            return ws
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('GET', '/', handler)
+            _, writer = yield from self.connect_ws(url, 'bar, foo')
+            writer.close()
+
+        self.loop.run_until_complete(go())
