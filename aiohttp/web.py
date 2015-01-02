@@ -741,9 +741,6 @@ class WebSocketResponse(StreamResponse):
                 return msg.data
             elif msg.tp == MSG_BINARY:
                 return msg.data
-            else:
-                # ignore MSG_PONG
-                pass
 
     def write(self, data):
         raise RuntimeError("Cannot call .write() for websocket")
