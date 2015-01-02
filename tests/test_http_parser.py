@@ -86,7 +86,7 @@ class ParseHeadersTests(unittest.TestCase):
         self.assertIn("limit request headers fields size", str(cm.exception))
 
     def test_invalid_header(self):
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
                 errors.InvalidHeader,
                 "(400, message='Invalid HTTP Header: test line)"):
             self.parser.parse_headers(['', 'test line\r\n', '\r\n'])
