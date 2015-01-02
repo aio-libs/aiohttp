@@ -92,7 +92,7 @@ class ParseHeadersTests(unittest.TestCase):
             self.parser.parse_headers(['', 'test line\r\n', '\r\n'])
 
     def test_invalid_name(self):
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
                 errors.InvalidHeader,
                 "(400, message='Invalid HTTP Header: TEST..)"):
             self.parser.parse_headers(['', 'test[]: line\r\n', '\r\n'])
