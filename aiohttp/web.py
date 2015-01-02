@@ -22,9 +22,11 @@ from .multidict import (CaseInsensitiveMultiDict,
 from .protocol import Response as ResponseImpl, HttpVersion, HttpVersion11
 from .server import ServerHttpProtocol
 from .streams import EOF_MARKER
+from .websocket import do_handshake, MSG_BINARY, MSG_CLOSE, MSG_PING, MSG_TEXT
 
 
 __all__ = [
+    'WebSocketClosed',
     'Application',
     'HttpVersion',
     'RequestHandler',
@@ -32,6 +34,7 @@ __all__ = [
     'Request',
     'StreamResponse',
     'Response',
+    'WebSocketResponse',
     'UrlDispatcher',
     'UrlMappingMatchInfo',
     'HTTPException',
@@ -79,6 +82,21 @@ __all__ = [
     'HTTPGatewayTimeout',
     'HTTPVersionNotSupported',
 ]
+
+
+class WebSocketClosed(GeneratorExit):
+    """Raised on closing websocket by peer."""
+
+    def __init__(self, code=None, message=None):
+        super().__init__(code, message)
+
+    @property
+    def code(self):
+        return self.args[0]
+
+    @property
+    def message(self):
+        return self.args[1]
 
 
 sentinel = object()
@@ -135,11 +153,12 @@ FileField = collections.namedtuple('Field', 'name filename file content_type')
 
 class Request(HeadersMixin):
 
-    def __init__(self, app, message, payload, transport, writer,
+    def __init__(self, app, message, payload, transport, reader, writer,
                  keep_alive_timeout):
         self._app = app
         self._version = message.version
         self._transport = transport
+        self._reader = reader
         self._writer = writer
         self._method = message.method
         self._host = message.headers.get('HOST')
@@ -374,17 +393,6 @@ class Request(HeadersMixin):
         self._post = MultiDict(out.items(getall=True))
         return self._post
 
-    # @asyncio.coroutine
-    # def start_websocket(self):
-    #     """Upgrade connection to websocket.
-
-    #     Returns (reader, writer) pair.
-    #     """
-
-    #     upgrade = 'websocket' in message.headers.get('UPGRADE', '').lower()
-    #     if not upgrade:
-    #         pass
-
 
 ############################################################
 # HTTP Response classes
@@ -532,15 +540,22 @@ class StreamResponse(HeadersMixin):
             ctype = self._content_type
         self.headers['Content-Type'] = ctype
 
-    def start(self, request):
+    def _start_pre_check(self, request):
         if self._resp_impl is not None:
             if self._req is not request:
                 raise RuntimeError(
                     'Response has been started with different request.')
-            return self._resp_impl
+            else:
+                return self._resp_impl
+        else:
+            return None
+
+    def start(self, request):
+        resp_impl = self._start_pre_check(request)
+        if resp_impl is not None:
+            return resp_impl
 
         self._req = request
-
         keep_alive = self._keep_alive
         if keep_alive is None:
             keep_alive = request.keep_alive
@@ -645,6 +660,93 @@ class Response(StreamResponse):
         if body is not None:
             self.write(body)
         yield from super().write_eof()
+
+
+class WebSocketResponse(StreamResponse):
+
+    def __init__(self, *protocols):
+        super().__init__(status=101)
+        self._protocols = protocols
+        self._protocol = None
+        self._writer = None
+        self._reader = None
+
+    def start(self, request):
+        # make pre-check to don't hide it by do_handshake() exceptions
+        resp_impl = self._start_pre_check(request)
+        if resp_impl is not None:
+            return resp_impl
+
+        status, headers, parser, writer, protocol = do_handshake(
+            request.method, request.headers, request.transport)
+
+        if self.status != status:
+            self.set_status(status)
+        for k, v in headers:
+            self.headers[k] = v
+
+        resp_impl = super().start(request)
+
+        self._reader = request._reader.set_parser(parser)
+        self._writer = writer
+        self._protocol = protocol
+
+        return resp_impl
+
+    @property
+    def protocol(self):
+        return self._protocol
+
+    def ping(self):
+        if self._writer is None:
+            raise RuntimeError('Call .start() first')
+        self._writer.ping()
+
+    def send_str(self, data):
+        if self._writer is None:
+            raise RuntimeError('Call .start() first')
+        if not isinstance(data, str):
+            raise TypeError('data argument must be str (%r)', type(data))
+        self._writer.send(data, binary=False)
+
+    def send_bytes(self, data):
+        if self._writer is None:
+            raise RuntimeError('Call .start() first')
+        if not isinstance(data, (bytes, bytearray, memoryview)):
+            raise TypeError('data argument must be byte-ish (%r)',
+                            type(data))
+        self._writer.send(data, binary=True)
+
+    def close(self, *, code=1000, message=b''):
+        if self._writer is None:
+            raise RuntimeError('Call .start() first')
+        self._writer.close(code, message)
+
+    @asyncio.coroutine
+    def receive(self):
+        if self._reader is None:
+            raise RuntimeError('Call .start() first')
+        while True:
+            try:
+                msg = yield from self._reader.read()
+            except Exception as exc:
+                # client dropped connection
+                raise WebSocketClosed(code=None, message=str(exc)) from exc
+
+            if msg.tp == MSG_PING:
+                self._writer.pong()
+            elif msg.tp == MSG_CLOSE:
+                raise WebSocketClosed(msg.data, msg.extra)
+            elif msg.tp == MSG_TEXT:
+                return msg.data
+            elif msg.tp == MSG_BINARY:
+                return msg.data
+            else:
+                # ignore MSG_PONG
+                pass
+
+    def write(self, data):
+        raise RuntimeError("Cannot call .write() for websocket")
 
 
 ############################################################
@@ -1195,35 +1297,45 @@ class RequestHandler(ServerHttpProtocol):
 
         app = self._app
         request = Request(app, message, payload,
-                          self.transport, self.writer, self.keep_alive_timeout)
+                          self.transport, self.reader, self.writer,
+                          self.keep_alive_timeout)
         try:
-            match_info = yield from self._router.resolve(request)
+            try:
+                match_info = yield from self._router.resolve(request)
 
-            assert isinstance(match_info, AbstractMatchInfo), match_info
+                assert isinstance(match_info, AbstractMatchInfo), match_info
 
-            request._match_info = match_info
-            handler = match_info.handler
+                request._match_info = match_info
+                handler = match_info.handler
 
-            for factory in reversed(self._middlewares):
-                handler = yield from factory(app, handler)
-            resp = yield from handler(request)
+                for factory in reversed(self._middlewares):
+                    handler = yield from factory(app, handler)
+                resp = yield from handler(request)
 
-            if not isinstance(resp, StreamResponse):
-                raise RuntimeError(
-                    ("Handler {!r} should return response instance, got {!r} "
-                     "[middlewares {!r}]")
-                    .format(match_info.handler, type(resp), self._middlewares))
-        except HTTPException as exc:
-            resp = exc
+                if not isinstance(resp, StreamResponse):
+                    raise RuntimeError(
+                        ("Handler {!r} should return response instance, "
+                         "got {!r} [middlewares {!r}]")
+                        .format(match_info.handler, type(resp),
+                                self._middlewares))
+            except HTTPException as exc:
+                resp = exc
 
-        resp_msg = resp.start(request)
-        yield from resp.write_eof()
+            resp_msg = resp.start(request)
+            yield from resp.write_eof()
 
-        # notify server about keep-alive
-        self.keep_alive(resp_msg.keep_alive())
+            # notify server about keep-alive
+            self.keep_alive(resp_msg.keep_alive())
 
-        # log access
-        self.log_access(message, None, resp_msg, self._loop.time() - now)
+            # log access
+            self.log_access(message, None, resp_msg, self._loop.time() - now)
+
+        except GeneratorExit:
+            self.close()
+
+            # log access
+            self.log_access(message, None, None, self._loop.time() - now)
+
 
 
 class RequestHandlerFactory:

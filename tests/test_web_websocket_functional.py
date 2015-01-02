@@ -1,0 +1,194 @@
+import asyncio
+import base64
+import hashlib
+import os
+import socket
+import unittest
+
+import aiohttp
+from aiohttp import web, websocket
+
+
+WS_KEY = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+
+
+class TestWebWebSocketFunctional(unittest.TestCase):
+
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+    def tearDown(self):
+        self.loop.close()
+
+    def find_unused_port(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind(('127.0.0.1', 0))
+        port = s.getsockname()[1]
+        s.close()
+        return port
+
+    @asyncio.coroutine
+    def create_server(self, method, path, handler=None):
+        app = web.Application(loop=self.loop, debug=True)
+        if handler:
+            app.router.add_route(method, path, handler)
+
+        port = self.find_unused_port()
+        srv = yield from self.loop.create_server(
+            app.make_handler(), '127.0.0.1', port)
+        url = "http://127.0.0.1:{}".format(port) + path
+        self.addCleanup(srv.close)
+        return app, srv, url
+
+    @asyncio.coroutine
+    def connect_ws(self, url, protocol='chat'):
+        sec_key = base64.b64encode(os.urandom(16))
+
+        conn = aiohttp.TCPConnector(loop=self.loop)
+        self.addCleanup(conn.close)
+        # send request
+        response = yield from aiohttp.request(
+            'get', url,
+            headers={
+                'UPGRADE': 'WebSocket',
+                'CONNECTION': 'Upgrade',
+                'SEC-WEBSOCKET-VERSION': '13',
+                'SEC-WEBSOCKET-PROTOCOL': protocol,
+                'SEC-WEBSOCKET-KEY': sec_key.decode(),
+            },
+            connector=conn,
+            loop=self.loop)
+        self.addCleanup(response.close, True)
+
+        self.assertEqual(101, response.status)
+        self.assertEqual(response.headers.get('upgrade', '').lower(),
+                         'websocket')
+        self.assertEqual(response.headers.get('connection', '').lower(),
+                         'upgrade')
+
+        key = response.headers.get('sec-websocket-accept', '').encode()
+        match = base64.b64encode(hashlib.sha1(sec_key + WS_KEY).digest())
+        self.assertEqual(key, match)
+
+        # switch to websocket protocol
+        connection = response.connection
+        reader = connection.reader.set_parser(websocket.WebSocketParser)
+        writer = websocket.WebSocketWriter(connection.writer)
+
+        return reader, writer
+
+    def test_send_recv_text(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            ws = web.WebSocketResponse()
+            ws.start(request)
+
+            msg = yield from ws.receive()
+            ws.send_str(msg+'/answer')
+            ws.close()
+            return ws
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('GET', '/', handler)
+            reader, writer = yield from self.connect_ws(url)
+            writer.send('ask')
+            msg = yield from reader.read()
+            self.assertEqual(msg.tp, websocket.MSG_TEXT)
+            self.assertEqual('ask/answer', msg.data)
+
+            msg = yield from reader.read()
+            self.assertEqual(msg.tp, websocket.MSG_CLOSE)
+            self.assertEqual(msg.data, 1000)
+            self.assertEqual(msg.extra, b'')
+
+        self.loop.run_until_complete(go())
+
+    def test_send_recv_bytes(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            ws = web.WebSocketResponse()
+            ws.start(request)
+
+            msg = yield from ws.receive()
+            ws.send_bytes(msg+b'/answer')
+            ws.close()
+            return ws
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('GET', '/', handler)
+            reader, writer = yield from self.connect_ws(url)
+            writer.send(b'ask', binary=True)
+            msg = yield from reader.read()
+            self.assertEqual(msg.tp, websocket.MSG_BINARY)
+            self.assertEqual(b'ask/answer', msg.data)
+
+            msg = yield from reader.read()
+            self.assertEqual(msg.tp, websocket.MSG_CLOSE)
+            self.assertEqual(msg.data, 1000)
+            self.assertEqual(msg.extra, b'')
+
+        self.loop.run_until_complete(go())
+
+    def test_auto_pong_with_closing_by_peer(self):
+
+        closed = asyncio.Future(loop=self.loop)
+
+        @asyncio.coroutine
+        def handler(request):
+            ws = web.WebSocketResponse()
+            ws.start(request)
+
+            try:
+                yield from ws.receive()
+            except web.WebSocketClosed as exc:
+                self.assertEqual(1, exc.code)
+                self.assertEqual(b'exit message', exc.message)
+                closed.set_result(None)
+                raise
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('GET', '/', handler)
+            reader, writer = yield from self.connect_ws(url)
+            writer.ping()
+            msg = yield from reader.read()
+            self.assertEqual(msg.tp, websocket.MSG_PONG)
+            writer.close(1, 'exit message')
+            yield from closed
+
+        self.loop.run_until_complete(go())
+
+    def test_ping(self):
+
+        closed = asyncio.Future(loop=self.loop)
+
+        @asyncio.coroutine
+        def handler(request):
+            ws = web.WebSocketResponse()
+            ws.start(request)
+
+            ws.ping()
+            try:
+                yield from ws.receive()
+            except web.WebSocketClosed as exc:
+                self.assertEqual(2, exc.code)
+                self.assertEqual(b'exit message', exc.message)
+                closed.set_result(None)
+                raise
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('GET', '/', handler)
+            reader, writer = yield from self.connect_ws(url)
+            msg = yield from reader.read()
+            self.assertEqual(msg.tp, websocket.MSG_PING)
+            writer.pong()
+            writer.close(2, 'exit message')
+            yield from closed
+
+        self.loop.run_until_complete(go())
