@@ -678,7 +678,8 @@ class WebSocketResponse(StreamResponse):
             return resp_impl
 
         status, headers, parser, writer, protocol = do_handshake(
-            request.method, request.headers, request.transport)
+            request.method, request.headers, request.transport,
+            self._protocols)
 
         if self.status != status:
             self.set_status(status)

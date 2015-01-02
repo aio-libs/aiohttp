@@ -195,6 +195,8 @@ class TestWebWebSocketFunctional(unittest.TestCase):
 
     def test_change_status(self):
 
+        closed = asyncio.Future(loop=self.loop)
+
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse()
@@ -202,6 +204,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             self.assertEqual(200, ws.status)
             ws.start(request)
             self.assertEqual(101, ws.status)
+            closed.set_result(None)
             return ws
 
         @asyncio.coroutine
@@ -209,22 +212,27 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             _, _, url = yield from self.create_server('GET', '/', handler)
             _, writer = yield from self.connect_ws(url)
             writer.close()
+            yield from closed
 
         self.loop.run_until_complete(go())
 
     def test_handle_protocol(self):
+
+        closed = asyncio.Future(loop=self.loop)
 
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse('foo', 'bar')
             ws.start(request)
             self.assertEqual('bar', ws.protocol)
+            closed.set_result(None)
             return ws
 
         @asyncio.coroutine
         def go():
             _, _, url = yield from self.create_server('GET', '/', handler)
-            _, writer = yield from self.connect_ws(url, 'bar, foo')
+            _, writer = yield from self.connect_ws(url, 'eggs, bar')
             writer.close()
+            yield from closed
 
         self.loop.run_until_complete(go())
