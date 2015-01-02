@@ -1328,8 +1328,7 @@ class RequestHandler(ServerHttpProtocol):
             self.log_access(message, None, resp_msg, self._loop.time() - now)
 
         except GeneratorExit:
-            self.close()
-
+            self.transport.close()
             # log access
             self.log_access(message, None, None, self._loop.time() - now)
 
