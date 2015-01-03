@@ -1,12 +1,14 @@
 CHANGES
 =======
 
-0.13.2 (Unreleased)
+0.14.0 (Unreleased)
 -------------------
 
 - HttpMessage._add_default_headers does not overwrite existing headers #216
 
 - Expose multidict classes at package level
+
+- add `aiohttp.web.WebSocketResponse`
 
 
 0.13.1 (12-31-2014)
