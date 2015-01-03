@@ -22,7 +22,9 @@ from .multidict import (CaseInsensitiveMultiDict,
 from .protocol import Response as ResponseImpl, HttpVersion, HttpVersion11
 from .server import ServerHttpProtocol
 from .streams import EOF_MARKER
-from .websocket import do_handshake, MSG_BINARY, MSG_CLOSE, MSG_PING, MSG_TEXT
+from .websocket import (do_handshake, WebSocketError,
+                        MSG_BINARY, MSG_CLOSE, MSG_PING, MSG_TEXT)
+from .errors import HttpProcessingError
 
 
 __all__ = [
@@ -670,6 +672,9 @@ class WebSocketResponse(StreamResponse):
         self._protocol = None
         self._writer = None
         self._reader = None
+        self._closing = False
+        self._loop = None
+        self._closing_fut = None
 
     def start(self, request):
         # make pre-check to don't hide it by do_handshake() exceptions
@@ -691,8 +696,26 @@ class WebSocketResponse(StreamResponse):
         self._reader = request._reader.set_parser(parser)
         self._writer = writer
         self._protocol = protocol
+        self._loop = request.app.loop
+        self._closing_fut = asyncio.Future(loop=self._loop)
 
         return resp_impl
+
+    def can_start(self, request):
+        if self._writer is not None:
+            raise RuntimeError('Already started')
+        try:
+            _, _, _, _, protocol = do_handshake(
+                request.method, request.headers, request.transport,
+                self._protocols)
+        except (WebSocketError, HttpProcessingError):
+            return False, None
+        else:
+            return True, protocol
+
+    @property
+    def closing(self):
+        return self._closing
 
     @property
     def protocol(self):
@@ -701,11 +724,15 @@ class WebSocketResponse(StreamResponse):
     def ping(self):
         if self._writer is None:
             raise RuntimeError('Call .start() first')
+        if self._closing:
+            raise RuntimeError('websocket connection is closing')
         self._writer.ping()
 
     def send_str(self, data):
         if self._writer is None:
             raise RuntimeError('Call .start() first')
+        if self._closing:
+            raise RuntimeError('websocket connection is closing')
         if not isinstance(data, str):
             raise TypeError('data argument must be str (%r)', type(data))
         self._writer.send(data, binary=False)
@@ -713,6 +740,8 @@ class WebSocketResponse(StreamResponse):
     def send_bytes(self, data):
         if self._writer is None:
             raise RuntimeError('Call .start() first')
+        if self._closing:
+            raise RuntimeError('websocket connection is closing')
         if not isinstance(data, (bytes, bytearray, memoryview)):
             raise TypeError('data argument must be byte-ish (%r)',
                             type(data))
@@ -721,7 +750,17 @@ class WebSocketResponse(StreamResponse):
     def close(self, *, code=1000, message=b''):
         if self._writer is None:
             raise RuntimeError('Call .start() first')
-        self._writer.close(code, message)
+        if not self._closing:
+            self._closing = True
+            self._writer.close(code, message)
+        else:
+            raise RuntimeError('Already closing')
+
+    @asyncio.coroutine
+    def wait_closed(self):
+        if self._closing_fut is None:
+            raise RuntimeError('Call .start() first')
+        yield from self._closing_fut
 
     @asyncio.coroutine
     def receive(self):
@@ -733,14 +772,29 @@ class WebSocketResponse(StreamResponse):
             except Exception as exc:
                 raise WebSocketClosed(code=None, message=str(exc)) from exc
 
-            if msg.tp == MSG_PING:
-                self._writer.pong()
-            elif msg.tp == MSG_CLOSE:
-                raise WebSocketClosed(msg.data, msg.extra)
-            elif msg.tp == MSG_TEXT:
-                return msg.data
-            elif msg.tp == MSG_BINARY:
-                return msg.data
+            if msg.tp == MSG_CLOSE:
+                if self._closing:
+                    exc = WebSocketClosed(msg.data, msg.extra)
+                    self._closing_fut.set_exception(exc)
+                    raise exc
+                else:
+                    self._closing = True
+                    self._writer.close(msg.data, msg.extra)
+                    yield from self.drain()
+                    exc = WebSocketClosed(msg.data, msg.extra)
+                    self._closing_fut.set_exception(exc)
+                    raise exc
+            elif not self._closing:
+                if msg.tp == MSG_PING:
+                    self._writer.pong()
+                elif msg.tp == MSG_TEXT:
+                    return msg.data
+                elif msg.tp == MSG_BINARY:
+                    return msg.data
+
+    @asyncio.coroutine
+    def drain(self):
+        yield from self._resp_impl.transport.drain()
 
     def write(self, data):
         raise RuntimeError("Cannot call .write() for websocket")

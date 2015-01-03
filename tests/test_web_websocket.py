@@ -15,15 +15,17 @@ class TestWebWebSocket(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
-    def make_request(self, method, path):
+    def make_request(self, method, path, headers=None):
         self.app = mock.Mock()
-        headers = MultiDict({'HOST': 'server.example.com',
-                             'UPGRADE': 'websocket',
-                             'CONNECTION': 'Upgrade',
-                             'SEC-WEBSOCKET-KEY': 'dGhlIHNhbXBsZSBub25jZQ==',
-                             'ORIGIN': 'http://example.com',
-                             'SEC-WEBSOCKET-PROTOCOL': 'chat, superchat',
-                             'SEC-WEBSOCKET-VERSION': '13'})
+        if headers is None:
+            headers = MultiDict(
+                {'HOST': 'server.example.com',
+                 'UPGRADE': 'websocket',
+                 'CONNECTION': 'Upgrade',
+                 'SEC-WEBSOCKET-KEY': 'dGhlIHNhbXBsZSBub25jZQ==',
+                 'ORIGIN': 'http://example.com',
+                 'SEC-WEBSOCKET-PROTOCOL': 'chat, superchat',
+                 'SEC-WEBSOCKET-VERSION': '13'})
         message = RawRequestMessage(method, path, HttpVersion11, headers,
                                     False, False)
         self.payload = mock.Mock()
@@ -124,3 +126,71 @@ class TestWebWebSocket(unittest.TestCase):
             self.assertIs(err, exc.exception.__cause__)
 
         self.loop.run_until_complete(go())
+
+    def test_can_start_ok(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse(protocols=('chat',))
+        self.assertEqual((True, 'chat'), ws.can_start(req))
+
+    def test_can_start_unknown_protocol(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        self.assertEqual((True, None), ws.can_start(req))
+
+    def test_can_start_invalid_method(self):
+        req = self.make_request('POST', '/')
+        ws = WebSocketResponse()
+        self.assertEqual((False, None), ws.can_start(req))
+
+    def test_can_start_without_upgrade(self):
+        req = self.make_request('GET', '/', headers=MultiDict())
+        ws = WebSocketResponse()
+        self.assertEqual((False, None), ws.can_start(req))
+
+    def test_can_start_started(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        ws.start(req)
+        with self.assertRaisesRegex(RuntimeError, 'Already started'):
+            ws.can_start(req)
+
+    def test_closing_after_ctor(self):
+        ws = WebSocketResponse()
+        self.assertFalse(ws.closing)
+
+    def test_send_str_closing(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        ws.start(req)
+        ws.close()
+        with self.assertRaises(RuntimeError):
+            ws.send_str('string')
+
+    def test_send_bytes_closing(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        ws.start(req)
+        ws.close()
+        with self.assertRaises(RuntimeError):
+            ws.send_bytes(b'bytes')
+
+    def test_ping_closing(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        ws.start(req)
+        ws.close()
+        with self.assertRaises(RuntimeError):
+            ws.ping()
+
+    def test_double_close(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        ws.start(req)
+        writer = mock.Mock()
+        ws._writer = writer
+        ws.close(code=1, message='message1')
+        self.assertTrue(ws.closing)
+        with self.assertRaisesRegex(RuntimeError, 'Already closing'):
+            ws.close(code=2, message='message2')
+        self.assertTrue(ws.closing)
+        writer.close.assert_called_once_with(1, 'message1')
