@@ -222,7 +222,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
 
         @asyncio.coroutine
         def handler(request):
-            ws = web.WebSocketResponse('foo', 'bar')
+            ws = web.WebSocketResponse(protocols=('foo', 'bar'))
             ws.start(request)
             self.assertEqual('bar', ws.protocol)
             closed.set_result(None)

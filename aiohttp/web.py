@@ -664,7 +664,7 @@ class Response(StreamResponse):
 
 class WebSocketResponse(StreamResponse):
 
-    def __init__(self, *protocols):
+    def __init__(self, *, protocols=()):
         super().__init__(status=101)
         self._protocols = protocols
         self._protocol = None
