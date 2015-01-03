@@ -703,6 +703,7 @@ class WebSocketResponse(StreamResponse):
             self.set_status(status)
         for k, v in headers:
             self.headers[k] = v
+        self.force_close()
 
         resp_impl = super().start(request)
 
