@@ -325,3 +325,35 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             yield from asyncio.gather(closed, closed2, loop=self.loop)
 
         self.loop.run_until_complete(go())
+
+    def test_server_close_handshake_server_eats_client_messages(self):
+
+        closed = asyncio.Future(loop=self.loop)
+
+        @asyncio.coroutine
+        def handler(request):
+            ws = web.WebSocketResponse(protocols=('foo', 'bar'))
+            ws.start(request)
+            ws.close()
+            try:
+                yield from ws.receive()
+            except web.WebSocketClosed:
+                closed.set_result(None)
+            return ws
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('GET', '/', handler)
+            reader, writer = yield from self.connect_ws(url, 'eggs, bar')
+
+            msg = yield from reader.read()
+            self.assertEqual(msg.tp, websocket.MSG_CLOSE)
+
+            writer.send('text')
+            writer.send(b'bytes', binary=True)
+            writer.ping()
+
+            writer.close()
+            yield from closed
+
+        self.loop.run_until_complete(go())
