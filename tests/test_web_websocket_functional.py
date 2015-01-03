@@ -236,3 +236,92 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             yield from closed
 
         self.loop.run_until_complete(go())
+
+    def test_server_close_handshake(self):
+
+        closed = asyncio.Future(loop=self.loop)
+
+        @asyncio.coroutine
+        def handler(request):
+            ws = web.WebSocketResponse(protocols=('foo', 'bar'))
+            ws.start(request)
+            ws.close()
+            try:
+                yield from ws.receive()
+            except web.WebSocketClosed:
+                closed.set_result(None)
+            return ws
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('GET', '/', handler)
+            reader, writer = yield from self.connect_ws(url, 'eggs, bar')
+
+            msg = yield from reader.read()
+            self.assertEqual(msg.tp, websocket.MSG_CLOSE)
+            writer.close()
+            yield from closed
+
+        self.loop.run_until_complete(go())
+
+    def test_client_close_handshake(self):
+
+        closed = asyncio.Future(loop=self.loop)
+
+        @asyncio.coroutine
+        def handler(request):
+            ws = web.WebSocketResponse(protocols=('foo', 'bar'))
+            ws.start(request)
+            try:
+                yield from ws.receive()
+            except web.WebSocketClosed:
+                closed.set_result(None)
+            return ws
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('GET', '/', handler)
+            reader, writer = yield from self.connect_ws(url, 'eggs, bar')
+
+            writer.close()
+            msg = yield from reader.read()
+            self.assertEqual(msg.tp, websocket.MSG_CLOSE)
+            yield from closed
+
+        self.loop.run_until_complete(go())
+
+    def test_server_close_handshake_by_onother_task(self):
+
+        closed = asyncio.Future(loop=self.loop)
+        closed2 = asyncio.Future(loop=self.loop)
+
+        @asyncio.coroutine
+        def closer(ws):
+            ws.close()
+            try:
+                yield from ws.wait_closed()
+            except web.WebSocketClosed:
+                closed2.set_result(None)
+
+        @asyncio.coroutine
+        def handler(request):
+            ws = web.WebSocketResponse(protocols=('foo', 'bar'))
+            ws.start(request)
+            asyncio.async(closer(ws), loop=request.app.loop)
+            try:
+                yield from ws.receive()
+            except web.WebSocketClosed:
+                closed.set_result(None)
+            return ws
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('GET', '/', handler)
+            reader, writer = yield from self.connect_ws(url, 'eggs, bar')
+
+            msg = yield from reader.read()
+            self.assertEqual(msg.tp, websocket.MSG_CLOSE)
+            writer.close()
+            yield from asyncio.gather(closed, closed2, loop=self.loop)
+
+        self.loop.run_until_complete(go())

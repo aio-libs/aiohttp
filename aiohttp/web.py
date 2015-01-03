@@ -594,6 +594,12 @@ class StreamResponse(HeadersMixin):
             return ()
 
     @asyncio.coroutine
+    def drain(self):
+        if self._resp_impl is None:
+            raise RuntimeError("Response has not been started")
+        yield from self._resp_impl.transport.drain()
+
+    @asyncio.coroutine
     def write_eof(self):
         if self._eof_sent:
             return
@@ -798,10 +804,6 @@ class WebSocketResponse(StreamResponse):
                     return msg.data
                 elif msg.tp == MSG_BINARY:
                     return msg.data
-
-    @asyncio.coroutine
-    def drain(self):
-        yield from self._resp_impl.transport.drain()
 
     def write(self, data):
         raise RuntimeError("Cannot call .write() for websocket")
