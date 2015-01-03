@@ -656,9 +656,10 @@ class Response(StreamResponse):
 
 class WebSocketResponse(StreamResponse):
 
-    def __init__(self, *, protocols=()):
+    def __init__(self, *, protocols=(), origins=()):
         super().__init__(status=101)
         self._protocols = protocols
+        self._origins = origins
         self._protocol = None
         self._writer = None
         self._reader = None
@@ -675,7 +676,7 @@ class WebSocketResponse(StreamResponse):
         try:
             status, headers, parser, writer, protocol = do_handshake(
                 request.method, request.headers, request.transport,
-                self._protocols)
+                self._protocols, self._origins)
         except HttpProcessingError as err:
             if err.code == 405:
                 raise HTTPMethodNotAllowed(request.method, ['GET'])
@@ -706,7 +707,7 @@ class WebSocketResponse(StreamResponse):
         try:
             _, _, _, _, protocol = do_handshake(
                 request.method, request.headers, request.transport,
-                self._protocols)
+                self._protocols, self._origins)
         except HttpProcessingError:
             return False, None
         else:
