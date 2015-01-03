@@ -15,7 +15,7 @@ vtest: flake
 testloop:
 	while sleep 1; do python runtests.py $(FLAGS); done
 
-cov cover coverage:
+cov cover coverage: flake
 	nosetests -s --with-cover --cover-html --cover-branches --cover-html-dir ./coverage $(FLAGS) ./tests/
 	@echo "open file://`pwd`/coverage/index.html"
 
