@@ -182,3 +182,13 @@ class TestWebWebSocket(unittest.TestCase):
         ws = WebSocketResponse()
         with self.assertRaises(HTTPBadRequest):
             ws.start(req)
+
+    def test_wait_closed_before_start(self):
+
+        @asyncio.coroutine
+        def go():
+            ws = WebSocketResponse()
+            with self.assertRaises(RuntimeError):
+                yield from ws.wait_closed()
+
+        self.loop.run_until_complete(go())
