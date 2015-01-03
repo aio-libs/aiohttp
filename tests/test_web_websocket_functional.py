@@ -290,7 +290,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
-    def test_server_close_handshake_by_onother_task(self):
+    def test_server_close_handshake_by_another_task(self):
 
         closed = asyncio.Future(loop=self.loop)
         closed2 = asyncio.Future(loop=self.loop)
