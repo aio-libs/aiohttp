@@ -103,31 +103,6 @@ class TestWebWebSocket(unittest.TestCase):
         with self.assertRaises(WebSocketClosed):
             self.loop.run_until_complete(c())
 
-    def test_exception_in_receive(self):
-
-        @asyncio.coroutine
-        def go():
-            req = self.make_request('GET', '/')
-            ws = WebSocketResponse()
-            ws.start(req)
-
-            err = RuntimeError("error")
-
-            @asyncio.coroutine
-            def throw():
-                raise err
-
-            ws._reader.read = throw
-
-            with self.assertRaises(WebSocketClosed) as exc:
-                yield from ws.receive()
-
-            self.assertEqual("error", exc.exception.message)
-            self.assertIsNone(exc.exception.code)
-            self.assertIs(err, exc.exception.__cause__)
-
-        self.loop.run_until_complete(go())
-
     def test_can_start_ok(self):
         req = self.make_request('GET', '/')
         ws = WebSocketResponse(protocols=('chat',))

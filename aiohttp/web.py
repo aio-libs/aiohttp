@@ -781,10 +781,7 @@ class WebSocketResponse(StreamResponse):
         if self._reader is None:
             raise RuntimeError('Call .start() first')
         while True:
-            try:
-                msg = yield from self._reader.read()
-            except Exception as exc:
-                raise WebSocketClosed(code=None, message=str(exc)) from exc
+            msg = yield from self._reader.read()
 
             if msg.tp == MSG_CLOSE:
                 if self._closing:
