@@ -186,7 +186,7 @@ class WebSocketWriter:
             opcode=OPCODE_CLOSE)
 
 
-def do_handshake(method, headers, transport, protocols=()):
+def do_handshake(method, headers, transport, protocols=(), origins=()):
     """Prepare WebSocket handshake. It return http response code,
     response headers, websocket parser, websocket writer. It does not
     perform any IO.
@@ -225,6 +225,14 @@ def do_handshake(method, headers, transport, protocols=()):
             ws_logger.warning(
                 'Client protocols %r don’t overlap server-known ones %r',
                 protocols, req_protocols)
+
+    if origins:
+        origin = headers.get('ORIGIN', '').strip()
+        if origin not in origins:
+            raise errors.HttpBadRequest(
+                message="Unsupported origin: {}".format(origin))
+    else:
+        ws_logger.warning("No origins to check client")
 
     # check supported version
     version = headers.get('SEC-WEBSOCKET-VERSION')
