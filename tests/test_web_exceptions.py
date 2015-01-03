@@ -17,6 +17,7 @@ class TestHTTPExceptions(unittest.TestCase):
 
         self.payload = mock.Mock()
         self.transport = mock.Mock()
+        self.reader = mock.Mock()
         self.writer = mock.Mock()
         self.writer.drain.return_value = ()
         self.buf = b''
@@ -34,7 +35,7 @@ class TestHTTPExceptions(unittest.TestCase):
         message = RawRequestMessage(method, path, HttpVersion11, headers,
                                     False, False)
         req = Request(self.app, message, self.payload,
-                      self.transport, self.writer, 15)
+                      self.transport, self.reader, self.writer, 15)
         return req
 
     def test_all_http_exceptions_exported(self):

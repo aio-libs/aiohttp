@@ -21,9 +21,10 @@ class TestStreamResponse(unittest.TestCase):
                                     False, False)
         self.payload = mock.Mock()
         self.transport = mock.Mock()
+        self.reader = mock.Mock()
         self.writer = mock.Mock()
         req = Request(self.app, message, self.payload,
-                      self.transport, self.writer, 15)
+                      self.transport, self.reader, self.writer, 15)
         return req
 
     def test_ctor(self):
@@ -276,9 +277,10 @@ class TestResponse(unittest.TestCase):
                                     False, False)
         self.payload = mock.Mock()
         self.transport = mock.Mock()
+        self.reader = mock.Mock()
         self.writer = mock.Mock()
         req = Request(self.app, message, self.payload,
-                      self.transport, self.writer, 15)
+                      self.transport, self.reader, self.writer, 15)
         return req
 
     def test_ctor(self):
@@ -434,3 +436,13 @@ class TestResponse(unittest.TestCase):
         resp = StreamResponse()
         resp.start(self.make_request('GET', '/'))
         self.assertTrue(resp.started)
+
+    def test_drain_before_start(self):
+
+        @asyncio.coroutine
+        def go():
+            resp = StreamResponse()
+            with self.assertRaises(RuntimeError):
+                yield from resp.drain()
+
+        self.loop.run_until_complete(go())

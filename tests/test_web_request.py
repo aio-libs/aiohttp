@@ -25,8 +25,10 @@ class TestWebRequest(unittest.TestCase):
         self.payload = mock.Mock()
         self.transport = mock.Mock()
         self.writer = mock.Mock()
+        self.reader = mock.Mock()
         req = Request(self.app, message, self.payload,
-                      self.transport, self.writer, keep_alive_timeout)
+                      self.transport, self.reader, self.writer,
+                      keep_alive_timeout)
         return req
 
     def test_ctor(self):

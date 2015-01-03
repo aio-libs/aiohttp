@@ -22,9 +22,12 @@ from .multidict import (CaseInsensitiveMultiDict,
 from .protocol import Response as ResponseImpl, HttpVersion, HttpVersion11
 from .server import ServerHttpProtocol
 from .streams import EOF_MARKER
+from .websocket import do_handshake, MSG_BINARY, MSG_CLOSE, MSG_PING, MSG_TEXT
+from .errors import HttpProcessingError, WebSocketDisconnected
 
 
 __all__ = [
+    'WebSocketDisconnected',
     'Application',
     'HttpVersion',
     'RequestHandler',
@@ -32,6 +35,7 @@ __all__ = [
     'Request',
     'StreamResponse',
     'Response',
+    'WebSocketResponse',
     'UrlDispatcher',
     'UrlMappingMatchInfo',
     'HTTPException',
@@ -135,11 +139,12 @@ FileField = collections.namedtuple('Field', 'name filename file content_type')
 
 class Request(HeadersMixin):
 
-    def __init__(self, app, message, payload, transport, writer,
+    def __init__(self, app, message, payload, transport, reader, writer,
                  keep_alive_timeout):
         self._app = app
         self._version = message.version
         self._transport = transport
+        self._reader = reader
         self._writer = writer
         self._method = message.method
         self._host = message.headers.get('HOST')
@@ -374,17 +379,6 @@ class Request(HeadersMixin):
         self._post = MultiDict(out.items(getall=True))
         return self._post
 
-    # @asyncio.coroutine
-    # def start_websocket(self):
-    #     """Upgrade connection to websocket.
-
-    #     Returns (reader, writer) pair.
-    #     """
-
-    #     upgrade = 'websocket' in message.headers.get('UPGRADE', '').lower()
-    #     if not upgrade:
-    #         pass
-
 
 ############################################################
 # HTTP Response classes
@@ -532,15 +526,22 @@ class StreamResponse(HeadersMixin):
             ctype = self._content_type
         self.headers['Content-Type'] = ctype
 
-    def start(self, request):
+    def _start_pre_check(self, request):
         if self._resp_impl is not None:
             if self._req is not request:
                 raise RuntimeError(
                     'Response has been started with different request.')
-            return self._resp_impl
+            else:
+                return self._resp_impl
+        else:
+            return None
+
+    def start(self, request):
+        resp_impl = self._start_pre_check(request)
+        if resp_impl is not None:
+            return resp_impl
 
         self._req = request
-
         keep_alive = self._keep_alive
         if keep_alive is None:
             keep_alive = request.keep_alive
@@ -576,6 +577,12 @@ class StreamResponse(HeadersMixin):
             return self._resp_impl.write(data)
         else:
             return ()
+
+    @asyncio.coroutine
+    def drain(self):
+        if self._resp_impl is None:
+            raise RuntimeError("Response has not been started")
+        yield from self._resp_impl.transport.drain()
 
     @asyncio.coroutine
     def write_eof(self):
@@ -645,6 +652,144 @@ class Response(StreamResponse):
         if body is not None:
             self.write(body)
         yield from super().write_eof()
+
+
+class WebSocketResponse(StreamResponse):
+
+    def __init__(self, *, protocols=()):
+        super().__init__(status=101)
+        self._protocols = protocols
+        self._protocol = None
+        self._writer = None
+        self._reader = None
+        self._closing = False
+        self._loop = None
+        self._closing_fut = None
+
+    def start(self, request):
+        # make pre-check to don't hide it by do_handshake() exceptions
+        resp_impl = self._start_pre_check(request)
+        if resp_impl is not None:
+            return resp_impl
+
+        try:
+            status, headers, parser, writer, protocol = do_handshake(
+                request.method, request.headers, request.transport,
+                self._protocols)
+        except HttpProcessingError as err:
+            if err.code == 405:
+                raise HTTPMethodNotAllowed(request.method, ['GET'])
+            elif err.code == 400:
+                raise HTTPBadRequest(text=err.message)
+            else:  # pragma: no cover
+                raise HTTPInternalServerError() from err
+
+        if self.status != status:
+            self.set_status(status)
+        for k, v in headers:
+            self.headers[k] = v
+        self.force_close()
+
+        resp_impl = super().start(request)
+
+        self._reader = request._reader.set_parser(parser)
+        self._writer = writer
+        self._protocol = protocol
+        self._loop = request.app.loop
+        self._closing_fut = asyncio.Future(loop=self._loop)
+
+        return resp_impl
+
+    def can_start(self, request):
+        if self._writer is not None:
+            raise RuntimeError('Already started')
+        try:
+            _, _, _, _, protocol = do_handshake(
+                request.method, request.headers, request.transport,
+                self._protocols)
+        except HttpProcessingError:
+            return False, None
+        else:
+            return True, protocol
+
+    @property
+    def closing(self):
+        return self._closing
+
+    @property
+    def protocol(self):
+        return self._protocol
+
+    def ping(self):
+        if self._writer is None:
+            raise RuntimeError('Call .start() first')
+        if self._closing:
+            raise RuntimeError('websocket connection is closing')
+        self._writer.ping()
+
+    def send_str(self, data):
+        if self._writer is None:
+            raise RuntimeError('Call .start() first')
+        if self._closing:
+            raise RuntimeError('websocket connection is closing')
+        if not isinstance(data, str):
+            raise TypeError('data argument must be str (%r)', type(data))
+        self._writer.send(data, binary=False)
+
+    def send_bytes(self, data):
+        if self._writer is None:
+            raise RuntimeError('Call .start() first')
+        if self._closing:
+            raise RuntimeError('websocket connection is closing')
+        if not isinstance(data, (bytes, bytearray, memoryview)):
+            raise TypeError('data argument must be byte-ish (%r)',
+                            type(data))
+        self._writer.send(data, binary=True)
+
+    def close(self, *, code=1000, message=b''):
+        if self._writer is None:
+            raise RuntimeError('Call .start() first')
+        if not self._closing:
+            self._closing = True
+            self._writer.close(code, message)
+        else:
+            raise RuntimeError('Already closing')
+
+    @asyncio.coroutine
+    def wait_closed(self):
+        if self._closing_fut is None:
+            raise RuntimeError('Call .start() first')
+        yield from self._closing_fut
+
+    @asyncio.coroutine
+    def receive(self):
+        if self._reader is None:
+            raise RuntimeError('Call .start() first')
+        while True:
+            msg = yield from self._reader.read()
+
+            if msg.tp == MSG_CLOSE:
+                if self._closing:
+                    exc = WebSocketDisconnected(msg.data, msg.extra)
+                    self._closing_fut.set_exception(exc)
+                    raise exc
+                else:
+                    self._closing = True
+                    self._writer.close(msg.data, msg.extra)
+                    yield from self.drain()
+                    exc = WebSocketDisconnected(msg.data, msg.extra)
+                    self._closing_fut.set_exception(exc)
+                    raise exc
+            elif not self._closing:
+                if msg.tp == MSG_PING:
+                    self._writer.pong()
+                elif msg.tp == MSG_TEXT:
+                    return msg.data
+                elif msg.tp == MSG_BINARY:
+                    return msg.data
+
+    def write(self, data):
+        raise RuntimeError("Cannot call .write() for websocket")
 
 
 ############################################################
@@ -1195,7 +1340,8 @@ class RequestHandler(ServerHttpProtocol):
 
         app = self._app
         request = Request(app, message, payload,
-                          self.transport, self.writer, self.keep_alive_timeout)
+                          self.transport, self.reader, self.writer,
+                          self.keep_alive_timeout)
         try:
             match_info = yield from self._router.resolve(request)
 
@@ -1210,9 +1356,11 @@ class RequestHandler(ServerHttpProtocol):
 
             if not isinstance(resp, StreamResponse):
                 raise RuntimeError(
-                    ("Handler {!r} should return response instance, got {!r} "
-                     "[middlewares {!r}]")
-                    .format(match_info.handler, type(resp), self._middlewares))
+                    ("Handler {!r} should return response instance, "
+                     "got {!r} [middlewares {!r}]").format(
+                         match_info.handler,
+                         type(resp),
+                         self._middlewares))
         except HTTPException as exc:
             resp = exc
 
