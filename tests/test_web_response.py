@@ -436,3 +436,13 @@ class TestResponse(unittest.TestCase):
         resp = StreamResponse()
         resp.start(self.make_request('GET', '/'))
         self.assertTrue(resp.started)
+
+    def test_drain_before_start(self):
+
+        @asyncio.coroutine
+        def go():
+            resp = StreamResponse()
+            with self.assertRaises(RuntimeError):
+                yield from resp.drain()
+
+        self.loop.run_until_complete(go())
