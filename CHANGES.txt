@@ -6,7 +6,7 @@ CHANGES
 
 - HttpMessage._add_default_headers does not overwrite existing headers #216
 
-- Expose miltidict classes at package level
+- Expose multidict classes at package level
 
 
 0.13.1 (12-31-2014)
