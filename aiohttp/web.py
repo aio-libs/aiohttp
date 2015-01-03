@@ -22,9 +22,8 @@ from .multidict import (CaseInsensitiveMultiDict,
 from .protocol import Response as ResponseImpl, HttpVersion, HttpVersion11
 from .server import ServerHttpProtocol
 from .streams import EOF_MARKER
-from .websocket import (do_handshake, WebSocketError,
-                        MSG_BINARY, MSG_CLOSE, MSG_PING, MSG_TEXT)
-from .errors import HttpProcessingError
+from .websocket import do_handshake, MSG_BINARY, MSG_CLOSE, MSG_PING, MSG_TEXT
+from .errors import HttpProcessingError, DisconnectedError
 
 
 __all__ = [
@@ -86,7 +85,7 @@ __all__ = [
 ]
 
 
-class WebSocketClosed(GeneratorExit):
+class WebSocketClosed(DisconnectedError):
     """Raised on closing websocket by peer."""
 
     def __init__(self, code=None, message=None):
@@ -682,9 +681,17 @@ class WebSocketResponse(StreamResponse):
         if resp_impl is not None:
             return resp_impl
 
-        status, headers, parser, writer, protocol = do_handshake(
-            request.method, request.headers, request.transport,
-            self._protocols)
+        try:
+            status, headers, parser, writer, protocol = do_handshake(
+                request.method, request.headers, request.transport,
+                self._protocols)
+        except HttpProcessingError as err:
+            if err.code == 405:
+                raise HTTPMethodNotAllowed(request.method, ['GET'])
+            elif err.code == 400:
+                raise HTTPBadRequest(text=err.message)
+            else:  # pragma: no cover
+                raise HTTPInternalServerError() from err
 
         if self.status != status:
             self.set_status(status)
@@ -708,7 +715,7 @@ class WebSocketResponse(StreamResponse):
             _, _, _, _, protocol = do_handshake(
                 request.method, request.headers, request.transport,
                 self._protocols)
-        except (WebSocketError, HttpProcessingError):
+        except HttpProcessingError:
             return False, None
         else:
             return True, protocol
@@ -1382,7 +1389,7 @@ class RequestHandler(ServerHttpProtocol):
             # log access
             self.log_access(message, None, resp_msg, self._loop.time() - now)
 
-        except GeneratorExit:
+        except DisconnectedError:
             # the HTTP protocol is probably in invalid state, close connection
             self.transport.close()
             # log access

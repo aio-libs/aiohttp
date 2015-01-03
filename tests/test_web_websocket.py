@@ -2,7 +2,8 @@ import asyncio
 import unittest
 from unittest import mock
 from aiohttp.multidict import MultiDict
-from aiohttp.web import Request, WebSocketResponse, WebSocketClosed
+from aiohttp.web import (Request, WebSocketResponse, WebSocketClosed,
+                         HTTPMethodNotAllowed, HTTPBadRequest)
 from aiohttp.protocol import RawRequestMessage, HttpVersion11
 
 
@@ -194,3 +195,15 @@ class TestWebWebSocket(unittest.TestCase):
             ws.close(code=2, message='message2')
         self.assertTrue(ws.closing)
         writer.close.assert_called_once_with(1, 'message1')
+
+    def test_start_invalid_method(self):
+        req = self.make_request('POST', '/')
+        ws = WebSocketResponse()
+        with self.assertRaises(HTTPMethodNotAllowed):
+            ws.start(req)
+
+    def test_start_without_upgrade(self):
+        req = self.make_request('GET', '/', headers=MultiDict())
+        ws = WebSocketResponse()
+        with self.assertRaises(HTTPBadRequest):
+            ws.start(req)
