@@ -23,11 +23,11 @@ from .protocol import Response as ResponseImpl, HttpVersion, HttpVersion11
 from .server import ServerHttpProtocol
 from .streams import EOF_MARKER
 from .websocket import do_handshake, MSG_BINARY, MSG_CLOSE, MSG_PING, MSG_TEXT
-from .errors import HttpProcessingError, DisconnectedError
+from .errors import HttpProcessingError, WebSocketDisconnected
 
 
 __all__ = [
-    'WebSocketClosed',
+    'WebSocketDisconnected',
     'Application',
     'HttpVersion',
     'RequestHandler',
@@ -83,21 +83,6 @@ __all__ = [
     'HTTPGatewayTimeout',
     'HTTPVersionNotSupported',
 ]
-
-
-class WebSocketClosed(DisconnectedError):
-    """Raised on closing websocket by peer."""
-
-    def __init__(self, code=None, message=None):
-        super().__init__(code, message)
-
-    @property
-    def code(self):
-        return self.args[0]
-
-    @property
-    def message(self):
-        return self.args[1]
 
 
 sentinel = object()
@@ -785,14 +770,14 @@ class WebSocketResponse(StreamResponse):
 
             if msg.tp == MSG_CLOSE:
                 if self._closing:
-                    exc = WebSocketClosed(msg.data, msg.extra)
+                    exc = WebSocketDisconnected(msg.data, msg.extra)
                     self._closing_fut.set_exception(exc)
                     raise exc
                 else:
                     self._closing = True
                     self._writer.close(msg.data, msg.extra)
                     yield from self.drain()
-                    exc = WebSocketClosed(msg.data, msg.extra)
+                    exc = WebSocketDisconnected(msg.data, msg.extra)
                     self._closing_fut.set_exception(exc)
                     raise exc
             elif not self._closing:
@@ -1358,42 +1343,35 @@ class RequestHandler(ServerHttpProtocol):
                           self.transport, self.reader, self.writer,
                           self.keep_alive_timeout)
         try:
-            try:
-                match_info = yield from self._router.resolve(request)
+            match_info = yield from self._router.resolve(request)
 
-                assert isinstance(match_info, AbstractMatchInfo), match_info
+            assert isinstance(match_info, AbstractMatchInfo), match_info
 
-                request._match_info = match_info
-                handler = match_info.handler
+            request._match_info = match_info
+            handler = match_info.handler
 
-                for factory in reversed(self._middlewares):
-                    handler = yield from factory(app, handler)
-                resp = yield from handler(request)
+            for factory in reversed(self._middlewares):
+                handler = yield from factory(app, handler)
+            resp = yield from handler(request)
 
-                if not isinstance(resp, StreamResponse):
-                    raise RuntimeError(
-                        ("Handler {!r} should return response instance, "
-                         "got {!r} [middlewares {!r}]").format(
-                             match_info.handler,
-                             type(resp),
-                             self._middlewares))
-            except HTTPException as exc:
-                resp = exc
+            if not isinstance(resp, StreamResponse):
+                raise RuntimeError(
+                    ("Handler {!r} should return response instance, "
+                     "got {!r} [middlewares {!r}]").format(
+                         match_info.handler,
+                         type(resp),
+                         self._middlewares))
+        except HTTPException as exc:
+            resp = exc
 
-            resp_msg = resp.start(request)
-            yield from resp.write_eof()
+        resp_msg = resp.start(request)
+        yield from resp.write_eof()
 
-            # notify server about keep-alive
-            self.keep_alive(resp_msg.keep_alive())
+        # notify server about keep-alive
+        self.keep_alive(resp_msg.keep_alive())
 
-            # log access
-            self.log_access(message, None, resp_msg, self._loop.time() - now)
-
-        except DisconnectedError:
-            # the HTTP protocol is probably in invalid state, close connection
-            self.transport.close()
-            # log access
-            self.log_access(message, None, None, self._loop.time() - now)
+        # log access
+        self.log_access(message, None, resp_msg, self._loop.time() - now)
 
 
 class RequestHandlerFactory:
