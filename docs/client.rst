@@ -37,22 +37,27 @@ Begin by importing the aiohttp module::
 Now, let's try to get a webpage. For this example, let's get GitHub's public
 timeline ::
 
-    >>> r = yield from aiohttp.request('get',
-    ...                                'https://github.com/timeline.json')
+    >>> r = yield from aiohttp.request(
+    ...     'get', 'https://github.com/timeline.json')
 
 Now, we have a :class:`ClientResponse` object called ``r``. We can get all the
 information we need from this object.
 First parameter is http method, in that case it is get and second is http url.
 this is how you make an HTTP POST request::
 
-    >>> r = yield from aiohttp.request('post', 'http://httpbin.org/post')
+    >>> r = yield from aiohttp.request(
+    ...     'post', 'http://httpbin.org/post')
 
 First parameter could be any valid http method. For example::
 
-    >>> r = yield from aiohttp.request('put', 'http://httpbin.org/put')
-    >>> r = yield from aiohttp.request('delete', 'http://httpbin.org/delete')
-    >>> r = yield from aiohttp.request('head', 'http://httpbin.org/get')
-    >>> r = yield from aiohttp.request('options', 'http://httpbin.org/get')
+    >>> r = yield from aiohttp.request(
+    ...     'put', 'http://httpbin.org/put')
+    >>> r = yield from aiohttp.request(
+    ...     'delete', 'http://httpbin.org/delete')
+    >>> r = yield from aiohttp.request(
+    ...     'head', 'http://httpbin.org/get')
+    >>> r = yield from aiohttp.request(
+    ...     'options', 'http://httpbin.org/get')
 
 
 Passing Parameters In URLs
@@ -94,8 +99,8 @@ We can read the content of the server's response. Consider the GitHub timeline
 again::
 
     >>> import aiohttp
-    >>> r = yield from aiohttp.request('get',
-    ...                                'https://github.com/timeline.json')
+    >>> r = yield from aiohttp.request(
+    ...     'get', 'https://github.com/timeline.json')
     >>> yield from r.text()
     '[{"repository":{"open_issues":0,"url":"https://github.com/...
 
@@ -125,10 +130,10 @@ JSON Response Content
 There's also a builtin JSON decoder, in case you're dealing with JSON data::
 
     >>> import aiohttp
-    >>> r = yield from aiohttp.request('get',
-    ...                                'https://github.com/timeline.json')
+    >>> r = yield from aiohttp.request(
+    ...     'get', 'https://github.com/timeline.json')
     >>> yield from r.json()
-    [{'repository': {u'open_issues': 0, u'url': 'https://github.com/...
+    [{'repository': {'open_issues': 0, 'url': 'https://github.com/...
 
 In case the JSON decoding fails, ``r.json()`` raises an exception. It
 is possible to specify custom encoding and decoder function for
@@ -147,8 +152,8 @@ and ``deflate`` transfer-encodings are automatically decoded for you.
 
 .. code::
 
-    >>> r = yield from aiohttp.request('get',
-    ...                                'https://github.com/timeline.json')
+    >>> r = yield from aiohttp.request(
+    ...     'get', 'https://github.com/timeline.json')
     >>> r.content
     <aiohttp.streams.StreamReader object at 0x...>
     >>> yield from r.content.read(10)
@@ -217,7 +222,8 @@ For example, the GitHub API v3 accepts JSON-Encoded POST/PATCH data::
     >>> url = 'https://api.github.com/some/endpoint'
     >>> payload = {'some': 'data'}
 
-    >>> r = yield from aiohttp.request('post', url, data=json.dumps(payload))
+    >>> r = yield from aiohttp.request(
+    ...     'post', url, data=json.dumps(payload))
 
 
 POST a Multipart-Encoded File
@@ -259,7 +265,8 @@ If you want, you can send strings to be received as files::
 
     >>> url = 'http://httpbin.org/post'
     >>> files = {'file': ('report.csv',
-    ...                   'some,data,to,send\nanother,row,to,send\n')}
+    ...                   'some,data,to,send\nanother,row,to,send\n')
+    ... }
 
     >>> r = yield from aiohttp.request('post', url, data=files)
     >>> yield from r.text()
@@ -285,7 +292,8 @@ send large files without reading them into memory.
 In simple case, simply provide a file-like object for your body::
 
     >>> with open('massive-body', 'rb') as f:
-    ...   yield from aiohttp.request('post', 'http://some.url/streamed', data=f)
+    ...   yield from aiohttp.request(
+    ...       'post', 'http://some.url/streamed', data=f)
 
 
 Or you can provide ``asyncio`` coroutine that yields bytes objects::
@@ -319,7 +327,8 @@ file from another request and calculate file sha1 hash::
 
    >>> resp = aiohttp.request('get', 'http://httpbin.org/post')
    >>> stream = StreamReader()
-   >>> asyncio.async(aiohttp.request('post', 'http://httpbin.org/post', data=stream)
+   >>> asyncio.async(aiohttp.request(
+   ...     'post', 'http://httpbin.org/post', data=stream)
 
    >>> file_hash = yield from feed_stream(resp, stream)
 
@@ -343,7 +352,8 @@ you should use one of the ``connector`` objects. There are several of them.
 Most widly used is :class:`aiohttp.connector.TCPConnector`::
 
   >>> conn = aiohttp.TCPConnector()
-  >>> r = yield from aiohttp.request('get', 'http://python.org', connector=conn)
+  >>> r = yield from aiohttp.request(
+  ...     'get', 'http://python.org', connector=conn)
 
 
 SSL control for tcp sockets
@@ -356,8 +366,8 @@ By default it uses strict checks for HTTPS protocol. Certification
 checks can be relaxed by passing ``verify_ssl=False``::
 
   >>> conn = aiohttp.TCPConnector(verify_ssl=False)
-  >>> r = yield from aiohttp.request('get',
-  ...                                'https://example.com', connector=conn)
+  >>> r = yield from aiohttp.request(
+  ...     'get', 'https://example.com', connector=conn)
 
 
 If you need to setup custom ssl parameters (use own certification
@@ -368,8 +378,8 @@ pass it into connector::
   >>> context.verify_mode = ssl.CERT_REQUIRED
   >>> context.load_verify_locations("/etc/ssl/certs/ca-bundle.crt")
   >>> conn = aiohttp.TCPConnector(verify_ssl=False)
-  >>> r = yield from aiohttp.request('get',
-  ...                                'https://example.com', connector=conn)
+  >>> r = yield from aiohttp.request(
+  ...     'get', 'https://example.com', connector=conn)
 
 
 Unix domain sockets
@@ -379,7 +389,8 @@ If your http server uses unix domain socket you can use
 :class:`aiohttp.connector.UnixConnector`::
 
   >>> conn = aiohttp.UnixConnector(path='/path/to/socket')
-  >>> r = yield from aiohttp.request('get', 'http://python.org', connector=conn)
+  >>> r = yield from aiohttp.request(
+  ...     'get', 'http://python.org', connector=conn)
 
 
 Proxy support
@@ -404,7 +415,8 @@ aiohttp supports proxy. You have to use
 
 Auth credentials can be passed in proxy URL::
 
-   >>> conn = aiohttp.ProxyConnector(proxy="http://user:pass@some.proxy.com")
+   >>> conn = aiohttp.ProxyConnector(
+   ...     proxy="http://user:pass@some.proxy.com")
    >>> r = yield from aiohttp.request('get',
    ...                                'http://python.org',
    ...                                 connector=conn)
@@ -474,9 +486,10 @@ share cookies between requests:
    :emphasize-lines: 1
 
     >>> conn = aiohttp.connector.TCPConnector(share_cookies=True)
-    >>> r = yield from aiohttp.request('get',
-    ...                                'http://httpbin.org/cookies/set?k1=v1',
-    ...                                connector=conn)
+    >>> r = yield from aiohttp.request(
+    ...     'get',
+    ...     'http://httpbin.org/cookies/set?k1=v1',
+    ...     connector=conn)
     >>> yield from r.text()
     '{"cookies": {"k1": "v1"}}'
     >>> r = yield from aiohttp.request('get',
@@ -495,9 +508,9 @@ Timeouts
 You should use ``asyncio.wait_for()`` method if you want to limit
 time to wait for a response from a server::
 
-    >>> yield from asyncio.wait_for(aiohttp.request('get',
-    ...                                             'http://github.com'),
-    ...                                             0.001)
+    >>> yield from asyncio.wait_for(
+    ...     aiohttp.request('get', 'http://github.com'),
+    ...     0.001)
     Traceback (most recent call last)\:
       File "<stdin>", line 1, in <module>
     asyncio.TimeoutError()
