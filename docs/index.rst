@@ -53,7 +53,7 @@ Dependencies
 Authors and License
 -------------------
 
-The ``aiohttp`` package is written by Nikolay Kim and Andrew Svetlov.
+The ``aiohttp`` package is written mainly by Nikolay Kim and Andrew Svetlov.
 It's *Apache 2* licensed and freely available.
 Feel free to improve this package and send a pull request to GitHub_.
 
