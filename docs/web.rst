@@ -616,6 +616,22 @@ StreamResponse
 
       Raises :exc:`RuntimeError` if :meth:`write_eof` has been called.
 
+   .. method:: drain()
+
+      A :ref:`coroutine<coroutine>` to let the write buffer of the
+      underlying transport a chance to be flushed.
+
+      The intended use is to write::
+
+          resp.write(data)
+          yield from resp.drain()
+
+      Yielding from :meth:`drain` gives the opportunity for the loop
+      to schedule the write operation and flush the buffer. It should
+      especially be used when a possibly large amount of data is
+      written to the transport, and the coroutine does not yield-from
+      between calls to :meth:`write`.
+
    .. method:: write_eof()
 
       A :ref:`coroutine<coroutine>` *may* be called as a mark of the
