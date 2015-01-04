@@ -132,6 +132,7 @@ html_theme = 'alabaster'
 # documentation.
 html_theme_options = {
     'logo': 'aiohttp-icon-128x128.png',
+    'description': 'http client/server for asyncio',
     'github_user': 'KeepSafe',
     'github_repo': 'aiohttp',
     'github_button': True,
