@@ -82,17 +82,17 @@ Parsed *path part* will be available in the *request handler* as
    app.router.add_route('GET', '/{name}', variable_handler)
 
 
-Also you can specify regexp for variable route in form ``{name:regexp}``::
+Also you can specify regex for variable route in form ``{name:regex}``::
 
    app.router.add_route('GET', r'/{name:\d+}', variable_handler)
 
 
-By default regexp is ``[^{}/]+``.
+By default regex is ``[^{}/]+``.
 
 
 .. versionadded:: 0.13
 
-   Support for custom regexps in variable routes.
+   Support for custom regexs in variable routes.
 
 
 Handlers can be first-class functions, e.g.::
@@ -162,10 +162,6 @@ use those to read a file's name and a content:
 
 .. code-block:: python
 
-    import os
-    import uuid
-    from aiohttp.web import Response
-
     @asyncio.coroutine
     def store_mp3_view(request):
 
@@ -181,9 +177,37 @@ use those to read a file's name and a content:
 
         content = input_file.read()
 
-        return Response(body=content,
-                        headers=MultiDict(
-                            {'CONTENT-DISPOSITION': input_file})
+        return web.Response(body=content,
+                            headers=MultiDict(
+                                {'CONTENT-DISPOSITION': input_file})
+
+
+.. _aiohttp-web-websockets:
+
+WebSockets
+----------
+
+.. versionadded:: 0.14
+
+:mod:`aiohttp.web` works with websockets out-of-the-box.
+
+You have to create :class:`WebSocketResponse` in
+:ref:`web-handler<aiohttp-web-handler>` and communicate with peer
+using response's methods::
+
+    @asyncio.coroutine
+    def websocket_handler(request):
+
+        ws = web.WebSocketResponse()
+        ws.start(request)
+
+        while True:
+            try:
+                data = yield from ws.receive()
+                ws.send_str(data + '/answer')
+            except web.WebSocketDisconnectedError as exc:
+                print(exc.code, exc.message)
+                return ws
 
 
 .. _aiohttp-web-request:
