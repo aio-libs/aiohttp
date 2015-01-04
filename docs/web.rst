@@ -182,7 +182,8 @@ use those to read a file's name and a content:
         content = input_file.read()
 
         return Response(body=content,
-                        headers=MultiDict({'CONTENT-DISPOSITION': input_file})
+                        headers=MultiDict(
+                            {'CONTENT-DISPOSITION': input_file})
 
 
 .. _aiohttp-web-request:
@@ -789,7 +790,8 @@ arbitrary properties for later access from
          # setup route table
          # app.router.add_route(...)
 
-         yield from loop.create_server(app.make_handler(), '0.0.0.0', 8080)
+         yield from loop.create_server(app.make_handler(),
+                                       '0.0.0.0', 8080)
 
    .. method:: finish()
 
@@ -1014,7 +1016,8 @@ urls with :ref:`variable pathes<aiohttp-web-variable-handler>` spec.
 
    Construct url with given *dynamic parts*::
 
-       >>> route.url(parts={'name1': 'b', 'name2': 'c'}, query={'d': 1, 'e': 2})
+       >>> route.url(parts={'name1': 'b', 'name2': 'c'},
+                     query={'d': 1, 'e': 2})
        '/a/b/c/?d=1&e=2'
 
 
