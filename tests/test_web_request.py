@@ -17,8 +17,7 @@ class TestWebRequest(unittest.TestCase):
         self.loop.close()
 
     def make_request(self, method, path, headers=MultiDict(), *,
-                     version=HttpVersion(1, 1), closing=False,
-                     keep_alive_timeout=15):
+                     version=HttpVersion(1, 1), closing=False):
         self.app = mock.Mock()
         message = RawRequestMessage(method, path, version, headers, closing,
                                     False)
@@ -27,8 +26,7 @@ class TestWebRequest(unittest.TestCase):
         self.writer = mock.Mock()
         self.reader = mock.Mock()
         req = Request(self.app, message, self.payload,
-                      self.transport, self.reader, self.writer,
-                      keep_alive_timeout)
+                      self.transport, self.reader, self.writer)
         return req
 
     def test_ctor(self):
@@ -107,10 +105,6 @@ class TestWebRequest(unittest.TestCase):
 
     def test_non_keepalive_on_closing(self):
         req = self.make_request('GET', '/', closing=True)
-        self.assertFalse(req.keep_alive)
-
-    def test_non_keepalive_on_server_protocol_without_keepalive_timeout(self):
-        req = self.make_request('GET', '/', closing=True, keep_alive_timeout=0)
         self.assertFalse(req.keep_alive)
 
     def test_call_POST_on_GET_request(self):
