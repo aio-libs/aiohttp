@@ -32,6 +32,7 @@ clean:
 	rm -rf coverage
 	rm -rf build
 	rm -rf cover
+	make -C docs clean
 
 doc:
 	make -C docs html

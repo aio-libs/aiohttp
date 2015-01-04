@@ -9,7 +9,7 @@ __all__ = [
 
     'ClientError', 'ClientHttpProcessingError', 'ClientConnectionError',
     'ClientOSError', 'ClientTimeoutError', 'ProxyConnectionError',
-    'ClientRequestError', 'ClientResponseError', 'WebSocketDisconnected']
+    'ClientRequestError', 'ClientResponseError', 'WebSocketDisconnectedError']
 
 from asyncio import TimeoutError
 
@@ -26,7 +26,7 @@ class ServerDisconnectedError(DisconnectedError):
     """Server disconnected."""
 
 
-class WebSocketDisconnected(ClientDisconnectedError):
+class WebSocketDisconnectedError(ClientDisconnectedError):
     """Raised on closing websocket by peer."""
 
     def __init__(self, code=None, message=None):
@@ -34,10 +34,12 @@ class WebSocketDisconnected(ClientDisconnectedError):
 
     @property
     def code(self):
+        """Code from websocket closing frame."""
         return self.args[0]
 
     @property
     def message(self):
+        """Message from websocket closing frame."""
         return self.args[1]
 
 
