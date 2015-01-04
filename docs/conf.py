@@ -131,9 +131,7 @@ html_theme = 'alabaster'
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
-    'logo': 'aiohttp-icon-96x96.png',
-    'logo_name': True,
-    'logo_text_align': 'center',
+    'logo': 'aiohttp-icon-128x128.png',
     'github_user': 'KeepSafe',
     'github_repo': 'aiohttp',
     'github_button': True,
