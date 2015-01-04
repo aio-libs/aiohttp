@@ -766,6 +766,16 @@ WebSocketResponse
 
       .. note:: The method newer raises exception.
 
+   .. attribute:: closing
+
+      Read-only property, ``True`` if :meth:`close` has been called.
+
+   .. attribute:: protocol
+
+      Websocket *subprotocol* choosen after connection
+      negotiating. May be ``None`` if server and client protocols are
+      not overlapping.
+
 
 .. _aiohttp-web-app-and-router:
 
