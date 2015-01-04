@@ -1,3 +1,4 @@
 flake8
 nose
 coverage
+alabaster>=0.6.2
