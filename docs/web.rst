@@ -726,6 +726,47 @@ Response
       *Content-Length* HTTP header.
 
 
+WebSocketResponse
+^^^^^^^^^^^^^^^^^
+
+.. class:: WebSocketResponse(*, protocols=())
+
+   Class for handling server-side websockets.
+
+   After starting (by :meth:`start` call) the response you
+   cannot use :meth:`~StreamResponse.write` method but should to
+   communicate with websocket client by :meth:`send_str`,
+   :meth:`receive` and others.
+
+   .. method:: start(request)
+
+      Starts websocket. After the call you can use websocket methods.
+
+      :param aiohttp.web.Request request: HTTP request object, that the
+                                          response answers.
+
+
+      :raises HTTPException: if websocket handshake has failed.
+
+   .. method:: can_start(request)
+
+      Performs checks for *request* data to figure out if websocket
+      can be started on the request.
+
+      If :meth:`can_start` call is success then :meth:`start` will success too.
+
+      :param aiohttp.web.Request request: HTTP request object, that the
+                                          response answers.
+
+      :return: ``(ok, protocol)`` pair, *ok* is ``True`` on success,
+               *protocol* is websocket subprotocol which is passed by
+               client and accepted by server (one of *protocols*
+               sequence from :class:`WebSocketResponse` ctor). *protocol* may be
+               ``None``.
+
+      .. note:: The method newer raises exception.
+
+
 .. _aiohttp-web-app-and-router:
 
 Application and Router
