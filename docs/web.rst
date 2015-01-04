@@ -139,7 +139,9 @@ files. This means adding *enctype* attribute to your form element with
 the value of *multipart/form-data*. A very simple example would be a
 form that accepts a mp3 file. Notice, we have set up the form as
 previously explained and also added the *input* element of the *file*
-type::
+type:
+
+.. code-block:: html
 
    <form action="/store_mp3" method="post" accept-charset="utf-8"
          enctype="multipart/form-data">
@@ -156,20 +158,23 @@ handler<aiohttp-web-handler>` (here assumed to answer on
 :class:`FileField` object accessible through the :meth:`Request.post`
 coroutine. The two properties we are interested in are
 :attr:`~FileField.file` and :attr:`~FileField.filename` and we will
-use those to read a file's name and a content::
+use those to read a file's name and a content:
+
+.. code-block:: python
 
     import os
     import uuid
     from aiohttp.web import Response
 
+    @asyncio.coroutine
     def store_mp3_view(request):
 
         data = yield from request.post()
 
-        # ``filename`` contains the name of the file in string format.
+        # filename contains the name of the file in string format.
         filename = data['mp3'].filename
 
-        # ``input_file`` contains the actual file data which needs to be
+        # input_file contains the actual file data which needs to be
         # stored somewhere.
 
         input_file = data['mp3'].file
