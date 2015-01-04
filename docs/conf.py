@@ -139,6 +139,7 @@ html_theme_options = {
     'github_button': True,
     'github_banner': True,
     'travis_button': True,
+    'pre_bg': '#FFFAF0',
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
