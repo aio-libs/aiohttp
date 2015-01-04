@@ -637,6 +637,8 @@ StreamResponse
       written to the transport, and the coroutine does not yield-from
       between calls to :meth:`write`.
 
+      .. versionadded:: 0.14
+
    .. method:: write_eof()
 
       A :ref:`coroutine<coroutine>` *may* be called as a mark of the
