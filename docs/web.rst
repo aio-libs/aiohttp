@@ -1,9 +1,9 @@
 .. _aiohttp-web:
 
-.. highlight:: python
-
 High-level HTTP Server
 ======================
+
+.. highlight:: python
 
 .. module:: aiohttp.web
 

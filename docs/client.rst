@@ -1,9 +1,9 @@
 .. _aiohttp-client:
 
-.. highlight:: python
-
 HTTP Client
 ===========
+
+.. highlight:: python
 
 .. module:: aiohttp.client
 
