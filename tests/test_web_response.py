@@ -24,7 +24,7 @@ class TestStreamResponse(unittest.TestCase):
         self.reader = mock.Mock()
         self.writer = mock.Mock()
         req = Request(self.app, message, self.payload,
-                      self.transport, self.reader, self.writer, 15)
+                      self.transport, self.reader, self.writer)
         return req
 
     def test_ctor(self):
@@ -280,7 +280,7 @@ class TestResponse(unittest.TestCase):
         self.reader = mock.Mock()
         self.writer = mock.Mock()
         req = Request(self.app, message, self.payload,
-                      self.transport, self.reader, self.writer, 15)
+                      self.transport, self.reader, self.writer)
         return req
 
     def test_ctor(self):

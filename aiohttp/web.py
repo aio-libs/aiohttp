@@ -139,8 +139,7 @@ FileField = collections.namedtuple('Field', 'name filename file content_type')
 
 class Request(HeadersMixin):
 
-    def __init__(self, app, message, payload, transport, reader, writer,
-                 keep_alive_timeout):
+    def __init__(self, app, message, payload, transport, reader, writer):
         self._app = app
         self._version = message.version
         self._transport = transport
@@ -162,7 +161,7 @@ class Request(HeadersMixin):
         elif message.should_close:
             self._keep_alive = False
         else:
-            self._keep_alive = bool(keep_alive_timeout)
+            self._keep_alive = True
 
         # matchdict, route_name, handler
         # or information about traversal lookup
@@ -1340,8 +1339,7 @@ class RequestHandler(ServerHttpProtocol):
 
         app = self._app
         request = Request(app, message, payload,
-                          self.transport, self.reader, self.writer,
-                          self.keep_alive_timeout)
+                          self.transport, self.reader, self.writer)
         try:
             match_info = yield from self._router.resolve(request)
 
