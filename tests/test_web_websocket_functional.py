@@ -80,6 +80,8 @@ class TestWebWebSocketFunctional(unittest.TestCase):
 
     def test_send_recv_text(self):
 
+        closed = asyncio.Future(loop=self.loop)
+
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse()
@@ -88,6 +90,10 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             msg = yield from ws.receive()
             ws.send_str(msg+'/answer')
             ws.close()
+            try:
+                yield from ws.receive()
+            except web.WebSocketDisconnectedError:
+                closed.set_result(None)
             return ws
 
         @asyncio.coroutine
@@ -103,6 +109,10 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             self.assertEqual(msg.tp, websocket.MSG_CLOSE)
             self.assertEqual(msg.data, 1000)
             self.assertEqual(msg.extra, b'')
+
+            writer.close()
+
+            yield from closed
 
         self.loop.run_until_complete(go())
 
