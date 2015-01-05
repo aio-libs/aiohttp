@@ -213,11 +213,11 @@ def do_handshake(method, headers, transport, protocols=()):
     # find common sub-protocol between client and server
     protocol = None
     if 'SEC-WEBSOCKET-PROTOCOL' in headers:
-        req_protocols = {str(proto.strip()) for proto in
-                         headers['SEC-WEBSOCKET-PROTOCOL'].split(',')}
+        req_protocols = [str(proto.strip()) for proto in
+                         headers['SEC-WEBSOCKET-PROTOCOL'].split(',')]
 
-        for proto in protocols:
-            if proto in req_protocols:
+        for proto in req_protocols:
+            if proto in protocols:
                 protocol = proto
                 break
         else:

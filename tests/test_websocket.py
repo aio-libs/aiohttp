@@ -460,7 +460,7 @@ class WebSocketHandshakeTests(unittest.TestCase):
 
     def test_handshake_protocol_agreement(self):
         '''Tests if the right protocol is selected given multiple'''
-        best_proto = 'chat'
+        best_proto = 'worse_proto'
         wanted_protos = ['best', 'chat', 'worse_proto']
         server_protos = 'worse_proto,chat'
 

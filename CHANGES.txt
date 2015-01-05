@@ -10,6 +10,9 @@ CHANGES
 
 - add `aiohttp.web.WebSocketResponse`
 
+- According to RFC 6455 websocket subprotocol preference order is
+  provided by client, not server
+
 
 0.13.1 (12-31-2014)
 --------------------
