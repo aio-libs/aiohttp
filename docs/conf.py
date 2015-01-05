@@ -142,6 +142,8 @@ html_theme_options = {
     'note_bg': '#E5ECD1',
     'note_border': '#BFCF8C',
     'body_text': '#49443E',
+    'sidebar_text': '#49443E',
+    'sidebar_header': '#4B4032',
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
