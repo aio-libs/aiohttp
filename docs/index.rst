@@ -50,6 +50,12 @@ Dependencies
 - Python 3.3 and *asyncio* or Python 3.4+
 - optional *chardet* library
 
+Contributing
+------------
+
+Please read :ref:`aiohttp-contributing` before making Pull Request.
+
+
 Authors and License
 -------------------
 
