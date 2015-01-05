@@ -1160,6 +1160,8 @@ class DynamicRoute(Route):
 
 class StaticRoute(Route):
 
+    limit = 8192
+
     def __init__(self, name, prefix, directory):
         assert prefix.startswith('/'), prefix
         assert prefix.endswith('/'), prefix
@@ -1194,14 +1196,21 @@ class StaticRoute(Route):
             ct = 'application/octet-stream'
         resp.content_type = ct
 
-        resp.headers['transfer-encoding'] = 'chunked'
+        file_size = os.stat(filepath).st_size
+        single_chunk = file_size < self.limit
+
+        if single_chunk:
+            resp.content_length = file_size
         resp.start(request)
 
         with open(filepath, 'rb') as f:
-            chunk = f.read(8192)
-            while chunk:
+            chunk = f.read(self.limit)
+            if single_chunk:
                 resp.write(chunk)
-                chunk = f.read(8192)
+            else:
+                while chunk:
+                    resp.write(chunk)
+                    chunk = f.read(self.limit)
 
         return resp
 
