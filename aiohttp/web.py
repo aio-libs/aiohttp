@@ -761,7 +761,7 @@ class WebSocketResponse(StreamResponse):
         yield from self._closing_fut
 
     @asyncio.coroutine
-    def receive(self):
+    def receive_msg(self):
         if self._reader is None:
             raise RuntimeError('Call .start() first')
         while True:
@@ -782,10 +782,25 @@ class WebSocketResponse(StreamResponse):
             elif not self._closing:
                 if msg.tp == MSG_PING:
                     self._writer.pong()
-                elif msg.tp == MSG_TEXT:
-                    return msg.data
-                elif msg.tp == MSG_BINARY:
-                    return msg.data
+                elif msg.tp in (MSG_TEXT, MSG_BINARY):
+                    return msg
+
+    @asyncio.coroutine
+    def receive_str(self):
+        msg = yield from self.receive_msg()
+        if msg.tp != MSG_TEXT:
+            raise TypeError(
+                "Received message {}:{!r} is not str".format(msg.tp, msg.data))
+        return msg.data
+
+    @asyncio.coroutine
+    def receive_bytes(self):
+        msg = yield from self.receive_msg()
+        if msg.tp != MSG_BINARY:
+            raise TypeError(
+                "Received message {}:{!r} is not bytes".format(msg.tp,
+                                                               msg.data))
+        return msg.data
 
     def write(self, data):
         raise RuntimeError("Cannot call .write() for websocket")

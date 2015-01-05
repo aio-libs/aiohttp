@@ -6,6 +6,7 @@ from aiohttp.web import (Request, WebSocketResponse,
                          WebSocketDisconnectedError,
                          HTTPMethodNotAllowed, HTTPBadRequest)
 from aiohttp.protocol import RawRequestMessage, HttpVersion11
+from aiohttp import websocket
 
 
 class TestWebWebSocket(unittest.TestCase):
@@ -58,13 +59,61 @@ class TestWebWebSocket(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             ws.close()
 
-    def test_nonstarted_receive(self):
+    def test_nonstarted_receive_str(self):
 
         @asyncio.coroutine
         def go():
             ws = WebSocketResponse()
             with self.assertRaises(RuntimeError):
-                yield from ws.receive()
+                yield from ws.receive_str()
+
+        self.loop.run_until_complete(go())
+
+    def test_nonstarted_receive_bytes(self):
+
+        @asyncio.coroutine
+        def go():
+            ws = WebSocketResponse()
+            with self.assertRaises(RuntimeError):
+                yield from ws.receive_bytes()
+
+        self.loop.run_until_complete(go())
+
+    def test_receive_str_nonstring(self):
+
+        @asyncio.coroutine
+        def go():
+            req = self.make_request('GET', '/')
+            ws = WebSocketResponse()
+            ws.start(req)
+
+            @asyncio.coroutine
+            def receive_msg():
+                return websocket.Message(websocket.MSG_BINARY, b'data', b'')
+
+            ws.receive_msg = receive_msg
+
+            with self.assertRaises(TypeError):
+                yield from ws.receive_str()
+
+        self.loop.run_until_complete(go())
+
+    def test_receive_bytes_nonsbytes(self):
+
+        @asyncio.coroutine
+        def go():
+            req = self.make_request('GET', '/')
+            ws = WebSocketResponse()
+            ws.start(req)
+
+            @asyncio.coroutine
+            def receive_msg():
+                return websocket.Message(websocket.MSG_TEXT, 'data', b'')
+
+            ws.receive_msg = receive_msg
+
+            with self.assertRaises(TypeError):
+                yield from ws.receive_bytes()
 
         self.loop.run_until_complete(go())
 
