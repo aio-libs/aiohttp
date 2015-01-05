@@ -271,6 +271,33 @@ class TestWebFunctional(unittest.TestCase):
                 fp.seek(0)
                 self.loop.run_until_complete(go(tmpdirname, filename))
 
+    def test_static_file_with_content_type(self):
+
+        @asyncio.coroutine
+        def go(dirname, filename):
+            app, _, url = yield from self.create_server(
+                'GET', '/static/' + filename
+            )
+            app.router.add_static('/static', dirname)
+
+            resp = yield from request('GET', url, loop=self.loop)
+            self.assertEqual(200, resp.status)
+            body = yield from resp.read()
+            with open(os.path.join(dirname, filename), 'rb') as f:
+                content = f.read()
+                self.assertEqual(content, body)
+            ct = resp.headers['CONTENT-TYPE']
+            self.assertEqual('image/jpeg', ct)
+
+            resp = yield from request('GET', url + 'fake', loop=self.loop)
+            self.assertEqual(404, resp.status)
+            resp = yield from request('GET', url + '/../../', loop=self.loop)
+            self.assertEqual(404, resp.status)
+
+        here = os.path.dirname(__file__)
+        filename = os.path.join(here, 'software_development_in_picture.jpg')
+        self.loop.run_until_complete(go(here, filename))
+
     def test_post_form_with_duplicate_keys(self):
 
         @asyncio.coroutine
