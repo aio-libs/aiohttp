@@ -119,7 +119,7 @@ class WebsocketParserTests(unittest.TestCase):
     def test_ping_frame(self, m_parse_frame):
         def parse_frame(buf):
             yield
-            return (1, websocket.OPCODE_PING, b'')
+            return (1, websocket.OPCODE_PING, b'data')
         m_parse_frame.side_effect = parse_frame
         buf = aiohttp.ParserBuffer()
         p = websocket.parse_message(buf)
@@ -128,13 +128,13 @@ class WebsocketParserTests(unittest.TestCase):
             p.send(b'')
         except StopIteration as exc:
             res = exc.value
-        self.assertEqual(res, (websocket.OPCODE_PING, '', ''))
+        self.assertEqual(res, (websocket.OPCODE_PING, b'data', ''))
 
     @unittest.mock.patch('aiohttp.websocket.parse_frame')
     def test_pong_frame(self, m_parse_frame):
         def parse_frame(buf):
             yield
-            return (1, websocket.OPCODE_PONG, b'')
+            return (1, websocket.OPCODE_PONG, b'data')
         m_parse_frame.side_effect = parse_frame
         buf = aiohttp.ParserBuffer()
         p = websocket.parse_message(buf)
@@ -143,7 +143,7 @@ class WebsocketParserTests(unittest.TestCase):
             p.send(b'')
         except StopIteration as exc:
             res = exc.value
-        self.assertEqual(res, (websocket.OPCODE_PONG, '', ''))
+        self.assertEqual(res, (websocket.OPCODE_PONG, b'data', ''))
 
     @unittest.mock.patch('aiohttp.websocket.parse_frame')
     def test_close_frame(self, m_parse_frame):

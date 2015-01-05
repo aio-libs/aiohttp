@@ -182,7 +182,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             ws = web.WebSocketResponse()
             ws.start(request)
 
-            ws.ping()
+            ws.ping('data')
             try:
                 yield from ws.receive_str()
             except web.WebSocketDisconnectedError as exc:
@@ -197,7 +197,67 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             reader, writer = yield from self.connect_ws(url)
             msg = yield from reader.read()
             self.assertEqual(msg.tp, websocket.MSG_PING)
+            self.assertEqual(msg.data, b'data')
             writer.pong()
+            writer.close(2, 'exit message')
+            yield from closed
+
+        self.loop.run_until_complete(go())
+
+    def test_client_ping(self):
+
+        closed = asyncio.Future(loop=self.loop)
+
+        @asyncio.coroutine
+        def handler(request):
+            ws = web.WebSocketResponse()
+            ws.start(request)
+
+            try:
+                yield from ws.receive_str()
+            except web.WebSocketDisconnectedError:
+                closed.set_result(None)
+                raise
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('GET', '/', handler)
+            reader, writer = yield from self.connect_ws(url)
+            writer.ping('data')
+            msg = yield from reader.read()
+            self.assertEqual(msg.tp, websocket.MSG_PONG)
+            self.assertEqual(msg.data, b'data')
+            writer.pong()
+            writer.close()
+            yield from closed
+
+        self.loop.run_until_complete(go())
+
+    def test_pong(self):
+
+        closed = asyncio.Future(loop=self.loop)
+
+        @asyncio.coroutine
+        def handler(request):
+            ws = web.WebSocketResponse()
+            ws.start(request)
+
+            ws.pong('data')
+            try:
+                yield from ws.receive_str()
+            except web.WebSocketDisconnectedError as exc:
+                self.assertEqual(2, exc.code)
+                self.assertEqual(b'exit message', exc.message)
+                closed.set_result(None)
+                raise
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('GET', '/', handler)
+            reader, writer = yield from self.connect_ws(url)
+            msg = yield from reader.read()
+            self.assertEqual(msg.tp, websocket.MSG_PONG)
+            self.assertEqual(msg.data, b'data')
             writer.close(2, 'exit message')
             yield from closed
 

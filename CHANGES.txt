@@ -13,6 +13,8 @@ CHANGES
 - According to RFC 6455 websocket subprotocol preference order is
   provided by client, not server
 
+- websocket's ping and pong accept optional message parameter
+
 
 0.13.1 (12-31-2014)
 --------------------

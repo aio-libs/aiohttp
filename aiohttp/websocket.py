@@ -115,10 +115,10 @@ def parse_message(buf):
         return Message(OPCODE_CLOSE, '', '')
 
     elif opcode == OPCODE_PING:
-        return Message(OPCODE_PING, '', '')
+        return Message(OPCODE_PING, payload, '')
 
     elif opcode == OPCODE_PONG:
-        return Message(OPCODE_PONG, '', '')
+        return Message(OPCODE_PONG, payload, '')
 
     elif opcode not in (OPCODE_TEXT, OPCODE_BINARY):
         raise WebSocketError("Unexpected opcode={!r}".format(opcode))
@@ -160,13 +160,17 @@ class WebSocketWriter:
 
         self.writer.write(header + message)
 
-    def pong(self):
+    def pong(self, message=b''):
         """Send pong message."""
-        self._send_frame(b'', OPCODE_PONG)
+        if isinstance(message, str):
+            message = message.encode('utf-8')
+        self._send_frame(message, OPCODE_PONG)
 
-    def ping(self):
+    def ping(self, message=b''):
         """Send ping message."""
-        self._send_frame(b'', OPCODE_PING)
+        if isinstance(message, str):
+            message = message.encode('utf-8')
+        self._send_frame(message, OPCODE_PING)
 
     def send(self, message, binary=False):
         """Send a frame over the websocket with message as its payload."""

@@ -719,12 +719,20 @@ class WebSocketResponse(StreamResponse):
     def protocol(self):
         return self._protocol
 
-    def ping(self):
+    def ping(self, message='b'):
         if self._writer is None:
             raise RuntimeError('Call .start() first')
         if self._closing:
             raise RuntimeError('websocket connection is closing')
-        self._writer.ping()
+        self._writer.ping(message)
+
+    def pong(self, message='b'):
+        # unsolicited pong
+        if self._writer is None:
+            raise RuntimeError('Call .start() first')
+        if self._closing:
+            raise RuntimeError('websocket connection is closing')
+        self._writer.pong(message)
 
     def send_str(self, data):
         if self._writer is None:
@@ -781,7 +789,7 @@ class WebSocketResponse(StreamResponse):
                     raise exc
             elif not self._closing:
                 if msg.tp == MSG_PING:
-                    self._writer.pong()
+                    self._writer.pong(msg.data)
                 elif msg.tp in (MSG_TEXT, MSG_BINARY):
                     return msg
 

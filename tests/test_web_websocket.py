@@ -44,6 +44,11 @@ class TestWebWebSocket(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             ws.ping()
 
+    def test_nonstarted_pong(self):
+        ws = WebSocketResponse()
+        with self.assertRaises(RuntimeError):
+            ws.pong()
+
     def test_nonstarted_send_str(self):
         ws = WebSocketResponse()
         with self.assertRaises(RuntimeError):
@@ -207,6 +212,14 @@ class TestWebWebSocket(unittest.TestCase):
         ws.close()
         with self.assertRaises(RuntimeError):
             ws.ping()
+
+    def test_pong_closing(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        ws.start(req)
+        ws.close()
+        with self.assertRaises(RuntimeError):
+            ws.pong()
 
     def test_double_close(self):
         req = self.make_request('GET', '/')
