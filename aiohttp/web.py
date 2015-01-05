@@ -1203,7 +1203,6 @@ class StaticRoute(Route):
                 resp.write(chunk)
                 chunk = f.read(8192)
 
-        yield from resp.write_eof()
         return resp
 
     def __repr__(self):
