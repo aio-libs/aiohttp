@@ -141,7 +141,7 @@ html_theme_options = {
     'pre_bg': '#FFF6E5',
     'note_bg': '#E5ECD1',
     'note_border': '#BFCF8C',
-    'body_text': '#49443E',
+    'body_text': '#482C0A',
     'sidebar_text': '#49443E',
     'sidebar_header': '#4B4032',
 }
