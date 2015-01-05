@@ -116,8 +116,8 @@ class BadHttpMessage(HttpProcessingError):
     code = 400
     message = 'Bad Request'
 
-    def __init__(self, message):
-        super().__init__(message=message)
+    def __init__(self, message, *, headers=None):
+        super().__init__(message=message, headers=headers)
 
 
 class HttpMethodNotAllowed(HttpProcessingError):
