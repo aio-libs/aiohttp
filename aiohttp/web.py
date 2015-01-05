@@ -679,7 +679,7 @@ class WebSocketResponse(StreamResponse):
             if err.code == 405:
                 raise HTTPMethodNotAllowed(request.method, ['GET'])
             elif err.code == 400:
-                raise HTTPBadRequest(text=err.message)
+                raise HTTPBadRequest(text=err.message, headers=err.headers)
             else:  # pragma: no cover
                 raise HTTPInternalServerError() from err
 

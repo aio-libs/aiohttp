@@ -230,7 +230,8 @@ def do_handshake(method, headers, transport, protocols=()):
     version = headers.get('SEC-WEBSOCKET-VERSION')
     if version not in ('13', '8', '7'):
         raise errors.HttpBadRequest(
-            message='Unsupported version: {}'.format(version))
+            message='Unsupported version: {}'.format(version),
+            headers=(('Sec-WebSocket-Version', '13', '8', '7'),))
 
     # check client handshake for validity
     key = headers.get('SEC-WEBSOCKET-KEY')
