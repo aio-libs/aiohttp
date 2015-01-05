@@ -538,3 +538,11 @@ class HttpServerProtocolTests(unittest.TestCase):
         self.loop.run_until_complete(srv._request_handler)
         self.assertTrue(transport.close.called)
         self.assertIsNone(srv._timeout_handle)
+
+    def test_keep_alive_timeout_default(self):
+        srv = server.ServerHttpProtocol(loop=self.loop)
+        self.assertIsNone(srv.keep_alive_timeout)
+
+    def test_keep_alive_timeout_nondefault(self):
+        srv = server.ServerHttpProtocol(loop=self.loop, keep_alive=10)
+        self.assertEqual(10, srv.keep_alive_timeout)
