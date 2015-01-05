@@ -141,6 +141,7 @@ html_theme_options = {
     'pre_bg': '#FFF6E5',
     'note_bg': '#E5ECD1',
     'note_border': '#BFCF8C',
+    'body_text': '#49443E',
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
