@@ -210,8 +210,8 @@ using response's methods::
                 return ws
 
 You can have the only websocket reader task (which can call ``yield
-from ws.receive_msg()``) and multiple writer tasks which can only send
-data asynchronously (by ``yield from ws.send('data')`` for example).
+from ws.receive_str()``) and multiple writer tasks which can only send
+data asynchronously (by ``yield from ws.send_str('data')`` for example).
 
 
 .. _aiohttp-web-request:
