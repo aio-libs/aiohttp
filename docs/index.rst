@@ -15,8 +15,8 @@ Features
 --------
 
 - Supports both :ref:`aiohttp-client` and :ref:`aiohttp-web`.
-- Supports WebSockets out-of-the-box.
-- Web-server has middlewares and pluggable routing.
+- Supports :ref:`aiohttp-web-websockets` out-of-the-box.
+- Web-server has :ref:`aiohttp-web-middlewares` and pluggable routing.
 
 Library Installation
 --------------------
@@ -30,38 +30,6 @@ install *chardet* also::
 
    pip install chardet
 
-
-Source code
------------
-
-The project is hosted on GitHub_
-
-Please feel free to file an issue on `bug tracker
-<https://github.com/KeepSafe/aiohttp/issues>`_ if you have found a bug
-or have some suggestion for library improvement.
-
-The library uses `Travis <https://travis-ci.org/KeepSafe/aiohttp>`_ for
-Continious Integration.
-
-
-Dependencies
-------------
-
-- Python 3.3 and *asyncio* or Python 3.4+
-- optional *chardet* library
-
-Contributing
-------------
-
-Please read :ref:`aiohttp-contributing` before making Pull Request.
-
-
-Authors and License
--------------------
-
-The ``aiohttp`` package is written mainly by Nikolay Kim and Andrew Svetlov.
-It's *Apache 2* licensed and freely available.
-Feel free to improve this package and send a pull request to GitHub_.
 
 Getting Started
 ---------------
@@ -111,6 +79,39 @@ Server example::
     except KeyboardInterrrupt:
         pass
 
+
+Source code
+-----------
+
+The project is hosted on GitHub_
+
+Please feel free to file an issue on `bug tracker
+<https://github.com/KeepSafe/aiohttp/issues>`_ if you have found a bug
+or have some suggestion for library improvement.
+
+The library uses `Travis <https://travis-ci.org/KeepSafe/aiohttp>`_ for
+Continious Integration.
+
+
+Dependencies
+------------
+
+- Python 3.3 and *asyncio* or Python 3.4+
+- optional *chardet* library
+
+Contributing
+------------
+
+Please read :ref:`aiohttp-contributing` before making Pull Request.
+
+
+Authors and License
+-------------------
+
+The ``aiohttp`` package is written mainly by Nikolay Kim and Andrew Svetlov.
+It's *Apache 2* licensed and freely available.
+Feel free to improve this package and send a pull request to GitHub_.
+
 Contents:
 
 .. toctree::
@@ -118,6 +119,7 @@ Contents:
 
    client
    web
+   web_reference
    server
    api
    contributing
