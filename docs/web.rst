@@ -843,6 +843,41 @@ WebSocketResponse
 
       :raise RuntimeError: if connection is not started or closing
 
+   .. method:: wait_closed()
+
+      A :ref:`coroutine<coroutine>` that waits for socket handshake
+      finish and raises
+      :exc:`~aiohttp.errors.WebSocketDisconnectedError` at the end.
+
+      Use the method only from write-only tasks, please call one of
+      :meth:`receive_str`, :meth:`receive_bytes` or
+      :meth:`receive_msg` otherwise.
+
+      :raise RuntimeError: if connection is not started
+
+   .. method:: receive_msg()
+
+      A :ref:`coroutine<coroutine>` that waits upcomming *data*
+      message from peer and returns it.
+
+      The coroutine implicitly handles
+      :const:`~aiohttp.websocket.MSG_PING`,
+      :const:`~aiohttp.websocket.MSG_PONG` and
+      :const:`~aiohttp.websocket.MSG_CLOSE` without returning the
+      message.
+
+      It process *ping-pong game* and performs *closing handshake* internally.
+
+      After websocket closing raises
+      :exc:`~aiohttp.errors.WebSocketDisconnectedError` with
+      connection closing data.
+
+      :raise RuntimeError: if connection is not started
+
+      :raise: :exc:`~aiohttp.errors.WebSocketDisconnectedError` on closing.
+
+      :return: :class:`~aiohttp.websocket.Message`
+
 
 
 .. versionadded:: 0.14
