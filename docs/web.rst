@@ -766,20 +766,88 @@ WebSocketResponse
                *protocol* is websocket subprotocol which is passed by
                client and accepted by server (one of *protocols*
                sequence from :class:`WebSocketResponse` ctor). *protocol* may be
-               ``None``.
+               ``None`` if client and server subprotocols are nit overlapping.
 
       .. note:: The method newer raises exception.
 
    .. attribute:: closing
 
-      Read-only property, ``True`` if :meth:`close` has been called.
+      Read-only property, ``True`` if :meth:`close` has been called of
+      :const:`~aiohttp.websocket.MSG_CLOSE` message has been received from peer.
 
    .. attribute:: protocol
 
-      Websocket *subprotocol* choosen after connection
-      negotiating. May be ``None`` if server and client protocols are
+      Websocket *subprotocol* choosen after :meth:`start` call.
+
+      May be ``None`` if server and client protocols are
       not overlapping.
 
+   .. method:: ping(message=b'')
+
+      Send :const:`~aiohttp.websocket.MSG_PING` to peer.
+
+      :param message: optional payload of *ping* messasge,
+                      :class:`str` (coverted to *UTF-8* encdoded bytes)
+                      or :class:`bytes`.
+
+      :raise RuntimeError: if connections is not started or closing.
+
+   .. method:: pong(message=b'')
+
+      Send *unsolicited* :const:`~aiohttp.websocket.MSG_PONG` to peer.
+
+      :param message: optional payload of *pong* messasge,
+                      :class:`str` (coverted to *UTF-8* encdoded bytes)
+                      or :class:`bytes`.
+
+      :raise RuntimeError: if connections is not started or closing.
+
+   .. method:: send_str(data)
+
+      Send *data* to peer as :const:`~aiohttp.websocket.MSG_TEXT` message.
+
+      :param str data: data to send.
+
+      :raise RuntimeError: if connection is not started or closing
+
+      :raise TypeError: if data is not :class:`str`
+
+   .. method:: send_bytes(data)
+
+      Send *data* to peer as :const:`~aiohttp.websocket.MSG_BINARY` message.
+
+      :param data: data to send.
+
+      :raise RuntimeError: if connection is not started or closing
+
+      :raise TypeError: if data is not :class:`bytes`,
+                        :class:`bytearray` or :class:`memoryview`.
+
+   .. method:: close(*, code=1000, message=b'')
+
+      Initiate closing handshake by sending
+      :const:`~aiohttp.websocket.MSG_CLOSE` message.
+
+      The handshake is finished by next ``yield from ws.receive_*()``
+      or ``yield from ws.wait_closed()`` call.
+
+      Use :meth:`wait_closed` if you call the method from
+      write-only task and one of :meth:`receive_str`,
+      :meth:`receive_bytes` or :meth:`receive_msg` otherwise.
+
+      :param int code: closing code
+
+      :param message: optional payload of *pong* messasge,
+                      :class:`str` (coverted to *UTF-8* encdoded bytes)
+                      or :class:`bytes`.
+
+      :raise RuntimeError: if connection is not started or closing
+
+
+
+.. versionadded:: 0.14
+
+.. seealso:: :ref:`aiohttp-web-websockets`
 
 .. _aiohttp-web-app-and-router:
 
