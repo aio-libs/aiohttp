@@ -163,9 +163,11 @@ class BaseConnector(object):
                 else:
                     transport, proto = yield from self._create_connection(req)
             except asyncio.TimeoutError as exc:
-                raise ClientTimeoutError() from exc
+                raise ClientTimeoutError(
+                    'Connection timeout to host %s:%s ssl:%s' % key) from exc
             except OSError as exc:
-                raise ClientOSError() from exc
+                raise ClientOSError(
+                    'Cannot connect to host %s:%s ssl:%s' % key) from exc
 
         return Connection(self, key, req, transport, proto, self._loop)
 
