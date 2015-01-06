@@ -326,8 +326,11 @@ Middlewares
 
 .. versionadded:: 0.13
 
-:class:`Application` accepts *middlewares* keyword-only parameter,
-which should be sequence of *middleware factories*.
+:class:`Application` accepts optional *middlewares* keyword-only
+parameter, which should be a sequence of *middleware factories*, e.g::
+
+   app = web.Application(middlewares=[middleware_factory_1,
+                                      middleware_factory_2])
 
 The most trivial *middleware factory* example::
 
@@ -340,14 +343,18 @@ The most trivial *middleware factory* example::
 
 Every factory is a coroutine that accepts two parameters: *app*
 (:class:`Application` instance) and *handler* (next handler in
-middleware chain. The last handler is
-:ref:`web-handler<aiohttp-web-handler>` selected by routing itself
-(:meth:`~UrlDispatcher.resolve` call). Middleware should return new
-coroutine by wrapping *handler* parameter. Signature of returned
-handler should be the same as for
+middleware chain.
+
+The last handler is :ref:`web-handler<aiohttp-web-handler>` selected
+by routing itself (:meth:`~UrlDispatcher.resolve` call).
+
+Middleware should return new coroutine by wrapping *handler*
+parameter. Signature of returned handler should be the same as for
 :ref:`web-handler<aiohttp-web-handler>`: accept single *request*
-parameter, return *response* or raise exception. Factory is a coroutine,
-thus it can do extra ``yield from`` calls on making new handler.
+parameter, return *response* or raise exception.
+
+The factory is a coroutine, thus it can do extra ``yield from`` calls
+on making new handler, e.g. call database etc.
 
 After constructing outermost handler by applying middleware chain to
 :ref:`web-handler<aiohttp-web-handler>` in reversed order

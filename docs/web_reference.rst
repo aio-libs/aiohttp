@@ -1079,4 +1079,3 @@ Utilities
       *MIME type* of uploaded file, ``'text/plain'`` by default.
 
    .. seealso:: :ref:`aiohttp-web-file-upload`
-
