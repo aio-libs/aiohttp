@@ -95,7 +95,7 @@ By default regex is ``[^{}/]+``.
    Support for custom regexs in variable routes.
 
 
-Handlers can be first-class functions, e.g.::
+Handlers *may* be first-class functions, e.g.::
 
    @asyncio.coroutine
    def hello(request):
@@ -103,7 +103,7 @@ Handlers can be first-class functions, e.g.::
 
    app.router.add_route('GET', '/', hello)
 
-Sometimes you would like to group logically coupled handlers into a
+But sometimes you would like to group logically coupled handlers into a
 python class.
 
 :mod:`aiohttp.web` doesn't dictate any implementation details,
@@ -346,15 +346,15 @@ middleware chain. The last handler is
 coroutine by wrapping *handler* parameter. Signature of returned
 handler should be the same as for
 :ref:`web-handler<aiohttp-web-handler>`: accept single *request*
-parameter, return *response* or raise exception. Factory is coroutine,
+parameter, return *response* or raise exception. Factory is a coroutine,
 thus it can do extra ``yield from`` calls on making new handler.
 
 After constructing outermost handler by applying middleware chain to
 :ref:`web-handler<aiohttp-web-handler>` in reversed order
-:class:`RequestHandler` executes that outermost handler as regular
+:class:`RequestHandler` executes the outermost handler as regular
 *web-handler*.
 
-Middleware usually calls inner handler, but may do something
+Middleware usually calls an inner handler, but may do something
 other, like displaying *403 Forbidden page* or raising
 :exc:`HTTPForbidden` exception if user has no permissions to access underlying
 resource.  Also middleware may render errors raised by handler, do
@@ -362,5 +362,5 @@ some pre- and post- processing like handling *CORS* and so on.
 
 .. warning::
 
-   Middlewares are executed **after** routing, so it cannot process
+   Middleware is executing **after** routing, thus it cannot process
    route exceptions.
