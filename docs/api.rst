@@ -1,5 +1,5 @@
-aiohttp package
-===============
+Helpers API
+===========
 
 All public names from submodules ``client``, ``connector``,
 ``errors``, ``parsers``, ``protocol``, ``server``, ``utils``,

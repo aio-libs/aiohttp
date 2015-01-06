@@ -1,9 +1,12 @@
 .. _aiohttp-contributing:
 
-Instruction for contributors
-=============================
+Contributing
+============
 
 .. _GitHub: https://github.com/KeepSafe/aiohttp
+
+Instruction for contributors
+----------------------------
 
 
 At first make a clone of _GitHub repo: open the link and press "Fork"

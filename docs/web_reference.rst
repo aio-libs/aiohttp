@@ -1,7 +1,7 @@
 .. _aiohttp-web-reference:
 
-aiohttp.web Reference
-======================
+HTTP Server Reference
+========================
 
 .. highlight:: python
 

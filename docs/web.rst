@@ -1,7 +1,7 @@
 .. _aiohttp-web:
 
-High-level HTTP Server
-======================
+HTTP Server Usage
+=================
 
 .. highlight:: python
 
