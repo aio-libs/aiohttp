@@ -204,7 +204,10 @@ using response's methods::
         while True:
             try:
                 data = yield from ws.receive_str()
-                ws.send_str(data + '/answer')
+                if data == 'close':
+                    ws.close()
+                else:
+                    ws.send_str(data + '/answer')
             except web.WebSocketDisconnectedError as exc:
                 print(exc.code, exc.message)
                 return ws
@@ -872,17 +875,36 @@ WebSocketResponse
       :exc:`~aiohttp.errors.WebSocketDisconnectedError` with
       connection closing data.
 
+      :return: :class:`~aiohttp.websocket.Message`
+
       :raise RuntimeError: if connection is not started
 
       :raise: :exc:`~aiohttp.errors.WebSocketDisconnectedError` on closing.
 
-      :return: :class:`~aiohttp.websocket.Message`
+   .. method:: receive_str()
 
+      A :ref:`coroutine<coroutine>` that calls :meth:`receive_mgs` but
+      also asserts the message type is
+      :const:`~aiohttp.websocket.MSG_TEXT`.
+
+      :return str: peer's message content.
+
+      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_BINARY`.
+
+   .. method:: receive_bytes()
+
+      A :ref:`coroutine<coroutine>` that calls :meth:`receive_mgs` but
+      also asserts the message type is
+      :const:`~aiohttp.websocket.MSG_BINARY`.
+
+      :return bytes: peer's message content.
+
+      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_TEXT`.
 
 
 .. versionadded:: 0.14
 
-.. seealso:: :ref:`aiohttp-web-websockets`
+.. seealso:: :ref:`WebSockets handling<aiohttp-web-websockets>`
 
 .. _aiohttp-web-app-and-router:
 
