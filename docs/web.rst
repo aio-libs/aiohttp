@@ -203,11 +203,15 @@ using response's methods::
 
         while True:
             try:
-                data = yield from ws.receive()
+                data = yield from ws.receive_str()
                 ws.send_str(data + '/answer')
             except web.WebSocketDisconnectedError as exc:
                 print(exc.code, exc.message)
                 return ws
+
+You can have the only websocket reader task (which can call ``yield
+from ws.receive_msg()``) and multiple writer tasks which can only send
+data asynchronously (by ``yield from ws.send('data' for example).
 
 
 .. _aiohttp-web-request:

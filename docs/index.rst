@@ -120,6 +120,7 @@ Contents:
    web
    server
    api
+   contributing
 
 Indices and tables
 ==================
