@@ -1,6 +1,6 @@
 import pprint
 from collections import abc
-from collections.abc import Set
+from collections.abc import Iterable, Set
 
 
 _marker = object()
@@ -402,6 +402,38 @@ cdef class _ViewBaseSet(_ViewBase):
                 if elem not in self:
                     return False
             return True
+
+    def __and__(self, other):
+        if not isinstance(other, Iterable):
+            return NotImplemented
+        return set(value for value in other if value in self)
+
+    def isdisjoint(self, other):
+        'Return True if two sets have a null intersection.'
+        for value in other:
+            if value in self:
+                return False
+        return True
+
+    def __or__(self, other):
+        if not isinstance(other, Iterable):
+            return NotImplemented
+        return {e for s in (self, other) for e in s}
+
+    def __sub__(self, other):
+        if not isinstance(other, Set):
+            if not isinstance(other, Iterable):
+                return NotImplemented
+            other = set(other)
+        return {value for value in self
+                if value not in other}
+
+    def __xor__(self, other):
+        if not isinstance(other, Set):
+            if not isinstance(other, Iterable):
+                return NotImplemented
+            other = set(other)
+        return (self - other) | (other - self)
 
 
 cdef class _ItemsView(_ViewBaseSet):

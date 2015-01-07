@@ -184,6 +184,30 @@ class _BaseTest(_Root):
         d = self.make_dict([('key', 'value1')])
         self.assertEqual({'key': 'value1'}, d)
 
+    def test_and(self):
+        d = self.make_dict([('key', 'value1')])
+        self.assertEqual({'key'}, d.keys() & {'key', 'key2'})
+
+    def test_or(self):
+        d = self.make_dict([('key', 'value1')])
+        self.assertEqual({'key', 'key2'}, d.keys() | {'key2'})
+
+    def test_sub(self):
+        d = self.make_dict([('key', 'value1'), ('key2', 'value2')])
+        self.assertEqual({'key'}, d.keys() - {'key2'})
+
+    def test_xor(self):
+        d = self.make_dict([('key', 'value1'), ('key2', 'value2')])
+        self.assertEqual({'key', 'key3'}, d.keys() ^ {'key2', 'key3'})
+
+    def test_isdisjoint(self):
+        d = self.make_dict([('key', 'value1')])
+        self.assertTrue(d.keys().isdisjoint({'key2'}))
+
+    def test_isdisjoint2(self):
+        d = self.make_dict([('key', 'value1')])
+        self.assertFalse(d.keys().isdisjoint({'key'}))
+
 
 class _MultiDictTests(_BaseTest):
 
