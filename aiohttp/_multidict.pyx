@@ -22,7 +22,7 @@ def _unique_everseen(iterable):
         yield element
 
 
-class MultiDict(abc.Mapping):
+class MultiDict:
     """Read-only ordered dictionary that can have multiple values for each key.
 
     This type of MultiDict must be used for request headers and query args.
@@ -129,6 +129,9 @@ class MultiDict(abc.Mapping):
         )
 
 
+abc.Mapping.register(MultiDict)
+
+
 class CaseInsensitiveMultiDict(MultiDict):
     """Case insensitive multi dict."""
 
@@ -160,7 +163,10 @@ class CaseInsensitiveMultiDict(MultiDict):
         return super().__contains__(key.upper())
 
 
-class MutableMultiDictMixin(abc.MutableMapping):
+abc.Mapping.register(CaseInsensitiveMultiDict)
+
+
+class MutableMultiDictMixin:
 
     def add(self, key, value):
         """
@@ -231,8 +237,13 @@ class MutableMultiDictMixin(abc.MutableMapping):
         raise NotImplementedError("Use extend method instead")
 
 
+
+
 class MutableMultiDict(MutableMultiDictMixin, MultiDict):
     """An ordered dictionary that can have multiple values for each key."""
+
+
+abc.MutableMapping.register(MutableMultiDict)
 
 
 class CaseInsensitiveMutableMultiDict(
@@ -247,6 +258,9 @@ class CaseInsensitiveMutableMultiDict(
 
     def __delitem__(self, key):
         super().__delitem__(key.upper())
+
+
+abc.MutableMapping.register(CaseInsensitiveMutableMultiDict)
 
 
 class _ViewBase:
