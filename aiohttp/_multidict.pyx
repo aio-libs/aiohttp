@@ -125,26 +125,36 @@ cdef class MultiDict:
         return len(self._items)
 
     def keys(self, *, getall=False):
-        return _KeysView(self._items, getall=getall)
+        return self._keys_view(getall)
+
+    cdef _KeysView _keys_view(self, getall):
+        return _KeysView.__new__(_KeysView, self._items, getall)
 
     def items(self, *, getall=False):
-        return _ItemsView(self._items, getall=getall)
+        return self._items_view(getall)
+
+    cdef _ItemsView _items_view(self, getall):
+        return _ItemsView.__new__(_ItemsView, self._items, getall)
 
     def values(self, *, getall=False):
-        return _ValuesView(self._items, getall=getall)
+        return self._values_view(getall)
+
+    cdef _ValuesView _values_view(self, getall):
+        return _ValuesView.__new__(_ValuesView, self._items, getall)
 
     def __richcmp__(self, other, op):
         cdef MultiDict typed_self = self
         cdef MultiDict typed_other
+        cdef tuple item
         if op == 2:
             if not isinstance(other, abc.Mapping):
                 return NotImplemented
             if isinstance(other, MultiDict):
                 typed_other = other
                 return typed_self._items == typed_other._items
-            for k, v in self.items(getall=True):
-                nv = other.get(k, _marker)
-                if v != nv:
+            for item in typed_self._items:
+                nv = other.get(item[0], _marker)
+                if item[1] != nv:
                     return False
             return True
         elif op != 2:
@@ -153,9 +163,9 @@ cdef class MultiDict:
             if isinstance(other, MultiDict):
                 typed_other = other
                 return typed_self._items != typed_other._items
-            for k, v in self.items(getall=True):
-                nv = other.get(k, _marker)
-                if v == nv:
+            for item in typed_self._items:
+                nv = other.get(item[0], _marker)
+                if item[1] == nv:
                     return True
             return False
         else:
@@ -163,9 +173,7 @@ cdef class MultiDict:
 
     def __repr__(self):
         return '<{}>\n{}'.format(
-            self.__class__.__name__, pprint.pformat(
-                list(self.items(getall=True)))
-        )
+            self.__class__.__name__, pprint.pformat(self._items))
 
 
 abc.Mapping.register(MultiDict)
@@ -222,7 +230,7 @@ cdef class MutableMultiDict(MultiDict):
 
     def clear(self):
         """Remove all items from MutableMultiDict"""
-        self._items.clear()
+        self._items = []
 
     # MutableMapping interface #
 
@@ -231,7 +239,7 @@ cdef class MutableMultiDict(MultiDict):
             del self[key]
         except KeyError:
             pass
-        self._items.append((key, value))
+        self._add((key, value))
 
     def __delitem__(self, key):
         items = self._items
@@ -247,7 +255,7 @@ cdef class MutableMultiDict(MultiDict):
         for k, v in self._items:
             if k == key:
                 return v
-        self._items.append((key, default))
+        self._add((key, default))
         return default
 
     def pop(self, key, default=None):
@@ -284,7 +292,7 @@ cdef class CaseInsensitiveMutableMultiDict(CaseInsensitiveMultiDict):
 
     def clear(self):
         """Remove all items from MutableMultiDict"""
-        self._items.clear()
+        self._items = []
 
     # MutableMapping interface #
 
@@ -294,7 +302,7 @@ cdef class CaseInsensitiveMutableMultiDict(CaseInsensitiveMultiDict):
             del self[key]
         except KeyError:
             pass
-        self._items.append((key, value))
+        self._add((key, value))
 
     def __delitem__(self, key):
         key = key.upper()
@@ -312,7 +320,7 @@ cdef class CaseInsensitiveMutableMultiDict(CaseInsensitiveMultiDict):
         for k, v in self._items:
             if k == key:
                 return v
-        self._items.append((key, default))
+        self._add((key, default))
         return default
 
     def pop(self, key, default=None):
@@ -336,7 +344,7 @@ cdef class _ViewBase:
     cdef list _keys
     cdef list _items
 
-    def __init__(self, list items, int getall=False):
+    def __cinit__(self, list items, int getall):
         cdef list items_to_use
         cdef str key
         cdef set keys
