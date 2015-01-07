@@ -352,7 +352,11 @@ cdef class CaseInsensitiveMutableMultiDict(CaseInsensitiveMultiDict):
 abc.MutableMapping.register(CaseInsensitiveMutableMultiDict)
 
 
-class _ViewBase:
+cdef class _ViewBase:
+
+    cdef int _getall
+    cdef list _keys
+    cdef list _items
 
     def __init__(self, items, *, getall=False):
         self._getall = getall
@@ -371,37 +375,46 @@ class _ViewBase:
                         break
         assert len(items_to_use) == len(self._keys)
 
-        super().__init__(items_to_use)
+        self._items = items_to_use
 
 
-class _ItemsView(_ViewBase, abc.ItemsView):
+cdef class _ItemsView(_ViewBase):
 
     def __contains__(self, item):
         assert isinstance(item, tuple) or isinstance(item, list)
         assert len(item) == 2
-        return item in self._mapping
+        return item in self._items
 
     def __iter__(self):
-        yield from self._mapping
+        yield from self._items
 
 
-class _ValuesView(_ViewBase, abc.ValuesView):
+abc.ItemsView.register(_ItemsView)
+
+
+cdef class _ValuesView(_ViewBase):
 
     def __contains__(self, value):
-        for item in self._mapping:
+        for item in self._items:
             if item[1] == value:
                 return True
         return False
 
     def __iter__(self):
-        for item in self._mapping:
+        for item in self._items:
             yield item[1]
 
 
-class _KeysView(_ViewBase, abc.KeysView):
+abc.ValuesView.register(_ValuesView)
+
+
+cdef class _KeysView(_ViewBase):
 
     def __contains__(self, key):
         return key in self._keys
 
     def __iter__(self):
         yield from self._keys
+
+
+abc.KeysView.register(_KeysView)
