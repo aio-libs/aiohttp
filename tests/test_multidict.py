@@ -18,6 +18,8 @@ class _Root:
 
     def test_exposed_names(self):
         name = self.cls.__name__
+        while name.startswith('_'):
+            name = name[1:]
         self.assertIn(name, aiohttp.__all__)
         self.assertIs(self.cls, getattr(aiohttp, name))
 
@@ -146,16 +148,15 @@ class _BaseTest(_Root):
             self.make_dict([(1, 2, 3)])
 
 
-class MultiDictTests(_BaseTest, unittest.TestCase):
-
-    cls = MultiDict
+class _MultiDictTests(_BaseTest):
 
     def test__repr__(self):
         d = self.make_dict()
-        self.assertEqual(str(d), "<MultiDict>\n[]")
+        self.assertEqual(str(d), "<%s>\n[]" % self.cls.__name__)
         d = self.make_dict([('key', 'one'), ('key', 'two')])
-        self.assertEqual(str(d),
-                         "<MultiDict>\n[('key', 'one'), ('key', 'two')]")
+        self.assertEqual(
+            str(d),
+            "<%s>\n[('key', 'one'), ('key', 'two')]" % self.cls.__name__)
 
     def test_getall(self):
         d = self.make_dict([('key', 'value1')], key='value2')
@@ -178,9 +179,7 @@ class MultiDictTests(_BaseTest, unittest.TestCase):
         self.assertEqual('a=1&b=2&a=3', s)
 
 
-class CaseInsensitiveMultiDictTests(_Root, unittest.TestCase):
-
-    cls = CaseInsensitiveMultiDict
+class _CaseInsensitiveMultiDictTests(_Root):
 
     def test_basics(self):
         d = self.make_dict([('KEY', 'value1')], KEY='value2')
@@ -211,13 +210,13 @@ class _BaseMutableMultiDictTests(_BaseTest):
 
     def test__repr__(self):
         d = self.make_dict()
-        self.assertEqual(str(d), "<MutableMultiDict>\n[]")
+        self.assertEqual(str(d), "<%s>\n[]" % self.cls.__name__)
 
         d = self.make_dict([('key', 'one'), ('key', 'two')])
 
         self.assertEqual(
             str(d),
-            "<MutableMultiDict>\n[('key', 'one'), ('key', 'two')]")
+            "<%s>\n[('key', 'one'), ('key', 'two')]" % self.cls.__name__)
 
     def test_getall(self):
         d = self.make_dict([('key', 'value1')], key='value2')
@@ -311,14 +310,7 @@ class _BaseMutableMultiDictTests(_BaseTest):
             d.update(bar='baz')
 
 
-class MutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
-
-    cls = MutableMultiDict
-
-
-class CaseInsensitiveMutableMultiDictTests(_Root, unittest.TestCase):
-
-    cls = CaseInsensitiveMutableMultiDict
+class _CaseInsensitiveMutableMultiDictTests(_Root):
 
     def test_getall(self):
         d = self.make_dict([('KEY', 'value1')], KEY='value2')
@@ -351,3 +343,25 @@ class CaseInsensitiveMutableMultiDictTests(_Root, unittest.TestCase):
         self.assertIn('K1', d)
         del d['k1']
         self.assertNotIn('K1', d)
+
+
+class MultiDictTests(_MultiDictTests, unittest.TestCase):
+
+    cls = MultiDict
+
+
+class CaseInsensitiveMultiDictTests(_CaseInsensitiveMultiDictTests,
+                                    unittest.TestCase):
+
+    cls = CaseInsensitiveMultiDict
+
+
+class MutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
+
+    cls = MutableMultiDict
+
+
+class CaseInsensitiveMutableMultiDictTests(_CaseInsensitiveMultiDictTests,
+                                           unittest.TestCase):
+
+    cls = CaseInsensitiveMutableMultiDict

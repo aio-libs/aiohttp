@@ -22,7 +22,7 @@ def _unique_everseen(iterable):
         yield element
 
 
-class MultiDict(abc.Mapping):
+class _MultiDict(abc.Mapping):
     """Read-only ordered dictionary that can have multiple values for each key.
 
     This type of MultiDict must be used for request headers and query args.
@@ -106,7 +106,7 @@ class MultiDict(abc.Mapping):
     def __eq__(self, other):
         if not isinstance(other, abc.Mapping):
             return NotImplemented
-        if isinstance(other, MultiDict):
+        if isinstance(other, _MultiDict):
             return self._items == other._items
         return dict(self.items()) == dict(other.items())
 
@@ -123,7 +123,7 @@ class MultiDict(abc.Mapping):
         )
 
 
-class CaseInsensitiveMultiDict(MultiDict):
+class _CaseInsensitiveMultiDict(_MultiDict):
     """Case insensitive multi dict."""
 
     @classmethod
@@ -168,7 +168,7 @@ class MutableMultiDictMixin(abc.MutableMapping):
             raise TypeError("extend takes at most 2 positional arguments"
                             " ({} given)".format(len(args) + 1))
         if args:
-            if isinstance(args[0], MultiDict):
+            if isinstance(args[0], _MultiDict):
                 items = args[0].items(getall=True)
             elif hasattr(args[0], 'items'):
                 items = args[0].items()
@@ -215,12 +215,12 @@ class MutableMultiDictMixin(abc.MutableMapping):
         raise NotImplementedError("Use extend method instead")
 
 
-class MutableMultiDict(MutableMultiDictMixin, MultiDict):
+class _MutableMultiDict(MutableMultiDictMixin, _MultiDict):
     """An ordered dictionary that can have multiple values for each key."""
 
 
-class CaseInsensitiveMutableMultiDict(
-        MutableMultiDictMixin, CaseInsensitiveMultiDict):
+class _CaseInsensitiveMutableMultiDict(
+        MutableMultiDictMixin, _CaseInsensitiveMultiDict):
     """An ordered dictionary that can have multiple values for each key."""
 
     def add(self, key, value):
@@ -286,3 +286,15 @@ class _KeysView(_ViewBase, abc.KeysView):
 
     def __iter__(self):
         yield from self._keys
+
+
+try:
+    from _multidict import (MultiDict,
+                            CaseInsensitiveMultiDict,
+                            MutableMultiDict,
+                            CaseInsensitiveMutableMultiDict)
+except ImportError:
+    MultiDict = _MultiDict
+    CaseInsensitiveMultiDict = _CaseInsensitiveMultiDict
+    MutableMultiDict = _MutableMultiDict
+    CaseInsensitiveMutableMultiDict = _CaseInsensitiveMutableMultiDict
