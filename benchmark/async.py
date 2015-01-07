@@ -9,7 +9,7 @@ import sys
 from multiprocessing import Process, set_start_method, Barrier
 
 from scipy.stats import norm, tmean, tvar, tstd
-from numpy import array
+from numpy import array, median
 
 import aiohttp
 
@@ -85,6 +85,7 @@ def run_tornado(host, port, barrier):
 
         def get(self, name):
             txt = 'Hello, ' + name
+            self.set_header('Content-Type', 'text/plain; charset=utf-8')
             self.write(txt)
 
     class PrepareHandler(tornado.web.RequestHandler):
@@ -139,6 +140,7 @@ def run_twisted(host, port, barrier):
 
         def render_GET(self, request):
             txt = 'Hello, ' + self.name
+            request.setHeader(b'Content-Type', b'text/plain; charset=utf-8')
             return txt.encode('utf8')
 
         def getChild(self, name, request):
@@ -177,13 +179,17 @@ def attack(count, concurrency, connector, loop, url):
     request = aiohttp.request
 
     @asyncio.coroutine
-    def do_bomb(real_url):
+    def do_bomb(rnd):
+        real_url = url + '/test/' + rnd
         with (yield from sem):
             t1 = loop.time()
             resp = yield from request('GET', real_url,
                                       connector=connector, loop=loop)
-            yield from resp.read()
             assert resp.status == 200, resp.status
+            if 'text/plain; charset=utf-8' != resp.headers['Content-Type']:
+                raise AssertionError('Invalid Content-Type: %r' % resp.headers)
+            body = yield from resp.text()
+            assert body == ('Hello, ' + rnd), rnd
             t2 = loop.time()
             return t2 - t1
 
@@ -191,8 +197,7 @@ def attack(count, concurrency, connector, loop, url):
 
     for i in range(count):
         rnd = ''.join(random.sample(string.ascii_letters, 16))
-        real_url = url + '/test/' + rnd
-        bombs.append(asyncio.async(do_bomb(real_url)))
+        bombs.append(asyncio.async(do_bomb(rnd)))
 
     data = (yield from asyncio.gather(*bombs))
     return data
@@ -290,18 +295,22 @@ def main(argv):
         rps = count / array(data)
         rps_mean = tmean(rps)
         rps_var = tvar(rps)
+        rps_median = median(rps)
         low, high = norm.interval(0.95, loc=rps_mean, scale=rps_var**0.5)
         times = array(data) * 1000000 / count
         times_mean = tmean(times)
         times_stdev = tstd(times)
+        times_median = median(times)
         print('Results for', test_name)
-        print('RPS: {:d}: [{:d}, {:d}],\tmean: {:.3f} μs,'
-              '\tstandard deviation {:.3f} μs'
+        print('RPS: {:d}: [{:d}, {:d}] median {:d},\tmean: {:.3f} μs,'
+              '\tstandard deviation {:.3f} μs\tmedian {:.3f} μs'
               .format(int(rps_mean),
                       int(low),
                       int(high),
+                      int(rps_median),
                       times_mean,
-                      times_stdev))
+                      times_stdev,
+                      times_median))
     return 0
 
 
