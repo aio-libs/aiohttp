@@ -154,9 +154,12 @@ cdef class CaseInsensitiveMultiDict(MultiDict):
     """Case insensitive multi dict."""
 
     @classmethod
-    def _from_uppercase_multidict(cls, dct):
+    def _from_uppercase_multidict(cls, MultiDict dct):
         # NB: doesn't check for uppercase keys!
-        return cls(dct)
+        cdef CaseInsensitiveMultiDict ret
+        ret = cls.__new__(cls)
+        ret._items = dct._items
+        return ret
 
     cdef _add(self, tuple item):
         self._items.append((item[0].upper(), item[1]))
