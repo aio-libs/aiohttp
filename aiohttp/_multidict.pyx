@@ -1,5 +1,5 @@
 import pprint
-from itertools import chain, filterfalse
+from itertools import filterfalse
 from collections import abc
 
 __all__ = ['MultiDict', 'CaseInsensitiveMultiDict',
@@ -38,18 +38,23 @@ cdef class MultiDict:
         self._items = []
         if args:
             if hasattr(args[0], 'items'):
-                args = list(args[0].items())
+                args = tuple(args[0].items())
             else:
-                args = list(args[0])
+                args = tuple(args[0])
                 for arg in args:
                     if not len(arg) == 2:
                         raise TypeError("MultiDict takes either dict "
                                         "or list of (key, value) tuples")
 
-        self._fill(chain(args, kwargs.items()))
+        self._fill_tuple(args)
+        self._fill_dict(kwargs)
 
-    cdef _fill(self, ipairs):
-        self._items.extend(ipairs)
+    cdef _fill_tuple(self, tuple pairs):
+        self._items.extend(pairs)
+
+    cdef _fill_dict(self, dict dct):
+        for i in dct.items():
+            self._items.append(i)
 
     def getall(self, key, default=_marker):
         """
@@ -161,10 +166,13 @@ cdef class CaseInsensitiveMultiDict(MultiDict):
         # NB: doesn't check for uppercase keys!
         return cls(dct)
 
-    cdef _fill(self, ipairs):
-        for key, value in ipairs:
-            uppkey = key.upper()
-            self._items.append((uppkey, value))
+    cdef _fill_tuple(self, tuple pairs):
+        for k, v in pairs:
+            self._items.append((k.upper(), v))
+
+    cdef _fill_dict(self, dict dct):
+        for k, v in dct.items():
+            self._items.append((k.upper(), v))
 
     def getall(self, key, default=_marker):
         return super().getall(key.upper(), default)
@@ -211,7 +219,11 @@ cdef class MutableMultiDict(MultiDict):
                 items = args[0]
         else:
             items = []
-        for key, value in chain(items, kwargs.items()):
+
+        for key, value in items:
+            self.add(key, value)
+
+        for key, value in kwargs.items():
             self.add(key, value)
 
     def clear(self):
@@ -286,7 +298,11 @@ cdef class CaseInsensitiveMutableMultiDict(CaseInsensitiveMultiDict):
                 items = args[0]
         else:
             items = []
-        for key, value in chain(items, kwargs.items()):
+
+        for key, value in items:
+            self.add(key, value)
+
+        for key, value in kwargs.items():
             self.add(key, value)
 
     def clear(self):
