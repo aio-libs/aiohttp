@@ -1,23 +1,9 @@
 import pprint
-from itertools import filterfalse
 from collections import abc
+from collections.abc import Set
 
 
 _marker = object()
-
-
-def _unique_everseen(iterable):
-    """List unique elements, preserving order.
-    Remember all elements ever seen.
-    Recipe from
-    https://docs.python.org/3/library/itertools.html#itertools-recipes"""
-    # unique_everseen('AAAABBBCCDAABBB') --> A B C D
-    # unique_everseen('ABBCcAD', str.lower) --> A B C D
-    seen = set()
-    seen_add = seen.add
-    for element in filterfalse(seen.__contains__, iterable):
-        seen_add(element)
-        yield element
 
 
 cdef class MultiDict:
@@ -377,8 +363,48 @@ cdef class _ViewBase:
                 self._keys.append(key)
                 self._items.append(i)
 
+    def __len__(self):
+        return len(self._items)
 
-cdef class _ItemsView(_ViewBase):
+
+cdef class _ViewBaseSet(_ViewBase):
+
+    def __richcmp__(self, other, op):
+        if op == 0:  # <
+            if not isinstance(other, Set):
+                return NotImplemented
+            return len(self) < len(other) and self <= other
+        elif op == 1:  # <=
+            if not isinstance(other, Set):
+                return NotImplemented
+            if len(self) > len(other):
+                return False
+            for elem in self:
+                if elem not in other:
+                    return False
+            return True
+        elif op == 2:  # ==
+            if not isinstance(other, Set):
+                return NotImplemented
+            return len(self) == len(other) and self <= other
+        elif op == 3:  # !=
+            return not self == other
+        elif op == 4:  #  >
+            if not isinstance(other, Set):
+                return NotImplemented
+            return len(self) > len(other) and self >= other
+        elif op == 5:  # >=
+            if not isinstance(other, Set):
+                return NotImplemented
+            if len(self) < len(other):
+                return False
+            for elem in other:
+                if elem not in self:
+                    return False
+            return True
+
+
+cdef class _ItemsView(_ViewBaseSet):
 
     def __contains__(self, item):
         assert isinstance(item, tuple) or isinstance(item, list)
@@ -408,7 +434,7 @@ cdef class _ValuesView(_ViewBase):
 abc.ValuesView.register(_ValuesView)
 
 
-cdef class _KeysView(_ViewBase):
+cdef class _KeysView(_ViewBaseSet):
 
     def __contains__(self, key):
         return key in self._keys

@@ -150,6 +150,36 @@ class _BaseTest(_Root):
         with self.assertRaises(TypeError):
             self.make_dict([(1, 2, 3)])
 
+    def test_keys_is_set_less(self):
+        d = self.make_dict([('key', 'value1')])
+
+        self.assertLess(d.keys(), {'key', 'key2'})
+
+    def test_keys_is_set_less_equal(self):
+        d = self.make_dict([('key', 'value1')])
+
+        self.assertLessEqual(d.keys(), {'key'})
+
+    def test_keys_is_set_equal(self):
+        d = self.make_dict([('key', 'value1')])
+
+        self.assertEqual(d.keys(), {'key'})
+
+    def test_keys_is_set_greater(self):
+        d = self.make_dict([('key', 'value1')])
+
+        self.assertGreater({'key', 'key2'}, d.keys())
+
+    def test_keys_is_set_greater_equal(self):
+        d = self.make_dict([('key', 'value1')])
+
+        self.assertGreaterEqual({'key'}, d.keys())
+
+    def test_keys_is_set_not_equal(self):
+        d = self.make_dict([('key', 'value1')])
+
+        self.assertNotEqual(d.keys(), {'key2'})
+
 
 class _MultiDictTests(_BaseTest):
 
