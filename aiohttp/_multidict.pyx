@@ -354,28 +354,28 @@ abc.MutableMapping.register(CaseInsensitiveMutableMultiDict)
 
 cdef class _ViewBase:
 
-    cdef int _getall
     cdef list _keys
     cdef list _items
 
     def __init__(self, list items, int getall=False):
-        self._getall = getall
-        self._keys = [item[0] for item in items]
-        if not getall:
-            self._keys = list(_unique_everseen(self._keys))
+        cdef list items_to_use
+        cdef str key
+        cdef set keys
 
-        items_to_use = []
         if getall:
-            items_to_use = items
+            self._items = items
+            self._keys = [item[0] for item in items]
         else:
-            for key in self._keys:
-                for k, v in items:
-                    if k == key:
-                        items_to_use.append((k, v))
-                        break
-        assert len(items_to_use) == len(self._keys)
-
-        self._items = items_to_use
+            self._items = []
+            keys = set()
+            self._keys = []
+            for i in items:
+                key = i[0]
+                if key in keys:
+                    continue
+                keys.add(key)
+                self._keys.append(key)
+                self._items.append(i)
 
 
 cdef class _ItemsView(_ViewBase):

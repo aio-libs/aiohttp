@@ -1,25 +1,11 @@
 import pprint
-from itertools import chain, filterfalse
+from itertools import chain
 from collections import abc
 
 __all__ = ['MultiDict', 'CaseInsensitiveMultiDict',
            'MutableMultiDict', 'CaseInsensitiveMutableMultiDict']
 
 _marker = object()
-
-
-def _unique_everseen(iterable):
-    """List unique elements, preserving order.
-    Remember all elements ever seen.
-    Recipe from
-    https://docs.python.org/3/library/itertools.html#itertools-recipes"""
-    # unique_everseen('AAAABBBCCDAABBB') --> A B C D
-    # unique_everseen('ABBCcAD', str.lower) --> A B C D
-    seen = set()
-    seen_add = seen.add
-    for element in filterfalse(seen.__contains__, iterable):
-        seen_add(element)
-        yield element
 
 
 class _MultiDict(abc.Mapping):
@@ -255,24 +241,28 @@ class _CaseInsensitiveMutableMultiDict(
 
 class _ViewBase:
 
-    def __init__(self, items, *, getall=False):
-        self._getall = getall
-        self._keys = [item[0] for item in items]
-        if not getall:
-            self._keys = list(_unique_everseen(self._keys))
+    __slots__ = ('_keys', '_items')
 
-        items_to_use = []
+    def __init__(self, items, *, getall=False):
         if getall:
             items_to_use = items
+            self._keys = [item[0] for item in items]
         else:
-            for key in self._keys:
-                for k, v in items:
-                    if k == key:
-                        items_to_use.append((k, v))
-                        break
-        assert len(items_to_use) == len(self._keys)
+            items_to_use = []
+            keys = set()
+            self._keys = []
+            for i in items:
+                key = i[0]
+                if key in keys:
+                    continue
+                keys.add(key)
+                self._keys.append(key)
+                items_to_use.append(i)
 
-        super().__init__(items_to_use)
+        self._items = items_to_use
+
+    def __len__(self):
+        return len(self._items)
 
 
 class _ItemsView(_ViewBase, abc.ItemsView):
@@ -280,22 +270,22 @@ class _ItemsView(_ViewBase, abc.ItemsView):
     def __contains__(self, item):
         assert isinstance(item, tuple) or isinstance(item, list)
         assert len(item) == 2
-        return item in self._mapping
+        return item in self._items
 
     def __iter__(self):
-        yield from self._mapping
+        yield from self._items
 
 
 class _ValuesView(_ViewBase, abc.ValuesView):
 
     def __contains__(self, value):
-        for item in self._mapping:
+        for item in self._items:
             if item[1] == value:
                 return True
         return False
 
     def __iter__(self):
-        for item in self._mapping:
+        for item in self._items:
             yield item[1]
 
 
