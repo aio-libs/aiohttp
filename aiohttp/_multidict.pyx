@@ -52,6 +52,10 @@ cdef class MultiDict:
         """
         Return a list of all values matching the key (may be an empty list)
         """
+        return self._getall(key, default)
+
+    cdef _getall(self, key, default):
+        cdef tuple res
         res = tuple(v for k, v in self._items if k == key)
         if res:
             return res
@@ -63,6 +67,10 @@ cdef class MultiDict:
         """
         Get first value matching the key
         """
+        return self._getone(key, default)
+
+    cdef _getone(self, str key, default):
+        cdef str k
         for k, v in self._items:
             if k == key:
                 return v
@@ -80,16 +88,35 @@ cdef class MultiDict:
     # Mapping interface #
 
     def __getitem__(self, key):
+        return self._getitem(key)
+
+    cdef _getitem(self, str key):
+        cdef str k
+
         for k, v in self._items:
             if k == key:
                 return v
         raise KeyError(key)
 
     def get(self, key, default=None):
+        return self._get(key, default)
+
+    cdef _get(self, str key, default):
+        cdef str k
         for k, v in self._items:
             if k == key:
                 return v
         return default
+
+    def __contains__(self, key):
+        return self._contains(key)
+
+    cdef _contains(self, str key):
+        cdef str k
+        for k, v in self._items:
+            if k == key:
+                return True
+        return False
 
     def __iter__(self):
         return iter(self.keys())
@@ -134,12 +161,6 @@ cdef class MultiDict:
         else:
             return NotImplemented
 
-    def __contains__(self, key):
-        for k, v in self._items:
-            if k == key:
-                return True
-        return False
-
     def __repr__(self):
         return '<{}>\n{}'.format(
             self.__class__.__name__, pprint.pformat(
@@ -165,19 +186,19 @@ cdef class CaseInsensitiveMultiDict(MultiDict):
         self._items.append((item[0].upper(), item[1]))
 
     def getall(self, key, default=_marker):
-        return super().getall(key.upper(), default)
+        return self._getall(key.upper(), default)
 
     def getone(self, key, default=_marker):
-        return super().getone(key.upper(), default)
+        return self._getone(key.upper(), default)
 
     def get(self, key, default=None):
-        return super().get(key.upper(), default)
+        return self._get(key.upper(), default)
 
     def __getitem__(self, key):
-        return super().__getitem__(key.upper())
+        return self._getitem(key.upper())
 
     def __contains__(self, key):
-        return super().__contains__(key.upper())
+        return self._contains(key.upper())
 
 
 abc.Mapping.register(CaseInsensitiveMultiDict)
