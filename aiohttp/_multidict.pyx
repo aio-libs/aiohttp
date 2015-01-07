@@ -15,23 +15,27 @@ cdef class MultiDict:
     cdef list _items
 
     def __init__(self, *args, **kwargs):
-        cdef tuple item
-        if len(args) > 1:
-            raise TypeError("MultiDict takes at most 1 positional "
-                            "argument ({} given)".format(len(args)))
-
         self._items = []
+
+        self._extend(args, kwargs, self.__class__.__name__)
+
+    cdef _extend(self, tuple args, dict kwargs, str name):
+        cdef tuple item
+
+        if len(args) > 1:
+            raise TypeError("{} takes at most 1 positional argument"
+                            " ({} given)".format(name, len(args)))
+
         if args:
             if hasattr(args[0], 'items'):
                 for item in args[0].items():
                     self._add(item)
             else:
-                args = args[0]
-                for arg in args:
+                for arg in args[0]:
                     if not len(arg) == 2:
                         raise TypeError(
                             "{} takes either dict or list of (key, value) "
-                            "tuples".format(self.__class__.__name__))
+                            "tuples".format(name))
                     if not isinstance(arg, tuple):
                         item = tuple(arg)
                     else:
@@ -190,24 +194,7 @@ cdef class MutableMultiDict(MultiDict):
 
         This method must be used instead of update.
         """
-        if len(args) > 1:
-            raise TypeError("extend takes at most 2 positional arguments"
-                            " ({} given)".format(len(args) + 1))
-        if args:
-            if isinstance(args[0], MultiDict):
-                items = args[0].items(getall=True)
-            elif hasattr(args[0], 'items'):
-                items = args[0].items()
-            else:
-                items = args[0]
-        else:
-            items = []
-
-        for item in items:
-            self._add(item)
-
-        for item in kwargs.items():
-            self._add(item)
+        self._extend(args, kwargs, "extend")
 
     def clear(self):
         """Remove all items from MutableMultiDict"""
@@ -269,24 +256,7 @@ cdef class CaseInsensitiveMutableMultiDict(CaseInsensitiveMultiDict):
 
         This method must be used instead of update.
         """
-        if len(args) > 1:
-            raise TypeError("extend takes at most 2 positional arguments"
-                            " ({} given)".format(len(args) + 1))
-        if args:
-            if isinstance(args[0], MultiDict):
-                items = args[0].items(getall=True)
-            elif hasattr(args[0], 'items'):
-                items = args[0].items()
-            else:
-                items = args[0]
-        else:
-            items = []
-
-        for item in items:
-            self._add(item)
-
-        for item in kwargs.items():
-            self._add(item)
+        self._extend(args, kwargs, "extend")
 
     def clear(self):
         """Remove all items from MutableMultiDict"""
