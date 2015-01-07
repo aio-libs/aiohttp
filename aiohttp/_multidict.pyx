@@ -15,6 +15,7 @@ cdef class MultiDict:
     cdef list _items
 
     def __init__(self, *args, **kwargs):
+        cdef tuple item
         if len(args) > 1:
             raise TypeError("MultiDict takes at most 1 positional "
                             "argument ({} given)".format(len(args)))
@@ -22,23 +23,26 @@ cdef class MultiDict:
         self._items = []
         if args:
             if hasattr(args[0], 'items'):
-                args = tuple(args[0].items())
+                for item in args[0].items():
+                    self._add(item)
             else:
-                args = tuple(args[0])
+                args = args[0]
                 for arg in args:
                     if not len(arg) == 2:
-                        raise TypeError("MultiDict takes either dict "
-                                        "or list of (key, value) tuples")
+                        raise TypeError(
+                            "{} takes either dict or list of (key, value) "
+                            "tuples".format(self.__class__.__name__))
+                    if not isinstance(arg, tuple):
+                        item = tuple(arg)
+                    else:
+                        item = arg
+                    self._add(item)
 
-        self._fill_tuple(args)
-        self._fill_dict(kwargs)
+        for item in kwargs.items():
+            self._add(item)
 
-    cdef _fill_tuple(self, tuple pairs):
-        self._items.extend(pairs)
-
-    cdef _fill_dict(self, dict dct):
-        for i in dct.items():
-            self._items.append(i)
+    cdef _add(self, tuple item):
+        self._items.append(item)
 
     def getall(self, key, default=_marker):
         """
@@ -150,13 +154,8 @@ cdef class CaseInsensitiveMultiDict(MultiDict):
         # NB: doesn't check for uppercase keys!
         return cls(dct)
 
-    cdef _fill_tuple(self, tuple pairs):
-        for k, v in pairs:
-            self._items.append((k.upper(), v))
-
-    cdef _fill_dict(self, dict dct):
-        for k, v in dct.items():
-            self._items.append((k.upper(), v))
+    cdef _add(self, tuple item):
+        self._items.append((item[0].upper(), item[1]))
 
     def getall(self, key, default=_marker):
         return super().getall(key.upper(), default)
@@ -180,11 +179,11 @@ abc.Mapping.register(CaseInsensitiveMultiDict)
 cdef class MutableMultiDict(MultiDict):
     """An ordered dictionary that can have multiple values for each key."""
 
-    cpdef add(self, key, value):
+    def add(self, key, value):
         """
         Add the key and value, not overwriting any previous value.
         """
-        self._items.append((key, value))
+        self._add((key, value))
 
     def extend(self, *args, **kwargs):
         """Extends current MutableMultiDict with more values.
@@ -204,11 +203,11 @@ cdef class MutableMultiDict(MultiDict):
         else:
             items = []
 
-        for key, value in items:
-            self.add(key, value)
+        for item in items:
+            self._add(item)
 
-        for key, value in kwargs.items():
-            self.add(key, value)
+        for item in kwargs.items():
+            self._add(item)
 
     def clear(self):
         """Remove all items from MutableMultiDict"""
@@ -259,11 +258,11 @@ abc.MutableMapping.register(MutableMultiDict)
 cdef class CaseInsensitiveMutableMultiDict(CaseInsensitiveMultiDict):
     """An ordered dictionary that can have multiple values for each key."""
 
-    cpdef add(self, key, value):
+    def add(self, key, value):
         """
         Add the key and value, not overwriting any previous value.
         """
-        self._items.append((key.upper(), value))
+        self._add((key, value))
 
     def extend(self, *args, **kwargs):
         """Extends current MutableMultiDict with more values.
@@ -283,11 +282,11 @@ cdef class CaseInsensitiveMutableMultiDict(CaseInsensitiveMultiDict):
         else:
             items = []
 
-        for key, value in items:
-            self.add(key, value)
+        for item in items:
+            self._add(item)
 
-        for key, value in kwargs.items():
-            self.add(key, value)
+        for item in kwargs.items():
+            self._add(item)
 
     def clear(self):
         """Remove all items from MutableMultiDict"""
