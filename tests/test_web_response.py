@@ -446,3 +446,19 @@ class TestResponse(unittest.TestCase):
                 yield from resp.drain()
 
         self.loop.run_until_complete(go())
+
+    def test_nonstr_text_in_ctor(self):
+        with self.assertRaises(TypeError):
+            Response(text=b'data')
+
+    def test_text_in_ctor_with_content_type(self):
+        resp = Response(text='data', content_type='text/html')
+        self.assertEqual('data', resp.text)
+        self.assertEqual('text/html', resp.content_type)
+
+    def test_text_in_ctor_with_content_type_header(self):
+        resp = Response(text='текст',
+                        headers={'Content-Type': 'text/html; charset=koi8-r'})
+        self.assertEqual('текст'.encode('koi8-r'), resp.body)
+        self.assertEqual('text/html', resp.content_type)
+        self.assertEqual('koi8-r', resp.charset)

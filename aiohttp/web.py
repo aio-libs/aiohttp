@@ -564,7 +564,7 @@ class StreamResponse(HeadersMixin):
 
     def write(self, data):
         if not isinstance(data, (bytes, bytearray, memoryview)):
-            raise TypeError('data argument must be byte-ish (%r)',
+            raise TypeError('data argument must be byte-ish (%r)' %
                             type(data))
 
         if self._eof_sent:
@@ -603,17 +603,31 @@ class Response(StreamResponse):
 
         if headers is not None:
             self.headers.extend(headers)
-        if content_type:
-            self.content_type = content_type
 
         if body is not None and text is not None:
             raise ValueError("body and text are not allowed together.")
-        elif body is not None:
-            self.body = body
-        elif text is not None:
-            self.text = text
+
+        if text is not None:
+            if 'CONTENT-TYPE' not in self.headers:
+                # fast path for filling headers
+                if not isinstance(text, str):
+                    raise TypeError('text argument must be str (%r)' %
+                                    type(text))
+                if content_type is None:
+                    content_type = 'text/plain'
+                self.headers['Content-Type'] = content_type + '; charset=utf-8'
+                self._content_type = content_type
+                self._content_dict = {'charset': 'utf-8'}
+                self.body = text.encode('utf-8')
+            else:
+                self.text = text
         else:
-            self.body = None
+            if content_type:
+                self.content_type = content_type
+            if body is not None:
+                self.body = body
+            else:
+                self.body = None
 
     @property
     def body(self):
@@ -622,7 +636,7 @@ class Response(StreamResponse):
     @body.setter
     def body(self, body):
         if body is not None and not isinstance(body, bytes):
-            raise TypeError('body argument must be bytes (%r)', type(body))
+            raise TypeError('body argument must be bytes (%r)' % type(body))
         self._body = body
         if body is not None:
             self.content_length = len(body)
@@ -636,7 +650,7 @@ class Response(StreamResponse):
     @text.setter
     def text(self, text):
         if text is not None and not isinstance(text, str):
-            raise TypeError('text argument must be str (%r)', type(text))
+            raise TypeError('text argument must be str (%r)' % type(text))
 
         if self.content_type == 'application/octet-stream':
             self.content_type = 'text/plain'
@@ -740,7 +754,7 @@ class WebSocketResponse(StreamResponse):
         if self._closing:
             raise RuntimeError('websocket connection is closing')
         if not isinstance(data, str):
-            raise TypeError('data argument must be str (%r)', type(data))
+            raise TypeError('data argument must be str (%r)' % type(data))
         self._writer.send(data, binary=False)
 
     def send_bytes(self, data):
@@ -749,7 +763,7 @@ class WebSocketResponse(StreamResponse):
         if self._closing:
             raise RuntimeError('websocket connection is closing')
         if not isinstance(data, (bytes, bytearray, memoryview)):
-            raise TypeError('data argument must be byte-ish (%r)',
+            raise TypeError('data argument must be byte-ish (%r)' %
                             type(data))
         self._writer.send(data, binary=True)
 
