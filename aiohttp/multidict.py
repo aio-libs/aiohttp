@@ -88,6 +88,12 @@ class _MultiDict(abc.Mapping):
                 return v
         raise KeyError(key)
 
+    def get(self, key, default=None):
+        for k, v in self._items:
+            if k == key:
+                return v
+        return default
+
     def __iter__(self):
         return iter(self.keys())
 
@@ -143,6 +149,9 @@ class _CaseInsensitiveMultiDict(_MultiDict):
 
     def getone(self, key, default=_marker):
         return super().getone(key.upper(), default)
+
+    def get(self, key, default=None):
+        return super().get(key.upper(), default)
 
     def __getitem__(self, key):
         return super().__getitem__(key.upper())
