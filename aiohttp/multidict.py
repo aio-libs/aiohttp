@@ -114,7 +114,11 @@ class _MultiDict(abc.Mapping):
             return NotImplemented
         if isinstance(other, _MultiDict):
             return self._items == other._items
-        return dict(self.items()) == dict(other.items())
+        for k, v in self.items(getall=True):
+            nv = other.get(k, _marker)
+            if v != nv:
+                return False
+        return True
 
     def __contains__(self, key):
         for k, v in self._items:

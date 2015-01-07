@@ -22,13 +22,13 @@ def _unique_everseen(iterable):
         yield element
 
 
-class MultiDict:
+cdef class MultiDict:
     """Read-only ordered dictionary that can have multiple values for each key.
 
     This type of MultiDict must be used for request headers and query args.
     """
 
-    __slots__ = ('_items',)
+    cdef list _items
 
     def __init__(self, *args, **kwargs):
         if len(args) > 1:
@@ -48,7 +48,7 @@ class MultiDict:
 
         self._fill(chain(args, kwargs.items()))
 
-    def _fill(self, ipairs):
+    cdef _fill(self, ipairs):
         self._items.extend(ipairs)
 
     def getall(self, key, default=_marker):
@@ -109,12 +109,33 @@ class MultiDict:
     def values(self, *, getall=False):
         return _ValuesView(self._items, getall=getall)
 
-    def __eq__(self, other):
-        if not isinstance(other, abc.Mapping):
+    def __richcmp__(self, other, op):
+        cdef MultiDict typed_self = self
+        cdef MultiDict typed_other
+        if op == 2:
+            if not isinstance(other, abc.Mapping):
+                return NotImplemented
+            if isinstance(other, MultiDict):
+                typed_other = other
+                return typed_self._items == typed_other._items
+            for k, v in self.items(getall=True):
+                nv = other.get(k, _marker)
+                if v != nv:
+                    return False
+            return True
+        elif op != 2:
+            if not isinstance(other, abc.Mapping):
+                return NotImplemented
+            if isinstance(other, MultiDict):
+                typed_other = other
+                return typed_self._items != typed_other._items
+            for k, v in self.items(getall=True):
+                nv = other.get(k, _marker)
+                if v == nv:
+                    return True
+            return False
+        else:
             return NotImplemented
-        if isinstance(other, MultiDict):
-            return self._items == other._items
-        return dict(self.items()) == dict(other.items())
 
     def __contains__(self, key):
         for k, v in self._items:
@@ -132,17 +153,15 @@ class MultiDict:
 abc.Mapping.register(MultiDict)
 
 
-class CaseInsensitiveMultiDict(MultiDict):
+cdef class CaseInsensitiveMultiDict(MultiDict):
     """Case insensitive multi dict."""
 
     @classmethod
     def _from_uppercase_multidict(cls, dct):
         # NB: doesn't check for uppercase keys!
-        ret = cls.__new__(cls)
-        ret._items = dct._items
-        return ret
+        return cls(dct)
 
-    def _fill(self, ipairs):
+    cdef _fill(self, ipairs):
         for key, value in ipairs:
             uppkey = key.upper()
             self._items.append((uppkey, value))
@@ -166,7 +185,8 @@ class CaseInsensitiveMultiDict(MultiDict):
 abc.Mapping.register(CaseInsensitiveMultiDict)
 
 
-class MutableMultiDictMixin:
+cdef class MutableMultiDict(MultiDict):
+    """An ordered dictionary that can have multiple values for each key."""
 
     def add(self, key, value):
         """
@@ -237,27 +257,82 @@ class MutableMultiDictMixin:
         raise NotImplementedError("Use extend method instead")
 
 
-
-
-class MutableMultiDict(MutableMultiDictMixin, MultiDict):
-    """An ordered dictionary that can have multiple values for each key."""
-
-
 abc.MutableMapping.register(MutableMultiDict)
 
 
-class CaseInsensitiveMutableMultiDict(
-        MutableMultiDictMixin, CaseInsensitiveMultiDict):
+cdef class CaseInsensitiveMutableMultiDict(CaseInsensitiveMultiDict):
     """An ordered dictionary that can have multiple values for each key."""
 
     def add(self, key, value):
-        super().add(key.upper(), value)
+        """
+        Add the key and value, not overwriting any previous value.
+        """
+        self._items.append((key.upper(), value))
+
+    def extend(self, *args, **kwargs):
+        """Extends current MutableMultiDict with more values.
+
+        This method must be used instead of update.
+        """
+        if len(args) > 1:
+            raise TypeError("extend takes at most 2 positional arguments"
+                            " ({} given)".format(len(args) + 1))
+        if args:
+            if isinstance(args[0], MultiDict):
+                items = args[0].items(getall=True)
+            elif hasattr(args[0], 'items'):
+                items = args[0].items()
+            else:
+                items = args[0]
+        else:
+            items = []
+        for key, value in chain(items, kwargs.items()):
+            self.add(key, value)
+
+    def clear(self):
+        """Remove all items from MutableMultiDict"""
+        self._items.clear()
+
+    # MutableMapping interface #
 
     def __setitem__(self, key, value):
-        super().__setitem__(key.upper(), value)
+        key = key.upper()
+        try:
+            del self[key]
+        except KeyError:
+            pass
+        self._items.append((key, value))
 
     def __delitem__(self, key):
-        super().__delitem__(key.upper())
+        key = key.upper()
+        items = self._items
+        found = False
+        for i in range(len(items) - 1, -1, -1):
+            if items[i][0] == key:
+                del items[i]
+                found = True
+        if not found:
+            raise KeyError(key)
+
+    def setdefault(self, key, default=None):
+        key = key.upper()
+        for k, v in self._items:
+            if k == key:
+                return v
+        self._items.append((key, default))
+        return default
+
+    def pop(self, key, default=None):
+        """Method not allowed."""
+        raise NotImplementedError
+
+    def popitem(self):
+        """Method not allowed."""
+        raise NotImplementedError
+
+    def update(self, *args, **kw):
+        """Method not allowed."""
+        raise NotImplementedError("Use extend method instead")
 
 
 abc.MutableMapping.register(CaseInsensitiveMutableMultiDict)

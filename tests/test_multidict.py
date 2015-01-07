@@ -164,7 +164,7 @@ class _MultiDictTests(_BaseTest):
     def test_getall(self):
         d = self.make_dict([('key', 'value1')], key='value2')
 
-        self.assertEqual(d, {'key': 'value1'})
+        self.assertNotEqual(d, {'key': 'value1'})
         self.assertEqual(len(d), 2)
 
         self.assertEqual(d.getall('key'), ('value1', 'value2'))
@@ -200,7 +200,7 @@ class _CaseInsensitiveMultiDictTests(_Root):
     def test_getall(self):
         d = self.make_dict([('KEY', 'value1')], KEY='value2')
 
-        self.assertEqual(d, {'KEY': 'value1'})
+        self.assertNotEqual(d, {'KEY': 'value1'})
         self.assertEqual(len(d), 2)
 
         self.assertEqual(d.getall('key'), ('value1', 'value2'))
@@ -246,11 +246,11 @@ class _BaseMutableMultiDictTests(_BaseTest):
         self.assertEqual(d.getall('key'), ('two',))
 
         d.add('key', 'one')
-        self.assertEqual(d, {'key': 'two'})
+        self.assertEqual(2, len(d))
         self.assertEqual(d.getall('key'), ('two', 'one'))
 
         d.add('foo', 'bar')
-        self.assertEqual(d, {'key': 'two', 'foo': 'bar'})
+        self.assertEqual(3, len(d))
         self.assertEqual(d.getall('foo'), ('bar',))
 
     def test_extend(self):
@@ -258,7 +258,8 @@ class _BaseMutableMultiDictTests(_BaseTest):
         self.assertEqual(d, {})
 
         d.extend([('key', 'one'), ('key', 'two')], key=3, foo='bar')
-        self.assertEqual(d, {'key': 'one', 'foo': 'bar'})
+        self.assertNotEqual(d, {'key': 'one', 'foo': 'bar'})
+        self.assertEqual(4, len(d))
         itms = d.items(getall=True)
         # we can't guarantee order of kwargs
         self.assertTrue(('key', 'one') in itms)
@@ -270,22 +271,19 @@ class _BaseMutableMultiDictTests(_BaseTest):
         self.assertEqual(other, {'bar': 'baz'})
 
         d.extend(other)
-        self.assertEqual(d, {'key': 'one', 'foo': 'bar', 'bar': 'baz'})
         self.assertIn(('bar', 'baz'), d.items(getall=True))
 
         d.extend({'foo': 'moo'})
-        self.assertEqual(d, {'key': 'one', 'foo': 'bar', 'bar': 'baz'})
         self.assertIn(('foo', 'moo'), d.items(getall=True))
 
         d.extend()
-        self.assertEqual(d, {'key': 'one', 'foo': 'bar', 'bar': 'baz'})
+        self.assertEqual(6, len(d))
 
         with self.assertRaises(TypeError):
             d.extend('foo', 'bar')
 
     def test_clear(self):
         d = self.make_dict([('key', 'one')], key='two', foo='bar')
-        self.assertEqual(d, {'key': 'one', 'foo': 'bar'})
 
         d.clear()
         self.assertEqual(d, {})
@@ -293,7 +291,6 @@ class _BaseMutableMultiDictTests(_BaseTest):
 
     def test_del(self):
         d = self.make_dict([('key', 'one'), ('key', 'two')], foo='bar')
-        self.assertEqual(d, {'key': 'one', 'foo': 'bar'})
 
         del d['key']
         self.assertEqual(d, {'foo': 'bar'})
@@ -325,7 +322,7 @@ class _CaseInsensitiveMutableMultiDictTests(_Root):
     def test_getall(self):
         d = self.make_dict([('KEY', 'value1')], KEY='value2')
 
-        self.assertEqual(d, {'KEY': 'value1'})
+        self.assertNotEqual(d, {'KEY': 'value1'})
         self.assertEqual(len(d), 2)
 
         self.assertEqual(d.getall('key'), ('value1', 'value2'))
