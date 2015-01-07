@@ -1,3 +1,4 @@
+import sys
 import unittest
 
 from aiohttp.multidict import (MultiDict,
@@ -11,6 +12,9 @@ from aiohttp.multidict import (MultiDict,
 
 
 import aiohttp
+
+
+HAS_NO_SET_OPS_FOR_VIEW = sys.version_info < (3, 4)
 
 
 class _Root:
@@ -150,60 +154,86 @@ class _BaseTest(_Root):
         with self.assertRaises(TypeError):
             self.make_dict([(1, 2, 3)])
 
+    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
+                     "Set operations on views not supported")
     def test_keys_is_set_less(self):
         d = self.make_dict([('key', 'value1')])
 
         self.assertLess(d.keys(), {'key', 'key2'})
 
+    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
+                     "Set operations on views not supported")
     def test_keys_is_set_less_equal(self):
         d = self.make_dict([('key', 'value1')])
 
         self.assertLessEqual(d.keys(), {'key'})
 
+    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
+                     "Set operations on views not supported")
     def test_keys_is_set_equal(self):
         d = self.make_dict([('key', 'value1')])
 
         self.assertEqual(d.keys(), {'key'})
 
+    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
+                     "Set operations on views not supported")
     def test_keys_is_set_greater(self):
         d = self.make_dict([('key', 'value1')])
 
         self.assertGreater({'key', 'key2'}, d.keys())
 
+    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
+                     "Set operations on views not supported")
     def test_keys_is_set_greater_equal(self):
         d = self.make_dict([('key', 'value1')])
 
         self.assertGreaterEqual({'key'}, d.keys())
 
+    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
+                     "Set operations on views not supported")
     def test_keys_is_set_not_equal(self):
         d = self.make_dict([('key', 'value1')])
 
         self.assertNotEqual(d.keys(), {'key2'})
 
+    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
+                     "Set operations on views not supported")
     def test_eq(self):
         d = self.make_dict([('key', 'value1')])
         self.assertEqual({'key': 'value1'}, d)
 
+    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
+                     "Set operations on views not supported")
     def test_and(self):
         d = self.make_dict([('key', 'value1')])
         self.assertEqual({'key'}, d.keys() & {'key', 'key2'})
 
+    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
+                     "Set operations on views not supported")
     def test_or(self):
         d = self.make_dict([('key', 'value1')])
         self.assertEqual({'key', 'key2'}, d.keys() | {'key2'})
 
+    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
+                     "Set operations on views not supported")
     def test_sub(self):
         d = self.make_dict([('key', 'value1'), ('key2', 'value2')])
         self.assertEqual({'key'}, d.keys() - {'key2'})
 
+    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
+                     "Set operations on views not supported")
     def test_xor(self):
         d = self.make_dict([('key', 'value1'), ('key2', 'value2')])
         self.assertEqual({'key', 'key3'}, d.keys() ^ {'key2', 'key3'})
 
+    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
+                     "Set operations on views not supported")
     def test_isdisjoint(self):
         d = self.make_dict([('key', 'value1')])
         self.assertTrue(d.keys().isdisjoint({'key2'}))
 
+    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
+                     "Set operations on views not supported")
     def test_isdisjoint2(self):
         d = self.make_dict([('key', 'value1')])
         self.assertFalse(d.keys().isdisjoint({'key'}))
