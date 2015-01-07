@@ -180,6 +180,10 @@ class _BaseTest(_Root):
 
         self.assertNotEqual(d.keys(), {'key2'})
 
+    def test_eq(self):
+        d = self.make_dict([('key', 'value1')])
+        self.assertEqual({'key': 'value1'}, d)
+
 
 class _MultiDictTests(_BaseTest):
 
