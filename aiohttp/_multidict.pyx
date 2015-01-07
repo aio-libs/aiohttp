@@ -2,8 +2,6 @@ import pprint
 from itertools import filterfalse
 from collections import abc
 
-__all__ = ['MultiDict', 'CaseInsensitiveMultiDict',
-           'MutableMultiDict', 'CaseInsensitiveMutableMultiDict']
 
 _marker = object()
 
@@ -60,7 +58,7 @@ cdef class MultiDict:
         """
         Return a list of all values matching the key (may be an empty list)
         """
-        res = tuple([v for k, v in self._items if k == key])
+        res = tuple(v for k, v in self._items if k == key)
         if res:
             return res
         if not res and default is not _marker:
