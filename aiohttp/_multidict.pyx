@@ -194,7 +194,7 @@ abc.Mapping.register(CaseInsensitiveMultiDict)
 cdef class MutableMultiDict(MultiDict):
     """An ordered dictionary that can have multiple values for each key."""
 
-    def add(self, key, value):
+    cpdef add(self, key, value):
         """
         Add the key and value, not overwriting any previous value.
         """
@@ -273,7 +273,7 @@ abc.MutableMapping.register(MutableMultiDict)
 cdef class CaseInsensitiveMutableMultiDict(CaseInsensitiveMultiDict):
     """An ordered dictionary that can have multiple values for each key."""
 
-    def add(self, key, value):
+    cpdef add(self, key, value):
         """
         Add the key and value, not overwriting any previous value.
         """
@@ -358,7 +358,7 @@ cdef class _ViewBase:
     cdef list _keys
     cdef list _items
 
-    def __init__(self, items, *, getall=False):
+    def __init__(self, list items, int getall=False):
         self._getall = getall
         self._keys = [item[0] for item in items]
         if not getall:
