@@ -25,7 +25,6 @@ class _Root:
         while name.startswith('_'):
             name = name[1:]
         self.assertIn(name, aiohttp.__all__)
-        self.assertIs(self.cls, getattr(aiohttp, name))
 
 
 class _BaseTest(_Root):
@@ -303,6 +302,13 @@ class _BaseMutableMultiDictTests(_BaseTest):
         with self.assertRaises(KeyError):
             del d['key']
 
+    def test_set_default(self):
+        d = self.make_dict([('key', 'one'), ('key', 'two')], foo='bar')
+        self.assertEqual('one', d.setdefault('key', 'three'))
+        self.assertEqual('three', d.setdefault('otherkey', 'three'))
+        self.assertIn('otherkey', d)
+        self.assertEqual('three', d['otherkey'])
+
     def test_not_implemented_methods(self):
         d = self.make_dict()
 
@@ -365,8 +371,9 @@ class PyMutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
     cls = _MutableMultiDict
 
 
-class PyCaseInsensitiveMutableMultiDictTests(_CaseInsensitiveMultiDictTests,
-                                             unittest.TestCase):
+class PyCaseInsensitiveMutableMultiDictTests(
+        _CaseInsensitiveMutableMultiDictTests,
+        unittest.TestCase):
 
     cls = _CaseInsensitiveMutableMultiDict
 
@@ -387,7 +394,8 @@ class MutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
     cls = MutableMultiDict
 
 
-class CaseInsensitiveMutableMultiDictTests(_CaseInsensitiveMultiDictTests,
-                                           unittest.TestCase):
+class CaseInsensitiveMutableMultiDictTests(
+        _CaseInsensitiveMutableMultiDictTests,
+        unittest.TestCase):
 
     cls = CaseInsensitiveMutableMultiDict

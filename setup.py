@@ -2,7 +2,23 @@ import codecs
 import os
 import re
 import sys
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Extension
+
+
+try:
+    import Cython
+    USE_CYTHON = True
+except ImportError:
+    USE_CYTHON = False
+
+ext = '.pyx' if USE_CYTHON else '.c'
+
+extensions = [Extension('aiohttp._multidict', ['aiohttp/_multidict' + ext])]
+
+
+if USE_CYTHON:
+    from Cython.Build import cythonize
+    extensions = cythonize(extensions)
 
 
 with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
@@ -45,4 +61,5 @@ setup(name='aiohttp',
       install_requires=install_requires,
       tests_require=tests_require,
       test_suite='nose.collector',
-      include_package_data=True)
+      include_package_data=True,
+      ext_modules=extensions)
