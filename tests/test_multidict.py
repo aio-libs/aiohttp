@@ -3,7 +3,11 @@ import unittest
 from aiohttp.multidict import (MultiDict,
                                MutableMultiDict,
                                CaseInsensitiveMultiDict,
-                               CaseInsensitiveMutableMultiDict)
+                               CaseInsensitiveMutableMultiDict,
+                               _MultiDict,
+                               _MutableMultiDict,
+                               _CaseInsensitiveMultiDict,
+                               _CaseInsensitiveMutableMultiDict)
 
 
 import aiohttp
@@ -343,6 +347,28 @@ class _CaseInsensitiveMutableMultiDictTests(_Root):
         self.assertIn('K1', d)
         del d['k1']
         self.assertNotIn('K1', d)
+
+
+class PyMultiDictTests(_MultiDictTests, unittest.TestCase):
+
+    cls = _MultiDict
+
+
+class PyCaseInsensitiveMultiDictTests(_CaseInsensitiveMultiDictTests,
+                                      unittest.TestCase):
+
+    cls = _CaseInsensitiveMultiDict
+
+
+class PyMutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
+
+    cls = _MutableMultiDict
+
+
+class PyCaseInsensitiveMutableMultiDictTests(_CaseInsensitiveMultiDictTests,
+                                             unittest.TestCase):
+
+    cls = _CaseInsensitiveMutableMultiDict
 
 
 class MultiDictTests(_MultiDictTests, unittest.TestCase):
