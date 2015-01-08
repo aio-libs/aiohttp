@@ -5,10 +5,12 @@ from aiohttp.multidict import (MultiDict,
                                MutableMultiDict,
                                CaseInsensitiveMultiDict,
                                CaseInsensitiveMutableMultiDict,
+                               cistr,
                                _MultiDict,
                                _MutableMultiDict,
                                _CaseInsensitiveMultiDict,
-                               _CaseInsensitiveMutableMultiDict)
+                               _CaseInsensitiveMutableMultiDict,
+                               _cistr)
 
 
 import aiohttp
@@ -484,3 +486,42 @@ class CaseInsensitiveMutableMultiDictTests(
         unittest.TestCase):
 
     cls = CaseInsensitiveMutableMultiDict
+
+
+class _CaseInsensitiveStrMixin:
+
+    cls = None
+
+    def test_ctor(self):
+        s = self.cls()
+        self.assertEqual('', s)
+
+    def test_ctor_str(self):
+        s = self.cls('a')
+        self.assertEqual('A', s)
+
+    def test_ctor_str_uppercase(self):
+        s = self.cls('A')
+        self.assertEqual('A', s)
+
+    def test_ctor_buffer(self):
+        s = self.cls(b'a')
+        self.assertEqual('A', s)
+
+    def test_ctor_repr(self):
+        s = self.cls(None)
+        self.assertEqual('NONE', s)
+
+    def test_upper(self):
+        s = self.cls('a')
+        self.assertIs(s, s.upper())
+
+
+class PyCaseInsensitiveStr(_CaseInsensitiveStrMixin, unittest.TestCase):
+
+    cls = _cistr
+
+
+class CaseInsensitiveStr(_CaseInsensitiveStrMixin, unittest.TestCase):
+
+    cls = cistr

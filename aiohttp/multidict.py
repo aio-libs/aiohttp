@@ -1,11 +1,32 @@
 import pprint
 from itertools import chain
 from collections import abc
+import sys
 
 __all__ = ['MultiDict', 'CaseInsensitiveMultiDict',
            'MutableMultiDict', 'CaseInsensitiveMutableMultiDict']
 
 _marker = object()
+
+
+class _cistr(str):
+    """Case insensitive str"""
+
+    def __new__(cls, val='',
+                encoding=sys.getdefaultencoding(), errors='strict'):
+        if isinstance(val, (bytes, bytearray, memoryview)):
+            val = str(val, encoding, errors)
+        elif isinstance(val, str):
+            pass
+        elif hasattr(val, '__str__'):
+            val = val.__str__()
+        else:
+            val = repr(val)
+        val = val.upper()
+        return str.__new__(cls, val)
+
+    def upper(self):
+        return self
 
 
 class _MultiDict(abc.Mapping):
@@ -302,9 +323,11 @@ try:
     from ._multidict import (MultiDict,
                              CaseInsensitiveMultiDict,
                              MutableMultiDict,
-                             CaseInsensitiveMutableMultiDict)
+                             CaseInsensitiveMutableMultiDict,
+                             cistr)
 except ImportError:
     MultiDict = _MultiDict
     CaseInsensitiveMultiDict = _CaseInsensitiveMultiDict
     MutableMultiDict = _MutableMultiDict
     CaseInsensitiveMutableMultiDict = _CaseInsensitiveMutableMultiDict
+    cistr = _cistr
