@@ -257,7 +257,7 @@ class HttpPayloadParser:
 
     CONTENT_LENGTH_ID = multidict.cistr('CONTENT-LENGTH')
     SEC_WEBSOCKET_KEY1_ID = multidict.cistr('SEC-WEBSOCKET-KEY1')
-    TRANSFER_ENCODING = multidict.cistr('TRANSFER-ENCODING')
+    TRANSFER_ENCODING_ID = multidict.cistr('TRANSFER-ENCODING')
 
     def __init__(self, message, length=None, compression=True,
                  readall=False, response_with_body=True):
@@ -283,7 +283,7 @@ class HttpPayloadParser:
             pass
 
         elif 'chunked' in self.message.headers.get(
-                self.TRANSFER_ENCODING, ''):
+                self.TRANSFER_ENCODING_ID, ''):
             yield from self.parse_chunked_payload(out, buf)
 
         elif length is not None:
