@@ -83,7 +83,7 @@ cdef class MultiDict:
     def copy(self):
         """Returns a copy itself."""
         cls = self.__class__
-        return cls(self.items(getall=True))
+        return cls(self._items)
 
     # Mapping interface #
 
@@ -113,7 +113,7 @@ cdef class MultiDict:
 
     cdef _contains(self, str key):
         cdef str k
-        for k, v in self._items:
+        for k, _ in self._items:
             if k == key:
                 return True
         return False
