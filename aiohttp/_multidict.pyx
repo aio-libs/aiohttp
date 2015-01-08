@@ -70,10 +70,10 @@ cdef class MultiDict:
         return self._getone(key, default)
 
     cdef _getone(self, str key, default):
-        cdef str k
-        for k, v in self._items:
-            if k == key:
-                return v
+        cdef tuple item
+        for item in self._items:
+            if item[0] == key:
+                return item[1]
         if default is not _marker:
             return default
         raise KeyError('Key not found: %r' % key)
@@ -404,13 +404,6 @@ cdef class _ViewBaseSet(_ViewBase):
             return NotImplemented
         return set(value for value in other if value in self)
 
-    def isdisjoint(self, other):
-        'Return True if two sets have a null intersection.'
-        for value in other:
-            if value in self:
-                return False
-        return True
-
     def __or__(self, other):
         if not isinstance(other, Iterable):
             return NotImplemented
@@ -433,6 +426,14 @@ cdef class _ViewBaseSet(_ViewBase):
 
 
 cdef class _ItemsView(_ViewBaseSet):
+
+    def isdisjoint(self, other):
+        'Return True if two sets have a null intersection.'
+        cdef tuple value
+        for value in self._items:
+            if value in other:
+                return False
+        return True
 
     def __contains__(self, item):
         assert isinstance(item, tuple) or isinstance(item, list)
@@ -463,6 +464,14 @@ abc.ValuesView.register(_ValuesView)
 
 
 cdef class _KeysView(_ViewBaseSet):
+
+    def isdisjoint(self, other):
+        'Return True if two sets have a null intersection.'
+        cdef str value
+        for value in self._keys:
+            if value in other:
+                return False
+        return True
 
     def __contains__(self, key):
         return key in self._keys
