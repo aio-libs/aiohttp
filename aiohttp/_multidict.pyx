@@ -48,13 +48,13 @@ cdef class MultiDict:
     cdef _add(self, tuple item):
         self._items.append(item)
 
-    def getall(self, key, default=_marker):
+    def getall(self, str key, default=_marker):
         """
         Return a list of all values matching the key (may be an empty list)
         """
         return self._getall(key, default)
 
-    cdef _getall(self, key, default):
+    cdef _getall(self, str key, default):
         cdef tuple res
         res = tuple(v for k, v in self._items if k == key)
         if res:
@@ -63,7 +63,7 @@ cdef class MultiDict:
             return default
         raise KeyError('Key not found: %r' % key)
 
-    def getone(self, key, default=_marker):
+    def getone(self, str key, default=_marker):
         """
         Get first value matching the key
         """
@@ -87,7 +87,7 @@ cdef class MultiDict:
 
     # Mapping interface #
 
-    def __getitem__(self, key):
+    def __getitem__(self, str key):
         return self._getitem(key)
 
     cdef _getitem(self, str key):
@@ -98,7 +98,7 @@ cdef class MultiDict:
                 return v
         raise KeyError(key)
 
-    def get(self, key, default=None):
+    def get(self, str key, default=None):
         return self._get(key, default)
 
     cdef _get(self, str key, default):
@@ -108,7 +108,7 @@ cdef class MultiDict:
                 return v
         return default
 
-    def __contains__(self, key):
+    def __contains__(self, str key):
         return self._contains(key)
 
     cdef _contains(self, str key):
@@ -203,19 +203,19 @@ cdef class CaseInsensitiveMultiDict(MultiDict):
     cdef _add(self, tuple item):
         self._items.append((item[0].upper(), item[1]))
 
-    def getall(self, key, default=_marker):
+    def getall(self, str key, default=_marker):
         return self._getall(key.upper(), default)
 
-    def getone(self, key, default=_marker):
+    def getone(self, str key, default=_marker):
         return self._getone(key.upper(), default)
 
-    def get(self, key, default=None):
+    def get(self, str key, default=None):
         return self._get(key.upper(), default)
 
-    def __getitem__(self, key):
+    def __getitem__(self, str key):
         return self._getitem(key.upper())
 
-    def __contains__(self, key):
+    def __contains__(self, str key):
         return self._contains(key.upper())
 
 
@@ -225,7 +225,7 @@ abc.Mapping.register(CaseInsensitiveMultiDict)
 cdef class MutableMultiDict(MultiDict):
     """An ordered dictionary that can have multiple values for each key."""
 
-    def add(self, key, value):
+    def add(self, str key, value):
         """
         Add the key and value, not overwriting any previous value.
         """
@@ -244,14 +244,14 @@ cdef class MutableMultiDict(MultiDict):
 
     # MutableMapping interface #
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, str key, value):
         self._delitem(key, False)
         self._add((key, value))
 
-    def __delitem__(self, key):
+    def __delitem__(self, str key):
         self._delitem(key, True)
 
-    def setdefault(self, key, default=None):
+    def setdefault(self, str key, default=None):
         for k, v in self._items:
             if k == key:
                 return v
@@ -277,7 +277,7 @@ abc.MutableMapping.register(MutableMultiDict)
 cdef class CaseInsensitiveMutableMultiDict(CaseInsensitiveMultiDict):
     """An ordered dictionary that can have multiple values for each key."""
 
-    def add(self, key, value):
+    def add(self, str key, value):
         """
         Add the key and value, not overwriting any previous value.
         """
@@ -296,15 +296,15 @@ cdef class CaseInsensitiveMutableMultiDict(CaseInsensitiveMultiDict):
 
     # MutableMapping interface #
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, str key, value):
         key = key.upper()
         self._delitem(key, False)
         self._add((key, value))
 
-    def __delitem__(self, key):
+    def __delitem__(self, str key):
         self._delitem(key.upper(), True)
 
-    def setdefault(self, key, default=None):
+    def setdefault(self, str key, default=None):
         key = key.upper()
         for k, v in self._items:
             if k == key:
@@ -312,7 +312,7 @@ cdef class CaseInsensitiveMutableMultiDict(CaseInsensitiveMultiDict):
         self._add((key, default))
         return default
 
-    def pop(self, key, default=None):
+    def pop(self, str key, default=None):
         """Method not allowed."""
         raise NotImplementedError
 
