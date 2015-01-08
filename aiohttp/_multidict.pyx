@@ -246,7 +246,7 @@ cdef class MutableMultiDict(MultiDict):
 
     def __setitem__(self, key, value):
         try:
-            del self[key]
+            self._delitem(key)
         except KeyError:
             pass
         self._add((key, value))
@@ -302,7 +302,7 @@ cdef class CaseInsensitiveMutableMultiDict(CaseInsensitiveMultiDict):
     def __setitem__(self, key, value):
         key = key.upper()
         try:
-            del self[key]
+            self._delitem(key)
         except KeyError:
             pass
         self._add((key, value))
