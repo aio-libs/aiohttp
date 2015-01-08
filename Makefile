@@ -15,11 +15,11 @@ test: flake develop
 vtest: flake develop
 	nosetests -s -v $(FLAGS) ./tests/
 
-testloop: develop
-	while sleep 1; do python runtests.py $(FLAGS); done
-
-cov cover coverage: flake develop
-	nosetests -s --with-cover --cover-html --cover-branches --cover-html-dir ./coverage $(FLAGS) ./tests/
+cov cover coverage: flake
+	@coverage erase
+	@coverage run -m nose -s $(FLAGS); tests
+	@coverage report
+	@coverage html
 	@echo "open file://`pwd`/coverage/index.html"
 
 clean:
