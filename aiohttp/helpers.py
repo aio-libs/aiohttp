@@ -40,6 +40,9 @@ class FormData:
     """Helper class for multipart/form-data and
     application/x-www-form-urlencoded body generation."""
 
+    CONTENT_TYPE_ID = multidict.cistr('Content-Type')
+    CONTENT_TRANSFER_ENCODING = multidict.cistr('Content-Transfer-Encoding')
+
     def __init__(self, fields=()):
         self._fields = []
         self._is_multipart = False
@@ -77,10 +80,10 @@ class FormData:
 
         headers = {}
         if content_type is not None:
-            headers['Content-Type'] = content_type
+            headers[self.CONTENT_TYPE_ID] = content_type
             self._is_multipart = True
         if content_transfer_encoding is not None:
-            headers['Content-Transfer-Encoding'] = content_transfer_encoding
+            headers[self.CONTENT_TRANSFER_ENCODING] = content_transfer_encoding
             self._is_multipart = True
             supported_tranfer_encoding = {
                 'base64': binascii.b2a_base64,
