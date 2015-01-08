@@ -118,6 +118,16 @@ cdef class MultiDict:
                 return True
         return False
 
+    cdef _delitem(self, key):
+        cdef int found
+        found = False
+        for i in range(len(self._items) - 1, -1, -1):
+            if self._items[i][0] == key:
+                del self._items[i]
+                found = True
+        if not found:
+            raise KeyError(key)
+
     def __iter__(self):
         return iter(self.keys())
 
@@ -242,14 +252,7 @@ cdef class MutableMultiDict(MultiDict):
         self._add((key, value))
 
     def __delitem__(self, key):
-        items = self._items
-        found = False
-        for i in range(len(items) - 1, -1, -1):
-            if items[i][0] == key:
-                del items[i]
-                found = True
-        if not found:
-            raise KeyError(key)
+        self._delitem(key)
 
     def setdefault(self, key, default=None):
         for k, v in self._items:
@@ -305,15 +308,7 @@ cdef class CaseInsensitiveMutableMultiDict(CaseInsensitiveMultiDict):
         self._add((key, value))
 
     def __delitem__(self, key):
-        key = key.upper()
-        items = self._items
-        found = False
-        for i in range(len(items) - 1, -1, -1):
-            if items[i][0] == key:
-                del items[i]
-                found = True
-        if not found:
-            raise KeyError(key)
+        self._delitem(key.upper())
 
     def setdefault(self, key, default=None):
         key = key.upper()
