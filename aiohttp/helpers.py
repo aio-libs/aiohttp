@@ -40,6 +40,9 @@ class FormData:
     """Helper class for multipart/form-data and
     application/x-www-form-urlencoded body generation."""
 
+    CONTENT_TYPE_ID = multidict.cistr('Content-Type')
+    CONTENT_TRANSFER_ENCODING_ID = multidict.cistr('Content-Transfer-Encoding')
+
     def __init__(self, fields=()):
         self._fields = []
         self._is_multipart = False
@@ -77,10 +80,11 @@ class FormData:
 
         headers = {}
         if content_type is not None:
-            headers['Content-Type'] = content_type
+            headers[self.CONTENT_TYPE_ID] = content_type
             self._is_multipart = True
         if content_transfer_encoding is not None:
-            headers['Content-Transfer-Encoding'] = content_transfer_encoding
+            CTE = self.CONTENT_TRANSFER_ENCODING_ID
+            headers[CTE] = content_transfer_encoding
             self._is_multipart = True
             supported_tranfer_encoding = {
                 'base64': binascii.b2a_base64,
@@ -103,7 +107,7 @@ class FormData:
                 self.add_field(k, rec)
 
             elif isinstance(rec, multidict.MultiDict):
-                to_add.extend(rec.items(getall=True))
+                to_add.extend(rec.items())
 
             elif isinstance(rec, (list, tuple)) and len(rec) == 2:
                 k, fp = rec

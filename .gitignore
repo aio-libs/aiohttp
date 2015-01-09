@@ -27,3 +27,5 @@ cover
 .idea
 pyvenv
 virtualenv.py
+aiohttp/_multidict.c
+aiohttp/_multidict.html

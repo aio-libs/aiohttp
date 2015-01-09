@@ -6,15 +6,18 @@ FLAGS=
 flake:
 	flake8 aiohttp tests examples
 
-test: flake
+develop:
+	python setup.py develop
+
+test: flake develop
 	nosetests -s $(FLAGS) ./tests/
 
-vtest: flake
+vtest: flake develop
 	nosetests -s -v $(FLAGS) ./tests/
 
 cov cover coverage: flake
 	@coverage erase
-	@coverage run -m nose -s $(FLAGS); tests
+	@coverage run -m nose -s $(FLAGS) tests
 	@coverage report
 	@coverage html
 	@echo "open file://`pwd`/coverage/index.html"
@@ -33,6 +36,7 @@ clean:
 	rm -rf build
 	rm -rf cover
 	make -C docs clean
+	python setup.py clean
 
 doc:
 	make -C docs html

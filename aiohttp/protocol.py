@@ -255,6 +255,10 @@ class HttpResponseParser(HttpParser):
 
 class HttpPayloadParser:
 
+    CONTENT_LENGTH_ID = multidict.cistr('CONTENT-LENGTH')
+    SEC_WEBSOCKET_KEY1_ID = multidict.cistr('SEC-WEBSOCKET-KEY1')
+    TRANSFER_ENCODING_ID = multidict.cistr('TRANSFER-ENCODING')
+
     def __init__(self, message, length=None, compression=True,
                  readall=False, response_with_body=True):
         self.message = message
@@ -265,8 +269,8 @@ class HttpPayloadParser:
 
     def __call__(self, out, buf):
         # payload params
-        length = self.message.headers.get('CONTENT-LENGTH', self.length)
-        if 'SEC-WEBSOCKET-KEY1' in self.message.headers:
+        length = self.message.headers.get(self.CONTENT_LENGTH_ID, self.length)
+        if self.SEC_WEBSOCKET_KEY1_ID in self.message.headers:
             length = 8
 
         # payload decompression wrapper
@@ -278,17 +282,18 @@ class HttpPayloadParser:
             # don't parse payload if it's not expected to be received
             pass
 
-        elif 'chunked' in self.message.headers.get('TRANSFER-ENCODING', ''):
+        elif 'chunked' in self.message.headers.get(
+                self.TRANSFER_ENCODING_ID, ''):
             yield from self.parse_chunked_payload(out, buf)
 
         elif length is not None:
             try:
                 length = int(length)
             except ValueError:
-                raise errors.InvalidHeader('CONTENT-LENGTH') from None
+                raise errors.InvalidHeader(self.CONTENT_LENGTH_ID) from None
 
             if length < 0:
-                raise errors.InvalidHeader('CONTENT-LENGTH')
+                raise errors.InvalidHeader(self.CONTENT_LENGTH_ID)
             elif length > 0:
                 yield from self.parse_length_payload(out, buf, length)
         else:
@@ -423,7 +428,8 @@ def wrap_payload_filter(func):
     return wrapper
 
 
-def filter_pipe(filter, filter2):
+def filter_pipe(filter, filter2, *,
+                EOF_MARKER=EOF_MARKER, EOL_MARKER=EOL_MARKER):
     """Creates pipe between two filters.
 
     filter_pipe() feeds first filter with incoming data and then
@@ -508,6 +514,9 @@ class HttpMessage:
     filter = None
 
     HOP_HEADERS = None  # Must be set by subclass.
+
+    TRANSFER_ENCODING_ID = multidict.cistr('TRANSFER-ENCODING')
+    CONNECTION_ID = multidict.cistr('CONNECTION')
 
     SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} aiohttp/{1}'.format(
         sys.version_info, aiohttp.__version__)
@@ -632,7 +641,7 @@ class HttpMessage:
             (self.status_line,),
             *((k, ': ', v, '\r\n')
               for k, v in ((k, value)
-                           for k, value in self.headers.items(getall=True)))))
+                           for k, value in self.headers.items()))))
         hdrs = hdrs.encode('utf-8') + b'\r\n'
 
         self.output_length += len(hdrs)
@@ -648,11 +657,11 @@ class HttpMessage:
             connection = 'close'
 
         if self.chunked:
-            self.headers['TRANSFER-ENCODING'] = 'chunked'
+            self.headers[self.TRANSFER_ENCODING_ID] = 'chunked'
 
-        self.headers['CONNECTION'] = connection
+        self.headers[self.CONNECTION_ID] = connection
 
-    def write(self, chunk):
+    def write(self, chunk, *, EOF_MARKER=EOF_MARKER, EOL_MARKER=EOL_MARKER):
         """Writes chunk of data to a stream by using different writers.
 
         writer uses filter to modify chunk of data.
@@ -743,7 +752,8 @@ class HttpMessage:
             self.output_length += len(chunk)
 
     @wrap_payload_filter
-    def add_chunking_filter(self, chunk_size=16*1024):
+    def add_chunking_filter(self, chunk_size=16*1024, *,
+                            EOF_MARKER=EOF_MARKER, EOL_MARKER=EOL_MARKER):
         """Split incoming stream into chunks."""
         buf = bytearray()
         chunk = yield
@@ -766,7 +776,8 @@ class HttpMessage:
                 chunk = yield EOL_MARKER
 
     @wrap_payload_filter
-    def add_compression_filter(self, encoding='deflate'):
+    def add_compression_filter(self, encoding='deflate', *,
+                               EOF_MARKER=EOF_MARKER, EOL_MARKER=EOL_MARKER):
         """Compress incoming stream with deflate or gzip encoding."""
         zlib_mode = (16 + zlib.MAX_WBITS
                      if encoding == 'gzip' else -zlib.MAX_WBITS)
@@ -802,6 +813,9 @@ class Response(HttpMessage):
         'UPGRADE',
     }
 
+    DATE_ID = multidict.cistr('DATE')
+    SERVER_ID = multidict.cistr('SERVER')
+
     @staticmethod
     def calc_reason(status):
         record = RESPONSES.get(status)
@@ -826,15 +840,16 @@ class Response(HttpMessage):
     def _add_default_headers(self):
         super()._add_default_headers()
 
-        if 'DATE' not in self.headers:
+        if self.DATE_ID not in self.headers:
             # format_date_time(None) is quite expensive
-            self.headers.setdefault('DATE', format_date_time(None))
-        self.headers.setdefault('SERVER', self.SERVER_SOFTWARE)
+            self.headers.setdefault(self.DATE_ID, format_date_time(None))
+        self.headers.setdefault(self.SERVER_ID, self.SERVER_SOFTWARE)
 
 
 class Request(HttpMessage):
 
     HOP_HEADERS = ()
+    USER_AGENT_ID = multidict.cistr('USER-AGENT')
 
     def __init__(self, transport, method, path,
                  http_version=HttpVersion11, close=False):
@@ -848,4 +863,4 @@ class Request(HttpMessage):
     def _add_default_headers(self):
         super()._add_default_headers()
 
-        self.headers.setdefault('USER-AGENT', self.SERVER_SOFTWARE)
+        self.headers.setdefault(self.USER_AGENT_ID, self.SERVER_SOFTWARE)
