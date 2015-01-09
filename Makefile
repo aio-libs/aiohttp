@@ -17,7 +17,7 @@ vtest: flake develop
 
 cov cover coverage: flake
 	@coverage erase
-	@coverage run -m nose -s $(FLAGS); tests
+	@coverage run -m nose -s $(FLAGS) tests
 	@coverage report
 	@coverage html
 	@echo "open file://`pwd`/coverage/index.html"
