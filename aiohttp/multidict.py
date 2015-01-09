@@ -85,7 +85,7 @@ class _MultiDict(abc.Mapping):
     def copy(self):
         """Returns a copy itself."""
         cls = self.__class__
-        return cls(self.items(getall=True))
+        return cls(self.items())
 
     # Mapping interface #
 
@@ -107,13 +107,13 @@ class _MultiDict(abc.Mapping):
     def __len__(self):
         return len(self._items)
 
-    def keys(self, *, getall=False):
+    def keys(self, *, getall=True):
         return _KeysView(self._items, getall=getall)
 
-    def items(self, *, getall=False):
+    def items(self, *, getall=True):
         return _ItemsView(self._items, getall=getall)
 
-    def values(self, *, getall=False):
+    def values(self, *, getall=True):
         return _ValuesView(self._items, getall=getall)
 
     def __eq__(self, other):
@@ -121,7 +121,7 @@ class _MultiDict(abc.Mapping):
             return NotImplemented
         if isinstance(other, _MultiDict):
             return self._items == other._items
-        for k, v in self.items(getall=True):
+        for k, v in self.items():
             nv = other.get(k, _marker)
             if v != nv:
                 return False
@@ -136,7 +136,7 @@ class _MultiDict(abc.Mapping):
     def __repr__(self):
         return '<{}>\n{}'.format(
             self.__class__.__name__, pprint.pformat(
-                list(self.items(getall=True)))
+                list(self.items()))
         )
 
 
@@ -189,7 +189,7 @@ class MutableMultiDictMixin(abc.MutableMapping):
                             " ({} given)".format(len(args) + 1))
         if args:
             if isinstance(args[0], _MultiDict):
-                items = args[0].items(getall=True)
+                items = args[0].items()
             elif hasattr(args[0], 'items'):
                 items = args[0].items()
             else:
@@ -264,7 +264,7 @@ class _ViewBase:
 
     __slots__ = ('_keys', '_items')
 
-    def __init__(self, items, *, getall=False):
+    def __init__(self, items, getall):
         if getall:
             items_to_use = items
             self._keys = [item[0] for item in items]

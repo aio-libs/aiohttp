@@ -641,7 +641,7 @@ class HttpMessage:
             (self.status_line,),
             *((k, ': ', v, '\r\n')
               for k, v in ((k, value)
-                           for k, value in self.headers.items(getall=True)))))
+                           for k, value in self.headers.items()))))
         hdrs = hdrs.encode('utf-8') + b'\r\n'
 
         self.output_length += len(hdrs)

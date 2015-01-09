@@ -380,7 +380,7 @@ class Request(HeadersMixin):
                         transfer_encoding](value)
                 out.add(field.name, value)
 
-        self._post = MultiDict(out.items(getall=True))
+        self._post = MultiDict(out.items())
         return self._post
 
 
@@ -560,7 +560,7 @@ class StreamResponse(HeadersMixin):
 
         self._copy_cookies()
 
-        headers = self.headers.items(getall=True)
+        headers = self.headers.items()
         for key, val in headers:
             resp_impl.add_header(key, val)
 

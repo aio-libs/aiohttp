@@ -103,53 +103,57 @@ class _BaseTest(_Root):
 
     def test__iter__(self):
         d = self.make_dict([('key', 'one'), ('key2', 'two'), ('key', 3)])
-        self.assertEqual(['key', 'key2'], list(d))
+        self.assertEqual(['key', 'key2', 'key'], list(d))
 
     def test_keys__contains(self):
         d = self.make_dict([('key', 'one'), ('key2', 'two'), ('key', 3)])
-        self.assertEqual(list(d.keys()), ['key', 'key2'])
+        self.assertEqual(list(d.keys(getall=False)), ['key', 'key2'])
         self.assertEqual(list(d.keys(getall=True)), ['key', 'key2', 'key'])
+        self.assertEqual(list(d.keys()), ['key', 'key2', 'key'])
 
-        self.assertIn('key', d.keys())
-        self.assertIn('key2', d.keys())
+        self.assertIn('key', d.keys(getall=False))
+        self.assertIn('key2', d.keys(getall=False))
 
         self.assertIn('key', d.keys(getall=True))
         self.assertIn('key2', d.keys(getall=True))
 
-        self.assertNotIn('foo', d.keys())
+        self.assertNotIn('foo', d.keys(getall=False))
         self.assertNotIn('foo', d.keys(getall=True))
 
     def test_values__contains(self):
         d = self.make_dict([('key', 'one'), ('key', 'two'), ('key', 3)])
-        self.assertEqual(list(d.values()), ['one'])
+        self.assertEqual(list(d.values(getall=False)), ['one'])
         self.assertEqual(list(d.values(getall=True)), ['one', 'two', 3])
+        self.assertEqual(list(d.values()), ['one', 'two', 3])
 
-        self.assertIn('one', d.values())
-        self.assertNotIn('two', d.values())
-        self.assertNotIn(3, d.values())
+        self.assertIn('one', d.values(getall=False))
+        self.assertNotIn('two', d.values(getall=False))
+        self.assertNotIn(3, d.values(getall=False))
 
         self.assertIn('one', d.values(getall=True))
         self.assertIn('two', d.values(getall=True))
         self.assertIn(3, d.values(getall=True))
 
-        self.assertNotIn('foo', d.values())
+        self.assertNotIn('foo', d.values(getall=False))
         self.assertNotIn('foo', d.values(getall=True))
 
     def test_items__contains(self):
         d = self.make_dict([('key', 'one'), ('key', 'two'), ('key', 3)])
-        self.assertEqual(list(d.items()), [('key', 'one')])
+        self.assertEqual(list(d.items(getall=False)), [('key', 'one')])
         self.assertEqual(list(d.items(getall=True)),
                          [('key', 'one'), ('key', 'two'), ('key', 3)])
+        self.assertEqual(list(d.items()),
+                         [('key', 'one'), ('key', 'two'), ('key', 3)])
 
-        self.assertIn(('key', 'one'), d.items())
-        self.assertNotIn(('key', 'two'), d.items())
-        self.assertNotIn(('key', 3), d.items())
+        self.assertIn(('key', 'one'), d.items(getall=False))
+        self.assertNotIn(('key', 'two'), d.items(getall=False))
+        self.assertNotIn(('key', 3), d.items(getall=False))
 
         self.assertIn(('key', 'one'), d.items(getall=True))
         self.assertIn(('key', 'two'), d.items(getall=True))
         self.assertIn(('key', 3), d.items(getall=True))
 
-        self.assertNotIn(('foo', 'bar'), d.items())
+        self.assertNotIn(('foo', 'bar'), d.items(getall=False))
         self.assertNotIn(('foo', 'bar'), d.items(getall=True))
 
     def test_cannot_create_from_unaccepted(self):

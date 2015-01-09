@@ -288,7 +288,7 @@ class ClientRequest:
         if isinstance(params, dict):
             params = list(params.items())
         elif isinstance(params, MultiDict):
-            params = list(params.items(getall=True))
+            params = list(params.items())
 
         if params:
             params = urllib.parse.urlencode(params)
@@ -307,7 +307,7 @@ class ClientRequest:
             if isinstance(headers, dict):
                 headers = headers.items()
             elif isinstance(headers, MultiDict):
-                headers = headers.items(getall=True)
+                headers = headers.items()
 
             for key, value in headers:
                 self.headers.add(key.upper(), value)
@@ -558,7 +558,7 @@ class ClientRequest:
         request.add_headers(
             *((k, v)
               for k, v in ((k, value)
-                           for k, value in self.headers.items(getall=True))))
+                           for k, value in self.headers.items())))
         request.send_headers()
 
         self._writer = asyncio.async(
@@ -664,7 +664,7 @@ class ClientResponse:
 
         # headers
         self.headers = CaseInsensitiveMultiDict(
-            self.message.headers.items(getall=True))
+            self.message.headers.items())
 
         # payload
         response_with_body = self.method.lower() != 'head'

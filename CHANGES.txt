@@ -15,6 +15,8 @@ CHANGES
 
 - websocket's ping and pong accept optional message parameter
 
+- multidict `getall=True` default is now instead of `False`.
+
 
 0.13.1 (12-31-2014)
 --------------------

@@ -154,19 +154,19 @@ cdef class MultiDict:
     def __len__(self):
         return len(self._items)
 
-    def keys(self, *, getall=False):
+    def keys(self, *, getall=True):
         return self._keys_view(getall)
 
     cdef _KeysView _keys_view(self, getall):
         return _KeysView.__new__(_KeysView, self._items, getall)
 
-    def items(self, *, getall=False):
+    def items(self, *, getall=True):
         return self._items_view(getall)
 
     cdef _ItemsView _items_view(self, getall):
         return _ItemsView.__new__(_ItemsView, self._items, getall)
 
-    def values(self, *, getall=False):
+    def values(self, *, getall=True):
         return self._values_view(getall)
 
     cdef _ValuesView _values_view(self, getall):
