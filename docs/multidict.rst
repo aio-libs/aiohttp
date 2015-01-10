@@ -49,33 +49,61 @@ MultiDict
 
    Accepted parameters are the same as for :class:`dict`.
 
-   If the same key produced several time it will be added, e.g.::
+   If the same key produced several times it will be added, e.g.::
 
-   >>> d = MultiDict([('a', 1), ('b', 2), ('a', 3)])
-   >>> print(d)
+      >>> d = MultiDict([('a', 1), ('b', 2), ('a', 3)])
+      >>> d
+      <MultiDict {'a': 1, 'b': 2, 'a': 3}>
 
-   If no arguments given, an empty multidict is created. If a
-   positional argument is given and it is a mapping object, a
-   dictionary is created with the same key-value pairs as the mapping
-   object. Otherwise, the positional argument must be an *iterable*
-   object. Each item in the iterable must itself be an iterable with
-   exactly two objects. The first object of each item becomes a key in
-   the new dictionary, and the second object the corresponding
-   value. If a key occurs more than once, the last value for that key
-   becomes the corresponding value in the new dictionary.
+   .. method:: len(d)
 
-   If keyword arguments are given, the keyword arguments and their
-   values are added to the dictionary created from the positional
-   argument. If a key being added is already present, the value from the
-   keyword argument replaces the value from the positional argument.
+      Return number of items in multidict *d*.
 
-To illustrate, the following examples all return a dictionary equal to {"one": 1, "two": 2, "three": 3}:
+   .. method:: d[key]
 
->>>
->>> a = dict(one=1, two=2, three=3)
->>> b = {'one': 1, 'two': 2, 'three': 3}
->>> c = dict(zip(['one', 'two', 'three'], [1, 2, 3]))
->>> d = dict([('two', 2), ('one', 1), ('three', 3)])
->>> e = dict({'three': 3, 'one': 1, 'two': 2})
->>> a == b == c == d == e
-True
+      Return the **first** item of *d* with key *key*.
+
+      Raises a :exc:`KeyError` if key is not in the multidict.
+
+   .. method:: key in d
+
+      Return ``True`` if d has a key *key*, else ``False``.
+
+   .. method:: key not in d
+
+      Equivalent to ``not (key in d)``
+
+   .. method:: iter(d)
+
+      Return an iterator over the keys of the dictionary.
+      This is a shortcut for ``iter(d.keys())``.
+
+   .. method:: copy()
+
+      Return a shallow copy of the dictionary.
+
+   .. method:: getone(key[, default])
+
+      Return the **first** value for *key* if *key* is in the
+      dictionary, else *default*.
+
+      Raises :exc:`KeyError` if *default* is not given and *key* is not found.
+
+      ``d[key]`` is equivalent to ``d.getone(key)``.
+
+   .. method:: getall(key[, default])
+
+      Return a list of all values for *key* if *key* is in the
+      dictionary, else *default*.
+
+      Raises :exc:`KeyError` if *default* is not given and *key* is not found.
+
+   .. method:: get(key[, default])
+
+      Return the **first** value for *key* if *key* is in the
+      dictionary, else *default*.
+
+      If *default* is not given, it defaults to ``None``, so that this
+      method never raises a :exc:`KeyError`.
+
+      ``d.get(key)`` is equivalent to ``d.getone(key, None)``.

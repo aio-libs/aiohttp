@@ -110,24 +110,10 @@ cdef class MultiDict:
     # Mapping interface #
 
     def __getitem__(self, key):
-        return self._getitem(key)
-
-    cdef _getitem(self, key):
-        cdef tuple item
-        for item in self._items:
-            if item[0] == key:
-                return item[1]
-        raise KeyError(key)
+        return self._getone(key, _marker)
 
     def get(self, key, default=None):
-        return self._get(key, default)
-
-    cdef _get(self, key, default):
-        cdef tuple item
-        for item in self._items:
-            if item[0] == key:
-                return item[1]
-        return default
+        return self._getone(key, default)
 
     def __contains__(self, key):
         return self._contains(key)
@@ -236,10 +222,10 @@ cdef class CIMultiDict(MultiDict):
         return self._getone(self._upper(key), default)
 
     def get(self, key, default=None):
-        return self._get(self._upper(key), default)
+        return self._getone(self._upper(key), default)
 
     def __getitem__(self, key):
-        return self._getitem(self._upper(key))
+        return self._getone(self._upper(key), _marker)
 
     def __contains__(self, key):
         return self._contains(self._upper(key))

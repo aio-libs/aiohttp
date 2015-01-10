@@ -275,6 +275,10 @@ class _MultiDictTests(_BaseTest):
 
         self.assertEqual('a=1&b=2&a=3', s)
 
+    def test_get(self):
+        d = self.make_dict([('a', 1), ('a', 2)])
+        self.assertEqual(1, d['a'])
+
 
 class _CIMultiDictTests(_Root):
 
@@ -301,6 +305,10 @@ class _CIMultiDictTests(_Root):
 
         with self.assertRaisesRegex(KeyError, "SOME_KEY"):
             d.getall('some_key')
+
+    def test_get(self):
+        d = self.make_dict([('A', 1), ('a', 2)])
+        self.assertEqual(1, d['a'])
 
 
 class _BaseMutableMultiDictTests(_BaseTest):
