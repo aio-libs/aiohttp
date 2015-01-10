@@ -2,7 +2,7 @@ from itertools import chain
 from collections import abc
 import sys
 
-__all__ = ['MultiDict', 'CIMultiDict',
+__all__ = ['MultiDictProxy', 'CIMultiDictProxy',
            'MutableMultiDict', 'CIMutableMultiDict']
 
 _marker = object()
@@ -28,7 +28,7 @@ class _upstr(str):
         return self
 
 
-class _MultiDict(abc.Mapping):
+class _MultiDictProxy(abc.Mapping):
     """Read-only ordered dictionary that can have multiple values for each key.
 
     This type of MultiDict must be used for request headers and query args.
@@ -112,7 +112,9 @@ class _MultiDict(abc.Mapping):
     def __eq__(self, other):
         if not isinstance(other, abc.Mapping):
             return NotImplemented
-        if isinstance(other, _MultiDict):
+        if isinstance(other, _MultiDictProxy):
+            return self._items == other._items
+        elif isinstance(other, _MutableMultiDict):
             return self._items == other._items
         for k, v in self.items():
             nv = other.get(k, _marker)
@@ -131,7 +133,7 @@ class _MultiDict(abc.Mapping):
         return '<{} {{{}}}>'.format(self.__class__.__name__, body)
 
 
-class _CIMultiDict(_MultiDict):
+class _CIMultiDictProxy(_MultiDictProxy):
     """Case insensitive multi dict."""
 
     @classmethod
@@ -179,7 +181,9 @@ class MutableMultiDictMixin(abc.MutableMapping):
             raise TypeError("extend takes at most 2 positional arguments"
                             " ({} given)".format(len(args) + 1))
         if args:
-            if isinstance(args[0], _MultiDict):
+            if isinstance(args[0], _MultiDictProxy):
+                items = args[0].items()
+            elif isinstance(args[0], _MutableMultiDict):
                 items = args[0].items()
             elif hasattr(args[0], 'items'):
                 items = args[0].items()
@@ -233,12 +237,12 @@ class MutableMultiDictMixin(abc.MutableMapping):
         raise NotImplementedError("Use extend method instead")
 
 
-class _MutableMultiDict(MutableMultiDictMixin, _MultiDict):
+class _MutableMultiDict(MutableMultiDictMixin, _MultiDictProxy):
     """An ordered dictionary that can have multiple values for each key."""
 
 
 class _CIMutableMultiDict(
-        MutableMultiDictMixin, _CIMultiDict):
+        MutableMultiDictMixin, _CIMultiDictProxy):
     """An ordered dictionary that can have multiple values for each key."""
 
     def add(self, key, value):
@@ -311,18 +315,14 @@ class _KeysView(_ViewBase, abc.KeysView):
 
 
 try:
-    from ._multidict import (MultiDict,
-                             CIMultiDict,
+    from ._multidict import (MultiDictProxy,
+                             CIMultiDictProxy,
                              MutableMultiDict,
                              CIMutableMultiDict,
                              upstr)
 except ImportError:
-    MultiDict = _MultiDict
-    CIMultiDict = _CIMultiDict
+    MultiDictProxy = _MultiDictProxy
+    CIMultiDictProxy = _CIMultiDictProxy
     MutableMultiDict = _MutableMultiDict
     CIMutableMultiDict = _CIMutableMultiDict
     upstr = _upstr
-
-
-CaseInsensitiveMultiDict = CIMultiDict
-CaseInsensitiveMutableMultiDict = CIMutableMultiDict

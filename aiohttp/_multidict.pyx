@@ -26,7 +26,7 @@ class upstr(str):
         return self
 
 
-cdef class MultiDict:
+cdef class MultiDictProxy:
     """Read-only ordered dictionary that can have multiple values for each key.
 
     This type of MultiDict must be used for request headers and query args.
@@ -160,13 +160,16 @@ cdef class MultiDict:
         return _ValuesView.__new__(_ValuesView, self._items, getall)
 
     def __richcmp__(self, other, op):
-        cdef MultiDict typed_self = self
-        cdef MultiDict typed_other
+        cdef MultiDictProxy typed_self = self
+        cdef MultiDictProxy typed_other
         cdef tuple item
         if op == 2:
             if not isinstance(other, abc.Mapping):
                 return NotImplemented
-            if isinstance(other, MultiDict):
+            if isinstance(other, MultiDictProxy):
+                typed_other = other
+                return typed_self._items == typed_other._items
+            elif isinstance(other, MutableMultiDict):
                 typed_other = other
                 return typed_self._items == typed_other._items
             for item in typed_self._items:
@@ -177,9 +180,12 @@ cdef class MultiDict:
         elif op != 2:
             if not isinstance(other, abc.Mapping):
                 return NotImplemented
-            if isinstance(other, MultiDict):
+            if isinstance(other, MultiDictProxy):
                 typed_other = other
                 return typed_self._items != typed_other._items
+            elif isinstance(other, MutableMultiDict):
+                typed_other = other
+                return typed_self._items == typed_other._items
             for item in typed_self._items:
                 nv = other.get(item[0], _marker)
                 if item[1] == nv:
@@ -193,16 +199,16 @@ cdef class MultiDict:
         return '<{} {{{}}}>'.format(self.__class__.__name__, body)
 
 
-abc.Mapping.register(MultiDict)
+abc.Mapping.register(MultiDictProxy)
 
 
-cdef class CIMultiDict(MultiDict):
+cdef class CIMultiDictProxy(MultiDictProxy):
     """Case insensitive multi dict."""
 
     @classmethod
-    def _from_uppercase_multidict(cls, MultiDict dct):
+    def _from_uppercase_multidict(cls, MultiDictProxy dct):
         # NB: doesn't check for uppercase keys!
-        cdef CIMultiDict ret
+        cdef CIMultiDictProxy ret
         ret = cls.__new__(cls)
         ret._items = dct._items
         return ret
@@ -231,10 +237,10 @@ cdef class CIMultiDict(MultiDict):
         return self._contains(self._upper(key))
 
 
-abc.Mapping.register(CIMultiDict)
+abc.Mapping.register(CIMultiDictProxy)
 
 
-cdef class MutableMultiDict(MultiDict):
+cdef class MutableMultiDict(MultiDictProxy):
     """An ordered dictionary that can have multiple values for each key."""
 
     def add(self, key, value):
@@ -286,7 +292,7 @@ cdef class MutableMultiDict(MultiDict):
 abc.MutableMapping.register(MutableMultiDict)
 
 
-cdef class CIMutableMultiDict(CIMultiDict):
+cdef class CIMutableMultiDict(CIMultiDictProxy):
     """An ordered dictionary that can have multiple values for each key."""
 
     def add(self, key, value):

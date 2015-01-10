@@ -2,7 +2,7 @@ import unittest
 import unittest.mock
 
 from aiohttp import helpers
-from aiohttp import multidict
+from aiohttp import MutableMultiDict
 
 
 class HelpersTests(unittest.TestCase):
@@ -67,12 +67,12 @@ class SafeAtomsTests(unittest.TestCase):
 
     def test_get_non_existing(self):
         atoms = helpers.SafeAtoms(
-            {}, multidict.MultiDict(), multidict.MultiDict())
+            {}, MutableMultiDict(), MutableMultiDict())
         self.assertEqual(atoms['unknown'], '-')
 
     def test_get_lower(self):
-        i_headers = multidict.MultiDict([('test', '123')])
-        o_headers = multidict.MultiDict([('TEST', '123')])
+        i_headers = MutableMultiDict([('test', '123')])
+        o_headers = MutableMultiDict([('TEST', '123')])
 
         atoms = helpers.SafeAtoms({}, i_headers, o_headers)
         self.assertEqual(atoms['{test}i'], '123')

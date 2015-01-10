@@ -1,14 +1,14 @@
 import sys
 import unittest
 
-from aiohttp.multidict import (MultiDict,
+from aiohttp.multidict import (MultiDictProxy,
                                MutableMultiDict,
-                               CIMultiDict,
+                               CIMultiDictProxy,
                                CIMutableMultiDict,
                                upstr,
-                               _MultiDict,
+                               _MultiDictProxy,
                                _MutableMultiDict,
-                               _CIMultiDict,
+                               _CIMultiDictProxy,
                                _CIMutableMultiDict,
                                _upstr)
 
@@ -456,12 +456,12 @@ class _CIMutableMultiDictTests(_Root):
 
 class PyMultiDictTests(_MultiDictTests, unittest.TestCase):
 
-    cls = _MultiDict
+    cls = _MultiDictProxy
 
 
 class PyCIMultiDictTests(_CIMultiDictTests, unittest.TestCase):
 
-    cls = _CIMultiDict
+    cls = _CIMultiDictProxy
 
 
 class PyMutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
@@ -476,12 +476,12 @@ class PyCIMutableMultiDictTests(_CIMutableMultiDictTests, unittest.TestCase):
 
 class MultiDictTests(_MultiDictTests, unittest.TestCase):
 
-    cls = MultiDict
+    cls = MultiDictProxy
 
 
 class CIMultiDictTests(_CIMultiDictTests, unittest.TestCase):
 
-    cls = CIMultiDict
+    cls = CIMultiDictProxy
 
 
 class MutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):

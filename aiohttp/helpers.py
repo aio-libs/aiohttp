@@ -106,7 +106,9 @@ class FormData:
                 k = guess_filename(rec, 'unknown')
                 self.add_field(k, rec)
 
-            elif isinstance(rec, multidict.MultiDict):
+            elif isinstance(rec,
+                            (multidict.MultiDictProxy,
+                             multidict.MutableMultiDict)):
                 to_add.extend(rec.items())
 
             elif isinstance(rec, (list, tuple)) and len(rec) == 2:
