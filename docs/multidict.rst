@@ -82,6 +82,22 @@ MultiDict
 
       Return a shallow copy of the dictionary.
 
+   .. method:: getone(key[, default])
+
+      Return the **first** value for *key* if *key* is in the
+      dictionary, else *default*.
+
+      Raises :exc:`KeyError` if *default* is not given and *key* is not found.
+
+      ``d[key]`` is equivalent to ``d.getone(key)``.
+
+   .. method:: getall(key[, default])
+
+      Return a list of all values for *key* if *key* is in the
+      dictionary, else *default*.
+
+      Raises :exc:`KeyError` if *default* is not given and *key* is not found.
+
    .. method:: get(key[, default])
 
       Return the **first** value for *key* if *key* is in the
@@ -92,18 +108,47 @@ MultiDict
 
       ``d.get(key)`` is equivalent to ``d.getone(key, None)``.
 
-   .. method:: getall(key[, default])
+   .. method:: keys(getall=True)
 
-      Return a list of all values for *key* if *key* is in the
-      dictionary, else *default*.
+      Return a new view of the dictionary's keys.
 
-      Raises :exc:`KeyError` if *default* is not given and *key* is not found.
+      View contains all keys if *getall* is ``True`` (default) or
+      distinct set of ones otherwise.
 
-   .. method:: getone(key[, default])
+   .. method:: keys(getall=True)
 
-      Return the **first** value for *key* if *key* is in the
-      dictionary, else *default*.
+      Return a new view of the dictionary's items (``(key, value)`` pairs).
 
-      Raises :exc:`KeyError` if *default* is not given and *key* is not found.
+      View contains all items if *getall* is ``True`` (default) or
+      only first key occurrences otherwise.
 
-      ``d[key]`` is equivalent to ``d.getone(key)``.
+   .. method:: values(getall=True)
+
+      Return a new view of the dictionary's values.
+
+      View contains all values if *getall* is ``True`` (default) or
+      only first key occurrences otherwise.
+
+
+MultiDict
+---------
+
+
+.. class:: CIMultiDict(**kwargs)
+           CIMultiDict(mapping, **kwargs)
+           CIMultiDict(iterable, **kwargs)
+
+   Create a case insensitive multidict instance.
+
+   The behavior is the same as of :class:`MultiDict` but key
+   comparsions are case insensitive.
+
+   E.g.::
+
+      >>> dct = CIMultiDict(a='val')
+      >>> 'A' in dct
+      True
+      >>> dct['A']
+      'val'
+      >>> dct['a']
+      'val'
