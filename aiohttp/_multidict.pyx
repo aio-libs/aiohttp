@@ -1,4 +1,3 @@
-import pprint
 import sys
 from collections import abc
 from collections.abc import Iterable, Set
@@ -204,20 +203,20 @@ cdef class MultiDict:
             return NotImplemented
 
     def __repr__(self):
-        return '<{}>\n{}'.format(
-            self.__class__.__name__, pprint.pformat(self._items))
+        body = ', '.join("'{}': {!r}".format(k, v) for k, v in self.items())
+        return '<{} {{{}}}>'.format(self.__class__.__name__, body)
 
 
 abc.Mapping.register(MultiDict)
 
 
-cdef class CaseInsensitiveMultiDict(MultiDict):
+cdef class CIMultiDict(MultiDict):
     """Case insensitive multi dict."""
 
     @classmethod
     def _from_uppercase_multidict(cls, MultiDict dct):
         # NB: doesn't check for uppercase keys!
-        cdef CaseInsensitiveMultiDict ret
+        cdef CIMultiDict ret
         ret = cls.__new__(cls)
         ret._items = dct._items
         return ret
@@ -246,7 +245,7 @@ cdef class CaseInsensitiveMultiDict(MultiDict):
         return self._contains(self._upper(key))
 
 
-abc.Mapping.register(CaseInsensitiveMultiDict)
+abc.Mapping.register(CIMultiDict)
 
 
 cdef class MutableMultiDict(MultiDict):
@@ -301,7 +300,7 @@ cdef class MutableMultiDict(MultiDict):
 abc.MutableMapping.register(MutableMultiDict)
 
 
-cdef class CaseInsensitiveMutableMultiDict(CaseInsensitiveMultiDict):
+cdef class CIMutableMultiDict(CIMultiDict):
     """An ordered dictionary that can have multiple values for each key."""
 
     def add(self, key, value):
@@ -352,7 +351,7 @@ cdef class CaseInsensitiveMutableMultiDict(CaseInsensitiveMultiDict):
         raise NotImplementedError("Use extend method instead")
 
 
-abc.MutableMapping.register(CaseInsensitiveMutableMultiDict)
+abc.MutableMapping.register(CIMutableMultiDict)
 
 
 cdef class _ViewBase:

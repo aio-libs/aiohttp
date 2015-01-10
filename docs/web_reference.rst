@@ -87,7 +87,7 @@ first positional parameter.
 
       A case-insensitive multidict with all headers.
 
-      Read-only :class:`~aiohttp.multidict.CaseInsensitiveMultiDict`
+      Read-only :class:`~aiohttp.multidict.CIMultiDict`
       lazy property.
 
    .. attribute:: keep_alive
@@ -339,7 +339,7 @@ StreamResponse
 
    .. attribute:: headers
 
-      :class:`~aiohttp.multidict.CaseInsensitiveMultiDict` instance
+      :class:`~aiohttp.multidict.CIMultiDict` instance
       for *outgoing* *HTTP headers*.
 
    .. attribute:: cookies

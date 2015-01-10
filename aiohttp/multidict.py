@@ -1,10 +1,9 @@
-import pprint
 from itertools import chain
 from collections import abc
 import sys
 
-__all__ = ['MultiDict', 'CaseInsensitiveMultiDict',
-           'MutableMultiDict', 'CaseInsensitiveMutableMultiDict']
+__all__ = ['MultiDict', 'CIMultiDict',
+           'MutableMultiDict', 'CIMutableMultiDict']
 
 _marker = object()
 
@@ -134,13 +133,11 @@ class _MultiDict(abc.Mapping):
         return False
 
     def __repr__(self):
-        return '<{}>\n{}'.format(
-            self.__class__.__name__, pprint.pformat(
-                list(self.items()))
-        )
+        body = ', '.join("'{}': {!r}".format(k, v) for k, v in self.items())
+        return '<{} {{{}}}>'.format(self.__class__.__name__, body)
 
 
-class _CaseInsensitiveMultiDict(_MultiDict):
+class _CIMultiDict(_MultiDict):
     """Case insensitive multi dict."""
 
     @classmethod
@@ -246,8 +243,8 @@ class _MutableMultiDict(MutableMultiDictMixin, _MultiDict):
     """An ordered dictionary that can have multiple values for each key."""
 
 
-class _CaseInsensitiveMutableMultiDict(
-        MutableMultiDictMixin, _CaseInsensitiveMultiDict):
+class _CIMutableMultiDict(
+        MutableMultiDictMixin, _CIMultiDict):
     """An ordered dictionary that can have multiple values for each key."""
 
     def add(self, key, value):
@@ -321,13 +318,17 @@ class _KeysView(_ViewBase, abc.KeysView):
 
 try:
     from ._multidict import (MultiDict,
-                             CaseInsensitiveMultiDict,
+                             CIMultiDict,
                              MutableMultiDict,
-                             CaseInsensitiveMutableMultiDict,
+                             CIMutableMultiDict,
                              upstr)
 except ImportError:
     MultiDict = _MultiDict
-    CaseInsensitiveMultiDict = _CaseInsensitiveMultiDict
+    CIMultiDict = _CIMultiDict
     MutableMultiDict = _MutableMultiDict
-    CaseInsensitiveMutableMultiDict = _CaseInsensitiveMutableMultiDict
+    CIMutableMultiDict = _CIMutableMultiDict
     upstr = _upstr
+
+
+CaseInsensitiveMultiDict = CIMultiDict
+CaseInsensitiveMutableMultiDict = CIMutableMultiDict

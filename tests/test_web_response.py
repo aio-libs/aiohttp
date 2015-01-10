@@ -1,7 +1,7 @@
 import asyncio
 import unittest
 from unittest import mock
-from aiohttp.multidict import MultiDict, CaseInsensitiveMultiDict
+from aiohttp.multidict import MultiDict, CIMultiDict
 from aiohttp.web import Request, StreamResponse, Response
 from aiohttp.protocol import RawRequestMessage, HttpVersion11
 
@@ -290,7 +290,7 @@ class TestResponse(unittest.TestCase):
         self.assertEqual('OK', resp.reason)
         self.assertIsNone(resp.body)
         self.assertEqual(0, resp.content_length)
-        self.assertEqual(CaseInsensitiveMultiDict([('CONTENT-LENGTH', '0')]),
+        self.assertEqual(CIMultiDict([('CONTENT-LENGTH', '0')]),
                          resp.headers)
 
     def test_ctor_with_headers_and_status(self):
@@ -299,8 +299,8 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(201, resp.status)
         self.assertEqual(b'body', resp.body)
         self.assertEqual(4, resp.content_length)
-        self.assertEqual(CaseInsensitiveMultiDict([('AGE', '12'),
-                                                   ('CONTENT-LENGTH', '4')]),
+        self.assertEqual(CIMultiDict([('AGE', '12'),
+                                      ('CONTENT-LENGTH', '4')]),
                          resp.headers)
 
     def test_ctor_content_type(self):
@@ -309,8 +309,8 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(200, resp.status)
         self.assertEqual('OK', resp.reason)
         self.assertEqual(
-            CaseInsensitiveMultiDict([('CONTENT-TYPE', 'application/json'),
-                                      ('CONTENT-LENGTH', '0')]),
+            CIMultiDict([('CONTENT-TYPE', 'application/json'),
+                         ('CONTENT-LENGTH', '0')]),
             resp.headers)
 
     def test_ctor_text_body_combined(self):
@@ -323,7 +323,7 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(200, resp.status)
         self.assertEqual('OK', resp.reason)
         self.assertEqual(
-            CaseInsensitiveMultiDict(
+            CIMultiDict(
                 [('CONTENT-TYPE', 'text/plain; charset=utf-8'),
                  ('CONTENT-LENGTH', '9')]),
             resp.headers)

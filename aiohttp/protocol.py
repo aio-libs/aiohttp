@@ -543,7 +543,7 @@ class HttpMessage:
 
         self.chunked = False
         self.length = None
-        self.headers = multidict.CaseInsensitiveMutableMultiDict()
+        self.headers = multidict.CIMutableMultiDict()
         self.headers_sent = False
         self.output_length = 0
         self._output_size = 0

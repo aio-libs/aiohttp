@@ -3,13 +3,13 @@ import unittest
 
 from aiohttp.multidict import (MultiDict,
                                MutableMultiDict,
-                               CaseInsensitiveMultiDict,
-                               CaseInsensitiveMutableMultiDict,
+                               CIMultiDict,
+                               CIMutableMultiDict,
                                upstr,
                                _MultiDict,
                                _MutableMultiDict,
-                               _CaseInsensitiveMultiDict,
-                               _CaseInsensitiveMutableMultiDict,
+                               _CIMultiDict,
+                               _CIMutableMultiDict,
                                _upstr)
 
 
@@ -249,11 +249,11 @@ class _MultiDictTests(_BaseTest):
 
     def test__repr__(self):
         d = self.make_dict()
-        self.assertEqual(str(d), "<%s>\n[]" % self.cls.__name__)
+        self.assertEqual(str(d), "<%s {}>" % self.cls.__name__)
         d = self.make_dict([('key', 'one'), ('key', 'two')])
         self.assertEqual(
             str(d),
-            "<%s>\n[('key', 'one'), ('key', 'two')]" % self.cls.__name__)
+            "<%s {'key': 'one', 'key': 'two'}>" % self.cls.__name__)
 
     def test_getall(self):
         d = self.make_dict([('key', 'value1')], key='value2')
@@ -276,7 +276,7 @@ class _MultiDictTests(_BaseTest):
         self.assertEqual('a=1&b=2&a=3', s)
 
 
-class _CaseInsensitiveMultiDictTests(_Root):
+class _CIMultiDictTests(_Root):
 
     def test_basics(self):
         d = self.make_dict([('KEY', 'value1')], KEY='value2')
@@ -307,13 +307,13 @@ class _BaseMutableMultiDictTests(_BaseTest):
 
     def test__repr__(self):
         d = self.make_dict()
-        self.assertEqual(str(d), "<%s>\n[]" % self.cls.__name__)
+        self.assertEqual(str(d), "<%s {}>" % self.cls.__name__)
 
         d = self.make_dict([('key', 'one'), ('key', 'two')])
 
         self.assertEqual(
             str(d),
-            "<%s>\n[('key', 'one'), ('key', 'two')]" % self.cls.__name__)
+            "<%s {'key': 'one', 'key': 'two'}>" % self.cls.__name__)
 
     def test_getall(self):
         d = self.make_dict([('key', 'value1')], key='value2')
@@ -411,7 +411,7 @@ class _BaseMutableMultiDictTests(_BaseTest):
             d.update(bar='baz')
 
 
-class _CaseInsensitiveMutableMultiDictTests(_Root):
+class _CIMutableMultiDictTests(_Root):
 
     def test_getall(self):
         d = self.make_dict([('KEY', 'value1')], KEY='value2')
@@ -451,10 +451,9 @@ class PyMultiDictTests(_MultiDictTests, unittest.TestCase):
     cls = _MultiDict
 
 
-class PyCaseInsensitiveMultiDictTests(_CaseInsensitiveMultiDictTests,
-                                      unittest.TestCase):
+class PyCIMultiDictTests(_CIMultiDictTests, unittest.TestCase):
 
-    cls = _CaseInsensitiveMultiDict
+    cls = _CIMultiDict
 
 
 class PyMutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
@@ -462,11 +461,9 @@ class PyMutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
     cls = _MutableMultiDict
 
 
-class PyCaseInsensitiveMutableMultiDictTests(
-        _CaseInsensitiveMutableMultiDictTests,
-        unittest.TestCase):
+class PyCIMutableMultiDictTests(_CIMutableMultiDictTests, unittest.TestCase):
 
-    cls = _CaseInsensitiveMutableMultiDict
+    cls = _CIMutableMultiDict
 
 
 class MultiDictTests(_MultiDictTests, unittest.TestCase):
@@ -474,10 +471,9 @@ class MultiDictTests(_MultiDictTests, unittest.TestCase):
     cls = MultiDict
 
 
-class CaseInsensitiveMultiDictTests(_CaseInsensitiveMultiDictTests,
-                                    unittest.TestCase):
+class CIMultiDictTests(_CIMultiDictTests, unittest.TestCase):
 
-    cls = CaseInsensitiveMultiDict
+    cls = CIMultiDict
 
 
 class MutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
@@ -485,11 +481,9 @@ class MutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
     cls = MutableMultiDict
 
 
-class CaseInsensitiveMutableMultiDictTests(
-        _CaseInsensitiveMutableMultiDictTests,
-        unittest.TestCase):
+class CIMutableMultiDictTests(_CIMutableMultiDictTests, unittest.TestCase):
 
-    cls = CaseInsensitiveMutableMultiDict
+    cls = CIMutableMultiDict
 
 
 class _UpStrMixin:

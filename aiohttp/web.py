@@ -15,8 +15,8 @@ from urllib.parse import urlsplit, parse_qsl, urlencode, unquote
 from .abc import AbstractRouter, AbstractMatchInfo
 from .helpers import reify
 from .log import web_logger
-from .multidict import (CaseInsensitiveMultiDict,
-                        CaseInsensitiveMutableMultiDict,
+from .multidict import (CIMultiDict,
+                        CIMutableMultiDict,
                         MultiDict,
                         MutableMultiDict,
                         upstr)
@@ -158,7 +158,7 @@ class Request(HeadersMixin):
         self._query_string = res.query
         self._post = None
         self._post_files_cache = None
-        self._headers = CaseInsensitiveMultiDict._from_uppercase_multidict(
+        self._headers = CIMultiDict._from_uppercase_multidict(
             message.headers)
 
         if self._version < HttpVersion11:
@@ -394,7 +394,7 @@ class StreamResponse(HeadersMixin):
     def __init__(self, *, status=200, reason=None):
         self._body = None
         self._keep_alive = None
-        self._headers = CaseInsensitiveMutableMultiDict()
+        self._headers = CIMutableMultiDict()
         self._cookies = http.cookies.SimpleCookie()
         self.set_status(status, reason)
 

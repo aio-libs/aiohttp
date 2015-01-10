@@ -19,8 +19,7 @@ import aiohttp
 from . import helpers, streams
 from .log import client_logger
 from .streams import EOF_MARKER, FlowControlStreamReader
-from .multidict import (CaseInsensitiveMultiDict,
-                        MultiDict, MutableMultiDict, upstr)
+from .multidict import (CIMultiDict, MultiDict, MutableMultiDict, upstr)
 
 HTTP_PORT = 80
 HTTPS_PORT = 443
@@ -663,8 +662,7 @@ class ClientResponse:
         self.reason = self.message.reason
 
         # headers
-        self.headers = CaseInsensitiveMultiDict(
-            self.message.headers.items())
+        self.headers = CIMultiDict(self.message.headers.items())
 
         # payload
         response_with_body = self.method.lower() != 'head'

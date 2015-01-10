@@ -20,13 +20,13 @@ dct = _MutableMultiDict()
 """
 
 cython_cimultidict = """\
-from aiohttp.multidict import CaseInsensitiveMutableMultiDict, upstr
-dct = CaseInsensitiveMutableMultiDict()
+from aiohttp.multidict import CIMutableMultiDict, upstr
+dct = CIMutableMultiDict()
 """
 
 python_cimultidict = """\
-from aiohttp.multidict import _CaseInsensitiveMutableMultiDict, _upstr as upstr
-dct = _CaseInsensitiveMutableMultiDict()
+from aiohttp.multidict import _CIMutableMultiDict, _upstr as upstr
+dct = _CIMutableMultiDict()
 """
 
 fill = """\
