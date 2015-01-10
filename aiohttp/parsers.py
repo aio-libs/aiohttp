@@ -249,7 +249,7 @@ class StreamProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             transport, self, self.reader, self._loop)
 
     def connection_lost(self, exc):
-        self.transport = None
+        self.transport = self.writer = None
 
         if exc is None:
             self.reader.feed_eof()

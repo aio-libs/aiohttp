@@ -371,6 +371,7 @@ class StreamProtocolTests(unittest.TestCase):
         proto.connection_made(unittest.mock.Mock())
         proto.connection_lost(None)
         self.assertIsNone(proto.transport)
+        self.assertIsNone(proto.writer)
         self.assertTrue(proto.reader._eof)
 
     def test_connection_lost_exc(self):
