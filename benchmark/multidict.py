@@ -2,7 +2,7 @@ import timeit
 
 
 setitem = """\
-dct['key'] = 1
+dct[key] = 'new value'
 """
 
 getitem = """\

@@ -34,8 +34,10 @@ cdef class MultiDict:
     """
 
     cdef list _items
+    cdef object _cistr
 
     def __init__(self, *args, **kwargs):
+        self._cistr = cistr
         self._items = []
 
         self._extend(args, kwargs, self.__class__.__name__)
@@ -221,7 +223,7 @@ cdef class CaseInsensitiveMultiDict(MultiDict):
         return ret
 
     cdef _upper(self, s):
-        if type(s) is cistr:
+        if type(s) is self._cistr:
             return s
         return s.upper()
 
