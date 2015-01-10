@@ -45,7 +45,7 @@ MultiDict
            MultiDict(mapping, **kwargs)
            MultiDict(iterable, **kwargs)
 
-   Create a multidict instance.
+   Create an immutable multidict instance.
 
    Accepted parameters are the same as for :class:`dict`.
 
@@ -138,12 +138,10 @@ CIMultiDict
            CIMultiDict(mapping, **kwargs)
            CIMultiDict(iterable, **kwargs)
 
-   Create a case insensitive multidict instance.
+   Create an immutable case insensitive multidict instance.
 
    The behavior is the same as of :class:`MultiDict` but key
-   comparsions are case insensitive.
-
-   E.g.::
+   comparsions are case insensitive, e.g.::
 
       >>> dct = CIMultiDict(a='val')
       >>> 'A' in dct
@@ -152,3 +150,40 @@ CIMultiDict
       'val'
       >>> dct['a']
       'val'
+
+
+MutableMultiDict
+----------------
+
+.. class:: MutableMultiDict(**kwargs)
+           MutableMultiDict(mapping, **kwargs)
+           MutableMultiDict(iterable, **kwargs)
+
+    Create a mutable multidict instance.
+
+    The class inherited from :class:`MultiDict`.
+
+    .. method:: d[key] = value
+
+       Set ``d[key]`` to *value*.
+
+   .. method:: del d[key]
+
+      Remove ``d[key]`` from *d*.
+      Raises a :exc:`KeyError` if *key* is not in the map.
+
+   .. method:: clear()
+
+      Remove all items from the dictionary.
+
+   .. method:: extend([other])
+
+      Extend the dictionary with the key/value pairs from *other*,
+      overwriting existing keys.
+      Return ``None``.
+
+      :meth:`extend` accepts either another dictionary object or an
+      iterable of key/value pairs (as tuples or other iterables of
+      length two). If keyword arguments are specified, the dictionary
+      is then extended with those key/value pairs:
+      ``d.extend(red=1, blue=2)``.
