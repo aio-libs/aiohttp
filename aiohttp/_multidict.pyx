@@ -76,8 +76,8 @@ cdef class MultiDict:
         return self._getall(key, default)
 
     cdef _getall(self, key, default):
-        cdef tuple res
-        res = tuple(v for k, v in self._items if k == key)
+        cdef list res
+        res = [v for k, v in self._items if k == key]
         if res:
             return res
         if not res and default is not _marker:

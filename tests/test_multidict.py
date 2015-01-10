@@ -261,7 +261,7 @@ class _MultiDictTests(_BaseTest):
         self.assertNotEqual(d, {'key': 'value1'})
         self.assertEqual(len(d), 2)
 
-        self.assertEqual(d.getall('key'), ('value1', 'value2'))
+        self.assertEqual(d.getall('key'), ['value1', 'value2'])
 
         with self.assertRaisesRegex(KeyError, "some_key"):
             d.getall('some_key')
@@ -297,7 +297,7 @@ class _CaseInsensitiveMultiDictTests(_Root):
         self.assertNotEqual(d, {'KEY': 'value1'})
         self.assertEqual(len(d), 2)
 
-        self.assertEqual(d.getall('key'), ('value1', 'value2'))
+        self.assertEqual(d.getall('key'), ['value1', 'value2'])
 
         with self.assertRaisesRegex(KeyError, "SOME_KEY"):
             d.getall('some_key')
@@ -319,7 +319,7 @@ class _BaseMutableMultiDictTests(_BaseTest):
         d = self.make_dict([('key', 'value1')], key='value2')
         self.assertEqual(len(d), 2)
 
-        self.assertEqual(d.getall('key'), ('value1', 'value2'))
+        self.assertEqual(d.getall('key'), ['value1', 'value2'])
 
         with self.assertRaisesRegex(KeyError, "some_key"):
             d.getall('some_key')
@@ -333,19 +333,19 @@ class _BaseMutableMultiDictTests(_BaseTest):
         self.assertEqual(d, {})
         d['key'] = 'one'
         self.assertEqual(d, {'key': 'one'})
-        self.assertEqual(d.getall('key'), ('one',))
+        self.assertEqual(d.getall('key'), ['one'])
 
         d['key'] = 'two'
         self.assertEqual(d, {'key': 'two'})
-        self.assertEqual(d.getall('key'), ('two',))
+        self.assertEqual(d.getall('key'), ['two'])
 
         d.add('key', 'one')
         self.assertEqual(2, len(d))
-        self.assertEqual(d.getall('key'), ('two', 'one'))
+        self.assertEqual(d.getall('key'), ['two', 'one'])
 
         d.add('foo', 'bar')
         self.assertEqual(3, len(d))
-        self.assertEqual(d.getall('foo'), ('bar',))
+        self.assertEqual(d.getall('foo'), ['bar'])
 
     def test_extend(self):
         d = self.make_dict()
@@ -419,7 +419,7 @@ class _CaseInsensitiveMutableMultiDictTests(_Root):
         self.assertNotEqual(d, {'KEY': 'value1'})
         self.assertEqual(len(d), 2)
 
-        self.assertEqual(d.getall('key'), ('value1', 'value2'))
+        self.assertEqual(d.getall('key'), ['value1', 'value2'])
 
         with self.assertRaisesRegex(KeyError, "SOME_KEY"):
             d.getall('some_key')

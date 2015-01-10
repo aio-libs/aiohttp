@@ -62,7 +62,7 @@ class _MultiDict(abc.Mapping):
         """
         Return a list of all values matching the key (may be an empty list)
         """
-        res = tuple(v for k, v in self._items if k == key)
+        res = [v for k, v in self._items if k == key]
         if res:
             return res
         if not res and default is not _marker:

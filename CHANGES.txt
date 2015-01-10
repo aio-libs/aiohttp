@@ -20,6 +20,8 @@ CHANGES
 - multidicts have optional Cython optimization, cythonized version of multidicts is
   about 5 times faster than pure Python.
 
+- multidict.getall() returns `list`, not `tuple`.
+
 
 0.13.1 (12-31-2014)
 --------------------
