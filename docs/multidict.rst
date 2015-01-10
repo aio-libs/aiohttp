@@ -82,22 +82,6 @@ MultiDict
 
       Return a shallow copy of the dictionary.
 
-   .. method:: getone(key[, default])
-
-      Return the **first** value for *key* if *key* is in the
-      dictionary, else *default*.
-
-      Raises :exc:`KeyError` if *default* is not given and *key* is not found.
-
-      ``d[key]`` is equivalent to ``d.getone(key)``.
-
-   .. method:: getall(key[, default])
-
-      Return a list of all values for *key* if *key* is in the
-      dictionary, else *default*.
-
-      Raises :exc:`KeyError` if *default* is not given and *key* is not found.
-
    .. method:: get(key[, default])
 
       Return the **first** value for *key* if *key* is in the
@@ -107,3 +91,19 @@ MultiDict
       method never raises a :exc:`KeyError`.
 
       ``d.get(key)`` is equivalent to ``d.getone(key, None)``.
+
+   .. method:: getall(key[, default])
+
+      Return a list of all values for *key* if *key* is in the
+      dictionary, else *default*.
+
+      Raises :exc:`KeyError` if *default* is not given and *key* is not found.
+
+   .. method:: getone(key[, default])
+
+      Return the **first** value for *key* if *key* is in the
+      dictionary, else *default*.
+
+      Raises :exc:`KeyError` if *default* is not given and *key* is not found.
+
+      ``d[key]`` is equivalent to ``d.getone(key)``.
