@@ -15,7 +15,7 @@ CHANGES
 
 - websocket's ping and pong accept optional message parameter
 
-- multidict `getall=True` default is now instead of `False`.
+- multidict `getall=True` is default now instead of `False`.
 
 - multidicts have optional Cython optimization, cythonized version of multidicts is
   about 5 times faster than pure Python.
