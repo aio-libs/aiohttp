@@ -17,6 +17,7 @@ Greg Holt
 Junjie Tao
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
+Martin Richard
 Mikhail Lukyanchenko
 Nicolas Braem
 Olaf Conradi
