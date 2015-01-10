@@ -19,7 +19,7 @@ from .multidict import (CaseInsensitiveMultiDict,
                         CaseInsensitiveMutableMultiDict,
                         MultiDict,
                         MutableMultiDict,
-                        cistr)
+                        upstr)
 from .protocol import Response as ResponseImpl, HttpVersion, HttpVersion11
 from .server import ServerHttpProtocol
 from .streams import EOF_MARKER
@@ -89,8 +89,8 @@ __all__ = [
 sentinel = object()
 
 
-CONTENT_TYPE_ID = cistr('Content-Type')
-CONTENT_LENGTH_ID = cistr('Content-Length')
+CONTENT_TYPE_ID = upstr('Content-Type')
+CONTENT_LENGTH_ID = upstr('Content-Length')
 
 
 class HeadersMixin:

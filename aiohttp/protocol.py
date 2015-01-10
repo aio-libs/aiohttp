@@ -255,9 +255,9 @@ class HttpResponseParser(HttpParser):
 
 class HttpPayloadParser:
 
-    CONTENT_LENGTH_ID = multidict.cistr('CONTENT-LENGTH')
-    SEC_WEBSOCKET_KEY1_ID = multidict.cistr('SEC-WEBSOCKET-KEY1')
-    TRANSFER_ENCODING_ID = multidict.cistr('TRANSFER-ENCODING')
+    CONTENT_LENGTH_ID = multidict.upstr('CONTENT-LENGTH')
+    SEC_WEBSOCKET_KEY1_ID = multidict.upstr('SEC-WEBSOCKET-KEY1')
+    TRANSFER_ENCODING_ID = multidict.upstr('TRANSFER-ENCODING')
 
     def __init__(self, message, length=None, compression=True,
                  readall=False, response_with_body=True):
@@ -515,8 +515,8 @@ class HttpMessage:
 
     HOP_HEADERS = None  # Must be set by subclass.
 
-    TRANSFER_ENCODING_ID = multidict.cistr('TRANSFER-ENCODING')
-    CONNECTION_ID = multidict.cistr('CONNECTION')
+    TRANSFER_ENCODING_ID = multidict.upstr('TRANSFER-ENCODING')
+    CONNECTION_ID = multidict.upstr('CONNECTION')
 
     SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} aiohttp/{1}'.format(
         sys.version_info, aiohttp.__version__)
@@ -813,8 +813,8 @@ class Response(HttpMessage):
         'UPGRADE',
     }
 
-    DATE_ID = multidict.cistr('DATE')
-    SERVER_ID = multidict.cistr('SERVER')
+    DATE_ID = multidict.upstr('DATE')
+    SERVER_ID = multidict.upstr('SERVER')
 
     @staticmethod
     def calc_reason(status):
@@ -849,7 +849,7 @@ class Response(HttpMessage):
 class Request(HttpMessage):
 
     HOP_HEADERS = ()
-    USER_AGENT_ID = multidict.cistr('USER-AGENT')
+    USER_AGENT_ID = multidict.upstr('USER-AGENT')
 
     def __init__(self, transport, method, path,
                  http_version=HttpVersion11, close=False):

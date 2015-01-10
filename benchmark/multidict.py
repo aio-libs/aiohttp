@@ -20,12 +20,12 @@ dct = _MutableMultiDict()
 """
 
 cython_cimultidict = """\
-from aiohttp.multidict import CaseInsensitiveMutableMultiDict, cistr
+from aiohttp.multidict import CaseInsensitiveMutableMultiDict, upstr
 dct = CaseInsensitiveMutableMultiDict()
 """
 
 python_cimultidict = """\
-from aiohttp.multidict import _CaseInsensitiveMutableMultiDict, _cistr as cistr
+from aiohttp.multidict import _CaseInsensitiveMutableMultiDict, _upstr as upstr
 dct = _CaseInsensitiveMutableMultiDict()
 """
 
@@ -36,12 +36,12 @@ for i in range(20):
 key = 'key10'
 """
 
-fill_cistr = """\
+fill_upstr = """\
 for i in range(20):
-    key = cistr('key'+str(i))
+    key = upstr('key'+str(i))
     dct[key] = str(i)
 
-key = cistr('key10')
+key = upstr('key10')
 """
 
 print("Cython setitem str: {:.3f} sec".format(
@@ -58,8 +58,8 @@ print("Python getitem str: {:.3f} sec".format(
     timeit.timeit(getitem, python_multidict+fill)))
 
 
-print("Cython getitem cistr: {:.3f} sec".format(
+print("Cython getitem upstr: {:.3f} sec".format(
     timeit.timeit(getitem, cython_cimultidict+fill)))
 
-print("Python getitem cistr: {:.3f} sec".format(
+print("Python getitem upstr: {:.3f} sec".format(
     timeit.timeit(getitem, python_cimultidict+fill)))

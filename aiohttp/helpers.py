@@ -40,8 +40,8 @@ class FormData:
     """Helper class for multipart/form-data and
     application/x-www-form-urlencoded body generation."""
 
-    CONTENT_TYPE_ID = multidict.cistr('Content-Type')
-    CONTENT_TRANSFER_ENCODING_ID = multidict.cistr('Content-Transfer-Encoding')
+    CONTENT_TYPE_ID = multidict.upstr('Content-Type')
+    CONTENT_TRANSFER_ENCODING_ID = multidict.upstr('Content-Transfer-Encoding')
 
     def __init__(self, fields=()):
         self._fields = []

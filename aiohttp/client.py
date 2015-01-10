@@ -20,7 +20,7 @@ from . import helpers, streams
 from .log import client_logger
 from .streams import EOF_MARKER, FlowControlStreamReader
 from .multidict import (CaseInsensitiveMultiDict,
-                        MultiDict, MutableMultiDict, cistr)
+                        MultiDict, MutableMultiDict, upstr)
 
 HTTP_PORT = 80
 HTTPS_PORT = 443
@@ -156,16 +156,16 @@ class ClientRequest:
     POST_METHODS = {'PATCH', 'POST', 'PUT', 'TRACE', 'DELETE'}
     ALL_METHODS = GET_METHODS.union(POST_METHODS)
 
-    ACCEPT_ID = cistr('ACCEPT')
-    ACCEPT_ENCODING_ID = cistr('ACCEPT-ENCODING')
-    AUTHORIZATION_ID = cistr('AUTHORIZATION')
-    CONTENT_ENCODING_ID = cistr('CONTENT-ENCODING')
-    CONTENT_LENGTH_ID = cistr('CONTENT-LENGTH')
-    CONTENT_TYPE_ID = cistr('CONTENT-TYPE')
-    COOKIE_ID = cistr('COOKIE')
-    EXPECT_ID = cistr('EXPECT')
-    HOST_ID = cistr('HOST')
-    TRANSFER_ENCODING_ID = cistr('TRANSFER-ENCODING')
+    ACCEPT_ID = upstr('ACCEPT')
+    ACCEPT_ENCODING_ID = upstr('ACCEPT-ENCODING')
+    AUTHORIZATION_ID = upstr('AUTHORIZATION')
+    CONTENT_ENCODING_ID = upstr('CONTENT-ENCODING')
+    CONTENT_LENGTH_ID = upstr('CONTENT-LENGTH')
+    CONTENT_TYPE_ID = upstr('CONTENT-TYPE')
+    COOKIE_ID = upstr('COOKIE')
+    EXPECT_ID = upstr('EXPECT')
+    HOST_ID = upstr('HOST')
+    TRANSFER_ENCODING_ID = upstr('TRANSFER-ENCODING')
 
     DEFAULT_HEADERS = {
         ACCEPT_ID: '*/*',
@@ -580,8 +580,8 @@ class ClientRequest:
 
 class ClientResponse:
 
-    CONTENT_TYPE_ID = cistr('CONTENT-TYPE')
-    SET_COOKIE_ID = cistr('SET-COOKIE')
+    CONTENT_TYPE_ID = upstr('CONTENT-TYPE')
+    SET_COOKIE_ID = upstr('SET-COOKIE')
 
     message = None  # RawResponseMessage object
 

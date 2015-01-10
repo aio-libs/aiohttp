@@ -9,7 +9,7 @@ __all__ = ['MultiDict', 'CaseInsensitiveMultiDict',
 _marker = object()
 
 
-class _cistr(str):
+class _upstr(str):
     """Case insensitive str"""
 
     def __new__(cls, val='',
@@ -324,10 +324,10 @@ try:
                              CaseInsensitiveMultiDict,
                              MutableMultiDict,
                              CaseInsensitiveMutableMultiDict,
-                             cistr)
+                             upstr)
 except ImportError:
     MultiDict = _MultiDict
     CaseInsensitiveMultiDict = _CaseInsensitiveMultiDict
     MutableMultiDict = _MutableMultiDict
     CaseInsensitiveMutableMultiDict = _CaseInsensitiveMutableMultiDict
-    cistr = _cistr
+    upstr = _upstr

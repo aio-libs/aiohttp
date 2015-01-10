@@ -7,7 +7,7 @@ from collections.abc import Iterable, Set
 _marker = object()
 
 
-class cistr(str):
+class upstr(str):
     """Case insensitive str"""
 
     def __new__(cls, val='',
@@ -34,10 +34,10 @@ cdef class MultiDict:
     """
 
     cdef list _items
-    cdef object _cistr
+    cdef object _upstr
 
     def __init__(self, *args, **kwargs):
-        self._cistr = cistr
+        self._upstr = upstr
         self._items = []
 
         self._extend(args, kwargs, self.__class__.__name__)
@@ -223,7 +223,7 @@ cdef class CaseInsensitiveMultiDict(MultiDict):
         return ret
 
     cdef _upper(self, s):
-        if type(s) is self._cistr:
+        if type(s) is self._upstr:
             return s
         return s.upper()
 
