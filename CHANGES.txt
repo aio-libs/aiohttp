@@ -17,6 +17,9 @@ CHANGES
 
 - multidict `getall=True` default is now instead of `False`.
 
+- multidicts have optional Cython optimization, cythonized version of multidicts is
+  about 5 times faster than pure Python.
+
 
 0.13.1 (12-31-2014)
 --------------------
