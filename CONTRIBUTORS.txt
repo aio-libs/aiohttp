@@ -7,14 +7,17 @@ Alexander Bayandin
 Alexander Shorin
 Alexey Popravka
 Andrew Svetlov
+Andrei Ursulenko
 Andrej Antonov
 Anton Kasyanov
 Ben Bader
 Brian C. Lane
+Erich Healy
 Eugene Chernyshov
 Georges Dubus
 Greg Holt
 Junjie Tao
+Kay Zheng
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
 Martin Richard
@@ -23,6 +26,7 @@ Nicolas Braem
 Olaf Conradi
 Paul Colomiets
 Philipp A.
+Robert Lu
 Sebastian Hanula
 Simon Kennedy
 W. Trevor King
