@@ -167,10 +167,17 @@ MutableMultiDict
 
        Set ``d[key]`` to *value*.
 
+       Replace all items where key is equal to *key* with single item
+       ``(key, value)``.
+
    .. method:: del d[key]
 
-      Remove ``d[key]`` from *d*.
+      Remove all items where key is equal to *key* from *d*.
       Raises a :exc:`KeyError` if *key* is not in the map.
+
+   .. method:: add(key, value)
+
+      Append ``(key, value)`` pair to the dictiaonary.
 
    .. method:: clear()
 
@@ -187,3 +194,9 @@ MutableMultiDict
       length two). If keyword arguments are specified, the dictionary
       is then extended with those key/value pairs:
       ``d.extend(red=1, blue=2)``.
+
+   .. method:: setdefault(key[, default])
+
+      If *key* is in the dictionary, return its the **first** value.
+      If not, insert *key* with a value of *default* and return *default*.
+      *default* defaults to ``None``.
