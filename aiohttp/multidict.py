@@ -89,16 +89,10 @@ class _MultiDict(abc.Mapping):
     # Mapping interface #
 
     def __getitem__(self, key):
-        for k, v in self._items:
-            if k == key:
-                return v
-        raise KeyError(key)
+        return self.getone(key, _marker)
 
     def get(self, key, default=None):
-        for k, v in self._items:
-            if k == key:
-                return v
-        return default
+        return self.getone(key, default)
 
     def __iter__(self):
         return iter(self.keys())
