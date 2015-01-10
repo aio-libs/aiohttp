@@ -130,8 +130,8 @@ MultiDict
       only first key occurrences otherwise.
 
 
-MultiDict
----------
+CIMultiDict
+-----------
 
 
 .. class:: CIMultiDict(**kwargs)
