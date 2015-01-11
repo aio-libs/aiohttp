@@ -8,7 +8,7 @@ import unittest.mock
 import aiohttp
 from aiohttp import errors
 from aiohttp import protocol
-from aiohttp import CIMutableMultiDict
+from aiohttp import CIMultiDict
 
 
 class ParseHeadersTests(unittest.TestCase):
@@ -243,7 +243,7 @@ class ParsePayloadTests(unittest.TestCase):
     def test_http_payload_parser_length_broken(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1),
-            CIMutableMultiDict([('CONTENT-LENGTH', 'qwe')]),
+            CIMultiDict([('CONTENT-LENGTH', 'qwe')]),
             None, None)
         out = aiohttp.FlowControlDataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
@@ -253,7 +253,7 @@ class ParsePayloadTests(unittest.TestCase):
     def test_http_payload_parser_length_wrong(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1),
-            CIMutableMultiDict([('CONTENT-LENGTH', '-1')]), None, None)
+            CIMultiDict([('CONTENT-LENGTH', '-1')]), None, None)
         out = aiohttp.FlowControlDataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg)(out, buf)
@@ -262,7 +262,7 @@ class ParsePayloadTests(unittest.TestCase):
     def test_http_payload_parser_length(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1),
-            CIMutableMultiDict([('CONTENT-LENGTH', '2')]), None, None)
+            CIMultiDict([('CONTENT-LENGTH', '2')]), None, None)
         out = aiohttp.FlowControlDataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg)(out, buf)
@@ -277,7 +277,7 @@ class ParsePayloadTests(unittest.TestCase):
 
     def test_http_payload_parser_no_length(self):
         msg = protocol.RawRequestMessage(
-            'GET', '/', (1, 1), CIMutableMultiDict(), None, None)
+            'GET', '/', (1, 1), CIMultiDict(), None, None)
         out = aiohttp.FlowControlDataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg, readall=False)(out, buf)
@@ -291,7 +291,7 @@ class ParsePayloadTests(unittest.TestCase):
     def test_http_payload_parser_deflate(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1),
-            CIMutableMultiDict([('CONTENT-LENGTH', len(self._COMPRESSED))]),
+            CIMultiDict([('CONTENT-LENGTH', len(self._COMPRESSED))]),
             None, 'deflate')
 
         out = aiohttp.FlowControlDataQueue(self.stream)
@@ -304,7 +304,7 @@ class ParsePayloadTests(unittest.TestCase):
     def test_http_payload_parser_deflate_disabled(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1),
-            CIMutableMultiDict([('CONTENT-LENGTH', len(self._COMPRESSED))]),
+            CIMultiDict([('CONTENT-LENGTH', len(self._COMPRESSED))]),
             None, 'deflate')
 
         out = aiohttp.FlowControlDataQueue(self.stream)
@@ -317,7 +317,7 @@ class ParsePayloadTests(unittest.TestCase):
     def test_http_payload_parser_websocket(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1),
-            CIMutableMultiDict([('SEC-WEBSOCKET-KEY1', '13')]), None, None)
+            CIMultiDict([('SEC-WEBSOCKET-KEY1', '13')]), None, None)
         out = aiohttp.FlowControlDataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg)(out, buf)
@@ -328,7 +328,7 @@ class ParsePayloadTests(unittest.TestCase):
     def test_http_payload_parser_chunked(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1),
-            CIMutableMultiDict([('TRANSFER-ENCODING', 'chunked')]),
+            CIMultiDict([('TRANSFER-ENCODING', 'chunked')]),
             None, None)
         out = aiohttp.FlowControlDataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
@@ -340,7 +340,7 @@ class ParsePayloadTests(unittest.TestCase):
 
     def test_http_payload_parser_eof(self):
         msg = protocol.RawRequestMessage(
-            'GET', '/', (1, 1), CIMutableMultiDict(), None, None)
+            'GET', '/', (1, 1), CIMultiDict(), None, None)
         out = aiohttp.FlowControlDataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg, readall=True)(out, buf)
@@ -353,7 +353,7 @@ class ParsePayloadTests(unittest.TestCase):
     def test_http_payload_parser_length_zero(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1),
-            CIMutableMultiDict([('CONTENT-LENGTH', '0')]), None, None)
+            CIMultiDict([('CONTENT-LENGTH', '0')]), None, None)
         out = aiohttp.FlowControlDataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg)(out, buf)
@@ -389,7 +389,7 @@ class ParseRequestTests(unittest.TestCase):
             pass
         result = out._buffer[0]
         self.assertEqual(
-            ('GET', '/path', (1, 1), CIMutableMultiDict(), False, None),
+            ('GET', '/path', (1, 1), CIMultiDict(), False, None),
             result)
 
     def test_http_request_parser_utf8(self):
@@ -405,7 +405,7 @@ class ParseRequestTests(unittest.TestCase):
         result = out._buffer[0]
         self.assertEqual(
             ('GET', '/path', (1, 1),
-             CIMutableMultiDict([('X-TEST', 'тест')]), False, None),
+             CIMultiDict([('X-TEST', 'тест')]), False, None),
             result)
 
     def test_http_request_parser_eof(self):
@@ -431,7 +431,7 @@ class ParseRequestTests(unittest.TestCase):
         except StopIteration:
             pass
         self.assertEqual(
-            ('GET', '//path', (1, 1), CIMutableMultiDict(), False, None),
+            ('GET', '//path', (1, 1), CIMultiDict(), False, None),
             out._buffer[0])
 
     def test_http_request_parser_bad_status_line(self):
@@ -481,7 +481,7 @@ class ParseResponseTests(unittest.TestCase):
         self.assertEqual(v, (1, 1))
         self.assertEqual(s, 200)
         self.assertEqual(r, 'Ok')
-        self.assertEqual(h, CIMutableMultiDict([('X-TEST', 'тест')]))
+        self.assertEqual(h, CIMultiDict([('X-TEST', 'тест')]))
 
     def test_http_response_parser_bad_status_line(self):
         out = aiohttp.FlowControlDataQueue(self.stream)

@@ -17,9 +17,9 @@ from .abc import AbstractRouter, AbstractMatchInfo
 from .helpers import reify
 from .log import web_logger
 from .multidict import (CIMultiDictProxy,
-                        CIMutableMultiDict,
+                        CIMultiDict,
                         MultiDictProxy,
-                        MutableMultiDict,
+                        MultiDict,
                         upstr)
 from .protocol import Response as ResponseImpl, HttpVersion, HttpVersion11
 from .server import ServerHttpProtocol
@@ -230,7 +230,7 @@ class Request(HeadersMixin):
 
         Lazy property.
         """
-        return MultiDictProxy(MutableMultiDict(parse_qsl(self._query_string)))
+        return MultiDictProxy(MultiDict(parse_qsl(self._query_string)))
 
     @reify
     def POST(self):
@@ -331,14 +331,14 @@ class Request(HeadersMixin):
         if self._post is not None:
             return self._post
         if self.method not in ('POST', 'PUT', 'PATCH'):
-            self._post = MultiDictProxy(MutableMultiDict())
+            self._post = MultiDictProxy(MultiDict())
             return self._post
 
         content_type = self.content_type
         if (content_type not in ('',
                                  'application/x-www-form-urlencoded',
                                  'multipart/form-data')):
-            self._post = MultiDictProxy(MutableMultiDict())
+            self._post = MultiDictProxy(MultiDict())
             return self._post
 
         body = yield from self.read()
@@ -359,7 +359,7 @@ class Request(HeadersMixin):
             'quoted-printable': binascii.a2b_qp
         }
 
-        out = MutableMultiDict()
+        out = MultiDict()
         for field in fs.list or ():
             transfer_encoding = field.headers.get(
                 'Content-Transfer-Encoding', None)
@@ -395,7 +395,7 @@ class StreamResponse(HeadersMixin):
     def __init__(self, *, status=200, reason=None):
         self._body = None
         self._keep_alive = None
-        self._headers = CIMutableMultiDict()
+        self._headers = CIMultiDict()
         self._cookies = http.cookies.SimpleCookie()
         self.set_status(status, reason)
 

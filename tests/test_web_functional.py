@@ -5,7 +5,7 @@ import socket
 import unittest
 import tempfile
 from aiohttp import web, request, FormData
-from aiohttp.multidict import MutableMultiDict
+from aiohttp.multidict import MultiDict
 
 
 class TestWebFunctional(unittest.TestCase):
@@ -312,7 +312,7 @@ class TestWebFunctional(unittest.TestCase):
             _, _, url = yield from self.create_server('POST', '/', handler)
             resp = yield from request(
                 'POST', url,
-                data=MutableMultiDict([('a', 1), ('a', 2)]),
+                data=MultiDict([('a', 1), ('a', 2)]),
                 loop=self.loop)
             self.assertEqual(200, resp.status)
             txt = yield from resp.text()

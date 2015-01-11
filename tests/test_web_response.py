@@ -1,7 +1,7 @@
 import asyncio
 import unittest
 from unittest import mock
-from aiohttp.multidict import CIMutableMultiDict
+from aiohttp.multidict import CIMultiDict
 from aiohttp.web import Request, StreamResponse, Response
 from aiohttp.protocol import RawRequestMessage, HttpVersion11
 
@@ -15,7 +15,7 @@ class TestStreamResponse(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
-    def make_request(self, method, path, headers=CIMutableMultiDict()):
+    def make_request(self, method, path, headers=CIMultiDict()):
         self.app = mock.Mock()
         message = RawRequestMessage(method, path, HttpVersion11, headers,
                                     False, False)
@@ -271,7 +271,7 @@ class TestResponse(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
-    def make_request(self, method, path, headers=CIMutableMultiDict()):
+    def make_request(self, method, path, headers=CIMultiDict()):
         self.app = mock.Mock()
         message = RawRequestMessage(method, path, HttpVersion11, headers,
                                     False, False)
@@ -290,7 +290,7 @@ class TestResponse(unittest.TestCase):
         self.assertEqual('OK', resp.reason)
         self.assertIsNone(resp.body)
         self.assertEqual(0, resp.content_length)
-        self.assertEqual(CIMutableMultiDict([('CONTENT-LENGTH', '0')]),
+        self.assertEqual(CIMultiDict([('CONTENT-LENGTH', '0')]),
                          resp.headers)
 
     def test_ctor_with_headers_and_status(self):
@@ -299,7 +299,7 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(201, resp.status)
         self.assertEqual(b'body', resp.body)
         self.assertEqual(4, resp.content_length)
-        self.assertEqual(CIMutableMultiDict(
+        self.assertEqual(CIMultiDict(
             [('AGE', '12'),
              ('CONTENT-LENGTH', '4')]), resp.headers)
 
@@ -309,7 +309,7 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(200, resp.status)
         self.assertEqual('OK', resp.reason)
         self.assertEqual(
-            CIMutableMultiDict(
+            CIMultiDict(
                 [('CONTENT-TYPE', 'application/json'),
                  ('CONTENT-LENGTH', '0')]),
             resp.headers)
@@ -324,7 +324,7 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(200, resp.status)
         self.assertEqual('OK', resp.reason)
         self.assertEqual(
-            CIMutableMultiDict(
+            CIMultiDict(
                 [('CONTENT-TYPE', 'text/plain; charset=utf-8'),
                  ('CONTENT-LENGTH', '9')]),
             resp.headers)

@@ -3,7 +3,7 @@ import unittest
 from unittest import mock
 
 from aiohttp import web, log
-from aiohttp.multidict import CIMutableMultiDict
+from aiohttp.multidict import CIMultiDict
 from aiohttp.protocol import HttpVersion11, RawRequestMessage
 
 
@@ -25,7 +25,7 @@ class TestWeb(unittest.TestCase):
         app.router.add_route('GET', '/', handler)
         h = app.make_handler()()
         message = RawRequestMessage('GET', '/', HttpVersion11,
-                                    CIMutableMultiDict(), False, False)
+                                    CIMultiDict(), False, False)
         payload = mock.Mock()
 
         with self.assertRaises(RuntimeError):

@@ -3,7 +3,7 @@ from collections import abc
 import sys
 
 __all__ = ['MultiDictProxy', 'CIMultiDictProxy',
-           'MutableMultiDict', 'CIMutableMultiDict']
+           'MultiDict', 'CIMultiDict']
 
 _marker = object()
 
@@ -82,7 +82,7 @@ class _Base:
             return NotImplemented
         if isinstance(other, _MultiDictProxy):
             return self._items == other._items
-        elif isinstance(other, _MutableMultiDict):
+        elif isinstance(other, _MultiDict):
             return self._items == other._items
         for k, v in self.items():
             nv = other.get(k, _marker)
@@ -127,7 +127,7 @@ class _CIBase(_Base):
 class _MultiDictProxy(_Base, abc.Mapping):
 
     def __init__(self, arg):
-        if not isinstance(arg, _MutableMultiDict):
+        if not isinstance(arg, _MultiDict):
             raise TypeError(
                 'MultiDictProxy requires MultiDict instance, not {}'.format(
                     type(arg)))
@@ -136,13 +136,13 @@ class _MultiDictProxy(_Base, abc.Mapping):
 
     def copy(self):
         """Returns a copy itself."""
-        return _MutableMultiDict(self.items())
+        return _MultiDict(self.items())
 
 
 class _CIMultiDictProxy(_CIBase, _MultiDictProxy):
 
     def __init__(self, arg):
-        if not isinstance(arg, _CIMutableMultiDict):
+        if not isinstance(arg, _CIMultiDict):
             raise TypeError(
                 'CIMultiDictProxy requires CIMultiDict instance, not {}'
                 .format(type(arg)))
@@ -151,10 +151,10 @@ class _CIMultiDictProxy(_CIBase, _MultiDictProxy):
 
     def copy(self):
         """Returns a copy itself."""
-        return _CIMutableMultiDict(self.items())
+        return _CIMultiDict(self.items())
 
 
-class MutableMultiDictMixin:
+class MultiDictMixin:
 
     def __init__(self, *args, **kwargs):
         if len(args) > 1:
@@ -189,7 +189,7 @@ class MutableMultiDictMixin:
         return cls(self.items())
 
     def extend(self, *args, **kwargs):
-        """Extends current MutableMultiDict with more values.
+        """Extends current MultiDict with more values.
 
         This method must be used instead of update.
         """
@@ -199,7 +199,7 @@ class MutableMultiDictMixin:
         if args:
             if isinstance(args[0], _MultiDictProxy):
                 items = args[0].items()
-            elif isinstance(args[0], _MutableMultiDict):
+            elif isinstance(args[0], _MultiDict):
                 items = args[0].items()
             elif hasattr(args[0], 'items'):
                 items = args[0].items()
@@ -211,10 +211,10 @@ class MutableMultiDictMixin:
             self.add(key, value)
 
     def clear(self):
-        """Remove all items from MutableMultiDict"""
+        """Remove all items from MultiDict"""
         self._items.clear()
 
-    # MutableMapping interface #
+    # Mapping interface #
 
     def __setitem__(self, key, value):
         try:
@@ -253,11 +253,11 @@ class MutableMultiDictMixin:
         raise NotImplementedError("Use extend method instead")
 
 
-class _MutableMultiDict(_Base, MutableMultiDictMixin, abc.MutableMapping):
+class _MultiDict(_Base, MultiDictMixin, abc.MutableMapping):
     """An ordered dictionary that can have multiple values for each key."""
 
 
-class _CIMutableMultiDict(_CIBase, _MutableMultiDict):
+class _CIMultiDict(_CIBase, _MultiDict):
     """An ordered dictionary that can have multiple values for each key."""
 
     def _fill(self, ipairs):
@@ -336,12 +336,12 @@ class _KeysView(_ViewBase, abc.KeysView):
 try:
     from ._multidict import (MultiDictProxy,
                              CIMultiDictProxy,
-                             MutableMultiDict,
-                             CIMutableMultiDict,
+                             MultiDict,
+                             CIMultiDict,
                              upstr)
 except ImportError:
     MultiDictProxy = _MultiDictProxy
     CIMultiDictProxy = _CIMultiDictProxy
-    MutableMultiDict = _MutableMultiDict
-    CIMutableMultiDict = _CIMutableMultiDict
+    MultiDict = _MultiDict
+    CIMultiDict = _CIMultiDict
     upstr = _upstr

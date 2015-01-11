@@ -13,7 +13,7 @@ from unittest import mock
 import aiohttp
 from aiohttp import client
 from aiohttp import test_utils
-from aiohttp.multidict import MutableMultiDict
+from aiohttp.multidict import MultiDict
 
 
 class HttpClientFunctionalTests(unittest.TestCase):
@@ -191,7 +191,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
                 client.request('get', httpd.url('method', 'get'),
-                               params=MutableMultiDict(
+                               params=MultiDict(
                                    [('q', 'test1'), ('q', 'test2')]),
                                loop=self.loop))
             content = self.loop.run_until_complete(r.content.read())
@@ -292,7 +292,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
             r = self.loop.run_until_complete(
-                client.request('post', url, data=MutableMultiDict(
+                client.request('post', url, data=MultiDict(
                     [('q', 'test1'), ('q', 'test2')]),
                     loop=self.loop))
             self.assertEqual(r.status, 200)
@@ -568,7 +568,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             r = self.loop.run_until_complete(
                 client.request('post', url,
                                data=(('test', 'true'),
-                                     MutableMultiDict(
+                                     MultiDict(
                                          [('q', 't1'), ('q', 't2')]),
                                      data),
                                loop=self.loop))
@@ -921,7 +921,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             r = self.loop.run_until_complete(
                 client.request(
                     'post', url, data=data,
-                    headers=MutableMultiDict(
+                    headers=MultiDict(
                         {'Content-Length': str(len(data))}),
                     loop=self.loop))
             content = self.loop.run_until_complete(r.json())

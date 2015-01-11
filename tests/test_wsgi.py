@@ -24,7 +24,7 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
         self.transport = unittest.mock.Mock()
         self.transport.get_extra_info.return_value = '127.0.0.1'
 
-        self.headers = multidict.MutableMultiDict()
+        self.headers = multidict.MultiDict()
         self.message = protocol.RawRequestMessage(
             'GET', '/path', (1, 0), self.headers, True, 'deflate')
         self.payload = aiohttp.FlowControlDataQueue(self.reader)

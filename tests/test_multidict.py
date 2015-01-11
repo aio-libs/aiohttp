@@ -2,14 +2,14 @@ import sys
 import unittest
 
 from aiohttp.multidict import (MultiDictProxy,
-                               MutableMultiDict,
+                               MultiDict,
                                CIMultiDictProxy,
-                               CIMutableMultiDict,
+                               CIMultiDict,
                                upstr,
                                _MultiDictProxy,
-                               _MutableMultiDict,
+                               _MultiDict,
                                _CIMultiDictProxy,
-                               _CIMutableMultiDict,
+                               _CIMultiDict,
                                _upstr)
 
 
@@ -493,46 +493,46 @@ class _CIMutableMultiDictTests(_Root):
 
 class TestPyMultiDictProxy(_TestProxy, unittest.TestCase):
 
-    cls = _MutableMultiDict
+    cls = _MultiDict
     proxy_cls = _MultiDictProxy
 
 
 class TestPyCIMultiDictProxy(_TestCIProxy, unittest.TestCase):
 
-    cls = _CIMutableMultiDict
+    cls = _CIMultiDict
     proxy_cls = _CIMultiDictProxy
 
 
 class PyMutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
 
-    cls = _MutableMultiDict
+    cls = _MultiDict
 
 
 class PyCIMutableMultiDictTests(_CIMutableMultiDictTests, unittest.TestCase):
 
-    cls = _CIMutableMultiDict
+    cls = _CIMultiDict
 
 
 class TestMultiDictProxy(_TestProxy, unittest.TestCase):
 
-    cls = MutableMultiDict
+    cls = MultiDict
     proxy_cls = MultiDictProxy
 
 
 class TestCIMultiDictProxt(_TestCIProxy, unittest.TestCase):
 
-    cls = CIMutableMultiDict
+    cls = CIMultiDict
     proxy_cls = CIMultiDictProxy
 
 
 class MutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
 
-    cls = MutableMultiDict
+    cls = MultiDict
 
 
 class CIMutableMultiDictTests(_CIMutableMultiDictTests, unittest.TestCase):
 
-    cls = CIMutableMultiDict
+    cls = CIMultiDict
 
 
 class _UpStrMixin:
@@ -595,13 +595,13 @@ class TestPyTypes(TypesMixin, unittest.TestCase):
 
     proxy = _MultiDictProxy
     ciproxy = _CIMultiDictProxy
-    mdict = _MutableMultiDict
-    cimdict = _CIMutableMultiDict
+    mdict = _MultiDict
+    cimdict = _CIMultiDict
 
 
 class TestTypes(TypesMixin, unittest.TestCase):
 
     proxy = MultiDictProxy
     ciproxy = CIMultiDictProxy
-    mdict = MutableMultiDict
-    cimdict = CIMutableMultiDict
+    mdict = MultiDict
+    cimdict = CIMultiDict

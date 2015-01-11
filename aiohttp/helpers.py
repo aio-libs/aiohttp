@@ -71,7 +71,7 @@ class FormData:
         if isinstance(value, io.IOBase):
             self._is_multipart = True
 
-        type_options = multidict.MutableMultiDict({'name': name})
+        type_options = multidict.MultiDict({'name': name})
         if filename is None and isinstance(value, io.IOBase):
             filename = guess_filename(value, name)
         if filename is not None:
@@ -108,7 +108,7 @@ class FormData:
 
             elif isinstance(rec,
                             (multidict.MultiDictProxy,
-                             multidict.MutableMultiDict)):
+                             multidict.MultiDict)):
                 to_add.extend(rec.items())
 
             elif isinstance(rec, (list, tuple)) and len(rec) == 2:

@@ -18,7 +18,7 @@ from wsgiref.handlers import format_date_time
 
 import aiohttp
 from aiohttp import errors
-from aiohttp.multidict import CIMutableMultiDict, upstr
+from aiohttp.multidict import CIMultiDict, upstr
 from aiohttp.log import internal_logger
 
 ASCIISET = set(string.printable)
@@ -63,7 +63,7 @@ class HttpParser:
         """
         close_conn = None
         encoding = None
-        headers = CIMutableMultiDict()
+        headers = CIMultiDict()
 
         lines_idx = 1
         line = lines[1]
@@ -543,7 +543,7 @@ class HttpMessage:
 
         self.chunked = False
         self.length = None
-        self.headers = CIMutableMultiDict()
+        self.headers = CIMultiDict()
         self.headers_sent = False
         self.output_length = 0
         self._output_size = 0

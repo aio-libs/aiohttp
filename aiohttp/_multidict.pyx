@@ -118,8 +118,8 @@ cdef class _Base:
 cdef class MultiDictProxy(_Base):
 
     def __init__(self, arg):
-        cdef MutableMultiDict mdict
-        if not isinstance(arg, MutableMultiDict):
+        cdef MultiDict mdict
+        if not isinstance(arg, MultiDict):
             raise TypeError(
                 'MultiDictProxy requires MultiDict instance, not {}'.format(
                     type(arg)))
@@ -128,7 +128,7 @@ cdef class MultiDictProxy(_Base):
         self._items = mdict._items
 
     def copy(self):
-        return MutableMultiDict(self._items)
+        return MultiDict(self._items)
 
     def __richcmp__(self, other, op):
         cdef MultiDictProxy typed_self = self
@@ -138,7 +138,7 @@ cdef class MultiDictProxy(_Base):
             if isinstance(other, MultiDictProxy):
                 typed_other = other
                 return typed_self._items == typed_other._items
-            elif isinstance(other, MutableMultiDict):
+            elif isinstance(other, MultiDict):
                 typed_other = other
                 return typed_self._items == typed_other._items
             elif not isinstance(other, abc.Mapping):
@@ -152,7 +152,7 @@ cdef class MultiDictProxy(_Base):
             if isinstance(other, MultiDictProxy):
                 typed_other = other
                 return typed_self._items != typed_other._items
-            elif isinstance(other, MutableMultiDict):
+            elif isinstance(other, MultiDict):
                 typed_other = other
                 return typed_self._items == typed_other._items
             elif not isinstance(other, abc.Mapping):
@@ -172,8 +172,8 @@ abc.Mapping.register(MultiDictProxy)
 cdef class CIMultiDictProxy(MultiDictProxy):
 
     def __init__(self, arg):
-        cdef CIMutableMultiDict mdict
-        if not isinstance(arg, CIMutableMultiDict):
+        cdef CIMultiDict mdict
+        if not isinstance(arg, CIMultiDict):
             raise TypeError(
                 'CIMultiDictProxy requires CIMultiDict instance, not {}'.format(
                     type(arg)))
@@ -187,7 +187,7 @@ cdef class CIMultiDictProxy(MultiDictProxy):
         return s.upper()
 
     def copy(self):
-        return CIMutableMultiDict(self._items)
+        return CIMultiDict(self._items)
 
     def getall(self, key, default=_marker):
         return self._getall(self._upper(key), default)
@@ -208,7 +208,7 @@ cdef class CIMultiDictProxy(MultiDictProxy):
 abc.Mapping.register(CIMultiDictProxy)
 
 
-cdef class MutableMultiDict(_Base):
+cdef class MultiDict(_Base):
     """An ordered dictionary that can have multiple values for each key."""
 
     def __init__(self, *args, **kwargs):
@@ -257,14 +257,14 @@ cdef class MutableMultiDict(_Base):
         return cls(self._items)
 
     def extend(self, *args, **kwargs):
-        """Extends current MutableMultiDict with more values.
+        """Extends current MultiDict with more values.
 
         This method must be used instead of update.
         """
         self._extend(args, kwargs, "extend")
 
     def clear(self):
-        """Remove all items from MutableMultiDict"""
+        """Remove all items from MultiDict"""
         self._items.clear()
 
     # MutableMapping interface #
@@ -306,11 +306,11 @@ cdef class MutableMultiDict(_Base):
         raise NotImplementedError("Use extend method instead")
 
     def __richcmp__(self, other, op):
-        cdef MutableMultiDict typed_self = self
-        cdef MutableMultiDict typed_other
+        cdef MultiDict typed_self = self
+        cdef MultiDict typed_other
         cdef tuple item
         if op == 2:
-            if isinstance(other, MutableMultiDict):
+            if isinstance(other, MultiDict):
                 typed_other = other
                 return typed_self._items == typed_other._items
             elif not isinstance(other, abc.Mapping):
@@ -321,7 +321,7 @@ cdef class MutableMultiDict(_Base):
                     return False
             return True
         elif op != 2:
-            if isinstance(other, MutableMultiDict):
+            if isinstance(other, MultiDict):
                 typed_other = other
                 return typed_self._items == typed_other._items
             elif not isinstance(other, abc.Mapping):
@@ -336,10 +336,10 @@ cdef class MutableMultiDict(_Base):
 
 
 
-abc.MutableMapping.register(MutableMultiDict)
+abc.MutableMapping.register(MultiDict)
 
 
-cdef class CIMutableMultiDict(MutableMultiDict):
+cdef class CIMultiDict(MultiDict):
     """An ordered dictionary that can have multiple values for each key."""
 
     cdef _add(self, tuple item):
@@ -372,14 +372,14 @@ cdef class CIMutableMultiDict(MutableMultiDict):
         self._add((key, value))
 
     def extend(self, *args, **kwargs):
-        """Extends current MutableMultiDict with more values.
+        """Extends current MultiDict with more values.
 
         This method must be used instead of update.
         """
         self._extend(args, kwargs, "extend")
 
     def clear(self):
-        """Remove all items from MutableMultiDict"""
+        """Remove all items from MultiDict"""
         self._items = []
 
     # MutableMapping interface #
@@ -413,7 +413,7 @@ cdef class CIMutableMultiDict(MutableMultiDict):
         raise NotImplementedError("Use extend method instead")
 
 
-abc.MutableMapping.register(CIMutableMultiDict)
+abc.MutableMapping.register(CIMultiDict)
 
 
 cdef class _ViewBase:
