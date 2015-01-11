@@ -1,4 +1,3 @@
-from itertools import chain
 from collections import abc
 import sys
 
@@ -103,11 +102,6 @@ class _Base:
 
 class _CIBase(_Base):
 
-    def _fill(self, ipairs):
-        for key, value in ipairs:
-            uppkey = key.upper()
-            self._items.append((uppkey, value))
-
     def getall(self, key, default=_marker):
         return super().getall(key.upper(), default)
 
@@ -157,25 +151,9 @@ class _CIMultiDictProxy(_CIBase, _MultiDictProxy):
 class _MultiDict(_Base, abc.MutableMapping):
 
     def __init__(self, *args, **kwargs):
-        if len(args) > 1:
-            raise TypeError("MultiDict takes at most 1 positional "
-                            "argument ({} given)".format(len(args)))
-
         self._items = []
-        if args:
-            if hasattr(args[0], 'items'):
-                args = list(args[0].items())
-            else:
-                args = list(args[0])
-                for arg in args:
-                    if not len(arg) == 2:
-                        raise TypeError("MultiDict takes either dict "
-                                        "or list of (key, value) tuples")
 
-        self._fill(chain(args, kwargs.items()))
-
-    def _fill(self, ipairs):
-        self._items.extend(ipairs)
+        self._extend(args, kwargs, self.__class__.__name__, self.add)
 
     def add(self, key, value):
         """
@@ -193,9 +171,12 @@ class _MultiDict(_Base, abc.MutableMapping):
 
         This method must be used instead of update.
         """
+        self._extend(args, kwargs, 'extend', self.add)
+
+    def _extend(self, args, kwargs, name, method):
         if len(args) > 1:
-            raise TypeError("extend takes at most 2 positional arguments"
-                            " ({} given)".format(len(args) + 1))
+            raise TypeError("{} takes at most 1 positional argument"
+                            " ({} given)".format(name, len(args)))
         if args:
             if isinstance(args[0], _MultiDictProxy):
                 items = args[0].items()
@@ -205,10 +186,12 @@ class _MultiDict(_Base, abc.MutableMapping):
                 items = args[0].items()
             else:
                 items = args[0]
-        else:
-            items = []
-        for key, value in chain(items, kwargs.items()):
-            self.add(key, value)
+
+            for item in items:
+                method(*item)
+
+        for item in kwargs.items():
+            method(*item)
 
     def clear(self):
         """Remove all items from MultiDict"""
@@ -262,16 +245,16 @@ class _MultiDict(_Base, abc.MutableMapping):
         else:
             raise KeyError("empty multidict")
 
-    def update(self, *args, **kw):
-        """Method not allowed."""
-        raise NotImplementedError("Use extend method instead")
+    def update(self, *args, **kwargs):
+        self._extend(args, kwargs, 'update', self._replace)
+
+    def _replace(self, key, value):
+        if key in self:
+            del self[key]
+        self.add(key, value)
 
 
 class _CIMultiDict(_CIBase, _MultiDict):
-
-    def _fill(self, ipairs):
-        for key, value in ipairs:
-            self._items.append((key.upper(), value))
 
     def add(self, key, value):
         super().add(key.upper(), value)
@@ -281,6 +264,9 @@ class _CIMultiDict(_CIBase, _MultiDict):
 
     def __delitem__(self, key):
         super().__delitem__(key.upper())
+
+    def _replace(self, key, value):
+        super()._replace(key.upper(), value)
 
 
 class _ViewBase:

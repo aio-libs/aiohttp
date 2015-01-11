@@ -478,11 +478,15 @@ class _BaseMutableMultiDictTests(_BaseTest):
 
         self.assertIn('other', d)
 
-    def test_not_implemented_methods(self):
+    def test_update(self):
         d = self.make_dict()
+        d.add('key', 'val1')
+        d.add('key', 'val2')
+        d.add('key2', 'val3')
 
-        with self.assertRaises(NotImplementedError):
-            d.update(bar='baz')
+        d.update(key='val')
+
+        self.assertEqual([('key2', 'val3'), ('key', 'val')], list(d.items()))
 
 
 class _CIMutableMultiDictTests(_Root):
