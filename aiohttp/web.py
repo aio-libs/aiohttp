@@ -11,14 +11,15 @@ import re
 import os
 
 from urllib.parse import urlsplit, parse_qsl, urlencode, unquote
+from types import MappingProxyType
 
 from .abc import AbstractRouter, AbstractMatchInfo
 from .helpers import reify
 from .log import web_logger
-from .multidict import (CIMultiDict,
-                        CIMutableMultiDict,
+from .multidict import (CIMultiDictProxy,
+                        CIMultiDict,
+                        MultiDictProxy,
                         MultiDict,
-                        MutableMultiDict,
                         upstr)
 from .protocol import Response as ResponseImpl, HttpVersion, HttpVersion11
 from .server import ServerHttpProtocol
@@ -144,22 +145,22 @@ FileField = collections.namedtuple('Field', 'name filename file content_type')
 
 class Request(HeadersMixin):
 
-    def __init__(self, app, message, payload, transport, reader, writer):
+    def __init__(self, app, message, payload, transport, reader, writer, *,
+                 HOST_ID=upstr('HOST')):
         self._app = app
         self._version = message.version
         self._transport = transport
         self._reader = reader
         self._writer = writer
         self._method = message.method
-        self._host = message.headers.get('HOST')
+        self._host = message.headers.get(HOST_ID)
         self._path_qs = message.path
         res = urlsplit(message.path)
         self._path = unquote(res.path)
         self._query_string = res.query
         self._post = None
         self._post_files_cache = None
-        self._headers = CIMultiDict._from_uppercase_multidict(
-            message.headers)
+        self._headers = CIMultiDictProxy(message.headers)
 
         if self._version < HttpVersion11:
             self._keep_alive = False
@@ -229,7 +230,7 @@ class Request(HeadersMixin):
 
         Lazy property.
         """
-        return MultiDict(parse_qsl(self._query_string))
+        return MultiDictProxy(MultiDict(parse_qsl(self._query_string)))
 
     @reify
     def POST(self):
@@ -278,8 +279,8 @@ class Request(HeadersMixin):
         if self._cookies is None:
             raw = self.headers.get('COOKIE', '')
             parsed = http.cookies.SimpleCookie(raw)
-            self._cookies = MultiDict({key: val.value
-                                       for key, val in parsed.items()})
+            self._cookies = MappingProxyType(
+                {key: val.value for key, val in parsed.items()})
         return self._cookies
 
     @property
@@ -330,14 +331,14 @@ class Request(HeadersMixin):
         if self._post is not None:
             return self._post
         if self.method not in ('POST', 'PUT', 'PATCH'):
-            self._post = MultiDict()
+            self._post = MultiDictProxy(MultiDict())
             return self._post
 
         content_type = self.content_type
         if (content_type not in ('',
                                  'application/x-www-form-urlencoded',
                                  'multipart/form-data')):
-            self._post = MultiDict()
+            self._post = MultiDictProxy(MultiDict())
             return self._post
 
         body = yield from self.read()
@@ -358,7 +359,7 @@ class Request(HeadersMixin):
             'quoted-printable': binascii.a2b_qp
         }
 
-        out = MutableMultiDict()
+        out = MultiDict()
         for field in fs.list or ():
             transfer_encoding = field.headers.get(
                 'Content-Transfer-Encoding', None)
@@ -380,7 +381,7 @@ class Request(HeadersMixin):
                         transfer_encoding](value)
                 out.add(field.name, value)
 
-        self._post = MultiDict(out.items())
+        self._post = MultiDictProxy(out)
         return self._post
 
 
@@ -394,7 +395,7 @@ class StreamResponse(HeadersMixin):
     def __init__(self, *, status=200, reason=None):
         self._body = None
         self._keep_alive = None
-        self._headers = CIMutableMultiDict()
+        self._headers = CIMultiDict()
         self._cookies = http.cookies.SimpleCookie()
         self.set_status(status, reason)
 

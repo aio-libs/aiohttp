@@ -1,7 +1,7 @@
 import asyncio
 import unittest
 from unittest import mock
-from aiohttp.multidict import MultiDict, CIMultiDict
+from aiohttp.multidict import CIMultiDict
 from aiohttp.web import Request, StreamResponse, Response
 from aiohttp.protocol import RawRequestMessage, HttpVersion11
 
@@ -15,7 +15,7 @@ class TestStreamResponse(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
-    def make_request(self, method, path, headers=MultiDict()):
+    def make_request(self, method, path, headers=CIMultiDict()):
         self.app = mock.Mock()
         message = RawRequestMessage(method, path, HttpVersion11, headers,
                                     False, False)
@@ -271,7 +271,7 @@ class TestResponse(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
-    def make_request(self, method, path, headers=MultiDict()):
+    def make_request(self, method, path, headers=CIMultiDict()):
         self.app = mock.Mock()
         message = RawRequestMessage(method, path, HttpVersion11, headers,
                                     False, False)
@@ -299,9 +299,9 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(201, resp.status)
         self.assertEqual(b'body', resp.body)
         self.assertEqual(4, resp.content_length)
-        self.assertEqual(CIMultiDict([('AGE', '12'),
-                                      ('CONTENT-LENGTH', '4')]),
-                         resp.headers)
+        self.assertEqual(CIMultiDict(
+            [('AGE', '12'),
+             ('CONTENT-LENGTH', '4')]), resp.headers)
 
     def test_ctor_content_type(self):
         resp = Response(content_type='application/json')
@@ -309,8 +309,9 @@ class TestResponse(unittest.TestCase):
         self.assertEqual(200, resp.status)
         self.assertEqual('OK', resp.reason)
         self.assertEqual(
-            CIMultiDict([('CONTENT-TYPE', 'application/json'),
-                         ('CONTENT-LENGTH', '0')]),
+            CIMultiDict(
+                [('CONTENT-TYPE', 'application/json'),
+                 ('CONTENT-LENGTH', '0')]),
             resp.headers)
 
     def test_ctor_text_body_combined(self):

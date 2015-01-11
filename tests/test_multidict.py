@@ -1,15 +1,15 @@
 import sys
 import unittest
 
-from aiohttp.multidict import (MultiDict,
-                               MutableMultiDict,
+from aiohttp.multidict import (MultiDictProxy,
+                               MultiDict,
+                               CIMultiDictProxy,
                                CIMultiDict,
-                               CIMutableMultiDict,
                                upstr,
+                               _MultiDictProxy,
                                _MultiDict,
-                               _MutableMultiDict,
+                               _CIMultiDictProxy,
                                _CIMultiDict,
-                               _CIMutableMultiDict,
                                _upstr)
 
 
@@ -23,8 +23,7 @@ class _Root:
 
     cls = None
 
-    def make_dict(self, *args, **kwargs):
-        return self.cls(*args, **kwargs)
+    proxy_cls = None
 
     def test_exposed_names(self):
         name = self.cls.__name__
@@ -93,13 +92,6 @@ class _BaseTest(_Root):
             d.getone('key2')
 
         self.assertEqual('default', d.getone('key2', 'default'))
-
-    def test_copy(self):
-        d1 = self.make_dict(key='value', a='b')
-
-        d2 = d1.copy()
-        self.assertEqual(d1, d2)
-        self.assertIsNot(d1, d2)
 
     def test__iter__(self):
         d = self.make_dict([('key', 'one'), ('key2', 'two'), ('key', 3)])
@@ -249,11 +241,13 @@ class _MultiDictTests(_BaseTest):
 
     def test__repr__(self):
         d = self.make_dict()
-        self.assertEqual(str(d), "<%s {}>" % self.cls.__name__)
+        cls = self.proxy_cls if self.proxy_cls is not None else self.cls
+
+        self.assertEqual(str(d), "<%s {}>" % cls.__name__)
         d = self.make_dict([('key', 'one'), ('key', 'two')])
         self.assertEqual(
             str(d),
-            "<%s {'key': 'one', 'key': 'two'}>" % self.cls.__name__)
+            "<%s {'key': 'one', 'key': 'two'}>" % cls.__name__)
 
     def test_getall(self):
         d = self.make_dict([('key', 'value1')], key='value2')
@@ -311,7 +305,47 @@ class _CIMultiDictTests(_Root):
         self.assertEqual(1, d['a'])
 
 
+class _TestProxy(_MultiDictTests):
+
+    def make_dict(self, *args, **kwargs):
+        dct = self.cls(*args, **kwargs)
+        return self.proxy_cls(dct)
+
+    def test_copy(self):
+        d1 = self.cls(key='value', a='b')
+        p1 = self.proxy_cls(d1)
+
+        d2 = p1.copy()
+        self.assertEqual(d1, d2)
+        self.assertIsNot(d1, d2)
+
+
+class _TestCIProxy(_CIMultiDictTests):
+
+    def make_dict(self, *args, **kwargs):
+        dct = self.cls(*args, **kwargs)
+        return self.proxy_cls(dct)
+
+    def test_copy(self):
+        d1 = self.cls(key='value', a='b')
+        p1 = self.proxy_cls(d1)
+
+        d2 = p1.copy()
+        self.assertEqual(d1, d2)
+        self.assertIsNot(d1, d2)
+
+
 class _BaseMutableMultiDictTests(_BaseTest):
+
+    def test_copy(self):
+        d1 = self.make_dict(key='value', a='b')
+
+        d2 = d1.copy()
+        self.assertEqual(d1, d2)
+        self.assertIsNot(d1, d2)
+
+    def make_dict(self, *args, **kwargs):
+        return self.cls(*args, **kwargs)
 
     def test__repr__(self):
         d = self.make_dict()
@@ -421,6 +455,9 @@ class _BaseMutableMultiDictTests(_BaseTest):
 
 class _CIMutableMultiDictTests(_Root):
 
+    def make_dict(self, *args, **kwargs):
+        return self.cls(*args, **kwargs)
+
     def test_getall(self):
         d = self.make_dict([('KEY', 'value1')], KEY='value2')
 
@@ -454,44 +491,48 @@ class _CIMutableMultiDictTests(_Root):
         self.assertNotIn('K1', d)
 
 
-class PyMultiDictTests(_MultiDictTests, unittest.TestCase):
+class TestPyMultiDictProxy(_TestProxy, unittest.TestCase):
 
     cls = _MultiDict
+    proxy_cls = _MultiDictProxy
 
 
-class PyCIMultiDictTests(_CIMultiDictTests, unittest.TestCase):
+class TestPyCIMultiDictProxy(_TestCIProxy, unittest.TestCase):
 
     cls = _CIMultiDict
+    proxy_cls = _CIMultiDictProxy
 
 
 class PyMutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
 
-    cls = _MutableMultiDict
+    cls = _MultiDict
 
 
 class PyCIMutableMultiDictTests(_CIMutableMultiDictTests, unittest.TestCase):
 
-    cls = _CIMutableMultiDict
+    cls = _CIMultiDict
 
 
-class MultiDictTests(_MultiDictTests, unittest.TestCase):
+class TestMultiDictProxy(_TestProxy, unittest.TestCase):
 
     cls = MultiDict
+    proxy_cls = MultiDictProxy
 
 
-class CIMultiDictTests(_CIMultiDictTests, unittest.TestCase):
+class TestCIMultiDictProxt(_TestCIProxy, unittest.TestCase):
 
     cls = CIMultiDict
+    proxy_cls = CIMultiDictProxy
 
 
 class MutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
 
-    cls = MutableMultiDict
+    cls = MultiDict
 
 
 class CIMutableMultiDictTests(_CIMutableMultiDictTests, unittest.TestCase):
 
-    cls = CIMutableMultiDict
+    cls = CIMultiDict
 
 
 class _UpStrMixin:
@@ -523,11 +564,44 @@ class _UpStrMixin:
         self.assertIs(s, s.upper())
 
 
-class PyUpStr(_UpStrMixin, unittest.TestCase):
+class TestPyUpStr(_UpStrMixin, unittest.TestCase):
 
     cls = _upstr
 
 
-class UpStr(_UpStrMixin, unittest.TestCase):
+class TestUpStr(_UpStrMixin, unittest.TestCase):
 
     cls = upstr
+
+
+class TypesMixin:
+
+    proxy = ciproxy = mdict = cimdict = None
+
+    def test_proxies(self):
+        self.assertTrue(issubclass(self.ciproxy, self.proxy))
+
+    def test_dicts(self):
+        self.assertTrue(issubclass(self.cimdict, self.mdict))
+
+    def test_proxy_not_inherited_from_dict(self):
+        self.assertFalse(issubclass(self.proxy, self.mdict))
+
+    def test_dict_not_inherited_from_proxy(self):
+        self.assertFalse(issubclass(self.mdict, self.proxy))
+
+
+class TestPyTypes(TypesMixin, unittest.TestCase):
+
+    proxy = _MultiDictProxy
+    ciproxy = _CIMultiDictProxy
+    mdict = _MultiDict
+    cimdict = _CIMultiDict
+
+
+class TestTypes(TypesMixin, unittest.TestCase):
+
+    proxy = MultiDictProxy
+    ciproxy = CIMultiDictProxy
+    mdict = MultiDict
+    cimdict = CIMultiDict

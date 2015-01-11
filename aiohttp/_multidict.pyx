@@ -26,17 +26,192 @@ class upstr(str):
         return self
 
 
-cdef class MultiDict:
-    """Read-only ordered dictionary that can have multiple values for each key.
-
-    This type of MultiDict must be used for request headers and query args.
-    """
+cdef class _Base:
 
     cdef list _items
     cdef object _upstr
 
-    def __init__(self, *args, **kwargs):
+    def __cinit__(self):
         self._upstr = upstr
+
+
+    def getall(self, key, default=_marker):
+        """
+        Return a list of all values matching the key (may be an empty list)
+        """
+        return self._getall(key, default)
+
+    cdef _getall(self, key, default):
+        cdef list res
+        res = [v for k, v in self._items if k == key]
+        if res:
+            return res
+        if not res and default is not _marker:
+            return default
+        raise KeyError('Key not found: %r' % key)
+
+    def getone(self, key, default=_marker):
+        """
+        Get first value matching the key
+        """
+        return self._getone(key, default)
+
+    cdef _getone(self, key, default):
+        cdef tuple item
+        for item in self._items:
+            if item[0] == key:
+                return item[1]
+        if default is not _marker:
+            return default
+        raise KeyError('Key not found: %r' % key)
+
+    # Mapping interface #
+
+    def __getitem__(self, key):
+        return self._getone(key, _marker)
+
+    def get(self, key, default=None):
+        return self._getone(key, default)
+
+    def __contains__(self, key):
+        return self._contains(key)
+
+    cdef _contains(self, key):
+        cdef tuple item
+        for item in self._items:
+            if item[0] == key:
+                return True
+        return False
+
+    def __iter__(self):
+        return iter(self.keys())
+
+    def __len__(self):
+        return len(self._items)
+
+    def keys(self, *, getall=True):
+        return self._keys_view(getall)
+
+    cdef _KeysView _keys_view(self, getall):
+        return _KeysView.__new__(_KeysView, self._items, getall)
+
+    def items(self, *, getall=True):
+        return self._items_view(getall)
+
+    cdef _ItemsView _items_view(self, getall):
+        return _ItemsView.__new__(_ItemsView, self._items, getall)
+
+    def values(self, *, getall=True):
+        return self._values_view(getall)
+
+    cdef _ValuesView _values_view(self, getall):
+        return _ValuesView.__new__(_ValuesView, self._items, getall)
+
+    def __repr__(self):
+        body = ', '.join("'{}': {!r}".format(k, v) for k, v in self.items())
+        return '<{} {{{}}}>'.format(self.__class__.__name__, body)
+
+
+
+
+
+cdef class MultiDictProxy(_Base):
+
+    def __init__(self, arg):
+        cdef MultiDict mdict
+        if not isinstance(arg, MultiDict):
+            raise TypeError(
+                'MultiDictProxy requires MultiDict instance, not {}'.format(
+                    type(arg)))
+
+        mdict = arg
+        self._items = mdict._items
+
+    def copy(self):
+        return MultiDict(self._items)
+
+    def __richcmp__(self, other, op):
+        cdef MultiDictProxy typed_self = self
+        cdef MultiDictProxy typed_other
+        cdef tuple item
+        if op == 2:
+            if isinstance(other, MultiDictProxy):
+                typed_other = other
+                return typed_self._items == typed_other._items
+            elif isinstance(other, MultiDict):
+                typed_other = other
+                return typed_self._items == typed_other._items
+            elif not isinstance(other, abc.Mapping):
+                return NotImplemented
+            for item in typed_self._items:
+                nv = other.get(item[0], _marker)
+                if item[1] != nv:
+                    return False
+            return True
+        elif op != 2:
+            if isinstance(other, MultiDictProxy):
+                typed_other = other
+                return typed_self._items != typed_other._items
+            elif isinstance(other, MultiDict):
+                typed_other = other
+                return typed_self._items == typed_other._items
+            elif not isinstance(other, abc.Mapping):
+                return NotImplemented
+            for item in typed_self._items:
+                nv = other.get(item[0], _marker)
+                if item[1] == nv:
+                    return True
+            return False
+        else:
+            return NotImplemented
+
+
+abc.Mapping.register(MultiDictProxy)
+
+
+cdef class CIMultiDictProxy(MultiDictProxy):
+
+    def __init__(self, arg):
+        cdef CIMultiDict mdict
+        if not isinstance(arg, CIMultiDict):
+            raise TypeError(
+                'CIMultiDictProxy requires CIMultiDict instance, not {}'.format(
+                    type(arg)))
+
+        mdict = arg
+        self._items = mdict._items
+
+    cdef _upper(self, s):
+        if type(s) is self._upstr:
+            return s
+        return s.upper()
+
+    def copy(self):
+        return CIMultiDict(self._items)
+
+    def getall(self, key, default=_marker):
+        return self._getall(self._upper(key), default)
+
+    def getone(self, key, default=_marker):
+        return self._getone(self._upper(key), default)
+
+    def get(self, key, default=None):
+        return self._getone(self._upper(key), default)
+
+    def __getitem__(self, key):
+        return self._getone(self._upper(key), _marker)
+
+    def __contains__(self, key):
+        return self._contains(self._upper(key))
+
+
+abc.Mapping.register(CIMultiDictProxy)
+
+
+cdef class MultiDict(_Base):
+    """An ordered dictionary that can have multiple values for each key."""
+
+    def __init__(self, *args, **kwargs):
         self._items = []
 
         self._extend(args, kwargs, self.__class__.__name__)
@@ -70,60 +245,36 @@ cdef class MultiDict:
     cdef _add(self, tuple item):
         self._items.append(item)
 
-    def getall(self, key, default=_marker):
+    def add(self, key, value):
         """
-        Return a list of all values matching the key (may be an empty list)
+        Add the key and value, not overwriting any previous value.
         """
-        return self._getall(key, default)
-
-    cdef _getall(self, key, default):
-        cdef list res
-        res = [v for k, v in self._items if k == key]
-        if res:
-            return res
-        if not res and default is not _marker:
-            return default
-        raise KeyError('Key not found: %r' % key)
-
-    def getone(self, key, default=_marker):
-        """
-        Get first value matching the key
-        """
-        return self._getone(key, default)
-
-    cdef _getone(self, key, default):
-        cdef tuple item
-        for item in self._items:
-            if item[0] == key:
-                return item[1]
-        if default is not _marker:
-            return default
-        raise KeyError('Key not found: %r' % key)
-
-    # extra methods #
+        self._add((key, value))
 
     def copy(self):
         """Returns a copy itself."""
         cls = self.__class__
         return cls(self._items)
 
-    # Mapping interface #
+    def extend(self, *args, **kwargs):
+        """Extends current MultiDict with more values.
 
-    def __getitem__(self, key):
-        return self._getone(key, _marker)
+        This method must be used instead of update.
+        """
+        self._extend(args, kwargs, "extend")
 
-    def get(self, key, default=None):
-        return self._getone(key, default)
+    def clear(self):
+        """Remove all items from MultiDict"""
+        self._items.clear()
 
-    def __contains__(self, key):
-        return self._contains(key)
+    # MutableMapping interface #
 
-    cdef _contains(self, key):
-        cdef tuple item
-        for item in self._items:
-            if item[0] == key:
-                return True
-        return False
+    def __setitem__(self, key, value):
+        self._delitem(key, False)
+        self._add((key, value))
+
+    def __delitem__(self, key):
+        self._delitem(key, True)
 
     cdef _delitem(self, key, int raise_key_error):
         cdef int found
@@ -134,134 +285,6 @@ cdef class MultiDict:
                 found = True
         if not found and raise_key_error:
             raise KeyError(key)
-
-    def __iter__(self):
-        return iter(self.keys())
-
-    def __len__(self):
-        return len(self._items)
-
-    def keys(self, *, getall=True):
-        return self._keys_view(getall)
-
-    cdef _KeysView _keys_view(self, getall):
-        return _KeysView.__new__(_KeysView, self._items, getall)
-
-    def items(self, *, getall=True):
-        return self._items_view(getall)
-
-    cdef _ItemsView _items_view(self, getall):
-        return _ItemsView.__new__(_ItemsView, self._items, getall)
-
-    def values(self, *, getall=True):
-        return self._values_view(getall)
-
-    cdef _ValuesView _values_view(self, getall):
-        return _ValuesView.__new__(_ValuesView, self._items, getall)
-
-    def __richcmp__(self, other, op):
-        cdef MultiDict typed_self = self
-        cdef MultiDict typed_other
-        cdef tuple item
-        if op == 2:
-            if not isinstance(other, abc.Mapping):
-                return NotImplemented
-            if isinstance(other, MultiDict):
-                typed_other = other
-                return typed_self._items == typed_other._items
-            for item in typed_self._items:
-                nv = other.get(item[0], _marker)
-                if item[1] != nv:
-                    return False
-            return True
-        elif op != 2:
-            if not isinstance(other, abc.Mapping):
-                return NotImplemented
-            if isinstance(other, MultiDict):
-                typed_other = other
-                return typed_self._items != typed_other._items
-            for item in typed_self._items:
-                nv = other.get(item[0], _marker)
-                if item[1] == nv:
-                    return True
-            return False
-        else:
-            return NotImplemented
-
-    def __repr__(self):
-        body = ', '.join("'{}': {!r}".format(k, v) for k, v in self.items())
-        return '<{} {{{}}}>'.format(self.__class__.__name__, body)
-
-
-abc.Mapping.register(MultiDict)
-
-
-cdef class CIMultiDict(MultiDict):
-    """Case insensitive multi dict."""
-
-    @classmethod
-    def _from_uppercase_multidict(cls, MultiDict dct):
-        # NB: doesn't check for uppercase keys!
-        cdef CIMultiDict ret
-        ret = cls.__new__(cls)
-        ret._items = dct._items
-        return ret
-
-    cdef _upper(self, s):
-        if type(s) is self._upstr:
-            return s
-        return s.upper()
-
-    cdef _add(self, tuple item):
-        self._items.append((self._upper(item[0]), item[1]))
-
-    def getall(self, key, default=_marker):
-        return self._getall(self._upper(key), default)
-
-    def getone(self, key, default=_marker):
-        return self._getone(self._upper(key), default)
-
-    def get(self, key, default=None):
-        return self._getone(self._upper(key), default)
-
-    def __getitem__(self, key):
-        return self._getone(self._upper(key), _marker)
-
-    def __contains__(self, key):
-        return self._contains(self._upper(key))
-
-
-abc.Mapping.register(CIMultiDict)
-
-
-cdef class MutableMultiDict(MultiDict):
-    """An ordered dictionary that can have multiple values for each key."""
-
-    def add(self, key, value):
-        """
-        Add the key and value, not overwriting any previous value.
-        """
-        self._add((key, value))
-
-    def extend(self, *args, **kwargs):
-        """Extends current MutableMultiDict with more values.
-
-        This method must be used instead of update.
-        """
-        self._extend(args, kwargs, "extend")
-
-    def clear(self):
-        """Remove all items from MutableMultiDict"""
-        self._items = []
-
-    # MutableMapping interface #
-
-    def __setitem__(self, key, value):
-        self._delitem(key, False)
-        self._add((key, value))
-
-    def __delitem__(self, key):
-        self._delitem(key, True)
 
     def setdefault(self, key, default=None):
         for k, v in self._items:
@@ -282,12 +305,65 @@ cdef class MutableMultiDict(MultiDict):
         """Method not allowed."""
         raise NotImplementedError("Use extend method instead")
 
+    def __richcmp__(self, other, op):
+        cdef MultiDict typed_self = self
+        cdef MultiDict typed_other
+        cdef tuple item
+        if op == 2:
+            if isinstance(other, MultiDict):
+                typed_other = other
+                return typed_self._items == typed_other._items
+            elif not isinstance(other, abc.Mapping):
+                return NotImplemented
+            for item in typed_self._items:
+                nv = other.get(item[0], _marker)
+                if item[1] != nv:
+                    return False
+            return True
+        elif op != 2:
+            if isinstance(other, MultiDict):
+                typed_other = other
+                return typed_self._items == typed_other._items
+            elif not isinstance(other, abc.Mapping):
+                return NotImplemented
+            for item in typed_self._items:
+                nv = other.get(item[0], _marker)
+                if item[1] == nv:
+                    return True
+            return False
+        else:
+            return NotImplemented
 
-abc.MutableMapping.register(MutableMultiDict)
 
 
-cdef class CIMutableMultiDict(CIMultiDict):
+abc.MutableMapping.register(MultiDict)
+
+
+cdef class CIMultiDict(MultiDict):
     """An ordered dictionary that can have multiple values for each key."""
+
+    cdef _add(self, tuple item):
+        self._items.append((self._upper(item[0]), item[1]))
+
+    cdef _upper(self, s):
+        if type(s) is self._upstr:
+            return s
+        return s.upper()
+
+    def getall(self, key, default=_marker):
+        return self._getall(self._upper(key), default)
+
+    def getone(self, key, default=_marker):
+        return self._getone(self._upper(key), default)
+
+    def get(self, key, default=None):
+        return self._getone(self._upper(key), default)
+
+    def __getitem__(self, key):
+        return self._getone(self._upper(key), _marker)
+
+    def __contains__(self, key):
+        return self._contains(self._upper(key))
 
     def add(self, key, value):
         """
@@ -296,14 +372,14 @@ cdef class CIMutableMultiDict(CIMultiDict):
         self._add((key, value))
 
     def extend(self, *args, **kwargs):
-        """Extends current MutableMultiDict with more values.
+        """Extends current MultiDict with more values.
 
         This method must be used instead of update.
         """
         self._extend(args, kwargs, "extend")
 
     def clear(self):
-        """Remove all items from MutableMultiDict"""
+        """Remove all items from MultiDict"""
         self._items = []
 
     # MutableMapping interface #
@@ -337,7 +413,7 @@ cdef class CIMutableMultiDict(CIMultiDict):
         raise NotImplementedError("Use extend method instead")
 
 
-abc.MutableMapping.register(CIMutableMultiDict)
+abc.MutableMapping.register(CIMultiDict)
 
 
 cdef class _ViewBase:

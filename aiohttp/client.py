@@ -19,7 +19,8 @@ import aiohttp
 from . import helpers, streams
 from .log import client_logger
 from .streams import EOF_MARKER, FlowControlStreamReader
-from .multidict import (CIMultiDict, MultiDict, MutableMultiDict, upstr)
+from .multidict import (CIMultiDictProxy, MultiDictProxy,
+                        MultiDict, upstr)
 
 HTTP_PORT = 80
 HTTPS_PORT = 443
@@ -286,7 +287,7 @@ class ClientRequest:
 
         if isinstance(params, dict):
             params = list(params.items())
-        elif isinstance(params, MultiDict):
+        elif isinstance(params, (MultiDictProxy, MultiDict)):
             params = list(params.items())
 
         if params:
@@ -301,11 +302,11 @@ class ClientRequest:
 
     def update_headers(self, headers):
         """Update request headers."""
-        self.headers = MutableMultiDict()
+        self.headers = MultiDict()
         if headers:
             if isinstance(headers, dict):
                 headers = headers.items()
-            elif isinstance(headers, MultiDict):
+            elif isinstance(headers, (MultiDictProxy, MultiDict)):
                 headers = headers.items()
 
             for key, value in headers:
@@ -662,7 +663,7 @@ class ClientResponse:
         self.reason = self.message.reason
 
         # headers
-        self.headers = CIMultiDict(self.message.headers.items())
+        self.headers = CIMultiDictProxy(self.message.headers)
 
         # payload
         response_with_body = self.method.lower() != 'head'

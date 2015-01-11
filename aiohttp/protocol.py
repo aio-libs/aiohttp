@@ -18,7 +18,7 @@ from wsgiref.handlers import format_date_time
 
 import aiohttp
 from aiohttp import errors
-from aiohttp import multidict
+from aiohttp.multidict import CIMultiDict, upstr
 from aiohttp.log import internal_logger
 
 ASCIISET = set(string.printable)
@@ -63,7 +63,7 @@ class HttpParser:
         """
         close_conn = None
         encoding = None
-        headers = []
+        headers = CIMultiDict()
 
         lines_idx = 1
         line = lines[1]
@@ -121,9 +121,9 @@ class HttpParser:
                 if enc in ('gzip', 'deflate'):
                     encoding = enc
 
-            headers.append((name, value))
+            headers.add(name, value)
 
-        return multidict.MultiDict(headers), close_conn, encoding
+        return headers, close_conn, encoding
 
 
 class HttpPrefixParser:
@@ -255,9 +255,9 @@ class HttpResponseParser(HttpParser):
 
 class HttpPayloadParser:
 
-    CONTENT_LENGTH_ID = multidict.upstr('CONTENT-LENGTH')
-    SEC_WEBSOCKET_KEY1_ID = multidict.upstr('SEC-WEBSOCKET-KEY1')
-    TRANSFER_ENCODING_ID = multidict.upstr('TRANSFER-ENCODING')
+    CONTENT_LENGTH_ID = upstr('CONTENT-LENGTH')
+    SEC_WEBSOCKET_KEY1_ID = upstr('SEC-WEBSOCKET-KEY1')
+    TRANSFER_ENCODING_ID = upstr('TRANSFER-ENCODING')
 
     def __init__(self, message, length=None, compression=True,
                  readall=False, response_with_body=True):
@@ -515,8 +515,8 @@ class HttpMessage:
 
     HOP_HEADERS = None  # Must be set by subclass.
 
-    TRANSFER_ENCODING_ID = multidict.upstr('TRANSFER-ENCODING')
-    CONNECTION_ID = multidict.upstr('CONNECTION')
+    TRANSFER_ENCODING_ID = upstr('TRANSFER-ENCODING')
+    CONNECTION_ID = upstr('CONNECTION')
 
     SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} aiohttp/{1}'.format(
         sys.version_info, aiohttp.__version__)
@@ -543,7 +543,7 @@ class HttpMessage:
 
         self.chunked = False
         self.length = None
-        self.headers = multidict.CIMutableMultiDict()
+        self.headers = CIMultiDict()
         self.headers_sent = False
         self.output_length = 0
         self._output_size = 0
@@ -813,8 +813,8 @@ class Response(HttpMessage):
         'UPGRADE',
     }
 
-    DATE_ID = multidict.upstr('DATE')
-    SERVER_ID = multidict.upstr('SERVER')
+    DATE_ID = upstr('DATE')
+    SERVER_ID = upstr('SERVER')
 
     @staticmethod
     def calc_reason(status):
@@ -849,7 +849,7 @@ class Response(HttpMessage):
 class Request(HttpMessage):
 
     HOP_HEADERS = ()
-    USER_AGENT_ID = multidict.upstr('USER-AGENT')
+    USER_AGENT_ID = upstr('USER-AGENT')
 
     def __init__(self, transport, method, path,
                  http_version=HttpVersion11, close=False):

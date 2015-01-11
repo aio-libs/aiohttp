@@ -22,6 +22,11 @@ CHANGES
 
 - multidict.getall() returns `list`, not `tuple`.
 
+- Backward imcompatible change: now there are two mutable multidicts
+  (`MultiDict`, `CIMultiDict`) and two immutable multidict proxies
+  (`MultiDictProxy` and `CIMultiDictProxy`). Previous edition of
+  multidicts was not a part of public API though.
+
 
 0.13.1 (12-31-2014)
 --------------------

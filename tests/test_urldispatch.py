@@ -5,7 +5,7 @@ from unittest import mock
 import aiohttp.web
 from aiohttp.web import (UrlDispatcher, Request, Response,
                          HTTPMethodNotAllowed, HTTPNotFound)
-from aiohttp.multidict import MultiDict
+from aiohttp.multidict import CIMultiDict
 from aiohttp.protocol import HttpVersion, RawRequestMessage
 
 
@@ -22,7 +22,7 @@ class TestUrlDispatcher(unittest.TestCase):
     def make_request(self, method, path):
         self.app = mock.Mock()
         message = RawRequestMessage(method, path, HttpVersion(1, 1),
-                                    MultiDict(), False, False)
+                                    CIMultiDict(), False, False)
         self.payload = mock.Mock()
         self.transport = mock.Mock()
         self.reader = mock.Mock()

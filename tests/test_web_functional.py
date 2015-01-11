@@ -310,9 +310,10 @@ class TestWebFunctional(unittest.TestCase):
         @asyncio.coroutine
         def go():
             _, _, url = yield from self.create_server('POST', '/', handler)
-            resp = yield from request('POST', url,
-                                      data=MultiDict([('a', 1), ('a', 2)]),
-                                      loop=self.loop)
+            resp = yield from request(
+                'POST', url,
+                data=MultiDict([('a', 1), ('a', 2)]),
+                loop=self.loop)
             self.assertEqual(200, resp.status)
             txt = yield from resp.text()
             self.assertEqual('OK', txt)
