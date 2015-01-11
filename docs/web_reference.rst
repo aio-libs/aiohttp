@@ -71,14 +71,14 @@ first positional parameter.
 
       A multidict with all the variables in the query string.
 
-      Read-only :class:`~aiohttp.multidict.MultiDict` lazy property.
+      Read-only :class:`~aiohttp.multidict.MultiDictProxy` lazy property.
 
    .. attribute:: POST
 
       A multidict with all the variables in the POST parameters.
       POST property available only after :meth:`Request.post` coroutine call.
 
-      Read-only :class:`~aiohttp.multidict.MultiDict`.
+      Read-only :class:`~aiohttp.multidict.MultiDictProxy`.
 
       :raises RuntimeError: if :meth:`Request.post` was not called \
                             before accessing the property.
@@ -87,7 +87,7 @@ first positional parameter.
 
       A case-insensitive multidict with all headers.
 
-      Read-only :class:`~aiohttp.multidict.CIMultiDict`
+      Read-only :class:`~aiohttp.multidict.CIMultiDictProxy`
       lazy property.
 
    .. attribute:: keep_alive
@@ -129,7 +129,7 @@ first positional parameter.
 
       A multidict of all request's cookies.
 
-      Read-only :class:`~aiohttp.multidict.MultiDict` lazy property.
+      Read-only :class:`~aiohttp.multidict.MultiDictProxy` lazy property.
 
    .. attribute:: payload
 
@@ -218,7 +218,7 @@ first positional parameter.
       A :ref:`coroutine <coroutine>` that reads POST parameters from
       request body.
 
-      Returns :class:`~aiohttp.multidict.MultiDict` instance filled
+      Returns :class:`~aiohttp.multidict.MultiDictProxy` instance filled
       with parsed data.
 
       If :attr:`method` is not *POST*, *PUT* or *PATCH* or
