@@ -15,7 +15,7 @@ CHANGES
 
 - websocket's ping and pong accept optional message parameter
 
-- multidict views does not accept `getall` parameter anymore, it
+- multidict views do not accept `getall` parameter anymore, it
   returns the full body anyway.
 
 - multidicts have optional Cython optimization, cythonized version of multidicts is
@@ -26,7 +26,7 @@ CHANGES
 - Backward imcompatible change: now there are two mutable multidicts
   (`MultiDict`, `CIMultiDict`) and two immutable multidict proxies
   (`MultiDictProxy` and `CIMultiDictProxy`). Previous edition of
-  multidicts was not a part of public API though.
+  multidicts was not a part of public API BTW.
 
 
 0.13.1 (12-31-2014)
