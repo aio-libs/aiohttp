@@ -94,23 +94,23 @@ cdef class _Base:
     def __len__(self):
         return len(self._items)
 
-    def keys(self, *, getall=True):
-        return self._keys_view(getall)
+    def keys(self):
+        return self._keys_view()
 
-    cdef _KeysView _keys_view(self, getall):
-        return _KeysView.__new__(_KeysView, self._items, getall)
+    cdef _KeysView _keys_view(self):
+        return _KeysView.__new__(_KeysView, self._items)
 
-    def items(self, *, getall=True):
-        return self._items_view(getall)
+    def items(self):
+        return self._items_view()
 
-    cdef _ItemsView _items_view(self, getall):
-        return _ItemsView.__new__(_ItemsView, self._items, getall)
+    cdef _ItemsView _items_view(self):
+        return _ItemsView.__new__(_ItemsView, self._items)
 
-    def values(self, *, getall=True):
-        return self._values_view(getall)
+    def values(self):
+        return self._values_view()
 
-    cdef _ValuesView _values_view(self, getall):
-        return _ValuesView.__new__(_ValuesView, self._items, getall)
+    cdef _ValuesView _values_view(self):
+        return _ValuesView.__new__(_ValuesView, self._items)
 
     def __repr__(self):
         body = ', '.join("'{}': {!r}".format(k, v) for k, v in self.items())
@@ -367,24 +367,8 @@ cdef class _ViewBase:
     cdef list _keys
     cdef list _items
 
-    def __cinit__(self, list items, int getall):
-        cdef list items_to_use
-        cdef set keys
-
-        if getall:
-            self._items = items
-            self._keys = [item[0] for item in items]
-        else:
-            self._items = []
-            keys = set()
-            self._keys = []
-            for i in items:
-                key = i[0]
-                if key in keys:
-                    continue
-                keys.add(key)
-                self._keys.append(key)
-                self._items.append(i)
+    def __cinit__(self, list items):
+        self._items = items
 
     def __len__(self):
         return len(self._items)
@@ -477,12 +461,14 @@ abc.ItemsView.register(_ItemsView)
 cdef class _ValuesView(_ViewBase):
 
     def __contains__(self, value):
+        cdef tuple item
         for item in self._items:
             if item[1] == value:
                 return True
         return False
 
     def __iter__(self):
+        cdef tuple item
         for item in self._items:
             yield item[1]
 
@@ -494,16 +480,23 @@ cdef class _KeysView(_ViewBaseSet):
 
     def isdisjoint(self, other):
         'Return True if two sets have a null intersection.'
-        for key in self._keys:
-            if key in other:
+        cdef tuple item
+        for item in self._items:
+            if item[0] in other:
                 return False
         return True
 
-    def __contains__(self, key):
-        return key in self._keys
+    def __contains__(self, value):
+        cdef tuple item
+        for item in self._items:
+            if item[0] == value:
+                return True
+        return False
 
     def __iter__(self):
-        return iter(self._keys)
+        cdef tuple item
+        for item in self._items:
+            yield item[0]
 
 
 abc.KeysView.register(_KeysView)

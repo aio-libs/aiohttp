@@ -303,7 +303,7 @@ class TestWebFunctional(unittest.TestCase):
         @asyncio.coroutine
         def handler(request):
             data = yield from request.post()
-            lst = list(sorted(data.items(getall=True)))
+            lst = list(sorted(data.items()))
             self.assertEqual([('a', '1'), ('a', '2')], lst)
             return web.Response(body=b'OK')
 

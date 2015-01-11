@@ -67,14 +67,14 @@ class _Base:
     def __len__(self):
         return len(self._items)
 
-    def keys(self, *, getall=True):
-        return _KeysView(self._items, getall=getall)
+    def keys(self):
+        return _KeysView(self._items)
 
-    def items(self, *, getall=True):
-        return _ItemsView(self._items, getall=getall)
+    def items(self):
+        return _ItemsView(self._items)
 
-    def values(self, *, getall=True):
-        return _ValuesView(self._items, getall=getall)
+    def values(self):
+        return _ValuesView(self._items)
 
     def __eq__(self, other):
         if not isinstance(other, abc.Mapping):
@@ -277,23 +277,8 @@ class _ViewBase:
 
     __slots__ = ('_keys', '_items')
 
-    def __init__(self, items, getall):
-        if getall:
-            items_to_use = items
-            self._keys = [item[0] for item in items]
-        else:
-            items_to_use = []
-            keys = set()
-            self._keys = []
-            for i in items:
-                key = i[0]
-                if key in keys:
-                    continue
-                keys.add(key)
-                self._keys.append(key)
-                items_to_use.append(i)
-
-        self._items = items_to_use
+    def __init__(self, items):
+        self._items = items
 
     def __len__(self):
         return len(self._items)
@@ -326,10 +311,14 @@ class _ValuesView(_ViewBase, abc.ValuesView):
 class _KeysView(_ViewBase, abc.KeysView):
 
     def __contains__(self, key):
-        return key in self._keys
+        for item in self._items:
+            if item[0] == key:
+                return True
+        return False
 
     def __iter__(self):
-        yield from self._keys
+        for item in self._items:
+            yield item[0]
 
 
 try:
