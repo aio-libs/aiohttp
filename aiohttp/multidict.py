@@ -268,6 +268,10 @@ class _CIMultiDict(_CIBase, _MultiDict):
     def _replace(self, key, value):
         super()._replace(key.upper(), value)
 
+    def setdefault(self, key, default=None):
+        key = key.upper()
+        return super().setdefault(key, default)
+
 
 class _ViewBase:
 

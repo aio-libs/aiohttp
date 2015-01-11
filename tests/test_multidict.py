@@ -509,11 +509,6 @@ class _CIMutableMultiDictTests(_Root):
         d = self.make_dict(k1='v1')
         self.assertEqual('v1', d['K1'])
 
-    def test_add(self):
-        d = self.make_dict()
-        d.add('k1', 'v1')
-        self.assertEqual('v1', d['K1'])
-
     def test_setitem(self):
         d = self.make_dict()
         d['k1'] = 'v1'
@@ -525,6 +520,142 @@ class _CIMutableMultiDictTests(_Root):
         self.assertIn('K1', d)
         del d['k1']
         self.assertNotIn('K1', d)
+
+    def test_copy(self):
+        d1 = self.make_dict(key='KEY', a='b')
+
+        d2 = d1.copy()
+        self.assertEqual(d1, d2)
+        self.assertIsNot(d1, d2)
+
+    def test__repr__(self):
+        d = self.make_dict()
+        self.assertEqual(str(d), "<%s {}>" % self.cls.__name__)
+
+        d = self.make_dict([('KEY', 'one'), ('KEY', 'two')])
+
+        self.assertEqual(
+            str(d),
+            "<%s {'KEY': 'one', 'KEY': 'two'}>" % self.cls.__name__)
+
+    def test_add(self):
+        d = self.make_dict()
+
+        self.assertEqual(d, {})
+        d['KEY'] = 'one'
+        self.assertEqual(d, {'KEY': 'one'})
+        self.assertEqual(d.getall('key'), ['one'])
+
+        d['KEY'] = 'two'
+        self.assertEqual(d, {'KEY': 'two'})
+        self.assertEqual(d.getall('key'), ['two'])
+
+        d.add('KEY', 'one')
+        self.assertEqual(2, len(d))
+        self.assertEqual(d.getall('key'), ['two', 'one'])
+
+        d.add('FOO', 'bar')
+        self.assertEqual(3, len(d))
+        self.assertEqual(d.getall('foo'), ['bar'])
+
+    def test_extend(self):
+        d = self.make_dict()
+        self.assertEqual(d, {})
+
+        d.extend([('KEY', 'one'), ('key', 'two')], key=3, foo='bar')
+        self.assertNotEqual(d, {'KEY': 'one', 'FOO': 'bar'})
+        self.assertEqual(4, len(d))
+        itms = d.items(getall=True)
+        # we can't guarantee order of kwargs
+        self.assertTrue(('KEY', 'one') in itms)
+        self.assertTrue(('KEY', 'two') in itms)
+        self.assertTrue(('KEY', 3) in itms)
+        self.assertTrue(('FOO', 'bar') in itms)
+
+        other = self.make_dict(bar='baz')
+        self.assertEqual(other, {'BAR': 'baz'})
+
+        d.extend(other)
+        self.assertIn(('BAR', 'baz'), d.items(getall=True))
+
+        d.extend({'FOO': 'moo'})
+        self.assertIn(('FOO', 'moo'), d.items(getall=True))
+
+        d.extend()
+        self.assertEqual(6, len(d))
+
+        with self.assertRaises(TypeError):
+            d.extend('foo', 'bar')
+
+    def test_clear(self):
+        d = self.make_dict([('KEY', 'one')], key='two', foo='bar')
+
+        d.clear()
+        self.assertEqual(d, {})
+        self.assertEqual(list(d.items()), [])
+
+    def test_del(self):
+        d = self.make_dict([('KEY', 'one'), ('key', 'two')], foo='bar')
+
+        del d['key']
+        self.assertEqual(d, {'FOO': 'bar'})
+        self.assertEqual(list(d.items()), [('FOO', 'bar')])
+
+        with self.assertRaises(KeyError):
+            del d['key']
+
+    def test_set_default(self):
+        d = self.make_dict([('KEY', 'one'), ('key', 'two')], foo='bar')
+        self.assertEqual('one', d.setdefault('key', 'three'))
+        self.assertEqual('three', d.setdefault('otherkey', 'three'))
+        self.assertIn('otherkey', d)
+        self.assertEqual('three', d['OTHERKEY'])
+
+    def test_popitem(self):
+        d = self.make_dict()
+        d.add('KEY', 'val1')
+        d.add('key', 'val2')
+
+        self.assertEqual(('KEY', 'val1'), d.popitem())
+        self.assertEqual([('KEY', 'val2')], list(d.items()))
+
+    def test_popitem_empty_multidict(self):
+        d = self.make_dict()
+
+        with self.assertRaises(KeyError):
+            d.popitem()
+
+    def test_pop(self):
+        d = self.make_dict()
+        d.add('KEY', 'val1')
+        d.add('key', 'val2')
+
+        self.assertEqual('val1', d.pop('KEY'))
+        self.assertFalse(d)
+
+    def test_pop_default(self):
+        d = self.make_dict(other='val')
+
+        self.assertEqual('default', d.pop('key', 'default'))
+        self.assertIn('other', d)
+
+    def test_pop_raises(self):
+        d = self.make_dict(other='val')
+
+        with self.assertRaises(KeyError):
+            d.pop('key')
+
+        self.assertIn('other', d)
+
+    def test_update(self):
+        d = self.make_dict()
+        d.add('KEY', 'val1')
+        d.add('key', 'val2')
+        d.add('key2', 'val3')
+
+        d.update(key='val')
+
+        self.assertEqual([('KEY2', 'val3'), ('KEY', 'val')], list(d.items()))
 
 
 class TestPyMultiDictProxy(_TestProxy, unittest.TestCase):

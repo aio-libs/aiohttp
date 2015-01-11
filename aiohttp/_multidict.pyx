@@ -260,10 +260,12 @@ cdef class MultiDict(_Base):
     # MutableMapping interface #
 
     def __setitem__(self, key, value):
+        key = self._upper(key)
         self._delitem(key, False)
         self._add((key, value))
 
     def __delitem__(self, key):
+        key = self._upper(key)
         self._delitem(key, True)
 
     cdef _delitem(self, key, int raise_key_error):
@@ -355,27 +357,6 @@ cdef class CIMultiDict(MultiDict):
             return s
         return s.upper()
 
-    # MutableMapping interface #
-
-    def __setitem__(self, key, value):
-        key = self._upper(key)
-        self._delitem(key, False)
-        self._add((key, value))
-
-    def __delitem__(self, key):
-        self._delitem(self._upper(key), True)
-
-    def setdefault(self, key, default=None):
-        key = self._upper(key)
-        for k, v in self._items:
-            if k == key:
-                return v
-        self._add((key, default))
-        return default
-
-    def update(self, *args, **kw):
-        """Method not allowed."""
-        raise NotImplementedError("Use extend method instead")
 
 
 abc.MutableMapping.register(CIMultiDict)
