@@ -634,13 +634,13 @@ class _CIMutableMultiDictTests(_Root):
         self.assertFalse(d)
 
     def test_pop_default(self):
-        d = self.make_dict(other='val')
+        d = self.make_dict(OTHER='val')
 
         self.assertEqual('default', d.pop('key', 'default'))
         self.assertIn('other', d)
 
     def test_pop_raises(self):
-        d = self.make_dict(other='val')
+        d = self.make_dict(OTHER='val')
 
         with self.assertRaises(KeyError):
             d.pop('key')
