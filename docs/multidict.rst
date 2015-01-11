@@ -234,7 +234,7 @@ MultiDictProxy
 
    .. method:: copy()
 
-      Return a shallow copy of the dictionary.
+      Return a shallow copy of the underlying multidict.
 
    .. method:: getone(key[, default])
 
