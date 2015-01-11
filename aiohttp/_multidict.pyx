@@ -95,21 +95,12 @@ cdef class _Base:
         return len(self._items)
 
     def keys(self):
-        return self._keys_view()
-
-    cdef _KeysView _keys_view(self):
         return _KeysView.__new__(_KeysView, self._items)
 
     def items(self):
-        return self._items_view()
-
-    cdef _ItemsView _items_view(self):
         return _ItemsView.__new__(_ItemsView, self._items)
 
     def values(self):
-        return self._values_view()
-
-    cdef _ValuesView _values_view(self):
         return _ValuesView.__new__(_ValuesView, self._items)
 
     def __repr__(self):
