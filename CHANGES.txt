@@ -11,7 +11,7 @@ CHANGES
 - add `aiohttp.web.WebSocketResponse`
 
 - According to RFC 6455 websocket subprotocol preference order is
-  provided by client, not server
+  provided by client, not by server
 
 - websocket's ping and pong accept optional message parameter
 
