@@ -643,7 +643,7 @@ class _CIMutableMultiDictTests(_Root):
         d = self.make_dict(OTHER='val')
 
         with self.assertRaises(KeyError):
-            d.pop('key')
+            d.pop('KEY')
 
         self.assertIn('other', d)
 
