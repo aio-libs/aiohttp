@@ -292,13 +292,32 @@ cdef class MultiDict(_Base):
         self._add((key, default))
         return default
 
-    def pop(self, key, default=None):
+    def pop(self, key, default=_marker):
+        cdef int found
+        cdef object value
+        value = None
+        found = False
+        for i in range(len(self._items) - 1, -1, -1):
+            if self._items[i][0] == key:
+                value = self._items[i][1]
+                del self._items[i]
+                found = True
+        if not found:
+            if default is _marker:
+                raise KeyError(key)
+            else:
+                return default
+        else:
+            return value
+
         """Method not allowed."""
         raise NotImplementedError
 
     def popitem(self):
-        """Method not allowed."""
-        raise NotImplementedError
+        if self._items:
+            return self._items.pop(0)
+        else:
+            raise KeyError("empty multidict")
 
     def update(self, *args, **kw):
         """Method not allowed."""

@@ -162,6 +162,25 @@ MutableMultiDict
       View contains all values if *getall* is ``True`` (default) or
       only first key occurrences otherwise.
 
+   .. method:: pop(key[, default])
+
+      If *key* is in the dictionary, remove it and return its the
+      **first** value, else return *default*.
+
+      If *default* is not given and *key* is not in the dictionary, a
+      :exc:`KeyError` is raised.
+
+
+   .. method:: popitem()
+
+      Remove and retun an arbitrary ``(key, value)`` pair from the dictionary.
+
+      :meth:`popitem` is useful to destructively iterate over a
+      dictionary, as often used in set algorithms.
+
+      If the dictionary is empty, calling :meth:`popitem` raises a
+      :exc:`KeyError`.
+
    .. method:: setdefault(key[, default])
 
       If *key* is in the dictionary, return its the **first** value.

@@ -442,13 +442,45 @@ class _BaseMutableMultiDictTests(_BaseTest):
         self.assertIn('otherkey', d)
         self.assertEqual('three', d['otherkey'])
 
+    def test_popitem(self):
+        d = self.make_dict()
+        d.add('key', 'val1')
+        d.add('key', 'val2')
+
+        self.assertEqual(('key', 'val1'), d.popitem())
+        self.assertEqual([('key', 'val2')], list(d.items()))
+
+    def test_popitem_empty_multidict(self):
+        d = self.make_dict()
+
+        with self.assertRaises(KeyError):
+            d.popitem()
+
+    def test_pop(self):
+        d = self.make_dict()
+        d.add('key', 'val1')
+        d.add('key', 'val2')
+
+        self.assertEqual('val1', d.pop('key'))
+        self.assertFalse(d)
+
+    def test_pop_default(self):
+        d = self.make_dict(other='val')
+
+        self.assertEqual('default', d.pop('key', 'default'))
+        self.assertIn('other', d)
+
+    def test_pop_raises(self):
+        d = self.make_dict(other='val')
+
+        with self.assertRaises(KeyError):
+            d.pop('key')
+
+        self.assertIn('other', d)
+
     def test_not_implemented_methods(self):
         d = self.make_dict()
 
-        with self.assertRaises(NotImplementedError):
-            d.pop('foo')
-        with self.assertRaises(NotImplementedError):
-            d.popitem()
         with self.assertRaises(NotImplementedError):
             d.update(bar='baz')
 
