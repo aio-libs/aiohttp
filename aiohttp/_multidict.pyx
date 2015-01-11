@@ -380,19 +380,6 @@ cdef class CIMultiDict(MultiDict):
     def __contains__(self, key):
         return self._contains(self._upper(key))
 
-    def add(self, key, value):
-        """
-        Add the key and value, not overwriting any previous value.
-        """
-        self._add((key, value))
-
-    def extend(self, *args, **kwargs):
-        """Extends current MultiDict with more values.
-
-        This method must be used instead of update.
-        """
-        self._extend(args, kwargs, "extend")
-
     # MutableMapping interface #
 
     def __setitem__(self, key, value):
