@@ -233,7 +233,7 @@ cdef class MultiDict(_Base):
             self._add(item)
 
     cdef _add(self, tuple item):
-        self._items.append(item)
+        self._items.append((self._upper(item[0]), item[1]))
 
     def add(self, key, value):
         """
@@ -287,6 +287,7 @@ cdef class MultiDict(_Base):
     def pop(self, key, default=_marker):
         cdef int found
         cdef object value
+        key = self._upper(key)
         value = None
         found = False
         for i in range(len(self._items) - 1, -1, -1):
@@ -348,9 +349,6 @@ abc.MutableMapping.register(MultiDict)
 
 cdef class CIMultiDict(MultiDict):
     """An ordered dictionary that can have multiple values for each key."""
-
-    cdef _add(self, tuple item):
-        self._items.append((self._upper(item[0]), item[1]))
 
     cdef _upper(self, s):
         if type(s) is self._upstr:
