@@ -10,23 +10,23 @@ dct[key]
 """
 
 cython_multidict = """\
-from aiohttp.multidict import MutableMultiDict
-dct = MutableMultiDict()
+from aiohttp.multidict import MultiDict
+dct = MultiDict()
 """
 
 python_multidict = """\
-from aiohttp.multidict import _MutableMultiDict
-dct = _MutableMultiDict()
+from aiohttp.multidict import _MultiDict
+dct = _MultiDict()
 """
 
 cython_cimultidict = """\
-from aiohttp.multidict import CIMutableMultiDict, upstr
-dct = CIMutableMultiDict()
+from aiohttp.multidict import CIMultiDict, upstr
+dct = CIMultiDict()
 """
 
 python_cimultidict = """\
-from aiohttp.multidict import _CIMutableMultiDict, _upstr as upstr
-dct = _CIMutableMultiDict()
+from aiohttp.multidict import _CIMultiDict, _upstr as upstr
+dct = _CIMultiDict()
 """
 
 fill = """\

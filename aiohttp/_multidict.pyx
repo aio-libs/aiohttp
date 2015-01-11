@@ -34,7 +34,6 @@ cdef class _Base:
     def __cinit__(self):
         self._upstr = upstr
 
-
     def getall(self, key, default=_marker):
         """
         Return a list of all values matching the key (may be an empty list)
