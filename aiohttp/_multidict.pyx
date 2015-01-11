@@ -34,6 +34,9 @@ cdef class _Base:
     def __cinit__(self):
         self._upstr = upstr
 
+    cdef _upper(self, key):
+        return key
+
     def getall(self, key, default=_marker):
         """
         Return a list of all values matching the key (may be an empty list)
@@ -42,6 +45,7 @@ cdef class _Base:
 
     cdef _getall(self, key, default):
         cdef list res
+        key = self._upper(key)
         res = [v for k, v in self._items if k == key]
         if res:
             return res
@@ -57,6 +61,7 @@ cdef class _Base:
 
     cdef _getone(self, key, default):
         cdef tuple item
+        key = self._upper(key)
         for item in self._items:
             if item[0] == key:
                 return item[1]
@@ -77,6 +82,7 @@ cdef class _Base:
 
     cdef _contains(self, key):
         cdef tuple item
+        key = self._upper(key)
         for item in self._items:
             if item[0] == key:
                 return True
@@ -188,21 +194,6 @@ cdef class CIMultiDictProxy(MultiDictProxy):
     def copy(self):
         return CIMultiDict(self._items)
 
-    def getall(self, key, default=_marker):
-        return self._getall(self._upper(key), default)
-
-    def getone(self, key, default=_marker):
-        return self._getone(self._upper(key), default)
-
-    def get(self, key, default=None):
-        return self._getone(self._upper(key), default)
-
-    def __getitem__(self, key):
-        return self._getone(self._upper(key), _marker)
-
-    def __contains__(self, key):
-        return self._contains(self._upper(key))
-
 
 abc.Mapping.register(CIMultiDictProxy)
 
@@ -286,6 +277,7 @@ cdef class MultiDict(_Base):
             raise KeyError(key)
 
     def setdefault(self, key, default=None):
+        key = self._upper(key)
         for k, v in self._items:
             if k == key:
                 return v
