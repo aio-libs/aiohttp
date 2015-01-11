@@ -2,7 +2,7 @@ import asyncio
 import collections
 import unittest
 from unittest import mock
-from aiohttp.multidict import MutableMultiDict
+from aiohttp.multidict import CIMutableMultiDict
 from aiohttp.web import Request
 from aiohttp.protocol import RawRequestMessage, HttpVersion11
 
@@ -30,7 +30,8 @@ class TestHTTPExceptions(unittest.TestCase):
     def append(self, data):
         self.buf += data
 
-    def make_request(self, method='GET', path='/', headers=MutableMultiDict()):
+    def make_request(self, method='GET', path='/',
+                     headers=CIMutableMultiDict()):
         self.app = mock.Mock()
         message = RawRequestMessage(method, path, HttpVersion11, headers,
                                     False, False)

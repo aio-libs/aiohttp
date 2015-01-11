@@ -663,7 +663,7 @@ class ClientResponse:
         self.reason = self.message.reason
 
         # headers
-        self.headers = CIMultiDictProxy(self.message.headers.items())
+        self.headers = CIMultiDictProxy(self.message.headers)
 
         # payload
         response_with_body = self.method.lower() != 'head'

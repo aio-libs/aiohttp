@@ -2,7 +2,7 @@ import asyncio
 import unittest
 from unittest import mock
 from aiohttp.web import Request
-from aiohttp.multidict import MutableMultiDict
+from aiohttp.multidict import MutableMultiDict, CIMutableMultiDict
 from aiohttp.protocol import HttpVersion
 from aiohttp.protocol import RawRequestMessage
 
@@ -16,7 +16,7 @@ class TestWebRequest(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
-    def make_request(self, method, path, headers=MutableMultiDict(), *,
+    def make_request(self, method, path, headers=CIMutableMultiDict(), *,
                      version=HttpVersion(1, 1), closing=False):
         self.app = mock.Mock()
         message = RawRequestMessage(method, path, version, headers, closing,
@@ -66,20 +66,20 @@ class TestWebRequest(unittest.TestCase):
     def test_content_type_from_spec(self):
         req = self.make_request(
             'Get', '/',
-            MutableMultiDict([('CONTENT-TYPE', 'application/json')]))
+            CIMutableMultiDict([('CONTENT-TYPE', 'application/json')]))
         self.assertEqual('application/json', req.content_type)
 
     def test_content_type_from_spec_with_charset(self):
         req = self.make_request(
             'Get', '/',
-            MutableMultiDict([('CONTENT-TYPE', 'text/html; charset=UTF-8')]))
+            CIMutableMultiDict([('CONTENT-TYPE', 'text/html; charset=UTF-8')]))
         self.assertEqual('text/html', req.content_type)
         self.assertEqual('UTF-8', req.charset)
 
     def test_calc_content_type_on_getting_charset(self):
         req = self.make_request(
             'Get', '/',
-            MutableMultiDict([('CONTENT-TYPE', 'text/html; charset=UTF-8')]))
+            CIMutableMultiDict([('CONTENT-TYPE', 'text/html; charset=UTF-8')]))
         self.assertEqual('UTF-8', req.charset)
         self.assertEqual('text/html', req.content_type)
 
@@ -94,8 +94,9 @@ class TestWebRequest(unittest.TestCase):
         self.assertEqual('/путь', req.path)
 
     def test_content_length(self):
-        req = self.make_request('Get', '/',
-                                MutableMultiDict([('CONTENT-LENGTH', '123')]))
+        req = self.make_request(
+            'Get', '/',
+            CIMutableMultiDict([('CONTENT-LENGTH', '123')]))
 
         self.assertEqual(123, req.content_length)
 
@@ -111,15 +112,15 @@ class TestWebRequest(unittest.TestCase):
         req = self.make_request('GET', '/')
 
         ret = self.loop.run_until_complete(req.post())
-        self.assertEqual(MutableMultiDict(), ret)
+        self.assertEqual(CIMutableMultiDict(), ret)
 
     def test_call_POST_on_weird_content_type(self):
         req = self.make_request(
             'POST', '/',
-            headers=MutableMultiDict({'CONTENT-TYPE': 'something/weird'}))
+            headers=CIMutableMultiDict({'CONTENT-TYPE': 'something/weird'}))
 
         ret = self.loop.run_until_complete(req.post())
-        self.assertEqual(MutableMultiDict(), ret)
+        self.assertEqual(CIMutableMultiDict(), ret)
 
     def test_call_POST_twice(self):
         req = self.make_request('GET', '/')
@@ -137,7 +138,7 @@ class TestWebRequest(unittest.TestCase):
         self.assertIs(cookies, req.cookies)
 
     def test_request_cookie(self):
-        headers = MutableMultiDict(COOKIE='cookie1=value1; cookie2=value2')
+        headers = CIMutableMultiDict(COOKIE='cookie1=value1; cookie2=value2')
         req = self.make_request('GET', '/', headers=headers)
 
         self.assertEqual(req.cookies, {
@@ -146,7 +147,7 @@ class TestWebRequest(unittest.TestCase):
         })
 
     def test_request_cookie__set_item(self):
-        headers = MutableMultiDict(COOKIE='name=value')
+        headers = CIMutableMultiDict(COOKIE='name=value')
         req = self.make_request('GET', '/', headers=headers)
 
         self.assertEqual(req.cookies, {'name': 'value'})

@@ -230,7 +230,7 @@ class Request(HeadersMixin):
 
         Lazy property.
         """
-        return MultiDictProxy(parse_qsl(self._query_string))
+        return MultiDictProxy(MutableMultiDict(parse_qsl(self._query_string)))
 
     @reify
     def POST(self):
@@ -331,14 +331,14 @@ class Request(HeadersMixin):
         if self._post is not None:
             return self._post
         if self.method not in ('POST', 'PUT', 'PATCH'):
-            self._post = MultiDictProxy({})
+            self._post = MultiDictProxy(MutableMultiDict())
             return self._post
 
         content_type = self.content_type
         if (content_type not in ('',
                                  'application/x-www-form-urlencoded',
                                  'multipart/form-data')):
-            self._post = MultiDictProxy({})
+            self._post = MultiDictProxy(MutableMultiDict())
             return self._post
 
         body = yield from self.read()

@@ -28,34 +28,9 @@ class _upstr(str):
         return self
 
 
-class _MultiDictProxy(abc.Mapping):
-    """Read-only ordered dictionary that can have multiple values for each key.
-
-    This type of MultiDict must be used for request headers and query args.
-    """
+class _Base:
 
     __slots__ = ('_items',)
-
-    def __init__(self, *args, **kwargs):
-        if len(args) > 1:
-            raise TypeError("MultiDict takes at most 1 positional "
-                            "argument ({} given)".format(len(args)))
-
-        self._items = []
-        if args:
-            if hasattr(args[0], 'items'):
-                args = list(args[0].items())
-            else:
-                args = list(args[0])
-                for arg in args:
-                    if not len(arg) == 2:
-                        raise TypeError("MultiDict takes either dict "
-                                        "or list of (key, value) tuples")
-
-        self._fill(chain(args, kwargs.items()))
-
-    def _fill(self, ipairs):
-        self._items.extend(ipairs)
 
     def getall(self, key, default=_marker):
         """
@@ -78,13 +53,6 @@ class _MultiDictProxy(abc.Mapping):
         if default is not _marker:
             return default
         raise KeyError('Key not found: %r' % key)
-
-    # extra methods #
-
-    def copy(self):
-        """Returns a copy itself."""
-        cls = self.__class__
-        return cls(self.items())
 
     # Mapping interface #
 
@@ -133,15 +101,7 @@ class _MultiDictProxy(abc.Mapping):
         return '<{} {{{}}}>'.format(self.__class__.__name__, body)
 
 
-class _CIMultiDictProxy(_MultiDictProxy):
-    """Case insensitive multi dict."""
-
-    @classmethod
-    def _from_uppercase_multidict(cls, dct):
-        # NB: doesn't check for uppercase keys!
-        ret = cls.__new__(cls)
-        ret._items = dct._items
-        return ret
+class _CIBase(_Base):
 
     def _fill(self, ipairs):
         for key, value in ipairs:
@@ -164,13 +124,69 @@ class _CIMultiDictProxy(_MultiDictProxy):
         return super().__contains__(key.upper())
 
 
-class MutableMultiDictMixin(abc.MutableMapping):
+class _MultiDictProxy(_Base, abc.Mapping):
+
+    def __init__(self, arg):
+        if not isinstance(arg, _MutableMultiDict):
+            raise TypeError(
+                'MultiDictProxy requires MultiDict instance, not {}'.format(
+                    type(arg)))
+
+        self._items = arg._items
+
+    def copy(self):
+        """Returns a copy itself."""
+        return _MutableMultiDict(self.items())
+
+
+class _CIMultiDictProxy(_CIBase, _MultiDictProxy):
+
+    def __init__(self, arg):
+        if not isinstance(arg, _CIMutableMultiDict):
+            raise TypeError(
+                'CIMultiDictProxy requires CIMultiDict instance, not {}'
+                .format(type(arg)))
+
+        self._items = arg._items
+
+    def copy(self):
+        """Returns a copy itself."""
+        return _CIMutableMultiDict(self.items())
+
+
+class MutableMultiDictMixin:
+
+    def __init__(self, *args, **kwargs):
+        if len(args) > 1:
+            raise TypeError("MultiDict takes at most 1 positional "
+                            "argument ({} given)".format(len(args)))
+
+        self._items = []
+        if args:
+            if hasattr(args[0], 'items'):
+                args = list(args[0].items())
+            else:
+                args = list(args[0])
+                for arg in args:
+                    if not len(arg) == 2:
+                        raise TypeError("MultiDict takes either dict "
+                                        "or list of (key, value) tuples")
+
+        self._fill(chain(args, kwargs.items()))
+
+    def _fill(self, ipairs):
+        self._items.extend(ipairs)
 
     def add(self, key, value):
         """
         Add the key and value, not overwriting any previous value.
         """
         self._items.append((key, value))
+
+    def copy(self):
+        """Returns a copy itself."""
+        cls = self.__class__
+        return cls(self.items())
 
     def extend(self, *args, **kwargs):
         """Extends current MutableMultiDict with more values.
@@ -237,13 +253,16 @@ class MutableMultiDictMixin(abc.MutableMapping):
         raise NotImplementedError("Use extend method instead")
 
 
-class _MutableMultiDict(MutableMultiDictMixin, _MultiDictProxy):
+class _MutableMultiDict(_Base, MutableMultiDictMixin, abc.MutableMapping):
     """An ordered dictionary that can have multiple values for each key."""
 
 
-class _CIMutableMultiDict(
-        MutableMultiDictMixin, _CIMultiDictProxy):
+class _CIMutableMultiDict(_CIBase, _MutableMultiDict):
     """An ordered dictionary that can have multiple values for each key."""
+
+    def _fill(self, ipairs):
+        for key, value in ipairs:
+            self._items.append((key.upper(), value))
 
     def add(self, key, value):
         super().add(key.upper(), value)

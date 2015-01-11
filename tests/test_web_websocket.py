@@ -1,7 +1,7 @@
 import asyncio
 import unittest
 from unittest import mock
-from aiohttp import MultiDictProxy, MutableMultiDict
+from aiohttp import CIMutableMultiDict
 from aiohttp.web import (Request, WebSocketResponse,
                          WebSocketDisconnectedError,
                          HTTPMethodNotAllowed, HTTPBadRequest)
@@ -21,14 +21,14 @@ class TestWebWebSocket(unittest.TestCase):
     def make_request(self, method, path, headers=None):
         self.app = mock.Mock()
         if headers is None:
-            headers = MultiDictProxy(MutableMultiDict(
+            headers = CIMutableMultiDict(
                 {'HOST': 'server.example.com',
                  'UPGRADE': 'websocket',
                  'CONNECTION': 'Upgrade',
                  'SEC-WEBSOCKET-KEY': 'dGhlIHNhbXBsZSBub25jZQ==',
                  'ORIGIN': 'http://example.com',
                  'SEC-WEBSOCKET-PROTOCOL': 'chat, superchat',
-                 'SEC-WEBSOCKET-VERSION': '13'}))
+                 'SEC-WEBSOCKET-VERSION': '13'})
         message = RawRequestMessage(method, path, HttpVersion11, headers,
                                     False, False)
         self.payload = mock.Mock()
@@ -175,7 +175,7 @@ class TestWebWebSocket(unittest.TestCase):
 
     def test_can_start_without_upgrade(self):
         req = self.make_request('GET', '/',
-                                headers=MultiDictProxy(MutableMultiDict({})))
+                                headers=CIMutableMultiDict({}))
         ws = WebSocketResponse()
         self.assertEqual((False, None), ws.can_start(req))
 
@@ -243,7 +243,7 @@ class TestWebWebSocket(unittest.TestCase):
 
     def test_start_without_upgrade(self):
         req = self.make_request('GET', '/',
-                                headers=MultiDictProxy(MutableMultiDict({})))
+                                headers=CIMutableMultiDict({}))
         ws = WebSocketResponse()
         with self.assertRaises(HTTPBadRequest):
             ws.start(req)
