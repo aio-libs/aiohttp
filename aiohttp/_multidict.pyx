@@ -310,9 +310,6 @@ cdef class MultiDict(_Base):
         else:
             return value
 
-        """Method not allowed."""
-        raise NotImplementedError
-
     def popitem(self):
         if self._items:
             return self._items.pop(0)
