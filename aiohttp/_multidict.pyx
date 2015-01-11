@@ -357,21 +357,6 @@ cdef class CIMultiDict(MultiDict):
             return s
         return s.upper()
 
-    def getall(self, key, default=_marker):
-        return self._getall(self._upper(key), default)
-
-    def getone(self, key, default=_marker):
-        return self._getone(self._upper(key), default)
-
-    def get(self, key, default=None):
-        return self._getone(self._upper(key), default)
-
-    def __getitem__(self, key):
-        return self._getone(self._upper(key), _marker)
-
-    def __contains__(self, key):
-        return self._contains(self._upper(key))
-
     # MutableMapping interface #
 
     def __setitem__(self, key, value):
