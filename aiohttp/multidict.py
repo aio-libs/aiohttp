@@ -154,7 +154,7 @@ class _CIMultiDictProxy(_CIBase, _MultiDictProxy):
         return _CIMultiDict(self.items())
 
 
-class MultiDictMixin:
+class _MultiDict(_Base, abc.MutableMapping):
 
     def __init__(self, *args, **kwargs):
         if len(args) > 1:
@@ -253,12 +253,7 @@ class MultiDictMixin:
         raise NotImplementedError("Use extend method instead")
 
 
-class _MultiDict(_Base, MultiDictMixin, abc.MutableMapping):
-    """An ordered dictionary that can have multiple values for each key."""
-
-
 class _CIMultiDict(_CIBase, _MultiDict):
-    """An ordered dictionary that can have multiple values for each key."""
 
     def _fill(self, ipairs):
         for key, value in ipairs:
