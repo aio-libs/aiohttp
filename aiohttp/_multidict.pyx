@@ -393,10 +393,6 @@ cdef class CIMultiDict(MultiDict):
         """
         self._extend(args, kwargs, "extend")
 
-    def clear(self):
-        """Remove all items from MultiDict"""
-        self._items = []
-
     # MutableMapping interface #
 
     def __setitem__(self, key, value):
@@ -414,14 +410,6 @@ cdef class CIMultiDict(MultiDict):
                 return v
         self._add((key, default))
         return default
-
-    def pop(self, key, default=None):
-        """Method not allowed."""
-        raise NotImplementedError
-
-    def popitem(self):
-        """Method not allowed."""
-        raise NotImplementedError
 
     def update(self, *args, **kw):
         """Method not allowed."""
