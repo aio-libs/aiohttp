@@ -1475,6 +1475,8 @@ class RequestHandlerFactory:
         for transport in self._connections.values():
             transport.close()
 
+        yield from asyncio.sleep(0, loop=self._loop)
+
         self._connections.clear()
 
     def __call__(self):
