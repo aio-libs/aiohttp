@@ -195,9 +195,9 @@ cdef class MultiDict(_Base):
     def __init__(self, *args, **kwargs):
         self._items = []
 
-        self._extend(args, kwargs, self.__class__.__name__)
+        self._extend(args, kwargs, self.__class__.__name__, 1)
 
-    cdef _extend(self, tuple args, dict kwargs, name):
+    cdef _extend(self, tuple args, dict kwargs, name, int do_add):
         cdef tuple item
 
         if len(args) > 1:
@@ -207,30 +207,45 @@ cdef class MultiDict(_Base):
         if args:
             if hasattr(args[0], 'items'):
                 for item in args[0].items():
-                    self._add(item)
+                    key, value = item
+                    key = self._upper(key)
+                    if do_add:
+                        self._add(key, value)
+                    else:
+                        self._replace(key, value)
             else:
                 for arg in args[0]:
                     if not len(arg) == 2:
                         raise TypeError(
                             "{} takes either dict or list of (key, value) "
                             "tuples".format(name))
-                    if not isinstance(arg, tuple):
-                        item = tuple(arg)
+                    key, value = arg
+                    key = self._upper(key)
+                    if do_add:
+                        self._add(key, value)
                     else:
-                        item = arg
-                    self._add(item)
+                        self._replace(key, value)
 
-        for item in kwargs.items():
-            self._add(item)
 
-    cdef _add(self, tuple item):
-        self._items.append((self._upper(item[0]), item[1]))
+        for key, value in kwargs.items():
+            key = self._upper(key)
+            if do_add:
+                self._add(key, value)
+            else:
+                self._replace(key, value)
+
+    cdef _add(self, key, value):
+        self._items.append((key, value))
+
+    cdef _replace(self, key, value):
+        self._remove(key, 0)
+        self._items.append((key, value))
 
     def add(self, key, value):
         """
         Add the key and value, not overwriting any previous value.
         """
-        self._add((key, value))
+        self._add(self._upper(key), value)
 
     def copy(self):
         """Returns a copy itself."""
@@ -242,7 +257,7 @@ cdef class MultiDict(_Base):
 
         This method must be used instead of update.
         """
-        self._extend(args, kwargs, "extend")
+        self._extend(args, kwargs, "extend", 1)
 
     def clear(self):
         """Remove all items from MultiDict"""
@@ -252,14 +267,14 @@ cdef class MultiDict(_Base):
 
     def __setitem__(self, key, value):
         key = self._upper(key)
-        self._delitem(key, False)
-        self._add((key, value))
+        self._remove(key, False)
+        self._add(key, value)
 
     def __delitem__(self, key):
         key = self._upper(key)
-        self._delitem(key, True)
+        self._remove(key, True)
 
-    cdef _delitem(self, key, int raise_key_error):
+    cdef _remove(self, key, int raise_key_error):
         cdef int found
         found = False
         for i in range(len(self._items) - 1, -1, -1):
@@ -274,7 +289,7 @@ cdef class MultiDict(_Base):
         for k, v in self._items:
             if k == key:
                 return v
-        self._add((key, default))
+        self._add(key, default)
         return default
 
     def pop(self, key, default=_marker):
@@ -302,9 +317,8 @@ cdef class MultiDict(_Base):
         else:
             raise KeyError("empty multidict")
 
-    def update(self, *args, **kw):
-        """Method not allowed."""
-        raise NotImplementedError("Use extend method instead")
+    def update(self, *args, **kwargs):
+        self._extend(args, kwargs, "update", 0)
 
     def __richcmp__(self, other, op):
         cdef MultiDict typed_self = self
