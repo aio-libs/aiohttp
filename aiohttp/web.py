@@ -1142,7 +1142,7 @@ class PlainRoute(Route):
         self._path = path
 
     def match(self, path):
-        # string comparsion about 10 times faster than regexp matching
+        # string comparsion is about 10 times faster than regexp matching
         if self._path == path:
             return {}
         else:
