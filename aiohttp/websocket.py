@@ -112,7 +112,7 @@ def parse_message(buf):
         elif payload:
             raise WebSocketError(
                 'Invalid close frame: {} {} {!r}'.format(fin, opcode, payload))
-        return Message(OPCODE_CLOSE, '', '')
+        return Message(OPCODE_CLOSE, 0, '')
 
     elif opcode == OPCODE_PING:
         return Message(OPCODE_PING, payload, '')
