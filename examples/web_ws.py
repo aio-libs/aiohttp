@@ -11,7 +11,7 @@ WS_FILE = os.path.join(os.path.dirname(__file__), 'websocket.html')
 
 
 @asyncio.coroutine
-def handler(request):
+def wshandler(request):
     resp = WebSocketResponse()
     ok, protocol = resp.can_start(request)
     if not ok:
@@ -19,7 +19,7 @@ def handler(request):
             return Response(body=fp.read(), content_type='text/html')
 
     resp.start(request)
-    print('{}: Someone joined.'.format(os.getpid()))
+    print('Someone joined.')
     for ws in request.app['sockets']:
         ws.send_str('Someone joined')
     request.app['sockets'].append(resp)
@@ -43,12 +43,16 @@ def handler(request):
 def init(loop):
     app = Application(loop=loop)
     app['sockets'] = []
-    app.router.add_route('GET', '/', handler)
+    app.router.add_route('GET', '/', wshandler)
 
-    srv = yield from loop.create_server(app.make_handler(), '127.0.0.1', 8080)
+    handler = app.make_handler()
+    srv = yield from loop.create_server(handler, '127.0.0.1', 8080)
     print("Server started at http://127.0.0.1:8080")
-    return srv
+    return srv, handler
 
 loop = asyncio.get_event_loop()
-loop.run_until_complete(init(loop))
-loop.run_forever()
+srv, handler = loop.run_until_complete(init(loop))
+try:
+    loop.run_forever()
+except KeyboardInterrupt:
+    loop.run_until_complete(handler.finish_connections())
