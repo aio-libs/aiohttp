@@ -96,7 +96,7 @@ cdef class _Base:
     def __len__(self):
         return len(self._items)
 
-    def keys(self):
+    cpdef keys(self):
         return _KeysView.__new__(_KeysView, self._items)
 
     def items(self):
