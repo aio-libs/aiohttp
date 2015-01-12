@@ -157,7 +157,7 @@ class WebsocketParserTests(unittest.TestCase):
             p.send(b'')
         except StopIteration as exc:
             res = exc.value
-        self.assertEqual(res, (websocket.OPCODE_CLOSE, '', ''))
+        self.assertEqual(res, (websocket.OPCODE_CLOSE, 0, ''))
 
     @unittest.mock.patch('aiohttp.websocket.parse_frame')
     def test_close_frame_info(self, m_parse_frame):
