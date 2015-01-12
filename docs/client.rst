@@ -234,32 +234,17 @@ To upload Multipart-encoded files::
     >>> url = 'http://httpbin.org/post'
     >>> files = {'file': open('report.xls', 'rb')}
 
-    >>> r = yield from aiohttp.request('post', url, data=files)
-    >>> yield from r.text()
-    {
-      ...
-      "files": {
-        "file": "<censored...binary...data>"
-      },
-      ...
-    }
+    >>> yield from aiohttp.request('post', url, data=files)
 
 You can set the filename, content_type explicitly::
 
     >>> url = 'http://httpbin.org/post'
-    >>> files = {'file': ('report.xls',
-    ...                   open('report.xls', 'rb'),
-    ...                   'application/vnd.ms-excel')}
+    >>> data = FormData()
+    >>> data.add_field('report.xls',
+    ...                open('report.xls', 'rb'),
+    ...                content_type='application/vnd.ms-excel')
 
-    >>> r = aiohttp.request('post', url, data=files)
-    >>> yield from r.text()
-    {
-      ...
-      "files": {
-        "file": "<censored...binary...data>"
-      },
-      ...
-    }
+    >>> yield from aiohttp.request('post', url, data=data)
 
 If you want, you can send strings to be received as files::
 
@@ -268,15 +253,7 @@ If you want, you can send strings to be received as files::
     ...                   'some,data,to,send\nanother,row,to,send\n')
     ... }
 
-    >>> r = yield from aiohttp.request('post', url, data=files)
-    >>> yield from r.text()
-    {
-      ...
-      "files": {
-        "file": "some,data,to,send\\nanother,row,to,send\\n"
-      },
-      ...
-    }
+    >>> yield from aiohttp.request('post', url, data=files)
 
 If you pass file object as data parameter, aiohttp will stream it to server
 automatically. Check :class:`aiohttp.stream.StreamReader` for supported format
