@@ -187,6 +187,19 @@ MutableMultiDict
       If not, insert *key* with a value of *default* and return *default*.
       *default* defaults to ``None``.
 
+   .. method:: update([other])
+
+      Update the dictionary with the key/value pairs from *other*,
+      overwriting existing keys.
+
+      Return ``None``.
+
+      :meth:`update` accepts either another dictionary object or an
+      iterable of key/value pairs (as tuples or other iterables
+      of length two). If keyword arguments are specified, the
+      dictionary is then updated with those key/value pairs:
+      ``d.update(red=1, blue=2)``.
+
 
 CIMultiDict
 -----------

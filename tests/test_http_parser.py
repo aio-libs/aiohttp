@@ -36,7 +36,7 @@ class ParseHeadersTests(unittest.TestCase):
 
         headers, close, compression = self.parser.parse_headers(hdrs)
 
-        self.assertEqual(list(headers.items(getall=True)),
+        self.assertEqual(list(headers.items()),
                          [('SET-COOKIE', 'c1=cookie1'),
                           ('SET-COOKIE', 'c2=cookie2')])
         self.assertIsNone(close)
