@@ -51,10 +51,14 @@ def init(loop):
     app.router.add_route('GET', '/hello/{name}', hello)
     app.router.add_route('GET', '/hello', hello)
 
-    srv = yield from loop.create_server(app.make_handler(), '127.0.0.1', 8080)
+    handler = app.make_handler()
+    srv = yield from loop.create_server(handler, '127.0.0.1', 8080)
     print("Server started at http://127.0.0.1:8080")
-    return srv
+    return srv, handler
 
 loop = asyncio.get_event_loop()
-loop.run_until_complete(init(loop))
-loop.run_forever()
+srv, handler = loop.run_until_complete(init(loop))
+try:
+    loop.run_forever()
+except KeyboardInterrupt:
+    loop.run_until_complete(handler.finish_connections())
