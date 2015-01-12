@@ -200,6 +200,11 @@ MutableMultiDict
       dictionary is then updated with those key/value pairs:
       ``d.update(red=1, blue=2)``.
 
+   .. seealso::
+
+      :class:`MultiDictProxy` can be used to create a read-only view
+      of a :class:`MultiDict`.
+
 
 CIMultiDict
 -----------
@@ -226,6 +231,11 @@ CIMultiDict
       'new val'
 
    The class is inherited from :class:`MultiDict`.
+
+   .. seealso::
+
+      :class:`CIMultiDictProxy` can be used to create a read-only view
+      of a :class:`CIMultiDict`.
 
 
 MultiDictProxy
