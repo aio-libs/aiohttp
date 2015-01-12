@@ -34,16 +34,18 @@ cdef class _Base:
     def __cinit__(self):
         self._upstr = upstr
 
-    cdef _upper(self, key):
-        return key
+    cdef str _upper(self, s):
+        if type(s) is self._upstr:
+            return <str>s
+        return s
 
     def getall(self, key, default=_marker):
         """
         Return a list of all values matching the key (may be an empty list)
         """
-        return self._getall(key, default)
+        return self._getall(self._upper(key), default)
 
-    cdef _getall(self, key, default):
+    cdef _getall(self, str key, default):
         cdef list res
         key = self._upper(key)
         res = [v for k, v in self._items if k == key]
@@ -57,13 +59,13 @@ cdef class _Base:
         """
         Get first value matching the key
         """
-        return self._getone(key, default)
+        return self._getone(self._upper(key), default)
 
-    cdef _getone(self, key, default):
+    cdef _getone(self, str key, default):
         cdef tuple item
         key = self._upper(key)
         for item in self._items:
-            if item[0] == key:
+            if <str>item[0] == key:
                 return item[1]
         if default is not _marker:
             return default
@@ -72,19 +74,19 @@ cdef class _Base:
     # Mapping interface #
 
     def __getitem__(self, key):
-        return self._getone(key, _marker)
+        return self._getone(self._upper(key), _marker)
 
     def get(self, key, default=None):
-        return self._getone(key, default)
+        return self._getone(self._upper(key), default)
 
     def __contains__(self, key):
-        return self._contains(key)
+        return self._contains(self._upper(key))
 
-    cdef _contains(self, key):
+    cdef _contains(self, str key):
         cdef tuple item
         key = self._upper(key)
         for item in self._items:
-            if item[0] == key:
+            if <str>item[0] == key:
                 return True
         return False
 
@@ -177,9 +179,9 @@ cdef class CIMultiDictProxy(MultiDictProxy):
         mdict = arg
         self._items = mdict._items
 
-    cdef _upper(self, s):
+    cdef str _upper(self, s):
         if type(s) is self._upstr:
-            return s
+            return <str>s
         return s.upper()
 
     def copy(self):
@@ -199,6 +201,7 @@ cdef class MultiDict(_Base):
 
     cdef _extend(self, tuple args, dict kwargs, name, int do_add):
         cdef tuple item
+        cdef str key
 
         if len(args) > 1:
             raise TypeError("{} takes at most 1 positional argument"
@@ -234,10 +237,10 @@ cdef class MultiDict(_Base):
             else:
                 self._replace(key, value)
 
-    cdef _add(self, key, value):
+    cdef _add(self, str key, value):
         self._items.append((key, value))
 
-    cdef _replace(self, key, value):
+    cdef _replace(self, str key, value):
         self._remove(key, 0)
         self._items.append((key, value))
 
@@ -266,15 +269,12 @@ cdef class MultiDict(_Base):
     # MutableMapping interface #
 
     def __setitem__(self, key, value):
-        key = self._upper(key)
-        self._remove(key, False)
-        self._add(key, value)
+        self._replace(self._upper(key), value)
 
     def __delitem__(self, key):
-        key = self._upper(key)
-        self._remove(key, True)
+        self._remove(self._upper(key), True)
 
-    cdef _remove(self, key, int raise_key_error):
+    cdef _remove(self, str key, int raise_key_error):
         cdef int found
         found = False
         for i in range(len(self._items) - 1, -1, -1):
@@ -285,17 +285,19 @@ cdef class MultiDict(_Base):
             raise KeyError(key)
 
     def setdefault(self, key, default=None):
-        key = self._upper(key)
+        cdef str skey
+        skey = self._upper(key)
         for k, v in self._items:
-            if k == key:
+            if k == skey:
                 return v
-        self._add(key, default)
+        self._add(skey, default)
         return default
 
     def pop(self, key, default=_marker):
         cdef int found
+        cdef str skey
         cdef object value
-        key = self._upper(key)
+        skey = self._upper(key)
         value = None
         found = False
         for i in range(len(self._items) - 1, -1, -1):
@@ -357,9 +359,9 @@ abc.MutableMapping.register(MultiDict)
 cdef class CIMultiDict(MultiDict):
     """An ordered dictionary that can have multiple values for each key."""
 
-    cdef _upper(self, s):
+    cdef str _upper(self, s):
         if type(s) is self._upstr:
-            return s
+            return <str>s
         return s.upper()
 
 
