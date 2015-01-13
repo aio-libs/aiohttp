@@ -32,6 +32,8 @@ def wshandler(request):
                 if ws is not resp:
                     ws.send_str(msg)
     except WebSocketDisconnectedError:
+        if resp not in request.app['sockets']:
+            return resp
         request.app['sockets'].remove(resp)
         print('Someone disconnected.')
         for ws in request.app['sockets']:
@@ -48,11 +50,23 @@ def init(loop):
     handler = app.make_handler()
     srv = yield from loop.create_server(handler, '127.0.0.1', 8080)
     print("Server started at http://127.0.0.1:8080")
-    return srv, handler
+    return app, srv, handler
+
+
+@asyncio.coroutine
+def finish(app, srv, handler):
+    for ws in app['sockets']:
+        ws.close()
+    app['sockets'].clear()
+    yield from asyncio.sleep(0.1)
+    srv.close()
+    yield from handler.finish_connections()
+    yield from srv.wait_closed()
+
 
 loop = asyncio.get_event_loop()
-srv, handler = loop.run_until_complete(init(loop))
+app, srv, handler = loop.run_until_complete(init(loop))
 try:
     loop.run_forever()
 except KeyboardInterrupt:
-    loop.run_until_complete(handler.finish_connections())
+    loop.run_until_complete(finish(app, srv, handler))
