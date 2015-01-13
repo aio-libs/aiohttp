@@ -10,7 +10,7 @@ import urllib.parse
 from collections import namedtuple
 from wsgiref.handlers import format_date_time
 
-from . import multidict
+from . import hdrs, multidict
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
@@ -39,9 +39,6 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
 class FormData:
     """Helper class for multipart/form-data and
     application/x-www-form-urlencoded body generation."""
-
-    CONTENT_TYPE_ID = multidict.upstr('Content-Type')
-    CONTENT_TRANSFER_ENCODING_ID = multidict.upstr('Content-Transfer-Encoding')
 
     def __init__(self, fields=()):
         self._fields = []
@@ -80,11 +77,10 @@ class FormData:
 
         headers = {}
         if content_type is not None:
-            headers[self.CONTENT_TYPE_ID] = content_type
+            headers[hdrs.CONTENT_TYPE] = content_type
             self._is_multipart = True
         if content_transfer_encoding is not None:
-            CTE = self.CONTENT_TRANSFER_ENCODING_ID
-            headers[CTE] = content_transfer_encoding
+            headers[hdrs.CONTENT_TRANSFER_ENCODING] = content_transfer_encoding
             self._is_multipart = True
             supported_tranfer_encoding = {
                 'base64': binascii.b2a_base64,
@@ -123,7 +119,7 @@ class FormData:
     def _gen_form_urlencoded(self, encoding):
         # form data (x-www-form-urlencoded)
         data = []
-        for type_options, headers, value in self._fields:
+        for type_options, _, value in self._fields:
             data.append((type_options['name'], value))
 
         data = urllib.parse.urlencode(data, doseq=True)
@@ -275,8 +271,8 @@ def atoms(message, environ, response, transport, request_time):
         'r': r,
         's': str(getattr(response, 'status', '')),
         'b': str(getattr(response, 'output_length', '')),
-        'f': headers.get('REFERER', '-'),
-        'a': headers.get('USER-AGENT', '-'),
+        'f': headers.get(hdrs.REFERER, '-'),
+        'a': headers.get(hdrs.USER_AGENT, '-'),
         'T': str(int(request_time)),
         'D': str(request_time).split('.', 1)[-1][:5],
         'p': "<%s>" % os.getpid()
