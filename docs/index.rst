@@ -26,10 +26,13 @@ Library Installation
    pip3 install aiohttp
 
 For smart detection of *Content-Type* by client API you would like to
-install *chardet* also::
+install `chardet` also::
 
-   pip install chardet
+   pip3 install chardet
 
+*Optional*: To improve performances, you can install `Cython` **before** `aiohttp`::
+
+   pip3 install cython
 
 Getting Started
 ---------------
