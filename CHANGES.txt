@@ -33,6 +33,10 @@ CHANGES
 - Convert `ConnectionError` to `aiohttp.DisconnectedError` and don't
   eat `ConnectionError` exceptions from web handlers.
 
+- Remove hop headers from Response class, wsgi response still uses hop headers.
+
+- Allow to send raw chunked encoded response.
+
 
 0.13.1 (12-31-2014)
 --------------------

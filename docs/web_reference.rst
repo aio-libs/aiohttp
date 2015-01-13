@@ -250,7 +250,7 @@ first positional parameter.
 
 
 Response classes
------------------
+----------------
 
 For now, :mod:`aiohttp.web` has two classes for the *HTTP response*:
 :class:`StreamResponse` and :class:`Response`.
@@ -336,6 +336,18 @@ StreamResponse
 
       Disable :attr:`keep_alive` for connection. There are no ways to
       enable it back.
+
+   .. attribute:: chunked
+
+      Read-only property, incicates if chunked encoding is on.
+
+      Can be enabled by :meth:`enable_chunked_encoding` call.
+
+   .. method:: enable_chunked_encoding
+
+      Enables :attr:`chunked` enacoding for response. There are no ways to
+      disable it back. With enabled :attr:`chunked` encoding each `write()`
+      operation encoded in separate chunk.
 
    .. attribute:: headers
 

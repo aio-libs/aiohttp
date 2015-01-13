@@ -287,7 +287,7 @@ class Router:
             hdrs.extend(headers.items())
 
         if chunked:
-            response.force_chunked()
+            response.enable_chunked_encoding()
 
         # headers
         response.add_headers(*hdrs)

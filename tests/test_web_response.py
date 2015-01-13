@@ -115,6 +115,18 @@ class TestStreamResponse(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             resp.start(req2)
 
+    @mock.patch('aiohttp.web.ResponseImpl')
+    def test_chunked_encoding(self, ResponseImpl):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse()
+        self.assertFalse(resp.chunked)
+
+        resp.enable_chunked_encoding()
+        self.assertTrue(resp.chunked)
+
+        msg = resp.start(req)
+        self.assertTrue(msg.chunked)
+
     def test_write_non_byteish(self):
         resp = StreamResponse()
         resp.start(self.make_request('GET', '/'))

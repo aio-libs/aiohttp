@@ -391,6 +391,7 @@ class StreamResponse(HeadersMixin):
     def __init__(self, *, status=200, reason=None):
         self._body = None
         self._keep_alive = None
+        self._chunked = False
         self._headers = CIMultiDict()
         self._cookies = http.cookies.SimpleCookie()
         self.set_status(status, reason)
@@ -413,6 +414,10 @@ class StreamResponse(HeadersMixin):
         return self._status
 
     @property
+    def chunked(self):
+        return self._chunked
+
+    @property
     def reason(self):
         return self._reason
 
@@ -428,6 +433,10 @@ class StreamResponse(HeadersMixin):
 
     def force_close(self):
         self._keep_alive = False
+
+    def enable_chunked_encoding(self):
+        """Enables automatic chunked transfer encoding."""
+        self._chunked = True
 
     @property
     def headers(self):
@@ -556,6 +565,9 @@ class StreamResponse(HeadersMixin):
             self._reason)
 
         self._copy_cookies()
+
+        if self._chunked:
+            resp_impl.enable_chunked_encoding()
 
         headers = self.headers.items()
         for key, val in headers:
