@@ -37,6 +37,10 @@ clean:
 	rm -rf cover
 	make -C docs clean
 	python setup.py clean
+	rm -f aiohttp/_multidict.html
+	rm -f aiohttp/_multidict.c
+	rm -f aiohttp/_multidict.*.so
+	rm -f aiohttp/_multidict.*.pyd
 
 doc:
 	make -C docs html
