@@ -48,6 +48,12 @@ After that, create a server and run the *asyncio loop* as usual::
 
 That's it.
 
+.. tip::
+
+   The :mod:`aiohttp.web` server requires no additional configuration to be
+   deployed in production environments.
+
+
 .. _aiohttp-web-handler:
 
 Handler
