@@ -2,7 +2,7 @@ from collections import abc
 import sys
 
 __all__ = ['MultiDictProxy', 'CIMultiDictProxy',
-           'MultiDict', 'CIMultiDict']
+           'MultiDict', 'CIMultiDict', 'upstr']
 
 _marker = object()
 
