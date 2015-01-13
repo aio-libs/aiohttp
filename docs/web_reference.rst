@@ -924,11 +924,25 @@ Router is any object that implements :class:`AbstractRouter` interface.
    .. method:: resolve(requst)
 
       A :ref:`coroutine<coroutine>` that returns
-      :class:`AbstractMatchInfo` for *request* or raises http
-      exception like :exc:`HTTPNotFound` if there is no registered
-      route for *request*.
+      :class:`AbstractMatchInfo` for *request*.
+
+      The method never raises exception, but returns
+      :class:`AbstractMatchInfo` instance with ``None``
+      :attr:`~AbstractMatchInfo.route` and
+      :attr:`~AbstractMatchInfo.handler` which raises
+      :exc:`HTTPNotFound` or :exc:`HTTPMethodNotAllowed` on handler's
+      execution if there is no registered route for *request*.
+
+      *Middlewares* can process that exceptions to render
+      pretty-looking error page for example.
 
       Used by internal machinery, end user unlikely need to call the method.
+
+      .. versionchanged:: 0.14
+
+         The method don't raise :exc:`HTTPNotFound` and
+         :exc:`HTTPMethodNotAllowed` anymore.
+
 
 .. _aiohttp-web-route:
 

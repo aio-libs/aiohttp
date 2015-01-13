@@ -367,7 +367,7 @@ other, like displaying *403 Forbidden page* or raising
 resource.  Also middleware may render errors raised by handler, do
 some pre- and post- processing like handling *CORS* and so on.
 
-.. warning::
+.. versionchanged:: 0.14
 
-   Middleware is executing **after** routing, thus it cannot process
-   route exceptions.
+   Middleware accepts route exceptions (:exc:`HTTPNotFound` and
+   :exc:`HTTPMethodNotAllowed`).
