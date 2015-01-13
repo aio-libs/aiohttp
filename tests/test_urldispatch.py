@@ -130,8 +130,12 @@ class TestUrlDispatcher(unittest.TestCase):
         self.router.add_route('POST', '/', handler2)
         req = self.make_request('PUT', '/')
 
+        match_info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNone(match_info.route)
+        self.assertEqual({}, match_info)
+
         with self.assertRaises(HTTPMethodNotAllowed) as ctx:
-            self.loop.run_until_complete(self.router.resolve(req))
+            self.loop.run_until_complete(match_info.handler(req))
 
         exc = ctx.exception
         self.assertEqual('PUT', exc.method)
@@ -143,8 +147,12 @@ class TestUrlDispatcher(unittest.TestCase):
         self.router.add_route('GET', '/a', handler)
         req = self.make_request('GET', '/b')
 
+        match_info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNone(match_info.route)
+        self.assertEqual({}, match_info)
+
         with self.assertRaises(HTTPNotFound) as ctx:
-            self.loop.run_until_complete(self.router.resolve(req))
+            self.loop.run_until_complete(match_info.handler(req))
 
         exc = ctx.exception
         self.assertEqual(404, exc.status)
@@ -281,8 +289,11 @@ class TestUrlDispatcher(unittest.TestCase):
         self.router.add_route('GET', r'/handler/{to:\d+}', handler)
 
         req = self.make_request('GET', '/handler/tail')
+        match_info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNone(match_info.route)
+        self.assertEqual({}, match_info)
         with self.assertRaises(HTTPNotFound):
-            self.loop.run_until_complete(self.router.resolve(req))
+            self.loop.run_until_complete(match_info.handler(req))
 
     def test_add_route_with_re_including_slashes(self):
         handler = asyncio.coroutine(lambda req: Response(req))

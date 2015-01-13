@@ -1242,6 +1242,44 @@ class StaticRoute(Route):
             directory=self._directory)
 
 
+class _NotFoundMatchInfo(UrlMappingMatchInfo):
+
+    def __init__(self):
+        super().__init__({}, None)
+
+    @property
+    def handler(self):
+        return self._not_found
+
+    @property
+    def route(self):
+        return None
+
+    @asyncio.coroutine
+    def _not_found(self, request):
+        raise HTTPNotFound()
+
+
+class _MethodNotAllowedMatchInfo(UrlMappingMatchInfo):
+
+    def __init__(self, method, allowed_methods):
+        super().__init__({}, None)
+        self._method = method
+        self._allowed_methods = allowed_methods
+
+    @property
+    def handler(self):
+        return self._not_allowed
+
+    @property
+    def route(self):
+        return None
+
+    @asyncio.coroutine
+    def _not_allowed(self, request):
+        raise HTTPMethodNotAllowed(self._method, self._allowed_methods)
+
+
 class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     DYN = re.compile(r'^\{(?P<var>[a-zA-Z][_a-zA-Z0-9]*)\}$')
@@ -1273,9 +1311,9 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                 return UrlMappingMatchInfo(match_dict, route)
         else:
             if allowed_methods:
-                raise HTTPMethodNotAllowed(method, allowed_methods)
+                return _MethodNotAllowedMatchInfo(method, allowed_methods)
             else:
-                raise HTTPNotFound()
+                return _NotFoundMatchInfo()
 
     def __iter__(self):
         return iter(self._routes)

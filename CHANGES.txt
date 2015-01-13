@@ -28,6 +28,8 @@ CHANGES
   (`MultiDictProxy` and `CIMultiDictProxy`). Previous edition of
   multidicts was not a part of public API BTW.
 
+- Router refactoring to push Not Allowed and Not Found in middleware processing
+
 
 0.13.1 (12-31-2014)
 --------------------
