@@ -3,6 +3,7 @@
 __version__ = '0.14.0a0'
 
 
+from . import hdrs  # noqa
 from .protocol import *  # noqa
 from .connector import *  # noqa
 from .client import *  # noqa
@@ -21,4 +22,4 @@ __all__ = (client.__all__ +
            connector.__all__ +
            streams.__all__ +
            multidict.__all__ +
-           ['__version__'])
+           ['hdrs', '__version__'])

@@ -17,9 +17,9 @@ import zlib
 from wsgiref.handlers import format_date_time
 
 import aiohttp
-from aiohttp import errors
-from aiohttp.multidict import CIMultiDict, upstr
-from aiohttp.log import internal_logger
+from . import errors, hdrs
+from .multidict import CIMultiDict
+from .log import internal_logger
 
 ASCIISET = set(string.printable)
 METHRE = re.compile('[A-Z0-9$-_.]+')
@@ -110,13 +110,13 @@ class HttpParser:
             value = value.strip()
 
             # keep-alive and encoding
-            if name == 'CONNECTION':
+            if name == hdrs.CONNECTION:
                 v = value.lower()
                 if v == 'close':
                     close_conn = True
                 elif v == 'keep-alive':
                     close_conn = False
-            elif name == 'CONTENT-ENCODING':
+            elif name == hdrs.CONTENT_ENCODING:
                 enc = value.lower()
                 if enc in ('gzip', 'deflate'):
                     encoding = enc
@@ -255,10 +255,6 @@ class HttpResponseParser(HttpParser):
 
 class HttpPayloadParser:
 
-    CONTENT_LENGTH_ID = upstr('CONTENT-LENGTH')
-    SEC_WEBSOCKET_KEY1_ID = upstr('SEC-WEBSOCKET-KEY1')
-    TRANSFER_ENCODING_ID = upstr('TRANSFER-ENCODING')
-
     def __init__(self, message, length=None, compression=True,
                  readall=False, response_with_body=True):
         self.message = message
@@ -269,8 +265,8 @@ class HttpPayloadParser:
 
     def __call__(self, out, buf):
         # payload params
-        length = self.message.headers.get(self.CONTENT_LENGTH_ID, self.length)
-        if self.SEC_WEBSOCKET_KEY1_ID in self.message.headers:
+        length = self.message.headers.get(hdrs.CONTENT_LENGTH, self.length)
+        if hdrs.SEC_WEBSOCKET_KEY1 in self.message.headers:
             length = 8
 
         # payload decompression wrapper
@@ -283,17 +279,17 @@ class HttpPayloadParser:
             pass
 
         elif 'chunked' in self.message.headers.get(
-                self.TRANSFER_ENCODING_ID, ''):
+                hdrs.TRANSFER_ENCODING, ''):
             yield from self.parse_chunked_payload(out, buf)
 
         elif length is not None:
             try:
                 length = int(length)
             except ValueError:
-                raise errors.InvalidHeader(self.CONTENT_LENGTH_ID) from None
+                raise errors.InvalidHeader(hdrs.CONTENT_LENGTH) from None
 
             if length < 0:
-                raise errors.InvalidHeader(self.CONTENT_LENGTH_ID)
+                raise errors.InvalidHeader(hdrs.CONTENT_LENGTH)
             elif length > 0:
                 yield from self.parse_length_payload(out, buf, length)
         else:
@@ -515,9 +511,6 @@ class HttpMessage:
 
     HOP_HEADERS = None  # Must be set by subclass.
 
-    TRANSFER_ENCODING_ID = upstr('TRANSFER-ENCODING')
-    CONNECTION_ID = upstr('CONNECTION')
-
     SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} aiohttp/{1}'.format(
         sys.version_info, aiohttp.__version__)
 
@@ -579,10 +572,10 @@ class HttpMessage:
         name = name.strip().upper()
         value = value.strip()
 
-        if name == 'CONTENT-LENGTH':
+        if name == hdrs.CONTENT_LENGTH:
             self.length = int(value)
 
-        if name == 'CONNECTION':
+        if name == hdrs.CONNECTION:
             val = value.lower()
             # handle websocket
             if 'upgrade' in val:
@@ -593,12 +586,12 @@ class HttpMessage:
             elif 'keep-alive' in val and self.version >= HttpVersion11:
                 self.keepalive = True
 
-        elif name == 'UPGRADE':
+        elif name == hdrs.UPGRADE:
             if 'websocket' in value.lower():
                 self.websocket = True
                 self.headers[name] = value
 
-        elif name == 'TRANSFER-ENCODING' and not self.chunked:
+        elif name == hdrs.TRANSFER_ENCODING and not self.chunked:
             self.chunked = value.lower().strip() == 'chunked'
 
         elif name not in self.HOP_HEADERS:
@@ -657,9 +650,9 @@ class HttpMessage:
             connection = 'close'
 
         if self.chunked:
-            self.headers[self.TRANSFER_ENCODING_ID] = 'chunked'
+            self.headers[hdrs.TRANSFER_ENCODING] = 'chunked'
 
-        self.headers[self.CONNECTION_ID] = connection
+        self.headers[hdrs.CONNECTION] = connection
 
     def write(self, chunk, *, EOF_MARKER=EOF_MARKER, EOL_MARKER=EOL_MARKER):
         """Writes chunk of data to a stream by using different writers.
@@ -803,18 +796,15 @@ class Response(HttpMessage):
     """
 
     HOP_HEADERS = {
-        'CONNECTION',
-        'KEEP-ALIVE',
-        'PROXY-AUTHENTICATE',
-        'PROXY-AUTHORIZATION',
-        'TE',
-        'TRAILERS',
-        'TRANSFER-ENCODING',
-        'UPGRADE',
+        hdrs.CONNECTION,
+        hdrs.KEEP_ALIVE,
+        hdrs.PROXY_AUTHENTICATE,
+        hdrs.PROXY_AUTHORIZATION,
+        hdrs.TE,
+        hdrs.TRAILERS,
+        hdrs.TRANSFER_ENCODING,
+        hdrs.UPGRADE,
     }
-
-    DATE_ID = upstr('DATE')
-    SERVER_ID = upstr('SERVER')
 
     @staticmethod
     def calc_reason(status):
@@ -840,16 +830,15 @@ class Response(HttpMessage):
     def _add_default_headers(self):
         super()._add_default_headers()
 
-        if self.DATE_ID not in self.headers:
+        if hdrs.DATE not in self.headers:
             # format_date_time(None) is quite expensive
-            self.headers.setdefault(self.DATE_ID, format_date_time(None))
-        self.headers.setdefault(self.SERVER_ID, self.SERVER_SOFTWARE)
+            self.headers.setdefault(hdrs.DATE, format_date_time(None))
+        self.headers.setdefault(hdrs.SERVER, self.SERVER_SOFTWARE)
 
 
 class Request(HttpMessage):
 
     HOP_HEADERS = ()
-    USER_AGENT_ID = upstr('USER-AGENT')
 
     def __init__(self, transport, method, path,
                  http_version=HttpVersion11, close=False):
@@ -863,4 +852,4 @@ class Request(HttpMessage):
     def _add_default_headers(self):
         super()._add_default_headers()
 
-        self.headers.setdefault(self.USER_AGENT_ID, self.SERVER_SOFTWARE)
+        self.headers.setdefault(hdrs.USER_AGENT, self.SERVER_SOFTWARE)

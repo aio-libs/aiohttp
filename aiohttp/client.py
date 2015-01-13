@@ -16,11 +16,10 @@ except ImportError:  # pragma: no cover
     chardet = None
 
 import aiohttp
-from . import helpers, streams
+from . import hdrs, helpers, streams
 from .log import client_logger
 from .streams import EOF_MARKER, FlowControlStreamReader
-from .multidict import (CIMultiDictProxy, MultiDictProxy,
-                        MultiDict, upstr)
+from .multidict import CIMultiDictProxy, MultiDictProxy, MultiDict
 
 HTTP_PORT = 80
 HTTPS_PORT = 443
@@ -131,7 +130,8 @@ def request(method, url, *,
                 data = None
             cookies = resp.cookies
 
-            r_url = resp.headers.get('LOCATION') or resp.headers.get('URI')
+            r_url = (resp.headers.get(hdrs.LOCATION) or
+                     resp.headers.get(hdrs.URI))
 
             scheme = urllib.parse.urlsplit(r_url)[0]
             if scheme not in ('http', 'https', ''):
@@ -156,20 +156,9 @@ class ClientRequest:
     POST_METHODS = {'PATCH', 'POST', 'PUT', 'TRACE', 'DELETE'}
     ALL_METHODS = GET_METHODS.union(POST_METHODS)
 
-    ACCEPT_ID = upstr('ACCEPT')
-    ACCEPT_ENCODING_ID = upstr('ACCEPT-ENCODING')
-    AUTHORIZATION_ID = upstr('AUTHORIZATION')
-    CONTENT_ENCODING_ID = upstr('CONTENT-ENCODING')
-    CONTENT_LENGTH_ID = upstr('CONTENT-LENGTH')
-    CONTENT_TYPE_ID = upstr('CONTENT-TYPE')
-    COOKIE_ID = upstr('COOKIE')
-    EXPECT_ID = upstr('EXPECT')
-    HOST_ID = upstr('HOST')
-    TRANSFER_ENCODING_ID = upstr('TRANSFER-ENCODING')
-
     DEFAULT_HEADERS = {
-        ACCEPT_ID: '*/*',
-        ACCEPT_ENCODING_ID: 'gzip, deflate',
+        hdrs.ACCEPT: '*/*',
+        hdrs.ACCEPT_ENCODING: 'gzip, deflate',
     }
 
     body = b''
@@ -317,19 +306,18 @@ class ClientRequest:
                 self.headers[hdr] = val
 
         # add host
-        if self.HOST_ID not in self.headers:
-            self.headers[self.HOST_ID] = self.netloc
+        if hdrs.HOST not in self.headers:
+            self.headers[hdrs.HOST] = self.netloc
 
     def update_cookies(self, cookies):
         """Update request cookies header."""
         if not cookies:
             return
 
-        COOKIE_ID = self.COOKIE_ID
         c = http.cookies.SimpleCookie()
-        if COOKIE_ID in self.headers:
-            c.load(self.headers.get(COOKIE_ID, ''))
-            del self.headers[COOKIE_ID]
+        if hdrs.COOKIE in self.headers:
+            c.load(self.headers.get(hdrs.COOKIE, ''))
+            del self.headers[hdrs.COOKIE]
 
         if isinstance(cookies, dict):
             cookies = cookies.items()
@@ -341,19 +329,18 @@ class ClientRequest:
             else:
                 c[name] = value
 
-        self.headers[COOKIE_ID] = c.output(header='', sep=';').strip()
+        self.headers[hdrs.COOKIE] = c.output(header='', sep=';').strip()
 
     def update_content_encoding(self):
         """Set request content encoding."""
-        CONTENT_ENCODING_ID = self.CONTENT_ENCODING_ID
-        enc = self.headers.get(CONTENT_ENCODING_ID, '').lower()
+        enc = self.headers.get(hdrs.CONTENT_ENCODING, '').lower()
         if enc:
             self.compress = enc
             self.chunked = True  # enable chunked, no need to deal with length
         elif self.compress:
             if not isinstance(self.compress, str):
                 self.compress = 'deflate'
-            self.headers[CONTENT_ENCODING_ID] = self.compress
+            self.headers[hdrs.CONTENT_ENCODING] = self.compress
             self.chunked = True  # enable chunked, no need to deal with length
 
     def update_auth(self, auth):
@@ -368,30 +355,29 @@ class ClientRequest:
                 'BasicAuth() tuple is required instead ', DeprecationWarning)
             auth = helpers.BasicAuth(*auth)
 
-        self.headers[self.AUTHORIZATION_ID] = auth.encode()
+        self.headers[hdrs.AUTHORIZATION] = auth.encode()
 
     def update_body_from_data(self, data):
         if not data:
             return
-        CONTENT_LENGTH_ID = self.CONTENT_LENGTH_ID
-        CONTENT_TYPE_ID = self.CONTENT_TYPE_ID
 
         if isinstance(data, str):
             data = data.encode(self.encoding)
 
         if isinstance(data, (bytes, bytearray)):
             self.body = data
-            if CONTENT_TYPE_ID not in self.headers:
-                self.headers[CONTENT_TYPE_ID] = 'application/octet-stream'
-            if CONTENT_LENGTH_ID not in self.headers and not self.chunked:
-                self.headers[CONTENT_LENGTH_ID] = str(len(self.body))
+            if hdrs.CONTENT_TYPE not in self.headers:
+                self.headers[hdrs.CONTENT_TYPE] = 'application/octet-stream'
+            if hdrs.CONTENT_LENGTH not in self.headers and not self.chunked:
+                self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
 
         elif isinstance(data, (asyncio.StreamReader, streams.DataQueue)):
             self.body = data
 
         elif asyncio.iscoroutine(data):
             self.body = data
-            if CONTENT_LENGTH_ID not in self.headers and self.chunked is None:
+            if (hdrs.CONTENT_LENGTH not in self.headers and
+                    self.chunked is None):
                 self.chunked = True
 
         elif isinstance(data, io.IOBase):
@@ -403,10 +389,11 @@ class ClientRequest:
                 if data.mode == 'r':
                     raise ValueError('file {!r} should be open in binary mode'
                                      ''.format(data))
-            if CONTENT_TYPE_ID not in self.headers and hasattr(data, 'name'):
+            if (hdrs.CONTENT_TYPE not in self.headers and
+                    hasattr(data, 'name')):
                 mime = mimetypes.guess_type(data.name)[0]
                 mime = 'application/octet-stream' if mime is None else mime
-                self.headers[CONTENT_TYPE_ID] = mime
+                self.headers[hdrs.CONTENT_TYPE] = mime
 
         else:
             if not isinstance(data, helpers.FormData):
@@ -414,26 +401,25 @@ class ClientRequest:
 
             self.body = data(self.encoding)
 
-            if CONTENT_TYPE_ID not in self.headers:
-                self.headers[CONTENT_TYPE_ID] = data.content_type
+            if hdrs.CONTENT_TYPE not in self.headers:
+                self.headers[hdrs.CONTENT_TYPE] = data.content_type
 
             if data.is_multipart:
                 self.chunked = self.chunked or 8192
             else:
-                if CONTENT_LENGTH_ID not in self.headers and not self.chunked:
-                    self.headers[CONTENT_LENGTH_ID] = str(len(self.body))
+                if (hdrs.CONTENT_LENGTH not in self.headers and
+                        not self.chunked):
+                    self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
 
     def update_transfer_encoding(self):
         """Analyze transfer-encoding header."""
-        CONTENT_LENGTH_ID = self.CONTENT_LENGTH_ID
-        TRANSFER_ENCODING_ID = self.TRANSFER_ENCODING_ID
-        te = self.headers.get(TRANSFER_ENCODING_ID, '').lower()
+        te = self.headers.get(hdrs.TRANSFER_ENCODING, '').lower()
 
         if self.chunked:
-            if CONTENT_LENGTH_ID in self.headers:
-                del self.headers[CONTENT_LENGTH_ID]
+            if hdrs.CONTENT_LENGTH in self.headers:
+                del self.headers[hdrs.CONTENT_LENGTH]
             if 'chunked' not in te:
-                self.headers[TRANSFER_ENCODING_ID] = 'chunked'
+                self.headers[hdrs.TRANSFER_ENCODING] = 'chunked'
 
             self.chunked = self.chunked if type(self.chunked) is int else 8192
         else:
@@ -441,13 +427,13 @@ class ClientRequest:
                 self.chunked = 8192
             else:
                 self.chunked = None
-                if CONTENT_LENGTH_ID not in self.headers:
-                    self.headers[CONTENT_LENGTH_ID] = str(len(self.body))
+                if hdrs.CONTENT_LENGTH not in self.headers:
+                    self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
 
     def update_expect_continue(self, expect=False):
         if expect:
-            self.headers[self.EXPECT_ID] = '100-continue'
-        elif self.headers.get(self.EXPECT_ID, '').lower() == '100-continue':
+            self.headers[hdrs.EXPECT] = '100-continue'
+        elif self.headers.get(hdrs.EXPECT, '').lower() == '100-continue':
             expect = True
 
         if expect:
@@ -580,9 +566,6 @@ class ClientRequest:
 
 class ClientResponse:
 
-    CONTENT_TYPE_ID = upstr('CONTENT-TYPE')
-    SET_COOKIE_ID = upstr('SET-COOKIE')
-
     message = None  # RawResponseMessage object
 
     # from the Status-Line of the response
@@ -675,8 +658,8 @@ class ClientResponse:
 
         # cookies
         self.cookies = http.cookies.SimpleCookie()
-        if self.SET_COOKIE_ID in self.headers:
-            for hdr in self.headers.getall(self.SET_COOKIE_ID):
+        if hdrs.SET_COOKIE in self.headers:
+            for hdr in self.headers.getall(hdrs.SET_COOKIE):
                 try:
                     self.cookies.load(hdr)
                 except http.cookies.CookieError as exc:
@@ -751,7 +734,7 @@ class ClientResponse:
         return (yield from self.read(decode))
 
     def _get_encoding(self, encoding):
-        ctype = self.headers.get(self.CONTENT_TYPE_ID, '').lower()
+        ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
         mtype, stype, _, params = helpers.parse_mimetype(ctype)
 
         if not encoding:
@@ -777,7 +760,7 @@ class ClientResponse:
         if self._content is None:
             yield from self.read()
 
-        ctype = self.headers.get(self.CONTENT_TYPE_ID, '').lower()
+        ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
         if 'json' not in ctype:
             client_logger.warning(
                 'Attempt to decode JSON with unexpected mimetype: %s', ctype)

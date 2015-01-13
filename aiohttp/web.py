@@ -13,14 +13,14 @@ import os
 from urllib.parse import urlsplit, parse_qsl, urlencode, unquote
 from types import MappingProxyType
 
+from . import hdrs
 from .abc import AbstractRouter, AbstractMatchInfo
 from .helpers import reify
 from .log import web_logger
 from .multidict import (CIMultiDictProxy,
                         CIMultiDict,
                         MultiDictProxy,
-                        MultiDict,
-                        upstr)
+                        MultiDict)
 from .protocol import Response as ResponseImpl, HttpVersion, HttpVersion11
 from .server import ServerHttpProtocol
 from .streams import EOF_MARKER
@@ -90,10 +90,6 @@ __all__ = [
 sentinel = object()
 
 
-CONTENT_TYPE_ID = upstr('Content-Type')
-CONTENT_LENGTH_ID = upstr('Content-Length')
-
-
 class HeadersMixin:
 
     _content_type = None
@@ -110,25 +106,25 @@ class HeadersMixin:
             self._content_type, self._content_dict = cgi.parse_header(raw)
 
     @property
-    def content_type(self, CONTENT_TYPE_ID=CONTENT_TYPE_ID):
+    def content_type(self, _CONTENT_TYPE=hdrs.CONTENT_TYPE):
         """The value of content part for Content-Type HTTP header."""
-        raw = self.headers.get(CONTENT_TYPE_ID)
+        raw = self.headers.get(_CONTENT_TYPE)
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
         return self._content_type
 
     @property
-    def charset(self, CONTENT_TYPE_ID=CONTENT_TYPE_ID):
+    def charset(self, _CONTENT_TYPE=hdrs.CONTENT_TYPE):
         """The value of charset part for Content-Type HTTP header."""
-        raw = self.headers.get(CONTENT_TYPE_ID)
+        raw = self.headers.get(_CONTENT_TYPE)
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
         return self._content_dict.get('charset')
 
     @property
-    def content_length(self, CONTENT_LENGTH_ID=CONTENT_LENGTH_ID):
+    def content_length(self, _CONTENT_LENGTH=hdrs.CONTENT_LENGTH):
         """The value of Content-Length HTTP header."""
-        l = self.headers.get(CONTENT_LENGTH_ID)
+        l = self.headers.get(_CONTENT_LENGTH)
         if l is None:
             return None
         else:
@@ -146,14 +142,14 @@ FileField = collections.namedtuple('Field', 'name filename file content_type')
 class Request(HeadersMixin):
 
     def __init__(self, app, message, payload, transport, reader, writer, *,
-                 HOST_ID=upstr('HOST')):
+                 _HOST=hdrs.HOST):
         self._app = app
         self._version = message.version
         self._transport = transport
         self._reader = reader
         self._writer = writer
         self._method = message.method
-        self._host = message.headers.get(HOST_ID)
+        self._host = message.headers.get(_HOST)
         self._path_qs = message.path
         res = urlsplit(message.path)
         self._path = unquote(res.path)
@@ -277,7 +273,7 @@ class Request(HeadersMixin):
         A read-only dictionary-like object.
         """
         if self._cookies is None:
-            raw = self.headers.get('COOKIE', '')
+            raw = self.headers.get(hdrs.COOKIE, '')
             parsed = http.cookies.SimpleCookie(raw)
             self._cookies = MappingProxyType(
                 {key: val.value for key, val in parsed.items()})
@@ -347,7 +343,7 @@ class Request(HeadersMixin):
         environ = {'REQUEST_METHOD': self.method,
                    'CONTENT_LENGTH': str(len(body)),
                    'QUERY_STRING': '',
-                   'CONTENT_TYPE': self.headers.get(CONTENT_TYPE_ID)}
+                   'CONTENT_TYPE': self.headers.get(hdrs.CONTENT_TYPE)}
 
         fs = cgi.FieldStorage(fp=io.BytesIO(body),
                               environ=environ,
@@ -406,7 +402,7 @@ class StreamResponse(HeadersMixin):
     def _copy_cookies(self):
         for cookie in self._cookies.values():
             value = cookie.output(header='')[1:]
-            self.headers.add('Set-Cookie', value)
+            self.headers.add(hdrs.SET_COOKIE, value)
 
     @property
     def started(self):
@@ -491,9 +487,9 @@ class StreamResponse(HeadersMixin):
         if value is not None:
             value = int(value)
             # TODO: raise error if chunked enabled
-            self.headers['Content-Length'] = str(value)
-        elif 'Content-Length' in self.headers:
-            del self.headers['Content-Length']
+            self.headers[hdrs.CONTENT_LENGTH] = str(value)
+        elif hdrs.CONTENT_LENGTH in self.headers:
+            del self.headers[hdrs.CONTENT_LENGTH]
 
     @property
     def content_type(self):
@@ -523,13 +519,13 @@ class StreamResponse(HeadersMixin):
             self._content_dict['charset'] = str(value).lower()
         self._generate_content_type_header()
 
-    def _generate_content_type_header(self, CONTENT_TYPE_ID=CONTENT_TYPE_ID):
+    def _generate_content_type_header(self, CONTENT_TYPE=hdrs.CONTENT_TYPE):
         params = '; '.join("%s=%s" % i for i in self._content_dict.items())
         if params:
             ctype = self._content_type + '; ' + params
         else:
             ctype = self._content_type
-        self.headers[CONTENT_TYPE_ID] = ctype
+        self.headers[CONTENT_TYPE] = ctype
 
     def _start_pre_check(self, request):
         if self._resp_impl is not None:
@@ -614,15 +610,15 @@ class Response(StreamResponse):
             raise ValueError("body and text are not allowed together.")
 
         if text is not None:
-            if CONTENT_TYPE_ID not in self.headers:
+            if hdrs.CONTENT_TYPE not in self.headers:
                 # fast path for filling headers
                 if not isinstance(text, str):
                     raise TypeError('text argument must be str (%r)' %
                                     type(text))
                 if content_type is None:
                     content_type = 'text/plain'
-                self.headers[CONTENT_TYPE_ID] = (content_type +
-                                                 '; charset=utf-8')
+                self.headers[hdrs.CONTENT_TYPE] = (
+                    content_type + '; charset=utf-8')
                 self._content_type = content_type
                 self._content_dict = {'charset': 'utf-8'}
                 self.body = text.encode('utf-8')
