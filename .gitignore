@@ -17,6 +17,7 @@ var/*
 *.egg
 *.tar.gz
 *.so
+*.pyd
 .tox
 .DS_Store
 .coverage
