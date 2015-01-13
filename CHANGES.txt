@@ -30,6 +30,9 @@ CHANGES
 
 - Router refactoring to push Not Allowed and Not Found in middleware processing
 
+- Convert `ConnectionError` to `aiohttp.DisconnectedError` and don't
+  eat `ConnectionError` exceptions from web handlers.
+
 
 0.13.1 (12-31-2014)
 --------------------
