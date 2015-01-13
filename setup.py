@@ -91,9 +91,9 @@ args = dict(
 try:
     setup(**args)
 except BuildFailed:
-    print("*************************************************************")
-    print("Cannot compile C accellerator module, use pure python version")
-    print("*************************************************************")
+    print("************************************************************")
+    print("Cannot compile C accelerator module, use pure python version")
+    print("************************************************************")
     del args['ext_modules']
     del args['cmdclass']
     setup(**args)
