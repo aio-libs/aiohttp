@@ -801,7 +801,7 @@ class Response(HttpMessage):
         hdrs.PROXY_AUTHENTICATE,
         hdrs.PROXY_AUTHORIZATION,
         hdrs.TE,
-        hdrs.TRAILERS,
+        hdrs.TRAILER,
         hdrs.TRANSFER_ENCODING,
         hdrs.UPGRADE,
     }
