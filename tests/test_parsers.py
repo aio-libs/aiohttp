@@ -48,6 +48,17 @@ class StreamParserTests(unittest.TestCase):
         stream.set_exception(exc)
         self.assertIs(stream.exception(), exc)
 
+    def test_exception_connection_error(self):
+        stream = parsers.StreamParser()
+        self.assertIsNone(stream.exception())
+
+        exc = ConnectionError()
+        stream.set_exception(exc)
+        self.assertIsNot(stream.exception(), exc)
+        self.assertIsInstance(stream.exception(), RuntimeError)
+        self.assertIs(stream.exception().__cause__, exc)
+        self.assertIs(stream.exception().__context__, exc)
+
     def test_exception_waiter(self):
         stream = parsers.StreamParser()
 
