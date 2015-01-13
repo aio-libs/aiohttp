@@ -707,6 +707,14 @@ class _UpStrMixin:
         s = self.cls('a')
         self.assertIs(s, s.upper())
 
+    def test_upstr_is_not_str(self):
+
+        class A:
+            def __repr__(self):
+                return '<A repr>'
+
+        self.assertEqual('<A REPR>', self.cls(A()))
+
 
 class TestPyUpStr(_UpStrMixin, unittest.TestCase):
 
