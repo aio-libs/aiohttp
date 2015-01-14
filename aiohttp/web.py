@@ -139,7 +139,7 @@ FileField = collections.namedtuple('Field', 'name filename file content_type')
 ############################################################
 
 
-class Request(HeadersMixin):
+class Request(dict, HeadersMixin):
 
     def __init__(self, app, message, payload, transport, reader, writer, *,
                  _HOST=hdrs.HOST):

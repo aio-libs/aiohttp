@@ -35,7 +35,10 @@ CHANGES
 
 - Server has 75 seconds keepalive timeout now, was non-keepalive by default.
 
-- Application doesn't accept `**kwargs` anymore (#243). 
+- Application doesn't accept `**kwargs` anymore (#243).
+
+- Request is inherited from dict now for making per-request storage to
+  middlewares (#242).
 
 
 0.13.1 (12-31-2014)
