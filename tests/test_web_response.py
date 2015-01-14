@@ -173,7 +173,7 @@ class TestStreamResponse(unittest.TestCase):
     def test_compression(self, ResponseImpl):
         req = self.make_request(
             'GET', '/',
-            headers=CIMultiDict({str(hdrs.ACCEPT_ENCODING): 'gzip, deflate'}))
+            headers=CIMultiDict({hdrs.ACCEPT_ENCODING: 'gzip, deflate'}))
         resp = StreamResponse()
         self.assertFalse(resp.chunked)
 
