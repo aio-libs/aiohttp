@@ -35,6 +35,8 @@ CHANGES
 
 - Server has 75 seconds keepalive timeout now, was non-keepalive by default.
 
+- Application doesn't accept `**kwargs` anymore (#243). 
+
 
 0.13.1 (12-31-2014)
 --------------------
