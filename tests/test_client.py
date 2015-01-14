@@ -158,6 +158,7 @@ class ClientResponseTests(unittest.TestCase):
         self.assertEqual(res, '{"тест": "пройден"}')
         self.assertTrue(self.response.close.called)
 
+    @unittest.skipIf(chardet is None, "no chardet")
     def test_text_detect_encoding(self):
         def side_effect(*args, **kwargs):
             def second_call(*args, **kwargs):
@@ -254,6 +255,7 @@ class ClientResponseTests(unittest.TestCase):
         self.assertEqual(res, {'тест': 'пройден'})
         self.assertTrue(self.response.close.called)
 
+    @unittest.skipIf(chardet is None, "no chardet")
     def test_json_detect_encoding(self):
         def side_effect(*args, **kwargs):
             def second_call(*args, **kwargs):
