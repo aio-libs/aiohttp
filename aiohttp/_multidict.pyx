@@ -15,10 +15,8 @@ class upstr(str):
             val = str(val, encoding, errors)
         elif isinstance(val, str):
             pass
-        elif hasattr(val, '__str__'):
-            val = val.__str__()
         else:
-            val = repr(val)
+            val = str(val)
         val = val.upper()
         return str.__new__(cls, val)
 
@@ -109,8 +107,36 @@ cdef class _Base:
         body = ', '.join("'{}': {!r}".format(k, v) for k, v in self.items())
         return '<{} {{{}}}>'.format(self.__class__.__name__, body)
 
-
-
+    def __richcmp__(self, other, op):
+        cdef _Base typed_self
+        cdef _Base typed_other
+        cdef tuple item
+        if op == 2:
+            if isinstance(self, _Base) and isinstance(other, _Base):
+                typed_self = self
+                typed_other = other
+                return typed_self._items == typed_other._items
+            elif not isinstance(other, abc.Mapping):
+                return NotImplemented
+            for item in self.items():
+                nv = other.get(item[0], _marker)
+                if item[1] != nv:
+                    return False
+            return True
+        elif op != 2:
+            if isinstance(self, _Base) and isinstance(other, _Base):
+                typed_self = self
+                typed_other = other
+                return typed_self._items != typed_other._items
+            elif not isinstance(other, abc.Mapping):
+                return NotImplemented
+            for item in self.items():
+                nv = other.get(item[0], _marker)
+                if item[1] == nv:
+                    return True
+            return False
+        else:
+            return NotImplemented
 
 
 cdef class MultiDictProxy(_Base):
@@ -127,42 +153,6 @@ cdef class MultiDictProxy(_Base):
 
     def copy(self):
         return MultiDict(self._items)
-
-    def __richcmp__(self, other, op):
-        cdef MultiDictProxy typed_self = self
-        cdef MultiDictProxy typed_other
-        cdef tuple item
-        if op == 2:
-            if isinstance(other, MultiDictProxy):
-                typed_other = other
-                return typed_self._items == typed_other._items
-            elif isinstance(other, MultiDict):
-                typed_other = other
-                return typed_self._items == typed_other._items
-            elif not isinstance(other, abc.Mapping):
-                return NotImplemented
-            for item in typed_self._items:
-                nv = other.get(item[0], _marker)
-                if item[1] != nv:
-                    return False
-            return True
-        elif op != 2:
-            if isinstance(other, MultiDictProxy):
-                typed_other = other
-                return typed_self._items != typed_other._items
-            elif isinstance(other, MultiDict):
-                typed_other = other
-                return typed_self._items == typed_other._items
-            elif not isinstance(other, abc.Mapping):
-                return NotImplemented
-            for item in typed_self._items:
-                nv = other.get(item[0], _marker)
-                if item[1] == nv:
-                    return True
-            return False
-        else:
-            return NotImplemented
-
 
 abc.Mapping.register(MultiDictProxy)
 
@@ -321,36 +311,6 @@ cdef class MultiDict(_Base):
 
     def update(self, *args, **kwargs):
         self._extend(args, kwargs, "update", 0)
-
-    def __richcmp__(self, other, op):
-        cdef MultiDict typed_self = self
-        cdef MultiDict typed_other
-        cdef tuple item
-        if op == 2:
-            if isinstance(other, MultiDict):
-                typed_other = other
-                return typed_self._items == typed_other._items
-            elif not isinstance(other, abc.Mapping):
-                return NotImplemented
-            for item in typed_self._items:
-                nv = other.get(item[0], _marker)
-                if item[1] != nv:
-                    return False
-            return True
-        elif op != 2:
-            if isinstance(other, MultiDict):
-                typed_other = other
-                return typed_self._items == typed_other._items
-            elif not isinstance(other, abc.Mapping):
-                return NotImplemented
-            for item in typed_self._items:
-                nv = other.get(item[0], _marker)
-                if item[1] == nv:
-                    return True
-            return False
-        else:
-            return NotImplemented
-
 
 
 abc.MutableMapping.register(MultiDict)
