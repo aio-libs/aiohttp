@@ -393,6 +393,8 @@ class StreamResponse(HeadersMixin):
         self._keep_alive = None
         self._chunked = False
         self._chunk_size = None
+        self._compression = False
+        self._compression_force = False
         self._headers = CIMultiDict()
         self._cookies = http.cookies.SimpleCookie()
         self.set_status(status, reason)
@@ -419,6 +421,10 @@ class StreamResponse(HeadersMixin):
         return self._chunked
 
     @property
+    def compression(self):
+        return self._compression
+
+    @property
     def reason(self):
         return self._reason
 
@@ -439,6 +445,11 @@ class StreamResponse(HeadersMixin):
         """Enables automatic chunked transfer encoding."""
         self._chunked = True
         self._chunk_size = chunk_size
+
+    def enable_compression(self, force=False):
+        """Enables response compression with `deflate` encoding."""
+        self._compression = True
+        self._compression_force = force
 
     @property
     def headers(self):
@@ -567,6 +578,12 @@ class StreamResponse(HeadersMixin):
             self._reason)
 
         self._copy_cookies()
+
+        if self._compression:
+            if (self._compression_force or
+                    'deflate' in request.headers.get(
+                        hdrs.ACCEPT_ENCODING, '')):
+                resp_impl.add_compression_filter()
 
         if self._chunked:
             resp_impl.enable_chunked_encoding()
