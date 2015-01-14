@@ -127,6 +127,48 @@ so application developer can use classes if he wants::
    app.router.add_route('GET', '/intro', handler.handle_intro)
    app.router.add_route('GET', '/greet/{name}', handler.handle_greeting)
 
+Custom conditions for routes lookup
+-----------------------------------
+
+Sometimes you need to distinguish *web-handlers* on more complex
+criteria than *HTTP method* and *path*.
+
+While :class:`UrlDispatcher` doesn't accept extra criterias there is
+easy way to do the task by implementing the second routing layer by
+hands.
+
+The example shows custom processing based on *HTTP Accept* header::
+
+   class Handler:
+
+       def __init__(self):
+           self._accepts = {}
+
+       @asyncio.coroutine
+       def do_route(self, request):
+           acceptor = self._accepts.get(request.headers.get('ACCEPT'))
+           if acceptor is None:
+               raise HTTPNotAcceptable()
+           return (yield from acceptor(request))
+
+       def reg_acceptor(self, accept, handler):
+           self._accepts[accept] = handler
+
+
+   @asyncio.coroutine
+   def handle_json(request):
+       # do json handling
+
+   @asyncio.coroutine
+   def handle_xml(request):
+       # do xml handling
+
+   handler = Handler()
+   app.router.add_route('GET', '/', handler.do_route)
+   handler.reg_acceptor('application/json', handle_json)
+   handler.reg_acceptor('application/xml', handle_xml)
+
+
 
 .. _aiohttp-web-file-upload:
 

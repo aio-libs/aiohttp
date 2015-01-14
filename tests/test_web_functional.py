@@ -26,7 +26,7 @@ class TestWebFunctional(unittest.TestCase):
 
     @asyncio.coroutine
     def create_server(self, method, path, handler=None):
-        app = web.Application(loop=self.loop, debug=True)
+        app = web.Application(loop=self.loop)
         if handler:
             app.router.add_route(method, path, handler)
 

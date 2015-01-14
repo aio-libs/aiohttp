@@ -394,7 +394,7 @@ class ProxyConnectorTests(unittest.TestCase):
             if isinstance(return_value, Exception):
                 raise return_value
             return return_value
-            yield
+            yield  # pragma: no cover
         mock.side_effect = coro
 
     def test_ctor(self):

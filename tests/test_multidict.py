@@ -395,6 +395,15 @@ class _BaseMutableMultiDictTests(_BaseTest):
         with self.assertRaises(TypeError):
             d.extend('foo', 'bar')
 
+    def test_extend_from_proxy(self):
+        d = self.make_dict([('a', 'a'), ('b', 'b')])
+        proxy = self.proxy_cls(d)
+
+        d2 = self.make_dict()
+        d2.extend(proxy)
+
+        self.assertEqual([('a', 'a'), ('b', 'b')], list(d2.items()))
+
     def test_clear(self):
         d = self.make_dict([('key', 'one')], key='two', foo='bar')
 
@@ -564,6 +573,15 @@ class _CIMutableMultiDictTests(_Root):
         with self.assertRaises(TypeError):
             d.extend('foo', 'bar')
 
+    def test_extend_from_proxy(self):
+        d = self.make_dict([('a', 'a'), ('b', 'b')])
+        proxy = self.proxy_cls(d)
+
+        d2 = self.make_dict()
+        d2.extend(proxy)
+
+        self.assertEqual([('A', 'a'), ('B', 'b')], list(d2.items()))
+
     def test_clear(self):
         d = self.make_dict([('KEY', 'one')], key='two', foo='bar')
 
@@ -650,11 +668,13 @@ class TestPyCIMultiDictProxy(_TestCIProxy, unittest.TestCase):
 class PyMutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
 
     cls = _MultiDict
+    proxy_cls = _MultiDictProxy
 
 
 class PyCIMutableMultiDictTests(_CIMutableMultiDictTests, unittest.TestCase):
 
     cls = _CIMultiDict
+    proxy_cls = _CIMultiDictProxy
 
 
 class TestMultiDictProxy(_TestProxy, unittest.TestCase):
@@ -672,11 +692,13 @@ class TestCIMultiDictProxt(_TestCIProxy, unittest.TestCase):
 class MutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
 
     cls = MultiDict
+    proxy_cls = MultiDictProxy
 
 
 class CIMutableMultiDictTests(_CIMutableMultiDictTests, unittest.TestCase):
 
     cls = CIMultiDict
+    proxy_cls = CIMultiDictProxy
 
 
 class _UpStrMixin:
@@ -733,6 +755,24 @@ class TypesMixin:
 
     def test_dict_not_inherited_from_proxy(self):
         self.assertFalse(issubclass(self.mdict, self.proxy))
+
+    def test_create_multidict_proxy_from_nonmultidict(self):
+        with self.assertRaises(TypeError):
+            self.proxy({})
+
+    def test_create_multidict_proxy_from_cimultidict(self):
+        d = self.cimdict(key='val')
+        p = self.proxy(d)
+        self.assertEqual(p, d)
+
+    def test_create_cimultidict_proxy_from_nonmultidict(self):
+        with self.assertRaises(TypeError):
+            self.ciproxy({})
+
+    def test_create_ci_multidict_proxy_from_multidict(self):
+        d = self.mdict(key='val')
+        with self.assertRaises(TypeError):
+            self.ciproxy(d)
 
 
 class TestPyTypes(TypesMixin, unittest.TestCase):
