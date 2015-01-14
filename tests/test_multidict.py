@@ -25,6 +25,8 @@ class _Root:
 
     proxy_cls = None
 
+    upstr_cls = None
+
     def test_exposed_names(self):
         name = self.cls.__name__
         while name.startswith('_'):
@@ -280,6 +282,16 @@ class _CIMultiDictTests(_Root):
     def test_get(self):
         d = self.make_dict([('A', 1), ('a', 2)])
         self.assertEqual(1, d['a'])
+
+
+class _NonProxyCIMultiDict(_CIMultiDictTests):
+
+    def test_extend_with_upstr(self):
+        us = self.upstr_cls('a')
+        d = self.make_dict()
+
+        d.extend((us, 'val'))
+        self.assertEqual([('A', 'val')], list(d.items()))
 
 
 class _TestProxy(_MultiDictTests):
@@ -652,9 +664,11 @@ class PyMutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
     cls = _MultiDict
 
 
-class PyCIMutableMultiDictTests(_CIMutableMultiDictTests, unittest.TestCase):
+class PyCIMutableMultiDictTests(_CIMutableMultiDictTests, _NonProxyCIMultiDict,
+                                unittest.TestCase):
 
     cls = _CIMultiDict
+    upstr_cls = _upstr
 
 
 class TestMultiDictProxy(_TestProxy, unittest.TestCase):
@@ -663,7 +677,7 @@ class TestMultiDictProxy(_TestProxy, unittest.TestCase):
     proxy_cls = MultiDictProxy
 
 
-class TestCIMultiDictProxt(_TestCIProxy, unittest.TestCase):
+class TestCIMultiDictProxy(_TestCIProxy, unittest.TestCase):
 
     cls = CIMultiDict
     proxy_cls = CIMultiDictProxy
@@ -674,9 +688,11 @@ class MutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
     cls = MultiDict
 
 
-class CIMutableMultiDictTests(_CIMutableMultiDictTests, unittest.TestCase):
+class CIMutableMultiDictTests(_CIMutableMultiDictTests, _NonProxyCIMultiDict,
+                              unittest.TestCase):
 
     cls = CIMultiDict
+    upstr_cls = upstr
 
 
 class _UpStrMixin:

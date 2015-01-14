@@ -187,11 +187,11 @@ class _MultiDict(_Base, abc.MutableMapping):
             else:
                 items = args[0]
 
-            for item in items:
-                method(*item)
+            for key, value in items:
+                method(key, value)
 
-        for item in kwargs.items():
-            method(*item)
+        for key, value in kwargs.items():
+            method(key, value)
 
     def clear(self):
         """Remove all items from MultiDict"""
