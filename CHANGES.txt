@@ -33,6 +33,8 @@ CHANGES
 - Convert `ConnectionError` to `aiohttp.DisconnectedError` and don't
   eat `ConnectionError` exceptions from web handlers.
 
+- Server has 75 seconds keepalive timeout now, was non-keepalive by default.
+
 
 0.13.1 (12-31-2014)
 --------------------
