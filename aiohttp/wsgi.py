@@ -17,7 +17,7 @@ import time
 from urllib.parse import urlsplit
 
 import aiohttp
-from aiohttp import server, helpers
+from aiohttp import server, helpers, hdrs
 
 
 class WSGIServerHttpProtocol(server.ServerHttpProtocol):
@@ -174,6 +174,17 @@ class WsgiResponse:
 
     status = None
 
+    HOP_HEADERS = {
+        hdrs.CONNECTION,
+        hdrs.KEEP_ALIVE,
+        hdrs.PROXY_AUTHENTICATE,
+        hdrs.PROXY_AUTHORIZATION,
+        hdrs.TE,
+        hdrs.TRAILER,
+        hdrs.TRANSFER_ENCODING,
+        hdrs.UPGRADE,
+    }
+
     def __init__(self, writer, message):
         self.writer = writer
         self.message = message
@@ -192,7 +203,11 @@ class WsgiResponse:
         resp = self.response = aiohttp.Response(
             self.writer, status_code,
             self.message.version, self.message.should_close)
+        resp.HOP_HEADERS = self.HOP_HEADERS
         resp.add_headers(*headers)
+
+        if resp.has_chunked_hdr:
+            resp.enable_chunked_encoding()
 
         # send headers immediately for websocket connection
         if status_code == 101 and resp.upgrade and resp.websocket:

@@ -539,6 +539,7 @@ class ClientRequest:
             request.add_compression_filter(self.compress)
 
         if self.chunked is not None:
+            request.enable_chunked_encoding()
             request.add_chunking_filter(self.chunked)
 
         request.add_headers(

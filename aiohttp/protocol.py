@@ -518,6 +518,7 @@ class HttpMessage:
     status_line = b''
     upgrade = False  # Connection: UPGRADE
     websocket = False  # Upgrade: WEBSOCKET
+    has_chunked_hdr = False  # Transfer-encoding: chunked
 
     # subclass can enable auto sending headers with write() call,
     # this is useful for wsgi's start_response implementation.
@@ -545,7 +546,7 @@ class HttpMessage:
         self.closing = True
         self.keepalive = False
 
-    def force_chunked(self):
+    def enable_chunked_encoding(self):
         self.chunked = True
 
     def keep_alive(self):
@@ -575,6 +576,9 @@ class HttpMessage:
         if name == hdrs.CONTENT_LENGTH:
             self.length = int(value)
 
+        if name == hdrs.TRANSFER_ENCODING:
+            self.has_chunked_hdr = value.lower().strip() == 'chunked'
+
         if name == hdrs.CONNECTION:
             val = value.lower()
             # handle websocket
@@ -590,9 +594,6 @@ class HttpMessage:
             if 'websocket' in value.lower():
                 self.websocket = True
                 self.headers[name] = value
-
-        elif name == hdrs.TRANSFER_ENCODING and not self.chunked:
-            self.chunked = value.lower().strip() == 'chunked'
 
         elif name not in self.HOP_HEADERS:
             # ignore hop-by-hop headers
@@ -612,12 +613,11 @@ class HttpMessage:
         assert not self.headers_sent, 'headers have been sent already'
         self.headers_sent = True
 
-        if (self.chunked is True) or (
-                self.length is None and
-                self.version >= HttpVersion11 and
-                self.status not in (304, 204)):
-            self.chunked = True
+        if self.chunked or (self.length is None and
+                            self.version >= HttpVersion11 and
+                            self.status not in (304, 204)):
             self.writer = self._write_chunked_payload()
+            self.headers[hdrs.TRANSFER_ENCODING] = 'chunked'
 
         elif self.length is not None:
             self.writer = self._write_length_payload(self.length)
@@ -630,15 +630,15 @@ class HttpMessage:
         self._add_default_headers()
 
         # status + headers
-        hdrs = ''.join(itertools.chain(
+        headers = ''.join(itertools.chain(
             (self.status_line,),
             *((k, ': ', v, '\r\n')
               for k, v in ((k, value)
                            for k, value in self.headers.items()))))
-        hdrs = hdrs.encode('utf-8') + b'\r\n'
+        headers = headers.encode('utf-8') + b'\r\n'
 
-        self.output_length += len(hdrs)
-        self.transport.write(hdrs)
+        self.output_length += len(headers)
+        self.transport.write(headers)
 
     def _add_default_headers(self):
         # set the connection header
@@ -648,9 +648,6 @@ class HttpMessage:
             connection = 'keep-alive'
         else:
             connection = 'close'
-
-        if self.chunked:
-            self.headers[hdrs.TRANSFER_ENCODING] = 'chunked'
 
         self.headers[hdrs.CONNECTION] = connection
 
@@ -795,16 +792,7 @@ class Response(HttpMessage):
     http version, (1, 0) stands for HTTP/1.0 and (1, 1) is for HTTP/1.1
     """
 
-    HOP_HEADERS = {
-        hdrs.CONNECTION,
-        hdrs.KEEP_ALIVE,
-        hdrs.PROXY_AUTHENTICATE,
-        hdrs.PROXY_AUTHORIZATION,
-        hdrs.TE,
-        hdrs.TRAILER,
-        hdrs.TRANSFER_ENCODING,
-        hdrs.UPGRADE,
-    }
+    HOP_HEADERS = ()
 
     @staticmethod
     def calc_reason(status):

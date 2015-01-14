@@ -1,6 +1,7 @@
 import asyncio
 import unittest
 from unittest import mock
+from aiohttp import hdrs
 from aiohttp.multidict import CIMultiDict
 from aiohttp.web import Request, StreamResponse, Response
 from aiohttp.protocol import RawRequestMessage, HttpVersion11
@@ -114,6 +115,75 @@ class TestStreamResponse(unittest.TestCase):
         req2 = self.make_request('GET', '/')
         with self.assertRaises(RuntimeError):
             resp.start(req2)
+
+    @mock.patch('aiohttp.web.ResponseImpl')
+    def test_chunked_encoding(self, ResponseImpl):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse()
+        self.assertFalse(resp.chunked)
+
+        resp.enable_chunked_encoding()
+        self.assertTrue(resp.chunked)
+
+        msg = resp.start(req)
+        self.assertTrue(msg.chunked)
+
+    @mock.patch('aiohttp.web.ResponseImpl')
+    def test_chunk_size(self, ResponseImpl):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse()
+        self.assertFalse(resp.chunked)
+
+        resp.enable_chunked_encoding(chunk_size=8192)
+        self.assertTrue(resp.chunked)
+
+        msg = resp.start(req)
+        self.assertTrue(msg.chunked)
+        msg.add_chunking_filter.assert_called_with(8192)
+        self.assertIsNotNone(msg.filter)
+
+    @mock.patch('aiohttp.web.ResponseImpl')
+    def test_compression_no_accept(self, ResponseImpl):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse()
+        self.assertFalse(resp.chunked)
+
+        self.assertFalse(resp.compression)
+        resp.enable_compression()
+        self.assertTrue(resp.compression)
+
+        msg = resp.start(req)
+        self.assertFalse(msg.add_compression_filter.called)
+
+    @mock.patch('aiohttp.web.ResponseImpl')
+    def test_force_compression_no_accept(self, ResponseImpl):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse()
+        self.assertFalse(resp.chunked)
+
+        self.assertFalse(resp.compression)
+        resp.enable_compression(force=True)
+        self.assertTrue(resp.compression)
+
+        msg = resp.start(req)
+        self.assertTrue(msg.add_compression_filter.called)
+        self.assertIsNotNone(msg.filter)
+
+    @mock.patch('aiohttp.web.ResponseImpl')
+    def test_compression(self, ResponseImpl):
+        req = self.make_request(
+            'GET', '/',
+            headers=CIMultiDict({str(hdrs.ACCEPT_ENCODING): 'gzip, deflate'}))
+        resp = StreamResponse()
+        self.assertFalse(resp.chunked)
+
+        self.assertFalse(resp.compression)
+        resp.enable_compression()
+        self.assertTrue(resp.compression)
+
+        msg = resp.start(req)
+        self.assertTrue(msg.add_compression_filter.called)
+        self.assertIsNotNone(msg.filter)
 
     def test_write_non_byteish(self):
         resp = StreamResponse()

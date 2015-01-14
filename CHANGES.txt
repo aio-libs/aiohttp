@@ -33,6 +33,14 @@ CHANGES
 - Convert `ConnectionError` to `aiohttp.DisconnectedError` and don't
   eat `ConnectionError` exceptions from web handlers.
 
+- Remove hop headers from Response class, wsgi response still uses hop headers.
+
+- Allow to send raw chunked encoded response.
+
+- Allow to encode output bytes stream into chunked encoding.
+
+- Allow to compress output bytes stream with `deflate` encoding.
+
 - Server has 75 seconds keepalive timeout now, was non-keepalive by default.
 
 - Application doesn't accept `**kwargs` anymore (#243).
