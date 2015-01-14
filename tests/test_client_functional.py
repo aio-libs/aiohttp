@@ -1063,11 +1063,7 @@ class Functional(test_utils.Router):
 
     @test_utils.Router.define('/method/([A-Za-z]+)$')
     def method(self, match):
-        meth = match.group(1).upper()
-        if meth == self._method:
-            self._response(self._start_response(200))
-        else:
-            self._response(self._start_response(400))
+        self._response(self._start_response(200))
 
     @test_utils.Router.define('/redirect_err$')
     def redirect_err(self, match):

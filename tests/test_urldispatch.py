@@ -31,8 +31,16 @@ class TestUrlDispatcher(unittest.TestCase):
                       self.transport, self.reader, self.writer)
         return req
 
+    def make_handler(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            return Response(request)  # pragma: no cover
+
+        return handler
+
     def test_add_route_root(self):
-        handler = asyncio.coroutine(lambda req: Response(req))
+        handler = self.make_handler()
         self.router.add_route('GET', '/', handler)
         req = self.make_request('GET', '/')
         info = self.loop.run_until_complete(self.router.resolve(req))
@@ -42,7 +50,7 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIsNone(info.route.name)
 
     def test_add_route_simple(self):
-        handler = asyncio.coroutine(lambda req: Response(req))
+        handler = self.make_handler()
         self.router.add_route('GET', '/handler/to/path', handler)
         req = self.make_request('GET', '/handler/to/path')
         info = self.loop.run_until_complete(self.router.resolve(req))
@@ -52,7 +60,7 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIsNone(info.route.name)
 
     def test_add_with_matchdict(self):
-        handler = asyncio.coroutine(lambda req: Response(req))
+        handler = self.make_handler()
         self.router.add_route('GET', '/handler/{to}', handler)
         req = self.make_request('GET', '/handler/tail')
         info = self.loop.run_until_complete(self.router.resolve(req))
@@ -62,7 +70,7 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIsNone(info.route.name)
 
     def test_add_with_name(self):
-        handler = lambda req: Response(req)
+        handler = self.make_handler()
         self.router.add_route('GET', '/handler/to/path', handler,
                               name='name')
         req = self.make_request('GET', '/handler/to/path')
@@ -71,7 +79,7 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertEqual('name', info.route.name)
 
     def test_add_with_tailing_slash(self):
-        handler = asyncio.coroutine(lambda req: Response(req))
+        handler = self.make_handler()
         self.router.add_route('GET', '/handler/to/path/', handler)
         req = self.make_request('GET', '/handler/to/path/')
         info = self.loop.run_until_complete(self.router.resolve(req))
@@ -80,31 +88,37 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIs(handler, info.handler)
 
     def test_add_invalid_path(self):
+        handler = self.make_handler()
         with self.assertRaises(ValueError):
-            self.router.add_route('GET', '/{/', lambda req: None)
+            self.router.add_route('GET', '/{/', handler)
 
     def test_add_url_invalid1(self):
+        handler = self.make_handler()
         with self.assertRaises(ValueError):
-            self.router.add_route('post', '/post/{id', lambda: None)
+            self.router.add_route('post', '/post/{id', handler)
 
     def test_add_url_invalid2(self):
+        handler = self.make_handler()
         with self.assertRaises(ValueError):
-            self.router.add_route('post', '/post/{id{}}', lambda: None)
+            self.router.add_route('post', '/post/{id{}}', handler)
 
     def test_add_url_invalid3(self):
+        handler = self.make_handler()
         with self.assertRaises(ValueError):
-            self.router.add_route('post', '/post/{id{}', lambda: None)
+            self.router.add_route('post', '/post/{id{}', handler)
 
     def test_add_url_invalid4(self):
+        handler = self.make_handler()
         with self.assertRaises(ValueError):
-            self.router.add_route('post', '/post/{id"}', lambda: None)
+            self.router.add_route('post', '/post/{id"}', handler)
 
     def test_add_url_invalid5(self):
+        handler = self.make_handler()
         with self.assertRaises(ValueError):
-            self.router.add_route('post', '/post"{id}', lambda: None)
+            self.router.add_route('post', '/post"{id}', handler)
 
     def test_add_url_escaping(self):
-        handler = asyncio.coroutine(lambda req: Response(req))
+        handler = self.make_handler()
         self.router.add_route('GET', '/+$', handler)
 
         req = self.make_request('GET', '/+$')
@@ -113,8 +127,8 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIs(handler, info.handler)
 
     def test_match_second_result_in_table(self):
-        handler1 = asyncio.coroutine(lambda req: Response(req))
-        handler2 = asyncio.coroutine(lambda req: Response(req))
+        handler1 = self.make_handler()
+        handler2 = self.make_handler()
         self.router.add_route('GET', '/h1', handler1)
         self.router.add_route('POST', '/h2', handler2)
         req = self.make_request('POST', '/h2')
@@ -124,8 +138,8 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIs(handler2, info.handler)
 
     def test_raise_method_not_allowed(self):
-        handler1 = lambda req: Response(req)
-        handler2 = lambda req: Response(req)
+        handler1 = self.make_handler()
+        handler2 = self.make_handler()
         self.router.add_route('GET', '/', handler1)
         self.router.add_route('POST', '/', handler2)
         req = self.make_request('PUT', '/')
@@ -143,7 +157,7 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertEqual({'POST', 'GET'}, exc.allowed_methods)
 
     def test_raise_method_not_found(self):
-        handler = lambda req: Response(req)
+        handler = self.make_handler()
         self.router.add_route('GET', '/a', handler)
         req = self.make_request('GET', '/b')
 
@@ -158,16 +172,17 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertEqual(404, exc.status)
 
     def test_double_add_url_with_the_same_name(self):
-        self.router.add_route('GET', '/get', lambda r: None, name='name')
+        handler1 = self.make_handler()
+        handler2 = self.make_handler()
+        self.router.add_route('GET', '/get', handler1, name='name')
 
         regexp = ("Duplicate 'name', already handled by")
         with self.assertRaisesRegex(ValueError, regexp):
-            self.router.add_route('GET', '/get_other', lambda r: None,
-                                  name='name')
+            self.router.add_route('GET', '/get_other', handler2, name='name')
 
     def test_route_plain(self):
-        route = self.router.add_route('GET', '/get', lambda r: None,
-                                      name='name')
+        handler = self.make_handler()
+        route = self.router.add_route('GET', '/get', handler, name='name')
         route2 = self.router['name']
         url = route2.url()
         self.assertEqual('/get', url)
@@ -178,8 +193,9 @@ class TestUrlDispatcher(unittest.TestCase):
             self.router['unknown']
 
     def test_route_dynamic(self):
-        route = self.router.add_route('GET', '/get/{name}',
-                                      lambda r: None, name='name')
+        handler = self.make_handler()
+        route = self.router.add_route('GET', '/get/{name}', handler,
+                                      name='name')
 
         route2 = self.router['name']
         url = route2.url(parts={'name': 'John'})
@@ -187,7 +203,8 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIs(route, route2)
 
     def test_route_with_qs(self):
-        self.router.add_route('GET', '/get', lambda r: None, name='name')
+        handler = self.make_handler()
+        self.router.add_route('GET', '/get', handler, name='name')
 
         url = self.router['name'].url(query=[('a', 'b'), ('c', 1)])
         self.assertEqual('/get?a=b&c=1', url)
@@ -202,14 +219,14 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIs(route, route2)
 
     def test_plain_not_match(self):
-        self.router.add_route('GET', '/get/path',
-                              lambda r: None, name='name')
+        handler = self.make_handler()
+        self.router.add_route('GET', '/get/path', handler, name='name')
         route = self.router['name']
         self.assertIsNone(route.match('/another/path'))
 
     def test_dynamic_not_match(self):
-        self.router.add_route('GET', '/get/{name}',
-                              lambda r: None, name='name')
+        handler = self.make_handler()
+        self.router.add_route('GET', '/get/{name}', handler, name='name')
         route = self.router['name']
         self.assertIsNone(route.match('/another/path'))
 
@@ -220,42 +237,39 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIsNone(route.match('/another/path'))
 
     def test_dynamic_with_trailing_slash(self):
-        self.router.add_route('GET', '/get/{name}/',
-                              lambda r: None, name='name')
+        handler = self.make_handler()
+        self.router.add_route('GET', '/get/{name}/', handler, name='name')
         route = self.router['name']
         self.assertEqual({'name': 'John'}, route.match('/get/John/'))
 
     def test_len(self):
-        self.router.add_route('GET', '/get1',
-                              lambda r: None, name='name1')
-        self.router.add_route('GET', '/get2',
-                              lambda r: None, name='name2')
+        handler = self.make_handler()
+        self.router.add_route('GET', '/get1', handler, name='name1')
+        self.router.add_route('GET', '/get2', handler, name='name2')
         self.assertEqual(2, len(self.router))
 
     def test_iter(self):
-        self.router.add_route('GET', '/get1',
-                              lambda r: None, name='name1')
-        self.router.add_route('GET', '/get2',
-                              lambda r: None, name='name2')
+        handler = self.make_handler()
+        self.router.add_route('GET', '/get1', handler, name='name1')
+        self.router.add_route('GET', '/get2', handler, name='name2')
         self.assertEqual({'name1', 'name2'}, set(iter(self.router)))
 
     def test_contains(self):
-        self.router.add_route('GET', '/get1',
-                              lambda r: None, name='name1')
-        self.router.add_route('GET', '/get2',
-                              lambda r: None, name='name2')
+        handler = self.make_handler()
+        self.router.add_route('GET', '/get1', handler, name='name1')
+        self.router.add_route('GET', '/get2', handler, name='name2')
         self.assertIn('name1', self.router)
         self.assertNotIn('name3', self.router)
 
     def test_plain_repr(self):
-        self.router.add_route('GET', '/get/path',
-                              lambda r: None, name='name')
+        handler = self.make_handler()
+        self.router.add_route('GET', '/get/path', handler, name='name')
         self.assertRegex(repr(self.router['name']),
                          r"<PlainRoute 'name' \[GET\] /get/path")
 
     def test_dynamic_repr(self):
-        self.router.add_route('GET', '/get/{path}',
-                              lambda r: None, name='name')
+        handler = self.make_handler()
+        self.router.add_route('GET', '/get/{path}', handler, name='name')
         self.assertRegex(repr(self.router['name']),
                          r"<DynamicRoute 'name' \[GET\] /get/{path}")
 
@@ -270,13 +284,13 @@ class TestUrlDispatcher(unittest.TestCase):
                                        os.path.dirname(aiohttp.__file__))
         self.assertEqual('/prefix/', route._prefix)
 
-    def test_static_dont_add__double_slash(self):
+    def test_static_dont_add_trailing_slash(self):
         route = self.router.add_static('/prefix/',
                                        os.path.dirname(aiohttp.__file__))
         self.assertEqual('/prefix/', route._prefix)
 
     def test_add_route_with_re(self):
-        handler = asyncio.coroutine(lambda req: Response(req))
+        handler = self.make_handler()
         self.router.add_route('GET', r'/handler/{to:\d+}', handler)
 
         req = self.make_request('GET', '/handler/1234')
@@ -285,7 +299,7 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertEqual({'to': '1234'}, info)
 
     def test_add_route_with_re_not_match(self):
-        handler = asyncio.coroutine(lambda req: Response(req))
+        handler = self.make_handler()
         self.router.add_route('GET', r'/handler/{to:\d+}', handler)
 
         req = self.make_request('GET', '/handler/tail')
@@ -296,7 +310,7 @@ class TestUrlDispatcher(unittest.TestCase):
             self.loop.run_until_complete(match_info.handler(req))
 
     def test_add_route_with_re_including_slashes(self):
-        handler = asyncio.coroutine(lambda req: Response(req))
+        handler = self.make_handler()
         self.router.add_route('GET', r'/handler/{to:.+}/tail', handler)
 
         req = self.make_request('GET', '/handler/re/with/slashes/tail')
@@ -305,7 +319,7 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertEqual({'to': 're/with/slashes'}, info)
 
     def test_add_route_with_invalid_re(self):
-        handler = asyncio.coroutine(lambda req: Response(req))
+        handler = self.make_handler()
         with self.assertRaises(ValueError) as ctx:
             self.router.add_route('GET', r'/handler/{to:+++}', handler)
         self.assertEqual(

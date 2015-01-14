@@ -3,10 +3,5 @@ branch = True
 source = aiohttp, tests
 omit = site-packages
 
-[report]
-exclude_lines =
-    @abc.
-    pragma: no cover
-
 [html]
 directory = coverage

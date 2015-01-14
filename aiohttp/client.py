@@ -741,7 +741,7 @@ class ClientResponse:
             encoding = params.get('charset')
             if not encoding and chardet:
                 encoding = chardet.detect(self._content)['encoding']
-            if not encoding:  # pragma: no cover
+            if not encoding:
                 encoding = 'utf-8'
 
         return encoding
