@@ -149,7 +149,7 @@ The example shows custom processing based on *HTTP Accept* header::
            acceptor = self._accepts.get(request.headers.get('ACCEPT'))
            if acceptor is None:
                raise HTTPNotAcceptable()
-           return yield from acceptor(request)
+           return (yield from acceptor(request))
 
        def reg_acceptor(self, accept, handler):
            self._accepts[accept] = handler
