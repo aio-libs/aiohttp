@@ -290,7 +290,7 @@ class _NonProxyCIMultiDict(_CIMultiDictTests):
         us = self.upstr_cls('a')
         d = self.make_dict()
 
-        d.extend((us, 'val'))
+        d.extend([(us, 'val')])
         self.assertEqual([('A', 'val')], list(d.items()))
 
 
