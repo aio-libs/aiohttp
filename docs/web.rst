@@ -137,19 +137,22 @@ While :class:`UrlDispatcher` doesn't accept extra criterias there is
 easy way to do the task by implementing the second routing layer by
 hands.
 
-The example shows custom processing based on *HTTP Accept* header::
+The example shows custom processing based on *HTTP Accept* header:
 
-   class Handler:
+.. code-block:: python
+
+   class AcceptChooser:
 
        def __init__(self):
            self._accepts = {}
 
        @asyncio.coroutine
        def do_route(self, request):
-           acceptor = self._accepts.get(request.headers.get('ACCEPT'))
-           if acceptor is None:
-               raise HTTPNotAcceptable()
-           return (yield from acceptor(request))
+           for accept in request.headers.getall('ACCEPT', []):
+                acceptor = self._accepts.get(accept):
+                if acceptor is not None:
+                    return (yield from acceptor(request))
+           raise HTTPNotAcceptable()
 
        def reg_acceptor(self, accept, handler):
            self._accepts[accept] = handler
@@ -163,10 +166,11 @@ The example shows custom processing based on *HTTP Accept* header::
    def handle_xml(request):
        # do xml handling
 
-   handler = Handler()
-   app.router.add_route('GET', '/', handler.do_route)
-   handler.reg_acceptor('application/json', handle_json)
-   handler.reg_acceptor('application/xml', handle_xml)
+   chooser = AcceptChooser()
+   app.router.add_route('GET', '/', chooser.do_route)
+
+   chooser.reg_acceptor('application/json', handle_json)
+   chooser.reg_acceptor('application/xml', handle_xml)
 
 
 

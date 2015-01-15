@@ -335,3 +335,45 @@ CIMultiDictProxy
    Raises :exc:`TypeError` is *multidict* is not :class:`CIMultiDict` instance.
 
    The class is inherited from :class:`MultiDict`.
+
+
+upstr
+-----
+
+:class:`CIMultiDict` accepts :class:`str` as *key* argument for dict
+lookups but converts it to upper case internally.
+
+For more effective processing it shoult to know if *key* is already upper cased.
+
+To skip :meth:`~str.upper()` call you may create upper cased string by
+hands, e.g::
+
+   >>> key = upstr('Key')
+   >>> key
+   'KEY'
+   >>> mdict = CIMultiDict(key='value')
+   >>> key in mdict
+   True
+   >>> mdict[key]
+   'value'
+
+For performance you should create :class:`upstr` strings once and
+store it globally, like :mod:`aiohttp.hdrs` does.
+
+.. class:: upstr(object='')
+           upstr(bytes_or_buffer[, encoding[, errors]])
+
+      Create a new **upper cased** string object from the given
+      *object*. If *encoding* or *errors* is specified, then the
+      object must expose a data buffer that will be decoded using the
+      given encoding and error handler.
+
+      Otherwise, returns the result of ``object.__str__()`` (if defined)
+      or ``repr(object)``.
+
+      *encoding* defaults to ``sys.getdefaultencoding()``.
+
+      *errors* defaults to ``'strict'``.
+
+      The class is inherited from :class:`str` and has all regular
+      string methods.
