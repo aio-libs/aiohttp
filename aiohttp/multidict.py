@@ -174,20 +174,26 @@ class _MultiDict(_Base, abc.MutableMapping):
             raise TypeError("{} takes at most 1 positional argument"
                             " ({} given)".format(name, len(args)))
         if args:
+            arg = args[0]
             if isinstance(args[0], _MultiDictProxy):
-                items = args[0].items()
+                items = arg._items
             elif isinstance(args[0], _MultiDict):
-                items = args[0].items()
-            elif hasattr(args[0], 'items'):
-                items = args[0].items()
+                items = arg._items
+            elif hasattr(arg, 'items'):
+                items = arg.items()
             else:
-                items = args[0]
+                for item in arg:
+                    if not len(item) == 2:
+                        raise TypeError(
+                            "{} takes either dict or list of (key, value) "
+                            "tuples".format(name))
+                items = arg
 
-            for item in items:
-                method(*item)
+            for key, value in items:
+                method(key, value)
 
-        for item in kwargs.items():
-            method(*item)
+        for key, value in kwargs.items():
+            method(key, value)
 
     def clear(self):
         """Remove all items from MultiDict"""

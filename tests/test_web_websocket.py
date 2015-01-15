@@ -3,7 +3,7 @@ import unittest
 from unittest import mock
 from aiohttp import CIMultiDict
 from aiohttp.web import (Request, WebSocketResponse,
-                         WebSocketDisconnectedError,
+                         WSClientDisconnectedError,
                          HTTPMethodNotAllowed, HTTPBadRequest)
 from aiohttp.protocol import RawRequestMessage, HttpVersion11
 from aiohttp import websocket
@@ -145,7 +145,7 @@ class TestWebWebSocket(unittest.TestCase):
 
         @asyncio.coroutine
         def a():
-            raise WebSocketDisconnectedError()
+            raise WSClientDisconnectedError()
 
         @asyncio.coroutine
         def b():
@@ -155,7 +155,7 @@ class TestWebWebSocket(unittest.TestCase):
         def c():
             yield from b()
 
-        with self.assertRaises(WebSocketDisconnectedError):
+        with self.assertRaises(WSClientDisconnectedError):
             self.loop.run_until_complete(c())
 
     def test_can_start_ok(self):
