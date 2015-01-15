@@ -287,7 +287,7 @@ class ClientRequest:
                 query = params
 
         self.path = urllib.parse.urlunsplit(
-            ('', '', urllib.parse.quote(path, safe='/%'), query, fragment))
+            ('', '', urllib.parse.quote(path, safe='/%:'), query, fragment))
 
     def update_headers(self, headers):
         """Update request headers."""
