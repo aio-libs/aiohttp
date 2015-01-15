@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-0.14.0 (Unreleased)
+0.14.0 (15/01/2014)
 -------------------
 
 - HttpMessage._add_default_headers does not overwrite existing headers #216
