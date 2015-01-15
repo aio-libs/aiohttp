@@ -541,7 +541,7 @@ class HttpServerProtocolTests(unittest.TestCase):
 
     def test_keep_alive_timeout_default(self):
         srv = server.ServerHttpProtocol(loop=self.loop)
-        self.assertIsNone(srv.keep_alive_timeout)
+        self.assertEqual(75, srv.keep_alive_timeout)
 
     def test_keep_alive_timeout_nondefault(self):
         srv = server.ServerHttpProtocol(loop=self.loop, keep_alive=10)

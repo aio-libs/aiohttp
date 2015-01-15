@@ -5,7 +5,7 @@ import unittest.mock
 
 try:
     from aiohttp import worker
-except ImportError as error:
+except ImportError as error:  # pragma: no cover
     raise unittest.SkipTest('gunicorn required') from error
 
 

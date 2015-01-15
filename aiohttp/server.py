@@ -75,7 +75,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     _request_parser = aiohttp.HttpRequestParser()  # default request parser
 
     def __init__(self, *, loop=None,
-                 keep_alive=None,
+                 keep_alive=75,  # NGINX default value is 75 secs
                  timeout=15,
                  tcp_keepalive=True,
                  allowed_methods=(),

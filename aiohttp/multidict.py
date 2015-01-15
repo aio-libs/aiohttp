@@ -16,10 +16,8 @@ class _upstr(str):
             val = str(val, encoding, errors)
         elif isinstance(val, str):
             pass
-        elif hasattr(val, '__str__'):
-            val = val.__str__()
         else:
-            val = repr(val)
+            val = str(val)
         val = val.upper()
         return str.__new__(cls, val)
 
@@ -79,9 +77,7 @@ class _Base:
     def __eq__(self, other):
         if not isinstance(other, abc.Mapping):
             return NotImplemented
-        if isinstance(other, _MultiDictProxy):
-            return self._items == other._items
-        elif isinstance(other, _MultiDict):
+        if isinstance(other, _Base):
             return self._items == other._items
         for k, v in self.items():
             nv = other.get(k, _marker)
@@ -206,11 +202,7 @@ class _MultiDict(_Base, abc.MutableMapping):
     # Mapping interface #
 
     def __setitem__(self, key, value):
-        try:
-            del self[key]
-        except KeyError:
-            pass
-        self._items.append((key, value))
+        self._replace(key, value)
 
     def __delitem__(self, key):
         items = self._items
@@ -333,7 +325,7 @@ try:
                              MultiDict,
                              CIMultiDict,
                              upstr)
-except ImportError:
+except ImportError:  # pragma: no cover
     MultiDictProxy = _MultiDictProxy
     CIMultiDictProxy = _CIMultiDictProxy
     MultiDict = _MultiDict

@@ -161,3 +161,9 @@ class TestWebRequest(unittest.TestCase):
         match = {'a': 'b'}
         req._match_info = match
         self.assertIs(match, req.match_info)
+
+    def test_request_is_dict(self):
+        req = self.make_request('GET', '/')
+        self.assertTrue(isinstance(req, dict))
+        req['key'] = 'value'
+        self.assertEqual('value', req['key'])

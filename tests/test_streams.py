@@ -369,10 +369,6 @@ class StreamReaderTests(unittest.TestCase):
         def set_err():
             stream.set_exception(ValueError())
 
-        @asyncio.coroutine
-        def readline():
-            yield from stream.readline()
-
         t1 = asyncio.Task(stream.readline(), loop=self.loop)
         t2 = asyncio.Task(set_err(), loop=self.loop)
 
