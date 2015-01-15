@@ -25,11 +25,11 @@ from .protocol import Response as ResponseImpl, HttpVersion, HttpVersion11
 from .server import ServerHttpProtocol
 from .streams import EOF_MARKER
 from .websocket import do_handshake, MSG_BINARY, MSG_CLOSE, MSG_PING, MSG_TEXT
-from .errors import HttpProcessingError, WebSocketDisconnectedError
+from .errors import HttpProcessingError, WSClientDisconnectedError
 
 
 __all__ = [
-    'WebSocketDisconnectedError',
+    'WSClientDisconnectedError',
     'Application',
     'HttpVersion',
     'RequestHandler',
@@ -831,14 +831,14 @@ class WebSocketResponse(StreamResponse):
 
             if msg.tp == MSG_CLOSE:
                 if self._closing:
-                    exc = WebSocketDisconnectedError(msg.data, msg.extra)
+                    exc = WSClientDisconnectedError(msg.data, msg.extra)
                     self._closing_fut.set_exception(exc)
                     raise exc
                 else:
                     self._closing = True
                     self._writer.close(msg.data, msg.extra)
                     yield from self.drain()
-                    exc = WebSocketDisconnectedError(msg.data, msg.extra)
+                    exc = WSClientDisconnectedError(msg.data, msg.extra)
                     self._closing_fut.set_exception(exc)
                     raise exc
             elif not self._closing:

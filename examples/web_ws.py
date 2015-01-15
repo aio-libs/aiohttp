@@ -5,7 +5,7 @@
 import asyncio
 import os
 from aiohttp.web import (Application, Response,
-                         WebSocketResponse, WebSocketDisconnectedError)
+                         WebSocketResponse, WSClientDisconnectedError)
 
 WS_FILE = os.path.join(os.path.dirname(__file__), 'websocket.html')
 
@@ -31,7 +31,7 @@ def wshandler(request):
             for ws in request.app['sockets']:
                 if ws is not resp:
                     ws.send_str(msg)
-    except WebSocketDisconnectedError:
+    except WSClientDisconnectedError:
         if resp not in request.app['sockets']:
             return resp
         request.app['sockets'].remove(resp)

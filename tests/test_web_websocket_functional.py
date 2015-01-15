@@ -92,7 +92,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             ws.close()
             try:
                 yield from ws.receive_str()
-            except web.WebSocketDisconnectedError:
+            except web.WSClientDisconnectedError:
                 closed.set_result(None)
             return ws
 
@@ -155,7 +155,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
 
             try:
                 yield from ws.receive_str()
-            except web.WebSocketDisconnectedError as exc:
+            except web.WSClientDisconnectedError as exc:
                 self.assertEqual(1, exc.code)
                 self.assertEqual(b'exit message', exc.message)
                 closed.set_result(None)
@@ -185,7 +185,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             ws.ping('data')
             try:
                 yield from ws.receive_str()
-            except web.WebSocketDisconnectedError as exc:
+            except web.WSClientDisconnectedError as exc:
                 self.assertEqual(2, exc.code)
                 self.assertEqual(b'exit message', exc.message)
                 closed.set_result(None)
@@ -215,7 +215,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
 
             try:
                 yield from ws.receive_str()
-            except web.WebSocketDisconnectedError:
+            except web.WSClientDisconnectedError:
                 closed.set_result(None)
                 raise
 
@@ -245,7 +245,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             ws.pong('data')
             try:
                 yield from ws.receive_str()
-            except web.WebSocketDisconnectedError as exc:
+            except web.WSClientDisconnectedError as exc:
                 self.assertEqual(2, exc.code)
                 self.assertEqual(b'exit message', exc.message)
                 closed.set_result(None)
@@ -318,7 +318,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             ws.close()
             try:
                 yield from ws.receive_str()
-            except web.WebSocketDisconnectedError:
+            except web.WSClientDisconnectedError:
                 closed.set_result(None)
             return ws
 
@@ -344,7 +344,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             ws.start(request)
             try:
                 yield from ws.receive_str()
-            except web.WebSocketDisconnectedError:
+            except web.WSClientDisconnectedError:
                 closed.set_result(None)
             return ws
 
@@ -370,7 +370,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             ws.close()
             try:
                 yield from ws.wait_closed()
-            except web.WebSocketDisconnectedError:
+            except web.WSClientDisconnectedError:
                 closed2.set_result(None)
 
         @asyncio.coroutine
@@ -380,7 +380,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             asyncio.async(closer(ws), loop=request.app.loop)
             try:
                 yield from ws.receive_str()
-            except web.WebSocketDisconnectedError:
+            except web.WSClientDisconnectedError:
                 closed.set_result(None)
             return ws
 
@@ -407,7 +407,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             ws.close()
             try:
                 yield from ws.receive_str()
-            except web.WebSocketDisconnectedError:
+            except web.WSClientDisconnectedError:
                 closed.set_result(None)
             return ws
 
