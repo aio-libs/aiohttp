@@ -208,22 +208,31 @@ cdef class MultiDict(_Base):
                             " ({} given)".format(name, len(args)))
 
         if args:
-            if hasattr(args[0], 'items'):
-                for item in args[0].items():
-                    key, value = item
-                    key = self._upper(key)
+            arg = args[0]
+            if isinstance(arg, _Base):
+                for item in (<_Base>arg)._items:
+                    key = self._upper(item[0])
+                    value = item[1]
+                    if do_add:
+                        self._add(key, value)
+                    else:
+                        self._replace(key, value)
+            elif hasattr(arg, 'items'):
+                for item in arg.items():
+                    key = self._upper(item[0])
+                    value = item[1]
                     if do_add:
                         self._add(key, value)
                     else:
                         self._replace(key, value)
             else:
-                for arg in args[0]:
-                    if not len(arg) == 2:
+                for i in arg:
+                    if not len(i) == 2:
                         raise TypeError(
                             "{} takes either dict or list of (key, value) "
                             "tuples".format(name))
-                    key, value = arg
-                    key = self._upper(key)
+                    key = self._upper(i[0])
+                    value = i[1]
                     if do_add:
                         self._add(key, value)
                     else:
