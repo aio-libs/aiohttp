@@ -39,12 +39,12 @@ insensitive, e.g.::
 *Keys* should be a :class:`str`.
 
 
-MutableMultiDict
+MultiDict
 ----------------
 
-.. class:: MutableMultiDict(**kwargs)
-           MutableMultiDict(mapping, **kwargs)
-           MutableMultiDict(iterable, **kwargs)
+.. class:: MultiDict(**kwargs)
+           MultiDict(mapping, **kwargs)
+           MultiDict(iterable, **kwargs)
 
    Create a mutable multidict instance.
 
