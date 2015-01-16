@@ -1,7 +1,7 @@
 http client/server for asyncio
 ==============================
 
-.. image:: https://raw.github.com/KeepSafe/aiohttp/master/docs/aiohttp-icon.png
+.. image:: https://raw.github.com/KeepSafe/aiohttp/master/docs/_static/aiohttp-icon-128x128.png
   :height: 64px
   :width: 64px
   :alt: aiohttp logo
