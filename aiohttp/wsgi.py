@@ -16,8 +16,8 @@ import sys
 import time
 from urllib.parse import urlsplit, unquote
 
-from aiohttp import server, helpers, hdrs
 import aiohttp
+from aiohttp import server, helpers, hdrs
 
 
 class WSGIServerHttpProtocol(server.ServerHttpProtocol):
