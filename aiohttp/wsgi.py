@@ -14,10 +14,10 @@ import io
 import os
 import sys
 import time
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, unquote
 
-import aiohttp
 from aiohttp import server, helpers, hdrs
+import aiohttp
 
 
 class WSGIServerHttpProtocol(server.ServerHttpProtocol):
@@ -105,7 +105,7 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
         if script_name:
             path_info = path_info.split(script_name, 1)[-1]
 
-        environ['PATH_INFO'] = path_info
+        environ['PATH_INFO'] = unquote(path_info).encode().decode('latin-1')
         environ['SCRIPT_NAME'] = script_name
 
         environ['async.reader'] = self.reader
