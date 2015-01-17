@@ -10,6 +10,7 @@ from multiprocessing import Process, set_start_method, Barrier
 
 from scipy.stats import norm, tmean, tvar, tstd
 from numpy import array, median
+from numpy.ma import masked_equal
 
 import aiohttp
 
@@ -241,29 +242,6 @@ def run(test, count, concurrency, *, loop, verbose):
     return data
 
 
-ARGS = argparse.ArgumentParser(description="Run benchmark.")
-ARGS.add_argument(
-    '-t', '--tries', action="store",
-    nargs='?', type=int, default=30,
-    help='count of tries (default: `%(default)s`)')
-ARGS.add_argument(
-    '-n', '--count', action="store",
-    nargs='?', type=int, default=10000,
-    help='requests count (default: `%(default)s`)')
-ARGS.add_argument(
-    '-c', '--concurrency', action="store",
-    nargs='?', type=int, default=100,
-    help='count of parallel requests (default: `%(default)s`)')
-ARGS.add_argument(
-    '-p', '--plot-file-name', action="store",
-    type=str, default=None,
-    dest='plot_file_name',
-    help='file name for plot (default: `%(default)s`)')
-ARGS.add_argument(
-    '-v', '--verbose', action="count", default=0,
-    help='verbosity level (default: `%(default)s`)')
-
-
 def main(argv):
     args = ARGS.parse_args()
 
@@ -290,28 +268,45 @@ def main(argv):
 
     for test_name in sorted(results):
 
-        data = results[test_name]
+        data = array(results[test_name])
+        trimmed = masked_equal(data, 0)
 
-        rps = count / array(data)
+        rps = trimmed.size / trimmed
         rps_mean = tmean(rps)
-        rps_var = tvar(rps)
-        rps_median = median(rps)
-        low, high = norm.interval(0.95, loc=rps_mean, scale=rps_var**0.5)
-        times = array(data) * 1000000 / count
+        times = trimmed * 1000000 / trimmed.size
         times_mean = tmean(times)
         times_stdev = tstd(times)
         times_median = median(times)
         print('Results for', test_name)
-        print('RPS: {:d}: [{:d}, {:d}] median {:d},\tmean: {:.3f} μs,'
+        print('RPS: {:d},\tmean: {:.3f} μs,'
               '\tstandard deviation {:.3f} μs\tmedian {:.3f} μs'
               .format(int(rps_mean),
-                      int(low),
-                      int(high),
-                      int(rps_median),
                       times_mean,
                       times_stdev,
                       times_median))
     return 0
+
+ARGS = argparse.ArgumentParser(description="Run benchmark.")
+ARGS.add_argument(
+    '-t', '--tries', action="store",
+    nargs='?', type=int, default=5,
+    help='count of tries (default: `%(default)s`)')
+ARGS.add_argument(
+    '-n', '--count', action="store",
+    nargs='?', type=int, default=10000,
+    help='requests count (default: `%(default)s`)')
+ARGS.add_argument(
+    '-c', '--concurrency', action="store",
+    nargs='?', type=int, default=500,
+    help='count of parallel requests (default: `%(default)s`)')
+ARGS.add_argument(
+    '-p', '--plot-file-name', action="store",
+    type=str, default=None,
+    dest='plot_file_name',
+    help='file name for plot (default: `%(default)s`)')
+ARGS.add_argument(
+    '-v', '--verbose', action="count", default=0,
+    help='verbosity level (default: `%(default)s`)')
 
 
 if __name__ == '__main__':
