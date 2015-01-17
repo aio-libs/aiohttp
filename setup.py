@@ -9,7 +9,7 @@ from distutils.command.build_ext import build_ext
 
 
 try:
-    import Cython
+    from Cython.Build import cythonize
     USE_CYTHON = True
 except ImportError:
     USE_CYTHON = False
@@ -20,7 +20,6 @@ extensions = [Extension('aiohttp._multidict', ['aiohttp/_multidict' + ext])]
 
 
 if USE_CYTHON:
-    from Cython.Build import cythonize
     extensions = cythonize(extensions)
 
 
