@@ -31,7 +31,7 @@ install `chardet` also::
    pip install chardet
 
 *Optional*: To improve performances, you can install `Cython`
- **before** `aiohttp`::
+**before** `aiohttp`::
 
    pip install cython
 
