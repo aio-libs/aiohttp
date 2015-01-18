@@ -172,6 +172,10 @@ class Request(dict, HeadersMixin):
         self._payload = payload
         self._cookies = None
 
+        self._read_bytes = None
+        self._text = None
+        self._json = None
+
     @property
     def method(self):
         """Read only property for getting HTTP method.
@@ -300,26 +304,32 @@ class Request(dict, HeadersMixin):
 
         Returns bytes object with full request content.
         """
-        body = bytearray()
-        while True:
-            chunk = yield from self._payload.readany()
-            body.extend(chunk)
-            if chunk is EOF_MARKER:
-                break
-        return bytes(body)
+        if self._read_bytes is None:
+            body = bytearray()
+            while True:
+                chunk = yield from self._payload.readany()
+                body.extend(chunk)
+                if chunk is EOF_MARKER:
+                    break
+            self._read_bytes = bytes(body)
+        return self._read_bytes
 
     @asyncio.coroutine
     def text(self):
         """Return BODY as text using encoding from .charset."""
-        bytes_body = yield from self.read()
-        encoding = self.charset or 'utf-8'
-        return bytes_body.decode(encoding)
+        if self._text is None:
+            bytes_body = yield from self.read()
+            encoding = self.charset or 'utf-8'
+            self._text = bytes_body.decode(encoding)
+        return self._text
 
     @asyncio.coroutine
     def json(self, *, loader=json.loads):
         """Return BODY as JSON."""
-        body = yield from self.text()
-        return loader(body)
+        if self._json is None:
+            body = yield from self.text()
+            self._json = loader(body)
+        return self._json
 
     @asyncio.coroutine
     def post(self):

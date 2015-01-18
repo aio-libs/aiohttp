@@ -173,10 +173,10 @@ first positional parameter.
 
       The method is a :ref:`coroutine <coroutine>`.
 
-      .. warning::
+      .. note::
 
-         The method doesn't store read data internally, subsequent
-         :meth:`~Request.read` call will return empty bytes ``b''``.
+         The method **does** store read data internally, subsequent
+         :meth:`~Request.read` call will return the same value.
 
    .. method:: text()
 
@@ -187,10 +187,10 @@ first positional parameter.
 
       The method is a :ref:`coroutine <coroutine>`.
 
-      .. warning::
+      .. note::
 
-         The method doesn't store read data internally, subsequent
-         :meth:`~Request.text` call will return empty string ``''``.
+         The method **does** store read data internally, subsequent
+         :meth:`~Request.text` call will return the same value.
 
    .. method:: json(*, loader=json.loads)
 
@@ -208,10 +208,10 @@ first positional parameter.
                               and returns :class:`dict` with parsed
                               JSON (:func:`json.loads` by default).
 
-      .. warning::
+      .. note::
 
-         The method doesn't store read data internally, subsequent
-         :meth:`~Request.json` call will raise an exception.
+         The method **does** store read data internally, subsequent
+         :meth:`~Request.json` call will return the same value.
 
    .. method:: post()
 
@@ -226,7 +226,7 @@ first positional parameter.
       *application/x-www-form-urlencoded* or *multipart/form-data*
       returns empty multidict.
 
-      .. warning::
+      .. note::
 
          The method **does** store read data internally, subsequent
          :meth:`~Request.post` call will return the same value.
