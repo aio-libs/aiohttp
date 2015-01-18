@@ -173,8 +173,6 @@ class Request(dict, HeadersMixin):
         self._cookies = None
 
         self._read_bytes = None
-        self._text = None
-        self._json = None
 
     @property
     def method(self):
@@ -317,19 +315,15 @@ class Request(dict, HeadersMixin):
     @asyncio.coroutine
     def text(self):
         """Return BODY as text using encoding from .charset."""
-        if self._text is None:
-            bytes_body = yield from self.read()
-            encoding = self.charset or 'utf-8'
-            self._text = bytes_body.decode(encoding)
-        return self._text
+        bytes_body = yield from self.read()
+        encoding = self.charset or 'utf-8'
+        return bytes_body.decode(encoding)
 
     @asyncio.coroutine
     def json(self, *, loader=json.loads):
         """Return BODY as JSON."""
-        if self._json is None:
-            body = yield from self.text()
-            self._json = loader(body)
-        return self._json
+        body = yield from self.text()
+        return loader(body)
 
     @asyncio.coroutine
     def post(self):
