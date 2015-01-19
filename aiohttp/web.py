@@ -9,6 +9,7 @@ import io
 import json
 import re
 import os
+import warnings
 
 from urllib.parse import urlsplit, parse_qsl, urlencode, unquote
 from types import MappingProxyType
@@ -283,7 +284,13 @@ class Request(dict, HeadersMixin):
 
     @property
     def payload(self):
-        """Return raw paiload stream."""
+        """Return raw payload stream."""
+        warnings.warn('use Request.content instead', DeprecationWarning)
+        return self._payload
+
+    @property
+    def content(self):
+        """Return raw payload stream."""
         return self._payload
 
     @asyncio.coroutine

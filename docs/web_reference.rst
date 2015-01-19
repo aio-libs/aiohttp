@@ -131,12 +131,24 @@ first positional parameter.
 
       Read-only :class:`~aiohttp.multidict.MultiDictProxy` lazy property.
 
+   .. attribute:: content
+
+      A :class:`~aiohttp.streams.FlowControlStreamReader` instance,
+      input stream for reading request's *BODY*.
+
+      Read-only property.
+
    .. attribute:: payload
 
       A :class:`~aiohttp.streams.FlowControlStreamReader` instance,
       input stream for reading request's *BODY*.
 
       Read-only property.
+
+      .. warning::
+
+         Attribute :attr:`~Request.payload` is deprecated, please use
+         :attr:`~Request.content` instead.
 
    .. attribute:: content_type
 
