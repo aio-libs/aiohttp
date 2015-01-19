@@ -1,4 +1,4 @@
-"""Async gunicorn worker for auihttp.wen.Application."""
+"""Async gunicorn worker for aiohttp.web"""
 __all__ = ['GunicornWebWorker']
 
 import asyncio

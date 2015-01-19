@@ -72,7 +72,7 @@ of ``GET``, ``POST``, ``PUT`` or ``DELETE`` strings.
 Handling GET params
 -------------------
 
-Currently aiohttp does not provide automatical parsing of incoming GET
+Currently aiohttp does not provide automatic parsing of incoming GET
 params.  However aiohttp does provide a nice MulitiDict wrapper for
 already parsed params.
 
@@ -119,7 +119,7 @@ GET params.
             print("Passed in POST", post_params)
 
 SSL
----------
+---
 
 To use asyncio's SSL support, just pass an SSLContext object to the
 ``create_server`` method of the loop.

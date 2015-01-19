@@ -361,7 +361,7 @@ class Request(dict, HeadersMixin):
                               keep_blank_values=True,
                               encoding=content_charset)
 
-        supported_tranfer_encoding = {
+        supported_transfer_encoding = {
             'base64': binascii.a2b_base64,
             'quoted-printable': binascii.a2b_qp
         }
@@ -381,10 +381,10 @@ class Request(dict, HeadersMixin):
                 out.add(field.name, ff)
             else:
                 value = field.value
-                if transfer_encoding in supported_tranfer_encoding:
+                if transfer_encoding in supported_transfer_encoding:
                     # binascii accepts bytes
                     value = value.encode('utf-8')
-                    value = supported_tranfer_encoding[
+                    value = supported_transfer_encoding[
                         transfer_encoding](value)
                 out.add(field.name, value)
 
@@ -1182,7 +1182,7 @@ class PlainRoute(Route):
         self._path = path
 
     def match(self, path):
-        # string comparsion is about 10 times faster than regexp matching
+        # string comparison is about 10 times faster than regexp matching
         if self._path == path:
             return {}
         else:

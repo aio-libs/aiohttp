@@ -1,7 +1,7 @@
 .. _aiohttp-web-reference:
 
 HTTP Server Reference
-========================
+=====================
 
 .. highlight:: python
 
@@ -351,13 +351,13 @@ StreamResponse
 
    .. attribute:: chunked
 
-      Read-only property, incicates if chunked encoding is on.
+      Read-only property, indicates if chunked encoding is on.
 
       Can be enabled by :meth:`enable_chunked_encoding` call.
 
    .. method:: enable_chunked_encoding
 
-      Enables :attr:`chunked` enacoding for response. There are no ways to
+      Enables :attr:`chunked` encoding for response. There are no ways to
       disable it back. With enabled :attr:`chunked` encoding each `write()`
       operation encoded in separate chunk.
 
@@ -598,7 +598,7 @@ WebSocketResponse
 
    .. attribute:: protocol
 
-      Websocket *subprotocol* choosen after :meth:`start` call.
+      Websocket *subprotocol* chosen after :meth:`start` call.
 
       May be ``None`` if server and client protocols are
       not overlapping.
@@ -607,8 +607,8 @@ WebSocketResponse
 
       Send :const:`~aiohttp.websocket.MSG_PING` to peer.
 
-      :param message: optional payload of *ping* messasge,
-                      :class:`str` (coverted to *UTF-8* encdoded bytes)
+      :param message: optional payload of *ping* message,
+                      :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
       :raise RuntimeError: if connections is not started or closing.
@@ -617,8 +617,8 @@ WebSocketResponse
 
       Send *unsolicited* :const:`~aiohttp.websocket.MSG_PONG` to peer.
 
-      :param message: optional payload of *pong* messasge,
-                      :class:`str` (coverted to *UTF-8* encdoded bytes)
+      :param message: optional payload of *pong* message,
+                      :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
       :raise RuntimeError: if connections is not started or closing.
@@ -658,8 +658,8 @@ WebSocketResponse
 
       :param int code: closing code
 
-      :param message: optional payload of *pong* messasge,
-                      :class:`str` (coverted to *UTF-8* encdoded bytes)
+      :param message: optional payload of *pong* message,
+                      :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
       :raise RuntimeError: if connection is not started or closing
@@ -668,7 +668,7 @@ WebSocketResponse
 
       A :ref:`coroutine<coroutine>` that waits for socket handshake
       finish and raises
-      :exc:`~aiohttp.errors.WebSocketDisconnectedError` at the end.
+      :exc:`~aiohttp.errors.WSClientDisconnectedError` at the end.
 
       Use the method only from write-only tasks, please call one of
       :meth:`receive_str`, :meth:`receive_bytes` or
@@ -678,7 +678,7 @@ WebSocketResponse
 
    .. method:: receive_msg()
 
-      A :ref:`coroutine<coroutine>` that waits upcomming *data*
+      A :ref:`coroutine<coroutine>` that waits upcoming *data*
       message from peer and returns it.
 
       The coroutine implicitly handles
@@ -690,14 +690,14 @@ WebSocketResponse
       It process *ping-pong game* and performs *closing handshake* internally.
 
       After websocket closing raises
-      :exc:`~aiohttp.errors.WebSocketDisconnectedError` with
+      :exc:`~aiohttp.errors.WSClientDisconnectedError` with
       connection closing data.
 
       :return: :class:`~aiohttp.websocket.Message`
 
       :raise RuntimeError: if connection is not started
 
-      :raise: :exc:`~aiohttp.errors.WebSocketDisconnectedError` on closing.
+      :raise: :exc:`~aiohttp.errors.WSClientDisconnectedError` on closing.
 
    .. method:: receive_str()
 
@@ -887,7 +887,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
 .. class:: UrlDispatcher()
 
-   Straightforward url-mathing router, implements
+   Straightforward url-matching router, implements
    :class:`collections.abc.Mapping` for access to *named routes*.
 
    Before running :class:`Application` you should fill *route
@@ -985,7 +985,7 @@ passing it into *template engine* for example::
 
    url = app.router['route_name'].url(query={'a': 1, 'b': 2})
 
-There are three conctrete route classes:* :class:`DynamicRoute` for
+There are three concrete route classes:* :class:`DynamicRoute` for
 urls with :ref:`variable pathes<aiohttp-web-variable-handler>` spec.
 
 

@@ -74,7 +74,7 @@ Any extra texts (print statements and so on) should be removed.
 Tests coverage
 --------------
 
-We are stronly keeping our test coverage, please don't make it worse.
+We are strongly keeping our test coverage, please don't make it worse.
 
 Use::
 

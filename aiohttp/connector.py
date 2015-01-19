@@ -59,7 +59,7 @@ class BaseConnector(object):
     :param conn_timeout: (optional) Connect timeout.
     :param keepalive_timeout: (optional) Keep-alive timeout.
     :param bool share_cookies: Set to True to keep cookies between requests.
-    :param bool force_close: Set to True to froce close and do reconnect
+    :param bool force_close: Set to True to force close and do reconnect
         after each request (and between redirects).
     :param loop: Optional event loop.
     """
@@ -223,7 +223,7 @@ class TCPConnector(BaseConnector):
 
     :param bool verify_ssl: Set to True to check ssl certifications.
     :param bool resolve: Set to True to do DNS lookup for host name.
-    :param familiy: socket address family
+    :param family: socket address family
     :param args: see :class:`BaseConnector`
     :param kwargs: see :class:`BaseConnector`
     """
