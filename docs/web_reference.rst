@@ -138,6 +138,8 @@ first positional parameter.
 
       Read-only property.
 
+      .. versionadded:: 0.15
+
    .. attribute:: payload
 
       A :class:`~aiohttp.streams.FlowControlStreamReader` instance,
