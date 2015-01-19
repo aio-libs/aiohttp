@@ -80,7 +80,7 @@ Server example::
     loop.run_until_complete(init(loop))
     try:
         loop.run_forever()
-    except KeyboardInterrrupt:
+    except KeyboardInterrupt:
         pass
 
 
