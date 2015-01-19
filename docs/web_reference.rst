@@ -656,7 +656,7 @@ WebSocketResponse
 
       A :ref:`coroutine<coroutine>` that waits for socket handshake
       finish and raises
-      :exc:`~aiohttp.errors.WebSocketDisconnectedError` at the end.
+      :exc:`~aiohttp.errors.WSClientDisconnectedError` at the end.
 
       Use the method only from write-only tasks, please call one of
       :meth:`receive_str`, :meth:`receive_bytes` or
@@ -678,14 +678,14 @@ WebSocketResponse
       It process *ping-pong game* and performs *closing handshake* internally.
 
       After websocket closing raises
-      :exc:`~aiohttp.errors.WebSocketDisconnectedError` with
+      :exc:`~aiohttp.errors.WSClientDisconnectedError` with
       connection closing data.
 
       :return: :class:`~aiohttp.websocket.Message`
 
       :raise RuntimeError: if connection is not started
 
-      :raise: :exc:`~aiohttp.errors.WebSocketDisconnectedError` on closing.
+      :raise: :exc:`~aiohttp.errors.WSClientDisconnectedError` on closing.
 
    .. method:: receive_str()
 
