@@ -94,7 +94,7 @@ Please feel free to file an issue on `bug tracker
 or have some suggestion for library improvement.
 
 The library uses `Travis <https://travis-ci.org/KeepSafe/aiohttp>`_ for
-Continious Integration.
+Continuous Integration.
 
 
 Dependencies

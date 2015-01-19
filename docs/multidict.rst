@@ -1,4 +1,4 @@
-.. _aiohttp-multidic:
+.. _aiohttp-multidict:
 
 Multidicts
 ==========
@@ -21,7 +21,7 @@ Immutable proxies (:class:`MultiDictProxy` and
 proxied multidict, the view reflects the multidict changes. They are
 implement :class:`~collections.abc.Mapping` interface.
 
-Regular mutable (:class:`MultiDict` and :class:`CIMultiDict`) clases
+Regular mutable (:class:`MultiDict` and :class:`CIMultiDict`) classes
 implement :class:`~collections.abc.MutableMapping` and allow to change
 own content.
 
@@ -40,7 +40,7 @@ insensitive, e.g.::
 
 
 MultiDict
-----------------
+---------
 
 .. class:: MultiDict(**kwargs)
            MultiDict(mapping, **kwargs)
@@ -93,7 +93,7 @@ MultiDict
 
    .. method:: add(key, value)
 
-      Append ``(key, value)`` pair to the dictiaonary.
+      Append ``(key, value)`` pair to the dictionary.
 
    .. method:: clear()
 
@@ -173,7 +173,7 @@ MultiDict
 
    .. method:: popitem()
 
-      Remove and retun an arbitrary ``(key, value)`` pair from the dictionary.
+      Remove and return an arbitrary ``(key, value)`` pair from the dictionary.
 
       :meth:`popitem` is useful to destructively iterate over a
       dictionary, as often used in set algorithms.
@@ -217,7 +217,7 @@ CIMultiDict
    Create a case insensitive multidict instance.
 
    The behavior is the same as of :class:`MultiDict` but key
-   comparsions are case insensitive, e.g.::
+   comparisons are case insensitive, e.g.::
 
       >>> dct = CIMultiDict(a='val')
       >>> 'A' in dct
@@ -343,7 +343,7 @@ upstr
 :class:`CIMultiDict` accepts :class:`str` as *key* argument for dict
 lookups but converts it to upper case internally.
 
-For more effective processing it shoult to know if *key* is already upper cased.
+For more effective processing it should to know if *key* is already upper cased.
 
 To skip :meth:`~str.upper()` call you may create upper cased string by
 hands, e.g::
