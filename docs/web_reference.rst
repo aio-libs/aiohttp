@@ -145,10 +145,9 @@ first positional parameter.
 
       Read-only property.
 
-      .. warning::
+      .. deprecated:: 0.15
 
-         Attribute :attr:`~Request.payload` is deprecated, please use
-         :attr:`~Request.content` instead.
+         Use :attr:`~Request.content` instead.
 
    .. attribute:: content_type
 
