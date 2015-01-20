@@ -140,6 +140,29 @@ first positional parameter.
 
       .. versionadded:: 0.15
 
+   .. attribute:: compression
+
+      Read-only :class:`bool` property, ``True`` if compression is enabled.
+
+      ``False`` by default.
+
+      .. versionadded:: 0.14
+
+      .. seealso:: :meth:`enable_compression`
+
+   .. method:: enable_compression(force=False)
+
+      Enable compression.
+
+      When *force* is ``False`` (default) compression is used only
+      when *deflate* is in *Accept-Encoding* request's header.
+
+      *Accept-Encoding* is not checked if *force* is ``True``.
+
+      .. versionadded:: 0.14
+
+      .. seealso:: :attr:`compression`
+
    .. attribute:: payload
 
       A :class:`~aiohttp.streams.FlowControlStreamReader` instance,
