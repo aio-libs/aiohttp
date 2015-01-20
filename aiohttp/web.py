@@ -9,6 +9,7 @@ import io
 import json
 import re
 import os
+import warnings
 
 from urllib.parse import urlsplit, parse_qsl, urlencode, unquote
 from types import MappingProxyType
@@ -172,6 +173,8 @@ class Request(dict, HeadersMixin):
         self._payload = payload
         self._cookies = None
 
+        self._read_bytes = None
+
     @property
     def method(self):
         """Read only property for getting HTTP method.
@@ -282,6 +285,12 @@ class Request(dict, HeadersMixin):
     @property
     def payload(self):
         """Return raw payload stream."""
+        warnings.warn('use Request.content instead', DeprecationWarning)
+        return self._payload
+
+    @property
+    def content(self):
+        """Return raw payload stream."""
         return self._payload
 
     @asyncio.coroutine
@@ -300,13 +309,15 @@ class Request(dict, HeadersMixin):
 
         Returns bytes object with full request content.
         """
-        body = bytearray()
-        while True:
-            chunk = yield from self._payload.readany()
-            body.extend(chunk)
-            if chunk is EOF_MARKER:
-                break
-        return bytes(body)
+        if self._read_bytes is None:
+            body = bytearray()
+            while True:
+                chunk = yield from self._payload.readany()
+                body.extend(chunk)
+                if chunk is EOF_MARKER:
+                    break
+            self._read_bytes = bytes(body)
+        return self._read_bytes
 
     @asyncio.coroutine
     def text(self):
