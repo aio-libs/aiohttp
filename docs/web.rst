@@ -266,7 +266,7 @@ data asynchronously (by ``yield from ws.send_str('data')`` for example).
 .. _aiohttp-web-exceptions:
 
 Exceptions
------------
+----------
 
 :mod:`aiohttp.web` defines exceptions for list of *HTTP status codes*.
 

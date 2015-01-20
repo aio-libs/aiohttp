@@ -1,7 +1,7 @@
 .. _aiohttp-web-reference:
 
 HTTP Server Reference
-========================
+=====================
 
 .. highlight:: python
 
@@ -131,12 +131,48 @@ first positional parameter.
 
       Read-only :class:`~aiohttp.multidict.MultiDictProxy` lazy property.
 
+   .. attribute:: content
+
+      A :class:`~aiohttp.streams.FlowControlStreamReader` instance,
+      input stream for reading request's *BODY*.
+
+      Read-only property.
+
+      .. versionadded:: 0.15
+
+   .. attribute:: compression
+
+      Read-only :class:`bool` property, ``True`` if compression is enabled.
+
+      ``False`` by default.
+
+      .. versionadded:: 0.14
+
+      .. seealso:: :meth:`enable_compression`
+
+   .. method:: enable_compression(force=False)
+
+      Enable compression.
+
+      When *force* is ``False`` (default) compression is used only
+      when *deflate* is in *Accept-Encoding* request's header.
+
+      *Accept-Encoding* is not checked if *force* is ``True``.
+
+      .. versionadded:: 0.14
+
+      .. seealso:: :attr:`compression`
+
    .. attribute:: payload
 
       A :class:`~aiohttp.streams.FlowControlStreamReader` instance,
       input stream for reading request's *BODY*.
 
       Read-only property.
+
+      .. deprecated:: 0.15
+
+         Use :attr:`~Request.content` instead.
 
    .. attribute:: content_type
 
@@ -173,10 +209,10 @@ first positional parameter.
 
       The method is a :ref:`coroutine <coroutine>`.
 
-      .. warning::
+      .. note::
 
-         The method doesn't store read data internally, subsequent
-         :meth:`~Request.read` call will return empty bytes ``b''``.
+         The method **does** store read data internally, subsequent
+         :meth:`~Request.read` call will return the same value.
 
    .. method:: text()
 
@@ -187,10 +223,10 @@ first positional parameter.
 
       The method is a :ref:`coroutine <coroutine>`.
 
-      .. warning::
+      .. note::
 
-         The method doesn't store read data internally, subsequent
-         :meth:`~Request.text` call will return empty string ``''``.
+         The method **does** store read data internally, subsequent
+         :meth:`~Request.text` call will return the same value.
 
    .. method:: json(*, loader=json.loads)
 
@@ -208,10 +244,10 @@ first positional parameter.
                               and returns :class:`dict` with parsed
                               JSON (:func:`json.loads` by default).
 
-      .. warning::
+      .. note::
 
-         The method doesn't store read data internally, subsequent
-         :meth:`~Request.json` call will raise an exception.
+         The method **does** store read data internally, subsequent
+         :meth:`~Request.json` call will return the same value.
 
    .. method:: post()
 
@@ -226,7 +262,7 @@ first positional parameter.
       *application/x-www-form-urlencoded* or *multipart/form-data*
       returns empty multidict.
 
-      .. warning::
+      .. note::
 
          The method **does** store read data internally, subsequent
          :meth:`~Request.post` call will return the same value.
@@ -339,13 +375,13 @@ StreamResponse
 
    .. attribute:: chunked
 
-      Read-only property, incicates if chunked encoding is on.
+      Read-only property, indicates if chunked encoding is on.
 
       Can be enabled by :meth:`enable_chunked_encoding` call.
 
    .. method:: enable_chunked_encoding
 
-      Enables :attr:`chunked` enacoding for response. There are no ways to
+      Enables :attr:`chunked` encoding for response. There are no ways to
       disable it back. With enabled :attr:`chunked` encoding each `write()`
       operation encoded in separate chunk.
 
@@ -586,7 +622,7 @@ WebSocketResponse
 
    .. attribute:: protocol
 
-      Websocket *subprotocol* choosen after :meth:`start` call.
+      Websocket *subprotocol* chosen after :meth:`start` call.
 
       May be ``None`` if server and client protocols are
       not overlapping.
@@ -595,8 +631,8 @@ WebSocketResponse
 
       Send :const:`~aiohttp.websocket.MSG_PING` to peer.
 
-      :param message: optional payload of *ping* messasge,
-                      :class:`str` (coverted to *UTF-8* encdoded bytes)
+      :param message: optional payload of *ping* message,
+                      :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
       :raise RuntimeError: if connections is not started or closing.
@@ -605,8 +641,8 @@ WebSocketResponse
 
       Send *unsolicited* :const:`~aiohttp.websocket.MSG_PONG` to peer.
 
-      :param message: optional payload of *pong* messasge,
-                      :class:`str` (coverted to *UTF-8* encdoded bytes)
+      :param message: optional payload of *pong* message,
+                      :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
       :raise RuntimeError: if connections is not started or closing.
@@ -646,8 +682,8 @@ WebSocketResponse
 
       :param int code: closing code
 
-      :param message: optional payload of *pong* messasge,
-                      :class:`str` (coverted to *UTF-8* encdoded bytes)
+      :param message: optional payload of *pong* message,
+                      :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
       :raise RuntimeError: if connection is not started or closing
@@ -656,7 +692,7 @@ WebSocketResponse
 
       A :ref:`coroutine<coroutine>` that waits for socket handshake
       finish and raises
-      :exc:`~aiohttp.errors.WebSocketDisconnectedError` at the end.
+      :exc:`~aiohttp.errors.WSClientDisconnectedError` at the end.
 
       Use the method only from write-only tasks, please call one of
       :meth:`receive_str`, :meth:`receive_bytes` or
@@ -666,7 +702,7 @@ WebSocketResponse
 
    .. method:: receive_msg()
 
-      A :ref:`coroutine<coroutine>` that waits upcomming *data*
+      A :ref:`coroutine<coroutine>` that waits upcoming *data*
       message from peer and returns it.
 
       The coroutine implicitly handles
@@ -678,14 +714,14 @@ WebSocketResponse
       It process *ping-pong game* and performs *closing handshake* internally.
 
       After websocket closing raises
-      :exc:`~aiohttp.errors.WebSocketDisconnectedError` with
+      :exc:`~aiohttp.errors.WSClientDisconnectedError` with
       connection closing data.
 
       :return: :class:`~aiohttp.websocket.Message`
 
       :raise RuntimeError: if connection is not started
 
-      :raise: :exc:`~aiohttp.errors.WebSocketDisconnectedError` on closing.
+      :raise: :exc:`~aiohttp.errors.WSClientDisconnectedError` on closing.
 
    .. method:: receive_str()
 
@@ -875,7 +911,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
 .. class:: UrlDispatcher()
 
-   Straightforward url-mathing router, implements
+   Straightforward url-matching router, implements
    :class:`collections.abc.Mapping` for access to *named routes*.
 
    Before running :class:`Application` you should fill *route
@@ -973,7 +1009,7 @@ passing it into *template engine* for example::
 
    url = app.router['route_name'].url(query={'a': 1, 'b': 2})
 
-There are three conctrete route classes:* :class:`DynamicRoute` for
+There are three concrete route classes:* :class:`DynamicRoute` for
 urls with :ref:`variable pathes<aiohttp-web-variable-handler>` spec.
 
 

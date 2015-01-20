@@ -45,7 +45,9 @@ class TestWebRequest(unittest.TestCase):
         # second call should return the same object
         self.assertIs(get, req.GET)
 
-        self.assertIs(self.payload, req.payload)
+        with self.assertWarns(DeprecationWarning):
+            self.assertIs(self.payload, req.payload)
+        self.assertIs(self.payload, req.content)
         self.assertIs(self.transport, req.transport)
         self.assertTrue(req.keep_alive)
 

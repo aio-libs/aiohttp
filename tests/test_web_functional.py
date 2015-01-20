@@ -80,6 +80,8 @@ class TestWebFunctional(unittest.TestCase):
         def handler(request):
             data = yield from request.text()
             self.assertEqual('русский', data)
+            data2 = yield from request.text()
+            self.assertEqual(data, data2)
             return web.Response(text=data)
 
         @asyncio.coroutine
@@ -101,6 +103,8 @@ class TestWebFunctional(unittest.TestCase):
         def handler(request):
             data = yield from request.json()
             self.assertEqual(dct, data)
+            data2 = yield from request.json()
+            self.assertEqual(data, data2)
             resp = web.Response()
             resp.content_type = 'application/json'
             resp.body = json.dumps(data).encode('utf8')

@@ -9,6 +9,7 @@ import io
 import json
 import re
 import os
+import warnings
 
 from urllib.parse import urlsplit, parse_qsl, urlencode, unquote
 from types import MappingProxyType
@@ -172,6 +173,8 @@ class Request(dict, HeadersMixin):
         self._payload = payload
         self._cookies = None
 
+        self._read_bytes = None
+
     @property
     def method(self):
         """Read only property for getting HTTP method.
@@ -281,7 +284,13 @@ class Request(dict, HeadersMixin):
 
     @property
     def payload(self):
-        """Return raw paiload stream."""
+        """Return raw payload stream."""
+        warnings.warn('use Request.content instead', DeprecationWarning)
+        return self._payload
+
+    @property
+    def content(self):
+        """Return raw payload stream."""
         return self._payload
 
     @asyncio.coroutine
@@ -300,13 +309,15 @@ class Request(dict, HeadersMixin):
 
         Returns bytes object with full request content.
         """
-        body = bytearray()
-        while True:
-            chunk = yield from self._payload.readany()
-            body.extend(chunk)
-            if chunk is EOF_MARKER:
-                break
-        return bytes(body)
+        if self._read_bytes is None:
+            body = bytearray()
+            while True:
+                chunk = yield from self._payload.readany()
+                body.extend(chunk)
+                if chunk is EOF_MARKER:
+                    break
+            self._read_bytes = bytes(body)
+        return self._read_bytes
 
     @asyncio.coroutine
     def text(self):
@@ -350,7 +361,7 @@ class Request(dict, HeadersMixin):
                               keep_blank_values=True,
                               encoding=content_charset)
 
-        supported_tranfer_encoding = {
+        supported_transfer_encoding = {
             'base64': binascii.a2b_base64,
             'quoted-printable': binascii.a2b_qp
         }
@@ -370,10 +381,10 @@ class Request(dict, HeadersMixin):
                 out.add(field.name, ff)
             else:
                 value = field.value
-                if transfer_encoding in supported_tranfer_encoding:
+                if transfer_encoding in supported_transfer_encoding:
                     # binascii accepts bytes
                     value = value.encode('utf-8')
-                    value = supported_tranfer_encoding[
+                    value = supported_transfer_encoding[
                         transfer_encoding](value)
                 out.add(field.name, value)
 
@@ -1171,7 +1182,7 @@ class PlainRoute(Route):
         self._path = path
 
     def match(self, path):
-        # string comparsion is about 10 times faster than regexp matching
+        # string comparison is about 10 times faster than regexp matching
         if self._path == path:
             return {}
         else:

@@ -80,7 +80,7 @@ Server example::
     loop.run_until_complete(init(loop))
     try:
         loop.run_forever()
-    except KeyboardInterrrupt:
+    except KeyboardInterrupt:
         pass
 
 
@@ -94,7 +94,7 @@ Please feel free to file an issue on `bug tracker
 or have some suggestion for library improvement.
 
 The library uses `Travis <https://travis-ci.org/KeepSafe/aiohttp>`_ for
-Continious Integration.
+Continuous Integration.
 
 
 Dependencies
