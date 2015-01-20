@@ -1,6 +1,11 @@
 CHANGES
 =======
 
+0.15.0 (Unreleased)
+-------------------
+
+- web.Request's read, text, json are memorized #250
+
 0.14.0 (15/01/2014)
 -------------------
 
