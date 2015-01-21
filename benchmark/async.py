@@ -200,8 +200,11 @@ def attack(count, concurrency, connector, loop, url):
         rnd = ''.join(random.sample(string.ascii_letters, 16))
         bombs.append(asyncio.async(do_bomb(rnd)))
 
+    t1 = loop.time()
     data = (yield from asyncio.gather(*bombs))
-    return data
+    t2 = loop.time()
+    rps = count / (t2 - t1)
+    return rps, data
 
 
 @asyncio.coroutine
@@ -230,7 +233,7 @@ def run(test, count, concurrency, *, loop, verbose):
     if verbose:
         test_name = test.__name__
         print("Attack", test_name)
-    data = yield from attack(count, concurrency, connector, loop, url)
+    rps, data = yield from attack(count, concurrency, connector, loop, url)
     if verbose:
         print("Done")
 
@@ -239,7 +242,7 @@ def run(test, count, concurrency, *, loop, verbose):
     assert resp.status == 200, resp.status
     resp.release()
     server.join()
-    return data
+    return rps, data
 
 
 def main(argv):
@@ -256,27 +259,26 @@ def main(argv):
     suite *= tries
     random.shuffle(suite)
 
-    results = collections.defaultdict(list)
+    all_times = collections.defaultdict(list)
+    all_rps = collections.defaultdict(list)
     for test in suite:
         test_name = test.__name__
 
-        times = loop.run_until_complete(run(test, count, concurrency,
-                                            loop=loop, verbose=verbose))
-        results[test_name].append(times)
+        rps, times = loop.run_until_complete(run(test, count, concurrency,
+                                                 loop=loop, verbose=verbose))
+        all_times[test_name].extend(times)
+        all_rps[test_name].append(rps)
 
     print()
 
-    for test_name in sorted(results):
+    for test_name in sorted(all_rps):
+        rps = array(all_rps[test_name])
+        times = array(all_times[test_name]) * 1000
 
-        data = array(results[test_name])
-        trimmed = masked_equal(data, 0)
-
-        rps = trimmed.size / trimmed
         rps_mean = tmean(rps)
-        times = trimmed * 1000000 / trimmed.size
         times_mean = tmean(times)
         times_stdev = tstd(times)
-        times_median = median(times)
+        times_median = float(median(times))
         print('Results for', test_name)
         print('RPS: {:d},\tmean: {:.3f} μs,'
               '\tstandard deviation {:.3f} μs\tmedian {:.3f} μs'
