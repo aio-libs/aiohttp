@@ -176,35 +176,48 @@ def run_twisted(host, port, barrier):
 
 @asyncio.coroutine
 def attack(count, concurrency, connector, loop, url):
-    sem = asyncio.Semaphore(concurrency)
     request = aiohttp.request
 
-    @asyncio.coroutine
-    def do_bomb(rnd):
-        real_url = url + '/test/' + rnd
-        with (yield from sem):
-            t1 = loop.time()
-            resp = yield from request('GET', real_url,
-                                      connector=connector, loop=loop)
-            assert resp.status == 200, resp.status
-            if 'text/plain; charset=utf-8' != resp.headers['Content-Type']:
-                raise AssertionError('Invalid Content-Type: %r' % resp.headers)
-            body = yield from resp.text()
-            assert body == ('Hello, ' + rnd), rnd
-            t2 = loop.time()
-            return t2 - t1
+    in_queue = collections.deque()
+    out_times = collections.deque()
+    processed_count = 0
 
-    bombs = []
+    @asyncio.coroutine
+    def do_bomb():
+        nonlocal processed_count
+        while in_queue:
+            rnd = in_queue.popleft()
+            real_url = url + '/test/' + rnd
+            try:
+                t1 = loop.time()
+                resp = yield from request('GET', real_url,
+                                          connector=connector, loop=loop)
+                assert resp.status == 200, resp.status
+                if 'text/plain; charset=utf-8' != resp.headers['Content-Type']:
+                    raise AssertionError('Invalid Content-Type: %r' %
+                                         resp.headers)
+                body = yield from resp.text()
+                assert body == ('Hello, ' + rnd), rnd
+                t2 = loop.time()
+                out_times.append(t2 - t1)
+                processed_count += 1
+            except Exception:
+                continue
 
     for i in range(count):
         rnd = ''.join(random.sample(string.ascii_letters, 16))
-        bombs.append(asyncio.async(do_bomb(rnd)))
+        in_queue.append(rnd)
+
+    bombers = []
+    for i in range(concurrency):
+        bomber = asyncio.async(do_bomb())
+        bombers.append(bomber)
 
     t1 = loop.time()
-    data = (yield from asyncio.gather(*bombs))
+    yield from asyncio.gather(*bombers)
     t2 = loop.time()
-    rps = count / (t2 - t1)
-    return rps, data
+    rps = processed_count / (t2 - t1)
+    return rps, out_times
 
 
 @asyncio.coroutine
@@ -280,8 +293,8 @@ def main(argv):
         times_stdev = tstd(times)
         times_median = float(median(times))
         print('Results for', test_name)
-        print('RPS: {:d},\tmean: {:.3f} μs,'
-              '\tstandard deviation {:.3f} μs\tmedian {:.3f} μs'
+        print('RPS: {:d},\tmean: {:.3f} ms,'
+              '\tstandard deviation {:.3f} ms\tmedian {:.3f} ms'
               .format(int(rps_mean),
                       times_mean,
                       times_stdev,
