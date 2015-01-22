@@ -199,7 +199,9 @@ class BaseConnector(object):
 
         reader = protocol.reader
         if should_close or (reader.output and not reader.output.at_eof()):
-            self._conns.pop(key, None)
+            conns = self._conns.get(key)
+            if conns is not None and len(conns) == 0:
+                self._conns.pop(key, None)
             transport.close()
         else:
             conns = self._conns.get(key)
