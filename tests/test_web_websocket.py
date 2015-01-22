@@ -257,3 +257,59 @@ class TestWebWebSocket(unittest.TestCase):
                 yield from ws.wait_closed()
 
         self.loop.run_until_complete(go())
+
+    def test_write_eof_not_started(self):
+
+        @asyncio.coroutine
+        def go():
+            ws = WebSocketResponse()
+            with self.assertRaises(RuntimeError):
+                yield from ws.write_eof()
+
+        self.loop.run_until_complete(go())
+
+    def test_write_eof_idempotent(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        ws.start(req)
+        ws._closing_fut.set_result(1)
+
+        @asyncio.coroutine
+        def go():
+            yield from ws.write_eof()
+            yield from ws.write_eof()
+            yield from ws.write_eof()
+
+        self.loop.run_until_complete(go())
+
+    def test_write_eof_exception(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        ws.start(req)
+        ws._closing_fut.set_exception(ValueError())
+
+        @asyncio.coroutine
+        def go():
+            with self.assertRaises(ValueError):
+                yield from ws.write_eof()
+
+        self.loop.run_until_complete(go())
+
+    def test_receive_msg_exc_in_reader(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        ws.start(req)
+
+        exc = ValueError()
+        res = asyncio.Future(loop=self.loop)
+        res.set_exception(exc)
+        ws._reader.read.return_value = res
+
+        @asyncio.coroutine
+        def go():
+            with self.assertRaises(ValueError):
+                yield from ws.receive_msg()
+
+            self.assertIs(ws._closing_fut.exception(), exc)
+
+        self.loop.run_until_complete(go())

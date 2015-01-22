@@ -830,6 +830,16 @@ class WebSocketResponse(StreamResponse):
         yield from self._closing_fut
 
     @asyncio.coroutine
+    def write_eof(self):
+        if self._eof_sent:
+            return
+        if self._resp_impl is None:
+            raise RuntimeError("Response has not been started")
+
+        yield from self.wait_closed()
+        self._eof_sent = True
+
+    @asyncio.coroutine
     def receive_msg(self):
         if self._reader is None:
             raise RuntimeError('Call .start() first')
