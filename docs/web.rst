@@ -127,6 +127,7 @@ so application developer can use classes if he wants::
    app.router.add_route('GET', '/intro', handler.handle_intro)
    app.router.add_route('GET', '/greet/{name}', handler.handle_greeting)
 
+
 Custom conditions for routes lookup
 -----------------------------------
 

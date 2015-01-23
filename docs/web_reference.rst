@@ -140,29 +140,6 @@ first positional parameter.
 
       .. versionadded:: 0.15
 
-   .. attribute:: compression
-
-      Read-only :class:`bool` property, ``True`` if compression is enabled.
-
-      ``False`` by default.
-
-      .. versionadded:: 0.14
-
-      .. seealso:: :meth:`enable_compression`
-
-   .. method:: enable_compression(force=False)
-
-      Enable compression.
-
-      When *force* is ``False`` (default) compression is used only
-      when *deflate* is in *Accept-Encoding* request's header.
-
-      *Accept-Encoding* is not checked if *force* is ``True``.
-
-      .. versionadded:: 0.14
-
-      .. seealso:: :attr:`compression`
-
    .. attribute:: payload
 
       A :class:`~aiohttp.streams.FlowControlStreamReader` instance,
@@ -373,17 +350,48 @@ StreamResponse
       Disable :attr:`keep_alive` for connection. There are no ways to
       enable it back.
 
+   .. attribute:: compression
+
+      Read-only :class:`bool` property, ``True`` if compression is enabled.
+
+      ``False`` by default.
+
+      .. versionadded:: 0.14
+
+      .. seealso:: :meth:`enable_compression`
+
+   .. method:: enable_compression(force=False)
+
+      Enable compression.
+
+      When *force* is ``False`` (default) compression is used only
+      when *deflate* is in *Accept-Encoding* request's header.
+
+      *Accept-Encoding* is not checked if *force* is ``True``.
+
+      .. versionadded:: 0.14
+
+      .. seealso:: :attr:`compression`
+
    .. attribute:: chunked
 
       Read-only property, indicates if chunked encoding is on.
 
       Can be enabled by :meth:`enable_chunked_encoding` call.
 
+      .. versionadded:: 0.14
+
+      .. seealso:: :attr:`enable_chunked_encoding`
+
    .. method:: enable_chunked_encoding
 
       Enables :attr:`chunked` encoding for response. There are no ways to
       disable it back. With enabled :attr:`chunked` encoding each `write()`
       operation encoded in separate chunk.
+
+      .. versionadded:: 0.14
+
+      .. seealso:: :attr:`chunked`
 
    .. attribute:: headers
 
