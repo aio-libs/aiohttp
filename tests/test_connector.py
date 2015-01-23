@@ -184,6 +184,22 @@ class BaseConnectorTests(unittest.TestCase):
         self.assertFalse(conn._conns)
         self.assertTrue(tr.close.called)
 
+    def test_release_close_do_not_delete_existing_connections(self):
+        key = 1
+        tr1, proto1 = unittest.mock.Mock(), unittest.mock.Mock()
+
+        conn = aiohttp.BaseConnector(share_cookies=True, loop=self.loop)
+        conn._conns[key] = [(tr1, proto1, 1)]
+        req = unittest.mock.Mock()
+        resp = unittest.mock.Mock()
+        resp.message.should_close = True
+        req.response = resp
+
+        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+        conn._release(key, req, tr, proto)
+        self.assertEqual(conn._conns[key], [(tr1, proto1, 1)])
+        self.assertTrue(tr.close.called)
+
     @mock.patch('aiohttp.connector.time')
     def test_release_not_started(self, m_time):
         m_time.time.return_value = 10

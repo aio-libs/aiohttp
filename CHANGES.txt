@@ -4,6 +4,8 @@ CHANGES
 0.14.2 (Unreleased)
 -------------------
 
+- Connections leak in BaseConnector #253
+
 - Do not swallow websocket reader exceptions #255
 
 - web.Request's read, text, json are memorized #250
