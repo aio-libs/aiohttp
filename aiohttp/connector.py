@@ -128,7 +128,7 @@ class BaseConnector(object):
     @staticmethod
     def _do_close(conns):
         for key, data in conns.items():
-            for transport, proto, td in data:
+            for transport, proto, t0 in data:
                 transport.close()
 
         conns.clear()
