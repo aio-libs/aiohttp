@@ -201,6 +201,10 @@ class BaseConnector(object):
         if should_close or (reader.output and not reader.output.at_eof()):
             conns = self._conns.get(key)
             if conns is not None and len(conns) == 0:
+                # Issue #253: An empty array will eventually be
+                # removed by cleanup, but it's better to pop straight
+                # away, because cleanup might not get called (e.g. if
+                # keepalive is False).
                 self._conns.pop(key, None)
             transport.close()
         else:
