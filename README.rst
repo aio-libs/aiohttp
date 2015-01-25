@@ -10,6 +10,13 @@ http client/server for asyncio
   :target:  https://secure.travis-ci.org/KeepSafe/aiohttp
   :align: right
 
+Features
+--------
+
+- Supports both client and server side of HTTP protocol.
+- Supports Web-Sockets out-of-the-box.
+- Web-server has middlewares and pluggable routing.
+
 
 Requirements
 ------------
@@ -28,6 +35,12 @@ Documentation
 -------------
 
 http://aiohttp.readthedocs.org/
+
+Source code
+------------
+
+The latest developer version is available in a github repository:
+https://github.com/KeepSafe/aiohttp
 
 
 Getting started
