@@ -1544,6 +1544,7 @@ class RequestHandlerFactory:
         for handler in self._connections.keys():
             handler.closing()
 
+        @asyncio.coroutine
         def cleanup():
             sleep = 0.05
             while self._connections:
