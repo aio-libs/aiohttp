@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-0.14.2 (01-23-2014)
+0.14.2 (01-23-2015)
 -------------------
 
 - Connections leak in BaseConnector #253
@@ -11,7 +11,7 @@ CHANGES
 - web.Request's read, text, json are memorized #250
 
 
-0.14.1 (01-15-2014)
+0.14.1 (01-15-2015)
 -------------------
 
 - HttpMessage._add_default_headers does not overwrite existing headers #216
