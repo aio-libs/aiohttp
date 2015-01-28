@@ -12,6 +12,7 @@ Andrej Antonov
 Anton Kasyanov
 Ben Bader
 Brian C. Lane
+Dimitar Dimitrov
 Erich Healy
 Eugene Chernyshov
 Georges Dubus
