@@ -411,8 +411,8 @@ StreamResponse
          :meth:`set_cookie`, :meth:`del_cookie` for cookie
          manipulations.
 
-   .. method:: set_cookie(name, value, *, expires=None, \
-                   domain=None, max_age=None, path=None, \
+   .. method:: set_cookie(name, value, *, path='/', expires=None, \
+                   domain=None, max_age=None, \
                    secure=None, httponly=None, version=None)
 
       Convenient way for setting :attr:`cookies`, allows to specify
@@ -436,7 +436,7 @@ StreamResponse
                           immediately.  (optional)
 
       :param str path: specifies the subset of URLs to
-                       which this cookie applies. (optional)
+                       which this cookie applies. (optional, ``'/'`` by default)
 
       :param bool secure: attribute (with no value) directs
                           the user agent to use only (unspecified)
@@ -458,7 +458,11 @@ StreamResponse
                           specification the cookie
                           conforms. (Optional, *version=1* by default)
 
-   .. method:: del_cookie(name, *, domain=None, path=None)
+      .. versionchanged:: 0.14.3
+
+         Default value for *path* changed from ``None`` to ``'/'``.
+
+   .. method:: del_cookie(name, *, path='/', domain=None)
 
       Deletes cookie.
 
@@ -466,7 +470,11 @@ StreamResponse
 
       :param str domain: optional cookie domain
 
-      :param str path: optional cookie path
+      :param str path: optional cookie path, ``'/'`` by default
+
+      .. versionchanged:: 0.14.3
+
+         Default value for *path* changed from ``None`` to ``'/'``.
 
    .. attribute:: content_length
 

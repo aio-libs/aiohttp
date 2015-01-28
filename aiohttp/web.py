@@ -471,7 +471,7 @@ class StreamResponse(HeadersMixin):
         return self._cookies
 
     def set_cookie(self, name, value, *, expires=None,
-                   domain=None, max_age=None, path=None,
+                   domain=None, max_age=None, path='/',
                    secure=None, httponly=None, version=None):
         """Set or update response cookie.
 
@@ -501,7 +501,7 @@ class StreamResponse(HeadersMixin):
         if version is not None:
             c['version'] = version
 
-    def del_cookie(self, name, *, domain=None, path=None):
+    def del_cookie(self, name, *, domain=None, path='/'):
         """Delete cookie.
 
         Creates new empty expired cookie.
