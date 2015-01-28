@@ -256,19 +256,23 @@ class TestStreamResponse(unittest.TestCase):
         self.assertEqual(str(resp.cookies), '')
 
         resp.set_cookie('name', 'value')
-        self.assertEqual(str(resp.cookies), 'Set-Cookie: name=value')
+        self.assertEqual(str(resp.cookies), 'Set-Cookie: name=value; Path=/')
         resp.set_cookie('name', 'other_value')
-        self.assertEqual(str(resp.cookies), 'Set-Cookie: name=other_value')
+        self.assertEqual(str(resp.cookies),
+                         'Set-Cookie: name=other_value; Path=/')
 
         resp.cookies['name'] = 'another_other_value'
         resp.cookies['name']['max-age'] = 10
-        self.assertEqual(str(resp.cookies),
-                         'Set-Cookie: name=another_other_value; Max-Age=10')
+        self.assertEqual(
+            str(resp.cookies),
+            'Set-Cookie: name=another_other_value; Max-Age=10; Path=/')
 
         resp.del_cookie('name')
-        self.assertEqual(str(resp.cookies), 'Set-Cookie: name=; Max-Age=0')
+        self.assertEqual(
+            str(resp.cookies),
+            'Set-Cookie: name=; Max-Age=0; Path=/')
 
-        resp.set_cookie('name', 'value', domain='local.host')
+        resp.set_cookie('name', 'value', domain='local.host', path=None)
         self.assertEqual(str(resp.cookies),
                          'Set-Cookie: name=value; Domain=local.host')
 
@@ -283,7 +287,7 @@ class TestStreamResponse(unittest.TestCase):
         resp.set_cookie('name', 'value', expires='123')
         self.assertEqual(str(resp.cookies),
                          'Set-Cookie: name=value; expires=123;'
-                         ' Path=/some/path')
+                         ' Path=/')
         resp.set_cookie('name', 'value', domain='example.com',
                         path='/home', expires='123', max_age='10',
                         secure=True, httponly=True, version='2.0')
@@ -304,7 +308,8 @@ class TestStreamResponse(unittest.TestCase):
         self.assertEqual(str(resp.cookies), '')
 
         resp.del_cookie('name')
-        self.assertEqual(str(resp.cookies), 'Set-Cookie: name=; Max-Age=0')
+        self.assertEqual(str(resp.cookies),
+                         'Set-Cookie: name=; Max-Age=0; Path=/')
 
     def test_cookie_set_after_del(self):
         resp = StreamResponse()
@@ -312,7 +317,8 @@ class TestStreamResponse(unittest.TestCase):
         resp.del_cookie('name')
         resp.set_cookie('name', 'val')
         # check for Max-Age dropped
-        self.assertEqual(str(resp.cookies), 'Set-Cookie: name=val')
+        self.assertEqual(str(resp.cookies),
+                         'Set-Cookie: name=val; Path=/')
 
     def test_set_status_with_reason(self):
         resp = StreamResponse()
