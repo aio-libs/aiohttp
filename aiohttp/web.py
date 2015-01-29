@@ -1401,6 +1401,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         assert method in self.METHODS, method
         parts = []
         factory = PlainRoute
+        format_parts = []
         for part in path.split('/'):
             if not part:
                 continue
@@ -1409,6 +1410,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                 parts.append('(?P<' + match.group('var') + '>' +
                              self.GOOD + ')')
                 factory = DynamicRoute
+                format_parts.append('{'+match.group('var')+'}')
                 continue
 
             match = self.DYN_WITH_RE.match(part)
@@ -1416,9 +1418,11 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                 parts.append('(?P<' + match.group('var') + '>' +
                              match.group('re') + ')')
                 factory = DynamicRoute
+                format_parts.append('{'+match.group('var')+'}')
                 continue
             if self.PLAIN.match(part):
                 parts.append(re.escape(part))
+                format_parts.append(part)
                 continue
             raise ValueError("Invalid path '{}'['{}']".format(path, part))
         if factory is PlainRoute:
@@ -1432,7 +1436,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             except re.error as exc:
                 raise ValueError(
                     "Bad pattern '{}': {}".format(pattern, exc)) from None
-            route = DynamicRoute(method, handler, name, compiled, path)
+            formatter = '/' + '/'.join(format_parts)
+            route = DynamicRoute(method, handler, name, compiled, formatter)
         self._register_endpoint(route)
         return route
 
