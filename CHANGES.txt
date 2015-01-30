@@ -1,6 +1,11 @@
 CHANGES
 =======
 
+Unreleased (XX-XX-XXXX)
+-----------------------
+
+- Fix issue with construction dynamic route with regexps and trailing slash #266
+
 0.14.4 (01-29-2015)
 -------------------
 

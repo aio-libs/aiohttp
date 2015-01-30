@@ -1429,14 +1429,15 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             route = PlainRoute(method, handler, name, path)
         else:
             pattern = '/' + '/'.join(parts)
+            formatter = '/' + '/'.join(format_parts)
             if path.endswith('/') and pattern != '/':
                 pattern += '/'
+                formatter += '/'
             try:
                 compiled = re.compile('^' + pattern + '$')
             except re.error as exc:
                 raise ValueError(
                     "Bad pattern '{}': {}".format(pattern, exc)) from None
-            formatter = '/' + '/'.join(format_parts)
             route = DynamicRoute(method, handler, name, compiled, formatter)
         self._register_endpoint(route)
         return route

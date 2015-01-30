@@ -334,3 +334,11 @@ class TestUrlDispatcher(unittest.TestCase):
 
         url = route.url(parts={'num': '123'})
         self.assertEqual('/get/123', url)
+
+    def test_route_dynamic_with_regex_spec_and_trailing_slash(self):
+        handler = self.make_handler()
+        route = self.router.add_route('GET', '/get/{num:^\d+}/', handler,
+                                      name='name')
+
+        url = route.url(parts={'num': '123'})
+        self.assertEqual('/get/123/', url)
