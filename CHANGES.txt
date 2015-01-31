@@ -6,6 +6,10 @@ Unreleased (XX-XX-XXXX)
 
 - Fix issue with construction dynamic route with regexps and trailing slash #266
 
+- Add repr to web.Request
+
+- Add repr to web.Response
+
 0.14.4 (01-29-2015)
 -------------------
 
