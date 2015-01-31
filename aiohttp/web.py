@@ -1160,6 +1160,9 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
     def route(self):
         return self._route
 
+    def __repr__(self):
+        return "<MatchInfo {}: {}>".format(super().__repr__(), self._route)
+
 
 class Route(metaclass=abc.ABCMeta):
 

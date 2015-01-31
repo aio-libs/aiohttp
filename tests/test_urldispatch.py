@@ -343,6 +343,21 @@ class TestUrlDispatcher(unittest.TestCase):
         url = route.url(parts={'num': '123'})
         self.assertEqual('/get/123/', url)
 
+    def test_regular_match_info(self):
+
+        @asyncio.coroutine
+        def go():
+            handler = self.make_handler()
+            self.router.add_route('GET', '/get/{name}', handler)
+
+            req = self.make_request('GET', '/get/john')
+            match_info = yield from self.router.resolve(req)
+            self.maxDiff = None
+            self.assertRegex(repr(match_info),
+                             "<MatchInfo {'name': 'john'}: <DynamicRoute.+>>")
+
+        self.loop.run_until_complete(go())
+
     def test_not_found_repr(self):
 
         @asyncio.coroutine

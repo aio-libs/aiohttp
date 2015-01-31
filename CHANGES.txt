@@ -14,6 +14,8 @@ Unreleased (XX-XX-XXXX)
 
 - Add repr for web.Application
 
+- Add repr to UrlMappingMatchInfo #217
+
 0.14.4 (01-29-2015)
 -------------------
 
