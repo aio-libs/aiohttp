@@ -169,3 +169,7 @@ class TestWebRequest(unittest.TestCase):
         self.assertTrue(isinstance(req, dict))
         req['key'] = 'value'
         self.assertEqual('value', req['key'])
+
+    def test___repr__(self):
+        req = self.make_request('GET', '/')
+        self.assertEqual("<Request GET />", repr(req))

@@ -391,6 +391,10 @@ class Request(dict, HeadersMixin):
         self._post = MultiDictProxy(out)
         return self._post
 
+    def __repr__(self):
+        return "<{} {} {}>".format(self.__class__.__name__,
+                                   self.method, self.path)
+
 
 ############################################################
 # HTTP Response classes
