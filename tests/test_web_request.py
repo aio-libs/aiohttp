@@ -171,5 +171,5 @@ class TestWebRequest(unittest.TestCase):
         self.assertEqual('value', req['key'])
 
     def test___repr__(self):
-        req = self.make_request('GET', '/')
-        self.assertEqual("<Request GET />", repr(req))
+        req = self.make_request('GET', '/path/to')
+        self.assertEqual("<Request GET /path/to >", repr(req))

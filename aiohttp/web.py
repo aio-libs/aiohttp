@@ -392,8 +392,8 @@ class Request(dict, HeadersMixin):
         return self._post
 
     def __repr__(self):
-        return "<{} {} {}>".format(self.__class__.__name__,
-                                   self.method, self.path)
+        return "<{} {} {} >".format(self.__class__.__name__,
+                                    self.method, self.path)
 
 
 ############################################################
@@ -642,6 +642,14 @@ class StreamResponse(HeadersMixin):
 
         yield from self._resp_impl.write_eof()
         self._eof_sent = True
+
+    def __repr__(self):
+        if self.started:
+            info = "{} {} ".format(self._req.method, self._req.path)
+        else:
+            info = "not started"
+        return "<{} {} {}>".format(self.__class__.__name__,
+                                   self.reason, info)
 
 
 class Response(StreamResponse):

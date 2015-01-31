@@ -337,6 +337,16 @@ class TestStreamResponse(unittest.TestCase):
         self.assertFalse(resp.keep_alive)
         self.assertTrue(msg.closing)
 
+    def test___repr__(self):
+        req = self.make_request('GET', '/path/to')
+        resp = StreamResponse(reason=301)
+        resp.start(req)
+        self.assertEqual("<StreamResponse 301 GET /path/to >", repr(resp))
+
+    def test___repr__not_started(self):
+        resp = StreamResponse(reason=301)
+        self.assertEqual("<StreamResponse 301 not started>", repr(resp))
+
 
 class TestResponse(unittest.TestCase):
 
