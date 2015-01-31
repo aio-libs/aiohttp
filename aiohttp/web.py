@@ -1325,6 +1325,9 @@ class _NotFoundMatchInfo(UrlMappingMatchInfo):
     def _not_found(self, request):
         raise HTTPNotFound()
 
+    def __repr__(self):
+        return "<MatchInfo: not found>"
+
 
 class _MethodNotAllowedMatchInfo(UrlMappingMatchInfo):
 
@@ -1344,6 +1347,10 @@ class _MethodNotAllowedMatchInfo(UrlMappingMatchInfo):
     @asyncio.coroutine
     def _not_allowed(self, request):
         raise HTTPMethodNotAllowed(self._method, self._allowed_methods)
+
+    def __repr__(self):
+        return ("<MatchInfo: method {} is not allowed (allowed methods: {}>"
+                .format(self._method, ', '.join(self._allowed_methods)))
 
 
 class UrlDispatcher(AbstractRouter, collections.abc.Mapping):

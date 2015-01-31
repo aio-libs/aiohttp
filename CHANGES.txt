@@ -10,6 +10,8 @@ Unreleased (XX-XX-XXXX)
 
 - Add repr to web.Response
 
+- Add repr for NotFound and NotAllowed match infos
+
 0.14.4 (01-29-2015)
 -------------------
 

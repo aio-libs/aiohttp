@@ -342,3 +342,30 @@ class TestUrlDispatcher(unittest.TestCase):
 
         url = route.url(parts={'num': '123'})
         self.assertEqual('/get/123/', url)
+
+    def test_not_found_repr(self):
+
+        @asyncio.coroutine
+        def go():
+            req = self.make_request('POST', '/path/to')
+            match_info = yield from self.router.resolve(req)
+            self.assertEqual("<MatchInfo: not found>", repr(match_info))
+
+        self.loop.run_until_complete(go())
+
+    def test_not_allowed_repr(self):
+
+        @asyncio.coroutine
+        def go():
+            handler = self.make_handler()
+            self.router.add_route('GET', '/path/to', handler)
+
+            handler2 = self.make_handler()
+            self.router.add_route('POST', '/path/to', handler2)
+
+            req = self.make_request('PUT', '/path/to')
+            match_info = yield from self.router.resolve(req)
+            self.assertEqual("<MatchInfo: method PUT is not allowed "
+                             "(allowed methods: POST, GET>", repr(match_info))
+
+        self.loop.run_until_complete(go())
