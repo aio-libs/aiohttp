@@ -366,6 +366,6 @@ class TestUrlDispatcher(unittest.TestCase):
             req = self.make_request('PUT', '/path/to')
             match_info = yield from self.router.resolve(req)
             self.assertEqual("<MatchInfo: method PUT is not allowed "
-                             "(allowed methods: POST, GET>", repr(match_info))
+                             "(allowed methods: GET, POST>", repr(match_info))
 
         self.loop.run_until_complete(go())

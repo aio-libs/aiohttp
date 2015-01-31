@@ -1350,7 +1350,8 @@ class _MethodNotAllowedMatchInfo(UrlMappingMatchInfo):
 
     def __repr__(self):
         return ("<MatchInfo: method {} is not allowed (allowed methods: {}>"
-                .format(self._method, ', '.join(self._allowed_methods)))
+                .format(self._method,
+                        ', '.join(sorted(self._allowed_methods))))
 
 
 class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
