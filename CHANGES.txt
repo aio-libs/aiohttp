@@ -12,6 +12,8 @@ Unreleased (XX-XX-XXXX)
 
 - Add repr for NotFound and NotAllowed match infos
 
+- Add repr for web.Application
+
 0.14.4 (01-29-2015)
 -------------------
 
