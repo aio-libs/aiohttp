@@ -29,10 +29,9 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         return port
 
     @asyncio.coroutine
-    def create_server(self, method, path, handler=None):
+    def create_server(self, method, path, handler):
         app = web.Application(loop=self.loop)
-        if handler:
-            app.router.add_route(method, path, handler)
+        app.router.add_route(method, path, handler)
 
         port = self.find_unused_port()
         srv = yield from self.loop.create_server(
