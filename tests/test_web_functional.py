@@ -327,12 +327,8 @@ class TestWebFunctional(unittest.TestCase):
     def test_repr_for_application(self):
 
         @asyncio.coroutine
-        def handler(request):
-            return web.HTTPOk()
-
-        @asyncio.coroutine
         def go():
-            app, _, _ = yield from self.create_server('POST', '/', handler)
+            app, _, _ = yield from self.create_server('POST', '/')
             self.assertEqual("<Application>", repr(app))
 
         self.loop.run_until_complete(go())
