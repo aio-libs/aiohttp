@@ -120,17 +120,20 @@ class TestWebRequest(unittest.TestCase):
         body = b"123"
         req = self.make_request(
             'POST', '/',
-            headers=CIMultiDict({"EXPECT": "100-Continue", 'CONTENT-TYPE': ''}))
+            headers=CIMultiDict({"EXPECT": "100-Continue",
+                                 'CONTENT-TYPE': ''}))
         with mock.patch.object(req, "read", side_effect=StopIteration(body)):
             ret = self.loop.run_until_complete(req.post())
         self.assertEqual(ret, body)
-        req.transport.write.assert_called_with(b'HTTP/1.1 100 Continue\r\n\r\n')
+        req.transport.write.assert_called_with(
+            b'HTTP/1.1 100 Continue\r\n\r\n')
 
     def test_call_POST_for_100_continue_HTTP10(self):
         body = b"123"
         req = self.make_request(
             'POST', '/',
-            headers=CIMultiDict({"EXPECT": "100-Continue", 'CONTENT-TYPE': ''}),
+            headers=CIMultiDict({"EXPECT": "100-Continue",
+                                 'CONTENT-TYPE': ''}),
             version=HttpVersion(1, 0))
 
         with mock.patch.object(req, "read", side_effect=StopIteration(body)):
@@ -142,7 +145,8 @@ class TestWebRequest(unittest.TestCase):
         body = b"123"
         req = self.make_request(
             'POST', '/',
-            headers=CIMultiDict({"EXPECT": "Other-thing", 'CONTENT-TYPE': ''}))
+            headers=CIMultiDict({"EXPECT": "Other-thing",
+                                 'CONTENT-TYPE': ''}))
         with mock.patch.object(req, "read", side_effect=StopIteration(body)):
             ret = self.loop.run_until_complete(req.post())
         self.assertEqual(ret, body)

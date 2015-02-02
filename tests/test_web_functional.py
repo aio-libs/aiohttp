@@ -120,7 +120,6 @@ class TestWebFunctional(unittest.TestCase):
         self.loop.run_until_complete(
             asyncio.wait_for(go(), timeout=0.1, loop=self.loop))
 
-
     def test_post_json(self):
 
         dct = {'key': 'текст'}
