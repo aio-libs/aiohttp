@@ -64,8 +64,8 @@ import inspect
 from . import errors
 from .streams import FlowControlDataQueue, EofStream
 
-BUF_LIMIT = 2**14
-DEFAULT_LIMIT = 2**16
+BUF_LIMIT = 2 ** 14
+DEFAULT_LIMIT = 2 ** 16
 
 
 class StreamParser(asyncio.streams.StreamReader):
@@ -80,7 +80,7 @@ class StreamParser(asyncio.streams.StreamReader):
     """
 
     def __init__(self, *, loop=None, buf=None,
-                 paused=True, limit=DEFAULT_LIMIT):
+                 paused=True, limit=DEFAULT_LIMIT, eof_exc_class=RuntimeError):
         self._loop = loop
         self._eof = False
         self._exception = None
@@ -90,6 +90,7 @@ class StreamParser(asyncio.streams.StreamReader):
         self._paused = False
         self._stream_paused = paused
         self._output = None
+        self._eof_exc_class = eof_exc_class
         self._buffer = buf if buf is not None else ParserBuffer()
 
     @property
@@ -119,6 +120,11 @@ class StreamParser(asyncio.streams.StreamReader):
         return self._exception
 
     def set_exception(self, exc):
+        if isinstance(exc, ConnectionError):
+            exc, old_exc = self._eof_exc_class(), exc
+            exc.__cause__ = old_exc
+            exc.__context__ = old_exc
+
         self._exception = exc
 
         if self._output is not None:
@@ -146,7 +152,7 @@ class StreamParser(asyncio.streams.StreamReader):
             self._buffer.feed_data(data)
 
         if (self._transport is not None and not self._paused and
-                len(self._buffer) > 2*self._limit):
+                len(self._buffer) > 2 * self._limit):
             try:
                 self._transport.pause_reading()
             except NotImplementedError:
@@ -167,7 +173,7 @@ class StreamParser(asyncio.streams.StreamReader):
             except StopIteration:
                 self._output.feed_eof()
             except EofStream:
-                self._output.set_exception(errors.ConnectionError())
+                self._output.set_exception(self._eof_exc_class())
             except Exception as exc:
                 self._output.set_exception(exc)
 
@@ -219,7 +225,7 @@ class StreamParser(asyncio.streams.StreamReader):
         except StopIteration:
             self._output.feed_eof()
         except EofStream:
-            self._output.set_exception(errors.ConnectionError())
+            self._output.set_exception(self._eof_exc_class())
         except Exception as exc:
             self._output.set_exception(exc)
         finally:
@@ -230,12 +236,13 @@ class StreamParser(asyncio.streams.StreamReader):
 class StreamProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     """Helper class to adapt between Protocol and StreamReader."""
 
-    def __init__(self, *, loop=None, **kwargs):
+    def __init__(self, *, loop=None, disconnect_error=RuntimeError, **kwargs):
         super().__init__(loop=loop)
 
         self.transport = None
         self.writer = None
-        self.reader = StreamParser(loop=loop, **kwargs)
+        self.reader = StreamParser(
+            loop=loop, eof_exc_class=disconnect_error, **kwargs)
 
     def is_connected(self):
         return self.transport is not None
@@ -247,7 +254,7 @@ class StreamProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             transport, self, self.reader, self._loop)
 
     def connection_lost(self, exc):
-        self.transport = None
+        self.transport = self.writer = None
 
         if exc is None:
             self.reader.feed_eof()
@@ -421,7 +428,7 @@ class LinesParser:
     Lines parser splits a bytes stream into a chunks of data, each chunk ends
     with \\n symbol."""
 
-    def __init__(self, limit=2**16):
+    def __init__(self, limit=DEFAULT_LIMIT):
         self._limit = limit
 
     def __call__(self, out, buf):
@@ -438,7 +445,7 @@ class ChunksParser:
     Chunks parser splits a bytes stream into a specified
     size chunks of data."""
 
-    def __init__(self, size=8196):
+    def __init__(self, size=8192):
         self._size = size
 
     def __call__(self, out, buf):

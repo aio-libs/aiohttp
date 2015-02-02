@@ -5,7 +5,7 @@ import unittest.mock
 import asyncio
 import zlib
 
-from aiohttp import protocol
+from aiohttp import hdrs, protocol
 
 
 class HttpMessageTests(unittest.TestCase):
@@ -28,8 +28,24 @@ class HttpMessageTests(unittest.TestCase):
 
         self.assertIs(msg.transport, self.transport)
         self.assertEqual(msg.status, 200)
+        self.assertEqual(msg.reason, "OK")
         self.assertTrue(msg.closing)
         self.assertEqual(msg.status_line, 'HTTP/1.1 200 OK\r\n')
+
+    def test_start_response_with_reason(self):
+        msg = protocol.Response(self.transport, 333, close=True,
+                                reason="My Reason")
+
+        self.assertEqual(msg.status, 333)
+        self.assertEqual(msg.reason, "My Reason")
+        self.assertEqual(msg.status_line, 'HTTP/1.1 333 My Reason\r\n')
+
+    def test_start_response_with_unknown_reason(self):
+        msg = protocol.Response(self.transport, 777, close=True)
+
+        self.assertEqual(msg.status, 777)
+        self.assertEqual(msg.reason, "777")
+        self.assertEqual(msg.status_line, 'HTTP/1.1 777 777\r\n')
 
     def test_force_close(self):
         msg = protocol.Response(self.transport, 200)
@@ -40,7 +56,7 @@ class HttpMessageTests(unittest.TestCase):
     def test_force_chunked(self):
         msg = protocol.Response(self.transport, 200)
         self.assertFalse(msg.chunked)
-        msg.force_chunked()
+        msg.enable_chunked_encoding()
         self.assertTrue(msg.chunked)
 
     def test_keep_alive(self):
@@ -137,6 +153,7 @@ class HttpMessageTests(unittest.TestCase):
 
     def test_add_headers_hop_headers(self):
         msg = protocol.Response(self.transport, 200)
+        msg.HOP_HEADERS = (hdrs.TRANSFER_ENCODING,)
 
         msg.add_headers(('connection', 'test'), ('transfer-encoding', 't'))
         self.assertEqual([], list(msg.headers))
@@ -179,8 +196,8 @@ class HttpMessageTests(unittest.TestCase):
         self.assertNotIn('TRANSFER-ENCODING', headers)
 
         msg = protocol.Response(self.transport, 200)
-        msg.force_chunked()
-        msg._add_default_headers()
+        msg.enable_chunked_encoding()
+        msg.send_headers()
 
         headers = [r for r, _ in msg.headers.items()]
         self.assertIn('TRANSFER-ENCODING', headers)
@@ -269,7 +286,7 @@ class HttpMessageTests(unittest.TestCase):
 
     def test_prepare_chunked_force(self):
         msg = protocol.Response(self.transport, 200)
-        msg.force_chunked()
+        msg.enable_chunked_encoding()
 
         chunked = msg._write_chunked_payload = unittest.mock.Mock()
         chunked.return_value = iter([1, 2, 3])
@@ -324,7 +341,7 @@ class HttpMessageTests(unittest.TestCase):
         write = self.transport.write = unittest.mock.Mock()
 
         msg = protocol.Response(self.transport, 200)
-        msg.force_chunked()
+        msg.enable_chunked_encoding()
         msg.send_headers()
 
         msg.write(b'data')
@@ -339,7 +356,7 @@ class HttpMessageTests(unittest.TestCase):
         write = self.transport.write = unittest.mock.Mock()
 
         msg = protocol.Response(self.transport, 200)
-        msg.force_chunked()
+        msg.enable_chunked_encoding()
         msg.send_headers()
 
         msg.write(b'data1')
@@ -463,3 +480,18 @@ class HttpMessageTests(unittest.TestCase):
 
         res = msg.write(b'1')
         self.assertEqual(res, ())
+
+    def test_dont_override_request_headers_with_default_values(self):
+        msg = protocol.Request(
+            self.transport, 'GET', '/index.html', close=True)
+        msg.add_header('USER-AGENT', 'custom')
+        msg._add_default_headers()
+        self.assertEqual('custom', msg.headers['USER-AGENT'])
+
+    def test_dont_override_response_headers_with_default_values(self):
+        msg = protocol.Response(self.transport, 200, http_version=(1, 0))
+        msg.add_header('DATE', 'now')
+        msg.add_header('SERVER', 'custom')
+        msg._add_default_headers()
+        self.assertEqual('custom', msg.headers['SERVER'])
+        self.assertEqual('now', msg.headers['DATE'])

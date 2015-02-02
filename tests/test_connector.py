@@ -6,6 +6,7 @@ import gc
 import time
 import socket
 import unittest
+import ssl
 from unittest import mock
 
 import aiohttp
@@ -39,8 +40,10 @@ class HttpConnectionTests(unittest.TestCase):
             self.connector, self.key, self.request,
             self.transport, self.protocol, self.loop)
         conn.close()
-        self.assertTrue(self.transport.close.called)
         self.assertIsNone(conn._transport)
+        self.connector._release.assert_called_with(
+            self.key, self.request, self.transport, self.protocol,
+            should_close=True)
 
     def test_release(self):
         conn = Connection(
@@ -51,6 +54,17 @@ class HttpConnectionTests(unittest.TestCase):
         self.assertIsNone(conn._transport)
         self.connector._release.assert_called_with(
             self.key, self.request, self.transport, self.protocol)
+
+    def test_release_released(self):
+        conn = Connection(
+            self.connector, self.key, self.request,
+            self.transport, self.protocol, self.loop)
+        conn.release()
+        self.connector._release.reset_mock()
+        conn.release()
+        self.assertFalse(self.transport.close.called)
+        self.assertIsNone(conn._transport)
+        self.assertFalse(self.connector._release.called)
 
     def test_no_share_cookies(self):
         connector = aiohttp.BaseConnector(share_cookies=False, loop=self.loop)
@@ -130,7 +144,7 @@ class BaseConnectorTests(unittest.TestCase):
         self.assertEqual(conn._get(1), (None, None))
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        conn._conns[1] = [(tr, proto, time.time()-1000)]
+        conn._conns[1] = [(tr, proto, time.time() - 1000)]
         self.assertEqual(conn._get(1), (None, None))
         self.assertEqual(conn._conns[1], [])
 
@@ -168,6 +182,39 @@ class BaseConnectorTests(unittest.TestCase):
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
         conn._release(1, req, tr, proto)
         self.assertFalse(conn._conns)
+        self.assertTrue(tr.close.called)
+
+    def test_release_pop_empty_conns(self):
+        # see issue #253
+        conn = aiohttp.BaseConnector(loop=self.loop)
+        req = unittest.mock.Mock()
+        resp = unittest.mock.Mock()
+        resp.message.should_close = True
+        req.response = resp
+
+        key = ('127.0.0.1', 80, False)
+
+        conn._conns[key] = []
+
+        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+        conn._release(key, req, tr, proto)
+        self.assertEqual({}, conn._conns)
+        self.assertTrue(tr.close.called)
+
+    def test_release_close_do_not_delete_existing_connections(self):
+        key = ('127.0.0.1', 80, False)
+        tr1, proto1 = unittest.mock.Mock(), unittest.mock.Mock()
+
+        conn = aiohttp.BaseConnector(share_cookies=True, loop=self.loop)
+        conn._conns[key] = [(tr1, proto1, 1)]
+        req = unittest.mock.Mock()
+        resp = unittest.mock.Mock()
+        resp.message.should_close = True
+        req.response = resp
+
+        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+        conn._release(key, req, tr, proto)
+        self.assertEqual(conn._conns[key], [(tr1, proto1, 1)])
         self.assertTrue(tr.close.called)
 
     @mock.patch('aiohttp.connector.time')
@@ -214,6 +261,27 @@ class BaseConnectorTests(unittest.TestCase):
         self.assertEqual(connection._transport, tr)
         self.assertEqual(connection._protocol, proto)
         self.assertIsInstance(connection, Connection)
+
+    def test_connect_timeout(self):
+        conn = aiohttp.BaseConnector(loop=self.loop)
+        conn._create_connection = unittest.mock.Mock()
+        conn._create_connection.return_value = asyncio.Future(loop=self.loop)
+        conn._create_connection.return_value.set_exception(
+            asyncio.TimeoutError())
+
+        with self.assertRaises(aiohttp.ClientTimeoutError):
+            req = unittest.mock.Mock()
+            self.loop.run_until_complete(conn.connect(req))
+
+    def test_connect_oserr(self):
+        conn = aiohttp.BaseConnector(loop=self.loop)
+        conn._create_connection = unittest.mock.Mock()
+        conn._create_connection.return_value = asyncio.Future(loop=self.loop)
+        conn._create_connection.return_value.set_exception(OSError())
+
+        with self.assertRaises(aiohttp.ClientOSError):
+            req = unittest.mock.Mock()
+            self.loop.run_until_complete(conn.connect(req))
 
     def test_start_cleanup_task(self):
         loop = unittest.mock.Mock()
@@ -263,6 +331,36 @@ class BaseConnectorTests(unittest.TestCase):
         self.assertFalse(conn.resolve)
         self.assertEqual(conn.family, socket.AF_INET)
         self.assertEqual(conn.resolved_hosts, {})
+
+    def test_tcp_connector_clear_resolved_hosts(self):
+        conn = aiohttp.TCPConnector(loop=self.loop)
+        info = object()
+        conn._resolved_hosts[('localhost', 123)] = info
+        conn._resolved_hosts[('localhost', 124)] = info
+        conn.clear_resolved_hosts('localhost', 123)
+        self.assertEqual(
+            conn.resolved_hosts, {('localhost', 124): info})
+        conn.clear_resolved_hosts('localhost', 123)
+        self.assertEqual(
+            conn.resolved_hosts, {('localhost', 124): info})
+        conn.clear_resolved_hosts()
+        self.assertEqual(conn.resolved_hosts, {})
+
+    def test_ambigous_verify_ssl_and_ssl_context(self):
+        with self.assertRaises(ValueError):
+            aiohttp.TCPConnector(
+                verify_ssl=False,
+                ssl_context=ssl.SSLContext(ssl.PROTOCOL_SSLv23))
+
+    def test_dont_recreate_ssl_context(self):
+        conn = aiohttp.TCPConnector(loop=self.loop)
+        ctx = conn.ssl_context
+        self.assertIs(ctx, conn.ssl_context)
+
+    def test_respect_precreated_ssl_context(self):
+        ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        conn = aiohttp.TCPConnector(loop=self.loop, ssl_context=ctx)
+        self.assertIs(ctx, conn.ssl_context)
 
 
 class HttpClientConnectorTests(unittest.TestCase):
@@ -329,7 +427,7 @@ class ProxyConnectorTests(unittest.TestCase):
             if isinstance(return_value, Exception):
                 raise return_value
             return return_value
-            yield
+            yield  # pragma: no cover
         mock.side_effect = coro
 
     def test_ctor(self):
@@ -561,7 +659,7 @@ class ProxyConnectorTests(unittest.TestCase):
 
         req = ClientRequest('GET', 'https://www.python.org')
         with self.assertRaisesRegex(
-                aiohttp.HttpProxyError, "(400, 'bad request')"):
+                aiohttp.HttpProxyError, "400, message='bad request'"):
             self.loop.run_until_complete(connector._create_connection(req))
 
     @unittest.mock.patch('aiohttp.connector.ClientRequest')

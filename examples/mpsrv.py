@@ -43,11 +43,11 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
                 isdir = os.path.isdir(path)
 
         if not path:
-            raise aiohttp.HttpErrorException(404)
+            raise aiohttp.HttpProcessingError(404)
 
         if isdir and not path.endswith('/'):
             path = path + '/'
-            raise aiohttp.HttpErrorException(
+            raise aiohttp.HttpProcessingError(
                 302, headers=(('URI', path), ('Location', path)))
 
         response = aiohttp.Response(
@@ -90,14 +90,14 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
 
             try:
                 with open(path, 'rb') as fp:
-                    chunk = fp.read(8196)
+                    chunk = fp.read(8192)
                     while chunk:
                         response.write(chunk)
-                        chunk = fp.read(8196)
+                        chunk = fp.read(8192)
             except OSError:
                 response.write(b'Cannot open')
 
-        response.write_eof()
+        yield from response.write_eof()
         if response.keep_alive():
             self.keep_alive(True)
 

@@ -4,40 +4,17 @@
 import asyncio
 import inspect
 import io
-import time
 import unittest
 import unittest.mock
 import urllib.parse
-import socket
 
 import aiohttp
-from aiohttp.client import ClientRequest, ClientResponse, HttpClient
+from aiohttp.client import ClientRequest, ClientResponse
 
 try:
     import chardet
-except ImportError:
+except ImportError:  # pragma: no cover
     chardet = None
-
-
-class RequestTests(unittest.TestCase):
-
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
-
-    def test_bad_status_response(self):
-        connector = unittest.mock.Mock()
-        connector.connect.side_effect = aiohttp.BadStatusLine
-
-        self.assertRaises(
-            aiohttp.ClientConnectionError,
-            self.loop.run_until_complete,
-            aiohttp.request(
-                'get', 'http://example.com',
-                connector=connector, loop=self.loop))
 
 
 class ClientResponseTests(unittest.TestCase):
@@ -181,6 +158,7 @@ class ClientResponseTests(unittest.TestCase):
         self.assertEqual(res, '{"тест": "пройден"}')
         self.assertTrue(self.response.close.called)
 
+    @unittest.skipIf(chardet is None, "no chardet")
     def test_text_detect_encoding(self):
         def side_effect(*args, **kwargs):
             def second_call(*args, **kwargs):
@@ -194,14 +172,27 @@ class ClientResponseTests(unittest.TestCase):
         content.read.side_effect = side_effect
         self.response.close = unittest.mock.Mock()
 
-        if chardet is None:
+        res = self.loop.run_until_complete(self.response.text())
+        self.assertEqual(res, '{"тест": "пройден"}')
+        self.assertTrue(self.response.close.called)
+
+    def test_text_detect_encoding_without_chardet(self):
+        def side_effect(*args, **kwargs):
+            def second_call(*args, **kwargs):
+                raise aiohttp.EofStream
+            fut = asyncio.Future(loop=self.loop)
+            fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
+            content.read.side_effect = second_call
+            return fut
+        self.response.headers = {'CONTENT-TYPE': 'application/json'}
+        content = self.response.content = unittest.mock.Mock()
+        content.read.side_effect = side_effect
+        self.response.close = unittest.mock.Mock()
+
+        with unittest.mock.patch('aiohttp.client.chardet', None):
             self.assertRaises(UnicodeDecodeError,
                               self.loop.run_until_complete,
                               self.response.text())
-        else:
-            res = self.loop.run_until_complete(self.response.text())
-            self.assertEqual(res, '{"тест": "пройден"}')
-            self.assertTrue(self.response.close.called)
 
     def test_json(self):
         def side_effect(*args, **kwargs):
@@ -232,7 +223,7 @@ class ClientResponseTests(unittest.TestCase):
         res = self.loop.run_until_complete(self.response.json(loads=custom))
         self.assertEqual(res, 'data-custom')
 
-    @unittest.mock.patch('aiohttp.client.client_log')
+    @unittest.mock.patch('aiohttp.client.client_logger')
     def test_json_no_content(self, m_log):
         self.response.headers = {
             'CONTENT-TYPE': 'data/octet-stream'}
@@ -264,6 +255,7 @@ class ClientResponseTests(unittest.TestCase):
         self.assertEqual(res, {'тест': 'пройден'})
         self.assertTrue(self.response.close.called)
 
+    @unittest.skipIf(chardet is None, "no chardet")
     def test_json_detect_encoding(self):
         def side_effect(*args, **kwargs):
             def second_call(*args, **kwargs):
@@ -277,14 +269,27 @@ class ClientResponseTests(unittest.TestCase):
         content.read.side_effect = side_effect
         self.response.close = unittest.mock.Mock()
 
-        if chardet is None:
+        res = self.loop.run_until_complete(self.response.json())
+        self.assertEqual(res, {'тест': 'пройден'})
+        self.assertTrue(self.response.close.called)
+
+    def test_json_detect_encoding_without_chardet(self):
+        def side_effect(*args, **kwargs):
+            def second_call(*args, **kwargs):
+                raise aiohttp.EofStream
+            fut = asyncio.Future(loop=self.loop)
+            fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
+            content.read.side_effect = second_call
+            return fut
+        self.response.headers = {'CONTENT-TYPE': 'application/json'}
+        content = self.response.content = unittest.mock.Mock()
+        content.read.side_effect = side_effect
+        self.response.close = unittest.mock.Mock()
+
+        with unittest.mock.patch('aiohttp.client.chardet', None):
             self.assertRaises(UnicodeDecodeError,
                               self.loop.run_until_complete,
                               self.response.json())
-        else:
-            res = self.loop.run_until_complete(self.response.json())
-            self.assertEqual(res, {'тест': 'пройден'})
-            self.assertTrue(self.response.close.called)
 
     def test_override_flow_control(self):
         class MyResponse(ClientResponse):
@@ -559,7 +564,7 @@ class ClientRequestTests(unittest.TestCase):
         m_http.Request.return_value\
             .add_compression_filter.assert_called_with('deflate')
         m_http.Request.return_value\
-            .add_chunking_filter.assert_called_with(8196)
+            .add_chunking_filter.assert_called_with(8192)
 
     def test_chunked(self):
         req = ClientRequest(
@@ -582,7 +587,7 @@ class ClientRequestTests(unittest.TestCase):
 
         self.assertEqual('chunked', req.headers['TRANSFER-ENCODING'])
         m_http.Request.return_value\
-                      .add_chunking_filter.assert_called_with(8196)
+                      .add_chunking_filter.assert_called_with(8192)
 
     @unittest.mock.patch('aiohttp.client.aiohttp')
     def test_chunked_explicit_size(self, m_http):
@@ -692,6 +697,35 @@ class ClientRequestTests(unittest.TestCase):
         self.loop.run_until_complete(req._writer)
         self.assertTrue(self.protocol.set_exception.called)
 
+    def test_data_stream_exc_chain(self):
+        fut = asyncio.Future(loop=self.loop)
+
+        def gen():
+            yield from fut
+            return b' result'
+
+        req = ClientRequest(
+            'POST', 'http://python.org/', data=gen(), loop=self.loop)
+
+        inner_exc = ValueError()
+
+        @asyncio.coroutine
+        def exc():
+            yield from asyncio.sleep(0.01, loop=self.loop)
+            fut.set_exception(inner_exc)
+
+        asyncio.async(exc(), loop=self.loop)
+
+        resp = req.send(self.transport, self.protocol)
+        resp.connection = self.connection
+        self.loop.run_until_complete(req._writer)
+        self.assertTrue(self.connection.close.called)
+        self.assertTrue(self.protocol.set_exception.called)
+        outer_exc = self.protocol.set_exception.call_args[0][0]
+        self.assertIsInstance(outer_exc, aiohttp.ClientRequestError)
+        self.assertIs(inner_exc, outer_exc.__context__)
+        self.assertIs(inner_exc, outer_exc.__cause__)
+
     def test_data_stream_continue(self):
         def gen():
             yield b'binary data'
@@ -762,155 +796,3 @@ class ClientRequestTests(unittest.TestCase):
             loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertEqual('customized!', resp.read())
-
-
-class HttpClientTests(unittest.TestCase):
-
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
-
-    @unittest.mock.patch('aiohttp.client.asyncio')
-    def test_ctor(self, asyncio):
-        self.assertRaises(ValueError, HttpClient, ())
-        self.assertRaises(ValueError, HttpClient, ('test:test',))
-
-        c = HttpClient('localhost:8080', loop=self.loop)
-        self.assertEqual(c._hosts, [('localhost', 8080, True)])
-
-        c = HttpClient('localhost', loop=self.loop)
-        self.assertEqual(c._hosts, [('localhost', 80, False)])
-
-        c = HttpClient([('localhost', 1000)], loop=self.loop)
-        self.assertEqual(c._hosts, [('localhost', 1000, True)])
-
-        c = HttpClient([('localhost', 1000)])
-        self.assertIs(c._loop, asyncio.get_event_loop.return_value)
-
-        c = HttpClient([('localhost', 1000)], ssl=True, verify_ssl=False)
-        self.assertFalse(c._connector._verify_ssl)
-
-        c = HttpClient([('localhost', 1000)], conn_pool=False, loop=self.loop)
-        self.assertIsNone(c._connector)
-
-    def test_cleanup_resolved_hosts(self):
-        loop = unittest.mock.Mock()
-        c = HttpClient('localhost:8080', loop=loop, resolve=True)
-        c._connector._resolved_hosts[('localhost', 123)] = object()
-        loop.call_later.assert_called_with(
-            c._resolve_timeout, c._cleanup_resolved_host)
-        loop.reset_mock()
-
-        c._cleanup_resolved_host()
-        self.assertFalse(bool(c._connector._resolved_hosts))
-        loop.call_later.assert_called_with(
-            c._resolve_timeout, c._cleanup_resolved_host)
-
-    def test_resurrect_failed(self):
-        now = int(time.time())
-        loop = unittest.mock.Mock()
-
-        c = HttpClient(
-            [('localhost', 1000), ('localhost', 1000)], loop=loop)
-        c._hosts = []
-        c._failed.append((('localhost', 1000), now - 10))
-        c._failed.append((('localhost', 1001), now - 10))
-        c._failed.append((('localhost', 1002), now + 10))
-        c._resurrect_failed()
-
-        self.assertEqual(
-            c._hosts, [('localhost', 1000), ('localhost', 1001)])
-        self.assertTrue(loop.call_later.called)
-
-    @unittest.mock.patch('aiohttp.client.asyncio')
-    def test_resurrect_failed_all(self, asyncio):
-        now = int(time.time())
-
-        c = HttpClient(
-            [('localhost', 1000), ('localhost', 1000)],
-            resolve=False, loop=self.loop)
-        c._hosts = []
-        c._failed.append((('localhost', 1000), now - 10))
-        c._failed.append((('localhost', 1001), now - 10))
-        c._resurrect_failed()
-
-        self.assertEqual(
-            c._hosts, [('localhost', 1000), ('localhost', 1001)])
-        self.assertFalse(
-            asyncio.get_event_loop.return_value.call_later.called)
-
-    def test_failed_request(self):
-        c = HttpClient(
-            [('localhost', 56777), ('localhost', 56778)], loop=self.loop)
-
-        self.assertRaises(
-            aiohttp.ConnectionError,
-            self.loop.run_until_complete,
-            c.request('get', path='/'))
-
-    def test_failed_request_conn(self):
-        c = HttpClient(
-            [('localhost', 56777), ('localhost', 56778)],
-            conn_timeout=0.0001, loop=self.loop)
-
-        self.assertRaises(
-            aiohttp.ConnectionError,
-            self.loop.run_until_complete, c.request('get', path='/'))
-
-    def test_failed_request_one_failed(self):
-        now = int(time.time())
-
-        c = HttpClient(
-            [('localhost', 56777), ('localhost', 56778)], loop=self.loop)
-        c._hosts = []
-
-        has_http_server = True
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            sock.connect(('127.0.0.1', 80))
-        except ConnectionError:
-            has_http_server = False
-        finally:
-            sock.close()
-
-        c._failed.append((('localhost', 1000, has_http_server), now - 10))
-        c._failed.append((('localhost', 1001, True), now - 10))
-
-        self.assertRaises(
-            aiohttp.ConnectionError,
-            self.loop.run_until_complete,
-            c.request('get', path='/'))
-
-    @unittest.mock.patch('aiohttp.client.request')
-    def test_cleanup_resolved_hosts_on_500(self, m_request):
-        c = HttpClient(
-            [('localhost', 56777), ('localhost', 56778)],
-            conn_timeout=0.0001, loop=self.loop)
-
-        called = False
-
-        class m:
-
-            def clear(self):
-                nonlocal called
-                called = True
-
-            def __contains__(self, key):
-                return True
-
-            def __getitem__(self, key):
-                return 'localhost'
-
-        c._connector._resolved_hosts = m()
-
-        resp = unittest.mock.Mock()
-        resp.status = 500
-
-        m_request.return_value = asyncio.Future(loop=self.loop)
-        m_request.return_value.set_result(resp)
-
-        self.loop.run_until_complete(c.request('get', path='/'))
-        self.assertTrue(called)

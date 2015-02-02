@@ -1,240 +1,333 @@
-import pprint
-from itertools import chain
-from collections import OrderedDict, abc
+from collections import abc
+import sys
+
+__all__ = ['MultiDictProxy', 'CIMultiDictProxy',
+           'MultiDict', 'CIMultiDict', 'upstr']
 
 _marker = object()
 
 
-class MultiDict(abc.Mapping):
-    """Read-only ordered dictionary that can have multiple values for each key.
+class _upstr(str):
+    """Case insensitive str"""
 
-    This type of MultiDict must be used for request headers and query args.
-    """
-
-    def __init__(self, *args, **kwargs):
-        if len(args) > 1:
-            raise TypeError("MultiDict takes at most 2 positional "
-                            "arguments ({} given)".format(len(args) + 1))
-        self._items = OrderedDict()
-        if args:
-            if hasattr(args[0], 'items'):
-                args = list(args[0].items())
-            else:
-                args = list(args[0])
-
-        for key, value in chain(args, kwargs.items()):
-            if key in self._items:
-                self._items[key].append(value)
-            else:
-                self._items[key] = [value]
-
-    def get(self, key, default=None):
-        """Return first value stored at key."""
-        if key in self._items and self._items[key]:
-            return self._items[key][0]
+    def __new__(cls, val='',
+                encoding=sys.getdefaultencoding(), errors='strict'):
+        if isinstance(val, (bytes, bytearray, memoryview)):
+            val = str(val, encoding, errors)
+        elif isinstance(val, str):
+            pass
         else:
-            return default
+            val = str(val)
+        val = val.upper()
+        return str.__new__(cls, val)
+
+    def upper(self):
+        return self
+
+
+class _Base:
+
+    __slots__ = ('_items',)
 
     def getall(self, key, default=_marker):
-        """Returns all values stored at key as a tuple.
+        """
+        Return a list of all values matching the key (may be an empty list)
+        """
+        res = [v for k, v in self._items if k == key]
+        if res:
+            return res
+        if not res and default is not _marker:
+            return default
+        raise KeyError('Key not found: %r' % key)
 
-        Raises KeyError if key doesn't exist."""
-        if key in self._items:
-            return tuple(self._items[key])
-        else:
-            if default is not _marker:
-                return default
-            else:
-                raise KeyError(key)
-
-    def getone(self, key):
-        """Return first value stored at key."""
-        return self._items[key][0]
-
-    # extra methods #
-
-    def copy(self):
-        """Returns a copy itself."""
-        cls = self.__class__
-        return cls(self.items(getall=True))
+    def getone(self, key, default=_marker):
+        """
+        Get first value matching the key
+        """
+        for k, v in self._items:
+            if k == key:
+                return v
+        if default is not _marker:
+            return default
+        raise KeyError('Key not found: %r' % key)
 
     # Mapping interface #
 
     def __getitem__(self, key):
-        return self._items[key][0]
+        return self.getone(key, _marker)
+
+    def get(self, key, default=None):
+        return self.getone(key, default)
 
     def __iter__(self):
-        return iter(self._items)
+        return iter(self.keys())
 
     def __len__(self):
         return len(self._items)
 
-    def items(self, *, getall=False):
-        return _ItemsView(self._items, getall=getall)
+    def keys(self):
+        return _KeysView(self._items)
 
-    def values(self, *, getall=False):
-        return _ValuesView(self._items, getall=getall)
+    def items(self):
+        return _ItemsView(self._items)
+
+    def values(self):
+        return _ValuesView(self._items)
 
     def __eq__(self, other):
         if not isinstance(other, abc.Mapping):
             return NotImplemented
-        if isinstance(other, MultiDict):
+        if isinstance(other, _Base):
             return self._items == other._items
-        return dict(self.items()) == dict(other.items())
+        for k, v in self.items():
+            nv = other.get(k, _marker)
+            if v != nv:
+                return False
+        return True
 
     def __contains__(self, key):
-        return key in self._items
+        for k, v in self._items:
+            if k == key:
+                return True
+        return False
 
     def __repr__(self):
-        return '<{}>\n{}'.format(
-            self.__class__.__name__, pprint.pformat(
-                list(self.items(getall=True))))
+        body = ', '.join("'{}': {!r}".format(k, v) for k, v in self.items())
+        return '<{} {{{}}}>'.format(self.__class__.__name__, body)
 
 
-class CaseInsensitiveMultiDict(MultiDict):
-    """Case insensitive multi dict."""
+class _CIBase(_Base):
 
     def getall(self, key, default=_marker):
         return super().getall(key.upper(), default)
 
-    def get(self, key, default=None):
-        key = key.upper()
-        if key in self._items and self._items[key]:
-            return self._items[key][0]
-        else:
-            return default
+    def getone(self, key, default=_marker):
+        return super().getone(key.upper(), default)
 
-    def getone(self, key):
-        return self._items[key.upper()][0]
+    def get(self, key, default=None):
+        return super().get(key.upper(), default)
 
     def __getitem__(self, key):
-        return self._items[key.upper()][0]
+        return super().__getitem__(key.upper())
 
     def __contains__(self, key):
-        return key.upper() in self._items
+        return super().__contains__(key.upper())
 
 
-class BaseMutableMultiDict(abc.MutableMapping):
+class _MultiDictProxy(_Base, abc.Mapping):
 
-    def getall(self, key, default=_marker):
-        """Returns all values stored at key as list.
+    def __init__(self, arg):
+        if not isinstance(arg, _MultiDict):
+            raise TypeError(
+                'MultiDictProxy requires MultiDict instance, not {}'.format(
+                    type(arg)))
 
-        Raises KeyError if key doesn't exist.
-        """
-        result = super().getall(key, default)
-        if result is not default:
-            return list(result)
-        else:
-            return result
+        self._items = arg._items
+
+    def copy(self):
+        """Returns a copy itself."""
+        return _MultiDict(self.items())
+
+
+class _CIMultiDictProxy(_CIBase, _MultiDictProxy):
+
+    def __init__(self, arg):
+        if not isinstance(arg, _CIMultiDict):
+            raise TypeError(
+                'CIMultiDictProxy requires CIMultiDict instance, not {}'
+                .format(type(arg)))
+
+        self._items = arg._items
+
+    def copy(self):
+        """Returns a copy itself."""
+        return _CIMultiDict(self.items())
+
+
+class _MultiDict(_Base, abc.MutableMapping):
+
+    def __init__(self, *args, **kwargs):
+        self._items = []
+
+        self._extend(args, kwargs, self.__class__.__name__, self.add)
 
     def add(self, key, value):
-        """Adds value to a key."""
-        if key in self._items:
-            self._items[key].append(value)
-        else:
-            self._items[key] = [value]
+        """
+        Add the key and value, not overwriting any previous value.
+        """
+        self._items.append((key, value))
+
+    def copy(self):
+        """Returns a copy itself."""
+        cls = self.__class__
+        return cls(self.items())
 
     def extend(self, *args, **kwargs):
-        """Extends current MutableMultiDict with more values.
+        """Extends current MultiDict with more values.
 
         This method must be used instead of update.
         """
+        self._extend(args, kwargs, 'extend', self.add)
+
+    def _extend(self, args, kwargs, name, method):
         if len(args) > 1:
-            raise TypeError("extend takes at most 2 positional arguments"
-                            " ({} given)".format(len(args) + 1))
+            raise TypeError("{} takes at most 1 positional argument"
+                            " ({} given)".format(name, len(args)))
         if args:
-            if isinstance(args[0], MultiDict):
-                items = args[0].items(getall=True)
-            elif hasattr(args[0], 'items'):
-                items = args[0].items()
+            arg = args[0]
+            if isinstance(args[0], _MultiDictProxy):
+                items = arg._items
+            elif isinstance(args[0], _MultiDict):
+                items = arg._items
+            elif hasattr(arg, 'items'):
+                items = arg.items()
             else:
-                items = args[0]
-        else:
-            items = []
-        for key, value in chain(items, kwargs.items()):
-            self.add(key, value)
+                for item in arg:
+                    if not len(item) == 2:
+                        raise TypeError(
+                            "{} takes either dict or list of (key, value) "
+                            "tuples".format(name))
+                items = arg
+
+            for key, value in items:
+                method(key, value)
+
+        for key, value in kwargs.items():
+            method(key, value)
 
     def clear(self):
-        """Remove all items from MutableMultiDict"""
+        """Remove all items from MultiDict"""
         self._items.clear()
 
-    # MutableMapping interface #
+    # Mapping interface #
 
     def __setitem__(self, key, value):
-        self._items[key] = [value]
+        self._replace(key, value)
 
     def __delitem__(self, key):
-        del self._items[key]
+        items = self._items
+        found = False
+        for i in range(len(items) - 1, -1, -1):
+            if items[i][0] == key:
+                del items[i]
+                found = True
+        if not found:
+            raise KeyError(key)
 
-    def pop(self, key, default=None):
-        """Method not allowed."""
-        raise NotImplementedError
+    def setdefault(self, key, default=None):
+        for k, v in self._items:
+            if k == key:
+                return v
+        self._items.append((key, default))
+        return default
+
+    def pop(self, key, default=_marker):
+        value = None
+        found = False
+        for i in range(len(self._items) - 1, -1, -1):
+            if self._items[i][0] == key:
+                value = self._items[i][1]
+                del self._items[i]
+                found = True
+        if not found:
+            if default is _marker:
+                raise KeyError(key)
+            else:
+                return default
+        else:
+            return value
 
     def popitem(self):
-        """Method not allowed."""
-        raise NotImplementedError
+        if self._items:
+            return self._items.pop(0)
+        else:
+            raise KeyError("empty multidict")
 
-    def update(self, *args, **kw):
-        """Method not allowed."""
-        raise NotImplementedError("Use extend method instead")
+    def update(self, *args, **kwargs):
+        self._extend(args, kwargs, 'update', self._replace)
 
-
-class MutableMultiDict(BaseMutableMultiDict, MultiDict):
-    """An ordered dictionary that can have multiple values for each key."""
-
-
-class CaseInsensitiveMutableMultiDict(
-        BaseMutableMultiDict, CaseInsensitiveMultiDict):
-    """An ordered dictionary that can have multiple values for each key."""
-
-    def getall(self, key, default=_marker):
-        return super().getall(key.upper(), default)
+    def _replace(self, key, value):
+        if key in self:
+            del self[key]
+        self.add(key, value)
 
 
-class _ItemsView(abc.ItemsView):
+class _CIMultiDict(_CIBase, _MultiDict):
 
-    def __init__(self, mapping, *, getall=False):
-        super().__init__(mapping)
-        self._getall = getall
+    def add(self, key, value):
+        super().add(key.upper(), value)
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key.upper(), value)
+
+    def __delitem__(self, key):
+        super().__delitem__(key.upper())
+
+    def _replace(self, key, value):
+        super()._replace(key.upper(), value)
+
+    def setdefault(self, key, default=None):
+        key = key.upper()
+        return super().setdefault(key, default)
+
+
+class _ViewBase:
+
+    __slots__ = ('_keys', '_items')
+
+    def __init__(self, items):
+        self._items = items
+
+    def __len__(self):
+        return len(self._items)
+
+
+class _ItemsView(_ViewBase, abc.ItemsView):
 
     def __contains__(self, item):
-        key, value = item
-        try:
-            values = self._mapping[key]
-        except KeyError:
-            return False
-        else:
-            if self._getall:
-                return value in values
-            else:
-                return value == values[0]
+        assert isinstance(item, tuple) or isinstance(item, list)
+        assert len(item) == 2
+        return item in self._items
 
     def __iter__(self):
-        for key, values in self._mapping.items():
-            if self._getall:
-                for value in values:
-                    yield key, value
-            else:
-                yield key, values[0]
+        yield from self._items
 
 
-class _ValuesView(abc.KeysView):
-
-    def __init__(self, mapping, *, getall=False):
-        super().__init__(mapping)
-        self._getall = getall
+class _ValuesView(_ViewBase, abc.ValuesView):
 
     def __contains__(self, value):
-        for values in self._mapping.values():
-            if self._getall and value in values:
-                return True
-            elif value == values[0]:
+        for item in self._items:
+            if item[1] == value:
                 return True
         return False
 
     def __iter__(self):
-        for values in self._mapping.values():
-            if self._getall:
-                yield from iter(values)
-            else:
-                yield values[0]
+        for item in self._items:
+            yield item[1]
+
+
+class _KeysView(_ViewBase, abc.KeysView):
+
+    def __contains__(self, key):
+        for item in self._items:
+            if item[0] == key:
+                return True
+        return False
+
+    def __iter__(self):
+        for item in self._items:
+            yield item[0]
+
+
+try:
+    from ._multidict import (MultiDictProxy,
+                             CIMultiDictProxy,
+                             MultiDict,
+                             CIMultiDict,
+                             upstr)
+except ImportError:  # pragma: no cover
+    MultiDictProxy = _MultiDictProxy
+    CIMultiDictProxy = _CIMultiDictProxy
+    MultiDict = _MultiDict
+    CIMultiDict = _CIMultiDict
+    upstr = _upstr

@@ -17,6 +17,7 @@ var/*
 *.egg
 *.tar.gz
 *.so
+*.pyd
 .tox
 .DS_Store
 .coverage
@@ -24,3 +25,8 @@ var/*
 docs/_build/
 nosetests.xml
 cover
+.idea
+pyvenv
+virtualenv.py
+aiohttp/_multidict.c
+aiohttp/_multidict.html

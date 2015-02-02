@@ -1,13 +1,24 @@
 language: python
 python:
   - 3.3
+  - 3.4
 
 install:
   - pip install --upgrade setuptools
-  - pip install coveralls --use-mirrors
+  - pip install cython
+  - pip install flake8
+  - pip install docutils
+  - pip install coverage
+  - pip install gunicorn
+  - pip install chardet
   - python setup.py develop
 
 script:
-  coverage run --source=aiohttp setup.py test
-after_success:
-  coveralls
+  - flake8 aiohttp examples tests
+  - coverage run --source=aiohttp setup.py test
+  - python setup.py check -rms
+
+env:
+  matrix:
+    - PYTHONASYNCIODEBUG=1
+    - PYTHONASYNCIODEBUG=0

@@ -42,7 +42,7 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
 
         if upgrade:
             # websocket handshake
-            status, headers, parser, writer = websocket.do_handshake(
+            status, headers, parser, writer, protocol = websocket.do_handshake(
                 message.method, message.headers, self.transport)
 
             resp = aiohttp.Response(
@@ -99,15 +99,15 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
 
             try:
                 with open(WS_FILE, 'rb') as fp:
-                    chunk = fp.read(8196)
+                    chunk = fp.read(8192)
                     while chunk:
                         if not response.write(chunk):
                             break
-                        chunk = fp.read(8196)
+                        chunk = fp.read(8192)
             except OSError:
                 response.write(b'Cannot open')
 
-            response.write_eof()
+            yield from response.write_eof()
             if response.keep_alive():
                 self.keep_alive(True)
 

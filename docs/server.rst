@@ -1,9 +1,14 @@
-.. _server:
+.. _aiohttp-server:
 
-HTTP Server
-===========
+Low-level HTTP Server
+=====================
 
-.. module:: aiohttp.client
+.. module:: aiohttp.server
+
+.. note::
+
+   The topic describes low-level HTTP support. For high-level
+   interface please take a look on :mod:`aiohttp.web`.
 
 Run a basic server
 ------------------
@@ -67,7 +72,7 @@ of ``GET``, ``POST``, ``PUT`` or ``DELETE`` strings.
 Handling GET params
 -------------------
 
-Currently aiohttp does not provide automatical parsing of incoming GET
+Currently aiohttp does not provide automatic parsing of incoming GET
 params.  However aiohttp does provide a nice MulitiDict wrapper for
 already parsed params.
 
@@ -114,7 +119,7 @@ GET params.
             print("Passed in POST", post_params)
 
 SSL
----------
+---
 
 To use asyncio's SSL support, just pass an SSLContext object to the
 ``create_server`` method of the loop.

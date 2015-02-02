@@ -1,5 +1,4 @@
-__all__ = ['BaseConnector', 'TCPConnector', 'ProxyConnector',
-           'UnixConnector', 'SocketConnector', 'UnixSocketConnector']
+__all__ = ['BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector']
 
 import asyncio
 import aiohttp
@@ -11,8 +10,9 @@ import socket
 import weakref
 
 from .client import ClientRequest
-from .errors import HttpProxyError
-from .errors import ProxyConnectionError
+from .errors import ServerDisconnectedError
+from .errors import HttpProxyError, ProxyConnectionError
+from .errors import ClientOSError, ClientTimeoutError
 from .helpers import BasicAuth
 
 
@@ -35,7 +35,9 @@ class Connection(object):
 
     def close(self):
         if self._transport is not None:
-            self._transport.close()
+            self._connector._release(
+                self._key, self._request, self._transport, self._protocol,
+                should_close=True)
             self._transport = None
             self._wr = None
 
@@ -57,7 +59,7 @@ class BaseConnector(object):
     :param conn_timeout: (optional) Connect timeout.
     :param keepalive_timeout: (optional) Keep-alive timeout.
     :param bool share_cookies: Set to True to keep cookies between requests.
-    :param bool force_close: Set to True to froce close and do reconnect
+    :param bool force_close: Set to True to force close and do reconnect
         after each request (and between redirects).
     :param loop: Optional event loop.
     """
@@ -74,7 +76,9 @@ class BaseConnector(object):
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
-        self._factory = functools.partial(aiohttp.StreamProtocol, loop=loop)
+        self._factory = functools.partial(
+            aiohttp.StreamProtocol, loop=loop,
+            disconnect_error=ServerDisconnectedError)
 
         self.cookies = http.cookies.SimpleCookie()
         self._wr = weakref.ref(
@@ -124,7 +128,7 @@ class BaseConnector(object):
     @staticmethod
     def _do_close(conns):
         for key, data in conns.items():
-            for transport, proto, td in data:
+            for transport, proto, t0 in data:
                 transport.close()
 
         conns.clear()
@@ -151,12 +155,19 @@ class BaseConnector(object):
 
         transport, proto = self._get(key)
         if transport is None:
-            if self._conn_timeout:
-                transport, proto = yield from asyncio.wait_for(
-                    self._create_connection(req),
-                    self._conn_timeout, loop=self._loop)
-            else:
-                transport, proto = yield from self._create_connection(req)
+            try:
+                if self._conn_timeout:
+                    transport, proto = yield from asyncio.wait_for(
+                        self._create_connection(req),
+                        self._conn_timeout, loop=self._loop)
+                else:
+                    transport, proto = yield from self._create_connection(req)
+            except asyncio.TimeoutError as exc:
+                raise ClientTimeoutError(
+                    'Connection timeout to host %s:%s ssl:%s' % key) from exc
+            except OSError as exc:
+                raise ClientOSError(
+                    'Cannot connect to host %s:%s ssl:%s' % key) from exc
 
         return Connection(self, key, req, transport, proto, self._loop)
 
@@ -173,21 +184,28 @@ class BaseConnector(object):
 
         return None, None
 
-    def _release(self, key, req, transport, protocol):
+    def _release(self, key, req, transport, protocol, *, should_close=False):
         resp = req.response
-        should_close = False
 
-        if resp is not None:
-            if resp.message is None:
+        if not should_close:
+            if resp is not None:
+                if resp.message is None:
+                    should_close = True
+                else:
+                    should_close = resp.message.should_close
+
+            if self._force_close:
                 should_close = True
-            else:
-                should_close = resp.message.should_close
-
-        if self._force_close:
-            should_close = True
 
         reader = protocol.reader
         if should_close or (reader.output and not reader.output.at_eof()):
+            conns = self._conns.get(key)
+            if conns is not None and len(conns) == 0:
+                # Issue #253: An empty array will eventually be
+                # removed by cleanup, but it's better to pop straight
+                # away, because cleanup might not get called (e.g. if
+                # keepalive is False).
+                self._conns.pop(key, None)
             transport.close()
         else:
             conns = self._conns.get(key)
@@ -202,21 +220,32 @@ class BaseConnector(object):
         raise NotImplementedError()
 
 
+_SSL_OP_NO_COMPRESSION = getattr(ssl, "OP_NO_COMPRESSION", 0)
+_SSH_HAS_CREATE_DEFAULT_CONTEXT = hasattr(ssl, 'create_default_context')
+
+
 class TCPConnector(BaseConnector):
     """TCP connector.
 
     :param bool verify_ssl: Set to True to check ssl certifications.
     :param bool resolve: Set to True to do DNS lookup for host name.
-    :param familiy: socket address family
+    :param family: socket address family
     :param args: see :class:`BaseConnector`
     :param kwargs: see :class:`BaseConnector`
     """
 
     def __init__(self, *args, verify_ssl=True,
-                 resolve=False, family=socket.AF_INET, **kwargs):
+                 resolve=False, family=socket.AF_INET, ssl_context=None,
+                 **kwargs):
+        if not verify_ssl and ssl_context is not None:
+            raise ValueError(
+                "Either disable ssl certificate validation by "
+                "verify_ssl=False or specify ssl_context, not both.")
+
         super().__init__(*args, **kwargs)
 
         self._verify_ssl = verify_ssl
+        self._ssl_context = ssl_context
         self._family = family
         self._resolve = resolve
         self._resolved_hosts = {}
@@ -225,6 +254,33 @@ class TCPConnector(BaseConnector):
     def verify_ssl(self):
         """Do check for ssl certifications?"""
         return self._verify_ssl
+
+    @property
+    def ssl_context(self):
+        """SSLContext instance for https requests.
+
+        Lazy property, creates context on demand.
+        """
+        if self._ssl_context is None:
+            if not self._verify_ssl:
+                sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+                sslcontext.options |= ssl.OP_NO_SSLv2
+                sslcontext.options |= ssl.OP_NO_SSLv3
+                sslcontext.options |= _SSL_OP_NO_COMPRESSION
+                sslcontext.set_default_verify_paths()
+            elif _SSH_HAS_CREATE_DEFAULT_CONTEXT:
+                # Python 3.4+
+                sslcontext = ssl.create_default_context()
+            else:  # pragma: no cover
+                # Fallback for Python 3.3.
+                sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+                sslcontext.options |= ssl.OP_NO_SSLv2
+                sslcontext.options |= ssl.OP_NO_SSLv3
+                sslcontext.options |= _SSL_OP_NO_COMPRESSION
+                sslcontext.set_default_verify_paths()
+                sslcontext.verify_mode = ssl.CERT_REQUIRED
+            self._ssl_context = sslcontext
+        return self._ssl_context
 
     @property
     def family(self):
@@ -278,11 +334,10 @@ class TCPConnector(BaseConnector):
 
         Has same keyword arguments as BaseEventLoop.create_connection.
         """
-        sslcontext = req.ssl
-        if req.ssl and not self._verify_ssl:
-            sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-            sslcontext.options |= ssl.OP_NO_SSLv2
-            sslcontext.set_default_verify_paths()
+        if req.ssl:
+            sslcontext = self.ssl_context
+        else:
+            sslcontext = None
 
         hosts = yield from self._resolve_host(req.host, req.port)
 
@@ -295,9 +350,10 @@ class TCPConnector(BaseConnector):
                     proto=hinfo['proto'], flags=hinfo['flags'],
                     server_hostname=hinfo['hostname'] if sslcontext else None,
                     **kwargs))
-            except OSError:
+            except OSError as exc:
                 if not hosts:
-                    raise
+                    raise ClientOSError('Can not connect to %s:%s' %
+                                        (req.host, req.port)) from exc
 
 
 class ProxyConnector(TCPConnector):
@@ -341,6 +397,7 @@ class ProxyConnector(TCPConnector):
             transport, proto = yield from super()._create_connection(proxy_req)
         except OSError as exc:
             raise ProxyConnectionError(*exc.args) from exc
+
         req.path = '{scheme}://{host}{path}'.format(scheme=req.scheme,
                                                     host=req.netloc,
                                                     path=req.path)
@@ -373,7 +430,7 @@ class ProxyConnector(TCPConnector):
                 raise
             else:
                 if resp.status != 200:
-                    raise HttpProxyError(resp.status, resp.reason)
+                    raise HttpProxyError(code=resp.status, message=resp.reason)
                 rawsock = transport.get_extra_info('socket', default=None)
                 if rawsock is None:
                     raise RuntimeError(
@@ -413,20 +470,3 @@ class UnixConnector(BaseConnector):
     def _create_connection(self, req, **kwargs):
         return (yield from self._loop.create_unix_connection(
             self._factory, self._path, **kwargs))
-
-
-SocketConnector = TCPConnector
-"""Alias of TCPConnector.
-
-.. note::
-   Keeped for backward compatibility.
-   May be deprecated in future.
-"""
-
-UnixSocketConnector = UnixConnector
-"""Alias of UnixConnector.
-
-.. note::
-   Keeped for backward compatibility.
-   May be deprecated in future.
-"""

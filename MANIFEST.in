@@ -8,3 +8,7 @@ graft docs
 graft examples
 graft tests
 global-exclude *.pyc
+exclude aiohttp/_multidict.html
+exclude aiohttp/_multidict.*.so
+exclude aiohttp/_multidict.pyd
+exclude aiohttp/_multidict.*.pyd

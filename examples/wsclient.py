@@ -37,12 +37,12 @@ def start_client(loop, url):
     # websocket handshake
     if response.status != 101:
         raise ValueError("Handshake error: Invalid response status")
-    if response.get('upgrade', '').lower() != 'websocket':
+    if response.headers.get('upgrade', '').lower() != 'websocket':
         raise ValueError("Handshake error - Invalid upgrade header")
-    if response.get('connection', '').lower() != 'upgrade':
+    if response.headers.get('connection', '').lower() != 'upgrade':
         raise ValueError("Handshake error - Invalid connection header")
 
-    key = response.get('sec-websocket-accept', '').encode()
+    key = response.headers.get('sec-websocket-accept', '').encode()
     match = base64.b64encode(hashlib.sha1(sec_key + WS_KEY).digest())
     if key != match:
         raise ValueError("Handshake error - Invalid challenge response")

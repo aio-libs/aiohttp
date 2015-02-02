@@ -119,7 +119,7 @@ class WebsocketParserTests(unittest.TestCase):
     def test_ping_frame(self, m_parse_frame):
         def parse_frame(buf):
             yield
-            return (1, websocket.OPCODE_PING, b'')
+            return (1, websocket.OPCODE_PING, b'data')
         m_parse_frame.side_effect = parse_frame
         buf = aiohttp.ParserBuffer()
         p = websocket.parse_message(buf)
@@ -128,13 +128,13 @@ class WebsocketParserTests(unittest.TestCase):
             p.send(b'')
         except StopIteration as exc:
             res = exc.value
-        self.assertEqual(res, (websocket.OPCODE_PING, '', ''))
+        self.assertEqual(res, (websocket.OPCODE_PING, b'data', ''))
 
     @unittest.mock.patch('aiohttp.websocket.parse_frame')
     def test_pong_frame(self, m_parse_frame):
         def parse_frame(buf):
             yield
-            return (1, websocket.OPCODE_PONG, b'')
+            return (1, websocket.OPCODE_PONG, b'data')
         m_parse_frame.side_effect = parse_frame
         buf = aiohttp.ParserBuffer()
         p = websocket.parse_message(buf)
@@ -143,7 +143,7 @@ class WebsocketParserTests(unittest.TestCase):
             p.send(b'')
         except StopIteration as exc:
             res = exc.value
-        self.assertEqual(res, (websocket.OPCODE_PONG, '', ''))
+        self.assertEqual(res, (websocket.OPCODE_PONG, b'data', ''))
 
     @unittest.mock.patch('aiohttp.websocket.parse_frame')
     def test_close_frame(self, m_parse_frame):
@@ -157,7 +157,7 @@ class WebsocketParserTests(unittest.TestCase):
             p.send(b'')
         except StopIteration as exc:
             res = exc.value
-        self.assertEqual(res, (websocket.OPCODE_CLOSE, '', ''))
+        self.assertEqual(res, (websocket.OPCODE_CLOSE, 0, ''))
 
     @unittest.mock.patch('aiohttp.websocket.parse_frame')
     def test_close_frame_info(self, m_parse_frame):
@@ -329,12 +329,12 @@ class WebsocketWriterTests(unittest.TestCase):
         self.transport.write.assert_called_with(b'\x82\x06binary')
 
     def test_send_binary_long(self):
-        self.writer.send(b'b'*127, True)
+        self.writer.send(b'b' * 127, True)
         self.assertTrue(
             self.transport.write.call_args[0][0].startswith(b'\x82~\x00\x7fb'))
 
     def test_send_binary_very_long(self):
-        self.writer.send(b'b'*65537, True)
+        self.writer.send(b'b' * 65537, True)
         self.assertTrue(
             self.transport.write.call_args[0][0].startswith(
                 b'\x82\x7f\x00\x00\x00\x00\x00\x01\x00\x01b'))
@@ -351,13 +351,13 @@ class WebSocketHandshakeTests(unittest.TestCase):
 
     def setUp(self):
         self.transport = unittest.mock.Mock()
-        self.headers = multidict.MutableMultiDict()
+        self.headers = multidict.MultiDict()
         self.message = protocol.RawRequestMessage(
             'GET', '/path', (1, 0), self.headers, True, None)
 
     def test_not_get(self):
         self.assertRaises(
-            errors.HttpErrorException,
+            errors.HttpProcessingError,
             websocket.do_handshake,
             'POST', self.message.headers, self.transport)
 
@@ -419,18 +419,74 @@ class WebSocketHandshakeTests(unittest.TestCase):
             websocket.do_handshake,
             self.message.method, self.message.headers, self.transport)
 
-    def test_handshake(self):
-        sec_key = base64.b64encode(os.urandom(16)).decode()
+    def gen_ws_headers(self, protocols=''):
+        key = base64.b64encode(os.urandom(16)).decode()
+        hdrs = [('UPGRADE', 'websocket'),
+                ('CONNECTION', 'upgrade'),
+                ('SEC-WEBSOCKET-VERSION', '13'),
+                ('SEC-WEBSOCKET-KEY', key)]
+        if protocols:
+            hdrs += [('SEC-WEBSOCKET-PROTOCOL', protocols)]
+        return hdrs, key
 
-        self.headers.extend([('UPGRADE', 'websocket'),
-                             ('CONNECTION', 'upgrade'),
-                             ('SEC-WEBSOCKET-VERSION', '13'),
-                             ('SEC-WEBSOCKET-KEY', sec_key)])
-        status, headers, parser, writer = websocket.do_handshake(
+    def test_handshake(self):
+        hdrs, sec_key = self.gen_ws_headers()
+
+        self.headers.extend(hdrs)
+        status, headers, parser, writer, protocol = websocket.do_handshake(
             self.message.method, self.message.headers, self.transport)
         self.assertEqual(status, 101)
+        self.assertIsNone(protocol)
 
         key = base64.b64encode(
             hashlib.sha1(sec_key.encode() + websocket.WS_KEY).digest())
         headers = dict(headers)
         self.assertEqual(headers['SEC-WEBSOCKET-ACCEPT'], key.decode())
+
+    def test_handshake_protocol(self):
+        '''Tests if one protocol is returned by do_handshake'''
+        proto = 'chat'
+
+        self.headers.extend(self.gen_ws_headers(proto)[0])
+        _, resp_headers, _, _, protocol = websocket.do_handshake(
+            self.message.method, self.message.headers, self.transport,
+            protocols=[proto])
+
+        self.assertEqual(protocol, proto)
+
+        # also test if we reply with the protocol
+        resp_headers = dict(resp_headers)
+        self.assertEqual(resp_headers['SEC-WEBSOCKET-PROTOCOL'], proto)
+
+    def test_handshake_protocol_agreement(self):
+        '''Tests if the right protocol is selected given multiple'''
+        best_proto = 'worse_proto'
+        wanted_protos = ['best', 'chat', 'worse_proto']
+        server_protos = 'worse_proto,chat'
+
+        self.headers.extend(self.gen_ws_headers(server_protos)[0])
+        _, resp_headers, _, _, protocol = websocket.do_handshake(
+            self.message.method, self.message.headers, self.transport,
+            protocols=wanted_protos)
+
+        self.assertEqual(protocol, best_proto)
+
+    @unittest.mock.patch('aiohttp.websocket.ws_logger.warning')
+    def test_handshake_protocol_unsupported(self, m_websocket_warn):
+        '''Tests if a protocol mismatch handshake warns and returns None'''
+        warn_called = False
+
+        def websocket_warn(msg, *fmts):
+            nonlocal warn_called
+            warn_called = True
+        m_websocket_warn.side_effect = websocket_warn
+
+        proto = 'chat'
+        self.headers.extend(self.gen_ws_headers('test')[0])
+
+        _, _, _, _, protocol = websocket.do_handshake(
+            self.message.method, self.message.headers, self.transport,
+            protocols=[proto])
+
+        self.assertTrue(warn_called, 'protocol mismatch didn’t warn')
+        self.assertIsNone(protocol)

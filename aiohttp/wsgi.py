@@ -14,10 +14,10 @@ import io
 import os
 import sys
 import time
-from urllib.parse import unquote, urlsplit
+from urllib.parse import urlsplit
 
 import aiohttp
-from aiohttp import server
+from aiohttp import server, helpers, hdrs
 
 
 class WSGIServerHttpProtocol(server.ServerHttpProtocol):
@@ -71,7 +71,7 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
         script_name = self.SCRIPT_NAME
         server = forward
 
-        for hdr_name, hdr_value in message.headers.items(getall=True):
+        for hdr_name, hdr_value in message.headers.items():
             if hdr_name == 'HOST':
                 server = hdr_value
             elif hdr_name == 'SCRIPT_NAME':
@@ -89,32 +89,9 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
 
             environ[key] = hdr_value
 
-        if isinstance(forward, str):
-            # we only took the last one
-            # http://en.wikipedia.org/wiki/X-Forwarded-For
-            if ',' in forward:
-                forward = forward.rsplit(',', 1)[-1].strip()
-
-            # find host and port on ipv6 address
-            if '[' in forward and ']' in forward:
-                host = forward.split(']')[0][1:].lower()
-            elif ':' in forward and forward.count(':') == 1:
-                host = forward.split(':')[0].lower()
-            else:
-                host = forward
-
-            forward = forward.split(']')[-1]
-            if ':' in forward and forward.count(':') == 1:
-                port = forward.split(':', 1)[1]
-            else:
-                port = 80
-
-            remote = (host, port)
-        else:
-            remote = forward
-
+        remote = helpers.parse_remote_addr(forward)
         environ['REMOTE_ADDR'] = remote[0]
-        environ['REMOTE_PORT'] = str(remote[1])
+        environ['REMOTE_PORT'] = remote[1]
 
         if isinstance(server, str):
             server = server.split(':')
@@ -128,7 +105,7 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
         if script_name:
             path_info = path_info.split(script_name, 1)[-1]
 
-        environ['PATH_INFO'] = unquote(path_info)
+        environ['PATH_INFO'] = path_info
         environ['SCRIPT_NAME'] = script_name
 
         environ['async.reader'] = self.reader
@@ -197,6 +174,17 @@ class WsgiResponse:
 
     status = None
 
+    HOP_HEADERS = {
+        hdrs.CONNECTION,
+        hdrs.KEEP_ALIVE,
+        hdrs.PROXY_AUTHENTICATE,
+        hdrs.PROXY_AUTHORIZATION,
+        hdrs.TE,
+        hdrs.TRAILER,
+        hdrs.TRANSFER_ENCODING,
+        hdrs.UPGRADE,
+    }
+
     def __init__(self, writer, message):
         self.writer = writer
         self.message = message
@@ -215,7 +203,11 @@ class WsgiResponse:
         resp = self.response = aiohttp.Response(
             self.writer, status_code,
             self.message.version, self.message.should_close)
+        resp.HOP_HEADERS = self.HOP_HEADERS
         resp.add_headers(*headers)
+
+        if resp.has_chunked_hdr:
+            resp.enable_chunked_encoding()
 
         # send headers immediately for websocket connection
         if status_code == 101 and resp.upgrade and resp.websocket:

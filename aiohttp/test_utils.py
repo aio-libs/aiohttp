@@ -74,7 +74,7 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
             if properties.get('noresponse', False):
                 yield from asyncio.sleep(99999)
 
-            for hdr, val in message.headers.items(getall=True):
+            for hdr, val in message.headers.items():
                 if (hdr == 'EXPECT') and (val == '100-continue'):
                     self.transport.write(b'HTTP/1.0 100 Continue\r\n\r\n')
                     break
@@ -166,7 +166,7 @@ class Router:
     def __init__(self, srv, props, transport, message, payload):
         # headers
         self._headers = http.client.HTTPMessage()
-        for hdr, val in message.headers.items(getall=True):
+        for hdr, val in message.headers.items():
             self._headers.add_header(hdr, val)
 
         self._srv = srv
@@ -239,7 +239,7 @@ class Router:
         if body:  # pragma: no cover
             resp['content'] = body
         else:
-            resp['content'] = self._body.decode('utf-8')
+            resp['content'] = self._body.decode('utf-8', 'ignore')
 
         ct = self._headers.get('content-type', '').lower()
 
@@ -268,8 +268,10 @@ class Router:
                             msg.get('content-disposition', ''))
                         params['data'] = msg.get_payload()
                         params['content-type'] = msg.get_content_type()
+                        cte = msg.get('content-transfer-encoding')
+                        if cte is not None:
+                            resp['content-transfer-encoding'] = cte
                         resp['multipart-data'].append(params)
-
         body = json.dumps(resp, indent=4, sort_keys=True)
 
         # default headers
@@ -285,7 +287,7 @@ class Router:
             hdrs.extend(headers.items())
 
         if chunked:
-            response.force_chunked()
+            response.enable_chunked_encoding()
 
         # headers
         response.add_headers(*hdrs)
