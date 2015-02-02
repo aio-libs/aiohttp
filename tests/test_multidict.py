@@ -201,7 +201,7 @@ class _BaseTest(_Root):
                      "Set operations on views not supported")
     def test_xor(self):
         d = self.make_dict([('key', 'value1'), ('key2', 'value2')])
-        self.assertEqual({'key', 'key3'}, d.keys() ^ {'key2', 'key3'})
+        self.assertEqual({'key', 'key3'}, set(d.keys()) ^ {'key2', 'key3'})
 
     @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
                      "Set operations on views not supported")
