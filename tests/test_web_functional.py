@@ -4,7 +4,7 @@ import os.path
 import socket
 import unittest
 import tempfile
-from aiohttp import web, request, FormData, CIMultiDict
+from aiohttp import web, request, FormData
 from aiohttp.multidict import MultiDict
 
 
