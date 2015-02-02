@@ -348,6 +348,10 @@ class Request(dict, HeadersMixin):
             self._post = MultiDictProxy(MultiDict())
             return self._post
 
+        if self.headers.get('expect', '').lower() == "100-continue":
+            if self.version == HttpVersion11:
+                self.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+
         body = yield from self.read()
         content_charset = self.charset or 'utf-8'
 
