@@ -4,7 +4,7 @@ Example for rewriting response headers by middleware.
 """
 
 import asyncio
-from aiohttp.web import Application, Response
+from aiohttp.web import Application, Response, HTTPException
 
 
 @asyncio.coroutine
@@ -17,7 +17,10 @@ def middleware_factory(app, next_handler):
 
     @asyncio.coroutine
     def middleware(request):
-        response = yield from next_handler(request)
+        try:
+            response = yield from next_handler(request)
+        except HTTPException as exc:
+            response = exc
         if not response.started:
             response.headers['SERVER'] = "Secured Server Software"
         return response
