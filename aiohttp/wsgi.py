@@ -6,8 +6,6 @@ TODO:
   * wsgi file support (os.sendfile)
 """
 
-__all__ = ['WSGIServerHttpProtocol']
-
 import asyncio
 import inspect
 import io
@@ -18,6 +16,8 @@ from urllib.parse import urlsplit
 
 import aiohttp
 from aiohttp import server, helpers, hdrs
+
+__all__ = ['WSGIServerHttpProtocol']
 
 
 class WSGIServerHttpProtocol(server.ServerHttpProtocol):

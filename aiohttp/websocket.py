@@ -1,9 +1,5 @@
 """WebSocket protocol versions 13 and 8."""
 
-__all__ = ['WebSocketParser', 'WebSocketWriter', 'do_handshake',
-           'Message', 'WebSocketError',
-           'MSG_TEXT', 'MSG_BINARY', 'MSG_CLOSE', 'MSG_PING', 'MSG_PONG']
-
 import base64
 import binascii
 import collections
@@ -11,6 +7,10 @@ import hashlib
 import struct
 from aiohttp import errors
 from aiohttp.log import ws_logger
+
+__all__ = ['WebSocketParser', 'WebSocketWriter', 'do_handshake',
+           'Message', 'WebSocketError',
+           'MSG_TEXT', 'MSG_BINARY', 'MSG_CLOSE', 'MSG_PING', 'MSG_PONG']
 
 # Frame opcodes defined in the spec.
 OPCODE_CONTINUATION = 0x0

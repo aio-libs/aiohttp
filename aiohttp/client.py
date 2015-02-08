@@ -1,7 +1,5 @@
 """HTTP Client for asyncio."""
 
-__all__ = ['request']
-
 import asyncio
 import http.cookies
 import io
@@ -20,6 +18,8 @@ from . import hdrs, helpers, streams
 from .log import client_logger
 from .streams import EOF_MARKER, FlowControlStreamReader
 from .multidict import CIMultiDictProxy, MultiDictProxy, MultiDict
+
+__all__ = ['request']
 
 HTTP_PORT = 80
 HTTPS_PORT = 443

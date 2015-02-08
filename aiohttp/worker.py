@@ -1,11 +1,12 @@
 """Async gunicorn worker for aiohttp.web"""
-__all__ = ['GunicornWebWorker']
 
 import asyncio
 import os
 import signal
 import sys
 import gunicorn.workers.base as base
+
+__all__ = ['GunicornWebWorker']
 
 
 class GunicornWebWorker(base.Worker):

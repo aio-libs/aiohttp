@@ -55,14 +55,15 @@ _SocketSocketTransport ->
    -> "protocol" -> StreamParser -> "parser" -> DataQueue <- "application"
 
 """
-__all__ = ['EofStream', 'StreamParser', 'StreamProtocol',
-           'ParserBuffer', 'LinesParser', 'ChunksParser']
 
 import asyncio
 import asyncio.streams
 import inspect
 from . import errors
 from .streams import FlowControlDataQueue, EofStream
+
+__all__ = ['EofStream', 'StreamParser', 'StreamProtocol',
+           'ParserBuffer', 'LinesParser', 'ChunksParser']
 
 BUF_LIMIT = 2 ** 14
 DEFAULT_LIMIT = 2 ** 16

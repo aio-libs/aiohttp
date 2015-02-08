@@ -1,13 +1,13 @@
-__all__ = ['EofStream',
-           'StreamReader', 'DataQueue', 'ChunksQueue',
-           'FlowControlStreamReader', 'FlowControlDataQueue',
-           'FlowControlChunksQueue']
-
 import asyncio
 import collections
 import traceback
 
 from .log import internal_logger
+
+__all__ = ['EofStream',
+           'StreamReader', 'DataQueue', 'ChunksQueue',
+           'FlowControlStreamReader', 'FlowControlDataQueue',
+           'FlowControlChunksQueue']
 
 EOF_MARKER = b''
 DEFAULT_LIMIT = 2 ** 16

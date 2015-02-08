@@ -1,7 +1,5 @@
 """simple http server."""
 
-__all__ = ['ServerHttpProtocol']
-
 import asyncio
 import http.server
 import time
@@ -13,6 +11,8 @@ from html import escape as html_escape
 import aiohttp
 from aiohttp import errors, streams, helpers
 from aiohttp.log import server_logger, access_logger
+
+__all__ = ['ServerHttpProtocol']
 
 
 RESPONSES = http.server.BaseHTTPRequestHandler.responses

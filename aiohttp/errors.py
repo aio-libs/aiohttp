@@ -1,5 +1,8 @@
 """http related errors."""
 
+from asyncio import TimeoutError
+
+
 __all__ = [
     'DisconnectedError', 'ClientDisconnectedError', 'ServerDisconnectedError',
 
@@ -10,8 +13,6 @@ __all__ = [
     'ClientError', 'ClientHttpProcessingError', 'ClientConnectionError',
     'ClientOSError', 'ClientTimeoutError', 'ProxyConnectionError',
     'ClientRequestError', 'ClientResponseError', 'WSClientDisconnectedError']
-
-from asyncio import TimeoutError
 
 
 class DisconnectedError(Exception):

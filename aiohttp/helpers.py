@@ -1,6 +1,4 @@
 """Various helper functions"""
-__all__ = ['BasicAuth', 'FormData', 'parse_mimetype']
-
 import base64
 import binascii
 import io
@@ -11,6 +9,8 @@ from collections import namedtuple
 from wsgiref.handlers import format_date_time
 
 from . import hdrs, multidict
+
+__all__ = ['BasicAuth', 'FormData', 'parse_mimetype']
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
