@@ -352,9 +352,9 @@ files for example) you can create :class:`ssl.SSLContext` instance and
 pass it into connector::
 
   >>> sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-  >>> context.verify_mode = ssl.CERT_REQUIRED
-  >>> context.load_verify_locations("/etc/ssl/certs/ca-bundle.crt")
-  >>> conn = aiohttp.TCPConnector(verify_ssl=False)
+  >>> sslcontext.verify_mode = ssl.CERT_REQUIRED
+  >>> sslcontext.load_verify_locations("/etc/ssl/certs/ca-bundle.crt")
+  >>> conn = aiohttp.TCPConnector(ssl_context=sslcontext)
   >>> r = yield from aiohttp.request(
   ...     'get', 'https://example.com', connector=conn)
 
