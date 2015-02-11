@@ -552,9 +552,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
             self.assertEqual(1, len(content['multipart-data']))
             self.assertEqual(
-                {'content-type': 'text/plain',
+                {'content-type': 'application/octet-stream',
                  'data': 'data',
                  'filename': 'unknown',
+                 'filename*': "utf-8''unknown",
                  'name': 'unknown'}, content['multipart-data'][0])
             self.assertEqual(r.status, 200)
             r.close()
@@ -581,9 +582,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
                  'data': 'true',
                  'name': 'test'}, content['multipart-data'][0])
             self.assertEqual(
-                {'content-type': 'text/plain',
+                {'content-type': 'application/octet-stream',
                  'data': 'data',
                  'filename': 'unknown',
+                 'filename*': "utf-8''unknown",
                  'name': 'unknown'}, content['multipart-data'][1])
             self.assertEqual(
                 {'content-type': 'text/plain',
