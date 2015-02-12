@@ -246,7 +246,8 @@ class PartReaderTestCase(TestCase):
 
     def test_read_text_encoding(self):
         obj = aiohttp.multipart.BodyPartReader(
-            self.boundary, {}, Stream('Привет, Мир!\r\n--:--'.encode('cp1251')))
+            self.boundary, {},
+            Stream('Привет, Мир!\r\n--:--'.encode('cp1251')))
         result = yield from obj.text(encoding='cp1251')
         self.assertEqual('Привет, Мир!\r\n', result)
 
@@ -534,7 +535,8 @@ class BodyPartWriterTestCase(unittest.TestCase):
     def test_guess_content_length(self):
         self.assertIsNone(self.part._guess_content_length({}))
         self.assertIsNone(self.part._guess_content_length(object()))
-        self.assertEqual(3, self.part._guess_content_length(io.BytesIO(b'foo')))
+        self.assertEqual(3,
+                         self.part._guess_content_length(io.BytesIO(b'foo')))
         self.assertIsNone(self.part._guess_content_length(io.StringIO('foo')))
         self.assertEqual(3, self.part._guess_content_length(b'bar'))
         with open(__file__, 'rb') as f:
@@ -594,7 +596,8 @@ class BodyPartWriterTestCase(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.part.set_content_disposition('inline', **{'': 'baz'})
         with self.assertRaises(ValueError):
-            self.part.set_content_disposition('inline', **{'foo\x00bar': 'baz'})
+            self.part.set_content_disposition('inline',
+                                              **{'foo\x00bar': 'baz'})
 
     def test_serialize_bytes(self):
         self.assertEqual(b'foo', next(self.part._serialize_bytes(b'foo')))
@@ -773,7 +776,8 @@ class MultipartWriterTestCase(unittest.TestCase):
         self.writer = aiohttp.multipart.MultipartWriter(boundary=':')
 
     def test_default_subtype(self):
-        mtype, stype, *_ = parse_mimetype(self.writer.headers.get(CONTENT_TYPE))
+        mtype, stype, *_ = parse_mimetype(
+            self.writer.headers.get(CONTENT_TYPE))
         self.assertEqual('multipart', mtype)
         self.assertEqual('mixed', stype)
 
@@ -795,7 +799,8 @@ class MultipartWriterTestCase(unittest.TestCase):
         self.assertEqual(0, len(self.writer))
         self.writer.append('hello, world!')
         self.assertEqual(1, len(self.writer))
-        self.assertIsInstance(self.writer.parts[0], self.writer.part_writer_cls)
+        self.assertIsInstance(self.writer.parts[0],
+                              self.writer.part_writer_cls)
 
     def test_append_with_headers(self):
         self.writer.append('hello, world!', {'x-foo': 'bar'})
@@ -811,7 +816,7 @@ class MultipartWriterTestCase(unittest.TestCase):
 
     def test_append_part(self):
         part = aiohttp.multipart.BodyPartWriter('test',
-                                                   {CONTENT_TYPE: 'text/plain'})
+                                                {CONTENT_TYPE: 'text/plain'})
         self.writer.append(part, {CONTENT_TYPE: 'test/passed'})
         self.assertEqual(1, len(self.writer))
         part = self.writer.parts[0]
@@ -1252,7 +1257,7 @@ class ParseContentDispositionTestCase(unittest.TestCase):
         self.assertEqual('attachment', disptype)
         self.assertEqual({'filename*': 'foo-ä.html'}, params)
 
-    @unittest.skip('should raise decoding error: %82 is invalid for iso-8859-1')
+    @unittest.skip('should raise decoding error: %82 is invalid for latin1')
     def test_attwithfn2231utf8_bad(self):
         with self.assertWarns(aiohttp.multipart.BadContentDispositionParam):
             disptype, params = parse_content_disposition(
