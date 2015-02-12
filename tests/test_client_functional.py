@@ -14,6 +14,7 @@ import aiohttp
 from aiohttp import client
 from aiohttp import test_utils
 from aiohttp.multidict import MultiDict
+from aiohttp.multipart import MultipartWriter
 
 
 class HttpClientFunctionalTests(unittest.TestCase):
@@ -557,6 +558,34 @@ class HttpClientFunctionalTests(unittest.TestCase):
                  'filename': 'unknown',
                  'filename*': "utf-8''unknown",
                  'name': 'unknown'}, content['multipart-data'][0])
+            self.assertEqual(r.status, 200)
+            r.close()
+
+    def test_POST_MULTIPART(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+
+            with MultipartWriter('form-data') as writer:
+                writer.append('foo')
+                writer.append_json({'bar': 'баз'})
+                writer.append_form([('тест', '4'), ('сетс', '2')])
+
+            r = self.loop.run_until_complete(
+                client.request('post', url, data=writer, loop=self.loop))
+
+            content = self.loop.run_until_complete(r.json())
+
+            self.assertEqual(3, len(content['multipart-data']))
+            self.assertEqual({'content-type': 'text/plain', 'data': 'foo'},
+                             content['multipart-data'][0])
+            self.assertEqual({'content-type': 'application/json',
+                              'data': '{"bar": "\\u0431\\u0430\\u0437"}'},
+                             content['multipart-data'][1])
+            self.assertEqual(
+                {'content-type': 'application/x-www-form-urlencoded',
+                 'data': '%D1%82%D0%B5%D1%81%D1%82=4&'
+                         '%D1%81%D0%B5%D1%82%D1%81=2'},
+                content['multipart-data'][2])
             self.assertEqual(r.status, 200)
             r.close()
 
