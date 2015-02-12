@@ -123,6 +123,9 @@ class FormData:
             part = self._writer.append(value, headers)
             if dispparams:
                 part.set_content_disposition('form-data', **dispparams)
+                # FIXME cgi.FieldStorage doesn't likes body parts with
+                # Content-Length which were sent via chunked transfer encoding
+                part.headers.pop(hdrs.CONTENT_LENGTH, None)
         yield from self._writer.serialize()
 
     def __call__(self, encoding):
