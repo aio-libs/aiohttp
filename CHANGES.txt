@@ -16,10 +16,14 @@ Unreleased (XX-XX-XXXX)
 
 - Add repr to UrlMappingMatchInfo #217
 
+- Gunicorn 19.2.x compatibility
+
+
 0.14.4 (01-29-2015)
 -------------------
 
 - Fix issue with error during constructing of url with regex parts #264
+
 
 0.14.3 (01-28-2015)
 -------------------

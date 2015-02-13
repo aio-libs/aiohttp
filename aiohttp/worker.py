@@ -1,6 +1,7 @@
 """Async gunicorn worker for aiohttp.web"""
 
 import asyncio
+import logging
 import os
 import signal
 import sys
@@ -37,11 +38,16 @@ class GunicornWebWorker(base.Worker):
         sys.exit(self.exit_code)
 
     def make_handler(self, app, host, port):
+        if hasattr(self.cfg, 'debug'):
+            is_debug = self.cfg.debug
+        else:
+            is_debug = self.log.loglevel == logging.DEBUG
+
         return app.make_handler(
             host=host,
             port=port,
             logger=self.log,
-            debug=self.cfg.debug,
+            debug=is_debug,
             keep_alive=self.cfg.keepalive,
             access_log=self.log.access_log,
             access_log_format=self.cfg.access_log_format)
