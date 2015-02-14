@@ -625,21 +625,20 @@ class BodyPartWriter(object):
                 for item in self.headers.items()
             )
         yield b'\r\n\r\n'
+        yield from self._maybe_encode_stream(self._serialize_obj())
+        yield b'\r\n'
 
+    def _serialize_obj(self):
         obj = self.obj
         mtype, stype, *_ = parse_mimetype(self.headers.get(CONTENT_TYPE))
         serializer = self._serialize_map.get((mtype, stype))
         if serializer is not None:
-            stream = serializer(obj)
-        else:
-            for key in self._serialize_map:
-                if not isinstance(key, tuple) and isinstance(obj, key):
-                    stream = self._serialize_map[key](obj)
-                    break
-            else:
-                stream = self._serialize_default(obj)
-        yield from self._maybe_encode_stream(stream)
-        yield b'\r\n'
+            return serializer(obj)
+
+        for key in self._serialize_map:
+            if not isinstance(key, tuple) and isinstance(obj, key):
+                return self._serialize_map[key](obj)
+        return self._serialize_default(obj)
 
     def _serialize_bytes(self, obj):
         yield obj
