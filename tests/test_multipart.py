@@ -699,8 +699,8 @@ class BodyPartWriterTestCase(unittest.TestCase):
             thing, {CONTENT_ENCODING: 'identity'})
         stream = part.serialize()
         self.assertEqual(b'CONTENT-ENCODING: identity\r\n'
-                         b'CONTENT-LENGTH: 16\r\n'
-                         b'CONTENT-TYPE: application/octet-stream',
+                         b'CONTENT-TYPE: application/octet-stream\r\n'
+                         b'CONTENT-LENGTH: 16',
                          next(stream))
         self.assertEqual(b'\r\n\r\n', next(stream))
 
