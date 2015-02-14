@@ -53,8 +53,7 @@ def parse_content_disposition(header):
         return string[0] == string[-1] == '"'
 
     def is_rfc5987(string):
-        # this isn't very correct
-        return "''" in string
+        return is_token(string) and string.count("'") == 2
 
     def is_extended_param(string):
         return string.endswith('*')
@@ -103,20 +102,12 @@ def parse_content_disposition(header):
                 continue
 
         elif is_extended_param(key):
-            if is_quoted(value):
-                warnings.warn(BadContentDispositionParam(item))
-                continue
-            elif is_rfc5987(value):
+            if is_rfc5987(value):
                 encoding, _, value = value.split("'", 2)
                 encoding = encoding or 'utf-8'
-            elif "'":
-                warnings.warn(BadContentDispositionParam(item))
-                continue
-            elif not is_token(value):
-                warnings.warn(BadContentDispositionParam(item))
-                continue
             else:
-                encoding = 'utf-8'
+                warnings.warn(BadContentDispositionParam(item))
+                continue
 
             try:
                 value = unquote(value, encoding, 'strict')
