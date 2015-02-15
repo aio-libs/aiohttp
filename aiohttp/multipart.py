@@ -578,12 +578,20 @@ class BodyPartWriter(object):
     def _guess_content_length(self, obj):
         if isinstance(obj, bytes):
             return len(obj)
+        elif isinstance(obj, str):
+            *_, params = parse_mimetype(self.headers.get(CONTENT_TYPE))
+            charset = params.get('charset', 'us-ascii')
+            return len(obj.encode(charset))
+        elif isinstance(obj, io.StringIO):
+            *_, params = parse_mimetype(self.headers.get(CONTENT_TYPE))
+            charset = params.get('charset', 'us-ascii')
+            return len(obj.getvalue().encode(charset)) - obj.tell()
+        elif isinstance(obj, io.BytesIO):
+            return len(obj.getvalue()) - obj.tell()
         elif isinstance(obj, io.IOBase):
             try:
                 return os.fstat(obj.fileno()).st_size - obj.tell()
             except (AttributeError, OSError):
-                if isinstance(obj, io.BytesIO):
-                    return len(obj.getvalue()) - obj.tell()
                 return None
         else:
             return None
@@ -592,7 +600,7 @@ class BodyPartWriter(object):
         if hasattr(obj, 'name'):
             name = getattr(obj, 'name')
             return mimetypes.guess_type(name)[0]
-        elif isinstance(obj, str):
+        elif isinstance(obj, (str, io.StringIO)):
             return 'text/plain; charset=utf-8'
         else:
             return default
