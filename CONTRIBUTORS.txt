@@ -10,6 +10,7 @@ Andrew Svetlov
 Andrei Ursulenko
 Andrej Antonov
 Anton Kasyanov
+Arthur Darcet
 Ben Bader
 Brian C. Lane
 Dimitar Dimitrov
