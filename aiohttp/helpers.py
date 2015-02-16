@@ -138,8 +138,8 @@ class FormData:
                              for i in type_options.items())
 
             out_headers.append(
-                ('Content-Disposition: form-data; ' + opts).encode(encoding)
-                + b'\r\n')
+                ('Content-Disposition: form-data; ' + opts).encode(encoding) +
+                b'\r\n')
 
             for k, v in headers.items():
                 out_headers.append('{}: {}\r\n'.format(k, v).encode(encoding))

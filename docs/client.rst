@@ -246,15 +246,6 @@ You can set the filename, content_type explicitly::
 
     >>> yield from aiohttp.request('post', url, data=data)
 
-If you want, you can send strings to be received as files::
-
-    >>> url = 'http://httpbin.org/post'
-    >>> files = {'file': ('report.csv',
-    ...                   'some,data,to,send\nanother,row,to,send\n')
-    ... }
-
-    >>> yield from aiohttp.request('post', url, data=files)
-
 If you pass file object as data parameter, aiohttp will stream it to server
 automatically. Check :class:`aiohttp.stream.StreamReader` for supported format
 information.
