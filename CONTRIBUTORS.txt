@@ -13,6 +13,7 @@ Anton Kasyanov
 Arthur Darcet
 Ben Bader
 Brian C. Lane
+Dima Veselov
 Dimitar Dimitrov
 Erich Healy
 Eugene Chernyshov
