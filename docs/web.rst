@@ -255,7 +255,7 @@ using response's methods::
                     ws.close()
                 else:
                     ws.send_str(data + '/answer')
-            except web.WebSocketDisconnectedError as exc:
+            except web.WSClientDisconnectedError as exc:
                 print(exc.code, exc.message)
                 return ws
 
