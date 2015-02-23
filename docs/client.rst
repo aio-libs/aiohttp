@@ -240,8 +240,9 @@ You can set the filename, content_type explicitly::
 
     >>> url = 'http://httpbin.org/post'
     >>> data = FormData()
-    >>> data.add_field('report.xls',
+    >>> data.add_field('file',
     ...                open('report.xls', 'rb'),
+    ...                filename='report.xls',
     ...                content_type='application/vnd.ms-excel')
 
     >>> yield from aiohttp.request('post', url, data=data)
