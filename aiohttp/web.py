@@ -689,6 +689,14 @@ class Response(StreamResponse):
                 self.body = None
 
     @property
+    def status(self):
+        return self.status
+
+    @status.setter
+    def status(self, status):
+        self._status = status
+
+    @property
     def body(self):
         return self._body
 
