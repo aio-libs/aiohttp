@@ -90,6 +90,10 @@ class TestWeb(unittest.TestCase):
         app.logger = logger
         self.assertIs(app.logger, logger)
 
+    def test_app_kwargs(self):
+        app = web.Application(loop=self.loop, foo=123)
+        self.assertEqual(app['foo'], 123)
+
 
 class TestRequestHandlerFactory(unittest.TestCase):
 
