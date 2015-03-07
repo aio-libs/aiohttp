@@ -821,19 +821,17 @@ arbitrary properties for later access from
 
                        .. versionadded:: 0.13
 
-   :param kwargs: optional params for initializing self dict.
-
    .. attribute:: router
 
       Read-only property that returns *router instance*.
 
    .. attribute:: logger
 
-      Read-only property that returns *router instance*.
+      :class:`logging.Logger` instance for storing application logs.
 
    .. attribute:: loop
 
-      :class:`logging.Logger` instance for storing application logs.
+      :ref:`event loop<asyncio-event-loop>` used for processing HTTP requests.
 
    .. method:: make_handler(**kwargs)
 
