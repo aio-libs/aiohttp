@@ -1604,7 +1604,7 @@ class Application(dict):
 
     def __init__(self, *, logger=web_logger, loop=None,
                  router=None, handler_factory=RequestHandlerFactory,
-                 middlewares=()):
+                 middlewares=(), **kwargs):
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:
@@ -1620,6 +1620,8 @@ class Application(dict):
         for factory in middlewares:
             assert asyncio.iscoroutinefunction(factory), factory
         self._middlewares = tuple(middlewares)
+
+        self.update(kwargs)
 
     @property
     def router(self):
