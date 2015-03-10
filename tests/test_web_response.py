@@ -291,15 +291,15 @@ class TestStreamResponse(unittest.TestCase):
         resp.set_cookie('name', 'value', domain='example.com',
                         path='/home', expires='123', max_age='10',
                         secure=True, httponly=True, version='2.0')
-        self.assertEqual(str(resp.cookies),
-                         'Set-Cookie: name=value; '
-                         'Domain=example.com; '
+        self.assertEqual(str(resp.cookies).lower(),
+                         'set-cookie: name=value; '
+                         'domain=example.com; '
                          'expires=123; '
                          'httponly; '
-                         'Max-Age=10; '
-                         'Path=/home; '
+                         'max-age=10; '
+                         'path=/home; '
                          'secure; '
-                         'Version=2.0')
+                         'version=2.0')
 
     def test_response_cookie__issue_del_cookie(self):
         resp = StreamResponse()

@@ -1,3 +1,5 @@
+__all__ = ['BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector']
+
 import asyncio
 import aiohttp
 import functools
@@ -12,8 +14,6 @@ from .errors import ServerDisconnectedError
 from .errors import HttpProxyError, ProxyConnectionError
 from .errors import ClientOSError, ClientTimeoutError
 from .helpers import BasicAuth
-
-__all__ = ['BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector']
 
 
 class Connection(object):
@@ -206,6 +206,7 @@ class BaseConnector(object):
                 # away, because cleanup might not get called (e.g. if
                 # keepalive is False).
                 self._conns.pop(key, None)
+
             transport.close()
         else:
             conns = self._conns.get(key)

@@ -75,7 +75,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         reader = connection.reader.set_parser(websocket.WebSocketParser)
         writer = websocket.WebSocketWriter(connection.writer)
 
-        return reader, writer
+        return response, reader, writer
 
     def test_send_recv_text(self):
 
@@ -98,7 +98,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def go():
             _, _, url = yield from self.create_server('GET', '/', handler)
-            reader, writer = yield from self.connect_ws(url)
+            resp, reader, writer = yield from self.connect_ws(url)
             writer.send('ask')
             msg = yield from reader.read()
             self.assertEqual(msg.tp, websocket.MSG_TEXT)
@@ -112,6 +112,8 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             writer.close()
 
             yield from closed
+
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -130,7 +132,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def go():
             _, _, url = yield from self.create_server('GET', '/', handler)
-            reader, writer = yield from self.connect_ws(url)
+            resp, reader, writer = yield from self.connect_ws(url)
             writer.send(b'ask', binary=True)
             msg = yield from reader.read()
             self.assertEqual(msg.tp, websocket.MSG_BINARY)
@@ -140,6 +142,8 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             self.assertEqual(msg.tp, websocket.MSG_CLOSE)
             self.assertEqual(msg.data, 1000)
             self.assertEqual(msg.extra, b'')
+
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -163,12 +167,13 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def go():
             _, _, url = yield from self.create_server('GET', '/', handler)
-            reader, writer = yield from self.connect_ws(url)
+            resp, reader, writer = yield from self.connect_ws(url)
             writer.ping()
             msg = yield from reader.read()
             self.assertEqual(msg.tp, websocket.MSG_PONG)
             writer.close(1, 'exit message')
             yield from closed
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -193,13 +198,14 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def go():
             _, _, url = yield from self.create_server('GET', '/', handler)
-            reader, writer = yield from self.connect_ws(url)
+            resp, reader, writer = yield from self.connect_ws(url)
             msg = yield from reader.read()
             self.assertEqual(msg.tp, websocket.MSG_PING)
             self.assertEqual(msg.data, b'data')
             writer.pong()
             writer.close(2, 'exit message')
             yield from closed
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -221,7 +227,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def go():
             _, _, url = yield from self.create_server('GET', '/', handler)
-            reader, writer = yield from self.connect_ws(url)
+            resp, reader, writer = yield from self.connect_ws(url)
             writer.ping('data')
             msg = yield from reader.read()
             self.assertEqual(msg.tp, websocket.MSG_PONG)
@@ -229,6 +235,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             writer.pong()
             writer.close()
             yield from closed
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -253,12 +260,13 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def go():
             _, _, url = yield from self.create_server('GET', '/', handler)
-            reader, writer = yield from self.connect_ws(url)
+            resp, reader, writer = yield from self.connect_ws(url)
             msg = yield from reader.read()
             self.assertEqual(msg.tp, websocket.MSG_PONG)
             self.assertEqual(msg.data, b'data')
             writer.close(2, 'exit message')
             yield from closed
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -279,9 +287,10 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def go():
             _, _, url = yield from self.create_server('GET', '/', handler)
-            _, writer = yield from self.connect_ws(url)
+            resp, _, writer = yield from self.connect_ws(url)
             writer.close()
             yield from closed
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -300,9 +309,10 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def go():
             _, _, url = yield from self.create_server('GET', '/', handler)
-            _, writer = yield from self.connect_ws(url, 'eggs, bar')
+            resp, _, writer = yield from self.connect_ws(url, 'eggs, bar')
             writer.close()
             yield from closed
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -324,12 +334,13 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def go():
             _, _, url = yield from self.create_server('GET', '/', handler)
-            reader, writer = yield from self.connect_ws(url, 'eggs, bar')
+            resp, reader, writer = yield from self.connect_ws(url, 'eggs, bar')
 
             msg = yield from reader.read()
             self.assertEqual(msg.tp, websocket.MSG_CLOSE)
             writer.close()
             yield from closed
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -350,12 +361,13 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def go():
             _, _, url = yield from self.create_server('GET', '/', handler)
-            reader, writer = yield from self.connect_ws(url, 'eggs, bar')
+            resp, reader, writer = yield from self.connect_ws(url, 'eggs, bar')
 
             writer.close()
             msg = yield from reader.read()
             self.assertEqual(msg.tp, websocket.MSG_CLOSE)
             yield from closed
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -386,12 +398,14 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def go():
             _, _, url = yield from self.create_server('GET', '/', handler)
-            reader, writer = yield from self.connect_ws(url, 'eggs, bar')
+            resp, reader, writer = yield from self.connect_ws(url, 'eggs, bar')
 
             msg = yield from reader.read()
             self.assertEqual(msg.tp, websocket.MSG_CLOSE)
             writer.close()
             yield from asyncio.gather(closed, closed2, loop=self.loop)
+
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -413,7 +427,8 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def go():
             _, _, url = yield from self.create_server('GET', '/', handler)
-            reader, writer = yield from self.connect_ws(url, 'eggs, bar')
+            response, reader, writer = yield from self.connect_ws(
+                url, 'eggs, bar')
 
             msg = yield from reader.read()
             self.assertEqual(msg.tp, websocket.MSG_CLOSE)
@@ -424,5 +439,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
 
             writer.close()
             yield from closed
+
+            response.close()
 
         self.loop.run_until_complete(go())

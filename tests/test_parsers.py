@@ -21,7 +21,7 @@ class StreamParserTests(unittest.TestCase):
         self.loop.close()
 
     def test_at_eof(self):
-        proto = parsers.StreamParser()
+        proto = parsers.StreamParser(loop=self.loop)
         self.assertFalse(proto.at_eof())
 
         proto.feed_eof()
@@ -30,7 +30,7 @@ class StreamParserTests(unittest.TestCase):
     def test_resume_stream(self):
         transp = unittest.mock.Mock()
 
-        proto = parsers.StreamParser()
+        proto = parsers.StreamParser(loop=self.loop)
         proto.set_transport(transp)
         proto._paused = True
         proto._stream_paused = True
@@ -41,7 +41,7 @@ class StreamParserTests(unittest.TestCase):
         self.assertFalse(proto._stream_paused)
 
     def test_exception(self):
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(loop=self.loop)
         self.assertIsNone(stream.exception())
 
         exc = ValueError()
@@ -49,7 +49,7 @@ class StreamParserTests(unittest.TestCase):
         self.assertIs(stream.exception(), exc)
 
     def test_exception_connection_error(self):
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(loop=self.loop)
         self.assertIsNone(stream.exception())
 
         exc = ConnectionError()
@@ -60,7 +60,7 @@ class StreamParserTests(unittest.TestCase):
         self.assertIs(stream.exception().__context__, exc)
 
     def test_exception_waiter(self):
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(loop=self.loop)
 
         stream._parser = self.lines_parser
         buf = stream._output = parsers.FlowControlDataQueue(
@@ -71,13 +71,13 @@ class StreamParserTests(unittest.TestCase):
         self.assertIs(buf.exception(), exc)
 
     def test_feed_data(self):
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(loop=self.loop)
 
         stream.feed_data(self.DATA)
         self.assertEqual(self.DATA, bytes(stream._buffer))
 
     def test_feed_none_data(self):
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(loop=self.loop)
 
         stream.feed_data(None)
         self.assertEqual(b'', bytes(stream._buffer))
@@ -85,7 +85,7 @@ class StreamParserTests(unittest.TestCase):
     def test_feed_data_pause_reading(self):
         transp = unittest.mock.Mock()
 
-        proto = parsers.StreamParser()
+        proto = parsers.StreamParser(loop=self.loop)
         proto.set_transport(transp)
         proto.feed_data(b'1' * (2 ** 16 * 3))
         transp.pause_reading.assert_called_with()
@@ -94,7 +94,7 @@ class StreamParserTests(unittest.TestCase):
     def test_feed_data_pause_reading_not_supported(self):
         transp = unittest.mock.Mock()
 
-        proto = parsers.StreamParser()
+        proto = parsers.StreamParser(loop=self.loop)
         proto.set_transport(transp)
 
         transp.pause_reading.side_effect = NotImplementedError()
@@ -102,7 +102,7 @@ class StreamParserTests(unittest.TestCase):
         self.assertIsNone(proto._transport)
 
     def test_set_parser_unset_prev(self):
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(loop=self.loop)
         stream.set_parser(self.lines_parser)
 
         unset = stream.unset_parser = unittest.mock.Mock()
@@ -111,7 +111,7 @@ class StreamParserTests(unittest.TestCase):
         self.assertTrue(unset.called)
 
     def test_set_parser_exception(self):
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(loop=self.loop)
 
         exc = ValueError()
         stream.set_exception(exc)
@@ -119,7 +119,7 @@ class StreamParserTests(unittest.TestCase):
         self.assertIs(s.exception(), exc)
 
     def test_set_parser_feed_existing(self):
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(loop=self.loop)
         stream.feed_data(b'line1')
         stream.feed_data(b'\r\nline2\r\ndata')
         s = stream.set_parser(self.lines_parser)
@@ -139,13 +139,13 @@ class StreamParserTests(unittest.TestCase):
             yield from buf.read(1)
             raise ValueError()
 
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(loop=self.loop)
         stream.feed_data(b'line1')
         s = stream.set_parser(p)
         self.assertIsInstance(s.exception(), ValueError)
 
     def test_set_parser_feed_existing_eof(self):
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(loop=self.loop)
         stream.feed_data(b'line1')
         stream.feed_data(b'\r\nline2\r\ndata')
         stream.feed_eof()
@@ -164,7 +164,7 @@ class StreamParserTests(unittest.TestCase):
             except parsers.EofStream:
                 raise ValueError()
 
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(loop=self.loop)
         stream.feed_data(b'line1')
         stream.feed_eof()
         s = stream.set_parser(p)
@@ -175,7 +175,7 @@ class StreamParserTests(unittest.TestCase):
             while True:
                 yield  # read chunk
 
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(loop=self.loop)
         stream.feed_data(b'line1')
         stream.feed_eof()
         s = stream.set_parser(p)
@@ -183,7 +183,7 @@ class StreamParserTests(unittest.TestCase):
         self.assertIsInstance(s.exception(), RuntimeError)
 
     def test_set_parser_unset(self):
-        stream = parsers.StreamParser(paused=False)
+        stream = parsers.StreamParser(paused=False, loop=self.loop)
         s = stream.set_parser(self.lines_parser)
 
         stream.feed_data(b'line1\r\nline2\r\n')
@@ -203,7 +203,7 @@ class StreamParserTests(unittest.TestCase):
             finally:
                 out.feed_eof()
 
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(loop=self.loop)
         stream.feed_data(b'line1')
         stream.feed_data(b'\r\nline2\r\ndata')
         s = stream.set_parser(LinesParser)
@@ -214,7 +214,7 @@ class StreamParserTests(unittest.TestCase):
         self.assertTrue(s._eof)
 
     def test_feed_parser(self):
-        stream = parsers.StreamParser(paused=False)
+        stream = parsers.StreamParser(paused=False, loop=self.loop)
         s = stream.set_parser(self.lines_parser)
 
         stream.feed_data(b'line1')
@@ -232,7 +232,7 @@ class StreamParserTests(unittest.TestCase):
             yield  # read chunk
             raise ValueError()
 
-        stream = parsers.StreamParser(paused=False)
+        stream = parsers.StreamParser(paused=False, loop=self.loop)
         s = stream.set_parser(p)
 
         stream.feed_data(b'line1')
@@ -243,7 +243,7 @@ class StreamParserTests(unittest.TestCase):
         def p(out, buf):
             yield  # chunk
 
-        stream = parsers.StreamParser(paused=False)
+        stream = parsers.StreamParser(paused=False, loop=self.loop)
         stream.set_parser(p)
 
         stream.feed_data(b'line1')
@@ -258,7 +258,7 @@ class StreamParserTests(unittest.TestCase):
             except parsers.EofStream:
                 raise ValueError()
 
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(loop=self.loop)
         s = stream.set_parser(p)
 
         stream.feed_data(b'line1')
@@ -275,7 +275,7 @@ class StreamParserTests(unittest.TestCase):
             except parsers.EofStream:
                 out.feed_eof()
 
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(loop=self.loop)
         s = stream.set_parser(p)
 
         stream.feed_data(b'line1')
@@ -287,7 +287,7 @@ class StreamParserTests(unittest.TestCase):
             while True:
                 yield  # read chunk
 
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(loop=self.loop)
         s = stream.set_parser(p)
 
         stream.feed_data(b'line1')
@@ -296,7 +296,7 @@ class StreamParserTests(unittest.TestCase):
         self.assertIsInstance(s.exception(), RuntimeError)
 
     def test_feed_parser2(self):
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(loop=self.loop)
         s = stream.set_parser(self.lines_parser)
 
         stream.feed_data(b'line1\r\nline2\r\n')
@@ -315,7 +315,7 @@ class StreamParserTests(unittest.TestCase):
             except parsers.EofStream:
                 raise ValueError()
 
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(loop=self.loop)
         s = stream.set_parser(p)
 
         stream.feed_data(b'line1')
@@ -328,7 +328,7 @@ class StreamParserTests(unittest.TestCase):
             while True:
                 yield  # read chunk
 
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(loop=self.loop)
         s = stream.set_parser(p)
 
         stream.feed_data(b'line1')
@@ -344,7 +344,7 @@ class StreamParserTests(unittest.TestCase):
             except parsers.EofStream:
                 out.feed_eof()
 
-        stream = parsers.StreamParser()
+        stream = parsers.StreamParser(loop=self.loop)
         s = stream.set_parser(p)
 
         stream.feed_data(b'line1')
@@ -359,7 +359,8 @@ class StreamParserTests(unittest.TestCase):
         class CustomEofErr(Exception):
             pass
 
-        stream = parsers.StreamParser(eof_exc_class=CustomEofErr)
+        stream = parsers.StreamParser(
+            eof_exc_class=CustomEofErr, loop=self.loop)
         s = stream.set_parser(p)
 
         stream.feed_eof()
@@ -368,17 +369,24 @@ class StreamParserTests(unittest.TestCase):
 
 class StreamProtocolTests(unittest.TestCase):
 
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+    def tearDown(self):
+        self.loop.close()
+
     def test_connection_made(self):
         tr = unittest.mock.Mock()
 
-        proto = parsers.StreamProtocol()
+        proto = parsers.StreamProtocol(loop=self.loop)
         self.assertIsNone(proto.transport)
 
         proto.connection_made(tr)
         self.assertIs(proto.transport, tr)
 
     def test_connection_lost(self):
-        proto = parsers.StreamProtocol()
+        proto = parsers.StreamProtocol(loop=self.loop)
         proto.connection_made(unittest.mock.Mock())
         proto.connection_lost(None)
         self.assertIsNone(proto.transport)
@@ -386,7 +394,7 @@ class StreamProtocolTests(unittest.TestCase):
         self.assertTrue(proto.reader._eof)
 
     def test_connection_lost_exc(self):
-        proto = parsers.StreamProtocol()
+        proto = parsers.StreamProtocol(loop=self.loop)
         proto.connection_made(unittest.mock.Mock())
 
         exc = ValueError()
@@ -394,7 +402,7 @@ class StreamProtocolTests(unittest.TestCase):
         self.assertIs(proto.reader.exception(), exc)
 
     def test_data_received(self):
-        proto = parsers.StreamProtocol()
+        proto = parsers.StreamProtocol(loop=self.loop)
         proto.connection_made(unittest.mock.Mock())
         proto.reader = unittest.mock.Mock()
 
