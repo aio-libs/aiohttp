@@ -1542,7 +1542,7 @@ class RequestHandler(ServerHttpProtocol):
             assert isinstance(match_info, AbstractMatchInfo), match_info
 
             request._match_info = match_info
-            if request.headers.get('expect', '').lower() == "100-continue":
+            if request.headers.get(hdrs.EXPECT, '').lower() == "100-continue":
                 yield from match_info.route.handle_expect_header(request)
 
             handler = match_info.handler
