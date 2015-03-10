@@ -606,6 +606,7 @@ class ProxyConnectorTests(unittest.TestCase):
         req = ClientRequest('GET', 'https://www.python.org')
         self.loop.run_until_complete(connector._create_connection(req))
 
+        self.assertEqual(req.path, '/')
         self.assertEqual(proxy_req.method, 'CONNECT')
         self.assertEqual(proxy_req.path, 'www.python.org:443')
         tr.pause_reading.assert_called_once_with()
