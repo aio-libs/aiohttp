@@ -6,6 +6,7 @@ import unittest
 import tempfile
 from aiohttp import web, request, FormData
 from aiohttp.multidict import MultiDict
+from aiohttp.protocol import HttpVersion11
 
 
 class TestWebFunctional(unittest.TestCase):
@@ -330,5 +331,69 @@ class TestWebFunctional(unittest.TestCase):
         def go():
             app, _, _ = yield from self.create_server('POST', '/')
             self.assertEqual("<Application>", repr(app))
+
+        self.loop.run_until_complete(go())
+
+    def test_100_continue(self):
+        @asyncio.coroutine
+        def handler(request):
+            data = yield from request.post()
+            self.assertEqual(b'123', data['name'])
+            return web.Response()
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('POST', '/', handler)
+
+            form = FormData()
+            form.add_field('name', b'123',
+                           content_transfer_encoding='base64')
+
+            resp = yield from request(
+                'post', url, data=form,
+                expect100=True,  # wait until server returns 100 continue
+                loop=self.loop)
+
+            self.assertEqual(200, resp.status)
+
+        self.loop.run_until_complete(
+            asyncio.wait_for(go(), timeout=0.1, loop=self.loop))
+
+    def test_100_continue_custom(self):
+
+        expect_received = False
+
+        @asyncio.coroutine
+        def handler(request):
+            data = yield from request.post()
+            self.assertEqual(b'123', data['name'])
+            return web.Response()
+
+        @asyncio.coroutine
+        def expect_handler(request):
+            nonlocal expect_received
+            expect_received = True
+            if request.version == HttpVersion11:
+                request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+
+        @asyncio.coroutine
+        def go():
+            nonlocal expect_received
+
+            app, _, url = yield from self.create_server('POST', '/')
+            app.router.add_route(
+                'POST', '/', handler, expect_handler=expect_handler)
+
+            form = FormData()
+            form.add_field('name', b'123',
+                           content_transfer_encoding='base64')
+
+            resp = yield from request(
+                'post', url, data=form,
+                expect100=True,  # wait until server returns 100 continue
+                loop=self.loop)
+
+            self.assertEqual(200, resp.status)
+            self.assertTrue(expect_received)
 
         self.loop.run_until_complete(go())

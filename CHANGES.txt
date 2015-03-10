@@ -4,6 +4,8 @@ CHANGES
 Unreleased (XX-XX-XXXX)
 -----------------------
 
+- Support for "Except: 100-continue" header
+
 - Fix issue with construction dynamic route with regexps and trailing slash #266
 
 - Add repr to web.Request

@@ -384,3 +384,38 @@ class TestUrlDispatcher(unittest.TestCase):
                              "(allowed methods: GET, POST>", repr(match_info))
 
         self.loop.run_until_complete(go())
+
+    def test_default_expect_handler(self):
+        route = self.router.add_route('GET', '/', self.make_handler())
+        self.assertIs(route._expect_handler, aiohttp.web.defaultExpectHandler)
+
+    def test_custom_expect_handler_plain(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            pass
+
+        route = self.router.add_route(
+            'GET', '/', self.make_handler(), expect_handler=handler)
+        self.assertIs(route._expect_handler, handler)
+        self.assertIsInstance(route, aiohttp.web.PlainRoute)
+
+    def test_custom_expect_handler_dynamic(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            pass
+
+        route = self.router.add_route(
+            'GET', '/get/{name}', self.make_handler(), expect_handler=handler)
+        self.assertIs(route._expect_handler, handler)
+        self.assertIsInstance(route, aiohttp.web.DynamicRoute)
+
+    def test_expect_handler_non_coroutine(self):
+
+        def handler(request):
+            pass
+
+        self.assertRaises(
+            AssertionError, self.router.add_route,
+            'GET', '/', self.make_handler(), expect_handler=handler)

@@ -1164,12 +1164,25 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
         return "<MatchInfo {}: {}>".format(super().__repr__(), self._route)
 
 
+@asyncio.coroutine
+def defaultExpectHandler(request):
+    """Default handler for Except: 100-continue"""
+    if request.version == HttpVersion11:
+        request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+
+
 class Route(metaclass=abc.ABCMeta):
 
-    def __init__(self, method, handler, name):
+    def __init__(self, method, handler, name, expect_handler=None):
+        if expect_handler is None:
+            expect_handler = defaultExpectHandler
+        assert asyncio.iscoroutinefunction(expect_handler), \
+            'Coroutine is expected, got {!r}'.format(expect_handler)
+
         self._method = method
         self._handler = handler
         self._name = name
+        self._expect_handler = expect_handler
 
     @property
     def method(self):
@@ -1192,6 +1205,10 @@ class Route(metaclass=abc.ABCMeta):
     def url(self, **kwargs):
         """Construct url for route with additional params."""
 
+    @asyncio.coroutine
+    def handle_expect_header(self, request):
+        yield from self._expect_handler(request)
+
     @staticmethod
     def _append_query(url, query):
         if query is not None:
@@ -1202,8 +1219,8 @@ class Route(metaclass=abc.ABCMeta):
 
 class PlainRoute(Route):
 
-    def __init__(self, method, handler, name, path):
-        super().__init__(method, handler, name)
+    def __init__(self, method, handler, name, path, expect_handler=None):
+        super().__init__(method, handler, name, expect_handler=expect_handler)
         self._path = path
 
     def match(self, path):
@@ -1225,8 +1242,9 @@ class PlainRoute(Route):
 
 class DynamicRoute(Route):
 
-    def __init__(self, method, handler, name, pattern, formatter):
-        super().__init__(method, handler, name)
+    def __init__(self, method, handler, name, pattern, formatter,
+                 expect_handler=None):
+        super().__init__(method, handler, name, expect_handler=expect_handler)
         self._pattern = pattern
         self._formatter = formatter
 
@@ -1252,10 +1270,11 @@ class StaticRoute(Route):
 
     limit = 8192
 
-    def __init__(self, name, prefix, directory):
+    def __init__(self, name, prefix, directory, expect_handler=None):
         assert prefix.startswith('/'), prefix
         assert prefix.endswith('/'), prefix
-        super().__init__('GET', self.handle, name)
+        super().__init__(
+            'GET', self.handle, name, expect_handler=expect_handler)
         self._prefix = prefix
         self._prefix_len = len(self._prefix)
         self._directory = directory
@@ -1415,7 +1434,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                 self._routes[name] = route
         self._urls.append(route)
 
-    def add_route(self, method, path, handler, *, name=None):
+    def add_route(self, method, path, handler,
+                  *, name=None, expect_handler=None):
         assert path.startswith('/')
         assert callable(handler), handler
         if not asyncio.iscoroutinefunction(handler):
@@ -1449,7 +1469,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                 continue
             raise ValueError("Invalid path '{}'['{}']".format(path, part))
         if factory is PlainRoute:
-            route = PlainRoute(method, handler, name, path)
+            route = PlainRoute(
+                method, handler, name, path, expect_handler=expect_handler)
         else:
             pattern = '/' + '/'.join(parts)
             formatter = '/' + '/'.join(format_parts)
@@ -1461,11 +1482,13 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             except re.error as exc:
                 raise ValueError(
                     "Bad pattern '{}': {}".format(pattern, exc)) from None
-            route = DynamicRoute(method, handler, name, compiled, formatter)
+            route = DynamicRoute(
+                method, handler, name, compiled,
+                formatter, expect_handler=expect_handler)
         self._register_endpoint(route)
         return route
 
-    def add_static(self, prefix, path, *, name=None):
+    def add_static(self, prefix, path, *, name=None, expect_handler=None):
         """
         Adds static files view
         :param prefix - url prefix
@@ -1476,7 +1499,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         path = os.path.abspath(path)
         if not prefix.endswith('/'):
             prefix += '/'
-        route = StaticRoute(name, prefix, path)
+        route = StaticRoute(name, prefix, path, expect_handler=expect_handler)
         self._register_endpoint(route)
         return route
 
@@ -1519,8 +1542,10 @@ class RequestHandler(ServerHttpProtocol):
             assert isinstance(match_info, AbstractMatchInfo), match_info
 
             request._match_info = match_info
-            handler = match_info.handler
+            if request.headers.get('expect', '').lower() == "100-continue":
+                yield from match_info.route.handle_expect_header(request)
 
+            handler = match_info.handler
             for factory in reversed(self._middlewares):
                 handler = yield from factory(app, handler)
             resp = yield from handler(request)
