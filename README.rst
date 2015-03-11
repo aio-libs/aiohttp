@@ -101,8 +101,7 @@ There is simple usage example:
         app = web.Application(loop=loop)
         app.router.add_route('GET', '/{name}', handle)
 
-        srv = yield from loop.create_server(app.make_handler(),
-                                            '127.0.0.1', 8080)
+        srv = yield from loop.create_server(app.make_handler(), '127.0.0.1', 8080)
         print("Server started at http://127.0.0.1:8080")
         return srv
 
