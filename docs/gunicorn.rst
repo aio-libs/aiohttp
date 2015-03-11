@@ -63,4 +63,4 @@ It is up and ready to serve requests.
 More information
 ----------------
 
-Please refer `official documentation`:http://docs.gunicorn.org/en/latest/deploy.html for more information about *Gunicorn* production deployment.
+Please refer `official documentation <http://docs.gunicorn.org/en/latest/deploy.html>`_ for more information about *Gunicorn* production deployment.
