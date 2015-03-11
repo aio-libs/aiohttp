@@ -18,6 +18,7 @@ from . import hdrs, helpers, streams
 from .log import client_logger
 from .streams import EOF_MARKER, FlowControlStreamReader
 from .multidict import CIMultiDictProxy, MultiDictProxy, MultiDict
+from .multipart import MultipartWriter
 
 __all__ = ['request']
 
@@ -394,6 +395,11 @@ class ClientRequest:
                 mime = mimetypes.guess_type(data.name)[0]
                 mime = 'application/octet-stream' if mime is None else mime
                 self.headers[hdrs.CONTENT_TYPE] = mime
+
+        elif isinstance(data, MultipartWriter):
+            self.body = data.serialize()
+            self.headers.update(data.headers)
+            self.chunked = self.chunked or 8192
 
         else:
             if not isinstance(data, helpers.FormData):

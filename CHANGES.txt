@@ -4,7 +4,9 @@ CHANGES
 Unreleased (XX-XX-XXXX)
 -----------------------
 
-- Support for "Except: 100-continue" header
+- New Multipart system #273
+
+- Support for "Except" header #287 #267
 
 - Fix issue with construction dynamic route with regexps and trailing slash #266
 
