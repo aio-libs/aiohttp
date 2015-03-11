@@ -176,8 +176,8 @@ The example shows custom processing based on *HTTP Accept* header:
 
 .. _aiohttp-web-expect-header:
 
-Expect: 100-continue support
-----------------------------
+*Expect: 100-continue* support
+------------------------------
 
 .. versionadded:: 0.15
 
