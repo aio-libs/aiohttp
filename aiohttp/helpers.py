@@ -1,9 +1,7 @@
 """Various helper functions"""
 import base64
-import binascii
 import io
 import os
-import uuid
 import urllib.parse
 from collections import namedtuple
 from wsgiref.handlers import format_date_time
@@ -41,9 +39,10 @@ class FormData:
     application/x-www-form-urlencoded body generation."""
 
     def __init__(self, fields=()):
+        from . import multipart
+        self._writer = multipart.MultipartWriter('form-data')
         self._fields = []
         self._is_multipart = False
-        self._boundary = uuid.uuid4().hex
 
         if isinstance(fields, dict):
             fields = list(fields.items())
@@ -58,7 +57,7 @@ class FormData:
     @property
     def content_type(self):
         if self._is_multipart:
-            return 'multipart/form-data; boundary=%s' % self._boundary
+            return self._writer.headers[hdrs.CONTENT_TYPE]
         else:
             return 'application/x-www-form-urlencoded'
 
@@ -82,13 +81,6 @@ class FormData:
         if content_transfer_encoding is not None:
             headers[hdrs.CONTENT_TRANSFER_ENCODING] = content_transfer_encoding
             self._is_multipart = True
-            supported_tranfer_encoding = {
-                'base64': binascii.b2a_base64,
-                'quoted-printable': binascii.b2a_qp
-            }
-            conv = supported_tranfer_encoding.get(content_transfer_encoding)
-            if conv is not None:
-                value = conv(value)
 
         self._fields.append((type_options, headers, value))
 
@@ -125,44 +117,16 @@ class FormData:
         data = urllib.parse.urlencode(data, doseq=True)
         return data.encode(encoding)
 
-    def _gen_form_data(self, encoding='utf-8', chunk_size=8192):
+    def _gen_form_data(self, *args, **kwargs):
         """Encode a list of fields using the multipart/form-data MIME format"""
-        boundary = self._boundary.encode('latin1')
-
-        for type_options, headers, value in self._fields:
-            yield b'--' + boundary + b'\r\n'
-
-            out_headers = []
-
-            opts = '; '.join('{0[0]}="{0[1]}"'.format(i)
-                             for i in type_options.items())
-
-            out_headers.append(
-                ('Content-Disposition: form-data; ' + opts).encode(encoding) +
-                b'\r\n')
-
-            for k, v in headers.items():
-                out_headers.append('{}: {}\r\n'.format(k, v).encode(encoding))
-
-            out_headers.append(b'\r\n')
-
-            yield b''.join(out_headers)
-
-            if isinstance(value, str):
-                yield value.encode(encoding)
-            else:
-                if isinstance(value, (bytes, bytearray)):
-                    value = io.BytesIO(value)
-
-                while True:
-                    chunk = value.read(chunk_size)
-                    if not chunk:
-                        break
-                    yield str_to_bytes(chunk, encoding)
-
-            yield b'\r\n'
-
-        yield b'--' + boundary + b'--\r\n'
+        for dispparams, headers, value in self._fields:
+            part = self._writer.append(value, headers)
+            if dispparams:
+                part.set_content_disposition('form-data', **dispparams)
+                # FIXME cgi.FieldStorage doesn't likes body parts with
+                # Content-Length which were sent via chunked transfer encoding
+                part.headers.pop(hdrs.CONTENT_LENGTH, None)
+        yield from self._writer.serialize()
 
     def __call__(self, encoding):
         if self._is_multipart:
