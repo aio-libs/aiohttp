@@ -96,6 +96,31 @@ class TestWebFunctional(unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
+    def test_post_100_continue(self):
+        @asyncio.coroutine
+        def handler(request):
+            data = yield from request.post()
+            self.assertEqual(b'123', data['name'])
+            return web.Response()
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('POST', '/', handler)
+
+            form = FormData()
+            form.add_field('name', b'123',
+                           content_transfer_encoding='base64')
+
+            resp = yield from request(
+                'post', url, data=form,
+                expect100=True,  # wait until server returns 100 continue
+                loop=self.loop)
+
+            self.assertEqual(200, resp.status)
+
+        self.loop.run_until_complete(
+            asyncio.wait_for(go(), timeout=0.1, loop=self.loop))
+
     def test_post_json(self):
 
         dct = {'key': 'текст'}
