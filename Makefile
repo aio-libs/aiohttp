@@ -4,6 +4,7 @@ FLAGS=
 
 
 flake:
+	python setup.py check -rms
 	flake8 aiohttp tests examples
 
 develop:
