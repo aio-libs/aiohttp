@@ -684,6 +684,9 @@ class ClientResponse:
                 self.connection.close()
             else:
                 self.connection.release()
+                if self._reader is not None:
+                    self._reader.unset_parser()
+
             self.connection = None
             self._connection_wr = None
         if self._writer is not None and not self._writer.done():
