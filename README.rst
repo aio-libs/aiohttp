@@ -49,10 +49,8 @@ Getting started
 Client
 ^^^^^^
 
-To retrieve something from the web:
+To retrieve something from the web::
 
-.. code-block:: python
-  
   import aiohttp
 
   def get_body(url):
@@ -60,18 +58,14 @@ To retrieve something from the web:
       return (yield from response.read())
 
 You can use the get command like this anywhere in your ``asyncio``
-powered program:
-
-.. code-block:: python
+powered program::
 
   response = yield from aiohttp.request('GET', 'http://python.org')
   body = yield from response.read()
   print(body)
 
 If you want to use timeouts for aiohttp client side please use standard
-asyncio approach:
-
-.. code-block:: python
+asyncio approach::
 
    yield from asyncio.wait_for(request('GET', url), 10)
 
@@ -81,9 +75,7 @@ Server
 
 In aiohttp 0.12 we've added highlevel API for web HTTP server.
 
-There is simple usage example:
-
-.. code-block:: python
+There is simple usage example::
 
     import asyncio
     from aiohttp import web
@@ -109,3 +101,4 @@ There is simple usage example:
     loop = asyncio.get_event_loop()
     loop.run_until_complete(init(loop))
     loop.run_forever()
+
