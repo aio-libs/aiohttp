@@ -356,8 +356,7 @@ class TestWebFunctional(unittest.TestCase):
 
             self.assertEqual(200, resp.status)
 
-        self.loop.run_until_complete(
-            asyncio.wait_for(go(), timeout=0.1, loop=self.loop))
+        self.loop.run_until_complete(go())
 
     def test_100_continue_custom(self):
 

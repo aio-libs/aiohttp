@@ -260,7 +260,10 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                     self.transport.close()
                     break
                 else:
-                    reader.unset_parser()
+                    try:
+                        reader.unset_parser()
+                    except RuntimeError:
+                        break
 
                 if self._request_handler:
                     if self._keep_alive and self._keep_alive_period:
@@ -272,7 +275,10 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                     else:
                         self.log_debug('Close client connection.')
                         self._request_handler = None
-                        self.transport.close()
+                        try:
+                            self.transport.close()
+                        except RuntimeError:
+                            pass
                         break
                 else:
                     break
