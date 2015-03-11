@@ -1207,7 +1207,7 @@ class Route(metaclass=abc.ABCMeta):
 
     @asyncio.coroutine
     def handle_expect_header(self, request):
-        yield from self._expect_handler(request)
+        return (yield from self._expect_handler(request))
 
     @staticmethod
     def _append_query(url, query):
@@ -1541,14 +1541,17 @@ class RequestHandler(ServerHttpProtocol):
 
             assert isinstance(match_info, AbstractMatchInfo), match_info
 
+            resp = None
             request._match_info = match_info
             if request.headers.get(hdrs.EXPECT, '').lower() == "100-continue":
-                yield from match_info.route.handle_expect_header(request)
+                resp = (
+                    yield from match_info.route.handle_expect_header(request))
 
-            handler = match_info.handler
-            for factory in reversed(self._middlewares):
-                handler = yield from factory(app, handler)
-            resp = yield from handler(request)
+            if resp is None:
+                handler = match_info.handler
+                for factory in reversed(self._middlewares):
+                    handler = yield from factory(app, handler)
+                resp = yield from handler(request)
 
             if not isinstance(resp, StreamResponse):
                 raise RuntimeError(

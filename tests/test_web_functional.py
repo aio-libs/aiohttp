@@ -396,3 +396,49 @@ class TestWebFunctional(unittest.TestCase):
             self.assertTrue(expect_received)
 
         self.loop.run_until_complete(go())
+
+    def test_100_continue_custom_response(self):
+
+        auth_err = False
+
+        @asyncio.coroutine
+        def handler(request):
+            data = yield from request.post()
+            self.assertEqual(b'123', data['name'])
+            return web.Response()
+
+        @asyncio.coroutine
+        def expect_handler(request):
+            if request.version == HttpVersion11:
+                if auth_err:
+                    return web.HTTPForbidden()
+
+                request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+
+        @asyncio.coroutine
+        def go():
+            nonlocal auth_err
+
+            app, _, url = yield from self.create_server('POST', '/')
+            app.router.add_route(
+                'POST', '/', handler, expect_handler=expect_handler)
+
+            form = FormData()
+            form.add_field('name', b'123',
+                           content_transfer_encoding='base64')
+
+            resp = yield from request(
+                'post', url, data=form,
+                expect100=True,  # wait until server returns 100 continue
+                loop=self.loop)
+
+            self.assertEqual(200, resp.status)
+
+            auth_err = True
+            resp = yield from request(
+                'post', url, data=form,
+                expect100=True,  # wait until server returns 100 continue
+                loop=self.loop)
+            self.assertEqual(403, resp.status)
+
+        self.loop.run_until_complete(go())
