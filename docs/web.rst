@@ -184,13 +184,14 @@ The example shows custom processing based on *HTTP Accept* header:
 :mod:`aiohttp.web` supports *Expect* header. By default
 it responses with *HTTP/1.1 100 Continue* status code.
 It is possible to specify custom *Expect* header handler on per route basis.
-This handler get called after receiving all request headers and before
-processing application middlewares :ref:`aiohttp-web-middlewares`. Handler
-can return *None*, in that case request processing continues as usual.
-If handler returns instance of class :class:`StreamResponse`, *request handler*
-processes it as response.
+This handler get called after receiving all headers and before
+processing application middlewares :ref:`aiohttp-web-middlewares` and route
+handler. Handler can return *None*, in that case request processing
+continues as usual. If handler returns instance of
+class :class:`StreamResponse`, *request handler* uses it as response.
+Custom handler *must* write *HTTP/1.1 100 Continue* status if all checks pass.
 
-The example shows custom handler for *Except* header:
+This example shows custom handler for *Except* header:
 
 .. code-block:: python
 
