@@ -6,6 +6,8 @@ Unreleased (XX-XX-XXXX)
 
 - New Multipart system #273
 
+- Support for "Except" header #287 #267
+
 - Fix issue with construction dynamic route with regexps and trailing slash #266
 
 - Add repr to web.Request

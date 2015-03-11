@@ -15,6 +15,7 @@ var/*
 *.pyo
 *.bak
 *.egg
+*.eggs
 *.tar.gz
 *.so
 *.pyd
