@@ -33,7 +33,7 @@ class TestWebFunctional(unittest.TestCase):
 
         port = self.find_unused_port()
         srv = yield from self.loop.create_server(
-            app.make_handler(), '127.0.0.1', port)
+            app.make_handler(keep_alive=None), '127.0.0.1', port)
         url = "http://127.0.0.1:{}".format(port) + path
         self.addCleanup(srv.close)
         return app, srv, url
@@ -48,7 +48,7 @@ class TestWebFunctional(unittest.TestCase):
 
         @asyncio.coroutine
         def go():
-            _, _, url = yield from self.create_server('GET', '/', handler)
+            _, srv, url = yield from self.create_server('GET', '/', handler)
             resp = yield from request('GET', url, loop=self.loop)
             self.assertEqual(200, resp.status)
             txt = yield from resp.text()
