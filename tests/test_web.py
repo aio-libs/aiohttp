@@ -36,6 +36,10 @@ class TestWeb(unittest.TestCase):
         self.assertIs(self.loop, app.loop)
         self.assertIs(app.logger, log.web_logger)
 
+    def test_app_call(self):
+        app = web.Application(loop=self.loop)
+        self.assertIs(app, app())
+
     def test_app_default_loop(self):
         asyncio.set_event_loop(self.loop)
         app = web.Application()
