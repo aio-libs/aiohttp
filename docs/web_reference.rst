@@ -943,7 +943,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
    .. seealso:: :ref:`Route classes <aiohttp-web-route>`
 
-   .. method:: add_route(method, path, handler, *, name=None)
+   .. method:: add_route(method, path, handler, *, name=None, expect_handler=None)
 
       Append :ref:`handler<aiohttp-web-handler>` to the end of route table.
 
@@ -960,9 +960,11 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       :param str name: optional route name.
 
+      :param coroutine expect_handler: optional *expect* header handler.
+
       :returns: new :class:`PlainRoute` or :class:`DynamicRoute` instance.
 
-   .. method:: add_static(prefix, path, *, name=None)
+   .. method:: add_static(prefix, path, *, name=None, expect_handler=None)
 
       Adds router for returning static files.
 
@@ -981,7 +983,9 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       :param str name: optional route name.
 
-      :returns: new :class:`StaticRoute` instance.
+      :param coroutine expect_handler: optional *expect* header handler.
+
+   :returns: new :class:`StaticRoute` instance.
 
    .. method:: resolve(requst)
 
