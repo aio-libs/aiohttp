@@ -4,6 +4,8 @@ CHANGES
 0.15.0 (Unreleased)
 -------------------
 
+- Client WebSockets support.
+
 - New Multipart system #273
 
 - Support for "Except" header #287 #267
