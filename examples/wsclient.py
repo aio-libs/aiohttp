@@ -16,57 +16,28 @@ except ImportError:
 import aiohttp
 from aiohttp import websocket
 
-WS_KEY = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-
 
 def start_client(loop, url):
-    name = input('Please enter your name: ').encode()
-
-    sec_key = base64.b64encode(os.urandom(16))
+    name = input('Please enter your name: ')
 
     # send request
-    response = yield from aiohttp.request(
-        'get', url,
-        headers={
-            'UPGRADE': 'WebSocket',
-            'CONNECTION': 'Upgrade',
-            'SEC-WEBSOCKET-VERSION': '13',
-            'SEC-WEBSOCKET-KEY': sec_key.decode(),
-        })
-
-    # websocket handshake
-    if response.status != 101:
-        raise ValueError("Handshake error: Invalid response status")
-    if response.headers.get('upgrade', '').lower() != 'websocket':
-        raise ValueError("Handshake error - Invalid upgrade header")
-    if response.headers.get('connection', '').lower() != 'upgrade':
-        raise ValueError("Handshake error - Invalid connection header")
-
-    key = response.headers.get('sec-websocket-accept', '').encode()
-    match = base64.b64encode(hashlib.sha1(sec_key + WS_KEY).digest())
-    if key != match:
-        raise ValueError("Handshake error - Invalid challenge response")
-
-    # switch to websocket protocol
-    connection = response.connection
-    stream = connection.reader.set_parser(websocket.WebSocketParser)
-    writer = websocket.WebSocketWriter(connection.writer)
+    ws = yield from aiohttp.ws_connect(url)
 
     # input reader
     def stdin_callback():
-        line = sys.stdin.buffer.readline()
+        line = sys.stdin.buffer.readline().decode('utf-8')
         if not line:
             loop.stop()
         else:
-            writer.send(name + b': ' + line)
+            ws.send_str(name + ': ' + line)
     loop.add_reader(sys.stdin.fileno(), stdin_callback)
 
     @asyncio.coroutine
     def dispatch():
         while True:
             try:
-                msg = yield from stream.read()
-            except:
+                msg = yield from ws.receive_msg()
+            except aiohttp.WSServerDisconnectedError:
                 # server disconnected
                 break
 
@@ -74,8 +45,6 @@ def start_client(loop, url):
                 writer.pong()
             elif msg.tp == websocket.MSG_TEXT:
                 print(msg.data.strip())
-            elif msg.tp == websocket.MSG_CLOSE:
-                break
 
     yield from dispatch()
 
