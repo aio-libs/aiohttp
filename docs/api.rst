@@ -1,8 +1,10 @@
+.. _aiohttp-api:
+
 Helpers API
 ===========
 
 All public names from submodules ``client``, ``connector``,
-``errors``, ``parsers``, ``protocol``, ``server``, ``utils``,
+``errors``, ``multipart``, ``parsers``, ``protocol``, ``server``, ``utils``,
 ``websocket`` and ``wsgi`` are exported into ``aiohttp``
 namespace.
 
@@ -34,6 +36,14 @@ aiohttp.helpers module
 ----------------------
 
 .. automodule:: aiohttp.helpers
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+aiohttp.multipart module
+------------------------
+
+.. automodule:: aiohttp.multipart
     :members:
     :undoc-members:
     :show-inheritance:
