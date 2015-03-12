@@ -53,8 +53,7 @@ def parse_content_disposition(header):
         return string[0] == string[-1] == '"'
 
     def is_rfc5987(string):
-        # this isn't very correct
-        return "''" in string
+        return is_token(string) and string.count("'") == 2
 
     def is_extended_param(string):
         return string.endswith('*')
@@ -103,20 +102,12 @@ def parse_content_disposition(header):
                 continue
 
         elif is_extended_param(key):
-            if is_quoted(value):
-                warnings.warn(BadContentDispositionParam(item))
-                continue
-            elif is_rfc5987(value):
+            if is_rfc5987(value):
                 encoding, _, value = value.split("'", 2)
                 encoding = encoding or 'utf-8'
-            elif "'":
-                warnings.warn(BadContentDispositionParam(item))
-                continue
-            elif not is_token(value):
-                warnings.warn(BadContentDispositionParam(item))
-                continue
             else:
-                encoding = 'utf-8'
+                warnings.warn(BadContentDispositionParam(item))
+                continue
 
             try:
                 value = unquote(value, encoding, 'strict')
@@ -569,16 +560,15 @@ class BodyPartWriter(object):
         }
 
     def _fill_headers_with_defaults(self):
-        """Updates part headers by """
-        if CONTENT_LENGTH not in self.headers:
-            content_length = self._guess_content_length(self.obj)
-            if content_length is not None:
-                self.headers[CONTENT_LENGTH] = str(content_length)
-
         if CONTENT_TYPE not in self.headers:
             content_type = self._guess_content_type(self.obj)
             if content_type is not None:
                 self.headers[CONTENT_TYPE] = content_type
+
+        if CONTENT_LENGTH not in self.headers:
+            content_length = self._guess_content_length(self.obj)
+            if content_length is not None:
+                self.headers[CONTENT_LENGTH] = str(content_length)
 
         if CONTENT_DISPOSITION not in self.headers:
             filename = self._guess_filename(self.obj)
@@ -588,12 +578,20 @@ class BodyPartWriter(object):
     def _guess_content_length(self, obj):
         if isinstance(obj, bytes):
             return len(obj)
+        elif isinstance(obj, str):
+            *_, params = parse_mimetype(self.headers.get(CONTENT_TYPE))
+            charset = params.get('charset', 'us-ascii')
+            return len(obj.encode(charset))
+        elif isinstance(obj, io.StringIO):
+            *_, params = parse_mimetype(self.headers.get(CONTENT_TYPE))
+            charset = params.get('charset', 'us-ascii')
+            return len(obj.getvalue().encode(charset)) - obj.tell()
+        elif isinstance(obj, io.BytesIO):
+            return len(obj.getvalue()) - obj.tell()
         elif isinstance(obj, io.IOBase):
             try:
                 return os.fstat(obj.fileno()).st_size - obj.tell()
             except (AttributeError, OSError):
-                if isinstance(obj, io.BytesIO):
-                    return len(obj.getvalue()) - obj.tell()
                 return None
         else:
             return None
@@ -602,7 +600,7 @@ class BodyPartWriter(object):
         if hasattr(obj, 'name'):
             name = getattr(obj, 'name')
             return mimetypes.guess_type(name)[0]
-        elif isinstance(obj, str):
+        elif isinstance(obj, (str, io.StringIO)):
             return 'text/plain; charset=utf-8'
         else:
             return default
@@ -635,21 +633,20 @@ class BodyPartWriter(object):
                 for item in self.headers.items()
             )
         yield b'\r\n\r\n'
+        yield from self._maybe_encode_stream(self._serialize_obj())
+        yield b'\r\n'
 
+    def _serialize_obj(self):
         obj = self.obj
         mtype, stype, *_ = parse_mimetype(self.headers.get(CONTENT_TYPE))
         serializer = self._serialize_map.get((mtype, stype))
         if serializer is not None:
-            stream = serializer(obj)
-        else:
-            for key in self._serialize_map:
-                if not isinstance(key, tuple) and isinstance(obj, key):
-                    stream = self._serialize_map[key](obj)
-                    break
-            else:
-                stream = self._serialize_default(obj)
-        yield from self._maybe_encode_stream(stream)
-        yield b'\r\n'
+            return serializer(obj)
+
+        for key in self._serialize_map:
+            if not isinstance(key, tuple) and isinstance(obj, key):
+                return self._serialize_map[key](obj)
+        return self._serialize_default(obj)
 
     def _serialize_bytes(self, obj):
         yield obj

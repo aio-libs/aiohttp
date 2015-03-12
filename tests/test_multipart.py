@@ -533,12 +533,17 @@ class BodyPartWriterTestCase(unittest.TestCase):
         self.part = aiohttp.multipart.BodyPartWriter(b'')
 
     def test_guess_content_length(self):
+        self.part.headers[CONTENT_TYPE] = 'text/plain; charset=utf-8'
         self.assertIsNone(self.part._guess_content_length({}))
         self.assertIsNone(self.part._guess_content_length(object()))
         self.assertEqual(3,
                          self.part._guess_content_length(io.BytesIO(b'foo')))
-        self.assertIsNone(self.part._guess_content_length(io.StringIO('foo')))
+        self.assertEqual(3,
+                         self.part._guess_content_length(io.StringIO('foo')))
+        self.assertEqual(6,
+                         self.part._guess_content_length(io.StringIO('мяу')))
         self.assertEqual(3, self.part._guess_content_length(b'bar'))
+        self.assertEqual(12, self.part._guess_content_length('пассед'))
         with open(__file__, 'rb') as f:
             self.assertEqual(os.fstat(f.fileno()).st_size,
                              self.part._guess_content_length(f))
@@ -644,7 +649,8 @@ class BodyPartWriterTestCase(unittest.TestCase):
         multipart.append_json({'test': 'passed'})
         self.assertEqual(
             [b'--:\r\n',
-             b'CONTENT-TYPE: text/plain; charset=utf-8',
+             b'CONTENT-TYPE: text/plain; charset=utf-8\r\n'
+             b'CONTENT-LENGTH: 11',
              b'\r\n\r\n',
              b'foo-bar-baz',
              b'\r\n',
@@ -699,8 +705,8 @@ class BodyPartWriterTestCase(unittest.TestCase):
             thing, {CONTENT_ENCODING: 'identity'})
         stream = part.serialize()
         self.assertEqual(b'CONTENT-ENCODING: identity\r\n'
-                         b'CONTENT-LENGTH: 16\r\n'
-                         b'CONTENT-TYPE: application/octet-stream',
+                         b'CONTENT-TYPE: application/octet-stream\r\n'
+                         b'CONTENT-LENGTH: 16',
                          next(stream))
         self.assertEqual(b'\r\n\r\n', next(stream))
 

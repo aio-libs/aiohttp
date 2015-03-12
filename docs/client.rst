@@ -251,6 +251,7 @@ If you pass file object as data parameter, aiohttp will stream it to server
 automatically. Check :class:`aiohttp.stream.StreamReader` for supported format
 information.
 
+.. seealso:: :ref:`aiohttp-multipart`
 
 Streaming uploads
 -----------------
