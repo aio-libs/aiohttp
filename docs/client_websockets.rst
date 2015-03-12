@@ -38,7 +38,7 @@ data asynchronously (by ``yield from ws.send_str('data')`` for example).
 
 
 ClientWebSocketResponse
-^^^^^^^^^^^^^^^^^^^^^^^
+-----------------------
 
 To connect to websocket server you have to use `aiohttp.ws_connect()` function,
 do not create instance of class :class:`ClientWebSocketResponse` manually.
