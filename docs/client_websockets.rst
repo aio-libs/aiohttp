@@ -40,10 +40,11 @@ data asynchronously (by ``yield from ws.send_str('data')`` for example).
 ClientWebSocketResponse
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-.. func:: ws_connect(url, protocols=(), connector=None, loop=None)
+.. function:: ws_connect(url, protocols=(), connector=None, loop=None) -> :class:`ClientWebSocketResponse`
 
    This function creates websocket connection, checks response and
-   returns :class:`ClientWebSocketResponse` object.
+   returns :class:`ClientWebSocketResponse` object. It may raise
+   :exc:`~aiohttp.errors.WSServerHandshakeError` exception.
 
    :param str url: websocket server url
 
