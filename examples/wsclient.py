@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 """websocket cmd client for wssrv.py example."""
 import argparse
-import base64
-import hashlib
-import os
 import signal
 import sys
 
@@ -41,9 +38,7 @@ def start_client(loop, url):
                 # server disconnected
                 break
 
-            if msg.tp == websocket.MSG_PING:
-                writer.pong()
-            elif msg.tp == websocket.MSG_TEXT:
+            if msg.tp == websocket.MSG_TEXT:
                 print(msg.data.strip())
 
     yield from dispatch()

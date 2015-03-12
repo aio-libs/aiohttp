@@ -280,6 +280,8 @@ You have to create :class:`WebSocketResponse` in
 :ref:`web-handler<aiohttp-web-handler>` and communicate with peer
 using response's methods::
 
+.. code-block:: python
+
     @asyncio.coroutine
     def websocket_handler(request):
 

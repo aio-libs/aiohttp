@@ -45,7 +45,7 @@ class TestWebSocketClient(unittest.TestCase):
                 protocols=('t1', 't2', 'chat'),
                 loop=self.loop))
 
-        self.assertIsInstance(res, websocket_client.WebSocketResponse)
+        self.assertIsInstance(res, websocket_client.ClientWebSocketResponse)
         self.assertEqual(res.protocol, 'chat')
 
     @mock.patch('aiohttp.websocket_client.os')

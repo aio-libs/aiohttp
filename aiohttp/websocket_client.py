@@ -63,10 +63,10 @@ def ws_connect(url, protocols=(), connector=None, loop=None):
     reader = resp.connection.reader.set_parser(WebSocketParser)
     writer = WebSocketWriter(resp.connection.writer)
 
-    return WebSocketResponse(reader, writer, protocol, resp, loop)
+    return ClientWebSocketResponse(reader, writer, protocol, resp, loop)
 
 
-class WebSocketResponse:
+class ClientWebSocketResponse:
 
     def __init__(self, reader, writer, protocol, response, loop):
         self._response = response
