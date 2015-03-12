@@ -15,7 +15,7 @@ WebScokets Client
 You have to use `aiohttp.ws_connect()` function for client websocket connection.
 It accepts *url* as a first parameter and returns
 :class:`ClientWebSocketResponse`, with that object you can communicate with
-websocket server using response's methods::
+websocket server using response's methods:
 
 .. code-block:: python
 
