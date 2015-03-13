@@ -343,6 +343,13 @@ class TestUrlDispatcher(unittest.TestCase):
         url = route.url(parts={'num': '123'})
         self.assertEqual('/get/123/', url)
 
+    def test_route_dynamic_with_regex(self):
+        handler = self.make_handler()
+        route = self.router.add_route('GET', r'/{one}/{two:.+}', handler)
+
+        url = route.url(parts={'one': 1, 'two': 2})
+        self.assertEqual('/1/2', url)
+
     def test_regular_match_info(self):
 
         @asyncio.coroutine
