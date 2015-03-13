@@ -33,7 +33,7 @@ def start_client(loop, url):
     def dispatch():
         while True:
             try:
-                msg = yield from ws.receive_msg()
+                msg = yield from ws.receive()
             except aiohttp.WSServerDisconnectedError:
                 # server disconnected
                 break

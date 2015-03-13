@@ -114,7 +114,7 @@ do not create instance of class :class:`ClientWebSocketResponse` manually.
 
       Use :meth:`wait_closed` if you call the method from
       write-only task and one of :meth:`receive_str`,
-      :meth:`receive_bytes` or :meth:`receive_msg` otherwise.
+      :meth:`receive_bytes` or :meth:`receive` otherwise.
 
       :param int code: closing code
 
@@ -130,9 +130,9 @@ do not create instance of class :class:`ClientWebSocketResponse` manually.
 
       Use the method only from write-only tasks, please call one of
       :meth:`receive_str`, :meth:`receive_bytes` or
-      :meth:`receive_msg` otherwise.
+      :meth:`receive` otherwise.
 
-   .. method:: receive_msg()
+   .. method:: receive()
 
       A :ref:`coroutine<coroutine>` that waits upcoming *data*
       message from peer and returns it.

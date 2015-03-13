@@ -117,7 +117,7 @@ class ClientWebSocketResponse:
         yield from self._closing_fut
 
     @asyncio.coroutine
-    def receive_msg(self):
+    def receive(self):
         while True:
             try:
                 msg = yield from self._reader.read()
@@ -149,7 +149,7 @@ class ClientWebSocketResponse:
 
     @asyncio.coroutine
     def receive_str(self):
-        msg = yield from self.receive_msg()
+        msg = yield from self.receive()
         if msg.tp != MSG_TEXT:
             raise TypeError(
                 "Received message {}:{!r} is not str".format(
@@ -158,7 +158,7 @@ class ClientWebSocketResponse:
 
     @asyncio.coroutine
     def receive_bytes(self):
-        msg = yield from self.receive_msg()
+        msg = yield from self.receive()
         if msg.tp != MSG_BINARY:
             raise TypeError(
                 "Received message {}:{!r} is not bytes".format(

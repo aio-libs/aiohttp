@@ -264,7 +264,7 @@ class TestWebSocketClient(unittest.TestCase):
         reader.read.return_value.set_exception(exc)
 
         with self.assertRaises(ValueError) as ctx:
-            self.loop.run_until_complete(resp.receive_msg())
+            self.loop.run_until_complete(resp.receive())
 
         self.assertIs(ctx.exception, exc)
 
@@ -323,7 +323,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             msg = yield from resp.receive_str()
             self.assertEqual('ask/answer', msg)
 
-            msg = yield from resp.receive_msg()
+            msg = yield from resp.receive()
             self.assertEqual(msg.tp, websocket.MSG_CLOSE)
             self.assertEqual(msg.data, 1000)
             self.assertEqual(msg.extra, b'')
@@ -354,7 +354,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             msg = yield from resp.receive_bytes()
             self.assertEqual(b'ask/answer', msg)
 
-            msg = yield from resp.receive_msg()
+            msg = yield from resp.receive()
             self.assertEqual(msg.tp, websocket.MSG_CLOSE)
             self.assertEqual(msg.data, 1000)
             self.assertEqual(msg.extra, b'')
@@ -440,7 +440,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             msg = yield from resp.receive_bytes()
             self.assertEqual(b'ask/answer', msg)
 
-            msg = yield from resp.receive_msg()
+            msg = yield from resp.receive()
             self.assertEqual(msg.tp, websocket.MSG_CLOSE)
             self.assertEqual(msg.data, 1000)
             self.assertEqual(msg.extra, b'')
@@ -469,7 +469,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             resp.send_bytes(b'ask')
 
             yield from resp.receive_str()
-            msg = yield from resp.receive_msg()
+            msg = yield from resp.receive()
             self.assertEqual(msg.tp, websocket.MSG_CLOSE)
             self.assertEqual(msg.data, 1000)
             self.assertEqual(msg.extra, b'')
