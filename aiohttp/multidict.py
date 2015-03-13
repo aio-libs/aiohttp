@@ -27,8 +27,6 @@ class _upstr(str):
 
 class _Base:
 
-    __slots__ = ('_items',)
-
     def getall(self, key, default=_marker):
         """
         Return a list of all values matching the key (may be an empty list)
@@ -272,8 +270,6 @@ class _CIMultiDict(_CIBase, _MultiDict):
 
 
 class _ViewBase:
-
-    __slots__ = ('_keys', '_items')
 
     def __init__(self, items):
         self._items = items
