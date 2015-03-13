@@ -384,7 +384,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             try:
                 yield from resp.receive_str()
             except TypeError:
-                print('done')
+                pass
 
             resp.close()
 
@@ -411,7 +411,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             try:
                 yield from resp.receive_bytes()
             except TypeError:
-                print('done')
+                pass
 
             resp.close()
 
