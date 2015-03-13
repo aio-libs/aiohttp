@@ -322,9 +322,9 @@ class TestUrlDispatcher(unittest.TestCase):
         handler = self.make_handler()
         with self.assertRaises(ValueError) as ctx:
             self.router.add_route('GET', r'/handler/{to:+++}', handler)
-        self.assertEqual(
-            "Bad pattern '/handler/(?P<to>+++)': nothing to repeat",
-            str(ctx.exception))
+        s = str(ctx.exception)
+        self.assertTrue(s.startswith(
+            "Bad pattern '/handler/(?P<to>+++)': nothing to repeat"), s)
         self.assertIsNone(ctx.exception.__cause__)
 
     def test_route_dynamic_with_regex_spec(self):
