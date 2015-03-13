@@ -1383,7 +1383,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     DYN_WITH_RE = re.compile(
         r'^\{(?P<var>[a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}$')
     GOOD = r'[^{}/]+'
-    PLAIN = re.compile('^' + GOOD + '$')
+    ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
 
     METHODS = {'POST', 'GET', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'}
 
@@ -1444,59 +1444,41 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         method = method.upper()
         assert method in self.METHODS, method
 
-        if isinstance(path, retype):
-            route = DynamicRoute(
-                method, handler, name, path,
-                path.pattern, expect_handler=expect_handler)
-
+        if not ('{' in path or '}' in path or self.ROUTE_RE.search(path)):
+            route = PlainRoute(
+                method, handler, name, path, expect_handler=expect_handler)
             self._register_endpoint(route)
             return route
 
-        assert path.startswith('/')
-        parts = []
-        factory = PlainRoute
-        format_parts = []
-        for part in path.split('/'):
-            if not part:
-                continue
+        pattern = ''
+        formatter = ''
+        for part in self.ROUTE_RE.split(path):
             match = self.DYN.match(part)
             if match:
-                parts.append('(?P<' + match.group('var') + '>' +
-                             self.GOOD + ')')
-                factory = DynamicRoute
-                format_parts.append('{'+match.group('var')+'}')
+                pattern += '(?P<' + match.group('var') + '>' + self.GOOD + ')'
+                formatter += '{%s}' % match.group('var')
                 continue
 
             match = self.DYN_WITH_RE.match(part)
             if match:
-                parts.append('(?P<' + match.group('var') + '>' +
-                             match.group('re') + ')')
-                factory = DynamicRoute
-                format_parts.append('{'+match.group('var')+'}')
+                pattern += '(?P<%(var)s>%(re)s)' % match.groupdict()
+                formatter += '{%s}' % match.group('var')
                 continue
-            if self.PLAIN.match(part):
-                parts.append(re.escape(part))
-                format_parts.append(part)
-                continue
-            raise ValueError("Invalid path '{}'['{}']".format(path, part))
-        if factory is PlainRoute:
-            route = PlainRoute(
-                method, handler, name, path, expect_handler=expect_handler)
-        else:
-            pattern = '/' + '/'.join(parts)
-            formatter = '/' + '/'.join(format_parts)
-            if path.endswith('/') and pattern != '/':
-                pattern += '/'
-                formatter += '/'
-            try:
-                compiled = re.compile('^' + pattern + '$')
-            except re.error as exc:
-                raise ValueError(
-                    "Bad pattern '{}': {}".format(pattern, exc)) from None
-            route = DynamicRoute(
-                method, handler, name, compiled,
-                formatter, expect_handler=expect_handler)
 
+            if '{' in part or '}' in part:
+                raise ValueError("Invalid path '{}'['{}']".format(path, part))
+
+            formatter += part
+            pattern += re.escape(part)
+
+        try:
+            compiled = re.compile('^' + pattern + '$')
+        except re.error as exc:
+            raise ValueError(
+                "Bad pattern '{}': {}".format(pattern, exc)) from None
+        route = DynamicRoute(
+            method, handler, name, compiled,
+            formatter, expect_handler=expect_handler)
         self._register_endpoint(route)
         return route
 
