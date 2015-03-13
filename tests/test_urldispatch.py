@@ -426,3 +426,17 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertRaises(
             AssertionError, self.router.add_route,
             'GET', '/', self.make_handler(), expect_handler=handler)
+
+    def test_dynamic_match_non_ascii(self):
+
+        @asyncio.coroutine
+        def go():
+            handler = self.make_handler()
+            self.router.add_route('GET', '/{var}', handler)
+            req = self.make_request(
+                'GET',
+                '/%D1%80%D1%83%D1%81%20%D1%82%D0%B5%D0%BA%D1%81%D1%82')
+            match_info = yield from self.router.resolve(req)
+            self.assertEqual({'var': 'рус текст'}, match_info)
+
+        self.loop.run_until_complete(go())
