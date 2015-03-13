@@ -1455,14 +1455,14 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         for part in self.ROUTE_RE.split(path):
             match = self.DYN.match(part)
             if match:
-                pattern += '(?P<' + match.group('var') + '>' + self.GOOD + ')'
-                formatter += '{%s}' % match.group('var')
+                pattern += '(?P<{}>{})'.format(match.group('var'), self.GOOD)
+                formatter += '{' + match.group('var') + '}'
                 continue
 
             match = self.DYN_WITH_RE.match(part)
             if match:
-                pattern += '(?P<%(var)s>%(re)s)' % match.groupdict()
-                formatter += '{%s}' % match.group('var')
+                pattern += '(?P<{var}>{re})'.format(**match.groupdict())
+                formatter += '{' + match.group('var') + '}'
                 continue
 
             if '{' in part or '}' in part:
