@@ -1,5 +1,3 @@
-__all__ = ['BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector']
-
 import asyncio
 import aiohttp
 import functools
@@ -14,6 +12,9 @@ from .errors import ServerDisconnectedError
 from .errors import HttpProxyError, ProxyConnectionError
 from .errors import ClientOSError, ClientTimeoutError
 from .helpers import BasicAuth
+
+
+__all__ = ['BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector']
 
 
 class Connection(object):

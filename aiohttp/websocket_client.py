@@ -1,5 +1,5 @@
 """WebSocket client for asyncio."""
-__all__ = ['ws_connect']
+
 import asyncio
 import base64
 import hashlib
@@ -9,6 +9,9 @@ from aiohttp import client, hdrs
 from .errors import WSServerHandshakeError, WSServerDisconnectedError
 from .websocket import WebSocketParser, WebSocketWriter
 from .websocket import WS_KEY, MSG_BINARY, MSG_CLOSE, MSG_PING, MSG_TEXT
+
+
+__all__ = ['ws_connect']
 
 
 @asyncio.coroutine
