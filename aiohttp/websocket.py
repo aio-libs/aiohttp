@@ -5,7 +5,7 @@ import binascii
 import collections
 import hashlib
 import struct
-from aiohttp import errors
+from aiohttp import errors, hdrs
 from aiohttp.log import ws_logger
 
 __all__ = ['WebSocketParser', 'WebSocketWriter', 'do_handshake',
@@ -21,11 +21,11 @@ MSG_PING = OPCODE_PING = 0x9
 MSG_PONG = OPCODE_PONG = 0xa
 
 WS_KEY = b'258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
-WS_HDRS = ('UPGRADE',
-           'CONNECTION',
-           'SEC-WEBSOCKET-VERSION',
-           'SEC-WEBSOCKET-KEY',
-           'SEC-WEBSOCKET-PROTOCOL')
+WS_HDRS = (hdrs.UPGRADE,
+           hdrs.CONNECTION,
+           hdrs.SEC_WEBSOCKET_VERSION,
+           hdrs.SEC_WEBSOCKET_KEY,
+           hdrs.SEC_WEBSOCKET_PROTOCOL)
 
 Message = collections.namedtuple('Message', ['tp', 'data', 'extra'])
 
@@ -203,22 +203,21 @@ def do_handshake(method, headers, transport, protocols=()):
     if method.upper() != 'GET':
         raise errors.HttpProcessingError(code=405, headers=(('Allow', 'GET'),))
 
-    if 'websocket' != headers.get('UPGRADE', '').lower().strip():
+    if 'websocket' != headers.get(hdrs.UPGRADE, '').lower().strip():
         raise errors.HttpBadRequest(
-            message='No WebSocket UPGRADE hdr: {}\n'
-            'Can "Upgrade" only to "WebSocket".'.format(
-                headers.get('UPGRADE')))
+            message='No WebSocket UPGRADE hdr: {}\n Can '
+            '"Upgrade" only to "WebSocket".'.format(headers.get(hdrs.UPGRADE)))
 
-    if 'upgrade' not in headers.get('CONNECTION', '').lower():
+    if 'upgrade' not in headers.get(hdrs.CONNECTION, '').lower():
         raise errors.HttpBadRequest(
             message='No CONNECTION upgrade hdr: {}'.format(
-                headers.get('CONNECTION')))
+                headers.get(hdrs.CONNECTION)))
 
     # find common sub-protocol between client and server
     protocol = None
-    if 'SEC-WEBSOCKET-PROTOCOL' in headers:
+    if hdrs.SEC_WEBSOCKET_PROTOCOL in headers:
         req_protocols = [str(proto.strip()) for proto in
-                         headers['SEC-WEBSOCKET-PROTOCOL'].split(',')]
+                         headers[hdrs.SEC_WEBSOCKET_PROTOCOL].split(',')]
 
         for proto in req_protocols:
             if proto in protocols:
@@ -231,14 +230,14 @@ def do_handshake(method, headers, transport, protocols=()):
                 protocols, req_protocols)
 
     # check supported version
-    version = headers.get('SEC-WEBSOCKET-VERSION')
+    version = headers.get(hdrs.SEC_WEBSOCKET_VERSION)
     if version not in ('13', '8', '7'):
         raise errors.HttpBadRequest(
             message='Unsupported version: {}'.format(version),
             headers=(('Sec-WebSocket-Version', '13', '8', '7'),))
 
     # check client handshake for validity
-    key = headers.get('SEC-WEBSOCKET-KEY')
+    key = headers.get(hdrs.SEC_WEBSOCKET_KEY)
     try:
         if not key or len(base64.b64decode(key)) != 16:
             raise errors.HttpBadRequest(
@@ -248,14 +247,14 @@ def do_handshake(method, headers, transport, protocols=()):
             message='Handshake error: {!r}'.format(key)) from None
 
     response_headers = [
-        ('UPGRADE', 'websocket'),
-        ('CONNECTION', 'upgrade'),
-        ('TRANSFER-ENCODING', 'chunked'),
-        ('SEC-WEBSOCKET-ACCEPT', base64.b64encode(
+        (hdrs.UPGRADE, 'websocket'),
+        (hdrs.CONNECTION, 'upgrade'),
+        (hdrs.TRANSFER_ENCODING, 'chunked'),
+        (hdrs.SEC_WEBSOCKET_ACCEPT, base64.b64encode(
             hashlib.sha1(key.encode() + WS_KEY).digest()).decode())]
 
     if protocol:
-        response_headers.append(('SEC-WEBSOCKET-PROTOCOL', protocol))
+        response_headers.append((hdrs.SEC_WEBSOCKET_PROTOCOL, protocol))
 
     # response code, headers, parser, writer, protocol
     return (101,

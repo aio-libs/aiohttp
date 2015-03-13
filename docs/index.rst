@@ -125,6 +125,7 @@ Contents:
    :maxdepth: 2
 
    client
+   client_websockets
    web
    web_reference
    server

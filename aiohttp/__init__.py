@@ -13,6 +13,7 @@ from .parsers import *  # noqa
 from .streams import *  # noqa
 from .multidict import *  # noqa
 from .multipart import *  # noqa
+from .websocket_client import *  # noqa
 
 
 __all__ = (client.__all__ +
@@ -24,4 +25,5 @@ __all__ = (client.__all__ +
            streams.__all__ +
            multidict.__all__ +
            multipart.__all__ +
+           websocket_client.__all__ +
            ['hdrs', '__version__'])
