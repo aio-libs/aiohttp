@@ -7,6 +7,7 @@ import tempfile
 from aiohttp import web, request, FormData
 from aiohttp.multidict import MultiDict
 from aiohttp.protocol import HttpVersion11
+from aiohttp.streams import EOF_MARKER
 
 
 class TestWebFunctional(unittest.TestCase):
@@ -212,7 +213,7 @@ class TestWebFunctional(unittest.TestCase):
         def handler(request):
             yield from request.release()
             chunk = yield from request.payload.readany()
-            self.assertIs(web.EOF_MARKER, chunk)
+            self.assertIs(EOF_MARKER, chunk)
             return web.Response(body=b'OK')
 
         @asyncio.coroutine
