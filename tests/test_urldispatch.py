@@ -426,3 +426,20 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertRaises(
             AssertionError, self.router.add_route,
             'GET', '/', self.make_handler(), expect_handler=handler)
+
+    def test_raw_regexp(self):
+        import re
+
+        handler = self.make_handler()
+        self.router.add_route('GET', re.compile('^/test/(.*)$'), handler)
+        req = self.make_request('GET', '/test/foo/bar')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info)
+        self.assertEqual(0, len(info))
+        self.assertIs(handler, info.handler)
+        self.assertIsNone(info.route.name)
+
+        self.router.add_route('GET', re.compile('^/var/(?P<var>.*)$'), handler)
+        req = self.make_request('GET', '/var/foo/bar')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertEqual(info.get('var'), 'foo/bar')

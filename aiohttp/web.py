@@ -89,6 +89,7 @@ __all__ = [
 
 
 sentinel = object()
+retype = type(re.compile('@'))
 
 
 class HeadersMixin:
@@ -1436,12 +1437,22 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     def add_route(self, method, path, handler,
                   *, name=None, expect_handler=None):
-        assert path.startswith('/')
+
         assert callable(handler), handler
         if not asyncio.iscoroutinefunction(handler):
             handler = asyncio.coroutine(handler)
         method = method.upper()
         assert method in self.METHODS, method
+
+        if isinstance(path, retype):
+            route = DynamicRoute(
+                method, handler, name, path,
+                path.pattern, expect_handler=expect_handler)
+
+            self._register_endpoint(route)
+            return route
+
+        assert path.startswith('/')
         parts = []
         factory = PlainRoute
         format_parts = []
@@ -1485,6 +1496,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             route = DynamicRoute(
                 method, handler, name, compiled,
                 formatter, expect_handler=expect_handler)
+
         self._register_endpoint(route)
         return route
 
