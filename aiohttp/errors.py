@@ -46,7 +46,7 @@ class WSClientDisconnectedError(ClientDisconnectedError):
         return self.args[1]
 
 
-class WSServerDisconnectedError(ClientDisconnectedError):
+class WSServerDisconnectedError(ServerDisconnectedError):
     """Raised on closing client websocket."""
 
     def __init__(self, code=None, message=None):
