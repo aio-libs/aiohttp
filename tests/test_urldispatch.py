@@ -453,3 +453,27 @@ class TestUrlDispatcher(unittest.TestCase):
             self.assertEqual({'var': 'рус текст'}, match_info)
 
         self.loop.run_until_complete(go())
+
+    def test_dynamic_match_with_static_part(self):
+
+        @asyncio.coroutine
+        def go():
+            handler = self.make_handler()
+            self.router.add_route('GET', '/{name}.html', handler)
+            req = self.make_request('GET', '/file.html')
+            match_info = yield from self.router.resolve(req)
+            self.assertEqual({'name': 'file'}, match_info)
+
+        self.loop.run_until_complete(go())
+
+    def test_dynamic_match_two_part2(self):
+
+        @asyncio.coroutine
+        def go():
+            handler = self.make_handler()
+            self.router.add_route('GET', '/{name}.{ext}', handler)
+            req = self.make_request('GET', '/file.html')
+            match_info = yield from self.router.resolve(req)
+            self.assertEqual({'name': 'file', 'ext': 'html'}, match_info)
+
+        self.loop.run_until_complete(go())
