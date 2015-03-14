@@ -99,7 +99,7 @@ class TestStreamResponse(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             resp.charset = 'koi8-r'
 
-    @mock.patch('aiohttp.web.ResponseImpl')
+    @mock.patch('aiohttp.web_reqrep.ResponseImpl')
     def test_start(self, ResponseImpl):
         req = self.make_request('GET', '/')
         resp = StreamResponse()
@@ -116,7 +116,7 @@ class TestStreamResponse(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             resp.start(req2)
 
-    @mock.patch('aiohttp.web.ResponseImpl')
+    @mock.patch('aiohttp.web_reqrep.ResponseImpl')
     def test_chunked_encoding(self, ResponseImpl):
         req = self.make_request('GET', '/')
         resp = StreamResponse()
@@ -128,7 +128,7 @@ class TestStreamResponse(unittest.TestCase):
         msg = resp.start(req)
         self.assertTrue(msg.chunked)
 
-    @mock.patch('aiohttp.web.ResponseImpl')
+    @mock.patch('aiohttp.web_reqrep.ResponseImpl')
     def test_chunk_size(self, ResponseImpl):
         req = self.make_request('GET', '/')
         resp = StreamResponse()
@@ -142,7 +142,7 @@ class TestStreamResponse(unittest.TestCase):
         msg.add_chunking_filter.assert_called_with(8192)
         self.assertIsNotNone(msg.filter)
 
-    @mock.patch('aiohttp.web.ResponseImpl')
+    @mock.patch('aiohttp.web_reqrep.ResponseImpl')
     def test_compression_no_accept(self, ResponseImpl):
         req = self.make_request('GET', '/')
         resp = StreamResponse()
@@ -155,7 +155,7 @@ class TestStreamResponse(unittest.TestCase):
         msg = resp.start(req)
         self.assertFalse(msg.add_compression_filter.called)
 
-    @mock.patch('aiohttp.web.ResponseImpl')
+    @mock.patch('aiohttp.web_reqrep.ResponseImpl')
     def test_force_compression_no_accept(self, ResponseImpl):
         req = self.make_request('GET', '/')
         resp = StreamResponse()
@@ -169,7 +169,7 @@ class TestStreamResponse(unittest.TestCase):
         self.assertTrue(msg.add_compression_filter.called)
         self.assertIsNotNone(msg.filter)
 
-    @mock.patch('aiohttp.web.ResponseImpl')
+    @mock.patch('aiohttp.web_reqrep.ResponseImpl')
     def test_compression(self, ResponseImpl):
         req = self.make_request(
             'GET', '/',
