@@ -112,11 +112,6 @@ class TestUrlDispatcher(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.router.add_route('post', '/post/{id"}', handler)
 
-    def test_add_url_invalid5(self):
-        handler = self.make_handler()
-        with self.assertRaises(ValueError):
-            self.router.add_route('post', '/post"{id}', handler)
-
     def test_add_url_escaping(self):
         handler = self.make_handler()
         self.router.add_route('GET', '/+$', handler)
@@ -298,6 +293,25 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIsNotNone(info)
         self.assertEqual({'to': '1234'}, info)
 
+        self.router.add_route('GET', r'/handler/{name}.html', handler)
+        req = self.make_request('GET', '/handler/test.html')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertEqual({'name': 'test'}, info)
+
+    def test_add_route_with_re_and_slashes(self):
+        handler = self.make_handler()
+        self.router.add_route('GET', r'/handler/{to:[^/]+/?}', handler)
+        req = self.make_request('GET', '/handler/1234/')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info)
+        self.assertEqual({'to': '1234/'}, info)
+
+        self.router.add_route('GET', r'/handler/{to:.+}', handler)
+        req = self.make_request('GET', '/handler/1234/5/6/7')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info)
+        self.assertEqual({'to': '1234/5/6/7'}, info)
+
     def test_add_route_with_re_not_match(self):
         handler = self.make_handler()
         self.router.add_route('GET', r'/handler/{to:\d+}', handler)
@@ -312,7 +326,6 @@ class TestUrlDispatcher(unittest.TestCase):
     def test_add_route_with_re_including_slashes(self):
         handler = self.make_handler()
         self.router.add_route('GET', r'/handler/{to:.+}/tail', handler)
-
         req = self.make_request('GET', '/handler/re/with/slashes/tail')
         info = self.loop.run_until_complete(self.router.resolve(req))
         self.assertIsNotNone(info)
@@ -324,7 +337,7 @@ class TestUrlDispatcher(unittest.TestCase):
             self.router.add_route('GET', r'/handler/{to:+++}', handler)
         s = str(ctx.exception)
         self.assertTrue(s.startswith(
-            "Bad pattern '/handler/(?P<to>+++)': nothing to repeat"), s)
+            "Bad pattern '\/handler\/(?P<to>+++)': nothing to repeat"), s)
         self.assertIsNone(ctx.exception.__cause__)
 
     def test_route_dynamic_with_regex_spec(self):
