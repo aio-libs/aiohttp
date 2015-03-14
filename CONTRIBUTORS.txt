@@ -21,6 +21,7 @@ Georges Dubus
 Greg Holt
 Junjie Tao
 Kay Zheng
+Kirill Klenov
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
 Martin Richard
