@@ -7,6 +7,9 @@ from aiohttp.web import (UrlDispatcher, Request, Response,
                          HTTPMethodNotAllowed, HTTPNotFound)
 from aiohttp.multidict import CIMultiDict
 from aiohttp.protocol import HttpVersion, RawRequestMessage
+from aiohttp.web_urldispatcher import (_defaultExpectHandler,
+                                       DynamicRoute,
+                                       PlainRoute)
 
 
 class TestUrlDispatcher(unittest.TestCase):
@@ -407,7 +410,7 @@ class TestUrlDispatcher(unittest.TestCase):
 
     def test_default_expect_handler(self):
         route = self.router.add_route('GET', '/', self.make_handler())
-        self.assertIs(route._expect_handler, aiohttp.web.defaultExpectHandler)
+        self.assertIs(route._expect_handler, _defaultExpectHandler)
 
     def test_custom_expect_handler_plain(self):
 
@@ -418,7 +421,7 @@ class TestUrlDispatcher(unittest.TestCase):
         route = self.router.add_route(
             'GET', '/', self.make_handler(), expect_handler=handler)
         self.assertIs(route._expect_handler, handler)
-        self.assertIsInstance(route, aiohttp.web.PlainRoute)
+        self.assertIsInstance(route, PlainRoute)
 
     def test_custom_expect_handler_dynamic(self):
 
@@ -429,7 +432,7 @@ class TestUrlDispatcher(unittest.TestCase):
         route = self.router.add_route(
             'GET', '/get/{name}', self.make_handler(), expect_handler=handler)
         self.assertIs(route._expect_handler, handler)
-        self.assertIsInstance(route, aiohttp.web.DynamicRoute)
+        self.assertIsInstance(route, DynamicRoute)
 
     def test_expect_handler_non_coroutine(self):
 
