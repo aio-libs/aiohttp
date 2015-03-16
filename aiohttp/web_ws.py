@@ -1,5 +1,7 @@
-import asyncio
+__all__ = ['WebSocketResponse', 'WSClientDisconnectedError',
+           'MSG_BINARY', 'MSG_CLOSE', 'MSG_PING', 'MSG_TEXT']
 
+import asyncio
 
 from .websocket import do_handshake, MSG_BINARY, MSG_CLOSE, MSG_PING, MSG_TEXT
 from .errors import HttpProcessingError, WSClientDisconnectedError
