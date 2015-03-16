@@ -291,7 +291,9 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     def __getitem__(self, name):
         return self._routes[name]
 
-    def _register_endpoint(self, route):
+    def register_route(self, route):
+        assert isinstance(route, Route), 'Instance of Route class is required.'
+
         name = route.name
         if name is not None:
             if name in self._routes:
@@ -314,7 +316,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         if not ('{' in path or '}' in path or self.ROUTE_RE.search(path)):
             route = PlainRoute(
                 method, handler, name, path, expect_handler=expect_handler)
-            self._register_endpoint(route)
+            self.register_route(route)
             return route
 
         pattern = ''
@@ -346,7 +348,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         route = DynamicRoute(
             method, handler, name, compiled,
             formatter, expect_handler=expect_handler)
-        self._register_endpoint(route)
+        self.register_route(route)
         return route
 
     def add_static(self, prefix, path, *, name=None, expect_handler=None):
@@ -361,5 +363,5 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         if not prefix.endswith('/'):
             prefix += '/'
         route = StaticRoute(name, prefix, path, expect_handler=expect_handler)
-        self._register_endpoint(route)
+        self.register_route(route)
         return route
