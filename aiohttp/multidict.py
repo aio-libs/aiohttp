@@ -1,4 +1,5 @@
 from collections import abc
+import os
 import sys
 
 __all__ = ['MultiDictProxy', 'CIMultiDictProxy',
@@ -315,15 +316,22 @@ class _KeysView(_ViewBase, abc.KeysView):
             yield item[0]
 
 
-try:
-    from ._multidict import (MultiDictProxy,
-                             CIMultiDictProxy,
-                             MultiDict,
-                             CIMultiDict,
-                             upstr)
-except ImportError:  # pragma: no cover
+if bool(os.environ.get('AIOHTTP_NO_EXTENSIONS')):
     MultiDictProxy = _MultiDictProxy
     CIMultiDictProxy = _CIMultiDictProxy
     MultiDict = _MultiDict
     CIMultiDict = _CIMultiDict
     upstr = _upstr
+else:
+    try:
+        from ._multidict import (MultiDictProxy,
+                                 CIMultiDictProxy,
+                                 MultiDict,
+                                 CIMultiDict,
+                                 upstr)
+    except ImportError:  # pragma: no cover
+        MultiDictProxy = _MultiDictProxy
+        CIMultiDictProxy = _CIMultiDictProxy
+        MultiDict = _MultiDict
+        CIMultiDict = _CIMultiDict
+        upstr = _upstr
