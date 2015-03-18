@@ -4,6 +4,7 @@ import base64
 import binascii
 import collections
 import hashlib
+import os
 import struct
 from aiohttp import errors, hdrs
 from aiohttp.log import ws_logger
@@ -42,6 +43,31 @@ def WebSocketParser(out, buf):
         if message.tp == MSG_CLOSE:
             out.feed_eof()
             break
+
+
+def _websocket_mask_python(mask, data):
+    """Websocket masking function.
+
+    `mask` is a `bytes` object of length 4; `data` is a `bytes` object
+    of any length.  Returns a `bytes` object of the same length as
+    `data` with the mask applied as specified in section 5.3 of RFC
+    6455.
+
+    This pure-python implementation may be replaced by an optimized
+    version when available.
+
+    """
+    return bytes(b ^ mask[i % 4] for i, b in enumerate(data))
+
+
+if bool(os.environ.get('AIOHTTP_NO_EXTENSIONS')):
+    _websocket_mask = _websocket_mask_python
+else:
+    try:
+        from ._websocket import _websocket_mask_cython
+        _websocket_mask = _websocket_mask_cython
+    except ImportError:  # pragma: no cover
+        _websocket_mask = _websocket_mask_python
 
 
 def parse_frame(buf):
@@ -96,7 +122,7 @@ def parse_frame(buf):
         payload = b''
 
     if has_mask:
-        payload = bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
+        payload = _websocket_mask(mask, payload)
 
     return fin, opcode, payload
 
