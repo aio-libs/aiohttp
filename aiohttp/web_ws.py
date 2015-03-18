@@ -137,7 +137,7 @@ class WebSocketResponse(StreamResponse):
         self._eof_sent = True
 
     @asyncio.coroutine
-    def receive_msg(self):
+    def receive(self):
         if self._reader is None:
             raise RuntimeError('Call .start() first')
         while True:
@@ -164,6 +164,8 @@ class WebSocketResponse(StreamResponse):
                     self._writer.pong(msg.data)
                 elif msg.tp in (MSG_TEXT, MSG_BINARY):
                     return msg
+
+    receive_msg = receive
 
     @asyncio.coroutine
     def receive_str(self):

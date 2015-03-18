@@ -7,17 +7,17 @@ import os
 
 from aiohttp import client, hdrs
 from .errors import WSServerHandshakeError, WSServerDisconnectedError
-from .websocket import WebSocketParser, WebSocketWriter
-from .websocket import WS_KEY, MSG_BINARY, MSG_CLOSE, MSG_PING, MSG_TEXT
+from .websocket import WS_KEY, WebSocketParser, WebSocketWriter
+from .websocket import MSG_BINARY, MSG_CLOSE, MSG_PING, MSG_PONG, MSG_TEXT
 
-
-__all__ = ['ws_connect']
+__all__ = ['ws_connect',
+           'MSG_BINARY', 'MSG_CLOSE', 'MSG_PING', 'MSG_PONG', 'MSG_TEXT']
 
 
 @asyncio.coroutine
-def ws_connect(url, protocols=(), connector=None, loop=None):
-    """
-    """
+def ws_connect(url, protocols=(), connector=None,
+               autoclose=True, autoping=True, loop=None):
+    """Initiate websocket connection."""
     if loop is None:
         loop = asyncio.get_event_loop()
 
@@ -66,87 +66,107 @@ def ws_connect(url, protocols=(), connector=None, loop=None):
     reader = resp.connection.reader.set_parser(WebSocketParser)
     writer = WebSocketWriter(resp.connection.writer)
 
-    return ClientWebSocketResponse(reader, writer, protocol, resp, loop)
+    return ClientWebSocketResponse(
+        reader, writer, protocol, resp, autoclose, autoping, loop)
 
 
 class ClientWebSocketResponse:
 
-    def __init__(self, reader, writer, protocol, response, loop):
+    def __init__(self, reader, writer, protocol,
+                 response, autoclose, autoping, loop):
         self._response = response
         self._conn = response.connection
 
         self._writer = writer
         self._reader = reader
         self._protocol = protocol
-        self._closing = False
+        self._closed = False
+        self._autoclose = autoclose
+        self._autoping = autoping
         self._loop = loop
-        self._closing_fut = asyncio.Future(loop=loop)
+        self._close_exc = None
 
     @property
-    def closing(self):
-        return self._closing
+    def closed(self):
+        return self._closed
 
     @property
     def protocol(self):
         return self._protocol
 
     def ping(self, message='b'):
-        if self._closing:
+        if self._closed:
             raise RuntimeError('websocket connection is closing')
         self._writer.ping(message)
 
+    def pong(self, message='b'):
+        if self._closed:
+            raise RuntimeError('websocket connection is closing')
+        self._writer.pong(message)
+
     def send_str(self, data):
-        if self._closing:
+        if self._closed:
             raise RuntimeError('websocket connection is closing')
         if not isinstance(data, str):
             raise TypeError('data argument must be str (%r)' % type(data))
         self._writer.send(data, binary=False)
 
     def send_bytes(self, data):
-        if self._closing:
+        if self._closed:
             raise RuntimeError('websocket connection is closing')
         if not isinstance(data, (bytes, bytearray, memoryview)):
             raise TypeError('data argument must be byte-ish (%r)' %
                             type(data))
         self._writer.send(data, binary=True)
 
+    @asyncio.coroutine
     def close(self, *, code=1000, message=b''):
-        if not self._closing:
-            self._closing = True
+        if not self._closed:
+            self._closed = True
             self._writer.close(code, message)
 
-    @asyncio.coroutine
-    def wait_closed(self):
-        yield from self._closing_fut
+            while True:
+                try:
+                    msg = yield from self.receive()
+                except asyncio.CancelledError:
+                    self._response.close(force=True)
+                    raise
+                except Exception as exc:
+                    self._response.close(force=True)
+                    self._close_exc = exc
+                    return True
+
+                if msg.tp == MSG_CLOSE:
+                    self._response.close(force=True)
+                    return True
+        else:
+            return False
+
+    def close_exception(self):
+        return self._close_exc
 
     @asyncio.coroutine
     def receive(self):
         while True:
             try:
                 msg = yield from self._reader.read()
-            except Exception as exc:
-                if not self._closing_fut.done():
-                    self._closing_fut.set_exception(exc)
+            except (asyncio.CancelledError, asyncio.TimeoutError):
                 raise
+            except Exception as exc:
+                raise WSServerDisconnectedError() from exc
 
             if msg.tp == MSG_CLOSE:
-                if self._closing:
+                if not self._closed and self._autoclose:
+                    self._closed = True
+                    self._writer.close(1000, b'')
                     self._response.close(force=True)
-                    exc = WSServerDisconnectedError(msg.data, msg.extra)
-                    self._closing_fut.set_exception(exc)
-                    raise exc
-                else:
-                    self._closing = True
-                    self._writer.close(msg.data, msg.extra)
-                    # yield from self._conn._transport.drain()
-
-                    self._response.close()
-                    exc = WSServerDisconnectedError(msg.data, msg.extra)
-                    self._closing_fut.set_result(exc)
-                    return msg
-            elif not self._closing:
+                return msg
+            elif not self._closed:
                 if msg.tp == MSG_PING:
-                    self._writer.pong(msg.data)
+                    if self._autoping:
+                        self._writer.pong(msg.data)
+                    else:
+                        return msg
                 elif msg.tp in (MSG_TEXT, MSG_BINARY):
                     return msg
 

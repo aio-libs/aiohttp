@@ -23,17 +23,21 @@ websocket server using response's methods:
 
    while True:
        try:
-          data = yield from ws.receive_str()
-          if data == 'close':
-              ws.close()
-          else:
-              ws.send_str(data + '/answer')
+          msg = yield from ws.receive()
        except aiohttp.WSServerDisconnectedError as exc:
           print(exc.code, exc.message)
-          return ws
+          break
+
+       if msg.tp == aiohttp.MSG_TEXT:
+           if msg.data == 'close':
+              ws.close()
+           else:
+              ws.send_str(data + '/answer')
+       elif msg.tp == aiohttp.MSG_CLOSE:
+           break
 
 You can have the only websocket reader task (which can call ``yield
-from ws.receive_str()``) and multiple writer tasks which can only send
+from ws.receive()``) and multiple writer tasks which can only send
 data asynchronously (by ``yield from ws.send_str('data')`` for example).
 
 
@@ -43,7 +47,7 @@ ClientWebSocketResponse
 To connect to websocket server you have to use `aiohttp.ws_connect()` function,
 do not create instance of class :class:`ClientWebSocketResponse` manually.
 
-.. py:function:: ws_connect(url, protocols=(), connector=None, loop=None)
+.. py:function:: ws_connect(url, protocols=(), connector=None, autoclose=True, autoping=True, loop=None)
 
    This function creates websocket connection, checks response and
    returns :class:`ClientWebSocketResponse` object. It may raise
@@ -55,6 +59,12 @@ do not create instance of class :class:`ClientWebSocketResponse` manually.
 
    :param obj connector: object :class:`TCPConnector`
 
+   :param bool autoclose: automatically close websocket connection
+                          on close message from server. if `autoclose` is
+                          False them close procedure has to be handled manually
+
+   :param bool autoping: automatically send `pong` on `ping` message from server
+                   
    :param loop: :ref:`event loop<asyncio-event-loop>` used
                 for processing HTTP requests.
 
@@ -67,7 +77,7 @@ do not create instance of class :class:`ClientWebSocketResponse` manually.
 
    Class for handling client-side websockets.
 
-   .. attribute:: closing
+   .. attribute:: closed
 
       Read-only property, ``True`` if :meth:`close` has been called of
       :const:`~aiohttp.websocket.MSG_CLOSE` message has been received from peer.
@@ -106,15 +116,10 @@ do not create instance of class :class:`ClientWebSocketResponse` manually.
 
    .. method:: close(*, code=1000, message=b'')
 
-      Initiate closing handshake by sending
-      :const:`~aiohttp.websocket.MSG_CLOSE` message.
-
-      The handshake is finished by next ``yield from ws.receive_*()``
-      or ``yield from ws.wait_closed()`` call.
-
-      Use :meth:`wait_closed` if you call the method from
-      write-only task and one of :meth:`receive_str`,
-      :meth:`receive_bytes` or :meth:`receive` otherwise.
+      A :ref:`coroutine<coroutine>` that initiates closing handshake by sending
+      :const:`~aiohttp.websocket.MSG_CLOSE` message. It waits for
+      close response from server. It add timeout to `close()` call just wrap
+      call with `asyncio.wait()` or `asyncio.wait_for()`.
 
       :param int code: closing code
 
@@ -122,16 +127,10 @@ do not create instance of class :class:`ClientWebSocketResponse` manually.
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
-   .. method:: wait_closed()
+   .. method:: close_exception()
 
-      A :ref:`coroutine<coroutine>` that waits for socket handshake
-      finish and raises
-      :exc:`~aiohttp.errors.WSClientDisconnectedError` at the end.
-
-      Use the method only from write-only tasks, please call one of
-      :meth:`receive_str`, :meth:`receive_bytes` or
-      :meth:`receive` otherwise.
-
+      Returns close exception if any occurs or returns None.
+                      
    .. method:: receive()
 
       A :ref:`coroutine<coroutine>` that waits upcoming *data*

@@ -11,7 +11,6 @@ except ImportError:
     from asyncio import selectors
 
 import aiohttp
-from aiohttp import websocket
 
 
 def start_client(loop, url):
@@ -38,8 +37,10 @@ def start_client(loop, url):
                 # server disconnected
                 break
 
-            if msg.tp == websocket.MSG_TEXT:
+            if msg.tp == aiohttp.MSG_TEXT:
                 print(msg.data.strip())
+            elif msg.tp == aiohttp.MSG_CLOSE:
+                break
 
     yield from dispatch()
 
