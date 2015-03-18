@@ -16,7 +16,8 @@ except ImportError:
 
 ext = '.pyx' if USE_CYTHON else '.c'
 
-extensions = [Extension('aiohttp._multidict', ['aiohttp/_multidict' + ext])]
+extensions = [Extension('aiohttp._multidict', ['aiohttp/_multidict' + ext]),
+              Extension('aiohttp._websocket', ['aiohttp/_websocket' + ext])]
 
 
 if USE_CYTHON:
