@@ -1,6 +1,6 @@
 .. _aiohttp-client-websockets:
 
-WebScokets Client
+WebSockets Client
 =================
 
 .. highlight:: python
