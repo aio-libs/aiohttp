@@ -16,7 +16,7 @@ test: flake develop
 vtest: flake develop
 	nosetests -s -v $(FLAGS) ./tests/
 
-cov cover coverage: flake
+cov cover coverage: flake develop
 	@coverage erase
 	@coverage run -m nose -s $(FLAGS) tests
 	@mv .coverage .coverage.accel
