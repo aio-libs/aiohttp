@@ -64,7 +64,7 @@ do not create instance of class :class:`ClientWebSocketResponse` manually.
                           False them close procedure has to be handled manually
 
    :param bool autoping: automatically send `pong` on `ping` message from server
-                   
+
    :param loop: :ref:`event loop<asyncio-event-loop>` used
                 for processing HTTP requests.
 
@@ -72,7 +72,7 @@ do not create instance of class :class:`ClientWebSocketResponse` manually.
                 used for getting default event loop, but we strongly
                 recommend to use explicit loops everywhere.
 
-   
+
 .. class:: ClientWebSocketResponse()
 
    Class for handling client-side websockets.
@@ -130,7 +130,7 @@ do not create instance of class :class:`ClientWebSocketResponse` manually.
    .. method:: close_exception()
 
       Returns close exception if any occurs or returns None.
-                      
+
    .. method:: receive()
 
       A :ref:`coroutine<coroutine>` that waits upcoming *data*
