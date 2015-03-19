@@ -12,8 +12,8 @@ WebSockets Client
 
 :mod:`aiohttp` works with client websockets out-of-the-box.
 
-You have to use :func:`aiohttp.ws_connect()` function for client
-websocket connection. It accepts *url* as a first parameter and returns
+You have to use the :func:`aiohttp.ws_connect()` function for client
+websocket connection. It accepts a *url* as a first parameter and returns
 :class:`ClientWebSocketResponse`, with that object you can communicate with
 websocket server using response's methods:
 
@@ -44,14 +44,14 @@ data asynchronously (by ``yield from ws.send_str('data')`` for example).
 ClientWebSocketResponse
 -----------------------
 
-To connect to websocket server you have to use `aiohttp.ws_connect()` function,
-do not create instance of class :class:`ClientWebSocketResponse` manually.
+To connect to a websocket server you have to use the `aiohttp.ws_connect()` function,
+do not create an instance of class :class:`ClientWebSocketResponse` manually.
 
 .. py:function:: ws_connect(url, protocols=(), connector=None, autoclose=True, autoping=True, loop=None)
 
-   This function creates websocket connection, checks response and
-   returns :class:`ClientWebSocketResponse` object. It may raise
-   :exc:`~aiohttp.errors.WSServerHandshakeError` exception.
+   This function creates a websocket connection, checks the response and
+   returns a :class:`ClientWebSocketResponse` object. In case of failure
+   it may raise a :exc:`~aiohttp.errors.WSServerHandshakeError` exception.
 
    :param str url: websocket server url
 

@@ -9,16 +9,16 @@ HTTP Server Usage
 
 .. versionchanged:: 0.12
 
-   The module was deeply refactored in backward incompatible manner.
+   The module was deeply refactored which makes it backward incompatible.
 
 Run a simple web server
 -----------------------
 
-For implementing a web server, first create a :ref:`request
+In order to implement a web server, first create a :ref:`request
 handler<aiohttp-web-handler>`.
 
 Handler is a :ref:`coroutine<coroutine>` or a regular function that
-accepts only *request* parameter of type :class:`Request`
+accepts only *request* parameters of type :class:`Request`
 and returns :class:`Response` instance::
 
    import asyncio
@@ -67,7 +67,7 @@ Handlers are connected to the :class:`Application` via routes::
 
 .. _aiohttp-web-variable-handler:
 
-You can also use *variable routes*. If route contains string like
+You can also use *variable routes*. If route contains strings like
 ``'/a/{name}/c'`` that means the route matches to the path like
 ``'/a/b/c'`` or ``'/a/1/c'``.
 
@@ -82,7 +82,7 @@ Parsed *path part* will be available in the *request handler* as
    app.router.add_route('GET', '/{name}', variable_handler)
 
 
-Also you can specify regex for variable route in form ``{name:regex}``::
+You can also specify regex for variable route in the form ``{name:regex}``::
 
    app.router.add_route('GET', r'/{name:\d+}', variable_handler)
 
@@ -134,11 +134,11 @@ Custom conditions for routes lookup
 Sometimes you need to distinguish *web-handlers* on more complex
 criteria than *HTTP method* and *path*.
 
-While :class:`UrlDispatcher` doesn't accept extra criterias there is
+While :class:`UrlDispatcher` doesn't accept extra criterias there is an 
 easy way to do the task by implementing the second routing layer by
-hands.
+hand.
 
-The example shows custom processing based on *HTTP Accept* header:
+The next example shows custom processing based on *HTTP Accept* header:
 
 .. code-block:: python
 
@@ -182,12 +182,12 @@ The example shows custom processing based on *HTTP Accept* header:
 .. versionadded:: 0.15
 
 :mod:`aiohttp.web` supports *Expect* header. By default
-it responses with *HTTP/1.1 100 Continue* status code.
+it responds with an *HTTP/1.1 100 Continue* status code.
 It is possible to specify custom *Expect* header handler on per route basis.
-This handler get called after receiving all headers and before
+This handler gets called after receiving all headers and before
 processing application middlewares :ref:`aiohttp-web-middlewares` and route
-handler. Handler can return *None*, in that case request processing
-continues as usual. If handler returns instance of
+handler. Handler can return *None*, in that case the request processing
+continues as usual. If handler returns an instance of
 class :class:`StreamResponse`, *request handler* uses it as response.
 Custom handler *must* write *HTTP/1.1 100 Continue* status if all checks pass.
 
@@ -220,7 +220,7 @@ File Uploads
 
 There are two steps necessary for handling file uploads. The first is
 to make sure that you have a form that has been setup correctly to accept
-files. This means adding *enctype* attribute to your form element with
+files. This means adding the *enctype* attribute to your form element with
 the value of *multipart/form-data*. A very simple example would be a
 form that accepts a mp3 file. Notice, we have set up the form as
 previously explained and also added the *input* element of the *file*
@@ -278,7 +278,7 @@ WebSockets
 
 You have to create :class:`WebSocketResponse` in
 :ref:`web-handler<aiohttp-web-handler>` and communicate with peer
-using response's methods::
+using response's methods:
 
 .. code-block:: python
 
@@ -299,7 +299,7 @@ using response's methods::
                 print(exc.code, exc.message)
                 return ws
 
-You can have the only websocket reader task (which can call ``yield
+You can have only one websocket reader task (which can call ``yield
 from ws.receive_str()``) and multiple writer tasks which can only send
 data asynchronously (by ``yield from ws.send_str('data')`` for example).
 
@@ -317,7 +317,7 @@ subclass of the :class:`~HTTPException`.
 Those exceptions are derived from :class:`Response` too, so you can
 either return exception object from :ref:`aiohttp-web-handler` or raise it.
 
-The following snippets are equal::
+The following snippets are the same::
 
     @asyncio.coroutine
     def handler(request):
@@ -435,7 +435,7 @@ middleware chain.
 The last handler is :ref:`web-handler<aiohttp-web-handler>` selected
 by routing itself (:meth:`~UrlDispatcher.resolve` call).
 
-Middleware should return new coroutine by wrapping *handler*
+Middleware should return a new coroutine by wrapping *handler*
 parameter. Signature of returned handler should be the same as for
 :ref:`web-handler<aiohttp-web-handler>`: accept single *request*
 parameter, return *response* or raise exception.

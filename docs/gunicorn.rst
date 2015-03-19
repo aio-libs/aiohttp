@@ -12,7 +12,7 @@ Everything was tested on Ubuntu 14.04::
   >> mkdir myapp
   >> cd myapp
 
-Ubuntu has bug in pyenv, so to create virtualenv you need to do some
+Ubuntu has a bug in pyenv, so to create virtualenv you need to do some
 extra manipulation::
  
   >> pyvenv-3.4 --without-pip venv
@@ -21,7 +21,7 @@ extra manipulation::
   >> deactivate
   >> source venv/bin/activate
 
-Virtual environment is ready, now we need to install aiohttp and gunicorn::
+The Virtual environment should be ready, now we need to install aiohttp and gunicorn::
 
   >> pip install gunicorn
   >> pip install -e git+https://github.com/KeepSafe/aiohttp.git#egg=aiohttp
@@ -30,7 +30,7 @@ Virtual environment is ready, now we need to install aiohttp and gunicorn::
 Application
 -----------
 
-Lets write simple application:
+Lets write a simple application:
 
 .. code-block:: python
 
