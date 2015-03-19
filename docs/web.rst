@@ -53,9 +53,9 @@ That's it.
 Handler
 -------
 
-Handler is an any *callable* that accepts a single :class:`Request`
-argument and returns a :class:`StreamResponse` derived
-(e.g. :class:`Response`) instance.
+Handler is an any :term:`callable` that accepts a single
+:class:`Request` argument and returns a :class:`StreamResponse`
+derived (e.g. :class:`Response`) instance.
 
 Handler **may** be a :ref:`coroutine<coroutine>`, :mod:`aiohttp.web` will
 **unyield** returned result by applying ``yield from`` to the handler.

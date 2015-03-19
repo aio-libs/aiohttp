@@ -6,7 +6,7 @@
 aiohttp
 =======
 
-http client/server for asyncio (:pep:`3156`).
+http client/server for :term:`asyncio` (:pep:`3156`).
 
 .. _GitHub: https://github.com/KeepSafe/aiohttp
 
@@ -100,7 +100,7 @@ Continuous Integration.
 Dependencies
 ------------
 
-- Python 3.3 and *asyncio* or Python 3.4+
+- Python 3.3 and :term:`asyncio` or Python 3.4+
 - optional *chardet* library
 
 Contributing
@@ -135,6 +135,7 @@ Contents:
    gunicorn
    contributing
    changes
+   glossary
 
 Indices and tables
 ==================
