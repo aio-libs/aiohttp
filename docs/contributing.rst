@@ -5,25 +5,25 @@ Contributing
 
 .. _GitHub: https://github.com/KeepSafe/aiohttp
 
-Instruction for contributors
+Instructions for contributors
 ----------------------------
 
 
-At first make a clone of _GitHub repo: open the link and press "Fork"
-button on upper-right side of web page.
+In order to make a clone of the GitHub_ repo: open the link and press the
+"Fork" button on the upper-right menu of the web page.
 
-I hope everybody know how to work with git and github for todays :)
+I hope everybody knows how to work with git and github nowadays :)
 
 Make a change.
 
-**But**, before sending pull request please run test suite at least.
+**But**, before sending a pull request please at least run the test suite.
 
 Preconditions for running aiohttp test suite
 --------------------------------------------
 
-We expect existing python virtual environment for running our tests.
+We expect you to use a python virtual environment to run our tests.
 
-There are several ways for making virtual environment.
+There are several ways to make a virtual environment.
 
 If you like to use *virtualenv* please run::
 
@@ -41,9 +41,9 @@ For *virtualenvwrapper* (my choice)::
    $ mkvirtualenv --python=`which python3` aiohttp
 
 There are other tools like *pyvenv* but you know the rule of thumb
-now: create python3 virtual environment and activate it.
+now: create a python3 virtual environment and activate it.
 
-After that please install libraries requered for development::
+After that please install libraries required for development::
 
    $ pip install -r requirements-dev.txt
 
@@ -51,22 +51,23 @@ We also recommend to install *ipdb* but it's on your own::
 
    $ pip install ipdb
 
-Congratulations, you are ready to run test suite
+Congratulations, you are ready to run the test suite
 
 
 Run aiohhtp test suite
 ----------------------
 
-After all preconditions are done you can run tests::
+After all the preconditions are met you can run tests typing the next
+command::
 
    $ make test
 
-The command at first will run *flake8* tool (sorry, we don't accept
-pull requests with pep8 of pyflakes errors).
+The command at first will run the *flake8* tool (sorry, we don't accept
+pull requests with pep8 or pyflakes errors).
 
 On *flake8* success the tests will be run.
 
-Please take a look on produced output.
+Please take a look on the produced output.
 
 Any extra texts (print statements and so on) should be removed.
 
@@ -74,35 +75,37 @@ Any extra texts (print statements and so on) should be removed.
 Tests coverage
 --------------
 
-We are strongly keeping our test coverage, please don't make it worse.
+We are strongly trying to have a good test coverage, 
+please don't make it worst.
 
 Use::
 
    $ make cov
 
-to run test suite and collect coverage information. At the end command
-execution prints line like
+to run test suite and collect coverage information. Once the command
+has finished check your coverage at the file that appears in the last
+line of the output:
 ``open file:///.../aiohttp/coverage/index.html``
 
-Please go to the link and make sure that your code change is good covered.
+Please go to the link and make sure that your code change is covered.
 
 
 Documentation
 -------------
 
-We are encourage documentation improvements.
+We encourage documentation improvements.
 
-Please before making Pull Request about documentation changes do run::
+Please before making a Pull Request about documentation changes run::
 
    $ make doc
 
-It's finished by print
+Once it finishes it will output the index html page
 ``open file:///.../aiohttp/docs/_build/html/index.html``
 , like :command:`make cov` does.
 
-Go to the link and make sure your docs change looks good.
+Go to the link and make sure your doc changes looks good.
 
 The End
 -------
 
-After finishing all steps make GutHub Pull Request, thanks.
+After finishing all steps make a GitHub_ Pull Request, thanks.
