@@ -33,6 +33,7 @@ Message = collections.namedtuple('Message', ['tp', 'data', 'extra'])
 UNPACK_HEADER = struct.Struct('!BB').unpack
 UNPACK_LEN2 = struct.Struct('!H').unpack_from
 UNPACK_LEN3 = struct.Struct('!Q').unpack_from
+UNPACK_CLOSE_CODE = struct.Struct('!H').unpack
 PACK_LEN1 = struct.Struct('!BB').pack
 PACK_LEN2 = struct.Struct('!BBH').pack
 PACK_LEN3 = struct.Struct('!BBQ').pack
@@ -139,7 +140,7 @@ def parse_message(buf):
 
     if opcode == OPCODE_CLOSE:
         if len(payload) >= 2:
-            close_code = struct.unpack('!H', payload[:2])[0]
+            close_code = UNPACK_CLOSE_CODE(payload[:2])[0]
             close_message = payload[2:]
             return Message(OPCODE_CLOSE, close_code, close_message)
         elif payload:
