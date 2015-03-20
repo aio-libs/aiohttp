@@ -157,15 +157,15 @@ class ClientWebSocketResponse:
 
             while True:
                 try:
-                    msg = yield from self.receive()
-                except asyncio.CancelledError:
-                    self._response.close(force=True)
+                    msg = yield from self._reader.read()
+                except (asyncio.CancelledError, asyncio.TimeoutError):
                     raise
+                except Exception as exc:
+                    self._exception = exc
+                    self._response.close(force=True)
+                    return True
 
-                assert msg.tp in MsgType, \
-                    'Unknown message type %s' % msg.tp
-
-                if msg.tp in (MsgType.close, MsgType.closed, MsgType.error):
+                if msg.tp == MSG_CLOSE:
                     self._response.close(force=True)
                     return True
         else:
@@ -179,12 +179,17 @@ class ClientWebSocketResponse:
         self._waiting = True
         try:
             while True:
+                if self._closed:
+                    return closedMessage
+
                 try:
                     msg = yield from self._reader.read()
                 except (asyncio.CancelledError, asyncio.TimeoutError):
                     raise
                 except Exception as exc:
                     self._exception = exc
+                    self._closing = True
+                    yield from self.close()
                     return Message(MsgType.error, exc, None)
 
                 if msg.tp == MSG_CLOSE:
@@ -209,7 +214,5 @@ class ClientWebSocketResponse:
                         return Message(MsgType.binary, msg.data, msg.extra)
                     else:
                         raise RuntimeError('Unknown message type')
-                else:
-                    return closedMessage
         finally:
             self._waiting = False
