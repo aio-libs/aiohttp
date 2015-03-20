@@ -38,7 +38,7 @@ PACK_LEN1 = Struct('!BB').pack
 PACK_LEN2 = Struct('!BBH').pack
 PACK_LEN3 = Struct('!BBQ').pack
 PACK_CLOSE_CODE = Struct('!H').pack
-PACK_MASK = Struct('Q').pack
+PACK_MASK = Struct('!L').pack
 
 
 class WebSocketError(Exception):
@@ -187,13 +187,19 @@ class WebSocketWriter:
         """Send a frame over the websocket with message as its payload."""
         msg_length = len(message)
 
-        if msg_length < 126:
-            header = PACK_LEN1(0x80 | opcode, msg_length)
-        elif msg_length < (1 << 16):
-            header = PACK_LEN2(0x80 | opcode, 126, msg_length)
+        use_mask = self.mask
+        if use_mask:
+            mask_bit = 0x80
         else:
-            header = PACK_LEN3(0x80 | opcode, 127, msg_length)
-        if self.mask:
+            mask_bit = 0
+
+        if msg_length < 126:
+            header = PACK_LEN1(0x80 | opcode, msg_length | mask_bit)
+        elif msg_length < (1 << 16):
+            header = PACK_LEN2(0x80 | opcode, 126 | mask_bit, msg_length)
+        else:
+            header = PACK_LEN3(0x80 | opcode, 127 | mask_bit, msg_length)
+        if use_mask:
             mask = randrange(0, 0xffffffff)
             mask = PACK_MASK(mask)
             message = _websocket_mask(mask, message)
