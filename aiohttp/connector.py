@@ -400,9 +400,10 @@ class ProxyConnector(TCPConnector):
         except OSError as exc:
             raise ProxyConnectionError(*exc.args) from exc
 
-        req.path = '{scheme}://{host}{path}'.format(scheme=req.scheme,
-                                                    host=req.netloc,
-                                                    path=req.path)
+        if not req.ssl:
+            req.path = '{scheme}://{host}{path}'.format(scheme=req.scheme,
+                                                        host=req.netloc,
+                                                        path=req.path)
         if 'AUTHORIZATION' in proxy_req.headers:
             auth = proxy_req.headers['AUTHORIZATION']
             del proxy_req.headers['AUTHORIZATION']
