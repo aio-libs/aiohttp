@@ -10,7 +10,7 @@ HTTP Client
 Example
 -------
 
-Because most of *aiohttp* methods are generators, they will not work
+Because most of the *aiohttp* methods are generators, they will not work
 in the interactive python interpreter like regular functions
 would. For convenience, we show our examples as if they were run in
 the interactive interpreter, but please remember that actually running
@@ -34,7 +34,7 @@ Begin by importing the aiohttp module::
 
     >>> import aiohttp
 
-Now, let's try to get a webpage. For this example, let's get GitHub's public
+Now, let's try to get a webpage. For example let's get GitHub's public
 timeline ::
 
     >>> r = yield from aiohttp.request(
@@ -42,13 +42,14 @@ timeline ::
 
 Now, we have a :class:`ClientResponse` object called ``r``. We can get all the
 information we need from this object.
-First parameter is http method, in that case it is get and second is http url.
-this is how you make an HTTP POST request::
+The first parameter is the http method, in that case it is ``get``
+and the second is an http url.
+In order to make an HTTP POST request::
 
     >>> r = yield from aiohttp.request(
     ...     'post', 'http://httpbin.org/post')
 
-First parameter could be any valid http method. For example::
+The first parameter could be any valid http method. For example::
 
     >>> r = yield from aiohttp.request(
     ...     'put', 'http://httpbin.org/put')
@@ -58,6 +59,8 @@ First parameter could be any valid http method. For example::
     ...     'head', 'http://httpbin.org/get')
     >>> r = yield from aiohttp.request(
     ...     'options', 'http://httpbin.org/get')
+    >>> r = yield from aiohttp.request(
+    ...     'patch', 'http://httpbin.org/patch')
 
 
 Passing Parameters In URLs
@@ -81,7 +84,7 @@ You can see that the URL has been correctly encoded by printing the URL::
     >>> print(r.url)
     http://httpbin.org/get?key2=value2&key1=value1
 
-Also it is possible to pass list of 2 items tuples as parameters, in
+It is also possible to pass a list of 2 item tuples as parameters, in
 that case you can specifiy multiple values for each key::
 
     >>> payload = [('key', 'value1'), ('key': 'value2')]
@@ -104,8 +107,8 @@ again::
     >>> yield from r.text()
     '[{"repository":{"open_issues":0,"url":"https://github.com/...
 
-aiohttp will automatically decode content from the server. You can
-specify custom encoding for ``text()`` method.
+aiohttp will automatically decode the content from the server. You can
+specify custom encoding for the ``text()`` method.
 
 .. code::
 
@@ -135,8 +138,8 @@ There's also a builtin JSON decoder, in case you're dealing with JSON data::
     >>> yield from r.json()
     [{'repository': {'open_issues': 0, 'url': 'https://github.com/...
 
-In case the JSON decoding fails, ``r.json()`` raises an exception. It
-is possible to specify custom encoding and decoder function for
+In case that JSON decoding fails, ``r.json()`` will raise an exception. It
+is possible to specify custom encoding and decoder functions for the
 ``json()`` call.
 
 
@@ -144,10 +147,10 @@ Streaming Response Content
 --------------------------
 
 While methods ``read()``, ``json()`` and ``text()`` are very convenient
-you should be careful. All of this methods load whole response into memory.
-For example if you want to download several gigabyte sized file, this methods
-will load whole data into memory. But you can use ``ClientResponse.content``
-attribute. It is instance of ``aiohttp.StreamReader`` class. The ``gzip``
+you should use them carefully. All this methods loads the whole response in memory.
+For example if you want to download several gigabyte sized files, this methods
+will load all the data in memory. Instead you can use the ``ClientResponse.content``
+attribute. It is an instance of the ``aiohttp.StreamReader`` class. The ``gzip``
 and ``deflate`` transfer-encodings are automatically decoded for you.
 
 .. code::
@@ -169,16 +172,17 @@ streamed to a file::
     ...             break
     ...         fd.write(chunk)
 
-It is not possible to use ``read()``, ``json()`` and ``text()`` after that.
+It is not possible to use ``read()``, ``json()`` and ``text()`` after reading the file
+with ``chunk_size``.
 
 
 Custom Headers
 --------------
 
-If you'd like to add HTTP headers to a request, simply pass in a ``dict`` to the
+If you need to add HTTP headers to a request, pass them in a ``dict`` to the
 ``headers`` parameter.
 
-For example, we didn't specify our content-type in the previous example::
+For example, if you want to specify the content-type for the previous example::
 
     >>> import json
     >>> url = 'https://api.github.com/some/endpoint'
@@ -212,9 +216,8 @@ dictionary of data will automatically be form-encoded when the request is made::
       ...
     }
 
-There are many times that you want to send data that is not
-form-encoded. If you pass in a ``string`` instead of a ``dict``, that
-data will be posted directly.
+If you want to send data that is not form-encoded you can do it by passing a ``string``
+instead of a ``dict``. This data will be posted directly.
 
 For example, the GitHub API v3 accepts JSON-Encoded POST/PATCH data::
 
@@ -247,7 +250,7 @@ You can set the filename, content_type explicitly::
 
     >>> yield from aiohttp.request('post', url, data=data)
 
-If you pass file object as data parameter, aiohttp will stream it to server
+If you pass a file object as data parameter, aiohttp will stream it to the server
 automatically. Check :class:`aiohttp.stream.StreamReader` for supported format
 information.
 
@@ -259,14 +262,14 @@ Streaming uploads
 aiohttp support multiple types of streaming uploads, which allows you to
 send large files without reading them into memory.
 
-In simple case, simply provide a file-like object for your body::
+As a simple case, simply provide a file-like object for your body::
 
     >>> with open('massive-body', 'rb') as f:
     ...   yield from aiohttp.request(
     ...       'post', 'http://some.url/streamed', data=f)
 
 
-Or you can provide ``asyncio`` coroutine that yields bytes objects::
+Or you can provide an ``asyncio`` coroutine that yields bytes objects::
 
    >>> @asyncio.coroutine
    ... def my_coroutine():
@@ -278,10 +281,10 @@ Or you can provide ``asyncio`` coroutine that yields bytes objects::
 .. note::
    It is not a standard ``asyncio`` coroutine as it yields values so it
    can not be used like ``yield from my_coroutine()``.
-   ``aiohttp`` internally handles such a coroutines.
+   ``aiohttp`` internally handles such coroutines.
 
-Also it is possible to use ``StreamReader`` object. Lets say we want to upload
-file from another request and calculate file sha1 hash::
+Also it is possible to use a ``StreamReader`` object. Lets say we want to upload
+a file from another request and calculate the file sha1 hash::
 
    >>> def feed_stream(resp, stream):
    ...    h = hashlib.sha1()
@@ -303,8 +306,8 @@ file from another request and calculate file sha1 hash::
    >>> file_hash = yield from feed_stream(resp, stream)
 
 
-Because response's content attribute is a StreamReader, you can chain get and
-post requests togethere::
+Because the response content attribute is a StreamReader, you can chain get and
+post requests together::
 
    >>> r = yield from aiohttp.request('get', 'http://python.org')
    >>> yield from aiohttp.request('post',
@@ -319,7 +322,7 @@ Keep-Alive and connection pooling
 
 By default aiohttp does not use connection pooling. To enable connection pooling
 you should use one of the ``connector`` objects. There are several of them.
-Most widly used is :class:`aiohttp.connector.TCPConnector`::
+The most widely used is :class:`aiohttp.connector.TCPConnector`::
 
   >>> conn = aiohttp.TCPConnector()
   >>> r = yield from aiohttp.request(
@@ -341,8 +344,8 @@ checks can be relaxed by passing ``verify_ssl=False``::
 
 
 If you need to setup custom ssl parameters (use own certification
-files for example) you can create :class:`ssl.SSLContext` instance and
-pass it into connector::
+files for example) you can create a :class:`ssl.SSLContext` instance and
+pass it into the connector::
 
   >>> sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
   >>> sslcontext.verify_mode = ssl.CERT_REQUIRED
@@ -355,7 +358,7 @@ pass it into connector::
 Unix domain sockets
 -------------------
 
-If your http server uses unix domain socket you can use
+If your http server uses unix domain sockets you can use
 :class:`aiohttp.connector.UnixConnector`::
 
   >>> conn = aiohttp.UnixConnector(path='/path/to/socket')

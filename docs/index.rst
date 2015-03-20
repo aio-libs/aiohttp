@@ -6,7 +6,7 @@
 aiohttp
 =======
 
-http client/server for :term:`asyncio` (:pep:`3156`).
+HTTP client/server for :term:`asyncio` (:pep:`3156`).
 
 .. _GitHub: https://github.com/KeepSafe/aiohttp
 
@@ -25,12 +25,12 @@ Library Installation
 
    pip install aiohttp
 
-For smart detection of *Content-Type* by client API you would like to
+For smart detection of *Content-Type* by the client API you would need to
 install `chardet` also::
 
    pip install chardet
 
-*Optional*: To improve performances, you can install `Cython`
+*Optional*: To improve performance, you can install `Cython`
 **before** `aiohttp`::
 
    pip install cython
@@ -89,9 +89,9 @@ Source code
 
 The project is hosted on GitHub_
 
-Please feel free to file an issue on `bug tracker
+Please feel free to file an issue on the `bug tracker
 <https://github.com/KeepSafe/aiohttp/issues>`_ if you have found a bug
-or have some suggestion for library improvement.
+or have some suggestion in order to improve the library.
 
 The library uses `Travis <https://travis-ci.org/KeepSafe/aiohttp>`_ for
 Continuous Integration.
@@ -106,8 +106,8 @@ Dependencies
 Contributing
 ------------
 
-Please read :ref:`instruction for contributors<aiohttp-contributing>`
-before making Pull Request.
+Please read the :ref:`instructions for contributors<aiohttp-contributing>`
+before making a Pull Request.
 
 
 Authors and License
