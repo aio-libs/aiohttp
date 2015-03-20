@@ -75,8 +75,7 @@ Any extra texts (print statements and so on) should be removed.
 Tests coverage
 --------------
 
-We are strongly trying to have a good test coverage, 
-please don't make it worst.
+We are trying hard to have good test coverage; please don't make it worse.
 
 Use::
 
