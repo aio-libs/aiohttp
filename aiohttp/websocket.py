@@ -5,7 +5,7 @@ import binascii
 import collections
 import hashlib
 import os
-import struct
+from struct import Struct
 from aiohttp import errors, hdrs
 from aiohttp.log import ws_logger
 
@@ -30,14 +30,14 @@ WS_HDRS = (hdrs.UPGRADE,
 
 Message = collections.namedtuple('Message', ['tp', 'data', 'extra'])
 
-UNPACK_HEADER = struct.Struct('!BB').unpack
-UNPACK_LEN2 = struct.Struct('!H').unpack_from
-UNPACK_LEN3 = struct.Struct('!Q').unpack_from
-UNPACK_CLOSE_CODE = struct.Struct('!H').unpack
-PACK_LEN1 = struct.Struct('!BB').pack
-PACK_LEN2 = struct.Struct('!BBH').pack
-PACK_LEN3 = struct.Struct('!BBQ').pack
-PACK_CLOSE_CODE = struct.Struct('!H').pack
+UNPACK_HEADER = Struct('!BB').unpack
+UNPACK_LEN2 = Struct('!H').unpack_from
+UNPACK_LEN3 = Struct('!Q').unpack_from
+UNPACK_CLOSE_CODE = Struct('!H').unpack
+PACK_LEN1 = Struct('!BB').pack
+PACK_LEN2 = Struct('!BBH').pack
+PACK_LEN3 = Struct('!BBQ').pack
+PACK_CLOSE_CODE = Struct('!H').pack
 
 
 class WebSocketError(Exception):
