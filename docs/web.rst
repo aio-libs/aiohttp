@@ -278,7 +278,7 @@ WebSockets
 
 You have to create :class:`WebSocketResponse` in
 :ref:`web-handler<aiohttp-web-handler>` and communicate with peer
-using response's methods::
+using response's methods:
 
 .. code-block:: python
 
