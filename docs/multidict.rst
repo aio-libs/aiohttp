@@ -9,7 +9,7 @@ Multidicts
 
 
 *HTTP Headers* and *URL query string* require specific data structure:
-*multidict*. It behaves mostly like a :class:`dict` but may have
+*multidict*. It behaves mostly like a :class:`dict` but it can have
 several *values* for the same *key*.
 
 :mod:`aiohttp.multidict` has four multidict classes:
@@ -18,12 +18,12 @@ and :class:`CIMultiDictProxy`.
 
 Immutable proxies (:class:`MultiDictProxy` and
 :class:`CIMultiDictProxy`) provide a dynamic view on the
-proxied multidict, the view reflects the multidict changes. They are
-implement :class:`~collections.abc.Mapping` interface.
+proxied multidict, the view reflects the multidict changes. They
+implement the :class:`~collections.abc.Mapping` interface.
 
 Regular mutable (:class:`MultiDict` and :class:`CIMultiDict`) classes
-implement :class:`~collections.abc.MutableMapping` and allow to change
-own content.
+implement :class:`~collections.abc.MutableMapping` and allows to change
+their own content.
 
 
 *Case insensitive* (:class:`CIMultiDict` and
@@ -46,11 +46,11 @@ MultiDict
            MultiDict(mapping, **kwargs)
            MultiDict(iterable, **kwargs)
 
-   Create a mutable multidict instance.
+   Creates a mutable multidict instance.
 
    Accepted parameters are the same as for :class:`dict`.
 
-   If the same key produced several times it will be added, e.g.::
+   If the same key appears several times it will be added, e.g.::
 
       >>> d = MultiDict[('a', 1), ('b', 2), ('a', 3)])
       >>> d
@@ -58,7 +58,7 @@ MultiDict
 
    .. method:: len(d)
 
-      Return number of items in multidict *d*.
+      Return the number of items in multidict *d*.
 
    .. method:: d[key]
 
@@ -343,10 +343,10 @@ upstr
 :class:`CIMultiDict` accepts :class:`str` as *key* argument for dict
 lookups but converts it to upper case internally.
 
-For more effective processing it should to know if *key* is already upper cased.
+For more effective processing it should know if the *key* is already upper cased.
 
-To skip :meth:`~str.upper()` call you may create upper cased string by
-hands, e.g::
+To skip the :meth:`~str.upper()` call you may want to create upper cased strings by
+hand, e.g::
 
    >>> key = upstr('Key')
    >>> key
@@ -358,13 +358,13 @@ hands, e.g::
    'value'
 
 For performance you should create :class:`upstr` strings once and
-store it globally, like :mod:`aiohttp.hdrs` does.
+store them globally, like :mod:`aiohttp.hdrs` does.
 
 .. class:: upstr(object='')
            upstr(bytes_or_buffer[, encoding[, errors]])
 
       Create a new **upper cased** string object from the given
-      *object*. If *encoding* or *errors* is specified, then the
+      *object*. If *encoding* or *errors* are specified, then the
       object must expose a data buffer that will be decoded using the
       given encoding and error handler.
 

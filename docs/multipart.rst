@@ -7,30 +7,31 @@
 Working with Multipart
 ======================
 
-`aiohttp` supports full featured multipart reader and writer. Both are designed
+`aiohttp` supports a full featured multipart reader and writer. Both are designed
 with steaming processing in mind to avoid unwanted footprint which may be
 significant if you're dealing with large payloads, but this also means that
-most I/O operation are only possible to execute only a single time.
+most I/O operation are only possible to be executed a single time.
 
 Reading Multipart Responses
 ---------------------------
 
-Assume you made a request, as usual, and want to process the respond multipart
+Assume you made a request, as usual, and want to process the response multipart
 data::
 
     >>> resp = yield from aiohttp.request(...)
 
 First, you need to wrap the response with a
-:meth:`MultipartReader.from_response`. This needs to keep implementation of
-:class:`MultipartReader` separated from response and connection routines what
-makes him more portable::
+:meth:`MultipartReader.from_response`. This needs to keep the implementation of
+:class:`MultipartReader` separated from the response and the connection routines 
+which makes it more portable::
 
     >>> reader = aiohttp.MultipartReader.from_response(resp)
 
 Let's assume with this response you'd received some JSON document and multiple
 files for it, but you don't need all of them, just a specific one.
 
-So first you need to enter into a loop where multipart body will be processed::
+So first you need to enter into a loop where the multipart body will 
+be processed::
 
     >>> metadata = None
     >>> filedata = None
@@ -38,11 +39,11 @@ So first you need to enter into a loop where multipart body will be processed::
     ...     part = yield from reader.next()
 
 The returned type depends on what the next part is: if it's a simple body part
-than you'll get :class:`BodyPartReader` instance here, otherwise, it will
+then you'll get :class:`BodyPartReader` instance here, otherwise, it will
 be another :class:`MultipartReader` instance for the nested multipart. Remember,
 that multipart format is recursive and supports multiple levels of nested body
 parts. When there are no more parts left to fetch, ``None`` value will be
-returned - that's our signal to break the loop::
+returned - that's the signal to break the loop::
 
     ...     if part is None:
     ...         break
@@ -55,23 +56,24 @@ body part headers: this allows you to filter parts by their attributes::
     ...         continue
 
 Nor :class:`BodyPartReader` or :class:`MultipartReader` instances doesn't
-reads whole body part data without explicit asking for. :class:`BodyPartReader`
-provides a set of helpers to fetch popular content types in friendly way:
+read the whole body part data without explicitly asking for.
+:class:`BodyPartReader` provides a set of helpers methods 
+to fetch popular content types in friendly way:
 
 - :meth:`BodyPartReader.text` for plaintext data;
 - :meth:`BodyPartReader.json` for JSON;
 - :meth:`BodyPartReader.form` for `application/www-urlform-encode`
 
-Each of these helpers automagically recognizes if content is compressed by
+Each of these methods automagically recognizes if content is compressed by
 using `gzip` and `deflate` encoding (while it respects `identity` one), or if
 transfer encoding is base64 or `quoted-printable` - in each case the result
-will get automagically decoded. But in case if you need to access to raw binary
+will get automagically decoded. But in case you need to access to raw binary
 data as it is, there are :meth:`BodyPartReader.read` and
 :meth:`BodyPartReader.read_chunk` coroutine methods as well to read raw binary
 data as it is all-in-single-shot or by chunks respectively.
 
 When you have to deal with multipart files, the :attr:`BodyPartReader.filename`
-property comes to the aid. It's very smart helper which handles
+property comes to help. It's a very smart helper which handles
 `Content-Disposition` handler right and extracts the right filename attribute
 from it::
 
@@ -79,9 +81,9 @@ from it::
     ...         continue
 
 If current body part doesn't matches your expectation and you want to skip it
-- just continue a loop to start a next iteration of it. Here the magic happens.
-Before fetch next body part ``yield from reader.next()`` ensures that previous
-one was read completely. If it wasn't even started to be, all it content
+- just continue a loop to start a next iteration of it. Here is where magic 
+happens. Before fetching the next body part ``yield from reader.next()`` it 
+ensures that the previous one was read completely. If it wasn't, all its content
 sends to the void in term to fetch the next part. So you don't have to care
 about cleanup routines while you're within a loop.
 
@@ -95,11 +97,11 @@ to do::
 
     ...     filedata = part.decode(filedata)
 
-Once you done multipart processing, just break a loop::
+Once you are done wirh multipart processing, just break a loop::
 
     ...     break
 
-And release connection to not let it hold a response in the middle of the data::
+And release the connection to do not hang the response in the middle of the data::
 
     ...  yield from resp.release()  # or yield from reader.release()
 
@@ -129,8 +131,8 @@ to design your multipart data closer to how it will be::
     ...         ...
     ...     mpwriter.append(subwriter)
 
-The :meth:`MultipartWriter.append` is used join a new body parts into the
-single stream. It accepts various input and determines which default headers
+The :meth:`MultipartWriter.append` is used to join new body parts into a
+single stream. It accepts various inputs and determines what default headers
 should be used for.
 
 For text data default `Content-Type` is :mimetype:`text/plain; charset=utf-8`::
@@ -141,7 +143,7 @@ For binary data :mimetype:`application/octet-stream` is used::
 
     ...     mpwriter.append(b'aiohttp')
 
-You can always override these default by passing own headers with the second
+You can always override these default by passing your own headers with the second
 argument::
 
     ...     mpwriter.append(io.BytesIO(b'GIF89a...'),
@@ -149,18 +151,18 @@ argument::
 
 For file objects `Content-Type` will be determined by using Python's
 `mimetypes`_ module and additionally `Content-Disposition` header will include
-file's basename::
+the file's basename::
 
     ...     part = root.append(open(__file__, 'rb))
 
-If you want to send a file with different name, just handle the
-:class:`BodyPartWriter` instance which :meth:`MultipartWriter.append` always
-returns and set `Content-Disposition` explicitly by using
-:meth:`BodyPartWriter.set_content_disposition` helper::
+If you want to send a file with a different name, just handle the
+:class:`BodyPartWriter` instance which :meth:`MultipartWriter.append` will
+always return and set `Content-Disposition` explicitly by using
+the :meth:`BodyPartWriter.set_content_disposition` helper::
 
     ...     part.set_content_disposition('attachment', filename='secret.txt')
 
-Additionally, you may set other headers here::
+Additionally, you may want to set other headers here::
 
     ...     part.headers[aiohttp.hdrs.CONTENT_ID] = 'X-12345'
 
@@ -176,25 +178,25 @@ and form urlencoded data, so you don't have to encode it every time manually::
     ...     mpwriter.append_json({'test': 'passed'})
     ...     mpwriter.append_form([('key', 'value')])
 
-When it's done, to make a request just pass root :class:`MultipartWriter`
+When it's done, to make a request just pass a root :class:`MultipartWriter`
 instance as :func:`aiohttp.client.request` `data` argument::
 
     >>> yield from aiohttp.request('POST', 'http://example.com', data=mpwriter)
 
-Behind the scene :meth:`MultipartWriter.serialize` will yield by chunks every
+Behind the scenes :meth:`MultipartWriter.serialize` will yield chunks of every
 part and if body part has `Content-Encoding` or `Content-Transfer-Encoding`
 they will be applied on streaming content.
 
 Please note, that on :meth:`MultipartWriter.serialize` all the file objects
-will be read till the end and there is no way to repeat a request without rewind
-their pointers to the start.
+will be read until the end and there is no way to repeat a request without 
+rewinding their pointers to the start.
 
 Hacking Multipart
 -----------------
 
-The Internet is a full of terror and sometimes you may find a server which
-implements a multipart support in a strange ways when an oblivious solution
-doesn't works.
+The Internet is full of terror and sometimes you may find a server which
+implements multipart support in strange ways when an oblivious solution
+doesn't work.
 
 For instance, is server used `cgi.FieldStorage`_ then you have to ensure that
 no body part contains a `Content-Length` header::
@@ -205,18 +207,18 @@ no body part contains a `Content-Length` header::
 On the other hand, some server may require to specify `Content-Length` for the
 whole multipart request. `aiohttp` doesn't do that since it sends multipart
 using chunked transfer encoding by default. To overcome this issue, you have
-to serialize a :class:`MultipartWriter` by our own in the way to calculate it
+to serialize a :class:`MultipartWriter` by our own in the way to calculate its
 size::
 
     body = b''.join(mpwriter.serialize())
     yield from aiohttp.request('POST', 'http://example.com',
                                data=body, headers=mpwriter.headers)
 
-Sometimes the server response may not be well structured: it may or may not
-contains nested parts. For instance, we requesting a resource which returns
-JSON documents with the files attached to it. If document has any attachments,
-they are returned as a nested multipart thing. If it has not it comes as plain
-body part::
+Sometimes the server response may not be well formed: it may or may not
+contains nested parts. For instance, we request a resource which returns
+JSON documents with the files attached to it. If the document has any 
+attachments, they are returned as a nested multipart.
+If it has not it responds as plain body parts::
 
     CONTENT-TYPE: multipart/mixed; boundary=--:
 
@@ -256,7 +258,8 @@ body part::
     ----:--
     --:--
 
-Reading such kind of data in single stream is possible, but not clean a lot::
+Reading such kind of data in single stream is possible, but is not clean at 
+all::
 
     result = []
     while True:
