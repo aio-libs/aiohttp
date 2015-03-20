@@ -30,7 +30,6 @@ WS_HDRS = (hdrs.UPGRADE,
 
 Message = collections.namedtuple('Message', ['tp', 'data', 'extra'])
 
-UNPACK_HEADER = Struct('!BB').unpack
 UNPACK_LEN2 = Struct('!H').unpack_from
 UNPACK_LEN3 = Struct('!Q').unpack_from
 UNPACK_CLOSE_CODE = Struct('!H').unpack
@@ -83,7 +82,7 @@ def parse_frame(buf):
     """Return the next frame from the socket."""
     # read header
     data = yield from buf.read(2)
-    first_byte, second_byte = UNPACK_HEADER(data)
+    first_byte, second_byte = data
 
     fin = (first_byte >> 7) & 1
     rsv1 = (first_byte >> 6) & 1
