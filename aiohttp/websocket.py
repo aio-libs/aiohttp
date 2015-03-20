@@ -37,6 +37,7 @@ UNPACK_CLOSE_CODE = struct.Struct('!H').unpack
 PACK_LEN1 = struct.Struct('!BB').pack
 PACK_LEN2 = struct.Struct('!BBH').pack
 PACK_LEN3 = struct.Struct('!BBQ').pack
+PACK_CLOSE_CODE = struct.Struct('!H').pack
 
 
 class WebSocketError(Exception):
@@ -219,7 +220,7 @@ class WebSocketWriter:
         if isinstance(message, str):
             message = message.encode('utf-8')
         self._send_frame(
-            struct.pack('!H%ds' % len(message), code, message),
+            PACK_CLOSE_CODE(code) + message,
             opcode=OPCODE_CLOSE)
 
 
