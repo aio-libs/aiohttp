@@ -87,7 +87,11 @@ do not create an instance of class :class:`ClientWebSocketResponse` manually.
 
       May be ``None`` if server and client protocols are
       not overlapping.
+      
+   .. method:: exception()
 
+      Returns exception if any occurs or returns None.
+      
    .. method:: ping(message=b'')
 
       Send :const:`~aiohttp.websocket.MSG_PING` to peer.
@@ -126,11 +130,7 @@ do not create an instance of class :class:`ClientWebSocketResponse` manually.
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
-   .. method:: exception()
-
-      Returns exception if any occurs or returns None.
-
-.. method:: receive()
+   .. method:: receive()
 
       A :ref:`coroutine<coroutine>` that waits upcoming *data*
       message from peer and returns it.
