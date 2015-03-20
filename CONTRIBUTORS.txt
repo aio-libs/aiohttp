@@ -26,6 +26,7 @@ Kirill Klenov
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
 Martin Richard
+Moss Collum
 Mikhail Lukyanchenko
 Nicolas Braem
 Olaf Conradi
