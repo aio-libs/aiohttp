@@ -4,7 +4,6 @@ import asyncio
 import base64
 import hashlib
 import os
-from enum import IntEnum
 
 from aiohttp import client, hdrs
 from .errors import WSServerHandshakeError
@@ -12,6 +11,12 @@ from .websocket import WS_KEY, Message, WebSocketParser, WebSocketWriter
 from .websocket import MSG_BINARY, MSG_CLOSE, MSG_PING, MSG_PONG, MSG_TEXT
 
 __all__ = ['ws_connect', 'MsgType']
+
+
+try:
+    from enum import IntEnum
+except ImportError:  # pragma: no cover
+    IntEnum = object
 
 
 class MsgType(IntEnum):
