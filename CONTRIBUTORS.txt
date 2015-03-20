@@ -26,11 +26,13 @@ Kirill Klenov
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
 Martin Richard
+Moss Collum
 Mikhail Lukyanchenko
 Nicolas Braem
 Olaf Conradi
 Paul Colomiets
 Philipp A.
+Raúl Cumplido
 Robert Lu
 Sebastian Hanula
 Simon Kennedy

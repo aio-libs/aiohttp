@@ -7,14 +7,14 @@ Low-level HTTP Server
 
 .. note::
 
-   The topic describes low-level HTTP support. For high-level
+   This topic describes the low-level HTTP support. For high-level
    interface please take a look on :mod:`aiohttp.web`.
 
 Run a basic server
 ------------------
 
 Start implementing the basic server by inheriting
-aiohttp.server.ServerHttpProtocol object. Your class
+the aiohttp.server.ServerHttpProtocol object. Your class
 should implement the only method handle_request which must
 be a coroutine to handle requests asynchronously
 
@@ -42,7 +42,7 @@ be a coroutine to handle requests asynchronously
             response.write(b'<h1>It Works!</h1>')
             yield from response.write_eof()
 
-Next step is creating a loop and registering your handler within a server.
+The next step is to create a loop and register your handler within a server.
 KeyboardInterrupt exception handling is necessary so you can stop
 your server with Ctrl+C at any time.
 
@@ -63,10 +63,10 @@ your server with Ctrl+C at any time.
 Headers
 -------
 
-Data is passed to handler in the ``message``, while request body is
+Data is passed to the handler in the ``message``, while request body is
 passed in ``payload`` param.  HTTP headers are accessed through
-``headers`` member of the message.  To check what current request
-method is, use ``method`` member of the ``message``. It should be one
+``headers`` member of the message.  To check what the current method of
+the request is use the ``method`` member of the ``message``. It should be one
 of ``GET``, ``POST``, ``PUT`` or ``DELETE`` strings.
 
 Handling GET params
@@ -98,7 +98,7 @@ Handling POST data
 ------------------
 
 POST data is accessed through the ``payload.read()`` generator method.
-If you have form data in the request body, you can parse it the same way as
+If you have form data in the request body, you can parse it in the same way as
 GET params.
 
  .. code-block:: python

@@ -3,6 +3,7 @@
 import base64
 import hashlib
 import os
+import random
 import struct
 import unittest
 import unittest.mock
@@ -310,7 +311,7 @@ class WebsocketWriterTests(unittest.TestCase):
 
     def setUp(self):
         self.transport = unittest.mock.Mock()
-        self.writer = websocket.WebSocketWriter(self.transport)
+        self.writer = websocket.WebSocketWriter(self.transport, use_mask=False)
 
     def test_pong(self):
         self.writer.pong()
@@ -345,6 +346,14 @@ class WebsocketWriterTests(unittest.TestCase):
 
         self.writer.close(1001, b'msg')
         self.transport.write.assert_called_with(b'\x88\x05\x03\xe9msg')
+
+    def test_send_text_masked(self):
+        writer = websocket.WebSocketWriter(self.transport,
+                                           use_mask=True,
+                                           random=random.Random(123))
+        writer.send(b'text')
+        self.transport.write.assert_called_with(
+            b'\x81\x84\rg\xb3fy\x02\xcb\x12')
 
 
 class WebSocketHandshakeTests(unittest.TestCase):

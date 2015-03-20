@@ -5,7 +5,9 @@ import binascii
 import collections
 import hashlib
 import os
-import struct
+import random
+
+from struct import Struct
 from aiohttp import errors, hdrs
 from aiohttp.log import ws_logger
 
@@ -29,6 +31,14 @@ WS_HDRS = (hdrs.UPGRADE,
            hdrs.SEC_WEBSOCKET_PROTOCOL)
 
 Message = collections.namedtuple('Message', ['tp', 'data', 'extra'])
+
+UNPACK_LEN2 = Struct('!H').unpack_from
+UNPACK_LEN3 = Struct('!Q').unpack_from
+UNPACK_CLOSE_CODE = Struct('!H').unpack
+PACK_LEN1 = Struct('!BB').pack
+PACK_LEN2 = Struct('!BBH').pack
+PACK_LEN3 = Struct('!BBQ').pack
+PACK_CLOSE_CODE = Struct('!H').pack
 
 
 class WebSocketError(Exception):
@@ -74,7 +84,7 @@ def parse_frame(buf):
     """Return the next frame from the socket."""
     # read header
     data = yield from buf.read(2)
-    first_byte, second_byte = struct.unpack('!BB', data)
+    first_byte, second_byte = data
 
     fin = (first_byte >> 7) & 1
     rsv1 = (first_byte >> 6) & 1
@@ -108,10 +118,10 @@ def parse_frame(buf):
     # read payload
     if length == 126:
         data = yield from buf.read(2)
-        length = struct.unpack_from('!H', data)[0]
+        length = UNPACK_LEN2(data)[0]
     elif length > 126:
         data = yield from buf.read(8)
-        length = struct.unpack_from('!Q', data)[0]
+        length = UNPACK_LEN3(data)[0]
 
     if has_mask:
         mask = yield from buf.read(4)
@@ -132,7 +142,7 @@ def parse_message(buf):
 
     if opcode == OPCODE_CLOSE:
         if len(payload) >= 2:
-            close_code = struct.unpack('!H', payload[:2])[0]
+            close_code = UNPACK_CLOSE_CODE(payload[:2])[0]
             close_message = payload[2:]
             return Message(OPCODE_CLOSE, close_code, close_message)
         elif payload:
@@ -169,22 +179,34 @@ def parse_message(buf):
 
 class WebSocketWriter:
 
-    def __init__(self, writer):
+    def __init__(self, writer, *, use_mask=False, random=random.Random()):
         self.writer = writer
+        self.use_mask = use_mask
+        self.randrange = random.randrange
 
     def _send_frame(self, message, opcode):
         """Send a frame over the websocket with message as its payload."""
-        header = bytes([0x80 | opcode])
         msg_length = len(message)
 
-        if msg_length < 126:
-            header += bytes([msg_length])
-        elif msg_length < (1 << 16):
-            header += bytes([126]) + struct.pack('!H', msg_length)
+        use_mask = self.use_mask
+        if use_mask:
+            mask_bit = 0x80
         else:
-            header += bytes([127]) + struct.pack('!Q', msg_length)
+            mask_bit = 0
 
-        self.writer.write(header + message)
+        if msg_length < 126:
+            header = PACK_LEN1(0x80 | opcode, msg_length | mask_bit)
+        elif msg_length < (1 << 16):
+            header = PACK_LEN2(0x80 | opcode, 126 | mask_bit, msg_length)
+        else:
+            header = PACK_LEN3(0x80 | opcode, 127 | mask_bit, msg_length)
+        if use_mask:
+            mask = self.randrange(0, 0xffffffff)
+            mask = mask.to_bytes(4, 'big')
+            message = _websocket_mask(mask, message)
+            self.writer.write(header + mask + message)
+        else:
+            self.writer.write(header + message)
 
     def pong(self, message=b''):
         """Send pong message."""
@@ -212,7 +234,7 @@ class WebSocketWriter:
         if isinstance(message, str):
             message = message.encode('utf-8')
         self._send_frame(
-            struct.pack('!H%ds' % len(message), code, message),
+            PACK_CLOSE_CODE(code) + message,
             opcode=OPCODE_CLOSE)
 
 

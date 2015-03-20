@@ -77,7 +77,7 @@ def ws_connect(url, protocols=(), connector=None,
                 break
 
     reader = resp.connection.reader.set_parser(WebSocketParser)
-    writer = WebSocketWriter(resp.connection.writer)
+    writer = WebSocketWriter(resp.connection.writer, use_mask=True)
 
     return ClientWebSocketResponse(
         reader, writer, protocol, resp, autoclose, autoping, loop)

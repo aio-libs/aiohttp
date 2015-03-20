@@ -664,7 +664,6 @@ class ClientRequestTests(unittest.TestCase):
         def gen():
             yield b'binary data'
             yield from fut
-            return b' result'
 
         req = ClientRequest(
             'POST', 'http://python.org/', data=gen(), loop=self.loop)
@@ -689,7 +688,6 @@ class ClientRequestTests(unittest.TestCase):
         @asyncio.coroutine
         def gen():
             yield object()
-            return b' result'
 
         req = ClientRequest(
             'POST', 'http://python.org/', data=gen(), loop=self.loop)
@@ -702,7 +700,6 @@ class ClientRequestTests(unittest.TestCase):
 
         def gen():
             yield from fut
-            return b' result'
 
         req = ClientRequest(
             'POST', 'http://python.org/', data=gen(), loop=self.loop)

@@ -217,9 +217,10 @@ first positional parameter.
              body = yield from self.text()
              return loader(body)
 
-      :param callable loader: any callable that accepts :class:`str`
-                              and returns :class:`dict` with parsed
-                              JSON (:func:`json.loads` by default).
+      :param callable loader: any :term:`callable` that accepts
+                              :class:`str` and returns :class:`dict`
+                              with parsed JSON (:func:`json.loads` by
+                              default).
 
       .. note::
 
