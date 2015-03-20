@@ -5,7 +5,8 @@ import binascii
 import collections
 import hashlib
 import os
-from random import randrange
+import random
+
 from struct import Struct
 from aiohttp import errors, hdrs
 from aiohttp.log import ws_logger
@@ -38,7 +39,6 @@ PACK_LEN1 = Struct('!BB').pack
 PACK_LEN2 = Struct('!BBH').pack
 PACK_LEN3 = Struct('!BBQ').pack
 PACK_CLOSE_CODE = Struct('!H').pack
-PACK_MASK = Struct('!L').pack
 
 
 class WebSocketError(Exception):
@@ -179,9 +179,10 @@ def parse_message(buf):
 
 class WebSocketWriter:
 
-    def __init__(self, writer, *, mask=True):
+    def __init__(self, writer, *, mask=True, random=random.Random()):
         self.writer = writer
         self.mask = mask
+        self.randrange = random.randrange
 
     def _send_frame(self, message, opcode):
         """Send a frame over the websocket with message as its payload."""
@@ -200,8 +201,8 @@ class WebSocketWriter:
         else:
             header = PACK_LEN3(0x80 | opcode, 127 | mask_bit, msg_length)
         if use_mask:
-            mask = randrange(0, 0xffffffff)
-            mask = PACK_MASK(mask)
+            mask = self.randrange(0, 0xffffffff)
+            mask = mask.to_bytes(4, 'big')
             message = _websocket_mask(mask, message)
             self.writer.write(header + mask + message)
         else:

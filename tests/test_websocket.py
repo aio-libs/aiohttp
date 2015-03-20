@@ -3,6 +3,7 @@
 import base64
 import hashlib
 import os
+import random
 import struct
 import unittest
 import unittest.mock
@@ -310,41 +311,55 @@ class WebsocketWriterTests(unittest.TestCase):
 
     def setUp(self):
         self.transport = unittest.mock.Mock()
-        self.writer = websocket.WebSocketWriter(self.transport)
 
     def test_pong(self):
+        self.writer = websocket.WebSocketWriter(self.transport, mask=False)
         self.writer.pong()
         self.transport.write.assert_called_with(b'\x8a\x00')
 
     def test_ping(self):
+        self.writer = websocket.WebSocketWriter(self.transport, mask=False)
         self.writer.ping()
         self.transport.write.assert_called_with(b'\x89\x00')
 
     def test_send_text(self):
+        self.writer = websocket.WebSocketWriter(self.transport, mask=False)
         self.writer.send(b'text')
         self.transport.write.assert_called_with(b'\x81\x04text')
 
     def test_send_binary(self):
+        self.writer = websocket.WebSocketWriter(self.transport, mask=False)
         self.writer.send('binary', True)
         self.transport.write.assert_called_with(b'\x82\x06binary')
 
     def test_send_binary_long(self):
+        self.writer = websocket.WebSocketWriter(self.transport, mask=False)
         self.writer.send(b'b' * 127, True)
         self.assertTrue(
             self.transport.write.call_args[0][0].startswith(b'\x82~\x00\x7fb'))
 
     def test_send_binary_very_long(self):
+        self.writer = websocket.WebSocketWriter(self.transport, mask=False)
         self.writer.send(b'b' * 65537, True)
         self.assertTrue(
             self.transport.write.call_args[0][0].startswith(
                 b'\x82\x7f\x00\x00\x00\x00\x00\x01\x00\x01b'))
 
     def test_close(self):
+        self.writer = websocket.WebSocketWriter(self.transport, mask=False)
         self.writer.close(1001, 'msg')
         self.transport.write.assert_called_with(b'\x88\x05\x03\xe9msg')
 
         self.writer.close(1001, b'msg')
         self.transport.write.assert_called_with(b'\x88\x05\x03\xe9msg')
+
+    def test_send_text_masked(self):
+        self.writer = websocket.WebSocketWriter(self.transport,
+                                                mask=True,
+                                                random=random.Random(123))
+        self.writer.send(b'text')
+        self.transport.write.assert_called_with(
+            b'\x81\x84\rg\xb3fy\x02\xcb\x12')
 
 
 class WebSocketHandshakeTests(unittest.TestCase):
