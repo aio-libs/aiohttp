@@ -5,6 +5,7 @@ import binascii
 import collections
 import hashlib
 import os
+from random import randrange
 from struct import Struct
 from aiohttp import errors, hdrs
 from aiohttp.log import ws_logger
@@ -37,6 +38,7 @@ PACK_LEN1 = Struct('!BB').pack
 PACK_LEN2 = Struct('!BBH').pack
 PACK_LEN3 = Struct('!BBQ').pack
 PACK_CLOSE_CODE = Struct('!H').pack
+PACK_MASK = Struct('Q').pack
 
 
 class WebSocketError(Exception):
@@ -177,8 +179,9 @@ def parse_message(buf):
 
 class WebSocketWriter:
 
-    def __init__(self, writer):
+    def __init__(self, writer, *, mask=True):
         self.writer = writer
+        self.mask = mask
 
     def _send_frame(self, message, opcode):
         """Send a frame over the websocket with message as its payload."""
@@ -190,8 +193,13 @@ class WebSocketWriter:
             header = PACK_LEN2(0x80 | opcode, 126, msg_length)
         else:
             header = PACK_LEN3(0x80 | opcode, 127, msg_length)
-
-        self.writer.write(header + message)
+        if self.mask:
+            mask = randrange(0, 0xffffffff)
+            mask = PACK_MASK(mask)
+            message = _websocket_mask(mask, message)
+            self.writer.write(header + mask + message)
+        else:
+            self.writer.write(header + message)
 
     def pong(self, message=b''):
         """Send pong message."""
