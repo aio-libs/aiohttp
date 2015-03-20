@@ -22,18 +22,17 @@ websocket server using response's methods:
    ws = yield from aiohttp.ws_connect('http://webscoket-server.org/endpoint')
 
    while True:
-       try:
-          msg = yield from ws.receive()
-       except aiohttp.WSServerDisconnectedError as exc:
-          print(exc.code, exc.message)
-          break
+       msg = yield from ws.receive()
 
-       if msg.tp == aiohttp.MSG_TEXT:
+       if msg.tp == aiohttp.MsgType.text:
            if msg.data == 'close':
-              ws.close()
+              yield from ws.close()
+              break
            else:
               ws.send_str(data + '/answer')
-       elif msg.tp == aiohttp.MSG_CLOSE:
+       elif msg.tp == aiohttp.MsgType.closed:
+           break
+       elif msg.tp == aiohttp.MsgType.error:
            break
 
 You can have the only websocket reader task (which can call ``yield
@@ -127,10 +126,10 @@ do not create instance of class :class:`ClientWebSocketResponse` manually.
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
-   .. method:: close_exception()
+   .. method:: exception()
 
-      Returns close exception if any occurs or returns None.
-                      
+      Returns exception if any occurs or returns None.
+      
    .. method:: receive()
 
       A :ref:`coroutine<coroutine>` that waits upcoming *data*
@@ -144,30 +143,4 @@ do not create instance of class :class:`ClientWebSocketResponse` manually.
 
       It process *ping-pong game* and performs *closing handshake* internally.
 
-      After websocket closing raises
-      :exc:`~aiohttp.errors.WSServerDisconnectedError` with
-      connection closing data.
-
-      :return: :class:`~aiohttp.websocket.Message`
-
-      :raise: :exc:`~aiohttp.errors.WSServerDisconnectedError` on closing.
-
-   .. method:: receive_str()
-
-      A :ref:`coroutine<coroutine>` that calls :meth:`receive_mgs` but
-      also asserts the message type is
-      :const:`~aiohttp.websocket.MSG_TEXT`.
-
-      :return str: peer's message content.
-
-      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_BINARY`.
-
-   .. method:: receive_bytes()
-
-      A :ref:`coroutine<coroutine>` that calls :meth:`receive_mgs` but
-      also asserts the message type is
-      :const:`~aiohttp.websocket.MSG_BINARY`.
-
-      :return bytes: peer's message content.
-
-      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_TEXT`.
+      :return: :class:`~aiohttp.websocket.Message`, `tp` is types of `~aiohttp.MsgType`

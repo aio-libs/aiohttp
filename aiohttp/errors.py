@@ -14,7 +14,7 @@ __all__ = [
     'ClientOSError', 'ClientTimeoutError', 'ProxyConnectionError',
     'ClientRequestError', 'ClientResponseError', 'WSClientDisconnectedError',
 
-    'WSServerHandshakeError', 'WSServerDisconnectedError']
+    'WSServerHandshakeError']
 
 
 class DisconnectedError(Exception):
@@ -31,23 +31,6 @@ class ServerDisconnectedError(DisconnectedError):
 
 class WSClientDisconnectedError(ClientDisconnectedError):
     """Raised on closing server websocket."""
-
-    def __init__(self, code=None, message=None):
-        super().__init__(code, message)
-
-    @property
-    def code(self):
-        """Code from websocket closing frame."""
-        return self.args[0]
-
-    @property
-    def message(self):
-        """Message from websocket closing frame."""
-        return self.args[1]
-
-
-class WSServerDisconnectedError(ServerDisconnectedError):
-    """Raised on closing client websocket."""
 
     def __init__(self, code=None, message=None):
         super().__init__(code, message)

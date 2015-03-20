@@ -17,7 +17,7 @@ def start_client(loop, url):
     name = input('Please enter your name: ')
 
     # send request
-    ws = yield from aiohttp.ws_connect(url)
+    ws = yield from aiohttp.ws_connect(url, autoclose=False, autoping=False)
 
     # input reader
     def stdin_callback():
@@ -31,15 +31,24 @@ def start_client(loop, url):
     @asyncio.coroutine
     def dispatch():
         while True:
-            try:
-                msg = yield from ws.receive()
-            except aiohttp.WSServerDisconnectedError:
-                # server disconnected
-                break
+            msg = yield from ws.receive()
 
-            if msg.tp == aiohttp.MSG_TEXT:
-                print(msg.data.strip())
-            elif msg.tp == aiohttp.MSG_CLOSE:
+            if msg.tp == aiohttp.MsgType.text:
+                print('Text: ', msg.data.strip())
+            elif msg.tp == aiohttp.MsgType.binary:
+                print('Binary: ', msg.data)
+            elif msg.tp == aiohttp.MsgType.ping:
+                ws.pong()
+            elif msg.tp == aiohttp.MsgType.pong:
+                print('Pong received')
+            else:
+                if msg.tp == aiohttp.MsgType.close:
+                    yield from ws.close()
+                elif msg.tp == aiohttp.MsgType.error:
+                    print('Error during receive %s' % ws.exception())
+                elif msg.tp == aiohttp.MsgType.closed:
+                    pass
+
                 break
 
     yield from dispatch()

@@ -180,8 +180,7 @@ class TestWebSocketClient(unittest.TestCase):
         reader = resp.connection.reader.set_parser.return_value = mock.Mock()
 
         resp = self.loop.run_until_complete(
-            websocket_client.ws_connect(
-                'http://test.org', loop=self.loop))
+            websocket_client.ws_connect('http://test.org', loop=self.loop))
         self.assertFalse(resp.closed)
 
         msg = websocket.Message(websocket.MSG_CLOSE, b'', b'')
@@ -192,7 +191,7 @@ class TestWebSocketClient(unittest.TestCase):
         writer.close.assert_called_with(1000, b'')
         self.assertTrue(resp.closed)
         self.assertTrue(res)
-        self.assertIsNone(resp.close_exception())
+        self.assertIsNone(resp.exception())
 
         # idempotent
         res = self.loop.run_until_complete(resp.close())
@@ -227,7 +226,41 @@ class TestWebSocketClient(unittest.TestCase):
 
         self.loop.run_until_complete(resp.close())
         self.assertTrue(resp.closed)
-        self.assertIs(resp.close_exception().__cause__, exc)
+        self.assertIs(resp.exception(), exc)
+
+    @mock.patch('aiohttp.websocket_client.WebSocketWriter')
+    @mock.patch('aiohttp.websocket_client.os')
+    @mock.patch('aiohttp.websocket_client.client')
+    def test_close_exc2(self, m_client, m_os, WebSocketWriter):
+        resp = mock.Mock()
+        resp.status = 101
+        resp.headers = {
+            hdrs.UPGRADE: hdrs.WEBSOCKET,
+            hdrs.CONNECTION: hdrs.UPGRADE,
+            hdrs.SEC_WEBSOCKET_ACCEPT: self.ws_key,
+        }
+        m_os.urandom.return_value = self.key_data
+        m_client.request.return_value = asyncio.Future(loop=self.loop)
+        m_client.request.return_value.set_result(resp)
+        writer = WebSocketWriter.return_value = mock.Mock()
+        resp.connection.reader.set_parser.return_value = mock.Mock()
+
+        resp = self.loop.run_until_complete(
+            websocket_client.ws_connect(
+                'http://test.org', loop=self.loop))
+        self.assertFalse(resp.closed)
+
+        exc = ValueError()
+        writer.close.side_effect = exc
+
+        self.loop.run_until_complete(resp.close())
+        self.assertTrue(resp.closed)
+        self.assertIs(resp.exception(), exc)
+
+        resp._closed = False
+        writer.close.side_effect = asyncio.CancelledError()
+        self.assertRaises(asyncio.CancelledError,
+                          self.loop.run_until_complete, resp.close())
 
     @mock.patch('aiohttp.websocket_client.WebSocketWriter')
     @mock.patch('aiohttp.websocket_client.os')
@@ -303,10 +336,46 @@ class TestWebSocketClient(unittest.TestCase):
         reader.read.return_value = asyncio.Future(loop=self.loop)
         reader.read.return_value.set_exception(exc)
 
-        with self.assertRaises(errors.WSServerDisconnectedError) as ctx:
-            self.loop.run_until_complete(resp.receive())
+        msg = self.loop.run_until_complete(resp.receive())
+        self.assertEqual(msg.tp, aiohttp.MsgType.error)
+        self.assertIs(resp.exception(), exc)
 
-        self.assertIs(ctx.exception.__cause__, exc)
+    @mock.patch('aiohttp.websocket_client.WebSocketWriter')
+    @mock.patch('aiohttp.websocket_client.os')
+    @mock.patch('aiohttp.websocket_client.client')
+    def test_unknown_message(self, m_client, m_os, WebSocketWriter):
+        resp = mock.Mock()
+        resp.status = 101
+        resp.headers = {
+            hdrs.UPGRADE: hdrs.WEBSOCKET,
+            hdrs.CONNECTION: hdrs.UPGRADE,
+            hdrs.SEC_WEBSOCKET_ACCEPT: self.ws_key,
+        }
+        m_os.urandom.return_value = self.key_data
+        m_client.request.return_value = asyncio.Future(loop=self.loop)
+        m_client.request.return_value.set_result(resp)
+        WebSocketWriter.return_value = mock.Mock()
+        reader = resp.connection.reader.set_parser.return_value = mock.Mock()
+
+        resp = self.loop.run_until_complete(
+            websocket_client.ws_connect('http://test.org', loop=self.loop))
+        self.assertFalse(resp.closed)
+
+        msg = websocket.Message(1000, b'', b'')
+        reader.read.return_value = asyncio.Future(loop=self.loop)
+        reader.read.return_value.set_result(msg)
+
+        self.assertRaises(
+            RuntimeError, self.loop.run_until_complete, resp.receive())
+
+    def test_receive_runtime_err(self):
+        resp = websocket_client.ClientWebSocketResponse(
+            mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock(), True, True,
+            self.loop)
+        resp._waiting = True
+
+        self.assertRaises(
+            RuntimeError, self.loop.run_until_complete, resp.receive())
 
 
 class TestWebSocketClientFunctional(unittest.TestCase):
@@ -355,9 +424,8 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             resp = yield from aiohttp.ws_connect(url, loop=self.loop)
             resp.send_str('ask')
 
-            msg = yield from resp.receive_str()
-            self.assertEqual('ask/answer', msg)
-
+            msg = yield from resp.receive()
+            self.assertEqual(msg.data, 'ask/answer')
             yield from resp.close()
 
         self.loop.run_until_complete(go())
@@ -380,61 +448,8 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             resp = yield from aiohttp.ws_connect(url, loop=self.loop)
             resp.send_bytes(b'ask')
 
-            msg = yield from resp.receive_bytes()
-            self.assertEqual(b'ask/answer', msg)
-
-            yield from resp.close()
-
-        self.loop.run_until_complete(go())
-
-    def test_send_recv_bytes_mismatch(self):
-
-        @asyncio.coroutine
-        def handler(request):
-            ws = web.WebSocketResponse()
-            ws.start(request)
-
-            msg = yield from ws.receive_bytes()
-            ws.send_bytes(msg+b'/answer')
-            ws.close()
-
-        @asyncio.coroutine
-        def go():
-            _, _, url = yield from self.create_server('GET', '/', handler)
-            resp = yield from aiohttp.ws_connect(url, loop=self.loop)
-            resp.send_bytes(b'ask')
-
-            try:
-                yield from resp.receive_str()
-            except TypeError:
-                pass
-
-            yield from resp.close()
-
-        self.loop.run_until_complete(go())
-
-    def test_send_recv_str_mismatch(self):
-
-        @asyncio.coroutine
-        def handler(request):
-            ws = web.WebSocketResponse()
-            ws.start(request)
-
-            msg = yield from ws.receive_str()
-            ws.send_str(msg+'/answer')
-            ws.close()
-            return ws
-
-        @asyncio.coroutine
-        def go():
-            _, _, url = yield from self.create_server('GET', '/', handler)
-            resp = yield from aiohttp.ws_connect(url, loop=self.loop)
-            resp.send_str('ask')
-
-            try:
-                yield from resp.receive_bytes()
-            except TypeError:
-                pass
+            msg = yield from resp.receive()
+            self.assertEqual(msg.data, b'ask/answer')
 
             yield from resp.close()
 
@@ -460,13 +475,12 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             resp.ping()
             resp.send_bytes(b'ask')
 
-            msg = yield from resp.receive_bytes()
-            self.assertEqual(b'ask/answer', msg)
+            msg = yield from resp.receive()
+            self.assertEqual(msg.tp, aiohttp.MsgType.binary)
+            self.assertEqual(msg.data, b'ask/answer')
 
             msg = yield from resp.receive()
-            self.assertEqual(msg.tp, websocket.MSG_CLOSE)
-            self.assertEqual(msg.data, 1000)
-            self.assertEqual(msg.extra, b'')
+            self.assertEqual(msg.tp, aiohttp.MsgType.closed)
 
             yield from resp.close()
 
@@ -494,18 +508,17 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             resp.send_bytes(b'ask')
 
             msg = yield from resp.receive()
-            self.assertEqual(msg.tp, websocket.MSG_PING)
-            resp.pong()
-
-            msg = yield from resp.receive_bytes()
-            self.assertEqual(b'ask/answer', msg)
+            self.assertEqual(msg.tp, aiohttp.MsgType.pong)
 
             msg = yield from resp.receive()
-            self.assertEqual(msg.tp, websocket.MSG_CLOSE)
-            self.assertEqual(msg.data, 1000)
-            self.assertEqual(msg.extra, b'')
+            self.assertEqual(msg.tp, aiohttp.MsgType.ping)
+            resp.pong()
 
-            yield from resp.close()
+            msg = yield from resp.receive()
+            self.assertEqual(msg.data, b'ask/answer')
+
+            msg = yield from resp.receive()
+            self.assertEqual(msg.tp, aiohttp.MsgType.closed)
 
         self.loop.run_until_complete(go())
 
@@ -527,8 +540,6 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             _, _, url = yield from self.create_server('GET', '/', handler)
             resp = yield from aiohttp.ws_connect(url, loop=self.loop)
             resp.send_bytes(b'ask')
-
-            yield from resp.receive_str()
 
             closed = yield from resp.close()
             self.assertTrue(closed)
@@ -554,7 +565,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             resp.send_bytes(b'ask')
 
             msg = yield from resp.receive()
-            self.assertEqual(msg.tp, websocket.MSG_CLOSE)
+            self.assertEqual(msg.tp, aiohttp.MsgType.closed)
             self.assertTrue(resp.closed)
 
         self.loop.run_until_complete(go())
@@ -580,11 +591,11 @@ class TestWebSocketClientFunctional(unittest.TestCase):
                 url, autoclose=False, loop=self.loop)
             resp.send_bytes(b'ask')
 
-            text = yield from resp.receive_str()
-            self.assertEqual(text, 'test')
+            msg = yield from resp.receive()
+            self.assertEqual(msg.data, 'test')
 
             msg = yield from resp.receive()
-            self.assertEqual(msg.tp, websocket.MSG_CLOSE)
+            self.assertEqual(msg.tp, aiohttp.MsgType.close)
             self.assertEqual(msg.data, 1000)
             self.assertEqual(msg.extra, b'')
             self.assertFalse(resp.closed)
@@ -612,8 +623,9 @@ class TestWebSocketClientFunctional(unittest.TestCase):
                 url, autoclose=False, loop=self.loop)
             resp.send_bytes(b'ask')
 
-            text = yield from resp.receive_str()
-            self.assertEqual(text, 'test')
+            msg = yield from resp.receive()
+            self.assertEqual(msg.data, 'test')
+            self.assertEqual(msg.tp, aiohttp.MsgType.text)
 
             try:
                 yield from asyncio.wait_for(
@@ -624,7 +636,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
                 self.fail()
 
             self.assertTrue(resp.closed)
-            self.assertIsNone(resp.close_exception())
+            self.assertIsNone(resp.exception())
 
         self.loop.run_until_complete(go())
 
@@ -646,14 +658,14 @@ class TestWebSocketClientFunctional(unittest.TestCase):
                 url, autoclose=False, loop=self.loop)
             resp.send_bytes(b'ask')
 
-            text = yield from resp.receive_str()
-            self.assertEqual(text, 'test')
+            text = yield from resp.receive()
+            self.assertEqual(text.data, 'test')
 
             t = asyncio.async(resp.close(), loop=self.loop)
             yield from asyncio.sleep(0.1, loop=self.loop)
             t.cancel()
             yield from asyncio.sleep(0.1, loop=self.loop)
             self.assertTrue(resp.closed)
-            self.assertIsNone(resp.close_exception())
+            self.assertIsNone(resp.exception())
 
         self.loop.run_until_complete(go())
