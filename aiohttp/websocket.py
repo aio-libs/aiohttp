@@ -30,6 +30,13 @@ WS_HDRS = (hdrs.UPGRADE,
 
 Message = collections.namedtuple('Message', ['tp', 'data', 'extra'])
 
+UNPACK_HEADER = struct.Struct('!BB').unpack
+UNPACK_LEN2 = struct.Struct('!H').unpack_from
+UNPACK_LEN3 = struct.Struct('!Q').unpack_from
+PACK_LEN1 = struct.Struct('!BB').pack
+PACK_LEN2 = struct.Struct('!BBH').pack
+PACK_LEN3 = struct.Struct('!BBQ').pack
+
 
 class WebSocketError(Exception):
     """WebSocket protocol parser error."""
@@ -74,7 +81,7 @@ def parse_frame(buf):
     """Return the next frame from the socket."""
     # read header
     data = yield from buf.read(2)
-    first_byte, second_byte = struct.unpack('!BB', data)
+    first_byte, second_byte = UNPACK_HEADER(data)
 
     fin = (first_byte >> 7) & 1
     rsv1 = (first_byte >> 6) & 1
@@ -108,10 +115,10 @@ def parse_frame(buf):
     # read payload
     if length == 126:
         data = yield from buf.read(2)
-        length = struct.unpack_from('!H', data)[0]
+        length = UNPACK_LEN2(data)[0]
     elif length > 126:
         data = yield from buf.read(8)
-        length = struct.unpack_from('!Q', data)[0]
+        length = UNPACK_LEN3(data)[0]
 
     if has_mask:
         mask = yield from buf.read(4)
@@ -174,15 +181,14 @@ class WebSocketWriter:
 
     def _send_frame(self, message, opcode):
         """Send a frame over the websocket with message as its payload."""
-        header = bytes([0x80 | opcode])
         msg_length = len(message)
 
         if msg_length < 126:
-            header += bytes([msg_length])
+            header = PACK_LEN1(0x80 | opcode, msg_length)
         elif msg_length < (1 << 16):
-            header += bytes([126]) + struct.pack('!H', msg_length)
+            header = PACK_LEN2(0x80 | opcode, 126, msg_length)
         else:
-            header += bytes([127]) + struct.pack('!Q', msg_length)
+            header = PACK_LEN3(0x80 | opcode, 127, msg_length)
 
         self.writer.write(header + message)
 
