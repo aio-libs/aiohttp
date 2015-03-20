@@ -311,7 +311,7 @@ class WebsocketWriterTests(unittest.TestCase):
 
     def setUp(self):
         self.transport = unittest.mock.Mock()
-        self.writer = websocket.WebSocketWriter(self.transport, mask=False)
+        self.writer = websocket.WebSocketWriter(self.transport, use_mask=False)
 
     def test_pong(self):
         self.writer.pong()
@@ -349,7 +349,7 @@ class WebsocketWriterTests(unittest.TestCase):
 
     def test_send_text_masked(self):
         writer = websocket.WebSocketWriter(self.transport,
-                                           mask=True,
+                                           use_mask=True,
                                            random=random.Random(123))
         writer.send(b'text')
         self.transport.write.assert_called_with(

@@ -179,16 +179,16 @@ def parse_message(buf):
 
 class WebSocketWriter:
 
-    def __init__(self, writer, *, mask=True, random=random.Random()):
+    def __init__(self, writer, *, use_mask=False, random=random.Random()):
         self.writer = writer
-        self.mask = mask
+        self.use_mask = use_mask
         self.randrange = random.randrange
 
     def _send_frame(self, message, opcode):
         """Send a frame over the websocket with message as its payload."""
         msg_length = len(message)
 
-        use_mask = self.mask
+        use_mask = self.use_mask
         if use_mask:
             mask_bit = 0x80
         else:
