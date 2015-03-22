@@ -38,15 +38,15 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
                 isdir = os.path.isdir(path)
 
         if not path:
-            raise aiohttp.HttpProcessingError(404)
+            raise aiohttp.HttpProcessingError(code=404)
 
-        for hdr, val in message.headers.items(getall=True):
-            print(hdr, val)
+        for hdr in message.headers:
+            print(hdr, message.headers[hdr])
 
         if isdir and not path.endswith('/'):
             path = path + '/'
             raise aiohttp.HttpProcessingError(
-                302, headers=(('URI', path), ('Location', path)))
+                code=302, headers=(('URI', path), ('Location', path)))
 
         response = aiohttp.Response(
             self.writer, 200, http_version=message.version)
