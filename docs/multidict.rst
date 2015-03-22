@@ -148,7 +148,7 @@ MultiDict
       View contains all keys if *getall* is ``True`` (default) or
       distinct set of ones otherwise.
 
-   .. method:: keys(getall=True)
+   .. method:: items(getall=True)
 
       Return a new view of the dictionary's items (``(key, value)`` pairs).
 

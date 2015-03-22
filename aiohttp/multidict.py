@@ -1,3 +1,11 @@
+"""Multidict implementation.
+
+HTTP Headers and URL query string require specific data structure:
+multidict. It behaves mostly like a dict but it can have
+several values for the same key.
+"""
+
+
 from collections import abc
 import os
 import sys
@@ -9,7 +17,8 @@ _marker = object()
 
 
 class _upstr(str):
-    """Case insensitive str"""
+
+    """Case insensitive str."""
 
     def __new__(cls, val='',
                 encoding=sys.getdefaultencoding(), errors='strict'):
@@ -29,9 +38,7 @@ class _upstr(str):
 class _Base:
 
     def getall(self, key, default=_marker):
-        """
-        Return a list of all values matching the key (may be an empty list)
-        """
+        """Return a list of all values matching the key."""
         res = [v for k, v in self._items if k == key]
         if res:
             return res
@@ -40,9 +47,7 @@ class _Base:
         raise KeyError('Key not found: %r' % key)
 
     def getone(self, key, default=_marker):
-        """
-        Get first value matching the key
-        """
+        """Get first value matching the key."""
         for k, v in self._items:
             if k == key:
                 return v
@@ -56,6 +61,10 @@ class _Base:
         return self.getone(key, _marker)
 
     def get(self, key, default=None):
+        """Get first value matching the key.
+
+        The method is alias for .getone().
+        """
         return self.getone(key, default)
 
     def __iter__(self):
@@ -65,12 +74,15 @@ class _Base:
         return len(self._items)
 
     def keys(self):
+        """Return a new view of the dictionary's keys."""
         return _KeysView(self._items)
 
     def items(self):
+        """Return a new view of the dictionary's items *(key, value) pairs)."""
         return _ItemsView(self._items)
 
     def values(self):
+        """Return a new view of the dictionary's values."""
         return _ValuesView(self._items)
 
     def __eq__(self, other):
@@ -98,12 +110,18 @@ class _Base:
 class _CIBase(_Base):
 
     def getall(self, key, default=_marker):
+        """Return a list of all values matching the key."""
         return super().getall(key.upper(), default)
 
     def getone(self, key, default=_marker):
+        """Get first value matching the key."""
         return super().getone(key.upper(), default)
 
     def get(self, key, default=None):
+        """Get first value matching the key.
+
+        The method is alias for .getone().
+        """
         return super().get(key.upper(), default)
 
     def __getitem__(self, key):
@@ -124,7 +142,7 @@ class _MultiDictProxy(_Base, abc.Mapping):
         self._items = arg._items
 
     def copy(self):
-        """Returns a copy itself."""
+        """Return a copy of itself."""
         return _MultiDict(self.items())
 
 
@@ -139,7 +157,7 @@ class _CIMultiDictProxy(_CIBase, _MultiDictProxy):
         self._items = arg._items
 
     def copy(self):
-        """Returns a copy itself."""
+        """Return a copy of itself."""
         return _CIMultiDict(self.items())
 
 
@@ -151,18 +169,16 @@ class _MultiDict(_Base, abc.MutableMapping):
         self._extend(args, kwargs, self.__class__.__name__, self.add)
 
     def add(self, key, value):
-        """
-        Add the key and value, not overwriting any previous value.
-        """
+        """Add the key and value, not overwriting any previous value."""
         self._items.append((key, value))
 
     def copy(self):
-        """Returns a copy itself."""
+        """Return a copy of itself."""
         cls = self.__class__
         return cls(self.items())
 
     def extend(self, *args, **kwargs):
-        """Extends current MultiDict with more values.
+        """Extend current MultiDict with more values.
 
         This method must be used instead of update.
         """
@@ -195,7 +211,7 @@ class _MultiDict(_Base, abc.MutableMapping):
             method(key, value)
 
     def clear(self):
-        """Remove all items from MultiDict"""
+        """Remove all items from MultiDict."""
         self._items.clear()
 
     # Mapping interface #
@@ -214,6 +230,7 @@ class _MultiDict(_Base, abc.MutableMapping):
             raise KeyError(key)
 
     def setdefault(self, key, default=None):
+        """Return value for key, set value to default if key is not present."""
         for k, v in self._items:
             if k == key:
                 return v
@@ -221,6 +238,12 @@ class _MultiDict(_Base, abc.MutableMapping):
         return default
 
     def pop(self, key, default=_marker):
+        """Remove specified key and return the corresponding value.
+
+        If key is not found, d is returned if given, otherwise
+        KeyError is raised.
+
+        """
         value = None
         found = False
         for i in range(len(self._items) - 1, -1, -1):
@@ -237,12 +260,14 @@ class _MultiDict(_Base, abc.MutableMapping):
             return value
 
     def popitem(self):
+        """Remove and return an arbitrary (key, value) pair."""
         if self._items:
             return self._items.pop(0)
         else:
             raise KeyError("empty multidict")
 
     def update(self, *args, **kwargs):
+        """Update the dictionary from *other*, overwriting existing keys."""
         self._extend(args, kwargs, 'update', self._replace)
 
     def _replace(self, key, value):
@@ -254,6 +279,7 @@ class _MultiDict(_Base, abc.MutableMapping):
 class _CIMultiDict(_CIBase, _MultiDict):
 
     def add(self, key, value):
+        """Add the key and value, not overwriting any previous value."""
         super().add(key.upper(), value)
 
     def __setitem__(self, key, value):
@@ -266,6 +292,7 @@ class _CIMultiDict(_CIBase, _MultiDict):
         super()._replace(key.upper(), value)
 
     def setdefault(self, key, default=None):
+        """Return value for key, set value to default if key is not present."""
         key = key.upper()
         return super().setdefault(key, default)
 

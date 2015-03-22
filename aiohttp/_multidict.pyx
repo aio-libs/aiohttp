@@ -7,7 +7,8 @@ _marker = object()
 
 
 class upstr(str):
-    """Case insensitive str"""
+
+    """Case insensitive str."""
 
     def __new__(cls, val='',
                 encoding=sys.getdefaultencoding(), errors='strict'):
@@ -38,9 +39,7 @@ cdef class _Base:
         return s
 
     def getall(self, key, default=_marker):
-        """
-        Return a list of all values matching the key (may be an empty list)
-        """
+        """Return a list of all values matching the key."""
         return self._getall(self._upper(key), default)
 
     cdef _getall(self, str key, default):
@@ -54,9 +53,7 @@ cdef class _Base:
         raise KeyError('Key not found: %r' % key)
 
     def getone(self, key, default=_marker):
-        """
-        Get first value matching the key
-        """
+        """Get first value matching the key."""
         return self._getone(self._upper(key), default)
 
     cdef _getone(self, str key, default):
@@ -75,6 +72,10 @@ cdef class _Base:
         return self._getone(self._upper(key), _marker)
 
     def get(self, key, default=None):
+        """Get first value matching the key.
+
+        The method is alias for .getone().
+        """
         return self._getone(self._upper(key), default)
 
     def __contains__(self, key):
@@ -95,12 +96,15 @@ cdef class _Base:
         return len(self._items)
 
     cpdef keys(self):
+        """Return a new view of the dictionary's keys."""
         return _KeysView.__new__(_KeysView, self._items)
 
     def items(self):
+        """Return a new view of the dictionary's items *(key, value) pairs)."""
         return _ItemsView.__new__(_ItemsView, self._items)
 
     def values(self):
+        """Return a new view of the dictionary's values."""
         return _ValuesView.__new__(_ValuesView, self._items)
 
     def __repr__(self):
@@ -152,6 +156,7 @@ cdef class MultiDictProxy(_Base):
         self._items = mdict._items
 
     def copy(self):
+        """Return a copy of itself."""
         return MultiDict(self._items)
 
 abc.Mapping.register(MultiDictProxy)
@@ -175,6 +180,7 @@ cdef class CIMultiDictProxy(MultiDictProxy):
         return s.upper()
 
     def copy(self):
+        """Return a copy of itself."""
         return CIMultiDict(self._items)
 
 
@@ -244,18 +250,16 @@ cdef class MultiDict(_Base):
         self._items.append((key, value))
 
     def add(self, key, value):
-        """
-        Add the key and value, not overwriting any previous value.
-        """
+        """Add the key and value, not overwriting any previous value."""
         self._add(self._upper(key), value)
 
     def copy(self):
-        """Returns a copy itself."""
+        """Return a copy of itself."""
         cls = self.__class__
         return cls(self._items)
 
     def extend(self, *args, **kwargs):
-        """Extends current MultiDict with more values.
+        """Extend current MultiDict with more values.
 
         This method must be used instead of update.
         """
@@ -284,6 +288,7 @@ cdef class MultiDict(_Base):
             raise KeyError(key)
 
     def setdefault(self, key, default=None):
+        """Return value for key, set value to default if key is not present."""
         cdef str skey
         skey = self._upper(key)
         for k, v in self._items:
@@ -293,6 +298,12 @@ cdef class MultiDict(_Base):
         return default
 
     def pop(self, key, default=_marker):
+        """Remove specified key and return the corresponding value.
+
+        If key is not found, d is returned if given, otherwise
+        KeyError is raised.
+
+        """
         cdef int found
         cdef str skey
         cdef object value
@@ -313,12 +324,14 @@ cdef class MultiDict(_Base):
             return value
 
     def popitem(self):
+        """Remove and return an arbitrary (key, value) pair."""
         if self._items:
             return self._items.pop(0)
         else:
             raise KeyError("empty multidict")
 
     def update(self, *args, **kwargs):
+        """Update the dictionary from *other*, overwriting existing keys."""
         self._extend(args, kwargs, "update", 0)
 
 
