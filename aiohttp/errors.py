@@ -3,7 +3,7 @@
 from asyncio import TimeoutError
 
 
-__all__ = [
+__all__ = (
     'DisconnectedError', 'ClientDisconnectedError', 'ServerDisconnectedError',
 
     'HttpProcessingError', 'BadHttpMessage',
@@ -14,7 +14,7 @@ __all__ = [
     'ClientOSError', 'ClientTimeoutError', 'ProxyConnectionError',
     'ClientRequestError', 'ClientResponseError', 'WSClientDisconnectedError',
 
-    'WSServerHandshakeError']
+    'WSServerHandshakeError')
 
 
 class DisconnectedError(Exception):

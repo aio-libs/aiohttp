@@ -1,4 +1,4 @@
-__all__ = ['Request', 'StreamResponse', 'Response']
+__all__ = ('Request', 'StreamResponse', 'Response')
 
 import asyncio
 import binascii

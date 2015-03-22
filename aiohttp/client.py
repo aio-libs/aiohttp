@@ -20,7 +20,7 @@ from .streams import EOF_MARKER, FlowControlStreamReader
 from .multidict import CIMultiDictProxy, MultiDictProxy, MultiDict
 from .multipart import MultipartWriter
 
-__all__ = ['request']
+__all__ = ('request',)
 
 HTTP_PORT = 80
 HTTPS_PORT = 443

@@ -26,4 +26,4 @@ __all__ = (client.__all__ +
            multidict.__all__ +
            multipart.__all__ +
            websocket_client.__all__ +
-           ['hdrs', '__version__'])
+           ('hdrs', '__version__'))

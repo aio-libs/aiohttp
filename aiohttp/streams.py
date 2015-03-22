@@ -4,10 +4,10 @@ import traceback
 
 from .log import internal_logger
 
-__all__ = ['EofStream',
+__all__ = ('EofStream',
            'StreamReader', 'DataQueue', 'ChunksQueue',
            'FlowControlStreamReader', 'FlowControlDataQueue',
-           'FlowControlChunksQueue']
+           'FlowControlChunksQueue')
 
 EOF_MARKER = b''
 DEFAULT_LIMIT = 2 ** 16

@@ -7,7 +7,7 @@ import signal
 import sys
 import gunicorn.workers.base as base
 
-__all__ = ['GunicornWebWorker']
+__all__ = ('GunicornWebWorker',)
 
 
 class GunicornWebWorker(base.Worker):

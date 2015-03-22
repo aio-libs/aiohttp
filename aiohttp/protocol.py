@@ -15,11 +15,11 @@ from . import errors, hdrs
 from .multidict import CIMultiDict
 from .log import internal_logger
 
-__all__ = ['HttpMessage', 'Request', 'Response',
+__all__ = ('HttpMessage', 'Request', 'Response',
            'HttpVersion', 'HttpVersion10', 'HttpVersion11',
            'RawRequestMessage', 'RawResponseMessage',
            'HttpPrefixParser', 'HttpRequestParser', 'HttpResponseParser',
-           'HttpPayloadParser']
+           'HttpPayloadParser')
 
 ASCIISET = set(string.printable)
 METHRE = re.compile('[A-Z0-9$-_.]+')

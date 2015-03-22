@@ -14,7 +14,7 @@ from .errors import ClientOSError, ClientTimeoutError
 from .helpers import BasicAuth
 
 
-__all__ = ['BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector']
+__all__ = ('BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector')
 
 
 class Connection(object):

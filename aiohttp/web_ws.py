@@ -1,5 +1,5 @@
-__all__ = ['WebSocketResponse', 'WSClientDisconnectedError',
-           'MSG_BINARY', 'MSG_CLOSE', 'MSG_PING', 'MSG_TEXT']
+__all__ = ('WebSocketResponse', 'WSClientDisconnectedError',
+           'MSG_BINARY', 'MSG_CLOSE', 'MSG_PING', 'MSG_TEXT')
 
 import asyncio
 

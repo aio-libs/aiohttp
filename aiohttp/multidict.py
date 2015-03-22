@@ -2,8 +2,8 @@ from collections import abc
 import os
 import sys
 
-__all__ = ['MultiDictProxy', 'CIMultiDictProxy',
-           'MultiDict', 'CIMultiDict', 'upstr']
+__all__ = ('MultiDictProxy', 'CIMultiDictProxy',
+           'MultiDict', 'CIMultiDict', 'upstr')
 
 _marker = object()
 

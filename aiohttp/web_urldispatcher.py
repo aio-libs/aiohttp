@@ -1,5 +1,5 @@
-__all__ = ['UrlDispatcher', 'UrlMappingMatchInfo',
-           'Route', 'PlainRoute', 'DynamicRoute', 'StaticRoute']
+__all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
+           'Route', 'PlainRoute', 'DynamicRoute', 'StaticRoute')
 
 import abc
 import asyncio

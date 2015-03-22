@@ -12,8 +12,8 @@ __all__ = (web_reqrep.__all__ +
            web_exceptions.__all__ +
            web_urldispatcher.__all__ +
            web_ws.__all__ +
-           ['Application', 'RequestHandler',
-            'RequestHandlerFactory', 'HttpVersion'])
+           ('Application', 'RequestHandler',
+            'RequestHandlerFactory', 'HttpVersion'))
 
 
 import asyncio

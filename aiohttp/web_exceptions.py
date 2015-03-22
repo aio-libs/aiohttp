@@ -1,4 +1,4 @@
-__all__ = [
+__all__ = (
     'HTTPException',
     'HTTPError',
     'HTTPRedirection',
@@ -43,7 +43,7 @@ __all__ = [
     'HTTPServiceUnavailable',
     'HTTPGatewayTimeout',
     'HTTPVersionNotSupported',
-]
+)
 
 from .web_reqrep import Response
 

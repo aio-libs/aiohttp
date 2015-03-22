@@ -62,8 +62,8 @@ import inspect
 from . import errors
 from .streams import FlowControlDataQueue, EofStream
 
-__all__ = ['EofStream', 'StreamParser', 'StreamProtocol',
-           'ParserBuffer', 'LinesParser', 'ChunksParser']
+__all__ = ('EofStream', 'StreamParser', 'StreamProtocol',
+           'ParserBuffer', 'LinesParser', 'ChunksParser')
 
 BUF_LIMIT = 2 ** 14
 DEFAULT_LIMIT = 2 ** 16

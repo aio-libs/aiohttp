@@ -12,7 +12,7 @@ import aiohttp
 from aiohttp import errors, streams, helpers
 from aiohttp.log import server_logger, access_logger
 
-__all__ = ['ServerHttpProtocol']
+__all__ = ('ServerHttpProtocol',)
 
 
 RESPONSES = http.server.BaseHTTPRequestHandler.responses

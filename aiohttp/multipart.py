@@ -24,10 +24,10 @@ from .hdrs import (
 )
 
 
-__all__ = ['MultipartReader', 'MultipartWriter',
+__all__ = ('MultipartReader', 'MultipartWriter',
            'BodyPartReader', 'BodyPartWriter',
            'BadContentDispositionHeader', 'BadContentDispositionParam',
-           'parse_content_disposition', 'content_disposition_filename']
+           'parse_content_disposition', 'content_disposition_filename')
 
 
 CHAR = set(chr(i) for i in range(0, 128))

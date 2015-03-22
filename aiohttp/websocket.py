@@ -11,9 +11,9 @@ from struct import Struct
 from aiohttp import errors, hdrs
 from aiohttp.log import ws_logger
 
-__all__ = ['WebSocketParser', 'WebSocketWriter', 'do_handshake',
+__all__ = ('WebSocketParser', 'WebSocketWriter', 'do_handshake',
            'Message', 'WebSocketError',
-           'MSG_TEXT', 'MSG_BINARY', 'MSG_CLOSE', 'MSG_PING', 'MSG_PONG']
+           'MSG_TEXT', 'MSG_BINARY', 'MSG_CLOSE', 'MSG_PING', 'MSG_PONG')
 
 # Frame opcodes defined in the spec.
 OPCODE_CONTINUATION = 0x0

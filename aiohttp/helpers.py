@@ -8,7 +8,7 @@ from wsgiref.handlers import format_date_time
 
 from . import hdrs, multidict
 
-__all__ = ['BasicAuth', 'FormData', 'parse_mimetype']
+__all__ = ('BasicAuth', 'FormData', 'parse_mimetype')
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):

@@ -10,7 +10,7 @@ from .errors import WSServerHandshakeError
 from .websocket import WS_KEY, Message, WebSocketParser, WebSocketWriter
 from .websocket import MSG_BINARY, MSG_CLOSE, MSG_PING, MSG_PONG, MSG_TEXT
 
-__all__ = ['ws_connect', 'MsgType']
+__all__ = ('ws_connect', 'MsgType')
 
 
 try:

@@ -17,7 +17,7 @@ from urllib.parse import urlsplit
 import aiohttp
 from aiohttp import server, helpers, hdrs
 
-__all__ = ['WSGIServerHttpProtocol']
+__all__ = ('WSGIServerHttpProtocol',)
 
 
 class WSGIServerHttpProtocol(server.ServerHttpProtocol):
