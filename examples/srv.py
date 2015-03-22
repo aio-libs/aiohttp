@@ -40,8 +40,8 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
         if not path:
             raise aiohttp.HttpProcessingError(code=404)
 
-        for hdr in message.headers:
-            print(hdr, message.headers[hdr])
+        for hdr, val in message.headers.items():
+            print(hdr, val)
 
         if isdir and not path.endswith('/'):
             path = path + '/'
