@@ -239,14 +239,16 @@ class WebSocketWriter:
 
 
 def do_handshake(method, headers, transport, protocols=()):
-    """Prepare WebSocket handshake. It return http response code,
-    response headers, websocket parser, websocket writer. It does not
-    perform any IO.
+    """Prepare WebSocket handshake.
+
+    It return http response code, response headers, websocket parser,
+    websocket writer. It does not perform any IO.
 
     `protocols` is a sequence of known protocols. On successful handshake,
     the returned response headers contain the first protocol in this list
-    which the server also knows."""
+    which the server also knows.
 
+    """
     # WebSocket accepts only GET
     if method.upper() != 'GET':
         raise errors.HttpProcessingError(code=405, headers=(('Allow', 'GET'),))
