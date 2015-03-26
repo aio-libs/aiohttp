@@ -85,14 +85,10 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         def handler(request):
             ws = web.WebSocketResponse()
             ws.start(request)
-
             msg = yield from ws.receive_str()
             ws.send_str(msg+'/answer')
-            ws.close()
-            try:
-                yield from ws.receive_str()
-            except web.WSClientDisconnectedError:
-                closed.set_result(None)
+            yield from ws.close()
+            closed.set_result(1)
             return ws
 
         @asyncio.coroutine
@@ -112,7 +108,6 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             writer.close()
 
             yield from closed
-
             resp.close()
 
         self.loop.run_until_complete(go())
@@ -126,7 +121,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
 
             msg = yield from ws.receive_bytes()
             ws.send_bytes(msg+b'/answer')
-            ws.close()
+            yield from ws.close()
             return ws
 
         @asyncio.coroutine
@@ -143,6 +138,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             self.assertEqual(msg.data, 1000)
             self.assertEqual(msg.extra, b'')
 
+            writer.close()
             resp.close()
 
         self.loop.run_until_complete(go())
@@ -155,20 +151,22 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         def handler(request):
             ws = web.WebSocketResponse()
             ws.start(request)
+            yield from ws.receive()
 
-            try:
-                yield from ws.receive_str()
-            except web.WSClientDisconnectedError as exc:
-                self.assertEqual(1, exc.code)
-                self.assertEqual(b'exit message', exc.message)
-                closed.set_result(None)
-                raise
+            msg = yield from ws.receive()
+            self.assertEqual(msg.tp, web.MsgType.close)
+            self.assertEqual(msg.data, 1)
+            self.assertEqual(msg.extra, b'exit message')
+            closed.set_result(None)
+            return ws
 
         @asyncio.coroutine
         def go():
             _, _, url = yield from self.create_server('GET', '/', handler)
             resp, reader, writer = yield from self.connect_ws(url)
             writer.ping()
+            writer.send('ask')
+
             msg = yield from reader.read()
             self.assertEqual(msg.tp, websocket.MSG_PONG)
             writer.close(1, 'exit message')
@@ -187,13 +185,9 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             ws.start(request)
 
             ws.ping('data')
-            try:
-                yield from ws.receive_str()
-            except web.WSClientDisconnectedError as exc:
-                self.assertEqual(2, exc.code)
-                self.assertEqual(b'exit message', exc.message)
-                closed.set_result(None)
-                raise
+            yield from ws.receive()
+            closed.set_result(None)
+            return ws
 
         @asyncio.coroutine
         def go():
@@ -218,11 +212,9 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             ws = web.WebSocketResponse()
             ws.start(request)
 
-            try:
-                yield from ws.receive_str()
-            except web.WSClientDisconnectedError:
-                closed.set_result(None)
-                raise
+            yield from ws.receive()
+            closed.set_result(None)
+            return ws
 
         @asyncio.coroutine
         def go():
@@ -245,26 +237,30 @@ class TestWebWebSocketFunctional(unittest.TestCase):
 
         @asyncio.coroutine
         def handler(request):
-            ws = web.WebSocketResponse()
+            ws = web.WebSocketResponse(autoping=False)
             ws.start(request)
 
+            msg = yield from ws.receive()
+            self.assertEqual(msg.tp, web.MsgType.ping)
             ws.pong('data')
-            try:
-                yield from ws.receive_str()
-            except web.WSClientDisconnectedError as exc:
-                self.assertEqual(2, exc.code)
-                self.assertEqual(b'exit message', exc.message)
-                closed.set_result(None)
-                raise
+
+            msg = yield from ws.receive()
+            self.assertEqual(msg.tp, web.MsgType.close)
+            self.assertEqual(msg.data, 2)
+            self.assertEqual(msg.extra, b'exit message')
+            closed.set_result(None)
+            return ws
 
         @asyncio.coroutine
         def go():
             _, _, url = yield from self.create_server('GET', '/', handler)
             resp, reader, writer = yield from self.connect_ws(url)
+            writer.ping('data')
             msg = yield from reader.read()
             self.assertEqual(msg.tp, websocket.MSG_PONG)
             self.assertEqual(msg.data, b'data')
             writer.close(2, 'exit message')
+
             yield from closed
             resp.close()
 
@@ -281,6 +277,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             self.assertEqual(200, ws.status)
             ws.start(request)
             self.assertEqual(101, ws.status)
+            yield from ws.close()
             closed.set_result(None)
             return ws
 
@@ -302,6 +299,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         def handler(request):
             ws = web.WebSocketResponse(protocols=('foo', 'bar'))
             ws.start(request)
+            yield from ws.close()
             self.assertEqual('bar', ws.protocol)
             closed.set_result(None)
             return ws
@@ -311,6 +309,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             _, _, url = yield from self.create_server('GET', '/', handler)
             resp, _, writer = yield from self.connect_ws(url, 'eggs, bar')
             writer.close()
+
             yield from closed
             resp.close()
 
@@ -324,11 +323,8 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         def handler(request):
             ws = web.WebSocketResponse(protocols=('foo', 'bar'))
             ws.start(request)
-            ws.close()
-            try:
-                yield from ws.receive_str()
-            except web.WSClientDisconnectedError:
-                closed.set_result(None)
+            yield from ws.close()
+            closed.set_result(None)
             return ws
 
         @asyncio.coroutine
@@ -350,12 +346,16 @@ class TestWebWebSocketFunctional(unittest.TestCase):
 
         @asyncio.coroutine
         def handler(request):
-            ws = web.WebSocketResponse(protocols=('foo', 'bar'))
+            ws = web.WebSocketResponse(
+                autoclose=False, protocols=('foo', 'bar'))
             ws.start(request)
-            try:
-                yield from ws.receive_str()
-            except web.WSClientDisconnectedError:
-                closed.set_result(None)
+
+            msg = yield from ws.receive()
+            self.assertEqual(msg.tp, web.MsgType.close)
+            self.assertFalse(ws.closed)
+            yield from ws.close()
+            self.assertTrue(ws.closed)
+            closed.set_result(None)
             return ws
 
         @asyncio.coroutine
@@ -371,44 +371,6 @@ class TestWebWebSocketFunctional(unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
-    def test_server_close_handshake_by_another_task(self):
-
-        closed = asyncio.Future(loop=self.loop)
-        closed2 = asyncio.Future(loop=self.loop)
-
-        @asyncio.coroutine
-        def closer(ws):
-            ws.close()
-            try:
-                yield from ws.wait_closed()
-            except web.WSClientDisconnectedError:
-                closed2.set_result(None)
-
-        @asyncio.coroutine
-        def handler(request):
-            ws = web.WebSocketResponse(protocols=('foo', 'bar'))
-            ws.start(request)
-            asyncio.async(closer(ws), loop=request.app.loop)
-            try:
-                yield from ws.receive_str()
-            except web.WSClientDisconnectedError:
-                closed.set_result(None)
-            return ws
-
-        @asyncio.coroutine
-        def go():
-            _, _, url = yield from self.create_server('GET', '/', handler)
-            resp, reader, writer = yield from self.connect_ws(url, 'eggs, bar')
-
-            msg = yield from reader.read()
-            self.assertEqual(msg.tp, websocket.MSG_CLOSE)
-            writer.close()
-            yield from asyncio.gather(closed, closed2, loop=self.loop)
-
-            resp.close()
-
-        self.loop.run_until_complete(go())
-
     def test_server_close_handshake_server_eats_client_messages(self):
 
         closed = asyncio.Future(loop=self.loop)
@@ -417,11 +379,8 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         def handler(request):
             ws = web.WebSocketResponse(protocols=('foo', 'bar'))
             ws.start(request)
-            ws.close()
-            try:
-                yield from ws.receive_str()
-            except web.WSClientDisconnectedError:
-                closed.set_result(None)
+            yield from ws.close()
+            closed.set_result(None)
             return ws
 
         @asyncio.coroutine

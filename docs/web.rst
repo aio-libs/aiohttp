@@ -289,18 +289,22 @@ using response's methods:
         ws.start(request)
 
         while True:
-            try:
-                data = yield from ws.receive_str()
-                if data == 'close':
-                    ws.close()
+            msg = yield from ws.receive()
+
+            if msg.tp == aiohttp.MsgType.text:
+                if msg.data == 'close':
+                    yield from ws.close()
                 else:
-                    ws.send_str(data + '/answer')
-            except web.WSClientDisconnectedError as exc:
-                print(exc.code, exc.message)
-                return ws
+                    ws.send_str(msg.data + '/answer')
+            elif msg.tp == aiohttp.MsgType.close:
+                print('websocket connection closed')
+            elif msg.tp == aiohttp.MsgType.error:
+                print('ws connection closed with exception %s', ws.exception())
+
+        return ws
 
 You can have only one websocket reader task (which can call ``yield
-from ws.receive_str()``) and multiple writer tasks which can only send
+from ws.receive()``) and multiple writer tasks which can only send
 data asynchronously (by ``yield from ws.send_str('data')`` for example).
 
 

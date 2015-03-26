@@ -4,8 +4,7 @@
 
 import asyncio
 import os
-from aiohttp.web import (Application, Response,
-                         WebSocketResponse, WSClientDisconnectedError)
+from aiohttp.web import Application, Response, MsgType, WebSocketResponse
 
 WS_FILE = os.path.join(os.path.dirname(__file__), 'websocket.html')
 
@@ -24,21 +23,22 @@ def wshandler(request):
         ws.send_str('Someone joined')
     request.app['sockets'].append(resp)
 
-    try:
-        while True:
-            msg = yield from resp.receive_str()
-            print(msg)
+    while True:
+        msg = yield from resp.receive()
+        print(msg)
+
+        if msg.tp == MsgType.text:
             for ws in request.app['sockets']:
                 if ws is not resp:
-                    ws.send_str(msg)
-    except WSClientDisconnectedError:
-        if resp not in request.app['sockets']:
-            return resp
-        request.app['sockets'].remove(resp)
-        print('Someone disconnected.')
-        for ws in request.app['sockets']:
-            ws.send_str('Someone disconnected.')
-        raise
+                    ws.send_str(msg.data)
+        else:
+            break
+
+    request.app['sockets'].remove(resp)
+    print('Someone disconnected.')
+    for ws in request.app['sockets']:
+        ws.send_str('Someone disconnected.')
+    return resp
 
 
 @asyncio.coroutine

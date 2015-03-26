@@ -2,9 +2,8 @@ import asyncio
 import unittest
 from unittest import mock
 from aiohttp import CIMultiDict
-from aiohttp.web import (Request, WebSocketResponse,
-                         WSClientDisconnectedError,
-                         HTTPMethodNotAllowed, HTTPBadRequest)
+from aiohttp.web import (
+    MsgType, Request, WebSocketResponse, HTTPMethodNotAllowed, HTTPBadRequest)
 from aiohttp.protocol import RawRequestMessage, HttpVersion11
 from aiohttp import websocket
 
@@ -62,7 +61,7 @@ class TestWebWebSocket(unittest.TestCase):
     def test_nonstarted_close(self):
         ws = WebSocketResponse()
         with self.assertRaises(RuntimeError):
-            ws.close()
+            self.loop.run_until_complete(ws.close())
 
     def test_nonstarted_receive_str(self):
 
@@ -141,23 +140,6 @@ class TestWebWebSocket(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             ws.write(b'data')
 
-    def test_nested_exception(self):
-
-        @asyncio.coroutine
-        def a():
-            raise WSClientDisconnectedError()
-
-        @asyncio.coroutine
-        def b():
-            yield from a()
-
-        @asyncio.coroutine
-        def c():
-            yield from b()
-
-        with self.assertRaises(WSClientDisconnectedError):
-            self.loop.run_until_complete(c())
-
     def test_can_start_ok(self):
         req = self.make_request('GET', '/')
         ws = WebSocketResponse(protocols=('chat',))
@@ -186,54 +168,53 @@ class TestWebWebSocket(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'Already started'):
             ws.can_start(req)
 
-    def test_closing_after_ctor(self):
+    def test_closed_after_ctor(self):
         ws = WebSocketResponse()
-        self.assertFalse(ws.closing)
+        self.assertFalse(ws.closed)
 
-    def test_send_str_closing(self):
+    def test_send_str_closed(self):
         req = self.make_request('GET', '/')
         ws = WebSocketResponse()
         ws.start(req)
-        ws.close()
+        self.loop.run_until_complete(ws.close())
         with self.assertRaises(RuntimeError):
             ws.send_str('string')
 
-    def test_send_bytes_closing(self):
+    def test_send_bytes_closed(self):
         req = self.make_request('GET', '/')
         ws = WebSocketResponse()
         ws.start(req)
-        ws.close()
+        self.loop.run_until_complete(ws.close())
         with self.assertRaises(RuntimeError):
             ws.send_bytes(b'bytes')
 
-    def test_ping_closing(self):
+    def test_ping_closed(self):
         req = self.make_request('GET', '/')
         ws = WebSocketResponse()
         ws.start(req)
-        ws.close()
+        self.loop.run_until_complete(ws.close())
         with self.assertRaises(RuntimeError):
             ws.ping()
 
-    def test_pong_closing(self):
+    def test_pong_closed(self):
         req = self.make_request('GET', '/')
         ws = WebSocketResponse()
         ws.start(req)
-        ws.close()
+        self.loop.run_until_complete(ws.close())
         with self.assertRaises(RuntimeError):
             ws.pong()
 
-    def test_double_close(self):
+    def test_close_idempotent(self):
         req = self.make_request('GET', '/')
         ws = WebSocketResponse()
         ws.start(req)
         writer = mock.Mock()
         ws._writer = writer
-        ws.close(code=1, message='message1')
-        self.assertTrue(ws.closing)
-        with self.assertRaisesRegex(RuntimeError, 'Already closing'):
-            ws.close(code=2, message='message2')
-        self.assertTrue(ws.closing)
-        writer.close.assert_called_once_with(1, 'message1')
+        self.assertTrue(
+            self.loop.run_until_complete(ws.close(code=1, message='message1')))
+        self.assertTrue(ws.closed)
+        self.assertFalse(
+            self.loop.run_until_complete(ws.close(code=2, message='message2')))
 
     def test_start_invalid_method(self):
         req = self.make_request('POST', '/')
@@ -254,7 +235,7 @@ class TestWebWebSocket(unittest.TestCase):
         def go():
             ws = WebSocketResponse()
             with self.assertRaises(RuntimeError):
-                yield from ws.wait_closed()
+                yield from ws.close()
 
         self.loop.run_until_complete(go())
 
@@ -272,26 +253,13 @@ class TestWebWebSocket(unittest.TestCase):
         req = self.make_request('GET', '/')
         ws = WebSocketResponse()
         ws.start(req)
-        ws._closing_fut.set_result(1)
+        self.loop.run_until_complete(ws.close())
 
         @asyncio.coroutine
         def go():
             yield from ws.write_eof()
             yield from ws.write_eof()
             yield from ws.write_eof()
-
-        self.loop.run_until_complete(go())
-
-    def test_write_eof_exception(self):
-        req = self.make_request('GET', '/')
-        ws = WebSocketResponse()
-        ws.start(req)
-        ws._closing_fut.set_exception(ValueError())
-
-        @asyncio.coroutine
-        def go():
-            with self.assertRaises(ValueError):
-                yield from ws.write_eof()
 
         self.loop.run_until_complete(go())
 
@@ -307,9 +275,9 @@ class TestWebWebSocket(unittest.TestCase):
 
         @asyncio.coroutine
         def go():
-            with self.assertRaises(ValueError):
-                yield from ws.receive_msg()
-
-            self.assertIs(ws._closing_fut.exception(), exc)
+            msg = yield from ws.receive()
+            self.assertTrue(msg.tp, MsgType.error)
+            self.assertIs(msg.data, exc)
+            self.assertIs(ws.exception(), exc)
 
         self.loop.run_until_complete(go())

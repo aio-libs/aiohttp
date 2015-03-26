@@ -12,9 +12,9 @@ __all__ = (
 
     'ClientError', 'ClientHttpProcessingError', 'ClientConnectionError',
     'ClientOSError', 'ClientTimeoutError', 'ProxyConnectionError',
-    'ClientRequestError', 'ClientResponseError', 'WSClientDisconnectedError',
+    'ClientRequestError', 'ClientResponseError',
 
-    'WSServerHandshakeError')
+    'WSServerHandshakeError', 'WSClientDisconnectedError')
 
 
 class DisconnectedError(Exception):
@@ -30,7 +30,7 @@ class ServerDisconnectedError(DisconnectedError):
 
 
 class WSClientDisconnectedError(ClientDisconnectedError):
-    """Raised on closing server websocket."""
+    """Deprecated."""
 
     def __init__(self, code=None, message=None):
         super().__init__(code, message)

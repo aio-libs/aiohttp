@@ -632,9 +632,10 @@ WebSocketResponse
 
       .. note:: The method newer raises exception.
 
-   .. attribute:: closing
+   .. attribute:: closed
 
-      Read-only property, ``True`` if :meth:`close` has been called of
+      Read-only property, ``True`` if connection has been closed or in process
+      of closing.
       :const:`~aiohttp.websocket.MSG_CLOSE` message has been received from peer.
 
    .. attribute:: protocol
@@ -644,6 +645,10 @@ WebSocketResponse
       May be ``None`` if server and client protocols are
       not overlapping.
 
+   .. method:: exception()
+
+      Returns last occured exception or None.
+      
    .. method:: ping(message=b'')
 
       Send :const:`~aiohttp.websocket.MSG_PING` to peer.
@@ -687,15 +692,8 @@ WebSocketResponse
 
    .. method:: close(*, code=1000, message=b'')
 
-      Initiate closing handshake by sending
-      :const:`~aiohttp.websocket.MSG_CLOSE` message.
-
-      The handshake is finished by next ``yield from ws.receive_*()``
-      or ``yield from ws.wait_closed()`` call.
-
-      Use :meth:`wait_closed` if you call the method from
-      write-only task and one of :meth:`receive_str`,
-      :meth:`receive_bytes` or :meth:`receive` otherwise.
+      A :ref:`coroutine<coroutine>` that initiates closing 
+      handshake by sending :const:`~aiohttp.websocket.MSG_CLOSE` message.
 
       :param int code: closing code
 
@@ -704,18 +702,6 @@ WebSocketResponse
                       or :class:`bytes`.
 
       :raise RuntimeError: if connection is not started or closing
-
-   .. method:: wait_closed()
-
-      A :ref:`coroutine<coroutine>` that waits for socket handshake
-      finish and raises
-      :exc:`~aiohttp.errors.WSClientDisconnectedError` at the end.
-
-      Use the method only from write-only tasks, please call one of
-      :meth:`receive_str`, :meth:`receive_bytes` or
-      :meth:`receive` otherwise.
-
-      :raise RuntimeError: if connection is not started
 
    .. method:: receive()
 

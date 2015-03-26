@@ -1,27 +1,33 @@
-__all__ = ('WebSocketResponse', 'WSClientDisconnectedError',
-           'MSG_BINARY', 'MSG_CLOSE', 'MSG_PING', 'MSG_TEXT')
+__all__ = ('WebSocketResponse', 'MsgType')
 
 import asyncio
+import warnings
 
-from .websocket import do_handshake, MSG_BINARY, MSG_CLOSE, MSG_PING, MSG_TEXT
-from .errors import HttpProcessingError, WSClientDisconnectedError
+from .websocket import do_handshake, Message
+from .websocket_client import MsgType, closedMessage
 
-from .web_exceptions import (HTTPBadRequest, HTTPMethodNotAllowed,
-                             HTTPInternalServerError)
+from .errors import HttpProcessingError, ClientDisconnectedError
+
+from .web_exceptions import (
+    HTTPBadRequest, HTTPMethodNotAllowed, HTTPInternalServerError)
 from .web_reqrep import StreamResponse
 
 
 class WebSocketResponse(StreamResponse):
 
-    def __init__(self, *, protocols=()):
+    def __init__(self, *, autoclose=True, autoping=True, protocols=()):
         super().__init__(status=101)
         self._protocols = protocols
         self._protocol = None
         self._writer = None
         self._reader = None
+        self._closed = False
         self._closing = False
         self._loop = None
-        self._closing_fut = None
+        self._waiting = False
+        self._exception = None
+        self._autoclose = autoclose
+        self._autoping = autoping
 
     def start(self, request):
         # make pre-check to don't hide it by do_handshake() exceptions
@@ -53,7 +59,6 @@ class WebSocketResponse(StreamResponse):
         self._writer = writer
         self._protocol = protocol
         self._loop = request.app.loop
-        self._closing_fut = asyncio.Future(loop=self._loop)
 
         return resp_impl
 
@@ -70,17 +75,20 @@ class WebSocketResponse(StreamResponse):
             return True, protocol
 
     @property
-    def closing(self):
-        return self._closing
+    def closed(self):
+        return self._closed
 
     @property
     def protocol(self):
         return self._protocol
 
+    def exception(self):
+        return self._exception
+
     def ping(self, message='b'):
         if self._writer is None:
             raise RuntimeError('Call .start() first')
-        if self._closing:
+        if self._closed:
             raise RuntimeError('websocket connection is closing')
         self._writer.ping(message)
 
@@ -88,14 +96,14 @@ class WebSocketResponse(StreamResponse):
         # unsolicited pong
         if self._writer is None:
             raise RuntimeError('Call .start() first')
-        if self._closing:
+        if self._closed:
             raise RuntimeError('websocket connection is closing')
         self._writer.pong(message)
 
     def send_str(self, data):
         if self._writer is None:
             raise RuntimeError('Call .start() first')
-        if self._closing:
+        if self._closed:
             raise RuntimeError('websocket connection is closing')
         if not isinstance(data, str):
             raise TypeError('data argument must be str (%r)' % type(data))
@@ -104,27 +112,20 @@ class WebSocketResponse(StreamResponse):
     def send_bytes(self, data):
         if self._writer is None:
             raise RuntimeError('Call .start() first')
-        if self._closing:
+        if self._closed:
             raise RuntimeError('websocket connection is closing')
         if not isinstance(data, (bytes, bytearray, memoryview)):
             raise TypeError('data argument must be byte-ish (%r)' %
                             type(data))
         self._writer.send(data, binary=True)
 
-    def close(self, *, code=1000, message=b''):
-        if self._writer is None:
-            raise RuntimeError('Call .start() first')
-        if not self._closing:
-            self._closing = True
-            self._writer.close(code, message)
-        else:
-            raise RuntimeError('Already closing')
-
     @asyncio.coroutine
     def wait_closed(self):
-        if self._closing_fut is None:
-            raise RuntimeError('Call .start() first')
-        yield from self._closing_fut
+        warnings.warn(
+            'wait_closed() coroutine is deprecated. use close() instead',
+            DeprecationWarning)
+
+        return (yield from self.close())
 
     @asyncio.coroutine
     def write_eof(self):
@@ -133,52 +134,101 @@ class WebSocketResponse(StreamResponse):
         if self._resp_impl is None:
             raise RuntimeError("Response has not been started")
 
-        yield from self.wait_closed()
+        yield from self.close()
         self._eof_sent = True
+
+    @asyncio.coroutine
+    def close(self, *, code=1000, message=b''):
+        if self._writer is None:
+            raise RuntimeError('Call .start() first')
+
+        if not self._closed:
+            self._closed = True
+            try:
+                self._writer.close(code, message)
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                raise
+            except Exception as exc:
+                self._exception = exc
+                return True
+
+            if self._closing:
+                return True
+
+            while True:
+                try:
+                    msg = yield from self._reader.read()
+                except (asyncio.CancelledError, asyncio.TimeoutError):
+                    raise
+                except Exception as exc:
+                    self._exception = exc
+                    return True
+
+                if msg.tp == MsgType.close:
+                    return True
+        else:
+            return False
 
     @asyncio.coroutine
     def receive(self):
         if self._reader is None:
             raise RuntimeError('Call .start() first')
-        while True:
-            try:
-                msg = yield from self._reader.read()
-            except Exception as exc:
-                self._closing_fut.set_exception(exc)
-                raise
+        if self._waiting:
+            raise RuntimeError('Concurrent call to receive() is not allowed')
 
-            if msg.tp == MSG_CLOSE:
-                if self._closing:
-                    exc = WSClientDisconnectedError(msg.data, msg.extra)
-                    self._closing_fut.set_exception(exc)
-                    raise exc
-                else:
+        self._waiting = True
+        try:
+            while True:
+                if self._closed:
+                    return closedMessage
+
+                try:
+                    msg = yield from self._reader.read()
+                except (asyncio.CancelledError, asyncio.TimeoutError):
+                    raise
+                except ClientDisconnectedError:
+                    self._closed = True
+                    return Message(MsgType.close, None, None)
+                except Exception as exc:
+                    self._exception = exc
                     self._closing = True
-                    self._writer.close(msg.data, msg.extra)
-                    yield from self.drain()
-                    exc = WSClientDisconnectedError(msg.data, msg.extra)
-                    self._closing_fut.set_exception(exc)
-                    raise exc
-            elif not self._closing:
-                if msg.tp == MSG_PING:
-                    self._writer.pong(msg.data)
-                elif msg.tp in (MSG_TEXT, MSG_BINARY):
-                    return msg
+                    yield from self.close()
+                    return Message(MsgType.error, exc, None)
 
-    receive_msg = receive
+                if msg.tp == MsgType.close:
+                    self._closing = True
+                    if not self._closed and self._autoclose:
+                        yield from self.close()
+                    return msg
+                elif not self._closed:
+                    if msg.tp == MsgType.ping and self._autoping:
+                        self._writer.pong(msg.data)
+                    elif msg.tp == MsgType.pong and self._autoping:
+                        continue
+                    else:
+                        return msg
+        finally:
+            self._waiting = False
+
+    @asyncio.coroutine
+    def receive_msg(self):
+        warnings.warn(
+            'receive_msg() coroutine is deprecated. use receive() instead',
+            DeprecationWarning)
+        return (yield from self.receive())
 
     @asyncio.coroutine
     def receive_str(self):
-        msg = yield from self.receive_msg()
-        if msg.tp != MSG_TEXT:
+        msg = yield from self.receive()
+        if msg.tp != MsgType.text:
             raise TypeError(
                 "Received message {}:{!r} is not str".format(msg.tp, msg.data))
         return msg.data
 
     @asyncio.coroutine
     def receive_bytes(self):
-        msg = yield from self.receive_msg()
-        if msg.tp != MSG_BINARY:
+        msg = yield from self.receive()
+        if msg.tp != MsgType.binary:
             raise TypeError(
                 "Received message {}:{!r} is not bytes".format(msg.tp,
                                                                msg.data))
