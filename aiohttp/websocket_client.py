@@ -8,7 +8,7 @@ import os
 from aiohttp import client, hdrs
 from .errors import WSServerHandshakeError
 from .websocket import WS_KEY, Message, WebSocketParser, WebSocketWriter
-from .websocket import MSG_BINARY, MSG_CLOSE, MSG_PING, MSG_PONG, MSG_TEXT
+from .websocket import MSG_BINARY, MSG_TEXT, MSG_CLOSE, MSG_PING, MSG_PONG
 
 __all__ = ('ws_connect', 'MsgType')
 
@@ -21,13 +21,13 @@ except ImportError:  # pragma: no cover
 
 class MsgType(IntEnum):
 
-    text = 1
-    binary = 2
-    ping = 3
-    pong = 4
-    close = 5
-    closed = 6
-    error = 7
+    text = MSG_TEXT
+    binary = MSG_BINARY
+    ping = MSG_PING
+    pong = MSG_PONG
+    close = MSG_CLOSE
+    closed = 20
+    error = 21
 
 closedMessage = Message(MsgType.closed, None, None)
 
@@ -170,7 +170,7 @@ class ClientWebSocketResponse:
                     self._response.close(force=True)
                     return True
 
-                if msg.tp == MSG_CLOSE:
+                if msg.tp == MsgType.close:
                     self._response.close(force=True)
                     return True
         else:
@@ -197,27 +197,22 @@ class ClientWebSocketResponse:
                     yield from self.close()
                     return Message(MsgType.error, exc, None)
 
-                if msg.tp == MSG_CLOSE:
+                if msg.tp == MsgType.close:
                     self._closing = True
                     if not self._closed and self._autoclose:
                         yield from self.close()
-                        return closedMessage
-                    return Message(MsgType.close, msg.data, msg.extra)
+                    return msg
                 elif not self._closed:
-                    if msg.tp == MSG_PING:
+                    if msg.tp == MsgType.ping:
                         if self._autoping:
                             self._writer.pong(msg.data)
                         else:
-                            return Message(MsgType.ping, msg.data, msg.extra)
-                    elif msg.tp == MSG_PONG:
+                            return msg
+                    elif msg.tp == MsgType.pong:
                         if self._autoping:
                             continue
-                        return Message(MsgType.pong, msg.data, msg.extra)
-                    elif msg.tp == MSG_TEXT:
-                        return Message(MsgType.text, msg.data, msg.extra)
-                    elif msg.tp == MSG_BINARY:
-                        return Message(MsgType.binary, msg.data, msg.extra)
+                        return msg
                     else:
-                        raise RuntimeError('Unknown message type')
+                        return msg
         finally:
             self._waiting = False

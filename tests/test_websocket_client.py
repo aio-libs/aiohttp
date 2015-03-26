@@ -340,34 +340,6 @@ class TestWebSocketClient(unittest.TestCase):
         self.assertEqual(msg.tp, aiohttp.MsgType.error)
         self.assertIs(resp.exception(), exc)
 
-    @mock.patch('aiohttp.websocket_client.WebSocketWriter')
-    @mock.patch('aiohttp.websocket_client.os')
-    @mock.patch('aiohttp.websocket_client.client')
-    def test_unknown_message(self, m_client, m_os, WebSocketWriter):
-        resp = mock.Mock()
-        resp.status = 101
-        resp.headers = {
-            hdrs.UPGRADE: hdrs.WEBSOCKET,
-            hdrs.CONNECTION: hdrs.UPGRADE,
-            hdrs.SEC_WEBSOCKET_ACCEPT: self.ws_key,
-        }
-        m_os.urandom.return_value = self.key_data
-        m_client.request.return_value = asyncio.Future(loop=self.loop)
-        m_client.request.return_value.set_result(resp)
-        WebSocketWriter.return_value = mock.Mock()
-        reader = resp.connection.reader.set_parser.return_value = mock.Mock()
-
-        resp = self.loop.run_until_complete(
-            websocket_client.ws_connect('http://test.org', loop=self.loop))
-        self.assertFalse(resp.closed)
-
-        msg = websocket.Message(1000, b'', b'')
-        reader.read.return_value = asyncio.Future(loop=self.loop)
-        reader.read.return_value.set_result(msg)
-
-        self.assertRaises(
-            RuntimeError, self.loop.run_until_complete, resp.receive())
-
     def test_receive_runtime_err(self):
         resp = websocket_client.ClientWebSocketResponse(
             mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock(), True, True,
@@ -480,7 +452,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             self.assertEqual(msg.data, b'ask/answer')
 
             msg = yield from resp.receive()
-            self.assertEqual(msg.tp, aiohttp.MsgType.closed)
+            self.assertEqual(msg.tp, aiohttp.MsgType.close)
 
             yield from resp.close()
 
@@ -518,7 +490,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             self.assertEqual(msg.data, b'ask/answer')
 
             msg = yield from resp.receive()
-            self.assertEqual(msg.tp, aiohttp.MsgType.closed)
+            self.assertEqual(msg.tp, aiohttp.MsgType.close)
 
         self.loop.run_until_complete(go())
 
@@ -568,8 +540,11 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             resp.send_bytes(b'ask')
 
             msg = yield from resp.receive()
-            self.assertEqual(msg.tp, aiohttp.MsgType.closed)
+            self.assertEqual(msg.tp, aiohttp.MsgType.close)
             self.assertTrue(resp.closed)
+
+            msg = yield from resp.receive()
+            self.assertEqual(msg.tp, aiohttp.MsgType.closed)
 
         self.loop.run_until_complete(go())
 
