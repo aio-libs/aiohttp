@@ -203,15 +203,10 @@ class ClientWebSocketResponse:
                         yield from self.close()
                     return msg
                 elif not self._closed:
-                    if msg.tp == MsgType.ping:
-                        if self._autoping:
-                            self._writer.pong(msg.data)
-                        else:
-                            return msg
-                    elif msg.tp == MsgType.pong:
-                        if self._autoping:
-                            continue
-                        return msg
+                    if msg.tp == MsgType.ping and self._autoping:
+                        self._writer.pong(msg.data)
+                    elif msg.tp == MsgType.pong and self._autoping:
+                        continue
                     else:
                         return msg
         finally:
