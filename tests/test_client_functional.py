@@ -686,6 +686,8 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
             self.assertEqual(str(len(data)),
                              content['headers']['Content-Length'])
+            self.assertEqual('application/octet-stream',
+                             content['headers']['Content-Type'])
 
     def test_POST_StreamReader(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:

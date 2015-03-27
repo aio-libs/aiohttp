@@ -4,11 +4,13 @@ CHANGES
 0.15.0 (Unreleased)
 -------------------
 
-- Client WebSockets support.
+- Client WebSockets support
 
 - New Multipart system #273
 
 - Support for "Except" header #287 #267
+
+- Set default Content-Type for post requests #184
 
 - Fix issue with construction dynamic route with regexps and trailing slash #266
 

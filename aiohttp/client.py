@@ -548,6 +548,11 @@ class ClientRequest:
             request.enable_chunked_encoding()
             request.add_chunking_filter(self.chunked)
 
+        # set default content-type
+        if (self.method in self.POST_METHODS and
+                hdrs.CONTENT_TYPE not in self.headers):
+            self.headers[hdrs.CONTENT_TYPE] = 'application/octet-stream'
+
         request.add_headers(
             *((k, v)
               for k, v in ((k, value)
