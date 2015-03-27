@@ -1257,7 +1257,7 @@ class ParseContentDispositionTestCase(unittest.TestCase):
         self.assertEqual('attachment', disptype)
         self.assertEqual({'filename*': 'foo-ä-€.html'}, params)
 
-    def attwithfn2231utf8comp(self):
+    def test_attwithfn2231utf8comp(self):
         disptype, params = parse_content_disposition(
             "attachment; filename*=UTF-8''foo-a%cc%88.html")
         self.assertEqual('attachment', disptype)
