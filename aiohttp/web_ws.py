@@ -211,7 +211,7 @@ class WebSocketResponse(StreamResponse):
             self._waiting = False
 
     @asyncio.coroutine
-    def receive_msg(self):
+    def receive_msg(self):  # pragma: no cover
         warnings.warn(
             'receive_msg() coroutine is deprecated. use receive() instead',
             DeprecationWarning)

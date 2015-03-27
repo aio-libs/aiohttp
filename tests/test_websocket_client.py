@@ -592,7 +592,6 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             yield from ws.receive_bytes()
             ws.send_str('test')
             yield from asyncio.sleep(10, loop=self.loop)
-            return ws
 
         @asyncio.coroutine
         def go():
@@ -627,7 +626,6 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             yield from ws.receive_bytes()
             ws.send_str('test')
             yield from asyncio.sleep(10, loop=self.loop)
-            return ws
 
         @asyncio.coroutine
         def go():

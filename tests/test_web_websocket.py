@@ -5,7 +5,7 @@ from aiohttp import CIMultiDict
 from aiohttp.web import (
     MsgType, Request, WebSocketResponse, HTTPMethodNotAllowed, HTTPBadRequest)
 from aiohttp.protocol import RawRequestMessage, HttpVersion11
-from aiohttp import websocket
+from aiohttp import errors, websocket
 
 
 class TestWebWebSocket(unittest.TestCase):
@@ -92,10 +92,10 @@ class TestWebWebSocket(unittest.TestCase):
             ws.start(req)
 
             @asyncio.coroutine
-            def receive_msg():
+            def receive():
                 return websocket.Message(websocket.MSG_BINARY, b'data', b'')
 
-            ws.receive_msg = receive_msg
+            ws.receive = receive
 
             with self.assertRaises(TypeError):
                 yield from ws.receive_str()
@@ -111,10 +111,10 @@ class TestWebWebSocket(unittest.TestCase):
             ws.start(req)
 
             @asyncio.coroutine
-            def receive_msg():
+            def receive():
                 return websocket.Message(websocket.MSG_TEXT, 'data', b'')
 
-            ws.receive_msg = receive_msg
+            ws.receive = receive
 
             with self.assertRaises(TypeError):
                 yield from ws.receive_bytes()
@@ -263,7 +263,7 @@ class TestWebWebSocket(unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
-    def test_receive_msg_exc_in_reader(self):
+    def test_receive_exc_in_reader(self):
         req = self.make_request('GET', '/')
         ws = WebSocketResponse()
         ws.start(req)
@@ -281,3 +281,97 @@ class TestWebWebSocket(unittest.TestCase):
             self.assertIs(ws.exception(), exc)
 
         self.loop.run_until_complete(go())
+
+    def test_receive_cancelled(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        ws.start(req)
+
+        res = asyncio.Future(loop=self.loop)
+        res.set_exception(asyncio.CancelledError())
+        ws._reader.read.return_value = res
+
+        self.assertRaises(
+            asyncio.CancelledError,
+            self.loop.run_until_complete, ws.receive())
+
+    def test_receive_timeouterror(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        ws.start(req)
+
+        res = asyncio.Future(loop=self.loop)
+        res.set_exception(asyncio.TimeoutError())
+        ws._reader.read.return_value = res
+
+        self.assertRaises(
+            asyncio.TimeoutError,
+            self.loop.run_until_complete, ws.receive())
+
+    def test_receive_client_disconnected(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        ws.start(req)
+
+        exc = errors.ClientDisconnectedError()
+        res = asyncio.Future(loop=self.loop)
+        res.set_exception(exc)
+        ws._reader.read.return_value = res
+
+        @asyncio.coroutine
+        def go():
+            msg = yield from ws.receive()
+            self.assertTrue(ws.closed)
+            self.assertTrue(msg.tp, MsgType.close)
+            self.assertIs(msg.data, None)
+            self.assertIs(ws.exception(), None)
+
+        self.loop.run_until_complete(go())
+
+    def test_concurrent_receive(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        ws.start(req)
+        ws._waiting = True
+
+        self.assertRaises(
+            RuntimeError, self.loop.run_until_complete, ws.receive())
+
+    def test_close_exc(self):
+        req = self.make_request('GET', '/')
+        reader = self.reader.set_parser.return_value = mock.Mock()
+
+        ws = WebSocketResponse()
+        ws.start(req)
+
+        exc = ValueError()
+        reader.read.return_value = asyncio.Future(loop=self.loop)
+        reader.read.return_value.set_exception(exc)
+
+        self.loop.run_until_complete(ws.close())
+        self.assertTrue(ws.closed)
+        self.assertIs(ws.exception(), exc)
+
+        ws._closed = False
+        reader.read.return_value = asyncio.Future(loop=self.loop)
+        reader.read.return_value.set_exception(asyncio.CancelledError())
+        self.assertRaises(asyncio.CancelledError,
+                          self.loop.run_until_complete, ws.close())
+
+    def test_close_exc2(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        ws.start(req)
+
+        exc = ValueError()
+        self.writer.close.side_effect = exc
+        ws._writer = self.writer
+
+        self.loop.run_until_complete(ws.close())
+        self.assertTrue(ws.closed)
+        self.assertIs(ws.exception(), exc)
+
+        ws._closed = False
+        self.writer.close.side_effect = asyncio.CancelledError()
+        self.assertRaises(asyncio.CancelledError,
+                          self.loop.run_until_complete, ws.close())

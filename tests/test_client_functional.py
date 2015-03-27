@@ -249,12 +249,13 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertEqual(r.status, 200)
             r.close()
 
-    def xtest_POST_DATA_with_charset(self):
+    def test_POST_DATA_with_charset(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
             form = aiohttp.FormData()
-            form.add_field('name', 'текст', charset='koi8-r')
+            form.add_field('name', 'текст',
+                           content_type='text/plain; charset=koi8-r')
 
             r = self.loop.run_until_complete(
                 client.request(
