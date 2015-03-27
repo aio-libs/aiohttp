@@ -65,11 +65,8 @@ class ClientResponseTests(unittest.TestCase):
 
     def test_read_and_release_connection(self):
         def side_effect(*args, **kwargs):
-            def second_call(*args, **kwargs):
-                raise aiohttp.EofStream
             fut = asyncio.Future(loop=self.loop)
             fut.set_result(b'payload')
-            content.read.side_effect = second_call
             return fut
         content = self.response.content = unittest.mock.Mock()
         content.read.side_effect = side_effect
@@ -123,11 +120,8 @@ class ClientResponseTests(unittest.TestCase):
 
     def test_text(self):
         def side_effect(*args, **kwargs):
-            def second_call(*args, **kwargs):
-                raise aiohttp.EofStream
             fut = asyncio.Future(loop=self.loop)
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
-            content.read.side_effect = second_call
             return fut
         self.response.headers = {
             'CONTENT-TYPE': 'application/json;charset=cp1251'}
@@ -141,11 +135,8 @@ class ClientResponseTests(unittest.TestCase):
 
     def test_text_custom_encoding(self):
         def side_effect(*args, **kwargs):
-            def second_call(*args, **kwargs):
-                raise aiohttp.EofStream
             fut = asyncio.Future(loop=self.loop)
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
-            content.read.side_effect = second_call
             return fut
         self.response.headers = {
             'CONTENT-TYPE': 'application/json'}
@@ -161,11 +152,8 @@ class ClientResponseTests(unittest.TestCase):
     @unittest.skipIf(chardet is None, "no chardet")
     def test_text_detect_encoding(self):
         def side_effect(*args, **kwargs):
-            def second_call(*args, **kwargs):
-                raise aiohttp.EofStream
             fut = asyncio.Future(loop=self.loop)
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
-            content.read.side_effect = second_call
             return fut
         self.response.headers = {'CONTENT-TYPE': 'application/json'}
         content = self.response.content = unittest.mock.Mock()
@@ -178,11 +166,8 @@ class ClientResponseTests(unittest.TestCase):
 
     def test_text_detect_encoding_without_chardet(self):
         def side_effect(*args, **kwargs):
-            def second_call(*args, **kwargs):
-                raise aiohttp.EofStream
             fut = asyncio.Future(loop=self.loop)
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
-            content.read.side_effect = second_call
             return fut
         self.response.headers = {'CONTENT-TYPE': 'application/json'}
         content = self.response.content = unittest.mock.Mock()
@@ -196,11 +181,8 @@ class ClientResponseTests(unittest.TestCase):
 
     def test_json(self):
         def side_effect(*args, **kwargs):
-            def second_call(*args, **kwargs):
-                raise aiohttp.EofStream
             fut = asyncio.Future(loop=self.loop)
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
-            content.read.side_effect = second_call
             return fut
         self.response.headers = {
             'CONTENT-TYPE': 'application/json;charset=cp1251'}
@@ -238,11 +220,8 @@ class ClientResponseTests(unittest.TestCase):
 
     def test_json_override_encoding(self):
         def side_effect(*args, **kwargs):
-            def second_call(*args, **kwargs):
-                raise aiohttp.EofStream
             fut = asyncio.Future(loop=self.loop)
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
-            content.read.side_effect = second_call
             return fut
         self.response.headers = {
             'CONTENT-TYPE': 'application/json;charset=utf8'}
@@ -258,11 +237,8 @@ class ClientResponseTests(unittest.TestCase):
     @unittest.skipIf(chardet is None, "no chardet")
     def test_json_detect_encoding(self):
         def side_effect(*args, **kwargs):
-            def second_call(*args, **kwargs):
-                raise aiohttp.EofStream
             fut = asyncio.Future(loop=self.loop)
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
-            content.read.side_effect = second_call
             return fut
         self.response.headers = {'CONTENT-TYPE': 'application/json'}
         content = self.response.content = unittest.mock.Mock()
@@ -275,11 +251,8 @@ class ClientResponseTests(unittest.TestCase):
 
     def test_json_detect_encoding_without_chardet(self):
         def side_effect(*args, **kwargs):
-            def second_call(*args, **kwargs):
-                raise aiohttp.EofStream
             fut = asyncio.Future(loop=self.loop)
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
-            content.read.side_effect = second_call
             return fut
         self.response.headers = {'CONTENT-TYPE': 'application/json'}
         content = self.response.content = unittest.mock.Mock()

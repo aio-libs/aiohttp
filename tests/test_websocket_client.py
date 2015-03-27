@@ -387,7 +387,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
 
             msg = yield from ws.receive_str()
             ws.send_str(msg+'/answer')
-            ws.close()
+            yield from ws.close()
             return ws
 
         @asyncio.coroutine
@@ -411,7 +411,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
 
             msg = yield from ws.receive_bytes()
             ws.send_bytes(msg+b'/answer')
-            ws.close()
+            yield from ws.close()
             return ws
 
         @asyncio.coroutine
@@ -429,6 +429,8 @@ class TestWebSocketClientFunctional(unittest.TestCase):
 
     def test_ping_pong(self):
 
+        closed = asyncio.Future(loop=self.loop)
+
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse()
@@ -437,7 +439,8 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             msg = yield from ws.receive_bytes()
             ws.ping()
             ws.send_bytes(msg+b'/answer')
-            ws.close()
+            yield from ws.close()
+            closed.set_result(1)
             return ws
 
         @asyncio.coroutine
@@ -455,10 +458,13 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             self.assertEqual(msg.tp, aiohttp.MsgType.close)
 
             yield from resp.close()
+            yield from closed
 
         self.loop.run_until_complete(go())
 
     def test_ping_pong_manual(self):
+
+        closed = asyncio.Future(loop=self.loop)
 
         @asyncio.coroutine
         def handler(request):
@@ -468,7 +474,8 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             msg = yield from ws.receive_bytes()
             ws.ping()
             ws.send_bytes(msg+b'/answer')
-            ws.close()
+            yield from ws.close()
+            closed.set_result(1)
             return ws
 
         @asyncio.coroutine
@@ -491,6 +498,8 @@ class TestWebSocketClientFunctional(unittest.TestCase):
 
             msg = yield from resp.receive()
             self.assertEqual(msg.tp, aiohttp.MsgType.close)
+
+            yield from closed
 
         self.loop.run_until_complete(go())
 
@@ -524,13 +533,16 @@ class TestWebSocketClientFunctional(unittest.TestCase):
 
     def test_close_from_server(self):
 
+        closed = asyncio.Future(loop=self.loop)
+
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse()
             ws.start(request)
 
             yield from ws.receive_bytes()
-            ws.close()
+            yield from ws.close()
+            closed.set_result(1)
             return ws
 
         @asyncio.coroutine
@@ -546,9 +558,13 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             msg = yield from resp.receive()
             self.assertEqual(msg.tp, aiohttp.MsgType.closed)
 
+            yield from closed
+
         self.loop.run_until_complete(go())
 
     def test_close_manual(self):
+
+        closed = asyncio.Future(loop=self.loop)
 
         @asyncio.coroutine
         def handler(request):
@@ -558,8 +574,8 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             yield from ws.receive_bytes()
             ws.send_str('test')
 
-            ws.close()
-            yield from ws.wait_closed()
+            yield from ws.close()
+            closed.set_result(1)
             return ws
 
         @asyncio.coroutine
@@ -579,6 +595,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             self.assertFalse(resp.closed)
 
             yield from resp.close()
+            yield from closed
             self.assertTrue(resp.closed)
 
         self.loop.run_until_complete(go())
