@@ -32,19 +32,6 @@ class ServerDisconnectedError(DisconnectedError):
 class WSClientDisconnectedError(ClientDisconnectedError):
     """Deprecated."""
 
-    def __init__(self, code=None, message=None):
-        super().__init__(code, message)
-
-    @property
-    def code(self):
-        """Code from websocket closing frame."""
-        return self.args[0]
-
-    @property
-    def message(self):
-        """Message from websocket closing frame."""
-        return self.args[1]
-
 
 class ClientError(Exception):
     """Base class for client connection errors."""
