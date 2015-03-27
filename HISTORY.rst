@@ -1,3 +1,73 @@
+0.14.4 (01-29-2015)
+-------------------
+
+- Fix issue with error during constructing of url with regex parts #264
+
+
+0.14.3 (01-28-2015)
+-------------------
+
+- Use path='/' by default for cookies #261
+
+  
+0.14.2 (01-23-2015)
+-------------------
+
+- Connections leak in BaseConnector #253
+
+- Do not swallow websocket reader exceptions #255
+
+- web.Request's read, text, json are memorized #250
+
+
+0.14.1 (01-15-2015)
+-------------------
+
+- HttpMessage._add_default_headers does not overwrite existing headers #216
+
+- Expose multidict classes at package level
+
+- add `aiohttp.web.WebSocketResponse`
+
+- According to RFC 6455 websocket subprotocol preference order is
+  provided by client, not by server
+
+- websocket's ping and pong accept optional message parameter
+
+- multidict views do not accept `getall` parameter anymore, it
+  returns the full body anyway.
+
+- multidicts have optional Cython optimization, cythonized version of multidicts is
+  about 5 times faster than pure Python.
+
+- multidict.getall() returns `list`, not `tuple`.
+
+- Backward imcompatible change: now there are two mutable multidicts
+  (`MultiDict`, `CIMultiDict`) and two immutable multidict proxies
+  (`MultiDictProxy` and `CIMultiDictProxy`). Previous edition of
+  multidicts was not a part of public API BTW.
+
+- Router refactoring to push Not Allowed and Not Found in middleware processing
+
+- Convert `ConnectionError` to `aiohttp.DisconnectedError` and don't
+  eat `ConnectionError` exceptions from web handlers.
+
+- Remove hop headers from Response class, wsgi response still uses hop headers.
+
+- Allow to send raw chunked encoded response.
+
+- Allow to encode output bytes stream into chunked encoding.
+
+- Allow to compress output bytes stream with `deflate` encoding.
+
+- Server has 75 seconds keepalive timeout now, was non-keepalive by default.
+
+- Application doesn't accept `**kwargs` anymore (#243).
+
+- Request is inherited from dict now for making per-request storage to
+  middlewares (#242).
+
+
 0.13.1 (12-31-2014)
 --------------------
 
