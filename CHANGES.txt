@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-0.15.0 (Unreleased)
+0.15.0 (03-27-2015)
 -------------------
 
 - Client WebSockets support
