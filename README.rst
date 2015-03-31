@@ -81,13 +81,12 @@ Server
 
 In aiohttp 0.12 we've added highlevel API for web HTTP server.
 
-There is simple usage example:
+This is simple usage example:
 
 .. code-block:: python
 
     import asyncio
     from aiohttp import web
-
 
     @asyncio.coroutine
     def handle(request):
