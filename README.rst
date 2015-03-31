@@ -14,7 +14,7 @@ Features
 --------
 
 - Supports both client and server side of HTTP protocol.
-- Supports Web-Sockets out-of-the-box.
+- Supports both client and server Web-Sockets out-of-the-box.
 - Web-server has middlewares and pluggable routing.
 
 
