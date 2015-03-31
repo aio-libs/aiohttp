@@ -529,6 +529,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             closed = yield from resp.close()
             self.assertTrue(closed)
             self.assertTrue(resp.closed)
+            self.assertEqual(resp.close_code, 1000)
 
             msg = yield from resp.receive()
             self.assertEqual(msg.tp, aiohttp.MsgType.closed)

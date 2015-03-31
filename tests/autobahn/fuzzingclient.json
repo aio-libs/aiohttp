@@ -4,7 +4,7 @@
 
    "servers": [{"agent": "AutobahnServer", "url": "ws://localhost:9001", "options": {"version": 18}}],
 
-   "cases": ["7.7.*"],
+   "cases": ["*"],
    "exclude-cases": ["12.*", "13.*"],
    "exclude-agent-cases": {}
 }

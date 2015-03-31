@@ -7,6 +7,6 @@
    "webport": 8080,
 
    "cases": ["*"],
-   "exclude-cases": [],
+   "exclude-cases": ["12.*", "13.*"],
    "exclude-agent-cases": {}
 }

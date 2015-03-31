@@ -269,35 +269,31 @@ class FlowControlStreamReader(StreamReader):
 
     @asyncio.coroutine
     def read(self, n=-1):
-        self._stream.resume_stream()
-        try:
-            return (yield from super().read(n))
-        finally:
-            self._stream.pause_stream()
+        if self._stream._paused:
+            self._stream.resume_stream()
+
+        return (yield from super().read(n))
 
     @asyncio.coroutine
     def readline(self):
-        self._stream.resume_stream()
-        try:
-            return (yield from super().readline())
-        finally:
-            self._stream.pause_stream()
+        if self._stream._paused:
+            self._stream.resume_stream()
+
+        return (yield from super().readline())
 
     @asyncio.coroutine
     def readany(self):
-        self._stream.resume_stream()
-        try:
-            return (yield from super().readany())
-        finally:
-            self._stream.pause_stream()
+        if self._stream._paused:
+            self._stream.resume_stream()
+
+        return (yield from super().readany())
 
     @asyncio.coroutine
     def readexactly(self, n):
-        self._stream.resume_stream()
-        try:
-            return (yield from super().readexactly(n))
-        finally:
-            self._stream.pause_stream()
+        if self._stream._paused:
+            self._stream.resume_stream()
+
+        return (yield from super().readexactly(n))
 
 
 class DataQueue:
@@ -377,11 +373,10 @@ class FlowControlDataQueue(DataQueue):
 
     @asyncio.coroutine
     def read(self):
-        self._stream.resume_stream()
-        try:
-            return (yield from super().read())
-        finally:
-            self._stream.pause_stream()
+        if self._stream._paused:
+            self._stream.resume_stream()
+
+        return (yield from super().read())
 
 
 class ChunksQueue(DataQueue):

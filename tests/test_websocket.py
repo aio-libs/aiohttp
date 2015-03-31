@@ -26,6 +26,46 @@ class WebsocketParserTests(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
+    def build_frame(self, message, opcode, use_mask=False, noheader=False):
+        """Send a frame over the websocket with message as its payload."""
+        msg_length = len(message)
+        if use_mask:
+            mask_bit = 0x80
+        else:
+            mask_bit = 0
+
+        if msg_length < 126:
+            header = websocket.PACK_LEN1(
+                0x80 | opcode, msg_length | mask_bit)
+        elif msg_length < (1 << 16):
+            header = websocket.PACK_LEN2(
+                0x80 | opcode, 126 | mask_bit, msg_length)
+        else:
+            header = websocket.PACK_LEN3(
+                0x80 | opcode, 127 | mask_bit, msg_length)
+
+        if use_mask:
+            mask = random.randrange(0, 0xffffffff)
+            mask = mask.to_bytes(4, 'big')
+            message = websocket._websocket_mask(mask, bytearray(message))
+            if noheader:
+                return message
+            else:
+                return header + mask + message
+        else:
+            if noheader:
+                return message
+            else:
+                return header + message
+
+    def build_close_frame(self, code=1000, message=b'', noheader=False):
+        """Close the websocket, sending the specified code and message."""
+        if isinstance(message, str):
+            message = message.encode('utf-8')
+        return self.build_frame(
+            websocket.PACK_CLOSE_CODE(code) + message,
+            opcode=websocket.OPCODE_CLOSE, noheader=noheader)
+
     def test_parse_frame(self):
         buf = aiohttp.ParserBuffer()
         p = websocket.parse_frame(buf)
@@ -184,7 +224,27 @@ class WebsocketParserTests(unittest.TestCase):
         m_parse_frame.side_effect = parse_frame
         p = websocket.WebSocketParser(self.out, self.buf)
         next(p)
-        self.assertRaises(websocket.WebSocketError, p.send, b'')
+        with self.assertRaises(websocket.WebSocketError) as ctx:
+            next(p)
+
+        self.assertEqual(ctx.exception.code, websocket.CLOSE_PROTOCOL_ERROR)
+
+    def test_close_frame_invalid_2(self):
+        self.buf.extend(self.build_close_frame(code=1))
+        p = websocket.WebSocketParser(self.out, self.buf)
+        with self.assertRaises(websocket.WebSocketError) as ctx:
+            next(p)
+
+        self.assertEqual(ctx.exception.code, websocket.CLOSE_PROTOCOL_ERROR)
+
+    def test_close_frame_unicode_err(self):
+        self.buf.extend(self.build_close_frame(
+            code=1000, message=b'\xf4\x90\x80\x80'))
+        p = websocket.WebSocketParser(self.out, self.buf)
+        with self.assertRaises(websocket.WebSocketError) as ctx:
+            next(p)
+
+        self.assertEqual(ctx.exception.code, websocket.CLOSE_INVALID_TEXT)
 
     @unittest.mock.patch('aiohttp.websocket.parse_frame')
     def test_unknown_frame(self, m_parse_frame):
@@ -196,17 +256,22 @@ class WebsocketParserTests(unittest.TestCase):
         next(p)
         self.assertRaises(websocket.WebSocketError, p.send, b'')
 
-    @unittest.mock.patch('aiohttp.websocket.parse_frame')
-    def test_simple_text(self, m_parse_frame):
-        def parse_frame(buf):
-            yield
-            return (1, websocket.OPCODE_TEXT, b'text')
-        m_parse_frame.side_effect = parse_frame
+    def test_simple_text(self):
+        self.buf.extend(self.build_frame(b'text', websocket.OPCODE_TEXT))
         p = websocket.WebSocketParser(self.out, self.buf)
         next(p)
         p.send(b'')
         res = self.out._buffer[0]
         self.assertEqual(res, (websocket.OPCODE_TEXT, 'text', ''))
+
+    def test_simple_text_unicode_err(self):
+        self.buf.extend(
+            self.build_frame(b'\xf4\x90\x80\x80', websocket.OPCODE_TEXT))
+        p = websocket.WebSocketParser(self.out, self.buf)
+        with self.assertRaises(websocket.WebSocketError) as ctx:
+            next(p)
+
+        self.assertEqual(ctx.exception.code, websocket.CLOSE_INVALID_TEXT)
 
     @unittest.mock.patch('aiohttp.websocket.parse_frame')
     def test_simple_binary(self, m_parse_frame):
@@ -242,6 +307,29 @@ class WebsocketParserTests(unittest.TestCase):
         self.assertEqual(res, Message(websocket.OPCODE_TEXT, 'line1line2', ''))
 
     @unittest.mock.patch('aiohttp.websocket.parse_frame')
+    def test_continuation_with_ping(self, m_parse_frame):
+        frames = [
+            (0, websocket.OPCODE_TEXT, b'line1'),
+            (0, websocket.OPCODE_PING, b''),
+            (1, websocket.OPCODE_CONTINUATION, b'line2'),
+        ]
+
+        def parse_frame(buf, cont=False):
+            yield
+            return frames.pop(0)
+
+        m_parse_frame.side_effect = parse_frame
+        p = websocket.WebSocketParser(self.out, self.buf)
+        next(p)
+        p.send(b'')
+        p.send(b'')
+        p.send(b'')
+        res = self.out._buffer[0]
+        self.assertEqual(res, Message(websocket.OPCODE_PING, b'', ''))
+        res = self.out._buffer[1]
+        self.assertEqual(res, Message(websocket.OPCODE_TEXT, 'line1line2', ''))
+
+    @unittest.mock.patch('aiohttp.websocket.parse_frame')
     def test_continuation_err(self, m_parse_frame):
         cur = 0
 
@@ -259,6 +347,115 @@ class WebsocketParserTests(unittest.TestCase):
         next(p)
         p.send(b'')
         self.assertRaises(websocket.WebSocketError, p.send, b'')
+
+    @unittest.mock.patch('aiohttp.websocket.parse_frame')
+    def test_continuation_with_close(self, m_parse_frame):
+        frames = [
+            (0, websocket.OPCODE_TEXT, b'line1'),
+            (0, websocket.OPCODE_CLOSE,
+             self.build_close_frame(1002, b'test', noheader=True)),
+            (1, websocket.OPCODE_CONTINUATION, b'line2'),
+        ]
+
+        def parse_frame(buf, cont=False):
+            yield
+            return frames.pop(0)
+
+        m_parse_frame.side_effect = parse_frame
+        p = websocket.WebSocketParser(self.out, self.buf)
+        next(p)
+        p.send(b'')
+        p.send(b'')
+        p.send(b'')
+        res = self.out._buffer[0]
+        self.assertEqual(res, Message(websocket.OPCODE_CLOSE, 1002, 'test'))
+        res = self.out._buffer[1]
+        self.assertEqual(res, Message(websocket.OPCODE_TEXT, 'line1line2', ''))
+
+    @unittest.mock.patch('aiohttp.websocket.parse_frame')
+    def test_continuation_with_close_unicode_err(self, m_parse_frame):
+        frames = [
+            (0, websocket.OPCODE_TEXT, b'line1'),
+            (0, websocket.OPCODE_CLOSE,
+             self.build_close_frame(1000, b'\xf4\x90\x80\x80', noheader=True)),
+            (1, websocket.OPCODE_CONTINUATION, b'line2')]
+
+        def parse_frame(buf, cont=False):
+            yield
+            return frames.pop(0)
+
+        m_parse_frame.side_effect = parse_frame
+        p = websocket.WebSocketParser(self.out, self.buf)
+        next(p)
+        p.send(b'')
+        with self.assertRaises(websocket.WebSocketError) as ctx:
+            p.send(b'')
+
+        self.assertEqual(ctx.exception.code, websocket.CLOSE_INVALID_TEXT)
+
+    @unittest.mock.patch('aiohttp.websocket.parse_frame')
+    def test_continuation_with_close_bad_code(self, m_parse_frame):
+        frames = [
+            (0, websocket.OPCODE_TEXT, b'line1'),
+            (0, websocket.OPCODE_CLOSE,
+             self.build_close_frame(1, b'test', noheader=True)),
+            (1, websocket.OPCODE_CONTINUATION, b'line2')]
+
+        def parse_frame(buf, cont=False):
+            yield
+            return frames.pop(0)
+
+        m_parse_frame.side_effect = parse_frame
+        p = websocket.WebSocketParser(self.out, self.buf)
+        next(p)
+        p.send(b'')
+        with self.assertRaises(websocket.WebSocketError) as ctx:
+            p.send(b'')
+
+        self.assertEqual(ctx.exception.code, websocket.CLOSE_PROTOCOL_ERROR)
+
+    @unittest.mock.patch('aiohttp.websocket.parse_frame')
+    def test_continuation_with_close_bad_payload(self, m_parse_frame):
+        frames = [
+            (0, websocket.OPCODE_TEXT, b'line1'),
+            (0, websocket.OPCODE_CLOSE, b'1'),
+            (1, websocket.OPCODE_CONTINUATION, b'line2')]
+
+        def parse_frame(buf, cont=False):
+            yield
+            return frames.pop(0)
+
+        m_parse_frame.side_effect = parse_frame
+        p = websocket.WebSocketParser(self.out, self.buf)
+        next(p)
+        p.send(b'')
+        with self.assertRaises(websocket.WebSocketError) as ctx:
+            p.send(b'')
+
+        self.assertEqual(ctx.exception.code, websocket.CLOSE_PROTOCOL_ERROR)
+
+    @unittest.mock.patch('aiohttp.websocket.parse_frame')
+    def test_continuation_with_close_empty(self, m_parse_frame):
+        frames = [
+            (0, websocket.OPCODE_TEXT, b'line1'),
+            (0, websocket.OPCODE_CLOSE, b''),
+            (1, websocket.OPCODE_CONTINUATION, b'line2'),
+        ]
+
+        def parse_frame(buf, cont=False):
+            yield
+            return frames.pop(0)
+
+        m_parse_frame.side_effect = parse_frame
+        p = websocket.WebSocketParser(self.out, self.buf)
+        next(p)
+        p.send(b'')
+        p.send(b'')
+        p.send(b'')
+        res = self.out._buffer[0]
+        self.assertEqual(res, Message(websocket.OPCODE_CLOSE, 0, ''))
+        res = self.out._buffer[1]
+        self.assertEqual(res, Message(websocket.OPCODE_TEXT, 'line1line2', ''))
 
 
 class WebsocketWriterTests(unittest.TestCase):
@@ -290,9 +487,12 @@ class WebsocketWriterTests(unittest.TestCase):
 
     def test_send_binary_very_long(self):
         self.writer.send(b'b' * 65537, True)
-        self.assertTrue(
-            self.transport.write.call_args[0][0].startswith(
-                b'\x82\x7f\x00\x00\x00\x00\x00\x01\x00\x01b'))
+        self.assertEqual(
+            self.transport.write.call_args_list[0][0][0],
+            b'\x82\x7f\x00\x00\x00\x00\x00\x01\x00\x01')
+        self.assertEqual(
+            self.transport.write.call_args_list[1][0][0],
+            b'b' * 65537)
 
     def test_close(self):
         self.writer.close(1001, 'msg')

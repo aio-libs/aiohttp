@@ -61,6 +61,7 @@ PACK_LEN1 = Struct('!BB').pack
 PACK_LEN2 = Struct('!BBH').pack
 PACK_LEN3 = Struct('!BBQ').pack
 PACK_CLOSE_CODE = Struct('!H').pack
+MSG_SIZE = 2 ** 14
 
 
 class WebSocketError(Exception):
@@ -249,10 +250,10 @@ def parse_frame(buf, continuation=False):
     if length:
         payload = yield from buf.read(length)
     else:
-        payload = b''
+        payload = bytearray()
 
     if has_mask:
-        payload = _websocket_mask(mask, payload)
+        payload = _websocket_mask(bytes(mask), payload)
 
     return fin, opcode, payload
 
@@ -283,10 +284,14 @@ class WebSocketWriter:
         if use_mask:
             mask = self.randrange(0, 0xffffffff)
             mask = mask.to_bytes(4, 'big')
-            message = _websocket_mask(mask, message)
+            message = _websocket_mask(mask, bytearray(message))
             self.writer.write(header + mask + message)
         else:
-            self.writer.write(header + message)
+            if len(message) > MSG_SIZE:
+                self.writer.write(header)
+                self.writer.write(message)
+            else:
+                self.writer.write(header + message)
 
     def pong(self, message=b''):
         """Send pong message."""
@@ -314,8 +319,7 @@ class WebSocketWriter:
         if isinstance(message, str):
             message = message.encode('utf-8')
         self._send_frame(
-            PACK_CLOSE_CODE(code) + message,
-            opcode=OPCODE_CLOSE)
+            PACK_CLOSE_CODE(code) + message, opcode=OPCODE_CLOSE)
 
 
 def do_handshake(method, headers, transport, protocols=()):

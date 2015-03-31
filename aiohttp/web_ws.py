@@ -127,7 +127,7 @@ class WebSocketResponse(StreamResponse):
         self._writer.send(data, binary=True)
 
     @asyncio.coroutine
-    def wait_closed(self):
+    def wait_closed(self):  # pragma: no cover
         warnings.warn(
             'wait_closed() coroutine is deprecated. use close() instead',
             DeprecationWarning)

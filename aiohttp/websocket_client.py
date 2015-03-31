@@ -53,7 +53,9 @@ def ws_connect(url, protocols=(), timeout=10.0, connector=None,
 
     # send request
     resp = yield from client.request(
-        'get', url, headers=headers, connector=connector, loop=loop)
+        'get', url, headers=headers,
+        read_until_eof=False,
+        connector=connector, loop=loop)
 
     # check handshake
     if resp.status != 101:

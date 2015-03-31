@@ -33,12 +33,10 @@ class StreamParserTests(unittest.TestCase):
         proto = parsers.StreamParser(loop=self.loop)
         proto.set_transport(transp)
         proto._paused = True
-        proto._stream_paused = True
         proto.resume_stream()
 
         transp.resume_reading.assert_called_with()
         self.assertFalse(proto._paused)
-        self.assertFalse(proto._stream_paused)
 
     def test_exception(self):
         stream = parsers.StreamParser(loop=self.loop)
@@ -183,7 +181,7 @@ class StreamParserTests(unittest.TestCase):
         self.assertIsInstance(s.exception(), RuntimeError)
 
     def test_set_parser_unset(self):
-        stream = parsers.StreamParser(paused=False, loop=self.loop)
+        stream = parsers.StreamParser(loop=self.loop)
         s = stream.set_parser(self.lines_parser)
 
         stream.feed_data(b'line1\r\nline2\r\n')
@@ -214,7 +212,7 @@ class StreamParserTests(unittest.TestCase):
         self.assertTrue(s._eof)
 
     def test_feed_parser(self):
-        stream = parsers.StreamParser(paused=False, loop=self.loop)
+        stream = parsers.StreamParser(loop=self.loop)
         s = stream.set_parser(self.lines_parser)
 
         stream.feed_data(b'line1')
@@ -232,7 +230,7 @@ class StreamParserTests(unittest.TestCase):
             yield  # read chunk
             raise ValueError()
 
-        stream = parsers.StreamParser(paused=False, loop=self.loop)
+        stream = parsers.StreamParser(loop=self.loop)
         s = stream.set_parser(p)
 
         stream.feed_data(b'line1')
@@ -243,7 +241,7 @@ class StreamParserTests(unittest.TestCase):
         def p(out, buf):
             yield  # chunk
 
-        stream = parsers.StreamParser(paused=False, loop=self.loop)
+        stream = parsers.StreamParser(loop=self.loop)
         stream.set_parser(p)
 
         stream.feed_data(b'line1')

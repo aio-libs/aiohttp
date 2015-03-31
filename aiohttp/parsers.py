@@ -81,7 +81,7 @@ class StreamParser(asyncio.streams.StreamReader):
     """
 
     def __init__(self, *, loop=None, buf=None,
-                 paused=True, limit=DEFAULT_LIMIT, eof_exc_class=RuntimeError):
+                 limit=DEFAULT_LIMIT, eof_exc_class=RuntimeError):
         self._loop = loop
         self._eof = False
         self._exception = None
@@ -89,7 +89,6 @@ class StreamParser(asyncio.streams.StreamReader):
         self._transport = None
         self._limit = limit * 2
         self._paused = False
-        self._stream_paused = paused
         self._output = None
         self._eof_exc_class = eof_exc_class
         self._buffer = buf if buf is not None else ParserBuffer()
@@ -105,17 +104,11 @@ class StreamParser(asyncio.streams.StreamReader):
     def at_eof(self):
         return self._eof
 
-    def pause_stream(self):
-        self._stream_paused = True
-
     def resume_stream(self):
-        if self._paused and len(self._buffer) <= self._limit:
-            self._paused = False
-            self._transport.resume_reading()
-
-        self._stream_paused = False
-        if self._parser and self._buffer:
-            self.feed_data(b'')
+        if self._paused:
+            if len(self._buffer) <= max(self._limit, self._buffer.expected):
+                self._paused = False
+                self._transport.resume_reading()
 
     def exception(self):
         return self._exception
@@ -138,7 +131,7 @@ class StreamParser(asyncio.streams.StreamReader):
         if data is None:
             return
 
-        if self._parser and not self._stream_paused:
+        if self._parser:
             try:
                 self._parser.send(data)
             except StopIteration:
@@ -153,9 +146,7 @@ class StreamParser(asyncio.streams.StreamReader):
             self._buffer.feed_data(data)
 
         if self._transport is not None and not self._paused:
-            limit = max(self._limit, self._buffer.expected)
-
-            if len(self._buffer) > limit:
+            if len(self._buffer) > max(self._limit, self._buffer.expected):
                 try:
                     self._transport.pause_reading()
                 except NotImplementedError:
@@ -287,6 +278,7 @@ class ParserBuffer(bytearray):
 
     ParserBuffer provides helper methods for parsers.
     """
+    __slots__ = ('expected', '_exception', '_writer')
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -324,7 +316,7 @@ class ParserBuffer(bytearray):
             if len(self) >= size:
                 data = self[:size]
                 del self[:size]
-                return bytes(data)
+                return data
 
             self.expected = size
             self._writer.send((yield))
@@ -338,7 +330,7 @@ class ParserBuffer(bytearray):
                 if size is None or length < size:
                     size = length
 
-                data = bytes(self[:size])
+                data = self[:size]
                 del self[:size]
                 return data
 
@@ -360,7 +352,7 @@ class ParserBuffer(bytearray):
                     raise errors.LineLimitExceededParserError(
                         'Line is too long.', limit)
 
-                data = bytes(self[:size])
+                data = self[:size]
                 del self[:size]
                 return data
             else:
@@ -377,7 +369,7 @@ class ParserBuffer(bytearray):
 
         while True:
             if len(self) >= size:
-                return bytes(self[:size])
+                return self[:size]
 
             self._writer.send((yield))
 
@@ -396,7 +388,7 @@ class ParserBuffer(bytearray):
                     raise errors.LineLimitExceededParserError(
                         'Line is too long. %s' % bytes(self), limit)
 
-                return bytes(self[:size])
+                return self[:size]
             else:
                 if limit is not None and len(self) > limit:
                     raise errors.LineLimitExceededParserError(

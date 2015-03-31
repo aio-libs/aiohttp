@@ -4,7 +4,7 @@ CHANGES
 0.15.1 (unreleased)
 -------------------
 
-- Pass http://autobahn.ws/testsuite/ tests
+- Pass Autobahn Testsuit tests
 
 - Fixed websocket fragmentation
 

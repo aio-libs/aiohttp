@@ -172,6 +172,7 @@ class TestWebWebSocket(unittest.TestCase):
     def test_closed_after_ctor(self):
         ws = WebSocketResponse()
         self.assertFalse(ws.closed)
+        self.assertIsNone(ws.close_code)
 
     def test_send_str_closed(self):
         req = self.make_request('GET', '/')
@@ -358,6 +359,7 @@ class TestWebWebSocket(unittest.TestCase):
         reader.read.return_value.set_exception(asyncio.CancelledError())
         self.assertRaises(asyncio.CancelledError,
                           self.loop.run_until_complete, ws.close())
+        self.assertEqual(ws.close_code, 1006)
 
     def test_close_exc2(self):
         req = self.make_request('GET', '/')

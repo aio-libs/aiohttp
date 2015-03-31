@@ -359,6 +359,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             self.assertFalse(ws.closed)
             yield from ws.close()
             self.assertTrue(ws.closed)
+            self.assertEqual(ws.close_code, 1007)
 
             msg = yield from ws.receive()
             self.assertEqual(msg.tp, web.MsgType.closed)
@@ -371,7 +372,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             _, _, url = yield from self.create_server('GET', '/', handler)
             resp, reader, writer = yield from self.connect_ws(url, 'eggs, bar')
 
-            writer.close()
+            writer.close(code=1007)
             msg = yield from reader.read()
             self.assertEqual(msg.tp, websocket.MSG_CLOSE)
             yield from closed

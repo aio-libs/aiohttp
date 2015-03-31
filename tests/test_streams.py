@@ -469,7 +469,6 @@ class FlowControlStreamReaderTests(unittest.TestCase):
         res = self.loop.run_until_complete(r.read(1))
         self.assertEqual(res, b'd')
         self.assertTrue(self.stream.resume_stream.called)
-        self.assertTrue(self.stream.pause_stream.called)
 
     def test_readline(self):
         r = self._make_one()
@@ -477,7 +476,6 @@ class FlowControlStreamReaderTests(unittest.TestCase):
         res = self.loop.run_until_complete(r.readline())
         self.assertEqual(res, b'data\n')
         self.assertTrue(self.stream.resume_stream.called)
-        self.assertTrue(self.stream.pause_stream.called)
 
     def test_readany(self):
         r = self._make_one()
@@ -485,7 +483,6 @@ class FlowControlStreamReaderTests(unittest.TestCase):
         res = self.loop.run_until_complete(r.readany())
         self.assertEqual(res, b'data')
         self.assertTrue(self.stream.resume_stream.called)
-        self.assertTrue(self.stream.pause_stream.called)
 
     def test_readexactly(self):
         r = self._make_one()
@@ -493,7 +490,6 @@ class FlowControlStreamReaderTests(unittest.TestCase):
         res = self.loop.run_until_complete(r.readexactly(2))
         self.assertEqual(res, b'da')
         self.assertTrue(self.stream.resume_stream.called)
-        self.assertTrue(self.stream.pause_stream.called)
 
 
 class DataQueueTests(unittest.TestCase):
@@ -641,7 +637,6 @@ class FlowControlDataQueueTests(unittest.TestCase):
         self.loop.run_until_complete(read_task)
 
         self.assertTrue(self.stream.resume_stream.called)
-        self.assertTrue(self.stream.pause_stream.called)
 
 
 class ChunksQueueTests(DataQueueTests):
