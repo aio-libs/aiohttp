@@ -95,10 +95,30 @@ There is simple usage example:
         text = "Hello, " + name
         return web.Response(body=text.encode('utf-8'))
 
+    @asyncio.coroutine
+    def wshandler(request):
+        ws = WebSocketResponse()
+        ok, protocol = resp.can_start(request)
+        if not ok:
+            return web.HTTPBadRequest()
+        else:
+            ws.start(request)
+ 
+        while True:
+            msg = yield from ws.receive()
+
+            if msg.tp == web.MsgType.text:
+               ws.send_str(msg.data)
+            elif msg.tp == web.MsgType.binary:
+               ws.send_bytes(msg.data)
+            elif msg.tp == web.MsgType.close:
+               break
+        return ws
 
     @asyncio.coroutine
     def init(loop):
         app = web.Application(loop=loop)
+        app.router.add_route('GET', '/echo', wshandle)
         app.router.add_route('GET', '/{name}', handle)
 
         srv = yield from loop.create_server(app.make_handler(), '127.0.0.1', 8080)
