@@ -87,7 +87,7 @@ class StreamParser(asyncio.streams.StreamReader):
         self._exception = None
         self._parser = None
         self._transport = None
-        self._limit = limit
+        self._limit = limit * 2
         self._paused = False
         self._stream_paused = paused
         self._output = None
@@ -152,17 +152,19 @@ class StreamParser(asyncio.streams.StreamReader):
         else:
             self._buffer.feed_data(data)
 
-        if (self._transport is not None and not self._paused and
-                len(self._buffer) > 2 * self._limit):
-            try:
-                self._transport.pause_reading()
-            except NotImplementedError:
-                # The transport can't be paused.
-                # We'll just have to buffer all data.
-                # Forget the transport so we don't keep trying.
-                self._transport = None
-            else:
-                self._paused = True
+        if self._transport is not None and not self._paused:
+            limit = max(self._limit, self._buffer.expected)
+
+            if len(self._buffer) > limit:
+                try:
+                    self._transport.pause_reading()
+                except NotImplementedError:
+                    # The transport can't be paused.
+                    # We'll just have to buffer all data.
+                    # Forget the transport so we don't keep trying.
+                    self._transport = None
+                else:
+                    self._paused = True
 
     def feed_eof(self):
         """send eof to all parsers, recursively."""
@@ -286,10 +288,10 @@ class ParserBuffer(bytearray):
     ParserBuffer provides helper methods for parsers.
     """
 
-    def __init__(self, *args, limit=BUF_LIMIT):
+    def __init__(self, *args):
         super().__init__(*args)
 
-        self._limit = limit
+        self.expected = BUF_LIMIT
         self._exception = None
         self._writer = self._feed_data()
         next(self._writer)
@@ -305,6 +307,7 @@ class ParserBuffer(bytearray):
             chunk = yield
             if chunk:
                 self.extend(chunk)
+                self.expected = BUF_LIMIT
 
             if self._exception:
                 self._writer = self._feed_data()
@@ -323,6 +326,7 @@ class ParserBuffer(bytearray):
                 del self[:size]
                 return bytes(data)
 
+            self.expected = size
             self._writer.send((yield))
 
     def readsome(self, size=None):
@@ -338,6 +342,7 @@ class ParserBuffer(bytearray):
                 del self[:size]
                 return data
 
+            self.expected = BUF_LIMIT
             self._writer.send((yield))
 
     def readuntil(self, stop, limit=None):
@@ -363,6 +368,7 @@ class ParserBuffer(bytearray):
                     raise errors.LineLimitExceededParserError(
                         'Line is too long.', limit)
 
+            self.expected = len(self) + BUF_LIMIT
             self._writer.send((yield))
 
     def wait(self, size):
@@ -396,12 +402,14 @@ class ParserBuffer(bytearray):
                     raise errors.LineLimitExceededParserError(
                         'Line is too long. %s' % bytes(self), limit)
 
+            self.expected = len(self) + BUF_LIMIT
             self._writer.send((yield))
 
     def skip(self, size):
         """skip() skips specified amount of bytes."""
 
         while len(self) < size:
+            self.expected = size
             self._writer.send((yield))
 
         del self[:size]
@@ -420,6 +428,7 @@ class ParserBuffer(bytearray):
                 del self[:size]
                 return
 
+            self.expected = len(self) + BUF_LIMIT
             self._writer.send((yield))
 
 

@@ -34,6 +34,7 @@ class TestWebWebSocket(unittest.TestCase):
         self.transport = mock.Mock()
         self.reader = mock.Mock()
         self.writer = mock.Mock()
+        self.app.loop = self.loop
         req = Request(self.app, message, self.payload,
                       self.transport, self.reader, self.writer)
         return req

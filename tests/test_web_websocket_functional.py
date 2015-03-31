@@ -103,7 +103,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             msg = yield from reader.read()
             self.assertEqual(msg.tp, websocket.MSG_CLOSE)
             self.assertEqual(msg.data, 1000)
-            self.assertEqual(msg.extra, b'')
+            self.assertEqual(msg.extra, '')
 
             writer.close()
 
@@ -139,7 +139,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             msg = yield from reader.read()
             self.assertEqual(msg.tp, websocket.MSG_CLOSE)
             self.assertEqual(msg.data, 1000)
-            self.assertEqual(msg.extra, b'')
+            self.assertEqual(msg.extra, '')
 
             writer.close()
             yield from closed
@@ -159,8 +159,8 @@ class TestWebWebSocketFunctional(unittest.TestCase):
 
             msg = yield from ws.receive()
             self.assertEqual(msg.tp, web.MsgType.close)
-            self.assertEqual(msg.data, 1)
-            self.assertEqual(msg.extra, b'exit message')
+            self.assertEqual(msg.data, 1000)
+            self.assertEqual(msg.extra, 'exit message')
             closed.set_result(None)
             return ws
 
@@ -173,7 +173,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
 
             msg = yield from reader.read()
             self.assertEqual(msg.tp, websocket.MSG_PONG)
-            writer.close(1, 'exit message')
+            writer.close(1000, 'exit message')
             yield from closed
             resp.close()
 
@@ -250,8 +250,8 @@ class TestWebWebSocketFunctional(unittest.TestCase):
 
             msg = yield from ws.receive()
             self.assertEqual(msg.tp, web.MsgType.close)
-            self.assertEqual(msg.data, 2)
-            self.assertEqual(msg.extra, b'exit message')
+            self.assertEqual(msg.data, 1000)
+            self.assertEqual(msg.extra, 'exit message')
             closed.set_result(None)
             return ws
 
@@ -263,7 +263,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             msg = yield from reader.read()
             self.assertEqual(msg.tp, websocket.MSG_PONG)
             self.assertEqual(msg.data, b'data')
-            writer.close(2, 'exit message')
+            writer.close(1000, 'exit message')
 
             yield from closed
             resp.close()

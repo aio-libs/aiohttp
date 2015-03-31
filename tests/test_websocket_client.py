@@ -342,8 +342,8 @@ class TestWebSocketClient(unittest.TestCase):
 
     def test_receive_runtime_err(self):
         resp = websocket_client.ClientWebSocketResponse(
-            mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock(), True, True,
-            self.loop)
+            mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock(), 10.0,
+            True, True, self.loop)
         resp._waiting = True
 
         self.assertRaises(
@@ -439,8 +439,10 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             msg = yield from ws.receive_bytes()
             ws.ping()
             ws.send_bytes(msg+b'/answer')
-            yield from ws.close()
-            closed.set_result(1)
+            try:
+                yield from ws.close()
+            finally:
+                closed.set_result(1)
             return ws
 
         @asyncio.coroutine
@@ -474,8 +476,10 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             msg = yield from ws.receive_bytes()
             ws.ping()
             ws.send_bytes(msg+b'/answer')
-            yield from ws.close()
-            closed.set_result(1)
+            try:
+                yield from ws.close()
+            finally:
+                closed.set_result(1)
             return ws
 
         @asyncio.coroutine
@@ -540,9 +544,11 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             ws = web.WebSocketResponse()
             ws.start(request)
 
-            yield from ws.receive_bytes()
-            yield from ws.close()
-            closed.set_result(1)
+            try:
+                yield from ws.receive_bytes()
+                yield from ws.close()
+            finally:
+                closed.set_result(1)
             return ws
 
         @asyncio.coroutine
@@ -574,8 +580,10 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             yield from ws.receive_bytes()
             ws.send_str('test')
 
-            yield from ws.close()
-            closed.set_result(1)
+            try:
+                yield from ws.close()
+            finally:
+                closed.set_result(1)
             return ws
 
         @asyncio.coroutine
@@ -591,7 +599,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             msg = yield from resp.receive()
             self.assertEqual(msg.tp, aiohttp.MsgType.close)
             self.assertEqual(msg.data, 1000)
-            self.assertEqual(msg.extra, b'')
+            self.assertEqual(msg.extra, '')
             self.assertFalse(resp.closed)
 
             yield from resp.close()
@@ -614,23 +622,16 @@ class TestWebSocketClientFunctional(unittest.TestCase):
         def go():
             _, _, url = yield from self.create_server('GET', '/', handler)
             resp = yield from aiohttp.ws_connect(
-                url, autoclose=False, loop=self.loop)
+                url, timeout=0.2, autoclose=False, loop=self.loop)
             resp.send_bytes(b'ask')
 
             msg = yield from resp.receive()
             self.assertEqual(msg.data, 'test')
             self.assertEqual(msg.tp, aiohttp.MsgType.text)
 
-            try:
-                yield from asyncio.wait_for(
-                    resp.close(), timeout=0.2, loop=self.loop)
-            except asyncio.TimeoutError:
-                pass
-            else:
-                self.fail()
-
+            msg = yield from resp.close()
             self.assertTrue(resp.closed)
-            self.assertIsNone(resp.exception())
+            self.assertIsInstance(resp.exception(), asyncio.TimeoutError)
 
         self.loop.run_until_complete(go())
 

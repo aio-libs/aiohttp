@@ -7,7 +7,8 @@ import os
 
 from aiohttp import client, hdrs
 from .errors import WSServerHandshakeError
-from .websocket import WS_KEY, Message, WebSocketParser, WebSocketWriter
+from .websocket import WS_KEY, Message
+from .websocket import WebSocketParser, WebSocketWriter, WebSocketError
 from .websocket import MSG_BINARY, MSG_TEXT, MSG_CLOSE, MSG_PING, MSG_PONG
 
 __all__ = ('ws_connect', 'MsgType')
@@ -33,7 +34,7 @@ closedMessage = Message(MsgType.closed, None, None)
 
 
 @asyncio.coroutine
-def ws_connect(url, protocols=(), connector=None,
+def ws_connect(url, protocols=(), timeout=10.0, connector=None,
                autoclose=True, autoping=True, loop=None):
     """Initiate websocket connection."""
     if loop is None:
@@ -85,13 +86,13 @@ def ws_connect(url, protocols=(), connector=None,
     writer = WebSocketWriter(resp.connection.writer, use_mask=True)
 
     return ClientWebSocketResponse(
-        reader, writer, protocol, resp, autoclose, autoping, loop)
+        reader, writer, protocol, resp, timeout, autoclose, autoping, loop)
 
 
 class ClientWebSocketResponse:
 
     def __init__(self, reader, writer, protocol,
-                 response, autoclose, autoping, loop):
+                 response, timeout, autoclose, autoping, loop):
         self._response = response
         self._conn = response.connection
 
@@ -100,6 +101,8 @@ class ClientWebSocketResponse:
         self._protocol = protocol
         self._closed = False
         self._closing = False
+        self._close_code = None
+        self._timeout = timeout
         self._autoclose = autoclose
         self._autoping = autoping
         self._loop = loop
@@ -109,6 +112,10 @@ class ClientWebSocketResponse:
     @property
     def closed(self):
         return self._closed
+
+    @property
+    def close_code(self):
+        return self._close_code
 
     @property
     def protocol(self):
@@ -149,9 +156,11 @@ class ClientWebSocketResponse:
             try:
                 self._writer.close(code, message)
             except asyncio.CancelledError:
+                self._close_code = 1006
                 self._response.close(force=True)
                 raise
             except Exception as exc:
+                self._close_code = 1006
                 self._exception = exc
                 self._response.close(force=True)
                 return True
@@ -162,15 +171,19 @@ class ClientWebSocketResponse:
 
             while True:
                 try:
-                    msg = yield from self._reader.read()
-                except (asyncio.CancelledError, asyncio.TimeoutError):
+                    msg = yield from asyncio.wait_for(
+                        self._reader.read(), self._timeout, loop=self._loop)
+                except asyncio.CancelledError:
+                    self._close_code = 1006
                     raise
                 except Exception as exc:
+                    self._close_code = 1006
                     self._exception = exc
                     self._response.close(force=True)
                     return True
 
                 if msg.tp == MsgType.close:
+                    self._close_code = msg.data
                     self._response.close(force=True)
                     return True
         else:
@@ -191,14 +204,20 @@ class ClientWebSocketResponse:
                     msg = yield from self._reader.read()
                 except (asyncio.CancelledError, asyncio.TimeoutError):
                     raise
+                except WebSocketError as exc:
+                    self._close_code = exc.code
+                    yield from self.close(code=exc.code)
+                    return Message(MsgType.error, exc, None)
                 except Exception as exc:
                     self._exception = exc
                     self._closing = True
+                    self._close_code = 1006
                     yield from self.close()
                     return Message(MsgType.error, exc, None)
 
                 if msg.tp == MsgType.close:
                     self._closing = True
+                    self._close_code = msg.data
                     if not self._closed and self._autoclose:
                         yield from self.close()
                     return msg

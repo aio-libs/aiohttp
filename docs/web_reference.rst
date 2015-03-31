@@ -595,7 +595,7 @@ Response
 WebSocketResponse
 ^^^^^^^^^^^^^^^^^
 
-.. class:: WebSocketResponse(*, protocols=())
+.. class:: WebSocketResponse(*, timeout=10.0, autoclose=True, autoping=True, protocols=())
 
    Class for handling server-side websockets.
 
@@ -637,6 +637,11 @@ WebSocketResponse
       Read-only property, ``True`` if connection has been closed or in process
       of closing.
       :const:`~aiohttp.websocket.MSG_CLOSE` message has been received from peer.
+
+   .. attribute:: close_code
+
+      Read-only property, close code from peer. It is set to ``None`` on
+      opened connection.
 
    .. attribute:: protocol
 

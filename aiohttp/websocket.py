@@ -23,6 +23,28 @@ MSG_CLOSE = OPCODE_CLOSE = 0x8
 MSG_PING = OPCODE_PING = 0x9
 MSG_PONG = OPCODE_PONG = 0xa
 
+CLOSE_OK = 1000
+CLOSE_GOING_AWAY = 1001
+CLOSE_PROTOCOL_ERROR = 1002
+CLOSE_UNSUPPORTED_DATA = 1003
+CLOSE_INVALID_TEXT = 1007
+CLOSE_POLICY_VIOLATION = 1008
+CLOSE_MESSAGE_TOO_BIG = 1009
+CLOSE_MANDATORY_EXTENSION = 1010
+CLOSE_INTERNAL_ERROR = 1011
+
+ALLOWED_CLOSE_CODES = (
+    CLOSE_OK,
+    CLOSE_GOING_AWAY,
+    CLOSE_PROTOCOL_ERROR,
+    CLOSE_UNSUPPORTED_DATA,
+    CLOSE_INVALID_TEXT,
+    CLOSE_POLICY_VIOLATION,
+    CLOSE_MESSAGE_TOO_BIG,
+    CLOSE_MANDATORY_EXTENSION,
+    CLOSE_INTERNAL_ERROR,
+)
+
 WS_KEY = b'258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 WS_HDRS = (hdrs.UPGRADE,
            hdrs.CONNECTION,
@@ -44,15 +66,106 @@ PACK_CLOSE_CODE = Struct('!H').pack
 class WebSocketError(Exception):
     """WebSocket protocol parser error."""
 
+    def __init__(self, code, message):
+        self.code = code
+        super().__init__(message)
+
 
 def WebSocketParser(out, buf):
     while True:
-        message = yield from parse_message(buf)
-        out.feed_data(message)
+        fin, opcode, payload = yield from parse_frame(buf)
 
-        if message.tp == MSG_CLOSE:
-            out.feed_eof()
-            break
+        if opcode == OPCODE_CLOSE:
+            if len(payload) >= 2:
+                close_code = UNPACK_CLOSE_CODE(payload[:2])[0]
+                if close_code not in ALLOWED_CLOSE_CODES and close_code < 3000:
+                    raise WebSocketError(
+                        CLOSE_PROTOCOL_ERROR,
+                        'Invalid close code: {}'.format(close_code))
+                try:
+                    close_message = payload[2:].decode('utf-8')
+                except UnicodeDecodeError as exc:
+                    raise WebSocketError(
+                        CLOSE_INVALID_TEXT,
+                        'Invalid UTF-8 text message') from exc
+                msg = Message(OPCODE_CLOSE, close_code, close_message)
+            elif payload:
+                raise WebSocketError(
+                    CLOSE_PROTOCOL_ERROR,
+                    'Invalid close frame: {} {} {!r}'.format(
+                        fin, opcode, payload))
+            else:
+                msg = Message(OPCODE_CLOSE, 0, '')
+
+            out.feed_data(msg)
+
+        elif opcode == OPCODE_PING:
+            out.feed_data(Message(OPCODE_PING, payload, ''))
+
+        elif opcode == OPCODE_PONG:
+            out.feed_data(Message(OPCODE_PONG, payload, ''))
+
+        elif opcode not in (OPCODE_TEXT, OPCODE_BINARY):
+            raise WebSocketError(
+                CLOSE_PROTOCOL_ERROR, "Unexpected opcode={!r}".format(opcode))
+        else:
+            # load text/binary
+            data = [payload]
+
+            while not fin:
+                fin, _opcode, payload = yield from parse_frame(buf, True)
+
+                # We can receive ping/close in the middle of
+                # text message, Case 5.*
+                if _opcode == OPCODE_PING:
+                    out.feed_data(Message(OPCODE_PING, payload, ''))
+                    fin, _opcode, payload = yield from parse_frame(buf, True)
+                elif _opcode == OPCODE_CLOSE:
+                    if len(payload) >= 2:
+                        close_code = UNPACK_CLOSE_CODE(payload[:2])[0]
+                        if (close_code not in ALLOWED_CLOSE_CODES and
+                                close_code < 3000):
+                            raise WebSocketError(
+                                CLOSE_PROTOCOL_ERROR,
+                                'Invalid close code: {}'.format(close_code))
+                        try:
+                            close_message = payload[2:].decode('utf-8')
+                        except UnicodeDecodeError as exc:
+                            raise WebSocketError(
+                                CLOSE_INVALID_TEXT,
+                                'Invalid UTF-8 text message') from exc
+                        msg = Message(OPCODE_CLOSE, close_code, close_message)
+                    elif payload:
+                        raise WebSocketError(
+                            CLOSE_PROTOCOL_ERROR,
+                            'Invalid close frame: {} {} {!r}'.format(
+                                fin, opcode, payload))
+                    else:
+                        msg = Message(OPCODE_CLOSE, 0, '')
+
+                    out.feed_data(msg)
+                    fin, _opcode, payload = yield from parse_frame(buf, True)
+
+                if _opcode != OPCODE_CONTINUATION:
+                    raise WebSocketError(
+                        CLOSE_PROTOCOL_ERROR,
+                        'The opcode in non-fin frame is expected '
+                        'to be zero, got {!r}'.format(_opcode))
+                else:
+                    data.append(payload)
+
+            if opcode == OPCODE_TEXT:
+                try:
+                    out.feed_data(
+                        Message(
+                            OPCODE_TEXT, b''.join(data).decode('utf-8'), ''))
+                except UnicodeDecodeError as exc:
+                    raise WebSocketError(
+                        CLOSE_INVALID_TEXT,
+                        'Invalid UTF-8 text message') from exc
+            else:
+                out.feed_data(
+                    Message(OPCODE_BINARY, b''.join(data), ''))
 
 
 def _websocket_mask_python(mask, data):
@@ -80,7 +193,7 @@ else:
         _websocket_mask = _websocket_mask_python
 
 
-def parse_frame(buf):
+def parse_frame(buf, continuation=False):
     """Return the next frame from the socket."""
     # read header
     data = yield from buf.read(2)
@@ -98,14 +211,20 @@ def parse_frame(buf):
     # frame-rsv2 = %x0 ; 1 bit, MUST be 0 unless negotiated otherwise
     # frame-rsv3 = %x0 ; 1 bit, MUST be 0 unless negotiated otherwise
     if rsv1 or rsv2 or rsv3:
-        raise WebSocketError('Received frame with non-zero reserved bits')
+        raise WebSocketError(
+            CLOSE_PROTOCOL_ERROR,
+            'Received frame with non-zero reserved bits')
 
     if opcode > 0x7 and fin == 0:
-        raise WebSocketError('Received fragmented control frame')
-
-    if fin == 0 and opcode == OPCODE_CONTINUATION:
         raise WebSocketError(
-            'Received new fragment frame with non-zero opcode')
+            CLOSE_PROTOCOL_ERROR,
+            'Received fragmented control frame')
+
+    if fin == 0 and opcode == OPCODE_CONTINUATION and not continuation:
+        raise WebSocketError(
+            CLOSE_PROTOCOL_ERROR,
+            'Received new fragment frame with non-zero '
+            'opcode {!r}'.format(opcode))
 
     has_mask = (second_byte >> 7) & 1
     length = (second_byte) & 0x7f
@@ -113,6 +232,7 @@ def parse_frame(buf):
     # Control frames MUST have a payload length of 125 bytes or less
     if opcode > 0x7 and length > 125:
         raise WebSocketError(
+            CLOSE_PROTOCOL_ERROR,
             "Control frame payload cannot be larger than 125 bytes")
 
     # read payload
@@ -135,46 +255,6 @@ def parse_frame(buf):
         payload = _websocket_mask(mask, payload)
 
     return fin, opcode, payload
-
-
-def parse_message(buf):
-    fin, opcode, payload = yield from parse_frame(buf)
-
-    if opcode == OPCODE_CLOSE:
-        if len(payload) >= 2:
-            close_code = UNPACK_CLOSE_CODE(payload[:2])[0]
-            close_message = payload[2:]
-            return Message(OPCODE_CLOSE, close_code, close_message)
-        elif payload:
-            raise WebSocketError(
-                'Invalid close frame: {} {} {!r}'.format(fin, opcode, payload))
-        return Message(OPCODE_CLOSE, 0, '')
-
-    elif opcode == OPCODE_PING:
-        return Message(OPCODE_PING, payload, '')
-
-    elif opcode == OPCODE_PONG:
-        return Message(OPCODE_PONG, payload, '')
-
-    elif opcode not in (OPCODE_TEXT, OPCODE_BINARY):
-        raise WebSocketError("Unexpected opcode={!r}".format(opcode))
-
-    # load text/binary
-    data = [payload]
-
-    while not fin:
-        fin, _opcode, payload = yield from parse_frame(buf)
-        if _opcode != OPCODE_CONTINUATION:
-            raise WebSocketError(
-                'The opcode in non-fin frame is expected '
-                'to be zero, got {!r}'.format(opcode))
-        else:
-            data.append(payload)
-
-    if opcode == OPCODE_TEXT:
-        return Message(OPCODE_TEXT, b''.join(data).decode('utf-8'), '')
-    else:
-        return Message(OPCODE_BINARY, b''.join(data), '')
 
 
 class WebSocketWriter:

@@ -3,7 +3,7 @@ __all__ = ('WebSocketResponse', 'MsgType')
 import asyncio
 import warnings
 
-from .websocket import do_handshake, Message
+from .websocket import do_handshake, Message, WebSocketError
 from .websocket_client import MsgType, closedMessage
 
 from .errors import HttpProcessingError, ClientDisconnectedError
@@ -15,7 +15,8 @@ from .web_reqrep import StreamResponse
 
 class WebSocketResponse(StreamResponse):
 
-    def __init__(self, *, autoclose=True, autoping=True, protocols=()):
+    def __init__(self, *,
+                 timeout=10.0, autoclose=True, autoping=True, protocols=()):
         super().__init__(status=101)
         self._protocols = protocols
         self._protocol = None
@@ -23,9 +24,11 @@ class WebSocketResponse(StreamResponse):
         self._reader = None
         self._closed = False
         self._closing = False
+        self._close_code = None
         self._loop = None
         self._waiting = False
         self._exception = None
+        self._timeout = timeout
         self._autoclose = autoclose
         self._autoping = autoping
 
@@ -77,6 +80,10 @@ class WebSocketResponse(StreamResponse):
     @property
     def closed(self):
         return self._closed
+
+    @property
+    def close_code(self):
+        return self._close_code
 
     @property
     def protocol(self):
@@ -147,8 +154,10 @@ class WebSocketResponse(StreamResponse):
             try:
                 self._writer.close(code, message)
             except (asyncio.CancelledError, asyncio.TimeoutError):
+                self._close_code = 1006
                 raise
             except Exception as exc:
+                self._close_code = 1006
                 self._exception = exc
                 return True
 
@@ -157,14 +166,19 @@ class WebSocketResponse(StreamResponse):
 
             while True:
                 try:
-                    msg = yield from self._reader.read()
-                except (asyncio.CancelledError, asyncio.TimeoutError):
+                    msg = yield from asyncio.wait_for(
+                        self._reader.read(),
+                        timeout=self._timeout, loop=self._loop)
+                except asyncio.CancelledError:
+                    self._close_code = 1006
                     raise
                 except Exception as exc:
+                    self._close_code = 1006
                     self._exception = exc
                     return True
 
                 if msg.tp == MsgType.close:
+                    self._close_code = msg.data
                     return True
         else:
             return False
@@ -186,17 +200,24 @@ class WebSocketResponse(StreamResponse):
                     msg = yield from self._reader.read()
                 except (asyncio.CancelledError, asyncio.TimeoutError):
                     raise
+                except WebSocketError as exc:
+                    self._close_code = exc.code
+                    yield from self.close(code=exc.code)
+                    return Message(MsgType.error, exc, None)
                 except ClientDisconnectedError:
                     self._closed = True
+                    self._close_code = 1006
                     return Message(MsgType.close, None, None)
                 except Exception as exc:
                     self._exception = exc
                     self._closing = True
+                    self._close_code = 1006
                     yield from self.close()
                     return Message(MsgType.error, exc, None)
 
                 if msg.tp == MsgType.close:
                     self._closing = True
+                    self._close_code = msg.data
                     if not self._closed and self._autoclose:
                         yield from self.close()
                     return msg

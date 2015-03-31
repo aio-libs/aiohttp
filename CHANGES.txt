@@ -1,6 +1,22 @@
 CHANGES
 =======
 
+0.15.1 (unreleased)
+-------------------
+
+- Pass http://autobahn.ws/testsuite/ tests
+
+- Fixed websocket fragmentation
+
+- Fixed websocket close procedure
+
+- Fixed parser buffer limits
+
+- Added `timeout` parameter to WebSocketResponse ctor
+
+- Added `WebSocketResponse.close_code` attribute
+
+
 0.15.0 (03-27-2015)
 -------------------
 
