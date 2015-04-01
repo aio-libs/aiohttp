@@ -330,6 +330,18 @@ class TestWebWebSocket(unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
+    def test_multiple_receive_on_close_connection(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        ws.start(req)
+        self.loop.run_until_complete(ws.close())
+        self.loop.run_until_complete(ws.receive())
+        self.loop.run_until_complete(ws.receive())
+        self.loop.run_until_complete(ws.receive())
+        self.loop.run_until_complete(ws.receive())
+        self.assertRaises(
+            RuntimeError, self.loop.run_until_complete, ws.receive())
+
     def test_concurrent_receive(self):
         req = self.make_request('GET', '/')
         ws = WebSocketResponse()

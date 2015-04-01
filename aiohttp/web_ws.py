@@ -3,14 +3,15 @@ __all__ = ('WebSocketResponse', 'MsgType')
 import asyncio
 import warnings
 
+from . import hdrs
+from .errors import HttpProcessingError, ClientDisconnectedError
 from .websocket import do_handshake, Message, WebSocketError
 from .websocket_client import MsgType, closedMessage
-
-from .errors import HttpProcessingError, ClientDisconnectedError
-
 from .web_exceptions import (
     HTTPBadRequest, HTTPMethodNotAllowed, HTTPInternalServerError)
 from .web_reqrep import StreamResponse
+
+THRESHOLD_CONNLOST_ACCESS = 5
 
 
 class WebSocketResponse(StreamResponse):
@@ -24,6 +25,7 @@ class WebSocketResponse(StreamResponse):
         self._reader = None
         self._closed = False
         self._closing = False
+        self._conn_lost = 0
         self._close_code = None
         self._loop = None
         self._waiting = False
@@ -44,7 +46,7 @@ class WebSocketResponse(StreamResponse):
                 self._protocols)
         except HttpProcessingError as err:
             if err.code == 405:
-                raise HTTPMethodNotAllowed(request.method, ['GET'])
+                raise HTTPMethodNotAllowed(request.method, [hdrs.METH_GET])
             elif err.code == 400:
                 raise HTTPBadRequest(text=err.message, headers=err.headers)
             else:  # pragma: no cover
@@ -194,6 +196,9 @@ class WebSocketResponse(StreamResponse):
         try:
             while True:
                 if self._closed:
+                    self._conn_lost += 1
+                    if self._conn_lost >= THRESHOLD_CONNLOST_ACCESS:
+                        raise RuntimeError('WebSocket connection is closed.')
                     return closedMessage
 
                 try:
