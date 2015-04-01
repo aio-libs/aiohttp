@@ -154,13 +154,14 @@ class TestUrlDispatcher(unittest.TestCase):
         req = self.make_request('GET', '/')
         info1 = self.loop.run_until_complete(self.router.resolve(req))
         self.assertIsNotNone(info1)
+        self.assertIs(route, info1.route)
 
         req = self.make_request('POST', '/')
         info2 = self.loop.run_until_complete(self.router.resolve(req))
         self.assertIsNotNone(info2)
 
         self.assertIs(info1.route, info2.route)
-        
+
     def test_match_second_result_in_table(self):
         handler1 = self.make_handler()
         handler2 = self.make_handler()
