@@ -7,6 +7,7 @@ import ssl
 import socket
 import weakref
 
+from . import hdrs
 from .client import ClientRequest
 from .errors import ServerDisconnectedError
 from .errors import HttpProxyError, ProxyConnectionError
@@ -391,8 +392,8 @@ class ProxyConnector(TCPConnector):
     @asyncio.coroutine
     def _create_connection(self, req, **kwargs):
         proxy_req = ClientRequest(
-            'GET', self._proxy,
-            headers={'Host': req.host},
+            hdrs.METH_GET, self._proxy,
+            headers={hdrs.HOST: req.host},
             auth=self._proxy_auth,
             loop=self._loop)
         try:
@@ -404,10 +405,10 @@ class ProxyConnector(TCPConnector):
             req.path = '{scheme}://{host}{path}'.format(scheme=req.scheme,
                                                         host=req.netloc,
                                                         path=req.path)
-        if 'AUTHORIZATION' in proxy_req.headers:
-            auth = proxy_req.headers['AUTHORIZATION']
-            del proxy_req.headers['AUTHORIZATION']
-            req.headers['PROXY-AUTHORIZATION'] = auth
+        if hdrs.AUTHORIZATION in proxy_req.headers:
+            auth = proxy_req.headers[hdrs.AUTHORIZATION]
+            del proxy_req.headers[hdrs.AUTHORIZATION]
+            req.headers[hdrs.PROXY_AUTHORIZATION] = auth
 
         if req.ssl:
             # For HTTPS requests over HTTP proxy
@@ -419,7 +420,7 @@ class ProxyConnector(TCPConnector):
             # next we must do TLS handshake and so on
             # to do this we must wrap raw socket into secure one
             # asyncio handles this perfectly
-            proxy_req.method = 'CONNECT'
+            proxy_req.method = hdrs.METH_CONNECT
             proxy_req.path = '{}:{}'.format(req.host, req.port)
             key = (req.host, req.port, req.ssl)
             conn = Connection(self, key, proxy_req,

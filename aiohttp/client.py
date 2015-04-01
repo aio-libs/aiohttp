@@ -127,7 +127,7 @@ def request(method, url, *,
             # For 301 and 302, mimic IE behaviour, now changed in RFC.
             # Details: https://github.com/kennethreitz/requests/pull/269
             if resp.status != 307:
-                method = 'GET'
+                method = hdrs.METH_GET
                 data = None
             cookies = resp.cookies
 
@@ -153,8 +153,9 @@ def request(method, url, *,
 
 class ClientRequest:
 
-    GET_METHODS = {'GET', 'HEAD', 'OPTIONS'}
-    POST_METHODS = {'PATCH', 'POST', 'PUT', 'TRACE', 'DELETE'}
+    GET_METHODS = {hdrs.METH_GET, hdrs.METH_HEAD, hdrs.METH_OPTIONS}
+    POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
+                    hdrs.METH_TRACE, hdrs.METH_DELETE}
     ALL_METHODS = GET_METHODS.union(POST_METHODS)
 
     DEFAULT_HEADERS = {

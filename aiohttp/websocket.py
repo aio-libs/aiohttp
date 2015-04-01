@@ -334,8 +334,9 @@ def do_handshake(method, headers, transport, protocols=()):
 
     """
     # WebSocket accepts only GET
-    if method.upper() != 'GET':
-        raise errors.HttpProcessingError(code=405, headers=(('Allow', 'GET'),))
+    if method.upper() != hdrs.METH_GET:
+        raise errors.HttpProcessingError(
+            code=405, headers=((hdrs.ALLOW, hdrs.METH_GET),))
 
     if 'websocket' != headers.get(hdrs.UPGRADE, '').lower().strip():
         raise errors.HttpBadRequest(
@@ -368,7 +369,7 @@ def do_handshake(method, headers, transport, protocols=()):
     if version not in ('13', '8', '7'):
         raise errors.HttpBadRequest(
             message='Unsupported version: {}'.format(version),
-            headers=(('Sec-WebSocket-Version', '13', '8', '7'),))
+            headers=((hdrs.SEC_WEBSOCKET_VERSION, '13', '8', '7'),))
 
     # check client handshake for validity
     key = headers.get(hdrs.SEC_WEBSOCKET_KEY)

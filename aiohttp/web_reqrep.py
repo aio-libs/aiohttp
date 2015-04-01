@@ -76,6 +76,9 @@ FileField = collections.namedtuple('Field', 'name filename file content_type')
 
 class Request(dict, HeadersMixin):
 
+    POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
+                    hdrs.METH_TRACE, hdrs.METH_DELETE}
+
     def __init__(self, app, message, payload, transport, reader, writer, *,
                  _HOST=hdrs.HOST):
         self._app = app
@@ -271,7 +274,7 @@ class Request(dict, HeadersMixin):
         """Return POST parameters."""
         if self._post is not None:
             return self._post
-        if self.method not in ('POST', 'PUT', 'PATCH'):
+        if self.method not in self.POST_METHODS:
             self._post = MultiDictProxy(MultiDict())
             return self._post
 
@@ -303,7 +306,7 @@ class Request(dict, HeadersMixin):
         out = MultiDict()
         for field in fs.list or ():
             transfer_encoding = field.headers.get(
-                'Content-Transfer-Encoding', None)
+                hdrs.CONTENT_TRANSFER_ENCODING, None)
             if field.filename:
                 ff = FileField(field.name,
                                field.filename,

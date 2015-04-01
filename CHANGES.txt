@@ -1,6 +1,12 @@
 CHANGES
 =======
 
+0.15.2 (Unreleased)
+-------------------
+
+- Allow to match any request method with `*`
+
+
 0.15.1 (03-31-2015)
 -------------------
 
