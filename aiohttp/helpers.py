@@ -224,8 +224,11 @@ def atoms(message, environ, response, transport, request_time):
         r = ''
         headers = {}
 
-    remote_addr = parse_remote_addr(
-        transport.get_extra_info('addr', '127.0.0.1'))
+    if transport is not None:
+        remote_addr = parse_remote_addr(
+            transport.get_extra_info('addr', '127.0.0.1'))
+    else:
+        remote_addr = ('',)
 
     atoms = {
         'h': remote_addr[0],
