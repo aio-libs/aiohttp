@@ -1,4 +1,4 @@
-.. _glossary:
+.. _aiohttp-glossary:
 
 
 ==========
