@@ -8,9 +8,11 @@ import collections
 import mimetypes
 import re
 import os
+import inspect
 
 from urllib.parse import urlencode
 
+from . import hdrs
 from .abc import AbstractRouter, AbstractMatchInfo
 from .protocol import HttpVersion11
 from .web_exceptions import HTTPMethodNotAllowed, HTTPNotFound
@@ -255,7 +257,9 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     GOOD = r'[^{}/]+'
     ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
 
-    METHODS = {'POST', 'GET', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'}
+    METHODS = {hdrs.METH_ANY, hdrs.METH_POST,
+               hdrs.METH_GET, hdrs.METH_PUT, hdrs.METH_DELETE,
+               hdrs.METH_PATCH, hdrs.METH_HEAD, hdrs.METH_OPTIONS}
 
     def __init__(self):
         super().__init__()
@@ -267,15 +271,17 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         path = request.path
         method = request.method
         allowed_methods = set()
+
         for route in self._urls:
             match_dict = route.match(path)
             if match_dict is None:
                 continue
+
             route_method = route.method
-            if route_method != method:
-                allowed_methods.add(route_method)
-            else:
+            if route_method == method or route_method == hdrs.METH_ANY:
                 return UrlMappingMatchInfo(match_dict, route)
+
+            allowed_methods.add(route_method)
         else:
             if allowed_methods:
                 return _MethodNotAllowedMatchInfo(method, allowed_methods)
@@ -311,8 +317,10 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                   *, name=None, expect_handler=None):
 
         assert callable(handler), handler
-        if not asyncio.iscoroutinefunction(handler):
+        if (not asyncio.iscoroutinefunction(handler) and
+                not inspect.isgeneratorfunction(handler)):
             handler = asyncio.coroutine(handler)
+
         method = method.upper()
         assert method in self.METHODS, method
 

@@ -3,6 +3,7 @@ import os
 import unittest
 from unittest import mock
 import aiohttp.web
+from aiohttp import hdrs
 from aiohttp.web import (UrlDispatcher, Request, Response,
                          HTTPMethodNotAllowed, HTTPNotFound)
 from aiohttp.multidict import CIMultiDict
@@ -146,6 +147,20 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIsNotNone(info)
         self.assertIs(handler, info.handler)
 
+    def test_any_method(self):
+        handler = self.make_handler()
+        route = self.router.add_route(hdrs.METH_ANY, '/', handler)
+
+        req = self.make_request('GET', '/')
+        info1 = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info1)
+
+        req = self.make_request('POST', '/')
+        info2 = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info2)
+
+        self.assertIs(info1.route, info2.route)
+        
     def test_match_second_result_in_table(self):
         handler1 = self.make_handler()
         handler2 = self.make_handler()
