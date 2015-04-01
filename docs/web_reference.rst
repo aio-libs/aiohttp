@@ -424,7 +424,7 @@ StreamResponse
       :param str value: cookie value (will be converted to
                         :class:`str` if value has another type).
 
-      :param expries: expiration date (optional)
+      :param expires: expiration date (optional)
 
       :param str domain: cookie domain (optional)
 
