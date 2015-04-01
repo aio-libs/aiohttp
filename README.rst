@@ -97,11 +97,7 @@ This is simple usage example:
     @asyncio.coroutine
     def wshandler(request):
         ws = WebSocketResponse()
-        ok, protocol = resp.can_start(request)
-        if not ok:
-            return web.HTTPBadRequest()
-        else:
-            ws.start(request)
+        ws.start(request)
  
         while True:
             msg = yield from ws.receive()
@@ -112,6 +108,7 @@ This is simple usage example:
                ws.send_bytes(msg.data)
             elif msg.tp == web.MsgType.close:
                break
+
         return ws
 
     @asyncio.coroutine
