@@ -134,7 +134,7 @@ Custom conditions for routes lookup
 Sometimes you need to distinguish *web-handlers* on more complex
 criteria than *HTTP method* and *path*.
 
-While :class:`UrlDispatcher` doesn't accept extra criterias there is an 
+While :class:`UrlDispatcher` doesn't accept extra criterias there is an
 easy way to do the task by implementing the second routing layer by
 hand.
 
