@@ -173,10 +173,12 @@ class StaticRoute(Route):
         if not os.path.exists(filepath) or not os.path.isfile(filepath):
             raise HTTPNotFound()
 
-        ct = mimetypes.guess_type(filename)[0]
+        ct, encoding = mimetypes.guess_type(filename)
         if not ct:
             ct = 'application/octet-stream'
         resp.content_type = ct
+        if encoding:
+            resp.headers['content-encoding'] = encoding
 
         file_size = os.stat(filepath).st_size
         single_chunk = file_size < self.limit
