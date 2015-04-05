@@ -174,6 +174,34 @@ The next example shows custom processing based on *HTTP Accept* header:
    chooser.reg_acceptor('application/xml', handle_xml)
 
 
+Template rendering
+------------------
+
+:mod:`aiohttp.web` has no support for template rendering out-of-the-box.
+
+But there is third-party library :mod:`aiohttp_jinja2` which is
+supported by *aiohttp* auhtors.
+
+The usage is simple: create dictionary with data and pass it into
+template renderer.
+
+Before template rendering you have to setup *jinja2 environment* first
+(:func:`aiohttp_jinja2.setup` call)::
+
+    app = web.Application(loop=self.loop)
+    aiohttp_jinja2.setup(app,
+        loader=jinja2.FileSystemLoader('/path/to/templates/folder'))
+
+
+After that you may use template engine in your *web-handlers*. The
+most convinient way is to use :func:`aiohttp_jinja2.template`
+decorator::
+
+    @aiohttp_jinja2.template('tmpl.jinja2')
+    def handler(request):
+        return {'name': 'Andrew', 'surname': 'Svetlov'}
+
+
 .. _aiohttp-web-expect-header:
 
 *Expect* header support

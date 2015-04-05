@@ -19,3 +19,7 @@
 
       Any object that can be called. Use :func:`callable` to check
       that.
+
+   web-handler
+
+       An enpoint that returns http response.
