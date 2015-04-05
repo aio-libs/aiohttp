@@ -180,7 +180,7 @@ Template rendering
 :mod:`aiohttp.web` has no support for template rendering out-of-the-box.
 
 But there is third-party library :mod:`aiohttp_jinja2` which is
-supported by *aiohttp* auhtors.
+supported by *aiohttp* authors.
 
 The usage is simple: create dictionary with data and pass it into
 template renderer.
