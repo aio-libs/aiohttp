@@ -18,6 +18,7 @@ Dima Veselov
 Dimitar Dimitrov
 Erich Healy
 Eugene Chernyshov
+Frederik Gladhorn
 Georges Dubus
 Greg Holt
 Junjie Tao

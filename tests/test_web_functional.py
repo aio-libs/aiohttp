@@ -263,6 +263,7 @@ class TestWebFunctional(unittest.TestCase):
             self.assertEqual('file content', txt)
             ct = resp.headers['CONTENT-TYPE']
             self.assertEqual('application/octet-stream', ct)
+            self.assertEqual(resp.headers.get('CONTENT-ENCODING'), None)
 
             resp = yield from request('GET', url + 'fake', loop=self.loop)
             self.assertEqual(404, resp.status)
@@ -294,6 +295,7 @@ class TestWebFunctional(unittest.TestCase):
                 self.assertEqual(content, body)
             ct = resp.headers['CONTENT-TYPE']
             self.assertEqual('image/jpeg', ct)
+            self.assertEqual(resp.headers.get('CONTENT-ENCODING'), None)
 
             resp = yield from request('GET', url + 'fake', loop=self.loop)
             self.assertEqual(404, resp.status)
@@ -302,6 +304,28 @@ class TestWebFunctional(unittest.TestCase):
 
         here = os.path.dirname(__file__)
         filename = os.path.join(here, 'software_development_in_picture.jpg')
+        self.loop.run_until_complete(go(here, filename))
+
+    def test_static_file_with_content_encoding(self):
+
+        @asyncio.coroutine
+        def go(dirname, filename):
+            app, _, url = yield from self.create_server(
+                'GET', '/static/' + filename
+            )
+            app.router.add_static('/static', dirname)
+
+            resp = yield from request('GET', url, loop=self.loop)
+            self.assertEqual(200, resp.status)
+            body = yield from resp.read()
+            self.assertEqual(b'hello aiohttp\n', body)
+            ct = resp.headers['CONTENT-TYPE']
+            self.assertEqual('text/plain', ct)
+            encoding = resp.headers['CONTENT-ENCODING']
+            self.assertEqual('gzip', encoding)
+
+        here = os.path.dirname(__file__)
+        filename = os.path.join(here, 'hello.txt.gz')
         self.loop.run_until_complete(go(here, filename))
 
     def test_post_form_with_duplicate_keys(self):
