@@ -5,9 +5,10 @@ import traceback
 
 from .log import internal_logger
 
-__all__ = ('EofStream',
-           'StreamReader', 'DataQueue', 'ChunksQueue',
-           'FlowControlStreamReader', 'FlowControlDataQueue')
+__all__ = (
+    'EofStream', 'StreamReader', 'DataQueue', 'ChunksQueue',
+    'FlowControlStreamReader',
+    'FlowControlDataQueue', 'FlowControlChunksQueue')
 
 EOF_MARKER = b''
 DEFAULT_LIMIT = 2 ** 16
@@ -260,6 +261,88 @@ class StreamReader(asyncio.StreamReader):
             return data
 
 
+class DataQueue:
+    """DataQueue is a general-purpose blocking queue with one reader."""
+
+    def __init__(self, *, loop=None):
+        self._loop = loop
+        self._eof = False
+        self._waiter = None
+        self._exception = None
+        self._size = 0
+        self._buffer = collections.deque()
+
+    def is_eof(self):
+        return self._eof
+
+    def at_eof(self):
+        return self._eof and not self._buffer
+
+    def exception(self):
+        return self._exception
+
+    def set_exception(self, exc):
+        self._exception = exc
+
+        waiter = self._waiter
+        if waiter is not None:
+            self._waiter = None
+            if not waiter.done():
+                waiter.set_exception(exc)
+
+    def feed_data(self, data, size):
+        self._size += size
+        self._buffer.append((data, size))
+
+        waiter = self._waiter
+        if waiter is not None:
+            self._waiter = None
+            if not waiter.cancelled():
+                waiter.set_result(True)
+
+    def feed_eof(self):
+        self._eof = True
+
+        waiter = self._waiter
+        if waiter is not None:
+            self._waiter = None
+            if not waiter.cancelled():
+                waiter.set_result(False)
+
+    @asyncio.coroutine
+    def read(self):
+        if not self._buffer and not self._eof:
+            if self._exception is not None:
+                raise self._exception
+
+            assert not self._waiter
+            self._waiter = asyncio.Future(loop=self._loop)
+            yield from self._waiter
+
+        if self._buffer:
+            data, size = self._buffer.popleft()
+            self._size -= size
+            return data
+        else:
+            if self._exception is not None:
+                raise self._exception
+            else:
+                raise EofStream
+
+
+class ChunksQueue(DataQueue):
+    """Like a :class:`DataQueue`, but for binary chunked data transfer."""
+
+    @asyncio.coroutine
+    def read(self):
+        try:
+            return (yield from super().read())
+        except EofStream:
+            return EOF_MARKER
+
+    readany = read
+
+
 def maybe_resume(func):
 
     @functools.wraps(func)
@@ -335,75 +418,6 @@ class FlowControlStreamReader(StreamReader):
         return (yield from super().readexactly(n))
 
 
-class DataQueue:
-    """DataQueue is a general-purpose blocking queue with one reader."""
-
-    def __init__(self, *, loop=None):
-        self._loop = loop
-        self._eof = False
-        self._waiter = None
-        self._exception = None
-        self._size = 0
-        self._buffer = collections.deque()
-
-    def is_eof(self):
-        return self._eof
-
-    def at_eof(self):
-        return self._eof and not self._buffer
-
-    def exception(self):
-        return self._exception
-
-    def set_exception(self, exc):
-        self._exception = exc
-
-        waiter = self._waiter
-        if waiter is not None:
-            self._waiter = None
-            if not waiter.done():
-                waiter.set_exception(exc)
-
-    def feed_data(self, data, size):
-        self._size += size
-        self._buffer.append((data, size))
-
-        waiter = self._waiter
-        if waiter is not None:
-            self._waiter = None
-            if not waiter.cancelled():
-                waiter.set_result(True)
-
-    def feed_eof(self):
-        self._eof = True
-
-        waiter = self._waiter
-        if waiter is not None:
-            self._waiter = None
-            if not waiter.cancelled():
-                waiter.set_result(False)
-
-    @asyncio.coroutine
-    def read(self):
-        if not self._buffer and not self._eof:
-            if self._exception is not None:
-                raise self._exception
-
-            assert not self._waiter
-            self._waiter = asyncio.Future(loop=self._loop)
-            yield from self._waiter
-
-        if self._buffer:
-            data, size = self._buffer.popleft()
-            self._size -= size
-            return data
-        else:
-            if self._exception is not None:
-                raise self._exception
-            else:
-                raise EofStream
-
-
 class FlowControlDataQueue(DataQueue):
     """FlowControlDataQueue resumes and pauses an underlying stream.
 
@@ -462,8 +476,7 @@ class FlowControlDataQueue(DataQueue):
         return result
 
 
-class ChunksQueue(DataQueue):
-    """Like a :class:`DataQueue`, but for binary chunked data transfer."""
+class FlowControlChunksQueue(FlowControlDataQueue):
 
     @asyncio.coroutine
     def read(self):
