@@ -498,7 +498,7 @@ class FlowControlStreamReaderTests(unittest.TestCase):
 
     def test_feed_data(self):
         r = self._make_one()
-        r.paused = False
+        r._stream.paused = False
         r.feed_data(b'datadata', 8)
         self.assertTrue(self.transp.pause_reading.called)
 
@@ -627,32 +627,6 @@ class DataQueueTests(unittest.TestCase):
         self.assertRaises(ValueError, t1.result)
 
 
-class FlowControlDataQueueTests(unittest.TestCase):
-
-    def setUp(self):
-        self.stream = unittest.mock.Mock()
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-        self.buffer = streams.FlowControlDataQueue(
-            self.stream, limit=1, loop=self.loop)
-        self.buffer._b_limit = 1
-        self.stream.paused = False
-
-    def tearDown(self):
-        self.loop.close()
-
-    def test_stream(self):
-        item = object()
-        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
-
-        def cb():
-            self.buffer.feed_data(item, 100)
-        self.loop.call_soon(cb)
-        self.loop.run_until_complete(read_task)
-
-        self.assertTrue(self.stream.transport.pause_reading.called)
-
-
 class ChunksQueueTests(DataQueueTests):
 
     def setUp(self):
@@ -683,3 +657,141 @@ class ChunksQueueTests(DataQueueTests):
 
     def test_readany(self):
         self.assertIs(self.buffer.read.__func__, self.buffer.readany.__func__)
+
+
+class FlowControlDataQueueTests(unittest.TestCase):
+
+    def setUp(self):
+        self.stream = unittest.mock.Mock()
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+    def tearDown(self):
+        self.loop.close()
+
+    def _make_one(self, *args, **kwargs):
+        return streams.FlowControlDataQueue(
+            self.stream, limit=1, loop=self.loop, *args, **kwargs)
+
+    def test_resume_on_init(self):
+        stream = unittest.mock.Mock()
+        stream.paused = True
+
+        streams.FlowControlDataQueue(stream, limit=1, loop=self.loop)
+        self.assertTrue(stream.transport.resume_reading.called)
+        self.assertFalse(stream.paused)
+
+    def test_no_transport_in_init(self):
+        stream = unittest.mock.Mock()
+        stream.paused = True
+        stream.transport = None
+
+        streams.FlowControlDataQueue(stream, limit=1, loop=self.loop)
+        self.assertTrue(stream.paused)
+
+    def test_feed_no_waiter(self):
+        out = self._make_one()
+        out.feed_data(object(), 100)
+
+        self.assertTrue(self.stream.transport.pause_reading.called)
+
+    def test_feed_no_transport(self):
+        self.stream.transport = None
+
+        out = self._make_one()
+        self.stream.paused = False
+        out.feed_data(object(), 100)
+
+        self.assertFalse(self.stream.paused)
+
+    def test_feed_with_waiter(self):
+        self.stream.paused = False
+
+        out = self._make_one()
+        read_task = asyncio.Task(out.read(), loop=self.loop)
+
+        def cb():
+            out.feed_data(object(), 100)
+        self.loop.call_soon(cb)
+        self.loop.run_until_complete(read_task)
+
+        self.assertFalse(self.stream.transport.pause_reading.called)
+        self.assertFalse(self.stream.paused)
+
+    def test_resume_on_read(self):
+        out = self._make_one()
+        out.feed_data(object(), 100)
+        self.assertTrue(self.stream.paused)
+
+        self.loop.run_until_complete(out.read())
+
+        self.assertTrue(self.stream.transport.resume_reading.called)
+        self.assertFalse(self.stream.paused)
+
+    def test_resume_on_read_no_transport(self):
+        item = object()
+
+        out = self._make_one()
+        out.feed_data(item, 100)
+        self.assertTrue(self.stream.paused)
+
+        self.stream.transport = None
+        res = self.loop.run_until_complete(out.read())
+
+        self.assertIs(res, item)
+        self.assertTrue(self.stream.paused)
+
+    def test_no_resume_on_read(self):
+        out = self._make_one()
+        out.feed_data(object(), 100)
+        out.feed_data(object(), 100)
+        out.feed_data(object(), 100)
+        self.assertTrue(self.stream.paused)
+        self.stream.transport.reset_mock()
+
+        self.loop.run_until_complete(out.read())
+
+        self.assertFalse(self.stream.transport.resume_reading.called)
+        self.assertTrue(self.stream.paused)
+
+    def test_pause_on_read(self):
+        out = self._make_one()
+        out._buffer.append((object(), 100))
+        out._buffer.append((object(), 100))
+        out._buffer.append((object(), 100))
+        out._size = 300
+        self.stream.paused = False
+
+        self.loop.run_until_complete(out.read())
+
+        self.assertTrue(self.stream.transport.pause_reading.called)
+        self.assertTrue(self.stream.paused)
+
+    def test_no_pause_on_read(self):
+        item = object()
+
+        out = self._make_one()
+        out._buffer.append((item, 100))
+        out._size = 100
+        self.stream.paused = False
+
+        res = self.loop.run_until_complete(out.read())
+
+        self.assertIs(res, item)
+        self.assertFalse(self.stream.transport.pause_reading.called)
+        self.assertFalse(self.stream.paused)
+
+    def test_no_pause_on_read_no_transport(self):
+        item = object()
+
+        out = self._make_one()
+        out._buffer.append((item, 100))
+        out._buffer.append((object(), 100))
+        out._buffer.append((object(), 100))
+        out._size = 300
+        self.stream.paused = False
+        self.stream.transport = None
+
+        res = self.loop.run_until_complete(out.read())
+        self.assertIs(res, item)
+        self.assertFalse(self.stream.paused)

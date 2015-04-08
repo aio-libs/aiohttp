@@ -260,36 +260,29 @@ class StreamReader(asyncio.StreamReader):
             return data
 
 
-def pause_transport(func):
-
-    @functools.wraps(func)
-    def wrapper(self, *args, **kw):
-        if not self._stream.paused:
-            try:
-                self._stream.transport.pause_reading()
-            except (AttributeError, NotImplementedError):
-                pass
-            else:
-                self._stream.paused = True
-
-        return func(self, *args, **kw)
-
-    return wrapper
-
-
 def maybe_resume(func):
 
     @functools.wraps(func)
     def wrapper(self, *args, **kw):
         result = yield from func(self, *args, **kw)
 
-        if self._stream.paused and len(self._buffer) < self._b_limit:
-            try:
-                self._stream.transport.resume_reading()
-            except (AttributeError, NotImplementedError):
-                pass
-            else:
-                self._stream.paused = False
+        size = len(self._buffer)
+        if self._stream.paused:
+            if size < self._b_limit:
+                try:
+                    self._stream.transport.resume_reading()
+                except (AttributeError, NotImplementedError):
+                    pass
+                else:
+                    self._stream.paused = False
+        else:
+            if size > self._b_limit:
+                try:
+                    self._stream.transport.pause_reading()
+                except (AttributeError, NotImplementedError):
+                    pass
+                else:
+                    self._stream.paused = True
 
         return result
 
@@ -312,23 +305,18 @@ class FlowControlStreamReader(StreamReader):
                 pass
 
     def feed_data(self, data, size=0):
+        has_waiter = self._waiter is not None and not self._waiter.cancelled()
+
         super().feed_data(data)
 
-        if len(self._buffer) > self._b_limit:
+        if (not self._stream.paused and
+                not has_waiter and len(self._buffer) > self._b_limit):
             try:
                 self._stream.transport.pause_reading()
             except (AttributeError, NotImplementedError):
                 pass
             else:
                 self._stream.paused = True
-
-    @pause_transport
-    def feed_eof(self):
-        return super().feed_eof()
-
-    @pause_transport
-    def set_exception(self, exc):
-        return super().set_exception(exc)
 
     @maybe_resume
     def read(self, n=-1):
@@ -428,7 +416,7 @@ class FlowControlDataQueue(DataQueue):
         self._limit = limit * 2
 
         # resume transport reading
-        if self._stream.paused:
+        if stream.paused:
             try:
                 self._stream.transport.resume_reading()
             except (AttributeError, NotImplementedError):
@@ -437,9 +425,12 @@ class FlowControlDataQueue(DataQueue):
                 self._stream.paused = False
 
     def feed_data(self, data, size):
+        has_waiter = self._waiter is not None and not self._waiter.cancelled()
+
         super().feed_data(data, size)
 
-        if not self._stream.paused and self._size > self._limit:
+        if (not self._stream.paused and
+                not has_waiter and self._size > self._limit):
             try:
                 self._stream.transport.pause_reading()
             except (AttributeError, NotImplementedError):
@@ -447,25 +438,26 @@ class FlowControlDataQueue(DataQueue):
             else:
                 self._stream.paused = True
 
-    @pause_transport
-    def feed_eof(self):
-        return super().feed_eof()
-
-    @pause_transport
-    def set_exception(self, exc):
-        return super().set_exception(exc)
-
     @asyncio.coroutine
     def read(self):
         result = yield from super().read()
 
-        if self._stream.paused and self._size < self._limit:
-            try:
-                self._stream.transport.resume_reading()
-            except (AttributeError, NotImplementedError):
-                pass
-            else:
-                self._stream.paused = False
+        if self._stream.paused:
+            if self._size < self._limit:
+                try:
+                    self._stream.transport.resume_reading()
+                except (AttributeError, NotImplementedError):
+                    pass
+                else:
+                    self._stream.paused = False
+        else:
+            if self._size > self._limit:
+                try:
+                    self._stream.transport.pause_reading()
+                except (AttributeError, NotImplementedError):
+                    pass
+                else:
+                    self._stream.paused = True
 
         return result
 
