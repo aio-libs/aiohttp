@@ -62,6 +62,25 @@ class HelpersTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             helpers.FormData('as')  # 2-char str is not allowed
 
+    def test_reify(self):
+        class A:
+            @helpers.reify
+            def prop(self):
+                return 1
+
+        a = A()
+        self.assertEqual(1, a.prop)
+
+    def test_reify_class(self):
+        class A:
+            @helpers.reify
+            def prop(self):
+                """Docstring."""
+                return 1
+
+        self.assertIsInstance(A.prop, helpers.reify)
+        self.assertEqual('Docstring.', A.prop.__doc__)
+
 
 class SafeAtomsTests(unittest.TestCase):
 
