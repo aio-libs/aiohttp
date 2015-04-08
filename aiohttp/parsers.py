@@ -68,7 +68,7 @@ __all__ = ('EofStream', 'StreamParser', 'StreamProtocol',
 DEFAULT_LIMIT = 2 ** 16
 
 
-class StreamParser(asyncio.streams.StreamReader):
+class StreamParser:
     """StreamParser manages incoming bytes stream and protocol parsers.
 
     StreamParser uses ParserBuffer as internal buffer.
@@ -211,6 +211,15 @@ class StreamParser(asyncio.streams.StreamReader):
             self._parser = None
 
 
+class StreamWriter(asyncio.streams.StreamWriter):
+
+    def __init__(self, transport, protocol, reader, loop):
+        self._transport = transport
+        self._protocol = protocol
+        self._reader = reader
+        self._loop = loop
+
+
 class StreamProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     """Helper class to adapt between Protocol and StreamReader."""
 
@@ -228,8 +237,7 @@ class StreamProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     def connection_made(self, transport):
         self.transport = transport
         self.reader.set_transport(transport)
-        self.writer = asyncio.streams.StreamWriter(
-            transport, self, self.reader, self._loop)
+        self.writer = StreamWriter(transport, self, self.reader, self._loop)
 
     def connection_lost(self, exc):
         self.transport = self.writer = None
