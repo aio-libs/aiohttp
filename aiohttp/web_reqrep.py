@@ -340,7 +340,7 @@ class Request(dict, HeadersMixin):
 
 class StreamResponse(HeadersMixin):
 
-    def __init__(self, *, status=200, reason=None):
+    def __init__(self, *, status=200, reason=None, headers=None):
         self._body = None
         self._keep_alive = None
         self._chunked = False
@@ -354,6 +354,9 @@ class StreamResponse(HeadersMixin):
         self._req = None
         self._resp_impl = None
         self._eof_sent = False
+
+        if headers is not None:
+            self._headers.extend(headers)
 
     def _copy_cookies(self):
         for cookie in self._cookies.values():
@@ -592,12 +595,8 @@ class StreamResponse(HeadersMixin):
 class Response(StreamResponse):
 
     def __init__(self, *, body=None, status=200,
-                 reason=None, headers=None,
-                 text=None, content_type=None):
-        super().__init__(status=status, reason=reason)
-
-        if headers is not None:
-            self.headers.extend(headers)
+                 reason=None, text=None, headers=None, content_type=None):
+        super().__init__(status=status, reason=reason, headers=headers)
 
         if body is not None and text is not None:
             raise ValueError("body and text are not allowed together.")

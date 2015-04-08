@@ -1,13 +1,13 @@
 import asyncio
 import collections
+import functools
 import traceback
 
 from .log import internal_logger
 
 __all__ = ('EofStream',
            'StreamReader', 'DataQueue', 'ChunksQueue',
-           'FlowControlStreamReader', 'FlowControlDataQueue',
-           'FlowControlChunksQueue')
+           'FlowControlStreamReader', 'FlowControlDataQueue')
 
 EOF_MARKER = b''
 DEFAULT_LIMIT = 2 ** 16
@@ -260,39 +260,90 @@ class StreamReader(asyncio.StreamReader):
             return data
 
 
+def pause_transport(func):
+
+    @functools.wraps(func)
+    def wrapper(self, *args, **kw):
+        if not self._stream.paused:
+            try:
+                self._stream.transport.pause_reading()
+            except (AttributeError, NotImplementedError):
+                pass
+            else:
+                self._stream.paused = True
+
+        return func(self, *args, **kw)
+
+    return wrapper
+
+
+def maybe_resume(func):
+
+    @functools.wraps(func)
+    def wrapper(self, *args, **kw):
+        result = yield from func(self, *args, **kw)
+
+        if self._stream.paused and len(self._buffer) < self._b_limit:
+            try:
+                self._stream.transport.resume_reading()
+            except (AttributeError, NotImplementedError):
+                pass
+            else:
+                self._stream.paused = False
+
+        return result
+
+    return wrapper
+
+
 class FlowControlStreamReader(StreamReader):
 
-    def __init__(self, stream, *args, **kwargs):
+    def __init__(self, stream, limit=DEFAULT_LIMIT, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self._stream = stream
+        self._b_limit = limit * 2
 
-    @asyncio.coroutine
+        # resume transport reading
+        if stream.paused:
+            try:
+                self._stream.transport.resume_reading()
+            except (AttributeError, NotImplementedError):
+                pass
+
+    def feed_data(self, data, size=0):
+        super().feed_data(data)
+
+        if len(self._buffer) > self._b_limit:
+            try:
+                self._stream.transport.pause_reading()
+            except (AttributeError, NotImplementedError):
+                pass
+            else:
+                self._stream.paused = True
+
+    @pause_transport
+    def feed_eof(self):
+        return super().feed_eof()
+
+    @pause_transport
+    def set_exception(self, exc):
+        return super().set_exception(exc)
+
+    @maybe_resume
     def read(self, n=-1):
-        if self._stream._paused:
-            self._stream.resume_stream()
-
         return (yield from super().read(n))
 
-    @asyncio.coroutine
+    @maybe_resume
     def readline(self):
-        if self._stream._paused:
-            self._stream.resume_stream()
-
         return (yield from super().readline())
 
-    @asyncio.coroutine
+    @maybe_resume
     def readany(self):
-        if self._stream._paused:
-            self._stream.resume_stream()
-
         return (yield from super().readany())
 
-    @asyncio.coroutine
+    @maybe_resume
     def readexactly(self, n):
-        if self._stream._paused:
-            self._stream.resume_stream()
-
         return (yield from super().readexactly(n))
 
 
@@ -301,10 +352,11 @@ class DataQueue:
 
     def __init__(self, *, loop=None):
         self._loop = loop
-        self._buffer = collections.deque()
         self._eof = False
         self._waiter = None
         self._exception = None
+        self._size = 0
+        self._buffer = collections.deque()
 
     def is_eof(self):
         return self._eof
@@ -324,8 +376,9 @@ class DataQueue:
             if not waiter.done():
                 waiter.set_exception(exc)
 
-    def feed_data(self, data):
-        self._buffer.append(data)
+    def feed_data(self, data, size):
+        self._size += size
+        self._buffer.append((data, size))
 
         waiter = self._waiter
         if waiter is not None:
@@ -353,7 +406,9 @@ class DataQueue:
             yield from self._waiter
 
         if self._buffer:
-            return self._buffer.popleft()
+            data, size = self._buffer.popleft()
+            self._size -= size
+            return data
         else:
             if self._exception is not None:
                 raise self._exception
@@ -366,17 +421,53 @@ class FlowControlDataQueue(DataQueue):
 
     It is a destination for parsed data."""
 
-    def __init__(self, stream, *, loop=None):
+    def __init__(self, stream, *, limit=DEFAULT_LIMIT, loop=None):
         super().__init__(loop=loop)
 
         self._stream = stream
+        self._limit = limit * 2
+
+        # resume transport reading
+        if self._stream.paused:
+            try:
+                self._stream.transport.resume_reading()
+            except (AttributeError, NotImplementedError):
+                pass
+            else:
+                self._stream.paused = False
+
+    def feed_data(self, data, size):
+        super().feed_data(data, size)
+
+        if not self._stream.paused and self._size > self._limit:
+            try:
+                self._stream.transport.pause_reading()
+            except (AttributeError, NotImplementedError):
+                pass
+            else:
+                self._stream.paused = True
+
+    @pause_transport
+    def feed_eof(self):
+        return super().feed_eof()
+
+    @pause_transport
+    def set_exception(self, exc):
+        return super().set_exception(exc)
 
     @asyncio.coroutine
     def read(self):
-        if self._stream._paused:
-            self._stream.resume_stream()
+        result = yield from super().read()
 
-        return (yield from super().read())
+        if self._stream.paused and self._size < self._limit:
+            try:
+                self._stream.transport.resume_reading()
+            except (AttributeError, NotImplementedError):
+                pass
+            else:
+                self._stream.paused = False
+
+        return result
 
 
 class ChunksQueue(DataQueue):
@@ -390,9 +481,3 @@ class ChunksQueue(DataQueue):
             return EOF_MARKER
 
     readany = read
-
-
-class FlowControlChunksQueue(FlowControlDataQueue, ChunksQueue):
-    """FlowControlChunksQueue resumes and pauses an underlying stream."""
-
-    readany = FlowControlDataQueue.read

@@ -111,8 +111,8 @@ class DeflateBufferTests(unittest.TestCase):
         dbuf.zlib = unittest.mock.Mock()
         dbuf.zlib.decompress.return_value = b'line'
 
-        dbuf.feed_data(b'data')
-        self.assertEqual([b'line'], list(buf._buffer))
+        dbuf.feed_data(b'data', 4)
+        self.assertEqual([b'line'], list(d for d, _ in buf._buffer))
 
     def test_feed_data_err(self):
         buf = aiohttp.FlowControlDataQueue(self.stream)
@@ -122,7 +122,8 @@ class DeflateBufferTests(unittest.TestCase):
         dbuf.zlib = unittest.mock.Mock()
         dbuf.zlib.decompress.side_effect = exc
 
-        self.assertRaises(errors.ContentEncodingError, dbuf.feed_data, b'data')
+        self.assertRaises(
+            errors.ContentEncodingError, dbuf.feed_data, b'data', 4)
 
     def test_feed_eof(self):
         buf = aiohttp.FlowControlDataQueue(self.stream)
@@ -132,7 +133,7 @@ class DeflateBufferTests(unittest.TestCase):
         dbuf.zlib.flush.return_value = b'line'
 
         dbuf.feed_eof()
-        self.assertEqual([b'line'], list(buf._buffer))
+        self.assertEqual([b'line'], list(d for d, _ in buf._buffer))
         self.assertTrue(buf._eof)
 
     def test_feed_eof_err(self):
@@ -163,7 +164,7 @@ class ParsePayloadTests(unittest.TestCase):
         except StopIteration:
             pass
 
-        self.assertEqual([b'data'], list(out._buffer))
+        self.assertEqual([(bytearray(b'data'), 4)], list(out._buffer))
 
     def test_parse_length_payload(self):
         out = aiohttp.FlowControlDataQueue(self.stream)
@@ -178,7 +179,7 @@ class ParsePayloadTests(unittest.TestCase):
             pass
 
         self.assertEqual(3, len(out._buffer))
-        self.assertEqual(b'data', b''.join(out._buffer))
+        self.assertEqual(b'data', b''.join(d for d, _ in out._buffer))
         self.assertEqual(b'line', bytes(buf))
 
     def test_parse_length_payload_eof(self):
@@ -198,7 +199,7 @@ class ParsePayloadTests(unittest.TestCase):
             p.send(b'4\r\ndata\r\n4\r\nline\r\n0\r\ntest\r\n')
         except StopIteration:
             pass
-        self.assertEqual(b'dataline', b''.join(out._buffer))
+        self.assertEqual(b'dataline', b''.join(d for d, _ in out._buffer))
         self.assertEqual(b'', bytes(buf))
 
     def test_parse_chunked_payload_chunks(self):
@@ -212,7 +213,7 @@ class ParsePayloadTests(unittest.TestCase):
         p.send(b'\n')
         p.send(b'line\r\n0\r\n')
         self.assertRaises(StopIteration, p.send, b'test\r\n')
-        self.assertEqual(b'dataline', b''.join(out._buffer))
+        self.assertEqual(b'dataline', b''.join(d for d, _ in out._buffer))
 
     def test_parse_chunked_payload_incomplete(self):
         out = aiohttp.FlowControlDataQueue(self.stream)
@@ -231,7 +232,7 @@ class ParsePayloadTests(unittest.TestCase):
             p.send(b'4;test\r\ndata\r\n4\r\nline\r\n0\r\ntest\r\n')
         except StopIteration:
             pass
-        self.assertEqual(b'dataline', b''.join(out._buffer))
+        self.assertEqual(b'dataline', b''.join(d for d, _ in out._buffer))
 
     def test_parse_chunked_payload_size_error(self):
         out = aiohttp.FlowControlDataQueue(self.stream)
@@ -272,7 +273,7 @@ class ParsePayloadTests(unittest.TestCase):
         except StopIteration:
             pass
 
-        self.assertEqual(b'12', b''.join(out._buffer))
+        self.assertEqual(b'12', b''.join(d for d, _ in out._buffer))
         self.assertEqual(b'45', bytes(buf))
 
     def test_http_payload_parser_no_length(self):
@@ -299,7 +300,7 @@ class ParsePayloadTests(unittest.TestCase):
         p = protocol.HttpPayloadParser(msg)(out, buf)
         next(p)
         self.assertRaises(StopIteration, p.send, self._COMPRESSED)
-        self.assertEqual(b'data', b''.join(out._buffer))
+        self.assertEqual(b'data', b''.join(d for d, _ in out._buffer))
 
     def test_http_payload_parser_deflate_disabled(self):
         msg = protocol.RawRequestMessage(
@@ -312,7 +313,7 @@ class ParsePayloadTests(unittest.TestCase):
         p = protocol.HttpPayloadParser(msg, compression=False)(out, buf)
         next(p)
         self.assertRaises(StopIteration, p.send, self._COMPRESSED)
-        self.assertEqual(self._COMPRESSED, b''.join(out._buffer))
+        self.assertEqual(self._COMPRESSED, b''.join(d for d, _ in out._buffer))
 
     def test_http_payload_parser_websocket(self):
         msg = protocol.RawRequestMessage(
@@ -323,7 +324,7 @@ class ParsePayloadTests(unittest.TestCase):
         p = protocol.HttpPayloadParser(msg)(out, buf)
         next(p)
         self.assertRaises(StopIteration, p.send, b'1234567890')
-        self.assertEqual(b'12345678', b''.join(out._buffer))
+        self.assertEqual(b'12345678', b''.join(d for d, _ in out._buffer))
 
     def test_http_payload_parser_chunked(self):
         msg = protocol.RawRequestMessage(
@@ -336,7 +337,7 @@ class ParsePayloadTests(unittest.TestCase):
         next(p)
         self.assertRaises(StopIteration, p.send,
                           b'4;test\r\ndata\r\n4\r\nline\r\n0\r\ntest\r\n')
-        self.assertEqual(b'dataline', b''.join(out._buffer))
+        self.assertEqual(b'dataline', b''.join(d for d, _ in out._buffer))
 
     def test_http_payload_parser_eof(self):
         msg = protocol.RawRequestMessage(
@@ -348,7 +349,7 @@ class ParsePayloadTests(unittest.TestCase):
         p.send(b'data')
         p.send(b'line')
         self.assertRaises(StopIteration, p.throw, aiohttp.EofStream())
-        self.assertEqual(b'dataline', b''.join(out._buffer))
+        self.assertEqual(b'dataline', b''.join(d for d, _ in out._buffer))
 
     def test_http_payload_parser_length_zero(self):
         msg = protocol.RawRequestMessage(
@@ -387,7 +388,7 @@ class ParseRequestTests(unittest.TestCase):
             p.send(b'get /path HTTP/1.1\r\n\r\n')
         except StopIteration:
             pass
-        result = out._buffer[0]
+        result = out._buffer[0][0]
         self.assertEqual(
             ('GET', '/path', (1, 1), CIMultiDict(), False, None),
             result)
@@ -402,7 +403,8 @@ class ParseRequestTests(unittest.TestCase):
             p.send(msg)
         except StopIteration:
             pass
-        result = out._buffer[0]
+        result, length = out._buffer[0]
+        self.assertEqual(len(msg), length)
         self.assertEqual(
             ('GET', '/path', (1, 1),
              CIMultiDict([('X-TEST', 'тест')]), False, None),
@@ -432,7 +434,7 @@ class ParseRequestTests(unittest.TestCase):
             pass
         self.assertEqual(
             ('GET', '//path', (1, 1), CIMultiDict(), False, None),
-            out._buffer[0])
+            out._buffer[0][0])
 
     def test_http_request_parser_bad_status_line(self):
         out = aiohttp.FlowControlDataQueue(self.stream)
@@ -477,7 +479,7 @@ class ParseResponseTests(unittest.TestCase):
             p.send(msg)
         except StopIteration:
             pass
-        v, s, r, h = out._buffer[0][:4]
+        v, s, r, h = out._buffer[0][0][:4]
         self.assertEqual(v, (1, 1))
         self.assertEqual(s, 200)
         self.assertEqual(r, 'Ok')
@@ -524,7 +526,7 @@ class ParseResponseTests(unittest.TestCase):
             p.send(b'HTTP/1.1 200\r\n\r\n')
         except StopIteration:
             pass
-        v, s, r = out._buffer[0][:3]
+        v, s, r = out._buffer[0][0][:3]
         self.assertEqual(v, (1, 1))
         self.assertEqual(s, 200)
         self.assertEqual(r, '')

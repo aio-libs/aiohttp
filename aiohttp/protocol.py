@@ -145,7 +145,7 @@ class HttpPrefixParser:
         if self.allowed_methods and method not in self.allowed_methods:
             raise errors.HttpMethodNotAllowed(message=method)
 
-        out.feed_data(method)
+        out.feed_data(method, len(method))
         out.feed_eof()
 
 
@@ -193,7 +193,8 @@ class HttpRequestParser(HttpParser):
 
         out.feed_data(
             RawRequestMessage(
-                method, path, version, headers, close, compression))
+                method, path, version, headers, close, compression),
+            len(raw_data))
         out.feed_eof()
 
 
@@ -249,7 +250,8 @@ class HttpResponseParser(HttpParser):
         out.feed_data(
             RawResponseMessage(
                 version, status, reason.strip(),
-                headers, close, compression))
+                headers, close, compression),
+            len(raw_data))
         out.feed_eof()
 
 
@@ -323,7 +325,7 @@ class HttpPayloadParser:
             # read chunk and feed buffer
             while size:
                 chunk = yield from buf.readsome(size)
-                out.feed_data(chunk)
+                out.feed_data(chunk, len(chunk))
                 size = size - len(chunk)
 
             # toss the CRLF at the end of the chunk
@@ -337,14 +339,15 @@ class HttpPayloadParser:
         required = length
         while required:
             chunk = yield from buf.readsome(required)
-            out.feed_data(chunk)
+            out.feed_data(chunk, len(chunk))
             required -= len(chunk)
 
     def parse_eof_payload(self, out, buf):
         """Read all bytes until eof."""
         try:
             while True:
-                out.feed_data((yield from buf.readsome()))
+                chunk = yield from buf.readsome()
+                out.feed_data(chunk, len(chunk))
         except aiohttp.EofStream:
             pass
 
@@ -359,17 +362,18 @@ class DeflateBuffer:
 
         self.zlib = zlib.decompressobj(wbits=zlib_mode)
 
-    def feed_data(self, chunk):
+    def feed_data(self, chunk, size):
         try:
             chunk = self.zlib.decompress(chunk)
         except Exception:
             raise errors.ContentEncodingError('deflate')
 
         if chunk:
-            self.out.feed_data(chunk)
+            self.out.feed_data(chunk, len(chunk))
 
     def feed_eof(self):
-        self.out.feed_data(self.zlib.flush())
+        chunk = self.zlib.flush()
+        self.out.feed_data(chunk, len(chunk))
         if not self.zlib.eof:
             raise errors.ContentEncodingError('deflate')
 

@@ -28,8 +28,8 @@ class HttpWsgiServerProtocolTests(unittest.TestCase):
         self.message = protocol.RawRequestMessage(
             'GET', '/path', (1, 0), self.headers, True, 'deflate')
         self.payload = aiohttp.FlowControlDataQueue(self.reader)
-        self.payload.feed_data(b'data')
-        self.payload.feed_data(b'data')
+        self.payload.feed_data(b'data', 4)
+        self.payload.feed_data(b'data', 4)
         self.payload.feed_eof()
 
     def tearDown(self):

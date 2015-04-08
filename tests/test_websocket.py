@@ -178,7 +178,7 @@ class WebsocketParserTests(unittest.TestCase):
         next(p)
         p.send(b'')
         res = self.out._buffer[0]
-        self.assertEqual(res, (websocket.OPCODE_PING, b'data', ''))
+        self.assertEqual(res, ((websocket.OPCODE_PING, b'data', ''), 4))
 
     @unittest.mock.patch('aiohttp.websocket.parse_frame')
     def test_pong_frame(self, m_parse_frame):
@@ -190,7 +190,7 @@ class WebsocketParserTests(unittest.TestCase):
         next(p)
         p.send(b'')
         res = self.out._buffer[0]
-        self.assertEqual(res, (websocket.OPCODE_PONG, b'data', ''))
+        self.assertEqual(res, ((websocket.OPCODE_PONG, b'data', ''), 4))
 
     @unittest.mock.patch('aiohttp.websocket.parse_frame')
     def test_close_frame(self, m_parse_frame):
@@ -202,7 +202,7 @@ class WebsocketParserTests(unittest.TestCase):
         next(p)
         p.send(b'')
         res = self.out._buffer[0]
-        self.assertEqual(res, (websocket.OPCODE_CLOSE, 0, ''))
+        self.assertEqual(res, ((websocket.OPCODE_CLOSE, 0, ''), 0))
 
     @unittest.mock.patch('aiohttp.websocket.parse_frame')
     def test_close_frame_info(self, m_parse_frame):
@@ -214,7 +214,8 @@ class WebsocketParserTests(unittest.TestCase):
         next(p)
         p.send(b'')
         res = self.out._buffer[0]
-        self.assertEqual(res, Message(websocket.OPCODE_CLOSE, 12337, '12345'))
+        self.assertEqual(
+            res, (Message(websocket.OPCODE_CLOSE, 12337, '12345'), 0))
 
     @unittest.mock.patch('aiohttp.websocket.parse_frame')
     def test_close_frame_invalid(self, m_parse_frame):
@@ -262,7 +263,7 @@ class WebsocketParserTests(unittest.TestCase):
         next(p)
         p.send(b'')
         res = self.out._buffer[0]
-        self.assertEqual(res, (websocket.OPCODE_TEXT, 'text', ''))
+        self.assertEqual(res, ((websocket.OPCODE_TEXT, 'text', ''), 4))
 
     def test_simple_text_unicode_err(self):
         self.buf.extend(
@@ -283,7 +284,7 @@ class WebsocketParserTests(unittest.TestCase):
         next(p)
         p.send(b'')
         res = self.out._buffer[0]
-        self.assertEqual(res, (websocket.OPCODE_BINARY, b'binary', ''))
+        self.assertEqual(res, ((websocket.OPCODE_BINARY, b'binary', ''), 6))
 
     @unittest.mock.patch('aiohttp.websocket.parse_frame')
     def test_continuation(self, m_parse_frame):
@@ -304,7 +305,8 @@ class WebsocketParserTests(unittest.TestCase):
         p.send(b'')
         p.send(b'')
         res = self.out._buffer[0]
-        self.assertEqual(res, Message(websocket.OPCODE_TEXT, 'line1line2', ''))
+        self.assertEqual(
+            res, (Message(websocket.OPCODE_TEXT, 'line1line2', ''), 10))
 
     @unittest.mock.patch('aiohttp.websocket.parse_frame')
     def test_continuation_with_ping(self, m_parse_frame):
@@ -325,9 +327,11 @@ class WebsocketParserTests(unittest.TestCase):
         p.send(b'')
         p.send(b'')
         res = self.out._buffer[0]
-        self.assertEqual(res, Message(websocket.OPCODE_PING, b'', ''))
+        self.assertEqual(
+            res, (Message(websocket.OPCODE_PING, b'', ''), 0))
         res = self.out._buffer[1]
-        self.assertEqual(res, Message(websocket.OPCODE_TEXT, 'line1line2', ''))
+        self.assertEqual(
+            res, (Message(websocket.OPCODE_TEXT, 'line1line2', ''), 10))
 
     @unittest.mock.patch('aiohttp.websocket.parse_frame')
     def test_continuation_err(self, m_parse_frame):
@@ -368,9 +372,11 @@ class WebsocketParserTests(unittest.TestCase):
         p.send(b'')
         p.send(b'')
         res = self.out._buffer[0]
-        self.assertEqual(res, Message(websocket.OPCODE_CLOSE, 1002, 'test'))
+        self.assertEqual(
+            res, (Message(websocket.OPCODE_CLOSE, 1002, 'test'), 0))
         res = self.out._buffer[1]
-        self.assertEqual(res, Message(websocket.OPCODE_TEXT, 'line1line2', ''))
+        self.assertEqual(
+            res, (Message(websocket.OPCODE_TEXT, 'line1line2', ''), 10))
 
     @unittest.mock.patch('aiohttp.websocket.parse_frame')
     def test_continuation_with_close_unicode_err(self, m_parse_frame):
@@ -453,9 +459,11 @@ class WebsocketParserTests(unittest.TestCase):
         p.send(b'')
         p.send(b'')
         res = self.out._buffer[0]
-        self.assertEqual(res, Message(websocket.OPCODE_CLOSE, 0, ''))
+        self.assertEqual(
+            res, (Message(websocket.OPCODE_CLOSE, 0, ''), 0))
         res = self.out._buffer[1]
-        self.assertEqual(res, Message(websocket.OPCODE_TEXT, 'line1line2', ''))
+        self.assertEqual(
+            res, (Message(websocket.OPCODE_TEXT, 'line1line2', ''), 10))
 
 
 class WebsocketWriterTests(unittest.TestCase):

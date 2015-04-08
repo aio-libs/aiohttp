@@ -65,7 +65,6 @@ from .streams import FlowControlDataQueue, EofStream
 __all__ = ('EofStream', 'StreamParser', 'StreamProtocol',
            'ParserBuffer', 'LinesParser', 'ChunksParser')
 
-BUF_LIMIT = 2 ** 14
 DEFAULT_LIMIT = 2 ** 16
 
 
@@ -86,29 +85,25 @@ class StreamParser(asyncio.streams.StreamReader):
         self._eof = False
         self._exception = None
         self._parser = None
-        self._transport = None
-        self._limit = limit * 2
-        self._paused = False
         self._output = None
+        self._limit = limit
         self._eof_exc_class = eof_exc_class
         self._buffer = buf if buf is not None else ParserBuffer()
+
+        self.paused = False
+        self.transport = None
 
     @property
     def output(self):
         return self._output
 
     def set_transport(self, transport):
-        assert self._transport is None, 'Transport already set'
-        self._transport = transport
+        assert transport is None or self.transport is None, \
+            'Transport already set'
+        self.transport = transport
 
     def at_eof(self):
         return self._eof
-
-    def resume_stream(self):
-        if self._paused:
-            if len(self._buffer) <= max(self._limit, self._buffer.expected):
-                self._paused = False
-                self._transport.resume_reading()
 
     def exception(self):
         return self._exception
@@ -145,18 +140,6 @@ class StreamParser(asyncio.streams.StreamReader):
         else:
             self._buffer.feed_data(data)
 
-        if self._transport is not None and not self._paused:
-            if len(self._buffer) > max(self._limit, self._buffer.expected):
-                try:
-                    self._transport.pause_reading()
-                except NotImplementedError:
-                    # The transport can't be paused.
-                    # We'll just have to buffer all data.
-                    # Forget the transport so we don't keep trying.
-                    self._transport = None
-                else:
-                    self._paused = True
-
     def feed_eof(self):
         """send eof to all parsers, recursively."""
         if self._parser:
@@ -182,7 +165,8 @@ class StreamParser(asyncio.streams.StreamReader):
             self.unset_parser()
 
         if output is None:
-            output = FlowControlDataQueue(self, loop=self._loop)
+            output = FlowControlDataQueue(
+                self, limit=self._limit, loop=self._loop)
 
         if self._exception:
             output.set_exception(self._exception)
@@ -249,6 +233,7 @@ class StreamProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
     def connection_lost(self, exc):
         self.transport = self.writer = None
+        self.reader.set_transport(None)
 
         if exc is None:
             self.reader.feed_eof()
@@ -263,27 +248,17 @@ class StreamProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     def eof_received(self):
         self.reader.feed_eof()
 
-    def _make_drain_waiter(self):
-        if not self._paused:
-            return ()
-        waiter = self._drain_waiter
-        if waiter is None or waiter.cancelled():
-            waiter = asyncio.Future(loop=self._loop)
-            self._drain_waiter = waiter
-        return waiter
-
 
 class ParserBuffer(bytearray):
     """ParserBuffer is a bytearray extension.
 
     ParserBuffer provides helper methods for parsers.
     """
-    __slots__ = ('expected', '_exception', '_writer')
+    __slots__ = ('_exception', '_writer')
 
     def __init__(self, *args):
         super().__init__(*args)
 
-        self.expected = BUF_LIMIT
         self._exception = None
         self._writer = self._feed_data()
         next(self._writer)
@@ -299,7 +274,6 @@ class ParserBuffer(bytearray):
             chunk = yield
             if chunk:
                 self.extend(chunk)
-                self.expected = BUF_LIMIT
 
             if self._exception:
                 self._writer = self._feed_data()
@@ -318,7 +292,6 @@ class ParserBuffer(bytearray):
                 del self[:size]
                 return data
 
-            self.expected = size
             self._writer.send((yield))
 
     def readsome(self, size=None):
@@ -334,7 +307,6 @@ class ParserBuffer(bytearray):
                 del self[:size]
                 return data
 
-            self.expected = BUF_LIMIT
             self._writer.send((yield))
 
     def readuntil(self, stop, limit=None):
@@ -360,7 +332,6 @@ class ParserBuffer(bytearray):
                     raise errors.LineLimitExceededParserError(
                         'Line is too long.', limit)
 
-            self.expected = len(self) + BUF_LIMIT
             self._writer.send((yield))
 
     def wait(self, size):
@@ -394,14 +365,12 @@ class ParserBuffer(bytearray):
                     raise errors.LineLimitExceededParserError(
                         'Line is too long. %s' % bytes(self), limit)
 
-            self.expected = len(self) + BUF_LIMIT
             self._writer.send((yield))
 
     def skip(self, size):
         """skip() skips specified amount of bytes."""
 
         while len(self) < size:
-            self.expected = size
             self._writer.send((yield))
 
         del self[:size]
@@ -420,7 +389,6 @@ class ParserBuffer(bytearray):
                 del self[:size]
                 return
 
-            self.expected = len(self) + BUF_LIMIT
             self._writer.send((yield))
 
 
@@ -436,7 +404,8 @@ class LinesParser:
     def __call__(self, out, buf):
         try:
             while True:
-                out.feed_data((yield from buf.readuntil(b'\n', self._limit)))
+                chunk = yield from buf.readuntil(b'\n', self._limit)
+                out.feed_data(chunk, len(chunk))
         except EofStream:
             pass
 
@@ -453,6 +422,7 @@ class ChunksParser:
     def __call__(self, out, buf):
         try:
             while True:
-                out.feed_data((yield from buf.read(self._size)))
+                chunk = yield from buf.read(self._size)
+                out.feed_data(chunk, len(chunk))
         except EofStream:
             pass

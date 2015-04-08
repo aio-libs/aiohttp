@@ -98,13 +98,13 @@ def WebSocketParser(out, buf):
             else:
                 msg = Message(OPCODE_CLOSE, 0, '')
 
-            out.feed_data(msg)
+            out.feed_data(msg, 0)
 
         elif opcode == OPCODE_PING:
-            out.feed_data(Message(OPCODE_PING, payload, ''))
+            out.feed_data(Message(OPCODE_PING, payload, ''), len(payload))
 
         elif opcode == OPCODE_PONG:
-            out.feed_data(Message(OPCODE_PONG, payload, ''))
+            out.feed_data(Message(OPCODE_PONG, payload, ''), len(payload))
 
         elif opcode not in (OPCODE_TEXT, OPCODE_BINARY):
             raise WebSocketError(
@@ -119,7 +119,8 @@ def WebSocketParser(out, buf):
                 # We can receive ping/close in the middle of
                 # text message, Case 5.*
                 if _opcode == OPCODE_PING:
-                    out.feed_data(Message(OPCODE_PING, payload, ''))
+                    out.feed_data(
+                        Message(OPCODE_PING, payload, ''), len(payload))
                     fin, _opcode, payload = yield from parse_frame(buf, True)
                 elif _opcode == OPCODE_CLOSE:
                     if len(payload) >= 2:
@@ -144,7 +145,7 @@ def WebSocketParser(out, buf):
                     else:
                         msg = Message(OPCODE_CLOSE, 0, '')
 
-                    out.feed_data(msg)
+                    out.feed_data(msg, 0)
                     fin, _opcode, payload = yield from parse_frame(buf, True)
 
                 if _opcode != OPCODE_CONTINUATION:
@@ -157,16 +158,18 @@ def WebSocketParser(out, buf):
 
             if opcode == OPCODE_TEXT:
                 try:
+                    text = b''.join(data).decode('utf-8')
                     out.feed_data(
                         Message(
-                            OPCODE_TEXT, b''.join(data).decode('utf-8'), ''))
+                            OPCODE_TEXT, text, ''), len(text))
                 except UnicodeDecodeError as exc:
                     raise WebSocketError(
                         CLOSE_INVALID_TEXT,
                         'Invalid UTF-8 text message') from exc
             else:
+                data = b''.join(data)
                 out.feed_data(
-                    Message(OPCODE_BINARY, b''.join(data), ''))
+                    Message(OPCODE_BINARY, data, ''), len(data))
 
 
 def _websocket_mask_python(mask, data):
@@ -365,11 +368,11 @@ def do_handshake(method, headers, transport, protocols=()):
                 protocols, req_protocols)
 
     # check supported version
-    version = headers.get(hdrs.SEC_WEBSOCKET_VERSION)
+    version = headers.get(hdrs.SEC_WEBSOCKET_VERSION, '')
     if version not in ('13', '8', '7'):
         raise errors.HttpBadRequest(
             message='Unsupported version: {}'.format(version),
-            headers=((hdrs.SEC_WEBSOCKET_VERSION, '13', '8', '7'),))
+            headers=((hdrs.SEC_WEBSOCKET_VERSION, '13'),))
 
     # check client handshake for validity
     key = headers.get(hdrs.SEC_WEBSOCKET_KEY)

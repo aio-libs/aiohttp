@@ -725,8 +725,8 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 data = f.read()
 
             stream = aiohttp.DataQueue(loop=self.loop)
-            stream.feed_data(data[:100])
-            stream.feed_data(data[100:])
+            stream.feed_data(data[:100], 100)
+            stream.feed_data(data[100:], len(data[100:]))
             stream.feed_eof()
 
             r = self.loop.run_until_complete(
@@ -751,8 +751,10 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 data = f.read()
 
             stream = aiohttp.ChunksQueue(loop=self.loop)
-            stream.feed_data(data[:100])
-            stream.feed_data(data[100:])
+            stream.feed_data(data[:100], 100)
+
+            d = data[100:]
+            stream.feed_data(d, len(d))
             stream.feed_eof()
 
             r = self.loop.run_until_complete(

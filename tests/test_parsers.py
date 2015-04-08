@@ -27,17 +27,6 @@ class StreamParserTests(unittest.TestCase):
         proto.feed_eof()
         self.assertTrue(proto.at_eof())
 
-    def test_resume_stream(self):
-        transp = unittest.mock.Mock()
-
-        proto = parsers.StreamParser(loop=self.loop)
-        proto.set_transport(transp)
-        proto._paused = True
-        proto.resume_stream()
-
-        transp.resume_reading.assert_called_with()
-        self.assertFalse(proto._paused)
-
     def test_exception(self):
         stream = parsers.StreamParser(loop=self.loop)
         self.assertIsNone(stream.exception())
@@ -80,25 +69,6 @@ class StreamParserTests(unittest.TestCase):
         stream.feed_data(None)
         self.assertEqual(b'', bytes(stream._buffer))
 
-    def test_feed_data_pause_reading(self):
-        transp = unittest.mock.Mock()
-
-        proto = parsers.StreamParser(loop=self.loop)
-        proto.set_transport(transp)
-        proto.feed_data(b'1' * (2 ** 16 * 3))
-        transp.pause_reading.assert_called_with()
-        self.assertTrue(proto._paused)
-
-    def test_feed_data_pause_reading_not_supported(self):
-        transp = unittest.mock.Mock()
-
-        proto = parsers.StreamParser(loop=self.loop)
-        proto.set_transport(transp)
-
-        transp.pause_reading.side_effect = NotImplementedError()
-        proto.feed_data(b'1' * (2 ** 16 * 3))
-        self.assertIsNone(proto._transport)
-
     def test_set_parser_unset_prev(self):
         stream = parsers.StreamParser(loop=self.loop)
         stream.set_parser(self.lines_parser)
@@ -122,8 +92,9 @@ class StreamParserTests(unittest.TestCase):
         stream.feed_data(b'\r\nline2\r\ndata')
         s = stream.set_parser(self.lines_parser)
 
-        self.assertEqual([bytearray(b'line1\r\n'), bytearray(b'line2\r\n')],
-                         list(s._buffer))
+        self.assertEqual(
+            [(bytearray(b'line1\r\n'), 7), (bytearray(b'line2\r\n'), 7)],
+            list(s._buffer))
         self.assertEqual(b'data', bytes(stream._buffer))
         self.assertIsNotNone(stream._parser)
 
@@ -149,8 +120,9 @@ class StreamParserTests(unittest.TestCase):
         stream.feed_eof()
         s = stream.set_parser(self.lines_parser)
 
-        self.assertEqual([bytearray(b'line1\r\n'), bytearray(b'line2\r\n')],
-                         list(s._buffer))
+        self.assertEqual(
+            [(bytearray(b'line1\r\n'), 7), (bytearray(b'line2\r\n'), 7)],
+            list(s._buffer))
         self.assertEqual(b'data', bytes(stream._buffer))
         self.assertIsNone(stream._parser)
 
@@ -186,7 +158,7 @@ class StreamParserTests(unittest.TestCase):
 
         stream.feed_data(b'line1\r\nline2\r\n')
         self.assertEqual(
-            [bytearray(b'line1\r\n'), bytearray(b'line2\r\n')],
+            [(bytearray(b'line1\r\n'), 7), (bytearray(b'line2\r\n'), 7)],
             list(s._buffer))
         self.assertEqual(b'', bytes(stream._buffer))
         stream.unset_parser()
@@ -196,8 +168,11 @@ class StreamParserTests(unittest.TestCase):
     def test_set_parser_feed_existing_stop(self):
         def LinesParser(out, buf):
             try:
-                out.feed_data((yield from buf.readuntil(b'\n')))
-                out.feed_data((yield from buf.readuntil(b'\n')))
+                chunk = yield from buf.readuntil(b'\n')
+                out.feed_data(chunk, len(chunk))
+
+                chunk = yield from buf.readuntil(b'\n')
+                out.feed_data(chunk, len(chunk))
             finally:
                 out.feed_eof()
 
@@ -206,7 +181,8 @@ class StreamParserTests(unittest.TestCase):
         stream.feed_data(b'\r\nline2\r\ndata')
         s = stream.set_parser(LinesParser)
 
-        self.assertEqual(b'line1\r\nline2\r\n', b''.join(s._buffer))
+        self.assertEqual(
+            b'line1\r\nline2\r\n', b''.join(d for d, _ in s._buffer))
         self.assertEqual(b'data', bytes(stream._buffer))
         self.assertIsNone(stream._parser)
         self.assertTrue(s._eof)
@@ -220,8 +196,9 @@ class StreamParserTests(unittest.TestCase):
         self.assertEqual(b'data', bytes(stream._buffer))
 
         stream.feed_eof()
-        self.assertEqual([bytearray(b'line1\r\n'), bytearray(b'line2\r\n')],
-                         list(s._buffer))
+        self.assertEqual(
+            [(bytearray(b'line1\r\n'), 7), (bytearray(b'line2\r\n'), 7)],
+            list(s._buffer))
         self.assertEqual(b'data', bytes(stream._buffer))
         self.assertTrue(s.is_eof())
 
@@ -300,7 +277,7 @@ class StreamParserTests(unittest.TestCase):
         stream.feed_data(b'line1\r\nline2\r\n')
         stream.feed_eof()
         self.assertEqual(
-            [bytearray(b'line1\r\n'), bytearray(b'line2\r\n')],
+            [(bytearray(b'line1\r\n'), 7), (bytearray(b'line2\r\n'), 7)],
             list(s._buffer))
         self.assertEqual(b'', bytes(stream._buffer))
         self.assertTrue(s._eof)
@@ -406,18 +383,6 @@ class StreamProtocolTests(unittest.TestCase):
 
         proto.data_received(b'data')
         proto.reader.feed_data.assert_called_with(b'data')
-
-    def test_drain_waiter(self):
-        proto = parsers.StreamProtocol(loop=unittest.mock.Mock())
-        proto._paused = False
-        self.assertEqual(proto._make_drain_waiter(), ())
-
-        proto._paused = True
-        fut = proto._make_drain_waiter()
-        self.assertIsInstance(fut, asyncio.Future)
-
-        fut2 = proto._make_drain_waiter()
-        self.assertIs(fut, fut2)
 
 
 class ParserBufferTests(unittest.TestCase):
@@ -603,7 +568,7 @@ class ParserBufferTests(unittest.TestCase):
             p.send(d)
 
         self.assertEqual(
-            [bytearray(b'line1\r\n'), bytearray(b'line2\r\n')],
+            [(bytearray(b'line1\r\n'), 7), (bytearray(b'line2\r\n'), 7)],
             list(out._buffer))
         try:
             p.throw(parsers.EofStream())
@@ -622,7 +587,8 @@ class ParserBufferTests(unittest.TestCase):
             p.send(d)
 
         self.assertEqual(
-            [bytearray(b'line1'), bytearray(b'line2')], list(out._buffer))
+            [(bytearray(b'line1'), 5), (bytearray(b'line2'), 5)],
+            list(out._buffer))
         try:
             p.throw(parsers.EofStream())
         except StopIteration:
