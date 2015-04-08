@@ -154,9 +154,9 @@ def request(method, url, *,
 class ClientRequest:
 
     GET_METHODS = {hdrs.METH_GET, hdrs.METH_HEAD, hdrs.METH_OPTIONS}
-    POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
-                    hdrs.METH_TRACE, hdrs.METH_DELETE}
-    ALL_METHODS = GET_METHODS.union(POST_METHODS)
+    POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT}
+    ALL_METHODS = GET_METHODS.union(POST_METHODS).union(
+        {hdrs.METH_DELETE, hdrs.METH_TRACE})
 
     DEFAULT_HEADERS = {
         hdrs.ACCEPT: '*/*',

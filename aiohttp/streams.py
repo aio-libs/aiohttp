@@ -290,7 +290,7 @@ class DataQueue:
             if not waiter.done():
                 waiter.set_exception(exc)
 
-    def feed_data(self, data, size):
+    def feed_data(self, data, size=0):
         self._size += size
         self._buffer.append((data, size))
 
