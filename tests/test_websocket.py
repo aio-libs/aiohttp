@@ -29,7 +29,7 @@ class WebsocketParserTests(unittest.TestCase):
     def build_frame(self, message, opcode, use_mask=False, noheader=False):
         """Send a frame over the websocket with message as its payload."""
         msg_length = len(message)
-        if use_mask:
+        if use_mask:  # pragma: no cover
             mask_bit = 0x80
         else:
             mask_bit = 0
@@ -37,14 +37,14 @@ class WebsocketParserTests(unittest.TestCase):
         if msg_length < 126:
             header = websocket.PACK_LEN1(
                 0x80 | opcode, msg_length | mask_bit)
-        elif msg_length < (1 << 16):
+        elif msg_length < (1 << 16):  # pragma: no cover
             header = websocket.PACK_LEN2(
                 0x80 | opcode, 126 | mask_bit, msg_length)
         else:
             header = websocket.PACK_LEN3(
                 0x80 | opcode, 127 | mask_bit, msg_length)
 
-        if use_mask:
+        if use_mask:  # pragma: no cover
             mask = random.randrange(0, 0xffffffff)
             mask = mask.to_bytes(4, 'big')
             message = websocket._websocket_mask(mask, bytearray(message))
@@ -60,7 +60,7 @@ class WebsocketParserTests(unittest.TestCase):
 
     def build_close_frame(self, code=1000, message=b'', noheader=False):
         """Close the websocket, sending the specified code and message."""
-        if isinstance(message, str):
+        if isinstance(message, str):  # pragma: no cover
             message = message.encode('utf-8')
         return self.build_frame(
             websocket.PACK_CLOSE_CODE(code) + message,

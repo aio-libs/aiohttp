@@ -449,60 +449,6 @@ class StreamReaderTests(unittest.TestCase):
         self.assertRaises(RuntimeError, stream.read_nowait)
 
 
-class FlowControlStreamReaderTests(unittest.TestCase):
-
-    def setUp(self):
-        self.stream = unittest.mock.Mock()
-        self.transp = self.stream.transport
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
-
-    def _make_one(self, *args, **kwargs):
-        return streams.FlowControlStreamReader(
-            self.stream, limit=1, loop=self.loop, *args, **kwargs)
-
-    def test_read(self):
-        r = self._make_one()
-        r.paused = True
-        r.feed_data(b'da', 2)
-        res = self.loop.run_until_complete(r.read(1))
-        self.assertEqual(res, b'd')
-        self.assertTrue(self.transp.resume_reading.called)
-
-    def test_readline(self):
-        r = self._make_one()
-        r.paused = True
-        r.feed_data(b'data\n', 5)
-        res = self.loop.run_until_complete(r.readline())
-        self.assertEqual(res, b'data\n')
-        self.assertTrue(self.transp.resume_reading.called)
-
-    def test_readany(self):
-        r = self._make_one()
-        r.paused = True
-        r.feed_data(b'data', 4)
-        res = self.loop.run_until_complete(r.readany())
-        self.assertEqual(res, b'data')
-        self.assertTrue(self.transp.resume_reading.called)
-
-    def test_readexactly(self):
-        r = self._make_one()
-        r.paused = True
-        r.feed_data(b'datadata', 8)
-        res = self.loop.run_until_complete(r.readexactly(2))
-        self.assertEqual(res, b'da')
-        self.assertTrue(self.transp.resume_reading.called)
-
-    def test_feed_data(self):
-        r = self._make_one()
-        r.paused = False
-        r.feed_data(b'datadata', 8)
-        self.assertTrue(self.transp.pause_reading.called)
-
-
 class DataQueueTests(unittest.TestCase):
 
     def setUp(self):
@@ -625,32 +571,6 @@ class DataQueueTests(unittest.TestCase):
         self.loop.run_until_complete(asyncio.wait([t1, t2], loop=self.loop))
 
         self.assertRaises(ValueError, t1.result)
-
-
-class FlowControlDataQueueTests(unittest.TestCase):
-
-    def setUp(self):
-        self.stream = unittest.mock.Mock()
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-        self.buffer = streams.FlowControlDataQueue(
-            self.stream, limit=1, loop=self.loop)
-        self.buffer._b_limit = 1
-        self.stream.paused = False
-
-    def tearDown(self):
-        self.loop.close()
-
-    def test_stream(self):
-        item = object()
-        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
-
-        def cb():
-            self.buffer.feed_data(item, 100)
-        self.loop.call_soon(cb)
-        self.loop.run_until_complete(read_task)
-
-        self.assertTrue(self.stream.transport.pause_reading.called)
 
 
 class ChunksQueueTests(DataQueueTests):
