@@ -474,12 +474,12 @@ class HttpMessageTests(unittest.TestCase):
         msg = protocol.Response(self.transport, 200, http_version=(1, 0))
         msg._send_headers = True
 
-        res = msg.write(b'1' * (64 * 1024 * 2))
+        msg.write(b'1' * (64 * 1024 * 2))
+        self.assertFalse(self.transport.drain.called)
+
+        msg.write(b'1', drain=True)
         self.assertTrue(self.transport.drain.called)
         self.assertEqual(msg._output_size, 0)
-
-        res = msg.write(b'1')
-        self.assertEqual(res, ())
 
     def test_dont_override_request_headers_with_default_values(self):
         msg = protocol.Request(

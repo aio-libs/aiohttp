@@ -4,7 +4,11 @@ CHANGES
 0.15.2 (Unreleased)
 -------------------
 
+- Flow control subsystem refactoring
+
 - Allow to match any request method with `*`
+
+- Explicitly call drain on transport #316
 
 
 0.15.1 (03-31-2015)

@@ -467,7 +467,7 @@ class ClientRequest:
                             result = stream.send(value)
                     except StopIteration as exc:
                         if isinstance(exc.value, bytes):
-                            yield from request.write(exc.value)
+                            yield from request.write(exc.value, drain=True)
                         break
                     except:
                         self.response.close(True)
@@ -481,7 +481,7 @@ class ClientRequest:
                         except Exception as err:
                             exc = err
                     elif isinstance(result, (bytes, bytearray)):
-                        yield from request.write(result)
+                        yield from request.write(result, drain=True)
                         value = None
                     else:
                         raise ValueError(
@@ -491,7 +491,7 @@ class ClientRequest:
             elif isinstance(self.body, asyncio.StreamReader):
                 chunk = yield from self.body.read(streams.DEFAULT_LIMIT)
                 while chunk:
-                    yield from request.write(chunk)
+                    yield from request.write(chunk, drain=True)
                     chunk = yield from self.body.read(streams.DEFAULT_LIMIT)
 
             elif isinstance(self.body, streams.DataQueue):
@@ -500,7 +500,7 @@ class ClientRequest:
                         chunk = yield from self.body.read()
                         if chunk is EOF_MARKER:
                             break
-                        yield from request.write(chunk)
+                        yield from request.write(chunk, drain=True)
                     except streams.EofStream:
                         break
 

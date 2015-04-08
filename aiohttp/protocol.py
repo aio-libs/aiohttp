@@ -655,7 +655,8 @@ class HttpMessage:
 
         self.headers[hdrs.CONNECTION] = connection
 
-    def write(self, chunk, *, EOF_MARKER=EOF_MARKER, EOL_MARKER=EOL_MARKER):
+    def write(self, chunk, *,
+              drain=False, EOF_MARKER=EOF_MARKER, EOL_MARKER=EOL_MARKER):
         """Writes chunk of data to a stream by using different writers.
 
         writer uses filter to modify chunk of data.
@@ -685,10 +686,11 @@ class HttpMessage:
         self._output_size += self.output_length - size
 
         if self._output_size > 64 * 1024:
-            self._output_size = 0
-            return self.transport.drain()
-        else:
-            return ()
+            if drain:
+                self._output_size = 0
+                return self.transport.drain()
+
+        return ()
 
     def write_eof(self):
         self.write(EOF_MARKER)
