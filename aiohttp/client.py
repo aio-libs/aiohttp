@@ -216,6 +216,33 @@ class Session:
                                        **kwargs)
         return resp
 
+    @asyncio.coroutine
+    def post(self, url, *, data=None, **kwargs):
+        resp = yield from self.request('POST', url,
+                                       data=data,
+                                       **kwargs)
+        return resp
+
+    @asyncio.coroutine
+    def put(self, url, *, data=None, **kwargs):
+        resp = yield from self.request('PUT', url,
+                                       data=data,
+                                       **kwargs)
+        return resp
+
+    @asyncio.coroutine
+    def patch(self, url, *, data=None, **kwargs):
+        resp = yield from self.request('PATCH', url,
+                                       data=data,
+                                       **kwargs)
+        return resp
+
+    @asyncio.coroutine
+    def delete(self, url, **kwargs):
+        resp = yield from self.request('DELETE', url,
+                                       **kwargs)
+        return resp
+
 
 class ClientRequest:
 
