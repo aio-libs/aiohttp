@@ -83,69 +83,138 @@ def request(method, url, *,
       >>> data = yield from resp.read()
 
     """
-    redirects = 0
-    method = method.upper()
-    if loop is None:
-        loop = asyncio.get_event_loop()
-    if request_class is None:
-        request_class = ClientRequest
-    if connector is None:
-        connector = aiohttp.TCPConnector(force_close=True, loop=loop)
-
-    while True:
-        req = request_class(
-            method, url, params=params, headers=headers, data=data,
-            cookies=cookies, files=files, encoding=encoding,
-            auth=auth, version=version, compress=compress, chunked=chunked,
-            loop=loop, expect100=expect100, response_class=response_class)
-
-        conn = yield from connector.connect(req)
-        try:
-            resp = req.send(conn.writer, conn.reader)
-            try:
-                yield from resp.start(conn, read_until_eof)
-            except:
-                resp.close()
-                conn.close()
-                raise
-        except (aiohttp.HttpProcessingError,
-                aiohttp.ServerDisconnectedError) as exc:
-            raise aiohttp.ClientResponseError() from exc
-        except OSError as exc:
-            raise aiohttp.ClientOSError() from exc
-
-        # redirects
-        if resp.status in (301, 302, 303, 307) and allow_redirects:
-            redirects += 1
-            if max_redirects and redirects >= max_redirects:
-                resp.close(force=True)
-                break
-
-            # For 301 and 302, mimic IE behaviour, now changed in RFC.
-            # Details: https://github.com/kennethreitz/requests/pull/269
-            if resp.status != 307:
-                method = hdrs.METH_GET
-                data = None
-            cookies = resp.cookies
-
-            r_url = (resp.headers.get(hdrs.LOCATION) or
-                     resp.headers.get(hdrs.URI))
-
-            scheme = urllib.parse.urlsplit(r_url)[0]
-            if scheme not in ('http', 'https', ''):
-                resp.close(force=True)
-                raise ValueError('Can redirect only to http or https')
-            elif not scheme:
-                r_url = urllib.parse.urljoin(url, r_url)
-
-            url = urllib.parse.urldefrag(r_url)[0]
-            if url:
-                yield from asyncio.async(resp.release(), loop=loop)
-                continue
-
-        break
-
+    session = Session(connector=connector, loop=loop,
+                      request_class=request_class,
+                      response_class=response_class)
+    resp = yield from session.request(method, url,
+                                      params=params,
+                                      data=data,
+                                      headers=headers,
+                                      cookies=cookies,
+                                      files=files,
+                                      auth=auth,
+                                      allow_redirects=allow_redirects,
+                                      max_redirects=max_redirects,
+                                      encoding=encoding,
+                                      version=version,
+                                      compress=compress,
+                                      chunked=chunked,
+                                      expect100=expect100,
+                                      read_until_eof=read_until_eof)
     return resp
+
+
+class Session:
+
+    def __init__(self, *, connector=None, loop=None, request_class=None,
+                 response_class=None):
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        self._loop = loop
+        if connector is None:
+            connector = aiohttp.TCPConnector(force_close=True, loop=loop)
+        self._connector = connector
+        if request_class is None:
+            request_class = ClientRequest
+        self._request_class = request_class
+        self._response_class = response_class
+
+    @asyncio.coroutine
+    def request(self, method, url, *,
+                params=None,
+                data=None,
+                headers=None,
+                cookies=None,
+                files=None,
+                auth=None,
+                allow_redirects=True,
+                max_redirects=10,
+                encoding='utf-8',
+                version=aiohttp.HttpVersion11,
+                compress=None,
+                chunked=None,
+                expect100=False,
+                read_until_eof=True):
+
+        redirects = 0
+        method = method.upper()
+
+        while True:
+            req = self._request_class(
+                method, url, params=params, headers=headers, data=data,
+                cookies=cookies, files=files, encoding=encoding,
+                auth=auth, version=version, compress=compress, chunked=chunked,
+                expect100=expect100,
+                loop=self._loop, response_class=self._response_class)
+
+            conn = yield from self._connector.connect(req)
+            try:
+                resp = req.send(conn.writer, conn.reader)
+                try:
+                    yield from resp.start(conn, read_until_eof)
+                except:
+                    resp.close()
+                    conn.close()
+                    raise
+            except (aiohttp.HttpProcessingError,
+                    aiohttp.ServerDisconnectedError) as exc:
+                raise aiohttp.ClientResponseError() from exc
+            except OSError as exc:
+                raise aiohttp.ClientOSError() from exc
+
+            # redirects
+            if resp.status in (301, 302, 303, 307) and allow_redirects:
+                redirects += 1
+                if max_redirects and redirects >= max_redirects:
+                    resp.close(force=True)
+                    break
+
+                # For 301 and 302, mimic IE behaviour, now changed in RFC.
+                # Details: https://github.com/kennethreitz/requests/pull/269
+                if resp.status != 307:
+                    method = hdrs.METH_GET
+                    data = None
+                cookies = resp.cookies
+
+                r_url = (resp.headers.get(hdrs.LOCATION) or
+                         resp.headers.get(hdrs.URI))
+
+                scheme = urllib.parse.urlsplit(r_url)[0]
+                if scheme not in ('http', 'https', ''):
+                    resp.close(force=True)
+                    raise ValueError('Can redirect only to http or https')
+                elif not scheme:
+                    r_url = urllib.parse.urljoin(url, r_url)
+
+                url = urllib.parse.urldefrag(r_url)[0]
+                if url:
+                    yield from asyncio.async(resp.release(), loop=self._loop)
+                    continue
+
+            break
+
+        return resp
+
+    @asyncio.coroutine
+    def get(self, url, allow_redirects=True, **kwargs):
+        resp = yield from self.request('GET', url,
+                                       allow_redirects=allow_redirects,
+                                       **kwargs)
+        return resp
+
+    @asyncio.coroutine
+    def options(self, url, allow_redirects=True, **kwargs):
+        resp = yield from self.request('OPTIONS', url,
+                                       allow_redirects=allow_redirects,
+                                       **kwargs)
+        return resp
+
+    @asyncio.coroutine
+    def head(self, url, allow_redirects=False, **kwargs):
+        resp = yield from self.request('HEAD', url,
+                                       allow_redirects=allow_redirects,
+                                       **kwargs)
+        return resp
 
 
 class ClientRequest:
