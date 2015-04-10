@@ -52,7 +52,7 @@ Client
 To retrieve something from the web:
 
 .. code-block:: python
-  
+
   import aiohttp
 
   def get_body(url):
@@ -98,7 +98,7 @@ This is simple usage example:
     def wshandler(request):
         ws = WebSocketResponse()
         ws.start(request)
- 
+
         while True:
             msg = yield from ws.receive()
 
