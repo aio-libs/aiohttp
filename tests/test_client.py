@@ -11,11 +11,6 @@ import urllib.parse
 import aiohttp
 from aiohttp.client import ClientRequest, ClientResponse
 
-try:
-    import chardet
-except ImportError:  # pragma: no cover
-    chardet = None
-
 
 class ClientResponseTests(unittest.TestCase):
 
@@ -149,36 +144,6 @@ class ClientResponseTests(unittest.TestCase):
         self.assertEqual(res, '{"тест": "пройден"}')
         self.assertTrue(self.response.close.called)
 
-    @unittest.skipIf(chardet is None, "no chardet")
-    def test_text_detect_encoding(self):
-        def side_effect(*args, **kwargs):
-            fut = asyncio.Future(loop=self.loop)
-            fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
-            return fut
-        self.response.headers = {'CONTENT-TYPE': 'application/json'}
-        content = self.response.content = unittest.mock.Mock()
-        content.read.side_effect = side_effect
-        self.response.close = unittest.mock.Mock()
-
-        res = self.loop.run_until_complete(self.response.text())
-        self.assertEqual(res, '{"тест": "пройден"}')
-        self.assertTrue(self.response.close.called)
-
-    def test_text_detect_encoding_without_chardet(self):
-        def side_effect(*args, **kwargs):
-            fut = asyncio.Future(loop=self.loop)
-            fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
-            return fut
-        self.response.headers = {'CONTENT-TYPE': 'application/json'}
-        content = self.response.content = unittest.mock.Mock()
-        content.read.side_effect = side_effect
-        self.response.close = unittest.mock.Mock()
-
-        with unittest.mock.patch('aiohttp.client.chardet', None):
-            self.assertRaises(UnicodeDecodeError,
-                              self.loop.run_until_complete,
-                              self.response.text())
-
     def test_json(self):
         def side_effect(*args, **kwargs):
             fut = asyncio.Future(loop=self.loop)
@@ -233,36 +198,6 @@ class ClientResponseTests(unittest.TestCase):
             self.response.json(encoding='cp1251'))
         self.assertEqual(res, {'тест': 'пройден'})
         self.assertTrue(self.response.close.called)
-
-    @unittest.skipIf(chardet is None, "no chardet")
-    def test_json_detect_encoding(self):
-        def side_effect(*args, **kwargs):
-            fut = asyncio.Future(loop=self.loop)
-            fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
-            return fut
-        self.response.headers = {'CONTENT-TYPE': 'application/json'}
-        content = self.response.content = unittest.mock.Mock()
-        content.read.side_effect = side_effect
-        self.response.close = unittest.mock.Mock()
-
-        res = self.loop.run_until_complete(self.response.json())
-        self.assertEqual(res, {'тест': 'пройден'})
-        self.assertTrue(self.response.close.called)
-
-    def test_json_detect_encoding_without_chardet(self):
-        def side_effect(*args, **kwargs):
-            fut = asyncio.Future(loop=self.loop)
-            fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
-            return fut
-        self.response.headers = {'CONTENT-TYPE': 'application/json'}
-        content = self.response.content = unittest.mock.Mock()
-        content.read.side_effect = side_effect
-        self.response.close = unittest.mock.Mock()
-
-        with unittest.mock.patch('aiohttp.client.chardet', None):
-            self.assertRaises(UnicodeDecodeError,
-                              self.loop.run_until_complete,
-                              self.response.json())
 
     def test_override_flow_control(self):
         class MyResponse(ClientResponse):

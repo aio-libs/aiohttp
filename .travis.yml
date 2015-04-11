@@ -10,7 +10,6 @@ install:
   - pip install docutils
   - pip install coverage
   - pip install gunicorn
-  - pip install chardet
   - python setup.py develop
 
 script:

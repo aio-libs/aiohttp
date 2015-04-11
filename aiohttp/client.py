@@ -8,10 +8,7 @@ import mimetypes
 import urllib.parse
 import weakref
 import warnings
-try:
-    import chardet
-except ImportError:  # pragma: no cover
-    chardet = None
+import chardet
 
 import aiohttp
 from . import hdrs, helpers, streams
@@ -755,11 +752,8 @@ class ClientResponse:
 
         if not encoding:
             encoding = params.get('charset')
-            if not encoding and chardet:
-                encoding = chardet.detect(self._content)['encoding']
             if not encoding:
-                encoding = 'utf-8'
-
+                encoding = chardet.detect(self._content)['encoding']
         return encoding
 
     @asyncio.coroutine

@@ -10,6 +10,8 @@ CHANGES
 
 - Explicitly call drain on transport #316
 
+- Make chardet module dependency mandatory #318
+
 
 0.15.1 (03-31-2015)
 -------------------
