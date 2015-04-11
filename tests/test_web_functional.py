@@ -3,7 +3,6 @@ import json
 import os.path
 import socket
 import unittest
-import tempfile
 from aiohttp import web, request, FormData
 from aiohttp.multidict import MultiDict
 from aiohttp.protocol import HttpVersion11
@@ -251,16 +250,16 @@ class TestWebFunctional(unittest.TestCase):
     def test_static_file(self):
 
         @asyncio.coroutine
-        def go(tmpdirname, filename):
+        def go(dirname, filename):
             app, _, url = yield from self.create_server(
                 'GET', '/static/' + filename
             )
-            app.router.add_static('/static', tmpdirname)
+            app.router.add_static('/static', dirname)
 
             resp = yield from request('GET', url, loop=self.loop)
             self.assertEqual(200, resp.status)
             txt = yield from resp.text()
-            self.assertEqual('file content', txt)
+            self.assertEqual('file content\n', txt)
             ct = resp.headers['CONTENT-TYPE']
             self.assertEqual('application/octet-stream', ct)
             self.assertEqual(resp.headers.get('CONTENT-ENCODING'), None)
@@ -270,13 +269,9 @@ class TestWebFunctional(unittest.TestCase):
             resp = yield from request('GET', url + '/../../', loop=self.loop)
             self.assertEqual(404, resp.status)
 
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            with tempfile.NamedTemporaryFile(dir=tmpdirname) as fp:
-                filename = os.path.basename(fp.name)
-                fp.write(b'file content')
-                fp.flush()
-                fp.seek(0)
-                self.loop.run_until_complete(go(tmpdirname, filename))
+        here = os.path.dirname(__file__)
+        filename = os.path.join(here, 'data.unknown_mime_type')
+        self.loop.run_until_complete(go(here, filename))
 
     def test_static_file_with_content_type(self):
 
