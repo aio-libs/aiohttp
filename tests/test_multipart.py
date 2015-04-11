@@ -553,8 +553,12 @@ class BodyPartWriterTestCase(unittest.TestCase):
         self.assertEqual(default, self.part._guess_content_type(b'foo'))
         self.assertEqual('text/plain; charset=utf-8',
                          self.part._guess_content_type('foo'))
-        with open(__file__, 'rb') as f:
-            self.assertEqual('text/x-python',
+
+        here = os.path.dirname(__file__)
+        filename = os.path.join(here, 'software_development_in_picture.jpg')
+
+        with open(filename, 'rb') as f:
+            self.assertEqual('image/jpeg',
                              self.part._guess_content_type(f))
 
     def test_guess_filename(self):
