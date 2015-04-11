@@ -25,12 +25,6 @@ Library Installation
 
    pip install aiohttp
 
-
-*Optional*: To improve performance, you can install `Cython`
-**before** `aiohttp`::
-
-   pip install cython
-
 Getting Started
 ---------------
 
