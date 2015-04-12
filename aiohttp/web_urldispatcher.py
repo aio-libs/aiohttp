@@ -69,12 +69,12 @@ class Route(metaclass=abc.ABCMeta):
     def name(self):
         return self._name
 
-    @abc.abstractmethod
+    @abc.abstractmethod  # pragma: no branch
     def match(self, path):
         """Return dict with info for given path or
         None if route cannot process path."""
 
-    @abc.abstractmethod
+    @abc.abstractmethod  # pragma: no branch
     def url(self, **kwargs):
         """Construct url for route with additional params."""
 

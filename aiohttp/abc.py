@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 
 class AbstractRouter(metaclass=ABCMeta):
 
-    @asyncio.coroutine
+    @asyncio.coroutine  # pragma: no branch
     @abstractmethod
     def resolve(self, request):
         """Return MATCH_INFO for given request"""
@@ -12,12 +12,12 @@ class AbstractRouter(metaclass=ABCMeta):
 
 class AbstractMatchInfo(metaclass=ABCMeta):
 
-    @property
+    @property  # pragma: no branch
     @abstractmethod
     def handler(self):
         """Return handler for match info"""
 
-    @property
+    @property  # pragma: no branch
     @abstractmethod
     def route(self):
         """Return route for match info"""
