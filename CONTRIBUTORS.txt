@@ -16,6 +16,7 @@ Ben Bader
 Brian C. Lane
 Dima Veselov
 Dimitar Dimitrov
+Dmytro Kuznetsov
 Erich Healy
 Eugene Chernyshov
 Frederik Gladhorn
