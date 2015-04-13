@@ -4,7 +4,7 @@ from unittest import mock
 from aiohttp import hdrs
 from aiohttp.multidict import CIMultiDict
 from aiohttp.web import Request, StreamResponse, Response
-from aiohttp.protocol import RawRequestMessage, HttpVersion11
+from aiohttp.protocol import RawRequestMessage, HttpVersion11, HttpVersion10
 
 
 class TestStreamResponse(unittest.TestCase):
@@ -16,9 +16,10 @@ class TestStreamResponse(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
-    def make_request(self, method, path, headers=CIMultiDict()):
+    def make_request(self, method, path, headers=CIMultiDict(),
+                     version=HttpVersion11):
         self.app = mock.Mock()
-        message = RawRequestMessage(method, path, HttpVersion11, headers,
+        message = RawRequestMessage(method, path, version, headers,
                                     False, False)
         self.payload = mock.Mock()
         self.transport = mock.Mock()
@@ -549,3 +550,16 @@ class TestResponse(unittest.TestCase):
         self.assertEqual('текст'.encode('koi8-r'), resp.body)
         self.assertEqual('text/html', resp.content_type)
         self.assertEqual('koi8-r', resp.charset)
+
+    def test_keep_alive_http10(self):
+        req = self.make_request('GET', '/', version=HttpVersion10)
+        resp = StreamResponse()
+        msg = resp.start(req)
+        self.assertEqual(resp.keep_alive, False)
+
+        headers = CIMultiDict(Connection='keep-alive')
+        req = self.make_request('GET', '/', headers=headers,
+                                version=HttpVersion10)
+        resp = StreamResponse()
+        msg = resp.start(req)
+        self.assertEqual(resp.keep_alive, True)
