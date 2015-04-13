@@ -225,7 +225,7 @@ This example shows custom handler for *Except* header:
 
    @asyncio.coroutine
    def check_auth(request):
-       if request.version != web.HttpVersion11:
+       if request.version != aiohttp.HttpVersion11:
            return
 
        if request.headers.get('AUTHORIZATION') is None:
