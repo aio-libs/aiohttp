@@ -54,7 +54,7 @@ We also recommend to install *ipdb* but it's on your own::
 Congratulations, you are ready to run the test suite
 
 
-Run aiohhtp test suite
+Run aiohttp test suite
 ----------------------
 
 After all the preconditions are met you can run tests typing the next
