@@ -66,7 +66,7 @@ def request(method, url, *,
     :type chunked: bool or int
     :param bool expect100: Expect 100-continue response from server.
     :param connector: BaseConnector sub-class instance to support
-       connection pooling and session cookies.
+       connection pooling.
     :type connector: aiohttp.connector.BaseConnector
     :param bool read_until_eof: Read response until eof if response
        does not have Content-Length header.
@@ -85,12 +85,12 @@ def request(method, url, *,
     """
     session = Session(connector=connector, loop=loop,
                       request_class=request_class,
-                      response_class=response_class)
+                      response_class=response_class,
+                      cookies=cookies)
     resp = yield from session.request(method, url,
                                       params=params,
                                       data=data,
                                       headers=headers,
-                                      cookies=cookies,
                                       files=files,
                                       auth=auth,
                                       allow_redirects=allow_redirects,
@@ -107,12 +107,18 @@ def request(method, url, *,
 class Session:
 
     def __init__(self, *, connector=None, loop=None, request_class=None,
-                 response_class=None):
+                 response_class=None, cookies=None):
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
+        self.cookies = http.cookies.SimpleCookie()
         if connector is None:
             connector = aiohttp.TCPConnector(force_close=True, loop=loop)
+        # For Backward compatability with `share_cookie` connectors
+        elif connector._share_cookies:
+            self._update_cookies(connector.cookies)
+        if cookies is not None:
+            self._update_cookies(cookies)
         self._connector = connector
         if request_class is None:
             request_class = ClientRequest
@@ -124,7 +130,6 @@ class Session:
                 params=None,
                 data=None,
                 headers=None,
-                cookies=None,
                 files=None,
                 auth=None,
                 allow_redirects=True,
@@ -142,7 +147,7 @@ class Session:
         while True:
             req = self._request_class(
                 method, url, params=params, headers=headers, data=data,
-                cookies=cookies, files=files, encoding=encoding,
+                cookies=self.cookies, files=files, encoding=encoding,
                 auth=auth, version=version, compress=compress, chunked=chunked,
                 expect100=expect100,
                 loop=self._loop, response_class=self._response_class)
@@ -162,6 +167,11 @@ class Session:
             except OSError as exc:
                 raise aiohttp.ClientOSError() from exc
 
+            self._update_cookies(resp.cookies)
+            # For Backward compatability with `share_cookie` connectors
+            if self._connector._share_cookies:
+                self._connector.update_cookies(resp.cookies)
+
             # redirects
             if resp.status in (301, 302, 303, 307) and allow_redirects:
                 redirects += 1
@@ -174,7 +184,6 @@ class Session:
                 if resp.status != 307:
                     method = hdrs.METH_GET
                     data = None
-                cookies = resp.cookies
 
                 r_url = (resp.headers.get(hdrs.LOCATION) or
                          resp.headers.get(hdrs.URI))
@@ -194,6 +203,18 @@ class Session:
             break
 
         return resp
+
+    def _update_cookies(self, cookies):
+        """Update shared cookies."""
+        if isinstance(cookies, dict):
+            cookies = cookies.items()
+
+        for name, value in cookies:
+            if isinstance(value, http.cookies.Morsel):
+                # use dict method because SimpleCookie class modifies value
+                dict.__setitem__(self.cookies, name, value)
+            else:
+                self.cookies[name] = value
 
     @asyncio.coroutine
     def get(self, url, allow_redirects=True, **kwargs):
@@ -771,7 +792,6 @@ class ClientResponse:
                 except http.cookies.CookieError as exc:
                     client_logger.warning(
                         'Can not load response cookies: %s', exc)
-            connection.share_cookies(self.cookies)
         return self
 
     def close(self, force=False):

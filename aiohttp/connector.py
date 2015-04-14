@@ -6,6 +6,7 @@ import time
 import ssl
 import socket
 import weakref
+import warnings
 
 from . import hdrs
 from .client import ClientRequest
@@ -50,17 +51,12 @@ class Connection(object):
             self._transport = None
             self._wr = None
 
-    def share_cookies(self, cookies):
-        if self._connector._share_cookies:  # XXX
-            self._connector.update_cookies(cookies)
-
 
 class BaseConnector(object):
     """Base connector class.
 
     :param conn_timeout: (optional) Connect timeout.
     :param keepalive_timeout: (optional) Keep-alive timeout.
-    :param bool share_cookies: Set to True to keep cookies between requests.
     :param bool force_close: Set to True to force close and do reconnect
         after each request (and between redirects).
     :param loop: Optional event loop.
@@ -71,6 +67,10 @@ class BaseConnector(object):
         self._conns = {}
         self._conn_timeout = conn_timeout
         self._keepalive_timeout = keepalive_timeout
+        if share_cookies:
+            warnings.warn(
+                'Using `share_cookies` is deprecated. '
+                'Use Session object instead', DeprecationWarning)
         self._share_cookies = share_cookies
         self._cleanup_handle = None
         self._force_close = force_close
@@ -151,9 +151,6 @@ class BaseConnector(object):
     def connect(self, req):
         """Get from pool or create new connection."""
         key = (req.host, req.port, req.ssl)
-
-        if self._share_cookies:
-            req.update_cookies(self.cookies.items())
 
         transport, proto = self._get(key)
         if transport is None:
