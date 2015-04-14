@@ -357,6 +357,9 @@ class TestWebSocketClientFunctional(unittest.TestCase):
         asyncio.set_event_loop(None)
 
     def tearDown(self):
+        if self.handler:
+            self.loop.run_until_complete(self.handler.finish_connections())
+
         self.loop.close()
 
     def find_unused_port(self):
@@ -372,8 +375,9 @@ class TestWebSocketClientFunctional(unittest.TestCase):
         app.router.add_route(method, path, handler)
 
         port = self.find_unused_port()
+        self.handler = app.make_handler()
         srv = yield from self.loop.create_server(
-            app.make_handler(), '127.0.0.1', port)
+            self.handler, '127.0.0.1', port)
         url = "http://127.0.0.1:{}".format(port) + path
         self.addCleanup(srv.close)
         return app, srv, url
