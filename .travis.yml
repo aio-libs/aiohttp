@@ -10,6 +10,7 @@ install:
   - pip install docutils
   - pip install coverage
   - pip install gunicorn
+  - pip install pygments
   - python setup.py develop
 
 script:
