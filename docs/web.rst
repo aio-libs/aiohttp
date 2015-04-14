@@ -202,6 +202,32 @@ decorator::
         return {'name': 'Andrew', 'surname': 'Svetlov'}
 
 
+User sessions
+-------------
+
+Often you need a container for storing per-user data. The concept is
+usually called *session*.
+
+:mod:`aiohttp.web` has no *sessions* but there is third-party
+:mod:`aiohttp_session` library for that::
+
+    import asycio
+    import time
+    from aiohttp import web
+    import aiohttp_session
+
+    @asyncio.coroutine
+    def handler(request):
+        session = aiohttp_session.get_session(request)
+        session['last_visit'] = time.time()
+        return web.Response('OK')
+
+    app = web.Application(middlewares=aiohttp_session.session_middleware(
+        aiohttp_session.EncryptedCookieStorage(b'Sixteen byte key')))
+
+    app.router.add_route('GET', '/', handler)
+
+
 .. _aiohttp-web-expect-header:
 
 *Expect* header support
