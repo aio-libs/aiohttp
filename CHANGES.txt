@@ -12,6 +12,8 @@ CHANGES
 
 - Make chardet module dependency mandatory #318
 
+- Support keep-alive for HTTP 1.0 #325
+
 
 0.15.1 (03-31-2015)
 -------------------

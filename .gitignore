@@ -9,6 +9,7 @@
 *.tar.gz
 *~
 .DS_Store
+.Python
 .coverage
 .idea
 .installed.cfg
@@ -25,6 +26,9 @@ develop-eggs
 dist
 docs/_build/
 eggs
+include/
+lib/
+man/
 nosetests.xml
 parts
 pyvenv

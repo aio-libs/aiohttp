@@ -4,7 +4,8 @@ from unittest import mock
 from aiohttp import hdrs
 from aiohttp.multidict import CIMultiDict
 from aiohttp.web import Request, StreamResponse, Response
-from aiohttp.protocol import RawRequestMessage, HttpVersion11
+from aiohttp.protocol import HttpVersion, HttpVersion11, HttpVersion10
+from aiohttp.protocol import RawRequestMessage
 
 
 class TestStreamResponse(unittest.TestCase):
@@ -17,9 +18,12 @@ class TestStreamResponse(unittest.TestCase):
         self.loop.close()
 
     def make_request(self, method, path, headers=CIMultiDict()):
-        self.app = mock.Mock()
         message = RawRequestMessage(method, path, HttpVersion11, headers,
                                     False, False)
+        return self.request_from_message(message)
+
+    def request_from_message(self, message):
+        self.app = mock.Mock()
         self.payload = mock.Mock()
         self.transport = mock.Mock()
         self.reader = mock.Mock()
@@ -346,6 +350,31 @@ class TestStreamResponse(unittest.TestCase):
     def test___repr__not_started(self):
         resp = StreamResponse(reason=301)
         self.assertEqual("<StreamResponse 301 not started>", repr(resp))
+
+    def test_keep_alive_http10(self):
+        message = RawRequestMessage('GET', '/', HttpVersion10, CIMultiDict(),
+                                    True, False)
+        req = self.request_from_message(message)
+        resp = StreamResponse()
+        resp.start(req)
+        self.assertFalse(resp.keep_alive)
+
+        headers = CIMultiDict(Connection='keep-alive')
+        message = RawRequestMessage('GET', '/', HttpVersion10, headers,
+                                    False, False)
+        req = self.request_from_message(message)
+        resp = StreamResponse()
+        resp.start(req)
+        self.assertEqual(resp.keep_alive, True)
+
+    def test_keep_alive_http09(self):
+        headers = CIMultiDict(Connection='keep-alive')
+        message = RawRequestMessage('GET', '/', HttpVersion(0, 9), headers,
+                                    False, False)
+        req = self.request_from_message(message)
+        resp = StreamResponse()
+        resp.start(req)
+        self.assertFalse(resp.keep_alive)
 
 
 class TestResponse(unittest.TestCase):
