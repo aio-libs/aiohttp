@@ -186,10 +186,11 @@ class HttpRequestParser(HttpParser):
 
         # read headers
         headers, close, compression = self.parse_headers(lines)
-        if version <= HttpVersion10:
-            close = True
-        elif close is None:
-            close = False
+        if close is None:  # then the headers weren't set in the request
+            if version <= HttpVersion10:  # HTTP 1.0 must asks to not close
+                close = True
+            else:  # HTTP 1.1 must ask to close.
+                close = False
 
         out.feed_data(
             RawRequestMessage(
@@ -532,13 +533,7 @@ class HttpMessage:
         self.transport = transport
         self.version = version
         self.closing = close
-
-        # disable keep-alive for http/1.0
-        if version <= HttpVersion10:
-            self.keepalive = False
-        else:
-            self.keepalive = None
-
+        self.keepalive = None
         self.chunked = False
         self.length = None
         self.headers = CIMultiDict()
@@ -555,7 +550,13 @@ class HttpMessage:
 
     def keep_alive(self):
         if self.keepalive is None:
-            return not self.closing
+            if self.version <= HttpVersion10:
+                if self.headers.get('Connection') == 'keep-alive':
+                    return True
+                else:  # no headers means we close for Http 1.0
+                    return False
+            else:
+                return not self.closing
         else:
             return self.keepalive
 
@@ -591,7 +592,7 @@ class HttpMessage:
             # connection keep-alive
             elif 'close' in val:
                 self.keepalive = False
-            elif 'keep-alive' in val and self.version >= HttpVersion11:
+            elif 'keep-alive' in val:
                 self.keepalive = True
 
         elif name == hdrs.UPGRADE:
@@ -836,6 +837,11 @@ class Request(HttpMessage):
 
     def __init__(self, transport, method, path,
                  http_version=HttpVersion11, close=False):
+        # set the default for HTTP 1.0 to be different
+        # will only be overwritten with keep-alive header
+        if http_version < HttpVersion11:
+            close = True
+
         super().__init__(transport, http_version, close)
 
         self.method = method

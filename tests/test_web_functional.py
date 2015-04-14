@@ -463,11 +463,11 @@ class TestWebFunctional(unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
-    def test_http10_keep_alive(self):
+    def test_http10_keep_alive_default(self):
 
         @asyncio.coroutine
         def handler(request):
-            body = yield from request.read()
+            yield from request.read()
             return web.Response(body=b'OK')
 
         @asyncio.coroutine
@@ -477,6 +477,34 @@ class TestWebFunctional(unittest.TestCase):
                                       version=HttpVersion10)
             self.assertEqual('close', resp.headers['CONNECTION'])
 
+        self.loop.run_until_complete(go())
+
+    def test_http10_keep_alive_with_headers_close(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            yield from request.read()
+            return web.Response(body=b'OK')
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('GET', '/', handler)
+            headers = {'Connection': 'close'}
+            resp = yield from request('GET', url, loop=self.loop,
+                                      headers=headers, version=HttpVersion10)
+            self.assertEqual('close', resp.headers['CONNECTION'])
+
+        self.loop.run_until_complete(go())
+
+    def test_http10_keep_alive_with_headers(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            yield from request.read()
+            return web.Response(body=b'OK')
+
+        @asyncio.coroutine
+        def go():
             _, _, url = yield from self.create_server('GET', '/', handler)
             headers = {'Connection': 'keep-alive'}
             resp = yield from request('GET', url, loop=self.loop,

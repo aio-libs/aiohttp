@@ -16,11 +16,13 @@ class TestStreamResponse(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
-    def make_request(self, method, path, headers=CIMultiDict(),
-                     version=HttpVersion11):
-        self.app = mock.Mock()
-        message = RawRequestMessage(method, path, version, headers,
+    def make_request(self, method, path, headers=CIMultiDict()):
+        message = RawRequestMessage(method, path, HttpVersion11, headers,
                                     False, False)
+        return self.request_from_message(message)
+
+    def request_from_message(self, message):
+        self.app = mock.Mock()
         self.payload = mock.Mock()
         self.transport = mock.Mock()
         self.reader = mock.Mock()
@@ -348,6 +350,22 @@ class TestStreamResponse(unittest.TestCase):
         resp = StreamResponse(reason=301)
         self.assertEqual("<StreamResponse 301 not started>", repr(resp))
 
+    def test_keep_alive_http10(self):
+        message = RawRequestMessage('GET', '/', HttpVersion10, CIMultiDict(),
+                                    True, False)
+        req = self.request_from_message(message)
+        resp = StreamResponse()
+        resp.start(req)
+        self.assertEqual(resp.keep_alive, False)
+
+        headers = CIMultiDict(Connection='keep-alive')
+        message = RawRequestMessage('GET', '/', HttpVersion10, headers,
+                                    False, False)
+        req = self.request_from_message(message)
+        resp = StreamResponse()
+        resp.start(req)
+        self.assertEqual(resp.keep_alive, True)
+
 
 class TestResponse(unittest.TestCase):
 
@@ -550,16 +568,3 @@ class TestResponse(unittest.TestCase):
         self.assertEqual('текст'.encode('koi8-r'), resp.body)
         self.assertEqual('text/html', resp.content_type)
         self.assertEqual('koi8-r', resp.charset)
-
-    def test_keep_alive_http10(self):
-        req = self.make_request('GET', '/', version=HttpVersion10)
-        resp = StreamResponse()
-        msg = resp.start(req)
-        self.assertEqual(resp.keep_alive, False)
-
-        headers = CIMultiDict(Connection='keep-alive')
-        req = self.make_request('GET', '/', headers=headers,
-                                version=HttpVersion10)
-        resp = StreamResponse()
-        msg = resp.start(req)
-        self.assertEqual(resp.keep_alive, True)
