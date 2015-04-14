@@ -4,7 +4,8 @@ from unittest import mock
 from aiohttp import hdrs
 from aiohttp.multidict import CIMultiDict
 from aiohttp.web import Request, StreamResponse, Response
-from aiohttp.protocol import RawRequestMessage, HttpVersion11, HttpVersion10
+from aiohttp.protocol import HttpVersion, HttpVersion11, HttpVersion10
+from aiohttp.protocol import RawRequestMessage
 
 
 class TestStreamResponse(unittest.TestCase):
@@ -356,7 +357,7 @@ class TestStreamResponse(unittest.TestCase):
         req = self.request_from_message(message)
         resp = StreamResponse()
         resp.start(req)
-        self.assertEqual(resp.keep_alive, False)
+        self.assertFalse(resp.keep_alive)
 
         headers = CIMultiDict(Connection='keep-alive')
         message = RawRequestMessage('GET', '/', HttpVersion10, headers,
@@ -365,6 +366,15 @@ class TestStreamResponse(unittest.TestCase):
         resp = StreamResponse()
         resp.start(req)
         self.assertEqual(resp.keep_alive, True)
+
+    def test_keep_alive_http09(self):
+        headers = CIMultiDict(Connection='keep-alive')
+        message = RawRequestMessage('GET', '/', HttpVersion(0, 9), headers,
+                                    False, False)
+        req = self.request_from_message(message)
+        resp = StreamResponse()
+        resp.start(req)
+        self.assertFalse(resp.keep_alive)
 
 
 class TestResponse(unittest.TestCase):

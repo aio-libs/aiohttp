@@ -5,7 +5,7 @@ import socket
 import unittest
 from aiohttp import web, request, FormData
 from aiohttp.multidict import MultiDict
-from aiohttp.protocol import HttpVersion10, HttpVersion11
+from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
 from aiohttp.streams import EOF_MARKER
 
 
@@ -475,6 +475,24 @@ class TestWebFunctional(unittest.TestCase):
             _, _, url = yield from self.create_server('GET', '/', handler)
             resp = yield from request('GET', url, loop=self.loop,
                                       version=HttpVersion10)
+            self.assertEqual('close', resp.headers['CONNECTION'])
+
+        self.loop.run_until_complete(go())
+
+    def test_http09_keep_alive_default(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            yield from request.read()
+            return web.Response(body=b'OK')
+
+        @asyncio.coroutine
+        def go():
+            headers = {'Connection': 'keep-alive'}  # should be ignored
+            _, _, url = yield from self.create_server('GET', '/', handler)
+            resp = yield from request('GET', url, loop=self.loop,
+                                      headers=headers,
+                                      version=HttpVersion(0, 9))
             self.assertEqual('close', resp.headers['CONNECTION'])
 
         self.loop.run_until_complete(go())

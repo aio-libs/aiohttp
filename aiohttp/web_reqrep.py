@@ -18,7 +18,7 @@ from .multidict import (CIMultiDictProxy,
                         CIMultiDict,
                         MultiDictProxy,
                         MultiDict)
-from .protocol import Response as ResponseImpl
+from .protocol import Response as ResponseImpl, HttpVersion10
 from .streams import EOF_MARKER
 
 
@@ -95,7 +95,10 @@ class Request(dict, HeadersMixin):
         self._post = None
         self._post_files_cache = None
         self._headers = CIMultiDictProxy(message.headers)
-        self._keep_alive = not message.should_close
+        if self._version < HttpVersion10:
+            self._keep_alive = False
+        else:
+            self._keep_alive = not message.should_close
 
         # matchdict, route_name, handler
         # or information about traversal lookup
