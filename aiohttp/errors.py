@@ -18,7 +18,7 @@ __all__ = (
 
 
 class DisconnectedError(Exception):
-    """disconnected."""
+    """Disconnected."""
 
 
 class ClientDisconnectedError(DisconnectedError):
