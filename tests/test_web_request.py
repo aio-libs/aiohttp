@@ -18,6 +18,8 @@ class TestWebRequest(unittest.TestCase):
 
     def make_request(self, method, path, headers=CIMultiDict(), *,
                      version=HttpVersion(1, 1), closing=False):
+        if version < HttpVersion(1, 1):
+            closing = True
         self.app = mock.Mock()
         message = RawRequestMessage(method, path, version, headers, closing,
                                     False)
