@@ -386,6 +386,11 @@ class HttpClientConnectorTests(unittest.TestCase):
             self.assertEqual(r.status, 200)
             r.close()
 
+    def test_connector_cookie_deprecation(self):
+        with self.assertWarnsRegex(DeprecationWarning,
+                                   "^Using `share_cookies` is deprecated"):
+            aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
+
 
 class ProxyConnectorTests(unittest.TestCase):
 

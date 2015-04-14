@@ -14,7 +14,7 @@ import aiohttp
 from . import hdrs, helpers, streams
 from .log import client_logger
 from .streams import EOF_MARKER, FlowControlStreamReader
-from .multidict import CIMultiDictProxy, MultiDictProxy, MultiDict
+from .multidict import CIMultiDictProxy, MultiDictProxy, MultiDict, CIMultiDict
 from .multipart import MultipartWriter
 
 __all__ = ('request',)
@@ -107,7 +107,7 @@ def request(method, url, *,
 class Session:
 
     def __init__(self, *, connector=None, loop=None, request_class=None,
-                 response_class=None, cookies=None):
+                 response_class=None, cookies=None, headers=None, auth=None):
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
@@ -120,6 +120,16 @@ class Session:
         if cookies is not None:
             self._update_cookies(cookies)
         self._connector = connector
+        self._default_auth = auth
+
+        # Convert to list of tuples
+        if headers:
+            if isinstance(headers, dict):
+                headers = list(headers.items())
+            elif isinstance(headers, (MultiDictProxy, MultiDict)):
+                headers = list(headers.items())
+        self._default_headers = headers
+
         if request_class is None:
             request_class = ClientRequest
         self._request_class = request_class
@@ -143,6 +153,18 @@ class Session:
 
         redirects = 0
         method = method.upper()
+
+        # Merge with default headers and transform to CIMultiDict
+        headers = self._prepare_headers(headers)
+        if auth is None:
+            auth = self._default_auth
+        # It would be confusing if we support explicit Authorization header
+        # with `auth` argument
+        if (headers is not None and
+                auth is not None and
+                hdrs.AUTHORIZATION in headers):
+            raise ValueError("Can't combine `Authorization` header with "
+                             "`auth` argument")
 
         while True:
             req = self._request_class(
@@ -215,6 +237,25 @@ class Session:
                 dict.__setitem__(self.cookies, name, value)
             else:
                 self.cookies[name] = value
+
+    def _prepare_headers(self, headers):
+        """ Add default headers and transform it to CIMultiDict
+        """
+        # Convert headers to MultiDict
+        result = CIMultiDict()
+        if headers:
+            if isinstance(headers, dict):
+                headers = headers.items()
+            elif isinstance(headers, (MultiDictProxy, MultiDict)):
+                headers = headers.items()
+            for key, value in headers:
+                result.add(key, value)
+        # Add defaults only if those are not overridden
+        if self._default_headers:
+            for key, value in self._default_headers:
+                if key not in result:
+                    result.add(key, value)
+        return result
 
     @asyncio.coroutine
     def get(self, url, allow_redirects=True, **kwargs):
@@ -407,7 +448,7 @@ class ClientRequest:
 
     def update_headers(self, headers):
         """Update request headers."""
-        self.headers = MultiDict()
+        self.headers = CIMultiDict()
         if headers:
             if isinstance(headers, dict):
                 headers = headers.items()
@@ -415,7 +456,7 @@ class ClientRequest:
                 headers = headers.items()
 
             for key, value in headers:
-                self.headers.add(key.upper(), value)
+                self.headers.add(key, value)
 
         for hdr, val in self.DEFAULT_HEADERS.items():
             if hdr not in self.headers:
