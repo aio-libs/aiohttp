@@ -554,6 +554,17 @@ class ClientRequestTests(unittest.TestCase):
             self.assertEqual(req.headers['CONTENT-LENGTH'],
                              str(os.path.getsize(fname)))
 
+    def test_file_upload_not_chunked_seek(self):
+        here = os.path.dirname(__file__)
+        fname = os.path.join(here, 'sample.key')
+        with open(fname, 'rb') as f:
+            f.seek(100)
+            req = ClientRequest(
+                'post', 'http://python.org/',
+                data=f)
+            self.assertEqual(req.headers['CONTENT-LENGTH'],
+                             str(os.path.getsize(fname) - 100))
+
     def test_file_upload_force_chunked(self):
         here = os.path.dirname(__file__)
         fname = os.path.join(here, 'sample.key')

@@ -9,7 +9,7 @@ import urllib.parse
 import weakref
 import warnings
 import chardet
-from os.path import getsize
+from os import fstat
 
 import aiohttp
 from . import hdrs, helpers, streams
@@ -386,7 +386,8 @@ class ClientRequest:
             self.body = data
             if not self.chunked and isinstance(data, io.BufferedReader):
                 # Not chunking if content-length can be determined
-                self.headers[hdrs.CONTENT_LENGTH] = str(getsize(data.name))
+                size = fstat(data.fileno()).st_size - data.tell()
+                self.headers[hdrs.CONTENT_LENGTH] = str(size)
                 self.chunked = False
             else:
                 self.chunked = True
