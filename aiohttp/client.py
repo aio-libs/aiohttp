@@ -9,6 +9,7 @@ import urllib.parse
 import weakref
 import warnings
 import chardet
+from os import fstat
 
 import aiohttp
 from . import hdrs, helpers, streams
@@ -383,7 +384,13 @@ class ClientRequest:
             assert not isinstance(data, io.StringIO), \
                 'attempt to send text data instead of binary'
             self.body = data
-            self.chunked = True
+            if not self.chunked and isinstance(data, io.BufferedReader):
+                # Not chunking if content-length can be determined
+                size = fstat(data.fileno()).st_size - data.tell()
+                self.headers[hdrs.CONTENT_LENGTH] = str(size)
+                self.chunked = False
+            else:
+                self.chunked = True
             if hasattr(data, 'mode'):
                 if data.mode == 'r':
                     raise ValueError('file {!r} should be open in binary mode'

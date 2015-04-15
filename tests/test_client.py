@@ -7,6 +7,7 @@ import io
 import unittest
 import unittest.mock
 import urllib.parse
+import os.path
 
 import aiohttp
 from aiohttp.client import ClientRequest, ClientResponse
@@ -541,6 +542,39 @@ class ClientRequestTests(unittest.TestCase):
         req.send(self.transport, self.protocol)
         self.assertEqual(req.headers['TRANSFER-ENCODING'], 'chunked')
         self.assertNotIn('CONTENT-LENGTH', req.headers)
+
+    def test_file_upload_not_chunked(self):
+        here = os.path.dirname(__file__)
+        fname = os.path.join(here, 'sample.key')
+        with open(fname, 'rb') as f:
+            req = ClientRequest(
+                'post', 'http://python.org/',
+                data=f)
+            self.assertFalse(req.chunked)
+            self.assertEqual(req.headers['CONTENT-LENGTH'],
+                             str(os.path.getsize(fname)))
+
+    def test_file_upload_not_chunked_seek(self):
+        here = os.path.dirname(__file__)
+        fname = os.path.join(here, 'sample.key')
+        with open(fname, 'rb') as f:
+            f.seek(100)
+            req = ClientRequest(
+                'post', 'http://python.org/',
+                data=f)
+            self.assertEqual(req.headers['CONTENT-LENGTH'],
+                             str(os.path.getsize(fname) - 100))
+
+    def test_file_upload_force_chunked(self):
+        here = os.path.dirname(__file__)
+        fname = os.path.join(here, 'sample.key')
+        with open(fname, 'rb') as f:
+            req = ClientRequest(
+                'post', 'http://python.org/',
+                data=f,
+                chunked=True)
+            self.assertTrue(req.chunked)
+            self.assertNotIn('CONTENT-LENGTH', req.headers)
 
     def test_expect100(self):
         req = ClientRequest('get', 'http://python.org/',
