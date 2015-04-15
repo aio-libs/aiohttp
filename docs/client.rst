@@ -195,6 +195,20 @@ For example, if you want to specify the content-type for the previous example::
     ...                                headers=headers)
 
 
+Custom Cookies
+--------------
+
+To send your own cookies to the server, you can use the ``cookies``
+parameter::
+
+    >>> url = 'http://httpbin.org/cookies'
+    >>> cookies = dict(cookies_are='working')
+
+    >>> r = yield from aiohttp.request('get', url, cookies=cookies)
+    >>> yield from r.text()
+    '{"cookies": {"cookies_are": "working"}}'
+
+
 More complicated POST requests
 ------------------------------
 
@@ -256,6 +270,7 @@ information.
 
 .. seealso:: :ref:`aiohttp-multipart`
 
+
 Streaming uploads
 -----------------
 
@@ -301,7 +316,7 @@ a file from another request and calculate the file sha1 hash::
    >>> resp = aiohttp.request('get', 'http://httpbin.org/post')
    >>> stream = StreamReader()
    >>> asyncio.async(aiohttp.request(
-   ...     'post', 'http://httpbin.org/post', data=stream)
+   ...     'post', 'http://httpbin.org/post', data=stream))
 
    >>> file_hash = yield from feed_stream(resp, stream)
 
@@ -315,18 +330,45 @@ post requests together::
    ...                            data=r.content)
 
 
-.. _aiohttp-client-keep-alive:
+.. _aiohttp-client-session:
 
-Keep-Alive and connection pooling
----------------------------------
+Keep-Alive, connection pooling and cookie sharing
+-------------------------------------------------
 
-By default aiohttp does not use connection pooling. To enable connection pooling
-you should use one of the ``connector`` objects. There are several of them.
-The most widely used is :class:`aiohttp.connector.TCPConnector`::
+To share cookies between multiple requests you can create an 
+``aiohttp.ClientSession`` object:
 
-  >>> conn = aiohttp.TCPConnector()
-  >>> r = yield from aiohttp.request(
-  ...     'get', 'http://python.org', connector=conn)
+    >>> session = aiohttp.ClientSession()
+    >>> yield from session.get(
+    ...     'http://httpbin.org/cookies/set/my_cookie/my_value')
+    >>> r = yield from session.get('http://httpbin.org/cookies')
+    >>> json = yield from r.json()
+    >>> json['cookies']['my_cookie']
+    'my_value'
+
+You also can set default headers for all session requests:
+
+    >>> session = aiohttp.ClientSession(
+    ...     headers={"Authorization": "Basic bG9naW46cGFzcw=="})
+    >>> r = yield from s.get("http://httpbin.org/headers")
+    >>> json = yield from r.json()
+    >>> json['headers']['Authorization']
+    'Basic bG9naW46cGFzcw=='
+
+By default aiohttp does not use connection pooling. In other words multiple
+calls to ``aiohttp.request`` will start a new connection to host each.
+``aiohttp.ClientSession`` object will do connection pooling for you.
+
+
+Connectors
+----------
+
+To tweek or change *transport* layer of requests you can pass a custom
+**Connector** to ``aiohttp.request``. For example:
+
+    >>> conn = aiohttp.TCPConnector()
+    >>> r = yield from aiohttp.request(
+    ...     'get', 'http://python.org', connector=conn)
 
 
 SSL control for tcp sockets
@@ -431,8 +473,8 @@ So, we can access the headers using any capitalization we want::
     'application/json'
 
 
-Cookies
--------
+Response Cookies
+----------------
 
 If a response contains some Cookies, you can quickly access them::
 
@@ -442,37 +484,11 @@ If a response contains some Cookies, you can quickly access them::
     >>> r.cookies['example_cookie_name']
     'example_cookie_value'
 
-To send your own cookies to the server, you can use the ``cookies``
-parameter::
-
-    >>> url = 'http://httpbin.org/cookies'
-    >>> cookies = dict(cookies_are='working')
-
-    >>> r = yield from aiohttp.request('get', url, cookies=cookies)
-    >>> yield from r.text()
-    '{"cookies": {"cookies_are": "working"}}'
-
-With :ref:`connection pooling<aiohttp-client-keep-alive>` you can
-share cookies between requests:
-
-.. code-block:: python
-   :emphasize-lines: 1
-
-    >>> conn = aiohttp.connector.TCPConnector(share_cookies=True)
-    >>> r = yield from aiohttp.request(
-    ...     'get',
-    ...     'http://httpbin.org/cookies/set?k1=v1',
-    ...     connector=conn)
-    >>> yield from r.text()
-    '{"cookies": {"k1": "v1"}}'
-    >>> r = yield from aiohttp.request('get',
-    ...                                'http://httpbin.org/cookies',
-    ...                                connection=conn)
-    >>> yield from r.text()
-    '{"cookies": {"k1": "v1"}}'
-
 .. note::
-   By default ``share_cookies`` is set to ``False``.
+   Response cookies contain only values, that were in ``Set-Cookie`` headers 
+   of the **last** request in redirection chain. To gather cookies between all
+   redirection requests you can use :ref:`aiohttp.ClientSession 
+   <aiohttp-client-session>` object.
 
 
 Timeouts
