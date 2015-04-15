@@ -139,11 +139,13 @@ class ClientResponseTests(unittest.TestCase):
         content = self.response.content = unittest.mock.Mock()
         content.read.side_effect = side_effect
         self.response.close = unittest.mock.Mock()
+        self.response._get_encoding = unittest.mock.Mock()
 
         res = self.loop.run_until_complete(
             self.response.text(encoding='cp1251'))
         self.assertEqual(res, '{"тест": "пройден"}')
         self.assertTrue(self.response.close.called)
+        self.assertFalse(self.response._get_encoding.called)
 
     def test_text_detect_encoding(self):
         def side_effect(*args, **kwargs):
@@ -208,11 +210,13 @@ class ClientResponseTests(unittest.TestCase):
         content = self.response.content = unittest.mock.Mock()
         content.read.side_effect = side_effect
         self.response.close = unittest.mock.Mock()
+        self.response._get_encoding = unittest.mock.Mock()
 
         res = self.loop.run_until_complete(
             self.response.json(encoding='cp1251'))
         self.assertEqual(res, {'тест': 'пройден'})
         self.assertTrue(self.response.close.called)
+        self.assertFalse(self.response._get_encoding.called)
 
     def test_json_detect_encoding(self):
         def side_effect(*args, **kwargs):
@@ -236,6 +240,13 @@ class ClientResponseTests(unittest.TestCase):
         self.assertIsInstance(response.content, aiohttp.FlowControlDataQueue)
         with self.assertWarns(ResourceWarning):
             del response
+
+    @unittest.mock.patch('aiohttp.client.chardet')
+    def test_get_encoding_unknown(self, m_chardet):
+        m_chardet.detect.return_value = {'encoding': None}
+
+        self.response.headers = {'CONTENT-TYPE': 'application/json'}
+        self.assertEqual(self.response._get_encoding(None), 'utf-8')
 
 
 class ClientRequestTests(unittest.TestCase):

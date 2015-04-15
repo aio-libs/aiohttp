@@ -919,6 +919,9 @@ class ClientResponse:
             encoding = params.get('charset')
             if not encoding:
                 encoding = chardet.detect(self._content)['encoding']
+            if not encoding:
+                encoding = 'utf-8'
+
         return encoding
 
     @asyncio.coroutine
@@ -927,7 +930,10 @@ class ClientResponse:
         if self._content is None:
             yield from self.read()
 
-        return self._content.decode(self._get_encoding(encoding))
+        if encoding is None:
+            encoding = self._get_encoding(encoding)
+
+        return self._content.decode(encoding)
 
     @asyncio.coroutine
     def json(self, *, encoding=None, loads=json.loads):
@@ -943,4 +949,7 @@ class ClientResponse:
         if not self._content.strip():
             return None
 
-        return loads(self._content.decode(self._get_encoding(encoding)))
+        if encoding is None:
+            encoding = self._get_encoding(encoding)
+
+        return loads(self._content.decode(encoding))
