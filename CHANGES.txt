@@ -16,6 +16,8 @@ CHANGES
 
 - Do not chunk single file during upload #327
 
+- Add ClientSession object for cookie storage and default headers #328
+
 
 0.15.1 (03-31-2015)
 -------------------
