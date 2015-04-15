@@ -46,7 +46,8 @@ class RequestHandler(ServerHttpProtocol):
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
-        now = self._loop.time()
+        if self.access_log:
+            now = self._loop.time()
 
         app = self._app
         request = Request(app, message, payload,
@@ -58,7 +59,8 @@ class RequestHandler(ServerHttpProtocol):
 
             resp = None
             request._match_info = match_info
-            if request.headers.get(hdrs.EXPECT, '').lower() == "100-continue":
+            expect = request.headers.get(hdrs.EXPECT)
+            if expect and expect.lower() == "100-continue":
                 resp = (
                     yield from match_info.route.handle_expect_header(request))
 
@@ -68,13 +70,10 @@ class RequestHandler(ServerHttpProtocol):
                     handler = yield from factory(app, handler)
                 resp = yield from handler(request)
 
-            if not isinstance(resp, StreamResponse):
-                raise RuntimeError(
-                    ("Handler {!r} should return response instance, "
-                     "got {!r} [middlewares {!r}]").format(
-                         match_info.handler,
-                         type(resp),
-                         self._middlewares))
+            assert isinstance(resp, StreamResponse), \
+                ("Handler {!r} should return response instance, "
+                 "got {!r} [middlewares {!r}]").format(
+                     match_info.handler, type(resp), self._middlewares)
         except HTTPException as exc:
             resp = exc
 
@@ -85,7 +84,8 @@ class RequestHandler(ServerHttpProtocol):
         self.keep_alive(resp_msg.keep_alive())
 
         # log access
-        self.log_access(message, None, resp_msg, self._loop.time() - now)
+        if self.access_log:
+            self.log_access(message, None, resp_msg, self._loop.time() - now)
 
 
 class RequestHandlerFactory:

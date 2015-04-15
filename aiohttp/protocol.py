@@ -179,10 +179,14 @@ class HttpRequestParser(HttpParser):
             raise errors.BadStatusLine(method)
 
         # version
-        match = VERSRE.match(version)
-        if match is None:
+        try:
+            if version.startswith('HTTP/'):
+                n1, n2 = version[5:].split('.', 1)
+                version = HttpVersion(int(n1), int(n2))
+            else:
+                raise errors.BadStatusLine(version)
+        except:
             raise errors.BadStatusLine(version)
-        version = HttpVersion(int(match.group(1)), int(match.group(2)))
 
         # read headers
         headers, close, compression = self.parse_headers(lines)
@@ -612,7 +616,7 @@ class HttpMessage:
         for name, value in headers:
             self.add_header(name, value)
 
-    def send_headers(self):
+    def send_headers(self, _sep=': ', _end='\r\n'):
         """Writes headers to a stream. Constructs payload writer."""
         # Chunked response is only for HTTP/1.1 clients or newer
         # and there is no Content-Length header is set.
@@ -640,9 +644,7 @@ class HttpMessage:
         # status + headers
         headers = ''.join(itertools.chain(
             (self.status_line,),
-            *((k, ': ', v, '\r\n')
-              for k, v in ((k, value)
-                           for k, value in self.headers.items()))))
+            *((k, _sep, v, _end) for k, v in self.headers.items())))
         headers = headers.encode('utf-8') + b'\r\n'
 
         self.output_length += len(headers)
@@ -734,12 +736,12 @@ class HttpMessage:
                 l = len(chunk)
                 if length >= l:
                     self.transport.write(chunk)
-                    self.output_length += len(chunk)
+                    self.output_length += l
+                    length = length-l
                 else:
                     self.transport.write(chunk[:length])
                     self.output_length += length
-
-                length = max(0, length-l)
+                    length = 0
 
     def _write_eof_payload(self):
         while True:

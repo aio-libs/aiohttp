@@ -193,7 +193,7 @@ class TestStreamResponse(unittest.TestCase):
         resp = StreamResponse()
         resp.start(self.make_request('GET', '/'))
 
-        with self.assertRaises(TypeError):
+        with self.assertRaises(AssertionError):
             resp.write(123)
 
     def test_write_before_start(self):

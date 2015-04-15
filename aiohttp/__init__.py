@@ -1,6 +1,6 @@
 # This relies on each of the submodules having an __all__ variable.
 
-__version__ = '0.15.2.dev1'
+__version__ = '0.15.2.dev2'
 
 
 from . import hdrs  # noqa

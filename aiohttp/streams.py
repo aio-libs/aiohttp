@@ -261,6 +261,50 @@ class StreamReader(asyncio.StreamReader):
             return data
 
 
+class EmptyStreamReader:
+
+    def exception(self):
+        return None
+
+    def set_exception(self, exc):
+        pass
+
+    def feed_eof(self):
+        pass
+
+    def is_eof(self):
+        return True
+
+    def at_eof(self):
+        return True
+
+    @asyncio.coroutine
+    def wait_eof(self):
+        return
+
+    def feed_data(self, data):
+        pass
+
+    @asyncio.coroutine
+    def readline(self):
+        return EOF_MARKER
+
+    @asyncio.coroutine
+    def read(self, n=-1):
+        return EOF_MARKER
+
+    @asyncio.coroutine
+    def readany(self):
+        return EOF_MARKER
+
+    @asyncio.coroutine
+    def readexactly(self, n):
+        raise asyncio.streams.IncompleteReadError(b'', n)
+
+    def read_nowait(self):
+        return EOF_MARKER
+
+
 class DataQueue:
     """DataQueue is a general-purpose blocking queue with one reader."""
 

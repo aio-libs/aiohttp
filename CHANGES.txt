@@ -6,6 +6,8 @@ CHANGES
 
 - Flow control subsystem refactoring
 
+- Http server performace optimizations
+
 - Allow to match any request method with `*`
 
 - Explicitly call drain on transport #316

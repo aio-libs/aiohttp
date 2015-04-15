@@ -449,6 +449,36 @@ class StreamReaderTests(unittest.TestCase):
         self.assertRaises(RuntimeError, stream.read_nowait)
 
 
+class EmptyStreamReaderTests(unittest.TestCase):
+
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+    def tearDown(self):
+        self.loop.close()
+
+    def test_empty_stream_reader(self):
+        s = streams.EmptyStreamReader()
+        self.assertIsNone(s.set_exception(ValueError()))
+        self.assertIsNone(s.exception())
+        self.assertIsNone(s.feed_eof())
+        self.assertIsNone(s.feed_data(b'data'))
+        self.assertTrue(s.at_eof())
+        self.assertIsNone(
+            self.loop.run_until_complete(s.wait_eof()))
+        self.assertIs(
+            self.loop.run_until_complete(s.read()), streams.EOF_MARKER)
+        self.assertIs(
+            self.loop.run_until_complete(s.readline()), streams.EOF_MARKER)
+        self.assertIs(
+            self.loop.run_until_complete(s.readany()), streams.EOF_MARKER)
+        self.assertRaises(
+            asyncio.IncompleteReadError,
+            self.loop.run_until_complete, s.readexactly(10))
+        self.assertIs(s.read_nowait(), streams.EOF_MARKER)
+
+
 class DataQueueTests(unittest.TestCase):
 
     def setUp(self):

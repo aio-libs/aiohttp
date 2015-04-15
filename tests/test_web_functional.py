@@ -3,7 +3,7 @@ import json
 import os.path
 import socket
 import unittest
-from aiohttp import web, request, FormData
+from aiohttp import log, web, request, FormData
 from aiohttp.multidict import MultiDict
 from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
 from aiohttp.streams import EOF_MARKER
@@ -33,7 +33,10 @@ class TestWebFunctional(unittest.TestCase):
 
         port = self.find_unused_port()
         srv = yield from self.loop.create_server(
-            app.make_handler(keep_alive=None), '127.0.0.1', port)
+            app.make_handler(
+                keep_alive=None, tcp_sockopt=None,
+                access_log=log.access_logger),
+            '127.0.0.1', port)
         url = "http://127.0.0.1:{}".format(port) + path
         self.addCleanup(srv.close)
         return app, srv, url

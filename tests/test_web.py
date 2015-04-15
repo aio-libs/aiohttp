@@ -28,7 +28,7 @@ class TestWeb(unittest.TestCase):
                                     CIMultiDict(), False, False)
         payload = mock.Mock()
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(AssertionError):
             self.loop.run_until_complete(h.handle_request(message, payload))
 
     def test_app_ctor(self):

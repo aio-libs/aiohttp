@@ -120,7 +120,7 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
             except FileNotFoundError:
                 pass
             server_coroutine = thread_loop.create_unix_server(
-                lambda: TestHttpServer(keep_alive=0.5),
+                lambda: TestHttpServer(keep_alive=0.5, timeout=15),
                 listen_addr, ssl=sslcontext)
         server = thread_loop.run_until_complete(server_coroutine)
 

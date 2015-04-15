@@ -550,9 +550,8 @@ class StreamResponse(HeadersMixin):
         return resp_impl
 
     def write(self, data):
-        if not isinstance(data, (bytes, bytearray, memoryview)):
-            raise TypeError('data argument must be byte-ish (%r)' %
-                            type(data))
+        assert isinstance(data, (bytes, bytearray, memoryview)), \
+            'data argument must be byte-ish (%r)' % type(data)
 
         if self._eof_sent:
             raise RuntimeError("Cannot call write() after write_eof()")
