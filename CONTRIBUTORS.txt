@@ -23,6 +23,7 @@ Eugene Chernyshov
 Frederik Gladhorn
 Georges Dubus
 Greg Holt
+Hugo Herter
 Junjie Tao
 Kay Zheng
 Kirill Klenov
