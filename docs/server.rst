@@ -3,7 +3,9 @@
 Low-level HTTP Server
 =====================
 
-.. module:: aiohttp.server
+.. highlight:: python
+
+.. currentmodule:: aiohttp.server
 
 .. note::
 
@@ -13,10 +15,10 @@ Low-level HTTP Server
 Run a basic server
 ------------------
 
-Start implementing the basic server by inheriting
-the aiohttp.server.ServerHttpProtocol object. Your class
-should implement the only method handle_request which must
-be a coroutine to handle requests asynchronously
+Start implementing the basic server by inheriting the
+:class:`ServerHttpProtocol` object. Your class should
+implement the only method :meth:`ServerHttpProtocol.handle_request`
+which must be a coroutine to handle requests asynchronously
 
  .. code-block:: python
 
@@ -43,7 +45,7 @@ be a coroutine to handle requests asynchronously
             yield from response.write_eof()
 
 The next step is to create a loop and register your handler within a server.
-KeyboardInterrupt exception handling is necessary so you can stop
+:exc:`KeyboardInterrupt` exception handling is necessary so you can stop
 your server with Ctrl+C at any time.
 
  .. code-block:: python
@@ -73,8 +75,8 @@ Handling GET params
 -------------------
 
 Currently aiohttp does not provide automatic parsing of incoming GET
-params.  However aiohttp does provide a nice MulitiDict wrapper for
-already parsed params.
+params.  However aiohttp does provide a nice
+:class:`MulitiDict` wrapper for already parsed params.
 
 
  .. code-block:: python
@@ -122,7 +124,7 @@ SSL
 ---
 
 To use asyncio's SSL support, just pass an SSLContext object to the
-``create_server`` method of the loop.
+:meth:`asyncio.BaseEventLoop.create_server` method of the loop.
 
  .. code-block:: python
 
@@ -133,3 +135,13 @@ To use asyncio's SSL support, just pass an SSLContext object to the
 
     loop = asyncio.get_event_loop()
     loop.create_server(lambda: handler, "0.0.0.0", "8080", ssl=sslcontext)
+
+
+
+Reference
+---------
+
+.. automodule:: aiohttp.server
+    :members:
+    :undoc-members:
+    :show-inheritance:
