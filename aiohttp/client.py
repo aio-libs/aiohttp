@@ -15,10 +15,10 @@ import aiohttp
 from . import hdrs, helpers, streams
 from .log import client_logger
 from .streams import EOF_MARKER, FlowControlStreamReader
-from .multidict import CIMultiDictProxy, MultiDictProxy, MultiDict
+from .multidict import CIMultiDictProxy, MultiDictProxy, MultiDict, CIMultiDict
 from .multipart import MultipartWriter
 
-__all__ = ('request',)
+__all__ = ('request', 'ClientSession')
 
 HTTP_PORT = 80
 HTTPS_PORT = 443
@@ -67,7 +67,7 @@ def request(method, url, *,
     :type chunked: bool or int
     :param bool expect100: Expect 100-continue response from server.
     :param connector: BaseConnector sub-class instance to support
-       connection pooling and session cookies.
+       connection pooling.
     :type connector: aiohttp.connector.BaseConnector
     :param bool read_until_eof: Read response until eof if response
        does not have Content-Length header.
@@ -84,69 +84,228 @@ def request(method, url, *,
       >>> data = yield from resp.read()
 
     """
-    redirects = 0
-    method = method.upper()
-    if loop is None:
-        loop = asyncio.get_event_loop()
-    if request_class is None:
-        request_class = ClientRequest
-    if connector is None:
-        connector = aiohttp.TCPConnector(force_close=True, loop=loop)
-
-    while True:
-        req = request_class(
-            method, url, params=params, headers=headers, data=data,
-            cookies=cookies, files=files, encoding=encoding,
-            auth=auth, version=version, compress=compress, chunked=chunked,
-            loop=loop, expect100=expect100, response_class=response_class)
-
-        conn = yield from connector.connect(req)
-        try:
-            resp = req.send(conn.writer, conn.reader)
-            try:
-                yield from resp.start(conn, read_until_eof)
-            except:
-                resp.close()
-                conn.close()
-                raise
-        except (aiohttp.HttpProcessingError,
-                aiohttp.ServerDisconnectedError) as exc:
-            raise aiohttp.ClientResponseError() from exc
-        except OSError as exc:
-            raise aiohttp.ClientOSError() from exc
-
-        # redirects
-        if resp.status in (301, 302, 303, 307) and allow_redirects:
-            redirects += 1
-            if max_redirects and redirects >= max_redirects:
-                resp.close(force=True)
-                break
-
-            # For 301 and 302, mimic IE behaviour, now changed in RFC.
-            # Details: https://github.com/kennethreitz/requests/pull/269
-            if resp.status != 307:
-                method = hdrs.METH_GET
-                data = None
-            cookies = resp.cookies
-
-            r_url = (resp.headers.get(hdrs.LOCATION) or
-                     resp.headers.get(hdrs.URI))
-
-            scheme = urllib.parse.urlsplit(r_url)[0]
-            if scheme not in ('http', 'https', ''):
-                resp.close(force=True)
-                raise ValueError('Can redirect only to http or https')
-            elif not scheme:
-                r_url = urllib.parse.urljoin(url, r_url)
-
-            url = urllib.parse.urldefrag(r_url)[0]
-            if url:
-                yield from asyncio.async(resp.release(), loop=loop)
-                continue
-
-        break
-
+    session = ClientSession(connector=connector, loop=loop,
+                            request_class=request_class,
+                            response_class=response_class,
+                            cookies=cookies)
+    resp = yield from session.request(method, url,
+                                      params=params,
+                                      data=data,
+                                      headers=headers,
+                                      files=files,
+                                      auth=auth,
+                                      allow_redirects=allow_redirects,
+                                      max_redirects=max_redirects,
+                                      encoding=encoding,
+                                      version=version,
+                                      compress=compress,
+                                      chunked=chunked,
+                                      expect100=expect100,
+                                      read_until_eof=read_until_eof)
     return resp
+
+
+class ClientSession:
+
+    def __init__(self, *, connector=None, loop=None, request_class=None,
+                 response_class=None, cookies=None, headers=None, auth=None):
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        self._loop = loop
+        self.cookies = http.cookies.SimpleCookie()
+        if connector is None:
+            connector = aiohttp.TCPConnector(force_close=True, loop=loop)
+        # For Backward compatability with `share_cookie` connectors
+        elif connector._share_cookies:
+            self._update_cookies(connector.cookies)
+        if cookies is not None:
+            self._update_cookies(cookies)
+        self._connector = connector
+        self._default_auth = auth
+
+        # Convert to list of tuples
+        if headers:
+            if isinstance(headers, dict):
+                headers = list(headers.items())
+            elif isinstance(headers, (MultiDictProxy, MultiDict)):
+                headers = list(headers.items())
+        self._default_headers = headers
+
+        if request_class is None:
+            request_class = ClientRequest
+        self._request_class = request_class
+        self._response_class = response_class
+
+    @asyncio.coroutine
+    def request(self, method, url, *,
+                params=None,
+                data=None,
+                headers=None,
+                files=None,
+                auth=None,
+                allow_redirects=True,
+                max_redirects=10,
+                encoding='utf-8',
+                version=aiohttp.HttpVersion11,
+                compress=None,
+                chunked=None,
+                expect100=False,
+                read_until_eof=True):
+
+        redirects = 0
+        method = method.upper()
+
+        # Merge with default headers and transform to CIMultiDict
+        headers = self._prepare_headers(headers)
+        if auth is None:
+            auth = self._default_auth
+        # It would be confusing if we support explicit Authorization header
+        # with `auth` argument
+        if (headers is not None and
+                auth is not None and
+                hdrs.AUTHORIZATION in headers):
+            raise ValueError("Can't combine `Authorization` header with "
+                             "`auth` argument")
+
+        while True:
+            req = self._request_class(
+                method, url, params=params, headers=headers, data=data,
+                cookies=self.cookies, files=files, encoding=encoding,
+                auth=auth, version=version, compress=compress, chunked=chunked,
+                expect100=expect100,
+                loop=self._loop, response_class=self._response_class)
+
+            conn = yield from self._connector.connect(req)
+            try:
+                resp = req.send(conn.writer, conn.reader)
+                try:
+                    yield from resp.start(conn, read_until_eof)
+                except:
+                    resp.close()
+                    conn.close()
+                    raise
+            except (aiohttp.HttpProcessingError,
+                    aiohttp.ServerDisconnectedError) as exc:
+                raise aiohttp.ClientResponseError() from exc
+            except OSError as exc:
+                raise aiohttp.ClientOSError() from exc
+
+            self._update_cookies(resp.cookies)
+            # For Backward compatability with `share_cookie` connectors
+            if self._connector._share_cookies:
+                self._connector.update_cookies(resp.cookies)
+
+            # redirects
+            if resp.status in (301, 302, 303, 307) and allow_redirects:
+                redirects += 1
+                if max_redirects and redirects >= max_redirects:
+                    resp.close(force=True)
+                    break
+
+                # For 301 and 302, mimic IE behaviour, now changed in RFC.
+                # Details: https://github.com/kennethreitz/requests/pull/269
+                if resp.status != 307:
+                    method = hdrs.METH_GET
+                    data = None
+
+                r_url = (resp.headers.get(hdrs.LOCATION) or
+                         resp.headers.get(hdrs.URI))
+
+                scheme = urllib.parse.urlsplit(r_url)[0]
+                if scheme not in ('http', 'https', ''):
+                    resp.close(force=True)
+                    raise ValueError('Can redirect only to http or https')
+                elif not scheme:
+                    r_url = urllib.parse.urljoin(url, r_url)
+
+                url = urllib.parse.urldefrag(r_url)[0]
+                if url:
+                    yield from asyncio.async(resp.release(), loop=self._loop)
+                    continue
+
+            break
+
+        return resp
+
+    def _update_cookies(self, cookies):
+        """Update shared cookies."""
+        if isinstance(cookies, dict):
+            cookies = cookies.items()
+
+        for name, value in cookies:
+            if isinstance(value, http.cookies.Morsel):
+                # use dict method because SimpleCookie class modifies value
+                # before Python3.4
+                dict.__setitem__(self.cookies, name, value)
+            else:
+                self.cookies[name] = value
+
+    def _prepare_headers(self, headers):
+        """ Add default headers and transform it to CIMultiDict
+        """
+        # Convert headers to MultiDict
+        result = CIMultiDict()
+        if headers:
+            if isinstance(headers, dict):
+                headers = headers.items()
+            elif isinstance(headers, (MultiDictProxy, MultiDict)):
+                headers = headers.items()
+            for key, value in headers:
+                result.add(key, value)
+        # Add defaults only if those are not overridden
+        if self._default_headers:
+            for key, value in self._default_headers:
+                if key not in result:
+                    result.add(key, value)
+        return result
+
+    @asyncio.coroutine
+    def get(self, url, *, allow_redirects=True, **kwargs):
+        resp = yield from self.request(hdrs.METH_GET, url,
+                                       allow_redirects=allow_redirects,
+                                       **kwargs)
+        return resp
+
+    @asyncio.coroutine
+    def options(self, url, *, allow_redirects=True, **kwargs):
+        resp = yield from self.request(hdrs.METH_OPTIONS, url,
+                                       allow_redirects=allow_redirects,
+                                       **kwargs)
+        return resp
+
+    @asyncio.coroutine
+    def head(self, url, *, allow_redirects=False, **kwargs):
+        resp = yield from self.request(hdrs.METH_HEAD, url,
+                                       allow_redirects=allow_redirects,
+                                       **kwargs)
+        return resp
+
+    @asyncio.coroutine
+    def post(self, url, *, data=None, **kwargs):
+        resp = yield from self.request(hdrs.METH_POST, url,
+                                       data=data,
+                                       **kwargs)
+        return resp
+
+    @asyncio.coroutine
+    def put(self, url, *, data=None, **kwargs):
+        resp = yield from self.request(hdrs.METH_PUT, url,
+                                       data=data,
+                                       **kwargs)
+        return resp
+
+    @asyncio.coroutine
+    def patch(self, url, *, data=None, **kwargs):
+        resp = yield from self.request(hdrs.METH_PATCH, url,
+                                       data=data,
+                                       **kwargs)
+        return resp
+
+    @asyncio.coroutine
+    def delete(self, url, **kwargs):
+        resp = yield from self.request(hdrs.METH_DELETE, url,
+                                       **kwargs)
+        return resp
 
 
 class ClientRequest:
@@ -291,7 +450,7 @@ class ClientRequest:
 
     def update_headers(self, headers):
         """Update request headers."""
-        self.headers = MultiDict()
+        self.headers = CIMultiDict()
         if headers:
             if isinstance(headers, dict):
                 headers = headers.items()
@@ -299,7 +458,7 @@ class ClientRequest:
                 headers = headers.items()
 
             for key, value in headers:
-                self.headers.add(key.upper(), value)
+                self.headers.add(key, value)
 
         for hdr, val in self.DEFAULT_HEADERS.items():
             if hdr not in self.headers:
@@ -682,7 +841,6 @@ class ClientResponse:
                 except http.cookies.CookieError as exc:
                     client_logger.warning(
                         'Can not load response cookies: %s', exc)
-            connection.share_cookies(self.cookies)
         return self
 
     def close(self, force=False):

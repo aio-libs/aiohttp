@@ -11,7 +11,7 @@ import unittest
 from unittest import mock
 
 import aiohttp
-from aiohttp import client
+from aiohttp import client, helpers
 from aiohttp import test_utils
 from aiohttp.multidict import MultiDict
 from aiohttp.multipart import MultipartWriter
@@ -925,7 +925,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
         conn.close()
 
     @mock.patch('aiohttp.client.client_logger')
-    def test_session_cookies(self, m_log):
+    def test_connector_cookies(self, m_log):
         from aiohttp import connector
         conn = connector.TCPConnector(share_cookies=True, loop=self.loop)
 
@@ -1094,6 +1094,145 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
+    def test_share_cookie_partial_update(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            conn = aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
+            # Set c1 and c2 cookie
+            resp = self.loop.run_until_complete(
+                client.request('get', httpd.url('cookies'),
+                               connector=conn, loop=self.loop))
+            self.assertEqual(resp.cookies['c1'].value, 'cookie1')
+            self.assertEqual(resp.cookies['c2'].value, 'cookie2')
+            self.assertEqual(conn.cookies, resp.cookies)
+            # Update c1 at server side
+            resp = self.loop.run_until_complete(
+                client.request('get', httpd.url('cookies_partial'),
+                               connector=conn, loop=self.loop))
+            self.assertEqual(resp.cookies['c1'].value, 'other_cookie1')
+            # Assert, that we send updated cookies in next requests
+            r = self.loop.run_until_complete(
+                client.request('get', httpd.url('method', 'get'),
+                               connector=conn, loop=self.loop))
+            self.assertEqual(r.status, 200)
+            content = self.loop.run_until_complete(r.json())
+            self.assertEqual(
+                content['headers']['Cookie'],
+                'c1=other_cookie1; c2=cookie2')
+
+    def test_connector_cookie_merge(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            conn = aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
+            conn.update_cookies({
+                "c1": "connector_cookie1",
+                "c2": "connector_cookie2",
+            })
+            # Update c1 using direct cookies attribute of request
+            r = self.loop.run_until_complete(
+                client.request('get', httpd.url('method', 'get'),
+                               cookies={"c1": "direct_cookie1"},
+                               connector=conn, loop=self.loop))
+            self.assertEqual(r.status, 200)
+            content = self.loop.run_until_complete(r.json())
+            self.assertEqual(
+                content['headers']['Cookie'],
+                'c1=direct_cookie1; c2=connector_cookie2')
+
+    def test_session_cookies(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            session = client.ClientSession(loop=self.loop)
+
+            resp = self.loop.run_until_complete(
+                session.request('get', httpd.url('cookies')))
+            self.assertEqual(resp.cookies['c1'].value, 'cookie1')
+            self.assertEqual(resp.cookies['c2'].value, 'cookie2')
+            self.assertEqual(session.cookies, resp.cookies)
+
+            # Assert, that we send those cookies in next requests
+            r = self.loop.run_until_complete(
+                session.request('get', httpd.url('method', 'get')))
+            self.assertEqual(r.status, 200)
+            content = self.loop.run_until_complete(r.json())
+            self.assertEqual(
+                content['headers']['Cookie'], 'c1=cookie1; c2=cookie2')
+
+    def test_session_headers(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            session = client.ClientSession(
+                loop=self.loop, headers={
+                    "X-Real-IP": "192.168.0.1"
+                })
+
+            r = self.loop.run_until_complete(
+                session.request('get', httpd.url('method', 'get')))
+            self.assertEqual(r.status, 200)
+            content = self.loop.run_until_complete(r.json())
+            self.assertIn(
+                "X-Real-Ip", content['headers'])
+            self.assertEqual(
+                content['headers']["X-Real-Ip"], "192.168.0.1")
+
+    def test_session_headers_merge(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            session = client.ClientSession(
+                loop=self.loop, headers=[
+                    ("X-Real-IP", "192.168.0.1"),
+                    ("X-Sent-By", "requests")])
+
+            r = self.loop.run_until_complete(
+                session.request('get', httpd.url('method', 'get'),
+                                headers={"X-Sent-By": "aiohttp"}))
+            self.assertEqual(r.status, 200)
+            content = self.loop.run_until_complete(r.json())
+            self.assertIn(
+                "X-Real-Ip", content['headers'])
+            self.assertIn(
+                "X-Sent-By", content['headers'])
+            self.assertEqual(
+                content['headers']["X-Real-Ip"], "192.168.0.1")
+            self.assertEqual(
+                content['headers']["X-Sent-By"], "aiohttp")
+
+    def test_session_auth(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            session = client.ClientSession(
+                loop=self.loop, auth=helpers.BasicAuth("login", "pass"))
+
+            r = self.loop.run_until_complete(
+                session.request('get', httpd.url('method', 'get')))
+            self.assertEqual(r.status, 200)
+            content = self.loop.run_until_complete(r.json())
+            self.assertIn(
+                "Authorization", content['headers'])
+            self.assertEqual(
+                content['headers']["Authorization"], "Basic bG9naW46cGFzcw==")
+
+    def test_session_auth_override(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            session = client.ClientSession(
+                loop=self.loop, auth=helpers.BasicAuth("login", "pass"))
+
+            r = self.loop.run_until_complete(
+                session.request('get', httpd.url('method', 'get'),
+                                auth=helpers.BasicAuth("other_login", "pass")))
+            self.assertEqual(r.status, 200)
+            content = self.loop.run_until_complete(r.json())
+            self.assertIn(
+                "Authorization", content['headers'])
+            self.assertEqual(
+                content['headers']["Authorization"],
+                "Basic b3RoZXJfbG9naW46cGFzcw==")
+
+    def test_session_auth_header_conflict(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            session = client.ClientSession(
+                loop=self.loop, auth=helpers.BasicAuth("login", "pass"))
+
+            headers = {'Authorization': "Basic b3RoZXJfbG9naW46cGFzcw=="}
+            with self.assertRaises(ValueError):
+                self.loop.run_until_complete(
+                    session.request('get', httpd.url('method', 'get'),
+                                    headers=headers))
+
 
 class Functional(test_utils.Router):
 
@@ -1177,6 +1316,17 @@ class Functional(test_utils.Router):
             'Set-Cookie',
             'ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}='
             '{925EC0B8-CB17-4BEB-8A35-1033813B0523}; HttpOnly; Path=/')
+        self._response(resp)
+
+    @test_utils.Router.define('/cookies_partial$')
+    def cookies_partial(self, match):
+        cookies = http.cookies.SimpleCookie()
+        cookies['c1'] = 'other_cookie1'
+
+        resp = self._start_response(200)
+        for cookie in cookies.output(header='').split('\n'):
+            resp.add_header('Set-Cookie', cookie.strip())
+
         self._response(resp)
 
     @test_utils.Router.define('/broken$')

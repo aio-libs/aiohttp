@@ -66,27 +66,6 @@ class HttpConnectionTests(unittest.TestCase):
         self.assertIsNone(conn._transport)
         self.assertFalse(self.connector._release.called)
 
-    def test_no_share_cookies(self):
-        connector = aiohttp.BaseConnector(share_cookies=False, loop=self.loop)
-
-        conn = Connection(
-            connector, self.key, self.request,
-            self.transport, self.protocol, self.loop)
-        self.assertEqual(connector.cookies, {})
-        conn.share_cookies({'c1': 'cookie1'})
-        self.assertEqual(connector.cookies, {})
-
-    def test_share_cookies(self):
-        connector = aiohttp.BaseConnector(share_cookies=True, loop=self.loop)
-
-        conn = Connection(
-            connector, self.key, self.request,
-            self.transport, self.protocol, self.loop)
-        self.assertEqual(connector.cookies, {})
-        conn.share_cookies({'c1': 'cookie1'})
-        self.assertEqual(connector.cookies,
-                         http.cookies.SimpleCookie({'c1': 'cookie1'}))
-
 
 class BaseConnectorTests(unittest.TestCase):
 
@@ -406,6 +385,11 @@ class HttpClientConnectorTests(unittest.TestCase):
             content = content.decode()
             self.assertEqual(r.status, 200)
             r.close()
+
+    def test_connector_cookie_deprecation(self):
+        with self.assertWarnsRegex(DeprecationWarning,
+                                   "^Using `share_cookies` is deprecated"):
+            aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
 
 
 class ProxyConnectorTests(unittest.TestCase):
