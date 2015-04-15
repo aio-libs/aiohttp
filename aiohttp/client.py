@@ -5,11 +5,11 @@ import http.cookies
 import io
 import json
 import mimetypes
+import os
 import urllib.parse
 import weakref
 import warnings
 import chardet
-from os import fstat
 
 import aiohttp
 from . import hdrs, helpers, streams
@@ -386,7 +386,7 @@ class ClientRequest:
             self.body = data
             if not self.chunked and isinstance(data, io.BufferedReader):
                 # Not chunking if content-length can be determined
-                size = fstat(data.fileno()).st_size - data.tell()
+                size = os.fstat(data.fileno()).st_size - data.tell()
                 self.headers[hdrs.CONTENT_LENGTH] = str(size)
                 self.chunked = False
             else:

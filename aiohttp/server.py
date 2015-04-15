@@ -239,9 +239,10 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                         isinstance(handler, asyncio.Future)):
                     yield from handler
 
-            except (asyncio.CancelledError,
-                    errors.ClientDisconnectedError):
-                self.log_debug('Ignored premature client disconnection.')
+            except (asyncio.CancelledError, errors.ClientDisconnectedError):
+                if self.debug:
+                    self.log_exception(
+                        'Ignored premature client disconnection.')
                 break
             except errors.HttpProcessingError as exc:
                 if self.transport is not None:
@@ -275,6 +276,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                         self.transport.close()
                         break
                 else:
+                    # connection is closed
                     break
 
     def handle_error(self, status=500,
