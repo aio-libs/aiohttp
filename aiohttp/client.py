@@ -17,7 +17,7 @@ from .streams import EOF_MARKER, FlowControlStreamReader
 from .multidict import CIMultiDictProxy, MultiDictProxy, MultiDict, CIMultiDict
 from .multipart import MultipartWriter
 
-__all__ = ('request',)
+__all__ = ('request', 'ClientSession')
 
 HTTP_PORT = 80
 HTTPS_PORT = 443
@@ -83,10 +83,10 @@ def request(method, url, *,
       >>> data = yield from resp.read()
 
     """
-    session = Session(connector=connector, loop=loop,
-                      request_class=request_class,
-                      response_class=response_class,
-                      cookies=cookies)
+    session = ClientSession(connector=connector, loop=loop,
+                            request_class=request_class,
+                            response_class=response_class,
+                            cookies=cookies)
     resp = yield from session.request(method, url,
                                       params=params,
                                       data=data,
@@ -104,7 +104,7 @@ def request(method, url, *,
     return resp
 
 
-class Session:
+class ClientSession:
 
     def __init__(self, *, connector=None, loop=None, request_class=None,
                  response_class=None, cookies=None, headers=None, auth=None):
@@ -234,6 +234,7 @@ class Session:
         for name, value in cookies:
             if isinstance(value, http.cookies.Morsel):
                 # use dict method because SimpleCookie class modifies value
+                # before Python3.4
                 dict.__setitem__(self.cookies, name, value)
             else:
                 self.cookies[name] = value
@@ -258,50 +259,50 @@ class Session:
         return result
 
     @asyncio.coroutine
-    def get(self, url, allow_redirects=True, **kwargs):
-        resp = yield from self.request('GET', url,
+    def get(self, url, *, allow_redirects=True, **kwargs):
+        resp = yield from self.request(hdrs.METH_GET, url,
                                        allow_redirects=allow_redirects,
                                        **kwargs)
         return resp
 
     @asyncio.coroutine
-    def options(self, url, allow_redirects=True, **kwargs):
-        resp = yield from self.request('OPTIONS', url,
+    def options(self, url, *, allow_redirects=True, **kwargs):
+        resp = yield from self.request(hdrs.METH_OPTIONS, url,
                                        allow_redirects=allow_redirects,
                                        **kwargs)
         return resp
 
     @asyncio.coroutine
-    def head(self, url, allow_redirects=False, **kwargs):
-        resp = yield from self.request('HEAD', url,
+    def head(self, url, *, allow_redirects=False, **kwargs):
+        resp = yield from self.request(hdrs.METH_HEAD, url,
                                        allow_redirects=allow_redirects,
                                        **kwargs)
         return resp
 
     @asyncio.coroutine
     def post(self, url, *, data=None, **kwargs):
-        resp = yield from self.request('POST', url,
+        resp = yield from self.request(hdrs.METH_POST, url,
                                        data=data,
                                        **kwargs)
         return resp
 
     @asyncio.coroutine
     def put(self, url, *, data=None, **kwargs):
-        resp = yield from self.request('PUT', url,
+        resp = yield from self.request(hdrs.METH_PUT, url,
                                        data=data,
                                        **kwargs)
         return resp
 
     @asyncio.coroutine
     def patch(self, url, *, data=None, **kwargs):
-        resp = yield from self.request('PATCH', url,
+        resp = yield from self.request(hdrs.METH_PATCH, url,
                                        data=data,
                                        **kwargs)
         return resp
 
     @asyncio.coroutine
     def delete(self, url, **kwargs):
-        resp = yield from self.request('DELETE', url,
+        resp = yield from self.request(hdrs.METH_DELETE, url,
                                        **kwargs)
         return resp
 

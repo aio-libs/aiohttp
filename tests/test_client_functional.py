@@ -1139,7 +1139,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
     def test_session_cookies(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
-            session = client.Session(loop=self.loop)
+            session = client.ClientSession(loop=self.loop)
 
             resp = self.loop.run_until_complete(
                 session.request('get', httpd.url('cookies')))
@@ -1157,7 +1157,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
     def test_session_headers(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
-            session = client.Session(
+            session = client.ClientSession(
                 loop=self.loop, headers={
                     "X-Real-IP": "192.168.0.1"
                 })
@@ -1173,7 +1173,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
     def test_session_headers_merge(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
-            session = client.Session(
+            session = client.ClientSession(
                 loop=self.loop, headers=[
                     ("X-Real-IP", "192.168.0.1"),
                     ("X-Sent-By", "requests")])
@@ -1194,7 +1194,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
     def test_session_auth(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
-            session = client.Session(
+            session = client.ClientSession(
                 loop=self.loop, auth=helpers.BasicAuth("login", "pass"))
 
             r = self.loop.run_until_complete(
@@ -1208,7 +1208,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
     def test_session_auth_override(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
-            session = client.Session(
+            session = client.ClientSession(
                 loop=self.loop, auth=helpers.BasicAuth("login", "pass"))
 
             r = self.loop.run_until_complete(
@@ -1224,7 +1224,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
     def test_session_auth_header_conflict(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
-            session = client.Session(
+            session = client.ClientSession(
                 loop=self.loop, auth=helpers.BasicAuth("login", "pass"))
 
             headers = {'Authorization': "Basic b3RoZXJfbG9naW46cGFzcw=="}
