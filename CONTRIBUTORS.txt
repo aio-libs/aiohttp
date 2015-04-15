@@ -41,6 +41,7 @@ Robert Lu
 Sebastian Hanula
 Simon Kennedy
 Stephen Granade
+Taras Voinarovskyi
 Vaibhav Sagar
 Vitaly Haritonsky
 W. Trevor King
