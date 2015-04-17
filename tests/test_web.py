@@ -104,6 +104,20 @@ class TestRequestHandlerFactory(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
+    def test_repr(self):
+        app = web.Application(loop=self.loop)
+        manager = app.make_handler()
+        handler = manager()
+
+        self.assertEqual(
+            '<RequestHandler none:none disconnected>', repr(handler))
+
+        handler.transport = object()
+        handler._meth = 'GET'
+        handler._path = '/index.html'
+        self.assertEqual(
+            '<RequestHandler GET:/index.html connected>', repr(handler))
+
     def test_connections(self):
         app = web.Application(loop=self.loop)
         manager = app.make_handler()

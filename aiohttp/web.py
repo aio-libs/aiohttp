@@ -26,6 +26,9 @@ from .server import ServerHttpProtocol
 
 class RequestHandler(ServerHttpProtocol):
 
+    _meth = 'none'
+    _path = 'none'
+
     def __init__(self, manager, app, router, **kwargs):
         super().__init__(**kwargs)
 
@@ -33,6 +36,11 @@ class RequestHandler(ServerHttpProtocol):
         self._app = app
         self._router = router
         self._middlewares = app.middlewares
+
+    def __repr__(self):
+        return "<{} {}:{} {}>".format(
+            self.__class__.__name__, self._meth, self._path,
+            'connected' if self.transport is not None else 'disconnected')
 
     def connection_made(self, transport):
         super().connection_made(transport)
@@ -52,6 +60,8 @@ class RequestHandler(ServerHttpProtocol):
         app = self._app
         request = Request(app, message, payload,
                           self.transport, self.reader, self.writer)
+        self._meth = request.method
+        self._path = request.path
         try:
             match_info = yield from self._router.resolve(request)
 
@@ -86,6 +96,10 @@ class RequestHandler(ServerHttpProtocol):
         # log access
         if self.access_log:
             self.log_access(message, None, resp_msg, self._loop.time() - now)
+
+        # for repr
+        self._meth = 'none'
+        self._path = 'none'
 
 
 class RequestHandlerFactory:
