@@ -12,6 +12,7 @@
 .Python
 .coverage
 .idea
+*.iml
 .installed.cfg
 .noseids
 .tox
