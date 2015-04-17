@@ -12,10 +12,13 @@ from aiohttp.streams import EOF_MARKER
 class TestWebFunctional(unittest.TestCase):
 
     def setUp(self):
+        self.handler = None
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
 
     def tearDown(self):
+        if self.handler:
+            self.loop.run_until_complete(self.handler.finish_connections())
         self.loop.close()
 
     def find_unused_port(self):
@@ -32,11 +35,11 @@ class TestWebFunctional(unittest.TestCase):
             app.router.add_route(method, path, handler)
 
         port = self.find_unused_port()
+        self.handler = app.make_handler(
+            debug=True, keep_alive_on=False,
+            access_log=log.access_logger)
         srv = yield from self.loop.create_server(
-            app.make_handler(
-                keep_alive=None, tcp_sockopt=None,
-                access_log=log.access_logger),
-            '127.0.0.1', port)
+            self.handler, '127.0.0.1', port)
         url = "http://127.0.0.1:{}".format(port) + path
         self.addCleanup(srv.close)
         return app, srv, url

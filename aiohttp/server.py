@@ -32,11 +32,12 @@ ACCESS_LOG_FORMAT = (
 
 
 if hasattr(socket, 'SO_KEEPALIVE'):
-    def tcp_sockopt(server, transport):
+    def tcp_keepalive(server, transport):
         sock = transport.get_extra_info('socket')
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
 else:
-    tcp_sockopt = None
+    def tcp_keepalive(server, transport):  # pragma: no cover
+        pass
 
 EMPTY_PAYLOAD = streams.EmptyStreamReader()
 
@@ -55,9 +56,9 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     :param keep_alive: number of seconds before closing keep-alive connection
     :type keep_alive: int or None
 
-    :param int timeout: slow request timeout
+    :param bool keep_alive_on: keep-alive is o, default is on
 
-    :param function tcp_sockopt: Callback for TCP socket configuration
+    :param int timeout: slow request timeout
 
     :param allowed_methods: (optional) List of allowed request methods.
                             Set to empty list to allow all methods.
@@ -86,8 +87,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
     def __init__(self, *, loop=None,
                  keep_alive=75,  # NGINX default value is 75 secs
+                 keep_alive_on=True,
                  timeout=0,
-                 tcp_sockopt=tcp_sockopt,
                  logger=server_logger,
                  access_log=None,
                  access_log_format=ACCESS_LOG_FORMAT,
@@ -100,9 +101,9 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             loop=loop,
             disconnect_error=errors.ClientDisconnectedError, **kwargs)
 
+        self._keep_alive_on = keep_alive_on
         self._keep_alive_period = keep_alive  # number of seconds to keep alive
         self._timeout = timeout  # slow request timeout
-        self._tcp_sockopt = tcp_sockopt  # extra socket options
         self._loop = loop if loop is not None else asyncio.get_event_loop()
 
         self.host = host
@@ -134,15 +135,15 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     def connection_made(self, transport):
         super().connection_made(transport)
 
-        if self._tcp_sockopt:
-            self._tcp_sockopt(self, transport)
-
         self._request_handler = asyncio.async(self.start(), loop=self._loop)
 
         # start slow request timer
         if self._timeout:
             self._timeout_handle = self._loop.call_later(
                 self._timeout, self.cancel_slow_request)
+
+        if self._keep_alive_on:
+            tcp_keepalive(self, transport)
 
     def connection_lost(self, exc):
         super().connection_lost(exc)
@@ -285,7 +286,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                             self._keep_alive_period)
                         self._keep_alive_handle = self._loop.call_later(
                             self._keep_alive_period, self.transport.close)
-                    elif self._keep_alive and self._tcp_sockopt:
+                    elif self._keep_alive and self._keep_alive_on:
                         # do nothing, rely on kernel or upstream server
                         pass
                     else:

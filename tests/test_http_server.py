@@ -118,7 +118,7 @@ class HttpServerProtocolTests(unittest.TestCase):
                                            socket.SO_KEEPALIVE, 1)
 
     def test_connection_made_without_keepaplive(self):
-        srv = server.ServerHttpProtocol(loop=self.loop, tcp_sockopt=None)
+        srv = server.ServerHttpProtocol(loop=self.loop, keep_alive_on=False)
 
         sock = unittest.mock.Mock()
         transport = unittest.mock.Mock()

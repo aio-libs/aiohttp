@@ -20,6 +20,8 @@ CHANGES
 
 - Add ClientSession object for cookie storage and default headers #328
 
+- Add `keep_alive_on` argument for http server handler.
+
 
 0.15.1 (03-31-2015)
 -------------------
