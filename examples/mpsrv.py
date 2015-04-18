@@ -280,6 +280,9 @@ class Supervisor:
 
 
 def main():
+    if getattr(os, "fork", None) is None:
+        print("os.fork isn't supported by your OS")
+        return
     args = ARGS.parse_args()
     if ':' in args.host:
         args.host, port = args.host.split(':', 1)
