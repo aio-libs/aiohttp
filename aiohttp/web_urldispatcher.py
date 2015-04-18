@@ -315,6 +315,12 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                 self._routes[name] = route
         self._urls.append(route)
 
+    def add_routes(self, methods, path, handler,
+                   *args, name=None, expect_handler=None):
+        for method in methods:
+            self.add_route(method=method, path=path, handler=handler,
+                           name=name, expect_handler=expect_handler, *args)
+
     def add_route(self, method, path, handler,
                   *, name=None, expect_handler=None):
 

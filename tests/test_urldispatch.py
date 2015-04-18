@@ -75,6 +75,22 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIs(handler, info.handler)
         self.assertIsNone(info.route.name)
 
+    def test_add_routes_root(self):
+        handler = self.make_handler()
+        self.router.add_routes(['GET', 'POST'], '/', handler)
+        req = self.make_request('GET', '/')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info)
+        self.assertEqual(0, len(info))
+        self.assertIs(handler, info.handler)
+        self.assertIsNone(info.route.name)
+        req = self.make_request('POST', '/')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info)
+        self.assertEqual(0, len(info))
+        self.assertIs(handler, info.handler)
+        self.assertIsNone(info.route.name)
+
     def test_add_route_simple(self):
         handler = self.make_handler()
         self.router.add_route('GET', '/handler/to/path', handler)
