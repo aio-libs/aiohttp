@@ -946,6 +946,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
       Pay attention please: *handler* is converted to coroutine internally when
       it is a regular function.
 
+      *Note:* You can add several HTTP methods for one handler with *add_routes()* method. Same input parameters as *add_route()*.
+
       :param str path: route path
 
       :param callable handler: route handler
