@@ -11,17 +11,18 @@ from aiohttp.multidict import MultiDict, CIMultiDict
 
 
 class ClientResponseTests(unittest.TestCase):
+
     maxDiff = None
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
+        self.run = self.loop.run_until_complete
 
     def tearDown(self):
         self.loop.close()
 
-    def test_init_headers(self):
-        # Test simple dict
+    def test_init_headers_simple_dict(self):
         session = ClientSession(
             headers={
                 "h1": "header1",
@@ -31,7 +32,8 @@ class ClientResponseTests(unittest.TestCase):
             set(session._default_headers),
             set([("h1", "header1"),
                  ("h2", "header2")]))
-        # Test list of tuples
+
+    def test_init_headers_list_of_tuples(self):
         session = ClientSession(
             headers=[("h1", "header1"),
                      ("h2", "header2"),
@@ -42,7 +44,8 @@ class ClientResponseTests(unittest.TestCase):
             set([("h1", "header1"),
                  ("h2", "header2"),
                  ("h3", "header3")]))
-        # Test MultiDict
+
+    def test_init_headers_MultiDict(self):
         session = ClientSession(
             headers=MultiDict(
                 [("h1", "header1"),
@@ -55,8 +58,7 @@ class ClientResponseTests(unittest.TestCase):
                  ("h2", "header2"),
                  ("h3", "header3")]))
 
-    def test_init_cookies(self):
-        # Test simple dict
+    def test_init_cookies_with_simple_dict(self):
         session = ClientSession(
             cookies={
                 "c1": "cookie1",
@@ -65,7 +67,8 @@ class ClientResponseTests(unittest.TestCase):
         self.assertEqual(set(session.cookies), {'c1', 'c2'})
         self.assertEqual(session.cookies['c1'].value, 'cookie1')
         self.assertEqual(session.cookies['c2'].value, 'cookie2')
-        # Test list of tuples
+
+    def test_init_cookies_with_list_of_tuples(self):
         session = ClientSession(
             cookies=[("c1", "cookie1"),
                      ("c2", "cookie2")],
@@ -89,7 +92,8 @@ class ClientResponseTests(unittest.TestCase):
             ("h1", "h1"),
             ("h2", "header2")
         ]))
-        # Check incoming multi dict
+
+    def test_merge_headers_with_multi_dict(self):
         session = ClientSession(
             headers={
                 "h1": "header1",
@@ -101,7 +105,8 @@ class ClientResponseTests(unittest.TestCase):
             ("h1", "h1"),
             ("h2", "header2")
         ]))
-        # Check incoming list of tuples
+
+    def test_merge_headers_with_list_of_tuples(self):
         session = ClientSession(
             headers={
                 "h1": "header1",
@@ -114,10 +119,9 @@ class ClientResponseTests(unittest.TestCase):
             ("h2", "header2")
         ]))
 
-    @unittest.mock.patch("aiohttp.client.ClientSession.request")
-    def test_http_methods(self, patched):
+    def _make_one(self):
         session = ClientSession(loop=self.loop)
-        add_params = dict(
+        params = dict(
             headers={"Authorization": "Basic ..."},
             max_redirects=2,
             encoding="latin1",
@@ -126,58 +130,66 @@ class ClientResponseTests(unittest.TestCase):
             chunked=True,
             expect100=True,
             read_until_eof=False)
-        run = self.loop.run_until_complete
-        # Check GET
-        run(session.get(
+        return session, params
+
+    @unittest.mock.patch("aiohttp.client.ClientSession.request")
+    def test_http_GET(self, patched):
+        session, params = self._make_one()
+        self.run(session.get(
             "http://test.example.com",
             params={"x": 1},
-            **add_params))
-        self.assertEqual(
-            patched.call_count, 1, "`ClientSession.request` not called")
+            **params))
+        self.assertTrue(patched.called, "`ClientSession.request` not called")
         self.assertEqual(
             list(patched.call_args),
             [("GET", "http://test.example.com",),
              dict(
-                params={"x": 1},
-                allow_redirects=True,
-                **add_params)])
-        # Check OPTIONS
-        run(session.options(
+                 params={"x": 1},
+                 allow_redirects=True,
+                 **params)])
+
+    @unittest.mock.patch("aiohttp.client.ClientSession.request")
+    def test_http_OPTIONS(self, patched):
+        session, params = self._make_one()
+        self.run(session.options(
             "http://opt.example.com",
             params={"x": 2},
-            **add_params))
-        self.assertEqual(
-            patched.call_count, 2, "`ClientSession.request` not called")
+            **params))
+        self.assertTrue(patched.called, "`ClientSession.request` not called")
         self.assertEqual(
             list(patched.call_args),
             [("OPTIONS", "http://opt.example.com",),
              dict(
                 params={"x": 2},
                 allow_redirects=True,
-                **add_params)])
-        # Check HEAD
-        run(session.head(
+                **params)])
+
+    @unittest.mock.patch("aiohttp.client.ClientSession.request")
+    def test_http_HEAD(self, patched):
+        session, params = self._make_one()
+        self.run(session.head(
             "http://head.example.com",
             params={"x": 2},
-            **add_params))
-        self.assertEqual(
-            patched.call_count, 3, "`ClientSession.request` not called")
+            **params))
+        self.assertTrue(patched.called, "`ClientSession.request` not called")
         self.assertEqual(
             list(patched.call_args),
             [("HEAD", "http://head.example.com",),
              dict(
                 params={"x": 2},
                 allow_redirects=False,
-                **add_params)])
-        # Check POST
-        run(session.post(
+                **params)])
+
+    @unittest.mock.patch("aiohttp.client.ClientSession.request")
+    def test_http_POST(self, patched):
+        session, params = self._make_one()
+        self.run(session.post(
             "http://post.example.com",
             params={"x": 2},
             data="Some_data",
             files={"x": '1'},
-            **add_params))
-        self.assertEqual(
-            patched.call_count, 4, "`ClientSession.request` not called")
+            **params))
+        self.assertTrue(patched.called, "`ClientSession.request` not called")
         self.assertEqual(
             list(patched.call_args),
             [("POST", "http://post.example.com",),
@@ -185,33 +197,37 @@ class ClientResponseTests(unittest.TestCase):
                 params={"x": 2},
                 data="Some_data",
                 files={"x": '1'},
-                **add_params)])
-        # Check PUT
-        run(session.put(
+                **params)])
+
+    @unittest.mock.patch("aiohttp.client.ClientSession.request")
+    def test_http_PUT(self, patched):
+        session, params = self._make_one()
+        self.run(session.put(
             "http://put.example.com",
             params={"x": 2},
             data="Some_data",
             files={"x": '1'},
-            **add_params))
-        self.assertEqual(
-            patched.call_count, 5, "`ClientSession.request` not called")
+            **params))
+        self.assertTrue(patched.called, "`ClientSession.request` not called")
         self.assertEqual(
             list(patched.call_args),
             [("PUT", "http://put.example.com",),
              dict(
-                params={"x": 2},
-                data="Some_data",
-                files={"x": '1'},
-                **add_params)])
-        # Check PATCH
-        run(session.patch(
+                 params={"x": 2},
+                 data="Some_data",
+                 files={"x": '1'},
+                 **params)])
+
+    @unittest.mock.patch("aiohttp.client.ClientSession.request")
+    def test_http_PATCH(self, patched):
+        session, params = self._make_one()
+        self.run(session.patch(
             "http://patch.example.com",
             params={"x": 2},
             data="Some_data",
             files={"x": '1'},
-            **add_params))
-        self.assertEqual(
-            patched.call_count, 6, "`ClientSession.request` not called")
+            **params))
+        self.assertTrue(patched.called, "`ClientSession.request` not called")
         self.assertEqual(
             list(patched.call_args),
             [("PATCH", "http://patch.example.com",),
@@ -219,17 +235,19 @@ class ClientResponseTests(unittest.TestCase):
                 params={"x": 2},
                 data="Some_data",
                 files={"x": '1'},
-                **add_params)])
-        # Check DELETE
-        run(session.delete(
+                **params)])
+
+    @unittest.mock.patch("aiohttp.client.ClientSession.request")
+    def test_http_DELETE(self, patched):
+        session, params = self._make_one()
+        self.run(session.delete(
             "http://delete.example.com",
             params={"x": 2},
-            **add_params))
-        self.assertEqual(
-            patched.call_count, 7, "`ClientSession.request` not called")
+            **params))
+        self.assertTrue(patched.called, "`ClientSession.request` not called")
         self.assertEqual(
             list(patched.call_args),
             [("DELETE", "http://delete.example.com",),
              dict(
                 params={"x": 2},
-                **add_params)])
+                **params)])
