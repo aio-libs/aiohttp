@@ -128,6 +128,15 @@ so application developer can use classes if he wants::
    app.router.add_route('GET', '/greet/{name}', handler.handle_greeting)
 
 
+.. versionadded:: 0.15.2
+
+   :meth:`UrlDispatcher.add_route` supports wildcard as *HTTP method*::
+
+       app.router.add_route('*', '/path', handler)
+
+   That means the handler for ``'/path'`` is applied for every HTTP method.
+
+
 Custom conditions for routes lookup
 -----------------------------------
 
