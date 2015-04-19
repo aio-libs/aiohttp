@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-0.15.2 (Unreleased)
+0.15.2 (04-19-2015)
 -------------------
 
 - Flow control subsystem refactoring
