@@ -154,8 +154,8 @@ class TestWebFunctional(unittest.TestCase):
 
         def check_file(fs):
             fullname = os.path.join(here, fs.filename)
-            with open(fullname, 'rb') as f:
-                test_data = f.read()
+            with open(fullname, 'r') as f:
+                test_data = f.read().encode()
                 data = fs.file.read()
                 self.assertEqual(test_data, data)
 
@@ -188,8 +188,8 @@ class TestWebFunctional(unittest.TestCase):
 
         def check_file(fs):
             fullname = os.path.join(here, fs.filename)
-            with open(fullname, 'rb') as f:
-                test_data = f.read()
+            with open(fullname, 'r') as f:
+                test_data = f.read().encode()
                 data = fs.file.read()
                 self.assertEqual(test_data, data)
 
@@ -265,7 +265,7 @@ class TestWebFunctional(unittest.TestCase):
             resp = yield from request('GET', url, loop=self.loop)
             self.assertEqual(200, resp.status)
             txt = yield from resp.text()
-            self.assertEqual('file content\n', txt)
+            self.assertEqual('file content{}'.format(os.linesep), txt)
             ct = resp.headers['CONTENT-TYPE']
             self.assertEqual('application/octet-stream', ct)
             self.assertEqual(resp.headers.get('CONTENT-ENCODING'), None)
