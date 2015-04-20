@@ -146,12 +146,14 @@ is possible to specify custom encoding and decoder functions for the
 Streaming Response Content
 --------------------------
 
-While methods ``read()``, ``json()`` and ``text()`` are very convenient
-you should use them carefully. All this methods loads the whole response in memory.
-For example if you want to download several gigabyte sized files, this methods
-will load all the data in memory. Instead you can use the ``ClientResponse.content``
-attribute. It is an instance of the ``aiohttp.StreamReader`` class. The ``gzip``
-and ``deflate`` transfer-encodings are automatically decoded for you.
+While methods ``read()``, ``json()`` and ``text()`` are very
+convenient you should use them carefully. All this methods loads the
+whole response in memory.  For example if you want to download several
+gigabyte sized files, this methods will load all the data in
+memory. Instead you can use the ``ClientResponse.content``
+attribute. It is an instance of the ``aiohttp.StreamReader``
+class. The ``gzip`` and ``deflate`` transfer-encodings are
+automatically decoded for you.
 
 .. code::
 
@@ -179,8 +181,8 @@ with ``chunk_size``.
 Custom Headers
 --------------
 
-If you need to add HTTP headers to a request, pass them in a ``dict`` to the
-``headers`` parameter.
+If you need to add HTTP headers to a request, pass them in a
+:class:`dict` to the *headers* parameter.
 
 For example, if you want to specify the content-type for the previous example::
 
@@ -198,7 +200,7 @@ For example, if you want to specify the content-type for the previous example::
 Custom Cookies
 --------------
 
-To send your own cookies to the server, you can use the ``cookies``
+To send your own cookies to the server, you can use the *cookies*
 parameter::
 
     >>> url = 'http://httpbin.org/cookies'
@@ -213,7 +215,7 @@ More complicated POST requests
 ------------------------------
 
 Typically, you want to send some form-encoded data — much like an HTML form.
-To do this, simply pass a dictionary to the ``data`` argument. Your
+To do this, simply pass a dictionary to the *data* argument. Your
 dictionary of data will automatically be form-encoded when the request is made::
 
     >>> payload = {'key1': 'value1', 'key2': 'value2'}
@@ -230,8 +232,9 @@ dictionary of data will automatically be form-encoded when the request is made::
       ...
     }
 
-If you want to send data that is not form-encoded you can do it by passing a ``string``
-instead of a ``dict``. This data will be posted directly.
+If you want to send data that is not form-encoded you can do it by
+passing a :class:`str` instead of a :class:`dict`. This data will be
+posted directly.
 
 For example, the GitHub API v3 accepts JSON-Encoded POST/PATCH data::
 
@@ -264,9 +267,9 @@ You can set the filename, content_type explicitly::
 
     >>> yield from aiohttp.request('post', url, data=data)
 
-If you pass a file object as data parameter, aiohttp will stream it to the server
-automatically. Check :class:`aiohttp.stream.StreamReader` for supported format
-information.
+If you pass a file object as data parameter, aiohttp will stream it to
+the server automatically. Check :class:`~aiohttp.streams.StreamReader`
+for supported format information.
 
 .. seealso:: :ref:`aiohttp-multipart`
 
@@ -274,7 +277,7 @@ information.
 Streaming uploads
 -----------------
 
-aiohttp support multiple types of streaming uploads, which allows you to
+:mod:`aiohttp` supports multiple types of streaming uploads, which allows you to
 send large files without reading them into memory.
 
 As a simple case, simply provide a file-like object for your body::
@@ -284,7 +287,7 @@ As a simple case, simply provide a file-like object for your body::
     ...       'post', 'http://some.url/streamed', data=f)
 
 
-Or you can provide an ``asyncio`` coroutine that yields bytes objects::
+Or you can provide an :ref:`coroutine<coroutine>` that yields bytes objects::
 
    >>> @asyncio.coroutine
    ... def my_coroutine():
@@ -294,12 +297,13 @@ Or you can provide an ``asyncio`` coroutine that yields bytes objects::
    ...    yield chunk
 
 .. note::
-   It is not a standard ``asyncio`` coroutine as it yields values so it
+   It is not a standard :ref:`coroutine<coroutine>` as it yields values so it
    can not be used like ``yield from my_coroutine()``.
-   ``aiohttp`` internally handles such coroutines.
+   :mod:`aiohttp` internally handles such coroutines.
 
-Also it is possible to use a ``StreamReader`` object. Lets say we want to upload
-a file from another request and calculate the file sha1 hash::
+Also it is possible to use a :class:`~aiohttp.streams.StreamReader`
+object. Lets say we want to upload a file from another request and
+calculate the file sha1 hash::
 
    >>> def feed_stream(resp, stream):
    ...    h = hashlib.sha1()
@@ -321,8 +325,9 @@ a file from another request and calculate the file sha1 hash::
    >>> file_hash = yield from feed_stream(resp, stream)
 
 
-Because the response content attribute is a StreamReader, you can chain get and
-post requests together::
+Because the response content attribute is a
+:class:`~aiohttp.streams.StreamReader`, you can chain get and post
+requests together::
 
    >>> r = yield from aiohttp.request('get', 'http://python.org')
    >>> yield from aiohttp.request('post',
@@ -335,8 +340,8 @@ post requests together::
 Keep-Alive, connection pooling and cookie sharing
 -------------------------------------------------
 
-To share cookies between multiple requests you can create an 
-``aiohttp.ClientSession`` object:
+To share cookies between multiple requests you can create an
+:class:`~aiohttp.client.ClientSession` object:
 
     >>> session = aiohttp.ClientSession()
     >>> yield from session.get(
@@ -355,9 +360,10 @@ You also can set default headers for all session requests:
     >>> json['headers']['Authorization']
     'Basic bG9naW46cGFzcw=='
 
-By default aiohttp does not use connection pooling. In other words multiple
-calls to ``aiohttp.request`` will start a new connection to host each.
-``aiohttp.ClientSession`` object will do connection pooling for you.
+By default aiohttp does not use connection pooling. In other words
+multiple calls to :func:`~aiohttp.client.request` will start a new
+connection to host each.  :class:`~aiohttp.client.ClientSession`
+object will do connection pooling for you.
 
 
 Connectors
