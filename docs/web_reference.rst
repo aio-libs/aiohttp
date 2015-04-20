@@ -935,7 +935,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
    .. seealso:: :ref:`Route classes <aiohttp-web-route>`
 
-   .. method:: add_route(method, path, handler, *, name=None, expect_handler=None)
+   .. method:: add_route(method, path, handler, *, \
+                         name=None, expect_handler=None)
 
       Append :ref:`handler<aiohttp-web-handler>` to the end of route table.
 
@@ -945,6 +946,14 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       Pay attention please: *handler* is converted to coroutine internally when
       it is a regular function.
+
+      :param str method: HTTP method for route. Should be one of
+                         ``'GET'``, ``'POST'``, ``'PUT'``,
+                         ``'DELETE'``, ``'PATCH'``, ``'HEAD'``,
+                         ``'OPTIONS'`` or ``'*'`` for any method.
+
+                         The parameter is case-insensitive, e.g. you
+                         can push ``'get'`` as well as ``'GET'``.
 
       :param str path: route path
 
