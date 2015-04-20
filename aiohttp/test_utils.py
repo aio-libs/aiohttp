@@ -5,7 +5,7 @@ import contextlib
 import gc
 import email.parser
 import http.server
-import json
+import ujson
 import logging
 import io
 import os
@@ -272,7 +272,7 @@ class Router:
                         if cte is not None:
                             resp['content-transfer-encoding'] = cte
                         resp['multipart-data'].append(params)
-        body = json.dumps(resp, indent=4, sort_keys=True)
+        body = ujson.dumps(resp)
 
         # default headers
         hdrs = [('Connection', 'close'),

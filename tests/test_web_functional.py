@@ -1,5 +1,5 @@
 import asyncio
-import json
+import ujson
 import os.path
 import socket
 import unittest
@@ -114,14 +114,14 @@ class TestWebFunctional(unittest.TestCase):
             self.assertEqual(data, data2)
             resp = web.Response()
             resp.content_type = 'application/json'
-            resp.body = json.dumps(data).encode('utf8')
+            resp.body = ujson.dumps(data).encode('utf8')
             return resp
 
         @asyncio.coroutine
         def go():
             _, _, url = yield from self.create_server('POST', '/', handler)
             headers = {'Content-Type': 'application/json'}
-            resp = yield from request('POST', url, data=json.dumps(dct),
+            resp = yield from request('POST', url, data=ujson.dumps(dct),
                                       headers=headers,
                                       loop=self.loop)
             self.assertEqual(200, resp.status)

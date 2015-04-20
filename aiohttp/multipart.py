@@ -1,7 +1,7 @@
 import asyncio
 import binascii
 import base64
-import json
+import ujson
 import io
 import mimetypes
 import os
@@ -316,7 +316,7 @@ class BodyPartReader(object):
         if not data:
             return None
         encoding = encoding or self.get_charset(default='utf-8')
-        return json.loads(data.decode(encoding))
+        return ujson.loads(data.decode(encoding))
 
     @asyncio.coroutine
     def form(self, *, encoding=None):
@@ -670,7 +670,7 @@ class BodyPartWriter(object):
 
     def _serialize_json(self, obj):
         *_, params = parse_mimetype(self.headers.get(CONTENT_TYPE))
-        yield json.dumps(obj).encode(params.get('charset', 'utf-8'))
+        yield ujson.dumps(obj).encode(params.get('charset', 'utf-8'))
 
     def _serialize_form(self, obj):
         if isinstance(obj, Mapping):
