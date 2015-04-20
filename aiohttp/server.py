@@ -83,6 +83,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     _keep_alive_handle = None  # keep alive timer handle
     _timeout_handle = None  # slow request timer handle
 
+    _request_prefix = aiohttp.HttpPrefixParser()  # http method parser
     _request_parser = aiohttp.HttpRequestParser()  # default request parser
 
     def __init__(self, *, loop=None,
@@ -117,11 +118,12 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     def keep_alive_timeout(self):
         return self._keep_alive_period
 
-    def closing(self):
+    def closing(self, timeout=15.0):
         """Worker process is about to exit, we need cleanup everything and
         stop accepting requests. It is especially important for keep-alive
         connections."""
         self._keep_alive = False
+        self._keep_alive_on = False
         self._keep_alive_period = None
 
         if (not self._reading_request and self.transport is not None):
@@ -131,6 +133,14 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
             self.transport.close()
             self.transport = None
+        elif self.transport is not None and timeout:
+            if self._timeout_handle is not None:
+                self._timeout_handle.cancel()
+
+            # use slow request timeout for closing
+            # connection_lost cleans timeout handler
+            self._timeout_handle = self._loop.call_later(
+                timeout, self.cancel_slow_request)
 
     def connection_made(self, transport):
         super().connection_made(transport)
@@ -227,6 +237,13 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
             payload = None
             try:
+                # read http request method
+                prefix = reader.set_parser(self._request_prefix)
+                yield from prefix.read()
+
+                # start reading request
+                self._reading_request = True
+
                 # start slow request timer
                 if self._timeout and self._timeout_handle is None:
                     self._timeout_handle = self._loop.call_later(

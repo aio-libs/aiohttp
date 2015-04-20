@@ -4,7 +4,7 @@ CHANGES
 0.15.3 (Unreleased)
 -------------------
 
-- ...
+- Fix graceful shutdown handling.
 
 
 0.15.2 (04-19-2015)

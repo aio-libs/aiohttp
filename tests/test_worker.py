@@ -139,7 +139,7 @@ class WorkerTests(unittest.TestCase):
 
         self.loop.run_until_complete(self.worker.close())
         app.finish.assert_called_with()
-        handler.finish_connections.assert_called_with(timeout=80.0)
+        handler.finish_connections.assert_called_with(timeout=95.0)
         srv.close.assert_called_with()
         self.assertIsNone(self.worker.servers)
 

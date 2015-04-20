@@ -127,8 +127,13 @@ class RequestHandlerFactory:
 
     @asyncio.coroutine
     def finish_connections(self, timeout=None):
+        # try to close connections in 90% of graceful timeout
+        timeout90 = None
+        if timeout:
+            timeout90 = timeout / 100 * 90
+
         for handler in self._connections.keys():
-            handler.closing()
+            handler.closing(timeout=timeout90)
 
         @asyncio.coroutine
         def cleanup():

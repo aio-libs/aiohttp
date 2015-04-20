@@ -67,6 +67,23 @@ class HttpServerProtocolTests(unittest.TestCase):
         self.assertIsNone(srv._request_handler)
         self.assertTrue(request_handler.cancel.called)
 
+    def test_closing_during_reading(self):
+        srv = server.ServerHttpProtocol(loop=self.loop)
+        srv._keep_alive = True
+        srv._keep_alive_on = True
+        srv._reading_request = True
+        srv._timeout_handle = timeout_handle = unittest.mock.Mock()
+        transport = srv.transport = unittest.mock.Mock()
+
+        srv.closing()
+        self.assertFalse(transport.close.called)
+        self.assertIsNotNone(srv.transport)
+
+        # cancel existing slow request handler
+        self.assertIsNotNone(srv._timeout_handle)
+        self.assertTrue(timeout_handle.cancel.called)
+        self.assertIsNot(timeout_handle, srv._timeout_handle)
+
     def test_double_closing(self):
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv._keep_alive = True

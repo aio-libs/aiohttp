@@ -48,6 +48,7 @@ class GunicornWebWorker(base.Worker):
             port=port,
             logger=self.log,
             debug=is_debug,
+            timeout=self.cfg.timeout,
             keep_alive=self.cfg.keepalive,
             access_log=self.log.access_log,
             access_log_format=self.cfg.access_log_format)
@@ -67,7 +68,7 @@ class GunicornWebWorker(base.Worker):
             # stop alive connections
             tasks = [
                 handler.finish_connections(
-                    timeout=self.cfg.graceful_timeout / 100 * 80)
+                    timeout=self.cfg.graceful_timeout / 100 * 95)
                 for handler in servers.values()]
             yield from asyncio.wait(tasks, loop=self.loop)
 

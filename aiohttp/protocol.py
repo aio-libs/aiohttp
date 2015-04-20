@@ -28,6 +28,7 @@ HDRRE = re.compile('[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]')
 CONTINUATION = (' ', '\t')
 EOF_MARKER = object()
 EOL_MARKER = object()
+STATUS_LINE_READY = object()
 
 RESPONSES = http.server.BaseHTTPRequestHandler.responses
 
@@ -36,6 +37,8 @@ HttpVersion = collections.namedtuple(
 HttpVersion10 = HttpVersion(1, 0)
 HttpVersion11 = HttpVersion(1, 1)
 
+RawStatusLineMessage = collections.namedtuple(
+    'RawStatusLineMessage', ['method', 'path', 'version'])
 
 RawRequestMessage = collections.namedtuple(
     'RawRequestMessage',
@@ -133,7 +136,7 @@ class HttpPrefixParser:
         self.allowed_methods = [m.upper() for m in allowed_methods]
 
     def __call__(self, out, buf):
-        raw_data = yield from buf.waituntil(b' ', 24)
+        raw_data = yield from buf.waituntil(b' ', 12)
         method = raw_data.decode('ascii', 'surrogateescape').strip()
 
         # method

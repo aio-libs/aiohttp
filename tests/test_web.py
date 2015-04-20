@@ -143,7 +143,7 @@ class TestRequestHandlerFactory(unittest.TestCase):
 
         manager.connection_lost(handler, None)
         self.assertEqual(manager.connections, [])
-        handler.closing.assert_called_with()
+        handler.closing.assert_called_with(timeout=None)
         transport.close.assert_called_with()
 
     def test_finish_connection_timeout(self):
@@ -158,5 +158,5 @@ class TestRequestHandlerFactory(unittest.TestCase):
 
         manager.connection_lost(handler, None)
         self.assertEqual(manager.connections, [])
-        handler.closing.assert_called_with()
+        handler.closing.assert_called_with(timeout=0.09)
         transport.close.assert_called_with()
