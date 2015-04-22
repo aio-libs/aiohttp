@@ -205,7 +205,21 @@ class StaticRoute(Route):
             directory=self._directory)
 
 
+class SystemRoute(Route):
+
+    def __init__(self, name):
+        super().__init__(hdrs.METH_ANY, None, name)
+
+    def url(self, **kwargs):
+        return ''
+
+    def match(self, path):
+        return None
+
+
 class _NotFoundMatchInfo(UrlMappingMatchInfo):
+
+    route = SystemRoute('')
 
     def __init__(self):
         super().__init__({}, None)
@@ -213,10 +227,6 @@ class _NotFoundMatchInfo(UrlMappingMatchInfo):
     @property
     def handler(self):
         return self._not_found
-
-    @property
-    def route(self):
-        return None
 
     @asyncio.coroutine
     def _not_found(self, request):
@@ -228,6 +238,8 @@ class _NotFoundMatchInfo(UrlMappingMatchInfo):
 
 class _MethodNotAllowedMatchInfo(UrlMappingMatchInfo):
 
+    route = SystemRoute('')
+
     def __init__(self, method, allowed_methods):
         super().__init__({}, None)
         self._method = method
@@ -236,10 +248,6 @@ class _MethodNotAllowedMatchInfo(UrlMappingMatchInfo):
     @property
     def handler(self):
         return self._not_allowed
-
-    @property
-    def route(self):
-        return None
 
     @asyncio.coroutine
     def _not_allowed(self, request):

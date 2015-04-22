@@ -10,7 +10,8 @@ from aiohttp.multidict import CIMultiDict
 from aiohttp.protocol import HttpVersion, RawRequestMessage
 from aiohttp.web_urldispatcher import (_defaultExpectHandler,
                                        DynamicRoute,
-                                       PlainRoute)
+                                       PlainRoute,
+                                       SystemRoute)
 
 
 class TestUrlDispatcher(unittest.TestCase):
@@ -42,6 +43,11 @@ class TestUrlDispatcher(unittest.TestCase):
             return Response(request)  # pragma: no cover
 
         return handler
+
+    def test_system_route(self):
+        route = SystemRoute('test')
+        self.assertIsNone(route.match('any'))
+        self.assertEqual(route.url(), '')
 
     def test_register_route(self):
         handler = self.make_handler()
@@ -181,7 +187,7 @@ class TestUrlDispatcher(unittest.TestCase):
         req = self.make_request('PUT', '/')
 
         match_info = self.loop.run_until_complete(self.router.resolve(req))
-        self.assertIsNone(match_info.route)
+        self.assertIsInstance(match_info.route, SystemRoute)
         self.assertEqual({}, match_info)
 
         with self.assertRaises(HTTPMethodNotAllowed) as ctx:
@@ -198,7 +204,7 @@ class TestUrlDispatcher(unittest.TestCase):
         req = self.make_request('GET', '/b')
 
         match_info = self.loop.run_until_complete(self.router.resolve(req))
-        self.assertIsNone(match_info.route)
+        self.assertIsInstance(match_info.route, SystemRoute)
         self.assertEqual({}, match_info)
 
         with self.assertRaises(HTTPNotFound) as ctx:
@@ -359,7 +365,7 @@ class TestUrlDispatcher(unittest.TestCase):
 
         req = self.make_request('GET', '/handler/tail')
         match_info = self.loop.run_until_complete(self.router.resolve(req))
-        self.assertIsNone(match_info.route)
+        self.assertIsInstance(match_info.route, SystemRoute)
         self.assertEqual({}, match_info)
         with self.assertRaises(HTTPNotFound):
             self.loop.run_until_complete(match_info.handler(req))

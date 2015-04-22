@@ -6,6 +6,8 @@ CHANGES
 
 - Fix graceful shutdown handling.
 
+- Fix `Expect` header handling for not found and not allowed routes #340
+
 
 0.15.2 (04-19-2015)
 -------------------

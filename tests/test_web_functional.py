@@ -469,6 +469,54 @@ class TestWebFunctional(unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
+    def test_100_continue_for_not_found(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            return web.Response()
+
+        @asyncio.coroutine
+        def go():
+            app, _, url = yield from self.create_server('POST', '/')
+            app.router.add_route('POST', '/', handler)
+
+            form = FormData()
+            form.add_field('name', b'123',
+                           content_transfer_encoding='base64')
+
+            resp = yield from request(
+                'post', url + 'not_found', data=form,
+                expect100=True,  # wait until server returns 100 continue
+                loop=self.loop)
+
+            self.assertEqual(404, resp.status)
+
+        self.loop.run_until_complete(go())
+
+    def test_100_continue_for_not_allowed(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            return web.Response()
+
+        @asyncio.coroutine
+        def go():
+            app, _, url = yield from self.create_server('POST', '/')
+            app.router.add_route('POST', '/', handler)
+
+            form = FormData()
+            form.add_field('name', b'123',
+                           content_transfer_encoding='base64')
+
+            resp = yield from request(
+                'GET', url, data=form,
+                expect100=True,  # wait until server returns 100 continue
+                loop=self.loop)
+
+            self.assertEqual(405, resp.status)
+
+        self.loop.run_until_complete(go())
+
     def test_http10_keep_alive_default(self):
 
         @asyncio.coroutine
