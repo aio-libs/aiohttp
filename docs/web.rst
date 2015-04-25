@@ -220,21 +220,33 @@ usually called *session*.
 :mod:`aiohttp.web` has no *sessions* but there is third-party
 :mod:`aiohttp_session` library for that::
 
-    import asycio
+    import asyncio
     import time
     from aiohttp import web
-    import aiohttp_session
+    from aiohttp_session import get_session, session_middleware
+    from aiohttp_session.cookie_storage import EncryptedCookieStorage
 
     @asyncio.coroutine
     def handler(request):
-        session = yield from aiohttp_session.get_session(request)
+        session = yield from get_session(request)
         session['last_visit'] = time.time()
-        return web.Response('OK')
+        return web.Response(body=b'OK')
 
-    app = web.Application(middlewares=aiohttp_session.session_middleware([
-        aiohttp_session.EncryptedCookieStorage(b'Sixteen byte key'))])
+    @asyncio.coroutine
+    def init(loop):
+        app = web.Application(middlewares=[session_middleware(
+            EncryptedCookieStorage(b'Sixteen byte key'))])
+        app.router.add_route('GET', '/', handler)
+        srv = yield from loop.create_server(
+            app.make_handler(), '0.0.0.0', 8080)
+        return srv
 
-    app.router.add_route('GET', '/', handler)
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(init(loop))
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt:
+        pass
 
 
 .. _aiohttp-web-expect-header:
