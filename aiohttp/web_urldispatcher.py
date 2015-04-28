@@ -207,19 +207,23 @@ class StaticRoute(Route):
 
 class SystemRoute(Route):
 
-    def __init__(self, name):
-        super().__init__(hdrs.METH_ANY, None, name)
+    def __init__(self, kind):
+        super().__init__(hdrs.METH_ANY, None, None)
+        self._kind = kind
 
     def url(self, **kwargs):
-        return ''
+        raise RuntimeError(".url() is not allowed for SystemRoute")
 
     def match(self, path):
         return None
 
+    def __repr__(self):
+        return "<SystemRoute {kind}>".format(kind=self._kind)
+
 
 class _NotFoundMatchInfo(UrlMappingMatchInfo):
 
-    route = SystemRoute('')
+    route = SystemRoute('404: Not Found')
 
     def __init__(self):
         super().__init__({}, None)
@@ -238,7 +242,7 @@ class _NotFoundMatchInfo(UrlMappingMatchInfo):
 
 class _MethodNotAllowedMatchInfo(UrlMappingMatchInfo):
 
-    route = SystemRoute('')
+    route = SystemRoute('405: Method Not Allowed')
 
     def __init__(self, method, allowed_methods):
         super().__init__({}, None)
