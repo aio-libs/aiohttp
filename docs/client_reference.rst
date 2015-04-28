@@ -5,21 +5,24 @@ HTTP Client Reference
 
 .. highlight:: python
 
-.. module:: aiohttp.web
+.. module:: aiohttp.client
 
-
-.. _aiohttp-web-request:
 
 
 request function
 ----------------
 
-.. py:function:: request(method, url, *, params=None, data=None, headers=None, cookies=None, files=None, auth=None, allow_redirects=True, max_redirects=10, encoding='utf-8', version=HttpVersion(major=1, minor=1), compress=None, chunked=None, expect100=False, connector=None, loop=None, read_until_eof=True, request_class=None, response_class=None, test=None)
+.. coroutinefunction:: request(method, url, *, params=None, data=None, headers=None,\
+                       cookies=None, files=None, auth=None, allow_redirects=True,\
+                       max_redirects=10, encoding='utf-8',\
+                       version=HttpVersion(major=1, minor=1), compress=None,\
+                       chunked=None, expect100=False, connector=None, loop=None,\
+                       read_until_eof=True, request_class=None,\
+                       response_class=None, test=None)
+
    :module: aiohttp.client
 
    Performs an asynchronous http request. Returns a response object.
-
-   The function is a :ref:`coroutine <coroutine>`.
 
    :param str method: HTTP method
 
@@ -85,7 +88,10 @@ Usage::
 Client Session
 --------------
 
-.. py:class:: ClientSession(*, connector=None, loop=None, request_class=None, response_class=None, cookies=None, headers=None, auth=None)
+.. class:: ClientSession(*, connector=None, loop=None, request_class=None,\
+                          response_class=None, cookies=None, headers=None,\
+                          auth=None)
+
    :module: aiohttp.client
 
    The class for creating client sessions and making requests.
@@ -115,12 +121,16 @@ Client Session
                                           HTTP Basic Auth (optional)
 
 
-   .. py:method:: ClientSession.request(method, url, *, params=None, data=None, headers=None, auth=None, allow_redirects=True, max_redirects=10, encoding='utf-8', version=HttpVersion(major=1, minor=1), compress=None, chunked=None, expect100=False, read_until_eof=True)
+   .. coroutinemethod:: ClientSession.request(method, url, *, params=None, data=None,\
+                                      headers=None, auth=None, allow_redirects=True,\
+                                      max_redirects=10, encoding='utf-8',\
+                                      version=HttpVersion(major=1, minor=1),\
+                                      compress=None, chunked=None, expect100=False,\
+                                      read_until_eof=True)
       :module: aiohttp.client
 
       Performs an asynchronous http request. Returns a response object.
 
-      This method is a :ref:`coroutine <coroutine>`.
 
       :param str method: HTTP method
 
@@ -160,14 +170,12 @@ Client Session
 
 
 
-   .. py:method:: ClientSession.get(url, *, allow_redirects=True, **kwargs)
+   .. coroutinemethod:: ClientSession.get(url, *, allow_redirects=True, **kwargs)
       :module: aiohttp.client
 
       Perform a ``GET`` request.
       In order to modify inner :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
-
-      This method is a :ref:`coroutine <coroutine>`.
 
       :param str url: Request URL
 
@@ -175,53 +183,48 @@ Client Session
                                    ``True`` by default (optional).
 
 
-   .. py:method:: ClientSession.post(url, *, data=None, **kwargs)
+   .. coroutinemethod:: ClientSession.post(url, *, data=None, **kwargs)
       :module: aiohttp.client
 
       Perform a ``POST`` request.
       In order to modify inner :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
-      This method is a :ref:`coroutine <coroutine>`.
 
       :param str url: Request URL
 
       :param data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)
 
-   .. py:method:: ClientSession.put(url, *, data=None, **kwargs)
+   .. coroutinemethod:: ClientSession.put(url, *, data=None, **kwargs)
       :module: aiohttp.client
 
       Perform a ``PUT`` request.
       In order to modify inner :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
-      This method is a :ref:`coroutine <coroutine>`.
 
       :param str url: Request URL
 
       :param data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)
 
-   .. py:method:: ClientSession.delete(url, **kwargs)
+   .. coroutinemethod:: ClientSession.delete(url, **kwargs)
       :module: aiohttp.client
 
       Perform a ``DELETE`` request.
       In order to modify inner :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
-      This method is a :ref:`coroutine <coroutine>`.
-
       :param str url: Request URL
 
-   .. py:method:: ClientSession.head(url, *, allow_redirects=False, **kwargs)
+   .. coroutinemethod:: ClientSession.head(url, *, allow_redirects=False, **kwargs)
       :module: aiohttp.client
 
       Perform a ``HEAD`` request.
       In order to modify inner :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
-      This method is a :ref:`coroutine <coroutine>`.
 
       :param str url: Request URL
 
@@ -229,14 +232,13 @@ Client Session
                                    ``False`` by default (optional).
 
 
-   .. py:method:: ClientSession.options(url, *, allow_redirects=True, **kwargs)
+   .. coroutinemethod:: ClientSession.options(url, *, allow_redirects=True, **kwargs)
       :module: aiohttp.client
 
       Perform an ``OPTIONS`` request.
       In order to modify inner :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
-      This method is a :ref:`coroutine <coroutine>`.
 
       :param str url: Request URL
 
@@ -244,18 +246,16 @@ Client Session
                                    ``True`` by default (optional).
 
 
-   .. py:method:: ClientSession.patch(url, *, data=None, **kwargs)
+   .. coroutinemethod:: ClientSession.patch(url, *, data=None, **kwargs)
       :module: aiohttp.client
 
       Perform a ``PATCH`` request.
       In order to modify inner :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
-      This method is a :ref:`coroutine <coroutine>`.
 
       :param str url: Request URL
 
       :param data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)
-
 
