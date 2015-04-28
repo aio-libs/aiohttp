@@ -87,11 +87,11 @@ do not create an instance of class :class:`ClientWebSocketResponse` manually.
 
       May be ``None`` if server and client protocols are
       not overlapping.
-      
+
    .. method:: exception()
 
       Returns exception if any occurs or returns None.
-      
+
    .. method:: ping(message=b'')
 
       Send :const:`~aiohttp.websocket.MSG_PING` to peer.
@@ -117,7 +117,7 @@ do not create an instance of class :class:`ClientWebSocketResponse` manually.
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
 
-   .. method:: close(*, code=1000, message=b'')
+   .. coroutinemethod:: close(*, code=1000, message=b'')
 
       A :ref:`coroutine<coroutine>` that initiates closing handshake by sending
       :const:`~aiohttp.websocket.MSG_CLOSE` message. It waits for
@@ -130,7 +130,7 @@ do not create an instance of class :class:`ClientWebSocketResponse` manually.
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
-   .. method:: receive()
+   .. coroutinemethod:: receive()
 
       A :ref:`coroutine<coroutine>` that waits upcoming *data*
       message from peer and returns it.

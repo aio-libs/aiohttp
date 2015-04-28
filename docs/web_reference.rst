@@ -180,32 +180,28 @@ first positional parameter.
 
       Returns :class:`int` or ``None`` if *Content-Length* is absent.
 
-   .. method:: read()
+   .. coroutinemethod:: read()
 
       Read request body, returns :class:`bytes` object with body content.
-
-      The method is a :ref:`coroutine <coroutine>`.
 
       .. note::
 
          The method **does** store read data internally, subsequent
          :meth:`~Request.read` call will return the same value.
 
-   .. method:: text()
+   .. coroutinemethod:: text()
 
       Read request body, decode it using :attr:`charset` encoding or
       ``UTF-8`` if no encoding was specified in *MIME-type*.
 
       Returns :class:`str` with body content.
 
-      The method is a :ref:`coroutine <coroutine>`.
-
       .. note::
 
          The method **does** store read data internally, subsequent
          :meth:`~Request.text` call will return the same value.
 
-   .. method:: json(*, loader=json.loads)
+   .. coroutinemethod:: json(*, loader=json.loads)
 
       Read request body decoded as *json*.
 
@@ -227,7 +223,7 @@ first positional parameter.
          The method **does** store read data internally, subsequent
          :meth:`~Request.json` call will return the same value.
 
-   .. method:: post()
+   .. coroutinemethod:: post()
 
       A :ref:`coroutine <coroutine>` that reads POST parameters from
       request body.
@@ -245,13 +241,11 @@ first positional parameter.
          The method **does** store read data internally, subsequent
          :meth:`~Request.post` call will return the same value.
 
-   .. method:: release()
+   .. coroutinemethod:: release()
 
       Release request.
 
       Eat unread part of HTTP BODY if present.
-
-      The method is a :ref:`coroutine <coroutine>`.
 
       .. note::
 
@@ -512,7 +506,7 @@ StreamResponse
 
       Raises :exc:`RuntimeError` if :meth:`write_eof` has been called.
 
-   .. method:: drain()
+   .. coroutinemethod:: drain()
 
       A :ref:`coroutine<coroutine>` to let the write buffer of the
       underlying transport a chance to be flushed.
@@ -530,7 +524,7 @@ StreamResponse
 
       .. versionadded:: 0.14
 
-   .. method:: write_eof()
+   .. coroutinemethod:: write_eof()
 
       A :ref:`coroutine<coroutine>` *may* be called as a mark of the
       *HTTP response* processing finish.
@@ -695,9 +689,9 @@ WebSocketResponse
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
 
-   .. method:: close(*, code=1000, message=b'')
+   .. coroutinemethod:: close(*, code=1000, message=b'')
 
-      A :ref:`coroutine<coroutine>` that initiates closing 
+      A :ref:`coroutine<coroutine>` that initiates closing
       handshake by sending :const:`~aiohttp.websocket.MSG_CLOSE` message.
 
       :param int code: closing code
@@ -708,7 +702,7 @@ WebSocketResponse
 
       :raise RuntimeError: if connection is not started or closing
 
-   .. method:: receive()
+   .. coroutinemethod:: receive()
 
       A :ref:`coroutine<coroutine>` that waits upcoming *data*
       message from peer and returns it.
@@ -731,7 +725,7 @@ WebSocketResponse
 
       :raise: :exc:`~aiohttp.errors.WSClientDisconnectedError` on closing.
 
-   .. method:: receive_str()
+   .. coroutinemethod:: receive_str()
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive_mgs` but
       also asserts the message type is
@@ -741,7 +735,7 @@ WebSocketResponse
 
       :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_BINARY`.
 
-   .. method:: receive_bytes()
+   .. coroutinemethod:: receive_bytes()
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive_mgs` but
       also asserts the message type is
@@ -845,7 +839,7 @@ arbitrary properties for later access from
          yield from loop.create_server(app.make_handler(),
                                        '0.0.0.0', 8080)
 
-   .. method:: finish()
+   .. coroutinemethod:: finish()
 
       A :ref:`coroutine<coroutine>` that should be called after
       server stopping.
@@ -988,7 +982,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
    :returns: new :class:`StaticRoute` instance.
 
-   .. method:: resolve(requst)
+   .. coroutinemethod:: resolve(requst)
 
       A :ref:`coroutine<coroutine>` that returns
       :class:`AbstractMatchInfo` for *request*.
