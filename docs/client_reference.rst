@@ -118,7 +118,7 @@ Client Session
    .. py:method:: ClientSession.request(method, url, *, params=None, data=None, headers=None, auth=None, allow_redirects=True, max_redirects=10, encoding='utf-8', version=HttpVersion(major=1, minor=1), compress=None, chunked=None, expect100=False, read_until_eof=True)
       :module: aiohttp.client
 
-      Performs an asyncronous http request. Returns a response object.
+      Performs an asynchronous http request. Returns a response object.
 
       This method is a :ref:`coroutine <coroutine>`.
 
@@ -167,7 +167,7 @@ Client Session
       In order to modify inner :func:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
-      The function is a :ref:`coroutine <coroutine>`.
+      This method is a :ref:`coroutine <coroutine>`.
 
       :param str url: Request URL
 
@@ -182,7 +182,7 @@ Client Session
       In order to modify inner :func:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
-      The function is a :ref:`coroutine <coroutine>`.
+      This method is a :ref:`coroutine <coroutine>`.
 
       :param str url: Request URL
 
@@ -196,7 +196,7 @@ Client Session
       In order to modify inner :func:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
-      The function is a :ref:`coroutine <coroutine>`.
+      This method is a :ref:`coroutine <coroutine>`.
 
       :param str url: Request URL
 
@@ -210,7 +210,7 @@ Client Session
       In order to modify inner :func:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
-      The function is a :ref:`coroutine <coroutine>`.
+      This method is a :ref:`coroutine <coroutine>`.
 
       :param str url: Request URL
 
@@ -221,7 +221,7 @@ Client Session
       In order to modify inner :func:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
-      The function is a :ref:`coroutine <coroutine>`.
+      This method is a :ref:`coroutine <coroutine>`.
 
       :param str url: Request URL
 
@@ -236,7 +236,7 @@ Client Session
       In order to modify inner :func:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
-      The function is a :ref:`coroutine <coroutine>`.
+      This method is a :ref:`coroutine <coroutine>`.
 
       :param str url: Request URL
 
@@ -251,7 +251,7 @@ Client Session
       In order to modify inner :func:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
-      The function is a :ref:`coroutine <coroutine>`.
+      This method is a :ref:`coroutine <coroutine>`.
 
       :param str url: Request URL
 
