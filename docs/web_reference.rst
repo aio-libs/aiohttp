@@ -994,14 +994,16 @@ Router is any object that implements :class:`AbstractRouter` interface.
       :class:`AbstractMatchInfo` for *request*.
 
       The method never raises exception, but returns
-      :class:`AbstractMatchInfo` instance with ``None``
-      :attr:`~AbstractMatchInfo.route` and
-      :attr:`~AbstractMatchInfo.handler` which raises
-      :exc:`HTTPNotFound` or :exc:`HTTPMethodNotAllowed` on handler's
-      execution if there is no registered route for *request*.
+      :class:`AbstractMatchInfo` instance with:
 
-      *Middlewares* can process that exceptions to render
-      pretty-looking error page for example.
+      1. :attr:`~AbstractMatchInfo.route` asigned to
+         :class:`SystemRoute` instance
+      2. :attr:`~AbstractMatchInfo.handler` which raises
+         :exc:`HTTPNotFound` or :exc:`HTTPMethodNotAllowed` on handler's
+         execution if there is no registered route for *request*.
+
+         *Middlewares* can process that exceptions to render
+         pretty-looking error page for example.
 
       Used by internal machinery, end user unlikely need to call the method.
 
@@ -1111,6 +1113,19 @@ urls with :ref:`variable pathes<aiohttp-web-variable-handler>` spec.
 
       >>> route.url(filename='img/logo.png', query={'param': 1})
       '/path/to/static/img/logo.png?param=1'
+
+
+.. class:: SystemRoute
+
+   The route class for internal purposes.
+
+   Now it has used for handling *404: Not Found* and *405: Method Not Allowed*.
+
+   .. method:: url()
+
+   Always raises :exc:`RuntimeError`, :class:`SystemRoute` should not
+   be used in url construction expressions.
+
 
 MatchInfo
 ^^^^^^^^^
