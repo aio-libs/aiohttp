@@ -164,7 +164,7 @@ Client Session
       :module: aiohttp.client
 
       Perform a ``GET`` request.
-      In order to modify inner :func:`request<aiohttp.client.ClientSession.request>`
+      In order to modify inner :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
       This method is a :ref:`coroutine <coroutine>`.
@@ -179,7 +179,7 @@ Client Session
       :module: aiohttp.client
 
       Perform a ``POST`` request.
-      In order to modify inner :func:`request<aiohttp.client.ClientSession.request>`
+      In order to modify inner :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
       This method is a :ref:`coroutine <coroutine>`.
@@ -193,7 +193,7 @@ Client Session
       :module: aiohttp.client
 
       Perform a ``PUT`` request.
-      In order to modify inner :func:`request<aiohttp.client.ClientSession.request>`
+      In order to modify inner :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
       This method is a :ref:`coroutine <coroutine>`.
@@ -207,7 +207,7 @@ Client Session
       :module: aiohttp.client
 
       Perform a ``DELETE`` request.
-      In order to modify inner :func:`request<aiohttp.client.ClientSession.request>`
+      In order to modify inner :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
       This method is a :ref:`coroutine <coroutine>`.
@@ -218,7 +218,7 @@ Client Session
       :module: aiohttp.client
 
       Perform a ``HEAD`` request.
-      In order to modify inner :func:`request<aiohttp.client.ClientSession.request>`
+      In order to modify inner :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
       This method is a :ref:`coroutine <coroutine>`.
@@ -233,7 +233,7 @@ Client Session
       :module: aiohttp.client
 
       Perform an ``OPTIONS`` request.
-      In order to modify inner :func:`request<aiohttp.client.ClientSession.request>`
+      In order to modify inner :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
       This method is a :ref:`coroutine <coroutine>`.
@@ -248,7 +248,7 @@ Client Session
       :module: aiohttp.client
 
       Perform a ``PATCH`` request.
-      In order to modify inner :func:`request<aiohttp.client.ClientSession.request>`
+      In order to modify inner :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
       This method is a :ref:`coroutine <coroutine>`.
