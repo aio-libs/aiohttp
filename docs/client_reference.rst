@@ -17,7 +17,7 @@ request function
 .. py:function:: request(method, url, *, params=None, data=None, headers=None, cookies=None, files=None, auth=None, allow_redirects=True, max_redirects=10, encoding='utf-8', version=HttpVersion(major=1, minor=1), compress=None, chunked=None, expect100=False, connector=None, loop=None, read_until_eof=True, request_class=None, response_class=None, test=None)
    :module: aiohttp.client
 
-   Performs an asyncronous http request. Returns a response object.
+   Performs an asynchronous http request. Returns a response object.
 
    The function is a :ref:`coroutine <coroutine>`.
 
@@ -25,13 +25,13 @@ request function
 
    :param str url: Request URL
 
-   :param params: Dictionary or bytes to be sent in the query
-                  string of the new request (optional)
+   :param dict params: Parameters to be sent in the query
+                       string of the new request (optional)
 
    :param data: Dictionary, bytes, or file-like object to
                 send in the body of the request (optional)
 
-   :param dict headers: Dictionary of HTTP Headers to send with
+   :param dict headers: HTTP Headers to send with
                         the request (optional)
 
    :param dict cookies: Cookies to send with the request (optional)
@@ -48,7 +48,7 @@ request function
                          with deflate encoding.
                          ``None`` by default (optional).
 
-   :param chunked: Set to chunk size for chunked transfer encoding.
+   :param int chunked: Set to chunk size for chunked transfer encoding.
                    ``None`` by default (optional).
 
    :param bool expect100: Expect 100-continue response from server.
@@ -108,7 +108,7 @@ Client Session
 
    :param dict cookies: Cookies to send with the request (optional)
 
-   :param dict headers: Dictionary of HTTP Headers to send with
+   :param dict headers: HTTP Headers to send with
                         the request (optional)
 
    :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that represents
@@ -120,20 +120,20 @@ Client Session
 
       Performs an asyncronous http request. Returns a response object.
 
-      The function is a :ref:`coroutine <coroutine>`.
+      This method is a :ref:`coroutine <coroutine>`.
 
       :param str method: HTTP method
 
       :param str url: Request URL
 
-      :param params: Dictionary or bytes to be sent in the query
-                     string of the new request (optional)
+      :param dict params: Parameters to be sent in the query
+                          string of the new request (optional)
 
       :param data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)
 
-      :param dict headers: Dictionary of HTTP Headers to send with
-                          the request (optional)
+      :param dict headers: HTTP Headers to send with
+                           the request (optional)
 
       :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that represents
                                              HTTP Basic Auth (optional)
@@ -147,7 +147,7 @@ Client Session
                             with deflate encoding.
                             ``None`` by default (optional).
 
-      :param chunked: Set to chunk size for chunked transfer encoding.
+      :param int chunked: Set to chunk size for chunked transfer encoding.
                       ``None`` by default (optional).
 
       :param bool expect100: Expect 100-continue response from server.
