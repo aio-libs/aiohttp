@@ -47,7 +47,9 @@ class TestUrlDispatcher(unittest.TestCase):
     def test_system_route(self):
         route = SystemRoute('test')
         self.assertIsNone(route.match('any'))
-        self.assertEqual(route.url(), '')
+        with self.assertRaises(RuntimeError):
+            route.url()
+        self.assertEqual("<SystemRoute test>", repr(route))
 
     def test_register_route(self):
         handler = self.make_handler()
