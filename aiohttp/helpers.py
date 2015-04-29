@@ -66,6 +66,9 @@ class FormData:
 
         if isinstance(value, io.IOBase):
             self._is_multipart = True
+        elif isinstance(value, (bytes, bytearray, memoryview)):
+            if filename is None and content_transfer_encoding is None:
+                filename = name
 
         type_options = multidict.MultiDict({'name': name})
         if filename is not None and not isinstance(filename, str):
