@@ -584,3 +584,51 @@ class TestWebFunctional(unittest.TestCase):
             self.assertEqual('keep-alive', resp.headers['CONNECTION'])
 
         self.loop.run_until_complete(go())
+
+    def test_upload_file(self):
+
+        here = os.path.dirname(__file__)
+        fname = os.path.join(here, 'software_development_in_picture.jpg')
+        with open(fname, 'rb') as f:
+            data = f.read()
+
+        @asyncio.coroutine
+        def handler(request):
+            form = yield from request.post()
+            raw_data = form['file'].file.read()
+            self.assertEqual(data, raw_data)
+            return web.Response(body=b'OK')
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('POST', '/', handler)
+            resp = yield from request('POST', url,
+                                      data={'file': data},
+                                      loop=self.loop)
+            self.assertEqual(200, resp.status)
+
+        self.loop.run_until_complete(go())
+
+    def test_upload_file_object(self):
+
+        here = os.path.dirname(__file__)
+        fname = os.path.join(here, 'software_development_in_picture.jpg')
+        with open(fname, 'rb') as f:
+            data = f.read()
+
+        @asyncio.coroutine
+        def handler(request):
+            form = yield from request.post()
+            raw_data = form['file'].file.read()
+            self.assertEqual(data, raw_data)
+            return web.Response(body=b'OK')
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('POST', '/', handler)
+            resp = yield from request('POST', url,
+                                      files={'file': open(fname, 'rb')},
+                                      loop=self.loop)
+            self.assertEqual(200, resp.status)
+
+        self.loop.run_until_complete(go())
