@@ -12,15 +12,15 @@ HTTP Client Reference
 request function
 ----------------
 
-.. coroutinefunction:: request(method, url, *, params=None, data=None, headers=None,\
-                       cookies=None, files=None, auth=None, allow_redirects=True,\
-                       max_redirects=10, encoding='utf-8',\
-                       version=HttpVersion(major=1, minor=1), compress=None,\
-                       chunked=None, expect100=False, connector=None, loop=None,\
+.. coroutinefunction:: request(method, url, *, params=None, data=None, \
+                       headers=None, cookies=None, files=None, auth=None, \
+                       allow_redirects=True, max_redirects=10, \
+                       encoding='utf-8', \
+                       version=HttpVersion(major=1, minor=1), \
+                       compress=None, chunked=None, expect100=False, \
+                       connector=None, loop=None,\
                        read_until_eof=True, request_class=None,\
                        response_class=None, test=None)
-
-   :module: aiohttp.client
 
    Performs an asynchronous http request. Returns a response object.
 
@@ -92,20 +92,18 @@ Client Session
                           response_class=None, cookies=None, headers=None,\
                           auth=None)
 
-   :module: aiohttp.client
-
    The class for creating client sessions and making requests.
 
-   :param aiohttp.connector.BaseConnector connector: BaseConnector sub-class
-                                                     instance to support connection pooling.
+   :param aiohttp.connector.BaseConnector connector: BaseConnector
+      sub-class instance to support connection pooling.
 
 
    :param loop: :ref:`event loop<asyncio-event-loop>`
-            used for processing HTTP requests.
-            If param is ``None``, :func:`asyncio.get_event_loop`
-            is used for getting default event loop, but we strongly
-            recommend to use explicit loops everywhere.
-            (optional)
+      used for processing HTTP requests.
+      If param is ``None``, :func:`asyncio.get_event_loop`
+      is used for getting default event loop, but we strongly
+      recommend to use explicit loops everywhere.
+      (optional)
 
 
    :param request_class: Custom Request class implementation (optional)
@@ -121,13 +119,12 @@ Client Session
                                           HTTP Basic Auth (optional)
 
 
-   .. coroutinemethod:: ClientSession.request(method, url, *, params=None, data=None,\
-                                      headers=None, auth=None, allow_redirects=True,\
-                                      max_redirects=10, encoding='utf-8',\
-                                      version=HttpVersion(major=1, minor=1),\
-                                      compress=None, chunked=None, expect100=False,\
-                                      read_until_eof=True)
-      :module: aiohttp.client
+   .. coroutinemethod:: request(method, url, *, params=None, data=None,\
+                                headers=None, auth=None, allow_redirects=True,\
+                                max_redirects=10, encoding='utf-8',\
+                                version=HttpVersion(major=1, minor=1),\
+                                compress=None, chunked=None, expect100=False,\
+                                read_until_eof=True)
 
       Performs an asynchronous http request. Returns a response object.
 
@@ -145,13 +142,15 @@ Client Session
       :param dict headers: HTTP Headers to send with
                            the request (optional)
 
-      :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that represents
-                                             HTTP Basic Auth (optional)
+      :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that
+                                             represents HTTP Basic Auth
+                                             (optional)
 
       :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                    ``True`` by default (optional).
 
-      :param aiohttp.protocol.HttpVersion version: Request http version (optional)
+      :param aiohttp.protocol.HttpVersion version: Request http version
+                                                   (optional)
 
       :param bool compress: Set to ``True`` if request has to be compressed
                             with deflate encoding.
@@ -167,14 +166,12 @@ Client Session
                                   does not have Content-Length header.
                                   ``True`` by default (optional).
 
-
-
-
-   .. coroutinemethod:: ClientSession.get(url, *, allow_redirects=True, **kwargs)
-      :module: aiohttp.client
+   .. coroutinemethod:: get(url, *, allow_redirects=True, **kwargs)
 
       Perform a ``GET`` request.
-      In order to modify inner :meth:`request<aiohttp.client.ClientSession.request>`
+
+      In order to modify inner
+      :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
       :param str url: Request URL
@@ -183,11 +180,12 @@ Client Session
                                    ``True`` by default (optional).
 
 
-   .. coroutinemethod:: ClientSession.post(url, *, data=None, **kwargs)
-      :module: aiohttp.client
+   .. coroutinemethod:: post(url, *, data=None, **kwargs)
 
       Perform a ``POST`` request.
-      In order to modify inner :meth:`request<aiohttp.client.ClientSession.request>`
+
+      In order to modify inner
+      :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
 
@@ -196,11 +194,12 @@ Client Session
       :param data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)
 
-   .. coroutinemethod:: ClientSession.put(url, *, data=None, **kwargs)
-      :module: aiohttp.client
+   .. coroutinemethod:: put(url, *, data=None, **kwargs)
 
       Perform a ``PUT`` request.
-      In order to modify inner :meth:`request<aiohttp.client.ClientSession.request>`
+
+      In order to modify inner
+      :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
 
@@ -209,20 +208,22 @@ Client Session
       :param data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)
 
-   .. coroutinemethod:: ClientSession.delete(url, **kwargs)
-      :module: aiohttp.client
+   .. coroutinemethod:: delete(url, **kwargs)
 
       Perform a ``DELETE`` request.
-      In order to modify inner :meth:`request<aiohttp.client.ClientSession.request>`
+
+      In order to modify inner
+      :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
       :param str url: Request URL
 
-   .. coroutinemethod:: ClientSession.head(url, *, allow_redirects=False, **kwargs)
-      :module: aiohttp.client
+   .. coroutinemethod:: head(url, *, allow_redirects=False, **kwargs)
 
       Perform a ``HEAD`` request.
-      In order to modify inner :meth:`request<aiohttp.client.ClientSession.request>`
+
+      In order to modify inner
+      :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
 
@@ -232,11 +233,12 @@ Client Session
                                    ``False`` by default (optional).
 
 
-   .. coroutinemethod:: ClientSession.options(url, *, allow_redirects=True, **kwargs)
-      :module: aiohttp.client
+   .. coroutinemethod:: options(url, *, allow_redirects=True, **kwargs)
 
       Perform an ``OPTIONS`` request.
-      In order to modify inner :meth:`request<aiohttp.client.ClientSession.request>`
+
+      In order to modify inner
+      :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
 
@@ -246,11 +248,12 @@ Client Session
                                    ``True`` by default (optional).
 
 
-   .. coroutinemethod:: ClientSession.patch(url, *, data=None, **kwargs)
-      :module: aiohttp.client
+   .. coroutinemethod:: patch(url, *, data=None, **kwargs)
 
       Perform a ``PATCH`` request.
-      In order to modify inner :meth:`request<aiohttp.client.ClientSession.request>`
+
+      In order to modify inner
+      :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
 
@@ -258,4 +261,3 @@ Client Session
 
       :param data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)
-
