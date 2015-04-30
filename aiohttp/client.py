@@ -24,87 +24,6 @@ HTTP_PORT = 80
 HTTPS_PORT = 443
 
 
-@asyncio.coroutine
-def request(method, url, *,
-            params=None,
-            data=None,
-            headers=None,
-            cookies=None,
-            files=None,
-            auth=None,
-            allow_redirects=True,
-            max_redirects=10,
-            encoding='utf-8',
-            version=aiohttp.HttpVersion11,
-            compress=None,
-            chunked=None,
-            expect100=False,
-            connector=None,
-            loop=None,
-            read_until_eof=True,
-            request_class=None,
-            response_class=None):
-    """Constructs and sends a request. Returns response object.
-
-    :param str method: http method
-    :param str url: request url
-    :param params: (optional) Dictionary or bytes to be sent in the query
-      string of the new request
-    :param data: (optional) Dictionary, bytes, or file-like object to
-      send in the body of the request
-    :param dict headers: (optional) Dictionary of HTTP Headers to send with
-      the request
-    :param dict cookies: (optional) Dict object to send with the request
-    :param auth: (optional) BasicAuth named tuple represent HTTP Basic Auth
-    :type auth: aiohttp.helpers.BasicAuth
-    :param bool allow_redirects: (optional) If set to False, do not follow
-      redirects
-    :param version: Request http version.
-    :type version: aiohttp.protocol.HttpVersion
-    :param bool compress: Set to True if request has to be compressed
-       with deflate encoding.
-    :param chunked: Set to chunk size for chunked transfer encoding.
-    :type chunked: bool or int
-    :param bool expect100: Expect 100-continue response from server.
-    :param connector: BaseConnector sub-class instance to support
-       connection pooling.
-    :type connector: aiohttp.connector.BaseConnector
-    :param bool read_until_eof: Read response until eof if response
-       does not have Content-Length header.
-    :param request_class: (optional) Custom Request class implementation.
-    :param response_class: (optional) Custom Response class implementation.
-    :param loop: Optional event loop.
-
-    Usage::
-
-      >>> import aiohttp
-      >>> resp = yield from aiohttp.request('GET', 'http://python.org/')
-      >>> resp
-      <ClientResponse(python.org/) [200]>
-      >>> data = yield from resp.read()
-
-    """
-    session = ClientSession(connector=connector, loop=loop,
-                            request_class=request_class,
-                            response_class=response_class,
-                            cookies=cookies)
-    resp = yield from session.request(method, url,
-                                      params=params,
-                                      data=data,
-                                      headers=headers,
-                                      files=files,
-                                      auth=auth,
-                                      allow_redirects=allow_redirects,
-                                      max_redirects=max_redirects,
-                                      encoding=encoding,
-                                      version=version,
-                                      compress=compress,
-                                      chunked=chunked,
-                                      expect100=expect100,
-                                      read_until_eof=read_until_eof)
-    return resp
-
-
 class ClientSession:
 
     def __init__(self, *, connector=None, loop=None, request_class=None,
@@ -306,6 +225,87 @@ class ClientSession:
         resp = yield from self.request(hdrs.METH_DELETE, url,
                                        **kwargs)
         return resp
+
+
+@asyncio.coroutine
+def request(method, url, *,
+            params=None,
+            data=None,
+            headers=None,
+            cookies=None,
+            files=None,
+            auth=None,
+            allow_redirects=True,
+            max_redirects=10,
+            encoding='utf-8',
+            version=aiohttp.HttpVersion11,
+            compress=None,
+            chunked=None,
+            expect100=False,
+            connector=None,
+            loop=None,
+            read_until_eof=True,
+            request_class=None,
+            response_class=None):
+    """Constructs and sends a request. Returns response object.
+
+    :param str method: http method
+    :param str url: request url
+    :param params: (optional) Dictionary or bytes to be sent in the query
+      string of the new request
+    :param data: (optional) Dictionary, bytes, or file-like object to
+      send in the body of the request
+    :param dict headers: (optional) Dictionary of HTTP Headers to send with
+      the request
+    :param dict cookies: (optional) Dict object to send with the request
+    :param auth: (optional) BasicAuth named tuple represent HTTP Basic Auth
+    :type auth: aiohttp.helpers.BasicAuth
+    :param bool allow_redirects: (optional) If set to False, do not follow
+      redirects
+    :param version: Request http version.
+    :type version: aiohttp.protocol.HttpVersion
+    :param bool compress: Set to True if request has to be compressed
+       with deflate encoding.
+    :param chunked: Set to chunk size for chunked transfer encoding.
+    :type chunked: bool or int
+    :param bool expect100: Expect 100-continue response from server.
+    :param connector: BaseConnector sub-class instance to support
+       connection pooling.
+    :type connector: aiohttp.connector.BaseConnector
+    :param bool read_until_eof: Read response until eof if response
+       does not have Content-Length header.
+    :param request_class: (optional) Custom Request class implementation.
+    :param response_class: (optional) Custom Response class implementation.
+    :param loop: Optional event loop.
+
+    Usage::
+
+      >>> import aiohttp
+      >>> resp = yield from aiohttp.request('GET', 'http://python.org/')
+      >>> resp
+      <ClientResponse(python.org/) [200]>
+      >>> data = yield from resp.read()
+
+    """
+    session = ClientSession(connector=connector, loop=loop,
+                            request_class=request_class,
+                            response_class=response_class,
+                            cookies=cookies)
+    resp = yield from session.request(method, url,
+                                      params=params,
+                                      data=data,
+                                      headers=headers,
+                                      files=files,
+                                      auth=auth,
+                                      allow_redirects=allow_redirects,
+                                      max_redirects=max_redirects,
+                                      encoding=encoding,
+                                      version=version,
+                                      compress=compress,
+                                      chunked=chunked,
+                                      expect100=expect100,
+                                      read_until_eof=read_until_eof)
+    return resp
 
 
 class ClientRequest:
