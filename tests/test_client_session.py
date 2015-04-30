@@ -258,3 +258,9 @@ class ClientResponseTests(unittest.TestCase):
         session._connector = mock.Mock(BaseConnector)
         session.close()
         session._connector.close.assert_called_once_with()
+
+    def test_closed(self):
+        session = ClientSession(loop=self.loop)
+        self.assertFalse(session.closed)
+        session.close()
+        self.assertTrue(session.closed)

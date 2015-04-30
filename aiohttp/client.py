@@ -233,6 +233,14 @@ class ClientSession:
         """
         self._connector.close()
 
+    @property
+    def closed(self):
+        """Is client session closed.
+
+        A readonly property.
+        """
+        return self._connector.closed
+
 
 @asyncio.coroutine
 def request(method, url, *,

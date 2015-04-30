@@ -11,6 +11,8 @@ x.x.x (XX-XX-XXXX)
 
 - Implement `connector.closed` readonly property
 
+- Implement `ClientSession.closed` readonly property
+
 
 0.15.3 (04-22-2015)
 -------------------

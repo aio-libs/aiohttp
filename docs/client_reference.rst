@@ -204,6 +204,12 @@ Usage example::
 
       Release all acquired resources.
 
+   .. attribute:: closed
+
+      ``True`` if the session has been closed, ``False`` otherwise.
+
+      A read-only property.
+
 
 request coroutine
 -----------------
