@@ -12,6 +12,18 @@ HTTP Client Reference
 Client Session
 --------------
 
+Client session is the recommended interface for making HTTP requests.
+
+Usage example::
+
+     >>> import aiohttp
+     >>> session = aiohttp.ClientSession()
+     >>> resp = yield from session.get('http://python.org')
+     >>> resp
+     <ClientResponse(python.org/) [200]>
+     >>> data = yield from resp.read()
+
+
 .. class:: ClientSession(*, connector=None, loop=None, request_class=None,\
                           response_class=None, cookies=None, headers=None,\
                           auth=None)
