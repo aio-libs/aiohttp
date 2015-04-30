@@ -34,6 +34,8 @@ class ClientSession:
         self.cookies = http.cookies.SimpleCookie()
         if connector is None:
             connector = aiohttp.TCPConnector(force_close=True, loop=loop)
+        elif connector._loop is not loop:
+            raise ValueError("loop argument must agree with connector")
         # For Backward compatability with `share_cookie` connectors
         elif connector._share_cookies:
             self._update_cookies(connector.cookies)

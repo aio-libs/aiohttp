@@ -269,3 +269,11 @@ class ClientResponseTests(unittest.TestCase):
         connector = TCPConnector(loop=self.loop)
         session = ClientSession(connector=connector, loop=self.loop)
         self.assertIs(session.connector, connector)
+
+    def test_connector_loop(self):
+        loop = asyncio.new_event_loop()
+        connector = TCPConnector(loop=loop)
+        with self.assertRaisesRegexp(
+                ValueError,
+                "loop argument must agree with connector"):
+            ClientSession(connector=connector, loop=self.loop)
