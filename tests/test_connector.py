@@ -104,11 +104,13 @@ class BaseConnectorTests(unittest.TestCase):
         tr = unittest.mock.Mock()
 
         conn = aiohttp.BaseConnector(loop=self.loop)
+        self.assertFalse(conn.closed)
         conn._conns[1] = [(tr, object(), object())]
         conn.close()
 
         self.assertFalse(conn._conns)
         self.assertTrue(tr.close.called)
+        self.assertTrue(conn.closed)
 
     def test_get(self):
         conn = aiohttp.BaseConnector(loop=self.loop)
@@ -340,6 +342,21 @@ class BaseConnectorTests(unittest.TestCase):
         ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
         conn = aiohttp.TCPConnector(loop=self.loop, ssl_context=ctx)
         self.assertIs(ctx, conn.ssl_context)
+
+    def test_close_twice(self):
+        tr = unittest.mock.Mock()
+
+        conn = aiohttp.BaseConnector(loop=self.loop)
+        conn._conns[1] = [(tr, object(), object())]
+        conn.close()
+
+        self.assertFalse(conn._conns)
+        self.assertTrue(tr.close.called)
+        self.assertTrue(conn.closed)
+
+        conn._conns = 'Invalid'  # fill with garbage
+        conn.close()
+        self.assertTrue(conn.closed)
 
 
 class HttpClientConnectorTests(unittest.TestCase):

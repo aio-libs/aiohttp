@@ -74,6 +74,7 @@ class BaseConnector(object):
         self._share_cookies = share_cookies
         self._cleanup_handle = None
         self._force_close = force_close
+        self._closed = False
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -125,7 +126,18 @@ class BaseConnector(object):
 
     def close(self):
         """Close all opened transports."""
+        if self._closed:
+            return
+        self._closed = True
         self._do_close(self._conns)
+
+    @property
+    def closed(self):
+        """Is connector closed.
+
+        A readonly property.
+        """
+        return self._closed
 
     @staticmethod
     def _do_close(conns):
