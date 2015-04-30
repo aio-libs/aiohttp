@@ -226,6 +226,13 @@ class ClientSession:
                                        **kwargs)
         return resp
 
+    def close(self):
+        """Close underlying connector.
+
+        Release all acquired resources.
+        """
+        self._connector.close()
+
 
 @asyncio.coroutine
 def request(method, url, *,

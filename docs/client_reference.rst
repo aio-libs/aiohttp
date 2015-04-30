@@ -198,6 +198,12 @@ Usage example::
       :param data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)
 
+   .. method:: close()
+
+      Close underlying connector.
+
+      Release all acquired resources.
+
 
 request coroutine
 -----------------

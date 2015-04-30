@@ -3,11 +3,12 @@
 
 import asyncio
 import unittest
-import unittest.mock
+from unittest import mock
 
 import aiohttp
 from aiohttp.client import ClientSession
 from aiohttp.multidict import MultiDict, CIMultiDict
+from aiohttp.connector import BaseConnector
 
 
 class ClientResponseTests(unittest.TestCase):
@@ -132,7 +133,7 @@ class ClientResponseTests(unittest.TestCase):
             read_until_eof=False)
         return session, params
 
-    @unittest.mock.patch("aiohttp.client.ClientSession.request")
+    @mock.patch("aiohttp.client.ClientSession.request")
     def test_http_GET(self, patched):
         session, params = self._make_one()
         self.run(session.get(
@@ -148,7 +149,7 @@ class ClientResponseTests(unittest.TestCase):
                  allow_redirects=True,
                  **params)])
 
-    @unittest.mock.patch("aiohttp.client.ClientSession.request")
+    @mock.patch("aiohttp.client.ClientSession.request")
     def test_http_OPTIONS(self, patched):
         session, params = self._make_one()
         self.run(session.options(
@@ -164,7 +165,7 @@ class ClientResponseTests(unittest.TestCase):
                 allow_redirects=True,
                 **params)])
 
-    @unittest.mock.patch("aiohttp.client.ClientSession.request")
+    @mock.patch("aiohttp.client.ClientSession.request")
     def test_http_HEAD(self, patched):
         session, params = self._make_one()
         self.run(session.head(
@@ -180,7 +181,7 @@ class ClientResponseTests(unittest.TestCase):
                 allow_redirects=False,
                 **params)])
 
-    @unittest.mock.patch("aiohttp.client.ClientSession.request")
+    @mock.patch("aiohttp.client.ClientSession.request")
     def test_http_POST(self, patched):
         session, params = self._make_one()
         self.run(session.post(
@@ -199,7 +200,7 @@ class ClientResponseTests(unittest.TestCase):
                 files={"x": '1'},
                 **params)])
 
-    @unittest.mock.patch("aiohttp.client.ClientSession.request")
+    @mock.patch("aiohttp.client.ClientSession.request")
     def test_http_PUT(self, patched):
         session, params = self._make_one()
         self.run(session.put(
@@ -218,7 +219,7 @@ class ClientResponseTests(unittest.TestCase):
                  files={"x": '1'},
                  **params)])
 
-    @unittest.mock.patch("aiohttp.client.ClientSession.request")
+    @mock.patch("aiohttp.client.ClientSession.request")
     def test_http_PATCH(self, patched):
         session, params = self._make_one()
         self.run(session.patch(
@@ -237,7 +238,7 @@ class ClientResponseTests(unittest.TestCase):
                 files={"x": '1'},
                 **params)])
 
-    @unittest.mock.patch("aiohttp.client.ClientSession.request")
+    @mock.patch("aiohttp.client.ClientSession.request")
     def test_http_DELETE(self, patched):
         session, params = self._make_one()
         self.run(session.delete(
@@ -251,3 +252,9 @@ class ClientResponseTests(unittest.TestCase):
              dict(
                 params={"x": 2},
                 **params)])
+
+    def test_close(self):
+        session = ClientSession(loop=self.loop)
+        session._connector = mock.Mock(BaseConnector)
+        session.close()
+        session._connector.close.assert_called_once_with()

@@ -7,6 +7,9 @@ x.x.x (XX-XX-XXXX)
 - Setup uploaded filename if field value is binary and transfer
   encoding is not specified #349
 
+- Implement `ClientSession.close()` method
+
+
 0.15.3 (04-22-2015)
 -------------------
 
