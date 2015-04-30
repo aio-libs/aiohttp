@@ -8,7 +8,7 @@ from unittest import mock
 import aiohttp
 from aiohttp.client import ClientSession
 from aiohttp.multidict import MultiDict, CIMultiDict
-from aiohttp.connector import BaseConnector
+from aiohttp.connector import BaseConnector, TCPConnector
 
 
 class ClientResponseTests(unittest.TestCase):
@@ -264,3 +264,8 @@ class ClientResponseTests(unittest.TestCase):
         self.assertFalse(session.closed)
         session.close()
         self.assertTrue(session.closed)
+
+    def test_connector(self):
+        connector = TCPConnector(loop=self.loop)
+        session = ClientSession(connector=connector, loop=self.loop)
+        self.assertIs(session.connector, connector)

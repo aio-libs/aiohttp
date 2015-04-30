@@ -210,6 +210,13 @@ Usage example::
 
       A read-only property.
 
+   .. attribute:: connector
+
+      :class:`aiohttp.connector.BaseConnector` derived instance used
+      for the session.
+
+      A read-only property.
+
 
 request coroutine
 -----------------

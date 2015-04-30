@@ -241,6 +241,11 @@ class ClientSession:
         """
         return self._connector.closed
 
+    @property
+    def connector(self):
+        """Connector instance used for the session."""
+        return self._connector
+
 
 @asyncio.coroutine
 def request(method, url, *,
