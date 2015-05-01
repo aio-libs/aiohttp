@@ -358,6 +358,14 @@ class BaseConnectorTests(unittest.TestCase):
         conn.close()
         self.assertTrue(conn.closed)
 
+    def test_close_cancels_cleanup_handle(self):
+        conn = aiohttp.BaseConnector(loop=self.loop)
+        conn._start_cleanup_task()
+
+        self.assertIsNotNone(conn._cleanup_handle)
+        conn.close()
+        self.assertIsNone(conn._cleanup_handle)
+
 
 class HttpClientConnectorTests(unittest.TestCase):
 

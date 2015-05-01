@@ -131,6 +131,10 @@ class BaseConnector(object):
         self._closed = True
         self._do_close(self._conns)
 
+        if self._cleanup_handle:
+            self._cleanup_handle.cancel()
+            self._cleanup_handle = None
+
     @property
     def closed(self):
         """Is connector closed.
