@@ -4,7 +4,7 @@ import unittest
 from aiohttp import web, request
 
 
-class TestWebFunctional(unittest.TestCase):
+class TestWebMiddlewareFunctional(unittest.TestCase):
 
     def setUp(self):
         self.handler = None
