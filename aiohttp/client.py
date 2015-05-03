@@ -31,7 +31,7 @@ class ClientSession:
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
-        self.cookies = http.cookies.SimpleCookie()
+        self._cookies = http.cookies.SimpleCookie()
 
         if connector is None:
             connector = aiohttp.TCPConnector(force_close=True, loop=loop)
@@ -249,6 +249,11 @@ class ClientSession:
     def connector(self):
         """Connector instance used for the session."""
         return self._connector
+
+    @property
+    def cookies(self):
+        """The session cookies."""
+        return self._cookies
 
 
 @asyncio.coroutine

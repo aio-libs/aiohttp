@@ -54,6 +54,13 @@ Usage example::
    :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that represents
                                           HTTP Basic Auth (optional)
 
+   .. attribute:: cookies
+
+      The session cookies, :class:`http.cookies.SimpleCookie` instance.
+
+      A read-only property. Overriding `session.cookies = new_val` is
+      forbidden, but you may modify the object inplace if needed.
+
 
    .. coroutinemethod:: request(method, url, *, params=None, data=None,\
                                 headers=None, auth=None, allow_redirects=True,\

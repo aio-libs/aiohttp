@@ -277,3 +277,8 @@ class ClientResponseTests(unittest.TestCase):
                 ValueError,
                 "loop argument must agree with connector"):
             ClientSession(connector=connector, loop=self.loop)
+
+    def test_cookies_are_readonly(self):
+        session = ClientSession(loop=self.loop)
+        with self.assertRaises(AttributeError):
+            session.cookies = 123
