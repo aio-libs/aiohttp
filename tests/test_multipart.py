@@ -575,6 +575,7 @@ class BodyPartWriterTestCase(unittest.TestCase):
 
     def test_autoset_content_disposition(self):
         self.part.obj = open(__file__, 'rb')
+        self.addCleanup(self.part.obj.close)
         self.part._fill_headers_with_defaults()
         self.assertIn(CONTENT_DISPOSITION, self.part.headers)
         fname = os.path.basename(self.part.obj.name)
