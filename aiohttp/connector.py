@@ -45,7 +45,7 @@ class Connection(object):
             self._wr = None
 
     def release(self):
-        if self._transport:
+        if self._transport is not None:
             self._connector._release(
                 self._key, self._request, self._transport, self._protocol)
             self._transport = None
