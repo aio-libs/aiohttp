@@ -384,7 +384,8 @@ class ProxyConnector(TCPConnector):
     Usage:
 
     >>> conn = ProxyConnector(proxy="http://some.proxy.com")
-    >>> resp = yield from request('GET', 'http://python.org', connector=conn)
+    >>> session = ClientSession(connector=conn)
+    >>> resp = yield from session.get('http://python.org')
 
     """
 
@@ -470,7 +471,8 @@ class UnixConnector(BaseConnector):
     Usage:
 
     >>> conn = UnixConnector(path='/path/to/socket')
-    >>> resp = yield from request('GET', 'http://python.org', connector=conn)
+    >>> session = ClientSession(connector=conn)
+    >>> resp = yield from session.get('http://python.org')
 
     """
 

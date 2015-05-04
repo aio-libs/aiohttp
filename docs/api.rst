@@ -3,19 +3,11 @@
 Helpers API
 ===========
 
-All public names from submodules ``connector``,
+All public names from submodules
 ``errors``, ``multipart``, ``parsers``, ``protocol``, ``utils``,
 ``websocket`` and ``wsgi`` are exported into ``aiohttp``
 namespace.
 
-
-aiohttp.connector module
-------------------------
-
-.. automodule:: aiohttp.connector
-    :members:
-    :undoc-members:
-    :show-inheritance:
 
 aiohttp.errors module
 ---------------------

@@ -299,3 +299,188 @@ Usage::
      >>> resp
      <ClientResponse(python.org/) [200]>
      >>> data = yield from resp.read()
+
+
+Connectors
+----------
+
+.. module:: aiohttp.connector
+
+Connectors are transports for aiohttp clients.
+
+There are standard connectors:
+
+1. :class:`TCPConnector` for regular *TCP sockets* (both *HTTP* and
+   *HTTPS* schemas supported).
+2. :class:`ProxyConnector` for connecting via HTTP proxy.
+3. :class:`UnixConnector` for connecting via UNIX socket (it's used mostly for
+   testing purposes).
+
+All connector classes should be derived from :class:`BaseConnector`.
+
+.. class:: BaseConnector(*, conn_timeout=None, keepalive_timeout=30, \
+                         share_cookies=False, force_close=False, loop=None)
+
+   Base class for all connectors.
+
+   :param float conn_timeout: timeout for connection establishing
+                              (optional). Values ``0`` or ``None``
+                              mean no timeout.
+
+   :param float keepalive_timeout: timeout for connection reusing
+                                   after releasing (optional). Values
+                                   ``0`` or ``None`` mean no timeout.
+
+   :param bool share_cookies: update :attr:`cookies` on connection
+                              processing (optional, deprecated).
+
+   :param bool force_close: do close underlying sockets after
+                            connection releasing (optional).
+
+   :param loop: :ref:`event loop<asyncio-event-loop>`
+      used for handling connections.
+      If param is ``None``, :func:`asyncio.get_event_loop`
+      is used for getting default event loop, but we strongly
+      recommend to use explicit loops everywhere.
+      (optional)
+
+   .. deprecated:: 0.15.2
+
+      *share_cookies* parameter is deprecated, use
+      :class:`~aiohttp.client.ClientSession` for hadling cookies for
+      client connections.
+
+   .. attribute:: closed
+
+      Read-only property, ``True`` if connector is closed.
+
+   .. method:: close()
+
+      Close all opened connections.
+
+   .. coroutinemethod:: connect(request)
+
+      Get a free connection from pool or create new one if connection
+      is absent in the pool.
+
+      :param aiohttp.client.ClientRequest request: request object
+                                                   which is connection
+                                                   initiator.
+
+      :return: :class:`Connection` object.
+
+   .. coroutinemethod:: _create_connection(req)
+
+      Abstract method for actual connection establishing, should be
+      overriden in subclasses.
+
+.. class:: TCPConnector(*, verify_ssl=True, resolve=False, \
+                        family=socket.AF_INET, \
+                        ssl_context=None, conn_timeout=None, \
+                        keepalive_timeout=30, share_cookies=False, \
+                        force_close=False, loop=None)
+
+   Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
+
+   The most common transport, when you don't know what connector type
+   you need use :class:`TCPConnector` instance.
+
+   :class:`TCPConnector` is inherited from :class:`BaseConnector`.
+
+   Constructor accepts all parameters suitable for
+   :class:`BaseConnector` plus several TCP-specific ones:
+
+   :param bool verify_ssl: do perform ssl certificate validation for
+      *HTTPS* request (the feature is enabled by default). May be
+      disabled for, e.g., skipping validation for sites with invalid
+      certificate.
+
+   :param bool resolve: use internal cache for DNS lookups, ``False``
+      by default.
+
+      Enabling an option *may* speedup connection
+      establishing a bit but may introduce some
+      *side effects* also.
+
+   :param int family: TCP socket family, ``AF_INET`` by default
+                      (*IPv4*). For *IPv6* use ``AF_INET6``.
+
+   :param ssl.SSLContext ssl_context: ssl context used for processing
+      *HTTPS* requests (optional).
+
+      *ssl_context* may be used for configuring certification
+      authority channel, supported SSL options etc.
+
+.. class:: ProxyConnector(proxy, *, proxy_auth=None, \
+                          conn_timeout=None, \
+                          keepalive_timeout=30, share_cookies=False, \
+                          force_close=False, loop=None)
+
+   HTTP Proxy connector.
+
+   Use :class:`ProxyConnector` for sending *HTTP/HTTPS* requests
+   through *HTTP proxy*.
+
+   :class:`ProxyConnector` is inherited from :class:`TCPConnector`.
+
+   Usage::
+
+      >>> conn = ProxyConnector(proxy="http://some.proxy.com")
+      >>> session = ClientSession(connector=conn)
+      >>> resp = yield from session.get('http://python.org')
+
+   Constructor accepts all parameters suitable for
+   :class:`TCPConnector` plus several proxy-specific ones:
+
+   :param str proxy: URL for proxy, e.g. ``"http://some.proxy.com"``.
+
+   :param aiohttp.helpers.BasicAuth proxy_auth: basic-auth
+      authenthication info used for proxies with authorization.
+
+
+.. class:: UnixConnector
+
+   Unix socket connector.
+
+   Use :class:`ProxyConnector` for sending *HTTP/HTTPS* requests
+   through *UNIX Sockets* as underlying transport.
+
+   UNIX sockets are handy for writing tests and making very fast
+   connections between processes on the same host.
+
+   :class:`UnixConnector` is inherited from :class:`BaseConnector`.
+
+    Usage::
+
+       >>> conn = UnixConnector(path='/path/to/socket')
+       >>> session = ClientSession(connector=conn)
+       >>> resp = yield from session.get('http://python.org')
+
+   Constructor accepts all parameters suitable for
+   :class:`BaseConnector` plus unix-specific one:
+
+   :param str path: Unix socket path
+
+
+.. class:: Connection
+
+   Encapsulates single connection in connector object.
+
+   End user should never create :class:`Connection` instances manually
+   but get it by :meth:`BaseConnector.connect` coroutine.
+
+   .. attribute:: loop
+
+      Event loop used for connection
+
+   .. method:: close()
+
+      Close connection with forcibly closing underlying socket.
+
+   .. method:: release()
+
+      Release connection back to connector.
+
+      Underlying socket is not closed, the connection may be reused
+      later if timeout (30 seconds by default) for connection was not
+      expired.
