@@ -589,7 +589,8 @@ Response
 WebSocketResponse
 ^^^^^^^^^^^^^^^^^
 
-.. class:: WebSocketResponse(*, timeout=10.0, autoclose=True, autoping=True, protocols=())
+.. class:: WebSocketResponse(*, timeout=10.0, autoclose=True, \
+                             autoping=True, protocols=())
 
    Class for handling server-side websockets.
 
@@ -647,7 +648,7 @@ WebSocketResponse
    .. method:: exception()
 
       Returns last occured exception or None.
-      
+
    .. method:: ping(message=b'')
 
       Send :const:`~aiohttp.websocket.MSG_PING` to peer.
@@ -763,8 +764,9 @@ Application is a synonym for web-server.
 
 To get fully working example, you have to make *application*, register
 supported urls in *router* and create a *server socket* with
-:class:`aiohttp.RequestHandlerFactory` as a *protocol factory*. *RequestHandlerFactory*
-could be constructed with :meth:`make_handler`.
+:class:`aiohttp.RequestHandlerFactory` as a *protocol
+factory*. *RequestHandlerFactory* could be constructed with
+:meth:`make_handler`.
 
 *Application* contains a *router* instance and a list of callbacks that
 will be called during application finishing.
