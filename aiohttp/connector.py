@@ -232,7 +232,7 @@ class BaseConnector(object):
 
             self._start_cleanup_task()
 
-    def _create_connection(self, req, *args, **kwargs):
+    def _create_connection(self, req):
         raise NotImplementedError()
 
 
@@ -345,7 +345,7 @@ class TCPConnector(BaseConnector):
             return [{'hostname': host, 'host': host, 'port': port,
                      'family': self._family, 'proto': 0, 'flags': 0}]
 
-    def _create_connection(self, req, **kwargs):
+    def _create_connection(self, req):
         """Create connection.
 
         Has same keyword arguments as BaseEventLoop.create_connection.
@@ -364,8 +364,7 @@ class TCPConnector(BaseConnector):
                     self._factory, hinfo['host'], hinfo['port'],
                     ssl=sslcontext, family=hinfo['family'],
                     proto=hinfo['proto'], flags=hinfo['flags'],
-                    server_hostname=hinfo['hostname'] if sslcontext else None,
-                    **kwargs))
+                    server_hostname=hinfo['hostname'] if sslcontext else None))
             except OSError as exc:
                 if not hosts:
                     raise ClientOSError('Can not connect to %s:%s' %
@@ -404,7 +403,7 @@ class ProxyConnector(TCPConnector):
         return self._proxy
 
     @asyncio.coroutine
-    def _create_connection(self, req, **kwargs):
+    def _create_connection(self, req):
         proxy_req = ClientRequest(
             hdrs.METH_GET, self._proxy,
             headers={hdrs.HOST: req.host},
@@ -456,7 +455,7 @@ class ProxyConnector(TCPConnector):
                 transport.pause_reading()
                 transport, proto = yield from self._loop.create_connection(
                     self._factory, ssl=True, sock=rawsock,
-                    server_hostname=req.host, **kwargs)
+                    server_hostname=req.host)
 
         return transport, proto
 
@@ -486,6 +485,6 @@ class UnixConnector(BaseConnector):
         return self._path
 
     @asyncio.coroutine
-    def _create_connection(self, req, **kwargs):
+    def _create_connection(self, req):
         return (yield from self._loop.create_unix_connection(
-            self._factory, self._path, **kwargs))
+            self._factory, self._path))
