@@ -23,6 +23,8 @@ Usage example::
      <ClientResponse(python.org/) [200]>
      >>> data = yield from resp.read()
 
+.. versionadded:: 0.15.2
+
 
 .. class:: ClientSession(*, connector=None, loop=None, request_class=None,\
                           response_class=None, cookies=None, headers=None,\
