@@ -225,6 +225,17 @@ def parse_remote_addr(forward):
     return remote[0], str(remote[1])
 
 
+def unquote_quote(segment):
+    RFC3986_GENDELIMS = ":/?#[]@"
+    RFC3986_SUBDELIMS = "!$&'()*+,;="
+    segment = urllib.parse.unquote(segment)
+    # Tilde is part of RFC3986 Unreserved Characters
+    # http://tools.ietf.org/html/rfc3986#section-2.3
+    # See also http://bugs.python.org/issue16285
+    return urllib.parse.quote(
+        segment, safe=RFC3986_SUBDELIMS + RFC3986_GENDELIMS + '~')
+
+
 def atoms(message, environ, response, transport, request_time):
     """Gets atoms for log formatting."""
     if message:

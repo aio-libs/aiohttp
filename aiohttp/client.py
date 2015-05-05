@@ -474,8 +474,19 @@ class ClientRequest:
             else:
                 query = params
 
-        self.path = urllib.parse.urlunsplit(
-            ('', '', urllib.parse.quote(path, safe='/%:'), query, fragment))
+        if query:
+            # Separately unquoting key/value,
+            # so as to not mix querystring separators
+            # included in query values.
+            query_parts = [
+                (urllib.parse.unquote(q[0]), urllib.parse.unquote(q[1]))
+                for q in urllib.parse.parse_qsl(query, keep_blank_values=True)]
+            # urlencode will take care of quoting
+            query = urllib.parse.urlencode(query_parts)
+        path = helpers.unquote_quote(path)
+        fragment = helpers.unquote_quote(fragment)
+
+        self.path = urllib.parse.urlunsplit(('', '', path, query, fragment))
 
     def update_headers(self, headers):
         """Update request headers."""
