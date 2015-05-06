@@ -75,6 +75,9 @@ class ClientSession:
                 expect100=False,
                 read_until_eof=True):
 
+        if self.closed:
+            raise RuntimeError('Session is closed')
+
         redirects = 0
         method = method.upper()
 

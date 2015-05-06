@@ -293,3 +293,13 @@ class ClientResponseTests(unittest.TestCase):
         self.assertTrue(session.closed)
         self.assertFalse(conn.closed)
         conn.close()
+
+    def test_request_closed_session(self):
+        @asyncio.coroutine
+        def go():
+            session = ClientSession(loop=self.loop)
+            session.close()
+            with self.assertRaises(RuntimeError):
+                yield from session.request('get', '/')
+
+        self.loop.run_until_complete(go())
