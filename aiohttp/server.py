@@ -2,7 +2,6 @@
 
 import asyncio
 import http.server
-import time
 import traceback
 import socket
 
@@ -321,7 +320,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
         Returns http response with specific status code. Logs additional
         information. It always closes current connection."""
-        now = time.time()
+        now = self._loop.time()
         try:
             if self._request_handler is None:
                 # client has been disconnected during writing.
@@ -358,7 +357,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             response.write(html)
             drain = response.write_eof()
 
-            self.log_access(message, None, response, time.time() - now)
+            self.log_access(message, None, response, self._loop.time() - now)
             return drain
         finally:
             self.keep_alive(False)
@@ -374,7 +373,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         :param payload: Request payload
         :type payload: aiohttp.streams.FlowControlStreamReader
         """
-        now = time.time()
+        now = self._loop.time()
         response = aiohttp.Response(
             self.writer, 404, http_version=message.version, close=True)
 
@@ -388,6 +387,6 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         drain = response.write_eof()
 
         self.keep_alive(False)
-        self.log_access(message, None, response, time.time() - now)
+        self.log_access(message, None, response, self._loop.time() - now)
 
         return drain
