@@ -118,7 +118,7 @@ class BaseConnectorTests(unittest.TestCase):
         self.assertEqual(conn._get(1), (None, None))
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        conn._conns[1] = [(tr, proto, time.time())]
+        conn._conns[1] = [(tr, proto, time.monotonic())]
         self.assertEqual(conn._get(1), (tr, proto))
 
     def test_get_expired(self):
@@ -126,13 +126,12 @@ class BaseConnectorTests(unittest.TestCase):
         self.assertEqual(conn._get(1), (None, None))
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        conn._conns[1] = [(tr, proto, time.time() - 1000)]
+        conn._conns[1] = [(tr, proto, time.monotonic() - 1000)]
         self.assertEqual(conn._get(1), (None, None))
         self.assertEqual(conn._conns[1], [])
 
-    @mock.patch('aiohttp.connector.time')
-    def test_release(self, m_time):
-        m_time.time.return_value = 10
+    def test_release(self):
+        self.loop.time = mock.Mock(return_value=10)
 
         conn = aiohttp.BaseConnector(share_cookies=True, loop=self.loop)
         conn._start_cleanup_task = unittest.mock.Mock()
@@ -199,9 +198,8 @@ class BaseConnectorTests(unittest.TestCase):
         self.assertEqual(conn._conns[key], [(tr1, proto1, 1)])
         self.assertTrue(tr.close.called)
 
-    @mock.patch('aiohttp.connector.time')
-    def test_release_not_started(self, m_time):
-        m_time.time.return_value = 10
+    def test_release_not_started(self):
+        self.loop.time = mock.Mock(return_value=10)
 
         conn = aiohttp.BaseConnector(loop=self.loop)
         req = unittest.mock.Mock()
@@ -275,10 +273,7 @@ class BaseConnectorTests(unittest.TestCase):
         loop.call_later.assert_called_with(
             conn._keepalive_timeout, conn._cleanup)
 
-    @unittest.mock.patch('aiohttp.connector.time')
-    def test_cleanup(self, time):
-        time.time.return_value = 300
-
+    def test_cleanup(self):
         testset = {
             1: [(unittest.mock.Mock(), unittest.mock.Mock(), 10),
                 (unittest.mock.Mock(), unittest.mock.Mock(), 300),
@@ -288,6 +283,7 @@ class BaseConnectorTests(unittest.TestCase):
         testset[1][1][1].is_connected.return_value = False
 
         loop = unittest.mock.Mock()
+        loop.time.return_value = 300
         conn = aiohttp.BaseConnector(loop=loop)
         conn._conns = testset
         existing_handle = conn._cleanup_handle = unittest.mock.Mock()

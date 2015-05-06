@@ -2,7 +2,6 @@ import asyncio
 import aiohttp
 import functools
 import http.cookies
-import time
 import ssl
 import socket
 import weakref
@@ -94,7 +93,7 @@ class BaseConnector(object):
             self._cleanup_handle.cancel()
             self._cleanup_handle = None
 
-        now = time.time()
+        now = self._loop.time()
 
         connections = {}
         for key, conns in self._conns.items():
@@ -189,10 +188,11 @@ class BaseConnector(object):
 
     def _get(self, key):
         conns = self._conns.get(key)
+        t1 = self._loop.time()
         while conns:
             transport, proto, t0 = conns.pop()
             if transport is not None and proto.is_connected():
-                if (time.time() - t0) > self._keepalive_timeout:
+                if t1 - t0 > self._keepalive_timeout:
                     transport.close()
                     transport = None
                 else:
@@ -228,7 +228,7 @@ class BaseConnector(object):
             conns = self._conns.get(key)
             if conns is None:
                 conns = self._conns[key] = []
-            conns.append((transport, protocol, time.time()))
+            conns.append((transport, protocol, self._loop.time()))
             reader.unset_parser()
 
             self._start_cleanup_task()
