@@ -303,3 +303,10 @@ class ClientResponseTests(unittest.TestCase):
                 yield from session.request('get', '/')
 
         self.loop.run_until_complete(go())
+
+    def test_close_flag_for_closed_connector(self):
+        session = ClientSession(loop=self.loop)
+        conn = session.connector
+        self.assertFalse(session.closed)
+        conn.close()
+        self.assertTrue(session.closed)
