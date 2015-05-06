@@ -115,14 +115,15 @@ In web-handler you may build *URL* for that route::
 More interesting example is building *URL* for :ref:`variable
 router<aiohttp-web-variable-handler>`::
 
-   app.router.add_route('GET', r'/{user}', variable_handler, name='handler')
+   app.router.add_route('GET', r'/{user}/info',
+                        variable_handler, name='handler')
 
 
 In this case you can pass route parameters also::
 
    >>> request.app.router['handler'].url(params={'user': 'john_doe'},
                                          query="?a=b")
-   ... '/john_doe?a=b'
+   ... '/john_doe/info?a=b'
 
 
 Using plain coroutines and classes for web-handlers
