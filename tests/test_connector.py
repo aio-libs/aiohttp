@@ -3,7 +3,6 @@
 import asyncio
 import http.cookies
 import gc
-import time
 import socket
 import unittest
 import ssl
@@ -118,7 +117,7 @@ class BaseConnectorTests(unittest.TestCase):
         self.assertEqual(conn._get(1), (None, None))
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        conn._conns[1] = [(tr, proto, time.monotonic())]
+        conn._conns[1] = [(tr, proto, self.loop.time())]
         self.assertEqual(conn._get(1), (tr, proto))
 
     def test_get_expired(self):
@@ -126,7 +125,7 @@ class BaseConnectorTests(unittest.TestCase):
         self.assertEqual(conn._get(1), (None, None))
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        conn._conns[1] = [(tr, proto, time.monotonic() - 1000)]
+        conn._conns[1] = [(tr, proto, self.loop.time() - 1000)]
         self.assertEqual(conn._get(1), (None, None))
         self.assertEqual(conn._conns[1], [])
 
@@ -231,7 +230,7 @@ class BaseConnectorTests(unittest.TestCase):
 
         conn = aiohttp.BaseConnector(loop=self.loop)
         key = ('host', 80, False)
-        conn._conns[key] = [(tr, proto, time.time())]
+        conn._conns[key] = [(tr, proto, self.loop.time())]
         conn._create_connection = unittest.mock.Mock()
         conn._create_connection.return_value = asyncio.Future(loop=self.loop)
         conn._create_connection.return_value.set_result((tr, proto))
