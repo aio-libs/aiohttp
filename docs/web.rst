@@ -67,6 +67,9 @@ Handlers are connected to the :class:`Application` via routes::
 
 .. _aiohttp-web-variable-handler:
 
+Variable routes
+^^^^^^^^^^^^^^^
+
 You can also use *variable routes*. If route contains strings like
 ``'/a/{name}/c'`` that means the route matches to the path like
 ``'/a/b/c'`` or ``'/a/1/c'``.
@@ -94,6 +97,36 @@ By default regex is ``[^{}/]+``.
 
    Support for custom regexs in variable routes.
 
+
+.. _aiohttp-web-named-routes:
+
+Named routes and url reverse constructing
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Routes may have a *name*::
+
+   app.router.add_route('GET', '/root', handler, name='root')
+
+In web-handler you may build *URL* for that route::
+
+   >>> request.app.router['root'].url(query="?a=b&c=d")
+   ... '/root?a=b&c=d'
+
+More interesting example is building *URL* for :ref:`variable
+router<aiohttp-web-variable-handler>`::
+
+   app.router.add_route('GET', r'/{user}', variable_handler, name='handler')
+
+
+In this case you can pass route parameters also::
+
+   >>> request.app.router['handler'].url(params={'user': 'john_doe'},
+                                         query="?a=b")
+   ... '/john_doe?a=b'
+
+
+Using plain coroutines and classes for web-handlers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Handlers *may* be first-class functions, e.g.::
 
