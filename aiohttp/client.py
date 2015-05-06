@@ -824,8 +824,6 @@ class ClientResponse:
         print(self.headers, file=out)
         return out.getvalue()
 
-    __str__ = __repr__
-
     def waiting_for_continue(self):
         return self._continue is not None
 
