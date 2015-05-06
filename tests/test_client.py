@@ -397,7 +397,7 @@ class ClientRequestTests(unittest.TestCase):
         self.assertEqual(req.path, "/get/test%20case")
 
         req = ClientRequest('get', "http://0.0.0.0/get/test%2fcase")
-        self.assertEqual(req.path, "/get/test%2fcase")
+        self.assertEqual(req.path, "/get/test/case")
 
         req = ClientRequest('get', "http://0.0.0.0/get/test%20case")
         self.assertEqual(req.path, "/get/test%20case")
@@ -439,6 +439,8 @@ class ClientRequestTests(unittest.TestCase):
         self.assertEqual('/?foo=foo', req.path)
         req = ClientRequest('', join('\xf8'), params={'foo': 'foo'})
         self.assertEqual('/%C3%B8?foo=foo', req.path)
+        req = ClientRequest('', join('~test'), params={'foo': 'foo'})
+        self.assertEqual('/~test?foo=foo', req.path)
 
     def test_query_multivalued_param(self):
         for meth in ClientRequest.ALL_METHODS:
