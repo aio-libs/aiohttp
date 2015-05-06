@@ -91,9 +91,13 @@ class BaseConnectorTests(unittest.TestCase):
         transp.close.assert_called_with()
 
     def test_create_conn(self):
-        conn = aiohttp.BaseConnector(loop=self.loop)
-        self.assertRaises(
-            NotImplementedError, conn._create_connection, object())
+
+        def go():
+            conn = aiohttp.BaseConnector(loop=self.loop)
+            with self.assertRaises(NotImplementedError):
+                yield from conn._create_connection(object())
+
+        self.loop.run_until_complete(go())
 
     @unittest.mock.patch('aiohttp.connector.asyncio')
     def test_ctor_loop(self, asyncio):

@@ -233,6 +233,7 @@ class BaseConnector(object):
 
             self._start_cleanup_task()
 
+    @asyncio.coroutine
     def _create_connection(self, req):
         raise NotImplementedError()
 
@@ -346,6 +347,7 @@ class TCPConnector(BaseConnector):
             return [{'hostname': host, 'host': host, 'port': port,
                      'family': self._family, 'proto': 0, 'flags': 0}]
 
+    @asyncio.coroutine
     def _create_connection(self, req):
         """Create connection.
 
