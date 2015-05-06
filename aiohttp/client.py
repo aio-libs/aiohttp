@@ -346,6 +346,10 @@ def request(method, url, *,
                                       chunked=chunked,
                                       expect100=expect100,
                                       read_until_eof=read_until_eof)
+    if connector is not None:
+        session.detach()
+    else:
+        session.close()
     return resp
 
 
