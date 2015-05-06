@@ -256,6 +256,7 @@ class ClientResponseTests(unittest.TestCase):
     def test_close(self):
         session = ClientSession(loop=self.loop)
         session._connector = conn = mock.Mock(BaseConnector)
+        conn.closed = False
         session.close()
         self.assertIsNone(session.connector)
         conn.close.assert_called_once_with()
@@ -310,3 +311,13 @@ class ClientResponseTests(unittest.TestCase):
         self.assertFalse(session.closed)
         conn.close()
         self.assertTrue(session.closed)
+
+    def test_double_close(self):
+        session = ClientSession(loop=self.loop)
+        session._connector = conn = mock.Mock(BaseConnector)
+        conn.closed = False
+        session.close()
+        self.assertIsNone(session.connector)
+        session.close()
+        self.assertTrue(session.closed)
+        conn.close.assert_called_once_with()

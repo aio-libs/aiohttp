@@ -238,8 +238,9 @@ class ClientSession:
 
         Release all acquired resources.
         """
-        self._connector.close()
-        self._connector = None
+        if not self.closed:
+            self._connector.close()
+            self._connector = None
 
     @property
     def closed(self):
