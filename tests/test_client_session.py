@@ -255,9 +255,10 @@ class ClientResponseTests(unittest.TestCase):
 
     def test_close(self):
         session = ClientSession(loop=self.loop)
-        session._connector = mock.Mock(BaseConnector)
+        session._connector = conn = mock.Mock(BaseConnector)
         session.close()
-        session._connector.close.assert_called_once_with()
+        self.assertIsNone(session.connector)
+        conn.close.assert_called_once_with()
 
     def test_closed(self):
         session = ClientSession(loop=self.loop)
@@ -282,3 +283,13 @@ class ClientResponseTests(unittest.TestCase):
         session = ClientSession(loop=self.loop)
         with self.assertRaises(AttributeError):
             session.cookies = 123
+
+    def test_detach(self):
+        session = ClientSession(loop=self.loop)
+        conn = session.connector
+        self.assertFalse(conn.closed)
+        session.detach()
+        self.assertIsNone(session.connector)
+        self.assertTrue(session.closed)
+        self.assertFalse(conn.closed)
+        conn.close()

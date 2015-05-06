@@ -56,6 +56,19 @@ Usage example::
    :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that represents
                                           HTTP Basic Auth (optional)
 
+   .. attribute:: closed
+
+      ``True`` if the session has been closed, ``False`` otherwise.
+
+      A read-only property.
+
+   .. attribute:: connector
+
+      :class:`aiohttp.connector.BaseConnector` derived instance used
+      for the session.
+
+      A read-only property.
+
    .. attribute:: cookies
 
       The session cookies, :class:`http.cookies.SimpleCookie` instance.
@@ -213,18 +226,12 @@ Usage example::
 
       Release all acquired resources.
 
-   .. attribute:: closed
+   .. method:: detach()
 
-      ``True`` if the session has been closed, ``False`` otherwise.
+      Detach connector from session without closing the former.
 
-      A read-only property.
+      Session is switched to closed state anyway.
 
-   .. attribute:: connector
-
-      :class:`aiohttp.connector.BaseConnector` derived instance used
-      for the session.
-
-      A read-only property.
 
 
 request coroutine

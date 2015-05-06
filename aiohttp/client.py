@@ -236,6 +236,7 @@ class ClientSession:
         Release all acquired resources.
         """
         self._connector.close()
+        self._connector = None
 
     @property
     def closed(self):
@@ -243,7 +244,7 @@ class ClientSession:
 
         A readonly property.
         """
-        return self._connector.closed
+        return self._connector is None
 
     @property
     def connector(self):
@@ -254,6 +255,13 @@ class ClientSession:
     def cookies(self):
         """The session cookies."""
         return self._cookies
+
+    def detach(self):
+        """Detach connector from session without closing the former.
+
+        Session is switched to closed state anyway.
+        """
+        self._connector = None
 
 
 @asyncio.coroutine
