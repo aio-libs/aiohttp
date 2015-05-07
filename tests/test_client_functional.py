@@ -827,7 +827,8 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
     def test_share_cookies(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
-            conn = aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
+            with self.assertWarns(DeprecationWarning):
+                conn = aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
             resp = self.loop.run_until_complete(
                 client.request('get', httpd.url('cookies'),
                                connector=conn, loop=self.loop))
@@ -883,7 +884,8 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
     def test_keepalive(self):
         from aiohttp import connector
-        c = connector.TCPConnector(share_cookies=True, loop=self.loop)
+        with self.assertWarns(DeprecationWarning):
+            c = connector.TCPConnector(share_cookies=True, loop=self.loop)
 
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
@@ -930,7 +932,8 @@ class HttpClientFunctionalTests(unittest.TestCase):
     @mock.patch('aiohttp.client.client_logger')
     def test_connector_cookies(self, m_log):
         from aiohttp import connector
-        conn = connector.TCPConnector(share_cookies=True, loop=self.loop)
+        with self.assertWarns(DeprecationWarning):
+            conn = connector.TCPConnector(share_cookies=True, loop=self.loop)
 
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             conn.update_cookies({'test': '1'})
@@ -1099,7 +1102,8 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
     def test_share_cookie_partial_update(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
-            conn = aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
+            with self.assertWarns(DeprecationWarning):
+                conn = aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
             # Set c1 and c2 cookie
             resp = self.loop.run_until_complete(
                 client.request('get', httpd.url('cookies'),
@@ -1129,7 +1133,8 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
     def test_connector_cookie_merge(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
-            conn = aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
+            with self.assertWarn(DeprecationWarning):
+                conn = aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
             conn.update_cookies({
                 "c1": "connector_cookie1",
                 "c2": "connector_cookie2",
