@@ -43,6 +43,7 @@ class ClientResponseTests(unittest.TestCase):
             set(session._default_headers),
             set([("h1", "header1"),
                  ("h2", "header2")]))
+        session.close()
 
     def test_init_headers_list_of_tuples(self):
         session = ClientSession(
@@ -55,6 +56,7 @@ class ClientResponseTests(unittest.TestCase):
             set([("h1", "header1"),
                  ("h2", "header2"),
                  ("h3", "header3")]))
+        session.close()
 
     def test_init_headers_MultiDict(self):
         session = ClientSession(
@@ -68,6 +70,7 @@ class ClientResponseTests(unittest.TestCase):
             set([("h1", "header1"),
                  ("h2", "header2"),
                  ("h3", "header3")]))
+        session.close()
 
     def test_init_cookies_with_simple_dict(self):
         session = ClientSession(
@@ -78,6 +81,7 @@ class ClientResponseTests(unittest.TestCase):
         self.assertEqual(set(session.cookies), {'c1', 'c2'})
         self.assertEqual(session.cookies['c1'].value, 'cookie1')
         self.assertEqual(session.cookies['c2'].value, 'cookie2')
+        session.close()
 
     def test_init_cookies_with_list_of_tuples(self):
         session = ClientSession(
@@ -87,6 +91,7 @@ class ClientResponseTests(unittest.TestCase):
         self.assertEqual(set(session.cookies), {'c1', 'c2'})
         self.assertEqual(session.cookies['c1'].value, 'cookie1')
         self.assertEqual(session.cookies['c2'].value, 'cookie2')
+        session.close()
 
     def test_merge_headers(self):
         # Check incoming simple dict
@@ -103,6 +108,7 @@ class ClientResponseTests(unittest.TestCase):
             ("h1", "h1"),
             ("h2", "header2")
         ]))
+        session.close()
 
     def test_merge_headers_with_multi_dict(self):
         session = ClientSession(
@@ -116,6 +122,7 @@ class ClientResponseTests(unittest.TestCase):
             ("h1", "h1"),
             ("h2", "header2")
         ]))
+        session.close()
 
     def test_merge_headers_with_list_of_tuples(self):
         session = ClientSession(
@@ -129,6 +136,7 @@ class ClientResponseTests(unittest.TestCase):
             ("h1", "h1"),
             ("h2", "header2")
         ]))
+        session.close()
 
     def _make_one(self):
         session = ClientSession(loop=self.loop)
@@ -158,6 +166,7 @@ class ClientResponseTests(unittest.TestCase):
                  params={"x": 1},
                  allow_redirects=True,
                  **params)])
+        session.close()
 
     @mock.patch("aiohttp.client.ClientSession.request")
     def test_http_OPTIONS(self, patched):
@@ -174,6 +183,7 @@ class ClientResponseTests(unittest.TestCase):
                 params={"x": 2},
                 allow_redirects=True,
                 **params)])
+        session.close()
 
     @mock.patch("aiohttp.client.ClientSession.request")
     def test_http_HEAD(self, patched):
@@ -190,6 +200,7 @@ class ClientResponseTests(unittest.TestCase):
                 params={"x": 2},
                 allow_redirects=False,
                 **params)])
+        session.close()
 
     @mock.patch("aiohttp.client.ClientSession.request")
     def test_http_POST(self, patched):
@@ -209,6 +220,7 @@ class ClientResponseTests(unittest.TestCase):
                 data="Some_data",
                 files={"x": '1'},
                 **params)])
+        session.close()
 
     @mock.patch("aiohttp.client.ClientSession.request")
     def test_http_PUT(self, patched):
@@ -228,6 +240,7 @@ class ClientResponseTests(unittest.TestCase):
                  data="Some_data",
                  files={"x": '1'},
                  **params)])
+        session.close()
 
     @mock.patch("aiohttp.client.ClientSession.request")
     def test_http_PATCH(self, patched):
@@ -247,6 +260,7 @@ class ClientResponseTests(unittest.TestCase):
                 data="Some_data",
                 files={"x": '1'},
                 **params)])
+        session.close()
 
     @mock.patch("aiohttp.client.ClientSession.request")
     def test_http_DELETE(self, patched):
@@ -262,6 +276,7 @@ class ClientResponseTests(unittest.TestCase):
              dict(
                 params={"x": 2},
                 **params)])
+        session.close()
 
     def test_close(self):
         conn = self.make_open_connector()
@@ -281,6 +296,7 @@ class ClientResponseTests(unittest.TestCase):
         connector = TCPConnector(loop=self.loop)
         session = ClientSession(connector=connector, loop=self.loop)
         self.assertIs(session.connector, connector)
+        session.close()
 
     def test_connector_loop(self):
         loop = asyncio.new_event_loop()
@@ -289,11 +305,13 @@ class ClientResponseTests(unittest.TestCase):
                 ValueError,
                 "loop argument must agree with connector"):
             ClientSession(connector=connector, loop=self.loop)
+        connector.close()
 
     def test_cookies_are_readonly(self):
         session = ClientSession(loop=self.loop)
         with self.assertRaises(AttributeError):
             session.cookies = 123
+        session.close()
 
     def test_detach(self):
         session = ClientSession(loop=self.loop)
