@@ -503,5 +503,5 @@ All connector classes should be derived from :class:`BaseConnector`.
 
       Detach underlying socket from connection.
 
-      It's required for grabbing trasport from connection object with
-      destroying the later.
+      Underlying socket is not closed, next :meth:`close` or
+      :meth:`release` calls don't return socket to free pool.
