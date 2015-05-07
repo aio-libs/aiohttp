@@ -25,6 +25,7 @@ PY_34 = sys.version_info >= (3, 4)
 class Connection(object):
 
     _source_traceback = None
+    _transport = None
 
     def __init__(self, connector, key, request, transport, protocol, loop):
         self._key = key
@@ -89,6 +90,8 @@ class BaseConnector(object):
         after each request (and between redirects).
     :param loop: Optional event loop.
     """
+
+    _closed = True  # prevent AttributeError in __del__ if ctor was failed
 
     def __init__(self, *, conn_timeout=None, keepalive_timeout=30,
                  share_cookies=False, force_close=False, loop=None):

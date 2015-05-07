@@ -29,11 +29,17 @@ HTTPS_PORT = 443
 
 class ClientSession:
 
+    _source_traceback = None
+    _connector = None
+
     def __init__(self, *, connector=None, loop=None, request_class=None,
                  response_class=None, cookies=None, headers=None, auth=None):
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
+        if loop.get_debug():
+            self._source_traceback = traceback.extract_stack(sys._getframe(1))
+
         self._cookies = http.cookies.SimpleCookie()
 
         if connector is None:
@@ -61,6 +67,19 @@ class ClientSession:
             request_class = ClientRequest
         self._request_class = request_class
         self._response_class = response_class
+
+    if PY_34:
+        def __del__(self):
+            if not self.closed:
+                self._connector.close()
+
+                warnings.warn("Unclosed client session {!r}".format(self),
+                              ResourceWarning)
+                context = {'client_session': self,
+                           'message': 'Unclosed client session'}
+                if self._source_traceback:
+                    context['source_traceback'] = self._source_traceback
+                self._loop.call_exception_handler(context)
 
     @asyncio.coroutine
     def request(self, method, url, *,

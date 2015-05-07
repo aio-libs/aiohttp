@@ -23,6 +23,12 @@ class ClientResponseTests(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
+    def make_open_connector(self):
+        conn = BaseConnector(loop=self.loop)
+        transp = unittest.mock.Mock()
+        conn._conns['a'] = [(transp, 'proto', 123)]
+        return conn
+
     def test_init_headers_simple_dict(self):
         session = ClientSession(
             headers={
@@ -254,12 +260,12 @@ class ClientResponseTests(unittest.TestCase):
                 **params)])
 
     def test_close(self):
-        session = ClientSession(loop=self.loop)
-        session._connector = conn = mock.Mock(BaseConnector)
-        conn.closed = False
+        conn = self.make_open_connector()
+        session = ClientSession(loop=self.loop, connector=conn)
+
         session.close()
         self.assertIsNone(session.connector)
-        conn.close.assert_called_once_with()
+        self.assertTrue(conn.closed)
 
     def test_closed(self):
         session = ClientSession(loop=self.loop)
@@ -313,11 +319,18 @@ class ClientResponseTests(unittest.TestCase):
         self.assertTrue(session.closed)
 
     def test_double_close(self):
-        session = ClientSession(loop=self.loop)
-        session._connector = conn = mock.Mock(BaseConnector)
-        conn.closed = False
+        conn = self.make_open_connector()
+        session = ClientSession(loop=self.loop, connector=conn)
+
         session.close()
         self.assertIsNone(session.connector)
         session.close()
         self.assertTrue(session.closed)
-        conn.close.assert_called_once_with()
+        self.assertTrue(conn.closed)
+
+    def test_del(self):
+        conn = self.make_open_connector()
+        session = ClientSession(loop=self.loop, connector=conn)
+
+        with self.assertWarns(ResourceWarning):
+            del session
