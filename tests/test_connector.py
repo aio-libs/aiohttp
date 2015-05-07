@@ -32,7 +32,11 @@ class HttpConnectionTests(unittest.TestCase):
             self.connector, self.key, self.request,
             self.transport, self.protocol, self.loop)
         del conn
-        self.assertTrue(self.transport.close.called)
+        self.connector._release.assert_called_with(self.key,
+                                                   self.request,
+                                                   self.transport,
+                                                   self.protocol,
+                                                   should_close=True)
 
     def test_close(self):
         conn = Connection(
@@ -232,6 +236,7 @@ class BaseConnectorTests(unittest.TestCase):
             host = 'host'
             port = 80
             ssl = False
+            response = unittest.mock.Mock()
 
         conn = aiohttp.BaseConnector(loop=self.loop)
         key = ('host', 80, False)

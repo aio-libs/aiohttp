@@ -4,8 +4,11 @@ import functools
 import http.cookies
 import ssl
 import socket
-import weakref
+import sys
+import traceback
 import warnings
+
+import weakref
 
 from . import hdrs
 from .client import ClientRequest
@@ -17,8 +20,12 @@ from .helpers import BasicAuth
 
 __all__ = ('BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector')
 
+PY_34 = sys.version_info >= (3, 4)
+
 
 class Connection(object):
+
+    _source_traceback = None
 
     def __init__(self, connector, key, request, transport, protocol, loop):
         self._key = key
@@ -29,7 +36,24 @@ class Connection(object):
         self._loop = loop
         self.reader = protocol.reader
         self.writer = protocol.writer
-        self._wr = weakref.ref(self, lambda wr, tr=self._transport: tr.close())
+
+        if loop.get_debug():
+            self._source_traceback = traceback.extract_stack(sys._getframe(1))
+
+    if PY_34:
+        def __del__(self):
+            if self._transport is not None:
+                self._connector._release(
+                    self._key, self._request, self._transport, self._protocol,
+                    should_close=True)
+
+                warnings.warn("Unclosed connection {!r}".format(self),
+                              ResourceWarning)
+                context = {'client_connection': self,
+                           'message': 'Unclosed connection'}
+                if self._source_traceback:
+                    context['source_traceback'] = self._source_traceback
+                self._loop.call_exception_handler(context)
 
     @property
     def loop(self):
@@ -41,7 +65,6 @@ class Connection(object):
                 self._key, self._request, self._transport, self._protocol,
                 should_close=True)
             self._transport = None
-            self._wr = None
 
     def release(self):
         if self._transport is not None:
@@ -49,7 +72,6 @@ class Connection(object):
                 self._key, self._request, self._transport, self._protocol,
                 should_close=False)
             self._transport = None
-            self._wr = None
 
 
 class BaseConnector(object):
