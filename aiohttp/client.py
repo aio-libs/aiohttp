@@ -7,8 +7,9 @@ import json
 import mimetypes
 import os
 import urllib.parse
-import weakref
 import warnings
+import sys
+import traceback
 import chardet
 
 import aiohttp
@@ -19,6 +20,8 @@ from .multidict import CIMultiDictProxy, MultiDictProxy, MultiDict, CIMultiDict
 from .multipart import MultipartWriter
 
 __all__ = ('request', 'ClientSession')
+
+PY_34 = sys.version_info >= (3, 4)
 
 HTTP_PORT = 80
 HTTPS_PORT = 443
@@ -373,14 +376,7 @@ class ClientRequest:
     _writer = None  # async task for streaming data
     _continue = None  # waiter future for '100 Continue' response
 
-    # Adding weakref to self for _writer cancelling doesn't make sense:
-    # _writer exists until .write_bytes coro is finished,
-    # .write_bytes generator has strong reference to self and `del request`
-    # doesn't produce request finalization.
-    # After .write_bytes is done _writer has set to None and we have nothing
-    # to cancel.
-    # Maybe we need to add .cancel() method to ClientRequest through for
-    # forced closing request sending.
+    _source_traceback = None
 
     def __init__(self, method, url, *,
                  params=None, headers=None, data=None, cookies=None,
@@ -388,6 +384,10 @@ class ClientRequest:
                  version=aiohttp.HttpVersion11, compress=None,
                  chunked=None, expect100=False,
                  loop=None, response_class=None):
+
+        if loop is None:
+            loop = asyncio.get_event_loop()
+
         self.url = url
         self.method = method.upper()
         self.encoding = encoding
@@ -395,6 +395,9 @@ class ClientRequest:
         self.compress = compress
         self.loop = loop
         self.response_class = response_class or ClientResponse
+
+        if loop.get_debug():
+            self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
         self.update_version(version)
         self.update_host(url)
@@ -417,6 +420,20 @@ class ClientRequest:
         self.update_body_from_data(data)
         self.update_transfer_encoding()
         self.update_expect_continue(expect100)
+
+    if PY_34:
+        def __del__(self):
+            if self._writer is not None:
+                if not self._writer.done():
+                    warnings.warn("Unclosed request {!r}".format(self),
+                                  ResourceWarning)
+                    context = {'client_request': self,
+                               'message': 'Unclosed request'}
+                    if self._source_traceback:
+                        context['source_traceback'] = self._source_traceback
+                        self.loop.call_exception_handler(context)
+                    if not self.loop.is_closed():
+                        self._writer.cancel()
 
     def update_host(self, url):
         """Update destination host, port and connection type (ssl)."""
@@ -774,6 +791,7 @@ class ClientRequest:
         self.response = self.response_class(
             self.method, self.url, self.host,
             writer=self._writer, continue100=self._continue)
+        self.response._loop = self.loop
         return self.response
 
     @asyncio.coroutine
@@ -783,6 +801,12 @@ class ClientRequest:
                 yield from self._writer
             finally:
                 self._writer = None
+
+    def terminate(self):
+        if self._writer is not None:
+            if not self.loop.is_closed():
+                self._writer.cancel()
+            self._writer = None
 
 
 class ClientResponse:
@@ -801,8 +825,6 @@ class ClientResponse:
     flow_control_class = FlowControlStreamReader  # reader flow control
     _reader = None     # input stream
     _response_parser = aiohttp.HttpResponseParser()
-    _connection_wr = None  # weakref to self for releasing connection on del
-    _writer_wr = None  # weakref to self for cancelling writer on del
 
     def __init__(self, method, url, host='', *, writer=None, continue100=None):
         super().__init__()
@@ -813,9 +835,29 @@ class ClientResponse:
         self.headers = None
         self._content = None
         self._writer = writer
-        if writer is not None:
-            self._writer_wr = weakref.ref(self, lambda wr: writer.cancel())
         self._continue = continue100
+
+        # setted up by ClientRequest after ClientResponse object creation
+        # post-init stage allows to not change ctor signature
+        self._loop = None
+
+    if PY_34:
+        def __del__(self):
+            show_warning = False
+            if self.connection is not None:
+                show_warning = True
+                if not self._loop.is_closed():
+                    self.connection.close()
+
+            if self._writer is not None:
+                if not self._writer.done():
+                    show_warning = True
+                    if not self._loop.is_closed():
+                        self._writer.cancel()
+
+            if show_warning:
+                warnings.warn("Unclosed response {!r}".format(self),
+                              ResourceWarning)
 
     def __repr__(self):
         out = io.StringIO()
@@ -832,15 +874,6 @@ class ClientResponse:
         self.connection = connection
         self.content = self.flow_control_class(
             connection.reader, loop=connection.loop)
-
-        msg = ('ClientResponse has to be closed explicitly! {}:{}:{}'
-               .format(self.method, self.host, self.url))
-
-        def _do_close_connection(wr, connection=connection, msg=msg):
-            warnings.warn(msg, ResourceWarning)
-            connection.close()
-
-        self._connection_wr = weakref.ref(self, _do_close_connection)
 
     @asyncio.coroutine
     def start(self, connection, read_until_eof=False):
@@ -899,11 +932,9 @@ class ClientResponse:
                     self._reader.unset_parser()
 
             self.connection = None
-            self._connection_wr = None
         if self._writer is not None and not self._writer.done():
             self._writer.cancel()
             self._writer = None
-            self._writer_wr = None
 
     @asyncio.coroutine
     def release(self):
@@ -921,7 +952,6 @@ class ClientResponse:
                 yield from self._writer
             finally:
                 self._writer = None
-                self._writer_wr = None
         self.close()
 
     @asyncio.coroutine
