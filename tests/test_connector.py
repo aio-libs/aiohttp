@@ -6,6 +6,7 @@ import gc
 import socket
 import unittest
 import ssl
+import sys
 from unittest import mock
 
 import aiohttp
@@ -15,6 +16,8 @@ from aiohttp.client import ClientResponse, ClientRequest
 from aiohttp.connector import Connection
 
 from tests.test_client_functional import Functional
+
+PY_34 = sys.version_info >= (3, 4)
 
 
 class HttpConnectionTests(unittest.TestCase):
@@ -27,6 +30,7 @@ class HttpConnectionTests(unittest.TestCase):
         self.protocol = mock.Mock()
         self.loop = mock.Mock()
 
+    @unittest.skipUnless(PY_34, "Requires Python 3.4+")
     def test_del(self):
         conn = Connection(
             self.connector, self.key, self.request,
@@ -101,6 +105,7 @@ class BaseConnectorTests(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
+    @unittest.skipUnless(PY_34, "Requires Python 3.4+")
     def test_del(self):
         conn = aiohttp.BaseConnector(loop=self.loop)
         transp = unittest.mock.Mock()

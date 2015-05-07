@@ -8,9 +8,12 @@ import unittest
 import unittest.mock
 import urllib.parse
 import os.path
+import sys
 
 import aiohttp
 from aiohttp.client import ClientRequest, ClientResponse
+
+PY_34 = sys.version_info >= (3, 4)
 
 
 class ClientResponseTests(unittest.TestCase):
@@ -27,6 +30,7 @@ class ClientResponseTests(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
+    @unittest.skipUnless(PY_34, "Requires Python 3.4+")
     def test_del(self):
         response = ClientResponse('get', 'http://python.org')
         response._post_init(self.loop)

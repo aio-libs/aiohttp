@@ -4,11 +4,15 @@
 import asyncio
 import unittest
 from unittest import mock
+import sys
 
 import aiohttp
 from aiohttp.client import ClientSession
 from aiohttp.multidict import MultiDict, CIMultiDict
 from aiohttp.connector import BaseConnector, TCPConnector
+
+
+PY_34 = sys.version_info >= (3, 4)
 
 
 class ClientResponseTests(unittest.TestCase):
@@ -328,6 +332,7 @@ class ClientResponseTests(unittest.TestCase):
         self.assertTrue(session.closed)
         self.assertTrue(conn.closed)
 
+    @unittest.skipUnless(PY_34, "Requires Python 3.4+")
     def test_del(self):
         conn = self.make_open_connector()
         session = ClientSession(loop=self.loop, connector=conn)
