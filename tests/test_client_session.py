@@ -306,6 +306,7 @@ class ClientResponseTests(unittest.TestCase):
                 "loop argument must agree with connector"):
             ClientSession(connector=connector, loop=self.loop)
         connector.close()
+        loop.close()
 
     def test_cookies_are_readonly(self):
         session = ClientSession(loop=self.loop)
