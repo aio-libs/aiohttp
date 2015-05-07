@@ -579,7 +579,7 @@ class BodyPartWriterTestCase(unittest.TestCase):
         self.part._fill_headers_with_defaults()
         self.assertIn(CONTENT_DISPOSITION, self.part.headers)
         fname = os.path.basename(self.part.obj.name)
-        self.assertEquals(
+        self.assertEqual(
             'attachment; filename="{0}"; filename*=utf-8\'\'{0}'.format(fname),
             self.part.headers[CONTENT_DISPOSITION])
 

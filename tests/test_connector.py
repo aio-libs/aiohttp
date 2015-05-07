@@ -166,25 +166,21 @@ class BaseConnectorTests(unittest.TestCase):
     def test_release(self):
         self.loop.time = mock.Mock(return_value=10)
 
-        conn = aiohttp.BaseConnector(share_cookies=True, loop=self.loop)
+        conn = aiohttp.BaseConnector(loop=self.loop)
         conn._start_cleanup_task = unittest.mock.Mock()
         req = unittest.mock.Mock()
         resp = req.response = unittest.mock.Mock()
         resp.message.should_close = False
 
-        # cookies = resp.cookies = http.cookies.SimpleCookie()
-        # cookies['c1'] = 'cookie1'
-        # cookies['c2'] = 'cookie2'
-
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
         conn._release(1, req, tr, proto)
         self.assertEqual(conn._conns[1][0], (tr, proto, 10))
-        # self.assertEqual(conn.cookies, dict(cookies.items()))
         self.assertTrue(conn._start_cleanup_task.called)
         conn.close()
 
     def test_release_close(self):
-        conn = aiohttp.BaseConnector(share_cookies=True, loop=self.loop)
+        with self.assertWarns(DeprecationWarning):
+            conn = aiohttp.BaseConnector(share_cookies=True, loop=self.loop)
         req = unittest.mock.Mock()
         resp = unittest.mock.Mock()
         resp.message.should_close = True
@@ -220,7 +216,8 @@ class BaseConnectorTests(unittest.TestCase):
         key = ('127.0.0.1', 80, False)
         tr1, proto1 = unittest.mock.Mock(), unittest.mock.Mock()
 
-        conn = aiohttp.BaseConnector(share_cookies=True, loop=self.loop)
+        with self.assertWarns(DeprecationWarning):
+            conn = aiohttp.BaseConnector(share_cookies=True, loop=self.loop)
         conn._conns[key] = [(tr1, proto1, 1)]
         req = unittest.mock.Mock()
         resp = unittest.mock.Mock()

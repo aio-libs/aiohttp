@@ -1133,7 +1133,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
 
     def test_connector_cookie_merge(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
-            with self.assertWarn(DeprecationWarning):
+            with self.assertWarns(DeprecationWarning):
                 conn = aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
             conn.update_cookies({
                 "c1": "connector_cookie1",
