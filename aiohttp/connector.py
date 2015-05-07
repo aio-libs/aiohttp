@@ -8,6 +8,8 @@ import sys
 import traceback
 import warnings
 
+from collections import defaultdict
+
 
 from . import hdrs
 from .client import ClientRequest
@@ -105,6 +107,7 @@ class BaseConnector(object):
             self._source_traceback = None
 
         self._conns = {}
+        self._acquired = defaultdict(list)
         self._conn_timeout = conn_timeout
         self._keepalive_timeout = keepalive_timeout
         if share_cookies:
@@ -247,7 +250,9 @@ class BaseConnector(object):
                 raise ClientOSError(
                     'Cannot connect to host %s:%s ssl:%s' % key) from exc
 
-        return Connection(self, key, req, transport, proto, self._loop)
+        conn = Connection(self, key, req, transport, proto, self._loop)
+        self._acquired[key].append(transport)
+        return conn
 
     def _get(self, key):
         conns = self._conns.get(key)
@@ -264,6 +269,7 @@ class BaseConnector(object):
         return None, None
 
     def _release(self, key, req, transport, protocol, *, should_close=False):
+        self._acquired[key].remove(transport)
         resp = req.response
 
         if not should_close:
@@ -504,6 +510,7 @@ class ProxyConnector(TCPConnector):
             key = (req.host, req.port, req.ssl)
             conn = Connection(self, key, proxy_req,
                               transport, proto, self._loop)
+            self._acquired[key].append(conn._transport)
             proxy_resp = proxy_req.send(conn.writer, conn.reader)
             try:
                 resp = yield from proxy_resp.start(conn, True)

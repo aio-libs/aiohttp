@@ -173,7 +173,9 @@ class BaseConnectorTests(unittest.TestCase):
         resp.message.should_close = False
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        conn._release(1, req, tr, proto)
+        key = 1
+        conn._acquired[key].append(tr)
+        conn._release(key, req, tr, proto)
         self.assertEqual(conn._conns[1][0], (tr, proto, 10))
         self.assertTrue(conn._start_cleanup_task.called)
         conn.close()
@@ -191,7 +193,9 @@ class BaseConnectorTests(unittest.TestCase):
         cookies['c2'] = 'cookie2'
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        conn._release(1, req, tr, proto)
+        key = 1
+        conn._acquired[key].append(tr)
+        conn._release(key, req, tr, proto)
         self.assertFalse(conn._conns)
         self.assertTrue(tr.close.called)
 
@@ -208,6 +212,7 @@ class BaseConnectorTests(unittest.TestCase):
         conn._conns[key] = []
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+        conn._acquired[key].append(tr)
         conn._release(key, req, tr, proto)
         self.assertEqual({}, conn._conns)
         self.assertTrue(tr.close.called)
@@ -225,6 +230,7 @@ class BaseConnectorTests(unittest.TestCase):
         req.response = resp
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+        conn._acquired[key].append(tr)
         conn._release(key, req, tr, proto)
         self.assertEqual(conn._conns[key], [(tr1, proto1, 1)])
         self.assertTrue(tr.close.called)
@@ -238,7 +244,9 @@ class BaseConnectorTests(unittest.TestCase):
         req.response = None
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        conn._release(1, req, tr, proto)
+        key = 1
+        conn._acquired[key].append(tr)
+        conn._release(key, req, tr, proto)
         self.assertEqual(conn._conns, {1: [(tr, proto, 10)]})
         self.assertFalse(tr.close.called)
         conn.close()
@@ -250,7 +258,9 @@ class BaseConnectorTests(unittest.TestCase):
         req.response.message = None
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        conn._release(1, req, tr, proto)
+        key = 1
+        conn._acquired[key].append(tr)
+        conn._release(key, req, tr, proto)
         self.assertTrue(tr.close.called)
 
     def test_connect(self):
