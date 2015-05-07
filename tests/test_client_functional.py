@@ -1170,6 +1170,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertEqual(
                 content['headers']['Cookie'], 'c1=cookie1; c2=cookie2')
             r.close()
+            session.close()
 
     def test_session_headers(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
@@ -1187,6 +1188,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertEqual(
                 content['headers']["X-Real-Ip"], "192.168.0.1")
             r.close()
+            session.close()
 
     def test_session_headers_merge(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
@@ -1209,6 +1211,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertEqual(
                 content['headers']["X-Sent-By"], "aiohttp")
             r.close()
+            session.close()
 
     def test_session_auth(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
@@ -1224,6 +1227,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
             self.assertEqual(
                 content['headers']["Authorization"], "Basic bG9naW46cGFzcw==")
             r.close()
+            session.close()
 
     def test_session_auth_override(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
@@ -1241,6 +1245,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 content['headers']["Authorization"],
                 "Basic b3RoZXJfbG9naW46cGFzcw==")
             r.close()
+            session.close()
 
     def test_session_auth_header_conflict(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
@@ -1252,6 +1257,7 @@ class HttpClientFunctionalTests(unittest.TestCase):
                 self.loop.run_until_complete(
                     session.request('get', httpd.url('method', 'get'),
                                     headers=headers))
+            session.close()
 
 
 class Functional(test_utils.Router):
