@@ -32,7 +32,8 @@ class HttpConnectionTests(unittest.TestCase):
             self.connector, self.key, self.request,
             self.transport, self.protocol, self.loop)
 
-        del conn
+        with self.assertWarns(ResourceWarning):
+            del conn
         self.connector._release.assert_called_with(self.key,
                                                    self.request,
                                                    self.transport,
@@ -107,7 +108,8 @@ class BaseConnectorTests(unittest.TestCase):
 
         conns_impl = conn._conns
 
-        del conn
+        with self.assertWarns(ResourceWarning):
+            del conn
         self.assertFalse(conns_impl)
         transp.close.assert_called_with()
 
@@ -144,6 +146,7 @@ class BaseConnectorTests(unittest.TestCase):
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
         conn._conns[1] = [(tr, proto, self.loop.time())]
         self.assertEqual(conn._get(1), (tr, proto))
+        conn.close()
 
     def test_get_expired(self):
         conn = aiohttp.BaseConnector(loop=self.loop)
@@ -153,6 +156,7 @@ class BaseConnectorTests(unittest.TestCase):
         conn._conns[1] = [(tr, proto, self.loop.time() - 1000)]
         self.assertEqual(conn._get(1), (None, None))
         self.assertEqual(conn._conns[1], [])
+        conn.close()
 
     def test_release(self):
         self.loop.time = mock.Mock(return_value=10)
@@ -172,6 +176,7 @@ class BaseConnectorTests(unittest.TestCase):
         self.assertEqual(conn._conns[1][0], (tr, proto, 10))
         # self.assertEqual(conn.cookies, dict(cookies.items()))
         self.assertTrue(conn._start_cleanup_task.called)
+        conn.close()
 
     def test_release_close(self):
         conn = aiohttp.BaseConnector(share_cookies=True, loop=self.loop)
@@ -221,6 +226,7 @@ class BaseConnectorTests(unittest.TestCase):
         conn._release(key, req, tr, proto)
         self.assertEqual(conn._conns[key], [(tr1, proto1, 1)])
         self.assertTrue(tr.close.called)
+        conn.close()
 
     def test_release_not_started(self):
         self.loop.time = mock.Mock(return_value=10)
@@ -233,6 +239,7 @@ class BaseConnectorTests(unittest.TestCase):
         conn._release(1, req, tr, proto)
         self.assertEqual(conn._conns, {1: [(tr, proto, 10)]})
         self.assertFalse(tr.close.called)
+        conn.close()
 
     def test_release_not_opened(self):
         conn = aiohttp.BaseConnector(loop=self.loop)
@@ -328,6 +335,7 @@ class BaseConnectorTests(unittest.TestCase):
         self.assertEqual(conn._conns, testset)
 
         self.assertIsNotNone(conn._cleanup_handle)
+        conn.close()
 
     def test_tcp_connector_ctor(self):
         conn = aiohttp.TCPConnector(loop=self.loop)

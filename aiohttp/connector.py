@@ -128,18 +128,29 @@ class BaseConnector(object):
             if not self._conns:
                 return
 
+            show_warning = False
+            loop_is_not_closed = not self._loop.is_closed()
+
             for key, data in self._conns.items():
                 for transport, proto, t0 in data:
-                    transport.close()
+                    if loop_is_not_closed:
+                        transport.close()
+                    show_warning = True
             self._conns.clear()
 
-            warnings.warn("Unclosed connector {!r}".format(self),
-                          ResourceWarning)
-            context = {'connector': self,
-                       'message': 'Unclosed connector'}
-            if self._source_traceback:
-                context['source_traceback'] = self._source_traceback
-            self._loop.call_exception_handler(context)
+            if self._cleanup_handle:
+                if loop_is_not_closed:
+                    self._cleanup_handle.cancel()
+                show_warning = True
+
+            if show_warning:
+                warnings.warn("Unclosed connector {!r}".format(self),
+                              ResourceWarning)
+                context = {'connector': self,
+                           'message': 'Unclosed connector'}
+                if self._source_traceback:
+                    context['source_traceback'] = self._source_traceback
+                self._loop.call_exception_handler(context)
 
     def _cleanup(self):
         """Cleanup unused transports."""
