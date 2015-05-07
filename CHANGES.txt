@@ -17,6 +17,9 @@ x.x.x (XX-XX-XXXX)
 
 - Implement `ClientSession.detach` method
 
+- Add `__del__` to client-side objects: sessions, connectors,
+  connections, requests, responses.
+
 
 
 0.15.3 (04-22-2015)
