@@ -42,22 +42,26 @@ class HttpConnectionTests(unittest.TestCase):
         conn = Connection(
             self.connector, self.key, self.request,
             self.transport, self.protocol, self.loop)
+        self.assertFalse(conn.closed)
         conn.close()
         self.assertIsNone(conn._transport)
         self.connector._release.assert_called_with(
             self.key, self.request, self.transport, self.protocol,
             should_close=True)
+        self.assertTrue(conn.closed)
 
     def test_release(self):
         conn = Connection(
             self.connector, self.key, self.request,
             self.transport, self.protocol, self.loop)
+        self.assertFalse(conn.closed)
         conn.release()
         self.assertFalse(self.transport.close.called)
         self.assertIsNone(conn._transport)
         self.connector._release.assert_called_with(
             self.key, self.request, self.transport, self.protocol,
             should_close=False)
+        self.assertTrue(conn.closed)
 
     def test_release_released(self):
         conn = Connection(
@@ -69,6 +73,16 @@ class HttpConnectionTests(unittest.TestCase):
         self.assertFalse(self.transport.close.called)
         self.assertIsNone(conn._transport)
         self.assertFalse(self.connector._release.called)
+
+    def test_detach(self):
+        conn = Connection(
+            self.connector, self.key, self.request,
+            self.transport, self.protocol, self.loop)
+        self.assertFalse(conn.closed)
+        conn.detach()
+        self.assertIsNone(conn._transport)
+        self.assertFalse(self.connector._release.called)
+        self.assertTrue(conn.closed)
 
 
 class BaseConnectorTests(unittest.TestCase):
@@ -250,6 +264,7 @@ class BaseConnectorTests(unittest.TestCase):
         self.assertEqual(connection._transport, tr)
         self.assertEqual(connection._protocol, proto)
         self.assertIsInstance(connection, Connection)
+        connection.close()
 
     def test_connect_timeout(self):
         conn = aiohttp.BaseConnector(loop=self.loop)
@@ -484,6 +499,7 @@ class ProxyConnectorTests(unittest.TestCase):
             auth=None,
             headers={'HOST': 'www.python.org'},
             loop=loop_mock)
+        conn.close()
 
     def test_proxy_auth(self):
         with self.assertRaises(AssertionError) as ctx:
@@ -530,7 +546,7 @@ class ProxyConnectorTests(unittest.TestCase):
         req = ClientRequest('GET', 'http://www.python.org', loop=self.loop)
         self.assertNotIn('AUTHORIZATION', req.headers)
         self.assertNotIn('PROXY-AUTHORIZATION', req.headers)
-        self.loop.run_until_complete(connector.connect(req))
+        conn = self.loop.run_until_complete(connector.connect(req))
 
         self.assertEqual(req.path, 'http://www.python.org/')
         self.assertNotIn('AUTHORIZATION', req.headers)
@@ -542,6 +558,7 @@ class ProxyConnectorTests(unittest.TestCase):
             'GET', 'http://proxy.example.com',
             auth=aiohttp.helpers.BasicAuth('user', 'pass'),
             loop=unittest.mock.ANY, headers=unittest.mock.ANY)
+        conn.close()
 
     def test_auth_utf8(self):
         proxy_req = ClientRequest(
@@ -570,7 +587,7 @@ class ProxyConnectorTests(unittest.TestCase):
         req = ClientRequest('GET', 'http://www.python.org', loop=self.loop)
         self.assertNotIn('AUTHORIZATION', req.headers)
         self.assertNotIn('PROXY-AUTHORIZATION', req.headers)
-        self.loop.run_until_complete(connector.connect(req))
+        conn = self.loop.run_until_complete(connector.connect(req))
 
         self.assertEqual(req.path, 'http://www.python.org/')
         self.assertNotIn('AUTHORIZATION', req.headers)
@@ -581,6 +598,7 @@ class ProxyConnectorTests(unittest.TestCase):
         ClientRequestMock.assert_called_with(
             'GET', 'http://user:pass@proxy.example.com',
             auth=None, loop=unittest.mock.ANY, headers=unittest.mock.ANY)
+        conn.close()
 
     @unittest.mock.patch('aiohttp.connector.ClientRequest')
     def test_auth__not_modifying_request(self, ClientRequestMock):

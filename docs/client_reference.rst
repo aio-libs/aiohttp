@@ -478,6 +478,11 @@ All connector classes should be derived from :class:`BaseConnector`.
    End user should never create :class:`Connection` instances manually
    but get it by :meth:`BaseConnector.connect` coroutine.
 
+   .. attribute:: closed
+
+      :class:`bool` read-only property, ``True`` if connection was
+      closed, released or detached.
+
    .. attribute:: loop
 
       Event loop used for connection
@@ -493,3 +498,10 @@ All connector classes should be derived from :class:`BaseConnector`.
       Underlying socket is not closed, the connection may be reused
       later if timeout (30 seconds by default) for connection was not
       expired.
+
+   .. method:: detach()
+
+      Detach underlying socket from connection.
+
+      It's required for grabbing trasport from connection object with
+      destroying the later.

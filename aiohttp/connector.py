@@ -73,6 +73,13 @@ class Connection(object):
                 should_close=False)
             self._transport = None
 
+    def detach(self):
+        self._transport = None
+
+    @property
+    def closed(self):
+        return self._transport is None
+
 
 class BaseConnector(object):
     """Base connector class.
@@ -471,6 +478,7 @@ class ProxyConnector(TCPConnector):
                 conn.close()
                 raise
             else:
+                conn.detach()
                 if resp.status != 200:
                     raise HttpProxyError(code=resp.status, message=resp.reason)
                 rawsock = transport.get_extra_info('socket', default=None)
