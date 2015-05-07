@@ -177,6 +177,7 @@ class TestWebFunctional(unittest.TestCase):
                                       loop=self.loop)
             self.assertEqual(200, resp.status)
             resp.close()
+            f.close()
 
         self.loop.run_until_complete(go())
 
@@ -213,6 +214,8 @@ class TestWebFunctional(unittest.TestCase):
             resp.close()
 
         self.loop.run_until_complete(go())
+        f1.close()
+        f2.close()
 
     def test_release_post_data(self):
 
@@ -650,10 +653,12 @@ class TestWebFunctional(unittest.TestCase):
         @asyncio.coroutine
         def go():
             _, _, url = yield from self.create_server('POST', '/', handler)
+            f = open(fname, 'rb')
             resp = yield from request('POST', url,
-                                      files={'file': open(fname, 'rb')},
+                                      files={'file': f},
                                       loop=self.loop)
             self.assertEqual(200, resp.status)
             resp.close()
+            f.close()
 
         self.loop.run_until_complete(go())
