@@ -177,6 +177,7 @@ class ClientWebSocketResponse:
                         self._reader.read(), self._timeout, loop=self._loop)
                 except asyncio.CancelledError:
                     self._close_code = 1006
+                    self._response.close(force=True)
                     raise
                 except Exception as exc:
                     self._close_code = 1006

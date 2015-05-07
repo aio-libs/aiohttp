@@ -176,6 +176,7 @@ class TestWebFunctional(unittest.TestCase):
             resp = yield from request('POST', url, data=[f],
                                       loop=self.loop)
             self.assertEqual(200, resp.status)
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -209,6 +210,7 @@ class TestWebFunctional(unittest.TestCase):
             resp = yield from request('POST', url, data=[f1, f2],
                                       loop=self.loop)
             self.assertEqual(200, resp.status)
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -227,6 +229,7 @@ class TestWebFunctional(unittest.TestCase):
             resp = yield from request('POST', url, data='post text',
                                       loop=self.loop)
             self.assertEqual(200, resp.status)
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -250,6 +253,7 @@ class TestWebFunctional(unittest.TestCase):
                 loop=self.loop)
 
             self.assertEqual(200, resp.status)
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -269,11 +273,15 @@ class TestWebFunctional(unittest.TestCase):
             ct = resp.headers['CONTENT-TYPE']
             self.assertEqual('application/octet-stream', ct)
             self.assertEqual(resp.headers.get('CONTENT-ENCODING'), None)
+            resp.close()
 
             resp = yield from request('GET', url + 'fake', loop=self.loop)
             self.assertEqual(404, resp.status)
+            resp.close()
+
             resp = yield from request('GET', url + '/../../', loop=self.loop)
             self.assertEqual(404, resp.status)
+            resp.close()
 
         here = os.path.dirname(__file__)
         filename = os.path.join(here, 'data.unknown_mime_type')
@@ -297,11 +305,15 @@ class TestWebFunctional(unittest.TestCase):
             ct = resp.headers['CONTENT-TYPE']
             self.assertEqual('image/jpeg', ct)
             self.assertEqual(resp.headers.get('CONTENT-ENCODING'), None)
+            resp.close()
 
             resp = yield from request('GET', url + 'fake', loop=self.loop)
             self.assertEqual(404, resp.status)
+            resp.close()
+
             resp = yield from request('GET', url + '/../../', loop=self.loop)
             self.assertEqual(404, resp.status)
+            resp.close()
 
         here = os.path.dirname(__file__)
         filename = os.path.join(here, 'software_development_in_picture.jpg')
@@ -324,6 +336,7 @@ class TestWebFunctional(unittest.TestCase):
             self.assertEqual('text/plain', ct)
             encoding = resp.headers['CONTENT-ENCODING']
             self.assertEqual('gzip', encoding)
+            resp.close()
 
         here = os.path.dirname(__file__)
         filename = os.path.join(here, 'hello.txt.gz')
@@ -381,6 +394,7 @@ class TestWebFunctional(unittest.TestCase):
                 loop=self.loop)
 
             self.assertEqual(200, resp.status)
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -420,6 +434,7 @@ class TestWebFunctional(unittest.TestCase):
 
             self.assertEqual(200, resp.status)
             self.assertTrue(expect_received)
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -492,6 +507,7 @@ class TestWebFunctional(unittest.TestCase):
                 loop=self.loop)
 
             self.assertEqual(404, resp.status)
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -516,6 +532,7 @@ class TestWebFunctional(unittest.TestCase):
                 loop=self.loop)
 
             self.assertEqual(405, resp.status)
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -532,6 +549,7 @@ class TestWebFunctional(unittest.TestCase):
             resp = yield from request('GET', url, loop=self.loop,
                                       version=HttpVersion10)
             self.assertEqual('close', resp.headers['CONNECTION'])
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -550,6 +568,7 @@ class TestWebFunctional(unittest.TestCase):
                                       headers=headers,
                                       version=HttpVersion(0, 9))
             self.assertEqual('close', resp.headers['CONNECTION'])
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -567,6 +586,7 @@ class TestWebFunctional(unittest.TestCase):
             resp = yield from request('GET', url, loop=self.loop,
                                       headers=headers, version=HttpVersion10)
             self.assertEqual('close', resp.headers['CONNECTION'])
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -584,6 +604,7 @@ class TestWebFunctional(unittest.TestCase):
             resp = yield from request('GET', url, loop=self.loop,
                                       headers=headers, version=HttpVersion10)
             self.assertEqual('keep-alive', resp.headers['CONNECTION'])
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -608,6 +629,7 @@ class TestWebFunctional(unittest.TestCase):
                                       data={'file': data},
                                       loop=self.loop)
             self.assertEqual(200, resp.status)
+            resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -632,5 +654,6 @@ class TestWebFunctional(unittest.TestCase):
                                       files={'file': open(fname, 'rb')},
                                       loop=self.loop)
             self.assertEqual(200, resp.status)
+            resp.close()
 
         self.loop.run_until_complete(go())

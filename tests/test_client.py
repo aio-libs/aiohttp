@@ -22,14 +22,14 @@ class ClientResponseTests(unittest.TestCase):
         self.connection = unittest.mock.Mock()
         self.stream = aiohttp.StreamParser(loop=self.loop)
         self.response = ClientResponse('get', 'http://python.org')
-        self.response._loop = self.loop
+        self.response._post_init(self.loop)
 
     def tearDown(self):
         self.loop.close()
 
     def test_del(self):
         response = ClientResponse('get', 'http://python.org')
-        response._loop = self.loop
+        response._post_init(self.loop)
 
         connection = unittest.mock.Mock()
         response._setup_connection(connection)
@@ -49,11 +49,11 @@ class ClientResponseTests(unittest.TestCase):
     def test_wait_for_100(self):
         response = ClientResponse(
             'get', 'http://python.org', continue100=object())
-        response._loop = self.loop
+        response._post_init(self.loop)
         self.assertTrue(response.waiting_for_continue())
         response = ClientResponse(
             'get', 'http://python.org')
-        response._loop = self.loop
+        response._post_init(self.loop)
         self.assertFalse(response.waiting_for_continue())
 
     def test_repr(self):
@@ -240,7 +240,7 @@ class ClientResponseTests(unittest.TestCase):
         class MyResponse(ClientResponse):
             flow_control_class = aiohttp.FlowControlDataQueue
         response = MyResponse('get', 'http://python.org')
-        response._loop = self.loop
+        response._post_init(self.loop)
         response._setup_connection(self.connection)
         self.assertIsInstance(response.content, aiohttp.FlowControlDataQueue)
         with self.assertWarns(ResourceWarning):
@@ -677,17 +677,20 @@ class ClientRequestTests(unittest.TestCase):
     def test_expect100(self):
         req = ClientRequest('get', 'http://python.org/',
                             expect100=True, loop=self.loop)
-        req.send(self.transport, self.protocol)
+        resp = req.send(self.transport, self.protocol)
         self.assertEqual('100-continue', req.headers['EXPECT'])
         self.assertIsNotNone(req._continue)
         req.terminate()
+        resp.close()
 
+    def test_expect_100_continue_header(self):
         req = ClientRequest('get', 'http://python.org/',
                             headers={'expect': '100-continue'}, loop=self.loop)
-        req.send(self.transport, self.protocol)
+        resp = req.send(self.transport, self.protocol)
         self.assertEqual('100-continue', req.headers['EXPECT'])
         self.assertIsNotNone(req._continue)
         req.terminate()
+        resp.close()
 
     def test_data_stream(self):
         def gen():

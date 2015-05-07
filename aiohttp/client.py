@@ -431,7 +431,8 @@ class ClientRequest:
                                'message': 'Unclosed request'}
                     if self._source_traceback:
                         context['source_traceback'] = self._source_traceback
-                        self.loop.call_exception_handler(context)
+                    self.loop.call_exception_handler(context)
+
                     if not self.loop.is_closed():
                         self._writer.cancel()
 
@@ -791,7 +792,7 @@ class ClientRequest:
         self.response = self.response_class(
             self.method, self.url, self.host,
             writer=self._writer, continue100=self._continue)
-        self.response._loop = self.loop
+        self.response._post_init(self.loop)
         return self.response
 
     @asyncio.coroutine
@@ -825,6 +826,10 @@ class ClientResponse:
     flow_control_class = FlowControlStreamReader  # reader flow control
     _reader = None     # input stream
     _response_parser = aiohttp.HttpResponseParser()
+    _source_traceback = None
+    # setted up by ClientRequest after ClientResponse object creation
+    # post-init stage allows to not change ctor signature
+    _loop = None
 
     def __init__(self, method, url, host='', *, writer=None, continue100=None):
         super().__init__()
@@ -837,9 +842,10 @@ class ClientResponse:
         self._writer = writer
         self._continue = continue100
 
-        # setted up by ClientRequest after ClientResponse object creation
-        # post-init stage allows to not change ctor signature
-        self._loop = None
+    def _post_init(self, loop):
+        self._loop = loop
+        if loop.get_debug():
+            self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
     if PY_34:
         def __del__(self):
@@ -858,6 +864,11 @@ class ClientResponse:
             if show_warning:
                 warnings.warn("Unclosed response {!r}".format(self),
                               ResourceWarning)
+                context = {'client_response': self,
+                           'message': 'Unclosed response'}
+                if self._source_traceback:
+                    context['source_traceback'] = self._source_traceback
+                self._loop.call_exception_handler(context)
 
     def __repr__(self):
         out = io.StringIO()
