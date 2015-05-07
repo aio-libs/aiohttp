@@ -31,6 +31,7 @@ class HttpConnectionTests(unittest.TestCase):
         conn = Connection(
             self.connector, self.key, self.request,
             self.transport, self.protocol, self.loop)
+
         del conn
         self.connector._release.assert_called_with(self.key,
                                                    self.request,
@@ -105,6 +106,7 @@ class BaseConnectorTests(unittest.TestCase):
         conn._conns['a'] = [(transp, 'proto', 123)]
 
         conns_impl = conn._conns
+
         del conn
         self.assertFalse(conns_impl)
         transp.close.assert_called_with()
@@ -352,7 +354,8 @@ class BaseConnectorTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             aiohttp.TCPConnector(
                 verify_ssl=False,
-                ssl_context=ssl.SSLContext(ssl.PROTOCOL_SSLv23))
+                ssl_context=ssl.SSLContext(ssl.PROTOCOL_SSLv23),
+                loop=self.loop)
 
     def test_dont_recreate_ssl_context(self):
         conn = aiohttp.TCPConnector(loop=self.loop)

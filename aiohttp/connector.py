@@ -8,7 +8,6 @@ import sys
 import traceback
 import warnings
 
-import weakref
 
 from . import hdrs
 from .client import ClientRequest
@@ -93,6 +92,15 @@ class BaseConnector(object):
 
     def __init__(self, *, conn_timeout=None, keepalive_timeout=30,
                  share_cookies=False, force_close=False, loop=None):
+        if loop is None:
+            loop = asyncio.get_event_loop()
+
+        self._closed = False
+        if loop.get_debug():
+            self._source_traceback = traceback.extract_stack(sys._getframe(1))
+        else:
+            self._source_traceback = None
+
         self._conns = {}
         self._conn_timeout = conn_timeout
         self._keepalive_timeout = keepalive_timeout
@@ -103,7 +111,6 @@ class BaseConnector(object):
         self._share_cookies = share_cookies
         self._cleanup_handle = None
         self._force_close = force_close
-        self._closed = False
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -113,8 +120,26 @@ class BaseConnector(object):
             disconnect_error=ServerDisconnectedError)
 
         self.cookies = http.cookies.SimpleCookie()
-        self._wr = weakref.ref(
-            self, lambda wr, f=self._do_close, conns=self._conns: f(conns))
+
+    if PY_34:
+        def __del__(self):
+            if self._closed:
+                return
+            if not self._conns:
+                return
+
+            for key, data in self._conns.items():
+                for transport, proto, t0 in data:
+                    transport.close()
+            self._conns.clear()
+
+            warnings.warn("Unclosed connector {!r}".format(self),
+                          ResourceWarning)
+            context = {'connector': self,
+                       'message': 'Unclosed connector'}
+            if self._source_traceback:
+                context['source_traceback'] = self._source_traceback
+            self._loop.call_exception_handler(context)
 
     def _cleanup(self):
         """Cleanup unused transports."""
@@ -145,8 +170,6 @@ class BaseConnector(object):
                 self._keepalive_timeout, self._cleanup)
 
         self._conns = connections
-        self._wr = weakref.ref(
-            self, lambda wr, f=self._do_close, conns=self._conns: f(conns))
 
     def _start_cleanup_task(self):
         if self._cleanup_handle is None:
@@ -158,7 +181,12 @@ class BaseConnector(object):
         if self._closed:
             return
         self._closed = True
-        self._do_close(self._conns)
+
+        for key, data in self._conns.items():
+            for transport, proto, t0 in data:
+                transport.close()
+
+        self._conns.clear()
 
         if self._cleanup_handle:
             self._cleanup_handle.cancel()
@@ -171,14 +199,6 @@ class BaseConnector(object):
         A readonly property.
         """
         return self._closed
-
-    @staticmethod
-    def _do_close(conns):
-        for key, data in conns.items():
-            for transport, proto, t0 in data:
-                transport.close()
-
-        conns.clear()
 
     def update_cookies(self, cookies):
         """Update shared cookies."""
@@ -284,12 +304,12 @@ class TCPConnector(BaseConnector):
     def __init__(self, *args, verify_ssl=True,
                  resolve=False, family=socket.AF_INET, ssl_context=None,
                  **kwargs):
+        super().__init__(*args, **kwargs)
+
         if not verify_ssl and ssl_context is not None:
             raise ValueError(
                 "Either disable ssl certificate validation by "
                 "verify_ssl=False or specify ssl_context, not both.")
-
-        super().__init__(*args, **kwargs)
 
         self._verify_ssl = verify_ssl
         self._ssl_context = ssl_context
