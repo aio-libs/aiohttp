@@ -354,25 +354,27 @@ def request(method, url, *,
                             request_class=request_class,
                             response_class=response_class,
                             cookies=cookies)
-    resp = yield from session.request(method, url,
-                                      params=params,
-                                      data=data,
-                                      headers=headers,
-                                      files=files,
-                                      auth=auth,
-                                      allow_redirects=allow_redirects,
-                                      max_redirects=max_redirects,
-                                      encoding=encoding,
-                                      version=version,
-                                      compress=compress,
-                                      chunked=chunked,
-                                      expect100=expect100,
-                                      read_until_eof=read_until_eof)
-    if connector is not None:
-        session.detach()
-    else:
-        session.close()
-    return resp
+    try:
+        resp = yield from session.request(method, url,
+                                          params=params,
+                                          data=data,
+                                          headers=headers,
+                                          files=files,
+                                          auth=auth,
+                                          allow_redirects=allow_redirects,
+                                          max_redirects=max_redirects,
+                                          encoding=encoding,
+                                          version=version,
+                                          compress=compress,
+                                          chunked=chunked,
+                                          expect100=expect100,
+                                          read_until_eof=read_until_eof)
+        return resp
+    finally:
+        if connector is not None:
+            session.detach()
+        else:
+            session.close()
 
 
 class ClientRequest:
