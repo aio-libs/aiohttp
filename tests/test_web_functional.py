@@ -222,7 +222,7 @@ class TestWebFunctional(unittest.TestCase):
         @asyncio.coroutine
         def handler(request):
             yield from request.release()
-            chunk = yield from request.payload.readany()
+            chunk = yield from request.content.readany()
             self.assertIs(EOF_MARKER, chunk)
             return web.Response(body=b'OK')
 
@@ -655,7 +655,7 @@ class TestWebFunctional(unittest.TestCase):
             _, _, url = yield from self.create_server('POST', '/', handler)
             f = open(fname, 'rb')
             resp = yield from request('POST', url,
-                                      files={'file': f},
+                                      data={'file': f},
                                       loop=self.loop)
             self.assertEqual(200, resp.status)
             resp.close()
