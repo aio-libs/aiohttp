@@ -878,3 +878,31 @@ class ClientRequestTests(unittest.TestCase):
         resp = req.send(self.transport, self.protocol)
         self.assertEqual('customized!', resp.read())
         self.loop.run_until_complete(req.close())
+
+    def test_terminate(self):
+        req = ClientRequest('get', 'http://python.org', loop=self.loop)
+        req.send(self.transport, self.protocol)
+        self.assertIsNotNone(req._writer)
+        writer = req._writer = unittest.mock.Mock()
+
+        req.terminate()
+        self.assertIsNone(req._writer)
+        writer.cancel.assert_called_with()
+
+    def test_terminate_with_closed_loop(self):
+        req = ClientRequest('get', 'http://python.org', loop=self.loop)
+        req.send(self.transport, self.protocol)
+        self.assertIsNotNone(req._writer)
+        writer = req._writer = unittest.mock.Mock()
+
+        self.loop.close()
+        req.terminate()
+        self.assertIsNone(req._writer)
+        self.assertFalse(writer.cancel.called)
+
+    def test_terminate_without_writer(self):
+        req = ClientRequest('get', 'http://python.org', loop=self.loop)
+        self.assertIsNone(req._writer)
+
+        req.terminate()
+        self.assertIsNone(req._writer)
