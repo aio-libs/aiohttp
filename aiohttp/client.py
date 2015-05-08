@@ -77,7 +77,7 @@ class ClientSession:
                               ResourceWarning)
                 context = {'client_session': self,
                            'message': 'Unclosed client session'}
-                if self._source_traceback:
+                if self._source_traceback is not None:
                     context['source_traceback'] = self._source_traceback
                 self._loop.call_exception_handler(context)
 
