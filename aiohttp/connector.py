@@ -20,6 +20,7 @@ from .helpers import BasicAuth
 __all__ = ('BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector')
 
 PY_34 = sys.version_info >= (3, 4)
+PY_343 = sys.version_info >= (3, 4, 3)
 
 
 class Connection(object):
@@ -223,7 +224,7 @@ class BaseConnector(object):
             cookies = cookies.items()
 
         for name, value in cookies:
-            if PY_34:
+            if PY_343:
                 self.cookies[name] = value
             else:
                 if isinstance(value, http.cookies.Morsel):
