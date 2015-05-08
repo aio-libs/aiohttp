@@ -217,7 +217,7 @@ class BaseConnector(object):
     def update_cookies(self, cookies):
         """Update shared cookies.
 
-        Deprectated, use ClientSession instead.
+        Deprecated, use ClientSession instead.
         """
         if isinstance(cookies, dict):
             cookies = cookies.items()
