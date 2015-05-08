@@ -371,10 +371,7 @@ def request(method, url, *,
                                           read_until_eof=read_until_eof)
         return resp
     finally:
-        if connector is not None:
-            session.detach()
-        else:
-            session.close()
+        session.detach()
 
 
 class ClientRequest:

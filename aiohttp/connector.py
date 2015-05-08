@@ -9,6 +9,7 @@ import traceback
 import warnings
 
 from collections import defaultdict
+from itertools import chain
 
 
 from . import hdrs
@@ -144,6 +145,11 @@ class BaseConnector(object):
                     show_warning = True
             self._conns.clear()
 
+            for transport in chain(*self._acquired.values()):
+                if loop_is_not_closed:
+                    transport.close()
+            self._acquired.clear()
+
             if self._cleanup_handle:
                 if loop_is_not_closed:
                     self._cleanup_handle.cancel()
@@ -202,8 +208,11 @@ class BaseConnector(object):
         for key, data in self._conns.items():
             for transport, proto, t0 in data:
                 transport.close()
-
         self._conns.clear()
+
+        for transport in chain(*self._acquired.values()):
+            transport.close()
+        self._acquired.clear()
 
         if self._cleanup_handle:
             self._cleanup_handle.cancel()
@@ -269,6 +278,10 @@ class BaseConnector(object):
         return None, None
 
     def _release(self, key, req, transport, protocol, *, should_close=False):
+        if self._closed:
+            # acquired connection is already released on connector closing
+            return
+
         self._acquired[key].remove(transport)
         resp = req.response
 
