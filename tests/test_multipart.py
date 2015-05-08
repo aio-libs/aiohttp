@@ -585,7 +585,7 @@ class BodyPartWriterTestCase(unittest.TestCase):
 
     def test_set_content_disposition(self):
         self.part.set_content_disposition('attachment', foo='bar')
-        self.assertEquals(
+        self.assertEqual(
             'attachment; foo=bar',
             self.part.headers[CONTENT_DISPOSITION])
 

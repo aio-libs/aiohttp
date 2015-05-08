@@ -247,8 +247,7 @@ class ClientResponseTests(unittest.TestCase):
         response._post_init(self.loop)
         response._setup_connection(self.connection)
         self.assertIsInstance(response.content, aiohttp.FlowControlDataQueue)
-        with self.assertWarns(ResourceWarning):
-            del response
+        response.close()
 
     @unittest.mock.patch('aiohttp.client.chardet')
     def test_get_encoding_unknown(self, m_chardet):
