@@ -223,11 +223,14 @@ class BaseConnector(object):
             cookies = cookies.items()
 
         for name, value in cookies:
-            if isinstance(value, http.cookies.Morsel):
-                # use dict method because SimpleCookie class modifies value
-                dict.__setitem__(self.cookies, name, value)
-            else:
+            if PY_34:
                 self.cookies[name] = value
+            else:
+                if isinstance(value, http.cookies.Morsel):
+                    # use dict method because SimpleCookie class modifies value
+                    dict.__setitem__(self.cookies, name, value)
+                else:
+                    self.cookies[name] = value
 
     @asyncio.coroutine
     def connect(self, req):
