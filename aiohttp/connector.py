@@ -359,7 +359,7 @@ class TCPConnector(BaseConnector):
             elif _SSH_HAS_CREATE_DEFAULT_CONTEXT:
                 # Python 3.4+
                 sslcontext = ssl.create_default_context()
-            else:  # pragma: no cover
+            else:
                 # Fallback for Python 3.3.
                 sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
                 sslcontext.options |= ssl.OP_NO_SSLv2
