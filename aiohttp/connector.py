@@ -227,7 +227,10 @@ class BaseConnector(object):
         return self._closed
 
     def update_cookies(self, cookies):
-        """Update shared cookies."""
+        """Update shared cookies.
+
+        Deprectated, use ClientSession instead.
+        """
         if isinstance(cookies, dict):
             cookies = cookies.items()
 
