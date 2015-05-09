@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-x.x.x (XX-XX-XXXX)
+0.16.0 (XX-XX-XXXX)
 ------------------
 
 - Setup uploaded filename if field value is binary and transfer
