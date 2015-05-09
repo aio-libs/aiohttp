@@ -397,7 +397,10 @@ class ClientRequest:
     _writer = None  # async task for streaming data
     _continue = None  # waiter future for '100 Continue' response
 
-    _source_traceback = None
+    # N.B.
+    # Adding __del__ method with self._writer closing doesn't make sense
+    # because _writer is instance method, thus it keeps a reference to self.
+    # Until writer has finished finalizer will not be called.
 
     def __init__(self, method, url, *,
                  params=None, headers=None, data=None, cookies=None,
@@ -441,21 +444,6 @@ class ClientRequest:
         self.update_body_from_data(data)
         self.update_transfer_encoding()
         self.update_expect_continue(expect100)
-
-    if PY_34:
-        def __del__(self):
-            if self._writer is not None:
-                if not self._writer.done():
-                    warnings.warn("Unclosed request {!r}".format(self),
-                                  ResourceWarning)
-                    context = {'client_request': self,
-                               'message': 'Unclosed request'}
-                    if self._source_traceback:
-                        context['source_traceback'] = self._source_traceback
-                    self.loop.call_exception_handler(context)
-
-                    if not self.loop.is_closed():
-                        self._writer.cancel()
 
     def update_host(self, url):
         """Update destination host, port and connection type (ssl)."""
