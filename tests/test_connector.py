@@ -118,6 +118,20 @@ class BaseConnectorTests(unittest.TestCase):
         self.assertFalse(conns_impl)
         transp.close.assert_called_with()
 
+    @unittest.skipUnless(PY_34, "Requires Python 3.4+")
+    def test_del_with_closed_loop(self):
+        conn = aiohttp.BaseConnector(loop=self.loop)
+        transp = unittest.mock.Mock()
+        conn._conns['a'] = [(transp, 'proto', 123)]
+
+        conns_impl = conn._conns
+        self.loop.close()
+
+        with self.assertWarns(ResourceWarning):
+            del conn
+        self.assertFalse(conns_impl)
+        self.assertFalse(transp.close.called)
+
     def test_create_conn(self):
 
         def go():
