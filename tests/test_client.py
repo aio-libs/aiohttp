@@ -270,7 +270,7 @@ class ClientResponseTests(unittest.TestCase):
         m_chardet.detect.return_value = {'encoding': None}
 
         self.response.headers = {'CONTENT-TYPE': 'application/json'}
-        self.assertEqual(self.response._get_encoding(None), 'utf-8')
+        self.assertEqual(self.response._get_encoding(), 'utf-8')
 
 
 class ClientRequestTests(unittest.TestCase):

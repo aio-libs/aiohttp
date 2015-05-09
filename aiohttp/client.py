@@ -1004,16 +1004,15 @@ class ClientResponse:
             DeprecationWarning)
         return (yield from self.read(decode))
 
-    def _get_encoding(self, encoding):
+    def _get_encoding(self):
         ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
         mtype, stype, _, params = helpers.parse_mimetype(ctype)
 
+        encoding = params.get('charset')
         if not encoding:
-            encoding = params.get('charset')
-            if not encoding:
-                encoding = chardet.detect(self._content)['encoding']
-            if not encoding:
-                encoding = 'utf-8'
+            encoding = chardet.detect(self._content)['encoding']
+        if not encoding:
+            encoding = 'utf-8'
 
         return encoding
 
@@ -1024,7 +1023,7 @@ class ClientResponse:
             yield from self.read()
 
         if encoding is None:
-            encoding = self._get_encoding(encoding)
+            encoding = self._get_encoding()
 
         return self._content.decode(encoding)
 
@@ -1043,6 +1042,6 @@ class ClientResponse:
             return None
 
         if encoding is None:
-            encoding = self._get_encoding(encoding)
+            encoding = self._get_encoding()
 
         return loads(self._content.decode(encoding))
