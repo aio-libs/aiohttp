@@ -479,15 +479,7 @@ class TestEmptyStreamReader(unittest.TestCase):
         self.assertIs(s.read_nowait(), streams.EOF_MARKER)
 
 
-class TestDataQueue(unittest.TestCase):
-
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-        self.buffer = streams.DataQueue(loop=self.loop)
-
-    def tearDown(self):
-        self.loop.close()
+class DataQueueMixin:
 
     def test_is_eof(self):
         self.assertFalse(self.buffer.is_eof())
@@ -603,11 +595,26 @@ class TestDataQueue(unittest.TestCase):
         self.assertRaises(ValueError, t1.result)
 
 
-class TestChunksQueue(TestDataQueue):
+class TestDataQueue(unittest.TestCase, DataQueueMixin):
 
     def setUp(self):
-        super().setUp()
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+        self.buffer = streams.DataQueue(loop=self.loop)
+
+    def tearDown(self):
+        self.loop.close()
+
+
+class TestChunksQueue(unittest.TestCase, DataQueueMixin):
+
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
         self.buffer = streams.ChunksQueue(loop=self.loop)
+
+    def tearDown(self):
+        self.loop.close()
 
     def test_read_eof(self):
         read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
