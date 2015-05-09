@@ -663,3 +663,9 @@ class TestClientRequest(unittest.TestCase):
 
         req.terminate()
         self.assertIsNone(req._writer)
+
+    def test_default_loop(self):
+        asyncio.set_event_loop(self.loop)
+        self.addCleanup(asyncio.set_event_loop, None)
+        req = ClientRequest('get', 'http://python.org/')
+        self.assertIs(req.loop, self.loop)
