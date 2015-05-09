@@ -165,6 +165,22 @@ class ClientResponseTests(unittest.TestCase):
         content.read.side_effect = side_effect
         self.response.close = unittest.mock.Mock()
 
+        self.loop.run_until_complete(self.response.read())
+        res = self.loop.run_until_complete(self.response.text())
+        self.assertEqual(res, '{"тест": "пройден"}')
+        self.assertTrue(self.response.close.called)
+
+    def test_text_after_read(self):
+        def side_effect(*args, **kwargs):
+            fut = asyncio.Future(loop=self.loop)
+            fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
+            return fut
+        self.response.headers = {
+            'CONTENT-TYPE': 'application/json;charset=cp1251'}
+        content = self.response.content = unittest.mock.Mock()
+        content.read.side_effect = side_effect
+        self.response.close = unittest.mock.Mock()
+
         res = self.loop.run_until_complete(self.response.text())
         self.assertEqual(res, '{"тест": "пройден"}')
         self.assertTrue(self.response.close.called)
