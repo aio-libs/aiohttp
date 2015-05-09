@@ -112,11 +112,19 @@ class BaseConnectorTests(unittest.TestCase):
         conn._conns['a'] = [(transp, 'proto', 123)]
         conns_impl = conn._conns
 
+        exc_handler = unittest.mock.Mock()
+        self.loop.set_exception_handler(exc_handler)
+
         with self.assertWarns(ResourceWarning):
             del conn
 
         self.assertFalse(conns_impl)
         transp.close.assert_called_with()
+        msg = {'connector': unittest.mock.ANY,  # conn was deleted
+               'message': 'Unclosed connector'}
+        if self.loop.get_debug():
+            msg['source_traceback'] = unittest.mock.ANY
+        exc_handler.assert_called_with(self.loop, msg)
 
     @unittest.skipUnless(PY_34, "Requires Python 3.4+")
     def test_del_with_scheduled_cleanup(self):
@@ -126,6 +134,8 @@ class BaseConnectorTests(unittest.TestCase):
 
         conns_impl = conn._conns
         conn._start_cleanup_task()
+        exc_handler = unittest.mock.Mock()
+        self.loop.set_exception_handler(exc_handler)
 
         with self.assertWarns(ResourceWarning):
             del conn
@@ -134,6 +144,11 @@ class BaseConnectorTests(unittest.TestCase):
 
         self.assertFalse(conns_impl)
         transp.close.assert_called_with()
+        msg = {'connector': unittest.mock.ANY,  # conn was deleted
+               'message': 'Unclosed connector'}
+        if self.loop.get_debug():
+            msg['source_traceback'] = unittest.mock.ANY
+        exc_handler.assert_called_with(self.loop, msg)
 
     @unittest.skipUnless(PY_34, "Requires Python 3.4+")
     def test_del_with_closed_loop(self):
@@ -143,6 +158,8 @@ class BaseConnectorTests(unittest.TestCase):
 
         conns_impl = conn._conns
         conn._start_cleanup_task()
+        exc_handler = unittest.mock.Mock()
+        self.loop.set_exception_handler(exc_handler)
         self.loop.close()
 
         with self.assertWarns(ResourceWarning):
@@ -151,6 +168,7 @@ class BaseConnectorTests(unittest.TestCase):
 
         self.assertFalse(conns_impl)
         self.assertFalse(transp.close.called)
+        self.assertTrue(exc_handler.called)
 
     def test_create_conn(self):
 
