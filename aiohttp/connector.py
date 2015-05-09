@@ -52,7 +52,7 @@ class Connection(object):
                               ResourceWarning)
                 context = {'client_connection': self,
                            'message': 'Unclosed connection'}
-                if self._source_traceback:
+                if self._source_traceback is not None:
                     context['source_traceback'] = self._source_traceback
                 self._loop.call_exception_handler(context)
 
@@ -93,6 +93,7 @@ class BaseConnector(object):
     """
 
     _closed = True  # prevent AttributeError in __del__ if ctor was failed
+    _source_traceback = None
 
     def __init__(self, *, conn_timeout=None, keepalive_timeout=30,
                  share_cookies=False, force_close=False, loop=None):
@@ -102,8 +103,6 @@ class BaseConnector(object):
         self._closed = False
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
-        else:
-            self._source_traceback = None
 
         self._conns = {}
         self._conn_timeout = conn_timeout
@@ -116,8 +115,6 @@ class BaseConnector(object):
         self._cleanup_handle = None
         self._force_close = force_close
 
-        if loop is None:
-            loop = asyncio.get_event_loop()
         self._loop = loop
         self._factory = functools.partial(
             aiohttp.StreamProtocol, loop=loop,
@@ -152,7 +149,7 @@ class BaseConnector(object):
                               ResourceWarning)
                 context = {'connector': self,
                            'message': 'Unclosed connector'}
-                if self._source_traceback:
+                if self._source_traceback is not None:
                     context['source_traceback'] = self._source_traceback
                 self._loop.call_exception_handler(context)
 

@@ -400,6 +400,14 @@ class BaseConnectorTests(unittest.TestCase):
         conn.close()
         self.assertIsNone(conn._cleanup_handle)
 
+    def test_ctor_with_default_loop(self):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        self.addCleanup(loop.close)
+        self.addCleanup(asyncio.set_event_loop, None)
+        conn = aiohttp.BaseConnector()
+        self.assertIs(loop, conn._loop)
+
 
 class HttpClientConnectorTests(unittest.TestCase):
 
