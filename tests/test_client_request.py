@@ -14,7 +14,7 @@ from aiohttp.client import ClientRequest, ClientResponse
 PY_34 = sys.version_info >= (3, 4)
 
 
-class ClientRequestTests(unittest.TestCase):
+class TestClientRequest(unittest.TestCase):
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()

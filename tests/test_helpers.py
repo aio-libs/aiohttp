@@ -5,7 +5,7 @@ from aiohttp import helpers
 from aiohttp import MultiDict
 
 
-class HelpersTests(unittest.TestCase):
+class TestHelpers(unittest.TestCase):
 
     def test_parse_mimetype(self):
         self.assertEqual(
@@ -105,7 +105,7 @@ class HelpersTests(unittest.TestCase):
         self.assertEqual('Docstring.', A.prop.__doc__)
 
 
-class SafeAtomsTests(unittest.TestCase):
+class TestSafeAtoms(unittest.TestCase):
 
     def test_get_non_existing(self):
         atoms = helpers.SafeAtoms(

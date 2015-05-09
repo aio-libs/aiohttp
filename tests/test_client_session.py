@@ -15,7 +15,7 @@ from aiohttp.connector import BaseConnector, TCPConnector
 PY_34 = sys.version_info >= (3, 4)
 
 
-class ClientResponseTests(unittest.TestCase):
+class TestClientSession(unittest.TestCase):
 
     maxDiff = None
 

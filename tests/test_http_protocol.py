@@ -8,7 +8,7 @@ import zlib
 from aiohttp import hdrs, protocol
 
 
-class HttpMessageTests(unittest.TestCase):
+class TestHttpMessage(unittest.TestCase):
 
     def setUp(self):
         self.transport = unittest.mock.Mock()

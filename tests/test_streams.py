@@ -8,7 +8,7 @@ from aiohttp import streams
 from aiohttp import test_utils
 
 
-class StreamReaderTests(unittest.TestCase):
+class TestStreamReader(unittest.TestCase):
 
     DATA = b'line1\nline2\nline3\n'
 
@@ -449,7 +449,7 @@ class StreamReaderTests(unittest.TestCase):
         self.assertRaises(RuntimeError, stream.read_nowait)
 
 
-class EmptyStreamReaderTests(unittest.TestCase):
+class TestEmptyStreamReader(unittest.TestCase):
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
@@ -479,7 +479,7 @@ class EmptyStreamReaderTests(unittest.TestCase):
         self.assertIs(s.read_nowait(), streams.EOF_MARKER)
 
 
-class DataQueueTests(unittest.TestCase):
+class TestDataQueue(unittest.TestCase):
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
@@ -603,7 +603,7 @@ class DataQueueTests(unittest.TestCase):
         self.assertRaises(ValueError, t1.result)
 
 
-class ChunksQueueTests(DataQueueTests):
+class TestChunksQueue(TestDataQueue):
 
     def setUp(self):
         super().setUp()

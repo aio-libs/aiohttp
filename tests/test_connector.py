@@ -20,7 +20,7 @@ from tests.test_client_functional import Functional
 PY_34 = sys.version_info >= (3, 4)
 
 
-class HttpConnectionTests(unittest.TestCase):
+class TestHttpConnection(unittest.TestCase):
 
     def setUp(self):
         self.key = object()
@@ -102,7 +102,7 @@ class HttpConnectionTests(unittest.TestCase):
         self.assertTrue(conn.closed)
 
 
-class BaseConnectorTests(unittest.TestCase):
+class TestBaseConnector(unittest.TestCase):
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
@@ -483,7 +483,7 @@ class BaseConnectorTests(unittest.TestCase):
         self.assertIs(loop, conn._loop)
 
 
-class HttpClientConnectorTests(unittest.TestCase):
+class TestHttpClientConnector(unittest.TestCase):
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
@@ -533,7 +533,7 @@ class HttpClientConnectorTests(unittest.TestCase):
             aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
 
 
-class ProxyConnectorTests(unittest.TestCase):
+class TestProxyConnector(unittest.TestCase):
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()

@@ -11,7 +11,7 @@ from aiohttp import wsgi
 from aiohttp import protocol
 
 
-class HttpWsgiServerProtocolTests(unittest.TestCase):
+class TestHttpWsgiServerProtocol(unittest.TestCase):
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()

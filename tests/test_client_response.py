@@ -12,7 +12,7 @@ from aiohttp.client import ClientResponse
 PY_34 = sys.version_info >= (3, 4)
 
 
-class ClientResponseTests(unittest.TestCase):
+class TestClientResponse(unittest.TestCase):
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()

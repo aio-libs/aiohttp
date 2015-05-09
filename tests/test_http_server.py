@@ -12,7 +12,7 @@ from aiohttp import errors
 from aiohttp import test_utils
 
 
-class HttpServerProtocolTests(unittest.TestCase):
+class TestHttpServerProtocol(unittest.TestCase):
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()

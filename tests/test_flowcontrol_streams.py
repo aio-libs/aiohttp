@@ -4,7 +4,7 @@ import unittest.mock
 from aiohttp import streams
 
 
-class FlowControlStreamReaderTests(unittest.TestCase):
+class TestFlowControlStreamReader(unittest.TestCase):
 
     def setUp(self):
         self.stream = unittest.mock.Mock()
@@ -58,7 +58,7 @@ class FlowControlStreamReaderTests(unittest.TestCase):
         self.assertTrue(self.transp.pause_reading.called)
 
 
-class FlowControlDataQueueTests(unittest.TestCase):
+class TestFlowControlDataQueue(unittest.TestCase):
 
     def setUp(self):
         self.stream = unittest.mock.Mock()
@@ -196,7 +196,7 @@ class FlowControlDataQueueTests(unittest.TestCase):
         self.assertFalse(self.stream.paused)
 
 
-class FlowControlChunksQueueTests(FlowControlDataQueueTests):
+class TestFlowControlChunksQueue(TestFlowControlDataQueue):
 
     def _make_one(self, *args, **kwargs):
         return streams.FlowControlChunksQueue(

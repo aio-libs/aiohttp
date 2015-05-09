@@ -6,7 +6,7 @@ import unittest.mock
 import aiohttp
 
 
-class ErrorsTests(unittest.TestCase):
+class TestErrors(unittest.TestCase):
 
     def test_bad_status_line(self):
         err = aiohttp.BadStatusLine(b'')
