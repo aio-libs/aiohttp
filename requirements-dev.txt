@@ -6,3 +6,4 @@ alabaster>=0.6.2
 cython
 chardet
 tox
+ipdb
