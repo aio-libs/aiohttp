@@ -139,10 +139,11 @@ class BaseConnector(object):
                     show_warning = True
             self._conns.clear()
 
-            if self._cleanup_handle:
-                if loop_is_not_closed:
-                    self._cleanup_handle.cancel()
-                show_warning = True
+            # N.B.
+            # Don't check for self._cleanup_handle!
+            # The reason is: if self._cleanup_handle was scheduled
+            # a reference to self is stored in event loop.
+            # Thus __del__ will not be called until cleanup handler executes.
 
             if show_warning:
                 warnings.warn("Unclosed connector {!r}".format(self),
