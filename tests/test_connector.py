@@ -170,6 +170,17 @@ class BaseConnectorTests(unittest.TestCase):
         self.assertFalse(transp.close.called)
         self.assertTrue(exc_handler.called)
 
+    @unittest.skipUnless(PY_34, "Requires Python 3.4+")
+    def test_del_empty_conector(self):
+        conn = aiohttp.BaseConnector(loop=self.loop)
+
+        exc_handler = unittest.mock.Mock()
+        self.loop.set_exception_handler(exc_handler)
+
+        del conn
+
+        self.assertFalse(exc_handler.called)
+
     def test_create_conn(self):
 
         def go():
