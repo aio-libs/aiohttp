@@ -28,13 +28,19 @@ class HttpConnectionTests(unittest.TestCase):
         self.request = mock.Mock()
         self.transport = mock.Mock()
         self.protocol = mock.Mock()
-        self.loop = mock.Mock()
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+    def tearDown(self):
+        self.loop.close()
 
     @unittest.skipUnless(PY_34, "Requires Python 3.4+")
     def test_del(self):
         conn = Connection(
             self.connector, self.key, self.request,
             self.transport, self.protocol, self.loop)
+        exc_handler = unittest.mock.Mock()
+        self.loop.set_exception_handler(exc_handler)
 
         with self.assertWarns(ResourceWarning):
             del conn
@@ -43,6 +49,11 @@ class HttpConnectionTests(unittest.TestCase):
                                                    self.transport,
                                                    self.protocol,
                                                    should_close=True)
+        msg = {'client_connection': unittest.mock.ANY,  # conn was deleted
+               'message': 'Unclosed connection'}
+        if self.loop.get_debug():
+            msg['source_traceback'] = unittest.mock.ANY
+        exc_handler.assert_called_with(self.loop, msg)
 
     def test_close(self):
         conn = Connection(
