@@ -8,6 +8,7 @@ import sys
 import traceback
 import warnings
 
+from math import ceil
 
 from . import hdrs
 from .client import ClientRequest
@@ -170,21 +171,22 @@ class BaseConnector(object):
                         transport.close()
                         transport = None
 
-                if transport:
+                if transport is not None:
                     alive.append((transport, proto, t0))
             if alive:
                 connections[key] = alive
 
         if connections:
-            self._cleanup_handle = self._loop.call_later(
-                self._keepalive_timeout, self._cleanup)
+            self._cleanup_handle = self._loop.call_at(
+                ceil(now + self._keepalive_timeout), self._cleanup)
 
         self._conns = connections
 
     def _start_cleanup_task(self):
         if self._cleanup_handle is None:
-            self._cleanup_handle = self._loop.call_later(
-                self._keepalive_timeout, self._cleanup)
+            now = self._loop.time()
+            self._cleanup_handle = self._loop.call_at(
+                ceil(now + self._keepalive_timeout), self._cleanup)
 
     def close(self):
         """Close all opened transports."""
