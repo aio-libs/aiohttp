@@ -225,7 +225,7 @@ def parse_remote_addr(forward):
     return remote[0], str(remote[1])
 
 
-def unquote_quote(segment):
+def unquote_quoted(segment):
     RFC3986_GENDELIMS = ":/?#[]@"
     RFC3986_SUBDELIMS = "!$&'()*+,;="
     segment = urllib.parse.unquote(segment)

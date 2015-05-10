@@ -483,8 +483,8 @@ class ClientRequest:
                 for q in urllib.parse.parse_qsl(query, keep_blank_values=True)]
             # urlencode will take care of quoting
             query = urllib.parse.urlencode(query_parts)
-        path = helpers.unquote_quote(path)
-        fragment = helpers.unquote_quote(fragment)
+        path = helpers.unquote_quoted(path)
+        fragment = helpers.unquote_quoted(fragment)
 
         self.path = urllib.parse.urlunsplit(('', '', path, query, fragment))
 
