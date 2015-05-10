@@ -23,6 +23,7 @@ from .helpers import BasicAuth
 __all__ = ('BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector')
 
 PY_34 = sys.version_info >= (3, 4)
+PY_343 = sys.version_info >= (3, 4, 3)
 
 
 class Connection(object):
@@ -54,7 +55,7 @@ class Connection(object):
                               ResourceWarning)
                 context = {'client_connection': self,
                            'message': 'Unclosed connection'}
-                if self._source_traceback:
+                if self._source_traceback is not None:
                     context['source_traceback'] = self._source_traceback
                 self._loop.call_exception_handler(context)
 
@@ -95,6 +96,7 @@ class BaseConnector(object):
     """
 
     _closed = True  # prevent AttributeError in __del__ if ctor was failed
+    _source_traceback = None
 
     def __init__(self, *, conn_timeout=None, keepalive_timeout=30,
                  share_cookies=False, force_close=False, loop=None):
@@ -104,8 +106,6 @@ class BaseConnector(object):
         self._closed = False
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
-        else:
-            self._source_traceback = None
 
         self._conns = {}
         self._acquired = defaultdict(list)
@@ -119,8 +119,6 @@ class BaseConnector(object):
         self._cleanup_handle = None
         self._force_close = force_close
 
-        if loop is None:
-            loop = asyncio.get_event_loop()
         self._loop = loop
         self._factory = functools.partial(
             aiohttp.StreamProtocol, loop=loop,
@@ -135,14 +133,12 @@ class BaseConnector(object):
             if not self._conns:
                 return
 
-            show_warning = False
             loop_is_not_closed = not self._loop.is_closed()
 
             for key, data in self._conns.items():
                 for transport, proto, t0 in data:
                     if loop_is_not_closed:
                         transport.close()
-                    show_warning = True
             self._conns.clear()
 
             for transport in chain(*self._acquired.values()):
@@ -150,19 +146,19 @@ class BaseConnector(object):
                     transport.close()
             self._acquired.clear()
 
-            if self._cleanup_handle:
-                if loop_is_not_closed:
-                    self._cleanup_handle.cancel()
-                show_warning = True
+            # N.B.
+            # Don't check for self._cleanup_handle!
+            # The reason is: if self._cleanup_handle was scheduled
+            # a reference to self is stored in event loop.
+            # Thus __del__ will not be called until cleanup handler executes.
 
-            if show_warning:
-                warnings.warn("Unclosed connector {!r}".format(self),
-                              ResourceWarning)
-                context = {'connector': self,
-                           'message': 'Unclosed connector'}
-                if self._source_traceback:
-                    context['source_traceback'] = self._source_traceback
-                self._loop.call_exception_handler(context)
+            warnings.warn("Unclosed connector {!r}".format(self),
+                          ResourceWarning)
+            context = {'connector': self,
+                       'message': 'Unclosed connector'}
+            if self._source_traceback is not None:
+                context['source_traceback'] = self._source_traceback
+            self._loop.call_exception_handler(context)
 
     def _cleanup(self):
         """Cleanup unused transports."""
@@ -229,17 +225,24 @@ class BaseConnector(object):
     def update_cookies(self, cookies):
         """Update shared cookies.
 
+<<<<<<< HEAD
         Deprectated, use ClientSession instead.
+=======
+        Deprecated, use ClientSession instead.
+>>>>>>> master
         """
         if isinstance(cookies, dict):
             cookies = cookies.items()
 
         for name, value in cookies:
-            if isinstance(value, http.cookies.Morsel):
-                # use dict method because SimpleCookie class modifies value
-                dict.__setitem__(self.cookies, name, value)
-            else:
+            if PY_343:
                 self.cookies[name] = value
+            else:
+                if isinstance(value, http.cookies.Morsel):
+                    # use dict method because SimpleCookie class modifies value
+                    dict.__setitem__(self.cookies, name, value)
+                else:
+                    self.cookies[name] = value
 
     @asyncio.coroutine
     def connect(self, req):
@@ -374,7 +377,7 @@ class TCPConnector(BaseConnector):
             elif _SSH_HAS_CREATE_DEFAULT_CONTEXT:
                 # Python 3.4+
                 sslcontext = ssl.create_default_context()
-            else:  # pragma: no cover
+            else:
                 # Fallback for Python 3.3.
                 sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
                 sslcontext.options |= ssl.OP_NO_SSLv2

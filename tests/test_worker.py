@@ -9,7 +9,7 @@ except ImportError as error:  # pragma: no cover
     raise unittest.SkipTest('gunicorn required') from error
 
 
-class TestWorker(worker.GunicornWebWorker):
+class MyWorker(worker.GunicornWebWorker):
 
     def __init__(self):
         self.servers = []
@@ -18,12 +18,12 @@ class TestWorker(worker.GunicornWebWorker):
         self.cfg.graceful_timeout = 100
 
 
-class WorkerTests(unittest.TestCase):
+class TestWorker(unittest.TestCase):
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
-        self.worker = TestWorker()
+        self.worker = MyWorker()
 
     def tearDown(self):
         self.loop.close()

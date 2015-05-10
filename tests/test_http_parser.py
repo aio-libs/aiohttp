@@ -11,7 +11,7 @@ from aiohttp import protocol
 from aiohttp import CIMultiDict
 
 
-class ParseHeadersTests(unittest.TestCase):
+class TestParseHeaders(unittest.TestCase):
 
     def setUp(self):
         asyncio.set_event_loop(None)
@@ -98,7 +98,7 @@ class ParseHeadersTests(unittest.TestCase):
             self.parser.parse_headers(['', 'test[]: line\r\n', '\r\n'])
 
 
-class DeflateBufferTests(unittest.TestCase):
+class TestDeflateBuffer(unittest.TestCase):
 
     def setUp(self):
         self.stream = unittest.mock.Mock()
@@ -147,7 +147,7 @@ class DeflateBufferTests(unittest.TestCase):
         self.assertRaises(errors.ContentEncodingError, dbuf.feed_eof)
 
 
-class ParsePayloadTests(unittest.TestCase):
+class TestParsePayload(unittest.TestCase):
 
     def setUp(self):
         self.stream = unittest.mock.Mock()
@@ -362,7 +362,7 @@ class ParsePayloadTests(unittest.TestCase):
         self.assertEqual(b'', b''.join(out._buffer))
 
 
-class ParseRequestTests(unittest.TestCase):
+class TestParseRequest(unittest.TestCase):
 
     def setUp(self):
         self.stream = unittest.mock.Mock()
@@ -463,7 +463,7 @@ class ParseRequestTests(unittest.TestCase):
             p.send, b'GET //get HT/11\r\n\r\n')
 
 
-class ParseResponseTests(unittest.TestCase):
+class TestParseResponse(unittest.TestCase):
 
     def setUp(self):
         self.stream = unittest.mock.Mock()

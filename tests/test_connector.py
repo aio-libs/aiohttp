@@ -20,7 +20,7 @@ from tests.test_client_functional import Functional
 PY_34 = sys.version_info >= (3, 4)
 
 
-class HttpConnectionTests(unittest.TestCase):
+class TestHttpConnection(unittest.TestCase):
 
     def setUp(self):
         self.key = object()
@@ -28,13 +28,19 @@ class HttpConnectionTests(unittest.TestCase):
         self.request = mock.Mock()
         self.transport = mock.Mock()
         self.protocol = mock.Mock()
-        self.loop = mock.Mock()
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+    def tearDown(self):
+        self.loop.close()
 
     @unittest.skipUnless(PY_34, "Requires Python 3.4+")
     def test_del(self):
         conn = Connection(
             self.connector, self.key, self.request,
             self.transport, self.protocol, self.loop)
+        exc_handler = unittest.mock.Mock()
+        self.loop.set_exception_handler(exc_handler)
 
         with self.assertWarns(ResourceWarning):
             del conn
@@ -43,6 +49,11 @@ class HttpConnectionTests(unittest.TestCase):
                                                    self.transport,
                                                    self.protocol,
                                                    should_close=True)
+        msg = {'client_connection': unittest.mock.ANY,  # conn was deleted
+               'message': 'Unclosed connection'}
+        if self.loop.get_debug():
+            msg['source_traceback'] = unittest.mock.ANY
+        exc_handler.assert_called_with(self.loop, msg)
 
     def test_close(self):
         conn = Connection(
@@ -91,7 +102,7 @@ class HttpConnectionTests(unittest.TestCase):
         self.assertTrue(conn.closed)
 
 
-class BaseConnectorTests(unittest.TestCase):
+class TestBaseConnector(unittest.TestCase):
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
@@ -110,13 +121,76 @@ class BaseConnectorTests(unittest.TestCase):
         conn = aiohttp.BaseConnector(loop=self.loop)
         transp = unittest.mock.Mock()
         conn._conns['a'] = [(transp, 'proto', 123)]
-
         conns_impl = conn._conns
+
+        exc_handler = unittest.mock.Mock()
+        self.loop.set_exception_handler(exc_handler)
 
         with self.assertWarns(ResourceWarning):
             del conn
+
         self.assertFalse(conns_impl)
         transp.close.assert_called_with()
+        msg = {'connector': unittest.mock.ANY,  # conn was deleted
+               'message': 'Unclosed connector'}
+        if self.loop.get_debug():
+            msg['source_traceback'] = unittest.mock.ANY
+        exc_handler.assert_called_with(self.loop, msg)
+
+    @unittest.skipUnless(PY_34, "Requires Python 3.4+")
+    def test_del_with_scheduled_cleanup(self):
+        conn = aiohttp.BaseConnector(loop=self.loop, keepalive_timeout=0.01)
+        transp = unittest.mock.Mock()
+        conn._conns['a'] = [(transp, 'proto', 123)]
+
+        conns_impl = conn._conns
+        conn._start_cleanup_task()
+        exc_handler = unittest.mock.Mock()
+        self.loop.set_exception_handler(exc_handler)
+
+        with self.assertWarns(ResourceWarning):
+            del conn
+            yield from asyncio.sleep(0.01)
+            gc.collect()
+
+        self.assertFalse(conns_impl)
+        transp.close.assert_called_with()
+        msg = {'connector': unittest.mock.ANY,  # conn was deleted
+               'message': 'Unclosed connector'}
+        if self.loop.get_debug():
+            msg['source_traceback'] = unittest.mock.ANY
+        exc_handler.assert_called_with(self.loop, msg)
+
+    @unittest.skipUnless(PY_34, "Requires Python 3.4+")
+    def test_del_with_closed_loop(self):
+        conn = aiohttp.BaseConnector(loop=self.loop)
+        transp = unittest.mock.Mock()
+        conn._conns['a'] = [(transp, 'proto', 123)]
+
+        conns_impl = conn._conns
+        conn._start_cleanup_task()
+        exc_handler = unittest.mock.Mock()
+        self.loop.set_exception_handler(exc_handler)
+        self.loop.close()
+
+        with self.assertWarns(ResourceWarning):
+            del conn
+            gc.collect()
+
+        self.assertFalse(conns_impl)
+        self.assertFalse(transp.close.called)
+        self.assertTrue(exc_handler.called)
+
+    @unittest.skipUnless(PY_34, "Requires Python 3.4+")
+    def test_del_empty_conector(self):
+        conn = aiohttp.BaseConnector(loop=self.loop)
+
+        exc_handler = unittest.mock.Mock()
+        self.loop.set_exception_handler(exc_handler)
+
+        del conn
+
+        self.assertFalse(exc_handler.called)
 
     def test_create_conn(self):
 
@@ -410,8 +484,16 @@ class BaseConnectorTests(unittest.TestCase):
         conn.close()
         self.assertIsNone(conn._cleanup_handle)
 
+    def test_ctor_with_default_loop(self):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        self.addCleanup(loop.close)
+        self.addCleanup(asyncio.set_event_loop, None)
+        conn = aiohttp.BaseConnector()
+        self.assertIs(loop, conn._loop)
 
-class HttpClientConnectorTests(unittest.TestCase):
+
+class TestHttpClientConnector(unittest.TestCase):
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
@@ -461,7 +543,7 @@ class HttpClientConnectorTests(unittest.TestCase):
             aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
 
 
-class ProxyConnectorTests(unittest.TestCase):
+class TestProxyConnector(unittest.TestCase):
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()

@@ -14,7 +14,7 @@ from aiohttp import websocket, multidict, protocol, errors
 from aiohttp.websocket import Message
 
 
-class WebsocketParserTests(unittest.TestCase):
+class TestWebsocketParser(unittest.TestCase):
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
@@ -466,7 +466,7 @@ class WebsocketParserTests(unittest.TestCase):
             res, (Message(websocket.OPCODE_TEXT, 'line1line2', ''), 10))
 
 
-class WebsocketWriterTests(unittest.TestCase):
+class TestWebsocketWriter(unittest.TestCase):
 
     def setUp(self):
         self.transport = unittest.mock.Mock()
@@ -518,7 +518,7 @@ class WebsocketWriterTests(unittest.TestCase):
             b'\x81\x84\rg\xb3fy\x02\xcb\x12')
 
 
-class WebSocketHandshakeTests(unittest.TestCase):
+class TestWebSocketHandshake(unittest.TestCase):
 
     def setUp(self):
         self.transport = unittest.mock.Mock()

@@ -16,16 +16,8 @@ test: flake develop
 vtest: flake develop
 	nosetests -s -v $(FLAGS) ./tests/
 
-cov cover coverage: flake develop
-	@coverage erase
-	@coverage run -m nose -s $(FLAGS) tests
-	@mv .coverage .coverage.accel
-	@AIOHTTP_NO_EXTENSIONS=1 coverage run -m nose -s $(FLAGS) tests
-	@mv .coverage .coverage.pure
-	@coverage combine
-	@coverage report
-	@coverage html
-	@echo "open file://`pwd`/coverage/index.html"
+cov cover coverage:
+	tox
 
 clean:
 	rm -rf `find . -name __pycache__`

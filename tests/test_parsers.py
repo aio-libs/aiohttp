@@ -8,7 +8,7 @@ from aiohttp import errors
 from aiohttp import parsers
 
 
-class StreamParserTests(unittest.TestCase):
+class TestStreamParser(unittest.TestCase):
 
     DATA = b'line1\nline2\nline3\n'
 
@@ -342,7 +342,7 @@ class StreamParserTests(unittest.TestCase):
         self.assertIsInstance(s.exception(), CustomEofErr)
 
 
-class StreamProtocolTests(unittest.TestCase):
+class TestStreamProtocol(unittest.TestCase):
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
@@ -385,7 +385,7 @@ class StreamProtocolTests(unittest.TestCase):
         proto.reader.feed_data.assert_called_with(b'data')
 
 
-class ParserBufferTests(unittest.TestCase):
+class TestParserBuffer(unittest.TestCase):
 
     def setUp(self):
         self.stream = unittest.mock.Mock()

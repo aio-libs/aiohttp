@@ -4,7 +4,7 @@ import unittest.mock
 from aiohttp import streams
 
 
-class FlowControlStreamReaderTests(unittest.TestCase):
+class TestFlowControlStreamReader(unittest.TestCase):
 
     def setUp(self):
         self.stream = unittest.mock.Mock()
@@ -58,19 +58,7 @@ class FlowControlStreamReaderTests(unittest.TestCase):
         self.assertTrue(self.transp.pause_reading.called)
 
 
-class FlowControlDataQueueTests(unittest.TestCase):
-
-    def setUp(self):
-        self.stream = unittest.mock.Mock()
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
-
-    def _make_one(self, *args, **kwargs):
-        return streams.FlowControlDataQueue(
-            self.stream, limit=1, loop=self.loop, *args, **kwargs)
+class FlowControlMixin:
 
     def test_resume_on_init(self):
         stream = unittest.mock.Mock()
@@ -196,7 +184,30 @@ class FlowControlDataQueueTests(unittest.TestCase):
         self.assertFalse(self.stream.paused)
 
 
-class FlowControlChunksQueueTests(FlowControlDataQueueTests):
+class TestFlowControlDataQueue(unittest.TestCase, FlowControlMixin):
+
+    def setUp(self):
+        self.stream = unittest.mock.Mock()
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+    def tearDown(self):
+        self.loop.close()
+
+    def _make_one(self, *args, **kwargs):
+        return streams.FlowControlDataQueue(
+            self.stream, limit=1, loop=self.loop, *args, **kwargs)
+
+
+class TestFlowControlChunksQueue(unittest.TestCase, FlowControlMixin):
+
+    def setUp(self):
+        self.stream = unittest.mock.Mock()
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+    def tearDown(self):
+        self.loop.close()
 
     def _make_one(self, *args, **kwargs):
         return streams.FlowControlChunksQueue(
