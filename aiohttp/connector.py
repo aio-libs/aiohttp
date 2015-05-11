@@ -99,7 +99,8 @@ class BaseConnector(object):
     _source_traceback = None
 
     def __init__(self, *, conn_timeout=None, keepalive_timeout=30,
-                 share_cookies=False, force_close=False, loop=None):
+                 share_cookies=False, force_close=False, limit=None,
+                 loop=None):
         if loop is None:
             loop = asyncio.get_event_loop()
 
@@ -118,6 +119,8 @@ class BaseConnector(object):
         self._share_cookies = share_cookies
         self._cleanup_handle = None
         self._force_close = force_close
+        self._limit = limit
+        self._waiters = defaultdict(list)
 
         self._loop = loop
         self._factory = functools.partial(
@@ -245,6 +248,13 @@ class BaseConnector(object):
         """Get from pool or create new connection."""
         key = (req.host, req.port, req.ssl)
 
+        # use short-circuit
+        if self._limit is not None:
+            while len(self._acquired[key]) >= self._limit:
+                fut = asyncio.Future(loop=self._loop)
+                self._waiters[key].append(fut)
+                yield from fut
+
         transport, proto = self._get(key)
         if transport is None:
             try:
@@ -261,8 +271,8 @@ class BaseConnector(object):
                 raise ClientOSError(
                     'Cannot connect to host %s:%s ssl:%s' % key) from exc
 
-        conn = Connection(self, key, req, transport, proto, self._loop)
         self._acquired[key].append(transport)
+        conn = Connection(self, key, req, transport, proto, self._loop)
         return conn
 
     def _get(self, key):
@@ -284,7 +294,22 @@ class BaseConnector(object):
             # acquired connection is already released on connector closing
             return
 
-        self._acquired[key].remove(transport)
+        acquired = self._acquired[key]
+        try:
+            acquired.remove(transport)
+        except ValueError:  # pragma: no cover
+            # this may be result of undetermenistic order of objects
+            # finalization due garbage collection.
+            pass
+        else:
+            if self._limit is not None and len(acquired) < self._limit:
+                waiters = self._waiters[key]
+                while waiters:
+                    waiter = waiters.pop(0)
+                    if not waiter.done():
+                        waiter.set_result(None)
+                        break
+
         resp = req.response
 
         if not should_close:
