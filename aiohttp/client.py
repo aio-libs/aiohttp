@@ -33,7 +33,8 @@ class ClientSession:
     _connector = None
 
     def __init__(self, *, connector=None, loop=None, request_class=None,
-                 response_class=None, cookies=None, headers=None, auth=None):
+                 response_class=None, cookies=None, headers=None, auth=None,
+                 force_close=False):
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
@@ -42,8 +43,12 @@ class ClientSession:
 
         self._cookies = http.cookies.SimpleCookie()
 
+        if connector is not None and force_close:
+            raise ValueError(
+                "connector and force_close parameters are ambiguous")
         if connector is None:
-            connector = aiohttp.TCPConnector(force_close=True, loop=loop)
+            connector = aiohttp.TCPConnector(loop=loop,
+                                             force_close=force_close)
         elif connector._loop is not loop:
             raise ValueError("loop argument must agree with connector")
 
@@ -350,10 +355,16 @@ def request(method, url, *,
       >>> data = yield from resp.read()
 
     """
-    session = ClientSession(connector=connector, loop=loop,
+    if connector is not None:
+        kwargs = dict(connector=connector)
+    else:
+        kwargs = dict(force_close=True)
+
+    session = ClientSession(loop=loop,
                             request_class=request_class,
                             response_class=response_class,
-                            cookies=cookies)
+                            cookies=cookies,
+                            **kwargs)
     try:
         resp = yield from session.request(method, url,
                                           params=params,
