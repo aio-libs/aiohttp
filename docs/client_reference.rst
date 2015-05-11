@@ -328,6 +328,7 @@ There are standard connectors:
 All connector classes should be derived from :class:`BaseConnector`.
 
 .. class:: BaseConnector(*, conn_timeout=None, keepalive_timeout=30, \
+                         limit=None, \
                          share_cookies=False, force_close=False, loop=None)
 
    Base class for all connectors.
@@ -339,6 +340,11 @@ All connector classes should be derived from :class:`BaseConnector`.
    :param float keepalive_timeout: timeout for connection reusing
                                    after releasing (optional). Values
                                    ``0`` or ``None`` mean no timeout.
+
+   :param int limit: limit for simultaneous connections to the same
+                     endpoint.  Endpoints are the same if they are
+                     have equal ``(host, port, is_ssl)`` triple.
+                     If *limit* is ``None`` connection pool has no limit.
 
    :param bool share_cookies: update :attr:`cookies` on connection
                               processing (optional, deprecated).
@@ -386,7 +392,7 @@ All connector classes should be derived from :class:`BaseConnector`.
 .. class:: TCPConnector(*, verify_ssl=True, resolve=False, \
                         family=socket.AF_INET, \
                         ssl_context=None, conn_timeout=None, \
-                        keepalive_timeout=30, share_cookies=False, \
+                        keepalive_timeout=30, limit=None, share_cookies=False, \
                         force_close=False, loop=None)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
@@ -422,7 +428,8 @@ All connector classes should be derived from :class:`BaseConnector`.
 
 .. class:: ProxyConnector(proxy, *, proxy_auth=None, \
                           conn_timeout=None, \
-                          keepalive_timeout=30, share_cookies=False, \
+                          keepalive_timeout=30, limit=None, \
+                          share_cookies=False, \
                           force_close=False, loop=None)
 
    HTTP Proxy connector.
@@ -447,7 +454,11 @@ All connector classes should be derived from :class:`BaseConnector`.
       authenthication info used for proxies with authorization.
 
 
-.. class:: UnixConnector
+.. class:: UnixConnector(path, *, \
+                         conn_timeout=None, \
+                         keepalive_timeout=30, limit=None, \
+                         share_cookies=False, \
+                         force_close=False, loop=None)
 
    Unix socket connector.
 

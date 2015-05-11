@@ -247,7 +247,9 @@ class TestBaseConnector(unittest.TestCase):
         resp.message.should_close = False
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        conn._release(1, req, tr, proto)
+        key = 1
+        conn._acquired[key].append(tr)
+        conn._release(key, req, tr, proto)
         self.assertEqual(conn._conns[1][0], (tr, proto, 10))
         self.assertTrue(conn._start_cleanup_task.called)
         conn.close()
@@ -265,7 +267,9 @@ class TestBaseConnector(unittest.TestCase):
         cookies['c2'] = 'cookie2'
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        conn._release(1, req, tr, proto)
+        key = 1
+        conn._acquired[key].append(tr)
+        conn._release(key, req, tr, proto)
         self.assertFalse(conn._conns)
         self.assertTrue(tr.close.called)
 
@@ -282,6 +286,7 @@ class TestBaseConnector(unittest.TestCase):
         conn._conns[key] = []
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+        conn._acquired[key].append(tr)
         conn._release(key, req, tr, proto)
         self.assertEqual({}, conn._conns)
         self.assertTrue(tr.close.called)
@@ -299,6 +304,7 @@ class TestBaseConnector(unittest.TestCase):
         req.response = resp
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+        conn._acquired[key].append(tr)
         conn._release(key, req, tr, proto)
         self.assertEqual(conn._conns[key], [(tr1, proto1, 1)])
         self.assertTrue(tr.close.called)
@@ -312,7 +318,9 @@ class TestBaseConnector(unittest.TestCase):
         req.response = None
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        conn._release(1, req, tr, proto)
+        key = 1
+        conn._acquired[key].append(tr)
+        conn._release(key, req, tr, proto)
         self.assertEqual(conn._conns, {1: [(tr, proto, 10)]})
         self.assertFalse(tr.close.called)
         conn.close()
@@ -324,7 +332,9 @@ class TestBaseConnector(unittest.TestCase):
         req.response.message = None
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        conn._release(1, req, tr, proto)
+        key = 1
+        conn._acquired[key].append(tr)
+        conn._release(key, req, tr, proto)
         self.assertTrue(tr.close.called)
 
     def test_connect(self):
@@ -507,6 +517,124 @@ class TestBaseConnector(unittest.TestCase):
         self.addCleanup(asyncio.set_event_loop, None)
         conn = aiohttp.BaseConnector()
         self.assertIs(loop, conn._loop)
+
+    def test_connect_with_limit(self):
+
+        @asyncio.coroutine
+        def go():
+            tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+            proto.is_connected.return_value = True
+
+            class Req:
+                host = 'host'
+                port = 80
+                ssl = False
+                response = unittest.mock.Mock()
+
+            conn = aiohttp.BaseConnector(loop=self.loop, limit=1)
+            key = ('host', 80, False)
+            conn._conns[key] = [(tr, proto, self.loop.time())]
+            conn._create_connection = unittest.mock.Mock()
+            conn._create_connection.return_value = asyncio.Future(
+                loop=self.loop)
+            conn._create_connection.return_value.set_result((tr, proto))
+
+            connection1 = yield from conn.connect(Req())
+            self.assertEqual(connection1._transport, tr)
+
+            self.assertEqual(1, len(conn._acquired[key]))
+
+            acquired = False
+
+            @asyncio.coroutine
+            def f():
+                nonlocal acquired
+                connection2 = yield from conn.connect(Req())
+                acquired = True
+                self.assertEqual(1, len(conn._acquired[key]))
+                connection2.release()
+
+            task = asyncio.async(f(), loop=self.loop)
+
+            yield from asyncio.sleep(0.01, loop=self.loop)
+            self.assertFalse(acquired)
+            connection1.release()
+            yield from asyncio.sleep(0, loop=self.loop)
+            self.assertTrue(acquired)
+            yield from task
+            conn.close()
+
+        self.loop.run_until_complete(go())
+
+    def test_connect_with_limit_cancelled(self):
+
+        @asyncio.coroutine
+        def go():
+            tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+            proto.is_connected.return_value = True
+
+            class Req:
+                host = 'host'
+                port = 80
+                ssl = False
+                response = unittest.mock.Mock()
+
+            conn = aiohttp.BaseConnector(loop=self.loop, limit=1)
+            key = ('host', 80, False)
+            conn._conns[key] = [(tr, proto, self.loop.time())]
+            conn._create_connection = unittest.mock.Mock()
+            conn._create_connection.return_value = asyncio.Future(
+                loop=self.loop)
+            conn._create_connection.return_value.set_result((tr, proto))
+
+            connection = yield from conn.connect(Req())
+            self.assertEqual(connection._transport, tr)
+
+            self.assertEqual(1, len(conn._acquired[key]))
+
+            with self.assertRaises(asyncio.TimeoutError):
+                # limit exhausted
+                yield from asyncio.wait_for(conn.connect(Req), 0.01,
+                                            loop=self.loop)
+
+            connection.close()
+
+        self.loop.run_until_complete(go())
+
+    def test_close_with_acquired_connection(self):
+
+        @asyncio.coroutine
+        def go():
+            tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+            proto.is_connected.return_value = True
+
+            class Req:
+                host = 'host'
+                port = 80
+                ssl = False
+                response = unittest.mock.Mock()
+
+            conn = aiohttp.BaseConnector(loop=self.loop, limit=1)
+            key = ('host', 80, False)
+            conn._conns[key] = [(tr, proto, self.loop.time())]
+            conn._create_connection = unittest.mock.Mock()
+            conn._create_connection.return_value = asyncio.Future(
+                loop=self.loop)
+            conn._create_connection.return_value.set_result((tr, proto))
+
+            connection = yield from conn.connect(Req())
+
+            self.assertEqual(1, len(conn._acquired))
+            conn.close()
+            self.assertEqual(0, len(conn._acquired))
+            self.assertTrue(conn.closed)
+            tr.close.assert_called_with()
+
+            self.assertFalse(connection.closed)
+            connection.close()
+            self.assertTrue(connection.closed)
+
+        self.loop.run_until_complete(go())
 
 
 class TestHttpClientConnector(unittest.TestCase):

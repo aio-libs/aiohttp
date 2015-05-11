@@ -8,6 +8,8 @@ import sys
 import traceback
 import warnings
 
+from collections import defaultdict
+from itertools import chain
 from math import ceil
 
 from . import hdrs
@@ -97,7 +99,8 @@ class BaseConnector(object):
     _source_traceback = None
 
     def __init__(self, *, conn_timeout=None, keepalive_timeout=30,
-                 share_cookies=False, force_close=False, loop=None):
+                 share_cookies=False, force_close=False, limit=None,
+                 loop=None):
         if loop is None:
             loop = asyncio.get_event_loop()
 
@@ -106,6 +109,7 @@ class BaseConnector(object):
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
         self._conns = {}
+        self._acquired = defaultdict(list)
         self._conn_timeout = conn_timeout
         self._keepalive_timeout = keepalive_timeout
         if share_cookies:
@@ -115,6 +119,8 @@ class BaseConnector(object):
         self._share_cookies = share_cookies
         self._cleanup_handle = None
         self._force_close = force_close
+        self._limit = limit
+        self._waiters = defaultdict(list)
 
         self._loop = loop
         self._factory = functools.partial(
@@ -130,19 +136,7 @@ class BaseConnector(object):
             if not self._conns:
                 return
 
-            loop_is_not_closed = not self._loop.is_closed()
-
-            for key, data in self._conns.items():
-                for transport, proto, t0 in data:
-                    if loop_is_not_closed:
-                        transport.close()
-            self._conns.clear()
-
-            # N.B.
-            # Don't check for self._cleanup_handle!
-            # The reason is: if self._cleanup_handle was scheduled
-            # a reference to self is stored in event loop.
-            # Thus __del__ will not be called until cleanup handler executes.
+            self.close()
 
             warnings.warn("Unclosed connector {!r}".format(self),
                           ResourceWarning)
@@ -200,15 +194,20 @@ class BaseConnector(object):
             return
         self._closed = True
 
-        for key, data in self._conns.items():
-            for transport, proto, t0 in data:
+        if not self._loop.is_closed():
+            for key, data in self._conns.items():
+                for transport, proto, t0 in data:
+                    transport.close()
+
+            for transport in chain(*self._acquired.values()):
                 transport.close()
 
-        self._conns.clear()
+            if self._cleanup_handle:
+                self._cleanup_handle.cancel()
 
-        if self._cleanup_handle:
-            self._cleanup_handle.cancel()
-            self._cleanup_handle = None
+        self._conns.clear()
+        self._acquired.clear()
+        self._cleanup_handle = None
 
     @property
     def closed(self):
@@ -241,6 +240,13 @@ class BaseConnector(object):
         """Get from pool or create new connection."""
         key = (req.host, req.port, req.ssl)
 
+        # use short-circuit
+        if self._limit is not None:
+            while len(self._acquired[key]) >= self._limit:
+                fut = asyncio.Future(loop=self._loop)
+                self._waiters[key].append(fut)
+                yield from fut
+
         transport, proto = self._get(key)
         if transport is None:
             try:
@@ -257,7 +263,9 @@ class BaseConnector(object):
                 raise ClientOSError(
                     'Cannot connect to host %s:%s ssl:%s' % key) from exc
 
-        return Connection(self, key, req, transport, proto, self._loop)
+        self._acquired[key].append(transport)
+        conn = Connection(self, key, req, transport, proto, self._loop)
+        return conn
 
     def _get(self, key):
         conns = self._conns.get(key)
@@ -274,6 +282,26 @@ class BaseConnector(object):
         return None, None
 
     def _release(self, key, req, transport, protocol, *, should_close=False):
+        if self._closed:
+            # acquired connection is already released on connector closing
+            return
+
+        acquired = self._acquired[key]
+        try:
+            acquired.remove(transport)
+        except ValueError:  # pragma: no cover
+            # this may be result of undetermenistic order of objects
+            # finalization due garbage collection.
+            pass
+        else:
+            if self._limit is not None and len(acquired) < self._limit:
+                waiters = self._waiters[key]
+                while waiters:
+                    waiter = waiters.pop(0)
+                    if not waiter.done():
+                        waiter.set_result(None)
+                        break
+
         resp = req.response
 
         if not should_close:
@@ -514,6 +542,7 @@ class ProxyConnector(TCPConnector):
             key = (req.host, req.port, req.ssl)
             conn = Connection(self, key, proxy_req,
                               transport, proto, self._loop)
+            self._acquired[key].append(conn._transport)
             proxy_resp = proxy_req.send(conn.writer, conn.reader)
             try:
                 resp = yield from proxy_resp.start(conn, True)
