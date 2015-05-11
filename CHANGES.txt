@@ -22,6 +22,8 @@ CHANGES
 
 - Refactor connections cleanup by connector #357
 
+- Add `limit` parameter to connector constructor #358
+
 
 0.15.3 (04-22-2015)
 -------------------
