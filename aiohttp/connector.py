@@ -136,24 +136,7 @@ class BaseConnector(object):
             if not self._conns:
                 return
 
-            loop_is_not_closed = not self._loop.is_closed()
-
-            for key, data in self._conns.items():
-                for transport, proto, t0 in data:
-                    if loop_is_not_closed:
-                        transport.close()
-            self._conns.clear()
-
-            for transport in chain(*self._acquired.values()):
-                if loop_is_not_closed:
-                    transport.close()
-            self._acquired.clear()
-
-            # N.B.
-            # Don't check for self._cleanup_handle!
-            # The reason is: if self._cleanup_handle was scheduled
-            # a reference to self is stored in event loop.
-            # Thus __del__ will not be called until cleanup handler executes.
+            self.close()
 
             warnings.warn("Unclosed connector {!r}".format(self),
                           ResourceWarning)
@@ -204,18 +187,20 @@ class BaseConnector(object):
             return
         self._closed = True
 
-        for key, data in self._conns.items():
-            for transport, proto, t0 in data:
+        if not self._loop.is_closed():
+            for key, data in self._conns.items():
+                for transport, proto, t0 in data:
+                    transport.close()
+
+            for transport in chain(*self._acquired.values()):
                 transport.close()
+
+            if self._cleanup_handle:
+                self._cleanup_handle.cancel()
+
         self._conns.clear()
-
-        for transport in chain(*self._acquired.values()):
-            transport.close()
         self._acquired.clear()
-
-        if self._cleanup_handle:
-            self._cleanup_handle.cancel()
-            self._cleanup_handle = None
+        self._cleanup_handle = None
 
     @property
     def closed(self):
