@@ -417,7 +417,26 @@ class TestBaseConnector(unittest.TestCase):
 
         self.assertIsNotNone(conn._cleanup_handle)
         loop.call_at.assert_called_with(
-            311, conn._cleanup)
+            310, conn._cleanup)
+        conn.close()
+
+    def test_cleanup3(self):
+        testset = {1: [(unittest.mock.Mock(), unittest.mock.Mock(), 290.1),
+                       (unittest.mock.Mock(), unittest.mock.Mock(), 305.1)]}
+        testset[1][0][1].is_connected.return_value = True
+
+        loop = unittest.mock.Mock()
+        loop.time.return_value = 308.5
+
+        conn = aiohttp.BaseConnector(loop=loop, keepalive_timeout=10)
+        conn._conns = testset
+
+        conn._cleanup()
+        self.assertEqual(conn._conns, {1: [testset[1][1]]})
+
+        self.assertIsNotNone(conn._cleanup_handle)
+        loop.call_at.assert_called_with(
+            316, conn._cleanup)
         conn.close()
 
     def test_tcp_connector_ctor(self):
