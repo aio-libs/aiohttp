@@ -245,7 +245,7 @@ request coroutine
                        compress=None, chunked=None, expect100=False, \
                        connector=None, loop=None,\
                        read_until_eof=True, request_class=None,\
-                       response_class=None, test=None)
+                       response_class=None)
 
    Performs an asynchronous http request. Returns a response object.
 
