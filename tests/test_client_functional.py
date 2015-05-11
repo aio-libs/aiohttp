@@ -4,7 +4,7 @@ import binascii
 import gc
 import io
 import os.path
-import json
+import ujson
 import http.cookies
 import asyncio
 import unittest
@@ -44,7 +44,7 @@ class TestHttpClientFunctional(unittest.TestCase):
                 if meth == 'head':
                     self.assertEqual(b'', content1)
                 else:
-                    self.assertIn('"method": "%s"' % meth.upper(), content)
+                    self.assertIn('"method":"%s"' % meth.upper(), content)
                 self.assertEqual(content1, content2)
                 r.close()
 
@@ -67,7 +67,7 @@ class TestHttpClientFunctional(unittest.TestCase):
                 if meth == 'head':
                     self.assertEqual(b'', content1)
                 else:
-                    self.assertIn('"method": "%s"' % meth.upper(), content)
+                    self.assertIn('"method":"%s"' % meth.upper(), content)
                 self.assertEqual(content1, content2)
                 r.close()
 
@@ -112,7 +112,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             content = content1.decode()
 
             self.assertEqual(r.status, 200)
-            self.assertIn('"method": "GET"', content)
+            self.assertIn('"method":"GET"', content)
             self.assertEqual(content1, content2)
             r.close()
 
@@ -149,7 +149,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             content = content.decode()
 
             self.assertEqual(r.status, 200)
-            self.assertIn('"method": "GET"', content)
+            self.assertIn('"method":"GET"', content)
             self.assertEqual(2, httpd['redirects'])
             r.close()
 
@@ -162,7 +162,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             content = content.decode()
 
             self.assertEqual(r.status, 200)
-            self.assertIn('"method": "POST"', content)
+            self.assertIn('"method":"POST"', content)
             self.assertEqual(2, httpd['redirects'])
             r.close()
 
@@ -184,7 +184,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             content = self.loop.run_until_complete(r.content.read())
             content = content.decode()
 
-            self.assertIn('"query": "q=test"', content)
+            self.assertIn('"query":"q=test"', content)
             self.assertEqual(r.status, 200)
             r.close()
 
@@ -198,7 +198,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             content = self.loop.run_until_complete(r.content.read())
             content = content.decode()
 
-            self.assertIn('"query": "q=test1&q=test2"', content)
+            self.assertIn('"query":"q=test1&q=test2"', content)
             self.assertEqual(r.status, 200)
             r.close()
 
@@ -212,7 +212,7 @@ class TestHttpClientFunctional(unittest.TestCase):
                 content = yield from r.content.read()
                 content = content.decode()
 
-                self.assertIn('"query": "test=true&q=test"', content)
+                self.assertIn('"query":"test=true&q=test"', content)
                 self.assertEqual(r.status, 200)
                 r.close()
                 # let loop to make one iteration to call connection_lost
@@ -580,7 +580,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertEqual({'content-type': 'text/plain', 'data': 'foo'},
                              content['multipart-data'][0])
             self.assertEqual({'content-type': 'application/json',
-                              'data': '{"bar": "\\u0431\\u0430\\u0437"}'},
+                              'data': '{"bar":"\\u0431\\u0430\\u0437"}'},
                              content['multipart-data'][1])
             self.assertEqual(
                 {'content-type': 'application/x-www-form-urlencoded',
@@ -807,7 +807,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertEqual(r.status, 200)
 
             content = self.loop.run_until_complete(r.content.read())
-            self.assertIn(b'"Cookie": "test1=123; test3=456"', bytes(content))
+            self.assertIn(b'"Cookie":"test1=123; test3=456"', bytes(content))
             r.close()
 
     @mock.patch('aiohttp.client.client_logger')
@@ -1365,5 +1365,5 @@ class Functional(test_utils.Router):
 
         self._response(
             resp,
-            body=json.dumps({'t': (b'0' * 1024).decode('utf-8')}),
+            body=ujson.dumps({'t': (b'0' * 1024).decode('utf-8')}),
             write_body=write_body)

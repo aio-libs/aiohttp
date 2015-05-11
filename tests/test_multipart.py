@@ -636,7 +636,7 @@ class BodyPartWriterTestCase(unittest.TestCase):
 
     def test_serialize_json(self):
         self.assertEqual(b'{"\\u043f\\u0440\\u0438\\u0432\\u0435\\u0442":'
-                         b' "\\u043c\\u0438\\u0440"}',
+                         b'"\\u043c\\u0438\\u0440"}',
                          next(self.part._serialize_json({'привет': 'мир'})))
 
     def test_serialize_form(self):
@@ -663,7 +663,7 @@ class BodyPartWriterTestCase(unittest.TestCase):
              b'--:\r\n',
              b'CONTENT-TYPE: application/json',
              b'\r\n\r\n',
-             b'{"test": "passed"}',
+             b'{"test":"passed"}',
              b'\r\n',
              b'--:--\r\n',
              b''],

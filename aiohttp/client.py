@@ -3,7 +3,7 @@
 import asyncio
 import http.cookies
 import io
-import json
+import ujson
 import mimetypes
 import os
 import urllib.parse
@@ -1028,7 +1028,7 @@ class ClientResponse:
         return self._content.decode(encoding)
 
     @asyncio.coroutine
-    def json(self, *, encoding=None, loads=json.loads):
+    def json(self, *, encoding=None, loads=ujson.loads):
         """Reads and decodes JSON response."""
         if self._content is None:
             yield from self.read()

@@ -6,7 +6,7 @@ import cgi
 import collections
 import http.cookies
 import io
-import json
+import ujson
 import warnings
 
 from urllib.parse import urlsplit, parse_qsl, unquote
@@ -261,7 +261,7 @@ class Request(dict, HeadersMixin):
         return bytes_body.decode(encoding)
 
     @asyncio.coroutine
-    def json(self, *, loader=json.loads):
+    def json(self, *, loader=ujson.loads):
         """Return BODY as JSON."""
         body = yield from self.text()
         return loader(body)
