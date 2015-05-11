@@ -225,11 +225,7 @@ class BaseConnector(object):
     def update_cookies(self, cookies):
         """Update shared cookies.
 
-<<<<<<< HEAD
-        Deprectated, use ClientSession instead.
-=======
         Deprecated, use ClientSession instead.
->>>>>>> master
         """
         if isinstance(cookies, dict):
             cookies = cookies.items()
