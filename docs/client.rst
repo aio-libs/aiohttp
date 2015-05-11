@@ -108,9 +108,7 @@ again::
     '[{"repository":{"open_issues":0,"url":"https://github.com/...
 
 aiohttp will automatically decode the content from the server. You can
-specify custom encoding for the ``text()`` method.
-
-.. code::
+specify custom encoding for the ``text()`` method::
 
     >>> yield from r.text(encoding='windows-1251')
 
@@ -153,9 +151,7 @@ gigabyte sized files, this methods will load all the data in
 memory. Instead you can use the ``ClientResponse.content``
 attribute. It is an instance of the ``aiohttp.StreamReader``
 class. The ``gzip`` and ``deflate`` transfer-encodings are
-automatically decoded for you.
-
-.. code::
+automatically decoded for you::
 
     >>> r = yield from aiohttp.request(
     ...     'get', 'https://github.com/timeline.json')
@@ -174,8 +170,8 @@ streamed to a file::
     ...             break
     ...         fd.write(chunk)
 
-It is not possible to use ``read()``, ``json()`` and ``text()`` after reading the file
-with ``chunk_size``.
+It is not possible to use ``read()``, ``json()`` and ``text()`` after
+reading the file with ``chunk_size``.
 
 
 Custom Headers
@@ -297,6 +293,7 @@ Or you can provide an :ref:`coroutine<coroutine>` that yields bytes objects::
    ...    yield chunk
 
 .. note::
+
    It is not a standard :ref:`coroutine<coroutine>` as it yields values so it
    can not be used like ``yield from my_coroutine()``.
    :mod:`aiohttp` internally handles such coroutines.
@@ -341,7 +338,7 @@ Keep-Alive, connection pooling and cookie sharing
 -------------------------------------------------
 
 To share cookies between multiple requests you can create an
-:class:`~aiohttp.client.ClientSession` object:
+:class:`~aiohttp.client.ClientSession` object::
 
     >>> session = aiohttp.ClientSession()
     >>> yield from session.get(
@@ -351,7 +348,7 @@ To share cookies between multiple requests you can create an
     >>> json['cookies']['my_cookie']
     'my_value'
 
-You also can set default headers for all session requests:
+You also can set default headers for all session requests::
 
     >>> session = aiohttp.ClientSession(
     ...     headers={"Authorization": "Basic bG9naW46cGFzcw=="})
@@ -370,7 +367,7 @@ Connectors
 ----------
 
 To tweek or change *transport* layer of requests you can pass a custom
-**Connector** to ``aiohttp.request``. For example:
+**Connector** to ``aiohttp.request``. For example::
 
     >>> conn = aiohttp.TCPConnector()
     >>> r = yield from aiohttp.request(
@@ -425,7 +422,7 @@ aiohttp supports proxy. You have to use
    ...                                'http://python.org',
    ...                                connector=conn)
 
-``ProxyConnector`` also supports proxy authorization::
+:class:`~aiohttp.connector.ProxyConnector` also supports proxy authorization::
 
    >>> conn = aiohttp.ProxyConnector(
    ...   proxy="http://some.proxy.com",
@@ -491,16 +488,17 @@ If a response contains some Cookies, you can quickly access them::
     'example_cookie_value'
 
 .. note::
-   Response cookies contain only values, that were in ``Set-Cookie`` headers 
+
+   Response cookies contain only values, that were in ``Set-Cookie`` headers
    of the **last** request in redirection chain. To gather cookies between all
-   redirection requests you can use :ref:`aiohttp.ClientSession 
+   redirection requests you can use :ref:`aiohttp.ClientSession
    <aiohttp-client-session>` object.
 
 
 Timeouts
 --------
 
-You should use ``asyncio.wait_for()`` method if you want to limit
+You should use :func:`asyncio.wait_for()` coroutine if you want to limit
 time to wait for a response from a server::
 
     >>> yield from asyncio.wait_for(
@@ -513,7 +511,7 @@ time to wait for a response from a server::
 
 .. warning::
 
-    ``timeout`` is not a time limit on the entire response download;
+    *timeout* is not a time limit on the entire response download;
     rather, an exception is raised if the server has not issued a
-    response for ``timeout`` seconds (more precisely, if no bytes have been
-    received on the underlying socket for ``timeout`` seconds).
+    response for *timeout* seconds (more precisely, if no bytes have been
+    received on the underlying socket for *timeout* seconds).
