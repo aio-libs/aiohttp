@@ -343,7 +343,7 @@ All connector classes should be derived from :class:`BaseConnector`.
 
    :param int limit: limit for simultaneous connections to the same
                      endpoint.  Endpoints are the same if they are
-                     have equal `(host, port, is_ssl)` triple.
+                     have equal ``(host, port, is_ssl)`` triple.
                      If *limit* is ``None`` connection pool has no limit.
 
    :param bool share_cookies: update :attr:`cookies` on connection

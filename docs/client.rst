@@ -377,6 +377,18 @@ To tweek or change *transport* layer of requests you can pass a custom
     ...     'get', 'http://python.org', connector=conn)
 
 
+Limiting connection pool size
+-----------------------------
+
+To limit amount of simultaneously opened connection to the same
+endpoint (``(host, port, is_ssl)`` triple) you can pass *limit*
+parameter to **connector**::
+
+    >>> conn = aiohttp.TCPConnector(limit=30)
+
+The example limits amount of parallel connections to `30`.
+
+
 SSL control for tcp sockets
 ---------------------------
 
