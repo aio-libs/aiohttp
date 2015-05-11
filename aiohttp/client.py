@@ -52,7 +52,7 @@ class ClientSession:
         elif connector._loop is not loop:
             raise ValueError("loop argument must agree with connector")
 
-        # For Backward compatability with `share_cookie` connectors
+        # For Backward compatability with `share_cookies` connectors
         elif connector._share_cookies:
             self._update_cookies(connector.cookies)
         if cookies is not None:
