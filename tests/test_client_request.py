@@ -514,7 +514,7 @@ class TestClientRequest(unittest.TestCase):
         asyncio.async(exc(), loop=self.loop)
 
         resp = req.send(self.transport, self.protocol)
-        resp.connection = self.connection
+        resp._connection = self.connection
         self.loop.run_until_complete(req._writer)
         self.assertTrue(self.connection.close.called)
         self.assertTrue(self.protocol.set_exception.called)
@@ -551,7 +551,7 @@ class TestClientRequest(unittest.TestCase):
         asyncio.async(exc(), loop=self.loop)
 
         resp = req.send(self.transport, self.protocol)
-        resp.connection = self.connection
+        resp._connection = self.connection
         self.loop.run_until_complete(req._writer)
         self.assertTrue(self.connection.close.called)
         self.assertTrue(self.protocol.set_exception.called)

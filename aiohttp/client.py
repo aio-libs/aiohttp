@@ -828,7 +828,7 @@ class ClientResponse:
     cookies = None  # Response cookies (Set-Cookie)
     content = None  # Payload stream
 
-    connection = None  # current connection
+    _connection = None  # current connection
     flow_control_class = FlowControlStreamReader  # reader flow control
     _reader = None     # input stream
     _response_parser = aiohttp.HttpResponseParser()
@@ -876,12 +876,16 @@ class ClientResponse:
         print(self.headers, file=out)
         return out.getvalue()
 
+    @property
+    def connection(self):
+        return self._connection
+
     def waiting_for_continue(self):
         return self._continue is not None
 
     def _setup_connection(self, connection):
         self._reader = connection.reader
-        self.connection = connection
+        self._connection = connection
         self.content = self.flow_control_class(
             connection.reader, loop=connection.loop)
 
@@ -938,18 +942,18 @@ class ClientResponse:
         if self._loop.is_closed():
             return
 
-        if self.connection is not None:
+        if self._connection is not None:
             if self.content and not self.content.at_eof():
                 force = True
 
             if force:
-                self.connection.close()
+                self._connection.close()
             else:
-                self.connection.release()
+                self._connection.release()
                 if self._reader is not None:
                     self._reader.unset_parser()
 
-            self.connection = None
+            self._connection = None
         if self._writer is not None and not self._writer.done():
             self._writer.cancel()
             self._writer = None

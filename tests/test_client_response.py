@@ -39,7 +39,7 @@ class TestClientResponse(unittest.TestCase):
         connection.close.assert_called_with()
 
     def test_close(self):
-        self.response.connection = self.connection
+        self.response._connection = self.connection
         self.response.close()
         self.assertIsNone(self.response.connection)
         self.assertTrue(self.connection.release.called)
