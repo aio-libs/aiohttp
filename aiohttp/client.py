@@ -1031,7 +1031,7 @@ class ClientResponse:
 
     @asyncio.coroutine
     def json(self, *, encoding=None, loads=json.loads):
-        """Reads and decodes JSON response."""
+        """Read and decodes JSON response."""
         if self._content is None:
             yield from self.read()
 
