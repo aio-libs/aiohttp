@@ -7,7 +7,7 @@ import unittest.mock
 import sys
 
 import aiohttp
-from aiohttp.client import ClientResponse
+from aiohttp.client_reqrep import ClientResponse
 
 PY_34 = sys.version_info >= (3, 4)
 
@@ -207,7 +207,7 @@ class TestClientResponse(unittest.TestCase):
         res = self.loop.run_until_complete(self.response.json(loads=custom))
         self.assertEqual(res, 'data-custom')
 
-    @unittest.mock.patch('aiohttp.client.client_logger')
+    @unittest.mock.patch('aiohttp.client_reqrep.client_logger')
     def test_json_no_content(self, m_log):
         self.response.headers = {
             'CONTENT-TYPE': 'data/octet-stream'}
@@ -261,7 +261,7 @@ class TestClientResponse(unittest.TestCase):
         self.assertIsInstance(response.content, aiohttp.FlowControlDataQueue)
         response.close()
 
-    @unittest.mock.patch('aiohttp.client.chardet')
+    @unittest.mock.patch('aiohttp.client_reqrep.chardet')
     def test_get_encoding_unknown(self, m_chardet):
         m_chardet.detect.return_value = {'encoding': None}
 

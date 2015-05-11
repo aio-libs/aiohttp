@@ -9,7 +9,7 @@ import urllib.parse
 import os.path
 
 import aiohttp
-from aiohttp.client import ClientRequest, ClientResponse
+from aiohttp.client_reqrep import ClientRequest, ClientResponse
 
 PY_34 = sys.version_info >= (3, 4)
 
@@ -287,7 +287,8 @@ class TestClientRequest(unittest.TestCase):
                              req.headers['CONTENT-TYPE'])
             self.loop.run_until_complete(req.close())
 
-    @unittest.mock.patch('aiohttp.client.ClientRequest.update_body_from_data')
+    @unittest.mock.patch(
+        'aiohttp.client_reqrep.ClientRequest.update_body_from_data')
     def test_pass_falsy_data(self, _):
         req = ClientRequest(
             'post', 'http://python.org/',
@@ -324,7 +325,7 @@ class TestClientRequest(unittest.TestCase):
                     data=b'binary data', files={'file': b'file data'},
                     loop=self.loop)
 
-    @unittest.mock.patch('aiohttp.client.aiohttp')
+    @unittest.mock.patch('aiohttp.client_reqrep.aiohttp')
     def test_content_encoding(self, m_http):
         req = ClientRequest('get', 'http://python.org/',
                             compress='deflate', loop=self.loop)
@@ -335,7 +336,7 @@ class TestClientRequest(unittest.TestCase):
             .add_compression_filter.assert_called_with('deflate')
         self.loop.run_until_complete(req.close())
 
-    @unittest.mock.patch('aiohttp.client.aiohttp')
+    @unittest.mock.patch('aiohttp.client_reqrep.aiohttp')
     def test_content_encoding_header(self, m_http):
         req = ClientRequest(
             'get', 'http://python.org/',
@@ -365,7 +366,7 @@ class TestClientRequest(unittest.TestCase):
         self.assertEqual('chunked', req.headers['TRANSFER-ENCODING'])
         self.loop.run_until_complete(req.close())
 
-    @unittest.mock.patch('aiohttp.client.aiohttp')
+    @unittest.mock.patch('aiohttp.client_reqrep.aiohttp')
     def test_chunked_explicit(self, m_http):
         req = ClientRequest(
             'get', 'http://python.org/', chunked=True, loop=self.loop)
@@ -376,7 +377,7 @@ class TestClientRequest(unittest.TestCase):
                       .add_chunking_filter.assert_called_with(8192)
         self.loop.run_until_complete(req.close())
 
-    @unittest.mock.patch('aiohttp.client.aiohttp')
+    @unittest.mock.patch('aiohttp.client_reqrep.aiohttp')
     def test_chunked_explicit_size(self, m_http):
         req = ClientRequest(
             'get', 'http://python.org/', chunked=1024, loop=self.loop)

@@ -810,7 +810,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertIn(b'"Cookie": "test1=123; test3=456"', bytes(content))
             r.close()
 
-    @mock.patch('aiohttp.client.client_logger')
+    @mock.patch('aiohttp.client_reqrep.client_logger')
     def test_set_cookies(self, m_log):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             resp = self.loop.run_until_complete(
@@ -929,7 +929,7 @@ class TestHttpClientFunctional(unittest.TestCase):
 
         conn.close()
 
-    @mock.patch('aiohttp.client.client_logger')
+    @mock.patch('aiohttp.client_reqrep.client_logger')
     def test_connector_cookies(self, m_log):
         from aiohttp import connector
         with self.assertWarns(DeprecationWarning):
