@@ -374,13 +374,14 @@ class TestBaseConnector(unittest.TestCase):
 
     def test_start_cleanup_task(self):
         loop = unittest.mock.Mock()
-        conn = aiohttp.BaseConnector(loop=loop)
+        loop.time.return_value = 1.5
+        conn = aiohttp.BaseConnector(loop=loop, keepalive_timeout=10)
         self.assertIsNone(conn._cleanup_handle)
 
         conn._start_cleanup_task()
         self.assertIsNotNone(conn._cleanup_handle)
-        loop.call_later.assert_called_with(
-            conn._keepalive_timeout, conn._cleanup)
+        loop.call_at.assert_called_with(
+            12, conn._cleanup)
 
     def test_cleanup(self):
         testset = {
@@ -402,15 +403,40 @@ class TestBaseConnector(unittest.TestCase):
         self.assertEqual(conn._conns, {})
         self.assertIsNone(conn._cleanup_handle)
 
+    def test_cleanup2(self):
         testset = {1: [(unittest.mock.Mock(), unittest.mock.Mock(), 300)]}
         testset[1][0][1].is_connected.return_value = True
 
-        conn = aiohttp.BaseConnector(loop=loop)
+        loop = unittest.mock.Mock()
+        loop.time.return_value = 300.1
+
+        conn = aiohttp.BaseConnector(loop=loop, keepalive_timeout=10)
         conn._conns = testset
         conn._cleanup()
         self.assertEqual(conn._conns, testset)
 
         self.assertIsNotNone(conn._cleanup_handle)
+        loop.call_at.assert_called_with(
+            310, conn._cleanup)
+        conn.close()
+
+    def test_cleanup3(self):
+        testset = {1: [(unittest.mock.Mock(), unittest.mock.Mock(), 290.1),
+                       (unittest.mock.Mock(), unittest.mock.Mock(), 305.1)]}
+        testset[1][0][1].is_connected.return_value = True
+
+        loop = unittest.mock.Mock()
+        loop.time.return_value = 308.5
+
+        conn = aiohttp.BaseConnector(loop=loop, keepalive_timeout=10)
+        conn._conns = testset
+
+        conn._cleanup()
+        self.assertEqual(conn._conns, {1: [testset[1][1]]})
+
+        self.assertIsNotNone(conn._cleanup_handle)
+        loop.call_at.assert_called_with(
+            316, conn._cleanup)
         conn.close()
 
     def test_tcp_connector_ctor(self):
