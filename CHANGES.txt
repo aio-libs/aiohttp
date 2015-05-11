@@ -20,6 +20,7 @@ CHANGES
 - Add `__del__` to client-side objects: sessions, connectors,
   connections, requests, responses.
 
+- Refactor connections cleanup by connector #357
 
 
 0.15.3 (04-22-2015)
