@@ -71,7 +71,7 @@ class ClientSession:
     if PY_34:
         def __del__(self):
             if not self.closed:
-                self._connector.close()
+                self.close()
 
                 warnings.warn("Unclosed client session {!r}".format(self),
                               ResourceWarning)
@@ -836,6 +836,7 @@ class ClientResponse:
     # setted up by ClientRequest after ClientResponse object creation
     # post-init stage allows to not change ctor signature
     _loop = None
+    _closed = True  # to allow __del__ for non-initialized properly response
 
     def __init__(self, method, url, host='', *, writer=None, continue100=None):
         super().__init__()
@@ -847,6 +848,7 @@ class ClientResponse:
         self._content = None
         self._writer = writer
         self._continue = continue100
+        self._closed = False
 
     def _post_init(self, loop):
         self._loop = loop
@@ -855,26 +857,17 @@ class ClientResponse:
 
     if PY_34:
         def __del__(self):
-            show_warning = False
-            if self.connection is not None:
-                show_warning = True
-                if not self._loop.is_closed():
-                    self.connection.close()
+            if self._closed:
+                return
+            self.close()
 
-            if self._writer is not None:
-                if not self._writer.done():
-                    show_warning = True
-                    if not self._loop.is_closed():
-                        self._writer.cancel()
-
-            if show_warning:
-                warnings.warn("Unclosed response {!r}".format(self),
-                              ResourceWarning)
-                context = {'client_response': self,
-                           'message': 'Unclosed response'}
-                if self._source_traceback:
-                    context['source_traceback'] = self._source_traceback
-                self._loop.call_exception_handler(context)
+            warnings.warn("Unclosed response {!r}".format(self),
+                          ResourceWarning)
+            context = {'client_response': self,
+                       'message': 'Unclosed response'}
+            if self._source_traceback:
+                context['source_traceback'] = self._source_traceback
+            self._loop.call_exception_handler(context)
 
     def __repr__(self):
         out = io.StringIO()
@@ -937,6 +930,14 @@ class ClientResponse:
         return self
 
     def close(self, force=False):
+        if self._closed:
+            return
+
+        self._closed = True
+
+        if self._loop.is_closed():
+            return
+
         if self.connection is not None:
             if self.content and not self.content.at_eof():
                 force = True
