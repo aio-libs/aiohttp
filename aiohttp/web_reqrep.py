@@ -177,10 +177,7 @@ class Request(dict, HeadersMixin):
 
     @property
     def headers(self):
-        """A case-insensitive multidict with all headers.
-
-        Lazy property.
-        """
+        """A case-insensitive multidict proxy with all headers."""
         return self._headers
 
     @property

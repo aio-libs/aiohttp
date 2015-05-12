@@ -85,10 +85,9 @@ first positional parameter.
 
    .. attribute:: headers
 
-      A case-insensitive multidict with all headers.
+      A case-insensitive multidict proxy with all headers.
 
-      Read-only :class:`~aiohttp.multidict.CIMultiDictProxy`
-      lazy property.
+      Read-only :class:`~aiohttp.multidict.CIMultiDictProxy` property.
 
    .. attribute:: keep_alive
 
