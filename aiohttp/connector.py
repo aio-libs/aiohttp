@@ -353,10 +353,10 @@ class TCPConnector(BaseConnector):
     :param kwargs: see :class:`BaseConnector`
     """
 
-    def __init__(self, *args, verify_ssl=True,
+    def __init__(self, *, verify_ssl=True,
                  resolve=False, family=socket.AF_INET, ssl_context=None,
                  **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
         if not verify_ssl and ssl_context is not None:
             raise ValueError(
@@ -493,8 +493,8 @@ class ProxyConnector(TCPConnector):
 
     """
 
-    def __init__(self, proxy, *args, proxy_auth=None, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, proxy, *, proxy_auth=None, **kwargs):
+        super().__init__(**kwargs)
         self._proxy = proxy
         self._proxy_auth = proxy_auth
         assert proxy.startswith('http://'), (
@@ -582,8 +582,8 @@ class UnixConnector(BaseConnector):
 
     """
 
-    def __init__(self, path, *args, **kw):
-        super().__init__(*args, **kw)
+    def __init__(self, path, **kwargs):
+        super().__init__(**kwargs)
         self._path = path
 
     @property
