@@ -2,6 +2,8 @@
 # Authors: Olivier Grisel and Kyle Kastner
 # License: BSD 3 clause
 
+# The script is borrowed from Scikit-learn project
+
 $BASE_URL = "https://www.python.org/ftp/python/"
 $GET_PIP_URL = "https://bootstrap.pypa.io/get-pip.py"
 $GET_PIP_PATH = "C:\get-pip.py"
