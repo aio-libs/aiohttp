@@ -17,6 +17,8 @@ def normalize_path_middleware(*, merge_slashes=True, append_slash=True,
             try:
                 return (yield from handler(request))
             except HTTPNotFound as exc:
+                if request.content is not None:
+                    raise exc
                 router = request.app.router
                 if merge_slashes:
                     if '//' in request.path:
