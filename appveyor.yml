@@ -1,0 +1,14 @@
+environment:
+  matrix:
+    - PYTHON: "C:\\Python33"
+    - PYTHON: "C:\\Python34"
+
+install:
+  - "powershell ./install_python_and_pip.ps1"
+  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%
+  - "pip install -r requirements-dev.txt"
+  - "python setup.py develop"
+
+build: false
+test_script:
+  - "python setup.py test"
