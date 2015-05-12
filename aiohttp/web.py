@@ -166,7 +166,8 @@ class Application(dict):
 
     def __init__(self, *, logger=web_logger, loop=None,
                  router=None, handler_factory=RequestHandlerFactory,
-                 middlewares=()):
+                 middlewares=(),
+                 secure_proxy_ssl_header=None):
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:
@@ -182,6 +183,7 @@ class Application(dict):
         for factory in middlewares:
             assert asyncio.iscoroutinefunction(factory), factory
         self._middlewares = tuple(middlewares)
+        self._secure_proxy_ssl_header = secure_proxy_ssl_header
 
     @property
     def router(self):
@@ -194,6 +196,10 @@ class Application(dict):
     @property
     def middlewares(self):
         return self._middlewares
+
+    @property
+    def secure_proxy_ssl_header(self):
+        return self._secure_proxy_ssl_header
 
     def make_handler(self, **kwargs):
         return self._handler_factory(
