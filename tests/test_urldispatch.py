@@ -45,11 +45,13 @@ class TestUrlDispatcher(unittest.TestCase):
         return handler
 
     def test_system_route(self):
-        route = SystemRoute('test')
+        route = SystemRoute(201, 'test')
         self.assertIsNone(route.match('any'))
         with self.assertRaises(RuntimeError):
             route.url()
-        self.assertEqual("<SystemRoute test>", repr(route))
+        self.assertEqual("<SystemRoute 201: test>", repr(route))
+        self.assertEqual(201, route.status)
+        self.assertEqual('test', route.reason)
 
     def test_register_route(self):
         handler = self.make_handler()
