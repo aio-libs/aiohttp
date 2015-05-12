@@ -358,8 +358,3 @@ class TestClientSession(unittest.TestCase):
 
         with self.assertWarns(ResourceWarning):
             del session
-
-    def test_ambiguous_parameters(self):
-        conn = self.make_open_connector()
-        with self.assertRaisesRegex(ValueError, 'ambiguous'):
-            ClientSession(connector=conn, force_close=True, loop=self.loop)
