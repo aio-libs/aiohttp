@@ -294,6 +294,11 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     def resolve(self, request):
         path = request.path
         method = request.method
+
+        return self.resolve2(method, path)
+
+    @asyncio.coroutine
+    def resolve2(self, method, path):
         allowed_methods = set()
 
         for route in self._urls:
