@@ -460,19 +460,20 @@ class TCPConnector(BaseConnector):
             sslcontext = None
 
         hosts = yield from self._resolve_host(req.host, req.port)
+        exc = None
 
-        while hosts:
-            hinfo = hosts.pop()
+        for hinfo in hosts:
             try:
                 return (yield from self._loop.create_connection(
                     self._factory, hinfo['host'], hinfo['port'],
                     ssl=sslcontext, family=hinfo['family'],
                     proto=hinfo['proto'], flags=hinfo['flags'],
                     server_hostname=hinfo['hostname'] if sslcontext else None))
-            except OSError as exc:
-                if not hosts:
-                    raise ClientOSError('Can not connect to %s:%s' %
-                                        (req.host, req.port)) from exc
+            except OSError as e:
+                exc = e
+        else:
+            raise ClientOSError('Can not connect to %s:%s' %
+                                (req.host, req.port)) from exc
 
 
 class ProxyConnector(TCPConnector):
