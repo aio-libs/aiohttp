@@ -319,7 +319,7 @@ This example shows custom handler for *Except* header:
        return web.Response(body=b"Hello, world")
 
    app = web.Application()
-   app.router.add_route('GET', '/', hello, , except_handler=check_auth)
+   app.router.add_route('GET', '/', hello, except_handler=check_auth)
 
 
 .. _aiohttp-web-file-upload:
