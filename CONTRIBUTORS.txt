@@ -27,6 +27,7 @@ Hugo Herter
 Junjie Tao
 Kay Zheng
 Kirill Klenov
+Kirill Malovitsa
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
 Martin Richard
