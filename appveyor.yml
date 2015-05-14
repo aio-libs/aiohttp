@@ -1,0 +1,31 @@
+environment:
+  matrix:
+    - PYTHON: "C:\\Python33"
+      PYTHON_VERSION: "3.3.6"
+      PYTHON_ARCH: "32"
+    - PYTHON: "C:\\Python33"
+      PYTHON_VERSION: "3.3.6"
+      PYTHON_ARCH: "64"
+    - PYTHON: "C:\\Python34"
+      PYTHON_VERSION: "3.4.3"
+      PYTHON_ARCH: "32"
+    - PYTHON: "C:\\Python34"
+      PYTHON_VERSION: "3.4.3"
+      PYTHON_ARCH: "64"
+
+install:
+  - "powershell ./install_python_and_pip.ps1"
+  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
+  - "python --version"
+  - "pip install -r requirements-dev.txt"
+  - "python setup.py develop"
+
+build: false
+test_script:
+  - "python setup.py test"
+
+#notifications:
+#  - provider: Webhook
+#    url: https://ci.appveyor.com/api/github/webhook?id=08c7793w1tp839fl
+#    on_build_success: false
+#    on_build_failure: True
