@@ -98,6 +98,7 @@ Dependencies
 
 - Python 3.3 and :term:`asyncio` or Python 3.4+
 - *chardet* library
+- Due to a bug in PyPy3, PyPy is not currently supported.
 
 Contributing
 ------------
