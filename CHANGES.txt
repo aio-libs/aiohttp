@@ -24,6 +24,8 @@ CHANGES
 
 - Add `limit` parameter to connector constructor #358
 
+- Add `request.has_body` property #364
+
 
 0.15.3 (04-22-2015)
 -------------------
