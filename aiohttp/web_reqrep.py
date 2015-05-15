@@ -108,6 +108,7 @@ class Request(dict, HeadersMixin):
         self._cookies = None
 
         self._read_bytes = None
+        self._has_body = not payload.at_eof()
 
     @property
     def method(self):
@@ -223,6 +224,11 @@ class Request(dict, HeadersMixin):
     def content(self):
         """Return raw payload stream."""
         return self._payload
+
+    @property
+    def has_body(self):
+        """Return True if request has HTTP BODY, False otherwise."""
+        return self._has_body
 
     @asyncio.coroutine
     def release(self):

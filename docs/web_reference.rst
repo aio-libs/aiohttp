@@ -139,6 +139,14 @@ first positional parameter.
 
       .. versionadded:: 0.15
 
+   .. attribute:: has_body
+
+      Return ``True`` if request has no *HTTP BODY*, ``False`` otherwise.
+
+      Read-only :class:`bool` property.
+
+      .. versionadded:: 0.16
+
    .. attribute:: payload
 
       A :class:`~aiohttp.streams.FlowControlStreamReader` instance,

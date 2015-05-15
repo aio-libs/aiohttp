@@ -662,3 +662,39 @@ class TestWebFunctional(unittest.TestCase):
             f.close()
 
         self.loop.run_until_complete(go())
+
+    def test_empty_content_for_query_without_body(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            self.assertFalse(request.has_body)
+            return web.Response(body=b'OK')
+
+        @asyncio.coroutine
+        def go():
+            _, srv, url = yield from self.create_server('GET', '/', handler)
+            resp = yield from request('GET', url, loop=self.loop)
+            self.assertEqual(200, resp.status)
+            txt = yield from resp.text()
+            self.assertEqual('OK', txt)
+
+        self.loop.run_until_complete(go())
+
+    def test_empty_content_for_query_with_body(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            self.assertTrue(request.has_body)
+            body = yield from request.read()
+            return web.Response(body=body)
+
+        @asyncio.coroutine
+        def go():
+            _, srv, url = yield from self.create_server('POST', '/', handler)
+            resp = yield from request('POST', url, data=b'data',
+                                      loop=self.loop)
+            self.assertEqual(200, resp.status)
+            txt = yield from resp.text()
+            self.assertEqual('data', txt)
+
+        self.loop.run_until_complete(go())
