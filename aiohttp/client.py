@@ -19,6 +19,7 @@ PY_34 = sys.version_info >= (3, 4)
 
 
 class ClientSession:
+    """First-class interface for making HTTP requests."""
 
     _source_traceback = None
     _connector = None
@@ -88,6 +89,7 @@ class ClientSession:
                 chunked=None,
                 expect100=False,
                 read_until_eof=True):
+        """Perform HTTP request."""
 
         if self.closed:
             raise RuntimeError('Session is closed')
@@ -201,6 +203,7 @@ class ClientSession:
 
     @asyncio.coroutine
     def get(self, url, *, allow_redirects=True, **kwargs):
+        """Perform HTTP GET request."""
         resp = yield from self.request(hdrs.METH_GET, url,
                                        allow_redirects=allow_redirects,
                                        **kwargs)
@@ -208,6 +211,7 @@ class ClientSession:
 
     @asyncio.coroutine
     def options(self, url, *, allow_redirects=True, **kwargs):
+        """Perform HTTP OPTIONS request."""
         resp = yield from self.request(hdrs.METH_OPTIONS, url,
                                        allow_redirects=allow_redirects,
                                        **kwargs)
@@ -215,6 +219,7 @@ class ClientSession:
 
     @asyncio.coroutine
     def head(self, url, *, allow_redirects=False, **kwargs):
+        """Perform HTTP HEAD request."""
         resp = yield from self.request(hdrs.METH_HEAD, url,
                                        allow_redirects=allow_redirects,
                                        **kwargs)
@@ -222,6 +227,7 @@ class ClientSession:
 
     @asyncio.coroutine
     def post(self, url, *, data=None, **kwargs):
+        """Perform HTTP POST request."""
         resp = yield from self.request(hdrs.METH_POST, url,
                                        data=data,
                                        **kwargs)
@@ -229,6 +235,7 @@ class ClientSession:
 
     @asyncio.coroutine
     def put(self, url, *, data=None, **kwargs):
+        """Perform HTTP PUT request."""
         resp = yield from self.request(hdrs.METH_PUT, url,
                                        data=data,
                                        **kwargs)
@@ -236,6 +243,7 @@ class ClientSession:
 
     @asyncio.coroutine
     def patch(self, url, *, data=None, **kwargs):
+        """Perform HTTP PATCH request."""
         resp = yield from self.request(hdrs.METH_PATCH, url,
                                        data=data,
                                        **kwargs)
@@ -243,6 +251,7 @@ class ClientSession:
 
     @asyncio.coroutine
     def delete(self, url, **kwargs):
+        """Perform HTTP DELETE request."""
         resp = yield from self.request(hdrs.METH_DELETE, url,
                                        **kwargs)
         return resp
