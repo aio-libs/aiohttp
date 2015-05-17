@@ -50,6 +50,33 @@ class TestWebSocketClient(unittest.TestCase):
 
     @mock.patch('aiohttp.websocket_client.os')
     @mock.patch('aiohttp.websocket_client.client')
+    def test_ws_connect_custom_response(self, m_client, m_os):
+
+        class CustomResponse(websocket_client.ClientWebSocketResponse):
+            def read(self, decode=False):
+                return 'customized!'
+
+        resp = mock.Mock()
+        resp.status = 101
+        resp.headers = {
+            hdrs.UPGRADE: hdrs.WEBSOCKET,
+            hdrs.CONNECTION: hdrs.UPGRADE,
+            hdrs.SEC_WEBSOCKET_ACCEPT: self.ws_key,
+        }
+        m_os.urandom.return_value = self.key_data
+        m_client.request.return_value = asyncio.Future(loop=self.loop)
+        m_client.request.return_value.set_result(resp)
+
+        res = self.loop.run_until_complete(
+            websocket_client.ws_connect(
+                'http://test.org',
+                response_class=CustomResponse,
+                loop=self.loop))
+
+        self.assertEqual(res.read(), 'customized!')
+
+    @mock.patch('aiohttp.websocket_client.os')
+    @mock.patch('aiohttp.websocket_client.client')
     def test_ws_connect_global_loop(self, m_client, m_os):
         asyncio.set_event_loop(self.loop)
 
