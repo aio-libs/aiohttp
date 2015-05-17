@@ -87,7 +87,8 @@ def ws_connect(url, protocols=(), timeout=10.0, connector=None,
     reader = resp.connection.reader.set_parser(WebSocketParser)
     writer = WebSocketWriter(resp.connection.writer, use_mask=True)
 
-    response_class = response_class or ClientWebSocketResponse
+    if response_class is None:
+        response_class = ClientWebSocketResponse
 
     return response_class(
         reader, writer, protocol, resp, timeout, autoclose, autoping, loop)
