@@ -26,6 +26,8 @@ CHANGES
 
 - Add `request.has_body` property #364
 
+- Add `response_class` parameter to `ws_connect()` #367
+
 
 0.15.3 (04-22-2015)
 -------------------
