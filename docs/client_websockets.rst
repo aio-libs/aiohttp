@@ -64,6 +64,8 @@ do not create an instance of class :class:`ClientWebSocketResponse` manually.
 
    :param bool autoping: automatically send `pong` on `ping` message from server
 
+   :param response_class: (optional) Custom Response class implementation.
+
    :param loop: :ref:`event loop<asyncio-event-loop>` used
                 for processing HTTP requests.
 

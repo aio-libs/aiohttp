@@ -35,7 +35,7 @@ closedMessage = Message(MsgType.closed, None, None)
 
 @asyncio.coroutine
 def ws_connect(url, protocols=(), timeout=10.0, connector=None,
-               autoclose=True, autoping=True, loop=None):
+               response_class=None, autoclose=True, autoping=True, loop=None):
     """Initiate websocket connection."""
     if loop is None:
         loop = asyncio.get_event_loop()
@@ -87,7 +87,9 @@ def ws_connect(url, protocols=(), timeout=10.0, connector=None,
     reader = resp.connection.reader.set_parser(WebSocketParser)
     writer = WebSocketWriter(resp.connection.writer, use_mask=True)
 
-    return ClientWebSocketResponse(
+    response_class = response_class or ClientWebSocketResponse
+
+    return response_class(
         reader, writer, protocol, resp, timeout, autoclose, autoping, loop)
 
 
