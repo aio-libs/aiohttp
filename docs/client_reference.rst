@@ -14,6 +14,9 @@ Client Session
 
 Client session is the recommended interface for making HTTP requests.
 
+Session encapsulates *connection pool* (*connector* instance) and
+supports keep-alives by default.
+
 Usage example::
 
      >>> import aiohttp
