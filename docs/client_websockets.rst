@@ -58,13 +58,13 @@ do not create an instance of class :class:`ClientWebSocketResponse` manually.
 
    :param obj connector: object :class:`TCPConnector`
 
+   :param response_class: (optional) Custom Response class implementation.
+
    :param bool autoclose: automatically close websocket connection
                           on close message from server. if `autoclose` is
                           False them close procedure has to be handled manually
 
    :param bool autoping: automatically send `pong` on `ping` message from server
-
-   :param response_class: (optional) Custom Response class implementation.
 
    :param loop: :ref:`event loop<asyncio-event-loop>` used
                 for processing HTTP requests.
