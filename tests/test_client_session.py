@@ -8,8 +8,10 @@ import sys
 
 import aiohttp
 from aiohttp.client import ClientSession
-from aiohttp.multidict import MultiDict, CIMultiDict
+from aiohttp.multidict import MultiDict, CIMultiDict, CIMultiDictProxy
 from aiohttp.connector import BaseConnector, TCPConnector
+from aiohttp.client_reqrep import ClientRequest, ClientResponse
+from http.cookies import SimpleCookie
 
 
 PY_34 = sys.version_info >= (3, 4)
@@ -358,3 +360,60 @@ class TestClientSession(unittest.TestCase):
 
         with self.assertWarns(ResourceWarning):
             del session
+
+
+class TestCLientRequest(unittest.TestCase):
+
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+        self.connector = BaseConnector(loop=self.loop)
+        self.transport = mock.Mock()
+        self.protocol = mock.Mock()
+
+    def tearDown(self):
+        self.loop.close()
+
+    def test_custom_req_rep(self):
+        @asyncio.coroutine
+        def go():
+            class CustomResponse(ClientResponse):
+                @asyncio.coroutine
+                def start(self, connection, read_until_eof=False):
+                    self.status = 123
+                    self.reason = 'Test OK'
+                    self.headers = CIMultiDictProxy(CIMultiDict())
+                    self.cookies = SimpleCookie()
+                    return
+
+            called = False
+
+            class CustomRequest(ClientRequest):
+
+                def send(self, writer, reader):
+                    resp = self.response_class(self.method,
+                                               self.url,
+                                               self.host,
+                                               writer=self._writer,
+                                               continue100=self._continue)
+                    resp._post_init(self.loop)
+                    self.response = resp
+                    nonlocal called
+                    called = True
+                    return resp
+
+            @asyncio.coroutine
+            def create_connection(req):
+                self.assertIsInstance(req, CustomRequest)
+                return self.transport, self.protocol
+            self.connector._create_connection = create_connection
+
+            resp = yield from aiohttp.request('get',
+                                              'http://example.com/path/to',
+                                              request_class=CustomRequest,
+                                              response_class=CustomResponse,
+                                              connector=self.connector,
+                                              loop=self.loop)
+            self.assertIsInstance(resp, CustomResponse)
+            self.assertTrue(called)
+        self.loop.run_until_complete(go())

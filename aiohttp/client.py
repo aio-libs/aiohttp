@@ -56,8 +56,6 @@ class ClientSession:
                 headers = list(headers.items())
         self._default_headers = headers
 
-        if request_class is None:
-            request_class = ClientRequest
         self._request_class = request_class
         self._response_class = response_class
 
