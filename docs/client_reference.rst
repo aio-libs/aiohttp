@@ -330,6 +330,10 @@ There are standard connectors:
 
 All connector classes should be derived from :class:`BaseConnector`.
 
+By default all *connectors* except :class:`ProxyConnector` supports
+*keep-alive connections* (behavior controlled by *force_close*
+constructor's parameter).
+
 .. class:: BaseConnector(*, conn_timeout=None, keepalive_timeout=30, \
                          limit=None, \
                          share_cookies=False, force_close=False, loop=None)
@@ -376,6 +380,8 @@ All connector classes should be derived from :class:`BaseConnector`.
 
       Read-only property, ``True`` if connector should ultimately
       close connections on releasing.
+
+      .. versionadded:: 0.16
 
    .. method:: close()
 
@@ -438,7 +444,7 @@ All connector classes should be derived from :class:`BaseConnector`.
                           conn_timeout=None, \
                           keepalive_timeout=30, limit=None, \
                           share_cookies=False, \
-                          force_close=False, loop=None)
+                          force_close=True, loop=None)
 
    HTTP Proxy connector.
 
@@ -460,6 +466,16 @@ All connector classes should be derived from :class:`BaseConnector`.
 
    :param aiohttp.helpers.BasicAuth proxy_auth: basic-auth
       authenthication info used for proxies with authorization.
+
+   .. note::
+
+      :class:`ProxyConnector` in opposite to all other connectors
+      **doesn't** support *keep-alives* by default
+      (:attr:`force_close` is ``True``).
+
+   .. versionchanged:: 0.16
+
+      *force_close* parameter changed to ``True`` by default.
 
 
 .. class:: UnixConnector(path, *, \
