@@ -477,6 +477,17 @@ constructor's parameter).
 
       *force_close* parameter changed to ``True`` by default.
 
+   .. attribute:: proxy
+
+      Proxy *URL*, read-only :class:`str` property.
+
+   .. attribute:: proxy_auth
+
+      Proxy auth info, read-only :class:`BasicAuth` property or
+      ``None`` for proxy without authentication.
+
+      .. versionadded:: 0.16
+
 
 .. class:: UnixConnector(path, *, \
                          conn_timeout=None, \
@@ -504,6 +515,11 @@ constructor's parameter).
    :class:`BaseConnector` plus unix-specific one:
 
    :param str path: Unix socket path
+
+
+   .. attribute:: path
+
+      Path to *UNIX socket*, read-only :class:`str` property.
 
 
 .. class:: Connection

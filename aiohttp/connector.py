@@ -513,6 +513,14 @@ class ProxyConnector(TCPConnector):
         """Proxy URL."""
         return self._proxy
 
+    @property
+    def proxy_auth(self):
+        """Proxy auth info.
+
+        Should be BasicAuth instance.
+        """
+        return self._proxy_auth
+
     @asyncio.coroutine
     def _create_connection(self, req):
         proxy_req = ClientRequest(
