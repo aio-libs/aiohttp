@@ -636,6 +636,10 @@ class TestBaseConnector(unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
+    def test_default_force_close(self):
+        connector = aiohttp.BaseConnector(loop=self.loop)
+        self.assertFalse(connector.force_close)
+
 
 class TestHttpClientConnector(unittest.TestCase):
 
@@ -718,6 +722,7 @@ class TestProxyConnector(unittest.TestCase):
                                            loop=self.loop)
 
         self.assertEqual('http://localhost:8118', connector.proxy)
+        self.assertTrue(connector.force_close)
 
     @unittest.mock.patch('aiohttp.connector.ClientRequest')
     def test_connect(self, ClientRequestMock):

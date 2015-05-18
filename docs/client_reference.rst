@@ -372,6 +372,11 @@ All connector classes should be derived from :class:`BaseConnector`.
 
       Read-only property, ``True`` if connector is closed.
 
+   .. attribute:: force_close
+
+      Read-only property, ``True`` if connector should ultimately
+      close connections on releasing.
+
    .. method:: close()
 
       Close all opened connections.

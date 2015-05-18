@@ -28,6 +28,11 @@ CHANGES
 
 - Add `response_class` parameter to `ws_connect()` #367
 
+- `ProxyConnector` doesn't support keep-alive requests by default
+  starting from now #368
+
+- Add `connector.force_close` property
+
 
 0.15.3 (04-22-2015)
 -------------------

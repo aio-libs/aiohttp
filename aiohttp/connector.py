@@ -146,6 +146,11 @@ class BaseConnector(object):
                 context['source_traceback'] = self._source_traceback
             self._loop.call_exception_handler(context)
 
+    @property
+    def force_close(self):
+        """Ultimately close connection on releasing."""
+        return self._force_close
+
     def _cleanup(self):
         """Cleanup unused transports."""
         if self._cleanup_handle:
@@ -493,8 +498,9 @@ class ProxyConnector(TCPConnector):
 
     """
 
-    def __init__(self, proxy, *, proxy_auth=None, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, proxy, *, proxy_auth=None, force_close=True,
+                 **kwargs):
+        super().__init__(force_close=force_close, **kwargs)
         self._proxy = proxy
         self._proxy_auth = proxy_auth
         assert proxy.startswith('http://'), (
