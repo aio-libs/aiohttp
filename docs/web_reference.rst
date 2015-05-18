@@ -141,7 +141,7 @@ first positional parameter.
 
    .. attribute:: has_body
 
-      Return ``True`` if request has no *HTTP BODY*, ``False`` otherwise.
+      Return ``True`` if request has *HTTP BODY*, ``False`` otherwise.
 
       Read-only :class:`bool` property.
 
