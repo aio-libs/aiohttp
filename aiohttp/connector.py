@@ -148,8 +148,19 @@ class BaseConnector(object):
 
     @property
     def force_close(self):
-        """Ultimately close connection on releasing."""
+        """Ultimately close connection on releasing if True."""
         return self._force_close
+
+    @property
+    def limit(self):
+        """The limit for simultaneous connections to the same endpoint.
+
+        Endpoints are the same if they are have equal
+        (host, port, is_ssl) triple.
+
+        If limit is None the connector has no limit (default).
+        """
+        return self._limit
 
     def _cleanup(self):
         """Cleanup unused transports."""
