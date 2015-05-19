@@ -250,7 +250,8 @@ request coroutine
                        read_until_eof=True, request_class=None,\
                        response_class=None)
 
-   Performs an asynchronous http request. Returns a response object.
+   Perform an asynchronous http request. Return a response object
+   (:class:`ClientResponse` or derived from).
 
    :param str method: HTTP method
 
