@@ -454,6 +454,49 @@ constructor's parameter).
       *ssl_context* may be used for configuring certification
       authority channel, supported SSL options etc.
 
+   .. attribute:: verify_ssl
+
+      Check *ssl certifications* if ``True``.
+
+      Read-only :class:`bool` property.
+
+   .. attribute:: ssl_context
+
+      :class:`ssl.SSLContext` instance for *https* requests, read-only property.
+
+   .. attribute:: family
+
+      *TCP* socket family e.g. :const:`socket.AF_INET` or
+      :const:`socket.AF_INET6`
+
+      Read-only property.
+
+   .. attribute:: resolve
+
+      Use quick lookup in internal *DNS* cache for host names if ``True``.
+
+      Read-only :class:`bool` property.
+
+   .. attribute:: resolve
+
+      Use quick lookup in internal *DNS* cache for host names if ``True``.
+
+      Read-only :class:`bool` property.
+
+   .. attribute:: resolved_hosts
+
+      The cache of resolved hosts if :attr:`resolve` is enabled.
+
+      Read-only :class:`types.MappingProxyType` property.
+
+   .. method:: clear_resolved_hosts(self, host=None, port=None)
+
+      Clear internal *DNS* cache.
+
+      Remove specific entry if both *host* and *port* are specified,
+      clear all cache otherwise.
+
+
 .. class:: ProxyConnector(proxy, *, proxy_auth=None, \
                           conn_timeout=None, \
                           keepalive_timeout=30, limit=None, \
