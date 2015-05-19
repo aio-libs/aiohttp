@@ -351,7 +351,7 @@ constructor's parameter).
    :param int limit: limit for simultaneous connections to the same
                      endpoint.  Endpoints are the same if they are
                      have equal ``(host, port, is_ssl)`` triple.
-                     If *limit* is ``None`` connection pool has no limit.
+                     If *limit* is ``None`` the connector has no limit.
 
    :param bool share_cookies: update :attr:`cookies` on connection
                               processing (optional, deprecated).
@@ -380,6 +380,20 @@ constructor's parameter).
 
       Read-only property, ``True`` if connector should ultimately
       close connections on releasing.
+
+      .. versionadded:: 0.16
+
+   .. attribute:: limit
+
+      The limit for simultaneous connections to the same
+      endpoint.
+
+      Endpoints are the same if they are have equal ``(host, port,
+      is_ssl)`` triple.
+
+      If *limit* is ``None`` the connector has no limit (default).
+
+      Read-only property.
 
       .. versionadded:: 0.16
 
