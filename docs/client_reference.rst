@@ -406,6 +406,9 @@ constructor's parameter).
       Get a free connection from pool or create new one if connection
       is absent in the pool.
 
+      The call may be paused if :attr:`limit` is exhausted until used
+      connetions returns to pool.
+
       :param aiohttp.client.ClientRequest request: request object
                                                    which is connection
                                                    initiator.
