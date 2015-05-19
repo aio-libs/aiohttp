@@ -330,7 +330,7 @@ There are standard connectors:
 
 All connector classes should be derived from :class:`BaseConnector`.
 
-By default all *connectors* except :class:`ProxyConnector` supports
+By default all *connectors* except :class:`ProxyConnector` support
 *keep-alive connections* (behavior controlled by *force_close*
 constructor's parameter).
 
