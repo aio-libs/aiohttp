@@ -7,7 +7,7 @@ import unittest
 from unittest import mock
 
 import aiohttp
-from aiohttp import errors, hdrs, web, websocket, websocket_client, client
+from aiohttp import errors, hdrs, web, websocket, websocket_client
 
 
 class TestWebSocketClient(unittest.TestCase):
@@ -24,11 +24,6 @@ class TestWebSocketClient(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
-    def _make_session(self):
-        connector = aiohttp.TCPConnector(loop=self.loop, force_close=True)
-        session = client.ClientSession(loop=self.loop, connector=connector)
-        return session
-
     @mock.patch('aiohttp.client.os')
     @mock.patch('aiohttp.client.ClientSession.request')
     def test_ws_connect(self, m_req, m_os):
@@ -44,11 +39,11 @@ class TestWebSocketClient(unittest.TestCase):
         m_req.return_value = asyncio.Future(loop=self.loop)
         m_req.return_value.set_result(resp)
 
-        session = self._make_session()
         res = self.loop.run_until_complete(
-            session.ws_connect(
+            websocket_client.ws_connect(
                 'http://test.org',
-                protocols=('t1', 't2', 'chat')))
+                protocols=('t1', 't2', 'chat'),
+                loop=self.loop))
 
         self.assertIsInstance(res, websocket_client.ClientWebSocketResponse)
         self.assertEqual(res.protocol, 'chat')
@@ -72,11 +67,11 @@ class TestWebSocketClient(unittest.TestCase):
         m_req.return_value = asyncio.Future(loop=self.loop)
         m_req.return_value.set_result(resp)
 
-        session = self._make_session()
         res = self.loop.run_until_complete(
-            session.ws_connect(
+            websocket_client.ws_connect(
                 'http://test.org',
-                response_class=CustomResponse))
+                response_class=CustomResponse,
+                loop=self.loop))
 
         self.assertEqual(res.read(), 'customized!')
 
@@ -96,9 +91,8 @@ class TestWebSocketClient(unittest.TestCase):
         m_req.return_value = asyncio.Future(loop=self.loop)
         m_req.return_value.set_result(resp)
 
-        session = self._make_session()
         resp = self.loop.run_until_complete(
-            session.ws_connect('http://test.org'))
+            websocket_client.ws_connect('http://test.org'))
         self.assertIs(resp._loop, self.loop)
 
         asyncio.set_event_loop(None)
@@ -118,11 +112,11 @@ class TestWebSocketClient(unittest.TestCase):
         m_req.return_value.set_result(resp)
 
         with self.assertRaises(errors.WSServerHandshakeError) as ctx:
-            session = self._make_session()
             self.loop.run_until_complete(
-                session.ws_connect(
+                websocket_client.ws_connect(
                     'http://test.org',
-                    protocols=('t1', 't2', 'chat')))
+                    protocols=('t1', 't2', 'chat'),
+                    loop=self.loop))
         self.assertEqual(
             ctx.exception.message, 'Invalid response status')
 
@@ -141,11 +135,11 @@ class TestWebSocketClient(unittest.TestCase):
         m_req.return_value.set_result(resp)
 
         with self.assertRaises(errors.WSServerHandshakeError) as ctx:
-            session = self._make_session()
             self.loop.run_until_complete(
-                session.ws_connect(
+                websocket_client.ws_connect(
                     'http://test.org',
-                    protocols=('t1', 't2', 'chat')))
+                    protocols=('t1', 't2', 'chat'),
+                    loop=self.loop))
         self.assertEqual(
             ctx.exception.message, 'Invalid upgrade header')
 
@@ -164,11 +158,11 @@ class TestWebSocketClient(unittest.TestCase):
         m_req.return_value.set_result(resp)
 
         with self.assertRaises(errors.WSServerHandshakeError) as ctx:
-            session = self._make_session()
             self.loop.run_until_complete(
-                session.ws_connect(
+                websocket_client.ws_connect(
                     'http://test.org',
-                    protocols=('t1', 't2', 'chat')))
+                    protocols=('t1', 't2', 'chat'),
+                    loop=self.loop))
         self.assertEqual(
             ctx.exception.message, 'Invalid connection header')
 
@@ -187,11 +181,11 @@ class TestWebSocketClient(unittest.TestCase):
         m_req.return_value.set_result(resp)
 
         with self.assertRaises(errors.WSServerHandshakeError) as ctx:
-            session = self._make_session()
             self.loop.run_until_complete(
-                session.ws_connect(
+                websocket_client.ws_connect(
                     'http://test.org',
-                    protocols=('t1', 't2', 'chat')))
+                    protocols=('t1', 't2', 'chat'),
+                    loop=self.loop))
         self.assertEqual(
             ctx.exception.message, 'Invalid challenge response')
 
@@ -212,9 +206,8 @@ class TestWebSocketClient(unittest.TestCase):
         writer = WebSocketWriter.return_value = mock.Mock()
         reader = resp.connection.reader.set_parser.return_value = mock.Mock()
 
-        session = self._make_session()
         resp = self.loop.run_until_complete(
-            session.ws_connect('http://test.org'))
+            websocket_client.ws_connect('http://test.org', loop=self.loop))
         self.assertFalse(resp.closed)
 
         msg = websocket.Message(websocket.MSG_CLOSE, b'', b'')
@@ -249,9 +242,9 @@ class TestWebSocketClient(unittest.TestCase):
         WebSocketWriter.return_value = mock.Mock()
         reader = resp.connection.reader.set_parser.return_value = mock.Mock()
 
-        session = self._make_session()
         resp = self.loop.run_until_complete(
-            session.ws_connect('http://test.org'))
+            websocket_client.ws_connect(
+                'http://test.org', loop=self.loop))
         self.assertFalse(resp.closed)
 
         exc = ValueError()
@@ -279,9 +272,9 @@ class TestWebSocketClient(unittest.TestCase):
         writer = WebSocketWriter.return_value = mock.Mock()
         resp.connection.reader.set_parser.return_value = mock.Mock()
 
-        session = self._make_session()
         resp = self.loop.run_until_complete(
-            session.ws_connect('http://test.org'))
+            websocket_client.ws_connect(
+                'http://test.org', loop=self.loop))
         self.assertFalse(resp.closed)
 
         exc = ValueError()
@@ -312,9 +305,9 @@ class TestWebSocketClient(unittest.TestCase):
         m_req.return_value.set_result(resp)
         WebSocketWriter.return_value = mock.Mock()
 
-        session = self._make_session()
         resp = self.loop.run_until_complete(
-            session.ws_connect('http://test.org'))
+            websocket_client.ws_connect(
+                'http://test.org', loop=self.loop))
         resp._closed = True
 
         self.assertRaises(RuntimeError, resp.ping)
@@ -338,9 +331,9 @@ class TestWebSocketClient(unittest.TestCase):
         m_req.return_value.set_result(resp)
         WebSocketWriter.return_value = mock.Mock()
 
-        session = self._make_session()
         resp = self.loop.run_until_complete(
-            session.ws_connect('http://test.org'))
+            websocket_client.ws_connect(
+                'http://test.org', loop=self.loop))
 
         self.assertRaises(TypeError, resp.send_str, b's')
         self.assertRaises(TypeError, resp.send_bytes, 'b')
@@ -362,9 +355,9 @@ class TestWebSocketClient(unittest.TestCase):
         WebSocketWriter.return_value = mock.Mock()
         reader = hresp.connection.reader.set_parser.return_value = mock.Mock()
 
-        session = self._make_session()
         resp = self.loop.run_until_complete(
-            session.ws_connect('http://test.org'))
+            websocket_client.ws_connect(
+                'http://test.org', loop=self.loop))
 
         exc = ValueError()
         reader.read.return_value = asyncio.Future(loop=self.loop)
