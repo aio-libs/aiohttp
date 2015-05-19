@@ -9,6 +9,7 @@ import traceback
 import warnings
 
 from collections import defaultdict
+from hashlib import md5, sha1, sha256
 from itertools import chain
 from math import ceil
 
@@ -17,6 +18,7 @@ from .client import ClientRequest
 from .errors import ServerDisconnectedError
 from .errors import HttpProxyError, ProxyConnectionError
 from .errors import ClientOSError, ClientTimeoutError
+from .errors import FingerprintMismatch
 from .helpers import BasicAuth
 
 
@@ -24,6 +26,12 @@ __all__ = ('BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector')
 
 PY_34 = sys.version_info >= (3, 4)
 PY_343 = sys.version_info >= (3, 4, 3)
+
+HASHFUNC_BY_DIGESTLEN = {
+    16: md5,
+    20: sha1,
+    32: sha256,
+}
 
 
 class Connection(object):
@@ -347,13 +355,17 @@ class TCPConnector(BaseConnector):
     """TCP connector.
 
     :param bool verify_ssl: Set to True to check ssl certifications.
+    :param bytes fingerprint: Pass the binary md5, sha1, or sha256
+        digest of the expected certificate in DER format to verify
+        that the certificate the server presents matches. See also
+        https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning
     :param bool resolve: Set to True to do DNS lookup for host name.
     :param family: socket address family
     :param args: see :class:`BaseConnector`
     :param kwargs: see :class:`BaseConnector`
     """
 
-    def __init__(self, *, verify_ssl=True,
+    def __init__(self, *, verify_ssl=True, fingerprint=None,
                  resolve=False, family=socket.AF_INET, ssl_context=None,
                  **kwargs):
         super().__init__(**kwargs)
@@ -364,6 +376,15 @@ class TCPConnector(BaseConnector):
                 "verify_ssl=False or specify ssl_context, not both.")
 
         self._verify_ssl = verify_ssl
+
+        if fingerprint:
+            digestlen = len(fingerprint)
+            hashfunc = HASHFUNC_BY_DIGESTLEN.get(digestlen)
+            if not hashfunc:
+                raise ValueError('fingerprint has invalid length')
+            self._hashfunc = hashfunc
+        self._fingerprint = fingerprint
+
         self._ssl_context = ssl_context
         self._family = family
         self._resolve = resolve
@@ -373,6 +394,11 @@ class TCPConnector(BaseConnector):
     def verify_ssl(self):
         """Do check for ssl certifications?"""
         return self._verify_ssl
+
+    @property
+    def fingerprint(self):
+        """Expected ssl certificate fingerprint."""
+        return self._fingerprint
 
     @property
     def ssl_context(self):
@@ -464,11 +490,25 @@ class TCPConnector(BaseConnector):
 
         for hinfo in hosts:
             try:
-                return (yield from self._loop.create_connection(
-                    self._factory, hinfo['host'], hinfo['port'],
+                host = hinfo['host']
+                port = hinfo['port']
+                conn = yield from self._loop.create_connection(
+                    self._factory, host, port,
                     ssl=sslcontext, family=hinfo['family'],
                     proto=hinfo['proto'], flags=hinfo['flags'],
-                    server_hostname=hinfo['hostname'] if sslcontext else None))
+                    server_hostname=hinfo['hostname'] if sslcontext else None)
+                transport = conn[0]
+                has_cert = transport.get_extra_info('sslcontext')
+                if has_cert and self._fingerprint:
+                    sock = transport.get_extra_info('socket')
+                    # gives DER-encoded cert as a sequence of bytes (or None)
+                    cert = sock.getpeercert(binary_form=True)
+                    assert cert
+                    got = self._hashfunc(cert).digest()
+                    expected = self._fingerprint
+                    if got != expected:
+                        raise FingerprintMismatch(expected, got, host, port)
+                return conn
             except OSError as e:
                 exc = e
         else:

@@ -12,6 +12,7 @@ from unittest import mock
 import aiohttp
 from aiohttp import client
 from aiohttp import test_utils
+from aiohttp.errors import FingerprintMismatch
 from aiohttp.client import ClientResponse, ClientRequest
 from aiohttp.connector import Connection
 
@@ -452,9 +453,56 @@ class TestBaseConnector(unittest.TestCase):
     def test_tcp_connector_ctor(self):
         conn = aiohttp.TCPConnector(loop=self.loop)
         self.assertTrue(conn.verify_ssl)
+        self.assertIs(conn.fingerprint, None)
         self.assertFalse(conn.resolve)
         self.assertEqual(conn.family, socket.AF_INET)
         self.assertEqual(conn.resolved_hosts, {})
+
+    def test_tcp_connector_ctor_fingerprint_valid(self):
+        valid = b'\xa2\x06G\xad\xaa\xf5\xd8\\J\x99^by;\x06='
+        conn = aiohttp.TCPConnector(loop=self.loop, fingerprint=valid)
+        self.assertEqual(conn.fingerprint, valid)
+
+    def test_tcp_connector_fingerprint_invalid(self):
+        invalid = b'\x00'
+        with self.assertRaises(ValueError):
+            aiohttp.TCPConnector(loop=self.loop, fingerprint=invalid)
+
+    def test_tcp_connector_fingerprint(self):
+        # The even-index fingerprints below are "expect success" cases
+        # for ./sample.crt.der, the cert presented by test_utils.run_server.
+        # The odd-index fingerprints are "expect fail" cases.
+        testcases = (
+            # md5
+            b'\xa2\x06G\xad\xaa\xf5\xd8\\J\x99^by;\x06=',
+            b'\x00' * 16,
+
+            # sha1
+            b's\x93\xfd:\xed\x08\x1do\xa9\xaeq9\x1a\xe3\xc5\x7f\x89\xe7l\xf9',
+            b'\x00' * 20,
+
+            # sha256
+            b'0\x9a\xc9D\x83\xdc\x91\'\x88\x91\x11\xa1d\x97\xfd\xcb~7U\x14D@L'
+            b'\x11\xab\x99\xa8\xae\xb7\x14\xee\x8b',
+            b'\x00' * 32,
+        )
+        for i, fingerprint in enumerate(testcases):
+            expect_fail = i % 2
+            conn = aiohttp.TCPConnector(loop=self.loop, verify_ssl=False,
+                                        fingerprint=fingerprint)
+            with test_utils.run_server(self.loop, use_ssl=True) as httpd:
+                coro = client.request('get', httpd.url('method', 'get'),
+                                      connector=conn, loop=self.loop)
+                if expect_fail:
+                    with self.assertRaises(FingerprintMismatch) as cm:
+                        self.loop.run_until_complete(coro)
+                    exc = cm.exception
+                    self.assertEqual(exc.expected, fingerprint)
+                    # the previous test case should be what we actually got
+                    self.assertEqual(exc.got, testcases[i-1])
+                else:
+                    # should not raise
+                    self.loop.run_until_complete(coro)
 
     def test_tcp_connector_clear_resolved_hosts(self):
         conn = aiohttp.TCPConnector(loop=self.loop)
@@ -741,7 +789,7 @@ class TestProxyConnector(unittest.TestCase):
         self.assertIs(conn._protocol, proto)
 
         # resolve_host.assert_called_once_with('proxy.example.com', 80)
-        self.assertEqual(tr.mock_calls, [])
+        tr.get_extra_info.assert_called_once_with('sslcontext')
 
         ClientRequestMock.assert_called_with(
             'GET', 'http://proxy.example.com',
@@ -897,7 +945,7 @@ class TestProxyConnector(unittest.TestCase):
         self.assertEqual(proxy_req.method, 'CONNECT')
         self.assertEqual(proxy_req.path, 'www.python.org:443')
         tr.pause_reading.assert_called_once_with()
-        tr.get_extra_info.assert_called_once_with('socket', default=None)
+        tr.get_extra_info.assert_called_with('socket', default=None)
 
     @unittest.mock.patch('aiohttp.connector.ClientRequest')
     def test_https_connect_runtime_error(self, ClientRequestMock):

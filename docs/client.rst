@@ -396,21 +396,49 @@ By default it uses strict checks for HTTPS protocol. Certification
 checks can be relaxed by passing ``verify_ssl=False``::
 
   >>> conn = aiohttp.TCPConnector(verify_ssl=False)
-  >>> r = yield from aiohttp.request(
-  ...     'get', 'https://example.com', connector=conn)
+  >>> session = aiohttp.ClientSession(connector=conn)
+  >>> r = yield from session.get('https://example.com')
 
 
 If you need to setup custom ssl parameters (use own certification
 files for example) you can create a :class:`ssl.SSLContext` instance and
 pass it into the connector::
 
-  >>> sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-  >>> sslcontext.verify_mode = ssl.CERT_REQUIRED
-  >>> sslcontext.load_verify_locations("/etc/ssl/certs/ca-bundle.crt")
+  >>> sslcontext = ssl.create_default_context(cafile='/path/to/ca-bundle.crt')
   >>> conn = aiohttp.TCPConnector(ssl_context=sslcontext)
-  >>> r = yield from aiohttp.request(
-  ...     'get', 'https://example.com', connector=conn)
+  >>> session = aiohttp.ClientSession(connector=conn)
+  >>> r = yield from session.get('https://example.com')
 
+You may also verify certificates via md5, sha1, or sha256 fingerprint::
+
+  >>> # Attempt to connect to https://www.python.org
+  >>> # with a pin to a bogus certificate:
+  >>> bad_md5 = b'\xa2\x06G\xad\xaa\xf5\xd8\\J\x99^by;\x06='
+  >>> conn = aiohttp.TCPConnector(fingerprint=bad_md5)
+  >>> session = aiohttp.ClientSession(connector=conn)
+  >>> exc = None
+  >>> try:
+  ...     r = yield from session.get('https://www.python.org')
+  ... except FingerprintMismatch as e:
+  ...     exc = e
+  >>> exc is not None
+  True
+  >>> exc.expected == bad_md5
+  True
+  >>> exc.got  # www.python.org cert's actual md5
+  b'\xca;I\x9cuv\x8es\x138N$?\x15\xca\xcb'
+
+Note that this is the fingerprint of the DER-encoded certificate.
+If you have the certificate in PEM format, you can convert it to
+DER with e.g. ``openssl x509 -in crt.pem -inform PEM -outform DER > crt.der``.
+
+Tip: to convert from a hexadecimal digest to a binary bytestring, you can use
+:attr:`binascii.unhexlify`::
+
+  >>> md5_hex = 'ca3b499c75768e7313384e243f15cacb'
+  >>> from binascii import unhexlify
+  >>> unhexlify(md5_hex)
+  b'\xca;I\x9cuv\x8es\x138N$?\x15\xca\xcb'
 
 Unix domain sockets
 -------------------

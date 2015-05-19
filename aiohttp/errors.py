@@ -13,6 +13,7 @@ __all__ = (
     'ClientError', 'ClientHttpProcessingError', 'ClientConnectionError',
     'ClientOSError', 'ClientTimeoutError', 'ProxyConnectionError',
     'ClientRequestError', 'ClientResponseError',
+    'FingerprintMismatch',
 
     'WSServerHandshakeError', 'WSClientDisconnectedError')
 
@@ -170,3 +171,18 @@ class LineLimitExceededParserError(ParserError):
     def __init__(self, msg, limit):
         super().__init__(msg)
         self.limit = limit
+
+
+class FingerprintMismatch(ClientConnectionError):
+    """SSL certificate does not match expected fingerprint."""
+
+    def __init__(self, expected, got, host, port):
+        self.expected = expected
+        self.got = got
+        self.host = host
+        self.port = port
+
+    def __repr__(self):
+        return '<{} expected={} got={} host={} port={}>'.format(
+            self.__class__.__name__, self.expected, self.got,
+            self.host, self.port)
