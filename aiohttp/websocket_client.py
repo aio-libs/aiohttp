@@ -30,8 +30,8 @@ class MsgType(IntEnum):
 closedMessage = Message(MsgType.closed, None, None)
 
 
-def ws_connect(url, protocols=(), timeout=10.0, connector=None,
-               response_class=None, autoclose=True, autoping=True,
+def ws_connect(url, *, protocols=(), timeout=10.0, connector=None,
+               ws_response_class=None, autoclose=True, autoping=True,
                loop=None):
 
     if loop is None:
@@ -44,13 +44,13 @@ def ws_connect(url, protocols=(), timeout=10.0, connector=None,
     session = aiohttp.ClientSession(loop=loop, connector=connector)
 
     try:
-        resp = yield from session.ws_connect(url,
-                                             protocols=protocols,
-                                             timeout=timeout,
-                                             connector=connector,
-                                             response_class=response_class,
-                                             autoclose=autoclose,
-                                             autoping=autoping)
+        resp = yield from session.ws_connect(
+            url,
+            protocols=protocols,
+            timeout=timeout,
+            ws_response_class=ws_response_class,
+            autoclose=autoclose,
+            autoping=autoping)
         return resp
 
     finally:

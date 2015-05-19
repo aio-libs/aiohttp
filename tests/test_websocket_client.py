@@ -70,7 +70,7 @@ class TestWebSocketClient(unittest.TestCase):
         res = self.loop.run_until_complete(
             websocket_client.ws_connect(
                 'http://test.org',
-                response_class=CustomResponse,
+                ws_response_class=CustomResponse,
                 loop=self.loop))
 
         self.assertEqual(res.read(), 'customized!')

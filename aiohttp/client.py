@@ -174,11 +174,10 @@ class ClientSession:
         return resp
 
     @asyncio.coroutine
-    def ws_connect(self, url,
+    def ws_connect(self, url, *,
                    protocols=(),
                    timeout=10.0,
-                   connector=None,
-                   response_class=None,
+                   ws_response_class=None,
                    autoclose=True,
                    autoping=True):
         """Initiate websocket connection."""
@@ -230,17 +229,17 @@ class ClientSession:
         reader = resp.connection.reader.set_parser(WebSocketParser)
         writer = WebSocketWriter(resp.connection.writer, use_mask=True)
 
-        if response_class is None:
-            response_class = ClientWebSocketResponse
+        if ws_response_class is None:
+            ws_response_class = ClientWebSocketResponse
 
-        return response_class(reader,
-                              writer,
-                              protocol,
-                              resp,
-                              timeout,
-                              autoclose,
-                              autoping,
-                              self._loop)
+        return ws_response_class(reader,
+                                 writer,
+                                 protocol,
+                                 resp,
+                                 timeout,
+                                 autoclose,
+                                 autoping,
+                                 self._loop)
 
     def _update_cookies(self, cookies):
         """Update shared cookies."""
