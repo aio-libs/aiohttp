@@ -40,7 +40,6 @@ def ws_connect(url, *, protocols=(), timeout=10.0, connector=None,
     if connector is None:
         connector = aiohttp.TCPConnector(loop=loop, force_close=True)
 
-    # May add more optional params for session.
     session = aiohttp.ClientSession(loop=loop, connector=connector)
 
     try:
