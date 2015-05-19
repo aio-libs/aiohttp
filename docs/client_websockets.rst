@@ -46,7 +46,7 @@ ClientWebSocketResponse
 To connect to a websocket server you have to use the `aiohttp.ws_connect()` function,
 do not create an instance of class :class:`ClientWebSocketResponse` manually.
 
-.. py:function:: ws_connect(url, protocols=(), connector=None, ws_response_class=None, autoclose=True, autoping=True, loop=None)
+.. py:function:: ws_connect(url, *, protocols=(), connector=None, ws_response_class=None, autoclose=True, autoping=True, loop=None)
 
    This function creates a websocket connection, checks the response and
    returns a :class:`ClientWebSocketResponse` object. In case of failure
