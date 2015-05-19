@@ -318,7 +318,7 @@ Connectors
 
 .. module:: aiohttp.connector
 
-Connectors are transports for aiohttp clients.
+Connectors are transports for aiohttp client API.
 
 There are standard connectors:
 
