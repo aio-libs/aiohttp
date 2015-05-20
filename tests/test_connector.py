@@ -688,6 +688,16 @@ class TestBaseConnector(unittest.TestCase):
         connector = aiohttp.BaseConnector(loop=self.loop)
         self.assertFalse(connector.force_close)
 
+    def test_limit_property(self):
+        conn = aiohttp.BaseConnector(loop=self.loop, limit=15)
+        self.assertEqual(15, conn.limit)
+        conn.close()
+
+    def test_limit_property_default(self):
+        conn = aiohttp.BaseConnector(loop=self.loop)
+        self.assertIsNone(conn.limit)
+        conn.close()
+
 
 class TestHttpClientConnector(unittest.TestCase):
 
