@@ -223,6 +223,27 @@ Usage example::
       :param data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)
 
+
+   .. coroutinemethod:: ws_connect(url, *, protocols=(), timeout=10.0\
+                                   ws_response_class=None, autoclose=True,\
+                                   autoping=True)
+
+      Create a websocket connection. Returns a :class:`ClientWebSocketResponse` object.
+
+      :param str url: Websocket server url
+
+      :param tuple protocols: Websocket protocols
+
+      :param float timeout: Timeout for websocket read. 10 seconds by default
+
+      :param ws_response_class: (optional) Custom Response class implementation
+
+      :param bool autoclose: Automatically close websocket connection on close
+                             message from server. If `autoclose` is False
+                             them close procedure has to be handled manually
+
+      :param bool autoping: automatically send `pong` on `ping` message from server
+
    .. method:: close()
 
       Close underlying connector.
@@ -250,8 +271,7 @@ request coroutine
                        read_until_eof=True, request_class=None,\
                        response_class=None)
 
-   Perform an asynchronous http request. Return a response object
-   (:class:`ClientResponse` or derived from).
+   Performs an asynchronous http request. Returns a response object.
 
    :param str method: HTTP method
 
@@ -319,7 +339,7 @@ Connectors
 
 .. module:: aiohttp.connector
 
-Connectors are transports for aiohttp client API.
+Connectors are transports for aiohttp clients.
 
 There are standard connectors:
 
@@ -331,7 +351,7 @@ There are standard connectors:
 
 All connector classes should be derived from :class:`BaseConnector`.
 
-By default all *connectors* except :class:`ProxyConnector` support
+By default all *connectors* except :class:`ProxyConnector` supports
 *keep-alive connections* (behavior controlled by *force_close*
 constructor's parameter).
 
@@ -407,9 +427,6 @@ constructor's parameter).
       Get a free connection from pool or create new one if connection
       is absent in the pool.
 
-      The call may be paused if :attr:`limit` is exhausted until used
-      connetions returns to pool.
-
       :param aiohttp.client.ClientRequest request: request object
                                                    which is connection
                                                    initiator.
@@ -464,49 +481,6 @@ constructor's parameter).
 
       *ssl_context* may be used for configuring certification
       authority channel, supported SSL options etc.
-
-   .. attribute:: verify_ssl
-
-      Check *ssl certifications* if ``True``.
-
-      Read-only :class:`bool` property.
-
-   .. attribute:: ssl_context
-
-      :class:`ssl.SSLContext` instance for *https* requests, read-only property.
-
-   .. attribute:: family
-
-      *TCP* socket family e.g. :const:`socket.AF_INET` or
-      :const:`socket.AF_INET6`
-
-      Read-only property.
-
-   .. attribute:: resolve
-
-      Use quick lookup in internal *DNS* cache for host names if ``True``.
-
-      Read-only :class:`bool` property.
-
-   .. attribute:: resolve
-
-      Use quick lookup in internal *DNS* cache for host names if ``True``.
-
-      Read-only :class:`bool` property.
-
-   .. attribute:: resolved_hosts
-
-      The cache of resolved hosts if :attr:`resolve` is enabled.
-
-      Read-only :class:`types.MappingProxyType` property.
-
-   .. method:: clear_resolved_hosts(self, host=None, port=None)
-
-      Clear internal *DNS* cache.
-
-      Remove specific entry if both *host* and *port* are specified,
-      clear all cache otherwise.
-
 
 .. class:: ProxyConnector(proxy, *, proxy_auth=None, \
                           conn_timeout=None, \

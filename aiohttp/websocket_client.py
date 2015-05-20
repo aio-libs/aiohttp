@@ -1,17 +1,14 @@
 """WebSocket client for asyncio."""
 
 import asyncio
-import base64
-import hashlib
-import os
 
-from aiohttp import client, hdrs
-from .errors import WSServerHandshakeError
-from .websocket import WS_KEY, Message
-from .websocket import WebSocketParser, WebSocketWriter, WebSocketError
+import aiohttp
+from .websocket import Message
+from .websocket import WebSocketError
 from .websocket import MSG_BINARY, MSG_TEXT, MSG_CLOSE, MSG_PING, MSG_PONG
 
-__all__ = ('ws_connect', 'MsgType')
+
+__all__ = ('MsgType', 'ws_connect')
 
 
 try:
@@ -33,65 +30,30 @@ class MsgType(IntEnum):
 closedMessage = Message(MsgType.closed, None, None)
 
 
-@asyncio.coroutine
-def ws_connect(url, protocols=(), timeout=10.0, connector=None,
-               response_class=None, autoclose=True, autoping=True, loop=None):
-    """Initiate websocket connection."""
+def ws_connect(url, *, protocols=(), timeout=10.0, connector=None,
+               ws_response_class=None, autoclose=True, autoping=True,
+               loop=None):
+
     if loop is None:
-        loop = asyncio.get_event_loop()
+        asyncio.get_event_loop()
 
-    sec_key = base64.b64encode(os.urandom(16))
+    if connector is None:
+        connector = aiohttp.TCPConnector(loop=loop, force_close=True)
 
-    headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
-        hdrs.SEC_WEBSOCKET_VERSION: '13',
-        hdrs.SEC_WEBSOCKET_KEY: sec_key.decode(),
-    }
-    if protocols:
-        headers[hdrs.SEC_WEBSOCKET_PROTOCOL] = ','.join(protocols)
+    session = aiohttp.ClientSession(loop=loop, connector=connector)
 
-    # send request
-    resp = yield from client.request(
-        'get', url, headers=headers,
-        read_until_eof=False,
-        connector=connector, loop=loop)
+    try:
+        resp = yield from session.ws_connect(
+            url,
+            protocols=protocols,
+            timeout=timeout,
+            ws_response_class=ws_response_class,
+            autoclose=autoclose,
+            autoping=autoping)
+        return resp
 
-    # check handshake
-    if resp.status != 101:
-        raise WSServerHandshakeError('Invalid response status')
-
-    if resp.headers.get(hdrs.UPGRADE, '').lower() != 'websocket':
-        raise WSServerHandshakeError('Invalid upgrade header')
-
-    if resp.headers.get(hdrs.CONNECTION, '').lower() != 'upgrade':
-        raise WSServerHandshakeError('Invalid connection header')
-
-    # key calculation
-    key = resp.headers.get(hdrs.SEC_WEBSOCKET_ACCEPT, '')
-    match = base64.b64encode(hashlib.sha1(sec_key + WS_KEY).digest()).decode()
-    if key != match:
-        raise WSServerHandshakeError('Invalid challenge response')
-
-    # websocket protocol
-    protocol = None
-    if protocols and hdrs.SEC_WEBSOCKET_PROTOCOL in resp.headers:
-        resp_protocols = [proto.strip() for proto in
-                          resp.headers[hdrs.SEC_WEBSOCKET_PROTOCOL].split(',')]
-
-        for proto in resp_protocols:
-            if proto in protocols:
-                protocol = proto
-                break
-
-    reader = resp.connection.reader.set_parser(WebSocketParser)
-    writer = WebSocketWriter(resp.connection.writer, use_mask=True)
-
-    if response_class is None:
-        response_class = ClientWebSocketResponse
-
-    return response_class(
-        reader, writer, protocol, resp, timeout, autoclose, autoping, loop)
+    finally:
+        session.detach()
 
 
 class ClientWebSocketResponse:

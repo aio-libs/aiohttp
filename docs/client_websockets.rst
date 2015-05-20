@@ -46,25 +46,29 @@ ClientWebSocketResponse
 To connect to a websocket server you have to use the `aiohttp.ws_connect()` function,
 do not create an instance of class :class:`ClientWebSocketResponse` manually.
 
-.. py:function:: ws_connect(url, protocols=(), connector=None, response_class=None, autoclose=True, autoping=True, loop=None)
+.. py:function:: ws_connect(url, *, protocols=(), timeout=10.0,\
+                            connector=None, ws_response_class=None,\
+                            autoclose=True, autoping=True, loop=None)
 
    This function creates a websocket connection, checks the response and
    returns a :class:`ClientWebSocketResponse` object. In case of failure
    it may raise a :exc:`~aiohttp.errors.WSServerHandshakeError` exception.
 
-   :param str url: websocket server url
+   :param str url: Websocket server url
 
-   :param tuple protocols: websocket protocols
+   :param tuple protocols: Websocket protocols
+
+   :param float timeout: Timeout for websocket read. 10 seconds by default
 
    :param obj connector: object :class:`TCPConnector`
 
-   :param response_class: (optional) Custom Response class implementation.
+   :param ws_response_class: (optional) Custom Response class implementation.
 
-   :param bool autoclose: automatically close websocket connection
-                          on close message from server. if `autoclose` is
+   :param bool autoclose: Automatically close websocket connection
+                          on close message from server. If `autoclose` is
                           False them close procedure has to be handled manually
 
-   :param bool autoping: automatically send `pong` on `ping` message from server
+   :param bool autoping: Automatically send `pong` on `ping` message from server
 
    :param loop: :ref:`event loop<asyncio-event-loop>` used
                 for processing HTTP requests.
