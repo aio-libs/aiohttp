@@ -335,6 +335,11 @@ By default all *connectors* except :class:`ProxyConnector` support
 *keep-alive connections* (behavior controlled by *force_close*
 constructor's parameter).
 
+
+
+BaseConnector
+^^^^^^^^^^^^^
+
 .. class:: BaseConnector(*, conn_timeout=None, keepalive_timeout=30, \
                          limit=None, \
                          share_cookies=False, force_close=False, loop=None)
@@ -420,6 +425,12 @@ constructor's parameter).
 
       Abstract method for actual connection establishing, should be
       overriden in subclasses.
+
+
+
+
+TCPConnector
+^^^^^^^^^^^^
 
 .. class:: TCPConnector(*, verify_ssl=True, fingerprint=None, resolve=False, \
                         family=socket.AF_INET, \
@@ -518,6 +529,11 @@ constructor's parameter).
       clear all cache otherwise.
 
 
+
+
+ProxyConnector
+^^^^^^^^^^^^^^
+
 .. class:: ProxyConnector(proxy, *, proxy_auth=None, \
                           conn_timeout=None, \
                           keepalive_timeout=30, limit=None, \
@@ -567,6 +583,10 @@ constructor's parameter).
       .. versionadded:: 0.16
 
 
+
+UnixConnector
+^^^^^^^^^^^^^
+
 .. class:: UnixConnector(path, *, \
                          conn_timeout=None, \
                          keepalive_timeout=30, limit=None, \
@@ -599,6 +619,9 @@ constructor's parameter).
 
       Path to *UNIX socket*, read-only :class:`str` property.
 
+
+Connection
+^^^^^^^^^^
 
 .. class:: Connection
 
