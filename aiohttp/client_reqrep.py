@@ -166,6 +166,8 @@ class ClientRequest:
 
         self.path = urllib.parse.urlunsplit(
             ('', '', urllib.parse.quote(path, safe='/%:'), query, fragment))
+        self.url = urllib.parse.urlunsplit(
+            (scheme, netloc, self.path, '', ''))
 
     def update_headers(self, headers):
         """Update request headers."""

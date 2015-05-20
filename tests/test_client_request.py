@@ -275,6 +275,15 @@ class TestClientRequest(unittest.TestCase):
             self.assertEqual(req.path, '/?test=foo&test=baz')
             self.loop.run_until_complete(req.close())
 
+    def test_params_update_path_and_url(self):
+        req = ClientRequest(
+            'get', 'http://python.org',
+            params=(('test', 'foo'), ('test', 'baz')),
+            loop=self.loop)
+        self.assertEqual(req.path, '/?test=foo&test=baz')
+        self.assertEqual(req.url, 'http://python.org/?test=foo&test=baz')
+        self.loop.run_until_complete(req.close())
+
     def test_post_data(self):
         for meth in ClientRequest.POST_METHODS:
             req = ClientRequest(
