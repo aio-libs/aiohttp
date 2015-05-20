@@ -500,6 +500,16 @@ constructor's parameter).
 
       Read-only :class:`types.MappingProxyType` property.
 
+   .. attribute:: fingerprint
+
+      md5, sha1, or sha256 hash of the expected certificate in DER
+      format, or ``None`` if no certificate fingerprint check
+      required.
+
+      Read-only :class:`bytes` property.
+
+      .. versionadded:: 0.16
+
    .. method:: clear_resolved_hosts(self, host=None, port=None)
 
       Clear internal *DNS* cache.
