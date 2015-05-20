@@ -4,6 +4,8 @@ CHANGES
 0.16.0 (XX-XX-XXXX)
 -------------------
 
+- Update request url with query parameters #372
+
 - Support new `fingerprint` param of TCPConnector to enable verifying
   ssl certificates via md5, sha1, or sha256 digest #366
 
