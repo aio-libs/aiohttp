@@ -4,6 +4,9 @@ CHANGES
 0.16.0 (XX-XX-XXXX)
 -------------------
 
+- Support new `fingerprint` param of TCPConnector to enable verifying
+  ssl certificates via md5, sha1, or sha256 digest
+
 - Setup uploaded filename if field value is binary and transfer
   encoding is not specified #349
 

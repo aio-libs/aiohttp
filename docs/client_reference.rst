@@ -421,7 +421,7 @@ constructor's parameter).
       Abstract method for actual connection establishing, should be
       overriden in subclasses.
 
-.. class:: TCPConnector(*, verify_ssl=True, resolve=False, \
+.. class:: TCPConnector(*, verify_ssl=True, fingerprint=None, resolve=False, \
                         family=socket.AF_INET, \
                         ssl_context=None, conn_timeout=None, \
                         keepalive_timeout=30, limit=None, share_cookies=False, \
@@ -429,18 +429,25 @@ constructor's parameter).
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
-   The most common transport, when you don't know what connector type
-   you need use :class:`TCPConnector` instance.
+   The most common transport. When you don't know what connector type
+   to use, use a :class:`TCPConnector` instance.
 
-   :class:`TCPConnector` is inherited from :class:`BaseConnector`.
+   :class:`TCPConnector` inherits from :class:`BaseConnector`.
 
    Constructor accepts all parameters suitable for
    :class:`BaseConnector` plus several TCP-specific ones:
 
-   :param bool verify_ssl: do perform ssl certificate validation for
-      *HTTPS* request (the feature is enabled by default). May be
-      disabled for, e.g., skipping validation for sites with invalid
-      certificate.
+   :param bool verify_ssl: Perform SSL certificate validation for
+      *HTTPS* requests (enabled by default). May be disabled to
+      skip validation for sites with invalid certificates.
+
+   :param bytes fingerprint: Pass the binary md5, sha1, or sha256
+        digest of the expected certificate in DER format to verify
+        that the certificate the server presents matches. Useful
+        for `certificate pinning
+        <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
+
+        .. versionadded:: 0.16
 
    :param bool resolve: use internal cache for DNS lookups, ``False``
       by default.
