@@ -1058,3 +1058,17 @@ class TestProxyConnector(unittest.TestCase):
                             loop=self.loop)
         self.loop.run_until_complete(connector._create_connection(req))
         self.assertEqual(req.path, 'http://localhost:1234/path')
+
+    def test_proxy_auth_property(self):
+        connector = aiohttp.ProxyConnector(
+            'http://proxy.example.com',
+            proxy_auth=aiohttp.helpers.BasicAuth('user', 'pass'),
+            loop=self.loop)
+        self.assertEqual(('user', 'pass', 'latin1'), connector.proxy_auth)
+        connector.close()
+
+    def test_proxy_auth_property_default(self):
+        connector = aiohttp.ProxyConnector('http://proxy.example.com',
+                                           loop=self.loop)
+        self.assertIsNone(connector.proxy_auth)
+        connector.close()
