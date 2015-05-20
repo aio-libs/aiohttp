@@ -223,6 +223,28 @@ Usage example::
       :param data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)
 
+
+   .. coroutinemethod:: ws_connect(url, *, protocols=(), timeout=10.0\
+                                   ws_response_class=None, autoclose=True,\
+                                   autoping=True)
+
+      Create a websocket connection. Returns a :class:`ClientWebSocketResponse` object.
+
+      :param str url: Websocket server url
+
+      :param tuple protocols: Websocket protocols
+
+      :param float timeout: Timeout for websocket read. 10 seconds by default
+
+      :param ws_response_class: (optional) Custom Response class implementation
+
+      :param bool autoclose: Automatically close websocket connection on close
+                             message from server. If `autoclose` is False
+                             them close procedure has to be handled manually
+
+      :param bool autoping: automatically send `pong` on `ping` message from server
+
+
    .. method:: close()
 
       Close underlying connector.

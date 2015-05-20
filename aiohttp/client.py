@@ -1,15 +1,21 @@
 """HTTP Client for asyncio."""
 
 import asyncio
-import http.cookies
-import urllib.parse
-import warnings
+import base64
+import hashlib
+import os
 import sys
 import traceback
+import warnings
+import http.cookies
+import urllib.parse
 
 import aiohttp
 from .client_reqrep import ClientRequest, ClientResponse
+from .errors import WSServerHandshakeError
 from .multidict import MultiDictProxy, MultiDict, CIMultiDict
+from .websocket import WS_KEY, WebSocketParser, WebSocketWriter
+from .websocket_client import ClientWebSocketResponse
 from . import hdrs
 
 
@@ -166,6 +172,74 @@ class ClientSession:
             break
 
         return resp
+
+    @asyncio.coroutine
+    def ws_connect(self, url, *,
+                   protocols=(),
+                   timeout=10.0,
+                   ws_response_class=None,
+                   autoclose=True,
+                   autoping=True):
+        """Initiate websocket connection."""
+
+        sec_key = base64.b64encode(os.urandom(16))
+
+        headers = {
+            hdrs.UPGRADE: hdrs.WEBSOCKET,
+            hdrs.CONNECTION: hdrs.UPGRADE,
+            hdrs.SEC_WEBSOCKET_VERSION: '13',
+            hdrs.SEC_WEBSOCKET_KEY: sec_key.decode(),
+        }
+        if protocols:
+            headers[hdrs.SEC_WEBSOCKET_PROTOCOL] = ','.join(protocols)
+
+        # send request
+        resp = yield from self.request('get', url, headers=headers,
+                                       read_until_eof=False)
+
+        # check handshake
+        if resp.status != 101:
+            raise WSServerHandshakeError('Invalid response status')
+
+        if resp.headers.get(hdrs.UPGRADE, '').lower() != 'websocket':
+            raise WSServerHandshakeError('Invalid upgrade header')
+
+        if resp.headers.get(hdrs.CONNECTION, '').lower() != 'upgrade':
+            raise WSServerHandshakeError('Invalid connection header')
+
+        # key calculation
+        key = resp.headers.get(hdrs.SEC_WEBSOCKET_ACCEPT, '')
+        match = base64.b64encode(
+            hashlib.sha1(sec_key + WS_KEY).digest()).decode()
+        if key != match:
+            raise WSServerHandshakeError('Invalid challenge response')
+
+        # websocket protocol
+        protocol = None
+        if protocols and hdrs.SEC_WEBSOCKET_PROTOCOL in resp.headers:
+            resp_protocols = [
+                proto.strip() for proto in
+                resp.headers[hdrs.SEC_WEBSOCKET_PROTOCOL].split(',')]
+
+            for proto in resp_protocols:
+                if proto in protocols:
+                    protocol = proto
+                    break
+
+        reader = resp.connection.reader.set_parser(WebSocketParser)
+        writer = WebSocketWriter(resp.connection.writer, use_mask=True)
+
+        if ws_response_class is None:
+            ws_response_class = ClientWebSocketResponse
+
+        return ws_response_class(reader,
+                                 writer,
+                                 protocol,
+                                 resp,
+                                 timeout,
+                                 autoclose,
+                                 autoping,
+                                 self._loop)
 
     def _update_cookies(self, cookies):
         """Update shared cookies."""
