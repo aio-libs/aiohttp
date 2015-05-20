@@ -11,6 +11,7 @@ import warnings
 from collections import defaultdict
 from itertools import chain
 from math import ceil
+from types import MappingProxyType
 
 from . import hdrs
 from .client import ClientRequest
@@ -430,7 +431,7 @@ class TCPConnector(BaseConnector):
     @property
     def resolved_hosts(self):
         """The dict of (host, port) -> (ipaddr, port) pairs."""
-        return dict(self._resolved_hosts)
+        return MappingProxyType(self._resolved_hosts)
 
     def clear_resolved_hosts(self, host=None, port=None):
         """Remove specified host/port or clear all resolve cache."""
