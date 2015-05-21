@@ -244,6 +244,10 @@ decorator::
     def handler(request):
         return {'name': 'Andrew', 'surname': 'Svetlov'}
 
+If you prefer `Mako template engine <http://www.makotemplates.org/>`_
+please take a look on
+`aiohttp_mako <https://github.com/aio-libs/aiohttp_mako>`_ library.
+
 
 User sessions
 -------------
