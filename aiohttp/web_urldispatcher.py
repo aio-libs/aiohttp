@@ -141,7 +141,7 @@ class DynamicRoute(Route):
 
 class StaticRoute(Route):
 
-    limit = 8192
+    limit = 64 * 1024
 
     def __init__(self, name, prefix, directory, expect_handler=None):
         assert prefix.startswith('/'), prefix
