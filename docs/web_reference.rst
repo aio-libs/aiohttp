@@ -29,9 +29,20 @@ first positional parameter.
 
 .. class:: Request
 
+   .. attribute:: scheme
+
+      A string representing the scheme of the request.
+
+      The scheme is ``'https'`` if transport for request handling is
+      *SSL* or ``secure_proxy_ssl_header`` is matching.
+
+      ``'http'`` otherwise.
+
+      Read-only :class:`str` property.
+
    .. attribute:: method
 
-      *HTTP method*, Read-only property.
+      *HTTP method*, read-only property.
 
       The value is upper-cased :class:`str` like ``"GET"``,
       ``"POST"``, ``"PUT"`` etc.

@@ -114,6 +114,10 @@ class Request(dict, HeadersMixin):
 
     @property
     def scheme(self):
+        """A string representing the scheme of the request.
+
+        'http' or 'https'.
+        """
         if self._transport.get_extra_info('sslcontext'):
             return 'https'
         secure_proxy_ssl_header = self._secure_proxy_ssl_header
