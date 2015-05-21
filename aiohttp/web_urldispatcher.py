@@ -338,7 +338,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         self._urls.append(route)
 
     def add_route(self, method, path, handler,
-                  *, name=None, expect_handler=None):
+                  *, name=None, expect_handler=None, **kwargs):
 
         assert callable(handler), handler
         if (not asyncio.iscoroutinefunction(handler) and
@@ -383,6 +383,10 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         route = DynamicRoute(
             method, handler, name, compiled,
             formatter, expect_handler=expect_handler)
+
+        for attr, value in kwargs.items():
+            setattr(route, attr, value)
+
         self.register_route(route)
         return route
 
