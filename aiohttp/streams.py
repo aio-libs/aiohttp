@@ -361,7 +361,11 @@ class DataQueue:
 
             assert not self._waiter
             self._waiter = asyncio.Future(loop=self._loop)
-            yield from self._waiter
+            try:
+                yield from self._waiter
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                self._waiter = None
+                raise
 
         if self._buffer:
             data, size = self._buffer.popleft()

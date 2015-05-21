@@ -526,13 +526,15 @@ class DataQueueMixin:
     def test_read_cancelled(self):
         read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
         test_utils.run_briefly(self.loop)
-        self.assertIsInstance(self.buffer._waiter, asyncio.Future)
+        waiter = self.buffer._waiter
+        self.assertIsInstance(waiter, asyncio.Future)
 
         read_task.cancel()
         self.assertRaises(
             asyncio.CancelledError,
             self.loop.run_until_complete, read_task)
-        self.assertTrue(self.buffer._waiter.cancelled())
+        self.assertTrue(waiter.cancelled())
+        self.assertIsNone(self.buffer._waiter)
 
         self.buffer.feed_data(b'test', 4)
         self.assertIsNone(self.buffer._waiter)
