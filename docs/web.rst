@@ -575,3 +575,29 @@ some pre- and post- processing like handling *CORS* and so on.
 
    Middleware accepts route exceptions (:exc:`HTTPNotFound` and
    :exc:`HTTPMethodNotAllowed`).
+
+
+Debug toolbar
+-------------
+
+`aiohttp_debugtoolbar
+<https://github.com/aio-libs/aiohttp_debugtoolbar>`_ is very useful
+library that provides debug toolbar while you're developing
+:mod:`aiohttp.web` application.
+
+Install it via ``pip`` tool::
+
+    $ pip install aiohttp_debugtoolbar
+
+
+After that attach middleware to your :class:`aiohttp.web.Application`
+and call ``aiohttp_debugtoolbar.setup``::
+
+    import aiohttp_debugtoolbar
+    from aiohttp_debugtoolbar import toolbar_middleware_factory
+
+    app = web.Application(loop=loop,
+                          middlewares=[toolbar_middleware_factory])
+    aiohttp_debugtoolbar.setup(app)
+
+Debug toolbar is ready to use. Enjoy!!!
