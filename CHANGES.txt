@@ -4,6 +4,8 @@ CHANGES
 0.16.0 (XX-XX-XXXX)
 -------------------
 
+- Unset waiter future after cancellation #363
+
 - Update request url with query parameters #372
 
 - Support new `fingerprint` param of TCPConnector to enable verifying
