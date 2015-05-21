@@ -80,7 +80,7 @@ class Request(dict, HeadersMixin):
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
     def __init__(self, app, message, payload, transport, reader, writer, *,
-                 _HOST=hdrs.HOST):
+                 _HOST=hdrs.HOST, secure_proxy_ssl_header=None):
         self._app = app
         self._version = message.version
         self._transport = transport
@@ -109,11 +109,13 @@ class Request(dict, HeadersMixin):
 
         self._read_bytes = None
 
+        self._secure_proxy_ssl_header = secure_proxy_ssl_header
+
     @property
     def scheme(self):
         if self._transport.get_extra_info('sslcontext'):
             return 'https'
-        secure_proxy_ssl_header = self._app.secure_proxy_ssl_header
+        secure_proxy_ssl_header = self._secure_proxy_ssl_header
         if secure_proxy_ssl_header is not None:
             header, value = secure_proxy_ssl_header
             if self._headers.get(header) == value:

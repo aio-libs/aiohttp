@@ -23,7 +23,6 @@ class TestWebRequest(unittest.TestCase):
         if version < HttpVersion(1, 1):
             closing = True
         self.app = mock.Mock()
-        self.app.secure_proxy_ssl_header = secure_proxy_ssl_header
         message = RawRequestMessage(method, path, version, headers, closing,
                                     False)
         self.payload = mock.Mock()
@@ -39,7 +38,8 @@ class TestWebRequest(unittest.TestCase):
         self.writer = mock.Mock()
         self.reader = mock.Mock()
         req = Request(self.app, message, self.payload,
-                      self.transport, self.reader, self.writer)
+                      self.transport, self.reader, self.writer,
+                      secure_proxy_ssl_header=secure_proxy_ssl_header)
         return req
 
     def test_ctor(self):
