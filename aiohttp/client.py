@@ -30,10 +30,10 @@ class ClientSession:
     _source_traceback = None
     _connector = None
 
-    def __init__(self, *, connector=None, loop=None,
-                 request_class=ClientRequest, response_class=ClientResponse,
-                 ws_response_class=ClientWebSocketResponse, cookies=None,
-                 headers=None, auth=None):
+    def __init__(self, *, connector=None, loop=None, cookies=None,
+                 headers=None, auth=None, request_class=ClientRequest,
+                 response_class=ClientResponse,
+                 ws_response_class=ClientWebSocketResponse):
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop

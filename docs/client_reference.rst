@@ -29,9 +29,9 @@ Usage example::
 .. versionadded:: 0.15.2
 
 
-.. class:: ClientSession(*, connector=None, loop=None, request_class=None,\
-                          response_class=None, ws_response_class=None,\
-                          cookies=None, headers=None, auth=None)
+.. class:: ClientSession(*, connector=None, loop=None, cookies=None,\
+                         headers=None, auth=None, request_class=ClientRequest,\
+                         response_class=ClientResponse, ws_response_class=ClientWebSocketResponse)
 
    The class for creating client sessions and making requests.
 
@@ -46,14 +46,6 @@ Usage example::
       recommend to use explicit loops everywhere.
       (optional)
 
-
-   :param request_class: Custom Request class implementation (optional)
-
-   :param response_class: Custom Response class implementation (optional)
-
-   :param ws_response_class: Custom WebSocketResponse class implementation
-                             (optional)
-
    :param dict cookies: Cookies to send with the request (optional)
 
    :param dict headers: HTTP Headers to send with
@@ -61,6 +53,15 @@ Usage example::
 
    :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that represents
                                           HTTP Basic Auth (optional)
+
+   :param request_class: Request class implementation. ``ClientRequest``
+                         by default.
+
+   :param response_class: Response class implementation.
+                          ``ClientResponse`` by default.
+
+   :param ws_response_class: WebSocketResponse class implementation.
+                             ``ClientWebSocketResponse`` by default.
 
    .. attribute:: closed
 
