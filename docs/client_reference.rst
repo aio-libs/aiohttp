@@ -30,8 +30,8 @@ Usage example::
 
 
 .. class:: ClientSession(*, connector=None, loop=None, request_class=None,\
-                          response_class=None, cookies=None, headers=None,\
-                          auth=None)
+                          response_class=None, ws_response_class=None,\
+                          cookies=None, headers=None, auth=None)
 
    The class for creating client sessions and making requests.
 
@@ -50,6 +50,9 @@ Usage example::
    :param request_class: Custom Request class implementation (optional)
 
    :param response_class: Custom Response class implementation (optional)
+
+   :param ws_response_class: Custom WebSocketResponse class implementation
+                             (optional)
 
    :param dict cookies: Cookies to send with the request (optional)
 
@@ -225,8 +228,7 @@ Usage example::
 
 
    .. coroutinemethod:: ws_connect(url, *, protocols=(), timeout=10.0\
-                                   ws_response_class=None, autoclose=True,\
-                                   autoping=True)
+                                   autoclose=True, autoping=True)
 
       Create a websocket connection. Returns a :class:`ClientWebSocketResponse` object.
 
@@ -235,8 +237,6 @@ Usage example::
       :param tuple protocols: Websocket protocols
 
       :param float timeout: Timeout for websocket read. 10 seconds by default
-
-      :param ws_response_class: (optional) Custom Response class implementation
 
       :param bool autoclose: Automatically close websocket connection on close
                              message from server. If `autoclose` is False

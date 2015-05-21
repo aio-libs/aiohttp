@@ -62,7 +62,8 @@ do not create an instance of class :class:`ClientWebSocketResponse` manually.
 
    :param obj connector: object :class:`TCPConnector`
 
-   :param ws_response_class: (optional) Custom Response class implementation.
+   :param ws_response_class: (optional) Custom WebSocketResponse class
+                             implementation.
 
    :param bool autoclose: Automatically close websocket connection
                           on close message from server. If `autoclose` is

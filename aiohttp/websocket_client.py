@@ -39,14 +39,18 @@ def ws_connect(url, *, protocols=(), timeout=10.0, connector=None,
     if connector is None:
         connector = aiohttp.TCPConnector(loop=loop, force_close=True)
 
-    session = aiohttp.ClientSession(loop=loop, connector=connector)
+    kwargs = {}
+
+    if ws_response_class is not None:
+        kwargs['ws_response_class'] = ws_response_class
+
+    session = aiohttp.ClientSession(loop=loop, connector=connector, **kwargs)
 
     try:
         resp = yield from session.ws_connect(
             url,
             protocols=protocols,
             timeout=timeout,
-            ws_response_class=ws_response_class,
             autoclose=autoclose,
             autoping=autoping)
         return resp

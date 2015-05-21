@@ -32,7 +32,8 @@ class ClientSession:
 
     def __init__(self, *, connector=None, loop=None,
                  request_class=ClientRequest, response_class=ClientResponse,
-                 cookies=None, headers=None, auth=None):
+                 ws_response_class=ClientWebSocketResponse, cookies=None,
+                 headers=None, auth=None):
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
@@ -64,6 +65,7 @@ class ClientSession:
 
         self._request_class = request_class
         self._response_class = response_class
+        self._ws_response_class = ws_response_class
 
     if PY_34:
         def __del__(self):
@@ -177,7 +179,6 @@ class ClientSession:
     def ws_connect(self, url, *,
                    protocols=(),
                    timeout=10.0,
-                   ws_response_class=None,
                    autoclose=True,
                    autoping=True):
         """Initiate websocket connection."""
@@ -229,17 +230,14 @@ class ClientSession:
         reader = resp.connection.reader.set_parser(WebSocketParser)
         writer = WebSocketWriter(resp.connection.writer, use_mask=True)
 
-        if ws_response_class is None:
-            ws_response_class = ClientWebSocketResponse
-
-        return ws_response_class(reader,
-                                 writer,
-                                 protocol,
-                                 resp,
-                                 timeout,
-                                 autoclose,
-                                 autoping,
-                                 self._loop)
+        return self._ws_response_class(reader,
+                                       writer,
+                                       protocol,
+                                       resp,
+                                       timeout,
+                                       autoclose,
+                                       autoping,
+                                       self._loop)
 
     def _update_cookies(self, cookies):
         """Update shared cookies."""
