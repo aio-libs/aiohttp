@@ -17,7 +17,9 @@ class TestWebRequest(unittest.TestCase):
         self.loop.close()
 
     def make_request(self, method, path, headers=CIMultiDict(), *,
-                     version=HttpVersion(1, 1), closing=False):
+                     version=HttpVersion(1, 1), closing=False,
+                     sslcontext=None,
+                     secure_proxy_ssl_header=None):
         if version < HttpVersion(1, 1):
             closing = True
         self.app = mock.Mock()
@@ -25,10 +27,19 @@ class TestWebRequest(unittest.TestCase):
                                     False)
         self.payload = mock.Mock()
         self.transport = mock.Mock()
+
+        def get_extra_info(key):
+            if key == 'sslcontext':
+                return sslcontext
+            else:
+                return None
+
+        self.transport.get_extra_info.side_effect = get_extra_info
         self.writer = mock.Mock()
         self.reader = mock.Mock()
         req = Request(self.app, message, self.payload,
-                      self.transport, self.reader, self.writer)
+                      self.transport, self.reader, self.writer,
+                      secure_proxy_ssl_header=secure_proxy_ssl_header)
         return req
 
     def test_ctor(self):
@@ -175,3 +186,23 @@ class TestWebRequest(unittest.TestCase):
     def test___repr__(self):
         req = self.make_request('GET', '/path/to')
         self.assertEqual("<Request GET /path/to >", repr(req))
+
+    def test_http_scheme(self):
+        req = self.make_request('GET', '/')
+        self.assertEqual("http", req.scheme)
+
+    def test_https_scheme_by_ssl_transport(self):
+        req = self.make_request('GET', '/', sslcontext=True)
+        self.assertEqual("https", req.scheme)
+
+    def test_https_scheme_by_secure_proxy_ssl_header(self):
+        req = self.make_request('GET', '/',
+                                secure_proxy_ssl_header=('X-HEADER', '1'),
+                                headers=CIMultiDict({'X-HEADER': '1'}))
+        self.assertEqual("https", req.scheme)
+
+    def test_https_scheme_by_secure_proxy_ssl_header_false_test(self):
+        req = self.make_request('GET', '/',
+                                secure_proxy_ssl_header=('X-HEADER', '1'),
+                                headers=CIMultiDict({'X-HEADER': '0'}))
+        self.assertEqual("http", req.scheme)

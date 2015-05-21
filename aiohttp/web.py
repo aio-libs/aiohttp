@@ -29,13 +29,15 @@ class RequestHandler(ServerHttpProtocol):
     _meth = 'none'
     _path = 'none'
 
-    def __init__(self, manager, app, router, **kwargs):
+    def __init__(self, manager, app, router, *,
+                 secure_proxy_ssl_header=None, **kwargs):
         super().__init__(**kwargs)
 
         self._manager = manager
         self._app = app
         self._router = router
         self._middlewares = app.middlewares
+        self._secure_proxy_ssl_header = secure_proxy_ssl_header
 
     def __repr__(self):
         return "<{} {}:{} {}>".format(
@@ -58,8 +60,10 @@ class RequestHandler(ServerHttpProtocol):
             now = self._loop.time()
 
         app = self._app
-        request = Request(app, message, payload,
-                          self.transport, self.reader, self.writer)
+        request = Request(
+            app, message, payload,
+            self.transport, self.reader, self.writer,
+            secure_proxy_ssl_header=self._secure_proxy_ssl_header)
         self._meth = request.method
         self._path = request.path
         try:
@@ -105,14 +109,20 @@ class RequestHandler(ServerHttpProtocol):
 class RequestHandlerFactory:
 
     def __init__(self, app, router, *,
-                 handler=RequestHandler, loop=None, **kwargs):
+                 handler=RequestHandler, loop=None,
+                 secure_proxy_ssl_header=None, **kwargs):
         self._app = app
         self._router = router
         self._handler = handler
         self._loop = loop
         self._connections = {}
+        self._secure_proxy_ssl_header = secure_proxy_ssl_header
         self._kwargs = kwargs
         self._kwargs.setdefault('logger', app.logger)
+
+    @property
+    def secure_proxy_ssl_header(self):
+        return self._secure_proxy_ssl_header
 
     @property
     def connections(self):
@@ -159,7 +169,9 @@ class RequestHandlerFactory:
 
     def __call__(self):
         return self._handler(
-            self, self._app, self._router, loop=self._loop, **self._kwargs)
+            self, self._app, self._router, loop=self._loop,
+            secure_proxy_ssl_header=self._secure_proxy_ssl_header,
+            **self._kwargs)
 
 
 class Application(dict):
