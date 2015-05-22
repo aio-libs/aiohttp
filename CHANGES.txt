@@ -40,6 +40,8 @@ CHANGES
 
 - Add `connector.force_close` property
 
+- Add ws_connect to ClientSession #374
+
 
 0.15.3 (04-22-2015)
 -------------------
