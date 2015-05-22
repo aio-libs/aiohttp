@@ -29,6 +29,7 @@ class MsgType(IntEnum):
 closedMessage = Message(MsgType.closed, None, None)
 
 
+@asyncio.coroutine
 def ws_connect(url, *, protocols=(), timeout=10.0, connector=None,
                ws_response_class=None, autoclose=True, autoping=True,
                loop=None):

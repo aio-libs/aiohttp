@@ -54,14 +54,22 @@ Usage example::
    :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that represents
                                           HTTP Basic Auth (optional)
 
-   :param request_class: Request class implementation. ``ClientRequest``
-                         by default.
+   :param request_class: Request class implementation. ``ClientRequest`` by
+                         default.
 
-   :param response_class: Response class implementation.
-                          ``ClientResponse`` by default.
+   :param response_class: Response class implementation. ``ClientResponse`` by
+                          default.
 
    :param ws_response_class: WebSocketResponse class implementation.
                              ``ClientWebSocketResponse`` by default.
+
+                             .. versionadded:: 0.16
+
+   .. versionchanged:: 0.16
+      *request_class* default changed from ``None`` to ``ClientRequest``
+
+   .. versionchanged:: 0.16
+      *response_class* default changed from ``None`` to ``ClientResponse``
 
    .. attribute:: closed
 
@@ -245,6 +253,7 @@ Usage example::
 
       :param bool autoping: automatically send `pong` on `ping` message from server
 
+      .. versionadded:: 0.16
 
    .. method:: close()
 
