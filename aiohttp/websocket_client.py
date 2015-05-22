@@ -29,37 +29,6 @@ class MsgType(IntEnum):
 closedMessage = Message(MsgType.closed, None, None)
 
 
-@asyncio.coroutine
-def ws_connect(url, *, protocols=(), timeout=10.0, connector=None,
-               ws_response_class=None, autoclose=True, autoping=True,
-               loop=None):
-
-    if loop is None:
-        asyncio.get_event_loop()
-
-    if connector is None:
-        connector = aiohttp.TCPConnector(loop=loop, force_close=True)
-
-    kwargs = {}
-
-    if ws_response_class is not None:
-        kwargs['ws_response_class'] = ws_response_class
-
-    session = aiohttp.ClientSession(loop=loop, connector=connector, **kwargs)
-
-    try:
-        resp = yield from session.ws_connect(
-            url,
-            protocols=protocols,
-            timeout=timeout,
-            autoclose=autoclose,
-            autoping=autoping)
-        return resp
-
-    finally:
-        session.detach()
-
-
 class ClientWebSocketResponse:
 
     def __init__(self, reader, writer, protocol,
@@ -202,3 +171,30 @@ class ClientWebSocketResponse:
                         return msg
         finally:
             self._waiting = False
+
+
+@asyncio.coroutine
+def ws_connect(url, *, protocols=(), timeout=10.0, connector=None,
+               ws_response_class=ClientWebSocketResponse, autoclose=True,
+               autoping=True, loop=None):
+
+    if loop is None:
+        asyncio.get_event_loop()
+
+    if connector is None:
+        connector = aiohttp.TCPConnector(loop=loop, force_close=True)
+
+    session = aiohttp.ClientSession(loop=loop, connector=connector,
+                                    ws_response_class=ws_response_class)
+
+    try:
+        resp = yield from session.ws_connect(
+            url,
+            protocols=protocols,
+            timeout=timeout,
+            autoclose=autoclose,
+            autoping=autoping)
+        return resp
+
+    finally:
+        session.detach()
