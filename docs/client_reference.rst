@@ -29,9 +29,9 @@ Usage example::
 .. versionadded:: 0.15.2
 
 
-.. class:: ClientSession(*, connector=None, loop=None, request_class=None,\
-                          response_class=None, cookies=None, headers=None,\
-                          auth=None)
+.. class:: ClientSession(*, connector=None, loop=None, cookies=None,\
+                         headers=None, auth=None, request_class=ClientRequest,\
+                         response_class=ClientResponse, ws_response_class=ClientWebSocketResponse)
 
    The class for creating client sessions and making requests.
 
@@ -46,11 +46,6 @@ Usage example::
       recommend to use explicit loops everywhere.
       (optional)
 
-
-   :param request_class: Custom Request class implementation (optional)
-
-   :param response_class: Custom Response class implementation (optional)
-
    :param dict cookies: Cookies to send with the request (optional)
 
    :param dict headers: HTTP Headers to send with
@@ -58,6 +53,23 @@ Usage example::
 
    :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that represents
                                           HTTP Basic Auth (optional)
+
+   :param request_class: Request class implementation. ``ClientRequest`` by
+                         default.
+
+   :param response_class: Response class implementation. ``ClientResponse`` by
+                          default.
+
+   :param ws_response_class: WebSocketResponse class implementation.
+                             ``ClientWebSocketResponse`` by default.
+
+                             .. versionadded:: 0.16
+
+   .. versionchanged:: 0.16
+      *request_class* default changed from ``None`` to ``ClientRequest``
+
+   .. versionchanged:: 0.16
+      *response_class* default changed from ``None`` to ``ClientResponse``
 
    .. attribute:: closed
 
@@ -222,6 +234,26 @@ Usage example::
 
       :param data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)
+
+
+   .. coroutinemethod:: ws_connect(url, *, protocols=(), timeout=10.0\
+                                   autoclose=True, autoping=True)
+
+      Create a websocket connection. Returns a :class:`ClientWebSocketResponse` object.
+
+      :param str url: Websocket server url
+
+      :param tuple protocols: Websocket protocols
+
+      :param float timeout: Timeout for websocket read. 10 seconds by default
+
+      :param bool autoclose: Automatically close websocket connection on close
+                             message from server. If `autoclose` is False
+                             them close procedure has to be handled manually
+
+      :param bool autoping: automatically send `pong` on `ping` message from server
+
+      .. versionadded:: 0.16
 
    .. method:: close()
 
