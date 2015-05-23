@@ -42,6 +42,8 @@ CHANGES
 
 - Add ws_connect to ClientSession #374
 
+- Support optional `chunk_size` parameter in `router.add_static()`
+
 
 0.15.3 (04-22-2015)
 -------------------

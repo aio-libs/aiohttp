@@ -979,7 +979,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       :returns: new :class:`PlainRoute` or :class:`DynamicRoute` instance.
 
-   .. method:: add_static(prefix, path, *, name=None, expect_handler=None)
+   .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
+                          chunk_size=256*1024)
 
       Adds router for returning static files.
 
@@ -999,6 +1000,13 @@ Router is any object that implements :class:`AbstractRouter` interface.
       :param str name: optional route name.
 
       :param coroutine expect_handler: optional *expect* header handler.
+
+      :param int chunk_size: size of single chunk for file
+                             downloading, 64Kb by default.
+
+                             Increasing *chunk_size* parameter to,
+                             say, 1Mb may increase file downloading
+                             speed but consumes more memory.
 
    :returns: new :class:`StaticRoute` instance.
 

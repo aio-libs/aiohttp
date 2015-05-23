@@ -46,7 +46,7 @@ def _defaultExpectHandler(request):
 
 class Route(metaclass=abc.ABCMeta):
 
-    def __init__(self, method, handler, name, expect_handler=None):
+    def __init__(self, method, handler, name, *, expect_handler=None):
         if expect_handler is None:
             expect_handler = _defaultExpectHandler
         assert asyncio.iscoroutinefunction(expect_handler), \
@@ -92,7 +92,7 @@ class Route(metaclass=abc.ABCMeta):
 
 class PlainRoute(Route):
 
-    def __init__(self, method, handler, name, path, expect_handler=None):
+    def __init__(self, method, handler, name, path, *, expect_handler=None):
         super().__init__(method, handler, name, expect_handler=expect_handler)
         self._path = path
 
@@ -115,7 +115,7 @@ class PlainRoute(Route):
 
 class DynamicRoute(Route):
 
-    def __init__(self, method, handler, name, pattern, formatter,
+    def __init__(self, method, handler, name, pattern, formatter, *,
                  expect_handler=None):
         super().__init__(method, handler, name, expect_handler=expect_handler)
         self._pattern = pattern
@@ -141,9 +141,8 @@ class DynamicRoute(Route):
 
 class StaticRoute(Route):
 
-    limit = 64 * 1024
-
-    def __init__(self, name, prefix, directory, expect_handler=None):
+    def __init__(self, name, prefix, directory, *,
+                 expect_handler=None, chunk_size=256*1024):
         assert prefix.startswith('/'), prefix
         assert prefix.endswith('/'), prefix
         super().__init__(
@@ -151,6 +150,7 @@ class StaticRoute(Route):
         self._prefix = prefix
         self._prefix_len = len(self._prefix)
         self._directory = directory
+        self._chunk_size = chunk_size
 
     def match(self, path):
         if not path.startswith(self._prefix):
@@ -181,14 +181,14 @@ class StaticRoute(Route):
             resp.headers['content-encoding'] = encoding
 
         file_size = os.stat(filepath).st_size
-        single_chunk = file_size < self.limit
+        single_chunk = file_size < self._chunk_size
 
         if single_chunk:
             resp.content_length = file_size
         resp.start(request)
 
         with open(filepath, 'rb') as f:
-            chunk = f.read(self.limit)
+            chunk = f.read(self._chunk_size)
             if single_chunk:
                 resp.write(chunk)
             else:
@@ -386,7 +386,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         self.register_route(route)
         return route
 
-    def add_static(self, prefix, path, *, name=None, expect_handler=None):
+    def add_static(self, prefix, path, *, name=None, expect_handler=None,
+                   chunk_size=256*1024):
         """
         Adds static files view
         :param prefix - url prefix
@@ -397,6 +398,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         path = os.path.abspath(path)
         if not prefix.endswith('/'):
             prefix += '/'
-        route = StaticRoute(name, prefix, path, expect_handler=expect_handler)
+        route = StaticRoute(name, prefix, path,
+                            expect_handler=expect_handler,
+                            chunk_size=chunk_size)
         self.register_route(route)
         return route
