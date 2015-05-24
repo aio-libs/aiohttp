@@ -56,6 +56,9 @@ class Connection(object):
     if PY_34:
         def __del__(self):
             if self._transport is not None:
+                if self._loop.is_closed():
+                    return
+
                 self._connector._release(
                     self._key, self._request, self._transport, self._protocol,
                     should_close=True)
