@@ -1008,6 +1008,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
                              say, 1Mb may increase file downloading
                              speed but consumes more memory.
 
+                             .. versionadded:: 0.16
+
    :returns: new :class:`StaticRoute` instance.
 
    .. coroutinemethod:: resolve(requst)
