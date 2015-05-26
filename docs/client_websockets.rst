@@ -12,7 +12,7 @@ WebSockets Client
 
 :mod:`aiohttp` works with client websockets out-of-the-box.
 
-You have to use the :func:`aiohttp.ws_connect()` function for client
+You have to use the :func:`ws_connect()` coroutine for client
 websocket connection. It accepts a *url* as a first parameter and returns
 :class:`ClientWebSocketResponse`, with that object you can communicate with
 websocket server using response's methods:
@@ -36,10 +36,19 @@ websocket server using response's methods:
        elif msg.tp == aiohttp.MsgType.error:
            break
 
-You can have the only websocket reader task (which can call ``yield
-from ws.receive()``) and multiple writer tasks which can only send
-data asynchronously (by ``yield from ws.send_str('data')`` for
-example).
+If you prefer to establish *websocket client connection* from
+:class:`~aiohttp.client.ClientSession` object please use
+:meth:`aiohttp.client.ClientSession.ws_connect` coroutine::
+
+   session = aiohttp.ClientSession()
+   ws = yield from session.ws_connect(
+       'http://webscoket-server.org/endpoint')
+
+
+You **must** use the only websocket task for both reading (e.g ``yield
+from ws.receive()``) and writing but may have multiple writer tasks
+which can only send data asynchronously (by ``yield from
+ws.send_str('data')`` for example).
 
 
 ClientWebSocketResponse

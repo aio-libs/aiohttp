@@ -416,9 +416,10 @@ using response's methods:
 
         return ws
 
-You can have only one websocket reader task (which can call ``yield
-from ws.receive()``) and multiple writer tasks which can only send
-data asynchronously (by ``yield from ws.send_str('data')`` for example).
+You **must** use the only websocket task for both reading (e.g ``yield
+from ws.receive()``) and writing but may have multiple writer tasks
+which can only send data asynchronously (by ``yield from
+ws.send_str('data')`` for example).
 
 
 .. _aiohttp-web-exceptions:
