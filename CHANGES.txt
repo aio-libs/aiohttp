@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-0.16.0 (XX-XX-XXXX)
+0.16.0 (05-26-2015)
 -------------------
 
 - Unset waiter future after cancellation #363
