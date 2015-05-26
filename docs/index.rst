@@ -15,8 +15,9 @@ HTTP client/server for :term:`asyncio` (:pep:`3156`).
 Features
 --------
 
-- Supports both :ref:`aiohttp-client` and :ref:`aiohttp-web`.
-- Supports :ref:`aiohttp-web-websockets` out-of-the-box.
+- Supports both :ref:`aiohttp-client` and :ref:`HTTP Server <aiohttp-web>`.
+- Supports both :ref:`Server WebSockets <aiohttp-web-websockets>` and
+  :ref:`Client WebSockets <aiohttp-client-websockets>` out-of-the-box.
 - Web-server has :ref:`aiohttp-web-middlewares` and pluggable routing.
 
 Library Installation

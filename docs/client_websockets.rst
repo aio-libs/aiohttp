@@ -37,7 +37,8 @@ websocket server using response's methods:
 
 You can have the only websocket reader task (which can call ``yield
 from ws.receive()``) and multiple writer tasks which can only send
-data asynchronously (by ``yield from ws.send_str('data')`` for example).
+data asynchronously (by ``yield from ws.send_str('data')`` for
+example).
 
 
 ClientWebSocketResponse
