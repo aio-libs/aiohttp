@@ -19,7 +19,8 @@ websocket server using response's methods:
 
 .. code-block:: python
 
-   ws = yield from aiohttp.ws_connect('http://webscoket-server.org/endpoint')
+   ws = yield from aiohttp.ws_connect(
+       'http://webscoket-server.org/endpoint')
 
    while True:
        msg = yield from ws.receive()
