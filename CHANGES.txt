@@ -1,6 +1,13 @@
 CHANGES
 =======
 
+0.16.2 (05-27-2015)
+-------------------
+
+- Update python version required for `__del__` usage: it's actially
+   3.4.1 instead of 3.4.0
+
+
 0.16.1 (05-27-2015)
 -------------------
 
