@@ -518,23 +518,23 @@ class TCPConnector(BaseConnector):
             try:
                 host = hinfo['host']
                 port = hinfo['port']
-                conn = yield from self._loop.create_connection(
+                transp, proto = yield from self._loop.create_connection(
                     self._factory, host, port,
                     ssl=sslcontext, family=hinfo['family'],
                     proto=hinfo['proto'], flags=hinfo['flags'],
                     server_hostname=hinfo['hostname'] if sslcontext else None)
-                transport = conn[0]
-                has_cert = transport.get_extra_info('sslcontext')
+                has_cert = transp.get_extra_info('sslcontext')
                 if has_cert and self._fingerprint:
-                    sock = transport.get_extra_info('socket')
+                    sock = transp.get_extra_info('socket')
                     # gives DER-encoded cert as a sequence of bytes (or None)
                     cert = sock.getpeercert(binary_form=True)
                     assert cert
                     got = self._hashfunc(cert).digest()
                     expected = self._fingerprint
                     if got != expected:
+                        transp.close()
                         raise FingerprintMismatch(expected, got, host, port)
-                return conn
+                return transp, proto
             except OSError as e:
                 exc = e
         else:
