@@ -267,7 +267,7 @@ class TestWebFunctional(unittest.TestCase):
             app, _, url = yield from self.create_server(
                 'GET', '/static/' + filename
             )
-            app.router.add_static('/static', dirname, chunk_size=16)
+            app.router.add_static('/static', dirname)
 
             resp = yield from request('GET', url, loop=self.loop)
             self.assertEqual(200, resp.status)
@@ -297,7 +297,7 @@ class TestWebFunctional(unittest.TestCase):
             app, _, url = yield from self.create_server(
                 'GET', '/static/' + filename
             )
-            app.router.add_static('/static', dirname)
+            app.router.add_static('/static', dirname, chunk_size=16)
 
             resp = yield from request('GET', url, loop=self.loop)
             self.assertEqual(200, resp.status)

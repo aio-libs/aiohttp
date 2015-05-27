@@ -194,7 +194,7 @@ class StaticRoute(Route):
             else:
                 while chunk:
                     resp.write(chunk)
-                    chunk = f.read(self.limit)
+                    chunk = f.read(self._chunk_size)
 
         return resp
 
