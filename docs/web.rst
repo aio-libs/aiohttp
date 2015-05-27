@@ -110,7 +110,7 @@ Routes may have a *name*::
 In web-handler you may build *URL* for that route::
 
    >>> request.app.router['root'].url(query="?a=b&c=d")
-   ... '/root?a=b&c=d'
+   '/root?a=b&c=d'
 
 More interesting example is building *URL* for :ref:`variable
 router<aiohttp-web-variable-handler>`::
@@ -121,9 +121,10 @@ router<aiohttp-web-variable-handler>`::
 
 In this case you can pass route parameters also::
 
-   >>> request.app.router['handler'].url(params={'user': 'john_doe'},
-                                         query="?a=b")
-   ... '/john_doe/info?a=b'
+   >>> request.app.router['handler'].url(
+   ...     params={'user': 'john_doe'},
+   ...     query="?a=b")
+   '/john_doe/info?a=b'
 
 
 Using plain coroutines and classes for web-handlers
@@ -412,7 +413,8 @@ using response's methods:
             elif msg.tp == aiohttp.MsgType.close:
                 print('websocket connection closed')
             elif msg.tp == aiohttp.MsgType.error:
-                print('ws connection closed with exception %s', ws.exception())
+                print('ws connection closed with exception %s',
+                      ws.exception())
 
         return ws
 
