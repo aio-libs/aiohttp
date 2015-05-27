@@ -56,8 +56,9 @@ class Connection(object):
     if PY_341:
         def __del__(self):
             if self._transport is not None:
-                if self._loop.is_closed():
-                    return
+                if hasattr(self._loop, 'is_closed'):
+                    if self._loop.is_closed():
+                        return
 
                 self._connector._release(
                     self._key, self._request, self._transport, self._protocol,
@@ -222,7 +223,11 @@ class BaseConnector(object):
             return
         self._closed = True
 
-        if not self._loop.is_closed():
+        try:
+            if hasattr(self._loop, 'is_closed'):
+                if self._loop.is_closed():
+                    return
+
             for key, data in self._conns.items():
                 for transport, proto, t0 in data:
                     transport.close()
@@ -233,9 +238,10 @@ class BaseConnector(object):
             if self._cleanup_handle:
                 self._cleanup_handle.cancel()
 
-        self._conns.clear()
-        self._acquired.clear()
-        self._cleanup_handle = None
+        finally:
+            self._conns.clear()
+            self._acquired.clear()
+            self._cleanup_handle = None
 
     @property
     def closed(self):

@@ -463,7 +463,10 @@ class ClientRequest:
 
     def terminate(self):
         if self._writer is not None:
-            if not self.loop.is_closed():
+            if hasattr(self.loop, 'is_closed'):
+                if not self.loop.is_closed():
+                    self._writer.cancel()
+            else:
                 self._writer.cancel()
             self._writer = None
 
@@ -591,8 +594,9 @@ class ClientResponse:
 
         self._closed = True
 
-        if self._loop.is_closed():
-            return
+        if hasattr(self._loop, 'is_closed'):
+            if self._loop.is_closed():
+                return
 
         if self._connection is not None:
             if self.content and not self.content.at_eof():

@@ -7,6 +7,9 @@ CHANGES
 - Update python version required for `__del__` usage: it's actially
    3.4.1 instead of 3.4.0
 
+- Add check for presence of loop.is_closed() method before call the
+  former
+
 
 0.16.1 (05-27-2015)
 -------------------
