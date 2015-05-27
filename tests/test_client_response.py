@@ -9,7 +9,7 @@ import sys
 import aiohttp
 from aiohttp.client_reqrep import ClientResponse
 
-PY_34 = sys.version_info >= (3, 4)
+PY_341 = sys.version_info >= (3, 4, 1)
 
 
 class TestClientResponse(unittest.TestCase):
@@ -26,7 +26,7 @@ class TestClientResponse(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
-    @unittest.skipUnless(PY_34, "Requires Python 3.4+")
+    @unittest.skipUnless(PY_341, "Requires Python 3.4.1+")
     def test_del(self):
         response = ClientResponse('get', 'http://python.org')
         response._post_init(self.loop)

@@ -18,7 +18,7 @@ from .streams import EOF_MARKER, FlowControlStreamReader
 from .multidict import CIMultiDictProxy, MultiDictProxy, MultiDict, CIMultiDict
 from .multipart import MultipartWriter
 
-PY_34 = sys.version_info >= (3, 4)
+PY_341 = sys.version_info >= (3, 4, 1)
 
 HTTP_PORT = 80
 HTTPS_PORT = 443
@@ -507,7 +507,7 @@ class ClientResponse:
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
-    if PY_34:
+    if PY_341:
         def __del__(self):
             if self._closed:
                 return

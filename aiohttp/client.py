@@ -21,7 +21,7 @@ from . import hdrs
 
 __all__ = ('request', 'ClientSession')
 
-PY_34 = sys.version_info >= (3, 4)
+PY_341 = sys.version_info >= (3, 4, 1)
 
 
 class ClientSession:
@@ -67,7 +67,7 @@ class ClientSession:
         self._response_class = response_class
         self._ws_response_class = ws_response_class
 
-    if PY_34:
+    if PY_341:
         def __del__(self):
             if not self.closed:
                 self.close()

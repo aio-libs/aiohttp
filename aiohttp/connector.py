@@ -25,7 +25,7 @@ from .helpers import BasicAuth
 
 __all__ = ('BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector')
 
-PY_34 = sys.version_info >= (3, 4)
+PY_341 = sys.version_info >= (3, 4, 1)
 PY_343 = sys.version_info >= (3, 4, 3)
 
 HASHFUNC_BY_DIGESTLEN = {
@@ -53,7 +53,7 @@ class Connection(object):
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
-    if PY_34:
+    if PY_341:
         def __del__(self):
             if self._transport is not None:
                 if self._loop.is_closed():
@@ -141,7 +141,7 @@ class BaseConnector(object):
 
         self.cookies = http.cookies.SimpleCookie()
 
-    if PY_34:
+    if PY_341:
         def __del__(self):
             if self._closed:
                 return

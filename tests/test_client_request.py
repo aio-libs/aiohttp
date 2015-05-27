@@ -11,7 +11,7 @@ import os.path
 import aiohttp
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
 
-PY_34 = sys.version_info >= (3, 4)
+PY_341 = sys.version_info >= (3, 4, 1)
 
 
 class TestClientRequest(unittest.TestCase):
