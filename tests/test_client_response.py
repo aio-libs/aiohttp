@@ -2,6 +2,7 @@
 """Tests for aiohttp/client.py"""
 
 import asyncio
+import gc
 import unittest
 import unittest.mock
 import sys
@@ -35,6 +36,7 @@ class TestClientResponse(unittest.TestCase):
         response._setup_connection(connection)
         with self.assertWarns(ResourceWarning):
             del response
+            gc.collect()
 
         connection.close.assert_called_with()
 

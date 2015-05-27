@@ -657,6 +657,8 @@ class TestClientRequest(unittest.TestCase):
         writer.cancel.assert_called_with()
 
     def test_terminate_with_closed_loop(self):
+        if not hasattr(self.loop, 'is_closed'):
+            self.skipTest("Required asyncio 3.4.2+")
         req = ClientRequest('get', 'http://python.org', loop=self.loop)
         req.send(self.transport, self.protocol)
         self.assertIsNotNone(req._writer)

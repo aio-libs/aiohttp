@@ -2,6 +2,7 @@
 """Tests for aiohttp/client.py"""
 
 import asyncio
+import gc
 import unittest
 from unittest import mock
 import sys
@@ -360,6 +361,7 @@ class TestClientSession(unittest.TestCase):
 
         with self.assertWarns(ResourceWarning):
             del session
+            gc.collect()
 
 
 class TestCLientRequest(unittest.TestCase):

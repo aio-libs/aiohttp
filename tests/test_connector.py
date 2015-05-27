@@ -45,6 +45,8 @@ class TestHttpConnection(unittest.TestCase):
 
         with self.assertWarns(ResourceWarning):
             del conn
+            gc.collect()
+
         self.connector._release.assert_called_with(self.key,
                                                    self.request,
                                                    self.transport,
@@ -129,6 +131,7 @@ class TestBaseConnector(unittest.TestCase):
 
         with self.assertWarns(ResourceWarning):
             del conn
+            gc.collect()
 
         self.assertFalse(conns_impl)
         transp.close.assert_called_with()
