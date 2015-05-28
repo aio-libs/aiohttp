@@ -284,6 +284,8 @@ class Request(dict, HeadersMixin):
     def json(self, *, loader=json.loads):
         """Return BODY as JSON."""
         body = yield from self.text()
+        if not body:
+            return loader('{}')
         return loader(body)
 
     @asyncio.coroutine
