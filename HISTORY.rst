@@ -1,3 +1,75 @@
+0.15.3 (04-22-2015)
+-------------------
+
+- Fix graceful shutdown handling
+
+- Fix `Expect` header handling for not found and not allowed routes #340
+
+
+0.15.2 (04-19-2015)
+-------------------
+
+- Flow control subsystem refactoring
+
+- Http server performace optimizations
+
+- Allow to match any request method with `*`
+
+- Explicitly call drain on transport #316
+
+- Make chardet module dependency mandatory #318
+
+- Support keep-alive for HTTP 1.0 #325
+
+- Do not chunk single file during upload #327
+
+- Add ClientSession object for cookie storage and default headers #328
+
+- Add `keep_alive_on` argument for http server handler.
+
+
+0.15.1 (03-31-2015)
+-------------------
+
+- Pass Autobahn Testsuit tests
+
+- Fixed websocket fragmentation
+
+- Fixed websocket close procedure
+
+- Fixed parser buffer limits
+
+- Added `timeout` parameter to WebSocketResponse ctor
+
+- Added `WebSocketResponse.close_code` attribute
+
+
+0.15.0 (03-27-2015)
+-------------------
+
+- Client WebSockets support
+
+- New Multipart system #273
+
+- Support for "Except" header #287 #267
+
+- Set default Content-Type for post requests #184
+
+- Fix issue with construction dynamic route with regexps and trailing slash #266
+
+- Add repr to web.Request
+
+- Add repr to web.Response
+
+- Add repr for NotFound and NotAllowed match infos
+
+- Add repr for web.Application
+
+- Add repr to UrlMappingMatchInfo #217
+
+- Gunicorn 19.2.x compatibility
+
+
 0.14.4 (01-29-2015)
 -------------------
 
@@ -9,7 +81,7 @@
 
 - Use path='/' by default for cookies #261
 
-  
+
 0.14.2 (01-23-2015)
 -------------------
 
@@ -37,8 +109,8 @@
 - multidict views do not accept `getall` parameter anymore, it
   returns the full body anyway.
 
-- multidicts have optional Cython optimization, cythonized version of multidicts is
-  about 5 times faster than pure Python.
+- multidicts have optional Cython optimization, cythonized version of
+  multidicts is about 5 times faster than pure Python.
 
 - multidict.getall() returns `list`, not `tuple`.
 
@@ -90,7 +162,8 @@
 
 - Fixed graceful shutdown, disable keep-alive on connection closing.
 
-- Decode http message with `utf-8` encoding, some servers send headers in utf-8 encoding #207
+- Decode http message with `utf-8` encoding, some servers send headers
+  in utf-8 encoding #207
 
 - Support `aiohtt.web` middlewares #209
 
@@ -110,7 +183,8 @@
 
 - Added POST attribute
 
-- Response processing refactoring: constructor does't accept Request instance anymore.
+- Response processing refactoring: constructor does't accept Request
+  instance anymore.
 
 - Pass application instance to finish callback
 
@@ -149,7 +223,8 @@
 - aiohttp.web.HTTPException and descendants now files response body
   with string like `404: NotFound`
 
-- Fix multidict `__iter__`, the method should iterate over keys, not (key, value) pairs.
+- Fix multidict `__iter__`, the method should iterate over keys, not
+  (key, value) pairs.
 
 
 0.10.0 (11-13-2014)
@@ -211,7 +286,8 @@
 
 - Client files handling refactoring #20.
 
-- Backward incompatible: Replace DataQueue with StreamReader for request payload #87.
+- Backward incompatible: Replace DataQueue with StreamReader for
+  request payload #87.
 
 
 0.8.4 (07-04-2014)
@@ -297,7 +373,8 @@
 
 - Do not return client connection to pool in case of exceptions.
 
-- Rename SocketConnector to TCPConnector and UnixSocketConnector to UnixConnector.
+- Rename SocketConnector to TCPConnector and UnixSocketConnector to
+  UnixConnector.
 
 
 0.7.0 (04-16-2014)
@@ -375,7 +452,8 @@
 0.4.4 (11-15-2013)
 ------------------
 
-- Resolve only AF_INET family, because it is not clear how to pass extra info to asyncio.
+- Resolve only AF_INET family, because it is not clear how to pass
+  extra info to asyncio.
 
 
 0.4.3 (11-15-2013)
