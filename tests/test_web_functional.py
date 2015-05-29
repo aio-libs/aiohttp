@@ -287,7 +287,7 @@ class TestWebFunctional(unittest.TestCase):
             resp.close()
 
         here = os.path.dirname(__file__)
-        filename = os.path.join(here, 'data.unknown_mime_type')
+        filename = 'data.unknown_mime_type'
         self.loop.run_until_complete(go(here, filename))
 
     def test_static_file_with_content_type(self):
@@ -319,7 +319,7 @@ class TestWebFunctional(unittest.TestCase):
             resp.close()
 
         here = os.path.dirname(__file__)
-        filename = os.path.join(here, 'software_development_in_picture.jpg')
+        filename = 'software_development_in_picture.jpg'
         self.loop.run_until_complete(go(here, filename))
 
     def test_static_file_with_content_encoding(self):
@@ -342,7 +342,7 @@ class TestWebFunctional(unittest.TestCase):
             resp.close()
 
         here = os.path.dirname(__file__)
-        filename = os.path.join(here, 'hello.txt.gz')
+        filename = 'hello.txt.gz'
         self.loop.run_until_complete(go(here, filename))
 
     def test_static_file_directory_traversal_attack(self):
