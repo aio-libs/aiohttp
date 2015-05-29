@@ -168,7 +168,7 @@ class StaticRoute(Route):
         resp = StreamResponse()
         filename = request.match_info['filename']
         filepath = os.path.abspath(os.path.join(self._directory, filename))
-        if not filename.startswith(self._directory):
+        if not filepath.startswith(self._directory):
             raise HTTPNotFound()
         if not os.path.exists(filepath) or not os.path.isfile(filepath):
             raise HTTPNotFound()
