@@ -364,7 +364,8 @@ class TestWebFunctional(unittest.TestCase):
             self.assertEqual(404, resp.status)
             resp.close()
 
-            url_abspath = url + os.path.abspath(os.path.join(dirname, filename))
+            url_abspath = \
+                url + os.path.abspath(os.path.join(dirname, filename))
             resp = yield from request('GET', url_abspath, loop=self.loop)
             self.assertEqual(404, resp.status)
             resp.close()
