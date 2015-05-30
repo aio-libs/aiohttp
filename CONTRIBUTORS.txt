@@ -49,5 +49,6 @@ Taras Voinarovskyi
 Tolga Tezel
 Vaibhav Sagar
 Vitaly Haritonsky
+Vitaly Magerya
 W. Trevor King
 Yannick Koechlin
