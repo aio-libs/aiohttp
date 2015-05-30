@@ -149,8 +149,12 @@ class StaticRoute(Route):
             'GET', self.handle, name, expect_handler=expect_handler)
         self._prefix = prefix
         self._prefix_len = len(self._prefix)
-        self._directory = directory
+        self._directory = os.path.abspath(directory) + os.sep
         self._chunk_size = chunk_size
+
+        if not os.path.isdir(self._directory):
+            raise ValueError(
+                "No directory exists at '{}'".format(self._directory))
 
     def match(self, path):
         if not path.startswith(self._prefix):
@@ -167,13 +171,13 @@ class StaticRoute(Route):
     def handle(self, request):
         resp = StreamResponse()
         filename = request.match_info['filename']
-        filepath = os.path.join(self._directory, filename)
-        if '..' in filename:
+        filepath = os.path.abspath(os.path.join(self._directory, filename))
+        if not filepath.startswith(self._directory):
             raise HTTPNotFound()
         if not os.path.exists(filepath) or not os.path.isfile(filepath):
             raise HTTPNotFound()
 
-        ct, encoding = mimetypes.guess_type(filename)
+        ct, encoding = mimetypes.guess_type(filepath)
         if not ct:
             ct = 'application/octet-stream'
         resp.content_type = ct
@@ -394,8 +398,6 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         :param path - folder with files
         """
         assert prefix.startswith('/')
-        assert os.path.isdir(path), 'Path does not directory %s' % path
-        path = os.path.abspath(path)
         if not prefix.endswith('/'):
             prefix += '/'
         route = StaticRoute(name, prefix, path,

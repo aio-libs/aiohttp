@@ -287,7 +287,7 @@ class TestWebFunctional(unittest.TestCase):
             resp.close()
 
         here = os.path.dirname(__file__)
-        filename = os.path.join(here, 'data.unknown_mime_type')
+        filename = 'data.unknown_mime_type'
         self.loop.run_until_complete(go(here, filename))
 
     def test_static_file_with_content_type(self):
@@ -319,7 +319,7 @@ class TestWebFunctional(unittest.TestCase):
             resp.close()
 
         here = os.path.dirname(__file__)
-        filename = os.path.join(here, 'software_development_in_picture.jpg')
+        filename = 'software_development_in_picture.jpg'
         self.loop.run_until_complete(go(here, filename))
 
     def test_static_file_with_content_encoding(self):
@@ -342,8 +342,45 @@ class TestWebFunctional(unittest.TestCase):
             resp.close()
 
         here = os.path.dirname(__file__)
-        filename = os.path.join(here, 'hello.txt.gz')
+        filename = 'hello.txt.gz'
         self.loop.run_until_complete(go(here, filename))
+
+    def test_static_file_directory_traversal_attack(self):
+
+        @asyncio.coroutine
+        def go(dirname, relpath):
+            self.assertTrue(os.path.isfile(os.path.join(dirname, relpath)))
+
+            app, _, url = yield from self.create_server('GET', '/static/')
+            app.router.add_static('/static', dirname)
+
+            url_relpath = url + relpath
+            resp = yield from request('GET', url_relpath, loop=self.loop)
+            self.assertEqual(404, resp.status)
+            resp.close()
+
+            url_relpath2 = url + 'dir/../' + filename
+            resp = yield from request('GET', url_relpath2, loop=self.loop)
+            self.assertEqual(404, resp.status)
+            resp.close()
+
+            url_abspath = \
+                url + os.path.abspath(os.path.join(dirname, filename))
+            resp = yield from request('GET', url_abspath, loop=self.loop)
+            self.assertEqual(404, resp.status)
+            resp.close()
+
+        here = os.path.dirname(__file__)
+        filename = '../README.rst'
+        self.loop.run_until_complete(go(here, filename))
+
+    def test_static_route_path_existence_check(self):
+        directory = os.path.dirname(__file__)
+        web.StaticRoute(None, "/", directory)
+
+        nodirectory = os.path.join(directory, "nonexistent-uPNiOEAg5d")
+        with self.assertRaises(ValueError):
+            web.StaticRoute(None, "/", nodirectory)
 
     def test_post_form_with_duplicate_keys(self):
 
