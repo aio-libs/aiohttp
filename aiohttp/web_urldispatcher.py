@@ -152,6 +152,10 @@ class StaticRoute(Route):
         self._directory = os.path.abspath(directory) + os.sep
         self._chunk_size = chunk_size
 
+        if not os.path.isdir(self._directory):
+            raise ValueError(
+                "No directory exists at '{}'".format(self._directory))
+
     def match(self, path):
         if not path.startswith(self._prefix):
             return None
@@ -394,7 +398,6 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         :param path - folder with files
         """
         assert prefix.startswith('/')
-        assert os.path.isdir(path), 'Path is not a directory: %s' % path
         if not prefix.endswith('/'):
             prefix += '/'
         route = StaticRoute(name, prefix, path,
