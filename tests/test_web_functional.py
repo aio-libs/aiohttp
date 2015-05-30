@@ -374,6 +374,14 @@ class TestWebFunctional(unittest.TestCase):
         filename = '../README.rst'
         self.loop.run_until_complete(go(here, filename))
 
+    def test_static_route_path_existence_check(self):
+        directory = os.path.dirname(__file__)
+        web.StaticRoute(None, "/", directory)
+
+        nodirectory = os.path.join(directory, "nonexistent-uPNiOEAg5d")
+        with self.assertRaises(ValueError):
+            web.StaticRoute(None, "/", nodirectory)
+
     def test_post_form_with_duplicate_keys(self):
 
         @asyncio.coroutine
