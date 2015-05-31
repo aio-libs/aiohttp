@@ -394,11 +394,37 @@ class TestWebFunctional(unittest.TestCase):
             self.assertEqual(304, resp.status)
             resp.close()
 
+        here = os.path.dirname(__file__)
+        filename = 'data.unknown_mime_type'
+        self.loop.run_until_complete(go(here, filename))
+
+    def test_static_file_if_modified_since_past_date(self):
+
+        @asyncio.coroutine
+        def go(dirname, filename):
+            app, _, url = yield from self.create_server(
+                'GET', '/static/' + filename
+            )
+            app.router.add_static('/static', dirname)
+
             lastmod = 'Mon, 1 Jan 1990 01:01:01 GMT'
             resp = yield from request('GET', url, loop=self.loop,
                                       headers={'If-Modified-Since': lastmod})
             self.assertIn(resp.status, (200, 304))
             resp.close()
+
+        here = os.path.dirname(__file__)
+        filename = 'data.unknown_mime_type'
+        self.loop.run_until_complete(go(here, filename))
+
+    def test_static_file_not_modified_since(self):
+
+        @asyncio.coroutine
+        def go(dirname, filename):
+            app, _, url = yield from self.create_server(
+                'GET', '/static/' + filename
+            )
+            app.router.add_static('/static', dirname)
 
             lastmod = 'Fri, 31 Dec 9999 23:59:59 GMT'
             resp = yield from request('GET', url, loop=self.loop,
