@@ -410,14 +410,14 @@ class TestWebFunctional(unittest.TestCase):
             lastmod = 'Mon, 1 Jan 1990 01:01:01 GMT'
             resp = yield from request('GET', url, loop=self.loop,
                                       headers={'If-Modified-Since': lastmod})
-            self.assertIn(resp.status, (200, 304))
+            self.assertEqual(200, resp.status)
             resp.close()
 
         here = os.path.dirname(__file__)
         filename = 'data.unknown_mime_type'
         self.loop.run_until_complete(go(here, filename))
 
-    def test_static_file_not_modified_since(self):
+    def test_static_file_if_modified_since_future_date(self):
 
         @asyncio.coroutine
         def go(dirname, filename):
@@ -429,8 +429,21 @@ class TestWebFunctional(unittest.TestCase):
             lastmod = 'Fri, 31 Dec 9999 23:59:59 GMT'
             resp = yield from request('GET', url, loop=self.loop,
                                       headers={'If-Modified-Since': lastmod})
-            self.assertEqual(200, resp.status)
+            self.assertEqual(304, resp.status)
             resp.close()
+
+        here = os.path.dirname(__file__)
+        filename = 'data.unknown_mime_type'
+        self.loop.run_until_complete(go(here, filename))
+
+    def test_static_file_if_modified_since_invalid_date(self):
+
+        @asyncio.coroutine
+        def go(dirname, filename):
+            app, _, url = yield from self.create_server(
+                'GET', '/static/' + filename
+            )
+            app.router.add_static('/static', dirname)
 
             lastmod = 'not a valid HTTP-date'
             resp = yield from request('GET', url, loop=self.loop,

@@ -11,7 +11,6 @@ import os
 import inspect
 
 from urllib.parse import urlencode
-from wsgiref.handlers import format_date_time
 
 from . import hdrs
 from .abc import AbstractRouter, AbstractMatchInfo
@@ -178,9 +177,9 @@ class StaticRoute(Route):
             raise HTTPNotFound()
 
         st = os.stat(filepath)
-        mtime = format_date_time(st.st_mtime)
 
-        if request.headers.get(hdrs.IF_MODIFIED_SINCE) == mtime:
+        modsince = request.if_modified_since
+        if modsince is not None and st.st_mtime <= modsince.timestamp():
             raise HTTPNotModified()
 
         ct, encoding = mimetypes.guess_type(filepath)
@@ -191,7 +190,7 @@ class StaticRoute(Route):
         resp.content_type = ct
         if encoding:
             resp.headers[hdrs.CONTENT_ENCODING] = encoding
-        resp.headers[hdrs.LAST_MODIFIED] = mtime
+        resp.last_modified = st.st_mtime
 
         file_size = st.st_size
         single_chunk = file_size < self._chunk_size
