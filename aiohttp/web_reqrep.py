@@ -69,34 +69,6 @@ class HeadersMixin:
         else:
             return int(l)
 
-    @property
-    def if_modified_since(self, _IF_MODIFIED_SINCE=hdrs.IF_MODIFIED_SINCE):
-        """The value of If-Modified-Since HTTP header, or None.
-
-        This header is represented as a `datetime` object.
-        """
-        httpdate = self.headers.get(_IF_MODIFIED_SINCE)
-        if httpdate is not None:
-            timetuple = parsedate(httpdate)
-            if timetuple is not None:
-                return datetime.datetime(*timetuple[:6],
-                                         tzinfo=datetime.timezone.utc)
-        return None
-
-    @property
-    def last_modified(self, _LAST_MODIFIED=hdrs.LAST_MODIFIED):
-        """The value of Last-Modified HTTP header, or None.
-
-        This header is represented as a `datetime` object.
-        """
-        httpdate = self.headers.get(_LAST_MODIFIED)
-        if httpdate is not None:
-            timetuple = parsedate(httpdate)
-            if timetuple is not None:
-                return datetime.datetime(*timetuple[:6],
-                                         tzinfo=datetime.timezone.utc)
-        return None
-
 FileField = collections.namedtuple('Field', 'name filename file content_type')
 
 
@@ -228,6 +200,20 @@ class Request(dict, HeadersMixin):
     def headers(self):
         """A case-insensitive multidict proxy with all headers."""
         return self._headers
+
+    @property
+    def if_modified_since(self, _IF_MODIFIED_SINCE=hdrs.IF_MODIFIED_SINCE):
+        """The value of If-Modified-Since HTTP header, or None.
+
+        This header is represented as a `datetime` object.
+        """
+        httpdate = self.headers.get(_IF_MODIFIED_SINCE)
+        if httpdate is not None:
+            timetuple = parsedate(httpdate)
+            if timetuple is not None:
+                return datetime.datetime(*timetuple[:6],
+                                         tzinfo=datetime.timezone.utc)
+        return None
 
     @property
     def keep_alive(self):
@@ -545,9 +531,18 @@ class StreamResponse(HeadersMixin):
         self._generate_content_type_header()
 
     @property
-    def last_modified(self):
-        # Just a placeholder for adding setter
-        return super().last_modified
+    def last_modified(self, _LAST_MODIFIED=hdrs.LAST_MODIFIED):
+        """The value of Last-Modified HTTP header, or None.
+
+        This header is represented as a `datetime` object.
+        """
+        httpdate = self.headers.get(_LAST_MODIFIED)
+        if httpdate is not None:
+            timetuple = parsedate(httpdate)
+            if timetuple is not None:
+                return datetime.datetime(*timetuple[:6],
+                                         tzinfo=datetime.timezone.utc)
+        return None
 
     @last_modified.setter
     def last_modified(self, value):
