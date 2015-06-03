@@ -14,9 +14,17 @@ In order to make a clone of the GitHub_ repo: open the link and press the
 
 I hope everybody knows how to work with git and github nowadays :)
 
-Make a change.
+Workflow is pretty straightforward:
 
-**But**, before sending a pull request please at least run the test suite.
+  1. Clone the GitHub_ repo
+
+  2. Make a change
+
+  3. Make sure all tests passed
+
+  4. Commit changes to own aiohttp clone
+
+  5. Make pull request from github page for your clone
 
 Preconditions for running aiohttp test suite
 --------------------------------------------
