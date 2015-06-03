@@ -126,10 +126,10 @@ router<aiohttp-web-variable-handler>`::
                         variable_handler, name='handler')
 
 
-In this case you can pass route parameters also::
+In this case you can pass route parts also::
 
    >>> request.app.router['handler'].url(
-   ...     params={'user': 'john_doe'},
+   ...     parts={'user': 'john_doe'},
    ...     query="?a=b")
    '/john_doe/info?a=b'
 
