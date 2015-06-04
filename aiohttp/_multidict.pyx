@@ -95,6 +95,9 @@ cdef class _Base:
     def __len__(self):
         return len(self._items)
 
+    def __bool__(self):
+        return bool(self._items)
+
     cpdef keys(self):
         """Return a new view of the dictionary's keys."""
         return _KeysView.__new__(_KeysView, self._items)

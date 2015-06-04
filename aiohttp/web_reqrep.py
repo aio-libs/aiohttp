@@ -95,6 +95,7 @@ class Request(dict, HeadersMixin):
         self._post = None
         self._post_files_cache = None
         self._headers = CIMultiDictProxy(message.headers)
+        self._response_headers = CIMultiDict()
         if self._version < HttpVersion10:
             self._keep_alive = False
         else:
@@ -197,6 +198,14 @@ class Request(dict, HeadersMixin):
     def headers(self):
         """A case-insensitive multidict proxy with all headers."""
         return self._headers
+
+    @property
+    def response_headers(self):
+        """A case-insensitive multidict of response headers.
+
+        These will be copied to the response when it's started.
+        """
+        return self._response_headers
 
     @property
     def keep_alive(self):
@@ -550,6 +559,12 @@ class StreamResponse(HeadersMixin):
             self._reason)
 
         self._copy_cookies()
+
+        if request.response_headers:
+            header_keys = set(self.headers)
+            self.headers.update((k, v) for (k, v)
+                                       in request.response_headers.items()
+                                       if k not in header_keys)
 
         if self._compression:
             if (self._compression_force or

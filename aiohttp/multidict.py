@@ -73,6 +73,9 @@ class _Base:
     def __len__(self):
         return len(self._items)
 
+    def __bool__(self):
+        return bool(self._items)
+
     def keys(self):
         """Return a new view of the dictionary's keys."""
         return _KeysView(self._items)
