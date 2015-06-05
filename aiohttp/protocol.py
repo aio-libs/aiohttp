@@ -686,7 +686,8 @@ class HttpMessage:
         if self.filter:
             chunk = self.filter.send(chunk)
             while chunk not in (EOF_MARKER, EOL_MARKER):
-                self.writer.send(chunk)
+                if chunk:
+                    self.writer.send(chunk)
                 chunk = next(self.filter)
         else:
             if chunk is not EOF_MARKER:
