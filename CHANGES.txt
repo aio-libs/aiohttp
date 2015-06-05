@@ -2,7 +2,11 @@ CHANGES
 =======
 
 0.17.0a0 (XX-XX-XXXX)
--------------------
+---------------------
+
+- Make StaticRoute support Last-Modified and If-Modified-Since headers #386
+
+- Add Request.if_modified_since and Stream.Response.last_modified properties
 
 0.16.3 (05-30-2015)
 -------------------
