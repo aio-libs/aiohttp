@@ -8,6 +8,8 @@ CHANGES
 
 - Add Request.if_modified_since and Stream.Response.last_modified properties
 
+- Fix deflate compression when writing a chunked response #395
+
 0.16.3 (05-30-2015)
 -------------------
 
