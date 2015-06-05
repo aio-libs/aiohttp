@@ -198,6 +198,15 @@ first positional parameter.
 
       Returns :class:`int` or ``None`` if *Content-Length* is absent.
 
+   .. attribute:: if_modified_since
+
+      Read-only property that returns the date specified in the
+      *If-Modified-Since* header.
+
+      Returns :class:`datetime.datetime` or ``None`` if
+      *If-Modified-Since* header is absent or is not a valid
+      HTTP date.
+
    .. coroutinemethod:: read()
 
       Read request body, returns :class:`bytes` object with body content.
@@ -502,6 +511,15 @@ StreamResponse
       *Charset* aka *encoding* part of *Content-Type* for outgoing response.
 
       The value converted to lower-case on attribute assigning.
+
+   .. attribute:: last_modified
+
+      *Last-Modified* header for outgoing response.
+
+      This property accepts raw :class:`str` values,
+      :class:`datetime.datetime` objects, Unix timestamps specified
+      as an :class:`int` or a :class:`float` object, and the
+      value ``None`` to unset the header.
 
    .. method:: start(request)
 

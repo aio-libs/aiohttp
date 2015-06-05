@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import unittest
 from unittest import mock
 from aiohttp import hdrs
@@ -102,6 +103,42 @@ class TestStreamResponse(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             resp.charset = 'koi8-r'
+
+    def test_last_modified_initial(self):
+        resp = StreamResponse()
+        self.assertIsNone(resp.last_modified)
+
+    def test_last_modified_string(self):
+        resp = StreamResponse()
+
+        dt = datetime.datetime(1990, 1, 2, 3, 4, 5, 0, datetime.timezone.utc)
+        resp.last_modified = 'Mon, 2 Jan 1990 03:04:05 GMT'
+        self.assertEqual(resp.last_modified, dt)
+
+    def test_last_modified_timestamp(self):
+        resp = StreamResponse()
+
+        dt = datetime.datetime(1970, 1, 1, 0, 0, 0, 0, datetime.timezone.utc)
+
+        resp.last_modified = 0
+        self.assertEqual(resp.last_modified, dt)
+
+        resp.last_modified = 0.0
+        self.assertEqual(resp.last_modified, dt)
+
+    def test_last_modified_datetime(self):
+        resp = StreamResponse()
+
+        dt = datetime.datetime(2001, 2, 3, 4, 5, 6, 0, datetime.timezone.utc)
+        resp.last_modified = dt
+        self.assertEqual(resp.last_modified, dt)
+
+    def test_last_modified_reset(self):
+        resp = StreamResponse()
+
+        resp.last_modified = 0
+        resp.last_modified = None
+        self.assertEqual(resp.last_modified, None)
 
     @mock.patch('aiohttp.web_reqrep.ResponseImpl')
     def test_start(self, ResponseImpl):

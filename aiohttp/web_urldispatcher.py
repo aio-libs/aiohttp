@@ -15,7 +15,7 @@ from urllib.parse import urlencode
 from . import hdrs
 from .abc import AbstractRouter, AbstractMatchInfo
 from .protocol import HttpVersion11
-from .web_exceptions import HTTPMethodNotAllowed, HTTPNotFound
+from .web_exceptions import HTTPMethodNotAllowed, HTTPNotFound, HTTPNotModified
 from .web_reqrep import StreamResponse
 
 
@@ -169,7 +169,6 @@ class StaticRoute(Route):
 
     @asyncio.coroutine
     def handle(self, request):
-        resp = StreamResponse()
         filename = request.match_info['filename']
         filepath = os.path.abspath(os.path.join(self._directory, filename))
         if not filepath.startswith(self._directory):
@@ -177,14 +176,23 @@ class StaticRoute(Route):
         if not os.path.exists(filepath) or not os.path.isfile(filepath):
             raise HTTPNotFound()
 
+        st = os.stat(filepath)
+
+        modsince = request.if_modified_since
+        if modsince is not None and st.st_mtime <= modsince.timestamp():
+            raise HTTPNotModified()
+
         ct, encoding = mimetypes.guess_type(filepath)
         if not ct:
             ct = 'application/octet-stream'
+
+        resp = StreamResponse()
         resp.content_type = ct
         if encoding:
-            resp.headers['content-encoding'] = encoding
+            resp.headers[hdrs.CONTENT_ENCODING] = encoding
+        resp.last_modified = st.st_mtime
 
-        file_size = os.stat(filepath).st_size
+        file_size = st.st_size
         single_chunk = file_size < self._chunk_size
 
         if single_chunk:
