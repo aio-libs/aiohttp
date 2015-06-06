@@ -155,6 +155,8 @@ class ClientSession:
                 if resp.status != 307:
                     method = hdrs.METH_GET
                     data = None
+                    if headers.get(hdrs.CONTENT_LENGTH):
+                        headers.pop(hdrs.CONTENT_LENGTH)
 
                 r_url = (resp.headers.get(hdrs.LOCATION) or
                          resp.headers.get(hdrs.URI))
