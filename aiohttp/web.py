@@ -193,7 +193,7 @@ class Application(dict):
 
         for factory in middlewares:
             assert asyncio.iscoroutinefunction(factory), factory
-        self._middlewares = tuple(middlewares)
+        self._middlewares = list(middlewares)
 
     @property
     def router(self):
