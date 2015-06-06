@@ -26,6 +26,7 @@ Frederik Gladhorn
 Georges Dubus
 Greg Holt
 Hugo Herter
+Igor Pavlov
 Junjie Tao
 Kay Zheng
 Kirill Klenov

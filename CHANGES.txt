@@ -10,6 +10,9 @@ CHANGES
 
 - Fix deflate compression when writing a chunked response #395
 
+- Request's content-length header is cleared now after redirect on
+  POST method #391
+
 0.16.3 (05-30-2015)
 -------------------
 
