@@ -14,6 +14,7 @@ Anton Kasyanov
 Arthur Darcet
 Ben Bader
 Brian C. Lane
+Chris Laws
 Daniel Nelson
 David Michael Brown
 Dima Veselov
