@@ -840,7 +840,7 @@ arbitrary properties for later access from
 
                   By default the value is ``logging.getLogger("aiohttp.web")``
 
-   :param middlewares: sequence of middleware factories, see
+   :param middlewares: :class:`list` of middleware factories, see
                        :ref:`aiohttp-web-middlewares` for details.
 
                        .. versionadded:: 0.13
