@@ -1047,7 +1047,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             connector.close()
             server.close()
             yield from server.wait_closed()
-
+            
         self.loop.run_until_complete(go())
 
     def test_handle_keepalive_on_closed_connection(self):
