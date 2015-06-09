@@ -290,12 +290,13 @@ class BaseConnector(object):
                         self._conn_timeout, loop=self._loop)
                 else:
                     transport, proto = yield from self._create_connection(req)
-                
+
                 if not self._force_close:
                     if self._conns.get(key, None) is None:
                         self._conns[key] = []
 
-                    self._conns[key].append((transport, proto, self._loop.time()))
+                self._conns[key].append((transport, proto,
+                                        self._loop.time()))
             except asyncio.TimeoutError as exc:
                 raise ClientTimeoutError(
                     'Connection timeout to host %s:%s ssl:%s' % key) from exc
