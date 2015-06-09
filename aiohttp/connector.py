@@ -237,7 +237,7 @@ class BaseConnector(object):
 
             if self._cleanup_handle:
                 self._cleanup_handle.cancel()
-            
+
         finally:
             self._conns.clear()
             self._acquired.clear()
@@ -282,7 +282,6 @@ class BaseConnector(object):
                 yield from fut
 
         transport, proto = self._get(key)
-
         if transport is None:
             try:
                 if self._conn_timeout:

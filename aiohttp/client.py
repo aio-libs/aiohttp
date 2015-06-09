@@ -138,7 +138,6 @@ class ClientSession:
             except OSError as exc:
                 raise aiohttp.ClientOSError() from exc
 
-
             self._update_cookies(resp.cookies)
             # For Backward compatability with `share_cookie` connectors
             if self._connector._share_cookies:
