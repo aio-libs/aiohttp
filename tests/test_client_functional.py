@@ -1109,7 +1109,6 @@ class TestHttpClientFunctional(unittest.TestCase):
                                           connector=connector,
                                           loop=self.loop)
             self.assertEqual(0, len(connector._conns))
-
             connector.close()
             server.close()
             yield from server.wait_closed()
