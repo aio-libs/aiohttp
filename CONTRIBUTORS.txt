@@ -28,6 +28,7 @@ Georges Dubus
 Greg Holt
 Hugo Herter
 Igor Pavlov
+Julien Duponchelle
 Junjie Tao
 Kay Zheng
 Kirill Klenov
