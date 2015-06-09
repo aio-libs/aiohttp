@@ -221,6 +221,17 @@ class TestHttpServerProtocol(unittest.TestCase):
         self.assertTrue(transport.write.mock_calls[0][1][0].startswith(
             b'HTTP/1.1 400 Bad Request\r\n'))
 
+    def test_line_too_long(self):
+        transport = unittest.mock.Mock()
+        srv = server.ServerHttpProtocol(loop=self.loop)
+        srv.connection_made(transport)
+
+        srv.reader.feed_data(b''.join([b'a' for _ in range(10000)]))
+
+        self.loop.run_until_complete(srv._request_handler)
+        self.assertTrue(transport.write.mock_calls[0][1][0].startswith(
+            b'HTTP/1.1 400 Bad Request\r\n'))
+
     def test_handle_error(self):
         transport = unittest.mock.Mock()
         srv = server.ServerHttpProtocol(loop=self.loop)

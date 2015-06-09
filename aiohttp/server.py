@@ -280,6 +280,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                 if self.transport is not None:
                     yield from self.handle_error(exc.code, message,
                                                  None, exc, exc.headers)
+            except errors.LineLimitExceededParserError as exc:
+                yield from self.handle_error(400, message, None, exc)
             except Exception as exc:
                 yield from self.handle_error(500, message, None, exc)
             finally:
