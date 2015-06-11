@@ -382,14 +382,15 @@ StreamResponse
 
       .. seealso:: :meth:`enable_compression`
 
-   .. method:: enable_compression(force=False)
+   .. method:: enable_compression(force=None)
 
       Enable compression.
 
-      When *force* is ``False`` (default) compression is used only
-      when *deflate* is in *Accept-Encoding* request's header.
+      When *force* is unset compression encoding is selected based on
+      the request's *Accept-Encoding* header.
 
-      *Accept-Encoding* is not checked if *force* is ``True``.
+      *Accept-Encoding* is not checked if *force* is set to a
+      :class:`ContentCoding`.
 
       .. versionadded:: 0.14
 
@@ -1217,3 +1218,17 @@ Utilities
       *MIME type* of uploaded file, ``'text/plain'`` by default.
 
    .. seealso:: :ref:`aiohttp-web-file-upload`
+
+
+Constants
+---------
+
+.. class:: ContentCoding
+
+   An :class:`enum.Enum` class of available Content Codings.
+
+   .. attribute:: deflate
+
+   .. attribute:: gzip
+
+   .. attribute:: identity
