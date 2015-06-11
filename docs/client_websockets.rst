@@ -30,7 +30,7 @@ websocket server using response's methods:
               yield from ws.close()
               break
            else:
-              ws.send_str(data + '/answer')
+              ws.send_str(msg.data + '/answer')
        elif msg.tp == aiohttp.MsgType.closed:
            break
        elif msg.tp == aiohttp.MsgType.error:
