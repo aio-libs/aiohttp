@@ -309,7 +309,7 @@ class TestBaseConnector(unittest.TestCase):
         req.response = resp
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        conn._acquired[key].append(tr)
+        conn._acquired[key].append(tr1)
         conn._release(key, req, tr, proto)
         self.assertEqual(conn._conns[key], [(tr1, proto1, 1)])
         self.assertTrue(tr.close.called)

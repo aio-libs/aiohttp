@@ -290,6 +290,13 @@ class BaseConnector(object):
                         self._conn_timeout, loop=self._loop)
                 else:
                     transport, proto = yield from self._create_connection(req)
+
+                if not self._force_close:
+                    if self._conns.get(key, None) is None:
+                        self._conns[key] = []
+
+                    self._conns[key].append((transport, proto,
+                                            self._loop.time()))
             except asyncio.TimeoutError as exc:
                 raise ClientTimeoutError(
                     'Connection timeout to host %s:%s ssl:%s' % key) from exc
@@ -351,12 +358,13 @@ class BaseConnector(object):
         reader = protocol.reader
         if should_close or (reader.output and not reader.output.at_eof()):
             conns = self._conns.get(key)
-            if conns is not None and len(conns) == 0:
+            if conns is not None and len(conns) >= 0:
                 # Issue #253: An empty array will eventually be
                 # removed by cleanup, but it's better to pop straight
                 # away, because cleanup might not get called (e.g. if
                 # keepalive is False).
-                self._conns.pop(key, None)
+                if not acquired:
+                    self._conns.pop(key, None)
 
             transport.close()
         else:
