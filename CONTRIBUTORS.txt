@@ -24,6 +24,7 @@ Elizabeth Leddy
 Erich Healy
 Eugene Chernyshov
 Frederik Gladhorn
+Gabriel Tremblay
 Georges Dubus
 Greg Holt
 Hugo Herter

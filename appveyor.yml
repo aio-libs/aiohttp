@@ -1,4 +1,4 @@
-version: 0.16.0a0b.dev{build}
+version: 0.17.0a0b.dev{build}
 
 environment:
   matrix:
