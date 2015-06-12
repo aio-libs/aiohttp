@@ -25,6 +25,7 @@ Erich Healy
 Eugene Chernyshov
 Frederik Gladhorn
 Gabriel Tremblay
+Gennady Andreyev
 Georges Dubus
 Greg Holt
 Hugo Herter
