@@ -104,6 +104,17 @@ class TestHelpers(unittest.TestCase):
         self.assertIsInstance(A.prop, helpers.reify)
         self.assertEqual('Docstring.', A.prop.__doc__)
 
+    def test_reify_assignment(self):
+        class A:
+            @helpers.reify
+            def prop(self):
+                return 1
+
+        a = A()
+
+        with self.assertRaises(AttributeError):
+            a.prop = 123
+
 
 class TestSafeAtoms(unittest.TestCase):
 
