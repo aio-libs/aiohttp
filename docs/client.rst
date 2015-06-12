@@ -38,7 +38,7 @@ Now, let's try to get a webpage. For example let's get GitHub's public
 timeline ::
 
     >>> r = yield from aiohttp.request(
-    ...     'get', 'https://github.com/timeline.json')
+    ...     'get', 'https://api.github.com/events')
 
 Now, we have a :class:`ClientResponse` object called ``r``. We can get all the
 information we need from this object.
@@ -103,9 +103,9 @@ again::
 
     >>> import aiohttp
     >>> r = yield from aiohttp.request(
-    ...     'get', 'https://github.com/timeline.json')
+    ...     'get', 'https://api.github.com/events')
     >>> yield from r.text()
-    '[{"repository":{"open_issues":0,"url":"https://github.com/...
+    '[{"created_at":"2015-06-12T14:06:22Z","public":true,"actor":{...
 
 aiohttp will automatically decode the content from the server. You can
 specify custom encoding for the ``text()`` method::
@@ -119,7 +119,7 @@ Binary Response Content
 You can also access the response body as bytes, for non-text requests::
 
     >>> yield from r.read()
-    b'[{"repository":{"open_issues":0,"url":"https://github.com/...
+    b'[{"created_at":"2015-06-12T14:06:22Z","public":true,"actor":{...
 
 The ``gzip`` and ``deflate`` transfer-encodings are automatically
 decoded for you.
@@ -132,9 +132,9 @@ There's also a builtin JSON decoder, in case you're dealing with JSON data::
 
     >>> import aiohttp
     >>> r = yield from aiohttp.request(
-    ...     'get', 'https://github.com/timeline.json')
+    ...     'get', 'https://api.github.com/events')
     >>> yield from r.json()
-    [{'repository': {'open_issues': 0, 'url': 'https://github.com/...
+    [{'created_at': '2015-06-12T14:07:07Z', 'public': True, 'actor...
 
 In case that JSON decoding fails, ``r.json()`` will raise an exception. It
 is possible to specify custom encoding and decoder functions for the
@@ -145,16 +145,16 @@ Streaming Response Content
 --------------------------
 
 While methods ``read()``, ``json()`` and ``text()`` are very
-convenient you should use them carefully. All this methods loads the
+convenient you should use them carefully. All these methods load the
 whole response in memory.  For example if you want to download several
-gigabyte sized files, this methods will load all the data in
+gigabyte sized files, these methods will load all the data in
 memory. Instead you can use the ``ClientResponse.content``
 attribute. It is an instance of the ``aiohttp.StreamReader``
 class. The ``gzip`` and ``deflate`` transfer-encodings are
 automatically decoded for you::
 
     >>> r = yield from aiohttp.request(
-    ...     'get', 'https://github.com/timeline.json')
+    ...     'get', 'https://api.github.com/events')
     >>> r.content
     <aiohttp.streams.StreamReader object at 0x...>
     >>> yield from r.content.read(10)
@@ -485,7 +485,7 @@ Response Status Codes
 
 We can check the response status code::
 
-   >>> r = aiohttp.request('get', 'http://httpbin.org/get')
+   >>> r = yield from aiohttp.request('get', 'http://httpbin.org/get')
    >>> r.status
    200
 
