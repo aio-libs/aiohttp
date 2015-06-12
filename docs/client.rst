@@ -145,9 +145,9 @@ Streaming Response Content
 --------------------------
 
 While methods ``read()``, ``json()`` and ``text()`` are very
-convenient you should use them carefully. All this methods loads the
+convenient you should use them carefully. All these methods load the
 whole response in memory.  For example if you want to download several
-gigabyte sized files, this methods will load all the data in
+gigabyte sized files, these methods will load all the data in
 memory. Instead you can use the ``ClientResponse.content``
 attribute. It is an instance of the ``aiohttp.StreamReader``
 class. The ``gzip`` and ``deflate`` transfer-encodings are
