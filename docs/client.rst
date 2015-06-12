@@ -485,7 +485,7 @@ Response Status Codes
 
 We can check the response status code::
 
-   >>> r = aiohttp.request('get', 'http://httpbin.org/get')
+   >>> r = yield from aiohttp.request('get', 'http://httpbin.org/get')
    >>> r.status
    200
 
