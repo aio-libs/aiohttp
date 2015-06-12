@@ -514,8 +514,8 @@ class TestBaseConnector(unittest.TestCase):
     def test_tcp_connector_clear_resolved_hosts(self):
         conn = aiohttp.TCPConnector(loop=self.loop)
         info = object()
-        conn._resolved_hosts[('localhost', 123)] = info
-        conn._resolved_hosts[('localhost', 124)] = info
+        conn._cached_hosts[('localhost', 123)] = info
+        conn._cached_hosts[('localhost', 124)] = info
         conn.clear_resolved_hosts('localhost', 123)
         self.assertEqual(
             conn.resolved_hosts, {('localhost', 124): info})

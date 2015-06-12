@@ -384,6 +384,8 @@ class BaseConnector(object):
 _SSL_OP_NO_COMPRESSION = getattr(ssl, "OP_NO_COMPRESSION", 0)
 _SSH_HAS_CREATE_DEFAULT_CONTEXT = hasattr(ssl, 'create_default_context')
 
+_marker = object()
+
 
 class TCPConnector(BaseConnector):
     """TCP connector.
@@ -400,7 +402,8 @@ class TCPConnector(BaseConnector):
     """
 
     def __init__(self, *, verify_ssl=True, fingerprint=None,
-                 resolve=False, family=socket.AF_INET, ssl_context=None,
+                 resolve=_marker, cache_dns=_marker,
+                 family=socket.AF_INET, ssl_context=None,
                  **kwargs):
         super().__init__(**kwargs)
 
@@ -419,10 +422,21 @@ class TCPConnector(BaseConnector):
             self._hashfunc = hashfunc
         self._fingerprint = fingerprint
 
+        if cache_dns is not _marker and resolve is not _marker:
+            if cache_dns != resolve:
+                raise ValueError("cashe_dns must agree with resolve")
+            _cache_dns = cache_dns
+        elif cache_dns is not _marker:
+            _cache_dns = cache_dns
+        elif resolve is not _marker:
+            _cache_dns = resolve
+        else:
+            _cache_dns = False
+
+        self._cache_dns = _cache_dns
+        self._cached_hosts = {}
         self._ssl_context = ssl_context
         self._family = family
-        self._resolve = resolve
-        self._resolved_hosts = {}
 
     @property
     def verify_ssl(self):
@@ -467,30 +481,54 @@ class TCPConnector(BaseConnector):
         return self._family
 
     @property
+    def cache_dns(self):
+        """True if local DNS caching is enabled."""
+        return self._cache_dns
+
+    @property
+    def cached_hosts(self):
+        """Read-only dict of cached DNS record."""
+        return MappingProxyType(self._cached_hosts)
+
+    def clear_dns_cache(self, address=None):
+        """Remove specified host/port or clear all dns local cache."""
+        if address is not None:
+            self._cached_hosts.pop(address, None)
+        else:
+            self._cached_hosts.clear()
+
+    @property
     def resolve(self):
         """Do DNS lookup for host name?"""
-        return self._resolve
+        warnings.warn((".resolve property is deprecated, "
+                       "use .cache_dns instead"),
+                      DeprecationWarning, stacklevel=2)
+        return self._cache_dns
 
     @property
     def resolved_hosts(self):
         """The dict of (host, port) -> (ipaddr, port) pairs."""
-        return MappingProxyType(self._resolved_hosts)
+        warnings.warn((".resolved_hosts property is deprecated, "
+                       "use .cached_hosts instead"),
+                      DeprecationWarning, stacklevel=2)
+        return MappingProxyType(self._cached_hosts)
 
     def clear_resolved_hosts(self, host=None, port=None):
         """Remove specified host/port or clear all resolve cache."""
+        warnings.warn((".clear_resolved_hosts() is deprecated, "
+                       "use .clear_dns_cache() instead"),
+                      DeprecationWarning, stacklevel=2)
         if host is not None and port is not None:
-            key = (host, port)
-            if key in self._resolved_hosts:
-                del self._resolved_hosts[key]
+            self.clear_dns_cache((host, port))
         else:
-            self._resolved_hosts.clear()
+            self.clear_dns_cache()
 
     @asyncio.coroutine
     def _resolve_host(self, host, port):
-        if self._resolve:
+        if self._cache_dns:
             key = (host, port)
 
-            if key not in self._resolved_hosts:
+            if key not in self._cached_hosts:
                 infos = yield from self._loop.getaddrinfo(
                     host, port, type=socket.SOCK_STREAM, family=self._family)
 
@@ -501,9 +539,9 @@ class TCPConnector(BaseConnector):
                          'host': address[0], 'port': address[1],
                          'family': family, 'proto': proto,
                          'flags': socket.AI_NUMERICHOST})
-                self._resolved_hosts[key] = hosts
+                self._cached_hosts[key] = hosts
 
-            return list(self._resolved_hosts[key])
+            return list(self._cached_hosts[key])
         else:
             return [{'hostname': host, 'host': host, 'port': port,
                      'family': self._family, 'proto': 0, 'flags': 0}]
