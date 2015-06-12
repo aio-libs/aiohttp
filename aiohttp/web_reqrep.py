@@ -92,9 +92,6 @@ class Request(dict, HeadersMixin):
         self._method = message.method
         self._host = message.headers.get(_HOST)
         self._path_qs = message.path
-        res = urlsplit(message.path)
-        self._path = unquote(res.path)
-        self._query_string = res.query
         self._post = None
         self._post_files_cache = None
         self._headers = CIMultiDictProxy(message.headers)
@@ -162,21 +159,25 @@ class Request(dict, HeadersMixin):
         """
         return self._path_qs
 
+    @reify
+    def _splitted_path(self):
+        return urlsplit(self._path_qs)
+
     @property
     def path(self):
         """The URL including *PATH INFO* without the host or scheme.
 
         E.g., ``/app/blog``
         """
-        return self._path
+        return unquote(self._splitted_path.path)
 
-    @property
+    @reify
     def query_string(self):
         """The query string in the URL.
 
         E.g., id=10
         """
-        return self._query_string
+        return self._splitted_path.query
 
     @reify
     def GET(self):
@@ -184,7 +185,7 @@ class Request(dict, HeadersMixin):
 
         Lazy property.
         """
-        return MultiDictProxy(MultiDict(parse_qsl(self._query_string)))
+        return MultiDictProxy(MultiDict(parse_qsl(self.query_string)))
 
     @reify
     def POST(self):

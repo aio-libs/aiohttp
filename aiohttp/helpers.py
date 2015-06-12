@@ -290,6 +290,9 @@ class SafeAtoms(dict):
             return '-'
 
 
+_marker = object()
+
+
 class reify:
     """Use as a class method decorator.  It operates almost exactly like
     the Python ``@property`` decorator, but it puts the result of the
@@ -305,10 +308,17 @@ class reify:
             self.__doc__ = wrapped.__doc__
         except:  # pragma: no cover
             pass
+        self.name = wrapped.__name__
 
-    def __get__(self, inst, objtype=None):
+    def __get__(self, inst, owner, _marker=_marker):
         if inst is None:
             return self
+        val = inst.__dict__.get(self.name, _marker)
+        if val is not _marker:
+            return val
         val = self.wrapped(inst)
-        setattr(inst, self.wrapped.__name__, val)
+        inst.__dict__[self.name] = val
         return val
+
+    def __set__(self, inst, value):
+        raise AttributeError("reified property is read-only")
