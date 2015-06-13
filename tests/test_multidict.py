@@ -223,6 +223,8 @@ class _BaseTest(_Root):
             repr(d)
             self.assertIs(sys.exc_info()[1], e)
 
+    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
+                     "Set operations on views not supported")
     def test_or_issue_410(self):
         d = self.make_dict([('key', 'value')])
         try:
@@ -231,6 +233,8 @@ class _BaseTest(_Root):
             d.keys() | {'other'}
             self.assertIs(sys.exc_info()[1], e)
 
+    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
+                     "Set operations on views not supported")
     def test_and_issue_410(self):
         d = self.make_dict([('key', 'value')])
         try:
@@ -239,6 +243,8 @@ class _BaseTest(_Root):
             d.keys() & {'other'}
             self.assertIs(sys.exc_info()[1], e)
 
+    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
+                     "Set operations on views not supported")
     def test_sub_issue_410(self):
         d = self.make_dict([('key', 'value')])
         try:
@@ -247,6 +253,8 @@ class _BaseTest(_Root):
             d.keys() - {'other'}
             self.assertIs(sys.exc_info()[1], e)
 
+    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
+                     "Set operations on views not supported")
     def test_xor_issue_410(self):
         d = self.make_dict([('key', 'value')])
         try:
