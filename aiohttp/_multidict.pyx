@@ -1,6 +1,7 @@
 import sys
 from collections import abc
 from collections.abc import Iterable, Set
+from operators import itemgetter
 
 
 _marker = object()
@@ -359,7 +360,6 @@ abc.MutableMapping.register(CIMultiDict)
 
 cdef class _ViewBase:
 
-    cdef list _keys
     cdef list _items
 
     def __cinit__(self, list items):
@@ -408,17 +408,21 @@ cdef class _ViewBaseSet(_ViewBase):
     def __and__(self, other):
         if not isinstance(other, Iterable):
             return NotImplemented
-        return set(self) & set(other)
+        if not isinstance(other, Set):
+            other = set(other)
+        return set(self) & other
 
     def __or__(self, other):
         if not isinstance(other, Iterable):
             return NotImplemented
-        return set(self) | set(other)
+        if not isinstance(other, Set):
+            other = set(other)
+        return set(self) | other
 
     def __sub__(self, other):
+        if not isinstance(other, Iterable):
+            return NotImplemented
         if not isinstance(other, Set):
-            if not isinstance(other, Iterable):
-                return NotImplemented
             other = set(other)
         return set(self) - other
 
@@ -462,9 +466,7 @@ cdef class _ValuesView(_ViewBase):
         return False
 
     def __iter__(self):
-        cdef tuple item
-        for item in self._items:
-            yield item[1]
+        return map(itemgetter(1), self._items)
 
 
 abc.ValuesView.register(_ValuesView)
@@ -488,9 +490,7 @@ cdef class _KeysView(_ViewBaseSet):
         return False
 
     def __iter__(self):
-        cdef tuple item
-        for item in self._items:
-            yield item[0]
+        return map(itemgetter(0), self._items)
 
 
 abc.KeysView.register(_KeysView)

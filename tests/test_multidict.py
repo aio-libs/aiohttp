@@ -244,7 +244,7 @@ class _BaseTest(_Root):
         try:
             raise Exception
         except Exception as e:
-            d.keys() & {'other'}
+            d.keys() - {'other'}
             self.assertIs(sys.exc_info()[1], e)
 
     def test_xor_issue_410(self):
@@ -252,7 +252,7 @@ class _BaseTest(_Root):
         try:
             raise Exception
         except Exception as e:
-            d.keys() & {'other'}
+            d.keys() ^ {'other'}
             self.assertIs(sys.exc_info()[1], e)
 
 
