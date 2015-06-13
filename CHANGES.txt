@@ -1,6 +1,12 @@
 CHANGES
 =======
 
+0.16.4 (06-13-2015)
+-------------------
+
+- Don't clear current exception in multidict's `__repr__` (cythonized
+  versions) #410
+
 0.16.3 (05-30-2015)
 -------------------
 
