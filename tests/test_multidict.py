@@ -215,13 +215,45 @@ class _BaseTest(_Root):
         d = self.make_dict([('key', 'value1')])
         self.assertFalse(d.keys().isdisjoint({'key'}))
 
-    def test_clear_exception_issue_410(self):
+    def test_repr_issue_410(self):
         d = self.make_dict()
         try:
             raise Exception
-        except Exception:
+        except Exception as e:
             repr(d)
-            self.assertIsNotNone(sys.exc_info()[0])
+            self.assertIs(sys.exc_info()[1], e)
+
+    def test_or_issue_410(self):
+        d = self.make_dict([('key', 'value')])
+        try:
+            raise Exception
+        except Exception as e:
+            d.keys() | {'other'}
+            self.assertIs(sys.exc_info()[1], e)
+
+    def test_and_issue_410(self):
+        d = self.make_dict([('key', 'value')])
+        try:
+            raise Exception
+        except Exception as e:
+            d.keys() & {'other'}
+            self.assertIs(sys.exc_info()[1], e)
+
+    def test_sub_issue_410(self):
+        d = self.make_dict([('key', 'value')])
+        try:
+            raise Exception
+        except Exception as e:
+            d.keys() - {'other'}
+            self.assertIs(sys.exc_info()[1], e)
+
+    def test_xor_issue_410(self):
+        d = self.make_dict([('key', 'value')])
+        try:
+            raise Exception
+        except Exception as e:
+            d.keys() ^ {'other'}
+            self.assertIs(sys.exc_info()[1], e)
 
 
 class _MultiDictTests(_BaseTest):

@@ -18,6 +18,12 @@ CHANGES
 - Fix keep-alive support for aiohttp clients #406
 
 
+0.16.5 (06-13-2015)
+-------------------
+
+- Get rid of all comprehensions and yielding in _multidict #410
+
+
 0.16.4 (06-13-2015)
 -------------------
 
