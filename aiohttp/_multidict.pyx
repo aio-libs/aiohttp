@@ -45,7 +45,10 @@ cdef class _Base:
     cdef _getall(self, str key, default):
         cdef list res
         key = self._upper(key)
-        res = [v for k, v in self._items if k == key]
+        res = []
+        for k, v in self._items:
+            if k == key:
+                res.append(v)
         if res:
             return res
         if not res and default is not _marker:
@@ -405,27 +408,26 @@ cdef class _ViewBaseSet(_ViewBase):
     def __and__(self, other):
         if not isinstance(other, Iterable):
             return NotImplemented
-        return set(value for value in other if value in self)
+        return set(self) & set(other)
 
     def __or__(self, other):
         if not isinstance(other, Iterable):
             return NotImplemented
-        return {e for s in (self, other) for e in s}
+        return set(self) | set(other)
 
     def __sub__(self, other):
         if not isinstance(other, Set):
             if not isinstance(other, Iterable):
                 return NotImplemented
             other = set(other)
-        return {value for value in self
-                if value not in other}
+        return set(self) - other
 
     def __xor__(self, other):
         if not isinstance(other, Set):
             if not isinstance(other, Iterable):
                 return NotImplemented
             other = set(other)
-        return (self - other) | (other - self)
+        return set(self) ^ other
 
 
 cdef class _ItemsView(_ViewBaseSet):
