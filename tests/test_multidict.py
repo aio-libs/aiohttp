@@ -215,6 +215,14 @@ class _BaseTest(_Root):
         d = self.make_dict([('key', 'value1')])
         self.assertFalse(d.keys().isdisjoint({'key'}))
 
+    def test_clear_exception_issue_410(self):
+        d = self.make_dict()
+        try:
+            raise Exception
+        except Exception:
+            repr(d)
+            self.assertIsNotNone(sys.exc_info()[0])
+
 
 class _MultiDictTests(_BaseTest):
 

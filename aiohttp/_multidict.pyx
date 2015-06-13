@@ -108,7 +108,10 @@ cdef class _Base:
         return _ValuesView.__new__(_ValuesView, self._items)
 
     def __repr__(self):
-        body = ', '.join("'{}': {!r}".format(k, v) for k, v in self.items())
+        lst = []
+        for k, v in self._items:
+            lst.append("'{}': {!r}".format(k, v))
+        body = ', '.join(lst)
         return '<{} {{{}}}>'.format(self.__class__.__name__, body)
 
     def __richcmp__(self, other, op):

@@ -17,10 +17,19 @@ CHANGES
 
 - Fix keep-alive support for aiohttp clients #406
 
+
+0.16.4 (06-13-2015)
+-------------------
+
+- Don't clear current exception in multidict's `__repr__` (cythonized
+  versions) #410
+
+
 0.16.3 (05-30-2015)
 -------------------
 
 - Fix StaticRoute vulnerability to directory traversal attacks #380
+
 
 0.16.2 (05-27-2015)
 -------------------
