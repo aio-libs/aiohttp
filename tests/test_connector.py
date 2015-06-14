@@ -458,8 +458,15 @@ class TestBaseConnector(unittest.TestCase):
         conn = aiohttp.TCPConnector(loop=self.loop)
         self.assertTrue(conn.verify_ssl)
         self.assertIs(conn.fingerprint, None)
-        self.assertFalse(conn.resolve)
+
+        with self.assertWarns(DeprecationWarning):
+            self.assertFalse(conn.resolve)
+        self.assertFalse(conn.cache_dns)
+
         self.assertEqual(conn.family, socket.AF_INET)
+
+        with self.assertWarns(DeprecationWarning):
+            self.assertEqual(conn.resolved_hosts, {})
         self.assertEqual(conn.resolved_hosts, {})
 
     def test_tcp_connector_ctor_fingerprint_valid(self):

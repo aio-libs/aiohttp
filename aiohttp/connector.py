@@ -490,10 +490,13 @@ class TCPConnector(BaseConnector):
         """Read-only dict of cached DNS record."""
         return MappingProxyType(self._cached_hosts)
 
-    def clear_dns_cache(self, address=None):
+    def clear_dns_cache(self, host=None, port=None):
         """Remove specified host/port or clear all dns local cache."""
-        if address is not None:
-            self._cached_hosts.pop(address, None)
+        if host is not None and port is not None:
+            self._cached_hosts.pop((host, port), None)
+        elif host is not None or port is not None:
+            raise ValueError("either both host and port "
+                             "or none of them are allowed")
         else:
             self._cached_hosts.clear()
 
@@ -503,7 +506,7 @@ class TCPConnector(BaseConnector):
         warnings.warn((".resolve property is deprecated, "
                        "use .cache_dns instead"),
                       DeprecationWarning, stacklevel=2)
-        return self._cache_dns
+        return self.cache_dns
 
     @property
     def resolved_hosts(self):
@@ -511,7 +514,7 @@ class TCPConnector(BaseConnector):
         warnings.warn((".resolved_hosts property is deprecated, "
                        "use .cached_hosts instead"),
                       DeprecationWarning, stacklevel=2)
-        return MappingProxyType(self._cached_hosts)
+        return self.cached_hosts
 
     def clear_resolved_hosts(self, host=None, port=None):
         """Remove specified host/port or clear all resolve cache."""
@@ -519,7 +522,7 @@ class TCPConnector(BaseConnector):
                        "use .clear_dns_cache() instead"),
                       DeprecationWarning, stacklevel=2)
         if host is not None and port is not None:
-            self.clear_dns_cache((host, port))
+            self.clear_dns_cache(host, port)
         else:
             self.clear_dns_cache()
 
