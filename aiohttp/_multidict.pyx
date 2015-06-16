@@ -1,7 +1,7 @@
 import sys
 from collections import abc
 from collections.abc import Iterable, Set
-from operators import itemgetter
+from operator import itemgetter
 
 
 _marker = object()
@@ -367,6 +367,9 @@ cdef class _ViewBase:
 
     def __len__(self):
         return len(self._items)
+
+    def __repr__(self):
+        return '{}({!r})'.format(self.__class__.__name__, self._items)
 
 
 cdef class _ViewBaseSet(_ViewBase):
