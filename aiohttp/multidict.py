@@ -305,6 +305,9 @@ class _ViewBase:
     def __len__(self):
         return len(self._items)
 
+    def __repr__(self):
+        return '{0.__class__.__name__}({0._items!r})'.format(self)
+
 
 class _ItemsView(_ViewBase, abc.ItemsView):
 

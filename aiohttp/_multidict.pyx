@@ -368,6 +368,9 @@ cdef class _ViewBase:
     def __len__(self):
         return len(self._items)
 
+    def __repr__(self):
+        return '{}({!r})'.format(self.__class__.__name__, self._items)
+
 
 cdef class _ViewBaseSet(_ViewBase):
 
