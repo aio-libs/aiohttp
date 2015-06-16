@@ -1,7 +1,7 @@
 import sys
 from collections import abc
 from collections.abc import Iterable, Set
-from operators import itemgetter
+from operator import itemgetter
 
 
 _marker = object()
