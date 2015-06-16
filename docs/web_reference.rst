@@ -72,6 +72,15 @@ first positional parameter.
 
       Read-only :class:`str` property.
 
+   .. attribute:: raw_path
+
+      The URL including raw *PATH INFO* without the host or scheme.
+      Warning, the path is unquoted and may contains non valid URL characters.
+      e.g.,
+      ``/my%2Fpath%7Cwith%21some%25strange%24characters``
+
+      Read-only :class:`str` property.
+
    .. attribute:: query_string
 
       The query string in the URL, e.g., ``id=10``
@@ -965,6 +974,11 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
    *Named route* can be retrieved by ``app.router[name]`` call, checked for
    existence by ``name in app.router`` etc.
+
+   You can tell UrlDispatcher to use unquoted_path for dispatching instead
+   of quoted path by passing ``unquoted_path=true``. It's necessary if you try
+   to call the server with paths including ``/`` as they may interfere with
+   normal route matching. You will be then responsible for unquoting the path.
 
    .. seealso:: :ref:`Route classes <aiohttp-web-route>`
 

@@ -2,6 +2,7 @@ import asyncio
 import os
 import unittest
 from unittest import mock
+from urllib.parse import unquote
 import aiohttp.web
 from aiohttp import hdrs
 from aiohttp.web import (UrlDispatcher, Request, Response,
@@ -526,5 +527,21 @@ class TestUrlDispatcher(unittest.TestCase):
             req = self.make_request('GET', '/file.html')
             match_info = yield from self.router.resolve(req)
             self.assertEqual({'name': 'file', 'ext': 'html'}, match_info)
+
+        self.loop.run_until_complete(go())
+
+    def test_dynamic_match_unquoted_path(self):
+
+        @asyncio.coroutine
+        def go():
+            handler = self.make_handler()
+            self.router.add_route('GET', '/{path}/{subpath}', handler)
+            resource_id = 'my%2Fpath%7Cwith%21some%25strange%24characters'
+            req = self.make_request('GET', '/path/{0}'.format(resource_id))
+            match_info = yield from self.router.resolve(req)
+            self.assertEqual(match_info, {
+                'path': 'path',
+                'subpath': unquote(resource_id)
+            })
 
         self.loop.run_until_complete(go())

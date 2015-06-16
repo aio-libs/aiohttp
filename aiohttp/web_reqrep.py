@@ -179,12 +179,21 @@ class Request(dict, HeadersMixin):
         return urlsplit(self._path_qs)
 
     @property
+    def raw_path(self):
+        """ The URL including raw *PATH INFO* without the host or scheme.
+        Warning, the path is unquoted and may contains non valid URL characters
+
+        E.g., ``/my%2Fpath%7Cwith%21some%25strange%24characters``
+        """
+        return self._splitted_path.path
+
+    @reify
     def path(self):
         """The URL including *PATH INFO* without the host or scheme.
 
         E.g., ``/app/blog``
         """
-        return unquote(self._splitted_path.path)
+        return unquote(self.raw_path)
 
     @reify
     def query_string(self):
