@@ -56,7 +56,7 @@ with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
 install_requires = ['chardet']
 
 if sys.version_info < (3, 4):
-    install_requires += ['asyncio']
+    install_requires += ['asyncio', 'flufl.enum']
 
 tests_require = install_requires + ['nose', 'gunicorn']
 

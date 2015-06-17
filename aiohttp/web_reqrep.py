@@ -1,4 +1,4 @@
-__all__ = ('Request', 'StreamResponse', 'Response')
+__all__ = ('ContentCoding', 'Request', 'StreamResponse', 'Response')
 
 import asyncio
 import binascii
@@ -11,6 +11,11 @@ import json
 import math
 import time
 import warnings
+
+try:
+    import enum
+except ImportError:
+    from flufl import enum
 
 from email.utils import parsedate
 from types import MappingProxyType
@@ -70,6 +75,16 @@ class HeadersMixin:
             return int(l)
 
 FileField = collections.namedtuple('Field', 'name filename file content_type')
+
+
+class ContentCoding(enum.Enum):
+    # The content codings that we have support for.
+    #
+    # Additional registered codings are listed at:
+    # https://www.iana.org/assignments/http-parameters/http-parameters.xhtml#content-coding
+    deflate = 'deflate'
+    gzip = 'gzip'
+    identity = 'identity'
 
 
 ############################################################
@@ -436,8 +451,12 @@ class StreamResponse(HeadersMixin):
         self._chunked = True
         self._chunk_size = chunk_size
 
-    def enable_compression(self, force=False):
-        """Enables response compression with `deflate` encoding."""
+    def enable_compression(self, force=None):
+        """Enables response compression encoding."""
+        # Backwards compatibility for when force was a bool <0.17.
+        if type(force) == bool:
+            force = ContentCoding.deflate if force else ContentCoding.identity
+
         self._compression = True
         self._compression_force = force
 
@@ -577,6 +596,22 @@ class StreamResponse(HeadersMixin):
         else:
             return None
 
+    def _start_compression(self, request):
+        def start(coding):
+            if coding != ContentCoding.identity:
+                self.headers[hdrs.CONTENT_ENCODING] = coding.value
+                self._resp_impl.add_compression_filter(coding.value)
+
+        if self._compression_force:
+            start(self._compression_force)
+        else:
+            accept_encoding = request.headers.get(
+                hdrs.ACCEPT_ENCODING, '').lower()
+            for coding in ContentCoding:
+                if coding.value in accept_encoding:
+                    start(coding)
+                    return
+
     def start(self, request):
         resp_impl = self._start_pre_check(request)
         if resp_impl is not None:
@@ -598,10 +633,7 @@ class StreamResponse(HeadersMixin):
         self._copy_cookies()
 
         if self._compression:
-            if (self._compression_force or
-                    'deflate' in request.headers.get(
-                        hdrs.ACCEPT_ENCODING, '')):
-                resp_impl.add_compression_filter()
+            self._start_compression(request)
 
         if self._chunked:
             resp_impl.enable_chunked_encoding()
