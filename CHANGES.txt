@@ -17,6 +17,8 @@ CHANGES
 
 - Fix keep-alive support for aiohttp clients #406
 
+- Allow gzip compression in high-level server response interface #403
+
 
 0.16.5 (06-13-2015)
 -------------------
