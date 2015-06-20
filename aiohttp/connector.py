@@ -422,6 +422,11 @@ class TCPConnector(BaseConnector):
             self._hashfunc = hashfunc
         self._fingerprint = fingerprint
 
+        if resolve is not _marker:
+            warnings.warn(("resolve parameter is deprecated, "
+                           "use cache_dns instead"),
+                          DeprecationWarning, stacklevel=2)
+
         if cache_dns is not _marker and resolve is not _marker:
             if cache_dns != resolve:
                 raise ValueError("cashe_dns must agree with resolve")
