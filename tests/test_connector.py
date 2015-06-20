@@ -458,8 +458,15 @@ class TestBaseConnector(unittest.TestCase):
         conn = aiohttp.TCPConnector(loop=self.loop)
         self.assertTrue(conn.verify_ssl)
         self.assertIs(conn.fingerprint, None)
-        self.assertFalse(conn.resolve)
+
+        with self.assertWarns(DeprecationWarning):
+            self.assertFalse(conn.resolve)
+        self.assertFalse(conn.use_dns_cache)
+
         self.assertEqual(conn.family, socket.AF_INET)
+
+        with self.assertWarns(DeprecationWarning):
+            self.assertEqual(conn.resolved_hosts, {})
         self.assertEqual(conn.resolved_hosts, {})
 
     def test_tcp_connector_ctor_fingerprint_valid(self):
@@ -514,16 +521,36 @@ class TestBaseConnector(unittest.TestCase):
     def test_tcp_connector_clear_resolved_hosts(self):
         conn = aiohttp.TCPConnector(loop=self.loop)
         info = object()
-        conn._resolved_hosts[('localhost', 123)] = info
-        conn._resolved_hosts[('localhost', 124)] = info
+        conn._cached_hosts[('localhost', 123)] = info
+        conn._cached_hosts[('localhost', 124)] = info
         conn.clear_resolved_hosts('localhost', 123)
         self.assertEqual(
             conn.resolved_hosts, {('localhost', 124): info})
         conn.clear_resolved_hosts('localhost', 123)
         self.assertEqual(
             conn.resolved_hosts, {('localhost', 124): info})
-        conn.clear_resolved_hosts()
+        with self.assertWarns(DeprecationWarning):
+            conn.clear_resolved_hosts()
         self.assertEqual(conn.resolved_hosts, {})
+
+    def test_tcp_connector_clear_dns_cache(self):
+        conn = aiohttp.TCPConnector(loop=self.loop)
+        info = object()
+        conn._cached_hosts[('localhost', 123)] = info
+        conn._cached_hosts[('localhost', 124)] = info
+        conn.clear_dns_cache('localhost', 123)
+        self.assertEqual(
+            conn.cached_hosts, {('localhost', 124): info})
+        conn.clear_dns_cache('localhost', 123)
+        self.assertEqual(
+            conn.cached_hosts, {('localhost', 124): info})
+        conn.clear_dns_cache()
+        self.assertEqual(conn.cached_hosts, {})
+
+    def test_tcp_connector_clear_dns_cache_bad_args(self):
+        conn = aiohttp.TCPConnector(loop=self.loop)
+        with self.assertRaises(ValueError):
+            conn.clear_dns_cache('localhost')
 
     def test_ambigous_verify_ssl_and_ssl_context(self):
         with self.assertRaises(ValueError):
@@ -755,6 +782,25 @@ class TestHttpClientConnector(unittest.TestCase):
                                    "^Using `share_cookies` is deprecated"):
             conn = aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
         conn.close()
+
+    def test_ambiguous_ctor_params(self):
+        with self.assertRaises(ValueError):
+            aiohttp.TCPConnector(resolve=True, use_dns_cache=False,
+                                 loop=self.loop)
+
+    def test_both_resolve_and_use_dns_cache(self):
+        conn = aiohttp.TCPConnector(resolve=True, use_dns_cache=True,
+                                    loop=self.loop)
+        self.assertTrue(conn.use_dns_cache)
+        with self.assertWarns(DeprecationWarning):
+            self.assertTrue(conn.resolve)
+
+    def test_both_use_dns_cache_only(self):
+        conn = aiohttp.TCPConnector(use_dns_cache=True,
+                                    loop=self.loop)
+        self.assertTrue(conn.use_dns_cache)
+        with self.assertWarns(DeprecationWarning):
+            self.assertTrue(conn.resolve)
 
 
 class TestProxyConnector(unittest.TestCase):

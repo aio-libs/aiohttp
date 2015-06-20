@@ -464,7 +464,7 @@ BaseConnector
 TCPConnector
 ^^^^^^^^^^^^
 
-.. class:: TCPConnector(*, verify_ssl=True, fingerprint=None, resolve=False, \
+.. class:: TCPConnector(*, verify_ssl=True, fingerprint=None, use_dns_cache=False, \
                         family=socket.AF_INET, \
                         ssl_context=None, conn_timeout=None, \
                         keepalive_timeout=30, limit=None, share_cookies=False, \
@@ -492,12 +492,18 @@ TCPConnector
 
         .. versionadded:: 0.16
 
-   :param bool resolve: use internal cache for DNS lookups, ``False``
+   :param bool use_dns_cache: use internal cache for DNS lookups, ``False``
       by default.
 
       Enabling an option *may* speedup connection
       establishing a bit but may introduce some
       *side effects* also.
+
+      .. versionadded:: 0.17
+
+   :param bool resolve: alias for *use_dns_cache* parameter.
+
+      .. deprecated:: 0.17
 
    :param int family: TCP socket family, ``AF_INET`` by default
                       (*IPv4*). For *IPv6* use ``AF_INET6``.
@@ -525,23 +531,33 @@ TCPConnector
 
       Read-only property.
 
-   .. attribute:: resolve
+   .. attribute:: dns_cache
 
       Use quick lookup in internal *DNS* cache for host names if ``True``.
 
       Read-only :class:`bool` property.
 
+      .. versionadded:: 0.17
+
    .. attribute:: resolve
 
-      Use quick lookup in internal *DNS* cache for host names if ``True``.
+      Alias for :attr:`dns_cache`.
 
-      Read-only :class:`bool` property.
+      .. deprecated:: 0.17
+
+   .. attribute:: cached_hosts
+
+      The cache of resolved hosts if :attr:`dns_cache` is enabled.
+
+      Read-only :class:`types.MappingProxyType` property.
+
+      .. versionadded:: 0.17
 
    .. attribute:: resolved_hosts
 
-      The cache of resolved hosts if :attr:`resolve` is enabled.
+      Alias for :attr:`cached_hosts`
 
-      Read-only :class:`types.MappingProxyType` property.
+      .. deprecated:: 0.17
 
    .. attribute:: fingerprint
 
@@ -553,12 +569,20 @@ TCPConnector
 
       .. versionadded:: 0.16
 
-   .. method:: clear_resolved_hosts(self, host=None, port=None)
+   .. method:: clear_dns_cache(self, host=None, port=None)
 
       Clear internal *DNS* cache.
 
       Remove specific entry if both *host* and *port* are specified,
       clear all cache otherwise.
+
+      .. versionadded:: 0.17
+
+   .. method:: clear_resolved_hosts(self, host=None, port=None)
+
+      Alias for :meth:`clear_dns_cache`.
+
+      .. deprecated:: 0.17
 
 
 
