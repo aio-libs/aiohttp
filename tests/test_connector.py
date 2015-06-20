@@ -529,8 +529,28 @@ class TestBaseConnector(unittest.TestCase):
         conn.clear_resolved_hosts('localhost', 123)
         self.assertEqual(
             conn.resolved_hosts, {('localhost', 124): info})
-        conn.clear_resolved_hosts()
+        with self.assertWarns(DeprecationWarning):
+            conn.clear_resolved_hosts()
         self.assertEqual(conn.resolved_hosts, {})
+
+    def test_tcp_connector_clear_dns_cache(self):
+        conn = aiohttp.TCPConnector(loop=self.loop)
+        info = object()
+        conn._cached_hosts[('localhost', 123)] = info
+        conn._cached_hosts[('localhost', 124)] = info
+        conn.clear_dns_cache('localhost', 123)
+        self.assertEqual(
+            conn.cached_hosts, {('localhost', 124): info})
+        conn.clear_dns_cache('localhost', 123)
+        self.assertEqual(
+            conn.cached_hosts, {('localhost', 124): info})
+        conn.clear_dns_cache()
+        self.assertEqual(conn.cached_hosts, {})
+
+    def test_tcp_connector_clear_dns_cache_bad_args(self):
+        conn = aiohttp.TCPConnector(loop=self.loop)
+        with self.assertRaises(ValueError):
+            conn.clear_dns_cache('localhost')
 
     def test_ambigous_verify_ssl_and_ssl_context(self):
         with self.assertRaises(ValueError):
