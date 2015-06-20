@@ -763,6 +763,24 @@ class TestHttpClientConnector(unittest.TestCase):
             conn = aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
         conn.close()
 
+    def test_ambiguous_ctor_params(self):
+        with self.assertRaises(ValueError):
+            aiohttp.TCPConnector(resolve=True, cache_dns=False, loop=self.loop)
+
+    def test_both_resolve_and_cache_dns(self):
+        conn = aiohttp.TCPConnector(resolve=True, cache_dns=True,
+                                    loop=self.loop)
+        self.assertTrue(conn.cache_dns)
+        with self.assertWarns(DeprecationWarning):
+            self.assertTrue(conn.resolve)
+
+    def test_both_cache_dns_only(self):
+        conn = aiohttp.TCPConnector(cache_dns=True,
+                                    loop=self.loop)
+        self.assertTrue(conn.cache_dns)
+        with self.assertWarns(DeprecationWarning):
+            self.assertTrue(conn.resolve)
+
 
 class TestProxyConnector(unittest.TestCase):
 
