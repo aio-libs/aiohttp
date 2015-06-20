@@ -429,7 +429,7 @@ class TCPConnector(BaseConnector):
 
         if cache_dns is not _marker and resolve is not _marker:
             if cache_dns != resolve:
-                raise ValueError("cashe_dns must agree with resolve")
+                raise ValueError("cache_dns must agree with resolve")
             _cache_dns = cache_dns
         elif cache_dns is not _marker:
             _cache_dns = cache_dns
