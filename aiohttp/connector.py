@@ -486,7 +486,7 @@ class TCPConnector(BaseConnector):
         return self._family
 
     @property
-    def cache_dns(self):
+    def dns_cache(self):
         """True if local DNS caching is enabled."""
         return self._cache_dns
 
@@ -509,9 +509,9 @@ class TCPConnector(BaseConnector):
     def resolve(self):
         """Do DNS lookup for host name?"""
         warnings.warn((".resolve property is deprecated, "
-                       "use .cache_dns instead"),
+                       "use .dns_cache instead"),
                       DeprecationWarning, stacklevel=2)
-        return self.cache_dns
+        return self.dns_cache
 
     @property
     def resolved_hosts(self):

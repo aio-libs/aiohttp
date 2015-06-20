@@ -531,7 +531,7 @@ TCPConnector
 
       Read-only property.
 
-   .. attribute:: cache_dns
+   .. attribute:: dns_cache
 
       Use quick lookup in internal *DNS* cache for host names if ``True``.
 
@@ -541,13 +541,13 @@ TCPConnector
 
    .. attribute:: resolve
 
-      Alias for :attr:`cache_dns`.
+      Alias for :attr:`dns_cache`.
 
       .. deprecated:: 0.17
 
    .. attribute:: cached_hosts
 
-      The cache of resolved hosts if :attr:`cache_dns` is enabled.
+      The cache of resolved hosts if :attr:`dns_cache` is enabled.
 
       Read-only :class:`types.MappingProxyType` property.
 
