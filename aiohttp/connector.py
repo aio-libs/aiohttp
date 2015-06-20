@@ -402,7 +402,7 @@ class TCPConnector(BaseConnector):
     """
 
     def __init__(self, *, verify_ssl=True, fingerprint=None,
-                 resolve=_marker, cache_dns=_marker,
+                 resolve=_marker, use_dns_cache=_marker,
                  family=socket.AF_INET, ssl_context=None,
                  **kwargs):
         super().__init__(**kwargs)
@@ -424,21 +424,21 @@ class TCPConnector(BaseConnector):
 
         if resolve is not _marker:
             warnings.warn(("resolve parameter is deprecated, "
-                           "use cache_dns instead"),
+                           "use use_dns_cache instead"),
                           DeprecationWarning, stacklevel=2)
 
-        if cache_dns is not _marker and resolve is not _marker:
-            if cache_dns != resolve:
-                raise ValueError("cache_dns must agree with resolve")
-            _cache_dns = cache_dns
-        elif cache_dns is not _marker:
-            _cache_dns = cache_dns
+        if use_dns_cache is not _marker and resolve is not _marker:
+            if use_dns_cache != resolve:
+                raise ValueError("use_dns_cache must agree with resolve")
+            _use_dns_cache = use_dns_cache
+        elif use_dns_cache is not _marker:
+            _use_dns_cache = use_dns_cache
         elif resolve is not _marker:
-            _cache_dns = resolve
+            _use_dns_cache = resolve
         else:
-            _cache_dns = False
+            _use_dns_cache = False
 
-        self._cache_dns = _cache_dns
+        self._use_dns_cache = _use_dns_cache
         self._cached_hosts = {}
         self._ssl_context = ssl_context
         self._family = family
@@ -486,9 +486,9 @@ class TCPConnector(BaseConnector):
         return self._family
 
     @property
-    def dns_cache(self):
+    def use_dns_cache(self):
         """True if local DNS caching is enabled."""
-        return self._cache_dns
+        return self._use_dns_cache
 
     @property
     def cached_hosts(self):
@@ -511,7 +511,7 @@ class TCPConnector(BaseConnector):
         warnings.warn((".resolve property is deprecated, "
                        "use .dns_cache instead"),
                       DeprecationWarning, stacklevel=2)
-        return self.dns_cache
+        return self.use_dns_cache
 
     @property
     def resolved_hosts(self):
@@ -533,7 +533,7 @@ class TCPConnector(BaseConnector):
 
     @asyncio.coroutine
     def _resolve_host(self, host, port):
-        if self._cache_dns:
+        if self._use_dns_cache:
             key = (host, port)
 
             if key not in self._cached_hosts:

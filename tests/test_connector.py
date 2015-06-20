@@ -461,7 +461,7 @@ class TestBaseConnector(unittest.TestCase):
 
         with self.assertWarns(DeprecationWarning):
             self.assertFalse(conn.resolve)
-        self.assertFalse(conn.dns_cache)
+        self.assertFalse(conn.use_dns_cache)
 
         self.assertEqual(conn.family, socket.AF_INET)
 
@@ -785,19 +785,20 @@ class TestHttpClientConnector(unittest.TestCase):
 
     def test_ambiguous_ctor_params(self):
         with self.assertRaises(ValueError):
-            aiohttp.TCPConnector(resolve=True, cache_dns=False, loop=self.loop)
+            aiohttp.TCPConnector(resolve=True, use_dns_cache=False,
+                                 loop=self.loop)
 
-    def test_both_resolve_and_cache_dns(self):
-        conn = aiohttp.TCPConnector(resolve=True, cache_dns=True,
+    def test_both_resolve_and_use_dns_cache(self):
+        conn = aiohttp.TCPConnector(resolve=True, use_dns_cache=True,
                                     loop=self.loop)
-        self.assertTrue(conn.dns_cache)
+        self.assertTrue(conn.use_dns_cache)
         with self.assertWarns(DeprecationWarning):
             self.assertTrue(conn.resolve)
 
-    def test_both_cache_dns_only(self):
-        conn = aiohttp.TCPConnector(cache_dns=True,
+    def test_both_use_dns_cache_only(self):
+        conn = aiohttp.TCPConnector(use_dns_cache=True,
                                     loop=self.loop)
-        self.assertTrue(conn.dns_cache)
+        self.assertTrue(conn.use_dns_cache)
         with self.assertWarns(DeprecationWarning):
             self.assertTrue(conn.resolve)
 

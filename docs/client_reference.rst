@@ -464,7 +464,7 @@ BaseConnector
 TCPConnector
 ^^^^^^^^^^^^
 
-.. class:: TCPConnector(*, verify_ssl=True, fingerprint=None, cache_dns=False, \
+.. class:: TCPConnector(*, verify_ssl=True, fingerprint=None, use_dns_cache=False, \
                         family=socket.AF_INET, \
                         ssl_context=None, conn_timeout=None, \
                         keepalive_timeout=30, limit=None, share_cookies=False, \
@@ -492,7 +492,7 @@ TCPConnector
 
         .. versionadded:: 0.16
 
-   :param bool cache_dns: use internal cache for DNS lookups, ``False``
+   :param bool use_dns_cache: use internal cache for DNS lookups, ``False``
       by default.
 
       Enabling an option *may* speedup connection
@@ -501,7 +501,7 @@ TCPConnector
 
       .. versionadded:: 0.17
 
-   :param bool resolve: alias for *cache_dns* parameter.
+   :param bool resolve: alias for *use_dns_cache* parameter.
 
       .. deprecated:: 0.17
 
