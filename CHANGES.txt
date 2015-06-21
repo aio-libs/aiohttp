@@ -19,6 +19,8 @@ CHANGES
 
 - Allow gzip compression in high-level server response interface #403
 
+- Rename TCPConnector.resolve and family to dns_cache #415
+
 
 0.16.5 (06-13-2015)
 -------------------
