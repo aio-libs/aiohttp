@@ -10,7 +10,7 @@ import re
 import os
 import inspect
 
-from urllib.parse import urlencode
+from urllib.parse import urlencode, unquote
 
 from . import hdrs
 from .abc import AbstractRouter, AbstractMatchInfo
@@ -304,7 +304,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     @asyncio.coroutine
     def resolve(self, request):
-        path = request.path
+        path = request.raw_path
         method = request.method
         allowed_methods = set()
 
@@ -315,6 +315,9 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
             route_method = route.method
             if route_method == method or route_method == hdrs.METH_ANY:
+                # Unquote separate matching parts
+                match_dict = {key: unquote(value) for key, value in
+                              match_dict.items()}
                 return UrlMappingMatchInfo(match_dict, route)
 
             allowed_methods.add(route_method)

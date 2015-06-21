@@ -68,7 +68,19 @@ first positional parameter.
    .. attribute:: path
 
       The URL including *PATH INFO* without the host or scheme. e.g.,
-      ``/app/blog``
+      ``/app/blog``. The path is URL-unquoted. For raw path info see
+      :attr:`raw_path`.
+
+      Read-only :class:`str` property.
+
+   .. attribute:: raw_path
+
+      The URL including raw *PATH INFO* without the host or scheme.
+      Warning, the path may be quoted and may contains non valid URL
+      characters, e.g.
+      ``/my%2Fpath%7Cwith%21some%25strange%24characters``.
+
+      For unquoted version please take a look on :attr:`path`.
 
       Read-only :class:`str` property.
 
@@ -1049,6 +1061,9 @@ Router is any object that implements :class:`AbstractRouter` interface.
          pretty-looking error page for example.
 
       Used by internal machinery, end user unlikely need to call the method.
+
+      .. note:: The method uses :attr:`Request.raw_path` for pattern
+         matching against registered routes.
 
       .. versionchanged:: 0.14
 
