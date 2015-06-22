@@ -12,10 +12,7 @@ import math
 import time
 import warnings
 
-try:
-    import enum
-except ImportError:
-    from flufl import enum
+import enum
 
 from email.utils import parsedate
 from types import MappingProxyType
