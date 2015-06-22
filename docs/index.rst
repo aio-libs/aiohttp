@@ -25,7 +25,12 @@ Library Installation
 
 ::
 
-   pip install aiohttp
+   $ pip install aiohttp
+
+You may want to install *optional* :term:`cchardet` library as faster
+replacement for :term:`chardet`::
+
+   $ pip install cchardet
 
 Getting Started
 ---------------
@@ -99,6 +104,13 @@ Dependencies
 
 - Python 3.3 and :term:`asyncio` or Python 3.4+
 - *chardet* library
+- *Optional* :term:`cchardet` library as faster replacement for
+  :term:`chardet`.
+
+  Install it manually via::
+
+     $ pip install cchardet
+
 
 Contributing
 ------------
@@ -110,7 +122,7 @@ before making a Pull Request.
 Authors and License
 -------------------
 
-The ``aiohttp`` package is written mainly by Nikolay Kim and Andrew Svetlov.
+The ``aiohttp`` package is written mostly by Nikolay Kim and Andrew Svetlov.
 
 It's *Apache 2* licensed and freely available.
 

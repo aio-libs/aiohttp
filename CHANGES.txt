@@ -25,6 +25,8 @@ CHANGES
   Backward-compatibility warning: this may change the url matched by
   your queries if they send quoted characted (like %2F for /) #414
 
+- Use optional cchardet accelerator if present #418
+
 
 0.16.5 (06-13-2015)
 -------------------
