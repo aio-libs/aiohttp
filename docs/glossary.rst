@@ -28,7 +28,7 @@
 
    cchardet
 
-       cChardet is high speed universal character encoding detector. -
+       cChardet is high speed universal character encoding detector -
        binding to charsetdetect.
 
        https://pypi.python.org/pypi/cchardet/
@@ -36,4 +36,3 @@
    web-handler
 
        An endpoint that returns http response.
-
