@@ -9,7 +9,10 @@ import traceback
 import urllib.parse
 import warnings
 
-import chardet
+try:
+    import cchardet as chardet
+except ImportError:
+    import chardet
 
 import aiohttp
 from . import hdrs, helpers, streams
