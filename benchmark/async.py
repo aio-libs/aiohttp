@@ -175,8 +175,7 @@ def run_twisted(host, port, barrier):
 
 
 @asyncio.coroutine
-def attack(count, concurrency, connector, loop, url):
-    request = aiohttp.request
+def attack(count, concurrency, client, loop, url):
 
     in_queue = collections.deque()
     out_times = collections.deque()
@@ -190,13 +189,13 @@ def attack(count, concurrency, connector, loop, url):
             real_url = url + '/test/' + rnd
             try:
                 t1 = loop.time()
-                resp = yield from request('GET', real_url,
-                                          connector=connector, loop=loop)
+                resp = yield from client.get(real_url)
                 assert resp.status == 200, resp.status
                 if 'text/plain; charset=utf-8' != resp.headers['Content-Type']:
                     raise AssertionError('Invalid Content-Type: %r' %
                                          resp.headers)
                 body = yield from resp.text()
+                yield from resp.release()
                 assert body == ('Hello, ' + rnd), rnd
                 t2 = loop.time()
                 out_times.append(t2 - t1)
@@ -235,25 +234,25 @@ def run(test, count, concurrency, *, loop, verbose):
     url = 'http://{}:{}'.format(host, port)
 
     connector = aiohttp.TCPConnector(loop=loop)
+    client = aiohttp.ClientSession(connector=connector, loop=loop)
 
     for i in range(10):
         # make server hot
-        resp = yield from aiohttp.request('GET', url+'/prepare',
-                                          connector=connector, loop=loop)
+        resp = yield from client.get(url+'/prepare')
         assert resp.status == 200, resp.status
-        resp.release()
+        yield from resp.release()
 
     if verbose:
         test_name = test.__name__
         print("Attack", test_name)
-    rps, data = yield from attack(count, concurrency, connector, loop, url)
+    rps, data = yield from attack(count, concurrency, client, loop, url)
     if verbose:
         print("Done")
 
-    resp = yield from aiohttp.request('GET', url+'/stop',
-                                      connector=connector, loop=loop)
+    resp = yield from client.get(url+'/stop')
     assert resp.status == 200, resp.status
-    resp.release()
+    yield from resp.release()
+    client.close()
     server.join()
     return rps, data
 
