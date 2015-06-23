@@ -212,12 +212,10 @@ The client session supports context manager protocol for self closing::
       :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
-
       :param str url: Request URL
 
       :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                    ``False`` by default (optional).
-
 
    .. coroutinemethod:: options(url, *, allow_redirects=True, **kwargs)
 
@@ -233,7 +231,6 @@ The client session supports context manager protocol for self closing::
       :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                    ``True`` by default (optional).
 
-
    .. coroutinemethod:: patch(url, *, data=None, **kwargs)
 
       Perform a ``PATCH`` request.
@@ -241,7 +238,6 @@ The client session supports context manager protocol for self closing::
       In order to modify inner
       :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
-
 
       :param str url: Request URL
 
@@ -252,7 +248,8 @@ The client session supports context manager protocol for self closing::
    .. coroutinemethod:: ws_connect(url, *, protocols=(), timeout=10.0\
                                    autoclose=True, autoping=True)
 
-      Create a websocket connection. Returns a :class:`ClientWebSocketResponse` object.
+      Create a websocket connection. Returns a
+      :class:`ClientWebSocketResponse` object.
 
       :param str url: Websocket server url
 
@@ -264,7 +261,8 @@ The client session supports context manager protocol for self closing::
                              message from server. If `autoclose` is False
                              them close procedure has to be handled manually
 
-      :param bool autoping: automatically send `pong` on `ping` message from server
+      :param bool autoping: automatically send `pong` on `ping`
+                            message from server
 
       .. versionadded:: 0.16
 
@@ -332,7 +330,7 @@ request coroutine
                           ``False`` by default (optional).
 
    :param aiohttp.connector.BaseConnector connector: BaseConnector sub-class
-                                                     instance to support connection pooling.
+      instance to support connection pooling.
 
    :param bool read_until_eof: Read response until eof if response
                                does not have Content-Length header.
@@ -377,7 +375,7 @@ There are standard connectors:
 All connector classes should be derived from :class:`BaseConnector`.
 
 By default all *connectors* except :class:`ProxyConnector` support
-*keep-alive connections* (behavior controlled by *force_close*
+*keep-alive connections* (behavior is controlled by *force_close*
 constructor's parameter).
 
 
