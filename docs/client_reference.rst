@@ -53,10 +53,10 @@ The client session supports context manager protocol for self closing::
 
    :param loop: :ref:`event loop<asyncio-event-loop>`
       used for processing HTTP requests.
-      If param is ``None``, :func:`asyncio.get_event_loop`
-      is used for getting default event loop, but we strongly
-      recommend to use explicit loops everywhere.
-      (optional)
+      If *loop* is ``None`` the constructor borrows it from *connector* if specified.
+
+      :func:`asyncio.get_event_loop` is used for getting default event
+      loop otherwise.
 
    :param dict cookies: Cookies to send with the request (optional)
 

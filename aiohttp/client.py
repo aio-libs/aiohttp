@@ -34,21 +34,24 @@ class ClientSession:
                  headers=None, auth=None, request_class=ClientRequest,
                  response_class=ClientResponse,
                  ws_response_class=ClientWebSocketResponse):
-        if loop is None:
-            loop = asyncio.get_event_loop()
+
+        if connector is None:
+            connector = aiohttp.TCPConnector(loop=loop)
+            loop = connector._loop  # never None
+        else:
+            if loop is None:
+                loop = connector._loop  # never None
+            elif connector._loop is not loop:
+                raise ValueError("loop argument must agree with connector")
+
         self._loop = loop
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
         self._cookies = http.cookies.SimpleCookie()
 
-        if connector is None:
-            connector = aiohttp.TCPConnector(loop=loop)
-        elif connector._loop is not loop:
-            raise ValueError("loop argument must agree with connector")
-
         # For Backward compatability with `share_cookies` connectors
-        elif connector._share_cookies:
+        if connector._share_cookies:
             self._update_cookies(connector.cookies)
         if cookies is not None:
             self._update_cookies(cookies)

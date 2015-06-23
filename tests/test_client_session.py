@@ -370,6 +370,11 @@ class TestClientSession(unittest.TestCase):
 
         self.assertTrue(session.closed)
 
+    def test_borrow_connector_loop(self):
+        conn = self.make_open_connector()
+        session = ClientSession(connector=conn)
+        self.assertIs(session._loop, self.loop)
+
 
 class TestCLientRequest(unittest.TestCase):
 

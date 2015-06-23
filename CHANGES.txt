@@ -27,6 +27,8 @@ CHANGES
 
 - Use optional cchardet accelerator if present #418
 
+- Borrow loop from Connector in ClientSession if loop is not set
+
 
 0.16.5 (06-13-2015)
 -------------------
