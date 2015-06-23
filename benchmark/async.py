@@ -234,7 +234,7 @@ def run(test, count, concurrency, *, loop, verbose):
     url = 'http://{}:{}'.format(host, port)
 
     connector = aiohttp.TCPConnector(loop=loop)
-    with aiohttp.ClientSession(connector=connector, loop=loop) as client:
+    with aiohttp.ClientSession(connector=connector) as client:
 
         for i in range(10):
             # make server hot

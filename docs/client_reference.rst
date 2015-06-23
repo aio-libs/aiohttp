@@ -50,7 +50,6 @@ The client session supports context manager protocol for self closing::
    :param aiohttp.connector.BaseConnector connector: BaseConnector
       sub-class instance to support connection pooling.
 
-
    :param loop: :ref:`event loop<asyncio-event-loop>` used for
       processing HTTP requests.
 
