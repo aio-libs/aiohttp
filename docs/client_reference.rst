@@ -51,9 +51,11 @@ The client session supports context manager protocol for self closing::
       sub-class instance to support connection pooling.
 
 
-   :param loop: :ref:`event loop<asyncio-event-loop>`
-      used for processing HTTP requests.
-      If *loop* is ``None`` the constructor borrows it from *connector* if specified.
+   :param loop: :ref:`event loop<asyncio-event-loop>` used for
+      processing HTTP requests.
+
+      If *loop* is ``None`` the constructor
+      borrows it from *connector* if specified.
 
       :func:`asyncio.get_event_loop` is used for getting default event
       loop otherwise.
