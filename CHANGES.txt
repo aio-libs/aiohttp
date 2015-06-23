@@ -29,6 +29,8 @@ CHANGES
 
 - Borrow loop from Connector in ClientSession if loop is not set
 
+- Add context manager support to ClientSession for session closing.
+
 
 0.16.5 (06-13-2015)
 -------------------
