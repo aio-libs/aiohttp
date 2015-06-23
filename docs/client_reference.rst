@@ -42,7 +42,8 @@ The client session supports context manager protocol for self closing::
 
 .. class:: ClientSession(*, connector=None, loop=None, cookies=None,\
                          headers=None, auth=None, request_class=ClientRequest,\
-                         response_class=ClientResponse, ws_response_class=ClientWebSocketResponse)
+                         response_class=ClientResponse, \
+                         ws_response_class=ClientWebSocketResponse)
 
    The class for creating client sessions and making requests.
 
