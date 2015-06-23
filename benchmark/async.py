@@ -234,25 +234,25 @@ def run(test, count, concurrency, *, loop, verbose):
     url = 'http://{}:{}'.format(host, port)
 
     connector = aiohttp.TCPConnector(loop=loop)
-    client = aiohttp.ClientSession(connector=connector, loop=loop)
+    with aiohttp.ClientSession(connector=connector, loop=loop) as client:
 
-    for i in range(10):
-        # make server hot
-        resp = yield from client.get(url+'/prepare')
+        for i in range(10):
+            # make server hot
+            resp = yield from client.get(url+'/prepare')
+            assert resp.status == 200, resp.status
+            yield from resp.release()
+
+        if verbose:
+            test_name = test.__name__
+            print("Attack", test_name)
+        rps, data = yield from attack(count, concurrency, client, loop, url)
+        if verbose:
+            print("Done")
+
+        resp = yield from client.get(url+'/stop')
         assert resp.status == 200, resp.status
         yield from resp.release()
 
-    if verbose:
-        test_name = test.__name__
-        print("Attack", test_name)
-    rps, data = yield from attack(count, concurrency, client, loop, url)
-    if verbose:
-        print("Done")
-
-    resp = yield from client.get(url+'/stop')
-    assert resp.status == 200, resp.status
-    yield from resp.release()
-    client.close()
     server.join()
     return rps, data
 

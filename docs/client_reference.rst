@@ -25,8 +25,19 @@ Usage example::
      >>> resp
      <ClientResponse(python.org/) [200]>
      >>> data = yield from resp.read()
+     >>> session.close()
 
 .. versionadded:: 0.15.2
+
+The client session supports context manager protocol for self closing::
+
+    >>> with aiohttp.ClientSession() as session:
+    >>>     resp = yield from session.get('http://python.org')
+    >>>     yield from resp.release()
+    >>> session.closed
+    True
+
+.. versionadded:: 0.17
 
 
 .. class:: ClientSession(*, connector=None, loop=None, cookies=None,\
