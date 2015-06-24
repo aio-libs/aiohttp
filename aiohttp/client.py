@@ -465,3 +465,45 @@ def request(method, url, *,
         return resp
     finally:
         session.detach()
+
+
+@asyncio.coroutine
+def get(url, **kwargs):
+    ret = yield from request('GET', url, **kwargs)
+    return ret
+
+
+@asyncio.coroutine
+def options(url, **kwargs):
+    ret = yield from request('OPTIONS', url, **kwargs)
+    return ret
+
+
+@asyncio.coroutine
+def head(url, **kwargs):
+    ret = yield from request('HEAD', url, **kwargs)
+    return ret
+
+
+@asyncio.coroutine
+def post(url, *, data=None, **kwargs):
+    ret = yield from request('POST', url, **kwargs)
+    return ret
+
+
+@asyncio.coroutine
+def put(url, *, data=None, **kwargs):
+    ret = yield from request('PUT', url, **kwargs)
+    return ret
+
+
+@asyncio.coroutine
+def patch(url, *, data=None, **kwargs):
+    ret = yield from request('PATCH', url, **kwargs)
+    return ret
+
+
+@asyncio.coroutine
+def delete(url, *, data=None, **kwargs):
+    ret = yield from request('DELETE', url, **kwargs)
+    return ret

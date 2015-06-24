@@ -1275,6 +1275,25 @@ class TestHttpClientFunctional(unittest.TestCase):
                                     headers=headers))
             session.close()
 
+    def test_shortcuts(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            for meth in ('get', 'post', 'put', 'delete',
+                         'head', 'patch', 'options'):
+                coro = getattr(client, meth)
+                r = self.loop.run_until_complete(
+                    coro(httpd.url('method', meth), loop=self.loop))
+                content1 = self.loop.run_until_complete(r.read())
+                content2 = self.loop.run_until_complete(r.read())
+                content = content1.decode()
+
+                self.assertEqual(r.status, 200)
+                if meth == 'head':
+                    self.assertEqual(b'', content1)
+                else:
+                    self.assertIn('"method": "%s"' % meth.upper(), content)
+                self.assertEqual(content1, content2)
+                r.close()
+
 
 class Functional(test_utils.Router):
 
