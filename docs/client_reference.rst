@@ -280,8 +280,16 @@ The client session supports context manager protocol for self closing::
 
 
 
-request coroutine
------------------
+Basic API
+---------
+
+While we encourage :class:`ClientSession` usage we also provide simple
+coroutines for making HTTP requests.
+
+Basic API is good for performing simple HTTP requests without
+keep-aliving, cookies and complex connection stuff like properly configured SSL
+certification chaining.
+
 
 .. coroutinefunction:: request(method, url, *, params=None, data=None, \
                        headers=None, cookies=None, files=None, auth=None, \
@@ -298,7 +306,7 @@ request coroutine
 
    :param str method: HTTP method
 
-   :param str url: Request URL
+   :param str url: Requested URL
 
    :param dict params: Parameters to be sent in the query
                        string of the new request (optional)
@@ -355,6 +363,83 @@ Usage::
      >>> resp
      <ClientResponse(python.org/) [200]>
      >>> data = yield from resp.read()
+
+
+.. coroutinefunction:: get(url, **kwargs)
+
+   Perform a GET request.
+
+   :param str url: Requested URL.
+
+   :param \*\*kwargs: Optional arguments that :func:`request` takes.
+
+   :return: :class:`ClientResponse` or derived from
+
+
+.. coroutinefunction:: options(url, **kwargs)
+
+   Perform a OPTIONS request.
+
+   :param str url: Requested URL.
+
+   :param \*\*kwargs: Optional arguments that :func:`request` takes.
+
+   :return: :class:`ClientResponse` or derived from
+
+
+.. coroutinefunction:: head(url, **kwargs)
+
+   Perform a HEAD request.
+
+   :param str url: Requested URL.
+
+   :param \*\*kwargs: Optional arguments that :func:`request` takes.
+
+   :return: :class:`ClientResponse` or derived from
+
+
+.. coroutinefunction:: delete(url, **kwargs)
+
+   Perform a DELETE request.
+
+   :param str url: Requested URL.
+
+   :param \*\*kwargs: Optional arguments that :func:`request` takes.
+
+   :return: :class:`ClientResponse` or derived from
+
+
+.. coroutinefunction:: post(url, *, data=None, **kwargs)
+
+   Perform a POST request.
+
+   :param str url: Requested URL.
+
+   :param \*\*kwargs: Optional arguments that :func:`request` takes.
+
+   :return: :class:`ClientResponse` or derived from
+
+
+.. coroutinefunction:: put(url, *, data=None, **kwargs)
+
+   Perform a PUT request.
+
+   :param str url: Requested URL.
+
+   :param \*\*kwargs: Optional arguments that :func:`request` takes.
+
+   :return: :class:`ClientResponse` or derived from
+
+
+.. coroutinefunction:: patch(url, *, data=None, **kwargs)
+
+   Perform a PATCH request.
+
+   :param str url: Requested URL.
+
+   :param \*\*kwargs: Optional arguments that :func:`request` takes.
+
+   :return: :class:`ClientResponse` or derived from
 
 
 Connectors
