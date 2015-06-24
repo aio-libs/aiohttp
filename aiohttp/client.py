@@ -19,7 +19,8 @@ from .websocket_client import ClientWebSocketResponse
 from . import hdrs
 
 
-__all__ = ('request', 'ClientSession')
+__all__ = ('ClientSession', 'request', 'get', 'options', 'head',
+           'delete', 'post', 'put', 'patch')
 
 PY_341 = sys.version_info >= (3, 4, 1)
 
