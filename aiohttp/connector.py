@@ -690,7 +690,7 @@ class ProxyConnector(TCPConnector):
                         "Transport does not expose socket instance")
                 transport.pause_reading()
                 transport, proto = yield from self._loop.create_connection(
-                    self._factory, ssl=True, sock=rawsock,
+                    self._factory, ssl=self.ssl_context, sock=rawsock,
                     server_hostname=req.host)
 
         return transport, proto
