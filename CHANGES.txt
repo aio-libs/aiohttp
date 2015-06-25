@@ -31,6 +31,9 @@ CHANGES
 
 - Add context manager support to ClientSession for session closing.
 
+- Add toplevel get(), post(), put(), head(), delete(), options(),
+  patch() coroutines.
+
 
 0.16.5 (06-13-2015)
 -------------------
