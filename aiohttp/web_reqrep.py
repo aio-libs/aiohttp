@@ -740,6 +740,8 @@ class Response(StreamResponse):
 
     @property
     def text(self):
+        if self._body is None:
+            return None
         return self._body.decode(self.charset or 'utf-8')
 
     @text.setter
