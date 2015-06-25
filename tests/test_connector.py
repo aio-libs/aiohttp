@@ -18,7 +18,7 @@ from aiohttp.connector import Connection
 
 from tests.test_client_functional import Functional
 
-PY_341 = sys.version_info >= (3, 4)
+PY_341 = sys.version_info >= (3, 4, 1)
 
 
 class TestHttpConnection(unittest.TestCase):
