@@ -680,3 +680,8 @@ class TestResponse(unittest.TestCase):
         self.assertEqual('текст'.encode('koi8-r'), resp.body)
         self.assertEqual('text/html', resp.content_type)
         self.assertEqual('koi8-r', resp.charset)
+
+    def test_text_with_empty_payload(self):
+        resp = Response(status=200)
+        self.assertEqual(resp.body, None)
+        self.assertEqual(resp.text, None)
