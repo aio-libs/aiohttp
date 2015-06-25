@@ -13,13 +13,14 @@ import urllib.parse
 import aiohttp
 from .client_reqrep import ClientRequest, ClientResponse
 from .errors import WSServerHandshakeError
-from .multidict import MultiDictProxy, MultiDict, CIMultiDict
+from .multidict import MultiDictProxy, MultiDict, CIMultiDict, upstr
 from .websocket import WS_KEY, WebSocketParser, WebSocketWriter
 from .websocket_client import ClientWebSocketResponse
 from . import hdrs
 
 
-__all__ = ('request', 'ClientSession')
+__all__ = ('ClientSession', 'request', 'get', 'options', 'head',
+           'delete', 'post', 'put', 'patch')
 
 PY_341 = sys.version_info >= (3, 4, 1)
 
@@ -104,7 +105,8 @@ class ClientSession:
             raise RuntimeError('Session is closed')
 
         redirects = 0
-        method = method.upper()
+        if not isinstance(method, upstr):
+            method = upstr(method)
 
         # Merge with default headers and transform to CIMultiDict
         headers = self._prepare_headers(headers)
@@ -465,3 +467,45 @@ def request(method, url, *,
         return resp
     finally:
         session.detach()
+
+
+@asyncio.coroutine
+def get(url, **kwargs):
+    ret = yield from request(hdrs.METH_GET, url, **kwargs)
+    return ret
+
+
+@asyncio.coroutine
+def options(url, **kwargs):
+    ret = yield from request(hdrs.METH_OPTIONS, url, **kwargs)
+    return ret
+
+
+@asyncio.coroutine
+def head(url, **kwargs):
+    ret = yield from request(hdrs.METH_HEAD, url, **kwargs)
+    return ret
+
+
+@asyncio.coroutine
+def post(url, *, data=None, **kwargs):
+    ret = yield from request(hdrs.METH_POST, url, **kwargs)
+    return ret
+
+
+@asyncio.coroutine
+def put(url, *, data=None, **kwargs):
+    ret = yield from request(hdrs.METH_PUT, url, **kwargs)
+    return ret
+
+
+@asyncio.coroutine
+def patch(url, *, data=None, **kwargs):
+    ret = yield from request(hdrs.METH_PATCH, url, **kwargs)
+    return ret
+
+
+@asyncio.coroutine
+def delete(url, *, data=None, **kwargs):
+    ret = yield from request(hdrs.METH_DELETE, url, **kwargs)
+    return ret
