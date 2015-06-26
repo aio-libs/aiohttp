@@ -34,6 +34,8 @@ CHANGES
 - Add toplevel get(), post(), put(), head(), delete(), options(),
   patch() coroutines.
 
+- Fix IPv6 support for client API #425
+
 
 0.16.5 (06-13-2015)
 -------------------
