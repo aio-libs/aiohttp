@@ -97,8 +97,12 @@ class ClientRequest:
 
     def update_host(self, url):
         """Update destination host, port and connection type (ssl)."""
-        scheme, netloc, path, query, fragment = \
-            url_parsed = urllib.parse.urlsplit(url)
+        url_parsed = urllib.parse.urlsplit(url)
+
+        # check for network location part
+        netloc = url_parsed.netloc
+        if not netloc:
+            raise ValueError('Host could not be detected.')
 
         # get host/port
         host = url_parsed.hostname
@@ -107,9 +111,6 @@ class ClientRequest:
         except ValueError:
             raise ValueError(
                 'Port number could not be converted.') from None
-
-        if not netloc:
-            raise ValueError('Host could not be detected.')
 
         # check domain idna encoding
         try:
@@ -127,8 +128,10 @@ class ClientRequest:
         # Record entire netloc for usage in host header
         self.netloc = netloc
 
-        # extract host and port
+        scheme = url_parsed.scheme
         self.ssl = scheme == 'https'
+
+        # set port number if it isn't already set
         if not port:
             if self.ssl:
                 port = HTTPS_PORT
