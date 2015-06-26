@@ -97,41 +97,45 @@ class ClientRequest:
 
     def update_host(self, url):
         """Update destination host, port and connection type (ssl)."""
-        scheme, netloc, path, query, fragment = urllib.parse.urlsplit(url)
+        scheme, netloc, path, query, fragment = \
+            url_parsed = urllib.parse.urlsplit(url)
+
+        # get host/port
+        host = url_parsed.hostname
+        try:
+            port = url_parsed.port
+        except ValueError:
+            raise ValueError(
+                'Port number could not be converted.') from None
+
         if not netloc:
             raise ValueError('Host could not be detected.')
 
         # check domain idna encoding
         try:
             netloc = netloc.encode('idna').decode('utf-8')
+            host = host.encode('idna').decode('utf-8')
         except UnicodeError:
             raise ValueError('URL has an invalid label.')
 
         # basic auth info
-        if '@' in netloc:
-            authinfo, netloc = netloc.split('@', 1)
-            self.auth = helpers.BasicAuth(*authinfo.split(':', 1))
+        username, password = url_parsed.username, url_parsed.password
+        if username:
+            self.auth = helpers.BasicAuth(username, password or '')
+            netloc = netloc.split('@', 1)[1]
 
         # Record entire netloc for usage in host header
         self.netloc = netloc
 
         # extract host and port
         self.ssl = scheme == 'https'
-        if ':' in netloc:
-            netloc, port_s = netloc.split(':', 1)
-            try:
-                self.port = int(port_s)
-            except ValueError:
-                raise ValueError(
-                    'Port number could not be converted.') from None
-        else:
+        if not port:
             if self.ssl:
-                self.port = HTTPS_PORT
+                port = HTTPS_PORT
             else:
-                self.port = HTTP_PORT
+                port = HTTP_PORT
 
-        self.scheme = scheme
-        self.host = netloc
+        self.host, self.port, self.scheme = host, port, scheme
 
     def update_version(self, version):
         """Convert request version to two elements tuple.

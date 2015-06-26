@@ -135,6 +135,25 @@ class TestClientRequest(unittest.TestCase):
             ValueError, ClientRequest, 'get', 'http://\u2061owhefopw.com',
             loop=self.loop)
 
+    def test_ipv6_host_port(self):
+        req = ClientRequest('get', 'http://[2001:db8::1]/', loop=self.loop)
+        self.assertEqual(req.host, '2001:db8::1')
+        self.assertEqual(req.port, 80)
+        self.assertFalse(req.ssl)
+        self.loop.run_until_complete(req.close())
+
+        req = ClientRequest('get', 'https://[2001:db8::1]', loop=self.loop)
+        self.assertEqual(req.host, '2001:db8::1')
+        self.assertEqual(req.port, 443)
+        self.assertTrue(req.ssl)
+        self.loop.run_until_complete(req.close())
+
+        req = ClientRequest('get', 'https://[2001:db8::1]:960', loop=self.loop)
+        self.assertEqual(req.host, '2001:db8::1')
+        self.assertEqual(req.port, 960)
+        self.assertTrue(req.ssl)
+        self.loop.run_until_complete(req.close())
+
     def test_no_path(self):
         req = ClientRequest('get', 'http://python.org', loop=self.loop)
         self.assertEqual('/', req.path)
@@ -172,6 +191,7 @@ class TestClientRequest(unittest.TestCase):
                             loop=self.loop)
         self.assertIn('AUTHORIZATION', req.headers)
         self.assertEqual('Basic bmtpbToxMjM0', req.headers['AUTHORIZATION'])
+        self.assertEqual('python.org', req.netloc)
         self.loop.run_until_complete(req.close())
 
         req = ClientRequest(
@@ -180,6 +200,7 @@ class TestClientRequest(unittest.TestCase):
             loop=self.loop)
         self.assertIn('AUTHORIZATION', req.headers)
         self.assertEqual('Basic bmtpbToxMjM0', req.headers['AUTHORIZATION'])
+        self.assertEqual('python.org', req.netloc)
         self.loop.run_until_complete(req.close())
 
     def test_no_content_length(self):
