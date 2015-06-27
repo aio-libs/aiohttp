@@ -1138,3 +1138,42 @@ class TestProxyConnector(unittest.TestCase):
                                            loop=self.loop)
         self.assertIsNone(connector.proxy_auth)
         connector.close()
+
+    @unittest.mock.patch('aiohttp.connector.ClientRequest')
+    def test_https_connect_pass_ssl_context(self, ClientRequestMock):
+        loop_mock = unittest.mock.Mock()
+        proxy_req = ClientRequest('GET', 'http://proxy.example.com',
+                                  loop=loop_mock)
+        ClientRequestMock.return_value = proxy_req
+
+        proxy_resp = ClientResponse('get', 'http://proxy.example.com')
+        proxy_resp._loop = loop_mock
+        proxy_req.send = send_mock = unittest.mock.Mock()
+        send_mock.return_value = proxy_resp
+        proxy_resp.start = start_mock = unittest.mock.Mock()
+        self._fake_coroutine(start_mock, unittest.mock.Mock(status=200))
+
+        connector = aiohttp.ProxyConnector(
+            'http://proxy.example.com', loop=loop_mock)
+
+        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+        self._fake_coroutine(loop_mock.create_connection, (tr, proto))
+
+        req = ClientRequest('GET', 'https://www.python.org', loop=self.loop)
+        self.loop.run_until_complete(connector._create_connection(req))
+
+        loop_mock.create_connection.assert_called_with(
+            mock.ANY,
+            ssl=connector.ssl_context,
+            sock=mock.ANY,
+            server_hostname='www.python.org')
+
+        self.assertEqual(req.path, '/')
+        self.assertEqual(proxy_req.method, 'CONNECT')
+        self.assertEqual(proxy_req.path, 'www.python.org:443')
+        tr.pause_reading.assert_called_once_with()
+        tr.get_extra_info.assert_called_with('socket', default=None)
+
+        proxy_req.close()
+        proxy_resp.close()
+        req.close()
