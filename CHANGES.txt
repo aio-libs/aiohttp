@@ -36,6 +36,8 @@ CHANGES
 
 - Fix IPv6 support for client API #425
 
+- Pass ssl context through proxy connector #421
+
 
 0.16.5 (06-13-2015)
 -------------------
