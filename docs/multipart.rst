@@ -22,7 +22,7 @@ data::
 
 First, you need to wrap the response with a
 :meth:`MultipartReader.from_response`. This needs to keep the implementation of
-:class:`MultipartReader` separated from the response and the connection routines 
+:class:`MultipartReader` separated from the response and the connection routines
 which makes it more portable::
 
     >>> reader = aiohttp.MultipartReader.from_response(resp)
@@ -30,7 +30,7 @@ which makes it more portable::
 Let's assume with this response you'd received some JSON document and multiple
 files for it, but you don't need all of them, just a specific one.
 
-So first you need to enter into a loop where the multipart body will 
+So first you need to enter into a loop where the multipart body will
 be processed::
 
     >>> metadata = None
@@ -57,7 +57,7 @@ body part headers: this allows you to filter parts by their attributes::
 
 Nor :class:`BodyPartReader` or :class:`MultipartReader` instances doesn't
 read the whole body part data without explicitly asking for.
-:class:`BodyPartReader` provides a set of helpers methods 
+:class:`BodyPartReader` provides a set of helpers methods
 to fetch popular content types in friendly way:
 
 - :meth:`BodyPartReader.text` for plaintext data;
@@ -81,8 +81,8 @@ from it::
     ...         continue
 
 If current body part doesn't matches your expectation and you want to skip it
-- just continue a loop to start a next iteration of it. Here is where magic 
-happens. Before fetching the next body part ``yield from reader.next()`` it 
+- just continue a loop to start a next iteration of it. Here is where magic
+happens. Before fetching the next body part ``yield from reader.next()`` it
 ensures that the previous one was read completely. If it wasn't, all its content
 sends to the void in term to fetch the next part. So you don't have to care
 about cleanup routines while you're within a loop.
@@ -97,11 +97,12 @@ to do::
 
     ...     filedata = part.decode(filedata)
 
-Once you are done wirh multipart processing, just break a loop::
+Once you are done with multipart processing, just break a loop::
 
     ...     break
 
-And release the connection to do not hang the response in the middle of the data::
+And release the connection to do not hang the response in the middle
+of the data::
 
     ...  yield from resp.release()  # or yield from reader.release()
 
@@ -188,7 +189,7 @@ part and if body part has `Content-Encoding` or `Content-Transfer-Encoding`
 they will be applied on streaming content.
 
 Please note, that on :meth:`MultipartWriter.serialize` all the file objects
-will be read until the end and there is no way to repeat a request without 
+will be read until the end and there is no way to repeat a request without
 rewinding their pointers to the start.
 
 Hacking Multipart
@@ -216,7 +217,7 @@ size::
 
 Sometimes the server response may not be well formed: it may or may not
 contains nested parts. For instance, we request a resource which returns
-JSON documents with the files attached to it. If the document has any 
+JSON documents with the files attached to it. If the document has any
 attachments, they are returned as a nested multipart.
 If it has not it responds as plain body parts::
 
@@ -258,7 +259,7 @@ If it has not it responds as plain body parts::
     ----:--
     --:--
 
-Reading such kind of data in single stream is possible, but is not clean at 
+Reading such kind of data in single stream is possible, but is not clean at
 all::
 
     result = []
