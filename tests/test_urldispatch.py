@@ -550,3 +550,8 @@ class TestUrlDispatcher(unittest.TestCase):
         with self.assertRaises(ValueError):
             handler = self.make_handler()
             self.router.add_route('GET', 'invalid_path', handler)
+
+    def test_add_route_invalid_method(self):
+        with self.assertRaises(ValueError):
+            handler = self.make_handler()
+            self.router.add_route('INVALID_METHOD', '/path', handler)

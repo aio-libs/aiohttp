@@ -356,15 +356,17 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     def add_route(self, method, path, handler,
                   *, name=None, expect_handler=None):
 
-        assert callable(handler), handler
         if not path.startswith('/'):
             raise ValueError("path should be started with /")
+
+        assert callable(handler), handler
         if (not asyncio.iscoroutinefunction(handler) and
                 not inspect.isgeneratorfunction(handler)):
             handler = asyncio.coroutine(handler)
 
         method = upstr(method)
-        assert method in self.METHODS, method
+        if method not in self.METHODS:
+            raise ValueError("{} is not allowed HTTP method".format(method))
 
         if not ('{' in path or '}' in path or self.ROUTE_RE.search(path)):
             route = PlainRoute(
