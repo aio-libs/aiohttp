@@ -1000,9 +1000,9 @@ Router is any object that implements :class:`AbstractRouter` interface.
                          The parameter is case-insensitive, e.g. you
                          can push ``'get'`` as well as ``'GET'``.
 
-      :param str path: route path
+      :param str path: route path. Should be started with slash (``'/'``).
 
-      :param callable handler: route handler
+      :param callable handler: route handler.
 
       :param str name: optional route name.
 

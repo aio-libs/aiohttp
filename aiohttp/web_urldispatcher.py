@@ -357,6 +357,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                   *, name=None, expect_handler=None):
 
         assert callable(handler), handler
+        if not path.startswith('/'):
+            raise ValueError("path should be started with /")
         if (not asyncio.iscoroutinefunction(handler) and
                 not inspect.isgeneratorfunction(handler)):
             handler = asyncio.coroutine(handler)
