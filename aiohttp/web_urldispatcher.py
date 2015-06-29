@@ -17,6 +17,7 @@ from .abc import AbstractRouter, AbstractMatchInfo
 from .protocol import HttpVersion11
 from .web_exceptions import HTTPMethodNotAllowed, HTTPNotFound, HTTPNotModified
 from .web_reqrep import StreamResponse
+from .multidict import upstr
 
 
 class UrlMappingMatchInfo(dict, AbstractMatchInfo):
@@ -360,7 +361,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                 not inspect.isgeneratorfunction(handler)):
             handler = asyncio.coroutine(handler)
 
-        method = method.upper()
+        method = upstr(method)
         assert method in self.METHODS, method
 
         if not ('{' in path or '}' in path or self.ROUTE_RE.search(path)):
