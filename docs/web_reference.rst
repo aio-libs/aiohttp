@@ -918,7 +918,7 @@ arbitrary properties for later access from
    .. note::
 
       Application object has :attr:`route` attribute but has no
-      ``add_router`` method. The reason is: we want to support
+      ``add_route()`` method. The reason is: we want to support
       different route implementations (even maybe not url-matching
       based but traversal ones).
 
