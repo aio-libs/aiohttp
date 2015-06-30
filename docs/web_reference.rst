@@ -918,7 +918,7 @@ arbitrary properties for later access from
    .. note::
 
       Application object has :attr:`route` attribute but has no
-      ``add_router`` method. The reason is: we want to support
+      ``add_route()`` method. The reason is: we want to support
       different route implementations (even maybe not url-matching
       based but traversal ones).
 
@@ -1000,9 +1000,9 @@ Router is any object that implements :class:`AbstractRouter` interface.
                          The parameter is case-insensitive, e.g. you
                          can push ``'get'`` as well as ``'GET'``.
 
-      :param str path: route path
+      :param str path: route path. Should be started with slash (``'/'``).
 
-      :param callable handler: route handler
+      :param callable handler: route handler.
 
       :param str name: optional route name.
 
