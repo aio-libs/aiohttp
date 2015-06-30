@@ -545,3 +545,13 @@ class TestUrlDispatcher(unittest.TestCase):
             })
 
         self.loop.run_until_complete(go())
+
+    def test_add_route_not_started_with_slash(self):
+        with self.assertRaises(ValueError):
+            handler = self.make_handler()
+            self.router.add_route('GET', 'invalid_path', handler)
+
+    def test_add_route_invalid_method(self):
+        with self.assertRaises(ValueError):
+            handler = self.make_handler()
+            self.router.add_route('INVALID_METHOD', '/path', handler)
