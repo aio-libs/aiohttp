@@ -201,6 +201,7 @@ class StreamParser:
         # TODO: write test
         if hasattr(self._loop, 'is_closed'):
             if self._loop.is_closed():
+                # TODO: log something
                 return
 
         try:
