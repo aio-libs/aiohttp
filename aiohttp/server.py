@@ -295,7 +295,10 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                     self.transport.close()
                     break
                 else:
-                    reader.unset_parser()
+                    # TODO: write test
+                    if hasattr(self.loop, 'is_closed'):
+                        if not self._loop.is_closed():
+                            reader.unset_parser()
 
                 if self._request_handler:
                     if self._keep_alive and self._keep_alive_period:
