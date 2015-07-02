@@ -198,6 +198,11 @@ class StreamParser:
         if self._parser is None:
             return
 
+        # TODO: write test
+        if hasattr(self._loop, 'is_closed'):
+            if self._loop.is_closed():
+                return
+
         try:
             self._parser.throw(EofStream())
         except StopIteration:
