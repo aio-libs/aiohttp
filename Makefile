@@ -49,6 +49,7 @@ clean:
 	rm -f aiohttp/_multidict.c
 	rm -f aiohttp/_multidict.*.so
 	rm -f aiohttp/_multidict.*.pyd
+	rm -rf .tox
 
 doc:
 	make -C docs html
