@@ -42,6 +42,8 @@ CHANGES
 
 - Don't process request finishing by low-level server on closed event loop
 
+- Don't override data if multiple files are uploaded with same key #433
+
 
 0.16.5 (06-13-2015)
 -------------------
