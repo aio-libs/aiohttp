@@ -360,6 +360,7 @@ class Request(dict, HeadersMixin):
         }
 
         out = MultiDict()
+        _count = 1
         for field in fs.list or ():
             transfer_encoding = field.headers.get(
                 hdrs.CONTENT_TRANSFER_ENCODING, None)
@@ -370,7 +371,8 @@ class Request(dict, HeadersMixin):
                                field.type)
                 if self._post_files_cache is None:
                     self._post_files_cache = {}
-                self._post_files_cache[field.name] = field
+                self._post_files_cache[field.name+str(_count)] = field
+                _count += 1
                 out.add(field.name, ff)
             else:
                 value = field.value

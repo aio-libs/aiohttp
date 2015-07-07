@@ -181,6 +181,40 @@ class TestWebFunctional(unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
+    def test_files_upload_with_same_key(self):
+        @asyncio.coroutine
+        def handler(request):
+            data = yield from request.post()
+            files = data.getall('file')
+            _file_names = []
+            for _file in files:
+                self.assertFalse(_file.file.closed)
+                if _file.filename == 'test1.jpeg':
+                    self.assertEqual(_file.file.read(), b'binary data 1')
+                if _file.filename == 'test2.jpeg':
+                    self.assertEqual(_file.file.read(), b'binary data 2')
+                _file_names.append(_file.filename)
+            self.assertCountEqual(_file_names, ['test1.jpeg', 'test2.jpeg'])
+            resp = web.Response(body=b'OK')
+            return resp
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('POST', '/', handler)
+            _data = FormData()
+            _data.add_field('file', b'binary data 1',
+                            content_type='image/jpeg',
+                            filename='test1.jpeg')
+            _data.add_field('file', b'binary data 2',
+                            content_type='image/jpeg',
+                            filename='test2.jpeg')
+            resp = yield from request('POST', url, data=_data,
+                                      loop=self.loop)
+            self.assertEqual(200, resp.status)
+            resp.close()
+
+        self.loop.run_until_complete(go())
+
     def test_post_files(self):
 
         here = os.path.dirname(__file__)
