@@ -186,8 +186,15 @@ class TestWebFunctional(unittest.TestCase):
         def handler(request):
             data = yield from request.post()
             files = data.getall('file')
+            _file_names = []
             for _file in files:
-                self.assertEqual(_file.file.closed, False)
+                self.assertFalse(_file.file.closed)
+                if _file.filename == 'test1.jpeg':
+                    self.assertEqual(_file.file.read(), b'binary data 1')
+                if _file.filename == 'test2.jpeg':
+                    self.assertEqual(_file.file.read(), b'binary data 2')
+                _file_names.append(_file.filename)
+            self.assertCountEqual(_file_names, ['test1.jpeg', 'test2.jpeg'])
             resp = web.Response(body=b'OK')
             return resp
 
