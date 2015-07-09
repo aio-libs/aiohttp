@@ -44,6 +44,9 @@ CHANGES
 
 - Don't override data if multiple files are uploaded with same key #433
 
+- Ensure multipart.BodyPartReader.read_chunk read all the necessary data
+  to avoid false assertions about malformed multipart payload
+
 
 0.16.5 (06-13-2015)
 -------------------

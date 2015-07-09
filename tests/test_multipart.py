@@ -527,6 +527,23 @@ class MultipartReaderTestCase(TestCase):
         self.assertTrue(second.at_eof())
         self.assertIsNone(third)
 
+    def test_read_chunk_doesnt_breaks_reader(self):
+        reader = aiohttp.multipart.MultipartReader(
+            {CONTENT_TYPE: 'multipart/related;boundary=":"'},
+            Stream(b'--:\r\n'
+                   b'Content-Length: 4\r\n\r\n'
+                   b'test'
+                   b'\r\n--:\r\n'
+                   b'Content-Length: 6\r\n\r\n'
+                   b'passed'
+                   b'\r\n--:--'))
+        while True:
+            part = yield from reader.next()
+            if part is None:
+                break
+            while not part.at_eof():
+                yield from part.read_chunk(3)
+
 
 class BodyPartWriterTestCase(unittest.TestCase):
 

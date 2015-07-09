@@ -228,8 +228,6 @@ class BodyPartReader(object):
         else:
             while not self._at_eof:
                 data.extend((yield from self.read_chunk(self.chunk_size)))
-            assert b'\r\n' == (yield from self._content.readline()), \
-                'reader did not read all the data or it is malformed'
         if decode:
             return self.decode(data)
         return data
@@ -252,6 +250,8 @@ class BodyPartReader(object):
         self._read_bytes += chunk_size
         if self._read_bytes == self._length:
             self._at_eof = True
+            assert b'\r\n' == (yield from self._content.readline()), \
+                'reader did not read all the data or it is malformed'
         return chunk
 
     @asyncio.coroutine
@@ -290,7 +290,6 @@ class BodyPartReader(object):
         else:
             while not self._at_eof:
                 yield from self.read_chunk(self.chunk_size)
-            assert b'\r\n' == (yield from self._content.readline())
 
     @asyncio.coroutine
     def text(self, *, encoding=None):
