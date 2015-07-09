@@ -412,7 +412,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             raise ValueError('Route name is required')
 
         if route not in self._routes:
-            raise ValueError('Route is not found {}', route)
+            raise ValueError('Route is not found {}'.format(route))
 
         route = self._routes[route]
         route.add_view(method, handler, name=name)
