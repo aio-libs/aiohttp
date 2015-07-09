@@ -622,6 +622,9 @@ class StreamResponse(HeadersMixin):
                     return
 
     def start(self, request):
+        request.app.on_response_start.send(request=request,
+                                           response=self)
+
         resp_impl = self._start_pre_check(request)
         if resp_impl is not None:
             return resp_impl

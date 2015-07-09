@@ -7,6 +7,7 @@ from .web_exceptions import *  # noqa
 from .web_urldispatcher import *  # noqa
 from .web_ws import *  # noqa
 from .protocol import HttpVersion  # noqa
+from .signal import Signal
 
 __all__ = (web_reqrep.__all__ +
            web_exceptions.__all__ +
@@ -194,6 +195,8 @@ class Application(dict):
         for factory in middlewares:
             assert asyncio.iscoroutinefunction(factory), factory
         self._middlewares = list(middlewares)
+
+        self.on_response_start = Signal({'request', 'response'})
 
     @property
     def router(self):
