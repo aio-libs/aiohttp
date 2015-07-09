@@ -172,7 +172,7 @@ class SystemRoute(ViewableRoute):
 
     def handler(self, request, exc):
         request.match_info['exception'] = exc
-        if self._view or not None:
+        if self._view is not None:
             return (yield from self._view(request))
         else:
             return exc
