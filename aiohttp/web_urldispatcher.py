@@ -278,6 +278,11 @@ class StaticRoute(Route):
 class View(metaclass=abc.ABCMeta):
 
     def __init__(self, handler, name='', method=hdrs.METH_ANY):
+        assert callable(handler), handler
+        if (not asyncio.iscoroutinefunction(handler) and
+                not inspect.isgeneratorfunction(handler)):
+            handler = asyncio.coroutine(handler)
+
         self._name = name
         self._method = upstr(method)
         self._handler = handler
@@ -402,12 +407,6 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         self._urls.append(route)
 
     def add_view(self, method, handler, *, name='', route=None):
-
-        assert callable(handler), handler
-        if (not asyncio.iscoroutinefunction(handler) and
-                not inspect.isgeneratorfunction(handler)):
-            handler = asyncio.coroutine(handler)
-
         if route is None:
             raise ValueError('Route name is required')
 
@@ -418,7 +417,6 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         route.add_view(method, handler, name=name)
 
     def add_route(self, name, path, *, expect_handler=None):
-
         if not path.startswith('/'):
             raise ValueError("path should be started with /")
 
