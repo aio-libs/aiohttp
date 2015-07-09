@@ -31,7 +31,8 @@ class TestHttpClientFunctionalNewStyle(unittest.TestCase):
     def create_server(self, method, path, handler=None):
         app = web.Application(loop=self.loop)
         if handler:
-            app.router.add_route(method, path, handler)
+            app.router.add_route('r', path)
+            app.router.add_view(method, handler, route='r')
 
         port = self.find_unused_port()
         self.handler = app.make_handler(

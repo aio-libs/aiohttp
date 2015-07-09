@@ -380,6 +380,7 @@ class TestWebSocketClient(unittest.TestCase):
 class TestWebSocketClientFunctional(unittest.TestCase):
 
     def setUp(self):
+        self.handler = None
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
 
@@ -399,7 +400,8 @@ class TestWebSocketClientFunctional(unittest.TestCase):
     @asyncio.coroutine
     def create_server(self, method, path, handler):
         app = web.Application(loop=self.loop)
-        app.router.add_route(method, path, handler)
+        app.router.add_route('r', path)
+        app.router.add_view(method, handler, route='r')
 
         port = self.find_unused_port()
         self.handler = app.make_handler()

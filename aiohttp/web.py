@@ -89,7 +89,11 @@ class RequestHandler(ServerHttpProtocol):
                  "got {!r} [middlewares {!r}]").format(
                      match_info.handler, type(resp), self._middlewares)
         except HTTPException as exc:
-            resp = exc
+            route = self._router.get_system_route(exc.status_code)
+            try:
+                resp = yield from route.handler(request, exc)
+            except:
+                resp = exc
 
         resp_msg = resp.start(request)
         yield from resp.write_eof()

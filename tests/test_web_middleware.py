@@ -26,7 +26,8 @@ class TestWebMiddlewareFunctional(unittest.TestCase):
     @asyncio.coroutine
     def create_server(self, method, path, handler, *middlewares):
         app = web.Application(loop=self.loop, middlewares=middlewares)
-        app.router.add_route(method, path, handler)
+        app.router.add_route('r', path)
+        app.router.add_view(method, handler, route='r')
 
         port = self.find_unused_port()
         self.handler = app.make_handler(debug=True)

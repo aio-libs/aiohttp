@@ -22,7 +22,8 @@ class TestWeb(unittest.TestCase):
         def handler(request):
             return 'abc'
 
-        app.router.add_route('GET', '/', handler)
+        app.router.add_route('r', '/')
+        app.router.add_view('GET', handler, route='r')
         h = app.make_handler()()
         message = RawRequestMessage('GET', '/', HttpVersion11,
                                     CIMultiDict(), False, False)

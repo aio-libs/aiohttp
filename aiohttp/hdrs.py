@@ -11,6 +11,7 @@ METH_PATCH = upstr('PATCH')
 METH_POST = upstr('POST')
 METH_PUT = upstr('PUT')
 METH_TRACE = upstr('TRACE')
+METH_PURGE = upstr('PURGE')
 
 ACCEPT = upstr('ACCEPT')
 ACCEPT_CHARSET = upstr('ACCEPT-CHARSET')

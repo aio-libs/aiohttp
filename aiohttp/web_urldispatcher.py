@@ -12,7 +12,7 @@ import inspect
 
 from urllib.parse import urlencode, unquote
 
-from . import hdrs
+from . import hdrs, web_exceptions
 from .abc import AbstractRouter, AbstractMatchInfo
 from .protocol import HttpVersion11
 from .web_exceptions import HTTPMethodNotAllowed, HTTPNotFound, HTTPNotModified
@@ -22,13 +22,17 @@ from .multidict import upstr
 
 class UrlMappingMatchInfo(dict, AbstractMatchInfo):
 
-    def __init__(self, match_dict, route):
+    def __init__(self, match_dict, route, handler):
+        # Unquote separate matching parts
+        match_dict = {key: unquote(value) for key, value in match_dict.items()}
+
         super().__init__(match_dict)
         self._route = route
+        self._handler = handler
 
     @property
     def handler(self):
-        return self._route.handler
+        return self._handler
 
     @property
     def route(self):
@@ -39,7 +43,7 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
 
 
 @asyncio.coroutine
-def _defaultExpectHandler(request):
+def defaultExpectHandler(request):
     """Default handler for Except: 100-continue"""
     if request.version == HttpVersion11:
         request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
@@ -47,33 +51,22 @@ def _defaultExpectHandler(request):
 
 class Route(metaclass=abc.ABCMeta):
 
-    def __init__(self, method, handler, name, *, expect_handler=None):
+    def __init__(self, name, *, expect_handler=None):
         if expect_handler is None:
-            expect_handler = _defaultExpectHandler
+            expect_handler = defaultExpectHandler
         assert asyncio.iscoroutinefunction(expect_handler), \
             'Coroutine is expected, got {!r}'.format(expect_handler)
 
-        self._method = method
-        self._handler = handler
         self._name = name
         self._expect_handler = expect_handler
-
-    @property
-    def method(self):
-        return self._method
-
-    @property
-    def handler(self):
-        return self._handler
 
     @property
     def name(self):
         return self._name
 
     @abc.abstractmethod  # pragma: no branch
-    def match(self, path):
-        """Return dict with info for given path or
-        None if route cannot process path."""
+    def match(self, request):
+        """Return UrlMappingMatchInfo object."""
 
     @abc.abstractmethod  # pragma: no branch
     def url(self, **kwargs):
@@ -91,53 +84,113 @@ class Route(metaclass=abc.ABCMeta):
             return url
 
 
-class PlainRoute(Route):
+class ViewableRoute(Route):
 
-    def __init__(self, method, handler, name, path, *, expect_handler=None):
-        super().__init__(method, handler, name, expect_handler=expect_handler)
+    def __init__(self, name, *, expect_handler=None):
+        super().__init__(name, expect_handler=expect_handler)
+        self._views = []
+
+    def match_view(self, request, view_name, match_dict):
+        method = request.method
+        allowed_methods = set()
+
+        for view in self._views:
+            if (view.name == view_name and
+                (view.method == method or
+                 view.method == hdrs.METH_ANY)):
+                return UrlMappingMatchInfo(match_dict, self, view)
+            else:
+                allowed_methods.add(view.method)
+
+        return _MethodNotAllowedMatchInfo(method, allowed_methods)
+
+    def add_view(self, method, handler, *, name=''):
+        self._views.append(View(handler, name, method))
+
+
+class PlainRoute(ViewableRoute):
+
+    def __init__(self, name, path, *, expect_handler=None):
+        super().__init__(name, expect_handler=expect_handler)
         self._path = path
 
-    def match(self, path):
+    def match(self, request):
         # string comparison is about 10 times faster than regexp matching
-        if self._path == path:
-            return {}
+        if self._path == request.raw_path:
+            return super().match_view(request, '', {})
         else:
             return None
 
-    def url(self, *, query=None):
+    def url(self, *, query=None, view=None):
         return self._append_query(self._path, query)
 
     def __repr__(self):
+        method = ','.join(set([view.method for view in self._views]))
         name = "'" + self.name + "' " if self.name is not None else ""
-        return "<PlainRoute {name}[{method}] {path} -> {handler!r}".format(
-            name=name, method=self.method, path=self._path,
-            handler=self.handler)
+        return "<PlainRoute {name}[{method}] {path}".format(
+            name=name, method=method, path=self._path)
 
 
-class DynamicRoute(Route):
+class DynamicRoute(ViewableRoute):
 
-    def __init__(self, method, handler, name, pattern, formatter, *,
-                 expect_handler=None):
-        super().__init__(method, handler, name, expect_handler=expect_handler)
+    def __init__(self, name, pattern, formatter, *, expect_handler=None):
+        super().__init__(name, expect_handler=expect_handler)
         self._pattern = pattern
         self._formatter = formatter
 
-    def match(self, path):
-        match = self._pattern.match(path)
+    def match(self, request):
+        match = self._pattern.match(request.raw_path)
         if match is None:
             return None
         else:
-            return match.groupdict()
+            return super().match_view(request, '', match.groupdict())
 
-    def url(self, *, parts, query=None):
+    def url(self, *, parts, query=None, view=None):
         url = self._formatter.format_map(parts)
         return self._append_query(url, query)
 
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
-        return ("<DynamicRoute {name}[{method}] {formatter} -> {handler!r}"
-                .format(name=name, method=self.method,
-                        formatter=self._formatter, handler=self.handler))
+        method = ','.join(set([view.method for view in self._views]))
+        return ("<DynamicRoute {name}[{method}] {formatter}"
+                .format(name=name, method=method, formatter=self._formatter))
+
+
+class SystemRoute(ViewableRoute):
+
+    def __init__(self, status, reason=''):
+        super().__init__(str(status))
+        self._status = status
+        self._reason = reason
+        self._view = None
+
+    def url(self, **kwargs):
+        raise RuntimeError(".url() is not allowed for SystemRoute")
+
+    def match(self, request):
+        pass
+
+    def handler(self, request, exc):
+        request.match_info['exception'] = exc
+        if self._view or not None:
+            return (yield from self._view(request))
+        else:
+            return exc
+
+    @property
+    def status(self):
+        return self._status
+
+    @property
+    def reason(self):
+        return self._reason
+
+    def set_view(self, handler):
+        self._view = handler
+
+    def __repr__(self):
+        return "<SystemRoute {status}: {reason}>".format(
+            status=self._status, reason=self._reason)
 
 
 class StaticRoute(Route):
@@ -146,8 +199,7 @@ class StaticRoute(Route):
                  expect_handler=None, chunk_size=256*1024):
         assert prefix.startswith('/'), prefix
         assert prefix.endswith('/'), prefix
-        super().__init__(
-            'GET', self.handle, name, expect_handler=expect_handler)
+        super().__init__(name, expect_handler=expect_handler)
         self._prefix = prefix
         self._prefix_len = len(self._prefix)
         self._directory = os.path.abspath(directory) + os.sep
@@ -157,10 +209,16 @@ class StaticRoute(Route):
             raise ValueError(
                 "No directory exists at '{}'".format(self._directory))
 
-    def match(self, path):
+    def match(self, request):
+        path = request.raw_path
         if not path.startswith(self._prefix):
             return None
-        return {'filename': path[self._prefix_len:]}
+
+        if request.method != hdrs.METH_GET:
+            return _MethodNotAllowedMatchInfo(request.method, [hdrs.METH_GET])
+
+        return UrlMappingMatchInfo(
+            {'filename': path[self._prefix_len:]}, self, self.handler)
 
     def url(self, *, filename, query=None):
         while filename.startswith('/'):
@@ -169,7 +227,7 @@ class StaticRoute(Route):
         return self._append_query(url, query)
 
     @asyncio.coroutine
-    def handle(self, request):
+    def handler(self, request):
         filename = request.match_info['filename']
         filepath = os.path.abspath(os.path.join(self._directory, filename))
         if not filepath.startswith(self._directory):
@@ -213,35 +271,32 @@ class StaticRoute(Route):
 
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
-        return "<StaticRoute {name}[{method}] {path} -> {directory!r}".format(
-            name=name, method=self.method, path=self._prefix,
-            directory=self._directory)
+        return "<StaticRoute {name}[GET] {path} -> {directory!r}".format(
+            name=name, path=self._prefix, directory=self._directory)
 
 
-class SystemRoute(Route):
+class View(metaclass=abc.ABCMeta):
 
-    def __init__(self, status, reason):
-        super().__init__(hdrs.METH_ANY, None, None)
-        self._status = status
-        self._reason = reason
-
-    def url(self, **kwargs):
-        raise RuntimeError(".url() is not allowed for SystemRoute")
-
-    def match(self, path):
-        return None
+    def __init__(self, handler, name='', method=hdrs.METH_ANY):
+        self._name = name
+        self._method = upstr(method)
+        self._handler = handler
 
     @property
-    def status(self):
-        return self._status
+    def method(self):
+        return self._method
 
     @property
-    def reason(self):
-        return self._reason
+    def handler(self):
+        return self._handler
 
-    def __repr__(self):
-        return "<SystemRoute {status}: {reason}>".format(status=self._status,
-                                                         reason=self._reason)
+    @property
+    def name(self):
+        return self._name
+
+    @asyncio.coroutine
+    def __call__(self, request):
+        return (yield from self._handler(request))
 
 
 class _NotFoundMatchInfo(UrlMappingMatchInfo):
@@ -249,7 +304,7 @@ class _NotFoundMatchInfo(UrlMappingMatchInfo):
     route = SystemRoute(404, 'Not Found')
 
     def __init__(self):
-        super().__init__({}, None)
+        super().__init__({}, None, self._not_found)
 
     @property
     def handler(self):
@@ -268,7 +323,7 @@ class _MethodNotAllowedMatchInfo(UrlMappingMatchInfo):
     route = SystemRoute(405, 'Method Not Allowed')
 
     def __init__(self, method, allowed_methods):
-        super().__init__({}, None)
+        super().__init__({}, None, self._not_allowed)
         self._method = method
         self._allowed_methods = allowed_methods
 
@@ -294,9 +349,10 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     GOOD = r'[^{}/]+'
     ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
 
-    METHODS = {hdrs.METH_ANY, hdrs.METH_POST,
-               hdrs.METH_GET, hdrs.METH_PUT, hdrs.METH_DELETE,
-               hdrs.METH_PATCH, hdrs.METH_HEAD, hdrs.METH_OPTIONS}
+    _system_routes = dict(
+        (getattr(web_exceptions, name).status_code,
+         SystemRoute(getattr(web_exceptions, name).status_code))
+        for name in web_exceptions.__all__)
 
     def __init__(self):
         super().__init__()
@@ -305,28 +361,14 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     @asyncio.coroutine
     def resolve(self, request):
-        path = request.raw_path
-        method = request.method
-        allowed_methods = set()
-
         for route in self._urls:
-            match_dict = route.match(path)
-            if match_dict is None:
+            match_info = route.match(request)
+            if match_info is None:
                 continue
 
-            route_method = route.method
-            if route_method == method or route_method == hdrs.METH_ANY:
-                # Unquote separate matching parts
-                match_dict = {key: unquote(value) for key, value in
-                              match_dict.items()}
-                return UrlMappingMatchInfo(match_dict, route)
-
-            allowed_methods.add(route_method)
+            return match_info
         else:
-            if allowed_methods:
-                return _MethodNotAllowedMatchInfo(method, allowed_methods)
-            else:
-                return _NotFoundMatchInfo()
+            return _NotFoundMatchInfo()
 
     def __iter__(self):
         return iter(self._routes)
@@ -339,6 +381,12 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     def __getitem__(self, name):
         return self._routes[name]
+
+    def get_system_route(self, status_code):
+        if status_code not in self._system_routes:
+            self._system_routes[status_code] = SystemRoute(status_code)
+
+        return self._system_routes[status_code]
 
     def register_route(self, route):
         assert isinstance(route, Route), 'Instance of Route class is required.'
@@ -353,24 +401,29 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                 self._routes[name] = route
         self._urls.append(route)
 
-    def add_route(self, method, path, handler,
-                  *, name=None, expect_handler=None):
-
-        if not path.startswith('/'):
-            raise ValueError("path should be started with /")
+    def add_view(self, method, handler, *, name='', route=None):
 
         assert callable(handler), handler
         if (not asyncio.iscoroutinefunction(handler) and
                 not inspect.isgeneratorfunction(handler)):
             handler = asyncio.coroutine(handler)
 
-        method = upstr(method)
-        if method not in self.METHODS:
-            raise ValueError("{} is not allowed HTTP method".format(method))
+        if route is None:
+            raise ValueError('Route name is required')
+
+        if route not in self._routes:
+            raise ValueError('Route is not found {}', route)
+
+        route = self._routes[route]
+        route.add_view(method, handler, name=name)
+
+    def add_route(self, name, path, *, expect_handler=None):
+
+        if not path.startswith('/'):
+            raise ValueError("path should be started with /")
 
         if not ('{' in path or '}' in path or self.ROUTE_RE.search(path)):
-            route = PlainRoute(
-                method, handler, name, path, expect_handler=expect_handler)
+            route = PlainRoute(name, path, expect_handler=expect_handler)
             self.register_route(route)
             return route
 
@@ -401,8 +454,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             raise ValueError(
                 "Bad pattern '{}': {}".format(pattern, exc)) from None
         route = DynamicRoute(
-            method, handler, name, compiled,
-            formatter, expect_handler=expect_handler)
+            name, compiled, formatter, expect_handler=expect_handler)
         self.register_route(route)
         return route
 
