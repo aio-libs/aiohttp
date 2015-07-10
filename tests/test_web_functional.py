@@ -867,3 +867,20 @@ class TestWebFunctional(unittest.TestCase):
             yield from resp.release()
 
         self.loop.run_until_complete(go())
+
+    def test_get_with_empty_arg_with_equal(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            self.assertIn('arg', request.GET)
+            self.assertEqual('', request.GET['arg'])
+            return web.Response()
+
+        @asyncio.coroutine
+        def go():
+            _, srv, url = yield from self.create_server('GET', '/', handler)
+            resp = yield from request('GET', url+'?arg=', loop=self.loop)
+            self.assertEqual(200, resp.status)
+            yield from resp.release()
+
+        self.loop.run_until_complete(go())
