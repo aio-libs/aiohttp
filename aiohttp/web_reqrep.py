@@ -206,7 +206,8 @@ class Request(dict, HeadersMixin):
 
         Lazy property.
         """
-        return MultiDictProxy(MultiDict(parse_qsl(self.query_string)))
+        return MultiDictProxy(MultiDict(parse_qsl(self.query_string,
+                                                  keep_blank_values=True)))
 
     @reify
     def POST(self):
