@@ -96,6 +96,9 @@ first positional parameter.
 
       Read-only :class:`~aiohttp.multidict.MultiDictProxy` lazy property.
 
+      .. versionchanged:: 0.17
+         A multidict contains empty items for query string like ``?arg=``.
+
    .. attribute:: POST
 
       A multidict with all the variables in the POST parameters.
