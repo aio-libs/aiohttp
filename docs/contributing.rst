@@ -107,8 +107,7 @@ Please before making a Pull Request about documentation changes run::
    $ make doc
 
 Once it finishes it will output the index html page
-``open file:///.../aiohttp/docs/_build/html/index.html``
-, like :command:`make cov` does.
+``open file:///.../aiohttp/docs/_build/html/index.html``.
 
 Go to the link and make sure your doc changes looks good.
 
