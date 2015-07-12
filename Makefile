@@ -55,4 +55,7 @@ doc:
 	make -C docs html
 	@echo "open file://`pwd`/docs/_build/html/index.html"
 
+doc-spelling:
+	make -C docs spelling
+
 .PHONY: all build venv flake test vtest testloop cov clean doc

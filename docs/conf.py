@@ -55,6 +55,7 @@ extensions = [
     'sphinx.ext.intersphinx',
     'alabaster',
     'aiohttp_doctools',
+    'sphinxcontrib.spelling',
 ]
 
 intersphinx_mapping = {

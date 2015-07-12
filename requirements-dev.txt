@@ -7,3 +7,4 @@ cython
 chardet
 tox
 ipdb
+sphinxcontrib-spelling
