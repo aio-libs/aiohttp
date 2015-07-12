@@ -7,10 +7,11 @@
 Working with Multipart
 ======================
 
-`aiohttp` supports a full featured multipart reader and writer. Both are designed
-with steaming processing in mind to avoid unwanted footprint which may be
-significant if you're dealing with large payloads, but this also means that
-most I/O operation are only possible to be executed a single time.
+`aiohttp` supports a full featured multipart reader and writer. Both
+are designed with steaming processing in mind to avoid unwanted
+footprint which may be significant if you're dealing with large
+payloads, but this also means that most I/O operation are only
+possible to be executed a single time.
 
 Reading Multipart Responses
 ---------------------------
@@ -60,14 +61,14 @@ read the whole body part data without explicitly asking for.
 :class:`BodyPartReader` provides a set of helpers methods
 to fetch popular content types in friendly way:
 
-- :meth:`BodyPartReader.text` for plaintext data;
+- :meth:`BodyPartReader.text` for plain text data;
 - :meth:`BodyPartReader.json` for JSON;
 - :meth:`BodyPartReader.form` for `application/www-urlform-encode`
 
-Each of these methods automagically recognizes if content is compressed by
+Each of these methods automatically recognizes if content is compressed by
 using `gzip` and `deflate` encoding (while it respects `identity` one), or if
 transfer encoding is base64 or `quoted-printable` - in each case the result
-will get automagically decoded. But in case you need to access to raw binary
+will get automatically decoded. But in case you need to access to raw binary
 data as it is, there are :meth:`BodyPartReader.read` and
 :meth:`BodyPartReader.read_chunk` coroutine methods as well to read raw binary
 data as it is all-in-single-shot or by chunks respectively.
@@ -112,7 +113,7 @@ Sending Multipart Requests
 
 :class:`MultipartWriter` provides an interface to build multipart payload from
 the Python data and serialize it into chunked binary stream. Since multipart
-format is recursive and supports deeply nestings, you can use ``with`` statement
+format is recursive and supports deeply nesting, you can use ``with`` statement
 to design your multipart data closer to how it will be::
 
     >>> with aiohttp.MultipartWriter('mixed') as mpwriter:

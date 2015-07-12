@@ -15,7 +15,7 @@ Client Session
 Client session is the recommended interface for making HTTP requests.
 
 Session encapsulates *connection pool* (*connector* instance) and
-supports keep-alives by default.
+supports keepalives by default.
 
 Usage example::
 
@@ -102,7 +102,7 @@ The client session supports context manager protocol for self closing::
       The session cookies, :class:`http.cookies.SimpleCookie` instance.
 
       A read-only property. Overriding `session.cookies = new_val` is
-      forbidden, but you may modify the object inplace if needed.
+      forbidden, but you may modify the object in-place if needed.
 
 
    .. coroutinemethod:: request(method, url, *, params=None, data=None,\
@@ -148,7 +148,7 @@ The client session supports context manager protocol for self closing::
       :param bool expect100: Expect 100-continue response from server.
                              ``False`` by default (optional).
 
-      :param bool read_until_eof: Read response until eof if response
+      :param bool read_until_eof: Read response until EOF if response
                                   does not have Content-Length header.
                                   ``True`` by default (optional).
 
@@ -287,7 +287,7 @@ While we encourage :class:`ClientSession` usage we also provide simple
 coroutines for making HTTP requests.
 
 Basic API is good for performing simple HTTP requests without
-keep-aliving, cookies and complex connection stuff like properly configured SSL
+keepaliving, cookies and complex connection stuff like properly configured SSL
 certification chaining.
 
 
@@ -452,7 +452,7 @@ Connectors are transports for aiohttp client API.
 There are standard connectors:
 
 1. :class:`TCPConnector` for regular *TCP sockets* (both *HTTP* and
-   *HTTPS* schemas supported).
+   *HTTPS* schemes supported).
 2. :class:`ProxyConnector` for connecting via HTTP proxy.
 3. :class:`UnixConnector` for connecting via UNIX socket (it's used mostly for
    testing purposes).
@@ -541,7 +541,7 @@ BaseConnector
       is absent in the pool.
 
       The call may be paused if :attr:`limit` is exhausted until used
-      connetions returns to pool.
+      connections returns to pool.
 
       :param aiohttp.client.ClientRequest request: request object
                                                    which is connection
@@ -552,7 +552,7 @@ BaseConnector
    .. coroutinemethod:: _create_connection(req)
 
       Abstract method for actual connection establishing, should be
-      overriden in subclasses.
+      overridden in subclasses.
 
 
 
@@ -580,7 +580,7 @@ TCPConnector
       *HTTPS* requests (enabled by default). May be disabled to
       skip validation for sites with invalid certificates.
 
-   :param bytes fingerprint: Pass the binary md5, sha1, or sha256
+   :param bytes fingerprint: Pass the binary MD5, SHA1, or SHA256
         digest of the expected certificate in DER format to verify
         that the certificate the server presents matches. Useful
         for `certificate pinning
@@ -657,7 +657,7 @@ TCPConnector
 
    .. attribute:: fingerprint
 
-      md5, sha1, or sha256 hash of the expected certificate in DER
+      MD5, SHA1, or SHA256 hash of the expected certificate in DER
       format, or ``None`` if no certificate fingerprint check
       required.
 
@@ -711,7 +711,7 @@ ProxyConnector
    :param str proxy: URL for proxy, e.g. ``"http://some.proxy.com"``.
 
    :param aiohttp.helpers.BasicAuth proxy_auth: basic-auth
-      authenthication info used for proxies with authorization.
+      authentication info used for proxies with authorization.
 
    .. note::
 
@@ -729,8 +729,8 @@ ProxyConnector
 
    .. attribute:: proxy_auth
 
-      Proxy auth info, read-only :class:`BasicAuth` property or
-      ``None`` for proxy without authentication.
+      Proxy authentication info, read-only :class:`BasicAuth` property
+      or ``None`` for proxy without authentication.
 
       .. versionadded:: 0.16
 
@@ -762,7 +762,7 @@ UnixConnector
        >>> resp = yield from session.get('http://python.org')
 
    Constructor accepts all parameters suitable for
-   :class:`BaseConnector` plus unix-specific one:
+   :class:`BaseConnector` plus UNIX-specific one:
 
    :param str path: Unix socket path
 
