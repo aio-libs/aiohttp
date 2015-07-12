@@ -245,7 +245,7 @@ Before template rendering you have to setup *jinja2 environment* first
 
 
 After that you may use template engine in your *web-handlers*. The
-most convinient way is to use :func:`aiohttp_jinja2.template`
+most convenient way is to use :func:`aiohttp_jinja2.template`
 decorator::
 
     @aiohttp_jinja2.template('tmpl.jinja2')
@@ -461,7 +461,7 @@ Each exception class has a status code according to :rfc:`2068`:
 codes with 100-300 are not really errors; 400s are client errors,
 and 500s are server errors.
 
-Http Exception hierarchy chart::
+HTTP Exception hierarchy chart::
 
    Exception
      HTTPException

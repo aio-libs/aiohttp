@@ -699,7 +699,7 @@ WebSocketResponse
 
    .. method:: exception()
 
-      Returns last occured exception or None.
+      Returns last occurred exception or None.
 
    .. method:: ping(message=b'')
 
@@ -943,7 +943,7 @@ can handle http connections.
 
    .. attribute:: connections
 
-      List of all currently oppened connections.
+      List of all currently opened connections.
 
    .. method:: finish_connections(timeout)
 
@@ -1054,7 +1054,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
       The method never raises exception, but returns
       :class:`AbstractMatchInfo` instance with:
 
-      1. :attr:`~AbstractMatchInfo.route` asigned to
+      1. :attr:`~AbstractMatchInfo.route` assigned to
          :class:`SystemRoute` instance
       2. :attr:`~AbstractMatchInfo.handler` which raises
          :exc:`HTTPNotFound` or :exc:`HTTPMethodNotAllowed` on handler's
