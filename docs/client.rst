@@ -34,8 +34,8 @@ Begin by importing the aiohttp module::
 
     >>> import aiohttp
 
-Now, let's try to get a webpage. For example let's get GitHub's public
-timeline ::
+Now, let's try to get a web-page. For example let's get GitHub's public
+time-line ::
 
     >>> r = yield from aiohttp.get('https://api.github.com/events')
 
@@ -77,7 +77,7 @@ You can see that the URL has been correctly encoded by printing the URL::
     http://httpbin.org/get?key2=value2&key1=value1
 
 It is also possible to pass a list of 2 item tuples as parameters, in
-that case you can specifiy multiple values for each key::
+that case you can specify multiple values for each key::
 
     >>> payload = [('key', 'value1'), ('key': 'value2')]
     >>> r = yield from aiohttp.get('http://httpbin.org/get',
@@ -89,7 +89,7 @@ that case you can specifiy multiple values for each key::
 Response Content
 ----------------
 
-We can read the content of the server's response. Consider the GitHub timeline
+We can read the content of the server's response. Consider the GitHub time-line
 again::
 
     >>> import aiohttp
@@ -118,7 +118,7 @@ decoded for you.
 JSON Response Content
 ---------------------
 
-There's also a builtin JSON decoder, in case you're dealing with JSON data::
+There's also a built-in JSON decoder, in case you're dealing with JSON data::
 
     >>> import aiohttp
     >>> r = yield from aiohttp.get('https://api.github.com/events')
@@ -284,7 +284,7 @@ Or you can provide an :ref:`coroutine<coroutine>` that yields bytes objects::
 
 Also it is possible to use a :class:`~aiohttp.streams.StreamReader`
 object. Lets say we want to upload a file from another request and
-calculate the file sha1 hash::
+calculate the file SHA1 hash::
 
    >>> def feed_stream(resp, stream):
    ...    h = hashlib.sha1()
@@ -348,7 +348,7 @@ object will do connection pooling for you.
 Connectors
 ----------
 
-To tweek or change *transport* layer of requests you can pass a custom
+To tweak or change *transport* layer of requests you can pass a custom
 **Connector** to :func:`aiohttp.request` and family. For example::
 
     >>> conn = aiohttp.TCPConnector()
@@ -371,7 +371,7 @@ parameter to **connector**::
 The example limits amount of parallel connections to `30`.
 
 
-SSL control for tcp sockets
+SSL control for TCP sockets
 ---------------------------
 
 :class:`aiohttp.connector.TCPConnector` constructor accepts mutually
@@ -394,7 +394,7 @@ pass it into the connector::
   >>> session = aiohttp.ClientSession(connector=conn)
   >>> r = yield from session.get('https://example.com')
 
-You may also verify certificates via md5, sha1, or sha256 fingerprint::
+You may also verify certificates via MD5, SHA1, or SHA256 fingerprint::
 
   >>> # Attempt to connect to https://www.python.org
   >>> # with a pin to a bogus certificate:
@@ -417,7 +417,7 @@ Note that this is the fingerprint of the DER-encoded certificate.
 If you have the certificate in PEM format, you can convert it to
 DER with e.g. ``openssl x509 -in crt.pem -inform PEM -outform DER > crt.der``.
 
-Tip: to convert from a hexadecimal digest to a binary bytestring, you can use
+Tip: to convert from a hexadecimal digest to a binary byte-string, you can use
 :attr:`binascii.unhexlify`::
 
   >>> md5_hex = 'ca3b499c75768e7313384e243f15cacb'
@@ -428,7 +428,7 @@ Tip: to convert from a hexadecimal digest to a binary bytestring, you can use
 Unix domain sockets
 -------------------
 
-If your http server uses unix domain sockets you can use
+If your HTTP server uses UNIX domain sockets you can use
 :class:`aiohttp.connector.UnixConnector`::
 
   >>> conn = aiohttp.UnixConnector(path='/path/to/socket')
@@ -453,7 +453,7 @@ aiohttp supports proxy. You have to use
    >>> r = yield from aiohttp.get('http://python.org',
    ...                            connector=conn)
 
-Auth credentials can be passed in proxy URL::
+Authentication credentials can be passed in proxy URL::
 
    >>> conn = aiohttp.ProxyConnector(
    ...     proxy="http://user:pass@some.proxy.com")

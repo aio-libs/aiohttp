@@ -503,7 +503,7 @@ BaseConnector
    .. deprecated:: 0.15.2
 
       *share_cookies* parameter is deprecated, use
-      :class:`~aiohttp.client.ClientSession` for hadling cookies for
+      :class:`~aiohttp.client.ClientSession` for handling cookies for
       client connections.
 
    .. attribute:: closed
