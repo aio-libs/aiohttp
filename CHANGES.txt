@@ -36,7 +36,7 @@ CHANGES
 
 - Fix IPv6 support for client API #425
 
-- Pass ssl context through proxy connector #421
+- Pass SSL context through proxy connector #421
 
 - Make the rule: path for add_route should start with slash
 

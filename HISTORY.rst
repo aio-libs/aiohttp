@@ -40,7 +40,7 @@
 - Update request url with query parameters #372
 
 - Support new `fingerprint` param of TCPConnector to enable verifying
-  ssl certificates via md5, sha1, or sha256 digest #366
+  SSL certificates via MD5, SHA1, or SHA256 digest #366
 
 - Setup uploaded filename if field value is binary and transfer
   encoding is not specified #349
@@ -89,7 +89,7 @@
 
 - Flow control subsystem refactoring
 
-- Http server performace optimizations
+- HTTP server performace optimizations
 
 - Allow to match any request method with `*`
 
@@ -103,7 +103,7 @@
 
 - Add ClientSession object for cookie storage and default headers #328
 
-- Add `keep_alive_on` argument for http server handler.
+- Add `keep_alive_on` argument for HTTP server handler.
 
 
 0.15.1 (03-31-2015)
@@ -240,7 +240,7 @@
 
 - Fixed graceful shutdown, disable keep-alive on connection closing.
 
-- Decode http message with `utf-8` encoding, some servers send headers
+- Decode HTTP message with `utf-8` encoding, some servers send headers
   in utf-8 encoding #207
 
 - Support `aiohtt.web` middlewares #209
@@ -308,7 +308,7 @@
 0.10.0 (11-13-2014)
 -------------------
 
-- Add aiohttp.web subpackage for highlevel http server support.
+- Add aiohttp.web subpackage for highlevel HTTP server support.
 
 - Add *reason* optional parameter to aiohttp.protocol.Response ctor.
 
@@ -437,7 +437,7 @@
 0.7.2 (05-14-2014)
 ------------------
 
-- Get rid of __del__ methods
+- Get rid of `__del__` methods
 
 - Use ResourceWarning instead of logging warning record.
 
@@ -447,7 +447,7 @@
 
 - Do not unquote client request urls.
 
-- Allow multple waiters on transport drain.
+- Allow multiple waiters on transport drain.
 
 - Do not return client connection to pool in case of exceptions.
 
@@ -460,7 +460,7 @@
 
 - Connection flow control.
 
-- Http client session/connection pool refactoring.
+- HTTP client session/connection pool refactoring.
 
 - Better handling for bad server requests.
 
@@ -488,7 +488,7 @@
 
 - Better support for server exit.
 
-- Read response body until eof if content-length is not defined #14
+- Read response body until EOF if content-length is not defined #14
 
 
 0.6.2 (02-18-2014)
@@ -506,7 +506,7 @@
 
 - Added slow request timeout.
 
-- Enable socket SO_KEEPALIVE if available. (@polymorphm)
+- Enable socket SO_KEEPALIVE if available.
 
 
 0.6.0 (02-12-2014)
@@ -520,7 +520,7 @@
 
 - Allow to use custom HttpRequest client class.
 
-- Use gunicorn keepalive setting for async worker.
+- Use gunicorn keepalive setting for asynchronous worker.
 
 - Log leaking responses.
 
@@ -569,7 +569,7 @@
 
 - Added HttpClient
 
-- Added tcp connection timeout to http client
+- Added TCP connection timeout to HTTP client
 
 - Better client connection errors handling
 
