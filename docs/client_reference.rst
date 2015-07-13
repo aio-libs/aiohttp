@@ -65,7 +65,7 @@ The client session supports context manager protocol for self closing::
                         the request (optional)
 
    :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that represents
-                                          HTTP Basic Auth (optional)
+                                          HTTP Basic Authorization (optional)
 
    :param request_class: Request class implementation. ``ClientRequest`` by
                          default.
@@ -129,7 +129,7 @@ The client session supports context manager protocol for self closing::
                            the request (optional)
 
       :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that
-                                             represents HTTP Basic Auth
+                                             represents HTTP Basic Authorization
                                              (optional)
 
       :param bool allow_redirects: If set to ``False``, do not follow redirects.
@@ -320,7 +320,7 @@ certification chaining.
    :param dict cookies: Cookies to send with the request (optional)
 
    :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that represents
-                                          HTTP Basic Auth (optional)
+                                          HTTP Basic Authorization (optional)
 
    :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                 ``True`` by default (optional).
@@ -340,7 +340,7 @@ certification chaining.
    :param aiohttp.connector.BaseConnector connector: BaseConnector sub-class
       instance to support connection pooling.
 
-   :param bool read_until_eof: Read response until eof if response
+   :param bool read_until_eof: Read response until EOF if response
                                does not have Content-Length header.
                                ``True`` by default (optional).
 
@@ -710,7 +710,7 @@ ProxyConnector
 
    :param str proxy: URL for proxy, e.g. ``"http://some.proxy.com"``.
 
-   :param aiohttp.helpers.BasicAuth proxy_auth: basic-auth
+   :param aiohttp.helpers.BasicAuth proxy_auth: basic
       authentication info used for proxies with authorization.
 
    .. note::
