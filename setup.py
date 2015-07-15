@@ -40,7 +40,7 @@ class ve_build_ext(build_ext):
     def build_extension(self, ext):
         try:
             build_ext.build_extension(self, ext)
-        except (CCompilerError, DistutilsExecError, DistutilsPlatformError):
+        except (CCompilerError, DistutilsExecError, DistutilsPlatformError, ValueError):
             raise BuildFailed()
 
 
