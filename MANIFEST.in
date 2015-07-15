@@ -16,3 +16,4 @@ exclude aiohttp/_websocket.html
 exclude aiohttp/_websocket.*.so
 exclude aiohttp/_websocket.pyd
 exclude aiohttp/_websocket.*.pyd
+prune docs/_build
