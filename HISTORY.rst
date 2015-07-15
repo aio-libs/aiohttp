@@ -1,3 +1,8 @@
+0.16.6 (07-15-2015)
+-------------------
+
+- Skip compilation on Windows if vcvarsall.bat cannot be found #438
+
 0.16.5 (06-13-2015)
 -------------------
 

@@ -13,6 +13,7 @@ Andrew Svetlov
 Anton Kasyanov
 Arthur Darcet
 Ben Bader
+Benedikt Reinartz
 Brian C. Lane
 Boris Feld
 Chris Laws
