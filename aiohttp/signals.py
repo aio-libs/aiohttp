@@ -1,3 +1,5 @@
+from inspect import signature
+
 import asyncio
 
 class Signal(object):
@@ -7,7 +9,8 @@ class Signal(object):
 
     def connect(self, receiver):
         # Check that the callback can be called with the given parameter names
-        signature(receiver).bind(**{p: None for p in self._parameters})
+        if __debug__:
+            signature(receiver).bind(**{p: None for p in self._parameters})
         self._receivers.add(receiver)
 
     def disconnect(self, receiver):
