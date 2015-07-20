@@ -20,7 +20,7 @@ class Signal(object):
         for receiver in self._receivers:
             receiver(**kwargs)
 
-class AsyncSignal(Signal):
+class CoroutineSignal(Signal):
     def connect(self, receiver):
         assert asyncio.iscoroutinefunction(receiver), receiver
         super().connect(receiver)
