@@ -1,8 +1,9 @@
+import abc
 from inspect import signature
 
 import asyncio
 
-class Signal(object):
+class Signal(metaclass=abc.ABCMeta):
     def __init__(self, parameters):
         self._parameters = frozenset(parameters)
         self._receivers = set()
@@ -15,6 +16,15 @@ class Signal(object):
 
     def disconnect(self, receiver):
         self._receivers.remove(receiver)
+
+    @abc.abstractmethod
+    def send(self, **kwargs):
+        pass
+
+class FunctionSignal(Signal):
+    def connect(self, receiver):
+        assert not asyncio.iscoroutinefunction(receiver), receiver
+        super().connect(receiver)
 
     def send(self, **kwargs):
         for receiver in self._receivers:
