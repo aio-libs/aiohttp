@@ -49,6 +49,14 @@ aiohttp.protocol module
     :undoc-members:
     :show-inheritance:
 
+aiohttp.signals module
+----------------------
+
+.. automodule:: aiohttp.signals
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 aiohttp.streams module
 ----------------------
 

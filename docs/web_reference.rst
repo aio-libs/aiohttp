@@ -543,7 +543,8 @@ StreamResponse
                                           response answers.
 
       Send *HTTP header*. You should not change any header data after
-      calling this method.
+      calling this method, except through
+      :attr:`Application.on_response_start` signal callbacks.
 
    .. method:: write(data)
 
@@ -872,6 +873,13 @@ arbitrary properties for later access from
    .. attribute:: loop
 
       :ref:`event loop<asyncio-event-loop>` used for processing HTTP requests.
+
+   .. attribute:: on_response_start
+
+      A :class:`~aiohttp.signals.Signal` that is fired at the beginning of
+      :meth:`StreamResponse.start` with parameters ``request`` and
+      ``response``. It can be used, for example, to add custom headers to each
+      response before sending.
 
    .. method:: make_handler(**kwargs)
 
