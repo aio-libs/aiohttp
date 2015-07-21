@@ -876,8 +876,8 @@ arbitrary properties for later access from
 
    .. attribute:: on_response_start
 
-      A :class:`~aiohttp.signals.Signal` that is fired at the beginning of
-      :meth:`StreamResponse.start` with parameters ``request`` and
+      A :class:`~aiohttp.signals.FunctionSignal` that is fired at the beginning
+      of :meth:`StreamResponse.start` with parameters ``request`` and
       ``response``. It can be used, for example, to add custom headers to each
       response before sending.
 
