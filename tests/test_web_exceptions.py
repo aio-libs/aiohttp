@@ -139,3 +139,19 @@ class TestHTTPExceptions(unittest.TestCase):
         self.assertEqual(txt, resp.text)
         self.assertEqual("text/html", resp.content_type)
         self.assertIsNone(resp.charset)
+
+    def test_default_body(self):
+        resp = web.HTTPOk()
+        self.assertEqual(b'200: OK', resp.body)
+
+    def test_empty_body_204(self):
+        resp = web.HTTPNoContent()
+        self.assertIsNone(resp.body)
+
+    def test_empty_body_205(self):
+        resp = web.HTTPNoContent()
+        self.assertIsNone(resp.body)
+
+    def test_empty_body_304(self):
+        resp = web.HTTPNoContent()
+        self.assertIsNone(resp.body)
