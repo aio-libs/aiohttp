@@ -39,6 +39,7 @@ Kirill Klenov
 Kirill Malovitsa
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
+Marco Paolini
 Martin Richard
 Moss Collum
 Mikhail Lukyanchenko
