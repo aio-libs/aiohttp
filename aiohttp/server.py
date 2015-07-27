@@ -275,7 +275,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                 if self.debug:
                     self.log_exception(
                         'Ignored premature client disconnection.')
-                break
+                return
             except errors.HttpProcessingError as exc:
                 if self.transport is not None:
                     yield from self.handle_error(exc.code, message,
@@ -287,13 +287,13 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             finally:
                 if self.transport is None:
                     self.log_debug('Ignored premature client disconnection.')
-                    break
+                    return
 
                 if payload and not payload.is_eof():
                     self.log_debug('Uncompleted request.')
                     self._request_handler = None
                     self.transport.close()
-                    break
+                    return
                 else:
                     reader.unset_parser()
 
@@ -311,10 +311,10 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                         self.log_debug('Close client connection.')
                         self._request_handler = None
                         self.transport.close()
-                        break
+                        return
                 else:
                     # connection is closed
-                    break
+                    return
 
     def handle_error(self, status=500,
                      message=None, payload=None, exc=None, headers=None):
