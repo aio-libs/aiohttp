@@ -677,7 +677,7 @@ WebSocketResponse
                sequence from :class:`WebSocketResponse` ctor). *protocol* may be
                ``None`` if client and server subprotocols are nit overlapping.
 
-      .. note:: The method newer raises exception.
+      .. note:: The method never raises exception.
 
    .. attribute:: closed
 
