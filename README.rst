@@ -42,6 +42,11 @@ Source code
 The latest developer version is available in a github repository:
 https://github.com/KeepSafe/aiohttp
 
+Benchmarks
+----------
+
+If you are interested in by efficiency, AsyncIO community maintains a list of benchmarks on the official wiki:
+https://github.com/python/asyncio/wiki/Benchmarks
 
 Getting started
 ---------------
