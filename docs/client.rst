@@ -535,3 +535,6 @@ time to wait for a response from a server::
     rather, an exception is raised if the server has not issued a
     response for *timeout* seconds (more precisely, if no bytes have been
     received on the underlying socket for *timeout* seconds).
+
+
+.. disqus::

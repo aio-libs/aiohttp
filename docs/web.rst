@@ -611,3 +611,5 @@ and call ``aiohttp_debugtoolbar.setup``::
     aiohttp_debugtoolbar.setup(app)
 
 Debug toolbar is ready to use. Enjoy!!!
+
+.. disqus::

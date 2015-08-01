@@ -54,10 +54,12 @@ ws.send_str('data')`` for example).
 ClientWebSocketResponse
 -----------------------
 
-To connect to a websocket server you have to use the `aiohttp.ws_connect()` function,
-do not create an instance of class :class:`ClientWebSocketResponse` manually.
+To connect to a websocket server you have to use the
+`aiohttp.ws_connect()` function, do not create an instance of class
+:class:`ClientWebSocketResponse` manually.
 
-.. coroutinefunction:: ws_connect(url, *, protocols=(), timeout=10.0, connector=None,\
+.. coroutinefunction:: ws_connect(url, *, protocols=(), \
+                                  timeout=10.0, connector=None,\
                                   ws_response_class=ClientWebSocketResponse,\
                                   autoclose=True, autoping=True, loop=None)
 
@@ -163,4 +165,8 @@ do not create an instance of class :class:`ClientWebSocketResponse` manually.
 
       It process *ping-pong game* and performs *closing handshake* internally.
 
-      :return: :class:`~aiohttp.websocket.Message`, `tp` is types of `~aiohttp.MsgType`
+      :return: :class:`~aiohttp.websocket.Message`, `tp` is types of
+         `~aiohttp.MsgType`
+
+
+.. disqus::
