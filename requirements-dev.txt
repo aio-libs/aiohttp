@@ -9,3 +9,4 @@ tox
 ipdb
 sphinxcontrib-spelling
 pyenchant
+sphinxcontrib-newsfeed
