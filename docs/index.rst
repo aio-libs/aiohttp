@@ -93,11 +93,6 @@ or have some suggestion in order to improve the library.
 The library uses `Travis <https://travis-ci.org/KeepSafe/aiohttp>`_ for
 Continuous Integration.
 
-IRC channel
------------
-
-You can discuss the library on Freenode_ at **#aio-libs** channel.
-
 
 Dependencies
 ------------
