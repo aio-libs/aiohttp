@@ -52,3 +52,6 @@ CHANGES
 - Correctly skip Cython compilation in MSVC not found #453
 
 - Add response factory to StaticRoute #456
+
+- Don't append trailing CRLF for multipart.BodyPartReader #454
+
