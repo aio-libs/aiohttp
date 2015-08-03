@@ -1014,7 +1014,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
       :returns: new :class:`PlainRoute` or :class:`DynamicRoute` instance.
 
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
-                          chunk_size=256*1024)
+                          chunk_size=256*1024, response_factory=None)
 
       Adds router for returning static files.
 
@@ -1043,6 +1043,13 @@ Router is any object that implements :class:`AbstractRouter` interface.
                              speed but consumes more memory.
 
                              .. versionadded:: 0.16
+
+      :param callable response_factory: factory to use to generate a new
+                                        response, defaults to
+                                        :class:`StreamResponse` and should
+                                        expose a compatible API.
+
+                                        .. versionadded:: 0.17
 
    :returns: new :class:`StaticRoute` instance.
 

@@ -143,7 +143,8 @@ class DynamicRoute(Route):
 class StaticRoute(Route):
 
     def __init__(self, name, prefix, directory, *,
-                 expect_handler=None, chunk_size=256*1024):
+                 expect_handler=None, chunk_size=256*1024,
+                 response_factory=None):
         assert prefix.startswith('/'), prefix
         assert prefix.endswith('/'), prefix
         super().__init__(
@@ -152,6 +153,10 @@ class StaticRoute(Route):
         self._prefix_len = len(self._prefix)
         self._directory = os.path.abspath(directory) + os.sep
         self._chunk_size = chunk_size
+        if response_factory is None:
+            self._response_factory = StreamResponse
+        else:
+            self._response_factory = response_factory
 
         if not os.path.isdir(self._directory):
             raise ValueError(
@@ -187,7 +192,7 @@ class StaticRoute(Route):
         if not ct:
             ct = 'application/octet-stream'
 
-        resp = StreamResponse()
+        resp = self._response_factory()
         resp.content_type = ct
         if encoding:
             resp.headers[hdrs.CONTENT_ENCODING] = encoding
@@ -407,7 +412,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         return route
 
     def add_static(self, prefix, path, *, name=None, expect_handler=None,
-                   chunk_size=256*1024):
+                   chunk_size=256*1024, response_factory=None):
         """
         Adds static files view
         :param prefix - url prefix
@@ -418,6 +423,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             prefix += '/'
         route = StaticRoute(name, prefix, path,
                             expect_handler=expect_handler,
-                            chunk_size=chunk_size)
+                            chunk_size=chunk_size,
+                            response_factory=response_factory)
         self.register_route(route)
         return route
