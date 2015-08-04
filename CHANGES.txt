@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-0.17.0a0 (XX-XX-XXXX)
+0.17.0 (08-04-2015)
 ---------------------
 
 - Make StaticRoute support Last-Modified and If-Modified-Since headers #386

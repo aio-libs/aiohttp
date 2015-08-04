@@ -16,7 +16,7 @@ install:
 script:
   - flake8 aiohttp examples tests
   - coverage run --source=aiohttp setup.py test
-  - python setup.py check -rm
+  - python setup.py check -rms
 
 env:
   matrix:
