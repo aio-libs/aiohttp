@@ -279,7 +279,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             except errors.HttpProcessingError as exc:
                 if self.transport is not None:
                     yield from self.handle_error(exc.code, message,
-                                                 None, exc, exc.headers)
+                                                 None, exc, exc.headers,
+                                                 exc.message)
             except errors.LineLimitExceededParserError as exc:
                 yield from self.handle_error(400, message, None, exc)
             except Exception as exc:
@@ -316,8 +317,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                     # connection is closed
                     return
 
-    def handle_error(self, status=500,
-                     message=None, payload=None, exc=None, headers=None):
+    def handle_error(self, status=500, message=None,
+                     payload=None, exc=None, headers=None, reason=None):
         """Handle errors.
 
         Returns http response with specific status code. Logs additional
@@ -332,7 +333,10 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                 self.log_exception("Error handling request")
 
             try:
-                reason, msg = RESPONSES[status]
+                if reason is None or reason == '':
+                    reason, msg = RESPONSES[status]
+                else:
+                    msg = reason
             except KeyError:
                 status = 500
                 reason, msg = '???', ''
