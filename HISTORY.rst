@@ -44,7 +44,7 @@
 - Ensure multipart.BodyPartReader.read_chunk read all the necessary data
   to avoid false assertions about malformed multipart payload
 
-- Dont sent body for  204, 205 and 304 http exceptions #442
+- Dont sent body for 204, 205 and 304 http exceptions #442
 
 - Correctly skip Cython compilation in MSVC not found #453
 
