@@ -33,6 +33,7 @@ Greg Holt
 Hugo Herter
 Igor Pavlov
 Ingmar Steen
+Jaesung Lee
 Julien Duponchelle
 Junjie Tao
 Kay Zheng
