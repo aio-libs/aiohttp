@@ -143,7 +143,7 @@ cdef class _Base:
                 return NotImplemented
             for item in self.items():
                 nv = other.get(item[0], _marker)
-                if item[1] == nv:
+                if item[1] != nv:
                     return True
             return False
         else:
