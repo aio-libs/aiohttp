@@ -3,6 +3,7 @@ Contributors
 
 A. Jesse Jiryu Davis
 Alejandro Gómez
+Alex Lisovoy
 Alexander Bayandin
 Alexander Shorin
 Alexander Travov

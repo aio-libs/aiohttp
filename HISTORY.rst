@@ -1,3 +1,8 @@
+0.17.1 (08-10-2015)
+---------------------
+
+- Fix multidict comparsion to arbitrary abc.Mapping
+
 0.17.0 (08-04-2015)
 ---------------------
 
