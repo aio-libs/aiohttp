@@ -90,6 +90,10 @@ class _Base:
             return NotImplemented
         if isinstance(other, _Base):
             return self._items == other._items
+
+        if len(self) != len(other):
+            return False
+
         for k, v in self.items():
             nv = other.get(k, _marker)
             if v != nv:

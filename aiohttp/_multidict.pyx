@@ -129,6 +129,8 @@ cdef class _Base:
                 return typed_self._items == typed_other._items
             elif not isinstance(other, abc.Mapping):
                 return NotImplemented
+            if len(self) != len(other):
+                return False
             for item in self.items():
                 nv = other.get(item[0], _marker)
                 if item[1] != nv:
@@ -141,9 +143,11 @@ cdef class _Base:
                 return typed_self._items != typed_other._items
             elif not isinstance(other, abc.Mapping):
                 return NotImplemented
+            if len(self) != len(other):
+                return True
             for item in self.items():
                 nv = other.get(item[0], _marker)
-                if item[1] == nv:
+                if item[1] != nv:
                     return True
             return False
         else:
