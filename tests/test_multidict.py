@@ -173,14 +173,10 @@ class _BaseTest(_Root):
 
         self.assertNotEqual(d.keys(), {'key2'})
 
-    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
-                     "Set operations on views not supported")
     def test_eq(self):
         d = self.make_dict([('key', 'value1')])
         self.assertEqual({'key': 'value1'}, d)
 
-    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
-                     "Set operations on views not supported")
     def test_ne(self):
         d = self.make_dict([('key', 'value1')])
         self.assertNotEqual(d, {'key': 'another_value'})

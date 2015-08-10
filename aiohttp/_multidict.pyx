@@ -26,6 +26,20 @@ class upstr(str):
         return self
 
 
+cdef _eq(self, other):
+    cdef _Base typed_self
+    cdef _Base typed_other
+
+    if isinstance(self, _Base) and isinstance(other, _Base):
+        return (<_Base>self)._items == (<_Base>other)._items
+    elif isinstance(self, _Base) and isinstance(other, abc.Mapping):
+        return (<_Base>self)._eq_to_mapping(other)
+    elif isinstance(other, _Base) and isinstance(self, abc.Mapping):
+        return (<_Base>other)._eq_to_mapping(self)
+    else:
+        return NotImplemented
+
+
 cdef class _Base:
 
     cdef list _items
@@ -118,34 +132,28 @@ cdef class _Base:
         body = ', '.join(lst)
         return '<{} {{{}}}>'.format(self.__class__.__name__, body)
 
-    def __richcmp__(self, other, op):
-        cdef _Base typed_self
-        cdef _Base typed_other
-        cdef tuple item
-        if op == 2:
-            if isinstance(self, _Base) and isinstance(other, _Base):
-                typed_self = self
-                typed_other = other
-                return typed_self._items == typed_other._items
-            elif not isinstance(other, abc.Mapping):
-                return NotImplemented
-            for item in self.items():
-                nv = other.get(item[0], _marker)
-                if item[1] != nv:
-                    return False
-            return True
-        elif op != 2:
-            if isinstance(self, _Base) and isinstance(other, _Base):
-                typed_self = self
-                typed_other = other
-                return typed_self._items != typed_other._items
-            elif not isinstance(other, abc.Mapping):
-                return NotImplemented
-            for item in self.items():
-                nv = other.get(item[0], _marker)
-                if item[1] != nv:
-                    return True
+    cdef _eq_to_mapping(self, other):
+        left_keys = set(self.keys())
+        right_keys = set(other.keys())
+        if left_keys != right_keys:
             return False
+        if len(self._items) != len(right_keys):
+            return False
+        for item in self._items:
+            nv = other.get(item[0], _marker)
+            if item[1] != nv:
+                return False
+        return True
+
+    def __richcmp__(self, other, op):
+        if op == 2:  # ==
+            return _eq(self, other)
+        elif op == 3:  # !=
+            ret = _eq(self, other)
+            if ret is NotImplemented:
+                return ret
+            else:
+                return not ret
         else:
             return NotImplemented
 
