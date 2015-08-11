@@ -1,3 +1,8 @@
+0.17.3 (XX-XX-XXXX)
+---------------------
+
+- Remove Content-Length header on compressed responses #450
+
 0.17.2 (08-11-2015)
 ---------------------
 

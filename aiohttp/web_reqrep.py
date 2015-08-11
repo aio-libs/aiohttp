@@ -528,8 +528,8 @@ class StreamResponse(HeadersMixin):
             value = int(value)
             # TODO: raise error if chunked enabled
             self.headers[hdrs.CONTENT_LENGTH] = str(value)
-        elif hdrs.CONTENT_LENGTH in self.headers:
-            del self.headers[hdrs.CONTENT_LENGTH]
+        else:
+            self.headers.pop(hdrs.CONTENT_LENGTH, None)
 
     @property
     def content_type(self):
@@ -610,6 +610,7 @@ class StreamResponse(HeadersMixin):
             if coding != ContentCoding.identity:
                 self.headers[hdrs.CONTENT_ENCODING] = coding.value
                 self._resp_impl.add_compression_filter(coding.value)
+                self.content_length = None
 
         if self._compression_force:
             start(self._compression_force)
