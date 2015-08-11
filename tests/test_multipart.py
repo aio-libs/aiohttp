@@ -85,7 +85,7 @@ class StreamWithShortenRead(Stream):
         if size is not None and self._first:
             self._first = False
             size = size // 2
-        return super().read(size)
+        return (yield from super().read(size))
 
 
 class MultipartResponseWrapperTestCase(TestCase):
