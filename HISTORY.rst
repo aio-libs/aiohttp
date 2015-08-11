@@ -1,3 +1,8 @@
+0.17.2 (XX-XX-XXXX)
+---------------------
+
+- Don't forget to pass `data` argument forward #462
+
 0.17.1 (08-10-2015)
 ---------------------
 
