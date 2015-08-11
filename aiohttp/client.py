@@ -488,24 +488,24 @@ def head(url, **kwargs):
 
 
 @asyncio.coroutine
-def post(url, *, data=None, **kwargs):
+def post(url, **kwargs):
     ret = yield from request(hdrs.METH_POST, url, **kwargs)
     return ret
 
 
 @asyncio.coroutine
-def put(url, *, data=None, **kwargs):
+def put(url, **kwargs):
     ret = yield from request(hdrs.METH_PUT, url, **kwargs)
     return ret
 
 
 @asyncio.coroutine
-def patch(url, *, data=None, **kwargs):
+def patch(url, **kwargs):
     ret = yield from request(hdrs.METH_PATCH, url, **kwargs)
     return ret
 
 
 @asyncio.coroutine
-def delete(url, *, data=None, **kwargs):
+def delete(url, **kwargs):
     ret = yield from request(hdrs.METH_DELETE, url, **kwargs)
     return ret
