@@ -2,6 +2,7 @@ import asyncio
 import functools
 import io
 import os
+import random
 import unittest
 import unittest.mock as mock
 import zlib
@@ -67,6 +68,8 @@ class Stream(object):
 
     @asyncio.coroutine
     def read(self, size=None):
+        if size is not None:
+            size = random.randint(size // 2, size)
         return self.content.read(size)
 
     @asyncio.coroutine
