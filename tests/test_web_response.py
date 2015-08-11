@@ -291,6 +291,17 @@ class TestStreamResponse(unittest.TestCase):
         msg.add_compression_filter.assert_called_with('gzip')
         self.assertEqual('gzip', resp.headers.get(hdrs.CONTENT_ENCODING))
 
+    @mock.patch('aiohttp.web_reqrep.ResponseImpl')
+    def test_delete_content_length_if_compression_enabled(self, ResponseImpl):
+        req = self.make_request('GET', '/')
+        resp = Response(body=b'answer')
+        self.assertEqual(6, resp.content_length)
+
+        resp.enable_compression(ContentCoding.gzip)
+
+        resp.start(req)
+        self.assertIsNone(resp.content_length)
+
     def test_write_non_byteish(self):
         resp = StreamResponse()
         resp.start(self.make_request('GET', '/'))
