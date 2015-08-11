@@ -163,17 +163,17 @@ class PartReaderTestCase(TestCase):
             yield from obj.read_chunk()
 
     def test_read_chunk_properly_counts_read_bytes(self):
-        size = aiohttp.multipart.BodyPartReader.chunk_size * 10
+        expected = b'.' * 10
+        size = len(expected)
         obj = aiohttp.multipart.BodyPartReader(
             self.boundary, {'CONTENT-LENGTH': size},
-            StreamWithShortenRead(b'.' * size + b'\r\n--:--'))
-        chunks = []
+            StreamWithShortenRead(expected + b'\r\n--:--'))
+        result = bytearray()
         while True:
             chunk = yield from obj.read_chunk()
             if not chunk:
                 break
-            chunks.append(chunk)
-        result = b''.join(chunks)
+            result.extend(chunk)
         self.assertEqual(size, len(result))
         self.assertEqual(b'.' * size, result)
         self.assertTrue(obj.at_eof())
