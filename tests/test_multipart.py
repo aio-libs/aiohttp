@@ -74,6 +74,20 @@ class Stream(object):
         return self.content.readline()
 
 
+class StreamWithShortenRead(Stream):
+
+    def __init__(self, content):
+        self._first = True
+        super().__init__(content)
+
+    @asyncio.coroutine
+    def read(self, size=None):
+        if size is not None and self._first:
+            self._first = False
+            size = size // 2
+        return (yield from super().read(size))
+
+
 class MultipartResponseWrapperTestCase(TestCase):
 
     def setUp(self):
@@ -147,6 +161,22 @@ class PartReaderTestCase(TestCase):
             self.boundary, {}, Stream(b'Hello, world!\r\n--:'))
         with self.assertRaises(AssertionError):
             yield from obj.read_chunk()
+
+    def test_read_chunk_properly_counts_read_bytes(self):
+        expected = b'.' * 10
+        size = len(expected)
+        obj = aiohttp.multipart.BodyPartReader(
+            self.boundary, {'CONTENT-LENGTH': size},
+            StreamWithShortenRead(expected + b'\r\n--:--'))
+        result = bytearray()
+        while True:
+            chunk = yield from obj.read_chunk()
+            if not chunk:
+                break
+            result.extend(chunk)
+        self.assertEqual(size, len(result))
+        self.assertEqual(b'.' * size, result)
+        self.assertTrue(obj.at_eof())
 
     def test_read_does_reads_boundary(self):
         stream = Stream(b'Hello, world!\r\n--:')

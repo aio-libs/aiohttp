@@ -247,7 +247,7 @@ class BodyPartReader(object):
             'Content-Length required for chunked read'
         chunk_size = min(size, self._length - self._read_bytes)
         chunk = yield from self._content.read(chunk_size)
-        self._read_bytes += chunk_size
+        self._read_bytes += len(chunk)
         if self._read_bytes == self._length:
             self._at_eof = True
             assert b'\r\n' == (yield from self._content.readline()), \

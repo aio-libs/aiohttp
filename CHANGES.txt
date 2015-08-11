@@ -6,4 +6,3 @@ CHANGES
 
 * Use errors.HttpProcessingError.message as HTTP error reason and
   message #459
-

@@ -3,6 +3,8 @@
 
 - Don't forget to pass `data` argument forward #462
 
+- Fix multipart read bytes count #463
+
 0.17.1 (08-10-2015)
 ---------------------
 
