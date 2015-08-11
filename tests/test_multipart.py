@@ -2,7 +2,6 @@ import asyncio
 import functools
 import io
 import os
-import random
 import unittest
 import unittest.mock as mock
 import zlib
@@ -68,13 +67,25 @@ class Stream(object):
 
     @asyncio.coroutine
     def read(self, size=None):
-        if size is not None:
-            size = random.randint(size // 2, size)
         return self.content.read(size)
 
     @asyncio.coroutine
     def readline(self):
         return self.content.readline()
+
+
+class StreamWithShortenRead(Stream):
+
+    def __init__(self, content):
+        self._first = True
+        super().__init__(content)
+
+    @asyncio.coroutine
+    def read(self, size=None):
+        if size is not None and self._first:
+            self._first = False
+            size = size // 2
+        return super().read(size)
 
 
 class MultipartResponseWrapperTestCase(TestCase):
@@ -150,6 +161,22 @@ class PartReaderTestCase(TestCase):
             self.boundary, {}, Stream(b'Hello, world!\r\n--:'))
         with self.assertRaises(AssertionError):
             yield from obj.read_chunk()
+
+    def test_read_chunk_properly_counts_read_bytes(self):
+        size = aiohttp.multipart.BodyPartReader.chunk_size * 10
+        obj = aiohttp.multipart.BodyPartReader(
+            self.boundary, {'CONTENT-LENGTH': size},
+            StreamWithShortenRead(b'.' * size + b'\r\n--:--'))
+        chunks = []
+        while True:
+            chunk = yield from obj.read_chunk()
+            if not chunk:
+                break
+            chunks.append(chunk)
+        result = b''.join(chunks)
+        self.assertEqual(size, len(result))
+        self.assertEqual(b'.' * size, result)
+        self.assertTrue(obj.at_eof())
 
     def test_read_does_reads_boundary(self):
         stream = Stream(b'Hello, world!\r\n--:')
