@@ -29,12 +29,16 @@ class upstr(str):
 cdef _eq(self, other):
     cdef _Base typed_self
     cdef _Base typed_other
+    cdef int is_left_base, is_right_base
 
-    if isinstance(self, _Base) and isinstance(other, _Base):
+    is_left_base = isinstance(self, _Base)
+    is_right_base = isinstance(other, _Base)
+
+    if is_left_base and is_right_base:
         return (<_Base>self)._items == (<_Base>other)._items
-    elif isinstance(self, _Base) and isinstance(other, abc.Mapping):
+    elif is_left_base and isinstance(other, abc.Mapping):
         return (<_Base>self)._eq_to_mapping(other)
-    elif isinstance(other, _Base) and isinstance(self, abc.Mapping):
+    elif is_right_base and isinstance(self, abc.Mapping):
         return (<_Base>other)._eq_to_mapping(self)
     else:
         return NotImplemented
@@ -44,9 +48,11 @@ cdef class _Base:
 
     cdef list _items
     cdef object _upstr
+    cdef object _marker
 
     def __cinit__(self):
         self._upstr = upstr
+        self._marker = _marker
 
     cdef str _upper(self, s):
         if type(s) is self._upstr:
@@ -59,14 +65,16 @@ cdef class _Base:
 
     cdef _getall(self, str key, default):
         cdef list res
+        cdef tuple item
         key = self._upper(key)
         res = []
-        for k, v in self._items:
-            if k == key:
-                res.append(v)
+        for i in self._items:
+            item = <tuple>i
+            if item[0] == key:
+                res.append(item[1])
         if res:
             return res
-        if not res and default is not _marker:
+        if not res and default is not self._marker:
             return default
         raise KeyError('Key not found: %r' % key)
 
@@ -77,17 +85,18 @@ cdef class _Base:
     cdef _getone(self, str key, default):
         cdef tuple item
         key = self._upper(key)
-        for item in self._items:
-            if <str>item[0] == key:
+        for i in self._items:
+            item = <tuple>i
+            if item[0] == key:
                 return item[1]
-        if default is not _marker:
+        if default is not self._marker:
             return default
         raise KeyError('Key not found: %r' % key)
 
     # Mapping interface #
 
     def __getitem__(self, key):
-        return self._getone(self._upper(key), _marker)
+        return self._getone(self._upper(key), self._marker)
 
     def get(self, key, default=None):
         """Get first value matching the key.
@@ -102,8 +111,9 @@ cdef class _Base:
     cdef _contains(self, str key):
         cdef tuple item
         key = self._upper(key)
-        for item in self._items:
-            if <str>item[0] == key:
+        for i in self._items:
+            item = <tuple>i
+            if item[0] == key:
                 return True
         return False
 
@@ -140,7 +150,7 @@ cdef class _Base:
         if len(self._items) != len(right_keys):
             return False
         for item in self._items:
-            nv = other.get(item[0], _marker)
+            nv = other.get(item[0], self._marker)
             if item[1] != nv:
                 return False
         return True
@@ -331,7 +341,7 @@ cdef class MultiDict(_Base):
                 del self._items[i]
                 found = True
         if not found:
-            if default is _marker:
+            if default is self._marker:
                 raise KeyError(key)
             else:
                 return default
