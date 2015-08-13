@@ -76,6 +76,7 @@ args = dict(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
         'Topic :: Internet :: WWW/HTTP'],
     author='Nikolay Kim',
     author_email='fafhrd91@gmail.com',

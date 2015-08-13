@@ -3,6 +3,8 @@
 
 - Remove Content-Length header on compressed responses #450
 
+- Support Python 3.5
+
 0.17.2 (08-11-2015)
 ---------------------
 
