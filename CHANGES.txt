@@ -8,3 +8,5 @@ CHANGES
   message #459
 
 * Optimize cythonized multidict a bit
+
+* Change repr's of multidicts and multidict views

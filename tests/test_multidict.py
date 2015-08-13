@@ -272,11 +272,11 @@ class _MultiDictTests(_BaseTest):
         d = self.make_dict()
         cls = self.proxy_cls if self.proxy_cls is not None else self.cls
 
-        self.assertEqual(str(d), "<%s {}>" % cls.__name__)
+        self.assertEqual(str(d), "<%s()>" % cls.__name__)
         d = self.make_dict([('key', 'one'), ('key', 'two')])
         self.assertEqual(
             str(d),
-            "<%s {'key': 'one', 'key': 'two'}>" % cls.__name__)
+            "<%s('key': 'one', 'key': 'two')>" % cls.__name__)
 
     def test_getall(self):
         d = self.make_dict([('key', 'value1')], key='value2')
@@ -418,13 +418,13 @@ class _BaseMutableMultiDictTests(_BaseTest):
 
     def test__repr__(self):
         d = self.make_dict()
-        self.assertEqual(str(d), "<%s {}>" % self.cls.__name__)
+        self.assertEqual(str(d), "<%s()>" % self.cls.__name__)
 
         d = self.make_dict([('key', 'one'), ('key', 'two')])
 
         self.assertEqual(
             str(d),
-            "<%s {'key': 'one', 'key': 'two'}>" % self.cls.__name__)
+            "<%s('key': 'one', 'key': 'two')>" % self.cls.__name__)
 
     def test_getall(self):
         d = self.make_dict([('key', 'value1')], key='value2')
@@ -608,13 +608,13 @@ class _CIMutableMultiDictTests(_Root):
 
     def test__repr__(self):
         d = self.make_dict()
-        self.assertEqual(str(d), "<%s {}>" % self.cls.__name__)
+        self.assertEqual(str(d), "<%s()>" % self.cls.__name__)
 
         d = self.make_dict([('KEY', 'one'), ('KEY', 'two')])
 
         self.assertEqual(
             str(d),
-            "<%s {'KEY': 'one', 'KEY': 'two'}>" % self.cls.__name__)
+            "<%s('KEY': 'one', 'KEY': 'two')>" % self.cls.__name__)
 
     def test_add(self):
         d = self.make_dict()

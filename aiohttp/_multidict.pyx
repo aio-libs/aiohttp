@@ -161,7 +161,7 @@ cdef class _Base:
             item = <_Pair>i
             lst.append("'{}': {!r}".format(item._key, item._value))
         body = ', '.join(lst)
-        return '<{} {{{}}}>'.format(self.__class__.__name__, body)
+        return '<{}({})>'.format(self.__class__.__name__, body)
 
     cdef _eq_to_mapping(self, other):
         cdef _Pair item

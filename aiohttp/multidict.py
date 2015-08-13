@@ -104,7 +104,7 @@ class _Base:
 
     def __repr__(self):
         body = ', '.join("'{}': {!r}".format(k, v) for k, v in self.items())
-        return '<{} {{{}}}>'.format(self.__class__.__name__, body)
+        return '<{}({})>'.format(self.__class__.__name__, body)
 
 
 class _CIBase(_Base):
