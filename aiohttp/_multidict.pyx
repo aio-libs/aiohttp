@@ -494,6 +494,27 @@ cdef class _ViewBaseSet(_ViewBase):
         return set(self) ^ other
 
 
+cdef class _ItemsIter:
+    cdef list _items
+    cdef int _current
+    cdef int _len
+
+    def __cinit__(self, items):
+        self._items = items
+        self._current = 0
+        self._len = len(self._items)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self._current == self._len:
+            raise StopIteration
+        item = <_Pair>self._items[self._current]
+        self._current += 1
+        return (item._key, item._value)
+
+
 cdef class _ItemsView(_ViewBaseSet):
 
     def isdisjoint(self, other):
@@ -514,10 +535,7 @@ cdef class _ItemsView(_ViewBaseSet):
         return item in self._items
 
     def __iter__(self):
-        cdef _Pair item
-        for i in self._items:
-            item = <_Pair>i
-            yield (item._key, item._value)
+        return _ItemsIter.__new__(_ItemsIter, self._items)
 
     def __repr__(self):
         cdef _Pair item
@@ -532,6 +550,27 @@ cdef class _ItemsView(_ViewBaseSet):
 abc.ItemsView.register(_ItemsView)
 
 
+cdef class _ValuesIter:
+    cdef list _items
+    cdef int _current
+    cdef int _len
+
+    def __cinit__(self, items):
+        self._items = items
+        self._current = 0
+        self._len = len(self._items)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self._current == self._len:
+            raise StopIteration
+        item = <_Pair>self._items[self._current]
+        self._current += 1
+        return item._value
+
+
 cdef class _ValuesView(_ViewBase):
 
     def __contains__(self, value):
@@ -543,10 +582,7 @@ cdef class _ValuesView(_ViewBase):
         return False
 
     def __iter__(self):
-        cdef _Pair item
-        for i in self._items:
-            item = <_Pair>i
-            yield item._value
+        return _ValuesIter.__new__(_ValuesIter, self._items)
 
     def __repr__(self):
         cdef _Pair item
@@ -559,6 +595,27 @@ cdef class _ValuesView(_ViewBase):
 
 
 abc.ValuesView.register(_ValuesView)
+
+
+cdef class _KeysIter:
+    cdef list _items
+    cdef int _current
+    cdef int _len
+
+    def __cinit__(self, items):
+        self._items = items
+        self._current = 0
+        self._len = len(self._items)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self._current == self._len:
+            raise StopIteration
+        item = <_Pair>self._items[self._current]
+        self._current += 1
+        return item._key
 
 
 cdef class _KeysView(_ViewBaseSet):
@@ -581,10 +638,7 @@ cdef class _KeysView(_ViewBaseSet):
         return False
 
     def __iter__(self):
-        cdef _Pair item
-        for i in self._items:
-            item = <_Pair>i
-            yield item._key
+        return _KeysIter.__new__(_KeysIter, self._items)
 
     def __repr__(self):
         cdef _Pair item
