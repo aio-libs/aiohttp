@@ -305,17 +305,17 @@ class _MultiDictTests(_BaseTest):
     def test_items__repr__(self):
         d = self.make_dict([('key', 'value1')], key='value2')
         self.assertEqual(repr(d.items()),
-                         "_ItemsView([('key', 'value1'), ('key', 'value2')])")
+                         "_ItemsView('key': 'value1', 'key': 'value2')")
 
     def test_keys__repr__(self):
         d = self.make_dict([('key', 'value1')], key='value2')
         self.assertEqual(repr(d.keys()),
-                         "_KeysView([('key', 'value1'), ('key', 'value2')])")
+                         "_KeysView('key', 'key')")
 
     def test_values__repr__(self):
         d = self.make_dict([('key', 'value1')], key='value2')
         self.assertEqual(repr(d.values()),
-                         "_ValuesView([('key', 'value1'), ('key', 'value2')])")
+                         "_ValuesView('value1', 'value2')")
 
 
 class _CIMultiDictTests(_Root):
@@ -351,17 +351,17 @@ class _CIMultiDictTests(_Root):
     def test_items__repr__(self):
         d = self.make_dict([('KEY', 'value1')], key='value2')
         self.assertEqual(repr(d.items()),
-                         "_ItemsView([('KEY', 'value1'), ('KEY', 'value2')])")
+                         "_ItemsView('KEY': 'value1', 'KEY': 'value2')")
 
     def test_keys__repr__(self):
         d = self.make_dict([('KEY', 'value1')], key='value2')
         self.assertEqual(repr(d.keys()),
-                         "_KeysView([('KEY', 'value1'), ('KEY', 'value2')])")
+                         "_KeysView('KEY', 'KEY')")
 
     def test_values__repr__(self):
         d = self.make_dict([('KEY', 'value1')], key='value2')
         self.assertEqual(repr(d.values()),
-                         "_ValuesView([('KEY', 'value1'), ('KEY', 'value2')])")
+                         "_ValuesView('value1', 'value2')")
 
 
 class _NonProxyCIMultiDict(_CIMultiDictTests):
