@@ -175,7 +175,7 @@ class ClientSession:
 
                 url = urllib.parse.urldefrag(r_url)[0]
                 if url:
-                    yield from asyncio.async(resp.release(), loop=self._loop)
+                    yield from resp.release()
                     continue
 
             break
