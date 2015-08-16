@@ -8,9 +8,8 @@ import string
 import sys
 from multiprocessing import Process, set_start_method, Barrier
 
-from scipy.stats import norm, tmean, tvar, tstd
+from scipy.stats import tmean, tstd
 from numpy import array, median
-from numpy.ma import masked_equal
 
 import aiohttp
 
@@ -177,15 +176,18 @@ def run_twisted(host, port, barrier):
 @asyncio.coroutine
 def attack(count, concurrency, client, loop, url):
 
-    in_queue = collections.deque()
     out_times = collections.deque()
     processed_count = 0
 
+    def gen():
+        for i in range(count):
+            rnd = ''.join(random.sample(string.ascii_letters, 16))
+            yield rnd
+
     @asyncio.coroutine
-    def do_bomb():
+    def do_bomb(in_iter):
         nonlocal processed_count
-        while in_queue:
-            rnd = in_queue.popleft()
+        for rnd in in_iter:
             real_url = url + '/test/' + rnd
             try:
                 t1 = loop.time()
@@ -203,13 +205,10 @@ def attack(count, concurrency, client, loop, url):
             except Exception:
                 continue
 
-    for i in range(count):
-        rnd = ''.join(random.sample(string.ascii_letters, 16))
-        in_queue.append(rnd)
-
+    in_iter = gen()
     bombers = []
     for i in range(concurrency):
-        bomber = asyncio.async(do_bomb())
+        bomber = asyncio.async(do_bomb(in_iter))
         bombers.append(bomber)
 
     t1 = loop.time()
