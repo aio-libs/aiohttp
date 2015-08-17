@@ -168,7 +168,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             self._timeout_handle = None
 
     def data_received(self, data):
-        self.reader.feed_data(data)
+        super().data_received(data)
 
         # reading request
         if not self._reading_request:
