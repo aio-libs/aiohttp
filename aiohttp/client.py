@@ -134,7 +134,7 @@ class ClientSession:
                 try:
                     yield from resp.start(conn, read_until_eof)
                 except:
-                    resp.close()
+                    resp.close(force=True)
                     conn.close()
                     raise
             except (aiohttp.HttpProcessingError,
