@@ -315,9 +315,11 @@ class BaseConnector(object):
                     transport.close()
                     transport = None
                 else:
+                    if not conns:
+                        # The very last connection was reclaimed: drop the key
+                        del self._conns[key]
                     return transport, proto
-        # No more connections for this key. Drop refs to transport and protocol
-        # that make the key
+        # No more connections: drop the key
         del self._conns[key]
         return None, None
 
