@@ -303,7 +303,10 @@ class BaseConnector(object):
         return conn
 
     def _get(self, key):
-        conns = self._conns.get(key)
+        try:
+            conns = self._conns[key]
+        except KeyError:
+            return None, None
         t1 = self._loop.time()
         while conns:
             transport, proto, t0 = conns.pop()
@@ -313,7 +316,9 @@ class BaseConnector(object):
                     transport = None
                 else:
                     return transport, proto
-
+        # No more connections for this key. Drop refs to transport and protocol
+        # that make the key
+        del self._conns[key]
         return None, None
 
     def _release(self, key, req, transport, protocol, *, should_close=False):
@@ -351,15 +356,6 @@ class BaseConnector(object):
 
         reader = protocol.reader
         if should_close or (reader.output and not reader.output.at_eof()):
-            conns = self._conns.get(key)
-            if conns is not None and len(conns) >= 0:
-                # Issue #253: An empty array will eventually be
-                # removed by cleanup, but it's better to pop straight
-                # away, because cleanup might not get called (e.g. if
-                # keepalive is False).
-                if not acquired:
-                    self._conns.pop(key, None)
-
             transport.close()
         else:
             conns = self._conns.get(key)
