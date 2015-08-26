@@ -122,7 +122,7 @@ class BaseConnector(object):
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
         self._conns = {}
-        self._acquired = defaultdict(list)
+        self._acquired = defaultdict(set)
         self._conn_timeout = conn_timeout
         self._keepalive_timeout = keepalive_timeout
         if share_cookies:
@@ -304,7 +304,7 @@ class BaseConnector(object):
                 raise ClientOSError(
                     'Cannot connect to host %s:%s ssl:%s' % key) from exc
 
-        self._acquired[key].append(transport)
+        self._acquired[key].add(transport)
         conn = Connection(self, key, req, transport, proto, self._loop)
         return conn
 
@@ -330,7 +330,7 @@ class BaseConnector(object):
         acquired = self._acquired[key]
         try:
             acquired.remove(transport)
-        except ValueError:  # pragma: no cover
+        except KeyError:  # pragma: no cover
             # this may be result of undetermenistic order of objects
             # finalization due garbage collection.
             pass
@@ -672,7 +672,7 @@ class ProxyConnector(TCPConnector):
             key = (req.host, req.port, req.ssl)
             conn = Connection(self, key, proxy_req,
                               transport, proto, self._loop)
-            self._acquired[key].append(conn._transport)
+            self._acquired[key].add(conn._transport)
             proxy_resp = proxy_req.send(conn.writer, conn.reader)
             try:
                 resp = yield from proxy_resp.start(conn, True)

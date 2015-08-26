@@ -253,7 +253,7 @@ class TestBaseConnector(unittest.TestCase):
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
         key = 1
-        conn._acquired[key].append(tr)
+        conn._acquired[key].add(tr)
         conn._release(key, req, tr, proto)
         self.assertEqual(conn._conns[1][0], (tr, proto, 10))
         self.assertTrue(conn._start_cleanup_task.called)
@@ -273,7 +273,7 @@ class TestBaseConnector(unittest.TestCase):
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
         key = 1
-        conn._acquired[key].append(tr)
+        conn._acquired[key].add(tr)
         conn._release(key, req, tr, proto)
         self.assertFalse(conn._conns)
         self.assertTrue(tr.close.called)
@@ -291,7 +291,7 @@ class TestBaseConnector(unittest.TestCase):
         conn._conns[key] = []
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        conn._acquired[key].append(tr)
+        conn._acquired[key].add(tr)
         conn._release(key, req, tr, proto)
         self.assertEqual({}, conn._conns)
         self.assertTrue(tr.close.called)
@@ -309,7 +309,7 @@ class TestBaseConnector(unittest.TestCase):
         req.response = resp
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        conn._acquired[key].append(tr1)
+        conn._acquired[key].add(tr1)
         conn._release(key, req, tr, proto)
         self.assertEqual(conn._conns[key], [(tr1, proto1, 1)])
         self.assertTrue(tr.close.called)
@@ -324,7 +324,7 @@ class TestBaseConnector(unittest.TestCase):
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
         key = 1
-        conn._acquired[key].append(tr)
+        conn._acquired[key].add(tr)
         conn._release(key, req, tr, proto)
         self.assertEqual(conn._conns, {1: [(tr, proto, 10)]})
         self.assertFalse(tr.close.called)
@@ -338,7 +338,7 @@ class TestBaseConnector(unittest.TestCase):
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
         key = 1
-        conn._acquired[key].append(tr)
+        conn._acquired[key].add(tr)
         conn._release(key, req, tr, proto)
         self.assertTrue(tr.close.called)
 
