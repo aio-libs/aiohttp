@@ -239,7 +239,7 @@ class TestBaseConnector(unittest.TestCase):
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
         conn._conns[1] = [(tr, proto, self.loop.time() - 1000)]
         self.assertEqual(conn._get(1), (None, None))
-        self.assertEqual(conn._conns[1], [])
+        self.assertFalse(conn._conns)
         conn.close()
 
     def test_release(self):
@@ -278,8 +278,17 @@ class TestBaseConnector(unittest.TestCase):
         self.assertFalse(conn._conns)
         self.assertTrue(tr.close.called)
 
-    def test_release_pop_empty_conns(self):
-        # see issue #253
+    def test_get_pop_empty_conns(self):
+        # see issue #473
+        conn = aiohttp.BaseConnector(loop=self.loop)
+        key = ('127.0.0.1', 80, False)
+        conn._conns[key] = []
+        tr, proto = conn._get(key)
+        self.assertEqual((None, None), (tr, proto))
+        self.assertFalse(conn._conns)
+
+    def test_release_close_do_not_add_to_pool(self):
+        # see issue #473
         conn = aiohttp.BaseConnector(loop=self.loop)
         req = unittest.mock.Mock()
         resp = unittest.mock.Mock()
@@ -288,13 +297,10 @@ class TestBaseConnector(unittest.TestCase):
 
         key = ('127.0.0.1', 80, False)
 
-        conn._conns[key] = []
-
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
         conn._acquired[key].add(tr)
         conn._release(key, req, tr, proto)
-        self.assertEqual({}, conn._conns)
-        self.assertTrue(tr.close.called)
+        self.assertFalse(conn._conns)
 
     def test_release_close_do_not_delete_existing_connections(self):
         key = ('127.0.0.1', 80, False)
