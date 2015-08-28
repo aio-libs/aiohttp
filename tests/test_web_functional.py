@@ -889,6 +889,7 @@ class TestWebFunctional(unittest.TestCase):
         @asyncio.coroutine
         def handler(request):
             resp = web.StreamResponse()
+            resp.enable_chunked_encoding()
             resp.start(request)
             resp.write(b'x')
             resp.write(b'y')
