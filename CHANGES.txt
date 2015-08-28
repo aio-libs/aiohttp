@@ -10,6 +10,8 @@ CHANGES
 
 - Improve performance of transport in-use list #472
 
+- Fix connection pooling #473
+
 0.17.2 (08-11-2015)
 ---------------------
 
