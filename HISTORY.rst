@@ -1,9 +1,13 @@
-0.17.3 (XX-XX-XXXX)
+0.17.3 (08-28-2015)
 ---------------------
 
 - Remove Content-Length header on compressed responses #450
 
 - Support Python 3.5
+
+- Improve performance of transport in-use list #472
+
+- Fix connection pooling #473
 
 0.17.2 (08-11-2015)
 ---------------------
