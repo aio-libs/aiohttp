@@ -9,7 +9,7 @@ import sys
 
 import aiohttp
 from aiohttp.client import ClientSession
-from aiohttp.multidict import MultiDict, CIMultiDict, CIMultiDictProxy
+from aiohttp.multidict import MultiDict, CIMultiDict, CIMultiDictProxy, upstr
 from aiohttp.connector import BaseConnector, TCPConnector
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
 from http.cookies import SimpleCookie
@@ -141,8 +141,8 @@ class TestClientSession(unittest.TestCase):
         ]))
         session.close()
 
-    def _make_one(self):
-        session = ClientSession(loop=self.loop)
+    def _make_one(self, **kwargs):
+        session = ClientSession(loop=self.loop, **kwargs)
         params = dict(
             headers={"Authorization": "Basic ..."},
             max_redirects=2,
@@ -374,6 +374,32 @@ class TestClientSession(unittest.TestCase):
         conn = self.make_open_connector()
         session = ClientSession(connector=conn)
         self.assertIs(session._loop, self.loop)
+
+    @mock.patch("aiohttp.client.ClientSession.request")
+    def test_skip_auto_headers(self, patched):
+        session, params = self._make_one()
+        skip = [upstr('user-agent')]
+        self.run(session.get("http://example.com",
+                             skip_auto_headers=skip,
+                             **params))
+        params['skip_auto_headers'] = skip
+        self.assertTrue(patched.called, "`ClientSession.request` not called")
+        self.assertEqual(patched.call_args[1]['skip_auto_headers'], skip)
+        session.close()
+
+    @mock.patch("aiohttp.client.ClientSession.request")
+    def test_skip_auto_headers_default(self, patched):
+        skip = ['user-agent']
+        uskip = [upstr(i) for i in skip]
+        import ipdb;ipdb.set_trace()
+        session, params = self._make_one(skip_auto_headers=skip)
+        self.run(session.get("http://example.com",
+                             **params))
+        params['skip_auto_headers'] = skip
+        self.assertTrue(patched.called, "`ClientSession.request` not called")
+        print(patched.call_args)
+        self.assertEqual(patched.call_args[1]['skip_auto_headers'], uskip)
+        session.close()
 
 
 class TestCLientRequest(unittest.TestCase):

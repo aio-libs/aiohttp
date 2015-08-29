@@ -67,7 +67,8 @@ class ClientSession:
             headers = CIMultiDict()
         self._default_headers = headers
         if skip_auto_headers is not None:
-            self._skip_auto_headers = frozenset(skip_auto_headers)
+            self._skip_auto_headers = frozenset([upstr(i)
+                                                 for i in skip_auto_headers])
         else:
             self._skip_auto_headers = frozenset()
 
@@ -125,10 +126,15 @@ class ClientSession:
             raise ValueError("Can't combine `Authorization` header with "
                              "`auth` argument")
 
+        skip_headers = self._skip_auto_headers
+        if skip_auto_headers is not None:
+            for i in self.skip_auto_headers:
+                skip_headers.add(upstr(i))
+
         while True:
             req = self._request_class(
                 method, url, params=params, headers=headers,
-                skip_auto_headers=skip_auto_headers, data=data,
+                skip_auto_headers=skip_headers, data=data,
                 cookies=self.cookies, files=files, encoding=encoding,
                 auth=auth, version=version, compress=compress, chunked=chunked,
                 expect100=expect100,
