@@ -253,7 +253,7 @@ class ClientSession:
         for name, value in cookies:
             if isinstance(value, http.cookies.Morsel):
                 # use dict method because SimpleCookie class modifies value
-                # before Python3.4
+                # before Python 3.4
                 dict.__setitem__(self.cookies, name, value)
             else:
                 self.cookies[name] = value
