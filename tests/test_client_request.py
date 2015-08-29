@@ -10,6 +10,7 @@ import os.path
 
 import aiohttp
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
+from aiohttp.multidict import upstr
 
 PY_341 = sys.version_info >= (3, 4, 1)
 
@@ -100,6 +101,25 @@ class TestClientRequest(unittest.TestCase):
                             headers={'host': 'example.com:99'}, loop=self.loop)
         self.assertEqual(req.headers['HOST'], 'example.com:99')
         self.loop.run_until_complete(req.close())
+
+    def test_default_headers_useragent(self):
+        req = ClientRequest('get', 'http://python.org/', loop=self.loop)
+
+        self.assertNotIn('SERVER', req.headers)
+        self.assertIn('USER-AGENT', req.headers)
+
+    def test_default_headers_useragent_custom(self):
+        req = ClientRequest('get', 'http://python.org/', loop=self.loop,
+                            headers={'user-agent': 'my custom agent'})
+
+        self.assertIn('USER-Agent', req.headers)
+        self.assertEqual('my custom agent', req.headers['User-Agent'])
+
+    def test_skip_default_useragent_header(self):
+        req = ClientRequest('get', 'http://python.org/', loop=self.loop,
+                            skip_auto_headers=(upstr('user-agent'),))
+
+        self.assertNotIn('User-Agent', req.headers)
 
     def test_headers(self):
         req = ClientRequest('get', 'http://python.org/',

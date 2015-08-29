@@ -32,7 +32,8 @@ class ClientSession:
     _connector = None
 
     def __init__(self, *, connector=None, loop=None, cookies=None,
-                 headers=None, auth=None, request_class=ClientRequest,
+                 headers=None, skip_auto_headers=None,
+                 auth=None, request_class=ClientRequest,
                  response_class=ClientResponse,
                  ws_response_class=ClientWebSocketResponse):
 
@@ -65,6 +66,10 @@ class ClientSession:
         else:
             headers = CIMultiDict()
         self._default_headers = headers
+        if skip_auto_headers is not None:
+            self._skip_auto_headers = frozenset(skip_auto_headers)
+        else:
+            self._skip_auto_headers = frozenset()
 
         self._request_class = request_class
         self._response_class = response_class
@@ -88,6 +93,7 @@ class ClientSession:
                 params=None,
                 data=None,
                 headers=None,
+                skip_auto_headers=None,
                 files=None,
                 auth=None,
                 allow_redirects=True,
@@ -121,7 +127,8 @@ class ClientSession:
 
         while True:
             req = self._request_class(
-                method, url, params=params, headers=headers, data=data,
+                method, url, params=params, headers=headers,
+                skip_auto_headers=skip_auto_headers, data=data,
                 cookies=self.cookies, files=files, encoding=encoding,
                 auth=auth, version=version, compress=compress, chunked=chunked,
                 expect100=expect100,
