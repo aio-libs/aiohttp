@@ -108,8 +108,8 @@ class TestClientSession(unittest.TestCase):
         })
         self.assertIsInstance(headers, CIMultiDict)
         self.assertEqual(headers, CIMultiDict([
-            ("h1", "h1"),
-            ("h2", "header2")
+            ("h2", "header2"),
+            ("h1", "h1")
         ]))
         session.close()
 
@@ -122,8 +122,8 @@ class TestClientSession(unittest.TestCase):
         headers = session._prepare_headers(MultiDict([("h1", "h1")]))
         self.assertIsInstance(headers, CIMultiDict)
         self.assertEqual(headers, CIMultiDict([
-            ("h1", "h1"),
-            ("h2", "header2")
+            ("h2", "header2"),
+            ("h1", "h1")
         ]))
         session.close()
 
@@ -136,8 +136,8 @@ class TestClientSession(unittest.TestCase):
         headers = session._prepare_headers([("h1", "h1")])
         self.assertIsInstance(headers, CIMultiDict)
         self.assertEqual(headers, CIMultiDict([
-            ("h1", "h1"),
-            ("h2", "header2")
+            ("h2", "header2"),
+            ("h1", "h1")
         ]))
         session.close()
 

@@ -262,19 +262,17 @@ class ClientSession:
         """ Add default headers and transform it to CIMultiDict
         """
         # Convert headers to MultiDict
-        result = CIMultiDict()
+        result = CIMultiDict(self._default_headers)
         if headers:
-            if isinstance(headers, dict):
-                headers = headers.items()
-            elif isinstance(headers, (MultiDictProxy, MultiDict)):
-                headers = headers.items()
-            for key, value in headers:
-                result.add(key, value)
-        # Add defaults only if those are not overridden
-        if self._default_headers:
-            for key, value in self._default_headers.items():
-                if key not in result:
+            if not isinstance(headers, (MultiDictProxy, MultiDict)):
+                headers = CIMultiDict(headers)
+            added_names = set()
+            for key, value in headers.items():
+                if key in added_names:
                     result.add(key, value)
+                else:
+                    result[key] = value
+                    added_names.add(key)
         return result
 
     @asyncio.coroutine
