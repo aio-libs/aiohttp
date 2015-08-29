@@ -43,9 +43,9 @@ class TestClientSession(unittest.TestCase):
                 "h2": "header2"
             }, loop=self.loop)
         self.assertEqual(
-            set(session._default_headers),
-            set([("h1", "header1"),
-                 ("h2", "header2")]))
+            sorted(session._default_headers.items()),
+            ([("H1", "header1"),
+              ("H2", "header2")]))
         session.close()
 
     def test_init_headers_list_of_tuples(self):
@@ -55,10 +55,10 @@ class TestClientSession(unittest.TestCase):
                      ("h3", "header3")],
             loop=self.loop)
         self.assertEqual(
-            set(session._default_headers),
-            set([("h1", "header1"),
-                 ("h2", "header2"),
-                 ("h3", "header3")]))
+            session._default_headers,
+            CIMultiDict([("h1", "header1"),
+                         ("h2", "header2"),
+                         ("h3", "header3")]))
         session.close()
 
     def test_init_headers_MultiDict(self):
@@ -69,10 +69,10 @@ class TestClientSession(unittest.TestCase):
                  ("h3", "header3")]),
             loop=self.loop)
         self.assertEqual(
-            set(session._default_headers),
-            set([("h1", "header1"),
-                 ("h2", "header2"),
-                 ("h3", "header3")]))
+            session._default_headers,
+            CIMultiDict([("H1", "header1"),
+                         ("H2", "header2"),
+                         ("H3", "header3")]))
         session.close()
 
     def test_init_cookies_with_simple_dict(self):

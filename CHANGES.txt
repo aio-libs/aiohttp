@@ -10,3 +10,5 @@ CHANGES
 * Optimize cythonized multidict a bit
 
 * Change repr's of multidicts and multidict views
+
+* default headers in ClientSession are now case-insensitive

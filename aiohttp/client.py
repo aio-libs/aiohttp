@@ -61,10 +61,9 @@ class ClientSession:
 
         # Convert to list of tuples
         if headers:
-            if isinstance(headers, dict):
-                headers = list(headers.items())
-            elif isinstance(headers, (MultiDictProxy, MultiDict)):
-                headers = list(headers.items())
+            headers = CIMultiDict(headers)
+        else:
+            headers = CIMultiDict()
         self._default_headers = headers
 
         self._request_class = request_class
@@ -273,7 +272,7 @@ class ClientSession:
                 result.add(key, value)
         # Add defaults only if those are not overridden
         if self._default_headers:
-            for key, value in self._default_headers:
+            for key, value in self._default_headers.items():
                 if key not in result:
                     result.add(key, value)
         return result
