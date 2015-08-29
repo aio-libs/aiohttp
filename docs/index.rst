@@ -41,27 +41,28 @@ Client example::
     import aiohttp
 
     @asyncio.coroutine
-    def fetch_page(url):
-        response = yield from aiohttp.request('GET', url)
+    def fetch_page(client, url):
+        response = yield from client.get(url)
         assert response.status == 200
         return (yield from response.read())
 
-    content = asyncio.get_event_loop().run_until_complete(
-        fetch_page('http://python.org'))
+    loop = asyncio.get_event_loop()
+    client = aiohttp.ClientSession(loop=loop)
+    content = loop.run_until_complete(
+        fetch_page(client, 'http://python.org'))
     print(content)
+    client.close()
 
 Server example::
 
     import asyncio
     from aiohttp import web
 
-
     @asyncio.coroutine
     def handle(request):
         name = request.match_info.get('name', "Anonymous")
         text = "Hello, " + name
         return web.Response(body=text.encode('utf-8'))
-
 
     @asyncio.coroutine
     def init(loop):

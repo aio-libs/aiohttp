@@ -61,31 +61,25 @@ To retrieve something from the web:
   import aiohttp
   import asyncio
 
-  def get_body(url):
-      response = yield from aiohttp.request('GET', url)
+  @asyncio.coroutine
+  def get_body(client, url):
+      response = yield from client.get(url)
       return (yield from response.read())
 
   if __name__ == '__main__':
       loop = asyncio.get_event_loop()
-      raw_html = loop.run_until_complete(get_body('http://python.org'))
+      client = aiohttp.ClientSession(loop=loop)
+      raw_html = loop.run_until_complete(get_body(client, 'http://python.org'))
       print(raw_html)
+      client.close()
 
 
-You can use the get command like this anywhere in your ``asyncio``
-powered program:
-
-.. code-block:: python
-
-  response = yield from aiohttp.request('GET', 'http://python.org')
-  body = yield from response.read()
-  print(body)
-
-If you want to use timeouts for aiohttp client side please use standard
+If you want to use timeouts for aiohttp client please use standard
 asyncio approach:
 
 .. code-block:: python
 
-   yield from asyncio.wait_for(request('GET', url), 10)
+   yield from asyncio.wait_for(client.get(url), 10)
 
 
 Server
