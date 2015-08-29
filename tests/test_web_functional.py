@@ -32,7 +32,8 @@ class TestWebFunctional(unittest.TestCase):
     def create_server(self, method, path, handler=None):
         app = web.Application(loop=self.loop)
         if handler:
-            app.router.add_route(method, path, handler)
+            app.router.add_route('r', path)
+            app.router.add_view(method, handler, route='r')
 
         port = self.find_unused_port()
         self.handler = app.make_handler(
@@ -576,7 +577,9 @@ class TestWebFunctional(unittest.TestCase):
 
             app, _, url = yield from self.create_server('POST', '/')
             app.router.add_route(
-                'POST', '/', handler, expect_handler=expect_handler)
+                'r', '/', expect_handler=expect_handler)
+            app.router.add_view(
+                'POST', handler, route='r')
 
             form = FormData()
             form.add_field('name', b'123',
@@ -617,7 +620,9 @@ class TestWebFunctional(unittest.TestCase):
 
             app, _, url = yield from self.create_server('POST', '/')
             app.router.add_route(
-                'POST', '/', handler, expect_handler=expect_handler)
+                'r', '/', expect_handler=expect_handler)
+            app.router.add_view(
+                'POST', handler, route='r')
 
             form = FormData()
             form.add_field('name', b'123',
@@ -650,7 +655,8 @@ class TestWebFunctional(unittest.TestCase):
         @asyncio.coroutine
         def go():
             app, _, url = yield from self.create_server('POST', '/')
-            app.router.add_route('POST', '/', handler)
+            app.router.add_route('r', '/')
+            app.router.add_view('POST', handler, route='r')
 
             form = FormData()
             form.add_field('name', b'123',
@@ -675,7 +681,8 @@ class TestWebFunctional(unittest.TestCase):
         @asyncio.coroutine
         def go():
             app, _, url = yield from self.create_server('POST', '/')
-            app.router.add_route('POST', '/', handler)
+            app.router.add_route('r', '/')
+            app.router.add_view('POST', handler, route='r')
 
             form = FormData()
             form.add_field('name', b'123',
