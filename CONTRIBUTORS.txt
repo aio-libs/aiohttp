@@ -66,6 +66,7 @@ Tolga Tezel
 Vaibhav Sagar
 Vitaly Haritonsky
 Vitaly Magerya
+Vladimir Shulyak
 Vladimir Zakharov
 W. Trevor King
 Yannick Koechlin
