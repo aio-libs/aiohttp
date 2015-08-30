@@ -129,7 +129,7 @@ class ClientRequest:
         self.netloc = netloc
 
         scheme = url_parsed.scheme
-        self.ssl = scheme == 'https'
+        self.ssl = scheme in ('https', 'wss')
 
         # set port number if it isn't already set
         if not port:
@@ -175,7 +175,7 @@ class ClientRequest:
                 query = params
 
         self.path = urllib.parse.urlunsplit(
-            ('', '', urllib.parse.quote(path, safe='/%:'), query, fragment))
+            ('', '', urllib.parse.quote(path, safe='/%:='), query, fragment))
         self.url = urllib.parse.urlunsplit(
             (scheme, netloc, self.path, '', ''))
 
