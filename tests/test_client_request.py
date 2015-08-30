@@ -73,6 +73,19 @@ class TestClientRequest(unittest.TestCase):
         self.assertTrue(req.ssl)
         self.loop.run_until_complete(req.close())
 
+    def test_websocket_host_port(self):
+        req = ClientRequest('get', 'ws://python.org/', loop=self.loop)
+        self.assertEqual(req.host, 'python.org')
+        self.assertEqual(req.port, 80)
+        self.assertFalse(req.ssl)
+        self.loop.run_until_complete(req.close())
+
+        req = ClientRequest('get', 'wss://python.org/', loop=self.loop)
+        self.assertEqual(req.host, 'python.org')
+        self.assertEqual(req.port, 443)
+        self.assertTrue(req.ssl)
+        self.loop.run_until_complete(req.close())
+
     def test_host_port_err(self):
         self.assertRaises(
             ValueError, ClientRequest, 'get', 'http://python.org:123e/',
@@ -228,6 +241,12 @@ class TestClientRequest(unittest.TestCase):
         req = ClientRequest('get', "http://0.0.0.0/get/test%20case",
                             loop=self.loop)
         self.assertEqual(req.path, "/get/test%20case")
+        self.loop.run_until_complete(req.close())
+
+    def test_path_safe_chars_preserved(self):
+        req = ClientRequest('get', "http://0.0.0.0/get/%:=",
+                            loop=self.loop)
+        self.assertEqual(req.path, "/get/%:=")
         self.loop.run_until_complete(req.close())
 
     def test_params_are_added_before_fragment(self):
