@@ -126,9 +126,9 @@ class ClientSession:
             raise ValueError("Can't combine `Authorization` header with "
                              "`auth` argument")
 
-        skip_headers = self._skip_auto_headers
+        skip_headers = set(self._skip_auto_headers)
         if skip_auto_headers is not None:
-            for i in self.skip_auto_headers:
+            for i in skip_auto_headers:
                 skip_headers.add(upstr(i))
 
         while True:
