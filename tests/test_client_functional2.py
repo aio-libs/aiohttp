@@ -96,3 +96,21 @@ class TestClientFunctional2(unittest.TestCase):
             client.close()
 
         self.loop.run_until_complete(go())
+
+    def test_skip_auto_headers_content_type(self):
+        @asyncio.coroutine
+        def handler(request):
+            self.assertNotIn(hdrs.CONTENT_TYPE, request.headers)
+            return web.Response()
+
+        @asyncio.coroutine
+        def go():
+            app, srv, url = yield from self.create_server()
+            app.router.add_route('get', '/', handler)
+            resp = yield from self.client.get(
+                url+'/',
+                skip_auto_headers=['content-type'])
+            self.assertEqual(200, resp.status)
+            yield from resp.release()
+
+        self.loop.run_until_complete(go())

@@ -209,6 +209,7 @@ class ClientRequest:
         for hdr, val in self.DEFAULT_HEADERS.items():
             if hdr not in used_headers:
                 self.headers[hdr] = val
+                used_headers.add(hdr)
 
         # add host
         if hdrs.HOST not in used_headers:
@@ -216,6 +217,8 @@ class ClientRequest:
 
         if hdrs.USER_AGENT not in used_headers:
             self.headers[hdrs.USER_AGENT] = self.SERVER_SOFTWARE
+
+        self.skip_auto_headers = used_headers
 
     def update_cookies(self, cookies):
         """Update request cookies header."""
@@ -463,6 +466,7 @@ class ClientRequest:
 
         # set default content-type
         if (self.method in self.POST_METHODS and
+                hdrs.CONTENT_TYPE not in self.skip_auto_headers and
                 hdrs.CONTENT_TYPE not in self.headers):
             self.headers[hdrs.CONTENT_TYPE] = 'application/octet-stream'
 
