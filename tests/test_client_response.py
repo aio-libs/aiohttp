@@ -75,7 +75,7 @@ class TestClientResponse(unittest.TestCase):
 
         res = self.loop.run_until_complete(self.response.read())
         self.assertEqual(res, b'payload')
-        self.assertTrue(self.response.close.called)
+        self.assertIsNone(self.response._connection)
 
     def test_read_and_release_connection_with_error(self):
         content = self.response.content = unittest.mock.Mock()
@@ -132,7 +132,7 @@ class TestClientResponse(unittest.TestCase):
 
         res = self.loop.run_until_complete(self.response.text())
         self.assertEqual(res, '{"тест": "пройден"}')
-        self.assertTrue(self.response.close.called)
+        self.assertIsNone(self.response._connection)
 
     def test_text_custom_encoding(self):
         def side_effect(*args, **kwargs):
@@ -195,7 +195,7 @@ class TestClientResponse(unittest.TestCase):
 
         res = self.loop.run_until_complete(self.response.json())
         self.assertEqual(res, {'тест': 'пройден'})
-        self.assertTrue(self.response.close.called)
+        self.assertIsNone(self.response._connection)
 
     def test_json_custom_loader(self):
         self.response.headers = {
@@ -236,7 +236,7 @@ class TestClientResponse(unittest.TestCase):
         res = self.loop.run_until_complete(
             self.response.json(encoding='cp1251'))
         self.assertEqual(res, {'тест': 'пройден'})
-        self.assertTrue(self.response.close.called)
+        self.assertIsNone(self.response._connection)
         self.assertFalse(self.response._get_encoding.called)
 
     def test_json_detect_encoding(self):
@@ -251,7 +251,7 @@ class TestClientResponse(unittest.TestCase):
 
         res = self.loop.run_until_complete(self.response.json())
         self.assertEqual(res, {'тест': 'пройден'})
-        self.assertTrue(self.response.close.called)
+        self.assertIsNone(self.response._connection)
 
     def test_override_flow_control(self):
         class MyResponse(ClientResponse):
