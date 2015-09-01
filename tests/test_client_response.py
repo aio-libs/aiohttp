@@ -268,3 +268,9 @@ class TestClientResponse(unittest.TestCase):
 
         self.response.headers = {'CONTENT-TYPE': 'application/json'}
         self.assertEqual(self.response._get_encoding(), 'utf-8')
+
+    def test_close_deprecated(self):
+        self.response._connection = self.connection
+        with self.assertWarns(DeprecationWarning):
+            self.response.close(force=False)
+        self.assertIsNone(self.response._connection)

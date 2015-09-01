@@ -601,7 +601,7 @@ class ClientResponse:
     def close(self, force=True):
         if not force:
             warnings.warn("force parameter should be True", DeprecationWarning,
-                          level=2)
+                          stacklevel=2)
         if self._closed:
             return
 
@@ -614,10 +614,7 @@ class ClientResponse:
         if self._connection is not None:
             self._connection.close()
             self._connection = None
-
-        if self._writer is not None and not self._writer.done():
-            self._writer.cancel()
-            self._writer = None
+        self._cleanup_writer()
 
     @asyncio.coroutine
     def release(self):
@@ -633,10 +630,12 @@ class ClientResponse:
                 if self._reader is not None:
                     self._reader.unset_parser()
                 self._connection = None
+            self._cleanup_writer()
 
-            if self._writer is not None and not self._writer.done():
-                self._writer.cancel()
-            self._writer = None
+    def _cleanup_writer(self):
+        if self._writer is not None and not self._writer.done():
+            self._writer.cancel()
+        self._writer = None
 
     @asyncio.coroutine
     def wait_for_close(self):
