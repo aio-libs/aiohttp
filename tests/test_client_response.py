@@ -149,7 +149,7 @@ class TestClientResponse(unittest.TestCase):
         res = self.loop.run_until_complete(
             self.response.text(encoding='cp1251'))
         self.assertEqual(res, '{"тест": "пройден"}')
-        self.assertTrue(self.response.close.called)
+        self.assertIsNone(self.response._connection)
         self.assertFalse(self.response._get_encoding.called)
 
     def test_text_detect_encoding(self):
@@ -180,7 +180,7 @@ class TestClientResponse(unittest.TestCase):
 
         res = self.loop.run_until_complete(self.response.text())
         self.assertEqual(res, '{"тест": "пройден"}')
-        self.assertTrue(self.response.close.called)
+        self.assertIsNone(self.response._connection)
 
     def test_json(self):
         def side_effect(*args, **kwargs):
