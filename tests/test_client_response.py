@@ -44,7 +44,6 @@ class TestClientResponse(unittest.TestCase):
         self.response._connection = self.connection
         self.response.close()
         self.assertIsNone(self.response.connection)
-        self.assertTrue(self.connection.release.called)
         self.response.close()
         self.response.close()
 

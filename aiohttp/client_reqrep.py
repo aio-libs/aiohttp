@@ -622,12 +622,12 @@ class ClientResponse:
     @asyncio.coroutine
     def release(self):
         try:
-            chunk = yield from self.content.readany()
-            while chunk is not EOF_MARKER or chunk:
+            if not self.content.at_eof():
                 chunk = yield from self.content.readany()
+                while chunk is not EOF_MARKER or chunk:
+                    chunk = yield from self.content.readany()
         finally:
             if self._connection is not None:
-                assert self.content.at_eof()
                 self._connection.release()
                 if self._reader is not None:
                     self._reader.unset_parser()
