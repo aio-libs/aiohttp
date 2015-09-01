@@ -598,7 +598,10 @@ class ClientResponse:
                         'Can not load response cookies: %s', exc)
         return self
 
-    def close(self, force=False):
+    def close(self, force=True):
+        if not force:
+            warnings.warn("force parameter should be True", DeprecationWarning,
+                          level=2)
         if self._closed:
             return
 
@@ -609,17 +612,9 @@ class ClientResponse:
                 return
 
         if self._connection is not None:
-            if self.content and not self.content.at_eof():
-                force = True
-
-            if force:
-                self._connection.close()
-            else:
-                self._connection.release()
-                if self._reader is not None:
-                    self._reader.unset_parser()
-
+            self._connection.close()
             self._connection = None
+
         if self._writer is not None and not self._writer.done():
             self._writer.cancel()
             self._writer = None
@@ -631,7 +626,16 @@ class ClientResponse:
             while chunk is not EOF_MARKER or chunk:
                 chunk = yield from self.content.readany()
         finally:
-            self.close()
+            if self._connection is not None:
+                assert self.content.at_eof()
+                self._connection.release()
+                if self._reader is not None:
+                    self._reader.unset_parser()
+                self._connection = None
+
+            if self._writer is not None and not self._writer.done():
+                self._writer.cancel()
+            self._writer = None
 
     @asyncio.coroutine
     def wait_for_close(self):
@@ -640,7 +644,7 @@ class ClientResponse:
                 yield from self._writer
             finally:
                 self._writer = None
-        self.close()
+        yield from self.release()
 
     @asyncio.coroutine
     def read(self, decode=False):
@@ -649,10 +653,10 @@ class ClientResponse:
             try:
                 self._content = yield from self.content.read()
             except:
-                self.close(True)
+                self.close()
                 raise
             else:
-                self.close()
+                yield from self.release()
 
         data = self._content
 
