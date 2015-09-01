@@ -18,3 +18,5 @@ CHANGES
 * `ClientResponse.close()` forces connection closing by default from now #479
   N.B. Backward incompatible change: was `.close(force=False)
   Using `force` parameter for the method is deprecated: use `.release()` instead.
+
+* Properly requote URL's path #480
