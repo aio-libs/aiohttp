@@ -87,7 +87,7 @@ class TestClientResponse(unittest.TestCase):
         self.assertRaises(
             ValueError,
             self.loop.run_until_complete, self.response.read())
-        self.response.close.assert_called_with(True)
+        self.response.close.assert_called_with()
 
     def test_release(self):
         fut = asyncio.Future(loop=self.loop)
