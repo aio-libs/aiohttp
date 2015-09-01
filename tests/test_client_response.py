@@ -97,7 +97,7 @@ class TestClientResponse(unittest.TestCase):
         self.response.close = unittest.mock.Mock()
 
         self.loop.run_until_complete(self.response.release())
-        self.assertTrue(self.response.close.called)
+        self.assertIsNone(self.response._connection)
 
     def test_read_and_close(self):
         self.response.read = unittest.mock.Mock()
