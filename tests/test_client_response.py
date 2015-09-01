@@ -165,7 +165,7 @@ class TestClientResponse(unittest.TestCase):
         self.loop.run_until_complete(self.response.read())
         res = self.loop.run_until_complete(self.response.text())
         self.assertEqual(res, '{"тест": "пройден"}')
-        self.assertTrue(self.response.close.called)
+        self.assertIsNone(self.response._connection)
 
     def test_text_after_read(self):
         def side_effect(*args, **kwargs):
