@@ -14,3 +14,7 @@ CHANGES
 * default headers in ClientSession are now case-insensitive
 
 * Make '=' char and 'wss://' schema safe in urls #477
+
+* `ClientResponse.close()` forces connection closing by default from now #479
+  N.B. Backward incompatible change: was `.close(force=False)
+  Using `force` parameter for the method is deprecated: use `.release()` instead.
