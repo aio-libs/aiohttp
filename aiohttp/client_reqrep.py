@@ -19,7 +19,7 @@ from . import hdrs, helpers, streams
 from .log import client_logger
 from .streams import EOF_MARKER, FlowControlStreamReader
 from .multidict import (CIMultiDictProxy, MultiDictProxy, MultiDict,
-                        CIMultiDict, upstr)
+                        CIMultiDict)
 from .multipart import MultipartWriter
 from .protocol import HttpMessage
 
@@ -57,7 +57,7 @@ class ClientRequest:
     # Until writer has finished finalizer will not be called.
 
     def __init__(self, method, url, *,
-                 params=None, headers=None, skip_auto_headers=None,
+                 params=None, headers=None, skip_auto_headers=frozenset(),
                  data=None, cookies=None,
                  files=None, auth=None, encoding='utf-8',
                  version=aiohttp.HttpVersion11, compress=None,
@@ -198,18 +198,12 @@ class ClientRequest:
                 self.headers.add(key, value)
 
     def update_auto_headers(self, skip_auto_headers):
-        used_headers = set(self.headers)
-        if skip_auto_headers is not None:
-            for i in skip_auto_headers:
-                if not isinstance(i, upstr):
-                    raise ValueError(
-                        'skip_auto_headers should be set of upstr')
-                used_headers.add(i)
+        self.skip_auto_headers = skip_auto_headers
+        used_headers = set(self.headers) | skip_auto_headers
 
         for hdr, val in self.DEFAULT_HEADERS.items():
             if hdr not in used_headers:
-                self.headers[hdr] = val
-                used_headers.add(hdr)
+                self.headers.add(hdr, val)
 
         # add host
         if hdrs.HOST not in used_headers:
@@ -217,8 +211,6 @@ class ClientRequest:
 
         if hdrs.USER_AGENT not in used_headers:
             self.headers[hdrs.USER_AGENT] = self.SERVER_SOFTWARE
-
-        self.skip_auto_headers = used_headers
 
     def update_cookies(self, cookies):
         """Update request cookies header."""

@@ -132,7 +132,7 @@ class TestClientRequest(unittest.TestCase):
 
     def test_skip_default_useragent_header(self):
         req = ClientRequest('get', 'http://python.org/', loop=self.loop,
-                            skip_auto_headers=(upstr('user-agent'),))
+                            skip_auto_headers=set([upstr('user-agent')]))
 
         self.assertNotIn('User-Agent', req.headers)
 
