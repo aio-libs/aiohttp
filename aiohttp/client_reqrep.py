@@ -625,6 +625,7 @@ class ClientResponse:
                 while chunk is not EOF_MARKER or chunk:
                     chunk = yield from content.readany()
         finally:
+            self._closed = True
             if self._connection is not None:
                 self._connection.release()
                 if self._reader is not None:

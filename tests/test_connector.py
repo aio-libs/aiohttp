@@ -34,6 +34,7 @@ class TestHttpConnection(unittest.TestCase):
 
     def tearDown(self):
         self.loop.close()
+        gc.collect()
 
     @unittest.skipUnless(PY_341, "Requires Python 3.4.1+")
     def test_del(self):

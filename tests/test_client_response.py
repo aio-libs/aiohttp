@@ -21,15 +21,17 @@ class TestClientResponse(unittest.TestCase):
 
         self.connection = unittest.mock.Mock()
         self.stream = aiohttp.StreamParser(loop=self.loop)
-        self.response = ClientResponse('get', 'http://python.org')
+        self.response = ClientResponse('get', 'http://def-cl-resp.org')
         self.response._post_init(self.loop)
 
     def tearDown(self):
+        self.response.close()
         self.loop.close()
+        gc.collect()
 
     @unittest.skipUnless(PY_341, "Requires Python 3.4.1+")
     def test_del(self):
-        response = ClientResponse('get', 'http://python.org')
+        response = ClientResponse('get', 'http://del-cl-resp.org')
         response._post_init(self.loop)
 
         connection = unittest.mock.Mock()
@@ -61,7 +63,7 @@ class TestClientResponse(unittest.TestCase):
         self.response.status = 200
         self.response.reason = 'Ok'
         self.assertIn(
-            '<ClientResponse(http://python.org) [200 Ok]>',
+            '<ClientResponse(http://def-cl-resp.org) [200 Ok]>',
             repr(self.response))
 
     def test_read_and_release_connection(self):

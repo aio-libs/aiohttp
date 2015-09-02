@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import unittest
 import unittest.mock
 import sys
@@ -28,6 +29,7 @@ class TestClientRequest(unittest.TestCase):
 
     def tearDown(self):
         self.loop.close()
+        gc.collect()
 
     def test_method(self):
         req = ClientRequest('get', 'http://python.org/', loop=self.loop)

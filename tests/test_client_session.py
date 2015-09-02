@@ -29,6 +29,7 @@ class TestClientSession(unittest.TestCase):
 
     def tearDown(self):
         self.loop.close()
+        gc.collect()
 
     def make_open_connector(self):
         conn = BaseConnector(loop=self.loop)
@@ -358,6 +359,7 @@ class TestClientSession(unittest.TestCase):
     def test_del(self):
         conn = self.make_open_connector()
         session = ClientSession(loop=self.loop, connector=conn)
+        self.loop.set_exception_handler(lambda loop, ctx: None)
 
         with self.assertWarns(ResourceWarning):
             del session
@@ -374,6 +376,7 @@ class TestClientSession(unittest.TestCase):
         conn = self.make_open_connector()
         session = ClientSession(connector=conn)
         self.assertIs(session._loop, self.loop)
+        session.close()
 
 
 class TestCLientRequest(unittest.TestCase):
@@ -386,6 +389,9 @@ class TestCLientRequest(unittest.TestCase):
         self.protocol = mock.Mock()
 
     def tearDown(self):
+        self.connector.close()
+        self.loop.stop()
+        self.loop.run_forever()
         self.loop.close()
 
     def test_custom_req_rep(self):
@@ -430,4 +436,6 @@ class TestCLientRequest(unittest.TestCase):
                                               loop=self.loop)
             self.assertIsInstance(resp, CustomResponse)
             self.assertTrue(called)
+            resp.close()
+
         self.loop.run_until_complete(go())
