@@ -174,8 +174,8 @@ class ClientRequest:
             else:
                 query = params
 
-        self.path = urllib.parse.urlunsplit(
-            ('', '', urllib.parse.quote(path, safe='/%:='), query, fragment))
+        self.path = urllib.parse.urlunsplit(('', '', helpers.requote_uri(path),
+                                             query, fragment))
         self.url = urllib.parse.urlunsplit(
             (scheme, netloc, self.path, '', ''))
 
