@@ -23,6 +23,7 @@ class TestClientResponse(unittest.TestCase):
         self.stream = aiohttp.StreamParser(loop=self.loop)
         self.response = ClientResponse('get', 'http://def-cl-resp.org')
         self.response._post_init(self.loop)
+        self.response._setup_connection(self.connection)
 
     def tearDown(self):
         self.response.close()
@@ -73,7 +74,6 @@ class TestClientResponse(unittest.TestCase):
             return fut
         content = self.response.content = unittest.mock.Mock()
         content.read.side_effect = side_effect
-        self.response.close = unittest.mock.Mock()
 
         res = self.loop.run_until_complete(self.response.read())
         self.assertEqual(res, b'payload')
@@ -83,19 +83,17 @@ class TestClientResponse(unittest.TestCase):
         content = self.response.content = unittest.mock.Mock()
         content.read.return_value = asyncio.Future(loop=self.loop)
         content.read.return_value.set_exception(ValueError)
-        self.response.close = unittest.mock.Mock()
 
         self.assertRaises(
             ValueError,
             self.loop.run_until_complete, self.response.read())
-        self.response.close.assert_called_with()
+        self.assertTrue(self.response._closed)
 
     def test_release(self):
         fut = asyncio.Future(loop=self.loop)
         fut.set_result(b'')
         content = self.response.content = unittest.mock.Mock()
         content.readany.return_value = fut
-        self.response.close = unittest.mock.Mock()
 
         self.loop.run_until_complete(self.response.release())
         self.assertIsNone(self.response._connection)
@@ -130,7 +128,6 @@ class TestClientResponse(unittest.TestCase):
             'CONTENT-TYPE': 'application/json;charset=cp1251'}
         content = self.response.content = unittest.mock.Mock()
         content.read.side_effect = side_effect
-        self.response.close = unittest.mock.Mock()
 
         res = self.loop.run_until_complete(self.response.text())
         self.assertEqual(res, '{"тест": "пройден"}')
@@ -145,7 +142,6 @@ class TestClientResponse(unittest.TestCase):
             'CONTENT-TYPE': 'application/json'}
         content = self.response.content = unittest.mock.Mock()
         content.read.side_effect = side_effect
-        self.response.close = unittest.mock.Mock()
         self.response._get_encoding = unittest.mock.Mock()
 
         res = self.loop.run_until_complete(
@@ -162,7 +158,6 @@ class TestClientResponse(unittest.TestCase):
         self.response.headers = {'CONTENT-TYPE': 'application/json'}
         content = self.response.content = unittest.mock.Mock()
         content.read.side_effect = side_effect
-        self.response.close = unittest.mock.Mock()
 
         self.loop.run_until_complete(self.response.read())
         res = self.loop.run_until_complete(self.response.text())
@@ -178,7 +173,6 @@ class TestClientResponse(unittest.TestCase):
             'CONTENT-TYPE': 'application/json;charset=cp1251'}
         content = self.response.content = unittest.mock.Mock()
         content.read.side_effect = side_effect
-        self.response.close = unittest.mock.Mock()
 
         res = self.loop.run_until_complete(self.response.text())
         self.assertEqual(res, '{"тест": "пройден"}')
@@ -193,7 +187,6 @@ class TestClientResponse(unittest.TestCase):
             'CONTENT-TYPE': 'application/json;charset=cp1251'}
         content = self.response.content = unittest.mock.Mock()
         content.read.side_effect = side_effect
-        self.response.close = unittest.mock.Mock()
 
         res = self.loop.run_until_complete(self.response.json())
         self.assertEqual(res, {'тест': 'пройден'})
@@ -215,7 +208,6 @@ class TestClientResponse(unittest.TestCase):
         self.response.headers = {
             'CONTENT-TYPE': 'data/octet-stream'}
         self.response._content = b''
-        self.response.close = unittest.mock.Mock()
 
         res = self.loop.run_until_complete(self.response.json())
         self.assertIsNone(res)
@@ -232,7 +224,6 @@ class TestClientResponse(unittest.TestCase):
             'CONTENT-TYPE': 'application/json;charset=utf8'}
         content = self.response.content = unittest.mock.Mock()
         content.read.side_effect = side_effect
-        self.response.close = unittest.mock.Mock()
         self.response._get_encoding = unittest.mock.Mock()
 
         res = self.loop.run_until_complete(
@@ -249,7 +240,6 @@ class TestClientResponse(unittest.TestCase):
         self.response.headers = {'CONTENT-TYPE': 'application/json'}
         content = self.response.content = unittest.mock.Mock()
         content.read.side_effect = side_effect
-        self.response.close = unittest.mock.Mock()
 
         res = self.loop.run_until_complete(self.response.json())
         self.assertEqual(res, {'тест': 'пройден'})
