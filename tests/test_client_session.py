@@ -398,6 +398,7 @@ class TestCLientRequest(unittest.TestCase):
         @asyncio.coroutine
         def go():
             conn = None
+
             class CustomResponse(ClientResponse):
                 @asyncio.coroutine
                 def start(self, connection, read_until_eof=False):
