@@ -24,7 +24,7 @@ from .multidict import (CIMultiDictProxy,
                         CIMultiDict,
                         MultiDictProxy,
                         MultiDict)
-from .protocol import Response as ResponseImpl, HttpVersion10
+from .protocol import Response as ResponseImpl, HttpVersion10, HttpVersion11
 from .streams import EOF_MARKER
 
 
@@ -646,6 +646,10 @@ class StreamResponse(HeadersMixin):
             self._start_compression(request)
 
         if self._chunked:
+            if request.version != HttpVersion11:
+                raise RuntimeError("Using chunked encoding is forbidden "
+                                   "for HTTP/{0.major}.{0.minor}".format(
+                                       request.version))
             resp_impl.enable_chunked_encoding()
             if self._chunk_size:
                 resp_impl.add_chunking_filter(self._chunk_size)
