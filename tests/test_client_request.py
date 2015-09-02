@@ -702,6 +702,7 @@ class TestClientRequest(unittest.TestCase):
         resp = req.send(self.transport, self.protocol)
         self.assertEqual('customized!', resp.read())
         self.loop.run_until_complete(req.close())
+        resp.close()
 
     def test_terminate(self):
         req = ClientRequest('get', 'http://python.org', loop=self.loop)

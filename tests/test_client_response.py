@@ -37,6 +37,8 @@ class TestClientResponse(unittest.TestCase):
 
         connection = unittest.mock.Mock()
         response._setup_connection(connection)
+        self.loop.set_exception_handler(lambda loop, ctx: None)
+
         with self.assertWarns(ResourceWarning):
             del response
             gc.collect()
@@ -50,15 +52,19 @@ class TestClientResponse(unittest.TestCase):
         self.response.close()
         self.response.close()
 
-    def test_wait_for_100(self):
+    def test_wait_for_100_1(self):
         response = ClientResponse(
             'get', 'http://python.org', continue100=object())
         response._post_init(self.loop)
         self.assertTrue(response.waiting_for_continue())
+        response.close()
+
+    def test_wait_for_100_2(self):
         response = ClientResponse(
             'get', 'http://python.org')
         response._post_init(self.loop)
         self.assertFalse(response.waiting_for_continue())
+        response.close()
 
     def test_repr(self):
         self.response.status = 200

@@ -397,9 +397,12 @@ class TestCLientRequest(unittest.TestCase):
     def test_custom_req_rep(self):
         @asyncio.coroutine
         def go():
+            conn = None
             class CustomResponse(ClientResponse):
                 @asyncio.coroutine
                 def start(self, connection, read_until_eof=False):
+                    nonlocal conn
+                    conn = connection
                     self.status = 123
                     self.reason = 'Test OK'
                     self.headers = CIMultiDictProxy(CIMultiDict())
@@ -437,5 +440,6 @@ class TestCLientRequest(unittest.TestCase):
             self.assertIsInstance(resp, CustomResponse)
             self.assertTrue(called)
             resp.close()
+            conn.close()
 
         self.loop.run_until_complete(go())
