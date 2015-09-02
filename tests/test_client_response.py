@@ -248,7 +248,7 @@ class TestClientResponse(unittest.TestCase):
     def test_override_flow_control(self):
         class MyResponse(ClientResponse):
             flow_control_class = aiohttp.FlowControlDataQueue
-        response = MyResponse('get', 'http://python.org')
+        response = MyResponse('get', 'http://my-cl-resp.org')
         response._post_init(self.loop)
         response._setup_connection(self.connection)
         self.assertIsInstance(response.content, aiohttp.FlowControlDataQueue)
