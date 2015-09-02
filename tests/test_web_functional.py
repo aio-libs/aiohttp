@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import json
 import os.path
 import socket
@@ -19,7 +20,10 @@ class TestWebFunctional(unittest.TestCase):
     def tearDown(self):
         if self.handler:
             self.loop.run_until_complete(self.handler.finish_connections())
+        self.loop.stop()
+        self.loop.run_forever()
         self.loop.close()
+        gc.collect()
 
     def find_unused_port(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -905,5 +909,6 @@ class TestWebFunctional(unittest.TestCase):
             data = yield from resp.read()
             self.assertEqual(b'xyz', data)
             yield from resp.release()
+            client.close()
 
         self.loop.run_until_complete(go())

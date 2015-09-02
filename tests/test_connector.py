@@ -34,6 +34,7 @@ class TestHttpConnection(unittest.TestCase):
 
     def tearDown(self):
         self.loop.close()
+        gc.collect()
 
     @unittest.skipUnless(PY_341, "Requires Python 3.4.1+")
     def test_del(self):
@@ -113,10 +114,11 @@ class TestBaseConnector(unittest.TestCase):
 
         self.transport = unittest.mock.Mock()
         self.stream = aiohttp.StreamParser()
-        self.response = ClientResponse('get', 'http://python.org')
-        self.response._loop = self.loop
+        self.response = ClientResponse('get', 'http://base-conn.org')
+        self.response._post_init(self.loop)
 
     def tearDown(self):
+        self.response.close()
         self.loop.close()
         gc.collect()
 

@@ -135,7 +135,7 @@ class ClientRequest:
         self.netloc = netloc
 
         scheme = url_parsed.scheme
-        self.ssl = scheme == 'https'
+        self.ssl = scheme in ('https', 'wss')
 
         # set port number if it isn't already set
         if not port:
@@ -180,8 +180,8 @@ class ClientRequest:
             else:
                 query = params
 
-        self.path = urllib.parse.urlunsplit(
-            ('', '', urllib.parse.quote(path, safe='/%:'), query, fragment))
+        self.path = urllib.parse.urlunsplit(('', '', helpers.requote_uri(path),
+                                             query, fragment))
         self.url = urllib.parse.urlunsplit(
             (scheme, netloc, self.path, '', ''))
 
@@ -620,7 +620,10 @@ class ClientResponse:
                         'Can not load response cookies: %s', exc)
         return self
 
-    def close(self, force=False):
+    def close(self, force=True):
+        if not force:
+            warnings.warn("force parameter should be True", DeprecationWarning,
+                          stacklevel=2)
         if self._closed:
             return
 
@@ -631,29 +634,31 @@ class ClientResponse:
                 return
 
         if self._connection is not None:
-            if self.content and not self.content.at_eof():
-                force = True
-
-            if force:
-                self._connection.close()
-            else:
-                self._connection.release()
-                if self._reader is not None:
-                    self._reader.unset_parser()
-
+            self._connection.close()
             self._connection = None
-        if self._writer is not None and not self._writer.done():
-            self._writer.cancel()
-            self._writer = None
+        self._cleanup_writer()
 
     @asyncio.coroutine
     def release(self):
         try:
-            chunk = yield from self.content.readany()
-            while chunk is not EOF_MARKER or chunk:
-                chunk = yield from self.content.readany()
+            content = self.content
+            if content is not None and not content.at_eof():
+                chunk = yield from content.readany()
+                while chunk is not EOF_MARKER or chunk:
+                    chunk = yield from content.readany()
         finally:
-            self.close()
+            self._closed = True
+            if self._connection is not None:
+                self._connection.release()
+                if self._reader is not None:
+                    self._reader.unset_parser()
+                self._connection = None
+            self._cleanup_writer()
+
+    def _cleanup_writer(self):
+        if self._writer is not None and not self._writer.done():
+            self._writer.cancel()
+        self._writer = None
 
     @asyncio.coroutine
     def wait_for_close(self):
@@ -662,7 +667,7 @@ class ClientResponse:
                 yield from self._writer
             finally:
                 self._writer = None
-        self.close()
+        yield from self.release()
 
     @asyncio.coroutine
     def read(self, decode=False):
@@ -671,10 +676,10 @@ class ClientResponse:
             try:
                 self._content = yield from self.content.read()
             except:
-                self.close(True)
+                self.close()
                 raise
             else:
-                self.close()
+                yield from self.release()
 
         data = self._content
 
