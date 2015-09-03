@@ -429,6 +429,11 @@ StreamResponse
 
       .. versionadded:: 0.14
 
+      .. warning:: chunked encoding can be enabled for ``HTTP/1.1`` only.
+
+                   Setting up both :attr:`content_length` and chunked
+                   encoding is mutually exclusive.
+
       .. seealso:: :attr:`chunked`
 
    .. attribute:: headers
