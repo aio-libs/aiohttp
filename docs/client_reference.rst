@@ -41,7 +41,8 @@ The client session supports context manager protocol for self closing::
 
 
 .. class:: ClientSession(*, connector=None, loop=None, cookies=None,\
-                         headers=None, auth=None, request_class=ClientRequest,\
+                         headers=None, skip_auto_headers=None, \
+                         auth=None, request_class=ClientRequest,\
                          response_class=ClientResponse, \
                          ws_response_class=ClientWebSocketResponse)
 
@@ -61,8 +62,23 @@ The client session supports context manager protocol for self closing::
 
    :param dict cookies: Cookies to send with the request (optional)
 
-   :param dict headers: HTTP Headers to send with
-                        the request (optional)
+   :param headers: HTTP Headers to send with
+                   the request (optional).
+
+                   May be either *iterable of key-value pairs* or
+                   :class:`~collections.abc.Mapping`
+                   (e.g. :class:`dict`,
+                   :class:`~aiohttp.multidict.CIMultiDict`).
+
+   :param skip_auto_headers: set of headers for which autogeneration
+      should be skipped.
+
+      *aiohttp* autogenerates headers like ``User-Agent`` or
+      ``Content-Type`` if these headers are not explicitly
+      passed. Using ``skip_auto_headers`` parameter allows to skip
+      that generation.
+
+      Iterable of :class:`str` or :class:`~aiohttp.multidict.upstr` (optional)
 
    :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that represents
                                           HTTP Basic Authorization (optional)
@@ -106,7 +122,8 @@ The client session supports context manager protocol for self closing::
 
 
    .. coroutinemethod:: request(method, url, *, params=None, data=None,\
-                                headers=None, auth=None, allow_redirects=True,\
+                                headers=None, skip_auto_headers=None, \
+                                auth=None, allow_redirects=True,\
                                 max_redirects=10, encoding='utf-8',\
                                 version=HttpVersion(major=1, minor=1),\
                                 compress=None, chunked=None, expect100=False,\
@@ -127,6 +144,17 @@ The client session supports context manager protocol for self closing::
 
       :param dict headers: HTTP Headers to send with
                            the request (optional)
+
+      :param skip_auto_headers: set of headers for which autogeneration
+         should be skipped.
+
+         *aiohttp* autogenerates headers like ``User-Agent`` or
+         ``Content-Type`` if these headers are not explicitly
+         passed. Using ``skip_auto_headers`` parameter allows to skip
+         that generation.
+
+         Iterable of :class:`str` or :class:`~aiohttp.multidict.upstr`
+         (optional)
 
       :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that
                                              represents HTTP Basic Authorization
