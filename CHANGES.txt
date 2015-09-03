@@ -20,3 +20,5 @@ CHANGES
   Using `force` parameter for the method is deprecated: use `.release()` instead.
 
 * Properly requote URL's path #480
+
+* add `skip_auto_headers` parameter for client API #486

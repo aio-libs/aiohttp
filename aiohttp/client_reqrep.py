@@ -18,8 +18,10 @@ import aiohttp
 from . import hdrs, helpers, streams
 from .log import client_logger
 from .streams import EOF_MARKER, FlowControlStreamReader
-from .multidict import CIMultiDictProxy, MultiDictProxy, MultiDict, CIMultiDict
+from .multidict import (CIMultiDictProxy, MultiDictProxy, MultiDict,
+                        CIMultiDict)
 from .multipart import MultipartWriter
+from .protocol import HttpMessage
 
 PY_341 = sys.version_info >= (3, 4, 1)
 
@@ -39,6 +41,8 @@ class ClientRequest:
         hdrs.ACCEPT_ENCODING: 'gzip, deflate',
     }
 
+    SERVER_SOFTWARE = HttpMessage.SERVER_SOFTWARE
+
     body = b''
     auth = None
     response = None
@@ -53,7 +57,8 @@ class ClientRequest:
     # Until writer has finished finalizer will not be called.
 
     def __init__(self, method, url, *,
-                 params=None, headers=None, data=None, cookies=None,
+                 params=None, headers=None, skip_auto_headers=frozenset(),
+                 data=None, cookies=None,
                  files=None, auth=None, encoding='utf-8',
                  version=aiohttp.HttpVersion11, compress=None,
                  chunked=None, expect100=False,
@@ -77,6 +82,7 @@ class ClientRequest:
         self.update_host(url)
         self.update_path(params)
         self.update_headers(headers)
+        self.update_auto_headers(skip_auto_headers)
         self.update_cookies(cookies)
         self.update_content_encoding()
         self.update_auth(auth)
@@ -191,13 +197,20 @@ class ClientRequest:
             for key, value in headers:
                 self.headers.add(key, value)
 
+    def update_auto_headers(self, skip_auto_headers):
+        self.skip_auto_headers = skip_auto_headers
+        used_headers = set(self.headers) | skip_auto_headers
+
         for hdr, val in self.DEFAULT_HEADERS.items():
-            if hdr not in self.headers:
-                self.headers[hdr] = val
+            if hdr not in used_headers:
+                self.headers.add(hdr, val)
 
         # add host
-        if hdrs.HOST not in self.headers:
+        if hdrs.HOST not in used_headers:
             self.headers[hdrs.HOST] = self.netloc
+
+        if hdrs.USER_AGENT not in used_headers:
+            self.headers[hdrs.USER_AGENT] = self.SERVER_SOFTWARE
 
     def update_cookies(self, cookies):
         """Update request cookies header."""
@@ -445,6 +458,7 @@ class ClientRequest:
 
         # set default content-type
         if (self.method in self.POST_METHODS and
+                hdrs.CONTENT_TYPE not in self.skip_auto_headers and
                 hdrs.CONTENT_TYPE not in self.headers):
             self.headers[hdrs.CONTENT_TYPE] = 'application/octet-stream'
 

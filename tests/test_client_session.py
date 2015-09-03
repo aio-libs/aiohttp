@@ -76,6 +76,19 @@ class TestClientSession(unittest.TestCase):
                          ("H3", "header3")]))
         session.close()
 
+    def test_init_headers_list_of_tuples_with_duplicates(self):
+        session = ClientSession(
+            headers=[("h1", "header11"),
+                     ("h2", "header21"),
+                     ("h1", "header12")],
+            loop=self.loop)
+        self.assertEqual(
+            session._default_headers,
+            CIMultiDict([("H1", "header11"),
+                         ("H2", "header21"),
+                         ("H1", "header12")]))
+        session.close()
+
     def test_init_cookies_with_simple_dict(self):
         session = ClientSession(
             cookies={
@@ -142,8 +155,24 @@ class TestClientSession(unittest.TestCase):
         ]))
         session.close()
 
-    def _make_one(self):
-        session = ClientSession(loop=self.loop)
+    def test_merge_headers_with_list_of_tuples_duplicated_names(self):
+        session = ClientSession(
+            headers={
+                "h1": "header1",
+                "h2": "header2"
+            }, loop=self.loop)
+        headers = session._prepare_headers([("h1", "v1"),
+                                            ("h1", "v2")])
+        self.assertIsInstance(headers, CIMultiDict)
+        self.assertEqual(headers, CIMultiDict([
+            ("H2", "header2"),
+            ("H1", "v1"),
+            ("H1", "v2"),
+        ]))
+        session.close()
+
+    def _make_one(self, **kwargs):
+        session = ClientSession(loop=self.loop, **kwargs)
         params = dict(
             headers={"Authorization": "Basic ..."},
             max_redirects=2,

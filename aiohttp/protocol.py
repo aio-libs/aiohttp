@@ -857,8 +857,3 @@ class Request(HttpMessage):
         self.path = path
         self.status_line = '{0} {1} HTTP/{2[0]}.{2[1]}\r\n'.format(
             method, path, http_version)
-
-    def _add_default_headers(self):
-        super()._add_default_headers()
-
-        self.headers.setdefault(hdrs.USER_AGENT, self.SERVER_SOFTWARE)
