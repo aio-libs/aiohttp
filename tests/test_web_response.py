@@ -18,8 +18,9 @@ class TestStreamResponse(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
-    def make_request(self, method, path, headers=CIMultiDict()):
-        message = RawRequestMessage(method, path, HttpVersion11, headers,
+    def make_request(self, method, path, headers=CIMultiDict(),
+                     version=HttpVersion11):
+        message = RawRequestMessage(method, path, version, headers,
                                     False, False)
         return self.request_from_message(message)
 
@@ -182,6 +183,16 @@ class TestStreamResponse(unittest.TestCase):
         self.assertTrue(msg.chunked)
         msg.add_chunking_filter.assert_called_with(8192)
         self.assertIsNotNone(msg.filter)
+
+    def test_chunked_encoding_forbidden_for_http_10(self):
+        req = self.make_request('GET', '/', version=HttpVersion10)
+        resp = StreamResponse()
+        resp.enable_chunked_encoding()
+
+        with self.assertRaisesRegex(
+                RuntimeError,
+                "Using chunked encoding is forbidden for HTTP/1.0"):
+            resp.start(req)
 
     @mock.patch('aiohttp.web_reqrep.ResponseImpl')
     def test_compression_no_accept(self, ResponseImpl):
