@@ -16,6 +16,7 @@ class TestWeb(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
+    @unittest.skip('moved to test_web_functional')
     def test_handler_returns_not_response(self):
         app = web.Application(loop=self.loop)
 
