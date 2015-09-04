@@ -124,7 +124,7 @@ class Request(dict, HeadersMixin):
 
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
 
-    @property
+    @reify
     def scheme(self):
         """A string representing the scheme of the request.
 
