@@ -43,6 +43,7 @@ Ludovic Gasc
 Lukasz Marcin Dobrzanski
 Marco Paolini
 Martin Richard
+Morgan Delahaye-Prat
 Moss Collum
 Mikhail Lukyanchenko
 Nicolas Braem
