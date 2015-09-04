@@ -1,3 +1,8 @@
+0.17.4 (XX-XX-XXXX)
+-------------------
+
+- Properly parse URL path in aiohttp.web.Request #489
+
 0.17.3 (08-28-2015)
 ---------------------
 

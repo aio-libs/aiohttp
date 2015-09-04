@@ -2,7 +2,7 @@ CHANGES
 =======
 
 0.18.0a0 (XX-XX-XXXX)
----------------------
+-------------------
 
 * Use errors.HttpProcessingError.message as HTTP error reason and
   message #459
@@ -22,3 +22,6 @@ CHANGES
 * Properly requote URL's path #480
 
 * add `skip_auto_headers` parameter for client API #486
+
+* Properly parse URL path in aiohttp.web.Request #489
+
