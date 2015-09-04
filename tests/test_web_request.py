@@ -64,6 +64,10 @@ class TestWebRequest(unittest.TestCase):
         self.assertIs(self.transport, req.transport)
         self.assertTrue(req.keep_alive)
 
+    def test_doubleslashes(self):
+        req = self.make_request('GET', '//foo/')
+        self.assertEqual('//foo/', req.path)
+
     def test_POST(self):
         req = self.make_request('POST', '/')
         with self.assertRaises(RuntimeError):

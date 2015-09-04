@@ -173,7 +173,8 @@ class Request(dict, HeadersMixin):
 
     @reify
     def _splitted_path(self):
-        return urlsplit(self._path_qs)
+        url = '{}://{}{}'.format(self.scheme, self.host, self._path_qs)
+        return urlsplit(url)
 
     @property
     def raw_path(self):

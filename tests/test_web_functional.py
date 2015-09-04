@@ -62,6 +62,20 @@ class TestWebFunctional(unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
+    def test_handler_returns_not_response(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            return 'abc'
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('GET', '/', handler)
+            resp = yield from request('GET', url, loop=self.loop)
+            self.assertEqual(500, resp.status)
+
+        self.loop.run_until_complete(go())
+
     def test_post_form(self):
 
         @asyncio.coroutine
