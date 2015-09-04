@@ -1,5 +1,3 @@
-__all__ = ('WebSocketResponse', 'MsgType')
-
 import asyncio
 import warnings
 
@@ -10,6 +8,9 @@ from .websocket_client import MsgType, closedMessage
 from .web_exceptions import (
     HTTPBadRequest, HTTPMethodNotAllowed, HTTPInternalServerError)
 from .web_reqrep import StreamResponse
+
+__all__ = ('WebSocketResponse', 'MsgType')
+
 
 THRESHOLD_CONNLOST_ACCESS = 5
 

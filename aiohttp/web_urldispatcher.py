@@ -1,6 +1,3 @@
-__all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
-           'Route', 'PlainRoute', 'DynamicRoute', 'StaticRoute')
-
 import abc
 import asyncio
 
@@ -18,6 +15,10 @@ from .protocol import HttpVersion11
 from .web_exceptions import HTTPMethodNotAllowed, HTTPNotFound, HTTPNotModified
 from .web_reqrep import StreamResponse
 from .multidict import upstr
+
+
+__all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
+           'Route', 'PlainRoute', 'DynamicRoute', 'StaticRoute')
 
 
 class UrlMappingMatchInfo(dict, AbstractMatchInfo):

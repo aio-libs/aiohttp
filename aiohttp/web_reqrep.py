@@ -1,5 +1,3 @@
-__all__ = ('ContentCoding', 'Request', 'StreamResponse', 'Response')
-
 import asyncio
 import binascii
 import cgi
@@ -26,6 +24,9 @@ from .multidict import (CIMultiDictProxy,
                         MultiDict)
 from .protocol import Response as ResponseImpl, HttpVersion10, HttpVersion11
 from .streams import EOF_MARKER
+
+
+__all__ = ('ContentCoding', 'Request', 'StreamResponse', 'Response')
 
 
 sentinel = object()

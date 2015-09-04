@@ -1,3 +1,6 @@
+from .web_reqrep import Response
+
+
 __all__ = (
     'HTTPException',
     'HTTPError',
@@ -44,8 +47,6 @@ __all__ = (
     'HTTPGatewayTimeout',
     'HTTPVersionNotSupported',
 )
-
-from .web_reqrep import Response
 
 
 ############################################################

@@ -8,13 +8,6 @@ from .web_urldispatcher import *  # noqa
 from .web_ws import *  # noqa
 from .protocol import HttpVersion  # noqa
 
-__all__ = (web_reqrep.__all__ +
-           web_exceptions.__all__ +
-           web_urldispatcher.__all__ +
-           web_ws.__all__ +
-           ('Application', 'RequestHandler',
-            'RequestHandlerFactory', 'HttpVersion'))
-
 
 import asyncio
 
@@ -22,6 +15,14 @@ from . import hdrs
 from .abc import AbstractRouter, AbstractMatchInfo
 from .log import web_logger
 from .server import ServerHttpProtocol
+
+
+__all__ = (web_reqrep.__all__ +
+           web_exceptions.__all__ +
+           web_urldispatcher.__all__ +
+           web_ws.__all__ +
+           ('Application', 'RequestHandler',
+            'RequestHandlerFactory', 'HttpVersion'))
 
 
 class RequestHandler(ServerHttpProtocol):
