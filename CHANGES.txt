@@ -4,24 +4,24 @@ CHANGES
 0.18.0a0 (XX-XX-XXXX)
 -------------------
 
-* Use errors.HttpProcessingError.message as HTTP error reason and
+- Use errors.HttpProcessingError.message as HTTP error reason and
   message #459
 
-* Optimize cythonized multidict a bit
+- Optimize cythonized multidict a bit
 
-* Change repr's of multidicts and multidict views
+- Change repr's of multidicts and multidict views
 
-* default headers in ClientSession are now case-insensitive
+- default headers in ClientSession are now case-insensitive
 
-* Make '=' char and 'wss://' schema safe in urls #477
+- Make '=' char and 'wss://' schema safe in urls #477
 
-* `ClientResponse.close()` forces connection closing by default from now #479
+- `ClientResponse.close()` forces connection closing by default from now #479
   N.B. Backward incompatible change: was `.close(force=False)
   Using `force` parameter for the method is deprecated: use `.release()` instead.
 
-* Properly requote URL's path #480
+- Properly requote URL's path #480
 
-* add `skip_auto_headers` parameter for client API #486
+- add `skip_auto_headers` parameter for client API #486
 
-* Properly parse URL path in aiohttp.web.Request #489
+- Properly parse URL path in aiohttp.web.Request #489
 
