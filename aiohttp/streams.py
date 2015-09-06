@@ -27,7 +27,7 @@ class StreamReader(asyncio.StreamReader):
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
-        self._buffer = bytearray()
+        self._buffer = collections.deque()
         self._eof = False
         self._waiter = None
         self._eof_waiter = None
@@ -86,7 +86,7 @@ class StreamReader(asyncio.StreamReader):
         if not data:
             return
 
-        self._buffer.extend(data)
+        self._buffer.append(data)
         self.total_bytes += len(data)
 
         waiter = self._waiter
@@ -180,26 +180,23 @@ class StreamReader(asyncio.StreamReader):
                 return data
             else:
                 return EOF_MARKER
-        else:
-            if not self._buffer and not self._eof:
-                self._waiter = self._create_waiter('read')
-                try:
-                    yield from self._waiter
-                finally:
-                    self._waiter = None
 
-        if len(self._buffer) <= n:
-            data = bytes(self._buffer)
-            self._buffer.clear()
-        else:
-            # n > 0 and len(self._buffer) > n
-            data = bytes(self._buffer[:n])
-            del self._buffer[:n]
+        if not self._buffer and not self._eof:
+            self._waiter = self._create_waiter('read')
+            try:
+                yield from self._waiter
+            finally:
+                self._waiter = None
 
-        if data:
-            return data
-        else:
+        if not self._buffer:
             return EOF_MARKER
+
+        data = self._buffer.popleft()
+        if len(data) > n:
+            self._buffer.appendleft(data[n:])
+            data = data[:n]
+
+        return data
 
     @asyncio.coroutine
     def readany(self):
@@ -213,13 +210,10 @@ class StreamReader(asyncio.StreamReader):
             finally:
                 self._waiter = None
 
-        data = bytes(self._buffer)
-        del self._buffer[:]
-
-        if data:
-            return data
-        else:
+        if not self._buffer:
             return EOF_MARKER
+
+        return self._buffer.popleft()
 
     @asyncio.coroutine
     def readexactly(self, n):
