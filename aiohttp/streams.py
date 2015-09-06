@@ -29,6 +29,7 @@ class StreamReader(asyncio.StreamReader):
         self._loop = loop
         self._buffer = collections.deque()
         self._buffer_size = 0
+        self._buffer_offset = 0
         self._eof = False
         self._waiter = None
         self._eof_waiter = None
@@ -193,10 +194,19 @@ class StreamReader(asyncio.StreamReader):
         if not self._buffer:
             return EOF_MARKER
 
-        data = self._buffer.popleft()
-        if len(data) > n:
-            self._buffer.appendleft(data[n:])
-            data = data[:n]
+        first_buffer = self._buffer[0]
+        offset = self._buffer_offset
+        if n and len(first_buffer) - offset > n:
+            data = first_buffer[offset:offset + n]
+            self._buffer_offset += n
+
+        elif offset:
+            data = first_buffer[offset:]
+            self._buffer_offset = 0
+            self._buffer.popleft()
+
+        else:
+            data = self._buffer.popleft()
 
         self._buffer_size -= len(data)
         return data
