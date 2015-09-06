@@ -171,18 +171,14 @@ class StreamReader(asyncio.StreamReader):
             # This used to just loop creating a new waiter hoping to
             # collect everything in self._buffer, but that would
             # deadlock if the subprocess sends more than self.limit
-            # bytes.  So just call self.read(self._limit) until EOF.
+            # bytes.  So just call self.readany() until EOF.
             blocks = []
             while True:
-                block = yield from self.read(self._limit)
+                block = yield from self.readany()
                 if not block:
                     break
                 blocks.append(block)
-            data = b''.join(blocks)
-            if data:
-                return data
-            else:
-                return EOF_MARKER
+            return b''.join(blocks)
 
         if not self._buffer and not self._eof:
             self._waiter = self._create_waiter('read')
