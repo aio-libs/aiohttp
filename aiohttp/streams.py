@@ -188,7 +188,7 @@ class StreamReader(asyncio.StreamReader):
                 finally:
                     self._waiter = None
 
-        if n < 0 or len(self._buffer) <= n:
+        if len(self._buffer) <= n:
             data = bytes(self._buffer)
             self._buffer.clear()
         else:
