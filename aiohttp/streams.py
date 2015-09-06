@@ -28,6 +28,7 @@ class StreamReader(asyncio.StreamReader):
             loop = asyncio.get_event_loop()
         self._loop = loop
         self._buffer = collections.deque()
+        self._buffer_size = 0
         self._eof = False
         self._waiter = None
         self._eof_waiter = None
@@ -87,6 +88,7 @@ class StreamReader(asyncio.StreamReader):
             return
 
         self._buffer.append(data)
+        self._buffer_size += len(data)
         self.total_bytes += len(data)
 
         waiter = self._waiter
@@ -196,6 +198,7 @@ class StreamReader(asyncio.StreamReader):
             self._buffer.appendleft(data[n:])
             data = data[:n]
 
+        self._buffer_size -= len(data)
         return data
 
     @asyncio.coroutine
@@ -213,7 +216,9 @@ class StreamReader(asyncio.StreamReader):
         if not self._buffer:
             return EOF_MARKER
 
-        return self._buffer.popleft()
+        data = self._buffer.popleft()
+        self._buffer_size -= len(data)
+        return data
 
     @asyncio.coroutine
     def readexactly(self, n):
@@ -249,10 +254,10 @@ class StreamReader(asyncio.StreamReader):
 
         if not self._buffer:
             return EOF_MARKER
-        else:
-            data = bytes(self._buffer)
-            del self._buffer[:]
-            return data
+
+        data = self._buffer.popleft()
+        self._buffer_size -= len(data)
+        return data
 
 
 class EmptyStreamReader:
