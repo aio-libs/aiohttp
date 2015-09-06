@@ -191,25 +191,7 @@ class StreamReader(asyncio.StreamReader):
             finally:
                 self._waiter = None
 
-        if not self._buffer:
-            return EOF_MARKER
-
-        first_buffer = self._buffer[0]
-        offset = self._buffer_offset
-        if n and len(first_buffer) - offset > n:
-            data = first_buffer[offset:offset + n]
-            self._buffer_offset += n
-
-        elif offset:
-            data = first_buffer[offset:]
-            self._buffer_offset = 0
-            self._buffer.popleft()
-
-        else:
-            data = self._buffer.popleft()
-
-        self._buffer_size -= len(data)
-        return data
+        return self._read_nowait(n)
 
     @asyncio.coroutine
     def readany(self):
@@ -223,12 +205,7 @@ class StreamReader(asyncio.StreamReader):
             finally:
                 self._waiter = None
 
-        if not self._buffer:
-            return EOF_MARKER
-
-        data = self._buffer.popleft()
-        self._buffer_size -= len(data)
-        return data
+        return self._read_nowait()
 
     @asyncio.coroutine
     def readexactly(self, n):
@@ -262,10 +239,26 @@ class StreamReader(asyncio.StreamReader):
             raise RuntimeError(
                 'Called while some coroutine is waiting for incoming data.')
 
+        return self._read_nowait()
+
+    def _read_nowait(self, n=None):
         if not self._buffer:
             return EOF_MARKER
 
-        data = self._buffer.popleft()
+        first_buffer = self._buffer[0]
+        offset = self._buffer_offset
+        if n and len(first_buffer) - offset > n:
+            data = first_buffer[offset:offset + n]
+            self._buffer_offset += n
+
+        elif offset:
+            self._buffer.popleft()
+            data = first_buffer[offset:]
+            self._buffer_offset = 0
+
+        else:
+            data = self._buffer.popleft()
+
         self._buffer_size -= len(data)
         return data
 
