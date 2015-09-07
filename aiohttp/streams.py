@@ -395,9 +395,8 @@ def maybe_resume(func):
     def wrapper(self, *args, **kw):
         result = yield from func(self, *args, **kw)
 
-        size = len(self._buffer)
         if self._stream.paused:
-            if size < self._b_limit:
+            if self._buffer_size < self._b_limit:
                 try:
                     self._stream.transport.resume_reading()
                 except (AttributeError, NotImplementedError):
@@ -405,7 +404,7 @@ def maybe_resume(func):
                 else:
                     self._stream.paused = False
         else:
-            if size > self._b_limit:
+            if self._buffer_size > self._b_limit:
                 try:
                     self._stream.transport.pause_reading()
                 except (AttributeError, NotImplementedError):
@@ -439,7 +438,7 @@ class FlowControlStreamReader(StreamReader):
         super().feed_data(data)
 
         if (not self._stream.paused and
-                not has_waiter and len(self._buffer) > self._b_limit):
+                not has_waiter and self._buffer_size > self._b_limit):
             try:
                 self._stream.transport.pause_reading()
             except (AttributeError, NotImplementedError):
