@@ -113,23 +113,19 @@ class StreamReader(asyncio.StreamReader):
         if self._exception is not None:
             raise self._exception
 
-        line = bytearray()
+        line = []
         not_enough = True
 
         while not_enough:
             while self._buffer and not_enough:
-                ichar = self._buffer.find(b'\n')
-                if ichar < 0:
-                    line.extend(self._buffer)
-                    self._buffer.clear()
-                else:
-                    ichar += 1
-                    line.extend(self._buffer[:ichar])
-                    del self._buffer[:ichar]
+                offset = self._buffer_offset
+                ichar = self._buffer[0].find(b'\n', offset) + 1
+                line.append(self._read_nowait(ichar))
+                if ichar:
                     not_enough = False
 
-                if len(line) > self._limit:
-                    raise ValueError('Line is too long')
+                # if len(line) > self._limit:
+                #     raise ValueError('Line is too long')
 
             if self._eof:
                 break
@@ -141,10 +137,7 @@ class StreamReader(asyncio.StreamReader):
                 finally:
                     self._waiter = None
 
-        if line:
-            return bytes(line)
-        else:
-            return EOF_MARKER
+        return b''.join(line)
 
     @asyncio.coroutine
     def read(self, n=-1):
