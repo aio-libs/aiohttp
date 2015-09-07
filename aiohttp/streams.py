@@ -114,18 +114,20 @@ class StreamReader(asyncio.StreamReader):
             raise self._exception
 
         line = []
+        line_size = 0
         not_enough = True
 
         while not_enough:
             while self._buffer and not_enough:
-                offset = self._buffer_offset
-                ichar = self._buffer[0].find(b'\n', offset) + 1
-                line.append(self._read_nowait(ichar))
+                ichar = self._buffer[0].find(b'\n', self._buffer_offset) + 1
+                data = self._read_nowait(ichar)
+                line.append(data)
+                line_size += len(data)
                 if ichar:
                     not_enough = False
 
-                # if len(line) > self._limit:
-                #     raise ValueError('Line is too long')
+                if line_size > self._limit:
+                    raise ValueError('Line is too long')
 
             if self._eof:
                 break
