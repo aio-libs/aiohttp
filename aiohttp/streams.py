@@ -119,8 +119,10 @@ class StreamReader(asyncio.StreamReader):
 
         while not_enough:
             while self._buffer and not_enough:
-                ichar = self._buffer[0].find(b'\n', self._buffer_offset) + 1
-                data = self._read_nowait(ichar)
+                offset = self._buffer_offset
+                ichar = self._buffer[0].find(b'\n', offset) + 1
+                # Read from current offset to found b'\n' or to the end.
+                data = self._read_nowait(ichar - offset if ichar else 0)
                 line.append(data)
                 line_size += len(data)
                 if ichar:
