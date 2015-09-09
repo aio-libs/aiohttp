@@ -289,7 +289,7 @@ calculate the file SHA1 hash::
    >>> def feed_stream(resp, stream):
    ...    h = hashlib.sha1()
    ...
-   ...    with True:
+   ...    while True:
    ...       chunk = yield from resp.content.readany()
    ...       if not chunk:
    ...          break
