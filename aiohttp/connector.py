@@ -54,7 +54,7 @@ class Connection(object):
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
     if PY_341:
-        def __del__(self):
+        def __del__(self, _warnings=warnings):
             if self._transport is not None:
                 if hasattr(self._loop, 'is_closed'):
                     if self._loop.is_closed():
@@ -64,8 +64,8 @@ class Connection(object):
                     self._key, self._request, self._transport, self._protocol,
                     should_close=True)
 
-                warnings.warn("Unclosed connection {!r}".format(self),
-                              ResourceWarning)
+                _warnings.warn("Unclosed connection {!r}".format(self),
+                               ResourceWarning)
                 context = {'client_connection': self,
                            'message': 'Unclosed connection'}
                 if self._source_traceback is not None:
@@ -143,7 +143,7 @@ class BaseConnector(object):
         self.cookies = http.cookies.SimpleCookie()
 
     if PY_341:
-        def __del__(self):
+        def __del__(self, _warnings=warnings):
             if self._closed:
                 return
             if not self._conns:
@@ -151,8 +151,8 @@ class BaseConnector(object):
 
             self.close()
 
-            warnings.warn("Unclosed connector {!r}".format(self),
-                          ResourceWarning)
+            _warnings.warn("Unclosed connector {!r}".format(self),
+                           ResourceWarning)
             context = {'connector': self,
                        'message': 'Unclosed connector'}
             if self._source_traceback is not None:

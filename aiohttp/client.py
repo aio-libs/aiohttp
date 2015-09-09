@@ -77,12 +77,12 @@ class ClientSession:
         self._ws_response_class = ws_response_class
 
     if PY_341:
-        def __del__(self):
+        def __del__(self, _warnings=warnings):
             if not self.closed:
                 self.close()
 
-                warnings.warn("Unclosed client session {!r}".format(self),
-                              ResourceWarning)
+                _warnings.warn("Unclosed client session {!r}".format(self),
+                               ResourceWarning)
                 context = {'client_session': self,
                            'message': 'Unclosed client session'}
                 if self._source_traceback is not None:

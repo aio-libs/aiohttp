@@ -535,13 +535,13 @@ class ClientResponse:
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
     if PY_341:
-        def __del__(self):
+        def __del__(self, _warnings=warnings):
             if self._closed:
                 return
             self.close()
 
-            warnings.warn("Unclosed response {!r}".format(self),
-                          ResourceWarning)
+            _warnings.warn("Unclosed response {!r}".format(self),
+                           ResourceWarning)
             context = {'client_response': self,
                        'message': 'Unclosed response'}
             if self._source_traceback:
