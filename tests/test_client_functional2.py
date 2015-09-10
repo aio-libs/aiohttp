@@ -116,7 +116,7 @@ class TestClientFunctional2(unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
-    def test_raw_post_data(self):
+    def test_post_data_bytesio(self):
         data = b'some buffer'
 
         @asyncio.coroutine
@@ -133,6 +133,28 @@ class TestClientFunctional2(unittest.TestCase):
             resp = yield from self.client.post(
                 url+'/',
                 data=io.BytesIO(data))
+            self.assertEqual(200, resp.status)
+            yield from resp.release()
+
+        self.loop.run_until_complete(go())
+
+    def test_post_data_with_bytesio_file(self):
+        data = b'some buffer'
+
+        @asyncio.coroutine
+        def handler(request):
+            post_data = yield from request.post()
+            self.assertEqual(['file'], list(post_data.keys()))
+            self.assertEqual(data, post_data['file'].file.read())
+            return web.Response()
+
+        @asyncio.coroutine
+        def go():
+            app, srv, url = yield from self.create_server()
+            app.router.add_route('post', '/', handler)
+            resp = yield from self.client.post(
+                url+'/',
+                data={'file': io.BytesIO(data)})
             self.assertEqual(200, resp.status)
             yield from resp.release()
 

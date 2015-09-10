@@ -288,6 +288,7 @@ class ClientRequest:
                 'attempt to send text data instead of binary'
             self.body = data
             if not self.chunked and isinstance(data, io.BytesIO):
+                # Not chunking if content-length can be determined
                 size = len(data.getbuffer())
                 self.headers[hdrs.CONTENT_LENGTH] = str(size)
                 self.chunked = False
