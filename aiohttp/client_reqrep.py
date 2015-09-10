@@ -287,13 +287,23 @@ class ClientRequest:
             assert not isinstance(data, io.StringIO), \
                 'attempt to send text data instead of binary'
             self.body = data
-            if not self.chunked and isinstance(data, io.BufferedReader):
-                # Not chunking if content-length can be determined
-                size = os.fstat(data.fileno()).st_size - data.tell()
+            if not self.chunked and isinstance(data, io.BytesIO):
+                size = len(data.getbuffer())
                 self.headers[hdrs.CONTENT_LENGTH] = str(size)
                 self.chunked = False
+            elif not self.chunked and isinstance(data, io.BufferedReader):
+                # Not chunking if content-length can be determined
+                try:
+                    size = os.fstat(data.fileno()).st_size - data.tell()
+                    self.headers[hdrs.CONTENT_LENGTH] = str(size)
+                    self.chunked = False
+                except OSError:
+                    # data.fileno() is not supported, e.g.
+                    # io.BufferedReader(io.BytesIO(b'data'))
+                    self.chunked = True
             else:
                 self.chunked = True
+
             if hasattr(data, 'mode'):
                 if data.mode == 'r':
                     raise ValueError('file {!r} should be open in binary mode'
