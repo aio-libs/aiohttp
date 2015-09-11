@@ -559,7 +559,8 @@ class TestClientRequest(unittest.TestCase):
 
     def test_data_file(self):
         req = ClientRequest(
-            'POST', 'http://python.org/', data=io.BytesIO(b'*' * 2),
+            'POST', 'http://python.org/',
+            data=io.BufferedReader(io.BytesIO(b'*' * 2)),
             loop=self.loop)
         self.assertTrue(req.chunked)
         self.assertTrue(isinstance(req.body, io.IOBase))
