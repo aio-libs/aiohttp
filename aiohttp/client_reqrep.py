@@ -743,3 +743,14 @@ class ClientResponse:
             encoding = self._get_encoding()
 
         return loads(self._content.decode(encoding))
+
+    @asyncio.coroutine
+    def __aenter__(self):
+        return self
+
+    @asyncio.coroutine
+    def __aexit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            yield from self.release()
+        else:
+            self.close()
