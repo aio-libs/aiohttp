@@ -145,7 +145,7 @@ class StaticRoute(Route):
 
     def __init__(self, name, prefix, directory, *,
                  expect_handler=None, chunk_size=256*1024,
-                 response_factory=None, sendfile_fallback=False):
+                 response_factory=None):
         assert prefix.startswith('/'), prefix
         assert prefix.endswith('/'), prefix
         super().__init__(
@@ -162,11 +162,6 @@ class StaticRoute(Route):
         if not os.path.isdir(self._directory):
             raise ValueError(
                 "No directory exists at '{}'".format(self._directory))
-
-        if sendfile_fallback or not hasattr(os, "sendfile"):
-            self.sendfile = self.sendfile_fallback
-        else:
-            self.sendfile = self.sendfile_system
 
     def match(self, path):
         if not path.startswith(self._prefix):
@@ -230,6 +225,11 @@ class StaticRoute(Route):
             resp.write(chunk)
             yield from resp.drain()
             chunk = fobj.read(self._chunk_size)
+
+    if hasattr(os, "sendfile"):
+        sendfile = sendfile_system
+    else:
+        sendfile = sendfile_fallback
 
     @asyncio.coroutine
     def handle(self, request):
@@ -462,8 +462,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         return route
 
     def add_static(self, prefix, path, *, name=None, expect_handler=None,
-                   chunk_size=256*1024, response_factory=None,
-                   sendfile_fallback=False):
+                   chunk_size=256*1024, response_factory=None):
         """
         Adds static files view
         :param prefix - url prefix
@@ -475,7 +474,6 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         route = StaticRoute(name, prefix, path,
                             expect_handler=expect_handler,
                             chunk_size=chunk_size,
-                            response_factory=response_factory,
-                            sendfile_fallback=sendfile_fallback)
+                            response_factory=response_factory)
         self.register_route(route)
         return route
