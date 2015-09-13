@@ -196,7 +196,7 @@ class StaticRoute(Route):
             fut.set_result(None)
 
     @asyncio.coroutine
-    def sendfile_system(self, resp, fobj, offset, count):
+    def sendfile_system(self, req, resp, fobj, offset, count):
         """
         Write the content of `fobj` to `resp` using the ``sendfile`` system
         call.
@@ -207,10 +207,8 @@ class StaticRoute(Route):
         """
         yield from resp.drain()
 
-        req = resp._req
-
         loop = req.app.loop
-        out_fd = req._transport._sock_fd
+        out_fd = req.transport.get_extra_info("socket").fileno()
         in_fd = fobj.fileno()
         fut = asyncio.Future(loop=loop)
 
@@ -220,7 +218,7 @@ class StaticRoute(Route):
         yield from fut
 
     @asyncio.coroutine
-    def sendfile_fallback(self, resp, fobj, offset, count):
+    def sendfile_fallback(self, req, resp, fobj, offset, count):
         """
         Mimic the :meth:`sendfile` method, but without using the ``sendfile``
         system call. This should be used on systems that don't support
@@ -264,7 +262,7 @@ class StaticRoute(Route):
         resp.start(request)
 
         with open(filepath, 'rb') as f:
-            yield from self.sendfile(resp, f, 0, file_size)
+            yield from self.sendfile(request, resp, f, 0, file_size)
 
         return resp
 
