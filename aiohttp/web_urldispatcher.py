@@ -145,7 +145,7 @@ class StaticRoute(Route):
 
     def __init__(self, name, prefix, directory, *,
                  expect_handler=None, chunk_size=256*1024,
-                 response_factory=None):
+                 response_factory=None, sendfile_fallback=False):
         assert prefix.startswith('/'), prefix
         assert prefix.endswith('/'), prefix
         super().__init__(
@@ -163,6 +163,11 @@ class StaticRoute(Route):
             raise ValueError(
                 "No directory exists at '{}'".format(self._directory))
 
+        if sendfile_fallback or not hasattr(os, "sendfile"):
+            self.sendfile = self.sendfile_fallback
+        else:
+            self.sendfile = self.sendfile_system
+
     def match(self, path):
         if not path.startswith(self._prefix):
             return None
@@ -173,6 +178,63 @@ class StaticRoute(Route):
             filename = filename[1:]
         url = self._prefix + filename
         return self._append_query(url, query)
+
+    def _sendfile_cb(self, fut, out_fd, in_fd, offset, count, loop):
+        try:
+            n = os.sendfile(out_fd, in_fd, offset, count)
+        except (BlockingIOError, InterruptedError):
+            return
+        except Exception as exc:
+            loop.remove_writer(out_fd)
+            fut.set_exception(exc)
+            return
+        else:
+            loop.remove_writer(out_fd)
+
+        if n < count:
+            loop.add_writer(out_fd, self._sendfile_cb, fut, out_fd, in_fd,
+                            offset + n, count - n, loop)
+        else:
+            fut.set_result(None)
+
+    @asyncio.coroutine
+    def _sendfile(self, out_fd, in_fd, offset, count, loop):
+        fut = asyncio.Future(loop=loop)
+        loop.add_writer(out_fd, self._sendfile_cb, fut, out_fd, in_fd, offset,
+                        count, loop)
+        return fut
+
+    @asyncio.coroutine
+    def sendfile_system(self, resp, fobj):
+        """
+        Write the content of `fobj` to `resp` using the ``sendfile`` system
+        call.
+
+        `fobj` should be an open file object.
+
+        `resp` should be a :obj:`aiohttp.web.StreamResponse` instance.
+        """
+        yield from resp.drain()
+        req = resp._req
+        loop = req.app.loop
+        out_fd = req._transport._sock_fd
+        in_fd = fobj.fileno()
+        yield from self._sendfile(out_fd, in_fd, 0, os.fstat(in_fd).st_size,
+                                  loop)
+
+    @asyncio.coroutine
+    def sendfile_fallback(self, resp, fobj):
+        """
+        Mimic the :meth:`sendfile` method, but without using the ``sendfile``
+        system call. This should be used on systems that don't support
+        ``sendfile``.
+        """
+        yield from resp.drain()
+        chunk = fobj.read(self._chunk_size)
+        while chunk:
+            resp.write(chunk)
+            yield from resp.drain()
+            chunk = fobj.read(self._chunk_size)
 
     @asyncio.coroutine
     def handle(self, request):
@@ -200,20 +262,12 @@ class StaticRoute(Route):
         resp.last_modified = st.st_mtime
 
         file_size = st.st_size
-        single_chunk = file_size < self._chunk_size
 
-        if single_chunk:
-            resp.content_length = file_size
+        resp.content_length = file_size
         resp.start(request)
 
         with open(filepath, 'rb') as f:
-            chunk = f.read(self._chunk_size)
-            if single_chunk:
-                resp.write(chunk)
-            else:
-                while chunk:
-                    resp.write(chunk)
-                    chunk = f.read(self._chunk_size)
+            yield from self.sendfile(resp, f)
 
         return resp
 
@@ -413,7 +467,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         return route
 
     def add_static(self, prefix, path, *, name=None, expect_handler=None,
-                   chunk_size=256*1024, response_factory=None):
+                   chunk_size=256*1024, response_factory=None,
+                   sendfile_fallback=False):
         """
         Adds static files view
         :param prefix - url prefix
@@ -425,6 +480,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         route = StaticRoute(name, prefix, path,
                             expect_handler=expect_handler,
                             chunk_size=chunk_size,
-                            response_factory=response_factory)
+                            response_factory=response_factory,
+                            sendfile_fallback=sendfile_fallback)
         self.register_route(route)
         return route

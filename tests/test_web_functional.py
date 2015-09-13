@@ -1,6 +1,7 @@
 import asyncio
 import gc
 import json
+import os
 import os.path
 import socket
 import unittest
@@ -312,14 +313,20 @@ class TestWebFunctional(unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
-    def test_static_file(self):
+    @unittest.skipUnless(hasattr(os, "sendfile"),
+                         "system does not support 'sendfile' system call")
+    def test_static_file_sendfile(self):
+        self.test_static_file(False)
+
+    def test_static_file(self, sendfile_fallback=True):
 
         @asyncio.coroutine
         def go(dirname, filename):
             app, _, url = yield from self.create_server(
                 'GET', '/static/' + filename
             )
-            app.router.add_static('/static', dirname)
+            app.router.add_static('/static', dirname,
+                                  sendfile_fallback=sendfile_fallback)
 
             resp = yield from request('GET', url, loop=self.loop)
             self.assertEqual(200, resp.status)
