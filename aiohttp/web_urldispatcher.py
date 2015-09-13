@@ -180,16 +180,14 @@ class StaticRoute(Route):
         return self._append_query(url, query)
 
     def _sendfile_cb(self, fut, out_fd, in_fd, offset, count, loop):
+        loop.remove_writer(out_fd)
         try:
             n = os.sendfile(out_fd, in_fd, offset, count)
         except (BlockingIOError, InterruptedError):
-            return
+            n = 0
         except Exception as exc:
-            loop.remove_writer(out_fd)
             fut.set_exception(exc)
             return
-        else:
-            loop.remove_writer(out_fd)
 
         if n < count:
             loop.add_writer(out_fd, self._sendfile_cb, fut, out_fd, in_fd,
