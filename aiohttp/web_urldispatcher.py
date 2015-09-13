@@ -219,7 +219,6 @@ class StaticRoute(Route):
         system call. This should be used on systems that don't support
         ``sendfile``.
         """
-        yield from resp.drain()
         chunk = fobj.read(self._chunk_size)
         while chunk:
             resp.write(chunk)
