@@ -196,9 +196,13 @@ class StaticRoute(Route):
         Write the content of `fobj` to `resp` using the ``sendfile`` system
         call.
 
-        `fobj` should be an open file object.
+        `req` should be a :obj:`aiohttp.web.Request` instance.
 
         `resp` should be a :obj:`aiohttp.web.StreamResponse` instance.
+
+        `fobj` should be an open file object.
+
+        `offset` & `count` allow for partial writes.
         """
         yield from resp.drain()
 
