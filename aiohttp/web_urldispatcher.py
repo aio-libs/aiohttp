@@ -221,9 +221,9 @@ class StaticRoute(Route):
     @asyncio.coroutine
     def _sendfile_fallback(self, req, resp, fobj, offset, count):
         """
-        Mimic the :meth:`sendfile` method, but without using the ``sendfile``
-        system call. This should be used on systems that don't support the
-        ``sendfile`` system call.
+        Mimic the :meth:`_sendfile_system` method, but without using the
+        ``sendfile`` system call. This should be used on systems that don't
+        support the ``sendfile`` system call.
 
         To avoid blocking the event loop & to keep memory usage low, `fobj` is
         transferred in chunks controlled by the `chunk_size` argument to
