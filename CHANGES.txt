@@ -28,3 +28,5 @@ CHANGES
 - Raise RuntimeError when chunked enabled and HTTP is 1.0 #488
 
 - Fix a bug with processing io.BytesIO as data parameter for client API #500
+
+- Skip auto-generation of Content-Type header #507
