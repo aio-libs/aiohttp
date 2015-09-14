@@ -1,3 +1,5 @@
+# coding: utf-8
+
 import asyncio
 import gc
 import unittest
@@ -251,6 +253,46 @@ class TestClientRequest(unittest.TestCase):
         self.loop.run_until_complete(req.close())
         resp.close()
 
+    def test_content_type_auto_header_get(self):
+        req = ClientRequest('get', 'http://python.org', loop=self.loop)
+        req.send(self.transport, self.protocol)
+        self.assertNotIn('CONTENT-TYPE', req.headers)
+
+    def test_content_type_auto_header_form(self):
+        req = ClientRequest('post', 'http://python.org', data={'hey': 'you'},
+                            loop=self.loop)
+        req.send(self.transport, self.protocol)
+        self.assertEqual('application/x-www-form-urlencoded',
+                         req.headers.get('CONTENT-TYPE'))
+
+    def test_content_type_auto_header_bytes(self):
+        req = ClientRequest('post', 'http://python.org', data=b'hey you',
+                            loop=self.loop)
+        req.send(self.transport, self.protocol)
+        self.assertEqual('application/octet-stream',
+                         req.headers.get('CONTENT-TYPE'))
+
+    def test_content_type_skip_auto_header_bytes(self):
+        req = ClientRequest('post', 'http://python.org', data=b'hey you',
+                            skip_auto_headers=set('CONTENT-TYPE'),
+                            loop=self.loop)
+        req.send(self.transport, self.protocol)
+        self.assertNotIn('application/octet-stream', req.headers)
+
+    def test_content_type_skip_auto_header_form(self):
+        req = ClientRequest('post', 'http://python.org', data={'hey': 'you'},
+                            loop=self.loop, skip_auto_headers={'CONTENT-TYPE'})
+        req.send(self.transport, self.protocol)
+        self.assertNotIn('CONTENT-TYPE', req.headers)
+
+    def test_content_type_auto_header_content_length_no_skip(self):
+        req = ClientRequest('get', 'http://python.org',
+                            data=io.BytesIO(b'hey'),
+                            skip_auto_headers={'CONTENT-LENGTH'},
+                            loop=self.loop)
+        req.send(self.transport, self.protocol)
+        self.assertEqual(req.headers.get('CONTENT-LENGTH'), '3')
+
     def test_path_is_not_double_encoded(self):
         req = ClientRequest('get', "http://0.0.0.0/get/test case",
                             loop=self.loop)
@@ -367,7 +409,7 @@ class TestClientRequest(unittest.TestCase):
         req = ClientRequest(
             'post', 'http://python.org/',
             data={}, loop=self.loop)
-        req.update_body_from_data.assert_called_once_with({})
+        req.update_body_from_data.assert_called_once_with({}, frozenset())
         self.loop.run_until_complete(req.close())
 
     def test_get_with_data(self):

@@ -97,7 +97,7 @@ class ClientRequest:
                     'not supported at the same time.')
             data = files
 
-        self.update_body_from_data(data)
+        self.update_body_from_data(data, skip_auto_headers)
         self.update_transfer_encoding()
         self.update_expect_continue(expect100)
 
@@ -260,7 +260,7 @@ class ClientRequest:
 
         self.headers[hdrs.AUTHORIZATION] = auth.encode()
 
-    def update_body_from_data(self, data):
+    def update_body_from_data(self, data, skip_auto_headers):
         if not data:
             return
 
@@ -269,7 +269,8 @@ class ClientRequest:
 
         if isinstance(data, (bytes, bytearray)):
             self.body = data
-            if hdrs.CONTENT_TYPE not in self.headers:
+            if (hdrs.CONTENT_TYPE not in self.headers and
+                    hdrs.CONTENT_TYPE not in skip_auto_headers):
                 self.headers[hdrs.CONTENT_TYPE] = 'application/octet-stream'
             if hdrs.CONTENT_LENGTH not in self.headers and not self.chunked:
                 self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
@@ -310,6 +311,7 @@ class ClientRequest:
                     raise ValueError('file {!r} should be open in binary mode'
                                      ''.format(data))
             if (hdrs.CONTENT_TYPE not in self.headers and
+                hdrs.CONTENT_TYPE not in skip_auto_headers and
                     hasattr(data, 'name')):
                 mime = mimetypes.guess_type(data.name)[0]
                 mime = 'application/octet-stream' if mime is None else mime
@@ -326,7 +328,8 @@ class ClientRequest:
 
             self.body = data(self.encoding)
 
-            if hdrs.CONTENT_TYPE not in self.headers:
+            if (hdrs.CONTENT_TYPE not in self.headers and
+                    hdrs.CONTENT_TYPE not in skip_auto_headers):
                 self.headers[hdrs.CONTENT_TYPE] = data.content_type
 
             if data.is_multipart:

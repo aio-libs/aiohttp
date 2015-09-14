@@ -76,7 +76,8 @@ The client session supports context manager protocol for self closing::
       *aiohttp* autogenerates headers like ``User-Agent`` or
       ``Content-Type`` if these headers are not explicitly
       passed. Using ``skip_auto_headers`` parameter allows to skip
-      that generation.
+      that generation. Note that ``Content-Length`` autogeneration can't
+      be skipped.
 
       Iterable of :class:`str` or :class:`~aiohttp.multidict.upstr` (optional)
 
