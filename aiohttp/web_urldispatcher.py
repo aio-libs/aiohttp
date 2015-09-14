@@ -193,8 +193,8 @@ class StaticRoute(Route):
     @asyncio.coroutine
     def sendfile_system(self, req, resp, fobj, offset, count):
         """
-        Write the content of `fobj` to `resp` using the ``sendfile`` system
-        call.
+        Write `count` bytes of `fobj` to `resp` starting from `offset` using
+        the ``sendfile`` system call.
 
         `req` should be a :obj:`aiohttp.web.Request` instance.
 
@@ -202,7 +202,9 @@ class StaticRoute(Route):
 
         `fobj` should be an open file object.
 
-        `offset` & `count` allow for partial writes.
+        `offset` should be an integer >= 0.
+
+        `count` should be an integer > 0.
         """
         yield from resp.drain()
 
@@ -220,8 +222,12 @@ class StaticRoute(Route):
     def sendfile_fallback(self, req, resp, fobj, offset, count):
         """
         Mimic the :meth:`sendfile` method, but without using the ``sendfile``
-        system call. This should be used on systems that don't support
-        ``sendfile``.
+        system call. This should be used on systems that don't support the
+        ``sendfile`` system call.
+
+        To avoid blocking the event loop & to keep memory usage low, `fobj` is
+        transferred in chunks controlled by the `chunk_size` argument to
+        :class:`StaticRoute`.
         """
         fobj.seek(offset)
         chunk_size = self._chunk_size
