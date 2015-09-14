@@ -213,6 +213,7 @@ class StaticRoute(Route):
             else:
                 while chunk:
                     resp.write(chunk)
+                    yield from resp.drain()
                     chunk = f.read(self._chunk_size)
 
         return resp
