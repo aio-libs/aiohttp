@@ -259,7 +259,7 @@ class TestClientRequest(unittest.TestCase):
         self.assertNotIn('CONTENT-TYPE', req.headers)
 
     def test_content_type_auto_header_form(self):
-        req = ClientRequest('get', 'http://python.org', data={'hey': 'you'},
+        req = ClientRequest('post', 'http://python.org', data={'hey': 'you'},
                             loop=self.loop)
         req.send(self.transport, self.protocol)
         self.assertEqual('application/x-www-form-urlencoded',
@@ -284,6 +284,14 @@ class TestClientRequest(unittest.TestCase):
                             loop=self.loop, skip_auto_headers={'CONTENT-TYPE'})
         req.send(self.transport, self.protocol)
         self.assertNotIn('CONTENT-TYPE', req.headers)
+
+    def test_content_type_auto_header_content_length_no_skip(self):
+        req = ClientRequest('get', 'http://python.org',
+                            data=io.BytesIO(b'hey'),
+                            skip_auto_headers={'CONTENT-LENGTH'},
+                            loop=self.loop)
+        req.send(self.transport, self.protocol)
+        self.assertEqual(req.headers.get('CONTENT-LENGTH'), '3')
 
     def test_path_is_not_double_encoded(self):
         req = ClientRequest('get', "http://0.0.0.0/get/test case",

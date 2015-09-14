@@ -291,8 +291,7 @@ class ClientRequest:
             if not self.chunked and isinstance(data, io.BytesIO):
                 # Not chunking if content-length can be determined
                 size = len(data.getbuffer())
-                if hdrs.CONTENT_LENGTH not in skip_auto_headers:
-                    self.headers[hdrs.CONTENT_LENGTH] = str(size)
+                self.headers[hdrs.CONTENT_LENGTH] = str(size)
                 self.chunked = False
             elif not self.chunked and isinstance(data, io.BufferedReader):
                 # Not chunking if content-length can be determined
