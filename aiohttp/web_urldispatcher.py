@@ -223,11 +223,19 @@ class StaticRoute(Route):
         system call. This should be used on systems that don't support
         ``sendfile``.
         """
-        chunk = fobj.read(self._chunk_size)
-        while chunk:
+        fobj.seek(offset)
+        chunk_size = self._chunk_size
+
+        chunk = fobj.read(chunk_size)
+        while chunk and count > chunk_size:
             resp.write(chunk)
             yield from resp.drain()
-            chunk = fobj.read(self._chunk_size)
+            count = count - chunk_size
+            chunk = fobj.read(chunk_size)
+
+        if chunk:
+            resp.write(chunk[:count])
+            yield from resp.drain()
 
     if hasattr(os, "sendfile"):
         sendfile = sendfile_system
