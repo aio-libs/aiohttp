@@ -191,7 +191,7 @@ class StaticRoute(Route):
             fut.set_result(None)
 
     @asyncio.coroutine
-    def sendfile_system(self, req, resp, fobj, offset, count):
+    def _sendfile_system(self, req, resp, fobj, offset, count):
         """
         Write `count` bytes of `fobj` to `resp` starting from `offset` using
         the ``sendfile`` system call.
@@ -219,7 +219,7 @@ class StaticRoute(Route):
         yield from fut
 
     @asyncio.coroutine
-    def sendfile_fallback(self, req, resp, fobj, offset, count):
+    def _sendfile_fallback(self, req, resp, fobj, offset, count):
         """
         Mimic the :meth:`sendfile` method, but without using the ``sendfile``
         system call. This should be used on systems that don't support the
@@ -244,9 +244,9 @@ class StaticRoute(Route):
             yield from resp.drain()
 
     if hasattr(os, "sendfile"):
-        sendfile = sendfile_system
+        sendfile = _sendfile_system
     else:
-        sendfile = sendfile_fallback
+        sendfile = _sendfile_fallback
 
     @asyncio.coroutine
     def handle(self, request):

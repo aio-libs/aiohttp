@@ -734,7 +734,7 @@ class TestStaticFileSendfileFallback(WebFunctionalSetupMixin):
     def patch_sendfile(self, add_static):
         def f(*args, **kwargs):
             route = add_static(*args, **kwargs)
-            route.sendfile = route.sendfile_fallback
+            route.sendfile = route._sendfile_fallback
             return route
         return f
 
@@ -956,6 +956,6 @@ class TestStaticFileSendfile(TestStaticFileSendfileFallback):
     def patch_sendfile(self, add_static):
         def f(*args, **kwargs):
             route = add_static(*args, **kwargs)
-            route.sendfile = route.sendfile_system
+            route.sendfile = route._sendfile_system
             return route
         return f
