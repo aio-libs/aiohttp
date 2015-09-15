@@ -195,7 +195,7 @@ class StaticRoute(Route):
             fut.set_result(None)
 
     @asyncio.coroutine
-    def _sendfile_system(self, req, resp, fobj, offset, count):
+    def _sendfile_system(self, req, resp, fobj, count):
         """
         Write `count` bytes of `fobj` to `resp` starting from `offset` using
         the ``sendfile`` system call.
@@ -217,12 +217,12 @@ class StaticRoute(Route):
         in_fd = fobj.fileno()
         fut = asyncio.Future(loop=loop)
 
-        self._sendfile_cb(fut, out_fd, in_fd, offset, count, loop, False)
+        self._sendfile_cb(fut, out_fd, in_fd, 0, count, loop, False)
 
         yield from fut
 
     @asyncio.coroutine
-    def _sendfile_fallback(self, req, resp, fobj, offset, count):
+    def _sendfile_fallback(self, req, resp, fobj, count):
         """
         Mimic the :meth:`_sendfile_system` method, but without using the
         ``sendfile`` system call. This should be used on systems that don't
@@ -232,7 +232,6 @@ class StaticRoute(Route):
         transferred in chunks controlled by the `chunk_size` argument to
         :class:`StaticRoute`.
         """
-        fobj.seek(offset)
         chunk_size = self._chunk_size
 
         chunk = fobj.read(chunk_size)
@@ -282,7 +281,7 @@ class StaticRoute(Route):
         resp.start(request)
 
         with open(filepath, 'rb') as f:
-            yield from self.sendfile(request, resp, f, 0, file_size)
+            yield from self.sendfile(request, resp, f, file_size)
 
         return resp
 
