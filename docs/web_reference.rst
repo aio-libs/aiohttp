@@ -1019,7 +1019,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
       :returns: new :class:`PlainRoute` or :class:`DynamicRoute` instance.
 
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
-                          chunk_size=256*1024, response_factory=None)
+                          chunk_size=256*1024, response_factory=StreamResponse)
 
       Adds router for returning static files.
 

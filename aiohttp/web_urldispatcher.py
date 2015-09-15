@@ -145,7 +145,7 @@ class StaticRoute(Route):
 
     def __init__(self, name, prefix, directory, *,
                  expect_handler=None, chunk_size=256*1024,
-                 response_factory=None):
+                 response_factory=StreamResponse):
         assert prefix.startswith('/'), prefix
         assert prefix.endswith('/'), prefix
         super().__init__(
@@ -154,10 +154,7 @@ class StaticRoute(Route):
         self._prefix_len = len(self._prefix)
         self._directory = os.path.abspath(directory) + os.sep
         self._chunk_size = chunk_size
-        if response_factory is None:
-            self._response_factory = StreamResponse
-        else:
-            self._response_factory = response_factory
+        self._response_factory = response_factory
 
         if not os.path.isdir(self._directory):
             raise ValueError(
@@ -481,7 +478,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         return route
 
     def add_static(self, prefix, path, *, name=None, expect_handler=None,
-                   chunk_size=256*1024, response_factory=None):
+                   chunk_size=256*1024, response_factory=StreamResponse):
         """
         Adds static files view
         :param prefix - url prefix
