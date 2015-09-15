@@ -246,9 +246,9 @@ class StaticRoute(Route):
             yield from resp.drain()
 
     if hasattr(os, "sendfile"):
-        sendfile = _sendfile_system
+        _sendfile = _sendfile_system
     else:
-        sendfile = _sendfile_fallback
+        _sendfile = _sendfile_fallback
 
     @asyncio.coroutine
     def handle(self, request):
@@ -281,7 +281,7 @@ class StaticRoute(Route):
         resp.start(request)
 
         with open(filepath, 'rb') as f:
-            yield from self.sendfile(request, resp, f, file_size)
+            yield from self._sendfile(request, resp, f, file_size)
 
         return resp
 
