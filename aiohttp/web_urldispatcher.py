@@ -242,9 +242,9 @@ class StaticRoute(Route):
             resp.write(chunk[:count])
             yield from resp.drain()
 
-    if hasattr(os, "sendfile"):
+    if hasattr(os, "sendfile"):  # pragma: no cover
         _sendfile = _sendfile_system
-    else:
+    else:  # pragma: no cover
         _sendfile = _sendfile_fallback
 
     @asyncio.coroutine
