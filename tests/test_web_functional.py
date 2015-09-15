@@ -976,7 +976,7 @@ class StaticFileMixin(WebFunctionalSetupMixin):
         # fill 100MB file
         fname = os.path.join(here, filename)
         with open(fname, 'w') as f:
-            for i in range(1024*50):
+            for i in range(1024*20):
                 f.write(chr(i % 64 + 0x20) * 1024)
         self.addCleanup(os.unlink, fname)
         file_st = os.stat(fname)
