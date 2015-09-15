@@ -174,6 +174,80 @@ class StaticRoute(Route):
         url = self._prefix + filename
         return self._append_query(url, query)
 
+    def _sendfile_cb(self, fut, out_fd, in_fd, offset, count, loop):
+        loop.remove_writer(out_fd)
+        try:
+            n = os.sendfile(out_fd, in_fd, offset, count)
+        except (BlockingIOError, InterruptedError):
+            n = 0
+        except Exception as exc:
+            fut.set_exception(exc)
+            return
+
+        if n < count:
+            loop.add_writer(out_fd, self._sendfile_cb, fut, out_fd, in_fd,
+                            offset + n, count - n, loop)
+        else:
+            fut.set_result(None)
+
+    @asyncio.coroutine
+    def _sendfile_system(self, req, resp, fobj, offset, count):
+        """
+        Write `count` bytes of `fobj` to `resp` starting from `offset` using
+        the ``sendfile`` system call.
+
+        `req` should be a :obj:`aiohttp.web.Request` instance.
+
+        `resp` should be a :obj:`aiohttp.web.StreamResponse` instance.
+
+        `fobj` should be an open file object.
+
+        `offset` should be an integer >= 0.
+
+        `count` should be an integer > 0.
+        """
+        yield from resp.drain()
+
+        loop = req.app.loop
+        out_fd = req.transport.get_extra_info("socket").fileno()
+        in_fd = fobj.fileno()
+        fut = asyncio.Future(loop=loop)
+
+        loop.add_writer(out_fd, self._sendfile_cb, fut, out_fd, in_fd, offset,
+                        count, loop)
+
+        yield from fut
+
+    @asyncio.coroutine
+    def _sendfile_fallback(self, req, resp, fobj, offset, count):
+        """
+        Mimic the :meth:`_sendfile_system` method, but without using the
+        ``sendfile`` system call. This should be used on systems that don't
+        support the ``sendfile`` system call.
+
+        To avoid blocking the event loop & to keep memory usage low, `fobj` is
+        transferred in chunks controlled by the `chunk_size` argument to
+        :class:`StaticRoute`.
+        """
+        fobj.seek(offset)
+        chunk_size = self._chunk_size
+
+        chunk = fobj.read(chunk_size)
+        while chunk and count > chunk_size:
+            resp.write(chunk)
+            yield from resp.drain()
+            count = count - chunk_size
+            chunk = fobj.read(chunk_size)
+
+        if chunk:
+            resp.write(chunk[:count])
+            yield from resp.drain()
+
+    if hasattr(os, "sendfile"):
+        sendfile = _sendfile_system
+    else:
+        sendfile = _sendfile_fallback
+
     @asyncio.coroutine
     def handle(self, request):
         filename = request.match_info['filename']
@@ -200,20 +274,12 @@ class StaticRoute(Route):
         resp.last_modified = st.st_mtime
 
         file_size = st.st_size
-        single_chunk = file_size < self._chunk_size
 
-        if single_chunk:
-            resp.content_length = file_size
+        resp.content_length = file_size
         resp.start(request)
 
         with open(filepath, 'rb') as f:
-            chunk = f.read(self._chunk_size)
-            if single_chunk:
-                resp.write(chunk)
-            else:
-                while chunk:
-                    resp.write(chunk)
-                    chunk = f.read(self._chunk_size)
+            yield from self.sendfile(request, resp, f, 0, file_size)
 
         return resp
 
