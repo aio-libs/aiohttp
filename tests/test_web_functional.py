@@ -11,7 +11,7 @@ from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
 from aiohttp.streams import EOF_MARKER
 
 
-class WebFunctionalSetupMixin(unittest.TestCase):
+class WebFunctionalSetupMixin:
 
     def setUp(self):
         self.handler = None
@@ -50,7 +50,7 @@ class WebFunctionalSetupMixin(unittest.TestCase):
         return app, srv, url
 
 
-class TestWebFunctional(WebFunctionalSetupMixin):
+class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
 
     def test_simple_get(self):
 
@@ -729,14 +729,7 @@ class TestWebFunctional(WebFunctionalSetupMixin):
         self.loop.run_until_complete(go())
 
 
-class TestStaticFileSendfileFallback(WebFunctionalSetupMixin):
-
-    def patch_sendfile(self, add_static):
-        def f(*args, **kwargs):
-            route = add_static(*args, **kwargs)
-            route.sendfile = route._sendfile_fallback
-            return route
-        return f
+class StaticFileMixin(WebFunctionalSetupMixin):
 
     @asyncio.coroutine
     def create_server(self, method, path):
@@ -949,9 +942,21 @@ class TestStaticFileSendfileFallback(WebFunctionalSetupMixin):
             web.StaticRoute(None, "/", nodirectory)
 
 
+class TestStaticFileSendfileFallback(StaticFileMixin,
+                                     unittest.TestCase):
+
+    def patch_sendfile(self, add_static):
+        def f(*args, **kwargs):
+            route = add_static(*args, **kwargs)
+            route.sendfile = route._sendfile_fallback
+            return route
+        return f
+
+
 @unittest.skipUnless(hasattr(os, "sendfile"),
                      "sendfile system call not supported")
-class TestStaticFileSendfile(TestStaticFileSendfileFallback):
+class TestStaticFileSendfile(StaticFileMixin,
+                             unittest.TestCase):
 
     def patch_sendfile(self, add_static):
         def f(*args, **kwargs):

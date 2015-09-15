@@ -30,3 +30,5 @@ CHANGES
 - Fix a bug with processing io.BytesIO as data parameter for client API #500
 
 - Skip auto-generation of Content-Type header #507
+
+- Use sendfile facility for static file handling #503

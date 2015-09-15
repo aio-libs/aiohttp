@@ -35,6 +35,7 @@ Hugo Herter
 Igor Pavlov
 Ingmar Steen
 Jaesung Lee
+Jashandeep Sohi
 Julien Duponchelle
 Junjie Tao
 Kay Zheng
