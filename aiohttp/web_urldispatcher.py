@@ -174,10 +174,14 @@ class StaticRoute(Route):
         url = self._prefix + filename
         return self._append_query(url, query)
 
-    def _sendfile_cb(self, fut, out_fd, in_fd, offset, count, loop):
-        loop.remove_writer(out_fd)
+    def _sendfile_cb(self, fut, out_fd, in_fd, offset, count, loop,
+                     registered):
+        if registered:
+            loop.remove_writer(out_fd)
         try:
             n = os.sendfile(out_fd, in_fd, offset, count)
+            if n == 0:  # EOF reached
+                n = count
         except (BlockingIOError, InterruptedError):
             n = 0
         except Exception as exc:
@@ -186,7 +190,7 @@ class StaticRoute(Route):
 
         if n < count:
             loop.add_writer(out_fd, self._sendfile_cb, fut, out_fd, in_fd,
-                            offset + n, count - n, loop)
+                            offset + n, count - n, loop, True)
         else:
             fut.set_result(None)
 
@@ -213,8 +217,7 @@ class StaticRoute(Route):
         in_fd = fobj.fileno()
         fut = asyncio.Future(loop=loop)
 
-        loop.add_writer(out_fd, self._sendfile_cb, fut, out_fd, in_fd, offset,
-                        count, loop)
+        self._sendfile_cb(fut, out_fd, in_fd, offset, count, loop, False)
 
         yield from fut
 

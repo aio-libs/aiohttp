@@ -941,6 +941,48 @@ class StaticFileMixin(WebFunctionalSetupMixin):
         with self.assertRaises(ValueError):
             web.StaticRoute(None, "/", nodirectory)
 
+    def test_static_file_huge(self):
+
+        @asyncio.coroutine
+        def go(dirname, filename):
+            app, _, url = yield from self.create_server(
+                'GET', '/static/' + filename
+            )
+            app.router.add_static('/static', dirname)
+
+            resp = yield from request('GET', url, loop=self.loop)
+            self.assertEqual(200, resp.status)
+            ct = resp.headers['CONTENT-TYPE']
+            self.assertEqual('application/octet-stream', ct)
+            self.assertIsNone(resp.headers.get('CONTENT-ENCODING'))
+            self.assertEqual(int(resp.headers.get('CONTENT-LENGTH')),
+                             file_st.st_size)
+
+            f = open(fname, 'rb')
+            off = 0
+            cnt = 0
+            while off < file_st.st_size:
+                chunk = yield from resp.content.readany()
+                expected = f.read(len(chunk))
+                self.assertEqual(chunk, expected)
+                off += len(chunk)
+                cnt += 1
+            f.close()
+            resp.close()
+
+        here = os.path.dirname(__file__)
+        filename = 'huge_data.unknown_mime_type'
+
+        # fill 100MB file
+        fname = os.path.join(here, filename)
+        with open(fname, 'w') as f:
+            for i in range(1024*50):
+                f.write(chr(i % 64 + 0x20) * 1024)
+        self.addCleanup(os.unlink, fname)
+        file_st = os.stat(fname)
+
+        self.loop.run_until_complete(go(here, filename))
+
 
 class TestStaticFileSendfileFallback(StaticFileMixin,
                                      unittest.TestCase):
