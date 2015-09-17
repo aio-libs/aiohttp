@@ -251,7 +251,7 @@ class TestBaseConnector(unittest.TestCase):
         conn._start_cleanup_task = unittest.mock.Mock()
         req = unittest.mock.Mock()
         resp = req.response = unittest.mock.Mock()
-        resp.message.should_close = False
+        resp._should_close = False
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
         key = 1

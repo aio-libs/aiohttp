@@ -347,14 +347,10 @@ class BaseConnector(object):
         resp = req.response
 
         if not should_close:
-            if resp is not None:
-                if resp.message is None:
-                    should_close = True
-                else:
-                    should_close = resp.message.should_close
-
             if self._force_close:
                 should_close = True
+            elif resp is not None:
+                should_close = resp._should_close
 
         reader = protocol.reader
         if should_close or (reader.output and not reader.output.at_eof()):

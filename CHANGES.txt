@@ -36,3 +36,5 @@ CHANGES
 - Default `response_factory` in `app.router.add_static` now is
   `StreamResponse`, not `None`. The functionality is not changed if
   default is not specified.
+
+- Drop `ClientResponse.message` attribute, it was always implementation detail.
