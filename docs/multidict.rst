@@ -1,18 +1,19 @@
 .. _aiohttp-multidict:
 
-Multidicts
-==========
+============
+ Multidicts
+============
 
 .. highlight:: python
 
-.. module:: aiohttp.multidict
+.. module:: aiohttp
 
 
 *HTTP Headers* and *URL query string* require specific data structure:
 *multidict*. It behaves mostly like a :class:`dict` but it can have
 several *values* for the same *key*.
 
-:mod:`aiohttp.multidict` has four multidict classes:
+:mod:`aiohttp` has four multidict classes:
 :class:`MultiDict`, :class:`MultiDictProxy`, :class:`CIMultiDict`
 and :class:`CIMultiDictProxy`.
 
@@ -40,7 +41,7 @@ insensitive, e.g.::
 
 
 MultiDict
----------
+=========
 
 .. class:: MultiDict(**kwargs)
            MultiDict(mapping, **kwargs)
@@ -207,7 +208,7 @@ MultiDict
 
 
 CIMultiDict
------------
+===========
 
 
 .. class:: CIMultiDict(**kwargs)
@@ -239,7 +240,7 @@ CIMultiDict
 
 
 MultiDictProxy
----------------
+==============
 
 .. class:: MultiDictProxy(multidict)
 
@@ -326,7 +327,7 @@ MultiDictProxy
       only first key occurrences otherwise.
 
 CIMultiDictProxy
-----------------
+================
 
 .. class:: CIMultiDictProxy(multidict)
 
@@ -338,7 +339,7 @@ CIMultiDictProxy
 
 
 upstr
------
+=====
 
 :class:`CIMultiDict` accepts :class:`str` as *key* argument for dict
 lookups but converts it to upper case internally.
