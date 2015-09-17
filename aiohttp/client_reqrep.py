@@ -112,6 +112,9 @@ class ClientRequest:
 
         # get host/port
         host = url_parsed.hostname
+        if not host:
+            raise ValueError('Host could not be detected.')
+
         try:
             port = url_parsed.port
         except ValueError:
