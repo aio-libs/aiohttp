@@ -96,6 +96,11 @@ class TestClientRequest(unittest.TestCase):
             ValueError, ClientRequest, 'get', 'http://python.org:123e/',
             loop=self.loop)
 
+    def test_hostname_err(self):
+        self.assertRaises(
+            ValueError, ClientRequest, 'get', 'http://:8080/',
+            loop=self.loop)
+
     def test_host_header(self):
         req = ClientRequest('get', 'http://python.org/', loop=self.loop)
         self.assertEqual(req.headers['HOST'], 'python.org')
