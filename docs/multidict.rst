@@ -142,26 +142,23 @@ MultiDict
 
       ``d.get(key)`` is equivalent to ``d.getone(key, None)``.
 
-   .. method:: keys(getall=True)
+   .. method:: keys()
 
       Return a new view of the dictionary's keys.
 
-      View contains all keys if *getall* is ``True`` (default) or
-      distinct set of ones otherwise.
+      View contains all keys, possibly with duplicates.
 
-   .. method:: items(getall=True)
+   .. method:: items()
 
       Return a new view of the dictionary's items (``(key, value)`` pairs).
 
-      View contains all items if *getall* is ``True`` (default) or
-      only first key occurrences otherwise.
+      View contains all items, multiple items can have the same key.
 
-   .. method:: values(getall=True)
+   .. method:: values()
 
       Return a new view of the dictionary's values.
 
-      View contains all values if *getall* is ``True`` (default) or
-      only first key occurrences otherwise.
+      View contains all values.
 
    .. method:: pop(key[, default])
 
@@ -305,26 +302,23 @@ MultiDictProxy
 
       ``d.get(key)`` is equivalent to ``d.getone(key, None)``.
 
-   .. method:: keys(getall=True)
+   .. method:: keys()
 
       Return a new view of the dictionary's keys.
 
-      View contains all keys if *getall* is ``True`` (default) or
-      distinct set of ones otherwise.
+      View contains all keys, possibly with duplicates.
 
-   .. method:: keys(getall=True)
+   .. method:: items()
 
       Return a new view of the dictionary's items (``(key, value)`` pairs).
 
-      View contains all items if *getall* is ``True`` (default) or
-      only first key occurrences otherwise.
+      View contains all items, multiple items can have the same key.
 
-   .. method:: values(getall=True)
+   .. method:: values()
 
       Return a new view of the dictionary's values.
 
-      View contains all values if *getall* is ``True`` (default) or
-      only first key occurrences otherwise.
+      View contains all values.
 
 CIMultiDictProxy
 ================
