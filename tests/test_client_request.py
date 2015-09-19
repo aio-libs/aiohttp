@@ -263,6 +263,7 @@ class TestClientRequest(unittest.TestCase):
         self.loop.run_until_complete(req.close())
         resp.close()
 
+    def test_no_content_length2(self):
         req = ClientRequest('head', 'http://python.org', loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertEqual('0', req.headers.get('CONTENT-LENGTH'))
