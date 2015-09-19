@@ -207,10 +207,16 @@ class StaticRoute(Route):
 
         `count` should be an integer > 0.
         """
+        transport = req.transport
+
+        if transport.get_extra_info("sslcontext"):
+            yield from self._sendfile_fallback(req, resp, fobj, count)
+            return
+
         yield from resp.drain()
 
         loop = req.app.loop
-        out_fd = req.transport.get_extra_info("socket").fileno()
+        out_fd = transport.get_extra_info("socket").fileno()
         in_fd = fobj.fileno()
         fut = asyncio.Future(loop=loop)
 
