@@ -389,11 +389,15 @@ class TestBaseConnector(unittest.TestCase):
         conn = aiohttp.BaseConnector(loop=self.loop)
         conn._create_connection = unittest.mock.Mock()
         conn._create_connection.return_value = asyncio.Future(loop=self.loop)
-        conn._create_connection.return_value.set_exception(OSError())
+        err = OSError(1, 'permission error')
+        conn._create_connection.return_value.set_exception(err)
 
-        with self.assertRaises(aiohttp.ClientOSError):
+        with self.assertRaises(aiohttp.ClientOSError) as ctx:
             req = unittest.mock.Mock()
             self.loop.run_until_complete(conn.connect(req))
+        self.assertEqual(1, ctx.exception.errno)
+        self.assertTrue(ctx.exception.strerror.startswith('Cannot connect to'))
+        self.assertTrue(ctx.exception.strerror.endswith('[permission error]'))
 
     def test_start_cleanup_task(self):
         loop = unittest.mock.Mock()

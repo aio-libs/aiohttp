@@ -293,10 +293,13 @@ class BaseConnector(object):
 
             except asyncio.TimeoutError as exc:
                 raise ClientTimeoutError(
-                    'Connection timeout to host %s:%s ssl:%s' % key) from exc
+                    'Connection timeout to host {0[0]}:{0[1]} ssl:{0[2]}'
+                    .format(key)) from exc
             except OSError as exc:
                 raise ClientOSError(
-                    'Cannot connect to host %s:%s ssl:%s' % key) from exc
+                    exc.errno,
+                    'Cannot connect to host {0[0]}:{0[1]} ssl:{0[2]} [{1}]'
+                    .format(key, exc.strerror)) from exc
 
         self._acquired[key].add(transport)
         conn = Connection(self, key, req, transport, proto, self._loop)
@@ -580,8 +583,9 @@ class TCPConnector(BaseConnector):
             except OSError as e:
                 exc = e
         else:
-            raise ClientOSError('Can not connect to %s:%s' %
-                                (req.host, req.port)) from exc
+            raise ClientOSError(exc.errno,
+                                'Can not connect to %s:%s [%s]' %
+                                (req.host, req.port, exc.strerror)) from exc
 
 
 class ProxyConnector(TCPConnector):

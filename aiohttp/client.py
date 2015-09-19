@@ -153,7 +153,7 @@ class ClientSession:
                     aiohttp.ServerDisconnectedError) as exc:
                 raise aiohttp.ClientResponseError() from exc
             except OSError as exc:
-                raise aiohttp.ClientOSError() from exc
+                raise aiohttp.ClientOSError(*exc.args) from exc
 
             self._update_cookies(resp.cookies)
             # For Backward compatability with `share_cookie` connectors
