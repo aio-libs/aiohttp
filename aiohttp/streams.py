@@ -27,7 +27,9 @@ class StreamReader(asyncio.StreamReader):
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
-        self._buffer = bytearray()
+        self._buffer = collections.deque()
+        self._buffer_size = 0
+        self._buffer_offset = 0
         self._eof = False
         self._waiter = None
         self._eof_waiter = None
@@ -86,7 +88,8 @@ class StreamReader(asyncio.StreamReader):
         if not data:
             return
 
-        self._buffer.extend(data)
+        self._buffer.append(data)
+        self._buffer_size += len(data)
         self.total_bytes += len(data)
 
         waiter = self._waiter
@@ -110,22 +113,22 @@ class StreamReader(asyncio.StreamReader):
         if self._exception is not None:
             raise self._exception
 
-        line = bytearray()
+        line = []
+        line_size = 0
         not_enough = True
 
         while not_enough:
             while self._buffer and not_enough:
-                ichar = self._buffer.find(b'\n')
-                if ichar < 0:
-                    line.extend(self._buffer)
-                    self._buffer.clear()
-                else:
-                    ichar += 1
-                    line.extend(self._buffer[:ichar])
-                    del self._buffer[:ichar]
+                offset = self._buffer_offset
+                ichar = self._buffer[0].find(b'\n', offset) + 1
+                # Read from current offset to found b'\n' or to the end.
+                data = self._read_nowait(ichar - offset if ichar else 0)
+                line.append(data)
+                line_size += len(data)
+                if ichar:
                     not_enough = False
 
-                if len(line) > self._limit:
+                if line_size > self._limit:
                     raise ValueError('Line is too long')
 
             if self._eof:
@@ -138,10 +141,7 @@ class StreamReader(asyncio.StreamReader):
                 finally:
                     self._waiter = None
 
-        if line:
-            return bytes(line)
-        else:
-            return EOF_MARKER
+        return b''.join(line)
 
     @asyncio.coroutine
     def read(self, n=-1):
@@ -168,38 +168,23 @@ class StreamReader(asyncio.StreamReader):
             # This used to just loop creating a new waiter hoping to
             # collect everything in self._buffer, but that would
             # deadlock if the subprocess sends more than self.limit
-            # bytes.  So just call self.read(self._limit) until EOF.
+            # bytes.  So just call self.readany() until EOF.
             blocks = []
             while True:
-                block = yield from self.read(self._limit)
+                block = yield from self.readany()
                 if not block:
                     break
                 blocks.append(block)
-            data = b''.join(blocks)
-            if data:
-                return data
-            else:
-                return EOF_MARKER
-        else:
-            if not self._buffer and not self._eof:
-                self._waiter = self._create_waiter('read')
-                try:
-                    yield from self._waiter
-                finally:
-                    self._waiter = None
+            return b''.join(blocks)
 
-        if n < 0 or len(self._buffer) <= n:
-            data = bytes(self._buffer)
-            self._buffer.clear()
-        else:
-            # n > 0 and len(self._buffer) > n
-            data = bytes(self._buffer[:n])
-            del self._buffer[:n]
+        if not self._buffer and not self._eof:
+            self._waiter = self._create_waiter('read')
+            try:
+                yield from self._waiter
+            finally:
+                self._waiter = None
 
-        if data:
-            return data
-        else:
-            return EOF_MARKER
+        return self._read_nowait(n)
 
     @asyncio.coroutine
     def readany(self):
@@ -213,13 +198,7 @@ class StreamReader(asyncio.StreamReader):
             finally:
                 self._waiter = None
 
-        data = bytes(self._buffer)
-        del self._buffer[:]
-
-        if data:
-            return data
-        else:
-            return EOF_MARKER
+        return self._read_nowait()
 
     @asyncio.coroutine
     def readexactly(self, n):
@@ -253,12 +232,28 @@ class StreamReader(asyncio.StreamReader):
             raise RuntimeError(
                 'Called while some coroutine is waiting for incoming data.')
 
+        return self._read_nowait()
+
+    def _read_nowait(self, n=None):
         if not self._buffer:
             return EOF_MARKER
+
+        first_buffer = self._buffer[0]
+        offset = self._buffer_offset
+        if n and len(first_buffer) - offset > n:
+            data = first_buffer[offset:offset + n]
+            self._buffer_offset += n
+
+        elif offset:
+            self._buffer.popleft()
+            data = first_buffer[offset:]
+            self._buffer_offset = 0
+
         else:
-            data = bytes(self._buffer)
-            del self._buffer[:]
-            return data
+            data = self._buffer.popleft()
+
+        self._buffer_size -= len(data)
+        return data
 
 
 class EmptyStreamReader:
@@ -397,9 +392,8 @@ def maybe_resume(func):
     def wrapper(self, *args, **kw):
         result = yield from func(self, *args, **kw)
 
-        size = len(self._buffer)
         if self._stream.paused:
-            if size < self._b_limit:
+            if self._buffer_size < self._b_limit:
                 try:
                     self._stream.transport.resume_reading()
                 except (AttributeError, NotImplementedError):
@@ -407,7 +401,7 @@ def maybe_resume(func):
                 else:
                     self._stream.paused = False
         else:
-            if size > self._b_limit:
+            if self._buffer_size > self._b_limit:
                 try:
                     self._stream.transport.pause_reading()
                 except (AttributeError, NotImplementedError):
@@ -441,7 +435,7 @@ class FlowControlStreamReader(StreamReader):
         super().feed_data(data)
 
         if (not self._stream.paused and
-                not has_waiter and len(self._buffer) > self._b_limit):
+                not has_waiter and self._buffer_size > self._b_limit):
             try:
                 self._stream.transport.pause_reading()
             except (AttributeError, NotImplementedError):
