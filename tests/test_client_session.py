@@ -408,7 +408,7 @@ class TestClientSession(unittest.TestCase):
         session.close()
 
 
-class TestCLientRequest(unittest.TestCase):
+class TestClientRequest(unittest.TestCase):
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
