@@ -58,4 +58,8 @@ doc:
 doc-spelling:
 	make -C docs spelling
 
+install:
+	pip install -U pip
+	pip install -Ur requirements-dev.txt
+
 .PHONY: all build venv flake test vtest testloop cov clean doc
