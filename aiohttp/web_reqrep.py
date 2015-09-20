@@ -499,10 +499,14 @@ class StreamResponse(HeadersMixin):
             c['expires'] = expires
         if domain is not None:
             c['domain'] = domain
+
         if max_age is not None:
             c['max-age'] = max_age
-        if path is not None:
-            c['path'] = path
+        elif 'max-age' in c:
+            del c['max-age']
+
+        c['path'] = path
+
         if secure is not None:
             c['secure'] = secure
         if httponly is not None:

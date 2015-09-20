@@ -396,13 +396,12 @@ class TestStreamResponse(unittest.TestCase):
             'Set-Cookie: name=another_other_value; Max-Age=10; Path=/')
 
         resp.del_cookie('name')
-        self.assertEqual(
-            str(resp.cookies),
-            'Set-Cookie: name=; Max-Age=0; Path=/')
+        expected = 'Set-Cookie: name=("")?; Max-Age=0; Path=/'
+        self.assertRegex(str(resp.cookies), expected)
 
-        resp.set_cookie('name', 'value', domain='local.host', path=None)
-        self.assertEqual(str(resp.cookies),
-                         'Set-Cookie: name=value; Domain=local.host')
+        resp.set_cookie('name', 'value', domain='local.host')
+        expected = 'Set-Cookie: name=value; Domain=local.host; Path=/'
+        self.assertEqual(str(resp.cookies), expected)
 
     def test_response_cookie_path(self):
         resp = StreamResponse()
@@ -436,8 +435,8 @@ class TestStreamResponse(unittest.TestCase):
         self.assertEqual(str(resp.cookies), '')
 
         resp.del_cookie('name')
-        self.assertEqual(str(resp.cookies),
-                         'Set-Cookie: name=; Max-Age=0; Path=/')
+        expected = 'Set-Cookie: name=("")?; Max-Age=0; Path=/'
+        self.assertRegex(str(resp.cookies), expected)
 
     def test_cookie_set_after_del(self):
         resp = StreamResponse()
@@ -445,8 +444,8 @@ class TestStreamResponse(unittest.TestCase):
         resp.del_cookie('name')
         resp.set_cookie('name', 'val')
         # check for Max-Age dropped
-        self.assertEqual(str(resp.cookies),
-                         'Set-Cookie: name=val; Path=/')
+        expected = 'Set-Cookie: name=val; Path=/'
+        self.assertEqual(str(resp.cookies), expected)
 
     def test_set_status_with_reason(self):
         resp = StreamResponse()

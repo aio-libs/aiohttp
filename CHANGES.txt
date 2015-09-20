@@ -41,3 +41,6 @@ CHANGES
 
 - Streams are optimized for speed and mostly memory in case of a big
   HTTP message sizes #496
+
+- Fix a bug for server-side cookies for dropping cookie and setting it
+  again without Max-Age parameter.
