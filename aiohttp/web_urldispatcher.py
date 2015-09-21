@@ -6,6 +6,7 @@ import mimetypes
 import re
 import os
 import inspect
+import mmap
 
 from urllib.parse import urlencode, unquote
 
@@ -235,14 +236,17 @@ class StaticRoute(Route):
         transferred in chunks controlled by the `chunk_size` argument to
         :class:`StaticRoute`.
         """
+        f_mm = mmap.mmap(fobj.fileno(), 0, access=mmap.ACCESS_READ)
         chunk_size = self._chunk_size
 
-        chunk = fobj.read(chunk_size)
+        chunk = f_mm.read(chunk_size)
         while chunk and count > chunk_size:
             resp.write(chunk)
             yield from resp.drain()
             count = count - chunk_size
-            chunk = fobj.read(chunk_size)
+            chunk = f_mm.read(chunk_size)
+
+        f_mm.close()
 
         if chunk:
             resp.write(chunk[:count])
