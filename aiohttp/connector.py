@@ -571,6 +571,8 @@ class TCPConnector(BaseConnector):
                 has_cert = transp.get_extra_info('sslcontext')
                 if has_cert and self._fingerprint:
                     sock = transp.get_extra_info('socket')
+                    if not hasattr(sock, 'getpeercert'):
+                        sock = transp._ssl_protocol._sslpipe.ssl_object
                     # gives DER-encoded cert as a sequence of bytes (or None)
                     cert = sock.getpeercert(binary_form=True)
                     assert cert
