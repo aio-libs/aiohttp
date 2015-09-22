@@ -185,6 +185,10 @@ class ClientSession:
                 elif not scheme:
                     r_url = urllib.parse.urljoin(url, r_url)
 
+                url = r_url
+                yield from resp.release()
+                continue
+
             break
 
         return resp
