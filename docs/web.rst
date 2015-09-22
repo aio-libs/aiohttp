@@ -557,7 +557,7 @@ The most trivial *middleware factory* example::
 
 Every factory is a coroutine that accepts two parameters: *app*
 (:class:`Application` instance) and *handler* (next handler in
-middleware chain.
+middleware chain).
 
 The last handler is :ref:`web-handler<aiohttp-web-handler>` selected
 by routing itself (:meth:`~UrlDispatcher.resolve` call).
