@@ -185,11 +185,6 @@ class ClientSession:
                 elif not scheme:
                     r_url = urllib.parse.urljoin(url, r_url)
 
-                url = urllib.parse.urldefrag(r_url)[0]
-                if url:
-                    yield from resp.release()
-                    continue
-
             break
 
         return resp

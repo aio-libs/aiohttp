@@ -44,3 +44,5 @@ CHANGES
 
 - Fix a bug for server-side cookies for dropping cookie and setting it
   again without Max-Age parameter.
+
+- Don't trim redirect URL in client API #499
