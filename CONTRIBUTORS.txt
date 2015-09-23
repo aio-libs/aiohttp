@@ -67,6 +67,7 @@ Stephen Granade
 Taras Voinarovskyi
 Tolga Tezel
 Vaibhav Sagar
+Vasyl Baran
 Vitaly Haritonsky
 Vitaly Magerya
 Vladimir Shulyak
