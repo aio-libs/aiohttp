@@ -1105,9 +1105,6 @@ passing it into *template engine* for example::
 
 There are three concrete route classes:
 
-* :class:`DynamicRoute` for urls with :ref:`variable 
-  pathes<aiohttp-web-variable-handler>` spec.
-
 * :class:`PlainRoute` for urls without :ref:`variable
   pathes<aiohttp-web-variable-handler>` spec.
 
