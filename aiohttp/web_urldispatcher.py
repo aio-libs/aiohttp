@@ -285,6 +285,9 @@ class StaticRoute(Route):
         file_size = st.st_size
 
         resp.content_length = file_size
+        if file_size == 0:
+            return resp
+
         resp.start(request)
 
         with open(filepath, 'rb') as f:
