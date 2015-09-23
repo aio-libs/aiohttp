@@ -715,7 +715,7 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
         def handler(request):
             resp = web.StreamResponse()
             resp.enable_chunked_encoding()
-            resp.start(request)
+            yield from resp.prepare(request)
             resp.write(b'x')
             resp.write(b'y')
             resp.write(b'z')

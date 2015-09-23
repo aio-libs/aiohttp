@@ -84,7 +84,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse()
-            ws.start(request)
+            yield from ws.prepare(request)
             msg = yield from ws.receive_str()
             ws.send_str(msg+'/answer')
             yield from ws.close()
@@ -119,7 +119,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse()
-            ws.start(request)
+            yield from ws.prepare(request)
 
             msg = yield from ws.receive_bytes()
             ws.send_bytes(msg+b'/answer')
@@ -154,7 +154,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse()
-            ws.start(request)
+            yield from ws.prepare(request)
             yield from ws.receive()
 
             msg = yield from ws.receive()
@@ -186,7 +186,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse()
-            ws.start(request)
+            yield from ws.prepare(request)
 
             ws.ping('data')
             yield from ws.receive()
@@ -214,7 +214,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse()
-            ws.start(request)
+            yield from ws.prepare(request)
 
             yield from ws.receive()
             closed.set_result(None)
@@ -242,7 +242,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse(autoping=False)
-            ws.start(request)
+            yield from ws.prepare(request)
 
             msg = yield from ws.receive()
             self.assertEqual(msg.tp, web.MsgType.ping)
@@ -279,7 +279,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             ws = web.WebSocketResponse()
             ws.set_status(200)
             self.assertEqual(200, ws.status)
-            ws.start(request)
+            yield from ws.prepare(request)
             self.assertEqual(101, ws.status)
             yield from ws.close()
             closed.set_result(None)
@@ -302,7 +302,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse(protocols=('foo', 'bar'))
-            ws.start(request)
+            yield from ws.prepare(request)
             yield from ws.close()
             self.assertEqual('bar', ws.protocol)
             closed.set_result(None)
@@ -326,7 +326,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse(protocols=('foo', 'bar'))
-            ws.start(request)
+            yield from ws.prepare(request)
             yield from ws.close()
             closed.set_result(None)
             return ws
@@ -352,7 +352,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         def handler(request):
             ws = web.WebSocketResponse(
                 autoclose=False, protocols=('foo', 'bar'))
-            ws.start(request)
+            yield from ws.prepare(request)
 
             msg = yield from ws.receive()
             self.assertEqual(msg.tp, web.MsgType.close)
@@ -387,7 +387,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse(protocols=('foo', 'bar'))
-            ws.start(request)
+            yield from ws.prepare(request)
             yield from ws.close()
             closed.set_result(None)
             return ws
