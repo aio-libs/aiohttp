@@ -162,6 +162,18 @@ It is not possible to use ``read()``, ``json()`` and ``text()`` after
 reading the file with ``chunk_size``.
 
 
+Releasing Response
+--------------------------
+
+Don't forget to release response after use. This will ensure explicit 
+behavior and proper connection pooling.
+
+    >>> yield from r.release()
+
+But it's not necessary if you use ``read()``, ``json()`` and ``text()`` methods. 
+They do release connection internally.
+
+
 Custom Headers
 --------------
 
