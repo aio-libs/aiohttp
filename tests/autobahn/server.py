@@ -12,7 +12,7 @@ def wshandler(request):
     if not ok:
         return web.HTTPBadRequest()
 
-    ws.start(request)
+    yield from ws.prepare(request)
 
     while True:
         msg = yield from ws.receive()

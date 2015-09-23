@@ -92,7 +92,7 @@ class RequestHandler(ServerHttpProtocol):
         except HTTPException as exc:
             resp = exc
 
-        resp_msg = resp.start(request)
+        resp_msg = yield from resp.prepare(request)
         yield from resp.write_eof()
 
         # notify server about keep-alive

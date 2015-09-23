@@ -15,7 +15,7 @@ def intro(request):
     binary = txt.encode('utf8')
     resp = StreamResponse()
     resp.content_length = len(binary)
-    resp.start(request)
+    yield from resp.prepare(request)
     resp.write(binary)
     return resp
 
@@ -36,7 +36,7 @@ def hello(request):
     name = request.match_info.get('name', 'Anonymous')
     answer = ('Hello, ' + name).encode('utf8')
     resp.content_length = len(answer)
-    resp.start(request)
+    yield from resp.prepare(request)
     resp.write(answer)
     yield from resp.write_eof()
     return resp
