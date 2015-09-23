@@ -1103,12 +1103,13 @@ passing it into *template engine* for example::
 
    url = app.router['route_name'].url(query={'a': 1, 'b': 2})
 
-There are three concrete route classes:* :class:`DynamicRoute` for
-urls with :ref:`variable pathes<aiohttp-web-variable-handler>` spec.
+There are three concrete route classes:
 
+* :class:`DynamicRoute` for urls with :ref:`variable 
+  pathes<aiohttp-web-variable-handler>` spec.
 
 * :class:`PlainRoute` for urls without :ref:`variable
-  pathes<aiohttp-web-variable-handler>`
+  pathes<aiohttp-web-variable-handler>` spec.
 
 * :class:`DynamicRoute` for urls with :ref:`variable
   pathes<aiohttp-web-variable-handler>` spec.
