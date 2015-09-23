@@ -35,6 +35,7 @@ class WebSocketResponse(StreamResponse):
         self._autoclose = autoclose
         self._autoping = autoping
 
+    @asyncio.coroutine
     def prepare(self, request):
         # make pre-check to don't hide it by do_handshake() exceptions
         resp_impl = self._start_pre_check(request)
