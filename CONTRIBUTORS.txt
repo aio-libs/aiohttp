@@ -70,6 +70,7 @@ Vaibhav Sagar
 Vasyl Baran
 Vitaly Haritonsky
 Vitaly Magerya
+Vladimir Rutsky
 Vladimir Shulyak
 Vladimir Zakharov
 W. Trevor King
