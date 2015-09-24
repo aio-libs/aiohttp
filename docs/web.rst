@@ -407,7 +407,7 @@ using response's methods:
     def websocket_handler(request):
 
         ws = web.WebSocketResponse()
-        ws.start(request)
+        yield from ws.prepare(request)
 
         while True:
             msg = yield from ws.receive()
