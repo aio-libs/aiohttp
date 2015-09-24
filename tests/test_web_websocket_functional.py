@@ -411,3 +411,24 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             response.close()
 
         self.loop.run_until_complete(go())
+
+    def test_receive_msg(self):
+        @asyncio.coroutine
+        def handler(request):
+            ws = web.WebSocketResponse()
+            yield from ws.prepare(request)
+
+            with self.assertWarns(DeprecationWarning):
+                msg = yield from ws.receive_msg()
+                self.assertEqual(msg.data, b'data')
+            yield from ws.close()
+            return ws
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('GET', '/', handler)
+            resp = yield from aiohttp.ws_connect(url, loop=self.loop)
+            resp.send_bytes(b'data')
+            yield from resp.close()
+
+        self.loop.run_until_complete(go())

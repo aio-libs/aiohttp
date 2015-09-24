@@ -86,7 +86,7 @@ class WebSocketResponse(StreamResponse):
         self._post_start(request, parser, protocol, writer)
         return resp_impl
 
-    def can_start(self, request):
+    def can_prepare(self, request):
         if self._writer is not None:
             raise RuntimeError('Already started')
         try:
@@ -97,6 +97,10 @@ class WebSocketResponse(StreamResponse):
             return False, None
         else:
             return True, protocol
+
+    def can_start(self, request):
+        warnings.warn('use .can_prepare(request) instead', DeprecationWarning)
+        return self.can_prepare(request)
 
     @property
     def closed(self):
@@ -256,7 +260,7 @@ class WebSocketResponse(StreamResponse):
             self._waiting = False
 
     @asyncio.coroutine
-    def receive_msg(self):  # pragma: no cover
+    def receive_msg(self):
         warnings.warn(
             'receive_msg() coroutine is deprecated. use receive() instead',
             DeprecationWarning)

@@ -141,33 +141,33 @@ class TestWebWebSocket(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             ws.write(b'data')
 
-    def test_can_start_ok(self):
+    def test_can_prepare_ok(self):
         req = self.make_request('GET', '/')
         ws = WebSocketResponse(protocols=('chat',))
-        self.assertEqual((True, 'chat'), ws.can_start(req))
+        self.assertEqual((True, 'chat'), ws.can_prepare(req))
 
-    def test_can_start_unknown_protocol(self):
+    def test_can_prepare_unknown_protocol(self):
         req = self.make_request('GET', '/')
         ws = WebSocketResponse()
-        self.assertEqual((True, None), ws.can_start(req))
+        self.assertEqual((True, None), ws.can_prepare(req))
 
-    def test_can_start_invalid_method(self):
+    def test_can_prepare_invalid_method(self):
         req = self.make_request('POST', '/')
         ws = WebSocketResponse()
-        self.assertEqual((False, None), ws.can_start(req))
+        self.assertEqual((False, None), ws.can_prepare(req))
 
-    def test_can_start_without_upgrade(self):
+    def test_can_prepare_without_upgrade(self):
         req = self.make_request('GET', '/',
                                 headers=CIMultiDict({}))
         ws = WebSocketResponse()
-        self.assertEqual((False, None), ws.can_start(req))
+        self.assertEqual((False, None), ws.can_prepare(req))
 
-    def test_can_start_started(self):
+    def test_can_prepare_started(self):
         req = self.make_request('GET', '/')
         ws = WebSocketResponse()
         self.loop.run_until_complete(ws.prepare(req))
         with self.assertRaisesRegex(RuntimeError, 'Already started'):
-            ws.can_start(req)
+            ws.can_prepare(req)
 
     def test_closed_after_ctor(self):
         ws = WebSocketResponse()
@@ -390,3 +390,17 @@ class TestWebWebSocket(unittest.TestCase):
         self.writer.close.side_effect = asyncio.CancelledError()
         self.assertRaises(asyncio.CancelledError,
                           self.loop.run_until_complete, ws.close())
+
+    def test_start_twice_idempotent(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        with self.assertWarns(DeprecationWarning):
+            impl1 = ws.start(req)
+            impl2 = ws.start(req)
+            self.assertIs(impl1, impl2)
+
+    def test_can_start_ok(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse(protocols=('chat',))
+        with self.assertWarns(DeprecationWarning):
+            self.assertEqual((True, 'chat'), ws.can_start(req))
