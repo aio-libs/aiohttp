@@ -46,3 +46,5 @@ CHANGES
   again without Max-Age parameter.
 
 - Don't trim redirect URL in client API #499
+
+- Extend precision of access log "D" to milliseconds #527
