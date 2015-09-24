@@ -504,6 +504,16 @@ class TestStreamResponse(unittest.TestCase):
         self.loop.run_until_complete(resp.prepare(req))
         self.assertFalse(resp.keep_alive)
 
+    @mock.patch('aiohttp.web_reqrep.ResponseImpl')
+    def test_start_twice(self, ResponseImpl):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse()
+
+        with self.assertWarns(DeprecationWarning):
+            impl1 = resp.start(req)
+            impl2 = resp.start(req)
+            self.assertIs(impl1, impl2)
+
 
 class TestResponse(unittest.TestCase):
 

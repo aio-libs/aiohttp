@@ -617,20 +617,20 @@ class StreamResponse(HeadersMixin):
             return None
 
     def _start_compression(self, request):
-        def start(coding):
+        def _start(coding):
             if coding != ContentCoding.identity:
                 self.headers[hdrs.CONTENT_ENCODING] = coding.value
                 self._resp_impl.add_compression_filter(coding.value)
                 self.content_length = None
 
         if self._compression_force:
-            start(self._compression_force)
+            _start(self._compression_force)
         else:
             accept_encoding = request.headers.get(
                 hdrs.ACCEPT_ENCODING, '').lower()
             for coding in ContentCoding:
                 if coding.value in accept_encoding:
-                    start(coding)
+                    _start(coding)
                     return
 
     def start(self, request):
