@@ -254,7 +254,7 @@ def atoms(message, environ, response, transport, request_time):
         'f': headers.get(hdrs.REFERER, '-'),
         'a': headers.get(hdrs.USER_AGENT, '-'),
         'T': str(int(request_time)),
-        'D': str(request_time).split('.', 1)[-1][:5],
+        'D': str(request_time).split('.', 1)[-1][:6],
         'p': "<%s>" % os.getpid()
     }
 
