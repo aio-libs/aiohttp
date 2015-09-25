@@ -18,8 +18,10 @@ import aiohttp
 from . import hdrs, helpers, streams
 from .log import client_logger
 from .streams import EOF_MARKER, FlowControlStreamReader
-from .multidict import CIMultiDictProxy, MultiDictProxy, MultiDict, CIMultiDict
+from .multidict import (CIMultiDictProxy, MultiDictProxy, MultiDict,
+                        CIMultiDict)
 from .multipart import MultipartWriter
+from .protocol import HttpMessage
 
 PY_341 = sys.version_info >= (3, 4, 1)
 
@@ -39,6 +41,8 @@ class ClientRequest:
         hdrs.ACCEPT_ENCODING: 'gzip, deflate',
     }
 
+    SERVER_SOFTWARE = HttpMessage.SERVER_SOFTWARE
+
     body = b''
     auth = None
     response = None
@@ -53,7 +57,8 @@ class ClientRequest:
     # Until writer has finished finalizer will not be called.
 
     def __init__(self, method, url, *,
-                 params=None, headers=None, data=None, cookies=None,
+                 params=None, headers=None, skip_auto_headers=frozenset(),
+                 data=None, cookies=None,
                  files=None, auth=None, encoding='utf-8',
                  version=aiohttp.HttpVersion11, compress=None,
                  chunked=None, expect100=False,
@@ -77,6 +82,7 @@ class ClientRequest:
         self.update_host(url)
         self.update_path(params)
         self.update_headers(headers)
+        self.update_auto_headers(skip_auto_headers)
         self.update_cookies(cookies)
         self.update_content_encoding()
         self.update_auth(auth)
@@ -91,7 +97,7 @@ class ClientRequest:
                     'not supported at the same time.')
             data = files
 
-        self.update_body_from_data(data)
+        self.update_body_from_data(data, skip_auto_headers)
         self.update_transfer_encoding()
         self.update_expect_continue(expect100)
 
@@ -106,6 +112,9 @@ class ClientRequest:
 
         # get host/port
         host = url_parsed.hostname
+        if not host:
+            raise ValueError('Host could not be detected.')
+
         try:
             port = url_parsed.port
         except ValueError:
@@ -129,7 +138,7 @@ class ClientRequest:
         self.netloc = netloc
 
         scheme = url_parsed.scheme
-        self.ssl = scheme == 'https'
+        self.ssl = scheme in ('https', 'wss')
 
         # set port number if it isn't already set
         if not port:
@@ -174,8 +183,8 @@ class ClientRequest:
             else:
                 query = params
 
-        self.path = urllib.parse.urlunsplit(
-            ('', '', urllib.parse.quote(path, safe='/%:'), query, fragment))
+        self.path = urllib.parse.urlunsplit(('', '', helpers.requote_uri(path),
+                                             query, fragment))
         self.url = urllib.parse.urlunsplit(
             (scheme, netloc, self.path, '', ''))
 
@@ -191,13 +200,20 @@ class ClientRequest:
             for key, value in headers:
                 self.headers.add(key, value)
 
+    def update_auto_headers(self, skip_auto_headers):
+        self.skip_auto_headers = skip_auto_headers
+        used_headers = set(self.headers) | skip_auto_headers
+
         for hdr, val in self.DEFAULT_HEADERS.items():
-            if hdr not in self.headers:
-                self.headers[hdr] = val
+            if hdr not in used_headers:
+                self.headers.add(hdr, val)
 
         # add host
-        if hdrs.HOST not in self.headers:
+        if hdrs.HOST not in used_headers:
             self.headers[hdrs.HOST] = self.netloc
+
+        if hdrs.USER_AGENT not in used_headers:
+            self.headers[hdrs.USER_AGENT] = self.SERVER_SOFTWARE
 
     def update_cookies(self, cookies):
         """Update request cookies header."""
@@ -247,7 +263,7 @@ class ClientRequest:
 
         self.headers[hdrs.AUTHORIZATION] = auth.encode()
 
-    def update_body_from_data(self, data):
+    def update_body_from_data(self, data, skip_auto_headers):
         if not data:
             return
 
@@ -256,7 +272,8 @@ class ClientRequest:
 
         if isinstance(data, (bytes, bytearray)):
             self.body = data
-            if hdrs.CONTENT_TYPE not in self.headers:
+            if (hdrs.CONTENT_TYPE not in self.headers and
+                    hdrs.CONTENT_TYPE not in skip_auto_headers):
                 self.headers[hdrs.CONTENT_TYPE] = 'application/octet-stream'
             if hdrs.CONTENT_LENGTH not in self.headers and not self.chunked:
                 self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
@@ -274,18 +291,30 @@ class ClientRequest:
             assert not isinstance(data, io.StringIO), \
                 'attempt to send text data instead of binary'
             self.body = data
-            if not self.chunked and isinstance(data, io.BufferedReader):
+            if not self.chunked and isinstance(data, io.BytesIO):
                 # Not chunking if content-length can be determined
-                size = os.fstat(data.fileno()).st_size - data.tell()
+                size = len(data.getbuffer())
                 self.headers[hdrs.CONTENT_LENGTH] = str(size)
                 self.chunked = False
+            elif not self.chunked and isinstance(data, io.BufferedReader):
+                # Not chunking if content-length can be determined
+                try:
+                    size = os.fstat(data.fileno()).st_size - data.tell()
+                    self.headers[hdrs.CONTENT_LENGTH] = str(size)
+                    self.chunked = False
+                except OSError:
+                    # data.fileno() is not supported, e.g.
+                    # io.BufferedReader(io.BytesIO(b'data'))
+                    self.chunked = True
             else:
                 self.chunked = True
+
             if hasattr(data, 'mode'):
                 if data.mode == 'r':
                     raise ValueError('file {!r} should be open in binary mode'
                                      ''.format(data))
             if (hdrs.CONTENT_TYPE not in self.headers and
+                hdrs.CONTENT_TYPE not in skip_auto_headers and
                     hasattr(data, 'name')):
                 mime = mimetypes.guess_type(data.name)[0]
                 mime = 'application/octet-stream' if mime is None else mime
@@ -302,7 +331,8 @@ class ClientRequest:
 
             self.body = data(self.encoding)
 
-            if hdrs.CONTENT_TYPE not in self.headers:
+            if (hdrs.CONTENT_TYPE not in self.headers and
+                    hdrs.CONTENT_TYPE not in skip_auto_headers):
                 self.headers[hdrs.CONTENT_TYPE] = data.content_type
 
             if data.is_multipart:
@@ -445,6 +475,7 @@ class ClientRequest:
 
         # set default content-type
         if (self.method in self.POST_METHODS and
+                hdrs.CONTENT_TYPE not in self.skip_auto_headers and
                 hdrs.CONTENT_TYPE not in self.headers):
             self.headers[hdrs.CONTENT_TYPE] = 'application/octet-stream'
 
@@ -483,8 +514,6 @@ class ClientRequest:
 
 class ClientResponse:
 
-    message = None  # RawResponseMessage object
-
     # from the Status-Line of the response
     version = None  # HTTP-Version
     status = None   # Status-Code
@@ -492,6 +521,7 @@ class ClientResponse:
 
     cookies = None  # Response cookies (Set-Cookie)
     content = None  # Payload stream
+    headers = None  # Response headers, CIMultiDictProxy
 
     _connection = None  # current connection
     flow_control_class = FlowControlStreamReader  # reader flow control
@@ -509,11 +539,11 @@ class ClientResponse:
         self.method = method
         self.url = url
         self.host = host
-        self.headers = None
         self._content = None
         self._writer = writer
         self._continue = continue100
         self._closed = False
+        self._should_close = True  # override by message.should_close later
 
     def _post_init(self, loop):
         self._loop = loop
@@ -521,13 +551,13 @@ class ClientResponse:
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
     if PY_341:
-        def __del__(self):
+        def __del__(self, _warnings=warnings):
             if self._closed:
                 return
             self.close()
 
-            warnings.warn("Unclosed response {!r}".format(self),
-                          ResourceWarning)
+            _warnings.warn("Unclosed response {!r}".format(self),
+                           ResourceWarning)
             context = {'client_response': self,
                        'message': 'Unclosed response'}
             if self._source_traceback:
@@ -563,8 +593,8 @@ class ClientResponse:
             httpstream = self._reader.set_parser(self._response_parser)
 
             # read response
-            self.message = yield from httpstream.read()
-            if self.message.code != 100:
+            message = yield from httpstream.read()
+            if message.code != 100:
                 break
 
             if self._continue is not None and not self._continue.done():
@@ -572,17 +602,18 @@ class ClientResponse:
                 self._continue = None
 
         # response status
-        self.version = self.message.version
-        self.status = self.message.code
-        self.reason = self.message.reason
+        self.version = message.version
+        self.status = message.code
+        self.reason = message.reason
+        self._should_close = message.should_close
 
         # headers
-        self.headers = CIMultiDictProxy(self.message.headers)
+        self.headers = CIMultiDictProxy(message.headers)
 
         # payload
         response_with_body = self.method.lower() != 'head'
         self._reader.set_parser(
-            aiohttp.HttpPayloadParser(self.message,
+            aiohttp.HttpPayloadParser(message,
                                       readall=read_until_eof,
                                       response_with_body=response_with_body),
             self.content)
@@ -598,7 +629,10 @@ class ClientResponse:
                         'Can not load response cookies: %s', exc)
         return self
 
-    def close(self, force=False):
+    def close(self, force=True):
+        if not force:
+            warnings.warn("force parameter should be True", DeprecationWarning,
+                          stacklevel=2)
         if self._closed:
             return
 
@@ -609,29 +643,31 @@ class ClientResponse:
                 return
 
         if self._connection is not None:
-            if self.content and not self.content.at_eof():
-                force = True
-
-            if force:
-                self._connection.close()
-            else:
-                self._connection.release()
-                if self._reader is not None:
-                    self._reader.unset_parser()
-
+            self._connection.close()
             self._connection = None
-        if self._writer is not None and not self._writer.done():
-            self._writer.cancel()
-            self._writer = None
+        self._cleanup_writer()
 
     @asyncio.coroutine
     def release(self):
         try:
-            chunk = yield from self.content.readany()
-            while chunk is not EOF_MARKER or chunk:
-                chunk = yield from self.content.readany()
+            content = self.content
+            if content is not None and not content.at_eof():
+                chunk = yield from content.readany()
+                while chunk is not EOF_MARKER or chunk:
+                    chunk = yield from content.readany()
         finally:
-            self.close()
+            self._closed = True
+            if self._connection is not None:
+                self._connection.release()
+                if self._reader is not None:
+                    self._reader.unset_parser()
+                self._connection = None
+            self._cleanup_writer()
+
+    def _cleanup_writer(self):
+        if self._writer is not None and not self._writer.done():
+            self._writer.cancel()
+        self._writer = None
 
     @asyncio.coroutine
     def wait_for_close(self):
@@ -640,7 +676,7 @@ class ClientResponse:
                 yield from self._writer
             finally:
                 self._writer = None
-        self.close()
+        yield from self.release()
 
     @asyncio.coroutine
     def read(self, decode=False):
@@ -649,10 +685,10 @@ class ClientResponse:
             try:
                 self._content = yield from self.content.read()
             except:
-                self.close(True)
+                self.close()
                 raise
             else:
-                self.close()
+                yield from self.release()
 
         data = self._content
 

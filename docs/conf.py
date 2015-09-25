@@ -56,6 +56,7 @@ extensions = [
     'alabaster',
     'aiohttp_doctools',
     'sphinxcontrib.spelling',
+    'sphinxcontrib.newsfeed',
 ]
 
 intersphinx_mapping = {
@@ -309,3 +310,7 @@ texinfo_documents = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 # texinfo_no_detailmenu = False
+
+
+disqus_shortname = 'aiohttp'
+disqus_developer = True

@@ -32,7 +32,8 @@ class ClientSession:
     _connector = None
 
     def __init__(self, *, connector=None, loop=None, cookies=None,
-                 headers=None, auth=None, request_class=ClientRequest,
+                 headers=None, skip_auto_headers=None,
+                 auth=None, request_class=ClientRequest,
                  response_class=ClientResponse,
                  ws_response_class=ClientWebSocketResponse):
 
@@ -61,23 +62,27 @@ class ClientSession:
 
         # Convert to list of tuples
         if headers:
-            if isinstance(headers, dict):
-                headers = list(headers.items())
-            elif isinstance(headers, (MultiDictProxy, MultiDict)):
-                headers = list(headers.items())
+            headers = CIMultiDict(headers)
+        else:
+            headers = CIMultiDict()
         self._default_headers = headers
+        if skip_auto_headers is not None:
+            self._skip_auto_headers = frozenset([upstr(i)
+                                                 for i in skip_auto_headers])
+        else:
+            self._skip_auto_headers = frozenset()
 
         self._request_class = request_class
         self._response_class = response_class
         self._ws_response_class = ws_response_class
 
     if PY_341:
-        def __del__(self):
+        def __del__(self, _warnings=warnings):
             if not self.closed:
                 self.close()
 
-                warnings.warn("Unclosed client session {!r}".format(self),
-                              ResourceWarning)
+                _warnings.warn("Unclosed client session {!r}".format(self),
+                               ResourceWarning)
                 context = {'client_session': self,
                            'message': 'Unclosed client session'}
                 if self._source_traceback is not None:
@@ -89,6 +94,7 @@ class ClientSession:
                 params=None,
                 data=None,
                 headers=None,
+                skip_auto_headers=None,
                 files=None,
                 auth=None,
                 allow_redirects=True,
@@ -120,9 +126,15 @@ class ClientSession:
             raise ValueError("Can't combine `Authorization` header with "
                              "`auth` argument")
 
+        skip_headers = set(self._skip_auto_headers)
+        if skip_auto_headers is not None:
+            for i in skip_auto_headers:
+                skip_headers.add(upstr(i))
+
         while True:
             req = self._request_class(
-                method, url, params=params, headers=headers, data=data,
+                method, url, params=params, headers=headers,
+                skip_auto_headers=skip_headers, data=data,
                 cookies=self.cookies, files=files, encoding=encoding,
                 auth=auth, version=version, compress=compress, chunked=chunked,
                 expect100=expect100,
@@ -134,14 +146,14 @@ class ClientSession:
                 try:
                     yield from resp.start(conn, read_until_eof)
                 except:
-                    resp.close()
+                    resp.close(force=True)
                     conn.close()
                     raise
             except (aiohttp.HttpProcessingError,
                     aiohttp.ServerDisconnectedError) as exc:
                 raise aiohttp.ClientResponseError() from exc
             except OSError as exc:
-                raise aiohttp.ClientOSError() from exc
+                raise aiohttp.ClientOSError(*exc.args) from exc
 
             self._update_cookies(resp.cookies)
             # For Backward compatability with `share_cookie` connectors
@@ -173,10 +185,9 @@ class ClientSession:
                 elif not scheme:
                     r_url = urllib.parse.urljoin(url, r_url)
 
-                url = urllib.parse.urldefrag(r_url)[0]
-                if url:
-                    yield from asyncio.async(resp.release(), loop=self._loop)
-                    continue
+                url = r_url
+                yield from resp.release()
+                continue
 
             break
 
@@ -254,7 +265,7 @@ class ClientSession:
         for name, value in cookies:
             if isinstance(value, http.cookies.Morsel):
                 # use dict method because SimpleCookie class modifies value
-                # before Python3.4
+                # before Python 3.4
                 dict.__setitem__(self.cookies, name, value)
             else:
                 self.cookies[name] = value
@@ -263,19 +274,17 @@ class ClientSession:
         """ Add default headers and transform it to CIMultiDict
         """
         # Convert headers to MultiDict
-        result = CIMultiDict()
+        result = CIMultiDict(self._default_headers)
         if headers:
-            if isinstance(headers, dict):
-                headers = headers.items()
-            elif isinstance(headers, (MultiDictProxy, MultiDict)):
-                headers = headers.items()
-            for key, value in headers:
-                result.add(key, value)
-        # Add defaults only if those are not overridden
-        if self._default_headers:
-            for key, value in self._default_headers:
-                if key not in result:
+            if not isinstance(headers, (MultiDictProxy, MultiDict)):
+                headers = CIMultiDict(headers)
+            added_names = set()
+            for key, value in headers.items():
+                if key in added_names:
                     result.add(key, value)
+                else:
+                    result[key] = value
+                    added_names.add(key)
         return result
 
     @asyncio.coroutine
@@ -488,24 +497,24 @@ def head(url, **kwargs):
 
 
 @asyncio.coroutine
-def post(url, *, data=None, **kwargs):
+def post(url, **kwargs):
     ret = yield from request(hdrs.METH_POST, url, **kwargs)
     return ret
 
 
 @asyncio.coroutine
-def put(url, *, data=None, **kwargs):
+def put(url, **kwargs):
     ret = yield from request(hdrs.METH_PUT, url, **kwargs)
     return ret
 
 
 @asyncio.coroutine
-def patch(url, *, data=None, **kwargs):
+def patch(url, **kwargs):
     ret = yield from request(hdrs.METH_PATCH, url, **kwargs)
     return ret
 
 
 @asyncio.coroutine
-def delete(url, *, data=None, **kwargs):
+def delete(url, **kwargs):
     ret = yield from request(hdrs.METH_DELETE, url, **kwargs)
     return ret

@@ -3,8 +3,6 @@ import unittest
 from unittest import mock
 
 from aiohttp import web, log
-from aiohttp.multidict import CIMultiDict
-from aiohttp.protocol import HttpVersion11, RawRequestMessage
 
 
 class TestWeb(unittest.TestCase):
@@ -15,21 +13,6 @@ class TestWeb(unittest.TestCase):
 
     def tearDown(self):
         self.loop.close()
-
-    def test_handler_returns_not_response(self):
-        app = web.Application(loop=self.loop)
-
-        def handler(request):
-            return 'abc'
-
-        app.router.add_route('GET', '/', handler)
-        h = app.make_handler()()
-        message = RawRequestMessage('GET', '/', HttpVersion11,
-                                    CIMultiDict(), False, False)
-        payload = mock.Mock()
-
-        with self.assertRaises(AssertionError):
-            self.loop.run_until_complete(h.handle_request(message, payload))
 
     def test_app_ctor(self):
         app = web.Application(loop=self.loop)

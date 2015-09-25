@@ -1,3 +1,86 @@
+0.17.4 (XX-XX-XXXX)
+-------------------
+
+- Properly parse URL path in aiohttp.web.Request #489
+
+0.17.3 (08-28-2015)
+---------------------
+
+- Remove Content-Length header on compressed responses #450
+
+- Support Python 3.5
+
+- Improve performance of transport in-use list #472
+
+- Fix connection pooling #473
+
+0.17.2 (08-11-2015)
+---------------------
+
+- Don't forget to pass `data` argument forward #462
+
+- Fix multipart read bytes count #463
+
+0.17.1 (08-10-2015)
+---------------------
+
+- Fix multidict comparsion to arbitrary abc.Mapping
+
+0.17.0 (08-04-2015)
+---------------------
+
+- Make StaticRoute support Last-Modified and If-Modified-Since headers #386
+
+- Add Request.if_modified_since and Stream.Response.last_modified properties
+
+- Fix deflate compression when writing a chunked response #395
+
+- Request`s content-length header is cleared now after redirect from
+  POST method #391
+
+- Return a 400 if server received a non HTTP content #405
+
+- Fix keep-alive support for aiohttp clients #406
+
+- Allow gzip compression in high-level server response interface #403
+
+- Rename TCPConnector.resolve and family to dns_cache #415
+
+- Make UrlDispatcher ignore quoted characters during url matching #414
+  Backward-compatibility warning: this may change the url matched by
+  your queries if they send quoted character (like %2F for /) #414
+
+- Use optional cchardet accelerator if present #418
+
+- Borrow loop from Connector in ClientSession if loop is not set
+
+- Add context manager support to ClientSession for session closing.
+
+- Add toplevel get(), post(), put(), head(), delete(), options(),
+  patch() coroutines.
+
+- Fix IPv6 support for client API #425
+
+- Pass SSL context through proxy connector #421
+
+- Make the rule: path for add_route should start with slash
+
+- Don't process request finishing by low-level server on closed event loop
+
+- Don't override data if multiple files are uploaded with same key #433
+
+- Ensure multipart.BodyPartReader.read_chunk read all the necessary data
+  to avoid false assertions about malformed multipart payload
+
+- Dont sent body for 204, 205 and 304 http exceptions #442
+
+- Correctly skip Cython compilation in MSVC not found #453
+
+- Add response factory to StaticRoute #456
+
+- Don't append trailing CRLF for multipart.BodyPartReader #454
+
+
 0.16.6 (07-15-2015)
 -------------------
 

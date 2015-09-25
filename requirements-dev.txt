@@ -1,5 +1,4 @@
 flake8
-nose
 coverage
 sphinx
 alabaster>=0.6.2
@@ -8,3 +7,7 @@ chardet
 tox
 ipdb
 sphinxcontrib-spelling
+pyenchant
+sphinxcontrib-newsfeed
+pytest
+pytest-cov

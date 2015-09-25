@@ -173,11 +173,13 @@ class _BaseTest(_Root):
 
         self.assertNotEqual(d.keys(), {'key2'})
 
-    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
-                     "Set operations on views not supported")
     def test_eq(self):
         d = self.make_dict([('key', 'value1')])
         self.assertEqual({'key': 'value1'}, d)
+
+    def test_ne(self):
+        d = self.make_dict([('key', 'value1')])
+        self.assertNotEqual(d, {'key': 'another_value'})
 
     @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
                      "Set operations on views not supported")
@@ -270,11 +272,11 @@ class _MultiDictTests(_BaseTest):
         d = self.make_dict()
         cls = self.proxy_cls if self.proxy_cls is not None else self.cls
 
-        self.assertEqual(str(d), "<%s {}>" % cls.__name__)
+        self.assertEqual(str(d), "<%s()>" % cls.__name__)
         d = self.make_dict([('key', 'one'), ('key', 'two')])
         self.assertEqual(
             str(d),
-            "<%s {'key': 'one', 'key': 'two'}>" % cls.__name__)
+            "<%s('key': 'one', 'key': 'two')>" % cls.__name__)
 
     def test_getall(self):
         d = self.make_dict([('key', 'value1')], key='value2')
@@ -303,17 +305,17 @@ class _MultiDictTests(_BaseTest):
     def test_items__repr__(self):
         d = self.make_dict([('key', 'value1')], key='value2')
         self.assertEqual(repr(d.items()),
-                         "_ItemsView([('key', 'value1'), ('key', 'value2')])")
+                         "_ItemsView('key': 'value1', 'key': 'value2')")
 
     def test_keys__repr__(self):
         d = self.make_dict([('key', 'value1')], key='value2')
         self.assertEqual(repr(d.keys()),
-                         "_KeysView([('key', 'value1'), ('key', 'value2')])")
+                         "_KeysView('key', 'key')")
 
     def test_values__repr__(self):
         d = self.make_dict([('key', 'value1')], key='value2')
         self.assertEqual(repr(d.values()),
-                         "_ValuesView([('key', 'value1'), ('key', 'value2')])")
+                         "_ValuesView('value1', 'value2')")
 
 
 class _CIMultiDictTests(_Root):
@@ -349,17 +351,17 @@ class _CIMultiDictTests(_Root):
     def test_items__repr__(self):
         d = self.make_dict([('KEY', 'value1')], key='value2')
         self.assertEqual(repr(d.items()),
-                         "_ItemsView([('KEY', 'value1'), ('KEY', 'value2')])")
+                         "_ItemsView('KEY': 'value1', 'KEY': 'value2')")
 
     def test_keys__repr__(self):
         d = self.make_dict([('KEY', 'value1')], key='value2')
         self.assertEqual(repr(d.keys()),
-                         "_KeysView([('KEY', 'value1'), ('KEY', 'value2')])")
+                         "_KeysView('KEY', 'KEY')")
 
     def test_values__repr__(self):
         d = self.make_dict([('KEY', 'value1')], key='value2')
         self.assertEqual(repr(d.values()),
-                         "_ValuesView([('KEY', 'value1'), ('KEY', 'value2')])")
+                         "_ValuesView('value1', 'value2')")
 
 
 class _NonProxyCIMultiDict(_CIMultiDictTests):
@@ -416,13 +418,13 @@ class _BaseMutableMultiDictTests(_BaseTest):
 
     def test__repr__(self):
         d = self.make_dict()
-        self.assertEqual(str(d), "<%s {}>" % self.cls.__name__)
+        self.assertEqual(str(d), "<%s()>" % self.cls.__name__)
 
         d = self.make_dict([('key', 'one'), ('key', 'two')])
 
         self.assertEqual(
             str(d),
-            "<%s {'key': 'one', 'key': 'two'}>" % self.cls.__name__)
+            "<%s('key': 'one', 'key': 'two')>" % self.cls.__name__)
 
     def test_getall(self):
         d = self.make_dict([('key', 'value1')], key='value2')
@@ -606,13 +608,13 @@ class _CIMutableMultiDictTests(_Root):
 
     def test__repr__(self):
         d = self.make_dict()
-        self.assertEqual(str(d), "<%s {}>" % self.cls.__name__)
+        self.assertEqual(str(d), "<%s()>" % self.cls.__name__)
 
         d = self.make_dict([('KEY', 'one'), ('KEY', 'two')])
 
         self.assertEqual(
             str(d),
-            "<%s {'KEY': 'one', 'KEY': 'two'}>" % self.cls.__name__)
+            "<%s('KEY': 'one', 'KEY': 'two')>" % self.cls.__name__)
 
     def test_add(self):
         d = self.make_dict()

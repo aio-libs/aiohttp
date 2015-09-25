@@ -26,7 +26,7 @@ which must be a coroutine to handle requests asynchronously
 
       import aiohttp
       import aiohttp.server
-      from aiohttp.multidict import MultiDict
+      from aiohttp import MultiDict
 
 
       import asyncio
@@ -83,7 +83,7 @@ params.  However aiohttp does provide a nice
 
     from urllib.parse import urlparse, parse_qsl
 
-    from aiohttp.multidict import MultiDict
+    from aiohttp import MultiDict
 
     class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
 
@@ -107,7 +107,7 @@ GET params.
 
     from urllib.parse import urlparse, parse_qsl
 
-    from aiohttp.multidict import MultiDict
+    from aiohttp import MultiDict
 
     class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
 
@@ -145,3 +145,6 @@ Reference
     :members:
     :undoc-members:
     :show-inheritance:
+
+
+.. disqus::

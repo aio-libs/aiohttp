@@ -9,10 +9,8 @@ import sys
 
 import aiohttp
 from aiohttp.client import ClientSession
-from aiohttp.multidict import MultiDict, CIMultiDict, CIMultiDictProxy
+from aiohttp.multidict import MultiDict, CIMultiDict
 from aiohttp.connector import BaseConnector, TCPConnector
-from aiohttp.client_reqrep import ClientRequest, ClientResponse
-from http.cookies import SimpleCookie
 
 
 PY_341 = sys.version_info >= (3, 4, 1)
@@ -29,6 +27,7 @@ class TestClientSession(unittest.TestCase):
 
     def tearDown(self):
         self.loop.close()
+        gc.collect()
 
     def make_open_connector(self):
         conn = BaseConnector(loop=self.loop)
@@ -43,9 +42,9 @@ class TestClientSession(unittest.TestCase):
                 "h2": "header2"
             }, loop=self.loop)
         self.assertEqual(
-            set(session._default_headers),
-            set([("h1", "header1"),
-                 ("h2", "header2")]))
+            sorted(session._default_headers.items()),
+            ([("H1", "header1"),
+              ("H2", "header2")]))
         session.close()
 
     def test_init_headers_list_of_tuples(self):
@@ -55,10 +54,10 @@ class TestClientSession(unittest.TestCase):
                      ("h3", "header3")],
             loop=self.loop)
         self.assertEqual(
-            set(session._default_headers),
-            set([("h1", "header1"),
-                 ("h2", "header2"),
-                 ("h3", "header3")]))
+            session._default_headers,
+            CIMultiDict([("h1", "header1"),
+                         ("h2", "header2"),
+                         ("h3", "header3")]))
         session.close()
 
     def test_init_headers_MultiDict(self):
@@ -69,10 +68,23 @@ class TestClientSession(unittest.TestCase):
                  ("h3", "header3")]),
             loop=self.loop)
         self.assertEqual(
-            set(session._default_headers),
-            set([("h1", "header1"),
-                 ("h2", "header2"),
-                 ("h3", "header3")]))
+            session._default_headers,
+            CIMultiDict([("H1", "header1"),
+                         ("H2", "header2"),
+                         ("H3", "header3")]))
+        session.close()
+
+    def test_init_headers_list_of_tuples_with_duplicates(self):
+        session = ClientSession(
+            headers=[("h1", "header11"),
+                     ("h2", "header21"),
+                     ("h1", "header12")],
+            loop=self.loop)
+        self.assertEqual(
+            session._default_headers,
+            CIMultiDict([("H1", "header11"),
+                         ("H2", "header21"),
+                         ("H1", "header12")]))
         session.close()
 
     def test_init_cookies_with_simple_dict(self):
@@ -108,8 +120,8 @@ class TestClientSession(unittest.TestCase):
         })
         self.assertIsInstance(headers, CIMultiDict)
         self.assertEqual(headers, CIMultiDict([
-            ("h1", "h1"),
-            ("h2", "header2")
+            ("h2", "header2"),
+            ("h1", "h1")
         ]))
         session.close()
 
@@ -122,8 +134,8 @@ class TestClientSession(unittest.TestCase):
         headers = session._prepare_headers(MultiDict([("h1", "h1")]))
         self.assertIsInstance(headers, CIMultiDict)
         self.assertEqual(headers, CIMultiDict([
-            ("h1", "h1"),
-            ("h2", "header2")
+            ("h2", "header2"),
+            ("h1", "h1")
         ]))
         session.close()
 
@@ -136,13 +148,29 @@ class TestClientSession(unittest.TestCase):
         headers = session._prepare_headers([("h1", "h1")])
         self.assertIsInstance(headers, CIMultiDict)
         self.assertEqual(headers, CIMultiDict([
-            ("h1", "h1"),
-            ("h2", "header2")
+            ("h2", "header2"),
+            ("h1", "h1")
         ]))
         session.close()
 
-    def _make_one(self):
-        session = ClientSession(loop=self.loop)
+    def test_merge_headers_with_list_of_tuples_duplicated_names(self):
+        session = ClientSession(
+            headers={
+                "h1": "header1",
+                "h2": "header2"
+            }, loop=self.loop)
+        headers = session._prepare_headers([("h1", "v1"),
+                                            ("h1", "v2")])
+        self.assertIsInstance(headers, CIMultiDict)
+        self.assertEqual(headers, CIMultiDict([
+            ("H2", "header2"),
+            ("H1", "v1"),
+            ("H1", "v2"),
+        ]))
+        session.close()
+
+    def _make_one(self, **kwargs):
+        session = ClientSession(loop=self.loop, **kwargs)
         params = dict(
             headers={"Authorization": "Basic ..."},
             max_redirects=2,
@@ -358,6 +386,7 @@ class TestClientSession(unittest.TestCase):
     def test_del(self):
         conn = self.make_open_connector()
         session = ClientSession(loop=self.loop, connector=conn)
+        self.loop.set_exception_handler(lambda loop, ctx: None)
 
         with self.assertWarns(ResourceWarning):
             del session
@@ -374,60 +403,27 @@ class TestClientSession(unittest.TestCase):
         conn = self.make_open_connector()
         session = ClientSession(connector=conn)
         self.assertIs(session._loop, self.loop)
+        session.close()
 
-
-class TestCLientRequest(unittest.TestCase):
-
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-        self.connector = BaseConnector(loop=self.loop)
-        self.transport = mock.Mock()
-        self.protocol = mock.Mock()
-
-    def tearDown(self):
-        self.loop.close()
-
-    def test_custom_req_rep(self):
+    def test_reraise_os_error(self):
         @asyncio.coroutine
         def go():
-            class CustomResponse(ClientResponse):
-                @asyncio.coroutine
-                def start(self, connection, read_until_eof=False):
-                    self.status = 123
-                    self.reason = 'Test OK'
-                    self.headers = CIMultiDictProxy(CIMultiDict())
-                    self.cookies = SimpleCookie()
-                    return
-
-            called = False
-
-            class CustomRequest(ClientRequest):
-
-                def send(self, writer, reader):
-                    resp = self.response_class(self.method,
-                                               self.url,
-                                               self.host,
-                                               writer=self._writer,
-                                               continue100=self._continue)
-                    resp._post_init(self.loop)
-                    self.response = resp
-                    nonlocal called
-                    called = True
-                    return resp
+            err = OSError(1, "permission error")
+            req = mock.Mock()
+            req_factory = mock.Mock(return_value=req)
+            req.send = mock.Mock(side_effect=err)
+            session = ClientSession(loop=self.loop, request_class=req_factory)
 
             @asyncio.coroutine
             def create_connection(req):
-                self.assertIsInstance(req, CustomRequest)
-                return self.transport, self.protocol
-            self.connector._create_connection = create_connection
+                # return self.transport, self.protocol
+                return mock.Mock(), mock.Mock()
+            session._connector._create_connection = create_connection
 
-            resp = yield from aiohttp.request('get',
-                                              'http://example.com/path/to',
-                                              request_class=CustomRequest,
-                                              response_class=CustomResponse,
-                                              connector=self.connector,
-                                              loop=self.loop)
-            self.assertIsInstance(resp, CustomResponse)
-            self.assertTrue(called)
+            with self.assertRaises(aiohttp.ClientOSError) as ctx:
+                yield from session.request('get', 'http://example.com')
+            e = ctx.exception
+            self.assertEqual(e.errno, err.errno)
+            self.assertEqual(e.strerror, err.strerror)
+
         self.loop.run_until_complete(go())

@@ -1,5 +1,3 @@
-__all__ = ('ContentCoding', 'Request', 'StreamResponse', 'Response')
-
 import asyncio
 import binascii
 import cgi
@@ -24,8 +22,11 @@ from .multidict import (CIMultiDictProxy,
                         CIMultiDict,
                         MultiDictProxy,
                         MultiDict)
-from .protocol import Response as ResponseImpl, HttpVersion10
+from .protocol import Response as ResponseImpl, HttpVersion10, HttpVersion11
 from .streams import EOF_MARKER
+
+
+__all__ = ('ContentCoding', 'Request', 'StreamResponse', 'Response')
 
 
 sentinel = object()
@@ -124,7 +125,7 @@ class Request(dict, HeadersMixin):
 
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
 
-    @property
+    @reify
     def scheme(self):
         """A string representing the scheme of the request.
 
@@ -173,7 +174,8 @@ class Request(dict, HeadersMixin):
 
     @reify
     def _splitted_path(self):
-        return urlsplit(self._path_qs)
+        url = '{}://{}{}'.format(self.scheme, self.host, self._path_qs)
+        return urlsplit(url)
 
     @property
     def raw_path(self):
@@ -423,8 +425,13 @@ class StreamResponse(HeadersMixin):
             self.headers.add(hdrs.SET_COOKIE, value)
 
     @property
-    def started(self):
+    def prepared(self):
         return self._resp_impl is not None
+
+    @property
+    def started(self):
+        warnings.warn('use Response.prepared instead', DeprecationWarning)
+        return self.prepared
 
     @property
     def status(self):
@@ -497,10 +504,14 @@ class StreamResponse(HeadersMixin):
             c['expires'] = expires
         if domain is not None:
             c['domain'] = domain
+
         if max_age is not None:
             c['max-age'] = max_age
-        if path is not None:
-            c['path'] = path
+        elif 'max-age' in c:
+            del c['max-age']
+
+        c['path'] = path
+
         if secure is not None:
             c['secure'] = secure
         if httponly is not None:
@@ -528,8 +539,8 @@ class StreamResponse(HeadersMixin):
             value = int(value)
             # TODO: raise error if chunked enabled
             self.headers[hdrs.CONTENT_LENGTH] = str(value)
-        elif hdrs.CONTENT_LENGTH in self.headers:
-            del self.headers[hdrs.CONTENT_LENGTH]
+        else:
+            self.headers.pop(hdrs.CONTENT_LENGTH, None)
 
     @property
     def content_type(self):
@@ -606,29 +617,42 @@ class StreamResponse(HeadersMixin):
             return None
 
     def _start_compression(self, request):
-        def start(coding):
+        def _start(coding):
             if coding != ContentCoding.identity:
                 self.headers[hdrs.CONTENT_ENCODING] = coding.value
                 self._resp_impl.add_compression_filter(coding.value)
+                self.content_length = None
 
         if self._compression_force:
-            start(self._compression_force)
+            _start(self._compression_force)
         else:
             accept_encoding = request.headers.get(
                 hdrs.ACCEPT_ENCODING, '').lower()
             for coding in ContentCoding:
                 if coding.value in accept_encoding:
-                    start(coding)
+                    _start(coding)
                     return
 
     def start(self, request):
         request.app.on_response_start.send(request=request,
                                            response=self)
 
+        warnings.warn('use .prepare(request) instead', DeprecationWarning)
         resp_impl = self._start_pre_check(request)
         if resp_impl is not None:
             return resp_impl
 
+        return self._start(request)
+
+    @asyncio.coroutine
+    def prepare(self, request):
+        resp_impl = self._start_pre_check(request)
+        if resp_impl is not None:
+            return resp_impl
+
+        return self._start(request)
+
+    def _start(self, request):
         self._req = request
         keep_alive = self._keep_alive
         if keep_alive is None:
@@ -648,6 +672,10 @@ class StreamResponse(HeadersMixin):
             self._start_compression(request)
 
         if self._chunked:
+            if request.version != HttpVersion11:
+                raise RuntimeError("Using chunked encoding is forbidden "
+                                   "for HTTP/{0.major}.{0.minor}".format(
+                                       request.version))
             resp_impl.enable_chunked_encoding()
             if self._chunk_size:
                 resp_impl.add_chunking_filter(self._chunk_size)

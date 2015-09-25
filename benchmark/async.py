@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import collections
+import cProfile
 import gc
 import random
 import socket
@@ -8,14 +9,10 @@ import string
 import sys
 from multiprocessing import Process, set_start_method, Barrier
 
-from scipy.stats import norm, tmean, tvar, tstd
+from scipy.stats import tmean, tstd
 from numpy import array, median
-from numpy.ma import masked_equal
 
 import aiohttp
-
-
-PROFILE = False
 
 
 def find_port():
@@ -26,7 +23,10 @@ def find_port():
     return host, port
 
 
-def run_aiohttp(host, port, barrier):
+profiler = cProfile.Profile()
+
+
+def run_aiohttp(host, port, barrier, profile):
 
     from aiohttp import web
 
@@ -60,11 +60,8 @@ def run_aiohttp(host, port, barrier):
     srv, app, handler = loop.run_until_complete(init(loop))
     barrier.wait()
 
-    if PROFILE:
-        import cProfile
-
-        prof = cProfile.Profile()
-        prof.enable()
+    if profile:
+        profiler.enable()
 
     loop.run_forever()
     srv.close()
@@ -72,12 +69,11 @@ def run_aiohttp(host, port, barrier):
     loop.run_until_complete(srv.wait_closed())
     loop.close()
 
-    if PROFILE:
-        prof.disable()
-        prof.dump_stats('out.prof')
+    if profile:
+        profiler.disable()
 
 
-def run_tornado(host, port, barrier):
+def run_tornado(host, port, barrier, profile):
 
     import tornado.ioloop
     import tornado.web
@@ -113,7 +109,7 @@ def run_tornado(host, port, barrier):
     tornado.ioloop.IOLoop.instance().start()
 
 
-def run_twisted(host, port, barrier):
+def run_twisted(host, port, barrier, profile):
 
     if 'bsd' in sys.platform or sys.platform.startswith('darwin'):
         from twisted.internet import kqreactor
@@ -177,15 +173,18 @@ def run_twisted(host, port, barrier):
 @asyncio.coroutine
 def attack(count, concurrency, client, loop, url):
 
-    in_queue = collections.deque()
     out_times = collections.deque()
     processed_count = 0
 
+    def gen():
+        for i in range(count):
+            rnd = ''.join(random.sample(string.ascii_letters, 16))
+            yield rnd
+
     @asyncio.coroutine
-    def do_bomb():
+    def do_bomb(in_iter):
         nonlocal processed_count
-        while in_queue:
-            rnd = in_queue.popleft()
+        for rnd in in_iter:
             real_url = url + '/test/' + rnd
             try:
                 t1 = loop.time()
@@ -203,13 +202,10 @@ def attack(count, concurrency, client, loop, url):
             except Exception:
                 continue
 
-    for i in range(count):
-        rnd = ''.join(random.sample(string.ascii_letters, 16))
-        in_queue.append(rnd)
-
+    in_iter = gen()
     bombers = []
     for i in range(concurrency):
-        bomber = asyncio.async(do_bomb())
+        bomber = asyncio.async(do_bomb(in_iter))
         bombers.append(bomber)
 
     t1 = loop.time()
@@ -220,14 +216,14 @@ def attack(count, concurrency, client, loop, url):
 
 
 @asyncio.coroutine
-def run(test, count, concurrency, *, loop, verbose):
+def run(test, count, concurrency, *, loop, verbose, profile):
     if verbose:
         print("Prepare")
     else:
         print('.', end='', flush=True)
     host, port = find_port()
     barrier = Barrier(2)
-    server = Process(target=test, args=(host, port, barrier))
+    server = Process(target=test, args=(host, port, barrier, profile))
     server.start()
     barrier.wait()
 
@@ -277,9 +273,13 @@ def main(argv):
         test_name = test.__name__
 
         rps, times = loop.run_until_complete(run(test, count, concurrency,
-                                                 loop=loop, verbose=verbose))
+                                                 loop=loop, verbose=verbose,
+                                                 profile=args.profile))
         all_times[test_name].extend(times)
         all_rps[test_name].append(rps)
+
+    if args.profile:
+        profiler.dump_stats('out.prof')
 
     print()
 
@@ -321,6 +321,10 @@ ARGS.add_argument(
 ARGS.add_argument(
     '-v', '--verbose', action="count", default=0,
     help='verbosity level (default: `%(default)s`)')
+ARGS.add_argument(
+    '--profile', action="store_true", default=False,
+    help='perform aiohttp test profiling, store result as out.prof '
+    '(default: `%(default)s`)')
 
 
 if __name__ == '__main__':

@@ -1,3 +1,6 @@
+from .web_reqrep import Response
+
+
 __all__ = (
     'HTTPException',
     'HTTPError',
@@ -45,8 +48,6 @@ __all__ = (
     'HTTPVersionNotSupported',
 )
 
-from .web_reqrep import Response
-
 
 ############################################################
 # HTTP Exceptions
@@ -58,6 +59,7 @@ class HTTPException(Response, Exception):
     # status = 200
 
     status_code = None
+    empty_body = False
 
     def __init__(self, *, headers=None, reason=None,
                  body=None, text=None, content_type=None):
@@ -65,7 +67,7 @@ class HTTPException(Response, Exception):
                           headers=headers, reason=reason,
                           body=body, text=text, content_type=content_type)
         Exception.__init__(self, self.reason)
-        if self.body is None:
+        if self.body is None and not self.empty_body:
             self.text = "{}: {}".format(self.status, self.reason)
 
 
@@ -99,10 +101,12 @@ class HTTPNonAuthoritativeInformation(HTTPSuccessful):
 
 class HTTPNoContent(HTTPSuccessful):
     status_code = 204
+    empty_body = True
 
 
 class HTTPResetContent(HTTPSuccessful):
     status_code = 205
+    empty_body = True
 
 
 class HTTPPartialContent(HTTPSuccessful):
@@ -147,6 +151,7 @@ class HTTPSeeOther(_HTTPMove):
 class HTTPNotModified(HTTPRedirection):
     # FIXME: this should include a date or etag header
     status_code = 304
+    empty_body = True
 
 
 class HTTPUseProxy(_HTTPMove):

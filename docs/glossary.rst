@@ -11,6 +11,11 @@
 
    asyncio
 
+      The library for writing single-threaded concurrent code using
+      coroutines, multiplexing I/O access over sockets and other
+      resources, running network clients and servers, and other
+      related primitives.
+
       Reference implementation of :pep:`3156`
 
       https://pypi.python.org/pypi/asyncio/
@@ -33,6 +38,18 @@
 
        https://pypi.python.org/pypi/cchardet/
 
+   keep-alive
+
+       A technique for communicating between HTTP client and server
+       when connection is not closed after sending response but keeped
+       open for sending next request through the same socket.
+
+       It makes communication faster by getting rid of connection
+       establishment for every request.
+
    web-handler
 
        An endpoint that returns http response.
+
+
+.. disqus::

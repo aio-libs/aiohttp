@@ -3,7 +3,9 @@ Contributors
 
 A. Jesse Jiryu Davis
 Alejandro Gómez
+Alex Lisovoy
 Alexander Bayandin
+Alexander Karpinsky
 Alexander Shorin
 Alexander Travov
 Alexey Popravka
@@ -32,6 +34,9 @@ Georges Dubus
 Greg Holt
 Hugo Herter
 Igor Pavlov
+Ingmar Steen
+Jaesung Lee
+Jashandeep Sohi
 Julien Duponchelle
 Junjie Tao
 Kay Zheng
@@ -39,7 +44,9 @@ Kirill Klenov
 Kirill Malovitsa
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
+Marco Paolini
 Martin Richard
+Morgan Delahaye-Prat
 Moss Collum
 Mikhail Lukyanchenko
 Nicolas Braem
@@ -55,11 +62,16 @@ Sebastian Hanula
 Sebastian Hüther
 Sergey Ninua
 Simon Kennedy
+Stanislav Prokop
 Stephen Granade
 Taras Voinarovskyi
 Tolga Tezel
 Vaibhav Sagar
+Vasyl Baran
 Vitaly Haritonsky
 Vitaly Magerya
+Vladimir Rutsky
+Vladimir Shulyak
+Vladimir Zakharov
 W. Trevor King
 Yannick Koechlin

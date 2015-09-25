@@ -1,50 +1,56 @@
 CHANGES
 =======
 
-0.17.0a0 (XX-XX-XXXX)
+0.18.0a0 (XX-XX-XXXX)
 ---------------------
 
-- Make StaticRoute support Last-Modified and If-Modified-Since headers #386
+- Use errors.HttpProcessingError.message as HTTP error reason and
+  message #459
 
-- Add Request.if_modified_since and Stream.Response.last_modified properties
+- Optimize cythonized multidict a bit
 
-- Fix deflate compression when writing a chunked response #395
+- Change repr's of multidicts and multidict views
 
-- Request`s content-length header is cleared now after redirect from
-  POST method #391
+- default headers in ClientSession are now case-insensitive
 
-- Return a 400 if server received a non HTTP content #405
+- Make '=' char and 'wss://' schema safe in urls #477
 
-- Fix keep-alive support for aiohttp clients #406
+- `ClientResponse.close()` forces connection closing by default from now #479
+  N.B. Backward incompatible change: was `.close(force=False)
+  Using `force` parameter for the method is deprecated: use `.release()` instead.
 
-- Allow gzip compression in high-level server response interface #403
+- Properly requote URL's path #480
 
-- Rename TCPConnector.resolve and family to dns_cache #415
+- add `skip_auto_headers` parameter for client API #486
 
-- Make UrlDispatcher ignore quoted characters during url matching #414
-  Backward-compatibility warning: this may change the url matched by
-  your queries if they send quoted character (like %2F for /) #414
+- Properly parse URL path in aiohttp.web.Request #489
 
-- Use optional cchardet accelerator if present #418
+- Raise RuntimeError when chunked enabled and HTTP is 1.0 #488
 
-- Borrow loop from Connector in ClientSession if loop is not set
+- Fix a bug with processing io.BytesIO as data parameter for client API #500
 
-- Add context manager support to ClientSession for session closing.
+- Skip auto-generation of Content-Type header #507
 
-- Add toplevel get(), post(), put(), head(), delete(), options(),
-  patch() coroutines.
+- Use sendfile facility for static file handling #503
 
-- Fix IPv6 support for client API #425
+- Default `response_factory` in `app.router.add_static` now is
+  `StreamResponse`, not `None`. The functionality is not changed if
+  default is not specified.
 
-- Pass SSL context through proxy connector #421
+- Drop `ClientResponse.message` attribute, it was always implementation detail.
 
-- Make the rule: path for add_route should start with slash
+- Streams are optimized for speed and mostly memory in case of a big
+  HTTP message sizes #496
 
-- Don't process request finishing by low-level server on closed event loop
+- Fix a bug for server-side cookies for dropping cookie and setting it
+  again without Max-Age parameter.
 
-- Don't override data if multiple files are uploaded with same key #433
+- Don't trim redirect URL in client API #499
 
-- Ensure multipart.BodyPartReader.read_chunk read all the necessary data
-  to avoid false assertions about malformed multipart payload
+- Extend precision of access log "D" to milliseconds #527
 
+- Deprecate `StreamResponse.start()` method in favor of
+  `StreamResponse.prepare()` coroutine #525
 
+  `.start()` is still supported but responses begun with `.start()`
+  doesn't call signal for response preparing to be sent. 

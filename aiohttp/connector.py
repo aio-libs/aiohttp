@@ -54,7 +54,7 @@ class Connection(object):
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
     if PY_341:
-        def __del__(self):
+        def __del__(self, _warnings=warnings):
             if self._transport is not None:
                 if hasattr(self._loop, 'is_closed'):
                     if self._loop.is_closed():
@@ -64,8 +64,8 @@ class Connection(object):
                     self._key, self._request, self._transport, self._protocol,
                     should_close=True)
 
-                warnings.warn("Unclosed connection {!r}".format(self),
-                              ResourceWarning)
+                _warnings.warn("Unclosed connection {!r}".format(self),
+                               ResourceWarning)
                 context = {'client_connection': self,
                            'message': 'Unclosed connection'}
                 if self._source_traceback is not None:
@@ -122,7 +122,7 @@ class BaseConnector(object):
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
         self._conns = {}
-        self._acquired = defaultdict(list)
+        self._acquired = defaultdict(set)
         self._conn_timeout = conn_timeout
         self._keepalive_timeout = keepalive_timeout
         if share_cookies:
@@ -143,7 +143,7 @@ class BaseConnector(object):
         self.cookies = http.cookies.SimpleCookie()
 
     if PY_341:
-        def __del__(self):
+        def __del__(self, _warnings=warnings):
             if self._closed:
                 return
             if not self._conns:
@@ -151,8 +151,8 @@ class BaseConnector(object):
 
             self.close()
 
-            warnings.warn("Unclosed connector {!r}".format(self),
-                          ResourceWarning)
+            _warnings.warn("Unclosed connector {!r}".format(self),
+                           ResourceWarning)
             context = {'connector': self,
                        'message': 'Unclosed connector'}
             if self._source_traceback is not None:
@@ -291,25 +291,25 @@ class BaseConnector(object):
                 else:
                     transport, proto = yield from self._create_connection(req)
 
-                if not self._force_close:
-                    if self._conns.get(key, None) is None:
-                        self._conns[key] = []
-
-                    self._conns[key].append((transport, proto,
-                                            self._loop.time()))
             except asyncio.TimeoutError as exc:
                 raise ClientTimeoutError(
-                    'Connection timeout to host %s:%s ssl:%s' % key) from exc
+                    'Connection timeout to host {0[0]}:{0[1]} ssl:{0[2]}'
+                    .format(key)) from exc
             except OSError as exc:
                 raise ClientOSError(
-                    'Cannot connect to host %s:%s ssl:%s' % key) from exc
+                    exc.errno,
+                    'Cannot connect to host {0[0]}:{0[1]} ssl:{0[2]} [{1}]'
+                    .format(key, exc.strerror)) from exc
 
-        self._acquired[key].append(transport)
+        self._acquired[key].add(transport)
         conn = Connection(self, key, req, transport, proto, self._loop)
         return conn
 
     def _get(self, key):
-        conns = self._conns.get(key)
+        try:
+            conns = self._conns[key]
+        except KeyError:
+            return None, None
         t1 = self._loop.time()
         while conns:
             transport, proto, t0 = conns.pop()
@@ -318,8 +318,12 @@ class BaseConnector(object):
                     transport.close()
                     transport = None
                 else:
+                    if not conns:
+                        # The very last connection was reclaimed: drop the key
+                        del self._conns[key]
                     return transport, proto
-
+        # No more connections: drop the key
+        del self._conns[key]
         return None, None
 
     def _release(self, key, req, transport, protocol, *, should_close=False):
@@ -330,7 +334,7 @@ class BaseConnector(object):
         acquired = self._acquired[key]
         try:
             acquired.remove(transport)
-        except ValueError:  # pragma: no cover
+        except KeyError:  # pragma: no cover
             # this may be result of undetermenistic order of objects
             # finalization due garbage collection.
             pass
@@ -346,26 +350,13 @@ class BaseConnector(object):
         resp = req.response
 
         if not should_close:
-            if resp is not None:
-                if resp.message is None:
-                    should_close = True
-                else:
-                    should_close = resp.message.should_close
-
             if self._force_close:
                 should_close = True
+            elif resp is not None:
+                should_close = resp._should_close
 
         reader = protocol.reader
         if should_close or (reader.output and not reader.output.at_eof()):
-            conns = self._conns.get(key)
-            if conns is not None and len(conns) >= 0:
-                # Issue #253: An empty array will eventually be
-                # removed by cleanup, but it's better to pop straight
-                # away, because cleanup might not get called (e.g. if
-                # keepalive is False).
-                if not acquired:
-                    self._conns.pop(key, None)
-
             transport.close()
         else:
             conns = self._conns.get(key)
@@ -580,6 +571,11 @@ class TCPConnector(BaseConnector):
                 has_cert = transp.get_extra_info('sslcontext')
                 if has_cert and self._fingerprint:
                     sock = transp.get_extra_info('socket')
+                    if not hasattr(sock, 'getpeercert'):
+                        # Workaround for asyncio 3.5.0
+                        # Starting from 3.5.1 version
+                        # there is 'ssl_object' extra info in transport
+                        sock = transp._ssl_protocol._sslpipe.ssl_object
                     # gives DER-encoded cert as a sequence of bytes (or None)
                     cert = sock.getpeercert(binary_form=True)
                     assert cert
@@ -592,8 +588,9 @@ class TCPConnector(BaseConnector):
             except OSError as e:
                 exc = e
         else:
-            raise ClientOSError('Can not connect to %s:%s' %
-                                (req.host, req.port)) from exc
+            raise ClientOSError(exc.errno,
+                                'Can not connect to %s:%s [%s]' %
+                                (req.host, req.port, exc.strerror)) from exc
 
 
 class ProxyConnector(TCPConnector):
@@ -672,7 +669,7 @@ class ProxyConnector(TCPConnector):
             key = (req.host, req.port, req.ssl)
             conn = Connection(self, key, proxy_req,
                               transport, proto, self._loop)
-            self._acquired[key].append(conn._transport)
+            self._acquired[key].add(conn._transport)
             proxy_resp = proxy_req.send(conn.writer, conn.reader)
             try:
                 resp = yield from proxy_resp.start(conn, True)

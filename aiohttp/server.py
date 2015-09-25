@@ -168,7 +168,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             self._timeout_handle = None
 
     def data_received(self, data):
-        self.reader.feed_data(data)
+        super().data_received(data)
 
         # reading request
         if not self._reading_request:
@@ -275,11 +275,12 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                 if self.debug:
                     self.log_exception(
                         'Ignored premature client disconnection.')
-                break
+                return
             except errors.HttpProcessingError as exc:
                 if self.transport is not None:
                     yield from self.handle_error(exc.code, message,
-                                                 None, exc, exc.headers)
+                                                 None, exc, exc.headers,
+                                                 exc.message)
             except errors.LineLimitExceededParserError as exc:
                 yield from self.handle_error(400, message, None, exc)
             except Exception as exc:
@@ -287,13 +288,13 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             finally:
                 if self.transport is None:
                     self.log_debug('Ignored premature client disconnection.')
-                    break
+                    return
 
                 if payload and not payload.is_eof():
                     self.log_debug('Uncompleted request.')
                     self._request_handler = None
                     self.transport.close()
-                    break
+                    return
                 else:
                     reader.unset_parser()
 
@@ -311,13 +312,13 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                         self.log_debug('Close client connection.')
                         self._request_handler = None
                         self.transport.close()
-                        break
+                        return
                 else:
                     # connection is closed
-                    break
+                    return
 
-    def handle_error(self, status=500,
-                     message=None, payload=None, exc=None, headers=None):
+    def handle_error(self, status=500, message=None,
+                     payload=None, exc=None, headers=None, reason=None):
         """Handle errors.
 
         Returns http response with specific status code. Logs additional
@@ -332,7 +333,10 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                 self.log_exception("Error handling request")
 
             try:
-                reason, msg = RESPONSES[status]
+                if reason is None or reason == '':
+                    reason, msg = RESPONSES[status]
+                else:
+                    msg = reason
             except KeyError:
                 status = 500
                 reason, msg = '???', ''

@@ -50,7 +50,7 @@ class TestHTTPExceptions(unittest.TestCase):
     def test_HTTPOk(self):
         req = self.make_request()
         resp = web.HTTPOk()
-        resp.start(req)
+        self.loop.run_until_complete(resp.prepare(req))
         self.loop.run_until_complete(resp.write_eof())
         txt = self.buf.decode('utf8')
         self.assertRegex(txt, ('HTTP/1.1 200 OK\r\n'
@@ -85,7 +85,7 @@ class TestHTTPExceptions(unittest.TestCase):
         resp = web.HTTPFound(location='/redirect')
         self.assertEqual('/redirect', resp.location)
         self.assertEqual('/redirect', resp.headers['location'])
-        resp.start(req)
+        self.loop.run_until_complete(resp.prepare(req))
         self.loop.run_until_complete(resp.write_eof())
         txt = self.buf.decode('utf8')
         self.assertRegex(txt, ('HTTP/1.1 302 Found\r\n'
@@ -110,7 +110,7 @@ class TestHTTPExceptions(unittest.TestCase):
         self.assertEqual('GET', resp.method)
         self.assertEqual(['POST', 'PUT'], resp.allowed_methods)
         self.assertEqual('POST,PUT', resp.headers['allow'])
-        resp.start(req)
+        self.loop.run_until_complete(resp.prepare(req))
         self.loop.run_until_complete(resp.write_eof())
         txt = self.buf.decode('utf8')
         self.assertRegex(txt, ('HTTP/1.1 405 Method Not Allowed\r\n'
@@ -139,3 +139,19 @@ class TestHTTPExceptions(unittest.TestCase):
         self.assertEqual(txt, resp.text)
         self.assertEqual("text/html", resp.content_type)
         self.assertIsNone(resp.charset)
+
+    def test_default_body(self):
+        resp = web.HTTPOk()
+        self.assertEqual(b'200: OK', resp.body)
+
+    def test_empty_body_204(self):
+        resp = web.HTTPNoContent()
+        self.assertIsNone(resp.body)
+
+    def test_empty_body_205(self):
+        resp = web.HTTPNoContent()
+        self.assertIsNone(resp.body)
+
+    def test_empty_body_304(self):
+        resp = web.HTTPNoContent()
+        self.assertIsNone(resp.body)
