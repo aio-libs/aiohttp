@@ -1,24 +1,21 @@
 import abc
+import functools
 from inspect import signature
 
 import asyncio
 
 class Signal(metaclass=abc.ABCMeta):
     """
-    Abstract base class for signals.
+    Coroutine-based signal implementation
 
     To connect a callback to a signal, use the :meth:`callback` method. If you
     wish to pass additional arguments to your callback,
     use :meth:`functools.partial`. Signals can be disconnected again using
-    :meth:`disconnect`. Callbacks are executed in an arbitrary order.
+    :meth:`disconnect`. Callbacks are executed in an arbitrary order and must
+    be coroutines.
 
-    There are two declared concrete subclasses, :class:`FunctionSignal`, which
-    dispatches to plain function callbacks, and :class:`CoroutineSignal`,
-    which accepts coroutine functions as callbacks.
-
-    Signals are fired using :meth:`send`, which takes named arguments. The
-    :meth:`send` method for :class:`CoroutineSignal` is itself a coroutine
-    function.
+    Signals are fired using the :meth:`send` coroutine, which takes named
+    arguments.
     """
     def __init__(self, parameters):
         self._parameters = frozenset(parameters)
@@ -35,6 +32,13 @@ class Signal(metaclass=abc.ABCMeta):
         """
         # Check that the callback can be called with the given parameter names
         if __debug__:
+            # We suggest using functools.partial, but that hides the fact that
+            # they are coroutine functions. So, let's check the underlying
+            # function instead of the receiver itself.
+            func = receiver
+            while isinstance(func, functools.partial):
+                func = func.func
+            assert asyncio.iscoroutinefunction(func), receiver
             signature(receiver).bind(**{p: None for p in self._parameters})
         self._receivers.add(receiver)
 
@@ -49,39 +53,11 @@ class Signal(metaclass=abc.ABCMeta):
         """
         self._receivers.remove(receiver)
 
-    @abc.abstractmethod
+    @asyncio.coroutine
     def send(self, **kwargs):
         """
         Sends data to all registered receivers.
         """
-        pass
-
-class FunctionSignal(Signal):
-    """
-    A signal type that dispatches to plain functions.
-
-    See :class:`Signal` for documentation.
-    """
-    def connect(self, receiver):
-        assert not asyncio.iscoroutinefunction(receiver), receiver
-        super().connect(receiver)
-
-    def send(self, **kwargs):
-        for receiver in self._receivers:
-            receiver(**kwargs)
-
-class CoroutineSignal(Signal):
-    """
-    A signal type that dispatches to coroutine functions.
-
-    See :class:`Signal` for documentation.
-    """
-    def connect(self, receiver):
-        assert asyncio.iscoroutinefunction(receiver), receiver
-        super().connect(receiver)
-
-    @asyncio.coroutine
-    def send(self, **kwargs):
         for receiver in self._receivers:
             yield from receiver(**kwargs)
 
