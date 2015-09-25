@@ -116,7 +116,7 @@ Routes may have a *name*::
 
 In web-handler you may build *URL* for that route::
 
-   >>> request.app.router['root'].url(query="?a=b&c=d")
+   >>> request.app.router['root'].url(query={"a": "b", "c": "d"})
    '/root?a=b&c=d'
 
 More interesting example is building *URL* for :ref:`variable
