@@ -48,3 +48,9 @@ CHANGES
 - Don't trim redirect URL in client API #499
 
 - Extend precision of access log "D" to milliseconds #527
+
+- Deprecate `StreamResponse.start()` method in favor of
+  `StreamResponse.prepare()` coroutine #525
+
+  `.start()` is still supported but responses begun with `.start()`
+  doesn't call signal for response preparing to be sent. 
