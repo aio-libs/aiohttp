@@ -38,7 +38,8 @@ class Signal(metaclass=abc.ABCMeta):
             func = receiver
             while isinstance(func, functools.partial):
                 func = func.func
-            assert asyncio.iscoroutinefunction(func), receiver
+            if not asyncio.iscoroutinefunction(func):
+                raise TypeError("{} is not a coroutine function".format(receiver))
             signature(receiver).bind(**{p: None for p in self._parameters})
         self._receivers.add(receiver)
 
