@@ -281,7 +281,7 @@ class StaticRoute(Route):
         file_size = st.st_size
 
         resp.content_length = file_size
-        resp.start(request)
+        yield from resp.prepare(request)
 
         with open(filepath, 'rb') as f:
             yield from self._sendfile(request, resp, f, file_size)

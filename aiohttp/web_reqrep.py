@@ -425,8 +425,13 @@ class StreamResponse(HeadersMixin):
             self.headers.add(hdrs.SET_COOKIE, value)
 
     @property
-    def started(self):
+    def prepared(self):
         return self._resp_impl is not None
+
+    @property
+    def started(self):
+        warnings.warn('use Response.prepared instead', DeprecationWarning)
+        return self.prepared
 
     @property
     def status(self):
@@ -612,27 +617,39 @@ class StreamResponse(HeadersMixin):
             return None
 
     def _start_compression(self, request):
-        def start(coding):
+        def _start(coding):
             if coding != ContentCoding.identity:
                 self.headers[hdrs.CONTENT_ENCODING] = coding.value
                 self._resp_impl.add_compression_filter(coding.value)
                 self.content_length = None
 
         if self._compression_force:
-            start(self._compression_force)
+            _start(self._compression_force)
         else:
             accept_encoding = request.headers.get(
                 hdrs.ACCEPT_ENCODING, '').lower()
             for coding in ContentCoding:
                 if coding.value in accept_encoding:
-                    start(coding)
+                    _start(coding)
                     return
 
     def start(self, request):
+        warnings.warn('use .prepare(request) instead', DeprecationWarning)
         resp_impl = self._start_pre_check(request)
         if resp_impl is not None:
             return resp_impl
 
+        return self._start(request)
+
+    @asyncio.coroutine
+    def prepare(self, request):
+        resp_impl = self._start_pre_check(request)
+        if resp_impl is not None:
+            return resp_impl
+
+        return self._start(request)
+
+    def _start(self, request):
         self._req = request
         keep_alive = self._keep_alive
         if keep_alive is None:
