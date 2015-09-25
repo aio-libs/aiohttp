@@ -634,9 +634,6 @@ class StreamResponse(HeadersMixin):
                     return
 
     def start(self, request):
-        request.app.on_response_start.send(request=request,
-                                           response=self)
-
         warnings.warn('use .prepare(request) instead', DeprecationWarning)
         resp_impl = self._start_pre_check(request)
         if resp_impl is not None:
@@ -649,6 +646,8 @@ class StreamResponse(HeadersMixin):
         resp_impl = self._start_pre_check(request)
         if resp_impl is not None:
             return resp_impl
+        yield from request.app.on_response_start.send(request=request,
+                                                      response=self)
 
         return self._start(request)
 
