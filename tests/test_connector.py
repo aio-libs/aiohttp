@@ -7,6 +7,9 @@ import socket
 import unittest
 import ssl
 import sys
+import tempfile
+import shutil
+import os.path
 from unittest import mock
 
 import aiohttp
@@ -769,19 +772,32 @@ class TestHttpClientConnector(unittest.TestCase):
         return port
 
     @asyncio.coroutine
-    def create_server(self, method, path, handler=None, ssl_ctx=None):
+    def create_server(self, method, path, handler):
         app = web.Application(loop=self.loop)
-        if handler:
-            app.router.add_route(method, path, handler)
+        app.router.add_route(method, path, handler)
 
         port = self.find_unused_port()
         self.handler = app.make_handler(debug=True, keep_alive_on=False)
         srv = yield from self.loop.create_server(
-            self.handler, '127.0.0.1', port, ssl=ssl_ctx)
-        protocol = "https" if ssl_ctx else "http"
-        url = "{}://127.0.0.1:{}".format(protocol, port) + path
+            self.handler, '127.0.0.1', port)
+        url = "http://127.0.0.1:{}".format(port) + path
         self.addCleanup(srv.close)
         return app, srv, url
+
+    @asyncio.coroutine
+    def create_unix_server(self, method, path, handler):
+        tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmpdir)
+        app = web.Application(loop=self.loop)
+        app.router.add_route(method, path, handler)
+
+        self.handler = app.make_handler(debug=True, keep_alive_on=False)
+        sock_path = os.path.join(tmpdir, 'socket.sock')
+        srv = yield from self.loop.create_unix_server(
+            self.handler, sock_path)
+        url = "http://127.0.0.1" + path
+        self.addCleanup(srv.close)
+        return app, srv, url, sock_path
 
     def test_tcp_connector(self):
         @asyncio.coroutine
@@ -801,22 +817,23 @@ class TestHttpClientConnector(unittest.TestCase):
 
     @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'requires unix')
     def test_unix_connector(self):
-        path = '/tmp/aiohttp_unix.sock'
+        @asyncio.coroutine
+        def handler(request):
+            return web.HTTPOk()
 
-        connector = aiohttp.UnixConnector(path, loop=self.loop)
-        self.assertEqual(path, connector.path)
+        app, srv, url, sock_path = self.loop.run_until_complete(
+            self.create_unix_server('get', '/', handler))
 
-        with test_utils.run_server(
-                self.loop, listen_addr=path, router=Functional) as httpd:
-            r = self.loop.run_until_complete(
-                client.request(
-                    'get', httpd.url('method', 'get'),
-                    connector=connector,
-                    loop=self.loop))
-            content = self.loop.run_until_complete(r.content.read())
-            content = content.decode()
-            self.assertEqual(r.status, 200)
-            r.close()
+        connector = aiohttp.UnixConnector(sock_path, loop=self.loop)
+        self.assertEqual(sock_path, connector.path)
+
+        r = self.loop.run_until_complete(
+            client.request(
+                'get', url,
+                connector=connector,
+                loop=self.loop))
+        self.assertEqual(r.status, 200)
+        r.close()
 
     def test_connector_cookie_deprecation(self):
         with self.assertWarnsRegex(DeprecationWarning,
