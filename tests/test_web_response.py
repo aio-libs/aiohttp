@@ -2,7 +2,7 @@ import asyncio
 import datetime
 import unittest
 from unittest import mock
-from aiohttp import hdrs
+from aiohttp import hdrs, signals
 from aiohttp.multidict import CIMultiDict
 from aiohttp.web import ContentCoding, Request, StreamResponse, Response
 from aiohttp.protocol import HttpVersion, HttpVersion11, HttpVersion10
@@ -26,6 +26,7 @@ class TestStreamResponse(unittest.TestCase):
 
     def request_from_message(self, message):
         self.app = mock.Mock()
+        self.app.on_response_start = signals.Signal({'request', 'response'})
         self.payload = mock.Mock()
         self.transport = mock.Mock()
         self.reader = mock.Mock()
@@ -526,6 +527,7 @@ class TestResponse(unittest.TestCase):
 
     def make_request(self, method, path, headers=CIMultiDict()):
         self.app = mock.Mock()
+        self.app.on_response_start = signals.Signal({'request', 'response'})
         message = RawRequestMessage(method, path, HttpVersion11, headers,
                                     False, False)
         self.payload = mock.Mock()
