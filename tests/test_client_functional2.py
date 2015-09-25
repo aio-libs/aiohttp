@@ -2,6 +2,8 @@ import asyncio
 import io
 import socket
 import unittest
+import ssl
+import os.path
 
 import aiohttp
 from aiohttp import hdrs, log, web
@@ -31,7 +33,7 @@ class TestClientFunctional2(unittest.TestCase):
         return port
 
     @asyncio.coroutine
-    def create_server(self):
+    def create_server(self, *, ssl_ctx=None):
         app = web.Application(loop=self.loop)
 
         port = self.find_unused_port()
@@ -39,8 +41,9 @@ class TestClientFunctional2(unittest.TestCase):
             debug=True, keep_alive_on=False,
             access_log=log.access_logger)
         srv = yield from self.loop.create_server(
-            self.handler, '127.0.0.1', port)
-        url = "http://127.0.0.1:{}".format(port)
+            self.handler, '127.0.0.1', port, ssl=ssl_ctx)
+        proto = 'https' if ssl_ctx else 'http'
+        url = "{}://127.0.0.1:{}".format(proto, port)
         self.addCleanup(srv.close)
         return app, srv, url
 
@@ -159,3 +162,30 @@ class TestClientFunctional2(unittest.TestCase):
             yield from resp.release()
 
         self.loop.run_until_complete(go())
+
+    def test_client_ssl(self):
+        here = os.path.dirname(__file__)
+        connector = aiohttp.TCPConnector(verify_ssl=False, loop=self.loop)
+
+        @asyncio.coroutine
+        def handler(request):
+            return web.HTTPOk(text='Test message')
+
+        @asyncio.coroutine
+        def go():
+            ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+            ssl_ctx.load_cert_chain(
+                os.path.join(here, 'sample.crt'),
+                os.path.join(here, 'sample.key'))
+
+            app, _, url = yield from self.create_server(ssl_ctx=ssl_ctx)
+            app.router.add_route('GET', '/', handler)
+
+            r = yield from aiohttp.request(
+                'GET', url,
+                loop=self.loop, connector=connector)
+            txt = yield from r.text()
+            self.assertEqual(txt, 'Test message')
+
+        self.loop.run_until_complete(go())
+        connector.close()

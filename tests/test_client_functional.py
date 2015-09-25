@@ -71,34 +71,6 @@ class TestHttpClientFunctional(unittest.TestCase):
                 self.assertEqual(content1, content2)
                 r.close()
 
-    def test_HTTP_200_OK_METHOD_ssl(self):
-        connector = aiohttp.TCPConnector(verify_ssl=False, loop=self.loop)
-
-        with test_utils.run_server(self.loop, use_ssl=True) as httpd:
-            for meth in ('get', 'post', 'put', 'delete', 'head'):
-                @asyncio.coroutine
-                def go():
-                    yield from asyncio.sleep(0.1, loop=self.loop)
-
-                    r = yield from client.request(
-                        meth, httpd.url('method', meth),
-                        loop=self.loop, connector=connector)
-                    content = yield from r.read()
-
-                    self.assertEqual(r.status, 200)
-                    if meth == 'head':
-                        self.assertEqual(b'', content)
-                    else:
-                        self.assertEqual(content, b'Test message')
-                    r.close()
-                    # let loop to make one iteration to call connection_lost
-                    # and close socket
-                    yield from asyncio.sleep(0, loop=self.loop)
-
-                self.loop.run_until_complete(go())
-
-        connector.close()
-
     def test_use_global_loop(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             try:
