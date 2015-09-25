@@ -10,6 +10,7 @@ import sys
 from unittest import mock
 
 import aiohttp
+from aiohttp import web
 from aiohttp import client
 from aiohttp import test_utils
 from aiohttp.errors import FingerprintMismatch
@@ -748,27 +749,55 @@ class TestBaseConnector(unittest.TestCase):
 class TestHttpClientConnector(unittest.TestCase):
 
     def setUp(self):
+        self.handler = None
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
 
     def tearDown(self):
-        # just in case if we have transport close callbacks
-        test_utils.run_briefly(self.loop)
-
+        if self.handler:
+            self.loop.run_until_complete(self.handler.finish_connections())
+        self.loop.stop()
+        self.loop.run_forever()
         self.loop.close()
         gc.collect()
 
+    def find_unused_port(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind(('127.0.0.1', 0))
+        port = s.getsockname()[1]
+        s.close()
+        return port
+
+    @asyncio.coroutine
+    def create_server(self, method, path, handler=None, ssl_ctx=None):
+        app = web.Application(loop=self.loop)
+        if handler:
+            app.router.add_route(method, path, handler)
+
+        port = self.find_unused_port()
+        self.handler = app.make_handler(debug=True, keep_alive_on=False)
+        srv = yield from self.loop.create_server(
+            self.handler, '127.0.0.1', port, ssl=ssl_ctx)
+        protocol = "https" if ssl_ctx else "http"
+        url = "{}://127.0.0.1:{}".format(protocol, port) + path
+        self.addCleanup(srv.close)
+        return app, srv, url
+
     def test_tcp_connector(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            r = self.loop.run_until_complete(
-                client.request(
-                    'get', httpd.url('method', 'get'),
-                    connector=aiohttp.TCPConnector(loop=self.loop),
-                    loop=self.loop))
-            content = self.loop.run_until_complete(r.content.read())
-            content = content.decode()
-            self.assertEqual(r.status, 200)
-            r.close()
+        @asyncio.coroutine
+        def handler(request):
+            return web.HTTPOk()
+
+        app, srv, url = self.loop.run_until_complete(
+            self.create_server('get', '/', handler))
+        r = self.loop.run_until_complete(
+            aiohttp.request(
+                'get', url,
+                connector=aiohttp.TCPConnector(loop=self.loop),
+                loop=self.loop))
+        self.loop.run_until_complete(r.release())
+        self.assertEqual(r.status, 200)
+        r.close()
 
     @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'requires unix')
     def test_unix_connector(self):
