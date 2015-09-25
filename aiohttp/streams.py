@@ -393,6 +393,7 @@ class ChunksQueue(DataQueue):
 
 def maybe_resume(func):
 
+    @asyncio.coroutine
     @functools.wraps(func)
     def wrapper(self, *args, **kw):
         result = yield from func(self, *args, **kw)
