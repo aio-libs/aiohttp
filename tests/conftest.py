@@ -29,6 +29,8 @@ def loop(request):
 @pytest.mark.tryfirst
 def pytest_pycollect_makeitem(collector, name, obj):
     if collector.funcnamefilter(name):
+        if not callable(obj):
+            return
         item = pytest.Function(name, parent=collector)
         if 'run_loop' in item.keywords:
             return list(collector._genfunctions(name, obj))
