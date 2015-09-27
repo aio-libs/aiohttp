@@ -807,14 +807,6 @@ class StaticFileMixin(WebFunctionalSetupMixin):
             self.assertEqual(resp.headers.get('CONTENT-ENCODING'), None)
             resp.close()
 
-            resp = yield from session.request('GET', url + 'fake')
-            self.assertEqual(404, resp.status)
-            resp.close()
-
-            resp = yield from session.request('GET', url + '/../../')
-            self.assertEqual(404, resp.status)
-            resp.close()
-
         here = os.path.dirname(__file__)
         filename = 'data.unknown_mime_type'
         self.loop.run_until_complete(go(here, filename))
@@ -837,14 +829,6 @@ class StaticFileMixin(WebFunctionalSetupMixin):
             ct = resp.headers['CONTENT-TYPE']
             self.assertEqual('image/jpeg', ct)
             self.assertEqual(resp.headers.get('CONTENT-ENCODING'), None)
-            resp.close()
-
-            resp = yield from request('GET', url + 'fake', loop=self.loop)
-            self.assertEqual(404, resp.status)
-            resp.close()
-
-            resp = yield from request('GET', url + '/../../', loop=self.loop)
-            self.assertEqual(404, resp.status)
             resp.close()
 
         here = os.path.dirname(__file__)
