@@ -41,21 +41,26 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         return app, srv, url
 
     @asyncio.coroutine
-    def connect_ws(self, url, protocol=''):
+    def connect_ws(self, url, protocol=None):
         sec_key = base64.b64encode(os.urandom(16))
 
         conn = aiohttp.TCPConnector(loop=self.loop)
         self.addCleanup(conn.close)
+
+        headers={
+            'UPGRADE': 'WebSocket',
+            'CONNECTION': 'Upgrade',
+            'SEC-WEBSOCKET-VERSION': '13',
+            'SEC-WEBSOCKET-KEY': sec_key.decode(),
+        }
+
+        if protocol:
+            headers['SEC-WEBSOCKET-PROTOCOL'] = protocol
+
         # send request
         response = yield from aiohttp.request(
             'get', url,
-            headers={
-                'UPGRADE': 'WebSocket',
-                'CONNECTION': 'Upgrade',
-                'SEC-WEBSOCKET-VERSION': '13',
-                'SEC-WEBSOCKET-PROTOCOL': protocol,
-                'SEC-WEBSOCKET-KEY': sec_key.decode(),
-            },
+            headers=headers,
             connector=conn,
             loop=self.loop)
         self.addCleanup(response.close, True)
