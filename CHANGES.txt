@@ -2,7 +2,7 @@ CHANGES
 =======
 
 0.18.0a0 (XX-XX-XXXX)
--------------------
+---------------------
 
 - Use errors.HttpProcessingError.message as HTTP error reason and
   message #459
@@ -28,3 +28,29 @@ CHANGES
 - Raise RuntimeError when chunked enabled and HTTP is 1.0 #488
 
 - Fix a bug with processing io.BytesIO as data parameter for client API #500
+
+- Skip auto-generation of Content-Type header #507
+
+- Use sendfile facility for static file handling #503
+
+- Default `response_factory` in `app.router.add_static` now is
+  `StreamResponse`, not `None`. The functionality is not changed if
+  default is not specified.
+
+- Drop `ClientResponse.message` attribute, it was always implementation detail.
+
+- Streams are optimized for speed and mostly memory in case of a big
+  HTTP message sizes #496
+
+- Fix a bug for server-side cookies for dropping cookie and setting it
+  again without Max-Age parameter.
+
+- Don't trim redirect URL in client API #499
+
+- Extend precision of access log "D" to milliseconds #527
+
+- Deprecate `StreamResponse.start()` method in favor of
+  `StreamResponse.prepare()` coroutine #525
+
+  `.start()` is still supported but responses begun with `.start()`
+  doesn't call signal for response preparing to be sent. 

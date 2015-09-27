@@ -1,3 +1,5 @@
+# coding: utf-8
+
 import asyncio
 import gc
 import unittest
@@ -9,9 +11,13 @@ import io
 import urllib.parse
 import os.path
 
+from http.cookies import SimpleCookie
+
 import aiohttp
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
-from aiohttp.multidict import upstr
+from aiohttp.multidict import upstr, CIMultiDict, CIMultiDictProxy
+from aiohttp import BaseConnector
+
 
 PY_341 = sys.version_info >= (3, 4, 1)
 
@@ -27,8 +33,15 @@ class TestClientRequest(unittest.TestCase):
         self.protocol = unittest.mock.Mock()
         self.protocol.writer.drain.return_value = ()
         self.stream = aiohttp.StreamParser(loop=self.loop)
+        self.connector = BaseConnector(loop=self.loop)
 
     def tearDown(self):
+        self.connector.close()
+        try:
+            self.loop.stop()
+            self.loop.run_forever()
+        except RuntimeError:  # loop is already closed
+            pass
         self.loop.close()
         gc.collect()
 
@@ -92,6 +105,11 @@ class TestClientRequest(unittest.TestCase):
     def test_host_port_err(self):
         self.assertRaises(
             ValueError, ClientRequest, 'get', 'http://python.org:123e/',
+            loop=self.loop)
+
+    def test_hostname_err(self):
+        self.assertRaises(
+            ValueError, ClientRequest, 'get', 'http://:8080/',
             loop=self.loop)
 
     def test_host_header(self):
@@ -245,11 +263,52 @@ class TestClientRequest(unittest.TestCase):
         self.loop.run_until_complete(req.close())
         resp.close()
 
+    def test_no_content_length2(self):
         req = ClientRequest('head', 'http://python.org', loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertEqual('0', req.headers.get('CONTENT-LENGTH'))
         self.loop.run_until_complete(req.close())
         resp.close()
+
+    def test_content_type_auto_header_get(self):
+        req = ClientRequest('get', 'http://python.org', loop=self.loop)
+        req.send(self.transport, self.protocol)
+        self.assertNotIn('CONTENT-TYPE', req.headers)
+
+    def test_content_type_auto_header_form(self):
+        req = ClientRequest('post', 'http://python.org', data={'hey': 'you'},
+                            loop=self.loop)
+        req.send(self.transport, self.protocol)
+        self.assertEqual('application/x-www-form-urlencoded',
+                         req.headers.get('CONTENT-TYPE'))
+
+    def test_content_type_auto_header_bytes(self):
+        req = ClientRequest('post', 'http://python.org', data=b'hey you',
+                            loop=self.loop)
+        req.send(self.transport, self.protocol)
+        self.assertEqual('application/octet-stream',
+                         req.headers.get('CONTENT-TYPE'))
+
+    def test_content_type_skip_auto_header_bytes(self):
+        req = ClientRequest('post', 'http://python.org', data=b'hey you',
+                            skip_auto_headers=set('CONTENT-TYPE'),
+                            loop=self.loop)
+        req.send(self.transport, self.protocol)
+        self.assertNotIn('application/octet-stream', req.headers)
+
+    def test_content_type_skip_auto_header_form(self):
+        req = ClientRequest('post', 'http://python.org', data={'hey': 'you'},
+                            loop=self.loop, skip_auto_headers={'CONTENT-TYPE'})
+        req.send(self.transport, self.protocol)
+        self.assertNotIn('CONTENT-TYPE', req.headers)
+
+    def test_content_type_auto_header_content_length_no_skip(self):
+        req = ClientRequest('get', 'http://python.org',
+                            data=io.BytesIO(b'hey'),
+                            skip_auto_headers={'CONTENT-LENGTH'},
+                            loop=self.loop)
+        req.send(self.transport, self.protocol)
+        self.assertEqual(req.headers.get('CONTENT-LENGTH'), '3')
 
     def test_path_is_not_double_encoded(self):
         req = ClientRequest('get', "http://0.0.0.0/get/test case",
@@ -367,7 +426,7 @@ class TestClientRequest(unittest.TestCase):
         req = ClientRequest(
             'post', 'http://python.org/',
             data={}, loop=self.loop)
-        req.update_body_from_data.assert_called_once_with({})
+        req.update_body_from_data.assert_called_once_with({}, frozenset())
         self.loop.run_until_complete(req.close())
 
     def test_get_with_data(self):
@@ -762,3 +821,54 @@ class TestClientRequest(unittest.TestCase):
         self.addCleanup(asyncio.set_event_loop, None)
         req = ClientRequest('get', 'http://python.org/')
         self.assertIs(req.loop, self.loop)
+
+    def test_custom_req_rep(self):
+        @asyncio.coroutine
+        def go():
+            conn = None
+
+            class CustomResponse(ClientResponse):
+                @asyncio.coroutine
+                def start(self, connection, read_until_eof=False):
+                    nonlocal conn
+                    conn = connection
+                    self.status = 123
+                    self.reason = 'Test OK'
+                    self.headers = CIMultiDictProxy(CIMultiDict())
+                    self.cookies = SimpleCookie()
+                    return
+
+            called = False
+
+            class CustomRequest(ClientRequest):
+
+                def send(self, writer, reader):
+                    resp = self.response_class(self.method,
+                                               self.url,
+                                               self.host,
+                                               writer=self._writer,
+                                               continue100=self._continue)
+                    resp._post_init(self.loop)
+                    self.response = resp
+                    nonlocal called
+                    called = True
+                    return resp
+
+            @asyncio.coroutine
+            def create_connection(req):
+                self.assertIsInstance(req, CustomRequest)
+                return self.transport, self.protocol
+            self.connector._create_connection = create_connection
+
+            resp = yield from aiohttp.request('get',
+                                              'http://example.com/path/to',
+                                              request_class=CustomRequest,
+                                              response_class=CustomResponse,
+                                              connector=self.connector,
+                                              loop=self.loop)
+            self.assertIsInstance(resp, CustomResponse)
+            self.assertTrue(called)
+            resp.close()
+            conn.close()
+
+        self.loop.run_until_complete(go())

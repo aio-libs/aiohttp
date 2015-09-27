@@ -5,8 +5,7 @@ HTTP Client Reference
 
 .. highlight:: python
 
-.. module:: aiohttp.client
-
+.. module:: aiohttp
 
 
 Client Session
@@ -68,7 +67,7 @@ The client session supports context manager protocol for self closing::
                    May be either *iterable of key-value pairs* or
                    :class:`~collections.abc.Mapping`
                    (e.g. :class:`dict`,
-                   :class:`~aiohttp.multidict.CIMultiDict`).
+                   :class:`~aiohttp.CIMultiDict`).
 
    :param skip_auto_headers: set of headers for which autogeneration
       should be skipped.
@@ -76,9 +75,10 @@ The client session supports context manager protocol for self closing::
       *aiohttp* autogenerates headers like ``User-Agent`` or
       ``Content-Type`` if these headers are not explicitly
       passed. Using ``skip_auto_headers`` parameter allows to skip
-      that generation.
+      that generation. Note that ``Content-Length`` autogeneration can't
+      be skipped.
 
-      Iterable of :class:`str` or :class:`~aiohttp.multidict.upstr` (optional)
+      Iterable of :class:`str` or :class:`~aiohttp.upstr` (optional)
 
    :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that represents
                                           HTTP Basic Authorization (optional)
@@ -86,7 +86,8 @@ The client session supports context manager protocol for self closing::
    :param request_class: Request class implementation. ``ClientRequest`` by
                          default.
 
-   :param response_class: Response class implementation. ``ClientResponse`` by
+   :param response_class: Response class
+                          implementation. :class:`ClientResponse` by
                           default.
 
    :param ws_response_class: WebSocketResponse class implementation.
@@ -98,7 +99,7 @@ The client session supports context manager protocol for self closing::
       *request_class* default changed from ``None`` to ``ClientRequest``
 
    .. versionchanged:: 0.16
-      *response_class* default changed from ``None`` to ``ClientResponse``
+      *response_class* default changed from ``None`` to :class:`ClientResponse`
 
    .. attribute:: closed
 
@@ -153,7 +154,7 @@ The client session supports context manager protocol for self closing::
          passed. Using ``skip_auto_headers`` parameter allows to skip
          that generation.
 
-         Iterable of :class:`str` or :class:`~aiohttp.multidict.upstr`
+         Iterable of :class:`str` or :class:`~aiohttp.upstr`
          (optional)
 
       :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that
@@ -180,6 +181,9 @@ The client session supports context manager protocol for self closing::
                                   does not have Content-Length header.
                                   ``True`` by default (optional).
 
+      :return ClientResponse: a :class:`client response
+                              <ClientResponse>` object.
+
    .. coroutinemethod:: get(url, *, allow_redirects=True, **kwargs)
 
       Perform a ``GET`` request.
@@ -193,6 +197,8 @@ The client session supports context manager protocol for self closing::
       :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                    ``True`` by default (optional).
 
+      :return ClientResponse: a :class:`client response
+                              <ClientResponse>` object.
 
    .. coroutinemethod:: post(url, *, data=None, **kwargs)
 
@@ -208,6 +214,9 @@ The client session supports context manager protocol for self closing::
       :param data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)
 
+      :return ClientResponse: a :class:`client response
+                              <ClientResponse>` object.
+
    .. coroutinemethod:: put(url, *, data=None, **kwargs)
 
       Perform a ``PUT`` request.
@@ -222,6 +231,9 @@ The client session supports context manager protocol for self closing::
       :param data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)
 
+      :return ClientResponse: a :class:`client response
+                              <ClientResponse>` object.
+
    .. coroutinemethod:: delete(url, **kwargs)
 
       Perform a ``DELETE`` request.
@@ -231,6 +243,9 @@ The client session supports context manager protocol for self closing::
       parameters, provide `kwargs`.
 
       :param str url: Request URL
+
+      :return ClientResponse: a :class:`client response
+                              <ClientResponse>` object.
 
    .. coroutinemethod:: head(url, *, allow_redirects=False, **kwargs)
 
@@ -244,6 +259,9 @@ The client session supports context manager protocol for self closing::
 
       :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                    ``False`` by default (optional).
+
+      :return ClientResponse: a :class:`client response
+                              <ClientResponse>` object.
 
    .. coroutinemethod:: options(url, *, allow_redirects=True, **kwargs)
 
@@ -259,6 +277,9 @@ The client session supports context manager protocol for self closing::
       :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                    ``True`` by default (optional).
 
+      :return ClientResponse: a :class:`client response
+                              <ClientResponse>` object.
+
    .. coroutinemethod:: patch(url, *, data=None, **kwargs)
 
       Perform a ``PATCH`` request.
@@ -273,7 +294,11 @@ The client session supports context manager protocol for self closing::
                    send in the body of the request (optional)
 
 
-   .. coroutinemethod:: ws_connect(url, *, protocols=(), timeout=10.0\
+      :return ClientResponse: a :class:`client response
+                              <ClientResponse>` object.
+
+   .. coroutinemethod:: ws_connect(url, *, protocols=(), timeout=10.0,\
+                                   auth=None,\
                                    autoclose=True, autoping=True)
 
       Create a websocket connection. Returns a
@@ -285,6 +310,10 @@ The client session supports context manager protocol for self closing::
 
       :param float timeout: Timeout for websocket read. 10 seconds by default
 
+      :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that
+                                             represents HTTP Basic Authorization
+                                             (optional)
+
       :param bool autoclose: Automatically close websocket connection on close
                              message from server. If `autoclose` is False
                              them close procedure has to be handled manually
@@ -293,6 +322,12 @@ The client session supports context manager protocol for self closing::
                             message from server
 
       .. versionadded:: 0.16
+
+         Add :meth:`ws_connect`.
+
+      .. versionadded:: 0.18
+
+         Add *auth* parameter.
 
    .. method:: close()
 
@@ -384,6 +419,8 @@ certification chaining.
                 (optional)
 
 
+   :return ClientResponse: a :class:`client response <ClientResponse>` object.
+
 Usage::
 
      >>> import aiohttp
@@ -472,8 +509,6 @@ Usage::
 
 Connectors
 ----------
-
-.. module:: aiohttp.connector
 
 Connectors are transports for aiohttp client API.
 
@@ -837,5 +872,109 @@ Connection
 
       Underlying socket is not closed, next :meth:`close` or
       :meth:`release` calls don't return socket to free pool.
+
+
+Response object
+---------------
+
+.. class:: ClientResponse
+
+   Client response returned be :meth:`ClientSession.request` and family.
+
+   User never creates the instance of ClientResponse class but gets it
+   from API calls.
+
+   .. attribute:: version
+
+      Response's version, :class:`HttpVersion` instance.
+
+   .. attribute:: status
+
+      HTTP status code of response (:class:`int`), e.g. ``200``.
+
+   .. attribute:: reason
+
+      HTTP status reason of response (:class:`str`), e.g. ``"OK"``.
+
+   .. attribute:: connection
+
+      :class:`Connection` used for handling response.
+
+   .. attribute:: content
+
+      Payload stream, contains response's BODY (:class:`StreamReader`
+      compatible instance, most likely
+      :class:`FlowControlStreamReader` one).
+
+   .. attribute:: cookies
+
+      HTTP cookies of response (*Set-Cookie* http header,
+      :class:`~http.cookies.SimpleCookie`).
+
+   .. attribute:: headers
+
+      HTTP headers of response, :class:`CIMultiDictProxy`.
+
+   .. method:: close()
+
+      Close response and underlying connection.
+
+      For :term:`keep-alive` support see :meth:`release`.
+
+   .. coroutinemethod:: read()
+
+      Read the whole response's body as :class:`bytes`.
+
+      Close underlying connection if data reading gets an error,
+      release connection otherwise.
+
+      :return bytes: read *BODY*.
+
+      .. seealso:: :meth:`close`, :meth:`release`.
+
+   .. coroutinemethod:: release()
+
+      Finish response processing, release underlying connection and
+      return it into free connection pool for reusage by next upcoming
+      request.
+
+   .. coroutinemethod:: text(encoding=None)
+
+      Read response's body and return decoded :class:`str` using
+      specified *encoding* parameter.
+
+      If *encoding* is ``None`` content encoding is autocalculated
+      using :term:`cchardet` or :term:`chardet` as fallback if
+      *cchardet* is not awailable.
+
+      Close underlying connection if data reading gets an error,
+      release connection otherwise.
+
+      :param str encoding: text encoding used for *BODY* decoding, or
+                           ``None`` for encoding autodetection
+                           (default).
+
+      :return str: decoded *BODY*
+
+   .. coroutinemethod:: text(encoding=None)
+
+      Read response's body as *JSON*, return :class:`dict` using
+      specified *encoding* and *loader*.
+
+      If *encoding* is ``None`` content encoding is autocalculated
+      using :term:`cchardet` or :term:`chardet` as fallback if
+      *cchardet* is not awailable.
+
+      Close underlying connection if data reading gets an error,
+      release connection otherwise.
+
+      :param str encoding: text encoding used for *BODY* decoding, or
+                           ``None`` for encoding autodetection
+                           (default).
+
+      :param callable loads: :func:`callable` used for loading *JSON*
+                             data, :func:`json.loads` by default.
+
+      :return dict: *BODY* as *JSON* data.
 
 .. disqus::

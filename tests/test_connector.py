@@ -7,16 +7,16 @@ import socket
 import unittest
 import ssl
 import sys
+import tempfile
+import shutil
+import os.path
 from unittest import mock
 
 import aiohttp
+from aiohttp import web
 from aiohttp import client
-from aiohttp import test_utils
-from aiohttp.errors import FingerprintMismatch
 from aiohttp.client import ClientResponse, ClientRequest
 from aiohttp.connector import Connection
-
-from tests.test_client_functional import Functional
 
 PY_341 = sys.version_info >= (3, 4, 1)
 
@@ -251,7 +251,7 @@ class TestBaseConnector(unittest.TestCase):
         conn._start_cleanup_task = unittest.mock.Mock()
         req = unittest.mock.Mock()
         resp = req.response = unittest.mock.Mock()
-        resp.message.should_close = False
+        resp._should_close = False
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
         key = 1
@@ -389,11 +389,15 @@ class TestBaseConnector(unittest.TestCase):
         conn = aiohttp.BaseConnector(loop=self.loop)
         conn._create_connection = unittest.mock.Mock()
         conn._create_connection.return_value = asyncio.Future(loop=self.loop)
-        conn._create_connection.return_value.set_exception(OSError())
+        err = OSError(1, 'permission error')
+        conn._create_connection.return_value.set_exception(err)
 
-        with self.assertRaises(aiohttp.ClientOSError):
+        with self.assertRaises(aiohttp.ClientOSError) as ctx:
             req = unittest.mock.Mock()
             self.loop.run_until_complete(conn.connect(req))
+        self.assertEqual(1, ctx.exception.errno)
+        self.assertTrue(ctx.exception.strerror.startswith('Cannot connect to'))
+        self.assertTrue(ctx.exception.strerror.endswith('[permission error]'))
 
     def test_start_cleanup_task(self):
         loop = unittest.mock.Mock()
@@ -486,45 +490,6 @@ class TestBaseConnector(unittest.TestCase):
         invalid = b'\x00'
         with self.assertRaises(ValueError):
             aiohttp.TCPConnector(loop=self.loop, fingerprint=invalid)
-
-    def test_tcp_connector_fingerprint(self):
-        # The even-index fingerprints below are "expect success" cases
-        # for ./sample.crt.der, the cert presented by test_utils.run_server.
-        # The odd-index fingerprints are "expect fail" cases.
-        testcases = (
-            # md5
-            b'\xa2\x06G\xad\xaa\xf5\xd8\\J\x99^by;\x06=',
-            b'\x00' * 16,
-
-            # sha1
-            b's\x93\xfd:\xed\x08\x1do\xa9\xaeq9\x1a\xe3\xc5\x7f\x89\xe7l\xf9',
-            b'\x00' * 20,
-
-            # sha256
-            b'0\x9a\xc9D\x83\xdc\x91\'\x88\x91\x11\xa1d\x97\xfd\xcb~7U\x14D@L'
-            b'\x11\xab\x99\xa8\xae\xb7\x14\xee\x8b',
-            b'\x00' * 32,
-        )
-        for i, fingerprint in enumerate(testcases):
-            expect_fail = i % 2
-            conn = aiohttp.TCPConnector(loop=self.loop, verify_ssl=False,
-                                        fingerprint=fingerprint)
-            with test_utils.run_server(self.loop, use_ssl=True) as httpd:
-                coro = client.request('get', httpd.url('method', 'get'),
-                                      connector=conn, loop=self.loop)
-                if expect_fail:
-                    with self.assertRaises(FingerprintMismatch) as cm:
-                        self.loop.run_until_complete(coro)
-                    exc = cm.exception
-                    self.assertEqual(exc.expected, fingerprint)
-                    # the previous test case should be what we actually got
-                    self.assertEqual(exc.got, testcases[i-1])
-                else:
-                    # should not raise
-                    resp = self.loop.run_until_complete(coro)
-                    resp.close(force=True)
-
-            conn.close()
 
     def test_tcp_connector_clear_resolved_hosts(self):
         conn = aiohttp.TCPConnector(loop=self.loop)
@@ -744,46 +709,88 @@ class TestBaseConnector(unittest.TestCase):
 class TestHttpClientConnector(unittest.TestCase):
 
     def setUp(self):
+        self.handler = None
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
 
     def tearDown(self):
-        # just in case if we have transport close callbacks
-        test_utils.run_briefly(self.loop)
-
+        if self.handler:
+            self.loop.run_until_complete(self.handler.finish_connections())
+        self.loop.stop()
+        self.loop.run_forever()
         self.loop.close()
         gc.collect()
 
+    def find_unused_port(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind(('127.0.0.1', 0))
+        port = s.getsockname()[1]
+        s.close()
+        return port
+
+    @asyncio.coroutine
+    def create_server(self, method, path, handler):
+        app = web.Application(loop=self.loop)
+        app.router.add_route(method, path, handler)
+
+        port = self.find_unused_port()
+        self.handler = app.make_handler(debug=True, keep_alive_on=False)
+        srv = yield from self.loop.create_server(
+            self.handler, '127.0.0.1', port)
+        url = "http://127.0.0.1:{}".format(port) + path
+        self.addCleanup(srv.close)
+        return app, srv, url
+
+    @asyncio.coroutine
+    def create_unix_server(self, method, path, handler):
+        tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmpdir)
+        app = web.Application(loop=self.loop)
+        app.router.add_route(method, path, handler)
+
+        self.handler = app.make_handler(debug=True, keep_alive_on=False)
+        sock_path = os.path.join(tmpdir, 'socket.sock')
+        srv = yield from self.loop.create_unix_server(
+            self.handler, sock_path)
+        url = "http://127.0.0.1" + path
+        self.addCleanup(srv.close)
+        return app, srv, url, sock_path
+
     def test_tcp_connector(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            r = self.loop.run_until_complete(
-                client.request(
-                    'get', httpd.url('method', 'get'),
-                    connector=aiohttp.TCPConnector(loop=self.loop),
-                    loop=self.loop))
-            content = self.loop.run_until_complete(r.content.read())
-            content = content.decode()
-            self.assertEqual(r.status, 200)
-            r.close()
+        @asyncio.coroutine
+        def handler(request):
+            return web.HTTPOk()
+
+        app, srv, url = self.loop.run_until_complete(
+            self.create_server('get', '/', handler))
+        r = self.loop.run_until_complete(
+            aiohttp.request(
+                'get', url,
+                connector=aiohttp.TCPConnector(loop=self.loop),
+                loop=self.loop))
+        self.loop.run_until_complete(r.release())
+        self.assertEqual(r.status, 200)
+        r.close()
 
     @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'requires unix')
     def test_unix_connector(self):
-        path = '/tmp/aiohttp_unix.sock'
+        @asyncio.coroutine
+        def handler(request):
+            return web.HTTPOk()
 
-        connector = aiohttp.UnixConnector(path, loop=self.loop)
-        self.assertEqual(path, connector.path)
+        app, srv, url, sock_path = self.loop.run_until_complete(
+            self.create_unix_server('get', '/', handler))
 
-        with test_utils.run_server(
-                self.loop, listen_addr=path, router=Functional) as httpd:
-            r = self.loop.run_until_complete(
-                client.request(
-                    'get', httpd.url('method', 'get'),
-                    connector=connector,
-                    loop=self.loop))
-            content = self.loop.run_until_complete(r.content.read())
-            content = content.decode()
-            self.assertEqual(r.status, 200)
-            r.close()
+        connector = aiohttp.UnixConnector(sock_path, loop=self.loop)
+        self.assertEqual(sock_path, connector.path)
+
+        r = self.loop.run_until_complete(
+            client.request(
+                'get', url,
+                connector=connector,
+                loop=self.loop))
+        self.assertEqual(r.status, 200)
+        r.close()
 
     def test_connector_cookie_deprecation(self):
         with self.assertWarnsRegex(DeprecationWarning,
@@ -819,8 +826,8 @@ class TestProxyConnector(unittest.TestCase):
 
     def tearDown(self):
         # just in case if we have transport close callbacks
-        test_utils.run_briefly(self.loop)
-
+        self.loop.stop()
+        self.loop.run_forever()
         self.loop.close()
         gc.collect()
 

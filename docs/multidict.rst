@@ -1,18 +1,19 @@
 .. _aiohttp-multidict:
 
-Multidicts
-==========
+============
+ Multidicts
+============
 
 .. highlight:: python
 
-.. module:: aiohttp.multidict
+.. module:: aiohttp
 
 
 *HTTP Headers* and *URL query string* require specific data structure:
 *multidict*. It behaves mostly like a :class:`dict` but it can have
 several *values* for the same *key*.
 
-:mod:`aiohttp.multidict` has four multidict classes:
+:mod:`aiohttp` has four multidict classes:
 :class:`MultiDict`, :class:`MultiDictProxy`, :class:`CIMultiDict`
 and :class:`CIMultiDictProxy`.
 
@@ -40,7 +41,7 @@ insensitive, e.g.::
 
 
 MultiDict
----------
+=========
 
 .. class:: MultiDict(**kwargs)
            MultiDict(mapping, **kwargs)
@@ -141,26 +142,23 @@ MultiDict
 
       ``d.get(key)`` is equivalent to ``d.getone(key, None)``.
 
-   .. method:: keys(getall=True)
+   .. method:: keys()
 
       Return a new view of the dictionary's keys.
 
-      View contains all keys if *getall* is ``True`` (default) or
-      distinct set of ones otherwise.
+      View contains all keys, possibly with duplicates.
 
-   .. method:: items(getall=True)
+   .. method:: items()
 
       Return a new view of the dictionary's items (``(key, value)`` pairs).
 
-      View contains all items if *getall* is ``True`` (default) or
-      only first key occurrences otherwise.
+      View contains all items, multiple items can have the same key.
 
-   .. method:: values(getall=True)
+   .. method:: values()
 
       Return a new view of the dictionary's values.
 
-      View contains all values if *getall* is ``True`` (default) or
-      only first key occurrences otherwise.
+      View contains all values.
 
    .. method:: pop(key[, default])
 
@@ -207,7 +205,7 @@ MultiDict
 
 
 CIMultiDict
------------
+===========
 
 
 .. class:: CIMultiDict(**kwargs)
@@ -239,7 +237,7 @@ CIMultiDict
 
 
 MultiDictProxy
----------------
+==============
 
 .. class:: MultiDictProxy(multidict)
 
@@ -304,29 +302,26 @@ MultiDictProxy
 
       ``d.get(key)`` is equivalent to ``d.getone(key, None)``.
 
-   .. method:: keys(getall=True)
+   .. method:: keys()
 
       Return a new view of the dictionary's keys.
 
-      View contains all keys if *getall* is ``True`` (default) or
-      distinct set of ones otherwise.
+      View contains all keys, possibly with duplicates.
 
-   .. method:: keys(getall=True)
+   .. method:: items()
 
       Return a new view of the dictionary's items (``(key, value)`` pairs).
 
-      View contains all items if *getall* is ``True`` (default) or
-      only first key occurrences otherwise.
+      View contains all items, multiple items can have the same key.
 
-   .. method:: values(getall=True)
+   .. method:: values()
 
       Return a new view of the dictionary's values.
 
-      View contains all values if *getall* is ``True`` (default) or
-      only first key occurrences otherwise.
+      View contains all values.
 
 CIMultiDictProxy
-----------------
+================
 
 .. class:: CIMultiDictProxy(multidict)
 
@@ -338,7 +333,7 @@ CIMultiDictProxy
 
 
 upstr
------
+=====
 
 :class:`CIMultiDict` accepts :class:`str` as *key* argument for dict
 lookups but converts it to upper case internally.

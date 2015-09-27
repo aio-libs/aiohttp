@@ -153,7 +153,7 @@ class ClientSession:
                     aiohttp.ServerDisconnectedError) as exc:
                 raise aiohttp.ClientResponseError() from exc
             except OSError as exc:
-                raise aiohttp.ClientOSError() from exc
+                raise aiohttp.ClientOSError(*exc.args) from exc
 
             self._update_cookies(resp.cookies)
             # For Backward compatability with `share_cookie` connectors
@@ -185,10 +185,9 @@ class ClientSession:
                 elif not scheme:
                     r_url = urllib.parse.urljoin(url, r_url)
 
-                url = urllib.parse.urldefrag(r_url)[0]
-                if url:
-                    yield from resp.release()
-                    continue
+                url = r_url
+                yield from resp.release()
+                continue
 
             break
 
@@ -199,7 +198,8 @@ class ClientSession:
                    protocols=(),
                    timeout=10.0,
                    autoclose=True,
-                   autoping=True):
+                   autoping=True,
+                   auth=None):
         """Initiate websocket connection."""
 
         sec_key = base64.b64encode(os.urandom(16))
@@ -215,7 +215,8 @@ class ClientSession:
 
         # send request
         resp = yield from self.request('get', url, headers=headers,
-                                       read_until_eof=False)
+                                       read_until_eof=False,
+                                       auth=auth)
 
         # check handshake
         if resp.status != 101:

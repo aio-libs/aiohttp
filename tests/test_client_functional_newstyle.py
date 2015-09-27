@@ -43,7 +43,7 @@ class TestHttpClientFunctionalNewStyle(unittest.TestCase):
         self.addCleanup(srv.close)
         return app, srv, url
 
-    def test_keepalive_two_requests_sucess(self):
+    def test_keepalive_two_requests_success(self):
         @asyncio.coroutine
         def handler(request):
             body = yield from request.read()

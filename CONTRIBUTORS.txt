@@ -5,6 +5,7 @@ A. Jesse Jiryu Davis
 Alejandro Gómez
 Alex Lisovoy
 Alexander Bayandin
+Alexander Karpinsky
 Alexander Shorin
 Alexander Travov
 Alexey Popravka
@@ -35,6 +36,7 @@ Hugo Herter
 Igor Pavlov
 Ingmar Steen
 Jaesung Lee
+Jashandeep Sohi
 Julien Duponchelle
 Junjie Tao
 Kay Zheng
@@ -65,8 +67,10 @@ Stephen Granade
 Taras Voinarovskyi
 Tolga Tezel
 Vaibhav Sagar
+Vasyl Baran
 Vitaly Haritonsky
 Vitaly Magerya
+Vladimir Rutsky
 Vladimir Shulyak
 Vladimir Zakharov
 W. Trevor King

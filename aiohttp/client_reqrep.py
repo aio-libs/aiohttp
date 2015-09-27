@@ -97,7 +97,7 @@ class ClientRequest:
                     'not supported at the same time.')
             data = files
 
-        self.update_body_from_data(data)
+        self.update_body_from_data(data, skip_auto_headers)
         self.update_transfer_encoding()
         self.update_expect_continue(expect100)
 
@@ -112,6 +112,9 @@ class ClientRequest:
 
         # get host/port
         host = url_parsed.hostname
+        if not host:
+            raise ValueError('Host could not be detected.')
+
         try:
             port = url_parsed.port
         except ValueError:
@@ -260,7 +263,7 @@ class ClientRequest:
 
         self.headers[hdrs.AUTHORIZATION] = auth.encode()
 
-    def update_body_from_data(self, data):
+    def update_body_from_data(self, data, skip_auto_headers):
         if not data:
             return
 
@@ -269,7 +272,8 @@ class ClientRequest:
 
         if isinstance(data, (bytes, bytearray)):
             self.body = data
-            if hdrs.CONTENT_TYPE not in self.headers:
+            if (hdrs.CONTENT_TYPE not in self.headers and
+                    hdrs.CONTENT_TYPE not in skip_auto_headers):
                 self.headers[hdrs.CONTENT_TYPE] = 'application/octet-stream'
             if hdrs.CONTENT_LENGTH not in self.headers and not self.chunked:
                 self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
@@ -310,6 +314,7 @@ class ClientRequest:
                     raise ValueError('file {!r} should be open in binary mode'
                                      ''.format(data))
             if (hdrs.CONTENT_TYPE not in self.headers and
+                hdrs.CONTENT_TYPE not in skip_auto_headers and
                     hasattr(data, 'name')):
                 mime = mimetypes.guess_type(data.name)[0]
                 mime = 'application/octet-stream' if mime is None else mime
@@ -326,7 +331,8 @@ class ClientRequest:
 
             self.body = data(self.encoding)
 
-            if hdrs.CONTENT_TYPE not in self.headers:
+            if (hdrs.CONTENT_TYPE not in self.headers and
+                    hdrs.CONTENT_TYPE not in skip_auto_headers):
                 self.headers[hdrs.CONTENT_TYPE] = data.content_type
 
             if data.is_multipart:
@@ -508,8 +514,6 @@ class ClientRequest:
 
 class ClientResponse:
 
-    message = None  # RawResponseMessage object
-
     # from the Status-Line of the response
     version = None  # HTTP-Version
     status = None   # Status-Code
@@ -517,6 +521,7 @@ class ClientResponse:
 
     cookies = None  # Response cookies (Set-Cookie)
     content = None  # Payload stream
+    headers = None  # Response headers, CIMultiDictProxy
 
     _connection = None  # current connection
     flow_control_class = FlowControlStreamReader  # reader flow control
@@ -534,11 +539,11 @@ class ClientResponse:
         self.method = method
         self.url = url
         self.host = host
-        self.headers = None
         self._content = None
         self._writer = writer
         self._continue = continue100
         self._closed = False
+        self._should_close = True  # override by message.should_close later
 
     def _post_init(self, loop):
         self._loop = loop
@@ -588,8 +593,8 @@ class ClientResponse:
             httpstream = self._reader.set_parser(self._response_parser)
 
             # read response
-            self.message = yield from httpstream.read()
-            if self.message.code != 100:
+            message = yield from httpstream.read()
+            if message.code != 100:
                 break
 
             if self._continue is not None and not self._continue.done():
@@ -597,17 +602,18 @@ class ClientResponse:
                 self._continue = None
 
         # response status
-        self.version = self.message.version
-        self.status = self.message.code
-        self.reason = self.message.reason
+        self.version = message.version
+        self.status = message.code
+        self.reason = message.reason
+        self._should_close = message.should_close
 
         # headers
-        self.headers = CIMultiDictProxy(self.message.headers)
+        self.headers = CIMultiDictProxy(message.headers)
 
         # payload
         response_with_body = self.method.lower() != 'head'
         self._reader.set_parser(
-            aiohttp.HttpPayloadParser(self.message,
+            aiohttp.HttpPayloadParser(message,
                                       readall=read_until_eof,
                                       response_with_body=response_with_body),
             self.content)

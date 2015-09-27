@@ -94,7 +94,7 @@ first positional parameter.
 
       A multidict with all the variables in the query string.
 
-      Read-only :class:`~aiohttp.multidict.MultiDictProxy` lazy property.
+      Read-only :class:`~aiohttp.MultiDictProxy` lazy property.
 
       .. versionchanged:: 0.17
          A multidict contains empty items for query string like ``?arg=``.
@@ -104,7 +104,7 @@ first positional parameter.
       A multidict with all the variables in the POST parameters.
       POST property available only after :meth:`Request.post` coroutine call.
 
-      Read-only :class:`~aiohttp.multidict.MultiDictProxy`.
+      Read-only :class:`~aiohttp.MultiDictProxy`.
 
       :raises RuntimeError: if :meth:`Request.post` was not called \
                             before accessing the property.
@@ -113,7 +113,7 @@ first positional parameter.
 
       A case-insensitive multidict proxy with all headers.
 
-      Read-only :class:`~aiohttp.multidict.CIMultiDictProxy` property.
+      Read-only :class:`~aiohttp.CIMultiDictProxy` property.
 
    .. attribute:: keep_alive
 
@@ -154,7 +154,7 @@ first positional parameter.
 
       A multidict of all request's cookies.
 
-      Read-only :class:`~aiohttp.multidict.MultiDictProxy` lazy property.
+      Read-only :class:`~aiohttp.MultiDictProxy` lazy property.
 
    .. attribute:: content
 
@@ -270,7 +270,7 @@ first positional parameter.
       A :ref:`coroutine <coroutine>` that reads POST parameters from
       request body.
 
-      Returns :class:`~aiohttp.multidict.MultiDictProxy` instance filled
+      Returns :class:`~aiohttp.MultiDictProxy` instance filled
       with parsed data.
 
       If :attr:`method` is not *POST*, *PUT* or *PATCH* or
@@ -339,11 +339,10 @@ StreamResponse
    The most important thing you should know about *response* --- it
    is *Finite State Machine*.
 
-   That means you can do any manipulations with *headers*,
-   *cookies* and *status code* only before :meth:`start`
-   called.
+   That means you can do any manipulations with *headers*, *cookies*
+   and *status code* only before :meth:`prepare` coroutine is called.
 
-   Once you call :meth:`start` any change of
+   Once you call :meth:`prepare` any change of
    the *HTTP header* part will raise :exc:`RuntimeError` exception.
 
    Any :meth:`write` call after :meth:`write_eof` is also forbidden.
@@ -355,10 +354,18 @@ StreamResponse
                       parameter. Otherwise pass :class:`str` with
                       arbitrary *status* explanation..
 
+   .. attribute:: prepared
+
+      Read-only :class:`bool` property, ``True`` if :meth:`prepare` has
+      been called, ``False`` otherwise.
+
+      .. versionadded:: 0.18
+
    .. attribute:: started
 
-      Read-only :class:`bool` property, ``True`` if :meth:`start` has
-      been called, ``False`` otherwise.
+      Deprecated alias for :attr:`prepared`.
+
+      .. deprecated:: 0.18
 
    .. attribute:: status
 
@@ -438,7 +445,7 @@ StreamResponse
 
    .. attribute:: headers
 
-      :class:`~aiohttp.multidict.CIMultiDict` instance
+      :class:`~aiohttp.CIMultiDict` instance
       for *outgoing* *HTTP headers*.
 
    .. attribute:: cookies
@@ -550,16 +557,30 @@ StreamResponse
       Send *HTTP header*. You should not change any header data after
       calling this method.
 
+      .. deprecated:: 0.18
+
+         Use :meth:`prepare` instead.
+
+   .. coroutinemethod:: prepare(request)
+
+      :param aiohttp.web.Request request: HTTP request object, that the
+                                          response answers.
+
+      Send *HTTP header*. You should not change any header data after
+      calling this method.
+
+      .. versionadded:: 0.18
+
    .. method:: write(data)
 
       Send byte-ish data as the part of *response BODY*.
 
-      :meth:`start` must be called before.
+      :meth:`prepare` must be called before.
 
       Raises :exc:`TypeError` if data is not :class:`bytes`,
       :class:`bytearray` or :class:`memoryview` instance.
 
-      Raises :exc:`RuntimeError` if :meth:`start` has not been called.
+      Raises :exc:`RuntimeError` if :meth:`prepare` has not been called.
 
       Raises :exc:`RuntimeError` if :meth:`write_eof` has been called.
 
@@ -651,10 +672,22 @@ WebSocketResponse
 
    Class for handling server-side websockets.
 
-   After starting (by :meth:`start` call) the response you
+   After starting (by :meth:`prepare` call) the response you
    cannot use :meth:`~StreamResponse.write` method but should to
    communicate with websocket client by :meth:`send_str`,
    :meth:`receive` and others.
+
+   .. coroutinemethod:: prepare(request)
+
+      Starts websocket. After the call you can use websocket methods.
+
+      :param aiohttp.web.Request request: HTTP request object, that the
+                                          response answers.
+
+
+      :raises HTTPException: if websocket handshake has failed.
+
+      .. versionadded:: 0.18
 
    .. method:: start(request)
 
@@ -666,12 +699,17 @@ WebSocketResponse
 
       :raises HTTPException: if websocket handshake has failed.
 
-   .. method:: can_start(request)
+      .. deprecated:: 0.18
+
+         Use :meth:`prepare` instead.
+
+   .. method:: can_prepare(request)
 
       Performs checks for *request* data to figure out if websocket
       can be started on the request.
 
-      If :meth:`can_start` call is success then :meth:`start` will success too.
+      If :meth:`can_prepare` call is success then :meth:`prepare` will
+      success too.
 
       :param aiohttp.web.Request request: HTTP request object, that the
                                           response answers.
@@ -683,6 +721,12 @@ WebSocketResponse
                ``None`` if client and server subprotocols are nit overlapping.
 
       .. note:: The method never raises exception.
+
+   .. method:: can_start(request)
+
+      Deprecated alias for :meth:`can_prepare`
+
+      .. deprecated:: 0.18
 
    .. attribute:: closed
 
@@ -1019,7 +1063,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
       :returns: new :class:`PlainRoute` or :class:`DynamicRoute` instance.
 
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
-                          chunk_size=256*1024, response_factory=None)
+                          chunk_size=256*1024, response_factory=StreamResponse)
 
       Adds router for returning static files.
 
@@ -1103,12 +1147,10 @@ passing it into *template engine* for example::
 
    url = app.router['route_name'].url(query={'a': 1, 'b': 2})
 
-There are three concrete route classes:* :class:`DynamicRoute` for
-urls with :ref:`variable pathes<aiohttp-web-variable-handler>` spec.
-
+There are three concrete route classes:
 
 * :class:`PlainRoute` for urls without :ref:`variable
-  pathes<aiohttp-web-variable-handler>`
+  pathes<aiohttp-web-variable-handler>` spec.
 
 * :class:`DynamicRoute` for urls with :ref:`variable
   pathes<aiohttp-web-variable-handler>` spec.

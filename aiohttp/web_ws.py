@@ -35,12 +35,19 @@ class WebSocketResponse(StreamResponse):
         self._autoclose = autoclose
         self._autoping = autoping
 
-    def start(self, request):
+    @asyncio.coroutine
+    def prepare(self, request):
         # make pre-check to don't hide it by do_handshake() exceptions
         resp_impl = self._start_pre_check(request)
         if resp_impl is not None:
             return resp_impl
 
+        parser, protocol, writer = self._pre_start(request)
+        resp_impl = yield from super().prepare(request)
+        self._post_start(request, parser, protocol, writer)
+        return resp_impl
+
+    def _pre_start(self, request):
         try:
             status, headers, parser, writer, protocol = do_handshake(
                 request.method, request.headers, request.transport,
@@ -59,17 +66,27 @@ class WebSocketResponse(StreamResponse):
         for k, v in headers:
             self.headers[k] = v
         self.force_close()
+        return parser, protocol, writer
 
-        resp_impl = super().start(request)
-
+    def _post_start(self, request, parser, protocol, writer):
         self._reader = request._reader.set_parser(parser)
         self._writer = writer
         self._protocol = protocol
         self._loop = request.app.loop
 
+    def start(self, request):
+        warnings.warn('use .prepare(request) instead', DeprecationWarning)
+        # make pre-check to don't hide it by do_handshake() exceptions
+        resp_impl = self._start_pre_check(request)
+        if resp_impl is not None:
+            return resp_impl
+
+        parser, protocol, writer = self._pre_start(request)
+        resp_impl = super().start(request)
+        self._post_start(request, parser, protocol, writer)
         return resp_impl
 
-    def can_start(self, request):
+    def can_prepare(self, request):
         if self._writer is not None:
             raise RuntimeError('Already started')
         try:
@@ -80,6 +97,10 @@ class WebSocketResponse(StreamResponse):
             return False, None
         else:
             return True, protocol
+
+    def can_start(self, request):
+        warnings.warn('use .can_prepare(request) instead', DeprecationWarning)
+        return self.can_prepare(request)
 
     @property
     def closed(self):
@@ -98,7 +119,7 @@ class WebSocketResponse(StreamResponse):
 
     def ping(self, message='b'):
         if self._writer is None:
-            raise RuntimeError('Call .start() first')
+            raise RuntimeError('Call .prepare() first')
         if self._closed:
             raise RuntimeError('websocket connection is closing')
         self._writer.ping(message)
@@ -106,14 +127,14 @@ class WebSocketResponse(StreamResponse):
     def pong(self, message='b'):
         # unsolicited pong
         if self._writer is None:
-            raise RuntimeError('Call .start() first')
+            raise RuntimeError('Call .prepare() first')
         if self._closed:
             raise RuntimeError('websocket connection is closing')
         self._writer.pong(message)
 
     def send_str(self, data):
         if self._writer is None:
-            raise RuntimeError('Call .start() first')
+            raise RuntimeError('Call .prepare() first')
         if self._closed:
             raise RuntimeError('websocket connection is closing')
         if not isinstance(data, str):
@@ -122,7 +143,7 @@ class WebSocketResponse(StreamResponse):
 
     def send_bytes(self, data):
         if self._writer is None:
-            raise RuntimeError('Call .start() first')
+            raise RuntimeError('Call .prepare() first')
         if self._closed:
             raise RuntimeError('websocket connection is closing')
         if not isinstance(data, (bytes, bytearray, memoryview)):
@@ -151,7 +172,7 @@ class WebSocketResponse(StreamResponse):
     @asyncio.coroutine
     def close(self, *, code=1000, message=b''):
         if self._writer is None:
-            raise RuntimeError('Call .start() first')
+            raise RuntimeError('Call .prepare() first')
 
         if not self._closed:
             self._closed = True
@@ -190,7 +211,7 @@ class WebSocketResponse(StreamResponse):
     @asyncio.coroutine
     def receive(self):
         if self._reader is None:
-            raise RuntimeError('Call .start() first')
+            raise RuntimeError('Call .prepare() first')
         if self._waiting:
             raise RuntimeError('Concurrent call to receive() is not allowed')
 
@@ -239,7 +260,7 @@ class WebSocketResponse(StreamResponse):
             self._waiting = False
 
     @asyncio.coroutine
-    def receive_msg(self):  # pragma: no cover
+    def receive_msg(self):
         warnings.warn(
             'receive_msg() coroutine is deprecated. use receive() instead',
             DeprecationWarning)
