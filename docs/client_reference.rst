@@ -956,7 +956,7 @@ Response object
 
       :return str: decoded *BODY*
 
-   .. coroutinemethod:: text(encoding=None)
+   .. coroutinemethod:: json(encoding=None)
 
       Read response's body as *JSON*, return :class:`dict` using
       specified *encoding* and *loader*.
