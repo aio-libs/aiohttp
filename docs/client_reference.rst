@@ -297,7 +297,8 @@ The client session supports context manager protocol for self closing::
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-   .. coroutinemethod:: ws_connect(url, *, protocols=(), timeout=10.0\
+   .. coroutinemethod:: ws_connect(url, *, protocols=(), timeout=10.0,\
+                                   auth=None,\
                                    autoclose=True, autoping=True)
 
       Create a websocket connection. Returns a
@@ -309,6 +310,10 @@ The client session supports context manager protocol for self closing::
 
       :param float timeout: Timeout for websocket read. 10 seconds by default
 
+      :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that
+                                             represents HTTP Basic Authorization
+                                             (optional)
+
       :param bool autoclose: Automatically close websocket connection on close
                              message from server. If `autoclose` is False
                              them close procedure has to be handled manually
@@ -317,6 +322,12 @@ The client session supports context manager protocol for self closing::
                             message from server
 
       .. versionadded:: 0.16
+
+         Add :meth:`ws_connect`.
+
+      .. versionadded:: 0.18
+
+         Add *auth* parameter.
 
    .. method:: close()
 

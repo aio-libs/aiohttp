@@ -5,7 +5,9 @@ WebSockets Client
 
 .. highlight:: python
 
-.. module:: aiohttp.websocket_client
+.. module:: aiohttp
+
+.. currentmodule:: aiohttp
 
 .. versionadded:: 0.15
 
@@ -37,8 +39,8 @@ websocket server using response's methods:
            break
 
 If you prefer to establish *websocket client connection* from
-:class:`~aiohttp.client.ClientSession` object please use
-:meth:`aiohttp.client.ClientSession.ws_connect` coroutine::
+:class:`~aiohttp.ClientSession` object please use
+:meth:`aiohttp.ClientSession.ws_connect` coroutine::
 
    session = aiohttp.ClientSession()
    ws = yield from session.ws_connect(
@@ -51,15 +53,16 @@ which can only send data asynchronously (by ``yield from
 ws.send_str('data')`` for example).
 
 
-ClientWebSocketResponse
------------------------
+ws_connect
+----------
 
 To connect to a websocket server you have to use the
-`aiohttp.ws_connect()` function, do not create an instance of class
+:func:`aiohttp.ws_connect` or :meth:`aiohttp.ClientSession.ws_connect`
+coroutines, do not create an instance of class
 :class:`ClientWebSocketResponse` manually.
 
 .. coroutinefunction:: ws_connect(url, *, protocols=(), \
-                                  timeout=10.0, connector=None,\
+                                  timeout=10.0, connector=None, auth=None,\
                                   ws_response_class=ClientWebSocketResponse,\
                                   autoclose=True, autoping=True, loop=None)
 
@@ -86,6 +89,10 @@ To connect to a websocket server you have to use the
 
    :param bool autoping: Automatically send `pong` on `ping` message from server
 
+   :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that
+                                          represents HTTP Basic Authorization
+                                          (optional)
+
    :param loop: :ref:`event loop<asyncio-event-loop>` used
                 for processing HTTP requests.
 
@@ -93,6 +100,13 @@ To connect to a websocket server you have to use the
                 used for getting default event loop, but we strongly
                 recommend to use explicit loops everywhere.
 
+   .. versionadded:: 0.18
+
+      Add *auth* parameter.
+
+
+ClientWebSocketResponse
+-----------------------
 
 .. class:: ClientWebSocketResponse()
 

@@ -198,7 +198,8 @@ class ClientSession:
                    protocols=(),
                    timeout=10.0,
                    autoclose=True,
-                   autoping=True):
+                   autoping=True,
+                   auth=None):
         """Initiate websocket connection."""
 
         sec_key = base64.b64encode(os.urandom(16))
@@ -214,7 +215,8 @@ class ClientSession:
 
         # send request
         resp = yield from self.request('get', url, headers=headers,
-                                       read_until_eof=False)
+                                       read_until_eof=False,
+                                       auth=auth)
 
         # check handshake
         if resp.status != 101:
