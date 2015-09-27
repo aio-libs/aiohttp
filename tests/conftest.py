@@ -58,6 +58,6 @@ def pytest_runtest_setup(item):
 
 
 def pytest_ignore_collect(path, config):
-    if 'pep492' in str(path):
+    if 'test_py35' in str(path):
         if sys.version_info < (3, 5, 0):
             return True
