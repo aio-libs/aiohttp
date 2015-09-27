@@ -10,6 +10,8 @@ from aiohttp.multidict import MultiDict
 from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
 from aiohttp.streams import EOF_MARKER
 
+from unittest import mock
+
 try:
     import ssl
 except:
@@ -87,8 +89,10 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
             _, _, url = yield from self.create_server('GET', '/', handler)
             resp = yield from request('GET', url, loop=self.loop)
             self.assertEqual(500, resp.status)
+            resp.close()
 
-        self.loop.run_until_complete(go())
+        with mock.patch('aiohttp.server.server_logger'):
+            self.loop.run_until_complete(go())
 
     def test_post_form(self):
 
