@@ -41,7 +41,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         return app, srv, url
 
     @asyncio.coroutine
-    def connect_ws(self, url, protocol='chat'):
+    def connect_ws(self, url, protocol=''):
         sec_key = base64.b64encode(os.urandom(16))
 
         conn = aiohttp.TCPConnector(loop=self.loop)
