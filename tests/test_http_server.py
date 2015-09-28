@@ -318,11 +318,18 @@ class TestHttpServerProtocol(unittest.TestCase):
         self.assertTrue(log.exception.called)
 
     def test_handle(self):
+
+        def get_mock_coro(return_value):
+            @asyncio.coroutine
+            def mock_coro(*args, **kwargs):
+                return return_value
+            return unittest.mock.Mock(wraps=mock_coro)
+
         transport = unittest.mock.Mock()
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.connection_made(transport)
 
-        handle = srv.handle_request = unittest.mock.Mock()
+        handle = srv.handle_request = get_mock_coro(return_value=None)
 
         srv.reader.feed_data(
             b'GET / HTTP/1.0\r\n'
