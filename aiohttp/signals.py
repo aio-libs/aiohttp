@@ -21,11 +21,6 @@ class Signal(list):
 
     def _check_signature(self, receiver):
         if self._parameters is not None:
-            func = receiver
-            while isinstance(func, functools.partial):
-                func = func.func
-            if not asyncio.iscoroutinefunction(func):
-                raise TypeError("{} is not a coroutine function".format(receiver))
             signature(receiver).bind(**{p: None for p in self._parameters})
         return True
 
@@ -62,5 +57,6 @@ class Signal(list):
         Sends data to all registered receivers.
         """
         for receiver in self:
-            yield from receiver(**kwargs)
-
+            res = receiver(**kwargs)
+            if asyncio.iscoroutine(res) or isinstance(res, asyncio.Future):
+                yield from res
