@@ -33,7 +33,7 @@ class Signal(list):
         def __setitem__(self, key, value):
             if isinstance(key, slice):
                 value = list(value)
-                assert all(map(self._check_signature, other))
+                assert all(map(self._check_signature, value))
             else:
                 assert self._check_signature(value)
             super().__setitem__(key, value)
