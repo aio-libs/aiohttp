@@ -19,6 +19,8 @@ class TestHttpServerProtocol(unittest.TestCase):
         asyncio.set_event_loop(None)
 
     def tearDown(self):
+        self.loop.stop()
+        self.loop.run_forever()
         self.loop.close()
 
     def test_http_error_exception(self):

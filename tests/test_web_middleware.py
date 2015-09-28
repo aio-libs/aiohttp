@@ -29,7 +29,7 @@ class TestWebMiddlewareFunctional(unittest.TestCase):
         app.router.add_route(method, path, handler)
 
         port = self.find_unused_port()
-        self.handler = app.make_handler(debug=True)
+        self.handler = app.make_handler()
         srv = yield from self.loop.create_server(self.handler, '127.0.0.1',
                                                  port)
 
