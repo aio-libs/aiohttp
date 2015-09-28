@@ -777,6 +777,8 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertEqual(r.status, 200)
             r.close()
 
+    def test_encoding2(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
                 client.request('get', httpd.url('encoding', 'gzip'),
                                loop=self.loop))
@@ -813,7 +815,8 @@ class TestHttpClientFunctional(unittest.TestCase):
         m_log.warning.assert_called_with('Can not load response cookies: %s',
                                          mock.ANY)
 
-    def test_share_cookies(self):
+    @mock.patch('aiohttp.client_reqrep.client_logger')
+    def test_share_cookies(self, m_log):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             with self.assertWarns(DeprecationWarning):
                 conn = aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
@@ -1088,7 +1091,8 @@ class TestHttpClientFunctional(unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
-    def test_share_cookie_partial_update(self):
+    @mock.patch('aiohttp.client_reqrep.client_logger')
+    def test_share_cookie_partial_update(self, m_log):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             with self.assertWarns(DeprecationWarning):
                 conn = aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
@@ -1139,7 +1143,8 @@ class TestHttpClientFunctional(unittest.TestCase):
                 'c1=direct_cookie1; c2=connector_cookie2')
             r.close()
 
-    def test_session_cookies(self):
+    @mock.patch('aiohttp.client_reqrep.client_logger')
+    def test_session_cookies(self, m_log):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             session = client.ClientSession(loop=self.loop)
 

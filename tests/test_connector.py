@@ -734,7 +734,7 @@ class TestHttpClientConnector(unittest.TestCase):
         app.router.add_route(method, path, handler)
 
         port = self.find_unused_port()
-        self.handler = app.make_handler(debug=True, keep_alive_on=False)
+        self.handler = app.make_handler(keep_alive_on=False)
         srv = yield from self.loop.create_server(
             self.handler, '127.0.0.1', port)
         url = "http://127.0.0.1:{}".format(port) + path
@@ -748,7 +748,7 @@ class TestHttpClientConnector(unittest.TestCase):
         app = web.Application(loop=self.loop)
         app.router.add_route(method, path, handler)
 
-        self.handler = app.make_handler(debug=True, keep_alive_on=False)
+        self.handler = app.make_handler(keep_alive_on=False)
         sock_path = os.path.join(tmpdir, 'socket.sock')
         srv = yield from self.loop.create_unix_server(
             self.handler, sock_path)

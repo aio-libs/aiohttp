@@ -1,8 +1,5 @@
 # Some simple testing tasks (sorry, UNIX only).
 
-FLAGS=
-
-
 flake:
 #	python setup.py check -rms
 	flake8 aiohttp tests examples
@@ -11,19 +8,19 @@ develop:
 	python setup.py develop
 
 test: flake develop
-	nosetests -s $(FLAGS) ./tests/
+	py.test -q ./tests/
 
 vtest: flake develop
-	nosetests -s -v $(FLAGS) ./tests/
+	py.test -s -v ./tests/
 
 cov cover coverage:
 	tox
 
 cov-dev: flake develop
 	@coverage erase
-	@coverage run -m nose -s $(FLAGS) tests
+	@coverage run -m pytest -s tests
 	@mv .coverage .coverage.accel
-	@AIOHTTP_NO_EXTENSIONS=1 coverage run -m nose -s $(FLAGS) tests
+	@AIOHTTP_NO_EXTENSIONS=1 coverage run -m pytest -s tests
 	@mv .coverage .coverage.pure
 	@coverage combine
 	@coverage report

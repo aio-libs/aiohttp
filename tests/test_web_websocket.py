@@ -17,7 +17,7 @@ class TestWebWebSocket(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
-    def make_request(self, method, path, headers=None):
+    def make_request(self, method, path, headers=None, protocols=False):
         self.app = mock.Mock()
         if headers is None:
             headers = CIMultiDict(
@@ -26,8 +26,10 @@ class TestWebWebSocket(unittest.TestCase):
                  'CONNECTION': 'Upgrade',
                  'SEC-WEBSOCKET-KEY': 'dGhlIHNhbXBsZSBub25jZQ==',
                  'ORIGIN': 'http://example.com',
-                 'SEC-WEBSOCKET-PROTOCOL': 'chat, superchat',
                  'SEC-WEBSOCKET-VERSION': '13'})
+            if protocols:
+                headers['SEC-WEBSOCKET-PROTOCOL'] = 'chat, superchat'
+
         message = RawRequestMessage(method, path, HttpVersion11, headers,
                                     False, False)
         self.payload = mock.Mock()
@@ -143,7 +145,7 @@ class TestWebWebSocket(unittest.TestCase):
             ws.write(b'data')
 
     def test_can_prepare_ok(self):
-        req = self.make_request('GET', '/')
+        req = self.make_request('GET', '/', protocols=True)
         ws = WebSocketResponse(protocols=('chat',))
         self.assertEqual((True, 'chat'), ws.can_prepare(req))
 
@@ -401,7 +403,7 @@ class TestWebWebSocket(unittest.TestCase):
             self.assertIs(impl1, impl2)
 
     def test_can_start_ok(self):
-        req = self.make_request('GET', '/')
+        req = self.make_request('GET', '/', protocols=True)
         ws = WebSocketResponse(protocols=('chat',))
         with self.assertWarns(DeprecationWarning):
             self.assertEqual((True, 'chat'), ws.can_start(req))
