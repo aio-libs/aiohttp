@@ -646,8 +646,8 @@ class StreamResponse(HeadersMixin):
         resp_impl = self._start_pre_check(request)
         if resp_impl is not None:
             return resp_impl
-        yield from request.app.on_response_start.send(request=request,
-                                                      response=self)
+        yield from request.app.on_response_prepare.send(request=request,
+                                                        response=self)
 
         return self._start(request)
 

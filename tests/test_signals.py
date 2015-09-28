@@ -32,7 +32,7 @@ class TestSignals(unittest.TestCase):
         return req
 
     def test_callback_valid(self):
-        signal = Signal({'foo', 'bar'})
+        signal = Signal(parameters={'foo', 'bar'})
 
         # All these are suitable
         good_callbacks = map(asyncio.coroutine, [
@@ -46,10 +46,10 @@ class TestSignals(unittest.TestCase):
             (lambda **kwargs: None),
         ])
         for callback in good_callbacks:
-            signal.connect(callback)
+            signal.append(callback)
 
     def test_callback_invalid(self):
-        signal = Signal({'foo', 'bar'})
+        signal = Signal(parameters={'foo', 'bar'})
 
         # All these are unsuitable
         bad_callbacks = map(asyncio.coroutine, [
@@ -58,27 +58,27 @@ class TestSignals(unittest.TestCase):
         ])
         for callback in bad_callbacks:
             with self.assertRaises(TypeError):
-                signal.connect(callback)
+                signal.send(callback)
 
-    def test_add_response_start_signal_handler(self):
+    def test_add_response_prepare_signal_handler(self):
         callback = asyncio.coroutine(lambda request, response: None)
         app = Application(loop=self.loop)
-        app.on_response_start.connect(callback)
+        app.on_response_prepare.append(callback)
 
     def test_add_signal_handler_not_a_callable(self):
         callback = True
         app = Application(loop=self.loop)
         with self.assertRaises(TypeError):
-            app.on_response_start.connect(callback)
+            app.on_response_prepare.append(callback)
 
     def test_function_signal_dispatch(self):
-        signal = Signal({'foo', 'bar'})
+        signal = Signal(parameters={'foo', 'bar'})
         kwargs = {'foo': 1, 'bar': 2}
 
         callback_mock = mock.Mock()
         callback = asyncio.coroutine(callback_mock)
 
-        signal.connect(callback)
+        signal.append(callback)
 
         self.loop.run_until_complete(signal.send(**kwargs))
         callback_mock.assert_called_once_with(**kwargs)
@@ -87,7 +87,7 @@ class TestSignals(unittest.TestCase):
         callback = mock.Mock()
 
         app = Application(loop=self.loop)
-        app.on_response_start.connect(asyncio.coroutine(callback))
+        app.on_response_prepare.append(asyncio.coroutine(callback))
 
         request = self.make_request('GET', '/', app=app)
         response = Response(body=b'')
