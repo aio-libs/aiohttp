@@ -453,7 +453,10 @@ class _RequestContextManager(base):
 
         @asyncio.coroutine
         def __aexit__(self, exc_type, exc, tb):
-            yield from self._resp.release()
+            if exc_type is not None:
+                self._resp.close()
+            else:
+                yield from self._resp.release()
 
 
 class _DetachedRequestContextManager(_RequestContextManager):
@@ -466,19 +469,19 @@ class _DetachedRequestContextManager(_RequestContextManager):
 
     @asyncio.coroutine
     def __iter__(self):
-        resp = yield from self._coro
+        resp = yield from super().__iter__()
         self._session.detach()
         return resp
 
     if PY_35:
         def __await__(self):
-            resp = yield from self._coro
+            resp = yield from super().__await__()
             self._session.detach()
             return resp
 
         @asyncio.coroutine
         def __aexit__(self, exc_type, exc, tb):
-            yield from self._resp.release()
+            yield from super().__aexit__(exc_type, exc, tb)
             self._session.detach()
 
 
