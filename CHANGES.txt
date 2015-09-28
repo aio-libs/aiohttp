@@ -54,3 +54,6 @@ CHANGES
 
   `.start()` is still supported but responses begun with `.start()`
   doesn't call signal for response preparing to be sent. 
+
+- Add `StreamReader.__repr__`
+

@@ -466,6 +466,38 @@ class TestStreamReader(unittest.TestCase):
 
         self.assertRaises(RuntimeError, stream.read_nowait)
 
+    def test___repr__(self):
+        stream = self._make_one()
+        self.assertEqual("<StreamReader>", repr(stream))
+
+    def test___repr__nondefault_limit(self):
+        stream = self._make_one(limit=123)
+        self.assertEqual("<StreamReader l=123>", repr(stream))
+
+    def test___repr__eof(self):
+        stream = self._make_one()
+        stream.feed_eof()
+        self.assertEqual("<StreamReader eof>", repr(stream))
+
+    def test___repr__data(self):
+        stream = self._make_one()
+        stream.feed_data(b'data')
+        self.assertEqual("<StreamReader 4 bytes>", repr(stream))
+
+    def test___repr__exception(self):
+        stream = self._make_one()
+        exc = RuntimeError()
+        stream.set_exception(exc)
+        self.assertEqual("<StreamReader e=RuntimeError()>", repr(stream))
+
+    def test___repr__waiter(self):
+        stream = self._make_one()
+        stream._waiter = stream._create_waiter('test_waiter')
+        self.assertEqual("<StreamReader w=<Future pending>>", repr(stream))
+        stream._waiter.set_result(None)
+        self.loop.run_until_complete(stream._waiter)
+        stream._waiter = None
+        self.assertEqual("<StreamReader>", repr(stream))
 
 class TestEmptyStreamReader(unittest.TestCase):
 
