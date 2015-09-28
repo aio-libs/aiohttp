@@ -47,7 +47,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         conn = aiohttp.TCPConnector(loop=self.loop)
         self.addCleanup(conn.close)
 
-        headers={
+        headers = {
             'UPGRADE': 'WebSocket',
             'CONNECTION': 'Upgrade',
             'SEC-WEBSOCKET-VERSION': '13',
