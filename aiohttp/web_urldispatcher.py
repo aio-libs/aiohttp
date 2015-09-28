@@ -236,21 +236,18 @@ class StaticRoute(Route):
         transferred in chunks controlled by the `chunk_size` argument to
         :class:`StaticRoute`.
         """
-        f_mm = mmap.mmap(fobj.fileno(), 0, access=mmap.ACCESS_READ)
+        f_mm = mmap.mmap(fobj.fileno(), count, access=mmap.ACCESS_READ)
         chunk_size = self._chunk_size
 
-        chunk = f_mm.read(chunk_size)
-        while chunk and count > chunk_size:
-            resp.write(chunk)
+        chunk_starts = range(0, count, chunk_size)
+        chunk_stops = range(min(count, chunk_size),
+                            count+chunk_size, chunk_size)
+
+        for i, j in zip(chunk_starts, chunk_stops):
+            resp.write(f_mm[i:j])
             yield from resp.drain()
-            count = count - chunk_size
-            chunk = f_mm.read(chunk_size)
 
         f_mm.close()
-
-        if chunk:
-            resp.write(chunk[:count])
-            yield from resp.drain()
 
     if hasattr(os, "sendfile"):  # pragma: no cover
         _sendfile = _sendfile_system
