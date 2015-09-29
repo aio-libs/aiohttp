@@ -240,8 +240,7 @@ class StaticRoute(Route):
         chunk_size = self._chunk_size
 
         chunk_starts = range(0, count, chunk_size)
-        chunk_stops = range(min(count, chunk_size),
-                            count+chunk_size, chunk_size)
+        chunk_stops = range(count, count+chunk_size, chunk_size)
 
         for i, j in zip(chunk_starts, chunk_stops):
             resp.write(f_mm[i:j])
