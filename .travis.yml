@@ -6,6 +6,7 @@ python:
   - 3.4
   - 3.5
 
+cache: pip
 install:
   - pip install --upgrade setuptools
   - pip install cython
