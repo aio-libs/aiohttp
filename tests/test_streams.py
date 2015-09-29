@@ -493,11 +493,14 @@ class TestStreamReader(unittest.TestCase):
     def test___repr__waiter(self):
         stream = self._make_one()
         stream._waiter = stream._create_waiter('test_waiter')
-        self.assertEqual("<StreamReader w=<Future pending>>", repr(stream))
+        self.assertRegex(
+            repr(stream),
+            "<StreamReader w=<Future pending[\S ]*>>")
         stream._waiter.set_result(None)
         self.loop.run_until_complete(stream._waiter)
         stream._waiter = None
         self.assertEqual("<StreamReader>", repr(stream))
+
 
 class TestEmptyStreamReader(unittest.TestCase):
 

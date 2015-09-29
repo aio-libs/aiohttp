@@ -1,9 +1,12 @@
+sudo: no
+
 language: python
 python:
   - 3.3
   - 3.4
   - 3.5
 
+cache: pip
 install:
   - pip install --upgrade setuptools
   - pip install cython
