@@ -1,3 +1,5 @@
+sudo: no
+
 language: python
 python:
   - 3.3
