@@ -1201,7 +1201,7 @@ There are three concrete route classes:
    Construct url, doesn't accepts extra parameters::
 
       >>> route.url(query={'d': 1, 'e': 2})
-      '/a/b/c/?d=1&e=2'``
+      '/a/b/c/?d=1&e=2'
 
 .. class:: DynamicRoute
 
