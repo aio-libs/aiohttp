@@ -1,7 +1,9 @@
-0.17.4 (XX-XX-XXXX)
+0.17.4 (09-29-2015)
 -------------------
 
 - Properly parse URL path in aiohttp.web.Request #489
+
+- Add missing coroutine decorator, the client api is await-compatible now
 
 0.17.3 (08-28-2015)
 ---------------------

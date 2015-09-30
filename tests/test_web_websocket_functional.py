@@ -41,21 +41,26 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         return app, srv, url
 
     @asyncio.coroutine
-    def connect_ws(self, url, protocol='chat'):
+    def connect_ws(self, url, protocol=None):
         sec_key = base64.b64encode(os.urandom(16))
 
         conn = aiohttp.TCPConnector(loop=self.loop)
         self.addCleanup(conn.close)
+
+        headers = {
+            'UPGRADE': 'WebSocket',
+            'CONNECTION': 'Upgrade',
+            'SEC-WEBSOCKET-VERSION': '13',
+            'SEC-WEBSOCKET-KEY': sec_key.decode(),
+        }
+
+        if protocol:
+            headers['SEC-WEBSOCKET-PROTOCOL'] = protocol
+
         # send request
         response = yield from aiohttp.request(
             'get', url,
-            headers={
-                'UPGRADE': 'WebSocket',
-                'CONNECTION': 'Upgrade',
-                'SEC-WEBSOCKET-VERSION': '13',
-                'SEC-WEBSOCKET-PROTOCOL': protocol,
-                'SEC-WEBSOCKET-KEY': sec_key.decode(),
-            },
+            headers=headers,
             connector=conn,
             loop=self.loop)
         self.addCleanup(response.close, True)
@@ -84,7 +89,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse()
-            ws.start(request)
+            yield from ws.prepare(request)
             msg = yield from ws.receive_str()
             ws.send_str(msg+'/answer')
             yield from ws.close()
@@ -119,7 +124,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse()
-            ws.start(request)
+            yield from ws.prepare(request)
 
             msg = yield from ws.receive_bytes()
             ws.send_bytes(msg+b'/answer')
@@ -154,7 +159,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse()
-            ws.start(request)
+            yield from ws.prepare(request)
             yield from ws.receive()
 
             msg = yield from ws.receive()
@@ -186,7 +191,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse()
-            ws.start(request)
+            yield from ws.prepare(request)
 
             ws.ping('data')
             yield from ws.receive()
@@ -214,7 +219,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse()
-            ws.start(request)
+            yield from ws.prepare(request)
 
             yield from ws.receive()
             closed.set_result(None)
@@ -242,7 +247,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse(autoping=False)
-            ws.start(request)
+            yield from ws.prepare(request)
 
             msg = yield from ws.receive()
             self.assertEqual(msg.tp, web.MsgType.ping)
@@ -279,7 +284,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             ws = web.WebSocketResponse()
             ws.set_status(200)
             self.assertEqual(200, ws.status)
-            ws.start(request)
+            yield from ws.prepare(request)
             self.assertEqual(101, ws.status)
             yield from ws.close()
             closed.set_result(None)
@@ -302,7 +307,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse(protocols=('foo', 'bar'))
-            ws.start(request)
+            yield from ws.prepare(request)
             yield from ws.close()
             self.assertEqual('bar', ws.protocol)
             closed.set_result(None)
@@ -326,7 +331,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse(protocols=('foo', 'bar'))
-            ws.start(request)
+            yield from ws.prepare(request)
             yield from ws.close()
             closed.set_result(None)
             return ws
@@ -352,7 +357,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         def handler(request):
             ws = web.WebSocketResponse(
                 autoclose=False, protocols=('foo', 'bar'))
-            ws.start(request)
+            yield from ws.prepare(request)
 
             msg = yield from ws.receive()
             self.assertEqual(msg.tp, web.MsgType.close)
@@ -387,7 +392,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
         @asyncio.coroutine
         def handler(request):
             ws = web.WebSocketResponse(protocols=('foo', 'bar'))
-            ws.start(request)
+            yield from ws.prepare(request)
             yield from ws.close()
             closed.set_result(None)
             return ws
@@ -409,5 +414,26 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             yield from closed
 
             response.close()
+
+        self.loop.run_until_complete(go())
+
+    def test_receive_msg(self):
+        @asyncio.coroutine
+        def handler(request):
+            ws = web.WebSocketResponse()
+            yield from ws.prepare(request)
+
+            with self.assertWarns(DeprecationWarning):
+                msg = yield from ws.receive_msg()
+                self.assertEqual(msg.data, b'data')
+            yield from ws.close()
+            return ws
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('GET', '/', handler)
+            resp = yield from aiohttp.ws_connect(url, loop=self.loop)
+            resp.send_bytes(b'data')
+            yield from resp.close()
 
         self.loop.run_until_complete(go())

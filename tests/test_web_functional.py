@@ -10,6 +10,8 @@ from aiohttp.multidict import MultiDict
 from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
 from aiohttp.streams import EOF_MARKER
 
+from unittest import mock
+
 try:
     import ssl
 except:
@@ -46,7 +48,7 @@ class WebFunctionalSetupMixin:
 
         port = self.find_unused_port()
         self.handler = app.make_handler(
-            debug=True, keep_alive_on=False,
+            keep_alive_on=False,
             access_log=log.access_logger)
         srv = yield from self.loop.create_server(
             self.handler, '127.0.0.1', port, ssl=ssl_ctx)
@@ -87,8 +89,10 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
             _, _, url = yield from self.create_server('GET', '/', handler)
             resp = yield from request('GET', url, loop=self.loop)
             self.assertEqual(500, resp.status)
+            resp.close()
 
-        self.loop.run_until_complete(go())
+        with mock.patch('aiohttp.server.server_logger'):
+            self.loop.run_until_complete(go())
 
     def test_post_form(self):
 
@@ -715,7 +719,7 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
         def handler(request):
             resp = web.StreamResponse()
             resp.enable_chunked_encoding()
-            resp.start(request)
+            yield from resp.prepare(request)
             resp.write(b'x')
             resp.write(b'y')
             resp.write(b'z')
@@ -803,14 +807,6 @@ class StaticFileMixin(WebFunctionalSetupMixin):
             self.assertEqual(resp.headers.get('CONTENT-ENCODING'), None)
             resp.close()
 
-            resp = yield from session.request('GET', url + 'fake')
-            self.assertEqual(404, resp.status)
-            resp.close()
-
-            resp = yield from session.request('GET', url + '/../../')
-            self.assertEqual(404, resp.status)
-            resp.close()
-
         here = os.path.dirname(__file__)
         filename = 'data.unknown_mime_type'
         self.loop.run_until_complete(go(here, filename))
@@ -833,14 +829,6 @@ class StaticFileMixin(WebFunctionalSetupMixin):
             ct = resp.headers['CONTENT-TYPE']
             self.assertEqual('image/jpeg', ct)
             self.assertEqual(resp.headers.get('CONTENT-ENCODING'), None)
-            resp.close()
-
-            resp = yield from request('GET', url + 'fake', loop=self.loop)
-            self.assertEqual(404, resp.status)
-            resp.close()
-
-            resp = yield from request('GET', url + '/../../', loop=self.loop)
-            self.assertEqual(404, resp.status)
             resp.close()
 
         here = os.path.dirname(__file__)

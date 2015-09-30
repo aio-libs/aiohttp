@@ -17,7 +17,7 @@ def wshandler(request):
         with open(WS_FILE, 'rb') as fp:
             return Response(body=fp.read(), content_type='text/html')
 
-    resp.start(request)
+    yield from resp.prepare(request)
     print('Someone joined.')
     for ws in request.app['sockets']:
         ws.send_str('Someone joined')

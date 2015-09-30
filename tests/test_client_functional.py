@@ -71,34 +71,6 @@ class TestHttpClientFunctional(unittest.TestCase):
                 self.assertEqual(content1, content2)
                 r.close()
 
-    def test_HTTP_200_OK_METHOD_ssl(self):
-        connector = aiohttp.TCPConnector(verify_ssl=False, loop=self.loop)
-
-        with test_utils.run_server(self.loop, use_ssl=True) as httpd:
-            for meth in ('get', 'post', 'put', 'delete', 'head'):
-                @asyncio.coroutine
-                def go():
-                    yield from asyncio.sleep(0.1, loop=self.loop)
-
-                    r = yield from client.request(
-                        meth, httpd.url('method', meth),
-                        loop=self.loop, connector=connector)
-                    content = yield from r.read()
-
-                    self.assertEqual(r.status, 200)
-                    if meth == 'head':
-                        self.assertEqual(b'', content)
-                    else:
-                        self.assertEqual(content, b'Test message')
-                    r.close()
-                    # let loop to make one iteration to call connection_lost
-                    # and close socket
-                    yield from asyncio.sleep(0, loop=self.loop)
-
-                self.loop.run_until_complete(go())
-
-        connector.close()
-
     def test_use_global_loop(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             try:
@@ -805,6 +777,8 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertEqual(r.status, 200)
             r.close()
 
+    def test_encoding2(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
                 client.request('get', httpd.url('encoding', 'gzip'),
                                loop=self.loop))
@@ -841,7 +815,8 @@ class TestHttpClientFunctional(unittest.TestCase):
         m_log.warning.assert_called_with('Can not load response cookies: %s',
                                          mock.ANY)
 
-    def test_share_cookies(self):
+    @mock.patch('aiohttp.client_reqrep.client_logger')
+    def test_share_cookies(self, m_log):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             with self.assertWarns(DeprecationWarning):
                 conn = aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
@@ -1116,7 +1091,8 @@ class TestHttpClientFunctional(unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
-    def test_share_cookie_partial_update(self):
+    @mock.patch('aiohttp.client_reqrep.client_logger')
+    def test_share_cookie_partial_update(self, m_log):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             with self.assertWarns(DeprecationWarning):
                 conn = aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
@@ -1167,7 +1143,8 @@ class TestHttpClientFunctional(unittest.TestCase):
                 'c1=direct_cookie1; c2=connector_cookie2')
             r.close()
 
-    def test_session_cookies(self):
+    @mock.patch('aiohttp.client_reqrep.client_logger')
+    def test_session_cookies(self, m_log):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             session = client.ClientSession(loop=self.loop)
 

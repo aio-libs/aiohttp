@@ -116,7 +116,7 @@ Routes may have a *name*::
 
 In web-handler you may build *URL* for that route::
 
-   >>> request.app.router['root'].url(query="?a=b&c=d")
+   >>> request.app.router['root'].url(query={"a": "b", "c": "d"})
    '/root?a=b&c=d'
 
 More interesting example is building *URL* for :ref:`variable
@@ -407,7 +407,7 @@ using response's methods:
     def websocket_handler(request):
 
         ws = web.WebSocketResponse()
-        ws.start(request)
+        yield from ws.prepare(request)
 
         while True:
             msg = yield from ws.receive()
@@ -557,7 +557,7 @@ The most trivial *middleware factory* example::
 
 Every factory is a coroutine that accepts two parameters: *app*
 (:class:`Application` instance) and *handler* (next handler in
-middleware chain.
+middleware chain).
 
 The last handler is :ref:`web-handler<aiohttp-web-handler>` selected
 by routing itself (:meth:`~UrlDispatcher.resolve` call).

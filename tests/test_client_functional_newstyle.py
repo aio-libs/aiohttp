@@ -35,7 +35,7 @@ class TestHttpClientFunctionalNewStyle(unittest.TestCase):
 
         port = self.find_unused_port()
         self.handler = app.make_handler(
-            debug=True, keep_alive_on=False,
+            keep_alive_on=False,
             access_log=log.access_logger)
         srv = yield from self.loop.create_server(
             self.handler, '127.0.0.1', port)

@@ -6,6 +6,7 @@ from setuptools import setup, find_packages, Extension
 from distutils.errors import (CCompilerError, DistutilsExecError,
                               DistutilsPlatformError)
 from distutils.command.build_ext import build_ext
+from setuptools.command.test import test as TestCommand
 
 
 try:
@@ -40,7 +41,8 @@ class ve_build_ext(build_ext):
     def build_extension(self, ext):
         try:
             build_ext.build_extension(self, ext)
-        except (CCompilerError, DistutilsExecError, DistutilsPlatformError, ValueError):
+        except (CCompilerError, DistutilsExecError,
+                DistutilsPlatformError, ValueError):
             raise BuildFailed()
 
 
@@ -58,11 +60,32 @@ install_requires = ['chardet']
 if sys.version_info < (3, 4):
     install_requires += ['asyncio', 'enum34']
 
-tests_require = install_requires + ['nose', 'gunicorn']
-
 
 def read(f):
     return open(os.path.join(os.path.dirname(__file__), f)).read().strip()
+
+
+class PyTest(TestCommand):
+    user_options = [('pytest-args=', 'a', "Arguments to pass to py.test")]
+
+    def initialize_options(self):
+        TestCommand.initialize_options(self)
+        self.pytest_args = []
+
+    def finalize_options(self):
+        TestCommand.finalize_options(self)
+        self.test_args = []
+        self.test_suite = True
+
+    def run_tests(self):
+        # import here, cause outside the eggs aren't loaded
+        import pytest
+        errno = pytest.main(self.pytest_args)
+        sys.exit(errno)
+
+
+tests_require = install_requires + ['pytest', 'gunicorn']
+
 
 args = dict(
     name='aiohttp',
@@ -85,10 +108,10 @@ args = dict(
     packages=find_packages(),
     install_requires=install_requires,
     tests_require=tests_require,
-    test_suite='nose.collector',
     include_package_data=True,
     ext_modules=extensions,
-    cmdclass=dict(build_ext=ve_build_ext))
+    cmdclass=dict(build_ext=ve_build_ext,
+                  test=PyTest))
 
 try:
     setup(**args)

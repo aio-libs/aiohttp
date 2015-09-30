@@ -2,7 +2,7 @@ CHANGES
 =======
 
 0.18.0a0 (XX-XX-XXXX)
--------------------
+---------------------
 
 - Use errors.HttpProcessingError.message as HTTP error reason and
   message #459
@@ -44,3 +44,16 @@ CHANGES
 
 - Fix a bug for server-side cookies for dropping cookie and setting it
   again without Max-Age parameter.
+
+- Don't trim redirect URL in client API #499
+
+- Extend precision of access log "D" to milliseconds #527
+
+- Deprecate `StreamResponse.start()` method in favor of
+  `StreamResponse.prepare()` coroutine #525
+
+  `.start()` is still supported but responses begun with `.start()`
+  doesn't call signal for response preparing to be sent. 
+
+- Add `StreamReader.__repr__`
+
