@@ -467,21 +467,8 @@ class _DetachedRequestContextManager(_RequestContextManager):
         super().__init__(coro)
         self._session = session
 
-    @asyncio.coroutine
-    def __iter__(self):
-        resp = yield from super().__iter__()
-        self._session.detach()
-        return resp
-
-    if PY_35:
-        def __await__(self):
-            resp = yield from super().__await__()
-            self._session.detach()
-            return resp
-
-        @asyncio.coroutine
-        def __aexit__(self, exc_type, exc, tb):
-            yield from super().__aexit__(exc_type, exc, tb)
+    if PY_341:
+        def __del__(self):
             self._session.detach()
 
 
