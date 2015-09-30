@@ -969,9 +969,9 @@ arbitrary properties for later access from
 
    .. note::
 
-      Application object has :attr:`route` attribute but has no
+      Application object has :attr:`router` attribute but has no
       ``add_route()`` method. The reason is: we want to support
-      different route implementations (even maybe not url-matching
+      different router implementations (even maybe not url-matching
       based but traversal ones).
 
       For sake of that fact we have very trivial ABC for
@@ -1201,7 +1201,7 @@ There are three concrete route classes:
    Construct url, doesn't accepts extra parameters::
 
       >>> route.url(query={'d': 1, 'e': 2})
-      '/a/b/c/?d=1&e=2'``
+      '/a/b/c/?d=1&e=2'
 
 .. class:: DynamicRoute
 
