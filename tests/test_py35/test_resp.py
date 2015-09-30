@@ -1,7 +1,6 @@
 import pytest
 
 import aiohttp
-import asyncio
 from aiohttp import web
 from aiohttp.client import _RequestContextManager
 from collections.abc import Coroutine
