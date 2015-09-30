@@ -431,7 +431,12 @@ class _RequestContextManager(base):
         return self._coro.send(value)
 
     def throw(self, typ, val=None, tb=None):
-        return self._coro.throw(typ, val, tb)
+        if val is None:
+            return self._coro.throw(typ)
+        elif tb is None:
+            return self._coro.throw(typ, val)
+        else:
+            return self._coro.throw(typ, val, tb)
 
     def close(self):
         return self._coro.close()
