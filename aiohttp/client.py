@@ -464,11 +464,12 @@ class _RequestContextManager(base):
                 yield from self._resp.release()
 
 
-try:
-    from asyncio import coroutines
-    coroutines._COROUTINE_TYPES += (_RequestContextManager,)
-except:
-    pass
+if not PY_35:
+    try:
+        from asyncio import coroutines
+        coroutines._COROUTINE_TYPES += (_RequestContextManager,)
+    except:
+        pass
 
 
 class _DetachedRequestContextManager(_RequestContextManager):
