@@ -466,7 +466,7 @@ class _RequestContextManager(base):
 
 try:
     from asyncio import coroutines
-    coroutines._COROUTINE_TYPES += (_RequestContextManager)
+    coroutines._COROUTINE_TYPES += (_RequestContextManager,)
 except:
     pass
 
