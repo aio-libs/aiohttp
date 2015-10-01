@@ -22,7 +22,6 @@ from . import hdrs
 __all__ = ('ClientSession', 'request', 'get', 'options', 'head',
            'delete', 'post', 'put', 'patch')
 
-PY_341 = sys.version_info >= (3, 4, 1)
 PY_35 = sys.version_info >= (3, 5)
 
 
@@ -77,18 +76,17 @@ class ClientSession:
         self._response_class = response_class
         self._ws_response_class = ws_response_class
 
-    if PY_341:
-        def __del__(self, _warnings=warnings):
-            if not self.closed:
-                self.close()
+    def __del__(self, _warnings=warnings):
+        if not self.closed:
+            self.close()
 
-                _warnings.warn("Unclosed client session {!r}".format(self),
-                               ResourceWarning)
-                context = {'client_session': self,
-                           'message': 'Unclosed client session'}
-                if self._source_traceback is not None:
-                    context['source_traceback'] = self._source_traceback
-                self._loop.call_exception_handler(context)
+            _warnings.warn("Unclosed client session {!r}".format(self),
+                           ResourceWarning)
+            context = {'client_session': self,
+                       'message': 'Unclosed client session'}
+            if self._source_traceback is not None:
+                context['source_traceback'] = self._source_traceback
+            self._loop.call_exception_handler(context)
 
     def request(self, method, url, *,
                 params=None,
@@ -480,9 +478,8 @@ class _DetachedRequestContextManager(_RequestContextManager):
         super().__init__(coro)
         self._session = session
 
-    if PY_341:
-        def __del__(self):
-            self._session.detach()
+    def __del__(self):
+        self._session.detach()
 
 
 def request(method, url, *,

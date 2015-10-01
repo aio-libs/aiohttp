@@ -16,9 +16,6 @@ from aiohttp.multidict import (MultiDictProxy,
 import aiohttp
 
 
-HAS_NO_SET_OPS_FOR_VIEW = sys.version_info < (3, 4)
-
-
 class _Root:
 
     cls = None
@@ -131,43 +128,31 @@ class _BaseTest(_Root):
         with self.assertRaises(TypeError):
             self.make_dict([(1, 2, 3)])
 
-    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
-                     "Set operations on views not supported")
     def test_keys_is_set_less(self):
         d = self.make_dict([('key', 'value1')])
 
         self.assertLess(d.keys(), {'key', 'key2'})
 
-    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
-                     "Set operations on views not supported")
     def test_keys_is_set_less_equal(self):
         d = self.make_dict([('key', 'value1')])
 
         self.assertLessEqual(d.keys(), {'key'})
 
-    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
-                     "Set operations on views not supported")
     def test_keys_is_set_equal(self):
         d = self.make_dict([('key', 'value1')])
 
         self.assertEqual(d.keys(), {'key'})
 
-    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
-                     "Set operations on views not supported")
     def test_keys_is_set_greater(self):
         d = self.make_dict([('key', 'value1')])
 
         self.assertGreater({'key', 'key2'}, d.keys())
 
-    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
-                     "Set operations on views not supported")
     def test_keys_is_set_greater_equal(self):
         d = self.make_dict([('key', 'value1')])
 
         self.assertGreaterEqual({'key'}, d.keys())
 
-    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
-                     "Set operations on views not supported")
     def test_keys_is_set_not_equal(self):
         d = self.make_dict([('key', 'value1')])
 
@@ -181,38 +166,26 @@ class _BaseTest(_Root):
         d = self.make_dict([('key', 'value1')])
         self.assertNotEqual(d, {'key': 'another_value'})
 
-    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
-                     "Set operations on views not supported")
     def test_and(self):
         d = self.make_dict([('key', 'value1')])
         self.assertEqual({'key'}, d.keys() & {'key', 'key2'})
 
-    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
-                     "Set operations on views not supported")
     def test_or(self):
         d = self.make_dict([('key', 'value1')])
         self.assertEqual({'key', 'key2'}, d.keys() | {'key2'})
 
-    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
-                     "Set operations on views not supported")
     def test_sub(self):
         d = self.make_dict([('key', 'value1'), ('key2', 'value2')])
         self.assertEqual({'key'}, d.keys() - {'key2'})
 
-    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
-                     "Set operations on views not supported")
     def test_xor(self):
         d = self.make_dict([('key', 'value1'), ('key2', 'value2')])
         self.assertEqual({'key', 'key3'}, d.keys() ^ {'key2', 'key3'})
 
-    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
-                     "Set operations on views not supported")
     def test_isdisjoint(self):
         d = self.make_dict([('key', 'value1')])
         self.assertTrue(d.keys().isdisjoint({'key2'}))
 
-    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
-                     "Set operations on views not supported")
     def test_isdisjoint2(self):
         d = self.make_dict([('key', 'value1')])
         self.assertFalse(d.keys().isdisjoint({'key'}))
@@ -221,46 +194,43 @@ class _BaseTest(_Root):
         d = self.make_dict()
         try:
             raise Exception
+            self.fail("Sould never happen")  # pragma: no cover
         except Exception as e:
             repr(d)
             self.assertIs(sys.exc_info()[1], e)
 
-    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
-                     "Set operations on views not supported")
     def test_or_issue_410(self):
         d = self.make_dict([('key', 'value')])
         try:
             raise Exception
+            self.fail("Sould never happen")  # pragma: no cover
         except Exception as e:
             d.keys() | {'other'}
             self.assertIs(sys.exc_info()[1], e)
 
-    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
-                     "Set operations on views not supported")
     def test_and_issue_410(self):
         d = self.make_dict([('key', 'value')])
         try:
             raise Exception
+            self.fail("Sould never happen")  # pragma: no cover
         except Exception as e:
             d.keys() & {'other'}
             self.assertIs(sys.exc_info()[1], e)
 
-    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
-                     "Set operations on views not supported")
     def test_sub_issue_410(self):
         d = self.make_dict([('key', 'value')])
         try:
             raise Exception
+            self.fail("Sould never happen")  # pragma: no cover
         except Exception as e:
             d.keys() - {'other'}
             self.assertIs(sys.exc_info()[1], e)
 
-    @unittest.skipIf(HAS_NO_SET_OPS_FOR_VIEW,
-                     "Set operations on views not supported")
     def test_xor_issue_410(self):
         d = self.make_dict([('key', 'value')])
         try:
             raise Exception
+            self.fail("Sould never happen")  # pragma: no cover
         except Exception as e:
             d.keys() ^ {'other'}
             self.assertIs(sys.exc_info()[1], e)

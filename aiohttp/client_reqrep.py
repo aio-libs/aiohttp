@@ -23,7 +23,6 @@ from .multidict import (CIMultiDictProxy, MultiDictProxy, MultiDict,
 from .multipart import MultipartWriter
 from .protocol import HttpMessage
 
-PY_341 = sys.version_info >= (3, 4, 1)
 PY_35 = sys.version_info >= (3, 5)
 
 HTTP_PORT = 80
@@ -551,19 +550,18 @@ class ClientResponse:
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
-    if PY_341:
-        def __del__(self, _warnings=warnings):
-            if self._closed:
-                return
-            self.close()
+    def __del__(self, _warnings=warnings):
+        if self._closed:
+            return
+        self.close()
 
-            _warnings.warn("Unclosed response {!r}".format(self),
-                           ResourceWarning)
-            context = {'client_response': self,
-                       'message': 'Unclosed response'}
-            if self._source_traceback:
-                context['source_traceback'] = self._source_traceback
-            self._loop.call_exception_handler(context)
+        _warnings.warn("Unclosed response {!r}".format(self),
+                       ResourceWarning)
+        context = {'client_response': self,
+                   'message': 'Unclosed response'}
+        if self._source_traceback:
+            context['source_traceback'] = self._source_traceback
+        self._loop.call_exception_handler(context)
 
     def __repr__(self):
         out = io.StringIO()
