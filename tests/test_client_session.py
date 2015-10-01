@@ -182,14 +182,14 @@ class TestClientSession(unittest.TestCase):
             read_until_eof=False)
         return session, params
 
-    @mock.patch("aiohttp.client.ClientSession.request")
+    @mock.patch("aiohttp.client.ClientSession._request")
     def test_http_GET(self, patched):
         session, params = self._make_one()
-        self.run(session.get(
+        session.get(
             "http://test.example.com",
             params={"x": 1},
-            **params))
-        self.assertTrue(patched.called, "`ClientSession.request` not called")
+            **params)
+        self.assertTrue(patched.called, "`ClientSession._request` not called")
         self.assertEqual(
             list(patched.call_args),
             [("GET", "http://test.example.com",),
@@ -199,14 +199,14 @@ class TestClientSession(unittest.TestCase):
                  **params)])
         session.close()
 
-    @mock.patch("aiohttp.client.ClientSession.request")
+    @mock.patch("aiohttp.client.ClientSession._request")
     def test_http_OPTIONS(self, patched):
         session, params = self._make_one()
-        self.run(session.options(
+        session.options(
             "http://opt.example.com",
             params={"x": 2},
-            **params))
-        self.assertTrue(patched.called, "`ClientSession.request` not called")
+            **params)
+        self.assertTrue(patched.called, "`ClientSession._request` not called")
         self.assertEqual(
             list(patched.call_args),
             [("OPTIONS", "http://opt.example.com",),
@@ -216,14 +216,14 @@ class TestClientSession(unittest.TestCase):
                 **params)])
         session.close()
 
-    @mock.patch("aiohttp.client.ClientSession.request")
+    @mock.patch("aiohttp.client.ClientSession._request")
     def test_http_HEAD(self, patched):
         session, params = self._make_one()
-        self.run(session.head(
+        session.head(
             "http://head.example.com",
             params={"x": 2},
-            **params))
-        self.assertTrue(patched.called, "`ClientSession.request` not called")
+            **params)
+        self.assertTrue(patched.called, "`ClientSession._request` not called")
         self.assertEqual(
             list(patched.call_args),
             [("HEAD", "http://head.example.com",),
@@ -233,74 +233,68 @@ class TestClientSession(unittest.TestCase):
                 **params)])
         session.close()
 
-    @mock.patch("aiohttp.client.ClientSession.request")
+    @mock.patch("aiohttp.client.ClientSession._request")
     def test_http_POST(self, patched):
         session, params = self._make_one()
-        self.run(session.post(
+        session.post(
             "http://post.example.com",
             params={"x": 2},
             data="Some_data",
-            files={"x": '1'},
-            **params))
-        self.assertTrue(patched.called, "`ClientSession.request` not called")
+            **params)
+        self.assertTrue(patched.called, "`ClientSession._request` not called")
         self.assertEqual(
             list(patched.call_args),
             [("POST", "http://post.example.com",),
              dict(
                 params={"x": 2},
                 data="Some_data",
-                files={"x": '1'},
                 **params)])
         session.close()
 
-    @mock.patch("aiohttp.client.ClientSession.request")
+    @mock.patch("aiohttp.client.ClientSession._request")
     def test_http_PUT(self, patched):
         session, params = self._make_one()
-        self.run(session.put(
+        session.put(
             "http://put.example.com",
             params={"x": 2},
             data="Some_data",
-            files={"x": '1'},
-            **params))
-        self.assertTrue(patched.called, "`ClientSession.request` not called")
+            **params)
+        self.assertTrue(patched.called, "`ClientSession._request` not called")
         self.assertEqual(
             list(patched.call_args),
             [("PUT", "http://put.example.com",),
              dict(
                  params={"x": 2},
                  data="Some_data",
-                 files={"x": '1'},
                  **params)])
         session.close()
 
-    @mock.patch("aiohttp.client.ClientSession.request")
+    @mock.patch("aiohttp.client.ClientSession._request")
     def test_http_PATCH(self, patched):
         session, params = self._make_one()
-        self.run(session.patch(
+        session.patch(
             "http://patch.example.com",
             params={"x": 2},
             data="Some_data",
-            files={"x": '1'},
-            **params))
-        self.assertTrue(patched.called, "`ClientSession.request` not called")
+            **params)
+        self.assertTrue(patched.called, "`ClientSession._request` not called")
         self.assertEqual(
             list(patched.call_args),
             [("PATCH", "http://patch.example.com",),
              dict(
                 params={"x": 2},
                 data="Some_data",
-                files={"x": '1'},
                 **params)])
         session.close()
 
-    @mock.patch("aiohttp.client.ClientSession.request")
+    @mock.patch("aiohttp.client.ClientSession._request")
     def test_http_DELETE(self, patched):
         session, params = self._make_one()
-        self.run(session.delete(
+        session.delete(
             "http://delete.example.com",
             params={"x": 2},
-            **params))
-        self.assertTrue(patched.called, "`ClientSession.request` not called")
+            **params)
+        self.assertTrue(patched.called, "`ClientSession._request` not called")
         self.assertEqual(
             list(patched.call_args),
             [("DELETE", "http://delete.example.com",),

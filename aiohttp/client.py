@@ -23,6 +23,7 @@ __all__ = ('ClientSession', 'request', 'get', 'options', 'head',
            'delete', 'post', 'put', 'patch')
 
 PY_341 = sys.version_info >= (3, 4, 1)
+PY_35 = sys.version_info >= (3, 5)
 
 
 class ClientSession:
@@ -89,7 +90,6 @@ class ClientSession:
                     context['source_traceback'] = self._source_traceback
                 self._loop.call_exception_handler(context)
 
-    @asyncio.coroutine
     def request(self, method, url, *,
                 params=None,
                 data=None,
@@ -106,6 +106,41 @@ class ClientSession:
                 expect100=False,
                 read_until_eof=True):
         """Perform HTTP request."""
+        return _RequestContextManager(
+            self._request(
+                method,
+                url,
+                params=params,
+                data=data,
+                headers=headers,
+                skip_auto_headers=skip_auto_headers,
+                files=files,
+                auth=auth,
+                allow_redirects=allow_redirects,
+                max_redirects=max_redirects,
+                encoding=encoding,
+                version=version,
+                compress=compress,
+                chunked=chunked,
+                expect100=expect100,
+                read_until_eof=read_until_eof))
+
+    @asyncio.coroutine
+    def _request(self, method, url, *,
+                 params=None,
+                 data=None,
+                 headers=None,
+                 skip_auto_headers=None,
+                 files=None,
+                 auth=None,
+                 allow_redirects=True,
+                 max_redirects=10,
+                 encoding='utf-8',
+                 version=aiohttp.HttpVersion11,
+                 compress=None,
+                 chunked=None,
+                 expect100=False,
+                 read_until_eof=True):
 
         if self.closed:
             raise RuntimeError('Session is closed')
@@ -289,60 +324,53 @@ class ClientSession:
                     added_names.add(key)
         return result
 
-    @asyncio.coroutine
     def get(self, url, *, allow_redirects=True, **kwargs):
         """Perform HTTP GET request."""
-        resp = yield from self.request(hdrs.METH_GET, url,
-                                       allow_redirects=allow_redirects,
-                                       **kwargs)
-        return resp
+        return _RequestContextManager(
+            self._request(hdrs.METH_GET, url,
+                          allow_redirects=allow_redirects,
+                          **kwargs))
 
-    @asyncio.coroutine
     def options(self, url, *, allow_redirects=True, **kwargs):
         """Perform HTTP OPTIONS request."""
-        resp = yield from self.request(hdrs.METH_OPTIONS, url,
-                                       allow_redirects=allow_redirects,
-                                       **kwargs)
-        return resp
+        return _RequestContextManager(
+            self._request(hdrs.METH_OPTIONS, url,
+                          allow_redirects=allow_redirects,
+                          **kwargs))
 
-    @asyncio.coroutine
     def head(self, url, *, allow_redirects=False, **kwargs):
         """Perform HTTP HEAD request."""
-        resp = yield from self.request(hdrs.METH_HEAD, url,
-                                       allow_redirects=allow_redirects,
-                                       **kwargs)
-        return resp
+        return _RequestContextManager(
+            self._request(hdrs.METH_HEAD, url,
+                          allow_redirects=allow_redirects,
+                          **kwargs))
 
-    @asyncio.coroutine
     def post(self, url, *, data=None, **kwargs):
         """Perform HTTP POST request."""
-        resp = yield from self.request(hdrs.METH_POST, url,
-                                       data=data,
-                                       **kwargs)
-        return resp
+        return _RequestContextManager(
+            self._request(hdrs.METH_POST, url,
+                          data=data,
+                          **kwargs))
 
-    @asyncio.coroutine
     def put(self, url, *, data=None, **kwargs):
         """Perform HTTP PUT request."""
-        resp = yield from self.request(hdrs.METH_PUT, url,
-                                       data=data,
-                                       **kwargs)
-        return resp
+        return _RequestContextManager(
+            self._request(hdrs.METH_PUT, url,
+                          data=data,
+                          **kwargs))
 
-    @asyncio.coroutine
     def patch(self, url, *, data=None, **kwargs):
         """Perform HTTP PATCH request."""
-        resp = yield from self.request(hdrs.METH_PATCH, url,
-                                       data=data,
-                                       **kwargs)
-        return resp
+        return _RequestContextManager(
+            self._request(hdrs.METH_PATCH, url,
+                          data=data,
+                          **kwargs))
 
-    @asyncio.coroutine
     def delete(self, url, **kwargs):
         """Perform HTTP DELETE request."""
-        resp = yield from self.request(hdrs.METH_DELETE, url,
-                                       **kwargs)
-        return resp
+        return _RequestContextManager(
+            self._request(hdrs.METH_DELETE, url,
+                          **kwargs))
 
     def close(self):
         """Close underlying connector.
@@ -384,12 +412,84 @@ class ClientSession:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+if PY_35:
+    from collections.abc import Coroutine
+    base = Coroutine
+else:
+    base = object
 
-@asyncio.coroutine
+
+class _RequestContextManager(base):
+
+    __slots__ = ('_coro', '_resp')
+
+    def __init__(self, coro):
+        self._coro = coro
+        self._resp = None
+
+    def send(self, value):
+        return self._coro.send(value)
+
+    def throw(self, typ, val=None, tb=None):
+        if val is None:
+            return self._coro.throw(typ)
+        elif tb is None:
+            return self._coro.throw(typ, val)
+        else:
+            return self._coro.throw(typ, val, tb)
+
+    def close(self):
+        return self._coro.close()
+
+    @asyncio.coroutine
+    def __iter__(self):
+        resp = yield from self._coro
+        return resp
+
+    if PY_35:
+        def __await__(self):
+            resp = yield from self._coro
+            return resp
+
+        @asyncio.coroutine
+        def __aenter__(self):
+            self._resp = yield from self._coro
+            return self._resp
+
+        @asyncio.coroutine
+        def __aexit__(self, exc_type, exc, tb):
+            if exc_type is not None:
+                self._resp.close()
+            else:
+                yield from self._resp.release()
+
+
+if not PY_35:
+    try:
+        from asyncio import coroutines
+        coroutines._COROUTINE_TYPES += (_RequestContextManager,)
+    except:
+        pass
+
+
+class _DetachedRequestContextManager(_RequestContextManager):
+
+    __slots__ = _RequestContextManager.__slots__ + ('_session', )
+
+    def __init__(self, coro, session):
+        super().__init__(coro)
+        self._session = session
+
+    if PY_341:
+        def __del__(self):
+            self._session.detach()
+
+
 def request(method, url, *,
             params=None,
             data=None,
             headers=None,
+            skip_auto_headers=None,
             cookies=None,
             files=None,
             auth=None,
@@ -460,63 +560,48 @@ def request(method, url, *,
                             cookies=cookies,
                             connector=connector,
                             **kwargs)
-    try:
-        resp = yield from session.request(method, url,
-                                          params=params,
-                                          data=data,
-                                          headers=headers,
-                                          files=files,
-                                          auth=auth,
-                                          allow_redirects=allow_redirects,
-                                          max_redirects=max_redirects,
-                                          encoding=encoding,
-                                          version=version,
-                                          compress=compress,
-                                          chunked=chunked,
-                                          expect100=expect100,
-                                          read_until_eof=read_until_eof)
-        return resp
-    finally:
-        session.detach()
+    return _DetachedRequestContextManager(
+        session._request(method, url,
+                         params=params,
+                         data=data,
+                         headers=headers,
+                         skip_auto_headers=skip_auto_headers,
+                         files=files,
+                         auth=auth,
+                         allow_redirects=allow_redirects,
+                         max_redirects=max_redirects,
+                         encoding=encoding,
+                         version=version,
+                         compress=compress,
+                         chunked=chunked,
+                         expect100=expect100,
+                         read_until_eof=read_until_eof),
+        session=session)
 
 
-@asyncio.coroutine
 def get(url, **kwargs):
-    ret = yield from request(hdrs.METH_GET, url, **kwargs)
-    return ret
+    return request(hdrs.METH_GET, url, **kwargs)
 
 
-@asyncio.coroutine
 def options(url, **kwargs):
-    ret = yield from request(hdrs.METH_OPTIONS, url, **kwargs)
-    return ret
+    return request(hdrs.METH_OPTIONS, url, **kwargs)
 
 
-@asyncio.coroutine
 def head(url, **kwargs):
-    ret = yield from request(hdrs.METH_HEAD, url, **kwargs)
-    return ret
+    return request(hdrs.METH_HEAD, url, **kwargs)
 
 
-@asyncio.coroutine
 def post(url, **kwargs):
-    ret = yield from request(hdrs.METH_POST, url, **kwargs)
-    return ret
+    return request(hdrs.METH_POST, url, **kwargs)
 
 
-@asyncio.coroutine
 def put(url, **kwargs):
-    ret = yield from request(hdrs.METH_PUT, url, **kwargs)
-    return ret
+    return request(hdrs.METH_PUT, url, **kwargs)
 
 
-@asyncio.coroutine
 def patch(url, **kwargs):
-    ret = yield from request(hdrs.METH_PATCH, url, **kwargs)
-    return ret
+    return request(hdrs.METH_PATCH, url, **kwargs)
 
 
-@asyncio.coroutine
 def delete(url, **kwargs):
-    ret = yield from request(hdrs.METH_DELETE, url, **kwargs)
-    return ret
+    return request(hdrs.METH_DELETE, url, **kwargs)

@@ -884,6 +884,19 @@ Response object
    User never creates the instance of ClientResponse class but gets it
    from API calls.
 
+   :class:`ClientResponse` supports async context manager protocol, e.g.::
+
+       resp = await client_session.get(url)
+       async with resp:
+           assert resp.status == 200
+
+   After exiting from ``async with`` block response object will be
+   *released* (see :meth:`release` coroutine).
+
+   .. versionadded:: 0.18
+
+      Support for ``async with``.
+
    .. attribute:: version
 
       Response's version, :class:`HttpVersion` instance.

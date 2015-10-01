@@ -3,27 +3,60 @@ import pytest
 import socket
 import sys
 
+from aiohttp import web
+
 
 @pytest.fixture
 def unused_port():
     def f():
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(('127.0.0.1', 0))
             return s.getsockname()[1]
     return f
 
 
-@pytest.fixture
+@pytest.yield_fixture
 def loop(request):
-    old_loop = asyncio.get_event_loop()
+    try:
+        old_loop = asyncio.get_event_loop()
+    except RuntimeError:
+        old_loop = None
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(None)
 
-    def fin():
-        loop.close()
+    yield loop
+
+    loop.close()
+    if old_loop:
         asyncio.set_event_loop(old_loop)
 
-    request.addfinalizer(fin)
-    return loop
+
+@pytest.yield_fixture
+def create_server(loop, unused_port):
+    app = handler = srv = None
+
+    @asyncio.coroutine
+    def create(*, debug=False, ssl_ctx=None):
+        nonlocal app, handler, srv
+        app = web.Application(loop=loop)
+        port = unused_port()
+        handler = app.make_handler(debug=debug, keep_alive_on=False)
+        srv = yield from loop.create_server(handler, '127.0.0.1', port,
+                                            ssl=ssl_ctx)
+        proto = "https" if ssl_ctx else "http"
+        url = "{}://127.0.0.1:{}".format(proto, port)
+        return app, url
+
+    yield create
+
+    @asyncio.coroutine
+    def finish():
+        yield from handler.finish_connections()
+        yield from app.finish()
+        srv.close()
+        yield from srv.wait_closed()
+
+    loop.run_until_complete(finish())
 
 
 @pytest.mark.tryfirst

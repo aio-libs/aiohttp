@@ -24,6 +24,7 @@ from .multipart import MultipartWriter
 from .protocol import HttpMessage
 
 PY_341 = sys.version_info >= (3, 4, 1)
+PY_35 = sys.version_info >= (3, 5)
 
 HTTP_PORT = 80
 HTTPS_PORT = 443
@@ -749,3 +750,15 @@ class ClientResponse:
             encoding = self._get_encoding()
 
         return loads(self._content.decode(encoding))
+
+    if PY_35:
+        @asyncio.coroutine
+        def __aenter__(self):
+            return self
+
+        @asyncio.coroutine
+        def __aexit__(self, exc_type, exc_val, exc_tb):
+            if exc_type is None:
+                yield from self.release()
+            else:
+                self.close()
