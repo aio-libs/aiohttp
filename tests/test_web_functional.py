@@ -1018,6 +1018,26 @@ class StaticFileMixin(WebFunctionalSetupMixin):
 
         self.loop.run_until_complete(go(here, filename))
 
+    def test_static_file_empty(self):
+
+        @asyncio.coroutine
+        def go(dirname, filename):
+            app, _, url = yield from self.create_server(
+                'GET', '/static/' + filename
+            )
+            app.router.add_static('/static', dirname)
+
+            resp = yield from request('GET', url, loop=self.loop)
+            self.assertEqual(200, resp.status)
+            txt = yield from resp.text()
+            self.assertEqual('', txt)
+            self.assertEqual('0', resp.headers['CONTENT-LENGTH'])
+            resp.close()
+
+        here = os.path.dirname(__file__)
+        filename = 'empty.dat'
+        self.loop.run_until_complete(go(here, filename))
+
 
 class TestStaticFileSendfileFallback(StaticFileMixin,
                                      unittest.TestCase):
