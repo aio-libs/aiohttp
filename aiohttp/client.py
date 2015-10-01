@@ -464,6 +464,13 @@ class _RequestContextManager(base):
                 yield from self._resp.release()
 
 
+try:
+    from asyncio import coroutines
+    coroutines._COROUTINE_TYPES += (_RequestContextManager)
+except:
+    pass
+
+
 class _DetachedRequestContextManager(_RequestContextManager):
 
     __slots__ = _RequestContextManager.__slots__ + ('_session', )
