@@ -1,3 +1,4 @@
+import sys
 import asyncio
 import warnings
 
@@ -11,6 +12,7 @@ from .web_reqrep import StreamResponse
 
 __all__ = ('WebSocketResponse', 'MsgType')
 
+PY_35 = sys.version_info >= (3, 5)
 
 THRESHOLD_CONNLOST_ACCESS = 5
 
@@ -285,3 +287,15 @@ class WebSocketResponse(StreamResponse):
 
     def write(self, data):
         raise RuntimeError("Cannot call .write() for websocket")
+
+    if PY_35:
+        @asyncio.coroutine
+        def __aiter__(self):
+            return self
+
+        @asyncio.coroutine
+        def __anext__(self):
+            msg = yield from self.receive()
+            if msg.tp == MsgType.close:
+                raise StopAsyncIteration  # NOQA
+            return msg
