@@ -24,8 +24,7 @@ and returns :class:`Response` instance::
    import asyncio
    from aiohttp import web
 
-   @asyncio.coroutine
-   def hello(request):
+   async def hello(request):
        return web.Response(body=b"Hello, world")
 
 Next, you have to create a :class:`Application` instance and register
@@ -65,7 +64,7 @@ Handler is an any :term:`callable` that accepts a single
 derived (e.g. :class:`Response`) instance.
 
 Handler **may** be a :ref:`coroutine<coroutine>`, :mod:`aiohttp.web` will
-**unyield** returned result by applying ``yield from`` to the handler.
+**unyield** returned result by applying ``await`` to the handler.
 
 Handlers are connected to the :class:`Application` via routes::
 
@@ -84,8 +83,7 @@ You can also use *variable routes*. If route contains strings like
 Parsed *path part* will be available in the *request handler* as
 ``request.match_info['name']``::
 
-   @asyncio.coroutine
-   def variable_handler(request):
+   async def variable_handler(request):
        return web.Response(
            text="Hello, {}".format(request.match_info['name']))
 
@@ -203,19 +201,17 @@ The next example shows custom processing based on *HTTP Accept* header:
            for accept in request.headers.getall('ACCEPT', []):
                 acceptor = self._accepts.get(accept):
                 if acceptor is not None:
-                    return (yield from acceptor(request))
+                    return (await acceptor(request))
            raise HTTPNotAcceptable()
 
        def reg_acceptor(self, accept, handler):
            self._accepts[accept] = handler
 
 
-   @asyncio.coroutine
-   def handle_json(request):
+   async def handle_json(request):
        # do json handling
 
-   @asyncio.coroutine
-   def handle_xml(request):
+   async def handle_xml(request):
        # do xml handling
 
    chooser = AcceptChooser()
@@ -272,18 +268,16 @@ usually called *session*.
     from aiohttp_session import get_session, session_middleware
     from aiohttp_session.cookie_storage import EncryptedCookieStorage
 
-    @asyncio.coroutine
-    def handler(request):
-        session = yield from get_session(request)
+    async def handler(request):
+        session = await get_session(request)
         session['last_visit'] = time.time()
         return web.Response(body=b'OK')
 
-    @asyncio.coroutine
-    def init(loop):
+    async def init(loop):
         app = web.Application(middlewares=[session_middleware(
             EncryptedCookieStorage(b'Sixteen byte key'))])
         app.router.add_route('GET', '/', handler)
-        srv = yield from loop.create_server(
+        srv = await loop.create_server(
             app.make_handler(), '0.0.0.0', 8080)
         return srv
 
@@ -368,10 +362,9 @@ use those to read a file's name and a content:
 
 .. code-block:: python
 
-    @asyncio.coroutine
-    def store_mp3_view(request):
+    async def store_mp3_view(request):
 
-        data = yield from request.post()
+        data = await request.post()
 
         # filename contains the name of the file in string format.
         filename = data['mp3'].filename
@@ -403,18 +396,17 @@ using response's methods:
 
 .. code-block:: python
 
-    @asyncio.coroutine
-    def websocket_handler(request):
+    async def websocket_handler(request):
 
         ws = web.WebSocketResponse()
-        yield from ws.prepare(request)
+        await ws.prepare(request)
 
         while True:
-            msg = yield from ws.receive()
+            msg = await ws.receive()
 
             if msg.tp == aiohttp.MsgType.text:
                 if msg.data == 'close':
-                    yield from ws.close()
+                    await ws.close()
                 else:
                     ws.send_str(msg.data + '/answer')
             elif msg.tp == aiohttp.MsgType.close:
@@ -425,10 +417,10 @@ using response's methods:
 
         return ws
 
-You **must** use the only websocket task for both reading (e.g ``yield
-from ws.receive()``) and writing but may have multiple writer tasks
-which can only send data asynchronously (by ``yield from
-ws.send_str('data')`` for example).
+You **must** use the only websocket task for both reading (e.g ``await
+ws.receive()``) and writing but may have multiple writer tasks which
+can only send data asynchronously (by ``ws.send_str('data')`` for
+example).
 
 
 .. _aiohttp-web-exceptions:
@@ -548,11 +540,9 @@ parameter, which should be a sequence of *middleware factories*, e.g::
 
 The most trivial *middleware factory* example::
 
-    @asyncio.coroutine
-    def middleware_factory(app, handler):
-        @asyncio.coroutine
-        def middleware(request):
-            return (yield from handler(request))
+    async def middleware_factory(app, handler):
+        async def middleware(request):
+            return await handler(request)
         return middleware
 
 Every factory is a coroutine that accepts two parameters: *app*
@@ -567,7 +557,7 @@ parameter. Signature of returned handler should be the same as for
 :ref:`web-handler<aiohttp-web-handler>`: accept single *request*
 parameter, return *response* or raise exception.
 
-The factory is a coroutine, thus it can do extra ``yield from`` calls
+The factory is a coroutine, thus it can do extra ``await`` calls
 on making new handler, e.g. call database etc.
 
 After constructing outermost handler by applying middleware chain to

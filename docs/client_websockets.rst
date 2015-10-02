@@ -14,22 +14,24 @@ WebSockets Client
 
 :mod:`aiohttp` works with client websockets out-of-the-box.
 
-You have to use the :func:`ws_connect()` coroutine for client
-websocket connection. It accepts a *url* as a first parameter and returns
-:class:`ClientWebSocketResponse`, with that object you can communicate with
-websocket server using response's methods:
+You have to use the :meth:`aiohttp.ClientSession.ws_connect` coroutine
+for client websocket connection. It accepts a *url* as a first
+parameter and returns :class:`ClientWebSocketResponse`, with that
+object you can communicate with websocket server using response's
+methods:
 
 .. code-block:: python
 
-   ws = yield from aiohttp.ws_connect(
+   session = aiohttp.ClientSession()
+   ws = await session.ws_connect(
        'http://webscoket-server.org/endpoint')
 
    while True:
-       msg = yield from ws.receive()
+       msg = await ws.receive()
 
        if msg.tp == aiohttp.MsgType.text:
            if msg.data == 'close':
-              yield from ws.close()
+              await ws.close()
               break
            else:
               ws.send_str(msg.data + '/answer')
@@ -38,19 +40,17 @@ websocket server using response's methods:
        elif msg.tp == aiohttp.MsgType.error:
            break
 
-If you prefer to establish *websocket client connection* from
-:class:`~aiohttp.ClientSession` object please use
-:meth:`aiohttp.ClientSession.ws_connect` coroutine::
+If you prefer to establish *websocket client connection* without
+explicit :class:`~aiohttp.ClientSession` instance please use
+:func:`ws_connect()`::
 
-   session = aiohttp.ClientSession()
-   ws = yield from session.ws_connect(
+   ws = await aiohttp.ws_connect(
        'http://webscoket-server.org/endpoint')
 
 
-You **must** use the only websocket task for both reading (e.g ``yield
-from ws.receive()``) and writing but may have multiple writer tasks
-which can only send data asynchronously (by ``yield from
-ws.send_str('data')`` for example).
+You **must** use the only websocket task for both reading (e.g ``await
+ws.receive()``) and writing but may have multiple writer tasks which
+can only send data asynchronously (by ``ws.send_str('data')`` for example).
 
 
 ws_connect

@@ -252,7 +252,7 @@ first positional parameter.
 
          @asyncio.coroutine
          def json(self, *, loader=json.loads):
-             body = yield from self.text()
+             body = await self.text()
              return loader(body)
 
       :param callable loader: any :term:`callable` that accepts
@@ -592,7 +592,7 @@ StreamResponse
       The intended use is to write::
 
           resp.write(data)
-          yield from resp.drain()
+          await resp.drain()
 
       Yielding from :meth:`drain` gives the opportunity for the loop
       to schedule the write operation and flush the buffer. It should
@@ -877,11 +877,10 @@ arbitrary properties for later access from
 :ref:`handler<aiohttp-web-handler>` via :attr:`Request.app` property::
 
    app = Application(loop=loop)
-   app['database'] = yield from aiopg.create_engine(**db_config)
+   app['database'] = await aiopg.create_engine(**db_config)
 
-   @asyncio.coroutine
-   def handler(request):
-       with (yield from request.app['database']) as conn:
+   async def handler(request):
+       with (await request.app['database']) as conn:
            conn.execute("DELETE * FROM table")
 
 
@@ -939,8 +938,8 @@ arbitrary properties for later access from
          # setup route table
          # app.router.add_route(...)
 
-         yield from loop.create_server(app.make_handler(),
-                                       '0.0.0.0', 8080)
+         await loop.create_server(app.make_handler(),
+                                  '0.0.0.0', 8080)
 
    .. coroutinemethod:: finish()
 
@@ -965,7 +964,7 @@ arbitrary properties for later access from
       last in, first out order.
 
       *func* may be either regular function or :ref:`coroutine<coroutine>`,
-      :meth:`finish` will un-yield (`yield from`) the later.
+      :meth:`finish` will un-yield (`await`) the later.
 
    .. note::
 

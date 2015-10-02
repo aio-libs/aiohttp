@@ -5,7 +5,8 @@ HTTP Client
 
 .. highlight:: python
 
-.. module:: aiohttp.client
+.. module:: aiohttp
+.. currentmodule:: aiohttp
 
 Example
 -------
@@ -14,13 +15,13 @@ Because most of the *aiohttp* methods are generators, they will not work
 in the interactive python interpreter like regular functions
 would. For convenience, we show our examples as if they were run in
 the interactive interpreter, but please remember that actually running
-them requires that you wrap them in functions and run them with an
+them requires that you wrap them in coroutines and run them with an
 :ref:`asyncio loop<asyncio-event-loop>`. For example::
 
-  >>> def run():
-  ...   r = yield from aiohttp.get('http://python.org')
-  ...   raw = yield from r.text()
-  ...   print(raw)
+  >>> async def run():
+  ...   async with aiohttp.get('http://python.org') as r:
+  ...       raw = await r.text()
+  ...       print(raw)
 
   >>> if __name__ == '__main__':
   ...    asyncio.get_event_loop().run_until_complete(run())
@@ -92,7 +93,6 @@ Response Content
 We can read the content of the server's response. Consider the GitHub time-line
 again::
 
-    >>> import aiohttp
     >>> r = yield from aiohttp.get('https://api.github.com/events')
     >>> yield from r.text()
     '[{"created_at":"2015-06-12T14:06:22Z","public":true,"actor":{...
@@ -120,7 +120,6 @@ JSON Response Content
 
 There's also a built-in JSON decoder, in case you're dealing with JSON data::
 
-    >>> import aiohttp
     >>> r = yield from aiohttp.get('https://api.github.com/events')
     >>> yield from r.json()
     [{'created_at': '2015-06-12T14:07:07Z', 'public': True, 'actor...
@@ -142,36 +141,43 @@ attribute. It is an instance of the ``aiohttp.StreamReader``
 class. The ``gzip`` and ``deflate`` transfer-encodings are
 automatically decoded for you::
 
-    >>> r = yield from aiohttp.get('https://api.github.com/events')
-    >>> r.content
-    <aiohttp.streams.StreamReader object at 0x...>
-    >>> yield from r.content.read(10)
-    '\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03'
+    async with aiohttp.get('https://api.github.com/events') as r:
+        await r.content.read(10)
 
 In general, however, you should use a pattern like this to save what is being
 streamed to a file::
 
-    >>> with open(filename, 'wb') as fd:
-    ...     while True:
-    ...         chunk = yield from r.content.read(chunk_size)
-    ...         if not chunk:
-    ...             break
-    ...         fd.write(chunk)
+    with open(filename, 'wb') as fd:
+        while True:
+            chunk = await r.content.read(chunk_size)
+            if not chunk:
+                break
+            fd.write(chunk)
 
-It is not possible to use ``read()``, ``json()`` and ``text()`` after
-reading the file with ``chunk_size``.
+It is not possible to use :meth:`~ClientResponse.read`,
+:meth:`~ClientResponse.json` and :meth:`~ClientResponse.text` after
+explicit reading from :attr:`~ClientResponse.content`.
 
 
 Releasing Response
 --------------------------
 
-Don't forget to release response after use. This will ensure explicit 
+Don't forget to release response after use. This will ensure explicit
 behavior and proper connection pooling.
 
-    >>> yield from r.release()
+The easiest way to correctly response releasing is ``async with`` statement::
 
-But it's not necessary if you use ``read()``, ``json()`` and ``text()`` methods. 
-They do release connection internally.
+    async with client.get(url) as resp:
+        pass
+
+But explicit :meth:`~ClientResponse.release` call also may be used::
+
+    await r.release()
+
+But it's not necessary if you use :meth:`~ClientResponse.read`,
+:meth:`~ClientResponse.json` and :meth:`~ClientResponse.text` methods.
+They do release connection internally but better don't rely on that
+behavior.
 
 
 Custom Headers
@@ -180,16 +186,17 @@ Custom Headers
 If you need to add HTTP headers to a request, pass them in a
 :class:`dict` to the *headers* parameter.
 
-For example, if you want to specify the content-type for the previous example::
+For example, if you want to specify the content-type for the previous
+example::
 
-    >>> import json
-    >>> url = 'https://api.github.com/some/endpoint'
-    >>> payload = {'some': 'data'}
-    >>> headers = {'content-type': 'application/json'}
+    import json
+    url = 'https://api.github.com/some/endpoint'
+    payload = {'some': 'data'}
+    headers = {'content-type': 'application/json'}
 
-    >>> r = yield from aiohttp.post(url,
-    ...                             data=json.dumps(payload),
-    ...                             headers=headers)
+    await aiohttp.post(url,
+                       data=json.dumps(payload),
+                       headers=headers)
 
 
 Custom Cookies

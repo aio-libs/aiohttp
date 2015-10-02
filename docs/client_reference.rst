@@ -6,6 +6,7 @@ HTTP Client Reference
 .. highlight:: python
 
 .. module:: aiohttp
+.. currentmodule:: aiohttp
 
 
 Client Session
@@ -18,26 +19,20 @@ supports keepalives by default.
 
 Usage example::
 
-     >>> import aiohttp
-     >>> session = aiohttp.ClientSession()
-     >>> resp = yield from session.get('http://python.org')
-     >>> resp
-     <ClientResponse(python.org/) [200]>
-     >>> data = yield from resp.read()
-     >>> session.close()
+     import aiohttp
+     import asyncio
 
-.. versionadded:: 0.15.2
+     async def fetch(client):
+         async with client.get('http://python.org') as resp:
+         assert resp.status == 200
+         print(await resp.text())
 
-The client session supports context manager protocol for self closing::
-
-    >>> with aiohttp.ClientSession() as session:
-    >>>     resp = yield from session.get('http://python.org')
-    >>>     yield from resp.release()
-    >>> session.closed
-    True
+     with aiohttp.ClientSession() as client:
+         asyncio.get_event_loop().run_until_complete(fetch(client))
 
 .. versionadded:: 0.17
 
+The client session supports context manager protocol for self closing.
 
 .. class:: ClientSession(*, connector=None, loop=None, cookies=None,\
                          headers=None, skip_auto_headers=None, \
@@ -423,11 +418,12 @@ certification chaining.
 
 Usage::
 
-     >>> import aiohttp
-     >>> resp = yield from aiohttp.request('GET', 'http://python.org/')
-     >>> resp
-     <ClientResponse(python.org/) [200]>
-     >>> data = yield from resp.read()
+     import aiohttp
+
+     async def fetch():
+         async with aiohttp.request('GET', 'http://python.org/') as resp:
+             assert resp.status == 200
+             print(await resp.text())
 
 
 .. coroutinefunction:: get(url, **kwargs)
@@ -764,9 +760,10 @@ ProxyConnector
 
    Usage::
 
-      >>> conn = ProxyConnector(proxy="http://some.proxy.com")
-      >>> session = ClientSession(connector=conn)
-      >>> resp = yield from session.get('http://python.org')
+      conn == ProxyConnector(proxy="http://some.proxy.com")
+      session = ClientSession(connector=conn)
+      async with session.get('http://python.org') as resp:
+          assert resp.status == 200
 
    Constructor accepts all parameters suitable for
    :class:`TCPConnector` plus several proxy-specific ones:
@@ -820,9 +817,10 @@ UnixConnector
 
     Usage::
 
-       >>> conn = UnixConnector(path='/path/to/socket')
-       >>> session = ClientSession(connector=conn)
-       >>> resp = yield from session.get('http://python.org')
+       conn = UnixConnector(path='/path/to/socket')
+       session = ClientSession(connector=conn)
+       async with session.get('http://python.org') as resp:
+           ...
 
    Constructor accepts all parameters suitable for
    :class:`BaseConnector` plus UNIX-specific one:

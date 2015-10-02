@@ -40,11 +40,10 @@ Client example::
     import asyncio
     import aiohttp
 
-    @asyncio.coroutine
-    def fetch_page(client, url):
-        response = yield from client.get(url)
-        assert response.status == 200
-        return (yield from response.read())
+    await def fetch_page(client, url):
+        async with client.get(url) as response:
+            assert response.status == 200
+            return await response.read()
 
     loop = asyncio.get_event_loop()
     client = aiohttp.ClientSession(loop=loop)
@@ -58,18 +57,16 @@ Server example::
     import asyncio
     from aiohttp import web
 
-    @asyncio.coroutine
-    def handle(request):
+    async def handle(request):
         name = request.match_info.get('name', "Anonymous")
         text = "Hello, " + name
         return web.Response(body=text.encode('utf-8'))
 
-    @asyncio.coroutine
-    def init(loop):
+    async def init(loop):
         app = web.Application(loop=loop)
         app.router.add_route('GET', '/{name}', handle)
 
-        srv = yield from loop.create_server(app.make_handler(),
+        srv = await loop.create_server(app.make_handler(),
                                             '127.0.0.1', 8080)
         print("Server started at http://127.0.0.1:8080")
         return srv
