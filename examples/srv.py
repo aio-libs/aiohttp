@@ -14,8 +14,6 @@ import asyncio
 import aiohttp
 import aiohttp.server
 
-assert sys.version >= '3.3', 'Please use Python 3.3 or higher.'
-
 
 class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
 

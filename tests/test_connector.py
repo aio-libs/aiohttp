@@ -6,7 +6,6 @@ import gc
 import socket
 import unittest
 import ssl
-import sys
 import tempfile
 import shutil
 import os.path
@@ -17,8 +16,6 @@ from aiohttp import web
 from aiohttp import client
 from aiohttp.client import ClientResponse, ClientRequest
 from aiohttp.connector import Connection
-
-PY_341 = sys.version_info >= (3, 4, 1)
 
 
 class TestHttpConnection(unittest.TestCase):
@@ -36,7 +33,6 @@ class TestHttpConnection(unittest.TestCase):
         self.loop.close()
         gc.collect()
 
-    @unittest.skipUnless(PY_341, "Requires Python 3.4.1+")
     def test_del(self):
         conn = Connection(
             self.connector, self.key, self.request,
@@ -122,7 +118,6 @@ class TestBaseConnector(unittest.TestCase):
         self.loop.close()
         gc.collect()
 
-    @unittest.skipUnless(PY_341, "Requires Python 3.4.1+")
     def test_del(self):
         conn = aiohttp.BaseConnector(loop=self.loop)
         transp = unittest.mock.Mock()
@@ -144,7 +139,6 @@ class TestBaseConnector(unittest.TestCase):
             msg['source_traceback'] = unittest.mock.ANY
         exc_handler.assert_called_with(self.loop, msg)
 
-    @unittest.skipUnless(PY_341, "Requires Python 3.4.1+")
     def test_del_with_scheduled_cleanup(self):
         conn = aiohttp.BaseConnector(loop=self.loop, keepalive_timeout=0.01)
         transp = unittest.mock.Mock()
@@ -168,7 +162,6 @@ class TestBaseConnector(unittest.TestCase):
             msg['source_traceback'] = unittest.mock.ANY
         exc_handler.assert_called_with(self.loop, msg)
 
-    @unittest.skipUnless(PY_341, "Requires Python 3.4.1+")
     def test_del_with_closed_loop(self):
         conn = aiohttp.BaseConnector(loop=self.loop)
         transp = unittest.mock.Mock()
@@ -188,7 +181,6 @@ class TestBaseConnector(unittest.TestCase):
         self.assertFalse(transp.close.called)
         self.assertTrue(exc_handler.called)
 
-    @unittest.skipUnless(PY_341, "Requires Python 3.4.1+")
     def test_del_empty_conector(self):
         conn = aiohttp.BaseConnector(loop=self.loop)
 

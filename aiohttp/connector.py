@@ -25,7 +25,6 @@ from .helpers import BasicAuth
 
 __all__ = ('BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector')
 
-PY_341 = sys.version_info >= (3, 4, 1)
 PY_343 = sys.version_info >= (3, 4, 3)
 
 HASHFUNC_BY_DIGESTLEN = {
@@ -53,24 +52,23 @@ class Connection(object):
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
-    if PY_341:
-        def __del__(self, _warnings=warnings):
-            if self._transport is not None:
-                if hasattr(self._loop, 'is_closed'):
-                    if self._loop.is_closed():
-                        return
+    def __del__(self, _warnings=warnings):
+        if self._transport is not None:
+            if hasattr(self._loop, 'is_closed'):
+                if self._loop.is_closed():
+                    return
 
-                self._connector._release(
-                    self._key, self._request, self._transport, self._protocol,
-                    should_close=True)
+            self._connector._release(
+                self._key, self._request, self._transport, self._protocol,
+                should_close=True)
 
-                _warnings.warn("Unclosed connection {!r}".format(self),
-                               ResourceWarning)
-                context = {'client_connection': self,
-                           'message': 'Unclosed connection'}
-                if self._source_traceback is not None:
-                    context['source_traceback'] = self._source_traceback
-                self._loop.call_exception_handler(context)
+            _warnings.warn("Unclosed connection {!r}".format(self),
+                           ResourceWarning)
+            context = {'client_connection': self,
+                       'message': 'Unclosed connection'}
+            if self._source_traceback is not None:
+                context['source_traceback'] = self._source_traceback
+            self._loop.call_exception_handler(context)
 
     @property
     def loop(self):
@@ -142,22 +140,21 @@ class BaseConnector(object):
 
         self.cookies = http.cookies.SimpleCookie()
 
-    if PY_341:
-        def __del__(self, _warnings=warnings):
-            if self._closed:
-                return
-            if not self._conns:
-                return
+    def __del__(self, _warnings=warnings):
+        if self._closed:
+            return
+        if not self._conns:
+            return
 
-            self.close()
+        self.close()
 
-            _warnings.warn("Unclosed connector {!r}".format(self),
-                           ResourceWarning)
-            context = {'connector': self,
-                       'message': 'Unclosed connector'}
-            if self._source_traceback is not None:
-                context['source_traceback'] = self._source_traceback
-            self._loop.call_exception_handler(context)
+        _warnings.warn("Unclosed connector {!r}".format(self),
+                       ResourceWarning)
+        context = {'connector': self,
+                   'message': 'Unclosed connector'}
+        if self._source_traceback is not None:
+            context['source_traceback'] = self._source_traceback
+        self._loop.call_exception_handler(context)
 
     @property
     def force_close(self):
@@ -372,9 +369,6 @@ class BaseConnector(object):
         raise NotImplementedError()
 
 
-_SSL_OP_NO_COMPRESSION = getattr(ssl, "OP_NO_COMPRESSION", 0)
-_SSH_HAS_CREATE_DEFAULT_CONTEXT = hasattr(ssl, 'create_default_context')
-
 _marker = object()
 
 
@@ -455,19 +449,10 @@ class TCPConnector(BaseConnector):
                 sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
                 sslcontext.options |= ssl.OP_NO_SSLv2
                 sslcontext.options |= ssl.OP_NO_SSLv3
-                sslcontext.options |= _SSL_OP_NO_COMPRESSION
+                sslcontext.options |= ssl.OP_NO_COMPRESSION
                 sslcontext.set_default_verify_paths()
-            elif _SSH_HAS_CREATE_DEFAULT_CONTEXT:
-                # Python 3.4+
-                sslcontext = ssl.create_default_context()
             else:
-                # Fallback for Python 3.3.
-                sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-                sslcontext.options |= ssl.OP_NO_SSLv2
-                sslcontext.options |= ssl.OP_NO_SSLv3
-                sslcontext.options |= _SSL_OP_NO_COMPRESSION
-                sslcontext.set_default_verify_paths()
-                sslcontext.verify_mode = ssl.CERT_REQUIRED
+                sslcontext = ssl.create_default_context()
             self._ssl_context = sslcontext
         return self._ssl_context
 

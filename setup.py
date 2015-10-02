@@ -57,8 +57,8 @@ with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
 
 install_requires = ['chardet']
 
-if sys.version_info < (3, 4):
-    install_requires += ['asyncio', 'enum34']
+if sys.version_info < (3, 4, 1):
+    raise RuntimeError("aiohttp requires Python 3.4.1+")
 
 
 def read(f):

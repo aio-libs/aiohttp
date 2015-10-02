@@ -4,7 +4,6 @@ import asyncio
 import gc
 import unittest
 import unittest.mock
-import sys
 
 import inspect
 import io
@@ -17,9 +16,6 @@ import aiohttp
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
 from aiohttp.multidict import upstr, CIMultiDict, CIMultiDictProxy
 from aiohttp import BaseConnector
-
-
-PY_341 = sys.version_info >= (3, 4, 1)
 
 
 class TestClientRequest(unittest.TestCase):

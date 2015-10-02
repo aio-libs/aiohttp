@@ -5,15 +5,11 @@ import asyncio
 import gc
 import unittest
 from unittest import mock
-import sys
 
 import aiohttp
 from aiohttp.client import ClientSession
 from aiohttp.multidict import MultiDict, CIMultiDict
 from aiohttp.connector import BaseConnector, TCPConnector
-
-
-PY_341 = sys.version_info >= (3, 4, 1)
 
 
 class TestClientSession(unittest.TestCase):
@@ -376,7 +372,6 @@ class TestClientSession(unittest.TestCase):
         self.assertTrue(session.closed)
         self.assertTrue(conn.closed)
 
-    @unittest.skipUnless(PY_341, "Requires Python 3.4.1+")
     def test_del(self):
         conn = self.make_open_connector()
         session = ClientSession(loop=self.loop, connector=conn)

@@ -98,12 +98,12 @@ Continuous Integration.
 Dependencies
 ------------
 
-- Python 3.3 and :term:`asyncio` or Python 3.4+
+- Python Python 3.4.1+
 - *chardet* library
 - *Optional* :term:`cchardet` library as faster replacement for
   :term:`chardet`.
 
-  Install it manually via::
+  Install it explicitly via::
 
      $ pip install cchardet
 

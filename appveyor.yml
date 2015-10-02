@@ -2,17 +2,17 @@ version: 0.18.0a0.dev{build}
 
 environment:
   matrix:
-    - PYTHON: "C:\\Python33"
-      PYTHON_VERSION: "3.3.6"
+    - PYTHON: "C:\\Python34"
+      PYTHON_VERSION: "3.4.3"
       PYTHON_ARCH: "32"
-    - PYTHON: "C:\\Python33"
-      PYTHON_VERSION: "3.3.6"
+    - PYTHON: "C:\\Python34"
+      PYTHON_VERSION: "3.4.3"
       PYTHON_ARCH: "64"
-    - PYTHON: "C:\\Python34"
-      PYTHON_VERSION: "3.4.3"
+    - PYTHON: "C:\\Python35"
+      PYTHON_VERSION: "3.5.0"
       PYTHON_ARCH: "32"
-    - PYTHON: "C:\\Python34"
-      PYTHON_VERSION: "3.4.3"
+    - PYTHON: "C:\\Python35"
+      PYTHON_VERSION: "3.5.0"
       PYTHON_ARCH: "64"
 
 install:

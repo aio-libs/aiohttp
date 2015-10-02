@@ -5,12 +5,9 @@ import asyncio
 import gc
 import unittest
 import unittest.mock
-import sys
 
 import aiohttp
 from aiohttp.client_reqrep import ClientResponse
-
-PY_341 = sys.version_info >= (3, 4, 1)
 
 
 class TestClientResponse(unittest.TestCase):
@@ -30,7 +27,6 @@ class TestClientResponse(unittest.TestCase):
         self.loop.close()
         gc.collect()
 
-    @unittest.skipUnless(PY_341, "Requires Python 3.4.1+")
     def test_del(self):
         response = ClientResponse('get', 'http://del-cl-resp.org')
         response._post_init(self.loop)
