@@ -509,7 +509,7 @@ HTTP Exception hierarchy chart::
            * 504 - HTTPGatewayTimeout
            * 505 - HTTPVersionNotSupported
 
-All http exceptions have the same constructor::
+All HTTP exceptions have the same constructor::
 
     HTTPNotFound(*, headers=None, reason=None,
                  body=None, text=None, content_type=None)

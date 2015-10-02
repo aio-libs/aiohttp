@@ -41,13 +41,13 @@ time-line ::
 
 Now, we have a :class:`ClientResponse` object called ``r``. We can get all the
 information we need from this object.
-The mandatory parameter of :func:`get` coroutine is an http url.
+The mandatory parameter of :func:`get` coroutine is an HTTP url.
 
 In order to make an HTTP POST request use :func:`post` coroutine::
 
     >>> r = yield from aiohttp.post('http://httpbin.org/post', data=b'data')
 
-Other http methods are available as well::
+Other HTTP methods are available as well::
 
     >>> r = yield from aiohttp.put('http://httpbin.org/put', data=b'data')
     >>> r = yield from aiohttp.delete('http://httpbin.org/delete')
