@@ -24,6 +24,10 @@ Workflow is pretty straightforward:
 
   5. Make pull request from github page for your clone
 
+  .. note::
+     If your PR has long history or many commits
+     please rebase it from main repo before creating PR.
+
 Preconditions for running aiohttp test suite
 --------------------------------------------
 
