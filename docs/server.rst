@@ -86,8 +86,7 @@ params.  However aiohttp does provide a nice
 
     class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
 
-        @asyncio.coroutine
-        def handle_request(self, message, payload):
+        async def handle_request(self, message, payload):
             response = aiohttp.Response(
                 self.writer, 200, http_version=message.version
             )

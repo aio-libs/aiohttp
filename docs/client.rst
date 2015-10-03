@@ -295,6 +295,8 @@ Or you can provide an :ref:`coroutine<coroutine>` that yields bytes objects::
    ...       return
    ...    yield chunk
 
+.. warning:: ``yield`` expression is forbidden inside ``async def``.
+
 .. note::
 
    It is not a standard :ref:`coroutine<coroutine>` as it yields values so it

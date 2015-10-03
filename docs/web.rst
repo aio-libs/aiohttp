@@ -137,8 +137,7 @@ Using plain coroutines and classes for web-handlers
 
 Handlers *may* be first-class functions, e.g.::
 
-   @asyncio.coroutine
-   def hello(request):
+   async def hello(request):
        return web.Response(body=b"Hello, world")
 
    app.router.add_route('GET', '/', hello)
@@ -157,8 +156,7 @@ so application developer can use classes if he wants::
        def handle_intro(self, request):
            return web.Response(body=b"Hello, world")
 
-       @asyncio.coroutine
-       def handle_greeting(self, request):
+       async def handle_greeting(self, request):
            name = request.match_info.get('name', "Anonymous")
            txt = "Hello, {}".format(name)
            return web.Response(text=txt)
@@ -196,8 +194,7 @@ The next example shows custom processing based on *HTTP Accept* header:
        def __init__(self):
            self._accepts = {}
 
-       @asyncio.coroutine
-       def do_route(self, request):
+       async def do_route(self, request):
            for accept in request.headers.getall('ACCEPT', []):
                 acceptor = self._accepts.get(accept):
                 if acceptor is not None:
@@ -310,8 +307,7 @@ This example shows custom handler for *Except* header:
 
 .. code-block:: python
 
-   @asyncio.coroutine
-   def check_auth(request):
+   async def check_auth(request):
        if request.version != aiohttp.HttpVersion11:
            return
 
@@ -320,8 +316,7 @@ This example shows custom handler for *Except* header:
 
        request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
-   @asyncio.coroutine
-   def hello(request):
+   async def hello(request):
        return web.Response(body=b"Hello, world")
 
    app = web.Application()
@@ -438,14 +433,12 @@ either return exception object from :ref:`aiohttp-web-handler` or raise it.
 
 The following snippets are the same::
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         return aiohttp.web.HTTPFound('/redirect')
 
 and::
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         raise aiohttp.web.HTTPFound('/redirect')
 
 

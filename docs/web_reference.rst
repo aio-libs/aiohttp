@@ -250,8 +250,7 @@ first positional parameter.
       The method is just a boilerplate :ref:`coroutine <coroutine>`
       implemented as::
 
-         @asyncio.coroutine
-         def json(self, *, loader=json.loads):
+         async def json(self, *, loader=json.loads):
              body = await self.text()
              return loader(body)
 
