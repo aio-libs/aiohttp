@@ -986,7 +986,7 @@ RequestHandlerFactory
 ^^^^^^^^^^^^^^^^^^^^^
 
 RequestHandlerFactory is responsible for creating HTTP protocol objects that
-can handle http connections.
+can handle HTTP connections.
 
    .. attribute:: connections
 

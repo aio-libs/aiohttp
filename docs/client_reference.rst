@@ -125,7 +125,7 @@ The client session supports context manager protocol for self closing.
                                 compress=None, chunked=None, expect100=False,\
                                 read_until_eof=True)
 
-      Performs an asynchronous http request. Returns a response object.
+      Performs an asynchronous HTTP request. Returns a response object.
 
 
       :param str method: HTTP method
@@ -159,7 +159,7 @@ The client session supports context manager protocol for self closing.
       :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                    ``True`` by default (optional).
 
-      :param aiohttp.protocol.HttpVersion version: Request http version
+      :param aiohttp.protocol.HttpVersion version: Request HTTP version
                                                    (optional)
 
       :param bool compress: Set to ``True`` if request has to be compressed
@@ -359,7 +359,7 @@ certification chaining.
                        read_until_eof=True, request_class=None,\
                        response_class=None)
 
-   Perform an asynchronous http request. Return a response object
+   Perform an asynchronous HTTP request. Return a response object
    (:class:`ClientResponse` or derived from).
 
    :param str method: HTTP method
@@ -383,7 +383,7 @@ certification chaining.
    :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                 ``True`` by default (optional).
 
-   :param aiohttp.protocol.HttpVersion version: Request http version (optional)
+   :param aiohttp.protocol.HttpVersion version: Request HTTP version (optional)
 
    :param bool compress: Set to ``True`` if request has to be compressed
                          with deflate encoding.
@@ -919,7 +919,7 @@ Response object
 
    .. attribute:: cookies
 
-      HTTP cookies of response (*Set-Cookie* http header,
+      HTTP cookies of response (*Set-Cookie* HTTP header,
       :class:`~http.cookies.SimpleCookie`).
 
    .. attribute:: headers
