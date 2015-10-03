@@ -208,6 +208,36 @@ class TestHttpClientFunctional(unittest.TestCase):
                 yield from asyncio.sleep(0, loop=self.loop)
             self.loop.run_until_complete(go())
 
+    def test_HTTP_304(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            @asyncio.coroutine
+            def go():
+                r = yield from client.request(
+                    'get', httpd.url('not_modified_304', 0),
+                    loop=self.loop)
+                content = yield from r.content.read()
+                content = content.decode()
+
+                self.assertEqual(r.status, 304)
+                self.assertEqual('', content)
+                r.close()
+            self.loop.run_until_complete(go())
+
+    def test_HTTP_304_WITH_BODY(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            @asyncio.coroutine
+            def go():
+                r = yield from client.request(
+                    'get', httpd.url('not_modified_304', 1),
+                    loop=self.loop)
+                content = yield from r.content.read()
+                content = content.decode()
+
+                self.assertEqual(r.status, 304)
+                self.assertEqual('', content)
+                r.close()
+            self.loop.run_until_complete(go())
+
     def test_POST_DATA(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
@@ -1311,6 +1341,20 @@ class Functional(test_utils.Router):
             self._response(
                 self._start_response(307),
                 headers={'Location': self._path})
+
+    @test_utils.Router.define('/not_modified_304/([0-9]+)$')
+    def not_modified_304(self, match):
+        no = int(match.group(1).upper())
+
+        if no == 0:
+            self._response(
+                self._start_response(304),
+                body='test',
+            )
+        else:
+            self._response(
+                self._start_response(304),
+            )
 
     @test_utils.Router.define('/encoding/(gzip|deflate)$')
     def encoding(self, match):
