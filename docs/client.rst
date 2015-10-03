@@ -68,23 +68,21 @@ Requests allows you to provide these arguments as a dictionary, using the
 ``key1=value1`` and ``key2=value2`` to ``httpbin.org/get``, you would use the
 following code::
 
-    >>> payload = {'key1': 'value1', 'key2': 'value2'}
-    >>> r = yield from aiohttp.get('http://httpbin.org/get',
-    ...                            params=payload)
+    payload = {'key1': 'value1', 'key2': 'value2'}
+    async with aiohttp.get('http://httpbin.org/get',
+                           params=payload) as r:
+        assert r.url == 'http://httpbin.org/get?key2=value2&key1=value1'
 
-You can see that the URL has been correctly encoded by printing the URL::
+You can see that the URL has been correctly encoded by printing the URL.
 
-    >>> print(r.url)
-    http://httpbin.org/get?key2=value2&key1=value1
 
 It is also possible to pass a list of 2 item tuples as parameters, in
 that case you can specify multiple values for each key::
 
-    >>> payload = [('key', 'value1'), ('key': 'value2')]
-    >>> r = yield from aiohttp.get('http://httpbin.org/get',
-    ...                            params=payload)
-    >>> print(r.url)
-    http://httpbin.org/get?key=value2&key=value1
+    payload = [('key', 'value1'), ('key': 'value2')]
+    async with aiohttp.get('http://httpbin.org/get',
+                           params=payload) as r:
+        assert r.url == 'http://httpbin.org/get?key=value2&key=value1'
 
 
 Response Content
@@ -93,14 +91,17 @@ Response Content
 We can read the content of the server's response. Consider the GitHub time-line
 again::
 
-    >>> r = yield from aiohttp.get('https://api.github.com/events')
-    >>> yield from r.text()
+    r = await aiohttp.get('https://api.github.com/events')
+    print(await r.text())
+
+will printout socmething like::
+
     '[{"created_at":"2015-06-12T14:06:22Z","public":true,"actor":{...
 
-aiohttp will automatically decode the content from the server. You can
-specify custom encoding for the ``text()`` method::
+``aiohttp`` will automatically decode the content from the server. You can
+specify custom encoding for the :meth:`~ClientResponse.text` method::
 
-    >>> yield from r.text(encoding='windows-1251')
+    await r.text(encoding='windows-1251')
 
 
 Binary Response Content
@@ -108,7 +109,10 @@ Binary Response Content
 
 You can also access the response body as bytes, for non-text requests::
 
-    >>> yield from r.read()
+    print(await r.read())
+
+::
+
     b'[{"created_at":"2015-06-12T14:06:22Z","public":true,"actor":{...
 
 The ``gzip`` and ``deflate`` transfer-encodings are automatically
@@ -120,23 +124,23 @@ JSON Response Content
 
 There's also a built-in JSON decoder, in case you're dealing with JSON data::
 
-    >>> r = yield from aiohttp.get('https://api.github.com/events')
-    >>> yield from r.json()
-    [{'created_at': '2015-06-12T14:07:07Z', 'public': True, 'actor...
+    async with aiohttp.get('https://api.github.com/events') as r:
+        print(await r.json())
 
-In case that JSON decoding fails, ``r.json()`` will raise an exception. It
-is possible to specify custom encoding and decoder functions for the
-``json()`` call.
+In case that JSON decoding fails, :meth:`~ClientResponse.json` will
+raise an exception. It is possible to specify custom encoding and
+decoder functions for the :meth:`~ClientResponse.json` call.
 
 
 Streaming Response Content
 --------------------------
 
-While methods ``read()``, ``json()`` and ``text()`` are very
+While methods :meth:`~ClientResponse.read`,
+:meth:`~ClientResponse.json` and :meth:`~ClientResponse.text` are very
 convenient you should use them carefully. All these methods load the
 whole response in memory.  For example if you want to download several
 gigabyte sized files, these methods will load all the data in
-memory. Instead you can use the ``ClientResponse.content``
+memory. Instead you can use the :attr:`~ClientResponse.content`
 attribute. It is an instance of the ``aiohttp.StreamReader``
 class. The ``gzip`` and ``deflate`` transfer-encodings are
 automatically decoded for you::
@@ -487,9 +491,8 @@ Response Status Codes
 
 We can check the response status code::
 
-   >>> r = yield from aiohttp.get('http://httpbin.org/get')
-   >>> r.status
-   200
+   async with aiohttp.get('http://httpbin.org/get') as r:
+       assert r.status == 200
 
 
 Response Headers
@@ -523,11 +526,9 @@ Response Cookies
 
 If a response contains some Cookies, you can quickly access them::
 
-    >>> url = 'http://example.com/some/cookie/setting/url'
-    >>> r = yield from aiohttp.get(url)
-
-    >>> r.cookies['example_cookie_name']
-    'example_cookie_value'
+    url = 'http://example.com/some/cookie/setting/url'
+    async with aiohttp.get(url) as r:
+        print(r.cookies['example_cookie_name'])
 
 .. note::
 
@@ -543,7 +544,7 @@ Timeouts
 You should use :func:`asyncio.wait_for()` coroutine if you want to limit
 time to wait for a response from a server::
 
-    >>> yield from asyncio.wait_for(aiohttp.get('http://github.com'),
+    >>> asyncio.wait_for(aiohttp.get('http://github.com'),
     ...                             0.001)
     Traceback (most recent call last)\:
       File "<stdin>", line 1, in <module>
