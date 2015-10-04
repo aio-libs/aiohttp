@@ -119,3 +119,45 @@ class TestHttpClientFunctionalNewStyle(unittest.TestCase):
             connector.close()
 
         self.loop.run_until_complete(go())
+
+    def test_HTTP_304(self):
+        @asyncio.coroutine
+        def handler(request):
+            body = yield from request.read()
+            self.assertEqual(b'', body)
+            return web.Response(status=304)
+
+        @asyncio.coroutine
+        def go():
+            _, srv, url = yield from self.create_server('GET', '/', handler)
+            connector = aiohttp.TCPConnector(loop=self.loop)
+            r = yield from client.request('GET', url,
+                                          connector=connector, loop=self.loop)
+            content = yield from r.read()
+            self.assertEqual(r.status, 304)
+            self.assertEqual(content, b'')
+            r.release()
+            connector.close()
+
+        self.loop.run_until_complete(go())
+
+    def test_HTTP_304_WITH_BODY(self):
+        @asyncio.coroutine
+        def handler(request):
+            body = yield from request.read()
+            self.assertEqual(b'', body)
+            return web.Response(body=b'test', status=304)
+
+        @asyncio.coroutine
+        def go():
+            _, srv, url = yield from self.create_server('GET', '/', handler)
+            connector = aiohttp.TCPConnector(loop=self.loop)
+            r = yield from client.request('GET', url,
+                                          connector=connector, loop=self.loop)
+            content = yield from r.read()
+            self.assertEqual(r.status, 304)
+            self.assertEqual(content, b'')
+            r.release()
+            connector.close()
+
+        self.loop.run_until_complete(go())

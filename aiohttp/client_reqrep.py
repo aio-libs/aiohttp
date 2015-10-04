@@ -583,6 +583,10 @@ class ClientResponse:
         self.content = self.flow_control_class(
             connection.reader, loop=connection.loop)
 
+    def _need_parse_response_body(self):
+        return (self.method.lower() != 'head' and
+                self.status not in [204, 304])
+
     @asyncio.coroutine
     def start(self, connection, read_until_eof=False):
         """Start response processing."""
@@ -610,7 +614,7 @@ class ClientResponse:
         self.headers = CIMultiDictProxy(message.headers)
 
         # payload
-        response_with_body = self.method.lower() != 'head'
+        response_with_body = self._need_parse_response_body()
         self._reader.set_parser(
             aiohttp.HttpPayloadParser(message,
                                       readall=read_until_eof,
