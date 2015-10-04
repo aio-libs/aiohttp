@@ -61,3 +61,5 @@ CHANGES
   3.4.1 #541
 
 - Add `async with` support for `ClientSession.request()` and family #536
+
+- Ignore message body on 204 and 304 responses #505
