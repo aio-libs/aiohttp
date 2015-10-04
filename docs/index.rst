@@ -121,7 +121,8 @@ It's *Apache 2* licensed and freely available.
 
 Feel free to improve this package and send a pull request to GitHub_.
 
-Contents:
+Contents
+--------
 
 .. toctree::
 
