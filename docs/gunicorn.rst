@@ -1,7 +1,7 @@
 Deployment using Gunicorn
 =========================
 
-This page provides a general overview of deploying aiohttp using 'Gunicorn <http://docs.gunicorn.org/en/latest/index.html>'_.
+This page provides a general overview of deploying aiohttp using `Gunicorn <http://docs.gunicorn.org/en/latest/index.html>`_.
 
 Gunicorn is based on a pre-fork worker model. It will launch your app as worker processes for handling incoming requests.
 
@@ -52,7 +52,7 @@ Lets write a simple application, which we will save to file. We'll name the file
 Start Gunicorn
 --------------
 When launching Gunicorn, you provide the name of the file (*my_app_module*) and the name of the app (*my_web_app*), along
-with other 'Gunicorn Settings <http://docs.gunicorn.org/en/latest/settings.html>'_ provided as command line flags or in your config file.
+with other `Gunicorn Settings <http://docs.gunicorn.org/en/latest/settings.html>`_ provided as command line flags or in your config file.
 
 In this case, we will use:
 * the '-b' bind flag to set the server's socket address, and;
