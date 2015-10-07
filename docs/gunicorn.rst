@@ -5,8 +5,6 @@ This page provides a general overview of deploying aiohttp using `Gunicorn <http
 
 Gunicorn is based on a pre-fork worker model. It will launch your app as worker processes for handling incoming requests.
 
-Settings are passed into Gunicorn by using command line flags and / or a config file, as detailed in the official documentation on `Running Gunicorn <http://docs.gunicorn.org/en/latest/run.html>`_.
-
 Prepare environment
 -------------------
 
@@ -35,7 +33,7 @@ Now that the virtual environment is ready, we'll proceed to install aiohttp and 
 Application
 -----------
 
-Lets write a simple application, which we will save to file. We'll name the file *my_app_module.py*:
+Lets write a simple application, which we will save to file. We'll name this file *my_app_module.py*:
 
 .. code-block:: python
 
@@ -51,8 +49,7 @@ Lets write a simple application, which we will save to file. We'll name the file
 
 Start Gunicorn
 --------------
-When launching Gunicorn, you provide the name of the file (*my_app_module*) and the name of the app (*my_web_app*), along
-with other `Gunicorn Settings <http://docs.gunicorn.org/en/latest/settings.html>`_ provided as command line flags or in your config file.
+When `Running Gunicorn <http://docs.gunicorn.org/en/latest/run.html>`_, you provide the name of the module (*my_app_module*) and the name of the app (*my_web_app*), along with other `Gunicorn Settings <http://docs.gunicorn.org/en/latest/settings.html>`_ provided as command line flags or in your config file.
 
 In this case, we will use:
 * the '-b' bind flag to set the server's socket address, and;
