@@ -1,9 +1,7 @@
 Deployment using Gunicorn
 =========================
 
-This page provides a general overview of deploying aiohttp using `Gunicorn <http://docs.gunicorn.org/en/latest/index.html>`_.
-
-Gunicorn is based on a pre-fork worker model. It will launch your app as worker processes for handling incoming requests.
+aiohttp can be deployed using `Gunicorn <http://docs.gunicorn.org/en/latest/index.html>`_, which is based on a pre-fork worker model. Gunicorn launches your app as worker processes for handling incoming requests.
 
 Prepare environment
 -------------------
@@ -53,7 +51,7 @@ When `Running Gunicorn <http://docs.gunicorn.org/en/latest/run.html>`_, you prov
 
 In this case, we will use:
 
-* the *'--bind'* flag to set the server's socket address, and;
+* the *'--bind'* flag to set the server's socket address;
 * the *'--worker-class'* flag to tell Gunicorn that we want to use a custom worker subclass instead of one of the Gunicorn default worker types, and;
 * the *'--workers'* flag to tell Gunicorn how many worker processes to use for handling requests. (See the documentation for recommendations on `How Many Workers? <http://docs.gunicorn.org/en/latest/design.html#how-many-workers>`_)
 
