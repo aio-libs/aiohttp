@@ -56,14 +56,14 @@ In this case, we will use:
 
 * the *'--bind'* flag to set the server's socket address;
 * the *'--worker-class'* flag to tell Gunicorn that we want to use a custom worker subclass instead of one of the
-Gunicorn default worker types;
-* you may also want to use the *'--workers'* flag to tell Gunicorn how many worker processes to use for handling
-requests. (See the documentation for recommendations on `How Many Workers? <http://docs.gunicorn.org/en/latest/design.html#how-many-workers>`_)
+Gunicorn default worker types, and;
+* the *'--workers'* flag to tell Gunicorn how many worker processes to use for handling requests. (See the documentation
+for recommendations on `How Many Workers? <http://docs.gunicorn.org/en/latest/design.html#how-many-workers>`_)
 
 The custom worker subclass is defined in *aiohttp.worker.GunicornWebWorker* and should be used instead of the *gaiohttp*
 worker provided by Gunicorn, which supports only aiohttp.wsgi applications::
 
-  >> gunicorn my_app_module:my_web_app --bind localhost:8080 --worker-class aiohttp.worker.GunicornWebWorker
+  >> gunicorn my_app_module:my_web_app --bind localhost:8080 --worker-class aiohttp.worker.GunicornWebWorker --workers 5
   [2015-03-11 18:27:21 +0000] [1249] [INFO] Starting gunicorn 19.3.0
   [2015-03-11 18:27:21 +0000] [1249] [INFO] Listening at: http://127.0.0.1:8080 (1249)
   [2015-03-11 18:27:21 +0000] [1249] [INFO] Using worker: aiohttp.worker.GunicornWebWorker
