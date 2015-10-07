@@ -49,7 +49,7 @@ Lets write a simple application, which we will save to file. We'll name this fil
 
 Start Gunicorn
 --------------
-When `Running Gunicorn <http://docs.gunicorn.org/en/latest/run.html>`_, you provide the name of the module (*my_app_module*) and the name of the app (*my_web_app*), along with other `Gunicorn Settings <http://docs.gunicorn.org/en/latest/settings.html>`_ provided as command line flags or in your config file.
+When `Running Gunicorn <http://docs.gunicorn.org/en/latest/run.html>`_, you provide the name of the module, i.e. *my_app_module*, and the name of the app, i.e. *my_web_app*, along with other `Gunicorn Settings <http://docs.gunicorn.org/en/latest/settings.html>`_ provided as command line flags or in your config file.
 
 In this case, we will use:
 
