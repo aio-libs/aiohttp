@@ -1,8 +1,7 @@
 Deployment using Gunicorn
 =========================
 
-aiohttp can be deployed using `Gunicorn <http://docs.gunicorn.org/en/latest/index.html>`_, which is based on a pre-fork worker model.
-Gunicorn launches your app as worker processes for handling incoming requests.
+aiohttp can be deployed using `Gunicorn <http://docs.gunicorn.org/en/latest/index.html>`_, which is based on a pre-fork worker model. Gunicorn launches your app as worker processes for handling incoming requests.
 
 Prepare environment
 -------------------
@@ -48,20 +47,15 @@ Lets write a simple application, which we will save to file. We'll name this fil
 
 Start Gunicorn
 --------------
-When `Running Gunicorn <http://docs.gunicorn.org/en/latest/run.html>`_, you provide the name of the module, i.e. *my_app_module*,
-and the name of the app, i.e. *my_web_app*, along with other `Gunicorn Settings <http://docs.gunicorn.org/en/latest/settings.html>`_
-provided as command line flags or in your config file.
+When `Running Gunicorn <http://docs.gunicorn.org/en/latest/run.html>`_, you provide the name of the module, i.e. *my_app_module*, and the name of the app, i.e. *my_web_app*, along with other `Gunicorn Settings <http://docs.gunicorn.org/en/latest/settings.html>`_ provided as command line flags or in your config file.
 
 In this case, we will use:
 
 * the *'--bind'* flag to set the server's socket address;
-* the *'--worker-class'* flag to tell Gunicorn that we want to use a custom worker subclass instead of one of the
-Gunicorn default worker types, and;
-* the *'--workers'* flag to tell Gunicorn how many worker processes to use for handling requests. (See the documentation
-for recommendations on `How Many Workers? <http://docs.gunicorn.org/en/latest/design.html#how-many-workers>`_)
+* the *'--worker-class'* flag to tell Gunicorn that we want to use a custom worker subclass instead of one of the Gunicorn default worker types, and;
+* the *'--workers'* flag to tell Gunicorn how many worker processes to use for handling requests. (See the documentation for recommendations on `How Many Workers? <http://docs.gunicorn.org/en/latest/design.html#how-many-workers>`_)
 
-The custom worker subclass is defined in *aiohttp.worker.GunicornWebWorker* and should be used instead of the *gaiohttp*
-worker provided by Gunicorn, which supports only aiohttp.wsgi applications::
+The custom worker subclass is defined in *aiohttp.worker.GunicornWebWorker* and should be used instead of the *gaiohttp* worker provided by Gunicorn, which supports only aiohttp.wsgi applications::
 
   >> gunicorn my_app_module:my_web_app --bind localhost:8080 --worker-class aiohttp.worker.GunicornWebWorker --workers 5
   [2015-03-11 18:27:21 +0000] [1249] [INFO] Starting gunicorn 19.3.0
@@ -75,8 +69,7 @@ Gunicorn is now running and ready to serve requests to your app's worker process
 More information
 ----------------
 
-The Gunicorn documentation recommends deploying Gunicorn behind a Nginx proxy server. See the `official documentation <http://docs.gunicorn.org/en/latest/deploy.html>`_
-for more information about suggested nginx configuration.
+The Gunicorn documentation recommends deploying Gunicorn behind a Nginx proxy server. See the `official documentation <http://docs.gunicorn.org/en/latest/deploy.html>`_ for more information about suggested nginx configuration.
 
 
 .. disqus::
