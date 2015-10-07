@@ -5,7 +5,7 @@ This page provides a general overview of deploying aiohttp using `Gunicorn <http
 
 Gunicorn is based on a pre-fork worker model. It will launch your app as worker processes for handling incoming requests.
 
-Settings are passed into Gunicorn by using command line flags and / or a config file, as detailed in the official documentation on `Running Gunicorn<http://docs.gunicorn.org/en/latest/run.html>`_.
+Settings are passed into Gunicorn by using command line flags and / or a config file, as detailed in the official documentation on `Running Gunicorn <http://docs.gunicorn.org/en/latest/run.html>`_.
 
 Prepare environment
 -------------------
