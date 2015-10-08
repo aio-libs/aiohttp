@@ -126,3 +126,17 @@ This is simple usage example:
     loop = asyncio.get_event_loop()
     loop.run_until_complete(init(loop))
     loop.run_forever()
+
+
+Note: examples are written for Python 3.5+ and utilize PEP-492 aka
+async/await.  If you are using Python 3.4 please replace `await` with
+`yield from` and `async def` with `@coroutine` e.g.::
+
+    async def coro(...):
+        ret = await f()
+
+shoud be replaced by::
+
+    @asyncio.coroutine
+    def coro(...):
+        ret = yield from f()
