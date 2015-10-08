@@ -1,13 +1,15 @@
-aiohttp and  Gunicorn
-=====================
+Deployment using Gunicorn
+=========================
 
-Launching your aiohttp web application on Ubuntu Linux with Gunicorn
-
+aiohttp can be deployed using `Gunicorn <http://docs.gunicorn.org/en/latest/index.html>`_, which is based on a pre-fork worker model.
+Gunicorn launches your app as worker processes for handling incoming requests.
 
 Prepare environment
 -------------------
 
-Everything was tested on Ubuntu 14.04::
+You firstly need to setup your deployment environment. This example is based on Ubuntu 14.04.
+
+Create a directory for your application::
 
   >> mkdir myapp
   >> cd myapp
@@ -21,7 +23,7 @@ extra manipulation::
   >> deactivate
   >> source venv/bin/activate
 
-The Virtual environment should be ready, now we need to install aiohttp and gunicorn::
+Now that the virtual environment is ready, we'll proceed to install aiohttp and gunicorn::
 
   >> pip install gunicorn
   >> pip install -e git+https://github.com/KeepSafe/aiohttp.git#egg=aiohttp
@@ -30,7 +32,7 @@ The Virtual environment should be ready, now we need to install aiohttp and guni
 Application
 -----------
 
-Lets write a simple application:
+Lets write a simple application, which we will save to file. We'll name this file *my_app_module.py*:
 
 .. code-block:: python
 
@@ -40,33 +42,41 @@ Lets write a simple application:
        return web.Response(text="Welcome home!")
 
 
-   app = web.Application()
-   app.router.add_route('GET', '/', index)
-
-
-Save this code to *app.py* file.
+   my_web_app = web.Application()
+   my_web_app.router.add_route('GET', '/', index)
 
 
 Start Gunicorn
 --------------
+When `Running Gunicorn <http://docs.gunicorn.org/en/latest/run.html>`_, you provide the name of the module, i.e. *my_app_module*,
+and the name of the app, i.e. *my_web_app*, along with other `Gunicorn Settings <http://docs.gunicorn.org/en/latest/settings.html>`_
+provided as command line flags or in your config file.
 
-You can not use *gaiohttp* worker from gunicorn because it supports only
-aiohttp.wsgi applications. Instead of *gaiohttp* you should
-use *aiohttp.worker.GunicornWebWorker*::
+In this case, we will use:
 
-  >> gunicorn app:app -k aiohttp.worker.GunicornWebWorker -b localhost:8080
+* the *'--bind'* flag to set the server's socket address;
+* the *'--worker-class'* flag to tell Gunicorn that we want to use a custom worker subclass instead of one of the
+Gunicorn default worker types;
+* you may also want to use the *'--workers'* flag to tell Gunicorn how many worker processes to use for handling
+requests. (See the documentation for recommendations on `How Many Workers? <http://docs.gunicorn.org/en/latest/design.html#how-many-workers>`_)
+
+The custom worker subclass is defined in *aiohttp.worker.GunicornWebWorker* and should be used instead of the *gaiohttp*
+worker provided by Gunicorn, which supports only aiohttp.wsgi applications::
+
+  >> gunicorn my_app_module:my_web_app --bind localhost:8080 --worker-class aiohttp.worker.GunicornWebWorker
   [2015-03-11 18:27:21 +0000] [1249] [INFO] Starting gunicorn 19.3.0
   [2015-03-11 18:27:21 +0000] [1249] [INFO] Listening at: http://127.0.0.1:8080 (1249)
   [2015-03-11 18:27:21 +0000] [1249] [INFO] Using worker: aiohttp.worker.GunicornWebWorker
   [2015-03-11 18:27:21 +0000] [1253] [INFO] Booting worker with pid: 1253
 
-It is up and ready to serve requests.
+Gunicorn is now running and ready to serve requests to your app's worker processes.
 
 
 More information
 ----------------
 
-Please refer `official documentation <http://docs.gunicorn.org/en/latest/deploy.html>`_ for more information about *Gunicorn* production deployment.
+The Gunicorn documentation recommends deploying Gunicorn behind a Nginx proxy server. See the `official documentation <http://docs.gunicorn.org/en/latest/deploy.html>`_
+for more information about suggested nginx configuration.
 
 
 .. disqus::
