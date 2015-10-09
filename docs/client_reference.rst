@@ -619,8 +619,9 @@ BaseConnector
 TCPConnector
 ^^^^^^^^^^^^
 
-.. class:: TCPConnector(*, verify_ssl=True, fingerprint=None, use_dns_cache=False, \
-                        family=socket.AF_INET, \
+.. class:: TCPConnector(*, verify_ssl=True, fingerprint=None,\
+                        use_dns_cache=False, \
+                        family=0, \
                         ssl_context=None, conn_timeout=None, \
                         keepalive_timeout=30, limit=None, share_cookies=False, \
                         force_close=False, loop=None)
@@ -660,8 +661,16 @@ TCPConnector
 
       .. deprecated:: 0.17
 
-   :param int family: TCP socket family, ``AF_INET`` by default
-                      (*IPv4*). For *IPv6* use ``AF_INET6``.
+   :param int family: TCP socket family, both IPv4 and IPv6 by default.
+                      For *IPv4* only use :const:`socket.AF_INET`,
+                      for  *IPv6* only -- :const:`socket.AF_INET6`.
+
+      .. versionchanged:: 0.18
+
+         *family* is `0` by default, that means both IPv4 and IPv6 are
+         accepted. To specify only concrete version please pass
+         :const:`socket.AF_INET` or :const:`socket.AF_INET6`
+         explicitly.
 
    :param ssl.SSLContext ssl_context: ssl context used for processing
       *HTTPS* requests (optional).

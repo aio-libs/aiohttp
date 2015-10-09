@@ -467,7 +467,7 @@ class TestBaseConnector(unittest.TestCase):
             self.assertFalse(conn.resolve)
         self.assertFalse(conn.use_dns_cache)
 
-        self.assertEqual(conn.family, socket.AF_INET)
+        self.assertEqual(conn.family, 0)
 
         with self.assertWarns(DeprecationWarning):
             self.assertEqual(conn.resolved_hosts, {})
