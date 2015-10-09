@@ -32,7 +32,7 @@ There are three stages:
     4. Application waits data on output.read()
 
         while True:
-             msg = yield form output.read()
+             msg = yield from output.read()
              ...
 
  * Data flow:
