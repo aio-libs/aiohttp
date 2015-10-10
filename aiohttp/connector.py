@@ -388,7 +388,7 @@ class TCPConnector(BaseConnector):
 
     def __init__(self, *, verify_ssl=True, fingerprint=None,
                  resolve=_marker, use_dns_cache=_marker,
-                 family=socket.AF_INET, ssl_context=None,
+                 family=0, ssl_context=None,
                  **kwargs):
         super().__init__(**kwargs)
 
