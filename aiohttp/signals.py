@@ -17,7 +17,7 @@ class Signal(list):
         Sends data to all registered receivers.
         """
         for receiver in self:
-            res = receiver(**kwargs)
+            res = receiver(*args, **kwargs)
             if asyncio.iscoroutine(res) or isinstance(res, asyncio.Future):
                 yield from res
 
