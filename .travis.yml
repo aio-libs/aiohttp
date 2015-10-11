@@ -17,7 +17,7 @@ install:
   - pip install flake8
   - pip install "pyflakes>=1.0.0"
   - pip install docutils
-  - pip install coverage
+  - pip install pytest
   - pip install gunicorn
   - pip install pygments
   - python setup.py develop
@@ -27,7 +27,7 @@ script:
   - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
         flake8 examples tests;
     fi
-  - coverage run --source=aiohttp setup.py test
+  - py.test tests
   - python setup.py check -rm
 
 env:
