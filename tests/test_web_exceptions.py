@@ -6,7 +6,7 @@ from aiohttp.multidict import CIMultiDict
 from aiohttp.web import Request
 from aiohttp.protocol import RawRequestMessage, HttpVersion11
 
-from aiohttp import web
+from aiohttp import signals, web
 
 
 class TestHTTPExceptions(unittest.TestCase):
@@ -32,6 +32,7 @@ class TestHTTPExceptions(unittest.TestCase):
 
     def make_request(self, method='GET', path='/', headers=CIMultiDict()):
         self.app = mock.Mock()
+        self.app.on_response_prepare = signals.Signal(parameters={'request', 'response'})
         message = RawRequestMessage(method, path, HttpVersion11, headers,
                                     False, False)
         req = Request(self.app, message, self.payload,
