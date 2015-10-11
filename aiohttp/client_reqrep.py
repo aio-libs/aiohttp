@@ -745,13 +745,14 @@ class ClientResponse:
             client_logger.warning(
                 'Attempt to decode JSON with unexpected mimetype: %s', ctype)
 
-        if not self._content.strip():
+        stripped = self._content.strip()
+        if not stripped:
             return None
 
         if encoding is None:
             encoding = self._get_encoding()
 
-        return loads(self._content.decode(encoding))
+        return loads(stripped.decode(encoding))
 
     if PY_35:
         @asyncio.coroutine
