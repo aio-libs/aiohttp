@@ -515,6 +515,16 @@ class TestStreamResponse(unittest.TestCase):
             impl2 = resp.start(req)
             self.assertIs(impl1, impl2)
 
+    def test_prepare_calls_signal(self):
+        req = self.make_request('GET', '/')
+        resp = StreamResponse()
+
+        sig = mock.Mock()
+        self.app.on_response_prepare.append(sig)
+        self.loop.run_until_complete(resp.prepare(req))
+
+        sig.assert_called_with(request=req, response=resp)
+
 
 class TestResponse(unittest.TestCase):
 

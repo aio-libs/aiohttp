@@ -68,3 +68,28 @@ class TestSignals(unittest.TestCase):
 
         callback.assert_called_once_with(request=request,
                                          response=response)
+
+    def test_non_coroutine(self):
+        signal = Signal()
+        kwargs = {'foo': 1, 'bar': 2}
+
+        callback = mock.Mock()
+
+        signal.append(callback)
+
+        self.loop.run_until_complete(signal.send(**kwargs))
+        callback.assert_called_once_with(**kwargs)
+
+    def test_copy_forbidden(self):
+        signal = Signal()
+        with self.assertRaises(NotImplementedError):
+            signal.copy()
+
+    def test_sort_forbidden(self):
+        l1 = lambda: None
+        l2 = lambda: None
+        l3 = lambda: None
+        signal = Signal([l1, l2, l3])
+        with self.assertRaises(NotImplementedError):
+            signal.sort()
+        self.assertEqual(signal, [l1, l2, l3])
