@@ -17,7 +17,7 @@ install:
   - pip install flake8
   - pip install "pyflakes>=1.0.0"
   - pip install docutils
-  - pip install pytest
+  - pip install coverage
   - pip install gunicorn
   - pip install pygments
   - python setup.py develop
