@@ -56,6 +56,19 @@ class TestSignals(unittest.TestCase):
         self.loop.run_until_complete(signal.send(**kwargs))
         callback_mock.assert_called_once_with(**kwargs)
 
+    def test_function_signal_dispatch2(self):
+        signal = Signal()
+        args = {'a', 'b'}
+        kwargs = {'foo': 1, 'bar': 2}
+
+        callback_mock = mock.Mock()
+        callback = asyncio.coroutine(callback_mock)
+
+        signal.append(callback)
+
+        self.loop.run_until_complete(signal.send(*args, **kwargs))
+        callback_mock.assert_called_once_with(*args, **kwargs)
+
     def test_response_prepare(self):
         callback = mock.Mock()
 

@@ -5,15 +5,14 @@ class Signal(list):
     """
     Coroutine-based signal implementation
 
-    To connect a callback to a signal, use any list method. If wish to pass
-    additional arguments to your callback, use :meth:`functools.partial`.
+    To connect a callback to a signal, use any list method.
 
     Signals are fired using the :meth:`send` coroutine, which takes named
     arguments.
     """
 
     @asyncio.coroutine
-    def send(self, **kwargs):
+    def send(self, *args, **kwargs):
         """
         Sends data to all registered receivers.
         """
