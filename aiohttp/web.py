@@ -197,7 +197,11 @@ class Application(dict):
             assert asyncio.iscoroutinefunction(factory), factory
         self._middlewares = list(middlewares)
 
-        self.on_response_prepare = Signal()
+        self._on_response_prepare = Signal()
+
+    @property
+    def on_response_prepare(self):
+        return self._on_response_prepare
 
     @property
     def router(self):

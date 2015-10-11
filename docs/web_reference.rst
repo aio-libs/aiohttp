@@ -554,12 +554,15 @@ StreamResponse
                                           response answers.
 
       Send *HTTP header*. You should not change any header data after
-      calling this method, except through
-      :attr:`Application.on_response_start` signal callbacks.
+      calling this method.
 
       .. deprecated:: 0.18
 
          Use :meth:`prepare` instead.
+
+      .. warning:: The method doesn't call
+         :attr:`web.Application.on_response_prepare` signal, use
+         :meth:`prepare` instead.
 
    .. coroutinemethod:: prepare(request)
 
@@ -568,6 +571,9 @@ StreamResponse
 
       Send *HTTP header*. You should not change any header data after
       calling this method.
+
+      The coroutine calls :attr:`web.Application.on_response_prepare`
+      signal handlers.
 
       .. versionadded:: 0.18
 
@@ -921,11 +927,11 @@ arbitrary properties for later access from
 
       :ref:`event loop<asyncio-event-loop>` used for processing HTTP requests.
 
-   .. attribute:: on_response_start
+   .. attribute:: on_response_prepare
 
-      A :class:`~aiohttp.signals.FunctionSignal` that is fired at the beginning
-      of :meth:`StreamResponse.start` with parameters ``request`` and
-      ``response``. It can be used, for example, to add custom headers to each
+      A :class:`~aiohttp.signals.Signal` that is fired at the beginning
+      of :meth:`StreamResponse.prepare` with parameters *request* and
+      *response*. It can be used, for example, to add custom headers to each
       response before sending.
 
    .. method:: make_handler(**kwargs)
