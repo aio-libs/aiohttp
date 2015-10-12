@@ -26,7 +26,8 @@ class TestStreamResponse(unittest.TestCase):
 
     def request_from_message(self, message):
         self.app = mock.Mock()
-        self.app.on_response_prepare = signals.Signal()
+        self.app._debug = False
+        self.app.on_response_prepare = signals.Signal(self.app)
         self.payload = mock.Mock()
         self.transport = mock.Mock()
         self.reader = mock.Mock()
@@ -537,7 +538,8 @@ class TestResponse(unittest.TestCase):
 
     def make_request(self, method, path, headers=CIMultiDict()):
         self.app = mock.Mock()
-        self.app.on_response_prepare = signals.Signal()
+        self.app._debug = False
+        self.app.on_response_prepare = signals.Signal(self.app)
         message = RawRequestMessage(method, path, HttpVersion11, headers,
                                     False, False)
         self.payload = mock.Mock()

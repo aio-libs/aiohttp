@@ -24,7 +24,8 @@ class TestWebRequest(unittest.TestCase):
         if version < HttpVersion(1, 1):
             closing = True
         self.app = mock.Mock()
-        self.app.on_response_prepare = Signal()
+        self.app._debug = False
+        self.app.on_response_prepare = Signal(self.app)
         message = RawRequestMessage(method, path, version, headers, closing,
                                     False)
         self.payload = mock.Mock()

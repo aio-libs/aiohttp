@@ -32,7 +32,8 @@ class TestHTTPExceptions(unittest.TestCase):
 
     def make_request(self, method='GET', path='/', headers=CIMultiDict()):
         self.app = mock.Mock()
-        self.app.on_response_prepare = signals.Signal()
+        self.app._debug = False
+        self.app.on_response_prepare = signals.Signal(self.app)
         message = RawRequestMessage(method, path, HttpVersion11, headers,
                                     False, False)
         req = Request(self.app, message, self.payload,
