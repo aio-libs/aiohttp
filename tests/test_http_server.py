@@ -20,10 +20,14 @@ class TestHttpServerProtocol(unittest.TestCase):
         asyncio.set_event_loop(None)
 
     def tearDown(self):
+        self.doCleanups()
         self.loop.stop()
         self.loop.run_forever()
         self.loop.close()
         gc.collect()
+
+    def cleanup_server(self, srv):
+        srv.connection_lost(None)
 
     def test_http_error_exception(self):
         exc = errors.HttpProcessingError(code=500, message='Internal error')
@@ -35,6 +39,7 @@ class TestHttpServerProtocol(unittest.TestCase):
 
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
         srv.writer = unittest.mock.Mock()
 
         message = unittest.mock.Mock()
@@ -119,6 +124,7 @@ class TestHttpServerProtocol(unittest.TestCase):
         self.assertIsNone(srv._request_handler)
 
         srv.connection_made(unittest.mock.Mock())
+        self.addCleanup(self.cleanup_server, srv)
         self.assertIsNotNone(srv._request_handler)
         self.assertIsNotNone(srv._timeout_handle)
 
@@ -126,6 +132,7 @@ class TestHttpServerProtocol(unittest.TestCase):
         srv = server.ServerHttpProtocol(loop=self.loop, timeout=0)
 
         srv.connection_made(unittest.mock.Mock())
+        self.addCleanup(self.cleanup_server, srv)
         self.assertIsNone(srv._timeout_handle)
 
     def test_connection_made_with_keepaplive(self):
@@ -135,6 +142,7 @@ class TestHttpServerProtocol(unittest.TestCase):
         transport = unittest.mock.Mock()
         transport.get_extra_info.return_value = sock
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
         sock.setsockopt.assert_called_with(socket.SOL_SOCKET,
                                            socket.SO_KEEPALIVE, 1)
 
@@ -145,11 +153,13 @@ class TestHttpServerProtocol(unittest.TestCase):
         transport = unittest.mock.Mock()
         transport.get_extra_info.return_value = sock
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
         self.assertFalse(sock.setsockopt.called)
 
     def test_data_received(self):
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.connection_made(unittest.mock.Mock())
+        self.addCleanup(self.cleanup_server, srv)
 
         srv.data_received(b'123')
         self.assertEqual(b'123', bytes(srv.reader._buffer))
@@ -160,12 +170,14 @@ class TestHttpServerProtocol(unittest.TestCase):
     def test_eof_received(self):
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.connection_made(unittest.mock.Mock())
+        self.addCleanup(self.cleanup_server, srv)
         srv.eof_received()
         self.assertTrue(srv.reader._eof)
 
     def test_connection_lost(self):
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.connection_made(unittest.mock.Mock())
+        self.addCleanup(self.cleanup_server, srv)
         srv.data_received(b'123')
 
         timeout_handle = srv._timeout_handle = unittest.mock.Mock()
@@ -202,6 +214,7 @@ class TestHttpServerProtocol(unittest.TestCase):
         transport = unittest.mock.Mock()
         srv = server.ServerHttpProtocol(timeout=0.01, loop=self.loop)
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
 
         srv.reader.feed_data(
             b'GET / HTTP/1.0\r\n'
@@ -216,6 +229,7 @@ class TestHttpServerProtocol(unittest.TestCase):
         transport = unittest.mock.Mock()
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
 
         srv.reader.feed_data(
             b'!@#$ / HTTP/1.0\r\n'
@@ -229,6 +243,7 @@ class TestHttpServerProtocol(unittest.TestCase):
         transport = unittest.mock.Mock()
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
 
         srv.reader.feed_data(b''.join([b'a' for _ in range(10000)]))
 
@@ -240,6 +255,7 @@ class TestHttpServerProtocol(unittest.TestCase):
         transport = unittest.mock.Mock()
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
         srv.keep_alive(True)
         srv.writer = unittest.mock.Mock()
 
@@ -254,6 +270,7 @@ class TestHttpServerProtocol(unittest.TestCase):
         transport = unittest.mock.Mock()
         srv = server.ServerHttpProtocol(debug=True, loop=self.loop)
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
         srv.keep_alive(True)
         srv.writer = unittest.mock.Mock()
         srv.logger = unittest.mock.Mock()
@@ -295,6 +312,7 @@ class TestHttpServerProtocol(unittest.TestCase):
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.debug = True
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
         srv.writer = unittest.mock.Mock()
 
         try:
@@ -314,6 +332,7 @@ class TestHttpServerProtocol(unittest.TestCase):
 
         srv = server.ServerHttpProtocol(logger=log, loop=self.loop)
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
         srv.writer = unittest.mock.Mock()
 
         srv.handle_error(500)
@@ -330,6 +349,7 @@ class TestHttpServerProtocol(unittest.TestCase):
         transport = unittest.mock.Mock()
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
 
         handle = srv.handle_request = get_mock_coro(return_value=None)
 
@@ -345,6 +365,7 @@ class TestHttpServerProtocol(unittest.TestCase):
         transport = unittest.mock.Mock()
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
         srv.logger.exception = unittest.mock.Mock()
 
         handle = srv.handle_request = unittest.mock.Mock()
@@ -374,6 +395,7 @@ class TestHttpServerProtocol(unittest.TestCase):
 
         srv.handle_request = coro
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
 
         srv.reader.feed_data(
             b'GET / HTTP/1.0\r\n'
@@ -387,6 +409,7 @@ class TestHttpServerProtocol(unittest.TestCase):
 
         srv = server.ServerHttpProtocol(logger=log, debug=True, loop=self.loop)
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
         srv.writer = unittest.mock.Mock()
         srv.handle_request = unittest.mock.Mock()
 
@@ -404,6 +427,7 @@ class TestHttpServerProtocol(unittest.TestCase):
 
         srv = server.ServerHttpProtocol(logger=log, debug=True, loop=self.loop)
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
 
         srv.handle_request = unittest.mock.Mock()
         test_utils.run_briefly(self.loop)  # start request_handler task
@@ -421,6 +445,7 @@ class TestHttpServerProtocol(unittest.TestCase):
         transport = unittest.mock.Mock()
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
         srv.handle_error = unittest.mock.Mock()
         srv.keep_alive(True)
         srv.reader.feed_data(b'GET / HT/asd\r\n\r\n')
@@ -434,6 +459,7 @@ class TestHttpServerProtocol(unittest.TestCase):
         transport = unittest.mock.Mock()
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
 
         handle = srv.handle_request = unittest.mock.Mock()
         handle.side_effect = ValueError
@@ -452,6 +478,7 @@ class TestHttpServerProtocol(unittest.TestCase):
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.keep_alive(True)
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
         srv.connection_lost(None)
 
         srv.handle_error(300)
@@ -471,6 +498,7 @@ class TestHttpServerProtocol(unittest.TestCase):
         transport.close = close
 
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
 
         handle = srv.handle_request = unittest.mock.Mock()
 
@@ -487,6 +515,7 @@ class TestHttpServerProtocol(unittest.TestCase):
         transport = unittest.mock.Mock()
         srv = server.ServerHttpProtocol(keep_alive=0, loop=self.loop)
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
         self.assertIsNone(srv._keep_alive_handle)
 
         srv._keep_alive_period = 15
@@ -525,6 +554,7 @@ class TestHttpServerProtocol(unittest.TestCase):
 
         srv = server.ServerHttpProtocol(loop=self.loop, access_log=None)
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
         srv.logger = unittest.mock.Mock()
 
         message = unittest.mock.Mock()
@@ -542,6 +572,7 @@ class TestHttpServerProtocol(unittest.TestCase):
         transport = unittest.mock.Mock()
         srv = server.ServerHttpProtocol(timeout=0, loop=self.loop)
         srv.connection_made(transport)
+        self.addCleanup(self.cleanup_server, srv)
         self.assertIsNone(srv._timeout_handle)
 
         srv.reader.feed_data(
