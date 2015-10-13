@@ -53,6 +53,7 @@ def test_function_signal_dispatch(loop, app):
     kwargs = {'foo': 1, 'bar': 2}
 
     callback_mock = mock.Mock()
+    callback_mock.__name__ = 'callback'  # need for Python 3.4 test suite
     callback = asyncio.coroutine(callback_mock)
 
     signal.append(callback)
