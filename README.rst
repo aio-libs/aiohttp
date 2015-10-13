@@ -21,8 +21,11 @@ Features
 Requirements
 ------------
 
-- Python >= 3.3
-- asyncio https://pypi.python.org/pypi/asyncio
+- Python >= 3.4.1
+- chardet https://pypi.python.org/pypi/chardet
+
+Optionally you may install cChardet library:
+https://pypi.python.org/pypi/cchardet/1.0.0
 
 
 License
