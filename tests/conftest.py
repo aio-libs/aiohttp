@@ -19,7 +19,7 @@ def unused_port():
 def loop(request):
     try:
         old_loop = asyncio.get_event_loop()
-    except RuntimeError:
+    except (RuntimeError, AssertionError):
         old_loop = None
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(None)

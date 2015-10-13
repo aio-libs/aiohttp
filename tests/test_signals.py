@@ -15,6 +15,11 @@ def app(loop):
     return Application(loop=loop)
 
 
+@pytest.fixture
+def debug_app(loop):
+    return Application(loop=loop, debug=True)
+
+
 def make_request(app, method, path, headers=CIMultiDict()):
     message = RawRequestMessage(method, path, HttpVersion11, headers,
                                 False, False)
@@ -110,3 +115,21 @@ def test_sort_forbidden(app):
     with pytest.raises(NotImplementedError):
         signal.sort()
     assert signal == [l1, l2, l3]
+
+
+def test_debug_signal(loop, debug_app):
+    assert debug_app.debug, "Should be True"
+    signal = Signal(debug_app)
+
+    callback = mock.Mock()
+    pre = mock.Mock()
+    post = mock.Mock()
+
+    signal.append(callback)
+    debug_app.on_pre_signal.append(pre)
+    debug_app.on_post_signal.append(post)
+
+    loop.run_until_complete(signal.send(1, a=2))
+    callback.assert_called_once_with(1, a=2)
+    pre.assert_called_once_with(1, 'aiohttp.signals:Signal', 1, a=2)
+    post.assert_called_once_with(1, 'aiohttp.signals:Signal', 1, a=2)
