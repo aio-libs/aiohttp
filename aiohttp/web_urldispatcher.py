@@ -7,6 +7,7 @@ import re
 import os
 import inspect
 
+from collections.abc import Sized, Iterable, Container
 from urllib.parse import urlencode, unquote
 
 from . import hdrs
@@ -363,7 +364,7 @@ class _MethodNotAllowedMatchInfo(UrlMappingMatchInfo):
                         ', '.join(sorted(self._allowed_methods))))
 
 
-class RoutesView:
+class RoutesView(Sized, Iterable, Container):
 
     __slots__ = '_urls'
 

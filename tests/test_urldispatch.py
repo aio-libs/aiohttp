@@ -1,6 +1,7 @@
 import asyncio
 import os
 import unittest
+from collections.abc import Sized, Container, Iterable
 from unittest import mock
 from urllib.parse import unquote
 import aiohttp.web
@@ -626,3 +627,8 @@ class TestUrlDispatcher(unittest.TestCase):
         routes = self.fill_routes()
         for route in routes:
             self.assertIn(route, self.router.routes())
+
+    def test_routes_abc(self):
+        self.assertIsInstance(self.router.routes(), Sized)
+        self.assertIsInstance(self.router.routes(), Iterable)
+        self.assertIsInstance(self.router.routes(), Container)
