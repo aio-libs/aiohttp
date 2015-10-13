@@ -175,6 +175,25 @@ so application developer can use classes if he wants::
    That means the handler for ``'/path'`` is applied for every HTTP method.
 
 
+Route views
+-----------
+
+.. versionadded:: 0.18
+
+For look on *all* routes in the router you may use
+:meth:`UrlDispatcher.routes` method.
+
+You can iterate over routes in the router table::
+
+   for route in app.router.routes():
+       print(route)
+
+or get router table size::
+
+   len(app.router.routes())
+
+
+
 Custom conditions for routes lookup
 -----------------------------------
 

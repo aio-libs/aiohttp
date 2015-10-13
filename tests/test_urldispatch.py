@@ -1,6 +1,7 @@
 import asyncio
 import os
 import unittest
+from collections.abc import Sized, Container, Iterable
 from unittest import mock
 from urllib.parse import unquote
 import aiohttp.web
@@ -605,3 +606,29 @@ class TestUrlDispatcher(unittest.TestCase):
             self.assertIs(exc, fut.exception())
             self.assertFalse(loop.add_writer.called)
             self.assertFalse(loop.remove_writer.called)
+
+    def fill_routes(self):
+        route1 = self.router.add_route('GET', '/plain', self.make_handler())
+        route2 = self.router.add_route('GET', '/variable/{name}',
+                                       self.make_handler())
+        route3 = self.router.add_static('/static',
+                                        os.path.dirname(aiohttp.__file__))
+        return route1, route2, route3
+
+    def test_routes_view_len(self):
+        self.fill_routes()
+        self.assertEqual(3, len(self.router.routes()))
+
+    def test_routes_view_iter(self):
+        routes = self.fill_routes()
+        self.assertEqual(list(routes), list(self.router.routes()))
+
+    def test_routes_view_contains(self):
+        routes = self.fill_routes()
+        for route in routes:
+            self.assertIn(route, self.router.routes())
+
+    def test_routes_abc(self):
+        self.assertIsInstance(self.router.routes(), Sized)
+        self.assertIsInstance(self.router.routes(), Iterable)
+        self.assertIsInstance(self.router.routes(), Container)

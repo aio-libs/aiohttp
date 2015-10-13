@@ -65,3 +65,6 @@ CHANGES
 - Ignore message body on 204 and 304 responses #505
 
 - `TCPConnector` processed both IPv4 and IPv6 by default #559
+
+- Add `.routes()` view for urldispatcher #519
+

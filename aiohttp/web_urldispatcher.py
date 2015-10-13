@@ -7,6 +7,7 @@ import re
 import os
 import inspect
 
+from collections.abc import Sized, Iterable, Container
 from urllib.parse import urlencode, unquote
 
 from . import hdrs
@@ -363,6 +364,23 @@ class _MethodNotAllowedMatchInfo(UrlMappingMatchInfo):
                         ', '.join(sorted(self._allowed_methods))))
 
 
+class RoutesView(Sized, Iterable, Container):
+
+    __slots__ = '_urls'
+
+    def __init__(self, urls):
+        self._urls = urls
+
+    def __len__(self):
+        return len(self._urls)
+
+    def __iter__(self):
+        yield from self._urls
+
+    def __contains__(self, route):
+        return route in self._urls
+
+
 class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     DYN = re.compile(r'^\{(?P<var>[a-zA-Z][_a-zA-Z0-9]*)\}$')
@@ -416,6 +434,9 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     def __getitem__(self, name):
         return self._routes[name]
+
+    def routes(self):
+        return RoutesView(self._urls)
 
     def register_route(self, route):
         assert isinstance(route, Route), 'Instance of Route class is required.'
