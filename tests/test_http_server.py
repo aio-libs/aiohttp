@@ -1,6 +1,7 @@
 """Tests for aiohttp/server.py"""
 
 import asyncio
+import gc
 import socket
 import unittest
 import unittest.mock
@@ -22,6 +23,7 @@ class TestHttpServerProtocol(unittest.TestCase):
         self.loop.stop()
         self.loop.run_forever()
         self.loop.close()
+        gc.collect()
 
     def test_http_error_exception(self):
         exc = errors.HttpProcessingError(code=500, message='Internal error')
