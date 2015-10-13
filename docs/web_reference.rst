@@ -1127,6 +1127,26 @@ Router is any object that implements :class:`AbstractRouter` interface.
          The method don't raise :exc:`HTTPNotFound` and
          :exc:`HTTPMethodNotAllowed` anymore.
 
+   .. method:: routes()
+
+      The method returns a *view* for *all* registered routes.
+
+      The view is an object that allows to:
+
+      1. Get size of the router table::
+
+           len(app.router.routes())
+
+      2. Iterate over registered routes::
+
+           for route in app.router.routes():
+               print(route)
+
+      3. Make a check if the route is registered in the router table::
+
+           route in app.router.routes()
+
+      .. versionadded:: 0.18
 
 .. _aiohttp-web-route:
 
