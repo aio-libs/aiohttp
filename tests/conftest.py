@@ -20,6 +20,7 @@ class _AssertWarnsContext:
         if expected_regex is not None:
             expected_regex = re.compile(expected_regex)
         self.expected_regex = expected_regex
+        self.obj_name = None
 
     def __enter__(self):
         # The __warningregistry__'s need to be in a pristine state for tests

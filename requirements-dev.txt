@@ -12,3 +12,7 @@ pyenchant
 sphinxcontrib-newsfeed
 pytest
 pytest-cov
+pytest-raisesregexp
+gunicorn
+pygments
+-e .
