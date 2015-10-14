@@ -1,6 +1,7 @@
 import asyncio
 import gc
 import pytest
+import re
 import socket
 import sys
 import warnings
