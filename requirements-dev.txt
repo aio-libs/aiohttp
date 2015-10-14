@@ -1,3 +1,4 @@
+pip
 flake8
 pyflakes>=1.0.0
 coverage

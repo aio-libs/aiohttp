@@ -1,19 +1,25 @@
 # Some simple testing tasks (sorry, UNIX only).
 
-flake:
+.install-deps: requirements-dev.txt
+	pip install -U -r requirements-dev.txt
+	touch .install-deps
+
+flake: .install-deps
 #	python setup.py check -rms
 	flake8 aiohttp
 	if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then \
             flake8 examples tests; \
         fi
 
-develop:
-	python setup.py develop
 
-test: flake develop
+.develop: .install-deps $(shell find aiohttp -type f)
+	pip install -e .
+	touch .develop
+
+test: flake .develop
 	py.test -q ./tests/
 
-vtest: flake develop
+vtest: flake .develop
 	py.test -s -v ./tests/
 
 cov cover coverage:
