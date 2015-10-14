@@ -97,6 +97,7 @@ def loop(request):
     loop.run_forever()
     loop.close()
     gc.collect()
+    asyncio.set_event_loop(None)
 
 
 @pytest.yield_fixture

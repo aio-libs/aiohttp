@@ -157,6 +157,12 @@ def test_host_header_explicit_host_with_port(make_request):
     assert req.headers['HOST'] == 'example.com:99'
 
 
+def test_default_loop(loop):
+    asyncio.set_event_loop(loop)
+    req = ClientRequest('get', 'http://python.org/')
+    assert req.loop is loop
+
+
 class TestClientRequest(unittest.TestCase):
 
     def setUp(self):
@@ -866,12 +872,6 @@ class TestClientRequest(unittest.TestCase):
 
         req.terminate()
         self.assertIsNone(req._writer)
-
-    def test_default_loop(self):
-        asyncio.set_event_loop(self.loop)
-        self.addCleanup(asyncio.set_event_loop, None)
-        req = ClientRequest('get', 'http://python.org/')
-        self.assertIs(req.loop, self.loop)
 
     def test_custom_req_rep(self):
         @asyncio.coroutine
