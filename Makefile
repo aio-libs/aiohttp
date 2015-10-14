@@ -2,7 +2,10 @@
 
 flake:
 #	python setup.py check -rms
-	flake8 aiohttp tests examples
+	flake8 aiohttp
+	if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then \
+            flake8 examples tests; \
+        fi
 
 develop:
 	python setup.py develop
