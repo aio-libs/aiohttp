@@ -143,16 +143,28 @@ class Client:
         url = self._url + path
         return self._session.get(url, **kwargs)
 
+    def post(self, path, **kwargs):
+        while path.startswith('/'):
+            path = path[1:]
+        url = self._url + path
+        return self._session.post(url, **kwargs)
+
 
 @pytest.yield_fixture
 def create_app_and_client(create_server, loop):
     client = None
 
     @asyncio.coroutine
-    def maker(*, debug=False, ssl_ctx=None):
+    def maker(*, server_params=None, client_params=None):
         nonlocal client
-        app, url = yield from create_server(debug=debug, ssl_ctx=ssl_ctx)
-        client = Client(aiohttp.ClientSession(loop=loop), url)
+        if server_params is None:
+            server_params = {}
+        server_params.setdefault('debug', False)
+        server_params.setdefault('ssl_ctx', None)
+        app, url = yield from create_server(**server_params)
+        if client_params is None:
+            client_params = {}
+        client = Client(aiohttp.ClientSession(loop=loop, **client_params), url)
         return app, client
 
     yield maker
