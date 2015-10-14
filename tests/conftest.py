@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import pytest
 import socket
 import sys
@@ -17,18 +18,15 @@ def unused_port():
 
 @pytest.yield_fixture
 def loop(request):
-    try:
-        old_loop = asyncio.get_event_loop()
-    except RuntimeError:
-        old_loop = None
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(None)
 
     yield loop
 
+    loop.stop()
+    loop.run_forever()
     loop.close()
-    if old_loop:
-        asyncio.set_event_loop(old_loop)
+    gc.collect()
 
 
 @pytest.yield_fixture
