@@ -1,4 +1,5 @@
 import asyncio
+import aiohttp
 import gc
 import pytest
 import re
@@ -124,6 +125,38 @@ def create_server(loop, unused_port):
         yield from srv.wait_closed()
 
     loop.run_until_complete(finish())
+
+
+class Client:
+    def __init__(self, session, url):
+        self._session = session
+        if not url.endswith('/'):
+            url += '/'
+        self._url = url
+
+    def close(self):
+        self._session.close()
+
+    def get(self, path, **kwargs):
+        while path.startswith('/'):
+            path = path[1:]
+        url = self._url + path
+        return self._session.get(url, **kwargs)
+
+
+@pytest.yield_fixture
+def create_app_and_client(create_server, loop):
+    client = None
+
+    @asyncio.coroutine
+    def maker(*, debug=False, ssl_ctx=None):
+        nonlocal client
+        app, url = yield from create_server(debug=debug, ssl_ctx=ssl_ctx)
+        client = Client(aiohttp.ClientSession(loop=loop), url)
+        return app, client
+
+    yield maker
+    client.close()
 
 
 @pytest.mark.tryfirst
