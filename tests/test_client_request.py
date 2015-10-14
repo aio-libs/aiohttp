@@ -12,10 +12,122 @@ import os.path
 
 from http.cookies import SimpleCookie
 
+import pytest
+
 import aiohttp
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
 from aiohttp.multidict import upstr, CIMultiDict, CIMultiDictProxy
 from aiohttp import BaseConnector
+
+
+@pytest.yield_fixture
+def make_request(loop):
+    request = None
+
+    def maker(*args, **kwargs):
+        nonlocal request
+        request = ClientRequest(*args, loop=loop, **kwargs)
+        return request
+
+    yield maker
+    if request is not None:
+        loop.run_until_complete(request.close())
+
+
+def test_method1(make_request):
+    req = make_request('get', 'http://python.org/')
+    assert req.method == 'GET'
+
+
+def test_method2(make_request):
+    req = make_request('head', 'http://python.org/')
+    assert req.method == 'HEAD'
+
+
+def test_method3(make_request):
+    req = make_request('HEAD', 'http://python.org/')
+    assert req.method == 'HEAD'
+
+
+def test_version_1_0(make_request):
+    req = make_request('get', 'http://python.org/', version='1.0')
+    assert req.version == (1, 0)
+
+
+def test_version_default(make_request):
+    req = make_request('get', 'http://python.org/')
+    assert req.version == (1, 1)
+
+
+def test_version_err(make_request):
+    with pytest.raises(ValueError):
+        make_request('get', 'http://python.org/', version='1.c')
+
+
+def test_host_port_default_http(make_request):
+    req = make_request('get', 'http://python.org/')
+    assert req.host == 'python.org'
+    assert req.port == 80
+    assert not req.ssl
+
+
+def test_host_port_default_https(make_request):
+    req = make_request('get', 'https://python.org/')
+    assert req.host == 'python.org'
+    assert req.port == 443
+    assert req.ssl
+
+
+def test_host_port_nondefault_http(make_request):
+    req = make_request('get', 'http://python.org:960/')
+    assert req.host == 'python.org'
+    assert req.port == 960
+    assert not req.ssl
+
+
+def test_host_port_nondefault_https(make_request):
+    req = make_request('get', 'https://python.org:960/')
+    assert req.host == 'python.org'
+    assert req.port == 960
+    assert req.ssl
+
+
+def test_host_port_default_ws(make_request):
+    req = make_request('get', 'ws://python.org/')
+    assert req.host == 'python.org'
+    assert req.port == 80
+    assert not req.ssl
+
+
+def test_host_port_default_wss(make_request):
+    req = make_request('get', 'wss://python.org/')
+    assert req.host == 'python.org'
+    assert req.port == 443
+    assert req.ssl
+
+
+def test_host_port_nondefault_ws(make_request):
+    req = make_request('get', 'ws://python.org:960/')
+    assert req.host == 'python.org'
+    assert req.port == 960
+    assert not req.ssl
+
+
+def test_host_port_nondefault_wss(make_request):
+    req = make_request('get', 'wss://python.org:960/')
+    assert req.host == 'python.org'
+    assert req.port == 960
+    assert req.ssl
+
+
+def test_host_port_err(make_request):
+    with pytest.raises(ValueError):
+        make_request('get', 'http://python.org:123e/')
+
+
+def test_hostname_err(make_request):
+    with pytest.raises(ValueError):
+        make_request('get', 'http://:8080/')
 
 
 class TestClientRequest(unittest.TestCase):
@@ -40,73 +152,6 @@ class TestClientRequest(unittest.TestCase):
             pass
         self.loop.close()
         gc.collect()
-
-    def test_method(self):
-        req = ClientRequest('get', 'http://python.org/', loop=self.loop)
-        self.assertEqual(req.method, 'GET')
-        self.loop.run_until_complete(req.close())
-
-        req = ClientRequest('head', 'http://python.org/', loop=self.loop)
-        self.assertEqual(req.method, 'HEAD')
-        self.loop.run_until_complete(req.close())
-
-        req = ClientRequest('HEAD', 'http://python.org/', loop=self.loop)
-        self.assertEqual(req.method, 'HEAD')
-        self.loop.run_until_complete(req.close())
-
-    def test_version(self):
-        req = ClientRequest('get', 'http://python.org/', version='1.0',
-                            loop=self.loop)
-        self.assertEqual(req.version, (1, 0))
-        self.loop.run_until_complete(req.close())
-
-    def test_version_err(self):
-        self.assertRaises(
-            ValueError,
-            ClientRequest, 'get', 'http://python.org/', version='1.c',
-            loop=self.loop)
-
-    def test_host_port(self):
-        req = ClientRequest('get', 'http://python.org/', loop=self.loop)
-        self.assertEqual(req.host, 'python.org')
-        self.assertEqual(req.port, 80)
-        self.assertFalse(req.ssl)
-        self.loop.run_until_complete(req.close())
-
-        req = ClientRequest('get', 'https://python.org/', loop=self.loop)
-        self.assertEqual(req.host, 'python.org')
-        self.assertEqual(req.port, 443)
-        self.assertTrue(req.ssl)
-        self.loop.run_until_complete(req.close())
-
-        req = ClientRequest('get', 'https://python.org:960/', loop=self.loop)
-        self.assertEqual(req.host, 'python.org')
-        self.assertEqual(req.port, 960)
-        self.assertTrue(req.ssl)
-        self.loop.run_until_complete(req.close())
-
-    def test_websocket_host_port(self):
-        req = ClientRequest('get', 'ws://python.org/', loop=self.loop)
-        self.assertEqual(req.host, 'python.org')
-        self.assertEqual(req.port, 80)
-        self.assertFalse(req.ssl)
-        self.loop.run_until_complete(req.close())
-
-        req = ClientRequest('get', 'wss://python.org/', loop=self.loop)
-        self.assertEqual(req.host, 'python.org')
-        self.assertEqual(req.port, 443)
-        self.assertTrue(req.ssl)
-        self.loop.run_until_complete(req.close())
-
-    def test_host_port_err(self):
-        self.assertRaises(
-            ValueError, ClientRequest, 'get', 'http://python.org:123e/',
-            loop=self.loop)
-
-    def test_hostname_err(self):
-        self.assertRaises(
-            ValueError, ClientRequest, 'get', 'http://:8080/',
-            loop=self.loop)
 
     def test_host_header(self):
         req = ClientRequest('get', 'http://python.org/', loop=self.loop)
