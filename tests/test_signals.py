@@ -84,7 +84,11 @@ def test_function_signal_dispatch2(loop, app):
 def test_response_prepare(loop, app):
     callback = mock.Mock()
 
-    app.on_response_prepare.append(asyncio.coroutine(callback))
+    @asyncio.coroutine
+    def cb(*args, **kwargs):
+        callback(*args, **kwargs)
+
+    app.on_response_prepare.append(cb)
 
     request = make_request(app, 'GET', '/')
     response = Response(body=b'')
