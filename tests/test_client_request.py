@@ -130,6 +130,33 @@ def test_hostname_err(make_request):
         make_request('get', 'http://:8080/')
 
 
+def test_host_header_host_without_port(make_request):
+    req = make_request('get', 'http://python.org/')
+    assert req.headers['HOST'] == 'python.org'
+
+
+def test_host_header_host_with_default_port(make_request):
+    req = make_request('get', 'http://python.org:80/')
+    assert req.headers['HOST'] == 'python.org:80'
+
+
+def test_host_header_host_with_nondefault_port(make_request):
+    req = make_request('get', 'http://python.org:99/')
+    assert req.headers['HOST'] == 'python.org:99'
+
+
+def test_host_header_explicit_host(make_request):
+    req = make_request('get', 'http://python.org/',
+                       headers={'host': 'example.com'})
+    assert req.headers['HOST'] == 'example.com'
+
+
+def test_host_header_explicit_host_with_port(make_request):
+    req = make_request('get', 'http://python.org/',
+                       headers={'host': 'example.com:99'})
+    assert req.headers['HOST'] == 'example.com:99'
+
+
 class TestClientRequest(unittest.TestCase):
 
     def setUp(self):
@@ -152,29 +179,6 @@ class TestClientRequest(unittest.TestCase):
             pass
         self.loop.close()
         gc.collect()
-
-    def test_host_header(self):
-        req = ClientRequest('get', 'http://python.org/', loop=self.loop)
-        self.assertEqual(req.headers['HOST'], 'python.org')
-        self.loop.run_until_complete(req.close())
-
-        req = ClientRequest('get', 'http://python.org:80/', loop=self.loop)
-        self.assertEqual(req.headers['HOST'], 'python.org:80')
-        self.loop.run_until_complete(req.close())
-
-        req = ClientRequest('get', 'http://python.org:99/', loop=self.loop)
-        self.assertEqual(req.headers['HOST'], 'python.org:99')
-        self.loop.run_until_complete(req.close())
-
-        req = ClientRequest('get', 'http://python.org/',
-                            headers={'host': 'example.com'}, loop=self.loop)
-        self.assertEqual(req.headers['HOST'], 'example.com')
-        self.loop.run_until_complete(req.close())
-
-        req = ClientRequest('get', 'http://python.org/',
-                            headers={'host': 'example.com:99'}, loop=self.loop)
-        self.assertEqual(req.headers['HOST'], 'example.com:99')
-        self.loop.run_until_complete(req.close())
 
     def test_default_headers_useragent(self):
         req = ClientRequest('get', 'http://python.org/', loop=self.loop)
