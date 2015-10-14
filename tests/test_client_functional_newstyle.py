@@ -1,163 +1,131 @@
 """Http client functional tests against aiohttp.web server"""
 
 import asyncio
-import socket
-import unittest
+import pytest
 
 import aiohttp
-from aiohttp import client, web, log
+from aiohttp import web
 
 
-class TestHttpClientFunctionalNewStyle(unittest.TestCase):
+class Client:
+    def __init__(self, session, url):
+        self._session = session
+        if not url.endswith('/'):
+            url += '/'
+        self._url = url
 
-    def setUp(self):
-        self.handler = None
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
+    def close(self):
+        self._session.close()
 
-    def tearDown(self):
-        if self.handler:
-            self.loop.run_until_complete(self.handler.finish_connections())
-        self.loop.close()
+    def get(self, path, **kwargs):
+        while path.startswith('/'):
+            path = path[1:]
+        url = self._url + path
+        return self._session.get(url, **kwargs)
 
-    def find_unused_port(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(('127.0.0.1', 0))
-        port = s.getsockname()[1]
-        s.close()
-        return port
+
+@pytest.yield_fixture
+def create(create_server, loop):
+    client = None
 
     @asyncio.coroutine
-    def create_server(self, method, path, handler=None):
-        app = web.Application(loop=self.loop)
-        if handler:
-            app.router.add_route(method, path, handler)
+    def maker(*, debug=False, ssl_ctx=None):
+        nonlocal client
+        app, url = yield from create_server(debug=debug, ssl_ctx=ssl_ctx)
+        client = Client(aiohttp.ClientSession(loop=loop), url)
+        return app, client
 
-        port = self.find_unused_port()
-        self.handler = app.make_handler(
-            keep_alive_on=False,
-            access_log=log.access_logger)
-        srv = yield from self.loop.create_server(
-            self.handler, '127.0.0.1', port)
-        url = "http://127.0.0.1:{}".format(port) + path
-        self.addCleanup(srv.close)
-        return app, srv, url
+    yield maker
+    client.close()
 
-    def test_keepalive_two_requests_success(self):
-        @asyncio.coroutine
-        def handler(request):
-            body = yield from request.read()
-            self.assertEqual(b'', body)
-            return web.Response(body=b'OK')
 
-        @asyncio.coroutine
-        def go():
-            _, srv, url = yield from self.create_server('GET', '/', handler)
-            connector = aiohttp.TCPConnector(loop=self.loop)
-            r = yield from client.request('GET', url,
-                                          connector=connector, loop=self.loop)
-            yield from r.read()
+@pytest.mark.run_loop
+def test_keepalive_two_requests_success(create):
+    @asyncio.coroutine
+    def handler(request):
+        body = yield from request.read()
+        assert b'' == body
+        return web.Response(body=b'OK')
 
-            r2 = yield from client.request('GET', url,
-                                           connector=connector, loop=self.loop)
-            yield from r2.read()
-            self.assertEqual(1, len(connector._conns))
-            connector.close()
+    app, client = yield from create()
+    app.router.add_route('GET', '/', handler)
+    resp1 = yield from client.get('/')
+    yield from resp1.read()
+    resp2 = yield from client.get('/')
+    yield from resp2.read()
 
-        self.loop.run_until_complete(go())
+    assert 1 == len(client._session.connector._conns)
 
-    def test_keepalive_response_released(self):
-        @asyncio.coroutine
-        def handler(request):
-            body = yield from request.read()
-            self.assertEqual(b'', body)
-            return web.Response(body=b'OK')
 
-        @asyncio.coroutine
-        def go():
-            _, srv, url = yield from self.create_server('GET', '/', handler)
-            connector = aiohttp.TCPConnector(loop=self.loop)
-            r = yield from client.request('GET', url,
-                                          connector=connector, loop=self.loop)
-            yield from r.read()
-            yield from r.release()
+@pytest.mark.run_loop
+def test_keepalive_response_released(create):
+    @asyncio.coroutine
+    def handler(request):
+        body = yield from request.read()
+        assert b'' == body
+        return web.Response(body=b'OK')
 
-            r2 = yield from client.request('GET', url,
-                                           connector=connector, loop=self.loop)
-            yield from r2.read()
-            yield from r2.release()
-            self.assertEqual(1, len(connector._conns))
-            connector.close()
+    app, client = yield from create()
+    app.router.add_route('GET', '/', handler)
 
-        self.loop.run_until_complete(go())
+    resp1 = yield from client.get('/')
+    yield from resp1.release()
+    resp2 = yield from client.get('/')
+    yield from resp2.release()
 
-    def test_keepalive_server_force_close_connection(self):
-        @asyncio.coroutine
-        def handler(request):
-            body = yield from request.read()
-            self.assertEqual(b'', body)
-            response = web.Response(body=b'OK')
-            response.force_close()
-            return response
+    assert 1 == len(client._session.connector._conns)
 
-        @asyncio.coroutine
-        def go():
-            _, srv, url = yield from self.create_server('GET', '/', handler)
 
-            connector = aiohttp.TCPConnector(loop=self.loop)
+@pytest.mark.run_loop
+def test_keepalive_server_force_close_connection(create):
+    @asyncio.coroutine
+    def handler(request):
+        body = yield from request.read()
+        assert b'' == body
+        response = web.Response(body=b'OK')
+        response.force_close()
+        return response
 
-            r = yield from client.request('GET', url,
-                                          connector=connector, loop=self.loop)
-            yield from r.read()
-            self.assertEqual(0, len(connector._conns))
+    app, client = yield from create()
+    app.router.add_route('GET', '/', handler)
 
-            r2 = yield from client.request('GET', url,
-                                           connector=connector, loop=self.loop)
-            yield from r2.read()
+    resp1 = yield from client.get('/')
+    resp1.close()
+    resp2 = yield from client.get('/')
+    resp2.close()
 
-            self.assertEqual(0, len(connector._conns))
-            connector.close()
+    assert 0 == len(client._session.connector._conns)
 
-        self.loop.run_until_complete(go())
 
-    def test_HTTP_304(self):
-        @asyncio.coroutine
-        def handler(request):
-            body = yield from request.read()
-            self.assertEqual(b'', body)
-            return web.Response(status=304)
+@pytest.mark.run_loop
+def test_HTTP_304(create):
+    @asyncio.coroutine
+    def handler(request):
+        body = yield from request.read()
+        assert b'' == body
+        return web.Response(status=304)
 
-        @asyncio.coroutine
-        def go():
-            _, srv, url = yield from self.create_server('GET', '/', handler)
-            connector = aiohttp.TCPConnector(loop=self.loop)
-            r = yield from client.request('GET', url,
-                                          connector=connector, loop=self.loop)
-            content = yield from r.read()
-            self.assertEqual(r.status, 304)
-            self.assertEqual(content, b'')
-            yield from r.release()
-            connector.close()
+    app, client = yield from create()
+    app.router.add_route('GET', '/', handler)
 
-        self.loop.run_until_complete(go())
+    resp = yield from client.get('/')
+    assert resp.status == 304
+    content = yield from resp.read()
+    assert content == b''
 
-    def test_HTTP_304_WITH_BODY(self):
-        @asyncio.coroutine
-        def handler(request):
-            body = yield from request.read()
-            self.assertEqual(b'', body)
-            return web.Response(body=b'test', status=304)
 
-        @asyncio.coroutine
-        def go():
-            _, srv, url = yield from self.create_server('GET', '/', handler)
-            connector = aiohttp.TCPConnector(loop=self.loop)
-            r = yield from client.request('GET', url,
-                                          connector=connector, loop=self.loop)
-            content = yield from r.read()
-            self.assertEqual(r.status, 304)
-            self.assertEqual(content, b'')
-            yield from r.release()
-            connector.close()
+@pytest.mark.run_loop
+def test_HTTP_304_WITH_BODY(create):
+    @asyncio.coroutine
+    def handler(request):
+        body = yield from request.read()
+        assert b'' == body
+        return web.Response(body=b'test', status=304)
 
-        self.loop.run_until_complete(go())
+    app, client = yield from create()
+    app.router.add_route('GET', '/', handler)
+
+    resp = yield from client.get('/')
+    assert resp.status == 304
+    content = yield from resp.read()
+    assert content == b''
