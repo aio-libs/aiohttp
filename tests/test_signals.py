@@ -70,7 +70,10 @@ def test_function_signal_dispatch2(loop, app):
     kwargs = {'foo': 1, 'bar': 2}
 
     callback_mock = mock.Mock()
-    callback = asyncio.coroutine(callback_mock)
+
+    @asyncio.coroutine
+    def callback(*args, **kwargs):
+        callback_mock(*args, **kwargs)
 
     signal.append(callback)
 
