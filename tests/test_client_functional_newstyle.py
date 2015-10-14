@@ -80,12 +80,12 @@ class TestHttpClientFunctionalNewStyle(unittest.TestCase):
             r = yield from client.request('GET', url,
                                           connector=connector, loop=self.loop)
             yield from r.read()
-            r.release()
+            yield from r.release()
 
             r2 = yield from client.request('GET', url,
                                            connector=connector, loop=self.loop)
             yield from r2.read()
-            r2.release()
+            yield from r2.release()
             self.assertEqual(1, len(connector._conns))
             connector.close()
 
@@ -136,7 +136,7 @@ class TestHttpClientFunctionalNewStyle(unittest.TestCase):
             content = yield from r.read()
             self.assertEqual(r.status, 304)
             self.assertEqual(content, b'')
-            r.release()
+            yield from r.release()
             connector.close()
 
         self.loop.run_until_complete(go())
@@ -157,7 +157,7 @@ class TestHttpClientFunctionalNewStyle(unittest.TestCase):
             content = yield from r.read()
             self.assertEqual(r.status, 304)
             self.assertEqual(content, b'')
-            r.release()
+            yield from r.release()
             connector.close()
 
         self.loop.run_until_complete(go())

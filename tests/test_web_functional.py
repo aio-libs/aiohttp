@@ -806,6 +806,7 @@ class StaticFileMixin(WebFunctionalSetupMixin):
             self.assertEqual('application/octet-stream', ct)
             self.assertEqual(resp.headers.get('CONTENT-ENCODING'), None)
             resp.close()
+            session.close()
 
         here = os.path.dirname(__file__)
         filename = 'data.unknown_mime_type'

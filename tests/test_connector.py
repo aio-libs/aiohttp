@@ -671,14 +671,16 @@ class TestHttpClientConnector(unittest.TestCase):
 
         app, srv, url = self.loop.run_until_complete(
             self.create_server('get', '/', handler))
+        conn = aiohttp.TCPConnector(loop=self.loop)
         r = self.loop.run_until_complete(
             aiohttp.request(
                 'get', url,
-                connector=aiohttp.TCPConnector(loop=self.loop),
+                connector=conn,
                 loop=self.loop))
         self.loop.run_until_complete(r.release())
         self.assertEqual(r.status, 200)
         r.close()
+        conn.close()
 
     @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'requires unix')
     def test_unix_connector(self):
@@ -939,9 +941,9 @@ class TestProxyConnector(unittest.TestCase):
         tr.pause_reading.assert_called_once_with()
         tr.get_extra_info.assert_called_with('socket', default=None)
 
-        proxy_req.close()
+        self.loop.run_until_complete(proxy_req.close())
         proxy_resp.close()
-        req.close()
+        self.loop.run_until_complete(req.close())
 
     @unittest.mock.patch('aiohttp.connector.ClientRequest')
     def test_https_connect_runtime_error(self, ClientRequestMock):
@@ -969,9 +971,9 @@ class TestProxyConnector(unittest.TestCase):
                 RuntimeError, "Transport does not expose socket instance"):
             self.loop.run_until_complete(connector._create_connection(req))
 
-        proxy_req.close()
+        self.loop.run_until_complete(proxy_req.close())
         proxy_resp.close()
-        req.close()
+        self.loop.run_until_complete(req.close())
 
     @unittest.mock.patch('aiohttp.connector.ClientRequest')
     def test_https_connect_http_proxy_error(self, ClientRequestMock):
@@ -1000,9 +1002,9 @@ class TestProxyConnector(unittest.TestCase):
                 aiohttp.HttpProxyError, "400, message='bad request'"):
             self.loop.run_until_complete(connector._create_connection(req))
 
-        proxy_req.close()
+        self.loop.run_until_complete(proxy_req.close())
         proxy_resp.close()
-        req.close()
+        self.loop.run_until_complete(req.close())
 
     @unittest.mock.patch('aiohttp.connector.ClientRequest')
     def test_https_connect_resp_start_error(self, ClientRequestMock):
@@ -1097,6 +1099,6 @@ class TestProxyConnector(unittest.TestCase):
         tr.pause_reading.assert_called_once_with()
         tr.get_extra_info.assert_called_with('socket', default=None)
 
-        proxy_req.close()
+        self.loop.run_until_complete(proxy_req.close())
         proxy_resp.close()
-        req.close()
+        self.loop.run_until_complete(req.close())
