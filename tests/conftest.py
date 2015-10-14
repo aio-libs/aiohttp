@@ -1,9 +1,77 @@
 import asyncio
+import gc
 import pytest
 import socket
 import sys
+import warnings
 
 from aiohttp import web
+
+
+class _AssertWarnsContext:
+    """A context manager used to implement TestCase.assertWarns* methods."""
+
+    _base_type = Warning
+    _base_type_str = 'a warning type or tuple of warning types'
+
+    def __init__(self, expected, expected_regex=None):
+        self.expected = expected
+        if expected_regex is not None:
+            expected_regex = re.compile(expected_regex)
+        self.expected_regex = expected_regex
+
+    def __enter__(self):
+        # The __warningregistry__'s need to be in a pristine state for tests
+        # to work properly.
+        for v in sys.modules.values():
+            if getattr(v, '__warningregistry__', None):
+                v.__warningregistry__ = {}
+        self.warnings_manager = warnings.catch_warnings(record=True)
+        self.warnings = self.warnings_manager.__enter__()
+        warnings.simplefilter("always", self.expected)
+        return self
+
+    def __exit__(self, exc_type, exc_value, tb):
+        self.warnings_manager.__exit__(exc_type, exc_value, tb)
+        if exc_type is not None:
+            # let unexpected exceptions pass through
+            return
+        try:
+            exc_name = self.expected.__name__
+        except AttributeError:
+            exc_name = str(self.expected)
+        first_matching = None
+        for m in self.warnings:
+            w = m.message
+            if not isinstance(w, self.expected):
+                continue
+            if first_matching is None:
+                first_matching = w
+            if (self.expected_regex is not None and
+                    not self.expected_regex.search(str(w))):
+                continue
+            # store warning for later retrieval
+            self.warning = w
+            self.filename = m.filename
+            self.lineno = m.lineno
+            return
+        # Now we simply try to choose a helpful failure message
+        if first_matching is not None:
+            __tracebackhide__ = True
+            assert 0, '"{}" does not match "{}"'.format(
+                self.expected_regex.pattern, str(first_matching))
+        if self.obj_name:
+            __tracebackhide__ = True
+            assert 0, "{} not triggered by {}".format(exc_name,
+                                                      self.obj_name)
+        else:
+            __tracebackhide__ = True
+            assert 0, "{} not triggered".format(exc_name)
+
+
+@pytest.yield_fixture
+def warning():
+    yield _AssertWarnsContext
 
 
 @pytest.fixture
@@ -17,18 +85,15 @@ def unused_port():
 
 @pytest.yield_fixture
 def loop(request):
-    try:
-        old_loop = asyncio.get_event_loop()
-    except (RuntimeError, AssertionError):
-        old_loop = None
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(None)
 
     yield loop
 
+    loop.stop()
+    loop.run_forever()
     loop.close()
-    if old_loop:
-        asyncio.set_event_loop(old_loop)
+    gc.collect()
 
 
 @pytest.yield_fixture
