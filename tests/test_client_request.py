@@ -163,6 +163,50 @@ def test_default_loop(loop):
     assert req.loop is loop
 
 
+def test_default_headers_useragent(make_request):
+    req = make_request('get', 'http://python.org/')
+
+    assert 'SERVER' not in req.headers
+    assert 'USER-AGENT' in req.headers
+
+
+def test_default_headers_useragent_custom(make_request):
+    req = make_request('get', 'http://python.org/',
+                       headers={'user-agent': 'my custom agent'})
+
+    assert 'USER-Agent' in req.headers
+    assert 'my custom agent' == req.headers['User-Agent']
+
+
+def test_skip_default_useragent_header(make_request):
+    req = make_request('get', 'http://python.org/',
+                       skip_auto_headers=set([upstr('user-agent')]))
+
+    assert 'User-Agent' not in req.headers
+
+
+def test_headers(make_request):
+    req = make_request('get', 'http://python.org/',
+                       headers={'Content-Type': 'text/plain'})
+
+    assert 'CONTENT-TYPE' in req.headers
+    assert req.headers['CONTENT-TYPE'] == 'text/plain'
+    assert req.headers['ACCEPT-ENCODING'] == 'gzip, deflate'
+
+
+def test_headers_list(make_request):
+    req = make_request('get', 'http://python.org/',
+                       headers=[('Content-Type', 'text/plain')])
+    assert 'CONTENT-TYPE' in req.headers
+    assert req.headers['CONTENT-TYPE'] == 'text/plain'
+
+
+def test_headers_default(make_request):
+    req = make_request('get', 'http://python.org/',
+                       headers={'ACCEPT-ENCODING': 'deflate'})
+    assert req.headers['ACCEPT-ENCODING'] == 'deflate'
+
+
 class TestClientRequest(unittest.TestCase):
 
     def setUp(self):
@@ -185,49 +229,6 @@ class TestClientRequest(unittest.TestCase):
             pass
         self.loop.close()
         gc.collect()
-
-    def test_default_headers_useragent(self):
-        req = ClientRequest('get', 'http://python.org/', loop=self.loop)
-
-        self.assertNotIn('SERVER', req.headers)
-        self.assertIn('USER-AGENT', req.headers)
-
-    def test_default_headers_useragent_custom(self):
-        req = ClientRequest('get', 'http://python.org/', loop=self.loop,
-                            headers={'user-agent': 'my custom agent'})
-
-        self.assertIn('USER-Agent', req.headers)
-        self.assertEqual('my custom agent', req.headers['User-Agent'])
-
-    def test_skip_default_useragent_header(self):
-        req = ClientRequest('get', 'http://python.org/', loop=self.loop,
-                            skip_auto_headers=set([upstr('user-agent')]))
-
-        self.assertNotIn('User-Agent', req.headers)
-
-    def test_headers(self):
-        req = ClientRequest('get', 'http://python.org/',
-                            headers={'Content-Type': 'text/plain'},
-                            loop=self.loop)
-        self.assertIn('CONTENT-TYPE', req.headers)
-        self.assertEqual(req.headers['CONTENT-TYPE'], 'text/plain')
-        self.assertEqual(req.headers['ACCEPT-ENCODING'], 'gzip, deflate')
-        self.loop.run_until_complete(req.close())
-
-    def test_headers_list(self):
-        req = ClientRequest('get', 'http://python.org/',
-                            headers=[('Content-Type', 'text/plain')],
-                            loop=self.loop)
-        self.assertIn('CONTENT-TYPE', req.headers)
-        self.assertEqual(req.headers['CONTENT-TYPE'], 'text/plain')
-        self.loop.run_until_complete(req.close())
-
-    def test_headers_default(self):
-        req = ClientRequest('get', 'http://python.org/',
-                            headers={'ACCEPT-ENCODING': 'deflate'},
-                            loop=self.loop)
-        self.assertEqual(req.headers['ACCEPT-ENCODING'], 'deflate')
-        self.loop.run_until_complete(req.close())
 
     def test_invalid_url(self):
         self.assertRaises(
