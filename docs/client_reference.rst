@@ -995,6 +995,7 @@ Response object
       :param callable loads: :func:`callable` used for loading *JSON*
                              data, :func:`json.loads` by default.
 
-      :return dict: *BODY* as *JSON* data.
+      :rtype: dict, list, str, int, float, bool or None
+      :return: *BODY* as *JSON* data or None if it contains no non-whitespace symbols
 
 .. disqus::
