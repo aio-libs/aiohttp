@@ -207,6 +207,16 @@ def test_headers_default(make_request):
     assert req.headers['ACCEPT-ENCODING'] == 'deflate'
 
 
+def test_invalid_url(make_request):
+    with pytest.raises(ValueError):
+        make_request('get', 'hiwpefhipowhefopw')
+
+
+def test_invalid_idna(make_request):
+    with pytest.raises(ValueError):
+        make_request('get', 'http://\u2061owhefopw.com')
+
+
 class TestClientRequest(unittest.TestCase):
 
     def setUp(self):
@@ -229,16 +239,6 @@ class TestClientRequest(unittest.TestCase):
             pass
         self.loop.close()
         gc.collect()
-
-    def test_invalid_url(self):
-        self.assertRaises(
-            ValueError, ClientRequest, 'get', 'hiwpefhipowhefopw',
-            loop=self.loop)
-
-    def test_invalid_idna(self):
-        self.assertRaises(
-            ValueError, ClientRequest, 'get', 'http://\u2061owhefopw.com',
-            loop=self.loop)
 
     def test_ipv6_host_port(self):
         req = ClientRequest('get', 'http://[2001:db8::1]/', loop=self.loop)
