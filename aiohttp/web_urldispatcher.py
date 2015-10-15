@@ -1,6 +1,7 @@
 import abc
 import asyncio
 
+import keyword
 import collections
 import mimetypes
 import re
@@ -442,8 +443,12 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         assert isinstance(route, Route), 'Instance of Route class is required.'
 
         name = route.name
+
         if name is not None:
-            if name in self._routes:
+            if not name.isidentifier() or keyword.iskeyword(name):
+                raise ValueError('Incorrect route name value, '
+                                 'Route name should be python identifier')
+            elif name in self._routes:
                 raise ValueError('Duplicate {!r}, '
                                  'already handled by {!r}'
                                  .format(name, self._routes[name]))
