@@ -289,6 +289,96 @@ def test_basic_auth_from_url_overriden(make_request):
     assert 'python.org' == req.netloc
 
 
+def test_path_is_not_double_encoded1(make_request):
+    req = make_request('get', "http://0.0.0.0/get/test case")
+    assert req.path == "/get/test%20case"
+
+
+def test_path_is_not_double_encoded2(make_request):
+    req = make_request('get', "http://0.0.0.0/get/test%2fcase")
+    assert req.path == "/get/test%2fcase"
+
+
+def test_path_is_not_double_encoded3(make_request):
+    req = make_request('get', "http://0.0.0.0/get/test%20case")
+    assert req.path == "/get/test%20case"
+
+
+def test_path_safe_chars_preserved(make_request):
+    req = make_request('get', "http://0.0.0.0/get/%:=")
+    assert req.path == "/get/%:="
+
+
+def test_params_are_added_before_fragment1(make_request):
+    req = make_request('GET', "http://example.com/path#fragment",
+                       params={"a": "b"})
+    assert req.path == "/path?a=b#fragment"
+
+
+def test_params_are_added_before_fragment2(make_request):
+    req = make_request('GET', "http://example.com/path?key=value#fragment",
+                       params={"a": "b"})
+    assert req.path == "/path?key=value&a=b#fragment"
+
+
+def test_cookies(make_request):
+    req = make_request('get', 'http://test.com/path',
+                       cookies={'cookie1': 'val1'})
+
+    assert 'COOKIE' in req.headers
+    assert 'cookie1=val1' == req.headers['COOKIE']
+
+
+def test_cookies_merge_with_headers(make_request):
+    req = make_request('get', 'http://test.com/path',
+                       headers={'cookie': 'cookie1=val1'},
+                       cookies={'cookie2': 'val2'})
+
+    assert 'cookie1=val1; cookie2=val2' == req.headers['COOKIE']
+
+
+def test_unicode_get1(make_request):
+    req = make_request('get', 'http://python.org',
+                       params={'foo': 'f\xf8\xf8'})
+    assert '/?foo=f%C3%B8%C3%B8' == req.path
+
+
+def test_unicode_get2(make_request):
+    req = make_request('', 'http://python.org',
+                       params={'f\xf8\xf8': 'f\xf8\xf8'})
+
+    assert '/?f%C3%B8%C3%B8=f%C3%B8%C3%B8' == req.path
+
+
+def test_unicode_get3(make_request):
+    req = make_request('', 'http://python.org', params={'foo': 'foo'})
+    assert '/?foo=foo' == req.path
+
+
+def test_unicode_get4(make_request):
+    def join(*suffix):
+        return urllib.parse.urljoin('http://python.org/', '/'.join(suffix))
+
+    req = make_request('', join('\xf8'), params={'foo': 'foo'})
+    assert '/%C3%B8?foo=foo' == req.path
+
+
+def test_query_multivalued_param(make_request):
+    for meth in ClientRequest.ALL_METHODS:
+        req = make_request(
+            meth, 'http://python.org',
+            params=(('test', 'foo'), ('test', 'baz')))
+
+        assert req.path == '/?test=foo&test=baz'
+
+
+def test_params_update_path_and_url(make_request):
+    req = make_request('get', 'http://python.org',
+                       params=(('test', 'foo'), ('test', 'baz')))
+    assert req.path == '/?test=foo&test=baz'
+    assert req.url == 'http://python.org/?test=foo&test=baz'
+
+
 class TestClientRequest(unittest.TestCase):
 
     def setUp(self):
@@ -371,103 +461,6 @@ class TestClientRequest(unittest.TestCase):
         resp = req.send(self.transport, self.protocol)
         self.assertEqual(req.headers.get('CONTENT-LENGTH'), '3')
         resp.close()
-
-    def test_path_is_not_double_encoded(self):
-        req = ClientRequest('get', "http://0.0.0.0/get/test case",
-                            loop=self.loop)
-        self.assertEqual(req.path, "/get/test%20case")
-        self.loop.run_until_complete(req.close())
-
-        req = ClientRequest('get', "http://0.0.0.0/get/test%2fcase",
-                            loop=self.loop)
-        self.assertEqual(req.path, "/get/test%2fcase")
-        self.loop.run_until_complete(req.close())
-
-        req = ClientRequest('get', "http://0.0.0.0/get/test%20case",
-                            loop=self.loop)
-        self.assertEqual(req.path, "/get/test%20case")
-        self.loop.run_until_complete(req.close())
-
-    def test_path_safe_chars_preserved(self):
-        req = ClientRequest('get', "http://0.0.0.0/get/%:=",
-                            loop=self.loop)
-        self.assertEqual(req.path, "/get/%:=")
-        self.loop.run_until_complete(req.close())
-
-    def test_params_are_added_before_fragment(self):
-        req = ClientRequest(
-            'GET', "http://example.com/path#fragment", params={"a": "b"},
-            loop=self.loop)
-        self.assertEqual(
-            req.path, "/path?a=b#fragment")
-        self.loop.run_until_complete(req.close())
-
-        req = ClientRequest(
-            'GET',
-            "http://example.com/path?key=value#fragment", params={"a": "b"},
-            loop=self.loop)
-        self.assertEqual(
-            req.path, "/path?key=value&a=b#fragment")
-        self.loop.run_until_complete(req.close())
-
-    def test_cookies(self):
-        req = ClientRequest(
-            'get', 'http://test.com/path', cookies={'cookie1': 'val1'},
-            loop=self.loop)
-        self.assertIn('COOKIE', req.headers)
-        self.assertEqual('cookie1=val1', req.headers['COOKIE'])
-        self.loop.run_until_complete(req.close())
-
-        req = ClientRequest(
-            'get', 'http://test.com/path',
-            headers={'cookie': 'cookie1=val1'},
-            cookies={'cookie2': 'val2'},
-            loop=self.loop)
-        self.assertEqual('cookie1=val1; cookie2=val2', req.headers['COOKIE'])
-        self.loop.run_until_complete(req.close())
-
-    def test_unicode_get(self):
-        def join(*suffix):
-            return urllib.parse.urljoin('http://python.org/', '/'.join(suffix))
-
-        url = 'http://python.org'
-        req = ClientRequest('get', url, params={'foo': 'f\xf8\xf8'},
-                            loop=self.loop)
-        self.assertEqual('/?foo=f%C3%B8%C3%B8', req.path)
-        self.loop.run_until_complete(req.close())
-
-        req = ClientRequest('', url, params={'f\xf8\xf8': 'f\xf8\xf8'},
-                            loop=self.loop)
-        self.assertEqual('/?f%C3%B8%C3%B8=f%C3%B8%C3%B8', req.path)
-        self.loop.run_until_complete(req.close())
-
-        req = ClientRequest('', url, params={'foo': 'foo'},
-                            loop=self.loop)
-        self.assertEqual('/?foo=foo', req.path)
-        self.loop.run_until_complete(req.close())
-
-        req = ClientRequest('', join('\xf8'), params={'foo': 'foo'},
-                            loop=self.loop)
-        self.assertEqual('/%C3%B8?foo=foo', req.path)
-        self.loop.run_until_complete(req.close())
-
-    def test_query_multivalued_param(self):
-        for meth in ClientRequest.ALL_METHODS:
-            req = ClientRequest(
-                meth, 'http://python.org',
-                params=(('test', 'foo'), ('test', 'baz')),
-                loop=self.loop)
-            self.assertEqual(req.path, '/?test=foo&test=baz')
-            self.loop.run_until_complete(req.close())
-
-    def test_params_update_path_and_url(self):
-        req = ClientRequest(
-            'get', 'http://python.org',
-            params=(('test', 'foo'), ('test', 'baz')),
-            loop=self.loop)
-        self.assertEqual(req.path, '/?test=foo&test=baz')
-        self.assertEqual(req.url, 'http://python.org/?test=foo&test=baz')
-        self.loop.run_until_complete(req.close())
 
     def test_post_data(self):
         for meth in ClientRequest.POST_METHODS:
