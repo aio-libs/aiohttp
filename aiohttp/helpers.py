@@ -239,7 +239,7 @@ def atoms(message, environ, response, transport, request_time):
 
     if transport is not None:
         remote_addr = parse_remote_addr(
-            transport.get_extra_info('addr', '127.0.0.1'))
+            transport.get_extra_info('peername', ('127.0.0.1', )))
     else:
         remote_addr = ('',)
 
