@@ -217,6 +217,39 @@ def test_invalid_idna(make_request):
         make_request('get', 'http://\u2061owhefopw.com')
 
 
+def test_no_path(make_request):
+    req = make_request('get', 'http://python.org')
+    assert '/' == req.path
+
+
+def test_ipv6_default_http_port(make_request):
+    req = make_request('get', 'http://[2001:db8::1]/')
+    assert req.host == '2001:db8::1'
+    assert req.port == 80
+    assert not req.ssl
+
+
+def test_ipv6_default_https_port(make_request):
+    req = make_request('get', 'https://[2001:db8::1]/')
+    assert req.host == '2001:db8::1'
+    assert req.port == 443
+    assert req.ssl
+
+
+def test_ipv6_nondefault_http_port(make_request):
+    req = make_request('get', 'http://[2001:db8::1]:960/')
+    assert req.host == '2001:db8::1'
+    assert req.port == 960
+    assert not req.ssl
+
+
+def test_ipv6_nondefault_https_port(make_request):
+    req = make_request('get', 'https://[2001:db8::1]:960/')
+    assert req.host == '2001:db8::1'
+    assert req.port == 960
+    assert req.ssl
+
+
 class TestClientRequest(unittest.TestCase):
 
     def setUp(self):
@@ -239,30 +272,6 @@ class TestClientRequest(unittest.TestCase):
             pass
         self.loop.close()
         gc.collect()
-
-    def test_ipv6_host_port(self):
-        req = ClientRequest('get', 'http://[2001:db8::1]/', loop=self.loop)
-        self.assertEqual(req.host, '2001:db8::1')
-        self.assertEqual(req.port, 80)
-        self.assertFalse(req.ssl)
-        self.loop.run_until_complete(req.close())
-
-        req = ClientRequest('get', 'https://[2001:db8::1]', loop=self.loop)
-        self.assertEqual(req.host, '2001:db8::1')
-        self.assertEqual(req.port, 443)
-        self.assertTrue(req.ssl)
-        self.loop.run_until_complete(req.close())
-
-        req = ClientRequest('get', 'https://[2001:db8::1]:960', loop=self.loop)
-        self.assertEqual(req.host, '2001:db8::1')
-        self.assertEqual(req.port, 960)
-        self.assertTrue(req.ssl)
-        self.loop.run_until_complete(req.close())
-
-    def test_no_path(self):
-        req = ClientRequest('get', 'http://python.org', loop=self.loop)
-        self.assertEqual('/', req.path)
-        self.loop.run_until_complete(req.close())
 
     def test_basic_auth(self):
         req = ClientRequest('get', 'http://python.org',
