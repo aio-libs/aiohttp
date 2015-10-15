@@ -250,6 +250,45 @@ def test_ipv6_nondefault_https_port(make_request):
     assert req.ssl
 
 
+def test_basic_auth(make_request):
+    req = make_request('get', 'http://python.org',
+                       auth=aiohttp.helpers.BasicAuth('nkim', '1234'))
+    assert 'AUTHORIZATION' in req.headers
+    assert 'Basic bmtpbToxMjM0' == req.headers['AUTHORIZATION']
+
+
+def test_basic_auth_utf8(make_request):
+    req = make_request('get', 'http://python.org',
+                       auth=aiohttp.helpers.BasicAuth('nkim', 'секрет',
+                                                      'utf-8'))
+    assert 'AUTHORIZATION' in req.headers
+    assert 'Basic bmtpbTrRgdC10LrRgNC10YI=' == req.headers['AUTHORIZATION']
+
+
+def test_basic_auth_tuple_deprecated(make_request, warning):
+    with warning(DeprecationWarning):
+        req = make_request('get', 'http://python.org',
+                           auth=('nkim', '1234'))
+
+        assert 'AUTHORIZATION' in req.headers
+        assert 'Basic bmtpbToxMjM0' == req.headers['AUTHORIZATION']
+
+
+def test_basic_auth_from_url(make_request):
+    req = make_request('get', 'http://nkim:1234@python.org')
+    assert 'AUTHORIZATION' in req.headers
+    assert 'Basic bmtpbToxMjM0' == req.headers['AUTHORIZATION']
+    assert 'python.org' == req.netloc
+
+
+def test_basic_auth_from_url_overriden(make_request):
+    req = make_request('get', 'http://garbage@python.org',
+                       auth=aiohttp.BasicAuth('nkim', '1234'))
+    assert 'AUTHORIZATION' in req.headers
+    assert 'Basic bmtpbToxMjM0' == req.headers['AUTHORIZATION']
+    assert 'python.org' == req.netloc
+
+
 class TestClientRequest(unittest.TestCase):
 
     def setUp(self):
@@ -272,50 +311,6 @@ class TestClientRequest(unittest.TestCase):
             pass
         self.loop.close()
         gc.collect()
-
-    def test_basic_auth(self):
-        req = ClientRequest('get', 'http://python.org',
-                            auth=aiohttp.helpers.BasicAuth('nkim', '1234'),
-                            loop=self.loop)
-        self.assertIn('AUTHORIZATION', req.headers)
-        self.assertEqual('Basic bmtpbToxMjM0', req.headers['AUTHORIZATION'])
-        self.loop.run_until_complete(req.close())
-
-    def test_basic_auth_utf8(self):
-        req = ClientRequest('get', 'http://python.org',
-                            auth=aiohttp.helpers.BasicAuth('nkim', 'секрет',
-                                                           'utf-8'),
-                            loop=self.loop)
-        self.assertIn('AUTHORIZATION', req.headers)
-        self.assertEqual('Basic bmtpbTrRgdC10LrRgNC10YI=',
-                         req.headers['AUTHORIZATION'])
-        self.loop.run_until_complete(req.close())
-
-    def test_basic_auth_tuple_deprecated(self):
-        with self.assertWarns(DeprecationWarning):
-            req = ClientRequest('get', 'http://python.org',
-                                auth=('nkim', '1234'),
-                                loop=self.loop)
-        self.assertIn('AUTHORIZATION', req.headers)
-        self.assertEqual('Basic bmtpbToxMjM0', req.headers['AUTHORIZATION'])
-        self.loop.run_until_complete(req.close())
-
-    def test_basic_auth_from_url(self):
-        req = ClientRequest('get', 'http://nkim:1234@python.org',
-                            loop=self.loop)
-        self.assertIn('AUTHORIZATION', req.headers)
-        self.assertEqual('Basic bmtpbToxMjM0', req.headers['AUTHORIZATION'])
-        self.assertEqual('python.org', req.netloc)
-        self.loop.run_until_complete(req.close())
-
-        req = ClientRequest(
-            'get', 'http://nkim@python.org',
-            auth=aiohttp.helpers.BasicAuth('nkim', '1234'),
-            loop=self.loop)
-        self.assertIn('AUTHORIZATION', req.headers)
-        self.assertEqual('Basic bmtpbToxMjM0', req.headers['AUTHORIZATION'])
-        self.assertEqual('python.org', req.netloc)
-        self.loop.run_until_complete(req.close())
 
     def test_no_content_length(self):
         req = ClientRequest('get', 'http://python.org', loop=self.loop)
