@@ -69,3 +69,5 @@ CHANGES
 - Add `.routes()` view for urldispatcher #519
 
 - Route name should be a valid identifier name from now #567
+
+- Implement server signals #562
