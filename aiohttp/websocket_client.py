@@ -179,7 +179,7 @@ def ws_connect(url, *, protocols=(), timeout=10.0, connector=None, auth=None,
                autoping=True, loop=None):
 
     if loop is None:
-        asyncio.get_event_loop()
+        loop = asyncio.get_event_loop()
 
     if connector is None:
         connector = aiohttp.TCPConnector(loop=loop, force_close=True)
