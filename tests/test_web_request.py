@@ -1,6 +1,4 @@
-import asyncio
 import pytest
-import unittest
 from unittest import mock
 from aiohttp.signals import Signal
 from aiohttp.web import Request
