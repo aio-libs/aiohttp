@@ -31,7 +31,7 @@ def request_from_message(message, **kwargs):
     return req
 
 
-def test_ctor():
+def test_stream_response_ctor():
     resp = StreamResponse()
     assert 200 == resp.status
     assert resp.keep_alive is None
@@ -590,6 +590,41 @@ def test_prepare_calls_signal():
     sig.assert_called_with(request=req, response=resp)
 
 
+def test_response_ctor():
+    resp = Response()
+
+    assert 200 == resp.status
+    assert 'OK' == resp.reason
+    assert resp.body is None
+    assert 0 == resp.content_length
+    assert CIMultiDict([('CONTENT-LENGTH', '0')]) == resp.headers
+
+
+def test_ctor_with_headers_and_status():
+    resp = Response(body=b'body', status=201, headers={'Age': '12'})
+
+    assert 201 == resp.status
+    assert b'body' == resp.body
+    assert 4 == resp.content_length
+    assert (CIMultiDict([('AGE', '12'), ('CONTENT-LENGTH', '4')]) ==
+            resp.headers)
+
+
+def test_ctor_content_type():
+    resp = Response(content_type='application/json')
+
+    assert 200 == resp.status
+    assert 'OK' == resp.reason
+    assert (CIMultiDict([('CONTENT-TYPE', 'application/json'),
+                         ('CONTENT-LENGTH', '0')]) ==
+            resp.headers)
+
+
+def test_ctor_text_body_combined():
+    with pytest.raises(ValueError):
+        Response(body=b'123', text='test text')
+
+
 class TestResponse(unittest.TestCase):
 
     def setUp(self):
@@ -612,41 +647,6 @@ class TestResponse(unittest.TestCase):
         req = Request(self.app, message, self.payload,
                       self.transport, self.reader, self.writer)
         return req
-
-    def test_ctor(self):
-        resp = Response()
-
-        self.assertEqual(200, resp.status)
-        self.assertEqual('OK', resp.reason)
-        self.assertIsNone(resp.body)
-        self.assertEqual(0, resp.content_length)
-        self.assertEqual(CIMultiDict([('CONTENT-LENGTH', '0')]),
-                         resp.headers)
-
-    def test_ctor_with_headers_and_status(self):
-        resp = Response(body=b'body', status=201, headers={'Age': '12'})
-
-        self.assertEqual(201, resp.status)
-        self.assertEqual(b'body', resp.body)
-        self.assertEqual(4, resp.content_length)
-        self.assertEqual(CIMultiDict(
-            [('AGE', '12'),
-             ('CONTENT-LENGTH', '4')]), resp.headers)
-
-    def test_ctor_content_type(self):
-        resp = Response(content_type='application/json')
-
-        self.assertEqual(200, resp.status)
-        self.assertEqual('OK', resp.reason)
-        self.assertEqual(
-            CIMultiDict(
-                [('CONTENT-TYPE', 'application/json'),
-                 ('CONTENT-LENGTH', '0')]),
-            resp.headers)
-
-    def test_ctor_text_body_combined(self):
-        with self.assertRaises(ValueError):
-            Response(body=b'123', text='test text')
 
     def test_ctor_text(self):
         resp = Response(text='test text')
