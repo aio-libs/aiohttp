@@ -94,6 +94,67 @@ def test_content_type_from_spec(make_request):
     assert 'application/json' == req.content_type
 
 
+def test_content_type_from_spec_with_charset(make_request):
+    req = make_request(
+        'Get', '/',
+        CIMultiDict([('CONTENT-TYPE', 'text/html; charset=UTF-8')]))
+    assert 'text/html' == req.content_type
+    assert 'UTF-8' == req.charset
+
+
+def test_calc_content_type_on_getting_charset(make_request):
+    req = make_request(
+        'Get', '/',
+        CIMultiDict([('CONTENT-TYPE', 'text/html; charset=UTF-8')]))
+    assert 'UTF-8' == req.charset
+    assert 'text/html' == req.content_type
+
+
+def test_urlencoded_querystring(make_request):
+    req = make_request('GET',
+                       '/yandsearch?text=%D1%82%D0%B5%D0%BA%D1%81%D1%82')
+    assert {'text': 'текст'} == req.GET
+
+
+def test_non_ascii_path(make_request):
+    req = make_request('GET', '/путь')
+    assert '/путь' == req.path
+
+
+def test_content_length(make_request):
+    req = make_request('Get', '/',
+                       CIMultiDict([('CONTENT-LENGTH', '123')]))
+
+    assert 123 == req.content_length
+
+
+def test_non_keepalive_on_http10(make_request):
+    req = make_request('GET', '/', version=HttpVersion(1, 0))
+    assert not req.keep_alive
+
+
+def test_non_keepalive_on_closing(make_request):
+    req = make_request('GET', '/', closing=True)
+    assert not req.keep_alive
+
+
+@pytest.mark.run_loop
+def test_call_POST_on_GET_request(make_request):
+    req = make_request('GET', '/')
+
+    ret = yield from req.post()
+    assert CIMultiDict() == ret
+
+
+def test_call_POST_on_weird_content_type(make_request):
+    req = make_request(
+        'POST', '/',
+        headers=CIMultiDict({'CONTENT-TYPE': 'something/weird'}))
+
+    ret = yield from req.post()
+    assert CIMultiDict() == ret
+
+
 class TestWebRequest(unittest.TestCase):
 
     def setUp(self):
@@ -130,59 +191,6 @@ class TestWebRequest(unittest.TestCase):
                       self.transport, self.reader, self.writer,
                       secure_proxy_ssl_header=secure_proxy_ssl_header)
         return req
-
-    def test_content_type_from_spec_with_charset(self):
-        req = self.make_request(
-            'Get', '/',
-            CIMultiDict([('CONTENT-TYPE', 'text/html; charset=UTF-8')]))
-        self.assertEqual('text/html', req.content_type)
-        self.assertEqual('UTF-8', req.charset)
-
-    def test_calc_content_type_on_getting_charset(self):
-        req = self.make_request(
-            'Get', '/',
-            CIMultiDict([('CONTENT-TYPE', 'text/html; charset=UTF-8')]))
-        self.assertEqual('UTF-8', req.charset)
-        self.assertEqual('text/html', req.content_type)
-
-    def test_urlencoded_querystring(self):
-        req = self.make_request(
-            'GET',
-            '/yandsearch?text=%D1%82%D0%B5%D0%BA%D1%81%D1%82')
-        self.assertEqual({'text': 'текст'}, req.GET)
-
-    def test_non_ascii_path(self):
-        req = self.make_request('GET', '/путь')
-        self.assertEqual('/путь', req.path)
-
-    def test_content_length(self):
-        req = self.make_request(
-            'Get', '/',
-            CIMultiDict([('CONTENT-LENGTH', '123')]))
-
-        self.assertEqual(123, req.content_length)
-
-    def test_non_keepalive_on_http10(self):
-        req = self.make_request('GET', '/', version=HttpVersion(1, 0))
-        self.assertFalse(req.keep_alive)
-
-    def test_non_keepalive_on_closing(self):
-        req = self.make_request('GET', '/', closing=True)
-        self.assertFalse(req.keep_alive)
-
-    def test_call_POST_on_GET_request(self):
-        req = self.make_request('GET', '/')
-
-        ret = self.loop.run_until_complete(req.post())
-        self.assertEqual(CIMultiDict(), ret)
-
-    def test_call_POST_on_weird_content_type(self):
-        req = self.make_request(
-            'POST', '/',
-            headers=CIMultiDict({'CONTENT-TYPE': 'something/weird'}))
-
-        ret = self.loop.run_until_complete(req.post())
-        self.assertEqual(CIMultiDict(), ret)
 
     def test_call_POST_twice(self):
         req = self.make_request('GET', '/')
