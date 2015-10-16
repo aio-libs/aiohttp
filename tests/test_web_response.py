@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import unittest
 import pytest
+import re
 from unittest import mock
 from aiohttp import hdrs, signals
 from aiohttp.multidict import CIMultiDict
@@ -18,7 +19,7 @@ def make_request(method, path, headers=CIMultiDict(),
 
 
 def request_from_message(message, **kwargs):
-    app = mock.Mock()
+    app = kwargs.get('app') or mock.Mock()
     app._debug = False
     app.on_response_prepare = signals.Signal(app)
     payload = mock.Mock()
@@ -432,6 +433,163 @@ def test_force_close():
     assert resp.keep_alive is False
 
 
+def test_response_cookies():
+    resp = StreamResponse()
+
+    assert resp.cookies == {}
+    assert str(resp.cookies) == ''
+
+    resp.set_cookie('name', 'value')
+    assert str(resp.cookies) == 'Set-Cookie: name=value; Path=/'
+    resp.set_cookie('name', 'other_value')
+    assert str(resp.cookies) == 'Set-Cookie: name=other_value; Path=/'
+
+    resp.cookies['name'] = 'another_other_value'
+    resp.cookies['name']['max-age'] = 10
+    assert (str(resp.cookies) ==
+            'Set-Cookie: name=another_other_value; Max-Age=10; Path=/')
+
+    resp.del_cookie('name')
+    expected = 'Set-Cookie: name=("")?; Max-Age=0; Path=/'
+    assert re.match(expected, str(resp.cookies))
+
+    resp.set_cookie('name', 'value', domain='local.host')
+    expected = 'Set-Cookie: name=value; Domain=local.host; Path=/'
+    assert str(resp.cookies) == expected
+
+
+def test_response_cookie_path():
+    resp = StreamResponse()
+
+    assert resp.cookies == {}
+
+    resp.set_cookie('name', 'value', path='/some/path')
+    assert str(resp.cookies) == 'Set-Cookie: name=value; Path=/some/path'
+    resp.set_cookie('name', 'value', expires='123')
+    assert (str(resp.cookies) ==
+            'Set-Cookie: name=value; expires=123; Path=/')
+    resp.set_cookie('name', 'value', domain='example.com',
+                    path='/home', expires='123', max_age='10',
+                    secure=True, httponly=True, version='2.0')
+    assert (str(resp.cookies).lower() == 'set-cookie: name=value; '
+            'domain=example.com; '
+            'expires=123; '
+            'httponly; '
+            'max-age=10; '
+            'path=/home; '
+            'secure; '
+            'version=2.0')
+
+
+def test_response_cookie__issue_del_cookie():
+    resp = StreamResponse()
+
+    assert resp.cookies == {}
+    assert str(resp.cookies) == ''
+
+    resp.del_cookie('name')
+    expected = 'Set-Cookie: name=("")?; Max-Age=0; Path=/'
+    assert re.match(expected, str(resp.cookies))
+
+
+def test_cookie_set_after_del():
+    resp = StreamResponse()
+
+    resp.del_cookie('name')
+    resp.set_cookie('name', 'val')
+    # check for Max-Age dropped
+    expected = 'Set-Cookie: name=val; Path=/'
+    assert str(resp.cookies) == expected
+
+
+def test_set_status_with_reason():
+    resp = StreamResponse()
+
+    resp.set_status(200, "Everithing is fine!")
+    assert 200 == resp.status
+    assert "Everithing is fine!" == resp.reason
+
+
+@pytest.mark.run_loop
+def test_start_force_close():
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+    resp.force_close()
+    assert not resp.keep_alive
+
+    msg = yield from resp.prepare(req)
+    assert not resp.keep_alive
+    assert msg.closing
+
+
+@pytest.mark.run_loop
+def test___repr__():
+    req = make_request('GET', '/path/to')
+    resp = StreamResponse(reason=301)
+    yield from resp.prepare(req)
+    assert "<StreamResponse 301 GET /path/to >" == repr(resp)
+
+
+def test___repr__not_started():
+    resp = StreamResponse(reason=301)
+    assert "<StreamResponse 301 not started>" == repr(resp)
+
+
+@pytest.mark.run_loop
+def test_keep_alive_http10_default():
+    message = RawRequestMessage('GET', '/', HttpVersion10, CIMultiDict(),
+                                True, False)
+    req = request_from_message(message)
+    resp = StreamResponse()
+    yield from resp.prepare(req)
+    assert not resp.keep_alive
+
+
+@pytest.mark.run_loop
+def test_keep_alive_http10_switched_on():
+    headers = CIMultiDict(Connection='keep-alive')
+    message = RawRequestMessage('GET', '/', HttpVersion10, headers,
+                                False, False)
+    req = request_from_message(message)
+    resp = StreamResponse()
+    yield from resp.prepare(req)
+    assert resp.keep_alive is True
+
+
+@pytest.mark.run_loop
+def test_keep_alive_http09():
+    headers = CIMultiDict(Connection='keep-alive')
+    message = RawRequestMessage('GET', '/', HttpVersion(0, 9), headers,
+                                False, False)
+    req = request_from_message(message)
+    resp = StreamResponse()
+    yield from resp.prepare(req)
+    assert not resp.keep_alive
+
+
+def test_start_twice(warning):
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+
+    with warning(DeprecationWarning):
+        impl1 = resp.start(req)
+        impl2 = resp.start(req)
+        assert impl1 is impl2
+
+
+@pytest.mark.run_loop
+def test_prepare_calls_signal():
+    app = mock.Mock()
+    req = make_request('GET', '/', app=app)
+    resp = StreamResponse()
+
+    sig = mock.Mock()
+    app.on_response_prepare.append(sig)
+    yield from resp.prepare(req)
+
+    sig.assert_called_with(request=req, response=resp)
+
+
 class TestStreamResponse(unittest.TestCase):
 
     def setUp(self):
@@ -458,148 +616,6 @@ class TestStreamResponse(unittest.TestCase):
         req = Request(self.app, message, self.payload,
                       self.transport, self.reader, self.writer)
         return req
-
-    def test_response_cookies(self):
-        resp = StreamResponse()
-
-        self.assertEqual(resp.cookies, {})
-        self.assertEqual(str(resp.cookies), '')
-
-        resp.set_cookie('name', 'value')
-        self.assertEqual(str(resp.cookies), 'Set-Cookie: name=value; Path=/')
-        resp.set_cookie('name', 'other_value')
-        self.assertEqual(str(resp.cookies),
-                         'Set-Cookie: name=other_value; Path=/')
-
-        resp.cookies['name'] = 'another_other_value'
-        resp.cookies['name']['max-age'] = 10
-        self.assertEqual(
-            str(resp.cookies),
-            'Set-Cookie: name=another_other_value; Max-Age=10; Path=/')
-
-        resp.del_cookie('name')
-        expected = 'Set-Cookie: name=("")?; Max-Age=0; Path=/'
-        self.assertRegex(str(resp.cookies), expected)
-
-        resp.set_cookie('name', 'value', domain='local.host')
-        expected = 'Set-Cookie: name=value; Domain=local.host; Path=/'
-        self.assertEqual(str(resp.cookies), expected)
-
-    def test_response_cookie_path(self):
-        resp = StreamResponse()
-
-        self.assertEqual(resp.cookies, {})
-
-        resp.set_cookie('name', 'value', path='/some/path')
-        self.assertEqual(str(resp.cookies),
-                         'Set-Cookie: name=value; Path=/some/path')
-        resp.set_cookie('name', 'value', expires='123')
-        self.assertEqual(str(resp.cookies),
-                         'Set-Cookie: name=value; expires=123;'
-                         ' Path=/')
-        resp.set_cookie('name', 'value', domain='example.com',
-                        path='/home', expires='123', max_age='10',
-                        secure=True, httponly=True, version='2.0')
-        self.assertEqual(str(resp.cookies).lower(),
-                         'set-cookie: name=value; '
-                         'domain=example.com; '
-                         'expires=123; '
-                         'httponly; '
-                         'max-age=10; '
-                         'path=/home; '
-                         'secure; '
-                         'version=2.0')
-
-    def test_response_cookie__issue_del_cookie(self):
-        resp = StreamResponse()
-
-        self.assertEqual(resp.cookies, {})
-        self.assertEqual(str(resp.cookies), '')
-
-        resp.del_cookie('name')
-        expected = 'Set-Cookie: name=("")?; Max-Age=0; Path=/'
-        self.assertRegex(str(resp.cookies), expected)
-
-    def test_cookie_set_after_del(self):
-        resp = StreamResponse()
-
-        resp.del_cookie('name')
-        resp.set_cookie('name', 'val')
-        # check for Max-Age dropped
-        expected = 'Set-Cookie: name=val; Path=/'
-        self.assertEqual(str(resp.cookies), expected)
-
-    def test_set_status_with_reason(self):
-        resp = StreamResponse()
-
-        resp.set_status(200, "Everithing is fine!")
-        self.assertEqual(200, resp.status)
-        self.assertEqual("Everithing is fine!", resp.reason)
-
-    def test_start_force_close(self):
-        req = self.make_request('GET', '/')
-        resp = StreamResponse()
-        resp.force_close()
-        self.assertFalse(resp.keep_alive)
-
-        msg = self.loop.run_until_complete(resp.prepare(req))
-        self.assertFalse(resp.keep_alive)
-        self.assertTrue(msg.closing)
-
-    def test___repr__(self):
-        req = self.make_request('GET', '/path/to')
-        resp = StreamResponse(reason=301)
-        self.loop.run_until_complete(resp.prepare(req))
-        self.assertEqual("<StreamResponse 301 GET /path/to >", repr(resp))
-
-    def test___repr__not_started(self):
-        resp = StreamResponse(reason=301)
-        self.assertEqual("<StreamResponse 301 not started>", repr(resp))
-
-    def test_keep_alive_http10(self):
-        message = RawRequestMessage('GET', '/', HttpVersion10, CIMultiDict(),
-                                    True, False)
-        req = self.request_from_message(message)
-        resp = StreamResponse()
-        self.loop.run_until_complete(resp.prepare(req))
-        self.assertFalse(resp.keep_alive)
-
-        headers = CIMultiDict(Connection='keep-alive')
-        message = RawRequestMessage('GET', '/', HttpVersion10, headers,
-                                    False, False)
-        req = self.request_from_message(message)
-        resp = StreamResponse()
-        self.loop.run_until_complete(resp.prepare(req))
-        self.assertEqual(resp.keep_alive, True)
-
-    def test_keep_alive_http09(self):
-        headers = CIMultiDict(Connection='keep-alive')
-        message = RawRequestMessage('GET', '/', HttpVersion(0, 9), headers,
-                                    False, False)
-        req = self.request_from_message(message)
-        resp = StreamResponse()
-        self.loop.run_until_complete(resp.prepare(req))
-        self.assertFalse(resp.keep_alive)
-
-    @mock.patch('aiohttp.web_reqrep.ResponseImpl')
-    def test_start_twice(self, ResponseImpl):
-        req = self.make_request('GET', '/')
-        resp = StreamResponse()
-
-        with self.assertWarns(DeprecationWarning):
-            impl1 = resp.start(req)
-            impl2 = resp.start(req)
-            self.assertIs(impl1, impl2)
-
-    def test_prepare_calls_signal(self):
-        req = self.make_request('GET', '/')
-        resp = StreamResponse()
-
-        sig = mock.Mock()
-        self.app.on_response_prepare.append(sig)
-        self.loop.run_until_complete(resp.prepare(req))
-
-        sig.assert_called_with(request=req, response=resp)
 
 
 class TestResponse(unittest.TestCase):
