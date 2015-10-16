@@ -1,12 +1,232 @@
 import asyncio
 import datetime
 import unittest
+import pytest
 from unittest import mock
 from aiohttp import hdrs, signals
 from aiohttp.multidict import CIMultiDict
 from aiohttp.web import ContentCoding, Request, StreamResponse, Response
 from aiohttp.protocol import HttpVersion, HttpVersion11, HttpVersion10
 from aiohttp.protocol import RawRequestMessage
+
+
+def make_request(method, path, headers=CIMultiDict(),
+                 version=HttpVersion11):
+    message = RawRequestMessage(method, path, version, headers,
+                                False, False)
+    return request_from_message(message)
+
+
+def request_from_message(message):
+    app = mock.Mock()
+    app._debug = False
+    app.on_response_prepare = signals.Signal(app)
+    payload = mock.Mock()
+    transport = mock.Mock()
+    reader = mock.Mock()
+    writer = mock.Mock()
+    req = Request(app, message, payload,
+                  transport, reader, writer)
+    return req
+
+
+def test_ctor():
+    resp = StreamResponse()
+    assert 200 == resp.status
+    assert resp.keep_alive is None
+
+
+def test_content_length():
+    resp = StreamResponse()
+    assert resp.content_length is None
+
+
+def test_content_length_setter():
+    resp = StreamResponse()
+
+    resp.content_length = 234
+    assert 234 == resp.content_length
+
+
+def test_drop_content_length_header_on_setting_len_to_None():
+    resp = StreamResponse()
+
+    resp.content_length = 1
+    assert "1" == resp.headers['Content-Length']
+    resp.content_length = None
+    assert 'Content-Length' not in resp.headers
+
+
+def test_set_content_length_to_None_on_non_set():
+    resp = StreamResponse()
+
+    resp.content_length = None
+    assert 'Content-Length' not in resp.headers
+    resp.content_length = None
+    assert 'Content-Length' not in resp.headers
+
+
+def test_setting_content_type():
+    resp = StreamResponse()
+
+    resp.content_type = 'text/html'
+    assert 'text/html' == resp.headers['content-type']
+
+
+def test_setting_charset():
+    resp = StreamResponse()
+
+    resp.content_type = 'text/html'
+    resp.charset = 'koi8-r'
+    assert 'text/html; charset=koi8-r' == resp.headers['content-type']
+
+
+def test_default_charset():
+    resp = StreamResponse()
+
+    assert resp.charset is None
+
+
+def test_reset_charset():
+    resp = StreamResponse()
+
+    resp.content_type = 'text/html'
+    resp.charset = None
+    assert resp.charset is None
+
+
+def test_reset_charset_after_setting():
+    resp = StreamResponse()
+
+    resp.content_type = 'text/html'
+    resp.charset = 'koi8-r'
+    resp.charset = None
+    assert resp.charset is None
+
+
+def test_charset_without_content_type():
+    resp = StreamResponse()
+
+    with pytest.raises(RuntimeError):
+        resp.charset = 'koi8-r'
+
+
+def test_last_modified_initial():
+    resp = StreamResponse()
+    assert resp.last_modified is None
+
+
+def test_last_modified_string():
+    resp = StreamResponse()
+
+    dt = datetime.datetime(1990, 1, 2, 3, 4, 5, 0, datetime.timezone.utc)
+    resp.last_modified = 'Mon, 2 Jan 1990 03:04:05 GMT'
+    assert resp.last_modified == dt
+
+
+def test_last_modified_timestamp():
+    resp = StreamResponse()
+
+    dt = datetime.datetime(1970, 1, 1, 0, 0, 0, 0, datetime.timezone.utc)
+
+    resp.last_modified = 0
+    assert resp.last_modified == dt
+
+    resp.last_modified = 0.0
+    assert resp.last_modified == dt
+
+
+def test_last_modified_datetime():
+    resp = StreamResponse()
+
+    dt = datetime.datetime(2001, 2, 3, 4, 5, 6, 0, datetime.timezone.utc)
+    resp.last_modified = dt
+    assert resp.last_modified == dt
+
+
+def test_last_modified_reset():
+    resp = StreamResponse()
+
+    resp.last_modified = 0
+    resp.last_modified = None
+    assert resp.last_modified is None
+
+
+@pytest.mark.run_loop
+def test_start():
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+    assert resp.keep_alive is None
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        msg = yield from resp.prepare(req)
+
+        assert msg.send_headers.called
+        msg2 = yield from resp.prepare(req)
+        assert msg is msg2
+
+        assert resp.keep_alive
+
+    req2 = make_request('GET', '/')
+    with pytest.raises(RuntimeError):
+        yield from resp.prepare(req2)
+
+
+@pytest.mark.run_loop
+def test_chunked_encoding():
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+    assert not resp.chunked
+
+    resp.enable_chunked_encoding()
+    assert resp.chunked
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        msg = yield from resp.prepare(req)
+        assert msg.chunked
+
+
+@pytest.mark.run_loop
+def test_chunk_size():
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+    assert not resp.chunked
+
+    resp.enable_chunked_encoding(chunk_size=8192)
+    assert resp.chunked
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        msg = yield from resp.prepare(req)
+        assert msg.chunked
+        msg.add_chunking_filter.assert_called_with(8192)
+        assert msg.filter is not None
+
+
+@pytest.mark.run_loop
+def test_chunked_encoding_forbidden_for_http_10():
+    req = make_request('GET', '/', version=HttpVersion10)
+    resp = StreamResponse()
+    resp.enable_chunked_encoding()
+
+    with pytest.raises_regexp(
+            RuntimeError,
+            "Using chunked encoding is forbidden for HTTP/1.0"):
+        yield from resp.prepare(req)
+
+
+@pytest.mark.run_loop
+def test_compression_no_accept():
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+    assert not resp.chunked
+
+    assert not resp.compression
+    resp.enable_compression()
+    assert resp.compression
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        msg = yield from resp.prepare(req)
+        assert not msg.add_compression_filter.called
 
 
 class TestStreamResponse(unittest.TestCase):
@@ -35,179 +255,6 @@ class TestStreamResponse(unittest.TestCase):
         req = Request(self.app, message, self.payload,
                       self.transport, self.reader, self.writer)
         return req
-
-    def test_ctor(self):
-        resp = StreamResponse()
-        self.assertEqual(200, resp.status)
-        self.assertIsNone(resp.keep_alive)
-
-    def test_content_length(self):
-        resp = StreamResponse()
-        self.assertIsNone(resp.content_length)
-
-    def test_content_length_setter(self):
-        resp = StreamResponse()
-
-        resp.content_length = 234
-        self.assertEqual(234, resp.content_length)
-
-    def test_drop_content_length_header_on_setting_len_to_None(self):
-        resp = StreamResponse()
-
-        resp.content_length = 1
-        self.assertEqual("1", resp.headers['Content-Length'])
-        resp.content_length = None
-        self.assertNotIn('Content-Length', resp.headers)
-
-    def test_set_content_length_to_None_on_non_set(self):
-        resp = StreamResponse()
-
-        resp.content_length = None
-        self.assertNotIn('Content-Length', resp.headers)
-        resp.content_length = None
-        self.assertNotIn('Content-Length', resp.headers)
-
-    def test_setting_content_type(self):
-        resp = StreamResponse()
-
-        resp.content_type = 'text/html'
-        self.assertEqual('text/html', resp.headers['content-type'])
-
-    def test_setting_charset(self):
-        resp = StreamResponse()
-
-        resp.content_type = 'text/html'
-        resp.charset = 'koi8-r'
-        self.assertEqual('text/html; charset=koi8-r',
-                         resp.headers['content-type'])
-
-    def test_default_charset(self):
-        resp = StreamResponse()
-
-        self.assertIsNone(resp.charset)
-
-    def test_reset_charset(self):
-        resp = StreamResponse()
-
-        resp.content_type = 'text/html'
-        resp.charset = None
-        self.assertIsNone(resp.charset)
-
-    def test_reset_charset_after_setting(self):
-        resp = StreamResponse()
-
-        resp.content_type = 'text/html'
-        resp.charset = 'koi8-r'
-        resp.charset = None
-        self.assertIsNone(resp.charset)
-
-    def test_charset_without_content_type(self):
-        resp = StreamResponse()
-
-        with self.assertRaises(RuntimeError):
-            resp.charset = 'koi8-r'
-
-    def test_last_modified_initial(self):
-        resp = StreamResponse()
-        self.assertIsNone(resp.last_modified)
-
-    def test_last_modified_string(self):
-        resp = StreamResponse()
-
-        dt = datetime.datetime(1990, 1, 2, 3, 4, 5, 0, datetime.timezone.utc)
-        resp.last_modified = 'Mon, 2 Jan 1990 03:04:05 GMT'
-        self.assertEqual(resp.last_modified, dt)
-
-    def test_last_modified_timestamp(self):
-        resp = StreamResponse()
-
-        dt = datetime.datetime(1970, 1, 1, 0, 0, 0, 0, datetime.timezone.utc)
-
-        resp.last_modified = 0
-        self.assertEqual(resp.last_modified, dt)
-
-        resp.last_modified = 0.0
-        self.assertEqual(resp.last_modified, dt)
-
-    def test_last_modified_datetime(self):
-        resp = StreamResponse()
-
-        dt = datetime.datetime(2001, 2, 3, 4, 5, 6, 0, datetime.timezone.utc)
-        resp.last_modified = dt
-        self.assertEqual(resp.last_modified, dt)
-
-    def test_last_modified_reset(self):
-        resp = StreamResponse()
-
-        resp.last_modified = 0
-        resp.last_modified = None
-        self.assertEqual(resp.last_modified, None)
-
-    @mock.patch('aiohttp.web_reqrep.ResponseImpl')
-    def test_start(self, ResponseImpl):
-        req = self.make_request('GET', '/')
-        resp = StreamResponse()
-        self.assertIsNone(resp.keep_alive)
-
-        msg = self.loop.run_until_complete(resp.prepare(req))
-
-        self.assertTrue(msg.send_headers.called)
-        self.assertIs(msg, self.loop.run_until_complete(resp.prepare(req)))
-
-        self.assertTrue(resp.keep_alive)
-
-        req2 = self.make_request('GET', '/')
-        with self.assertRaises(RuntimeError):
-            self.loop.run_until_complete(resp.prepare(req2))
-
-    @mock.patch('aiohttp.web_reqrep.ResponseImpl')
-    def test_chunked_encoding(self, ResponseImpl):
-        req = self.make_request('GET', '/')
-        resp = StreamResponse()
-        self.assertFalse(resp.chunked)
-
-        resp.enable_chunked_encoding()
-        self.assertTrue(resp.chunked)
-
-        msg = self.loop.run_until_complete(resp.prepare(req))
-        self.assertTrue(msg.chunked)
-
-    @mock.patch('aiohttp.web_reqrep.ResponseImpl')
-    def test_chunk_size(self, ResponseImpl):
-        req = self.make_request('GET', '/')
-        resp = StreamResponse()
-        self.assertFalse(resp.chunked)
-
-        resp.enable_chunked_encoding(chunk_size=8192)
-        self.assertTrue(resp.chunked)
-
-        msg = self.loop.run_until_complete(resp.prepare(req))
-        self.assertTrue(msg.chunked)
-        msg.add_chunking_filter.assert_called_with(8192)
-        self.assertIsNotNone(msg.filter)
-
-    def test_chunked_encoding_forbidden_for_http_10(self):
-        req = self.make_request('GET', '/', version=HttpVersion10)
-        resp = StreamResponse()
-        resp.enable_chunked_encoding()
-
-        with self.assertRaisesRegex(
-                RuntimeError,
-                "Using chunked encoding is forbidden for HTTP/1.0"):
-            self.loop.run_until_complete(resp.prepare(req))
-
-    @mock.patch('aiohttp.web_reqrep.ResponseImpl')
-    def test_compression_no_accept(self, ResponseImpl):
-        req = self.make_request('GET', '/')
-        resp = StreamResponse()
-        self.assertFalse(resp.chunked)
-
-        self.assertFalse(resp.compression)
-        resp.enable_compression()
-        self.assertTrue(resp.compression)
-
-        msg = self.loop.run_until_complete(resp.prepare(req))
-        self.assertFalse(msg.add_compression_filter.called)
 
     @mock.patch('aiohttp.web_reqrep.ResponseImpl')
     def test_force_compression_no_accept_backwards_compat(self, ResponseImpl):
