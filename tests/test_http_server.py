@@ -537,9 +537,9 @@ class TestHttpServerProtocol(unittest.TestCase):
         transport = unittest.mock.Mock()
         transport.get_extra_info.return_value = '127.0.0.1'
 
-        srv = server.ServerHttpProtocol(loop=self.loop)
+        logger = unittest.mock.Mock()
+        srv = server.ServerHttpProtocol(loop=self.loop, access_log=logger)
         srv.transport = transport
-        srv.logger = unittest.mock.Mock()
         srv.access_log = unittest.mock.Mock()
 
         message = unittest.mock.Mock()
@@ -547,7 +547,7 @@ class TestHttpServerProtocol(unittest.TestCase):
         message.version = (1, 1)
         srv.log_access(None, None, None, None)
 
-        self.assertTrue(srv.logger.error.called)
+        self.assertTrue(logger.error.called)
 
     def test_log_access_disabled(self):
         transport = unittest.mock.Mock()

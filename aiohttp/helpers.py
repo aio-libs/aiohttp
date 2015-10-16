@@ -1,10 +1,12 @@
 """Various helper functions"""
 import base64
+import datetime
 import io
 import os
+import re
+import traceback
 from urllib.parse import quote, urlencode
 from collections import namedtuple
-from wsgiref.handlers import format_date_time
 
 from . import hdrs, multidict
 from .errors import InvalidURL
@@ -226,69 +228,95 @@ def parse_remote_addr(forward):
     return remote[0], str(remote[1])
 
 
-def atoms(message, environ, response, transport, request_time):
-    """Gets atoms for log formatting."""
-    if message:
-        r = '{} {} HTTP/{}.{}'.format(
-            message.method, message.path,
-            message.version[0], message.version[1])
-        headers = message.headers
-    else:
-        r = ''
-        headers = {}
+class SafeDict(dict):
+    """Return a dash instead of raising KeyError"""
 
-    if transport is not None:
-        remote_addr = parse_remote_addr(
-            transport.get_extra_info('peername', ('127.0.0.1', )))
-    else:
-        remote_addr = ('',)
-
-    atoms = {
-        'h': remote_addr[0],
-        'l': '-',
-        'u': '-',
-        't': format_date_time(None),
-        'r': r,
-        's': str(getattr(response, 'status', '')),
-        'b': str(getattr(response, 'output_length', '')),
-        'f': headers.get(hdrs.REFERER, '-'),
-        'a': headers.get(hdrs.USER_AGENT, '-'),
-        'T': str(int(request_time)),
-        'D': str(request_time).split('.', 1)[-1][:6],
-        'p': "<%s>" % os.getpid()
-    }
-
-    return atoms
+    def __getitem__(self, key):
+        val = dict.get(self, key.upper())
+        return val or "-"
 
 
-class SafeAtoms(dict):
-    """Copy from gunicorn"""
+class AccessLogger:
+    """Helper object to log access.
 
-    def __init__(self, atoms, i_headers, o_headers):
-        dict.__init__(self)
+    Usage:
+        log = logging.getLogger("spam")
+        log_format = "%a %{User-Agent}i"
+        access_logger = AccessLogger(log, log_format)
+        access_logger.log(message, environ, response, transport, time)
 
-        self._i_headers = i_headers
-        self._o_headers = o_headers
+    Format:
+        %%  The percent sign
+        %a  Remote IP-address (IP-address of proxy if using reverse proxy)
+        %t  Time the request was received
+        %P  The process ID of the child that serviced the request
+        %r  First line of request
+        %s  Status
+        %b  Size of response in bytes, including HTTP headers
+        %T  The time taken to serve the request, in seconds
+        %D  The time taken to serve the request, in microseconds
+        %{Foobar}i  The contents of Foobar: header line(s) in
+                    the request sent to the server
+        %{Foobar}o  The contents of Foobar: header line(s) in the reply
+        %{FOOBAR}e  The contents of the environment variable FOOBAR
 
-        for key, value in atoms.items():
-            self[key] = value.replace('"', '\\"')
+    """
 
-    def __getitem__(self, k):
-        if k.startswith('{'):
-            if k.endswith('}i'):
-                headers = self._i_headers
-            elif k.endswith('}o'):
-                headers = self._o_headers
-            else:
-                headers = None
+    HEADERS_RE = re.compile(r"%\{\{([a-z\-]+)\}\}(i|o|e)", re.IGNORECASE)
+    ATOMS_RE = re.compile(r"%[atPlursbTD%]")
+    BRACE_RE = re.compile(r"(\{|\})")
+    TIME_FORMAT = "%a, %d %b %Y %H:%M:%S GMT"
 
-            if headers is not None:
-                return headers.get(k[1:-2], '-')
+    def __init__(self, logger, log_format):
+        """Initialize the logger.
 
-        if k in self:
-            return super(SafeAtoms, self).__getitem__(k)
-        else:
-            return '-'
+        :param logger: logger object to be used for logging
+        :param log_format: apache (almost) compatible log format
+
+        Given log_format translated to form usable by `string.format`.
+
+        %{FOOBAR}i -- Input headers. Translated to {i_dict[FOOBAR]}
+        %{FOOBAR}o -- Iutput headers. Translated to {o_dict[FOOBAR]}
+        %{FOOBAR}e -- Environment variables. Translated to {e_dict[FOOBAR]}
+        %? -- One of atoms. Translated according to `atoms` dict (see below)
+        """
+        atoms = {
+            'a': '{remote_addr}',
+            't': '{datetime}',
+            'P': "<%s>" % os.getpid(),
+            'l': '-',
+            'u': '-',
+            'r': ('{message.method} {message.path} '
+                  'HTTP/{message.version[0]}.{message.version[1]}'),
+            's': '{response.status}',
+            'b': '{response.output_length}',
+            'T': '{time:.0f}',
+            'D': '{microseconds:.0f}',
+            '%': '%',  # `%%` should be converted to `%`
+        }
+        # replace single braces with double to avoid direct usage
+        log_format = self.BRACE_RE.sub(r"\1\1", log_format)
+        for atom in self.ATOMS_RE.findall(log_format):
+            log_format = log_format.replace(atom, atoms[atom[1]])
+        self._log_format = self.HEADERS_RE.sub(r"{\2_dict[\1]}", log_format)
+        self.logger = logger
+
+    def log(self, message, environ, response, transport, time):
+        environ = environ or {}
+        try:
+            self.logger.info(self._log_format.format(
+                message=message,
+                response=response,
+                i_dict=SafeDict(getattr(message, "headers", {})),
+                o_dict=SafeDict(getattr(response, "headers", {})),
+                e_dict=SafeDict(environ),
+                remote_addr=transport.get_extra_info("peername")[0],
+                time=time,
+                datetime=datetime.datetime.utcnow().strftime(self.TIME_FORMAT),
+                microseconds=time*1000000,
+            ))
+        except:
+            self.logger.error(traceback.format_exc())
 
 
 _marker = object()
