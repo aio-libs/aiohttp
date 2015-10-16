@@ -146,6 +146,7 @@ def test_call_POST_on_GET_request(make_request):
     assert CIMultiDict() == ret
 
 
+@pytest.mark.run_loop
 def test_call_POST_on_weird_content_type(make_request):
     req = make_request(
         'POST', '/',
@@ -155,109 +156,81 @@ def test_call_POST_on_weird_content_type(make_request):
     assert CIMultiDict() == ret
 
 
-class TestWebRequest(unittest.TestCase):
+@pytest.mark.run_loop
+def test_call_POST_twice(make_request):
+    req = make_request('GET', '/')
 
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
+    ret1 = yield from req.post()
+    ret2 = yield from req.post()
+    assert ret1 is ret2
 
-    def tearDown(self):
-        self.loop.close()
 
-    def make_request(self, method, path, headers=CIMultiDict(), *,
-                     version=HttpVersion(1, 1), closing=False,
-                     sslcontext=None,
-                     secure_proxy_ssl_header=None):
-        if version < HttpVersion(1, 1):
-            closing = True
-        self.app = mock.Mock()
-        self.app._debug = False
-        self.app.on_response_prepare = Signal(self.app)
-        message = RawRequestMessage(method, path, version, headers, closing,
-                                    False)
-        self.payload = mock.Mock()
-        self.transport = mock.Mock()
+def test_no_request_cookies(make_request):
+    req = make_request('GET', '/')
 
-        def get_extra_info(key):
-            if key == 'sslcontext':
-                return sslcontext
-            else:
-                return None
+    assert req.cookies == {}
 
-        self.transport.get_extra_info.side_effect = get_extra_info
-        self.writer = mock.Mock()
-        self.reader = mock.Mock()
-        req = Request(self.app, message, self.payload,
-                      self.transport, self.reader, self.writer,
-                      secure_proxy_ssl_header=secure_proxy_ssl_header)
-        return req
+    cookies = req.cookies
+    assert cookies is req.cookies
 
-    def test_call_POST_twice(self):
-        req = self.make_request('GET', '/')
 
-        ret1 = self.loop.run_until_complete(req.post())
-        ret2 = self.loop.run_until_complete(req.post())
-        self.assertIs(ret1, ret2)
+def test_request_cookie(make_request):
+    headers = CIMultiDict(COOKIE='cookie1=value1; cookie2=value2')
+    req = make_request('GET', '/', headers=headers)
 
-    def test_no_request_cookies(self):
-        req = self.make_request('GET', '/')
+    assert req.cookies == {'cookie1': 'value1',
+                           'cookie2': 'value2'}
 
-        self.assertEqual(req.cookies, {})
 
-        cookies = req.cookies
-        self.assertIs(cookies, req.cookies)
+def test_request_cookie__set_item(make_request):
+    headers = CIMultiDict(COOKIE='name=value')
+    req = make_request('GET', '/', headers=headers)
 
-    def test_request_cookie(self):
-        headers = CIMultiDict(COOKIE='cookie1=value1; cookie2=value2')
-        req = self.make_request('GET', '/', headers=headers)
+    assert req.cookies == {'name': 'value'}
 
-        self.assertEqual(req.cookies, {
-            'cookie1': 'value1',
-            'cookie2': 'value2',
-        })
+    with pytest.raises(TypeError):
+        req.cookies['my'] = 'value'
 
-    def test_request_cookie__set_item(self):
-        headers = CIMultiDict(COOKIE='name=value')
-        req = self.make_request('GET', '/', headers=headers)
 
-        self.assertEqual(req.cookies, {'name': 'value'})
+def test_match_info(make_request):
+    req = make_request('GET', '/')
+    assert req.match_info is None
+    match = {'a': 'b'}
+    req._match_info = match
+    assert match is req.match_info
 
-        with self.assertRaises(TypeError):
-            req.cookies['my'] = 'value'
 
-    def test_match_info(self):
-        req = self.make_request('GET', '/')
-        self.assertIsNone(req.match_info)
-        match = {'a': 'b'}
-        req._match_info = match
-        self.assertIs(match, req.match_info)
+def test_request_is_dict(make_request):
+    req = make_request('GET', '/')
+    assert isinstance(req, dict)
+    req['key'] = 'value'
+    assert 'value' == req['key']
 
-    def test_request_is_dict(self):
-        req = self.make_request('GET', '/')
-        self.assertTrue(isinstance(req, dict))
-        req['key'] = 'value'
-        self.assertEqual('value', req['key'])
 
-    def test___repr__(self):
-        req = self.make_request('GET', '/path/to')
-        self.assertEqual("<Request GET /path/to >", repr(req))
+def test___repr__(make_request):
+    req = make_request('GET', '/path/to')
+    assert "<Request GET /path/to >" == repr(req)
 
-    def test_http_scheme(self):
-        req = self.make_request('GET', '/')
-        self.assertEqual("http", req.scheme)
 
-    def test_https_scheme_by_ssl_transport(self):
-        req = self.make_request('GET', '/', sslcontext=True)
-        self.assertEqual("https", req.scheme)
+def test_http_scheme(make_request):
+    req = make_request('GET', '/')
+    assert "http" == req.scheme
 
-    def test_https_scheme_by_secure_proxy_ssl_header(self):
-        req = self.make_request('GET', '/',
-                                secure_proxy_ssl_header=('X-HEADER', '1'),
-                                headers=CIMultiDict({'X-HEADER': '1'}))
-        self.assertEqual("https", req.scheme)
 
-    def test_https_scheme_by_secure_proxy_ssl_header_false_test(self):
-        req = self.make_request('GET', '/',
-                                secure_proxy_ssl_header=('X-HEADER', '1'),
-                                headers=CIMultiDict({'X-HEADER': '0'}))
-        self.assertEqual("http", req.scheme)
+def test_https_scheme_by_ssl_transport(make_request):
+    req = make_request('GET', '/', sslcontext=True)
+    assert "https" == req.scheme
+
+
+def test_https_scheme_by_secure_proxy_ssl_header(make_request):
+    req = make_request('GET', '/',
+                       secure_proxy_ssl_header=('X-HEADER', '1'),
+                       headers=CIMultiDict({'X-HEADER': '1'}))
+    assert "https" == req.scheme
+
+
+def test_https_scheme_by_secure_proxy_ssl_header_false_test(make_request):
+    req = make_request('GET', '/',
+                       secure_proxy_ssl_header=('X-HEADER', '1'),
+                       headers=CIMultiDict({'X-HEADER': '0'}))
+    assert "http" == req.scheme
