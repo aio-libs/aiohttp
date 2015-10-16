@@ -5,7 +5,7 @@ from aiohttp import CIMultiDict
 from aiohttp.web import (
     MsgType, Request, WebSocketResponse, HTTPMethodNotAllowed, HTTPBadRequest)
 from aiohttp.protocol import RawRequestMessage, HttpVersion11
-from aiohttp import errors, websocket
+from aiohttp import errors, signals, websocket
 
 
 class TestWebWebSocket(unittest.TestCase):
@@ -19,6 +19,7 @@ class TestWebWebSocket(unittest.TestCase):
 
     def make_request(self, method, path, headers=None, protocols=False):
         self.app = mock.Mock()
+        self.app._debug = False
         if headers is None:
             headers = CIMultiDict(
                 {'HOST': 'server.example.com',
@@ -37,6 +38,7 @@ class TestWebWebSocket(unittest.TestCase):
         self.reader = mock.Mock()
         self.writer = mock.Mock()
         self.app.loop = self.loop
+        self.app.on_response_prepare = signals.Signal(self.app)
         req = Request(self.app, message, self.payload,
                       self.transport, self.reader, self.writer)
         return req
