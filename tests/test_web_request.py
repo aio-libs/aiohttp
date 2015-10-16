@@ -1,4 +1,5 @@
 import asyncio
+import pytest
 import unittest
 from unittest import mock
 from aiohttp.signals import Signal
@@ -6,6 +7,91 @@ from aiohttp.web import Request
 from aiohttp.multidict import MultiDict, CIMultiDict
 from aiohttp.protocol import HttpVersion
 from aiohttp.protocol import RawRequestMessage
+
+
+@pytest.fixture
+def make_request():
+    def maker(method, path, headers=CIMultiDict(), *,
+              version=HttpVersion(1, 1), closing=False,
+              sslcontext=None,
+              secure_proxy_ssl_header=None):
+        if version < HttpVersion(1, 1):
+            closing = True
+        app = mock.Mock()
+        app._debug = False
+        app.on_response_prepare = Signal(app)
+        message = RawRequestMessage(method, path, version, headers, closing,
+                                    False)
+        payload = mock.Mock()
+        transport = mock.Mock()
+
+        def get_extra_info(key):
+            if key == 'sslcontext':
+                return sslcontext
+            else:
+                return None
+
+        transport.get_extra_info.side_effect = get_extra_info
+        writer = mock.Mock()
+        reader = mock.Mock()
+        req = Request(app, message, payload,
+                      transport, reader, writer,
+                      secure_proxy_ssl_header=secure_proxy_ssl_header)
+
+        assert req.app is app
+        assert req.content is payload
+        assert req.transport is transport
+
+        return req
+    return maker
+
+
+def test_ctor(make_request, warning):
+    req = make_request('GET', '/path/to?a=1&b=2')
+
+    assert 'GET' == req.method
+    assert HttpVersion(1, 1) == req.version
+    assert req.host is None
+    assert '/path/to?a=1&b=2' == req.path_qs
+    assert '/path/to' == req.path
+    assert 'a=1&b=2' == req.query_string
+
+    get = req.GET
+    assert MultiDict([('a', '1'), ('b', '2')]) == get
+    # second call should return the same object
+    assert get is req.GET
+
+    with warning(DeprecationWarning):
+        req.payload
+
+    assert req.keep_alive
+
+
+def test_doubleslashes(make_request):
+    req = make_request('GET', '//foo/')
+    assert '//foo/' == req.path
+
+
+def test_POST(make_request):
+    req = make_request('POST', '/')
+    with pytest.raises(RuntimeError):
+        req.POST
+
+    marker = object()
+    req._post = marker
+    assert req.POST is marker
+    assert req.POST is marker
+
+
+def test_content_type_not_specified(make_request):
+    req = make_request('Get', '/')
+    assert 'application/octet-stream' == req.content_type
+
+
+def test_content_type_from_spec(make_request):
+    req = make_request('Get', '/',
+                       CIMultiDict([('CONTENT-TYPE', 'application/json')]))
+    assert 'application/json' == req.content_type
 
 
 class TestWebRequest(unittest.TestCase):
@@ -44,52 +130,6 @@ class TestWebRequest(unittest.TestCase):
                       self.transport, self.reader, self.writer,
                       secure_proxy_ssl_header=secure_proxy_ssl_header)
         return req
-
-    def test_ctor(self):
-        req = self.make_request('GET', '/path/to?a=1&b=2')
-
-        self.assertIs(self.app, req.app)
-        self.assertEqual('GET', req.method)
-        self.assertEqual(HttpVersion(1, 1), req.version)
-        self.assertEqual(None, req.host)
-        self.assertEqual('/path/to?a=1&b=2', req.path_qs)
-        self.assertEqual('/path/to', req.path)
-        self.assertEqual('a=1&b=2', req.query_string)
-
-        get = req.GET
-        self.assertEqual(MultiDict([('a', '1'), ('b', '2')]), get)
-        # second call should return the same object
-        self.assertIs(get, req.GET)
-
-        with self.assertWarns(DeprecationWarning):
-            self.assertIs(self.payload, req.payload)
-        self.assertIs(self.payload, req.content)
-        self.assertIs(self.transport, req.transport)
-        self.assertTrue(req.keep_alive)
-
-    def test_doubleslashes(self):
-        req = self.make_request('GET', '//foo/')
-        self.assertEqual('//foo/', req.path)
-
-    def test_POST(self):
-        req = self.make_request('POST', '/')
-        with self.assertRaises(RuntimeError):
-            req.POST
-
-        marker = object()
-        req._post = marker
-        self.assertIs(req.POST, marker)
-        self.assertIs(req.POST, marker)
-
-    def test_content_type_not_specified(self):
-        req = self.make_request('Get', '/')
-        self.assertEqual('application/octet-stream', req.content_type)
-
-    def test_content_type_from_spec(self):
-        req = self.make_request(
-            'Get', '/',
-            CIMultiDict([('CONTENT-TYPE', 'application/json')]))
-        self.assertEqual('application/json', req.content_type)
 
     def test_content_type_from_spec_with_charset(self):
         req = self.make_request(
