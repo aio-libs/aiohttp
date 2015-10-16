@@ -11,20 +11,20 @@ from aiohttp.protocol import RawRequestMessage
 
 
 def make_request(method, path, headers=CIMultiDict(),
-                 version=HttpVersion11):
+                 version=HttpVersion11, **kwargs):
     message = RawRequestMessage(method, path, version, headers,
                                 False, False)
-    return request_from_message(message)
+    return request_from_message(message, **kwargs)
 
 
-def request_from_message(message):
+def request_from_message(message, **kwargs):
     app = mock.Mock()
     app._debug = False
     app.on_response_prepare = signals.Signal(app)
     payload = mock.Mock()
     transport = mock.Mock()
     reader = mock.Mock()
-    writer = mock.Mock()
+    writer = kwargs.get('writer') or mock.Mock()
     req = Request(app, message, payload,
                   transport, reader, writer)
     return req
@@ -229,6 +229,209 @@ def test_compression_no_accept():
         assert not msg.add_compression_filter.called
 
 
+@pytest.mark.run_loop
+def test_force_compression_no_accept_backwards_compat():
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+    assert not resp.chunked
+
+    assert not resp.compression
+    resp.enable_compression(force=True)
+    assert resp.compression
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        msg = yield from resp.prepare(req)
+    assert msg.add_compression_filter.called
+    assert msg.filter is not None
+
+
+@pytest.mark.run_loop
+def test_force_compression_false_backwards_compat():
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+
+    assert not resp.compression
+    resp.enable_compression(force=False)
+    assert resp.compression
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        msg = yield from resp.prepare(req)
+    assert not msg.add_compression_filter.called
+
+
+@pytest.mark.run_loop
+def test_compression_default_coding():
+    req = make_request(
+        'GET', '/',
+        headers=CIMultiDict({hdrs.ACCEPT_ENCODING: 'gzip, deflate'}))
+    resp = StreamResponse()
+    assert not resp.chunked
+
+    assert not resp.compression
+    resp.enable_compression()
+    assert resp.compression
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        msg = yield from resp.prepare(req)
+
+    msg.add_compression_filter.assert_called_with('deflate')
+    assert 'deflate' == resp.headers.get(hdrs.CONTENT_ENCODING)
+    assert msg.filter is not None
+
+
+@pytest.mark.run_loop
+def test_force_compression_deflate():
+    req = make_request(
+        'GET', '/',
+        headers=CIMultiDict({hdrs.ACCEPT_ENCODING: 'gzip, deflate'}))
+    resp = StreamResponse()
+
+    resp.enable_compression(ContentCoding.deflate)
+    assert resp.compression
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        msg = yield from resp.prepare(req)
+    msg.add_compression_filter.assert_called_with('deflate')
+    assert 'deflate' == resp.headers.get(hdrs.CONTENT_ENCODING)
+
+
+@pytest.mark.run_loop
+def test_force_compression_no_accept_deflate():
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+
+    resp.enable_compression(ContentCoding.deflate)
+    assert resp.compression
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        msg = yield from resp.prepare(req)
+    msg.add_compression_filter.assert_called_with('deflate')
+    assert 'deflate' == resp.headers.get(hdrs.CONTENT_ENCODING)
+
+
+@pytest.mark.run_loop
+def test_force_compression_gzip():
+    req = make_request(
+        'GET', '/',
+        headers=CIMultiDict({hdrs.ACCEPT_ENCODING: 'gzip, deflate'}))
+    resp = StreamResponse()
+
+    resp.enable_compression(ContentCoding.gzip)
+    assert resp.compression
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        msg = yield from resp.prepare(req)
+    msg.add_compression_filter.assert_called_with('gzip')
+    assert 'gzip' == resp.headers.get(hdrs.CONTENT_ENCODING)
+
+
+@pytest.mark.run_loop
+def test_force_compression_no_accept_gzip():
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+
+    resp.enable_compression(ContentCoding.gzip)
+    assert resp.compression
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        msg = yield from resp.prepare(req)
+    msg.add_compression_filter.assert_called_with('gzip')
+    assert 'gzip' == resp.headers.get(hdrs.CONTENT_ENCODING)
+
+
+@pytest.mark.run_loop
+def test_delete_content_length_if_compression_enabled():
+    req = make_request('GET', '/')
+    resp = Response(body=b'answer')
+    assert 6 == resp.content_length
+
+    resp.enable_compression(ContentCoding.gzip)
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        yield from resp.prepare(req)
+    assert resp.content_length is None
+
+
+@pytest.mark.run_loop
+def test_write_non_byteish():
+    resp = StreamResponse()
+    yield from resp.prepare(make_request('GET', '/'))
+
+    with pytest.raises(AssertionError):
+        resp.write(123)
+
+
+def test_write_before_start():
+    resp = StreamResponse()
+
+    with pytest.raises(RuntimeError):
+        resp.write(b'data')
+
+
+@pytest.mark.run_loop
+def test_cannot_write_after_eof():
+    resp = StreamResponse()
+    writer = mock.Mock()
+    yield from resp.prepare(make_request('GET', '/', writer=writer))
+
+    resp.write(b'data')
+    writer.drain.return_value = ()
+    yield from resp.write_eof()
+    writer.write.reset_mock()
+
+    with pytest.raises(RuntimeError):
+        resp.write(b'next data')
+    assert not writer.write.called
+
+
+@pytest.mark.run_loop
+def test_cannot_write_eof_before_headers():
+    resp = StreamResponse()
+
+    with pytest.raises(RuntimeError):
+        yield from resp.write_eof()
+
+
+@pytest.mark.run_loop
+def test_cannot_write_eof_twice():
+    resp = StreamResponse()
+    writer = mock.Mock()
+    yield from resp.prepare(make_request('GET', '/', writer=writer))
+
+    resp.write(b'data')
+    writer.drain.return_value = ()
+    yield from resp.write_eof()
+    assert writer.write.called
+
+    writer.write.reset_mock()
+    yield from resp.write_eof()
+    assert not writer.write.called
+
+
+@pytest.mark.run_loop
+def test_write_returns_drain():
+    resp = StreamResponse()
+    yield from resp.prepare(make_request('GET', '/'))
+
+    assert () == resp.write(b'data')
+
+
+@pytest.mark.run_loop
+def test_write_returns_empty_tuple_on_empty_data():
+    resp = StreamResponse()
+    yield from resp.prepare(make_request('GET', '/'))
+
+    assert () == resp.write(b'')
+
+
+def test_force_close():
+    resp = StreamResponse()
+
+    assert resp.keep_alive is None
+    resp.force_close()
+    assert resp.keep_alive is False
+
+
 class TestStreamResponse(unittest.TestCase):
 
     def setUp(self):
@@ -255,181 +458,6 @@ class TestStreamResponse(unittest.TestCase):
         req = Request(self.app, message, self.payload,
                       self.transport, self.reader, self.writer)
         return req
-
-    @mock.patch('aiohttp.web_reqrep.ResponseImpl')
-    def test_force_compression_no_accept_backwards_compat(self, ResponseImpl):
-        req = self.make_request('GET', '/')
-        resp = StreamResponse()
-        self.assertFalse(resp.chunked)
-
-        self.assertFalse(resp.compression)
-        resp.enable_compression(force=True)
-        self.assertTrue(resp.compression)
-
-        msg = self.loop.run_until_complete(resp.prepare(req))
-        self.assertTrue(msg.add_compression_filter.called)
-        self.assertIsNotNone(msg.filter)
-
-    @mock.patch('aiohttp.web_reqrep.ResponseImpl')
-    def test_force_compression_false_backwards_compat(self, ResponseImpl):
-        req = self.make_request('GET', '/')
-        resp = StreamResponse()
-
-        self.assertFalse(resp.compression)
-        resp.enable_compression(force=False)
-        self.assertTrue(resp.compression)
-
-        msg = self.loop.run_until_complete(resp.prepare(req))
-        self.assertFalse(msg.add_compression_filter.called)
-
-    @mock.patch('aiohttp.web_reqrep.ResponseImpl')
-    def test_compression_default_coding(self, ResponseImpl):
-        req = self.make_request(
-            'GET', '/',
-            headers=CIMultiDict({hdrs.ACCEPT_ENCODING: 'gzip, deflate'}))
-        resp = StreamResponse()
-        self.assertFalse(resp.chunked)
-
-        self.assertFalse(resp.compression)
-        resp.enable_compression()
-        self.assertTrue(resp.compression)
-
-        msg = self.loop.run_until_complete(resp.prepare(req))
-        msg.add_compression_filter.assert_called_with('deflate')
-        self.assertEqual('deflate', resp.headers.get(hdrs.CONTENT_ENCODING))
-        self.assertIsNotNone(msg.filter)
-
-    @mock.patch('aiohttp.web_reqrep.ResponseImpl')
-    def test_force_compression_deflate(self, ResponseImpl):
-        req = self.make_request(
-            'GET', '/',
-            headers=CIMultiDict({hdrs.ACCEPT_ENCODING: 'gzip, deflate'}))
-        resp = StreamResponse()
-
-        resp.enable_compression(ContentCoding.deflate)
-        self.assertTrue(resp.compression)
-
-        msg = self.loop.run_until_complete(resp.prepare(req))
-        msg.add_compression_filter.assert_called_with('deflate')
-        self.assertEqual('deflate', resp.headers.get(hdrs.CONTENT_ENCODING))
-
-    @mock.patch('aiohttp.web_reqrep.ResponseImpl')
-    def test_force_compression_no_accept_deflate(self, ResponseImpl):
-        req = self.make_request('GET', '/')
-        resp = StreamResponse()
-
-        resp.enable_compression(ContentCoding.deflate)
-        self.assertTrue(resp.compression)
-
-        msg = self.loop.run_until_complete(resp.prepare(req))
-        msg.add_compression_filter.assert_called_with('deflate')
-        self.assertEqual('deflate', resp.headers.get(hdrs.CONTENT_ENCODING))
-
-    @mock.patch('aiohttp.web_reqrep.ResponseImpl')
-    def test_force_compression_gzip(self, ResponseImpl):
-        req = self.make_request(
-            'GET', '/',
-            headers=CIMultiDict({hdrs.ACCEPT_ENCODING: 'gzip, deflate'}))
-        resp = StreamResponse()
-
-        resp.enable_compression(ContentCoding.gzip)
-        self.assertTrue(resp.compression)
-
-        msg = self.loop.run_until_complete(resp.prepare(req))
-        msg.add_compression_filter.assert_called_with('gzip')
-        self.assertEqual('gzip', resp.headers.get(hdrs.CONTENT_ENCODING))
-
-    @mock.patch('aiohttp.web_reqrep.ResponseImpl')
-    def test_force_compression_no_accept_gzip(self, ResponseImpl):
-        req = self.make_request('GET', '/')
-        resp = StreamResponse()
-
-        resp.enable_compression(ContentCoding.gzip)
-        self.assertTrue(resp.compression)
-
-        msg = self.loop.run_until_complete(resp.prepare(req))
-        msg.add_compression_filter.assert_called_with('gzip')
-        self.assertEqual('gzip', resp.headers.get(hdrs.CONTENT_ENCODING))
-
-    @mock.patch('aiohttp.web_reqrep.ResponseImpl')
-    def test_delete_content_length_if_compression_enabled(self, ResponseImpl):
-        req = self.make_request('GET', '/')
-        resp = Response(body=b'answer')
-        self.assertEqual(6, resp.content_length)
-
-        resp.enable_compression(ContentCoding.gzip)
-
-        self.loop.run_until_complete(resp.prepare(req))
-        self.assertIsNone(resp.content_length)
-
-    def test_write_non_byteish(self):
-        resp = StreamResponse()
-        self.loop.run_until_complete(
-            resp.prepare(self.make_request('GET', '/')))
-
-        with self.assertRaises(AssertionError):
-            resp.write(123)
-
-    def test_write_before_start(self):
-        resp = StreamResponse()
-
-        with self.assertRaises(RuntimeError):
-            resp.write(b'data')
-
-    def test_cannot_write_after_eof(self):
-        resp = StreamResponse()
-        self.loop.run_until_complete(
-            resp.prepare(self.make_request('GET', '/')))
-
-        resp.write(b'data')
-        self.writer.drain.return_value = ()
-        self.loop.run_until_complete(resp.write_eof())
-        self.writer.write.reset_mock()
-
-        with self.assertRaises(RuntimeError):
-            resp.write(b'next data')
-        self.assertFalse(self.writer.write.called)
-
-    def test_cannot_write_eof_before_headers(self):
-        resp = StreamResponse()
-
-        with self.assertRaises(RuntimeError):
-            self.loop.run_until_complete(resp.write_eof())
-
-    def test_cannot_write_eof_twice(self):
-        resp = StreamResponse()
-        self.loop.run_until_complete(
-            resp.prepare(self.make_request('GET', '/')))
-
-        resp.write(b'data')
-        self.writer.drain.return_value = ()
-        self.loop.run_until_complete(resp.write_eof())
-        self.assertTrue(self.writer.write.called)
-
-        self.writer.write.reset_mock()
-        self.loop.run_until_complete(resp.write_eof())
-        self.assertFalse(self.writer.write.called)
-
-    def test_write_returns_drain(self):
-        resp = StreamResponse()
-        self.loop.run_until_complete(
-            resp.prepare(self.make_request('GET', '/')))
-
-        self.assertEqual((), resp.write(b'data'))
-
-    def test_write_returns_empty_tuple_on_empty_data(self):
-        resp = StreamResponse()
-        self.loop.run_until_complete(
-            resp.prepare(self.make_request('GET', '/')))
-
-        self.assertEqual((), resp.write(b''))
-
-    def test_force_close(self):
-        resp = StreamResponse()
-
-        self.assertIsNone(resp.keep_alive)
-        resp.force_close()
-        self.assertFalse(resp.keep_alive)
 
     def test_response_cookies(self):
         resp = StreamResponse()
