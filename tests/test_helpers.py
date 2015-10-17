@@ -118,7 +118,7 @@ def test_access_logger_format():
 @mock.patch("aiohttp.helpers.datetime")
 @mock.patch("os.getpid")
 def test_access_logger_atoms(mock_getpid, mock_datetime):
-    utcnow = datetime.datetime.fromtimestamp(0)
+    utcnow = datetime.datetime(1843, 1, 1, 0, 0)
     mock_datetime.datetime.utcnow.return_value = utcnow
     mock_getpid.return_value = 42
     log_format = '%a %t %P %l %u %r %s %b %T %D'
@@ -131,7 +131,7 @@ def test_access_logger_atoms(mock_getpid, mock_datetime):
     transport.get_extra_info.return_value = ("127.0.0.2", 1234)
     access_logger.log(message, environ, response, transport, 3.1415926)
     assert False == mock_logger.error.called
-    expected = ('127.0.0.2 Thu, 01 Jan 1970 03:00:00 GMT <42> - - '
+    expected = ('127.0.0.2 Sun, 01 Jan 1843 00:00:00 GMT <42> - - '
                 'GET /path HTTP/1.1 200 123 3 3141593')
     mock_logger.info.assert_called_with(expected)
 

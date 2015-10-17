@@ -26,7 +26,7 @@ DEFAULT_ERROR_MESSAGE = """
   </body>
 </html>"""
 
-ACCESS_LOG_FORMAT = '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{user-agent}i"'
+ACCESS_LOG_FORMAT = '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
 
 
 if hasattr(socket, 'SO_KEEPALIVE'):
