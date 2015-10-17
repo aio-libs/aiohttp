@@ -49,8 +49,22 @@ def build_close_frame(code=1000, message=b'', noheader=False):
         opcode=websocket.OPCODE_CLOSE, noheader=noheader)
 
 
-def test_parse_frame():
-    buf = aiohttp.ParserBuffer()
+@pytest.fixture()
+def buf():
+    return aiohttp.ParserBuffer()
+
+
+@pytest.fixture()
+def out(loop):
+    return aiohttp.DataQueue(loop=loop)
+
+
+@pytest.fixture()
+def parser(buf, out):
+    return websocket.WebSocketParser(out, buf)
+
+
+def test_parse_frame(buf):
     p = websocket.parse_frame(buf)
     next(p)
     p.send(struct.pack('!BB', 0b00000001, 0b00000001))
@@ -62,8 +76,7 @@ def test_parse_frame():
     assert (0, 1, b'1') == (fin, opcode, payload)
 
 
-def test_parse_frame_length0():
-    buf = aiohttp.ParserBuffer()
+def test_parse_frame_length0(buf):
     p = websocket.parse_frame(buf)
     next(p)
     try:
@@ -74,8 +87,7 @@ def test_parse_frame_length0():
     assert (0, 1, b'') == (fin, opcode, payload)
 
 
-def test_parse_frame_length2():
-    buf = aiohttp.ParserBuffer()
+def test_parse_frame_length2(buf):
     p = websocket.parse_frame(buf)
     next(p)
     p.send(struct.pack('!BB', 0b00000001, 126))
@@ -88,8 +100,7 @@ def test_parse_frame_length2():
     assert (0, 1, b'1234') == (fin, opcode, payload)
 
 
-def test_parse_frame_length4():
-    buf = aiohttp.ParserBuffer()
+def test_parse_frame_length4(buf):
     p = websocket.parse_frame(buf)
     next(p)
     p.send(struct.pack('!BB', 0b00000001, 127))
@@ -102,8 +113,7 @@ def test_parse_frame_length4():
     assert (0, 1, b'1234') == (fin, opcode, payload)
 
 
-def test_parse_frame_mask():
-    buf = aiohttp.ParserBuffer()
+def test_parse_frame_mask(buf):
     p = websocket.parse_frame(buf)
     next(p)
     p.send(struct.pack('!BB', 0b00000001, 0b10000001))
@@ -116,214 +126,168 @@ def test_parse_frame_mask():
     assert (0, 1, b'\x01') == (fin, opcode, payload)
 
 
-def test_parse_frame_header_reversed_bits():
-    buf = aiohttp.ParserBuffer()
+def test_parse_frame_header_reversed_bits(buf):
     p = websocket.parse_frame(buf)
     next(p)
     with pytest.raises(websocket.WebSocketError):
         p.send(struct.pack('!BB', 0b01100000, 0b00000000))
 
 
-def test_parse_frame_header_control_frame():
-    buf = aiohttp.ParserBuffer()
+def test_parse_frame_header_control_frame(buf):
     p = websocket.parse_frame(buf)
     next(p)
     with pytest.raises(websocket.WebSocketError):
         p.send(struct.pack('!BB', 0b00001000, 0b00000000))
 
 
-def test_parse_frame_header_continuation():
-    buf = aiohttp.ParserBuffer()
+def test_parse_frame_header_continuation(buf):
     p = websocket.parse_frame(buf)
     next(p)
     with pytest.raises(websocket.WebSocketError):
         p.send(struct.pack('!BB', 0b00000000, 0b00000000))
 
 
-def test_parse_frame_header_new_data_err():
-    buf = aiohttp.ParserBuffer()
+def test_parse_frame_header_new_data_err(buf):
     p = websocket.parse_frame(buf)
     next(p)
     with pytest.raises(websocket.WebSocketError):
         p.send(struct.pack('!BB', 0b000000000, 0b00000000))
 
 
-def test_parse_frame_header_payload_size():
-    buf = aiohttp.ParserBuffer()
+def test_parse_frame_header_payload_size(buf):
     p = websocket.parse_frame(buf)
     next(p)
     with pytest.raises(websocket.WebSocketError):
         p.send(struct.pack('!BB', 0b10001000, 0b01111110))
 
 
-def test_ping_frame(loop):
-    buf = aiohttp.ParserBuffer()
-    out = aiohttp.DataQueue(loop=loop)
-
+def test_ping_frame(out, parser):
     def parse_frame(buf):
         yield
         return (1, websocket.OPCODE_PING, b'data')
 
-    p = websocket.WebSocketParser(out, buf)
     with mock.patch('aiohttp.websocket.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
-        next(p)
-        p.send(b'')
+        next(parser)
+        parser.send(b'')
     res = out._buffer[0]
     assert res == ((websocket.OPCODE_PING, b'data', ''), 4)
 
 
-def test_pong_frame(loop):
-    buf = aiohttp.ParserBuffer()
-    out = aiohttp.DataQueue(loop=loop)
-
+def test_pong_frame(out, parser):
     def parse_frame(buf):
         yield
         return (1, websocket.OPCODE_PONG, b'data')
-    p = websocket.WebSocketParser(out, buf)
+
     with mock.patch('aiohttp.websocket.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
-        next(p)
-        p.send(b'')
+        next(parser)
+        parser.send(b'')
     res = out._buffer[0]
     assert res == ((websocket.OPCODE_PONG, b'data', ''), 4)
 
 
-def test_close_frame(loop):
-    buf = aiohttp.ParserBuffer()
-    out = aiohttp.DataQueue(loop=loop)
-
+def test_close_frame(out, parser):
     def parse_frame(buf):
         yield
         return (1, websocket.OPCODE_CLOSE, b'')
 
-    p = websocket.WebSocketParser(out, buf)
     with mock.patch('aiohttp.websocket.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
-        next(p)
-        p.send(b'')
+        next(parser)
+        parser.send(b'')
 
     res = out._buffer[0]
     assert res == ((websocket.OPCODE_CLOSE, 0, ''), 0)
 
 
-def test_close_frame_info(loop):
-    buf = aiohttp.ParserBuffer()
-    out = aiohttp.DataQueue(loop=loop)
-
+def test_close_frame_info(out, parser):
     def parse_frame(buf):
         yield
         return (1, websocket.OPCODE_CLOSE, b'0112345')
 
-    p = websocket.WebSocketParser(out, buf)
     with mock.patch('aiohttp.websocket.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
-        next(p)
-        p.send(b'')
+        next(parser)
+        parser.send(b'')
     res = out._buffer[0]
     assert res == (Message(websocket.OPCODE_CLOSE, 12337, '12345'), 0)
 
 
-def test_close_frame_invalid(loop):
-    buf = aiohttp.ParserBuffer()
-    out = aiohttp.DataQueue(loop=loop)
-
+def test_close_frame_invalid(out, parser):
     def parse_frame(buf):
         yield
         return (1, websocket.OPCODE_CLOSE, b'1')
 
-    p = websocket.WebSocketParser(out, buf)
     with mock.patch('aiohttp.websocket.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
-        next(p)
+        next(parser)
         with pytest.raises(websocket.WebSocketError) as ctx:
-            next(p)
+            next(parser)
 
         assert ctx.value.code == websocket.CLOSE_PROTOCOL_ERROR
 
 
-def test_close_frame_invalid_2(loop):
-    buf = aiohttp.ParserBuffer()
-    out = aiohttp.DataQueue(loop=loop)
+def test_close_frame_invalid_2(buf, parser):
     buf.extend(build_close_frame(code=1))
-    p = websocket.WebSocketParser(out, buf)
     with pytest.raises(websocket.WebSocketError) as ctx:
-        next(p)
+        next(parser)
 
     assert ctx.value.code == websocket.CLOSE_PROTOCOL_ERROR
 
 
-def test_close_frame_unicode_err(loop):
-    buf = aiohttp.ParserBuffer()
-    out = aiohttp.DataQueue(loop=loop)
+def test_close_frame_unicode_err(buf, parser):
     buf.extend(build_close_frame(
         code=1000, message=b'\xf4\x90\x80\x80'))
-    p = websocket.WebSocketParser(out, buf)
     with pytest.raises(websocket.WebSocketError) as ctx:
-        next(p)
+        next(parser)
 
     assert ctx.value.code == websocket.CLOSE_INVALID_TEXT
 
 
-def test_unknown_frame(loop):
-    buf = aiohttp.ParserBuffer()
-    out = aiohttp.DataQueue(loop=loop)
-
+def test_unknown_frame(out, parser):
     def parse_frame(buf):
         yield
         return (1, websocket.OPCODE_CONTINUATION, b'')
 
-    p = websocket.WebSocketParser(out, buf)
     with mock.patch('aiohttp.websocket.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
-        next(p)
+        next(parser)
 
         with pytest.raises(websocket.WebSocketError):
-            p.send(b'')
+            parser.send(b'')
 
 
-def test_simple_text(loop):
-    buf = aiohttp.ParserBuffer()
-    out = aiohttp.DataQueue(loop=loop)
+def test_simple_text(buf, out, parser):
     buf.extend(build_frame(b'text', websocket.OPCODE_TEXT))
-    p = websocket.WebSocketParser(out, buf)
-    next(p)
-    p.send(b'')
+    next(parser)
+    parser.send(b'')
     res = out._buffer[0]
     assert res == ((websocket.OPCODE_TEXT, 'text', ''), 4)
 
 
-def test_simple_text_unicode_err(loop):
-    buf = aiohttp.ParserBuffer()
-    out = aiohttp.DataQueue(loop=loop)
+def test_simple_text_unicode_err(buf, parser):
     buf.extend(
         build_frame(b'\xf4\x90\x80\x80', websocket.OPCODE_TEXT))
-    p = websocket.WebSocketParser(out, buf)
     with pytest.raises(websocket.WebSocketError) as ctx:
-        next(p)
+        next(parser)
 
     assert ctx.value.code == websocket.CLOSE_INVALID_TEXT
 
 
-def test_simple_binary(loop):
-    buf = aiohttp.ParserBuffer()
-    out = aiohttp.DataQueue(loop=loop)
-
+def test_simple_binary(out, parser):
     def parse_frame(buf):
         yield
         return (1, websocket.OPCODE_BINARY, b'binary')
-    p = websocket.WebSocketParser(out, buf)
     with mock.patch('aiohttp.websocket.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
-        next(p)
-        p.send(b'')
+        next(parser)
+        parser.send(b'')
     res = out._buffer[0]
     assert res == ((websocket.OPCODE_BINARY, b'binary', ''), 6)
 
 
-def test_continuation(loop):
-    buf = aiohttp.ParserBuffer()
-    out = aiohttp.DataQueue(loop=loop)
+def test_continuation(out, parser):
     cur = 0
 
     def parse_frame(buf, cont=False):
@@ -335,19 +299,16 @@ def test_continuation(loop):
         else:
             return (1, websocket.OPCODE_CONTINUATION, b'line2')
 
-    p = websocket.WebSocketParser(out, buf)
     with mock.patch('aiohttp.websocket.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
-        next(p)
-        p.send(b'')
-        p.send(b'')
+        next(parser)
+        parser.send(b'')
+        parser.send(b'')
     res = out._buffer[0]
     assert res == (Message(websocket.OPCODE_TEXT, 'line1line2', ''), 10)
 
 
-def test_continuation_with_ping(loop):
-    buf = aiohttp.ParserBuffer()
-    out = aiohttp.DataQueue(loop=loop)
+def test_continuation_with_ping(out, parser):
     frames = [
         (0, websocket.OPCODE_TEXT, b'line1'),
         (0, websocket.OPCODE_PING, b''),
@@ -358,22 +319,19 @@ def test_continuation_with_ping(loop):
         yield
         return frames.pop(0)
 
-    p = websocket.WebSocketParser(out, buf)
     with mock.patch('aiohttp.websocket.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
-        next(p)
-        p.send(b'')
-        p.send(b'')
-        p.send(b'')
+        next(parser)
+        parser.send(b'')
+        parser.send(b'')
+        parser.send(b'')
     res = out._buffer[0]
     assert res == (Message(websocket.OPCODE_PING, b'', ''), 0)
     res = out._buffer[1]
     assert res == (Message(websocket.OPCODE_TEXT, 'line1line2', ''), 10)
 
 
-def test_continuation_err(loop):
-    buf = aiohttp.ParserBuffer()
-    out = aiohttp.DataQueue(loop=loop)
+def test_continuation_err(out, parser):
     cur = 0
 
     def parse_frame(buf, cont=False):
@@ -385,18 +343,15 @@ def test_continuation_err(loop):
         else:
             return (1, websocket.OPCODE_TEXT, b'line2')
 
-    p = websocket.WebSocketParser(out, buf)
     with mock.patch('aiohttp.websocket.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
-        next(p)
-        p.send(b'')
+        next(parser)
+        parser.send(b'')
         with pytest.raises(websocket.WebSocketError):
-            p.send(b'')
+            parser.send(b'')
 
 
-def test_continuation_with_close(loop):
-    buf = aiohttp.ParserBuffer()
-    out = aiohttp.DataQueue(loop=loop)
+def test_continuation_with_close(out, parser):
     frames = [
         (0, websocket.OPCODE_TEXT, b'line1'),
         (0, websocket.OPCODE_CLOSE,
@@ -408,22 +363,19 @@ def test_continuation_with_close(loop):
         yield
         return frames.pop(0)
 
-    p = websocket.WebSocketParser(out, buf)
     with mock.patch('aiohttp.websocket.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
-        next(p)
-        p.send(b'')
-        p.send(b'')
-        p.send(b'')
+        next(parser)
+        parser.send(b'')
+        parser.send(b'')
+        parser.send(b'')
         res = out._buffer[0]
     assert res, (Message(websocket.OPCODE_CLOSE, 1002, 'test'), 0)
     res = out._buffer[1]
     assert res == (Message(websocket.OPCODE_TEXT, 'line1line2', ''), 10)
 
 
-def test_continuation_with_close_unicode_err(loop):
-    buf = aiohttp.ParserBuffer()
-    out = aiohttp.DataQueue(loop=loop)
+def test_continuation_with_close_unicode_err(out, parser):
     frames = [
         (0, websocket.OPCODE_TEXT, b'line1'),
         (0, websocket.OPCODE_CLOSE,
@@ -434,20 +386,17 @@ def test_continuation_with_close_unicode_err(loop):
         yield
         return frames.pop(0)
 
-    p = websocket.WebSocketParser(out, buf)
     with mock.patch('aiohttp.websocket.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
-        next(p)
-        p.send(b'')
+        next(parser)
+        parser.send(b'')
         with pytest.raises(websocket.WebSocketError) as ctx:
-            p.send(b'')
+            parser.send(b'')
 
     assert ctx.value.code == websocket.CLOSE_INVALID_TEXT
 
 
-def test_continuation_with_close_bad_code(loop):
-    buf = aiohttp.ParserBuffer()
-    out = aiohttp.DataQueue(loop=loop)
+def test_continuation_with_close_bad_code(out, parser):
     frames = [
         (0, websocket.OPCODE_TEXT, b'line1'),
         (0, websocket.OPCODE_CLOSE,
@@ -458,20 +407,17 @@ def test_continuation_with_close_bad_code(loop):
         yield
         return frames.pop(0)
 
-    p = websocket.WebSocketParser(out, buf)
     with mock.patch('aiohttp.websocket.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
-        next(p)
-        p.send(b'')
+        next(parser)
+        parser.send(b'')
         with pytest.raises(websocket.WebSocketError) as ctx:
-            p.send(b'')
+            parser.send(b'')
 
         assert ctx.value.code == websocket.CLOSE_PROTOCOL_ERROR
 
 
-def test_continuation_with_close_bad_payload(loop):
-    buf = aiohttp.ParserBuffer()
-    out = aiohttp.DataQueue(loop=loop)
+def test_continuation_with_close_bad_payload(out, parser):
     frames = [
         (0, websocket.OPCODE_TEXT, b'line1'),
         (0, websocket.OPCODE_CLOSE, b'1'),
@@ -481,20 +427,17 @@ def test_continuation_with_close_bad_payload(loop):
         yield
         return frames.pop(0)
 
-    p = websocket.WebSocketParser(out, buf)
     with mock.patch('aiohttp.websocket.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
-        next(p)
-        p.send(b'')
+        next(parser)
+        parser.send(b'')
         with pytest.raises(websocket.WebSocketError) as ctx:
-            p.send(b'')
+            parser.send(b'')
 
         assert ctx.value.code, websocket.CLOSE_PROTOCOL_ERROR
 
 
-def test_continuation_with_close_empty(loop):
-    buf = aiohttp.ParserBuffer()
-    out = aiohttp.DataQueue(loop=loop)
+def test_continuation_with_close_empty(out, parser):
     frames = [
         (0, websocket.OPCODE_TEXT, b'line1'),
         (0, websocket.OPCODE_CLOSE, b''),
@@ -505,13 +448,12 @@ def test_continuation_with_close_empty(loop):
         yield
         return frames.pop(0)
 
-    p = websocket.WebSocketParser(out, buf)
     with mock.patch('aiohttp.websocket.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
-        next(p)
-        p.send(b'')
-        p.send(b'')
-        p.send(b'')
+        next(parser)
+        parser.send(b'')
+        parser.send(b'')
+        parser.send(b'')
 
     res = out._buffer[0]
     assert res, (Message(websocket.OPCODE_CLOSE, 0, ''), 0)
