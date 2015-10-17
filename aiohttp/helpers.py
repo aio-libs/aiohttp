@@ -265,7 +265,7 @@ class AccessLogger:
     HEADERS_RE = re.compile(r"%\{\{([a-z\-]+)\}\}(i|o|e)", re.IGNORECASE)
     ATOMS_RE = re.compile(r"%[atPlursbTD%]")
     BRACE_RE = re.compile(r"(\{|\})")
-    TIME_FORMAT = "%a, %d %b %Y %H:%M:%S GMT"
+    TIME_FORMAT = "[%d/%b/%Y:%H:%M:%S +0000]"
 
     def __init__(self, logger, log_format):
         """Initialize the logger.
