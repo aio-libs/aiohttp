@@ -12,6 +12,7 @@ sphinxcontrib-spelling
 pyenchant
 sphinxcontrib-newsfeed
 pytest
+pytest-capturelog
 pytest-cov
 pytest-raisesregexp
 gunicorn
