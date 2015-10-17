@@ -132,16 +132,16 @@ def test_handshake_protocol_agreement(message, transport):
     assert protocol == best_proto
 
 
-def test_handshake_protocol_unsupported(caplog, message, transport):
+def test_handshake_protocol_unsupported(log, message, transport):
     '''Tests if a protocol mismatch handshake warns and returns None'''
     proto = 'chat'
     message.headers.extend(gen_ws_headers('test')[0])
 
-    with caplog.atLevel(logging.INFO) as recs:
+    with log('aiohttp.websocket') as ctx:
         _, _, _, _, protocol = websocket.do_handshake(
             message.method, message.headers, transport,
             protocols=[proto])
 
         assert protocol is None
-    assert (caplog.records()[-1].msg ==
+    assert (ctx.records[-1].msg ==
             'Client protocols %r don’t overlap server-known ones %r')
