@@ -93,7 +93,6 @@ class _CapturingHandler(logging.Handler):
         self.watcher.output.append(msg)
 
 
-
 class _AssertLogsContext:
     """A context manager used to implement TestCase.assertLogs()."""
 

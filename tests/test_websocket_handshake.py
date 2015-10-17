@@ -4,7 +4,6 @@ import base64
 import hashlib
 import os
 import pytest
-import logging
 
 from aiohttp import websocket, multidict, protocol, errors
 from unittest import mock
@@ -52,7 +51,7 @@ def test_no_connection(message, transport):
 
 def test_protocol_version(message, transport):
     message.headers.extend([('UPGRADE', 'websocket'),
-                             ('CONNECTION', 'upgrade')])
+                            ('CONNECTION', 'upgrade')])
     with pytest.raises(errors.HttpBadRequest):
         websocket.do_handshake(message.method, message.headers, transport)
 
@@ -92,7 +91,7 @@ def test_handshake(message, transport):
 
     message.headers.extend(hdrs)
     status, headers, parser, writer, protocol = websocket.do_handshake(
-            message.method, message.headers, transport)
+        message.method, message.headers, transport)
     assert status == 101
     assert protocol is None
 
