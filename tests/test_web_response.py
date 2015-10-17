@@ -1,6 +1,4 @@
-import asyncio
 import datetime
-import unittest
 import pytest
 import re
 from unittest import mock
