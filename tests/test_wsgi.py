@@ -22,9 +22,9 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
         self.writer = unittest.mock.Mock()
         self.writer.drain.return_value = ()
         self.transport = unittest.mock.Mock()
-        self.transport.get_extra_info.return_value = '127.0.0.1'
+        self.transport.get_extra_info.return_value = ('1.2.3.4', 8080)
 
-        self.headers = multidict.MultiDict()
+        self.headers = multidict.MultiDict({"HOST": "python.org"})
         self.message = protocol.RawRequestMessage(
             'GET', '/path', (1, 0), self.headers, True, 'deflate')
         self.payload = aiohttp.FlowControlDataQueue(self.reader)
@@ -63,8 +63,7 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
 
     def test_environ_headers(self):
         self.headers.extend(
-            (('HOST', 'python.org'),
-             ('SCRIPT_NAME', 'script'),
+            (('SCRIPT_NAME', 'script'),
              ('CONTENT-TYPE', 'text/plain'),
              ('CONTENT-LENGTH', '209'),
              ('X_TEST', '123'),
@@ -75,10 +74,9 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
         self.assertEqual(environ['HTTP_X_TEST'], '123,456')
         self.assertEqual(environ['SCRIPT_NAME'], 'script')
         self.assertEqual(environ['SERVER_NAME'], 'python.org')
-        self.assertEqual(environ['SERVER_PORT'], '443')
+        self.assertEqual(environ['SERVER_PORT'], '80')
 
     def test_environ_host_header(self):
-        self.headers.add('HOST', 'python.org')
         environ = self._make_one()
 
         self.assertEqual(environ['HTTP_HOST'], 'python.org')
@@ -87,40 +85,15 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
         self.assertEqual(environ['SERVER_PROTOCOL'], 'HTTP/1.0')
 
     def test_environ_host_port_header(self):
+        headers = multidict.MultiDict({'HOST': 'python.org:443'})
         self.message = protocol.RawRequestMessage(
-            'GET', '/path', (1, 1), self.headers, True, 'deflate')
-        self.headers.add('HOST', 'python.org:443')
+            'GET', '/path', (1, 1), headers, True, 'deflate')
         environ = self._make_one()
 
         self.assertEqual(environ['HTTP_HOST'], 'python.org:443')
         self.assertEqual(environ['SERVER_NAME'], 'python.org')
         self.assertEqual(environ['SERVER_PORT'], '443')
         self.assertEqual(environ['SERVER_PROTOCOL'], 'HTTP/1.1')
-
-    def test_environ_forward(self):
-        self.transport.get_extra_info.return_value = 'localhost,127.0.0.1'
-        environ = self._make_one()
-
-        self.assertEqual(environ['REMOTE_ADDR'], '127.0.0.1')
-        self.assertEqual(environ['REMOTE_PORT'], '80')
-
-        self.transport.get_extra_info.return_value = 'localhost,127.0.0.1:443'
-        environ = self._make_one()
-
-        self.assertEqual(environ['REMOTE_ADDR'], '127.0.0.1')
-        self.assertEqual(environ['REMOTE_PORT'], '443')
-
-        self.transport.get_extra_info.return_value = ('127.0.0.1', 443)
-        environ = self._make_one()
-
-        self.assertEqual(environ['REMOTE_ADDR'], '127.0.0.1')
-        self.assertEqual(environ['REMOTE_PORT'], '443')
-
-        self.transport.get_extra_info.return_value = '[::1]'
-        environ = self._make_one()
-
-        self.assertEqual(environ['REMOTE_ADDR'], '::1')
-        self.assertEqual(environ['REMOTE_PORT'], '80')
 
     def test_wsgi_response(self):
         srv = self._make_srv()
@@ -280,3 +253,20 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
             'GET', path, (1, 0), self.headers, True, 'deflate')
         environ = self._make_one()
         self.assertEqual(environ['PATH_INFO'], path)
+
+    def test_not_add_authorization(self):
+        self.headers.extend({"AUTHORIZATION": "spam",
+                             "X-CUSTOM-HEADER": "eggs"})
+        self.message = protocol.RawRequestMessage(
+            'GET', '/', (1, 1), self.headers, True, 'deflate')
+        environ = self._make_one()
+        self.assertEqual('eggs', environ['HTTP_X_CUSTOM_HEADER'])
+        self.assertFalse('AUTHORIZATION' in environ)
+
+    def test_http_1_0_no_host(self):
+        headers = multidict.MultiDict({})
+        self.message = protocol.RawRequestMessage(
+            'GET', '/', (1, 0), headers, True, 'deflate')
+        environ = self._make_one()
+        self.assertEqual('1.2.3.4', environ["SERVER_NAME"])
+        self.assertEqual('8080', environ["SERVER_PORT"])

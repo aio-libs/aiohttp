@@ -14,7 +14,7 @@ import sys
 from urllib.parse import urlsplit
 
 import aiohttp
-from aiohttp import server, helpers, hdrs
+from aiohttp import server, hdrs
 
 __all__ = ('WSGIServerHttpProtocol',)
 
@@ -63,17 +63,12 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
             'SERVER_PROTOCOL': 'HTTP/%s.%s' % message.version
         }
 
-        # authors should be aware that REMOTE_HOST and REMOTE_ADDR
-        # may not qualify the remote addr:
-        # http://www.ietf.org/rfc/rfc3875
-        forward = self.transport.get_extra_info('addr', '127.0.0.1')
         script_name = self.SCRIPT_NAME
-        server = forward
 
         for hdr_name, hdr_value in message.headers.items():
-            if hdr_name == 'HOST':
-                server = hdr_value
-            elif hdr_name == 'SCRIPT_NAME':
+            if hdr_name == 'AUTHORIZATION':
+                continue
+            if hdr_name == 'SCRIPT_NAME':
                 script_name = hdr_value
             elif hdr_name == 'CONTENT-TYPE':
                 environ['CONTENT_TYPE'] = hdr_value
@@ -88,17 +83,16 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
 
             environ[key] = hdr_value
 
-        remote = helpers.parse_remote_addr(forward)
+        remote = self.transport.get_extra_info('peername')
         environ['REMOTE_ADDR'] = remote[0]
         environ['REMOTE_PORT'] = remote[1]
-
-        if isinstance(server, str):
-            server = server.split(':')
-            if len(server) == 1:
-                server.append('80' if url_scheme == 'http' else '443')
-
-        environ['SERVER_NAME'] = server[0]
-        environ['SERVER_PORT'] = str(server[1])
+        host = message.headers.get("HOST", None)
+        if host:
+            host = host.split(":")
+        else:
+            host = self.transport.get_extra_info('sockname')
+        environ['SERVER_NAME'] = host[0]
+        environ['SERVER_PORT'] = str(host[1]) if len(host) > 1 else '80'
 
         path_info = uri_parts.path
         if script_name:
