@@ -589,6 +589,18 @@ some pre- and post- processing like handling *CORS* and so on.
    :exc:`HTTPMethodNotAllowed`).
 
 
+Signals
+-------
+
+.. versionadded:: 0.18
+
+While :ref:`midlewares <aiohttp-web-middlewares>` gives very powerful
+tool for customizing :ref:`web handler<aiohttp-web-handler>`
+processing we need another machinery also called signals.
+
+TBD: example.
+
+
 Debug toolbar
 -------------
 
