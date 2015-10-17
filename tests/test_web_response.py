@@ -625,177 +625,168 @@ def test_ctor_text_body_combined():
         Response(body=b'123', text='test text')
 
 
-class TestResponse(unittest.TestCase):
+def test_ctor_text():
+    resp = Response(text='test text')
 
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
+    assert 200 == resp.status
+    assert 'OK' == resp.reason
+    assert (CIMultiDict(
+        [('CONTENT-TYPE', 'text/plain; charset=utf-8'),
+         ('CONTENT-LENGTH', '9')]) == resp.headers)
 
-    def tearDown(self):
-        self.loop.close()
+    assert resp.body == b'test text'
+    assert resp.text == 'test text'
 
-    def make_request(self, method, path, headers=CIMultiDict()):
-        self.app = mock.Mock()
-        self.app._debug = False
-        self.app.on_response_prepare = signals.Signal(self.app)
-        message = RawRequestMessage(method, path, HttpVersion11, headers,
-                                    False, False)
-        self.payload = mock.Mock()
-        self.transport = mock.Mock()
-        self.reader = mock.Mock()
-        self.writer = mock.Mock()
-        req = Request(self.app, message, self.payload,
-                      self.transport, self.reader, self.writer)
-        return req
 
-    def test_ctor_text(self):
-        resp = Response(text='test text')
+def test_assign_nonbyteish_body():
+    resp = Response(body=b'data')
 
-        self.assertEqual(200, resp.status)
-        self.assertEqual('OK', resp.reason)
-        self.assertEqual(
-            CIMultiDict(
-                [('CONTENT-TYPE', 'text/plain; charset=utf-8'),
-                 ('CONTENT-LENGTH', '9')]),
-            resp.headers)
+    with pytest.raises(TypeError):
+        resp.body = 123
+    assert b'data' == resp.body
+    assert 4 == resp.content_length
 
-        self.assertEqual(resp.body, b'test text')
-        self.assertEqual(resp.text, 'test text')
 
-    def test_assign_nonbyteish_body(self):
-        resp = Response(body=b'data')
+def test_assign_nonstr_text():
+    resp = Response(text='test')
 
-        with self.assertRaises(TypeError):
-            resp.body = 123
-        self.assertEqual(b'data', resp.body)
-        self.assertEqual(4, resp.content_length)
+    with pytest.raises(TypeError):
+        resp.text = b'123'
+    assert b'test' == resp.body
+    assert 4 == resp.content_length
 
-    def test_assign_nonstr_text(self):
-        resp = Response(text='test')
 
-        with self.assertRaises(TypeError):
-            resp.text = b'123'
-        self.assertEqual(b'test', resp.body)
-        self.assertEqual(4, resp.content_length)
+@pytest.mark.run_loop
+def test_send_headers_for_empty_body():
+    writer = mock.Mock()
+    req = make_request('GET', '/', writer=writer)
+    resp = Response()
 
-    def test_send_headers_for_empty_body(self):
-        req = self.make_request('GET', '/')
-        resp = Response()
+    writer.drain.return_value = ()
+    buf = b''
 
-        self.writer.drain.return_value = ()
-        buf = b''
+    def append(data):
+        nonlocal buf
+        buf += data
 
-        def append(data):
-            nonlocal buf
-            buf += data
+    writer.write.side_effect = append
 
-        self.writer.write.side_effect = append
+    yield from resp.prepare(req)
+    yield from resp.write_eof()
+    txt = buf.decode('utf8')
+    assert re.match('HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 0\r\n'
+                    'CONNECTION: keep-alive\r\n'
+                    'DATE: .+\r\nSERVER: .+\r\n\r\n', txt)
 
-        self.loop.run_until_complete(resp.prepare(req))
-        self.loop.run_until_complete(resp.write_eof())
-        txt = buf.decode('utf8')
-        self.assertRegex(txt, 'HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 0\r\n'
-                         'CONNECTION: keep-alive\r\n'
-                         'DATE: .+\r\nSERVER: .+\r\n\r\n')
 
-    def test_render_with_body(self):
-        req = self.make_request('GET', '/')
-        resp = Response(body=b'data')
+@pytest.mark.run_loop
+def test_render_with_body():
+    writer = mock.Mock()
+    req = make_request('GET', '/', writer=writer)
+    resp = Response(body=b'data')
 
-        self.writer.drain.return_value = ()
-        buf = b''
+    writer.drain.return_value = ()
+    buf = b''
 
-        def append(data):
-            nonlocal buf
-            buf += data
+    def append(data):
+        nonlocal buf
+        buf += data
 
-        self.writer.write.side_effect = append
+    writer.write.side_effect = append
 
-        self.loop.run_until_complete(resp.prepare(req))
-        self.loop.run_until_complete(resp.write_eof())
-        txt = buf.decode('utf8')
-        self.assertRegex(txt, 'HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 4\r\n'
-                         'CONNECTION: keep-alive\r\n'
-                         'DATE: .+\r\nSERVER: .+\r\n\r\ndata')
+    yield from resp.prepare(req)
+    yield from resp.write_eof()
+    txt = buf.decode('utf8')
+    assert re.match('HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 4\r\n'
+                    'CONNECTION: keep-alive\r\n'
+                    'DATE: .+\r\nSERVER: .+\r\n\r\ndata', txt)
 
-    def test_send_set_cookie_header(self):
-        resp = Response()
-        resp.cookies['name'] = 'value'
 
-        req = self.make_request('GET', '/')
-        self.writer.drain.return_value = ()
-        buf = b''
+@pytest.mark.run_loop
+def test_send_set_cookie_header():
+    resp = Response()
+    resp.cookies['name'] = 'value'
 
-        def append(data):
-            nonlocal buf
-            buf += data
+    writer = mock.Mock()
+    req = make_request('GET', '/', writer=writer)
+    writer.drain.return_value = ()
+    buf = b''
 
-        self.writer.write.side_effect = append
+    def append(data):
+        nonlocal buf
+        buf += data
 
-        self.loop.run_until_complete(resp.prepare(req))
-        self.loop.run_until_complete(resp.write_eof())
-        txt = buf.decode('utf8')
-        self.assertRegex(txt, 'HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 0\r\n'
-                         'SET-COOKIE: name=value\r\n'
-                         'CONNECTION: keep-alive\r\n'
-                         'DATE: .+\r\nSERVER: .+\r\n\r\n')
+    writer.write.side_effect = append
 
-    def test_set_text_with_content_type(self):
-        resp = Response()
-        resp.content_type = "text/html"
-        resp.text = "text"
+    yield from resp.prepare(req)
+    yield from resp.write_eof()
+    txt = buf.decode('utf8')
+    assert re.match('HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 0\r\n'
+                    'SET-COOKIE: name=value\r\n'
+                    'CONNECTION: keep-alive\r\n'
+                    'DATE: .+\r\nSERVER: .+\r\n\r\n', txt)
 
-        self.assertEqual("text", resp.text)
-        self.assertEqual(b"text", resp.body)
-        self.assertEqual("text/html", resp.content_type)
 
-    def test_set_text_with_charset(self):
-        resp = Response()
-        resp.content_type = 'text/plain'
-        resp.charset = "KOI8-R"
-        resp.text = "текст"
+def test_set_text_with_content_type():
+    resp = Response()
+    resp.content_type = "text/html"
+    resp.text = "text"
 
-        self.assertEqual("текст", resp.text)
-        self.assertEqual("текст".encode('koi8-r'), resp.body)
-        self.assertEqual("koi8-r", resp.charset)
+    assert "text" == resp.text
+    assert b"text" == resp.body
+    assert "text/html" == resp.content_type
 
-    def test_started_when_not_started(self):
-        resp = StreamResponse()
-        self.assertFalse(resp.prepared)
 
-    def test_started_when_started(self):
-        resp = StreamResponse()
-        self.loop.run_until_complete(
-            resp.prepare(self.make_request('GET', '/')))
-        self.assertTrue(resp.prepared)
+def test_set_text_with_charset():
+    resp = Response()
+    resp.content_type = 'text/plain'
+    resp.charset = "KOI8-R"
+    resp.text = "текст"
 
-    def test_drain_before_start(self):
+    assert "текст" == resp.text
+    assert "текст".encode('koi8-r') == resp.body
+    assert "koi8-r" == resp.charset
 
-        @asyncio.coroutine
-        def go():
-            resp = StreamResponse()
-            with self.assertRaises(RuntimeError):
-                yield from resp.drain()
 
-        self.loop.run_until_complete(go())
+def test_started_when_not_started():
+    resp = StreamResponse()
+    assert not resp.prepared
 
-    def test_nonstr_text_in_ctor(self):
-        with self.assertRaises(TypeError):
-            Response(text=b'data')
 
-    def test_text_in_ctor_with_content_type(self):
-        resp = Response(text='data', content_type='text/html')
-        self.assertEqual('data', resp.text)
-        self.assertEqual('text/html', resp.content_type)
+@pytest.mark.run_loop
+def test_started_when_started():
+    resp = StreamResponse()
+    yield from resp.prepare(make_request('GET', '/'))
+    assert resp.prepared
 
-    def test_text_in_ctor_with_content_type_header(self):
-        resp = Response(text='текст',
-                        headers={'Content-Type': 'text/html; charset=koi8-r'})
-        self.assertEqual('текст'.encode('koi8-r'), resp.body)
-        self.assertEqual('text/html', resp.content_type)
-        self.assertEqual('koi8-r', resp.charset)
 
-    def test_text_with_empty_payload(self):
-        resp = Response(status=200)
-        self.assertEqual(resp.body, None)
-        self.assertEqual(resp.text, None)
+@pytest.mark.run_loop
+def test_drain_before_start():
+    resp = StreamResponse()
+    with pytest.raises(RuntimeError):
+        yield from resp.drain()
+
+
+def test_nonstr_text_in_ctor():
+    with pytest.raises(TypeError):
+        Response(text=b'data')
+
+
+def test_text_in_ctor_with_content_type():
+    resp = Response(text='data', content_type='text/html')
+    assert 'data' == resp.text
+    assert 'text/html' == resp.content_type
+
+
+def test_text_in_ctor_with_content_type_header():
+    resp = Response(text='текст',
+                    headers={'Content-Type': 'text/html; charset=koi8-r'})
+    assert 'текст'.encode('koi8-r') == resp.body
+    assert 'text/html' == resp.content_type
+    assert 'koi8-r' == resp.charset
+
+
+def test_text_with_empty_payload():
+    resp = Response(status=200)
+    assert resp.body is None
+    assert resp.text is None
