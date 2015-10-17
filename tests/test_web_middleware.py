@@ -1,7 +1,34 @@
 import asyncio
 import socket
+import pytest
 import unittest
 from aiohttp import web, request
+
+
+@pytest.mark.run_loop
+def test_middleware_modifies_response(create_app_and_client):
+
+        @asyncio.coroutine
+        def handler(request):
+            return web.Response(body=b'OK')
+
+        @asyncio.coroutine
+        def middleware_factory(app, handler):
+            def middleware(request):
+                resp = yield from handler(request)
+                assert 200 == resp.status
+                resp.set_status(201)
+                resp.text = resp.text + '[MIDDLEWARE]'
+                return resp
+            return middleware
+
+        app, client = yield from create_app_and_client()
+        app.middlewares.append(middleware_factory)
+        app.router.add_route('GET', '/', handler)
+        resp = yield from client.get('/')
+        assert 201 == resp.status
+        txt = yield from resp.text()
+        assert 'OK[MIDDLEWARE]' == txt
 
 
 class TestWebMiddlewareFunctional(unittest.TestCase):
@@ -36,32 +63,6 @@ class TestWebMiddlewareFunctional(unittest.TestCase):
         url = "http://127.0.0.1:{}".format(port) + path
         self.addCleanup(srv.close)
         return app, srv, url
-
-    def test_middleware_modifies_response(self):
-
-        @asyncio.coroutine
-        def handler(request):
-            return web.Response(body=b'OK')
-
-        @asyncio.coroutine
-        def middleware_factory(app, handler):
-            def middleware(request):
-                resp = yield from handler(request)
-                self.assertEqual(200, resp.status)
-                resp.set_status(201)
-                resp.text = resp.text + '[MIDDLEWARE]'
-                return resp
-            return middleware
-
-        @asyncio.coroutine
-        def go():
-            _, _, url = yield from self.create_server('GET', '/', handler,
-                                                      middleware_factory)
-            resp = yield from request('GET', url, loop=self.loop)
-            self.assertEqual(201, resp.status)
-            txt = yield from resp.text()
-            self.assertEqual('OK[MIDDLEWARE]', txt)
-        self.loop.run_until_complete(go())
 
     def test_middleware_handles_exception(self):
 
