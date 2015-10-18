@@ -287,8 +287,7 @@ class AccessLogger:
             'P': "<%s>" % os.getpid(),
             'l': '-',
             'u': '-',
-            'r': ('{message.method} {message.path} '
-                  'HTTP/{message.version[0]}.{message.version[1]}'),
+            'r': '{r}',
             's': '{response.status}',
             'b': '{response.body_length}',
             'O': '{response.output_length}',
@@ -304,7 +303,20 @@ class AccessLogger:
         self.logger = logger
 
     def log(self, message, environ, response, transport, time):
+        """Log access.
+
+        :param message: Request object. May be None.
+        :param environ: Environment dict. May be None.
+        :param response: Response object.
+        :param transport: Tansport object.
+        :param float time: Time taken to serve the request.
+        """
         environ = environ or {}
+        if message:
+            r = "%s %s HTTP/%s.%s" % tuple((message.method,
+                                            message.path) + message.version)
+        else:
+            r = "-"
         try:
             self.logger.info(self._log_format.format(
                 message=message,
@@ -314,6 +326,7 @@ class AccessLogger:
                 e_dict=SafeDict(environ),
                 remote_addr=transport.get_extra_info("peername")[0],
                 time=time,
+                r=r,
                 datetime=datetime.datetime.utcnow().strftime(self.TIME_FORMAT),
                 microseconds=time*1000000,
             ))

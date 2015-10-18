@@ -141,7 +141,7 @@ def test_access_logger_dicts():
     log_format = '%{User-Agent}i %{Content-Length}o %{SPAM}e %{None}i'
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, log_format)
-    message = mock.Mock(headers={"USER-AGENT": "Mock/1.0"})
+    message = mock.Mock(headers={"USER-AGENT": "Mock/1.0"}, version=(1, 1))
     environ = {"SPAM": "EGGS"}
     response = mock.Mock(headers={"CONTENT-LENGTH": 123})
     transport = mock.Mock()
@@ -157,6 +157,15 @@ def test_access_logger_error():
     access_logger = helpers.AccessLogger(mock_logger, "")
     access_logger.log(None, None, None, None, None)
     assert True == mock_logger.error.called
+
+
+def test_logger_no_message_and_environ():
+    mock_logger = mock.Mock()
+    mock_transport = mock.Mock()
+    mock_transport.get_extra_info.return_value = ("127.0.0.3", 0)
+    access_logger = helpers.AccessLogger(mock_logger, "%r %{FOOBAR}e")
+    access_logger.log(None, None, None, mock_transport, 0.0)
+    mock_logger.info.assert_called_with("- -")
 
 
 def test_reify():
