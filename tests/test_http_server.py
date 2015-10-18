@@ -533,37 +533,6 @@ class TestHttpServerProtocol(unittest.TestCase):
         self.assertIsNone(srv._keep_alive_handle)
         self.assertTrue(transport.close.called)
 
-    def test_log_access_error(self):
-        transport = unittest.mock.Mock()
-        transport.get_extra_info.return_value = '127.0.0.1'
-
-        logger = unittest.mock.Mock()
-        srv = server.ServerHttpProtocol(loop=self.loop, access_log=logger)
-        srv.transport = transport
-        srv.access_log = unittest.mock.Mock()
-
-        message = unittest.mock.Mock()
-        message.headers = []
-        message.version = (1, 1)
-        srv.log_access(None, None, None, None)
-
-        self.assertTrue(logger.error.called)
-
-    def test_log_access_disabled(self):
-        transport = unittest.mock.Mock()
-
-        srv = server.ServerHttpProtocol(loop=self.loop, access_log=None)
-        srv.connection_made(transport)
-        self.addCleanup(self.cleanup_server, srv)
-        srv.logger = unittest.mock.Mock()
-
-        message = unittest.mock.Mock()
-        message.headers = []
-        message.version = (1, 1)
-        srv.log_access(None, None, None, None)
-
-        self.assertFalse(srv.logger.error.called)
-
     def test_cancel_not_connected_handler(self):
         srv = server.ServerHttpProtocol(loop=self.loop)
         srv.cancel_slow_request()

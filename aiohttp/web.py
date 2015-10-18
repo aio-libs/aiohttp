@@ -12,6 +12,7 @@ from .signals import Signal, PreSignal, PostSignal
 
 import asyncio
 
+from . import helpers
 from . import hdrs
 from .abc import AbstractRouter, AbstractMatchInfo
 from .log import web_logger
@@ -24,6 +25,8 @@ __all__ = (web_reqrep.__all__ +
            web_ws.__all__ +
            ('Application', 'RequestHandler',
             'RequestHandlerFactory', 'HttpVersion'))
+
+ACCESS_LOG_FORMAT = '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
 
 
 class RequestHandler(ServerHttpProtocol):
@@ -58,7 +61,7 @@ class RequestHandler(ServerHttpProtocol):
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
-        if self.access_log:
+        if self.access_logger:
             now = self._loop.time()
 
         app = self._app
@@ -100,7 +103,7 @@ class RequestHandler(ServerHttpProtocol):
         self.keep_alive(resp_msg.keep_alive())
 
         # log access
-        if self.access_log:
+        if self.access_logger:
             self.log_access(message, None, resp_msg, self._loop.time() - now)
 
         # for repr
@@ -112,7 +115,8 @@ class RequestHandlerFactory:
 
     def __init__(self, app, router, *,
                  handler=RequestHandler, loop=None,
-                 secure_proxy_ssl_header=None, **kwargs):
+                 secure_proxy_ssl_header=None, access_log=None,
+                 access_log_format=ACCESS_LOG_FORMAT, **kwargs):
         self._app = app
         self._router = router
         self._handler = handler
@@ -121,6 +125,12 @@ class RequestHandlerFactory:
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
         self._kwargs = kwargs
         self._kwargs.setdefault('logger', app.logger)
+        if access_log:
+            self._access_logger = helpers.AccessLogger(access_log,
+                                                       access_log_format)
+        else:
+            self._access_logger = None
+        self.__handler = None
 
     @property
     def secure_proxy_ssl_header(self):
@@ -173,7 +183,7 @@ class RequestHandlerFactory:
         return self._handler(
             self, self._app, self._router, loop=self._loop,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header,
-            **self._kwargs)
+            access_logger=self._access_logger, **self._kwargs)
 
 
 class Application(dict):
