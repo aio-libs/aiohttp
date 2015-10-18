@@ -73,3 +73,5 @@ CHANGES
 - Implement server signals #562
 
 - Drop an year-old deprecated *files* parameter from client API.
+
+- Added `async for` support for aiohttp stream #542
