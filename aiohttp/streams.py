@@ -1,3 +1,4 @@
+import sys
 import asyncio
 import collections
 import functools
@@ -10,6 +11,8 @@ __all__ = (
     'FlowControlStreamReader',
     'FlowControlDataQueue', 'FlowControlChunksQueue')
 
+PY_35 = sys.version_info >= (3, 5)
+
 EOF_MARKER = b''
 DEFAULT_LIMIT = 2 ** 16
 
@@ -18,7 +21,63 @@ class EofStream(Exception):
     """eof stream indication."""
 
 
-class StreamReader(asyncio.StreamReader):
+class AsyncStreamIterator:
+
+    def __init__(self, read_func):
+        self.read_func = read_func
+
+    @asyncio.coroutine
+    def __aiter__(self):
+        return self
+
+    @asyncio.coroutine
+    def __anext__(self):
+        try:
+            rv = yield from self.read_func()
+        except EofStream:
+            raise StopAsyncIteration  # NOQA
+        if rv == EOF_MARKER:
+            raise StopAsyncIteration  # NOQA
+        return rv
+
+
+class AsyncStreamReaderMixin:
+
+    if PY_35:
+        @asyncio.coroutine
+        def __aiter__(self):
+            return AsyncStreamIterator(self.readline)
+
+        def iter_chunked(self, n):
+            """Returns an asynchronous iterator that yields chunks of size n.
+
+            .. versionadded:: Python-3.5 available for Python 3.5+ only
+            """
+            return AsyncStreamIterator(lambda: self.read(n))
+
+        def iter_any(self):
+            """Returns an asynchronous iterator that yields slices of data as they come.
+
+            .. versionadded:: Python-3.5 available for Python 3.5+ only
+            """
+            return AsyncStreamIterator(self.readany)
+
+
+class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
+    """An enhancement of :class:`asyncio.StreamReader`.
+
+    Supports asynchronous iteration by line, chunk or as available::
+
+        async for line in reader:
+            ...
+        async for chunk in reader.iter_chunked(1024):
+            ...
+        async for slice in reader.iter_any():
+            ...
+
+    .. automethod:: AsyncStreamReaderMixin.iter_chunked
+    .. automethod:: AsyncStreamReaderMixin.iter_any
+    """
 
     total_bytes = 0
 
@@ -270,7 +329,7 @@ class StreamReader(asyncio.StreamReader):
         return data
 
 
-class EmptyStreamReader:
+class EmptyStreamReader(AsyncStreamReaderMixin):
 
     def exception(self):
         return None
@@ -385,6 +444,11 @@ class DataQueue:
                 raise self._exception
             else:
                 raise EofStream
+
+    if PY_35:
+        @asyncio.coroutine
+        def __aiter__(self):
+            return AsyncStreamIterator(self.read)
 
 
 class ChunksQueue(DataQueue):
