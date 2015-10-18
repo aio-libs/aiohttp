@@ -252,7 +252,8 @@ class AccessLogger:
         %P  The process ID of the child that serviced the request
         %r  First line of request
         %s  Status
-        %b  Size of response in bytes, including HTTP headers
+        %b  Size of response in bytes, excluding HTTP headers
+        %O  Bytes sent, including headers
         %T  The time taken to serve the request, in seconds
         %D  The time taken to serve the request, in microseconds
         %{Foobar}i  The contents of Foobar: header line(s) in
@@ -263,7 +264,7 @@ class AccessLogger:
     """
 
     HEADERS_RE = re.compile(r"%\{\{([a-z\-]+)\}\}(i|o|e)", re.IGNORECASE)
-    ATOMS_RE = re.compile(r"%[atPlursbTD%]")
+    ATOMS_RE = re.compile(r"%[atPlursbOTD%]")
     BRACE_RE = re.compile(r"(\{|\})")
     TIME_FORMAT = "[%d/%b/%Y:%H:%M:%S +0000]"
 
@@ -289,7 +290,8 @@ class AccessLogger:
             'r': ('{message.method} {message.path} '
                   'HTTP/{message.version[0]}.{message.version[1]}'),
             's': '{response.status}',
-            'b': '{response.output_length}',
+            'b': '{response.body_length}',
+            'O': '{response.output_length}',
             'T': '{time:.0f}',
             'D': '{microseconds:.0f}',
             '%': '%',  # `%%` should be converted to `%`
