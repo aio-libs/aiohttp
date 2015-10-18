@@ -94,8 +94,8 @@ def test_response_prepare(loop, app):
     response = Response(body=b'')
     loop.run_until_complete(response.prepare(request))
 
-    callback.assert_called_once_with(request=request,
-                                     response=response)
+    callback.assert_called_once_with(request,
+                                     response)
 
 
 def test_non_coroutine(loop, app):

@@ -585,7 +585,7 @@ def test_prepare_calls_signal():
     app.on_response_prepare.append(sig)
     yield from resp.prepare(req)
 
-    sig.assert_called_with(request=req, response=resp)
+    sig.assert_called_with(req, resp)
 
 
 def test_response_ctor():

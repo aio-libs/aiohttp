@@ -589,6 +589,8 @@ some pre- and post- processing like handling *CORS* and so on.
    :exc:`HTTPMethodNotAllowed`).
 
 
+.. _aiohttp-web-signals:
+
 Signals
 -------
 
@@ -598,7 +600,29 @@ While :ref:`midlewares <aiohttp-web-middlewares>` gives very powerful
 tool for customizing :ref:`web handler<aiohttp-web-handler>`
 processing we need another machinery also called signals.
 
-TBD: example.
+For example middleware may change HTTP headers for *unprepared* response only
+(see :meth:`aiohttp.web.StreamResponse.prepare`).
+
+But sometimes we need a hook for changing HTTP headers for streamed
+responses and websockets. That can be done by subsribing on
+:attr:`aiohttp.web.Application.on_response_prepare` signal::
+
+   async def on_prepare(request, response):
+       response.headers['My-Header'] = 'value'
+
+Signal handlers should not return a value but may modify incoming
+mutable parameters.
+
+
+.. warning::
+
+   Signals has provisional status.
+
+   That means API may be changed in future releases.
+
+   Most likely signal subscription/sending will be the same but signal
+   object creation is subject for changing.  Unless you don't create
+   new signals but reuse existing only you are not affected.
 
 
 Debug toolbar

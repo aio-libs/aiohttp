@@ -18,7 +18,8 @@ Features
 - Supports both :ref:`aiohttp-client` and :ref:`HTTP Server <aiohttp-web>`.
 - Supports both :ref:`Server WebSockets <aiohttp-web-websockets>` and
   :ref:`Client WebSockets <aiohttp-client-websockets>` out-of-the-box.
-- Web-server has :ref:`aiohttp-web-middlewares` and pluggable routing.
+- Web-server has :ref:`aiohttp-web-middlewares`,
+  :ref:`aiohttp-web-signals` and pluggable routing.
 
 Library Installation
 --------------------

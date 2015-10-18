@@ -934,6 +934,11 @@ arbitrary properties for later access from
       *response*. It can be used, for example, to add custom headers to each
       response before sending.
 
+      Signal handlers should have the following signature::
+
+          async def handler(request, response):
+              pass
+
    .. method:: make_handler(**kwargs)
 
       Creates HTTP protocol factory for handling requests.
