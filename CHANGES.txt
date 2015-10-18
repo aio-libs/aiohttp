@@ -71,3 +71,5 @@ CHANGES
 - Route name should be a valid identifier name from now #567
 
 - Implement server signals #562
+
+- Drop an year-old deprecated *files* parameter from client API.

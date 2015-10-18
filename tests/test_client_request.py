@@ -506,14 +506,6 @@ class TestClientRequest(unittest.TestCase):
             self.loop.run_until_complete(req.close())
             resp.close()
 
-    def test_files_and_bytes_data(self):
-        with self.assertRaises(ValueError):
-            with self.assertWarns(DeprecationWarning):
-                ClientRequest(
-                    'POST', 'http://python.org/',
-                    data=b'binary data', files={'file': b'file data'},
-                    loop=self.loop)
-
     @unittest.mock.patch('aiohttp.client_reqrep.aiohttp')
     def test_content_encoding(self, m_http):
         req = ClientRequest('get', 'http://python.org/',
