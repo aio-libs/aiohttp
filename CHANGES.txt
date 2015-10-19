@@ -1,8 +1,8 @@
 CHANGES
 =======
 
-0.18.0a0 (XX-XX-XXXX)
----------------------
+0.18.0 (19-10-2015)
+-------------------
 
 - Use errors.HttpProcessingError.message as HTTP error reason and
   message #459
