@@ -437,6 +437,16 @@ can only send data asynchronously (by ``ws.send_str('data')`` for
 example).
 
 
+.. note::
+
+   While :mod:`aiohttp.web` itself supports websockets only without
+   downgrading to LONG-POLLING etc. our team supports SockJS_
+   aiohttp-based library for implementing SockJS-compatible server
+   code.
+
+.. _SockJS: https://github.com/aio-libs/sockjs
+
+
 .. _aiohttp-web-exceptions:
 
 Exceptions
