@@ -68,7 +68,7 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
         for hdr_name, hdr_value in message.headers.items():
             if hdr_name == 'AUTHORIZATION':
                 continue
-            if hdr_name == 'SCRIPT_NAME':
+            elif hdr_name == 'SCRIPT_NAME':
                 script_name = hdr_value
             elif hdr_name == 'CONTENT-TYPE':
                 environ['CONTENT_TYPE'] = hdr_value

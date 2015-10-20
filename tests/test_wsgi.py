@@ -255,8 +255,8 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
         self.assertEqual(environ['PATH_INFO'], path)
 
     def test_not_add_authorization(self):
-        self.headers.extend({"AUTHORIZATION": "spam",
-                             "X-CUSTOM-HEADER": "eggs"})
+        self.headers.extend({'AUTHORIZATION': 'spam',
+                             'X-CUSTOM-HEADER': 'eggs'})
         self.message = protocol.RawRequestMessage(
             'GET', '/', (1, 1), self.headers, True, 'deflate')
         environ = self._make_one()
@@ -268,5 +268,6 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
         self.message = protocol.RawRequestMessage(
             'GET', '/', (1, 0), headers, True, 'deflate')
         environ = self._make_one()
-        self.assertEqual('1.2.3.4', environ["SERVER_NAME"])
-        self.assertEqual('8080', environ["SERVER_PORT"])
+        self.assertEqual('1.2.3.4', environ['SERVER_NAME'])
+        self.assertEqual('8080', environ['SERVER_PORT'])
+        self.transport.get_extra_info.assert_called_with('sockname')
