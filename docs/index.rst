@@ -41,7 +41,7 @@ Client example::
     import asyncio
     import aiohttp
 
-    await def fetch_page(client, url):
+    async def fetch_page(client, url):
         async with client.get(url) as response:
             assert response.status == 200
             return await response.read()
