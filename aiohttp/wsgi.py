@@ -83,16 +83,23 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
 
             environ[key] = hdr_value
 
+        # authors should be aware that REMOTE_HOST and REMOTE_ADDR
+        # may not qualify the remote addr
+        # also SERVER_PORT variable MUST be set to the TCP/IP port number on
+        # which this request is received from the client.
+        # http://www.ietf.org/rfc/rfc3875
+
         remote = self.transport.get_extra_info('peername')
         environ['REMOTE_ADDR'] = remote[0]
         environ['REMOTE_PORT'] = remote[1]
+
+        sockname = self.transport.get_extra_info('sockname')
+        environ['SERVER_PORT'] = str(sockname[1])
         host = message.headers.get("HOST", None)
         if host:
-            host = host.split(":")
+            environ['SERVER_NAME'] = host.split(":")[0]
         else:
-            host = self.transport.get_extra_info('sockname')
-        environ['SERVER_NAME'] = host[0]
-        environ['SERVER_PORT'] = str(host[1]) if len(host) > 1 else '80'
+            environ['SERVER_NAME'] = sockname[0]
 
         path_info = uri_parts.path
         if script_name:

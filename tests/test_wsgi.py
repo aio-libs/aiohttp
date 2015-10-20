@@ -22,7 +22,8 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
         self.writer = unittest.mock.Mock()
         self.writer.drain.return_value = ()
         self.transport = unittest.mock.Mock()
-        self.transport.get_extra_info.return_value = ('1.2.3.4', 8080)
+        self.transport.get_extra_info.side_effect = [('1.2.3.4', 1234),
+                                                     ('2.3.4.5', 80)]
 
         self.headers = multidict.MultiDict({"HOST": "python.org"})
         self.message = protocol.RawRequestMessage(
@@ -68,32 +69,35 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
              ('CONTENT-LENGTH', '209'),
              ('X_TEST', '123'),
              ('X_TEST', '456')))
-        environ = self._make_one(is_ssl=True)
+        environ = self._make_one()
         self.assertEqual(environ['CONTENT_TYPE'], 'text/plain')
         self.assertEqual(environ['CONTENT_LENGTH'], '209')
         self.assertEqual(environ['HTTP_X_TEST'], '123,456')
         self.assertEqual(environ['SCRIPT_NAME'], 'script')
         self.assertEqual(environ['SERVER_NAME'], 'python.org')
         self.assertEqual(environ['SERVER_PORT'], '80')
+        get_extra_info_calls = self.transport.get_extra_info.mock_calls
+        expected_calls = [
+            unittest.mock.call('peername'),
+            unittest.mock.call('sockname'),
+        ]
+        self.assertEqual(expected_calls, get_extra_info_calls)
 
-    def test_environ_host_header(self):
+    def test_environ_host_header_alternate_port(self):
+        self.transport.get_extra_info = unittest.mock.Mock(
+            side_effect=[('1.2.3.4', 1234), ('3.4.5.6', 82)]
+        )
+        self.headers.update({'HOST': 'example.com:9999'})
         environ = self._make_one()
+        self.assertEqual(environ['SERVER_PORT'], '82')
 
-        self.assertEqual(environ['HTTP_HOST'], 'python.org')
-        self.assertEqual(environ['SERVER_NAME'], 'python.org')
-        self.assertEqual(environ['SERVER_PORT'], '80')
-        self.assertEqual(environ['SERVER_PROTOCOL'], 'HTTP/1.0')
-
-    def test_environ_host_port_header(self):
-        headers = multidict.MultiDict({'HOST': 'python.org:443'})
-        self.message = protocol.RawRequestMessage(
-            'GET', '/path', (1, 1), headers, True, 'deflate')
-        environ = self._make_one()
-
-        self.assertEqual(environ['HTTP_HOST'], 'python.org:443')
-        self.assertEqual(environ['SERVER_NAME'], 'python.org')
-        self.assertEqual(environ['SERVER_PORT'], '443')
-        self.assertEqual(environ['SERVER_PROTOCOL'], 'HTTP/1.1')
+    def test_environ_host_header_alternate_port_ssl(self):
+        self.transport.get_extra_info = unittest.mock.Mock(
+            side_effect=[('1.2.3.4', 1234), ('3.4.5.6', 82)]
+        )
+        self.headers.update({'HOST': 'example.com:9999'})
+        environ = self._make_one(is_ssl=True)
+        self.assertEqual(environ['SERVER_PORT'], '82')
 
     def test_wsgi_response(self):
         srv = self._make_srv()
@@ -268,6 +272,5 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
         self.message = protocol.RawRequestMessage(
             'GET', '/', (1, 0), headers, True, 'deflate')
         environ = self._make_one()
-        self.assertEqual('1.2.3.4', environ['SERVER_NAME'])
-        self.assertEqual('8080', environ['SERVER_PORT'])
-        self.transport.get_extra_info.assert_called_with('sockname')
+        self.assertEqual(environ['SERVER_NAME'], '2.3.4.5')
+        self.assertEqual(environ['SERVER_PORT'], '80')
