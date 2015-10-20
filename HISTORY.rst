@@ -1,3 +1,9 @@
+0.18.1 (20-10-2015)
+-------------------
+
+- Relax rule for router names: they may contain dots and columns
+  starting from now
+
 0.18.0 (19-10-2015)
 -------------------
 
