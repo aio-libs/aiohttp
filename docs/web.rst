@@ -176,7 +176,7 @@ so application developer can use classes if he wants::
 
 
 Route views
------------
+^^^^^^^^^^^
 
 .. versionadded:: 0.18
 
