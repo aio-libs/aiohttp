@@ -39,6 +39,7 @@ Igor Pavlov
 Ingmar Steen
 Jaesung Lee
 Jashandeep Sohi
+Jeroen van der Heijden
 Julien Duponchelle
 Junjie Tao
 Kay Zheng

@@ -4,4 +4,4 @@ CHANGES
 0.19.0 (XX-XX-XXXX)
 -------------------
 
-
+- Memory leak in ParserBuffer #579
