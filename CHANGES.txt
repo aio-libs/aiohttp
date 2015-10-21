@@ -5,3 +5,5 @@ CHANGES
 -------------------
 
 - Memory leak in ParserBuffer #579
+
+- Suppport gunicorn's `max_requests` settings in gunicorn worker

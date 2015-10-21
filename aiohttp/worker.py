@@ -93,6 +93,14 @@ class GunicornWebWorker(base.Worker):
                     self.log.info("Parent changed, shutting down: %s", self)
                 else:
                     yield from asyncio.sleep(1.0, loop=self.loop)
+
+                if self.cfg.max_requests and self.servers:
+                    connections = 0
+                    for _, handler in self.servers.items():
+                        connections += handler.num_connections
+                    if connections > self.cfg.max_requests:
+                        self.alive = False
+                        self.log.info("Max requests, shutting down: %s", self)
         except (Exception, BaseException, GeneratorExit, KeyboardInterrupt):
             pass
 

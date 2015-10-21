@@ -499,7 +499,7 @@ class TestParserBuffer(unittest.TestCase):
 
         p = buf.wait(3)
         self.assertRaises(ValueError, next, p)
-        
+
     def test_skip(self):
         buf = self._make_one()
         p = buf.skip(3)
@@ -518,7 +518,7 @@ class TestParserBuffer(unittest.TestCase):
         buf.set_exception(ValueError())
         p = buf.skip(3)
         self.assertRaises(ValueError, next, p)
-        
+
     def test_readuntil_limit(self):
         buf = self._make_one()
         p = buf.readuntil(b'\n', 4)
@@ -557,7 +557,7 @@ class TestParserBuffer(unittest.TestCase):
         buf.set_exception(ValueError())
         p = buf.readuntil(b'\n', 4)
         self.assertRaises(ValueError, next, p)
-        
+
     def test_waituntil_limit(self):
         buf = self._make_one()
         p = buf.waituntil(b'\n', 4)
