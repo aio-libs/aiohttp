@@ -606,7 +606,7 @@ Signals
 
 .. versionadded:: 0.18
 
-While :ref:`midlewares <aiohttp-web-middlewares>` gives very powerful
+While :ref:`middlewares <aiohttp-web-middlewares>` gives very powerful
 tool for customizing :ref:`web handler<aiohttp-web-handler>`
 processing we need another machinery also called signals.
 
@@ -614,11 +614,14 @@ For example middleware may change HTTP headers for *unprepared* response only
 (see :meth:`aiohttp.web.StreamResponse.prepare`).
 
 But sometimes we need a hook for changing HTTP headers for streamed
-responses and websockets. That can be done by subsribing on
+responses and websockets. That can be done by subscribing on
 :attr:`aiohttp.web.Application.on_response_prepare` signal::
 
-   async def on_prepare(request, response):
-       response.headers['My-Header'] = 'value'
+    async def on_prepare(request, response):
+        response.headers['My-Header'] = 'value'
+
+    app.on_response_prepare.append(on_prepare)
+
 
 Signal handlers should not return a value but may modify incoming
 mutable parameters.
