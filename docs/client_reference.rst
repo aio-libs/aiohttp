@@ -350,7 +350,7 @@ certification chaining.
 
 
 .. coroutinefunction:: request(method, url, *, params=None, data=None, \
-                       headers=None, cookies=None, files=None, auth=None, \
+                       headers=None, cookies=None, auth=None, \
                        allow_redirects=True, max_redirects=10, \
                        encoding='utf-8', \
                        version=HttpVersion(major=1, minor=1), \

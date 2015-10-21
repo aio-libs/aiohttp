@@ -407,14 +407,39 @@ class TestParserBuffer(unittest.TestCase):
         self.assertEqual(len(buf), 4)
         self.assertEqual(bytes(buf), b'data')
 
+    def test_feed_data_after_exception(self):
+        buf = self._make_one()
+        buf.feed_data(b'data')
+
+        exc = ValueError()
+        buf.set_exception(exc)
+        buf.feed_data(b'more')
+        self.assertEqual(len(buf), 4)
+        self.assertEqual(bytes(buf), b'data')
+
     def test_read_exc(self):
         buf = self._make_one()
+        p = buf.read(3)
+        next(p)
+        p.send(b'1')
+
         exc = ValueError()
         buf.set_exception(exc)
         self.assertIs(buf.exception(), exc)
+        self.assertRaises(ValueError, p.send, b'1')
+
+    def test_read_exc_multiple(self):
+        buf = self._make_one()
         p = buf.read(3)
         next(p)
-        self.assertRaises(ValueError, p.send, b'1')
+        p.send(b'1')
+
+        exc = ValueError()
+        buf.set_exception(exc)
+        self.assertIs(buf.exception(), exc)
+
+        p = buf.read(3)
+        self.assertRaises(ValueError, next, p)
 
     def test_read(self):
         buf = self._make_one()
@@ -448,6 +473,13 @@ class TestParserBuffer(unittest.TestCase):
         self.assertEqual(res, b'23')
         self.assertEqual(b'4', bytes(buf))
 
+    def test_readsome_exc(self):
+        buf = self._make_one()
+        buf.set_exception(ValueError())
+
+        p = buf.readsome(3)
+        self.assertRaises(ValueError, next, p)
+
     def test_wait(self):
         buf = self._make_one()
         p = buf.wait(3)
@@ -461,6 +493,13 @@ class TestParserBuffer(unittest.TestCase):
         self.assertEqual(res, b'123')
         self.assertEqual(b'1234', bytes(buf))
 
+    def test_wait_exc(self):
+        buf = self._make_one()
+        buf.set_exception(ValueError())
+
+        p = buf.wait(3)
+        self.assertRaises(ValueError, next, p)
+
     def test_skip(self):
         buf = self._make_one()
         p = buf.skip(3)
@@ -473,6 +512,12 @@ class TestParserBuffer(unittest.TestCase):
 
         self.assertIsNone(res)
         self.assertEqual(b'4', bytes(buf))
+
+    def test_skip_exc(self):
+        buf = self._make_one()
+        buf.set_exception(ValueError())
+        p = buf.skip(3)
+        self.assertRaises(ValueError, next, p)
 
     def test_readuntil_limit(self):
         buf = self._make_one()
@@ -507,6 +552,12 @@ class TestParserBuffer(unittest.TestCase):
         self.assertEqual(res, b'123\n')
         self.assertEqual(b'456', bytes(buf))
 
+    def test_readuntil_exc(self):
+        buf = self._make_one()
+        buf.set_exception(ValueError())
+        p = buf.readuntil(b'\n', 4)
+        self.assertRaises(ValueError, next, p)
+
     def test_waituntil_limit(self):
         buf = self._make_one()
         p = buf.waituntil(b'\n', 4)
@@ -540,6 +591,12 @@ class TestParserBuffer(unittest.TestCase):
         self.assertEqual(res, b'123\n')
         self.assertEqual(b'123\n456', bytes(buf))
 
+    def test_waituntil_exc(self):
+        buf = self._make_one()
+        buf.set_exception(ValueError())
+        p = buf.waituntil(b'\n', 4)
+        self.assertRaises(ValueError, next, p)
+
     def test_skipuntil(self):
         buf = self._make_one()
         p = buf.skipuntil(b'\n')
@@ -557,6 +614,12 @@ class TestParserBuffer(unittest.TestCase):
         except StopIteration:
             pass
         self.assertEqual(b'', bytes(buf))
+
+    def test_skipuntil_exc(self):
+        buf = self._make_one()
+        buf.set_exception(ValueError())
+        p = buf.skipuntil(b'\n')
+        self.assertRaises(ValueError, next, p)
 
     def test_lines_parser(self):
         out = parsers.FlowControlDataQueue(self.stream, loop=self.loop)

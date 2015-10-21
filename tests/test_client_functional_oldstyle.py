@@ -336,36 +336,6 @@ class TestHttpClientFunctional(unittest.TestCase):
                 self.assertEqual(r.status, 200)
                 r.close()
 
-    def test_POST_FILES_DEPRECATED(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            url = httpd.url('method', 'post')
-
-            here = os.path.dirname(__file__)
-            fname = os.path.join(here, 'sample.key')
-
-            with open(fname) as f:
-                with self.assertWarns(DeprecationWarning):
-                    r = self.loop.run_until_complete(
-                        client.request(
-                            'post', url, files={'some': f, 'test': b'data'},
-                            chunked=1024,
-                            headers={'Transfer-Encoding': 'chunked'},
-                            loop=self.loop))
-                content = self.loop.run_until_complete(r.json())
-                files = list(
-                    sorted(content['multipart-data'],
-                           key=lambda d: d['name']))
-
-                f.seek(0)
-                filename = os.path.split(f.name)[-1]
-
-                self.assertEqual(2, len(content['multipart-data']))
-                self.assertEqual('some', files[0]['name'])
-                self.assertEqual(filename, files[0]['filename'])
-                self.assertEqual(f.read(), files[0]['data'])
-                self.assertEqual(r.status, 200)
-                r.close()
-
     def test_POST_FILES_DEFLATE(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
