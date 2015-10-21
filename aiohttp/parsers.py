@@ -263,18 +263,17 @@ class StreamProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         self.reader.feed_eof()
 
 
-class ParserBuffer(bytearray):
-    """ParserBuffer is a bytearray extension.
+class ParserBuffer:
+    """ParserBuffer is NOT a bytearray extension anymore.
 
     ParserBuffer provides helper methods for parsers.
     """
-    __slots__ = ('_exception', '_writer')
+    __slots__ = ('_exception', '_writer', '_data')
 
     def __init__(self, *args):
-        super().__init__(*args)
-
+        self._data = bytearray(*args)
         self._exception = None
-        self._writer = self._feed_data()
+        self._writer = self._feed_data(self._data)
         next(self._writer)
 
     def exception(self):
@@ -283,45 +282,50 @@ class ParserBuffer(bytearray):
     def set_exception(self, exc):
         self._exception = exc
 
-    def _feed_data(self):
+    @staticmethod
+    def _feed_data(data):
         while True:
             chunk = yield
             if chunk:
-                self.extend(chunk)
+                data.extend(chunk)
 
-            if self._exception:
-                self._writer = self._feed_data()
-                next(self._writer)
-                raise self._exception
+    def _check_exception(self):
+        if self._exception:
+            self._writer = self._feed_data(self._data)
+            next(self._writer)
+            raise self._exception
 
     def feed_data(self, data):
         self._writer.send(data)
+        self._check_exception()
 
     def read(self, size):
         """read() reads specified amount of bytes."""
 
         while True:
-            if len(self) >= size:
-                data = self[:size]
-                del self[:size]
+            if len(self._data) >= size:
+                data = self._data[:size]
+                del self._data[:size]
                 return data
 
             self._writer.send((yield))
+            self._check_exception()
 
     def readsome(self, size=None):
         """reads size of less amount of bytes."""
 
         while True:
-            length = len(self)
+            length = len(self._data)
             if length > 0:
                 if size is None or length < size:
                     size = length
 
-                data = self[:size]
-                del self[:size]
+                data = self._data[:size]
+                del self._data[:size]
                 return data
 
             self._writer.send((yield))
+            self._check_exception()
 
     def readuntil(self, stop, limit=None):
         assert isinstance(stop, bytes) and stop, \
@@ -330,7 +334,7 @@ class ParserBuffer(bytearray):
         stop_len = len(stop)
 
         while True:
-            pos = self.find(stop)
+            pos = self._data.find(stop)
             if pos >= 0:
                 end = pos + stop_len
                 size = end
@@ -338,25 +342,27 @@ class ParserBuffer(bytearray):
                     raise errors.LineLimitExceededParserError(
                         'Line is too long.', limit)
 
-                data = self[:size]
-                del self[:size]
+                data = self._data[:size]
+                del self._data[:size]
                 return data
             else:
-                if limit is not None and len(self) > limit:
+                if limit is not None and len(self._data) > limit:
                     raise errors.LineLimitExceededParserError(
                         'Line is too long.', limit)
 
             self._writer.send((yield))
+            self._check_exception()
 
     def wait(self, size):
         """wait() waits for specified amount of bytes
         then returns data without changing internal buffer."""
 
         while True:
-            if len(self) >= size:
-                return self[:size]
+            if len(self._data) >= size:
+                return self._data[:size]
 
             self._writer.send((yield))
+            self._check_exception()
 
     def waituntil(self, stop, limit=None):
         """waituntil() reads until `stop` bytes sequence."""
@@ -366,28 +372,30 @@ class ParserBuffer(bytearray):
         stop_len = len(stop)
 
         while True:
-            pos = self.find(stop)
+            pos = self._data.find(stop)
             if pos >= 0:
                 size = pos + stop_len
                 if limit is not None and size > limit:
                     raise errors.LineLimitExceededParserError(
-                        'Line is too long. %s' % bytes(self), limit)
+                        'Line is too long. %s' % bytes(self._data), limit)
 
-                return self[:size]
+                return self._data[:size]
             else:
-                if limit is not None and len(self) > limit:
+                if limit is not None and len(self._data) > limit:
                     raise errors.LineLimitExceededParserError(
-                        'Line is too long. %s' % bytes(self), limit)
+                        'Line is too long. %s' % bytes(self._data), limit)
 
             self._writer.send((yield))
+            self._check_exception()
 
     def skip(self, size):
         """skip() skips specified amount of bytes."""
 
-        while len(self) < size:
+        while len(self._data) < size:
             self._writer.send((yield))
+            self._check_exception()
 
-        del self[:size]
+        del self._data[:size]
 
     def skipuntil(self, stop):
         """skipuntil() reads until `stop` bytes sequence."""
@@ -397,13 +405,14 @@ class ParserBuffer(bytearray):
         stop_len = len(stop)
 
         while True:
-            stop_line = self.find(stop)
+            stop_line = self._data.find(stop)
             if stop_line >= 0:
                 size = stop_line + stop_len
-                del self[:size]
+                del self._data[:size]
                 return
 
             self._writer.send((yield))
+            self._check_exception()
 
 
 class LinesParser:
