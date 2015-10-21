@@ -111,7 +111,7 @@ def test_access_logger_format():
     log_format = '%T {%{SPAM}e} "%{ETag}o" %X {X} %%P'
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, log_format)
-    expected = '{time:.0f} {{{e_dict[SPAM]}}} "{o_dict[ETag]}" %X {{X}} %P'
+    expected = '%s {%s} "%s" %%X {X} %%%s'
     assert expected == access_logger._log_format
 
 
@@ -131,7 +131,7 @@ def test_access_logger_atoms(mock_getpid, mock_datetime):
     transport = mock.Mock()
     transport.get_extra_info.return_value = ("127.0.0.2", 1234)
     access_logger.log(message, environ, response, transport, 3.1415926)
-    assert False == mock_logger.error.called
+    assert False == mock_logger.exception.called
     expected = ('127.0.0.2 [01/Jan/1843:00:00:00 +0000] <42> - - '
                 'GET /path HTTP/1.1 200 42 123 3 3141593')
     mock_logger.info.assert_called_with(expected)
@@ -156,7 +156,7 @@ def test_access_logger_error():
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, "")
     access_logger.log(None, None, None, None, None)
-    assert True == mock_logger.error.called
+    assert True == mock_logger.exception.called
 
 
 def test_logger_no_message_and_environ():

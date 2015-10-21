@@ -8,7 +8,7 @@ import socket
 from html import escape as html_escape
 
 import aiohttp
-from aiohttp import errors, streams, hdrs
+from aiohttp import errors, streams, hdrs, helpers
 from aiohttp.log import server_logger
 
 __all__ = ('ServerHttpProtocol',)
@@ -25,8 +25,6 @@ DEFAULT_ERROR_MESSAGE = """
     {message}
   </body>
 </html>"""
-
-ACCESS_LOG_FORMAT = '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
 
 
 if hasattr(socket, 'SO_KEEPALIVE'):
@@ -67,8 +65,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     :param logger: custom logger object
     :type logger: aiohttp.log.server_logger
 
-    :param access_logger: access logging object
-    :type access_log: helpers.AccessLogger
+    :param access_log: custom logging object
+    :type access_log: aiohttp.log.server_logger
 
     :param str access_log_format: access log format string
 
@@ -89,7 +87,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                  keep_alive_on=True,
                  timeout=0,
                  logger=server_logger,
-                 access_logger=None,
+                 access_log=None,
+                 access_log_format=None,
                  host="",
                  port=0,
                  debug=False,
@@ -108,7 +107,12 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         self.port = port
         self.logger = log or logger
         self.debug = debug
-        self.access_logger = access_logger
+        self.access_log = access_log
+        if access_log:
+            self.access_logger = helpers.AccessLogger(access_log,
+                                                      access_log_format)
+        else:
+            self.access_logger = None
 
     @property
     def keep_alive_timeout(self):
