@@ -9,3 +9,5 @@ CHANGES
 - Suppport gunicorn's `max_requests` settings in gunicorn worker
 
 - Fix wsgi environment building #573
+
+- Improve access logging #572
