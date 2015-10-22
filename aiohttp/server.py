@@ -26,9 +26,6 @@ DEFAULT_ERROR_MESSAGE = """
   </body>
 </html>"""
 
-ACCESS_LOG_FORMAT = (
-    '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"')
-
 
 if hasattr(socket, 'SO_KEEPALIVE'):
     def tcp_keepalive(server, transport):
@@ -91,7 +88,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                  timeout=0,
                  logger=server_logger,
                  access_log=None,
-                 access_log_format=ACCESS_LOG_FORMAT,
+                 access_log_format=None,
                  host="",
                  port=0,
                  debug=False,
@@ -111,7 +108,11 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         self.logger = log or logger
         self.debug = debug
         self.access_log = access_log
-        self.access_log_format = access_log_format
+        if access_log:
+            self.access_logger = helpers.AccessLogger(access_log,
+                                                      access_log_format)
+        else:
+            self.access_logger = None
 
     @property
     def keep_alive_timeout(self):
@@ -187,17 +188,9 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         self._keep_alive = val
 
     def log_access(self, message, environ, response, time):
-        if self.access_log and self.access_log_format:
-            try:
-                environ = environ if environ is not None else {}
-                atoms = helpers.SafeAtoms(
-                    helpers.atoms(
-                        message, environ, response, self.transport, time),
-                    getattr(message, 'headers', None),
-                    getattr(response, 'headers', None))
-                self.access_log.info(self.access_log_format % atoms)
-            except:
-                self.logger.error(traceback.format_exc())
+        if self.access_logger:
+            self.access_logger.log(message, environ, response,
+                                   self.transport, time)
 
     def log_debug(self, *args, **kw):
         if self.debug:
