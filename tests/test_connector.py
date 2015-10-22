@@ -564,6 +564,75 @@ class TestBaseConnector(unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
+    def test_connect_with_limit_concurrent(self):
+
+        @asyncio.coroutine
+        def go():
+            proto = unittest.mock.Mock()
+            proto.is_connected.return_value = True
+
+            class Req:
+                host = 'host'
+                port = 80
+                ssl = False
+                response = unittest.mock.Mock(_should_close=False)
+
+            max_connections = 2
+            num_connections = 0
+
+            conn = aiohttp.BaseConnector(limit=max_connections, loop=self.loop)
+
+            # Use a real coroutine for _create_connection; a mock would mask
+            # problems that only happen when the method yields.
+
+            @asyncio.coroutine
+            def create_connection(req):
+                nonlocal num_connections
+                num_connections += 1
+                yield from asyncio.sleep(0, loop=self.loop)
+
+                # Make a new transport mock each time because acquired
+                # transports are stored in a set. Reusing the same object
+                # messes with the count.
+                tr = unittest.mock.Mock()
+
+                return tr, proto
+
+            conn._create_connection = create_connection
+
+            # Simulate something like a crawler. It opens a connection, does
+            # something with it, closes it, then creates tasks that make more
+            # connections and waits for them to finish. The crawler is started
+            # with multiple concurrent requests and stops when it hits a
+            # predefined maximum number of requests.
+
+            max_requests = 10
+            num_requests = 0
+            start_requests = max_connections + 1
+
+            @asyncio.coroutine
+            def f(start=True):
+                nonlocal num_requests
+                if num_requests == max_requests:
+                    return
+                num_requests += 1
+                if not start:
+                    connection = yield from conn.connect(Req())
+                    yield from asyncio.sleep(0, loop=self.loop)
+                    connection.release()
+                tasks = [
+                    asyncio.async(f(start=False), loop=self.loop)
+                    for i in range(start_requests)
+                ]
+                yield from asyncio.wait(tasks, loop=self.loop)
+
+            yield from f()
+            conn.close()
+
+            self.assertEqual(max_connections, num_connections)
+
+        self.loop.run_until_complete(go())
+
     def test_close_with_acquired_connection(self):
 
         @asyncio.coroutine
