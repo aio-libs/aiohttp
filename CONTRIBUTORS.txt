@@ -21,6 +21,7 @@ Brian C. Lane
 Boris Feld
 Chien-Wei Huang
 Chris Laws
+Chris Moore
 Daniel Nelson
 David Michael Brown
 Dima Veselov
