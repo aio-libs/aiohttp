@@ -65,6 +65,7 @@ Robert Lu
 Sebastian Hanula
 Sebastian Hüther
 Sergey Ninua
+Sergey Skripnick
 Simon Kennedy
 Stanislav Prokop
 Stephen Granade
