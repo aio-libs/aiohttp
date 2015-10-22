@@ -369,6 +369,8 @@ class BaseConnector(object):
         raise NotImplementedError()
 
 
+_SSL_OP_NO_COMPRESSION = getattr(ssl, "OP_NO_COMPRESSION", 0)
+
 _marker = object()
 
 
@@ -449,7 +451,7 @@ class TCPConnector(BaseConnector):
                 sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
                 sslcontext.options |= ssl.OP_NO_SSLv2
                 sslcontext.options |= ssl.OP_NO_SSLv3
-                sslcontext.options |= ssl.OP_NO_COMPRESSION
+                sslcontext.options |= _SSL_OP_NO_COMPRESSION
                 sslcontext.set_default_verify_paths()
             else:
                 sslcontext = ssl.create_default_context()
