@@ -136,6 +136,7 @@ Contents
    multidict
    multipart
    api
+   logging
    gunicorn
    contributing
    changes

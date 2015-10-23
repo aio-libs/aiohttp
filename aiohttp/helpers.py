@@ -240,7 +240,7 @@ class AccessLogger:
     Format:
         %%  The percent sign
         %a  Remote IP-address (IP-address of proxy if using reverse proxy)
-        %t  Time the request was received
+        %t  Request's recieving timestmap
         %P  The process ID of the child that serviced the request
         %r  First line of request
         %s  Response status code
