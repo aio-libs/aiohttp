@@ -19,6 +19,7 @@ Ben Bader
 Benedikt Reinartz
 Brian C. Lane
 Boris Feld
+Carl George
 Chien-Wei Huang
 Chris Laws
 Chris Moore
