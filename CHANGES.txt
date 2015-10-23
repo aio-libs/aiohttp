@@ -11,3 +11,5 @@ CHANGES
 - Fix wsgi environment building #573
 
 - Improve access logging #572
+
+- Drop unused host and port from low-level server #586
