@@ -88,7 +88,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                  timeout=0,
                  logger=server_logger,
                  access_log=None,
-                 access_log_format=None,
+                 access_log_format=helpers.AccessLogger.LOG_FORMAT,
                  debug=False,
                  log=None,
                  **kwargs):

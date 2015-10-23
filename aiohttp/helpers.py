@@ -243,15 +243,14 @@ class AccessLogger:
         %t  Time the request was received
         %P  The process ID of the child that serviced the request
         %r  First line of request
-        %s  Status
+        %s  Response status code
         %b  Size of response in bytes, excluding HTTP headers
         %O  Bytes sent, including headers
-        %T  The time taken to serve the request, in seconds
-        %D  The time taken to serve the request, in microseconds
-        %{Foobar}i  The contents of Foobar: header line(s) in
-                    the request sent to the server
-        %{Foobar}o  The contents of Foobar: header line(s) in the reply
-        %{FOOBAR}e  The contents of the environment variable FOOBAR
+        %T  Time taken to serve the request, in seconds
+        %D  Time taken to serve the request, in microseconds
+        %{FOO}i  request.headers['FOO']
+        %{FOO}o  response.headers['FOO']
+        %{FOO}e  os.environ['FOO']
 
     """
 
@@ -260,7 +259,7 @@ class AccessLogger:
     CLEANUP_RE = re.compile(r'(%[^s])')
     _FORMAT_CACHE = {}
 
-    def __init__(self, logger, log_format=None):
+    def __init__(self, logger, log_format=LOG_FORMAT):
         """Initialise the logger.
 
         :param logger: logger object to be used for logging
@@ -268,7 +267,6 @@ class AccessLogger:
 
         """
         self.logger = logger
-        log_format = log_format or self.LOG_FORMAT
         _compiled_format = AccessLogger._FORMAT_CACHE.get(log_format)
         if not _compiled_format:
             _compiled_format = self.compile_format(log_format)
