@@ -60,7 +60,7 @@ You can see that the URL has been correctly encoded by printing the URL.
 It is also possible to pass a list of 2 item tuples as parameters, in
 that case you can specify multiple values for each key::
 
-    payload = [('key', 'value1'), ('key': 'value2')]
+    payload = [('key', 'value1'), ('key', 'value2')]
     async with aiohttp.get('http://httpbin.org/get',
                            params=payload) as r:
         assert r.url == 'http://httpbin.org/get?key=value2&key=value1'
