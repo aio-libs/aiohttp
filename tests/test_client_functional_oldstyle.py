@@ -208,6 +208,38 @@ class TestHttpClientFunctional(unittest.TestCase):
                 yield from asyncio.sleep(0, loop=self.loop)
             self.loop.run_until_complete(go())
 
+    def test_HTTP_200_GET_WITH_STR_PARAMS(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            @asyncio.coroutine
+            def go():
+                r = yield from client.request(
+                    'get', httpd.url('method', 'get'),
+                    params='q=t+est', loop=self.loop)
+                content = yield from r.content.read()
+                content = content.decode()
+
+                self.assertIn('"query": "q=t+est"', content)
+                self.assertEqual(r.status, 200)
+                r.close()
+                yield from asyncio.sleep(0, loop=self.loop)
+            self.loop.run_until_complete(go())
+
+    def test_HTTP_200_GET_WITH_BYTES_PARAMS(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            @asyncio.coroutine
+            def go():
+                r = yield from client.request(
+                    'get', httpd.url('method', 'get'),
+                    params=b'q=test', loop=self.loop)
+                content = yield from r.content.read()
+                content = content.decode()
+
+                self.assertIn('"query": "q=test"', content)
+                self.assertEqual(r.status, 200)
+                r.close()
+                yield from asyncio.sleep(0, loop=self.loop)
+            self.loop.run_until_complete(go())
+
     def test_POST_DATA(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')

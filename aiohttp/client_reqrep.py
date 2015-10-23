@@ -1,4 +1,5 @@
 import asyncio
+import collections
 import http.cookies
 import io
 import json
@@ -161,13 +162,14 @@ class ClientRequest:
         if not path:
             path = '/'
 
-        if isinstance(params, dict):
-            params = list(params.items())
-        elif isinstance(params, (MultiDictProxy, MultiDict)):
+        if isinstance(params, bytes):
+            params = params.decode('ascii')
+        if isinstance(params, collections.Mapping):
             params = list(params.items())
 
         if params:
-            params = urllib.parse.urlencode(params)
+            if not isinstance(params, str):
+                params = urllib.parse.urlencode(params)
             if query:
                 query = '%s&%s' % (query, params)
             else:
