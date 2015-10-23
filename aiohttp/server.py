@@ -89,8 +89,6 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                  logger=server_logger,
                  access_log=None,
                  access_log_format=None,
-                 host="",
-                 port=0,
                  debug=False,
                  log=None,
                  **kwargs):
@@ -103,8 +101,6 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         self._timeout = timeout  # slow request timeout
         self._loop = loop if loop is not None else asyncio.get_event_loop()
 
-        self.host = host
-        self.port = port
         self.logger = log or logger
         self.debug = debug
         self.access_log = access_log
