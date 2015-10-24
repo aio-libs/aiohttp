@@ -23,34 +23,32 @@ methods:
 .. code-block:: python
 
    session = aiohttp.ClientSession()
-   ws = await session.ws_connect(
-       'http://webscoket-server.org/endpoint')
+   async with session.ws_connect('http://example.org/websocket') as ws:
 
-   while True:
-       msg = await ws.receive()
-
-       if msg.tp == aiohttp.MsgType.text:
-           if msg.data == 'close':
-              await ws.close()
-              break
-           else:
-              ws.send_str(msg.data + '/answer')
-       elif msg.tp == aiohttp.MsgType.closed:
-           break
-       elif msg.tp == aiohttp.MsgType.error:
-           break
+       async for msg in ws:
+           if msg.tp == aiohttp.MsgType.text:
+               if msg.data == 'close cmd':
+                  await ws.close()
+                  break
+               else:
+                  ws.send_str(msg.data + '/answer')
+           elif msg.tp == aiohttp.MsgType.closed:
+               break
+           elif msg.tp == aiohttp.MsgType.error:
+               break
 
 If you prefer to establish *websocket client connection* without
 explicit :class:`~aiohttp.ClientSession` instance please use
 :func:`ws_connect()`::
 
-   ws = await aiohttp.ws_connect(
-       'http://webscoket-server.org/endpoint')
+   async with aiohttp.ws_connect('http://example.org/websocket') as ws:
+       ...
 
 
 You **must** use the only websocket task for both reading (e.g ``await
-ws.receive()``) and writing but may have multiple writer tasks which
-can only send data asynchronously (by ``ws.send_str('data')`` for example).
+ws.receive()`` or ``async for msg in ws:``) and writing but may have
+multiple writer tasks which can only send data asynchronously (by
+``ws.send_str('data')`` for example).
 
 
 ws_connect
