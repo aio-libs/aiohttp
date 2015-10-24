@@ -683,6 +683,18 @@ WebSocketResponse
    communicate with websocket client by :meth:`send_str`,
    :meth:`receive` and others.
 
+   .. versionadded:: 0.19
+
+      The class supports ``async for`` statement for iterating over
+      incoming messages::
+
+         ws = web.WebSocketResponse()
+         await ws.prepare(request)
+
+         async for msg in ws:
+             print(msg.data)
+
+
    .. coroutinemethod:: prepare(request)
 
       Starts websocket. After the call you can use websocket methods.

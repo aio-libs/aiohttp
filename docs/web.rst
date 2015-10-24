@@ -424,7 +424,7 @@ using response's methods:
             elif msg.tp == aiohttp.MsgType.error:
                 print('ws connection closed with exception %s' %
                       ws.exception())
-        
+
         print('websocket connection closed')
 
         return ws
