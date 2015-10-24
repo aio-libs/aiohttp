@@ -14,7 +14,7 @@ async def create_server(loop, port, method, path, route_handler):
 
 
 @pytest.mark.run_loop
-async def test_await(loop, create_server, unused_port):
+async def test_await(loop, create_server):
     closed = asyncio.Future(loop=loop)
 
     async def handler(request):
@@ -28,7 +28,6 @@ async def test_await(loop, create_server, unused_port):
         closed.set_result(1)
         return ws
 
-    port = unused_port()
     app, url = await create_server(proto='ws')
     app.router.add_route('GET', '/', handler)  # returns server
     resp = await ws_connect(url, loop=loop)
