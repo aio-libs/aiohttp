@@ -39,7 +39,7 @@ class TestWebSocketClient(unittest.TestCase):
         m_req.return_value.set_result(resp)
 
         res = self.loop.run_until_complete(
-            websocket_client.ws_connect(
+            aiohttp.ws_connect(
                 'http://test.org',
                 protocols=('t1', 't2', 'chat'),
                 loop=self.loop))
@@ -67,7 +67,7 @@ class TestWebSocketClient(unittest.TestCase):
         m_req.return_value.set_result(resp)
 
         res = self.loop.run_until_complete(
-            websocket_client.ws_connect(
+            aiohttp.ws_connect(
                 'http://test.org',
                 ws_response_class=CustomResponse,
                 loop=self.loop))
@@ -91,7 +91,7 @@ class TestWebSocketClient(unittest.TestCase):
         m_req.return_value.set_result(resp)
 
         resp = self.loop.run_until_complete(
-            websocket_client.ws_connect('http://test.org'))
+            aiohttp.ws_connect('http://test.org'))
         self.assertIs(resp._loop, self.loop)
 
         asyncio.set_event_loop(None)
@@ -112,7 +112,7 @@ class TestWebSocketClient(unittest.TestCase):
 
         with self.assertRaises(errors.WSServerHandshakeError) as ctx:
             self.loop.run_until_complete(
-                websocket_client.ws_connect(
+                aiohttp.ws_connect(
                     'http://test.org',
                     protocols=('t1', 't2', 'chat'),
                     loop=self.loop))
@@ -135,7 +135,7 @@ class TestWebSocketClient(unittest.TestCase):
 
         with self.assertRaises(errors.WSServerHandshakeError) as ctx:
             self.loop.run_until_complete(
-                websocket_client.ws_connect(
+                aiohttp.ws_connect(
                     'http://test.org',
                     protocols=('t1', 't2', 'chat'),
                     loop=self.loop))
@@ -158,7 +158,7 @@ class TestWebSocketClient(unittest.TestCase):
 
         with self.assertRaises(errors.WSServerHandshakeError) as ctx:
             self.loop.run_until_complete(
-                websocket_client.ws_connect(
+                aiohttp.ws_connect(
                     'http://test.org',
                     protocols=('t1', 't2', 'chat'),
                     loop=self.loop))
@@ -181,7 +181,7 @@ class TestWebSocketClient(unittest.TestCase):
 
         with self.assertRaises(errors.WSServerHandshakeError) as ctx:
             self.loop.run_until_complete(
-                websocket_client.ws_connect(
+                aiohttp.ws_connect(
                     'http://test.org',
                     protocols=('t1', 't2', 'chat'),
                     loop=self.loop))
@@ -206,7 +206,7 @@ class TestWebSocketClient(unittest.TestCase):
         reader = resp.connection.reader.set_parser.return_value = mock.Mock()
 
         resp = self.loop.run_until_complete(
-            websocket_client.ws_connect('http://test.org', loop=self.loop))
+            aiohttp.ws_connect('http://test.org', loop=self.loop))
         self.assertFalse(resp.closed)
 
         msg = websocket.Message(websocket.MSG_CLOSE, b'', b'')
@@ -242,7 +242,7 @@ class TestWebSocketClient(unittest.TestCase):
         reader = resp.connection.reader.set_parser.return_value = mock.Mock()
 
         resp = self.loop.run_until_complete(
-            websocket_client.ws_connect(
+            aiohttp.ws_connect(
                 'http://test.org', loop=self.loop))
         self.assertFalse(resp.closed)
 
@@ -272,7 +272,7 @@ class TestWebSocketClient(unittest.TestCase):
         resp.connection.reader.set_parser.return_value = mock.Mock()
 
         resp = self.loop.run_until_complete(
-            websocket_client.ws_connect(
+            aiohttp.ws_connect(
                 'http://test.org', loop=self.loop))
         self.assertFalse(resp.closed)
 
@@ -305,7 +305,7 @@ class TestWebSocketClient(unittest.TestCase):
         WebSocketWriter.return_value = mock.Mock()
 
         resp = self.loop.run_until_complete(
-            websocket_client.ws_connect(
+            aiohttp.ws_connect(
                 'http://test.org', loop=self.loop))
         resp._closed = True
 
@@ -331,7 +331,7 @@ class TestWebSocketClient(unittest.TestCase):
         WebSocketWriter.return_value = mock.Mock()
 
         resp = self.loop.run_until_complete(
-            websocket_client.ws_connect(
+            aiohttp.ws_connect(
                 'http://test.org', loop=self.loop))
 
         self.assertRaises(TypeError, resp.send_str, b's')
@@ -355,7 +355,7 @@ class TestWebSocketClient(unittest.TestCase):
         reader = hresp.connection.reader.set_parser.return_value = mock.Mock()
 
         resp = self.loop.run_until_complete(
-            websocket_client.ws_connect(
+            aiohttp.ws_connect(
                 'http://test.org', loop=self.loop))
 
         exc = ValueError()

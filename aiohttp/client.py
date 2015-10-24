@@ -20,7 +20,7 @@ from . import hdrs
 
 
 __all__ = ('ClientSession', 'request', 'get', 'options', 'head',
-           'delete', 'post', 'put', 'patch')
+           'delete', 'post', 'put', 'patch', 'ws_connect')
 
 PY_35 = sys.version_info >= (3, 5)
 
@@ -510,6 +510,18 @@ class _DetachedRequestContextManager(_RequestContextManager):
         self._session.detach()
 
 
+class _DetachedWSRequestContextManager(_WSRequestContextManager):
+
+    __slots__ = _WSRequestContextManager.__slots__ + ('_session', )
+
+    def __init__(self, coro, session):
+        super().__init__(coro)
+        self._session = session
+
+    def __del__(self):
+        self._session.detach()
+
+
 def request(method, url, *,
             params=None,
             data=None,
@@ -628,3 +640,25 @@ def patch(url, **kwargs):
 
 def delete(url, **kwargs):
     return request(hdrs.METH_DELETE, url, **kwargs)
+
+
+def ws_connect(url, *, protocols=(), timeout=10.0, connector=None, auth=None,
+               ws_response_class=ClientWebSocketResponse, autoclose=True,
+               autoping=True, loop=None):
+
+    if loop is None:
+        loop = asyncio.get_event_loop()
+
+    if connector is None:
+        connector = aiohttp.TCPConnector(loop=loop, force_close=True)
+
+    session = aiohttp.ClientSession(loop=loop, connector=connector, auth=auth,
+                                    ws_response_class=ws_response_class)
+
+    return _DetachedWSRequestContextManager(
+        session._ws_connect(url,
+                            protocols=protocols,
+                            timeout=timeout,
+                            autoclose=autoclose,
+                            autoping=autoping),
+        session=session)
