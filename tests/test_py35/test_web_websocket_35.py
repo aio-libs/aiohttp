@@ -14,7 +14,7 @@ async def create_server(loop, port, method, path, route_handler):
 
 
 @pytest.mark.run_loop
-async def test_await(loop, unused_port):
+async def test_await(loop, create_server, unused_port):
     closed = asyncio.Future(loop=loop)
 
     async def handler(request):
@@ -29,22 +29,16 @@ async def test_await(loop, unused_port):
         return ws
 
     port = unused_port()
-    await create_server(loop, port, 'GET', '/', handler)  # returns server
-    resp = await ws_connect('ws://127.0.0.1:{p}'.format(p=port), loop=loop)
+    app, url = await create_server(proto='ws')
+    app.router.add_route('GET', '/', handler)  # returns server
+    resp = await ws_connect(url, loop=loop)
 
     items = ['q1', 'q2', 'q3']
     for item in items:
-        resp._writer.send(item)
-        msg = await resp._reader.read()
+        resp.send_str(item)
+        msg = await resp.receive()
         assert msg.tp == websocket.MSG_TEXT
         assert item + '/answer' == msg.data
 
-    resp._writer.close()
-
-    msg = await resp._reader.read()
-    assert msg.tp == websocket.MSG_CLOSE
-    assert msg.data == 1000
-    assert msg.extra == ''
-
-    await closed
     await resp.close()
+    await closed
