@@ -3,12 +3,14 @@
 import asyncio
 
 import aiohttp
+import sys
 from .websocket import Message
 from .websocket import WebSocketError
 from .websocket import MSG_BINARY, MSG_TEXT, MSG_CLOSE, MSG_PING, MSG_PONG
 
 __all__ = ('ws_connect', 'MsgType')
 
+PY_35 = sys.version_info >= (3, 5)
 
 try:
     from enum import IntEnum
@@ -171,6 +173,18 @@ class ClientWebSocketResponse:
                         return msg
         finally:
             self._waiting = False
+
+    if PY_35:
+        @asyncio.coroutine
+        def __aiter__(self):
+            return self
+
+        @asyncio.coroutine
+        def __anext__(self):
+            msg = yield from self.receive()
+            if msg.tp == MsgType.close:
+                raise StopAsyncIteration  # NOQA
+            return msg
 
 
 @asyncio.coroutine

@@ -223,7 +223,6 @@ class ClientSession:
 
         return resp
 
-    @asyncio.coroutine
     def ws_connect(self, url, *,
                    protocols=(),
                    timeout=10.0,
@@ -231,6 +230,21 @@ class ClientSession:
                    autoping=True,
                    auth=None):
         """Initiate websocket connection."""
+        return _WSRequestContextManager(
+            self._ws_connect(url,
+                             protocols=protocols,
+                             timeout=timeout,
+                             autoclose=autoclose,
+                             autoping=autoping,
+                             auth=auth))
+
+    @asyncio.coroutine
+    def _ws_connect(self, url, *,
+                    protocols=(),
+                    timeout=10.0,
+                    autoclose=True,
+                    autoping=True,
+                    auth=None):
 
         sec_key = base64.b64encode(os.urandom(16))
 
@@ -414,7 +428,7 @@ else:
     base = object
 
 
-class _RequestContextManager(base):
+class _BaseRequestContextManager(base):
 
     __slots__ = ('_coro', '_resp')
 
@@ -462,9 +476,26 @@ class _RequestContextManager(base):
 if not PY_35:
     try:
         from asyncio import coroutines
-        coroutines._COROUTINE_TYPES += (_RequestContextManager,)
+        coroutines._COROUTINE_TYPES += (_BaseRequestContextManager,)
     except:
         pass
+
+
+class _RequestContextManager(_BaseRequestContextManager):
+    if PY_35:
+        @asyncio.coroutine
+        def __aexit__(self, exc_type, exc, tb):
+            if exc_type is not None:
+                self._resp.close()
+            else:
+                yield from self._resp.release()
+
+
+class _WSRequestContextManager(_BaseRequestContextManager):
+    if PY_35:
+        @asyncio.coroutine
+        def __aexit__(self, exc_type, exc, tb):
+            yield from self._resp.close()
 
 
 class _DetachedRequestContextManager(_RequestContextManager):

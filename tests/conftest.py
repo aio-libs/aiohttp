@@ -221,6 +221,12 @@ class Client:
         url = self._url + path
         return self._session.post(url, **kwargs)
 
+    def ws_connect(self, path, **kwargs):
+        while path.startswith('/'):
+            path = path[1:]
+        url = self._url + path
+        return self._session.ws_connect(url, **kwargs)
+
 
 @pytest.yield_fixture
 def create_app_and_client(create_server, loop):
