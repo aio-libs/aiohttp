@@ -7,7 +7,7 @@ from aiohttp.websocket_client import MsgType, ws_connect
 
 
 @pytest.mark.run_loop
-async def test_await(loop, create_server):
+async def test_server_ws_async_for(loop, create_server):
     closed = asyncio.Future(loop=loop)
 
     async def handler(request):
@@ -22,7 +22,7 @@ async def test_await(loop, create_server):
         return ws
 
     app, url = await create_server(proto='ws')
-    app.router.add_route('GET', '/', handler)  # returns server
+    app.router.add_route('GET', '/', handler)
     resp = await ws_connect(url, loop=loop)
 
     items = ['q1', 'q2', 'q3']
