@@ -1,9 +1,7 @@
 import pytest
 
-import asyncio
-
-from aiohttp import web, websocket
-from aiohttp.websocket_client import MsgType, ws_connect
+from aiohttp import web
+from aiohttp.websocket_client import ws_connect
 
 
 @pytest.mark.run_loop
@@ -33,7 +31,6 @@ async def test_client_ws_async_for(loop, create_server):
 
 @pytest.mark.run_loop
 async def test_client_ws_async_with(loop, create_app_and_client):
-    items = ['q1', 'q2', 'q3']
 
     async def handler(request):
         ws = web.WebSocketResponse()
