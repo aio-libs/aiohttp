@@ -25,7 +25,7 @@ vtest: flake .develop
 cov cover coverage:
 	tox
 
-cov-dev: develop
+cov-dev: .develop
 	@coverage erase
 	@coverage run -m pytest -s tests
 	@mv .coverage .coverage.accel
