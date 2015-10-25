@@ -378,10 +378,11 @@ def test_query_str_param(make_request):
         assert req.path == '/?test=foo'
 
 
-def test_query_bytes_param(make_request):
+def test_query_bytes_param_raises(make_request):
     for meth in ClientRequest.ALL_METHODS:
-        req = make_request(meth, 'http://python.org', params=b'test=foo')
-        assert req.path == '/?test=foo'
+        with pytest.raises_regexp(TypeError,
+                                  'not a valid non-string.*or mapping'):
+            make_request(meth, 'http://python.org', params=b'test=foo')
 
 
 def test_query_str_param_is_not_encoded(make_request):

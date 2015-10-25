@@ -132,8 +132,8 @@ The client session supports context manager protocol for self closing.
 
       :param str url: Request URL
 
-      :param dict params: Parameters to be sent in the query
-                          string of the new request (optional)
+      :param params: Mapping or string to be sent as parameters
+                     in the query string of the new request (optional)
 
       :param data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)

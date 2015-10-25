@@ -162,8 +162,6 @@ class ClientRequest:
         if not path:
             path = '/'
 
-        if isinstance(params, bytes):
-            params = params.decode('ascii')
         if isinstance(params, collections.Mapping):
             params = list(params.items())
 
