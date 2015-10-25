@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 import gc
 import pytest
+import types
 from unittest import mock
 
 import aiohttp
@@ -356,3 +357,13 @@ def test_reraise_os_error(create_session):
     e = ctx.value
     assert e.errno == err.errno
     assert e.strerror == err.strerror
+
+
+def test_request_ctx_manager_props(loop):
+    with aiohttp.ClientSession(loop=loop) as client:
+        ctx_mgr = client.get('http://example.com')
+
+        next(ctx_mgr)
+        assert isinstance(ctx_mgr.gi_frame, types.FrameType)
+        assert not ctx_mgr.gi_running
+        assert isinstance(ctx_mgr.gi_code, types.CodeType)
