@@ -301,3 +301,18 @@ def test_tcp_connector_fingerprint_fail(create_app_and_client,
     exc = cm.value
     assert exc.expected == bad_fingerprint
     assert exc.got == fingerprint
+
+
+@pytest.mark.run_loop
+def test_format_task_get(create_server, loop):
+
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(body=b'OK')
+
+    app, url = yield from create_server()
+    app.router.add_route('GET', '/', handler)
+    client = aiohttp.ClientSession(loop=loop)
+    task = loop.create_task(client.get(url))
+    assert "{}".format(task)[:18] == "<Task pending coro"
+    yield from task

@@ -450,6 +450,21 @@ class _BaseRequestContextManager(base):
     def close(self):
         return self._coro.close()
 
+    @property
+    def gi_frame(self):
+        return self._coro.gi_frame
+
+    @property
+    def gi_running(self):
+        return self._coro.gi_running
+
+    @property
+    def gi_code(self):
+        return self._coro.gi_code
+
+    def __next__(self):
+        return self.send(None)
+
     @asyncio.coroutine
     def __iter__(self):
         resp = yield from self._coro
