@@ -1,6 +1,11 @@
 CHANGES
 =======
 
+0.18.3 (25-10-2015)
+-------------------
+
+- Fix formatting for _RequestContextManager helper #590 
+
 0.18.2 (22-10-2015)
 -------------------
 
