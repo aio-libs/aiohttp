@@ -14,4 +14,4 @@ CHANGES
 
 - Drop unused host and port from low-level server #586
 
-- Added Python 3.5 “async for” compat to server websocket #543
+- Added Python 3.5 `async for` compat to server websocket #543
