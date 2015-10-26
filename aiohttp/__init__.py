@@ -13,8 +13,6 @@ from .parsers import *  # noqa
 from .streams import *  # noqa
 from .multidict import *  # noqa
 from .multipart import *  # noqa
-from .websocket import (MSG_TEXT, MSG_BINARY, MSG_CLOSE,  # noqa
-                        MSG_PING, MSG_PONG)  # noqa
 from .websocket_client import *  # noqa
 
 
@@ -28,6 +26,4 @@ __all__ = (client.__all__ +
            multidict.__all__ +
            multipart.__all__ +
            websocket_client.__all__ +
-           ('hdrs', '__version__', 'MSG_TEXT',
-            'MSG_BINARY', 'MSG_CLOSE',
-            'MSG_PING', 'MSG_PONG'))
+           ('hdrs', '__version__'))

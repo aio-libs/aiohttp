@@ -29,7 +29,7 @@ async def test_server_ws_async_for(loop, create_server):
     for item in items:
         resp.send_str(item)
         msg = await resp.receive()
-        assert msg.tp == aiohttp.MSG_TEXT
+        assert msg.tp == aiohttp.MsgType.text
         assert item + '/answer' == msg.data
 
     await resp.close()
