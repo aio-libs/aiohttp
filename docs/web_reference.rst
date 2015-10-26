@@ -1114,7 +1114,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
       :param coroutine expect_handler: optional *expect* header handler.
 
       :param int chunk_size: size of single chunk for file
-                             downloading, 64Kb by default.
+                             downloading, 256Kb by default.
 
                              Increasing *chunk_size* parameter to,
                              say, 1Mb may increase file downloading
