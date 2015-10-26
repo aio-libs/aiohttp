@@ -152,13 +152,6 @@ def test_access_logger_dicts():
     mock_logger.info.assert_called_with(expected)
 
 
-def test_access_logger_error():
-    mock_logger = mock.Mock()
-    access_logger = helpers.AccessLogger(mock_logger, "")
-    access_logger.log(None, None, None, None, None)
-    assert True == mock_logger.exception.called
-
-
 def test_logger_no_message_and_environ():
     mock_logger = mock.Mock()
     mock_transport = mock.Mock()
