@@ -636,6 +636,24 @@ def test_ctor_text():
     assert resp.text == 'test text'
 
 
+def test_ctor_charset():
+    resp = Response(text='текст', charset='koi8-r')
+
+    assert 'текст'.encode('koi8-r') == resp.body
+    assert 'koi8-r' == resp.charset
+
+
+def test_ctor_charset_default_utf8():
+    resp = Response(text='test test', charset=None)
+
+    assert 'utf-8' == resp.charset
+
+
+def test_ctor_charset_in_content_type():
+    with pytest.raises(ValueError):
+        Response(text='test test', content_type='text/plain; charset=utf-8')
+
+
 def test_assign_nonbyteish_body():
     resp = Response(body=b'data')
 
