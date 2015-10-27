@@ -65,6 +65,12 @@ that case you can specify multiple values for each key::
                            params=payload) as r:
         assert r.url == 'http://httpbin.org/get?key=value2&key=value1'
 
+You can also pass ``str`` content as param, but beware - content is not encoded
+by library. Note that ``+`` is not encoded::
+
+    async with aiohttp.get('http://httpbin.org/get',
+                            params='key=value+1') as r:
+            assert r.url = 'http://httpbin.org/get?key=value+1'
 
 Response Content
 ----------------

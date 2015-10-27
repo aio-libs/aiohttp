@@ -132,8 +132,19 @@ The client session supports context manager protocol for self closing.
 
       :param str url: Request URL
 
-      :param params: Mapping or string to be sent as parameters
-                     in the query string of the new request (optional)
+      :param params: Mapping, iterable of tuple of *key*/*value* pairs or
+                     string to be sent as parameters in the query
+                     string of the new request (optional)
+
+                     Allowed values are:
+
+                     - :class:`collections.abc.Mapping` e.g. :class:`dict`,
+                       :class:`aiohttp.MultiDict` or
+                       :class:`aiohttp.MultiDictProxy` e.g. :class:`tuple` or
+                       :class:`list`
+                     - :class:`collections.abc.Iterable`
+                     - :class:`str` with preferably url-encoded content
+                       (**Warning:** content will not be encoded by *aiohttp*)
 
       :param data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)
