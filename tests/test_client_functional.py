@@ -316,3 +316,20 @@ def test_format_task_get(create_server, loop):
     task = loop.create_task(client.get(url))
     assert "{}".format(task)[:18] == "<Task pending coro"
     yield from task
+
+
+@pytest.mark.run_loop
+def test_str_params(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        assert 'q=t+est' in request.query_string
+        return web.Response()
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+
+    resp = yield from client.get('/', params='q=t+est')
+    try:
+        assert 200 == resp.status
+    finally:
+        yield from resp.release()
