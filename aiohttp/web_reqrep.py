@@ -753,9 +753,20 @@ class Response(StreamResponse):
                 self.body = text.encode(charset)
             else:
                 self.text = text
+                if content_type or charset:
+                    raise ValueError("Passing both Content-Type header and "
+                                     "content_type or charset params "
+                                     "is forbidden")
         else:
+            if hdrs.CONTENT_TYPE in self.headers:
+                if content_type or charset:
+                    raise ValueError("Passing both Content-Type header and "
+                                     "content_type or charset params "
+                                     "is forbidden")
             if content_type:
                 self.content_type = content_type
+            if charset:
+                self.charset = charset
             if body is not None:
                 self.body = body
             else:

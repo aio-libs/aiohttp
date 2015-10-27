@@ -654,6 +654,36 @@ def test_ctor_charset_in_content_type():
         Response(text='test test', content_type='text/plain; charset=utf-8')
 
 
+def test_ctor_charset_without_text():
+    resp = Response(content_type='text/plain', charset='koi8-r')
+
+    assert 'koi8-r' == resp.charset
+
+
+def test_ctor_both_content_type_param_and_header_with_text():
+    with pytest.raises(ValueError):
+        Response(headers={'Content-Type': 'application/json'},
+                 content_type='text/html', text='text')
+
+
+def test_ctor_both_charset_param_and_header_with_text():
+    with pytest.raises(ValueError):
+        Response(headers={'Content-Type': 'application/json'},
+                 charset='koi8-r', text='text')
+
+
+def test_ctor_both_content_type_param_and_header():
+    with pytest.raises(ValueError):
+        Response(headers={'Content-Type': 'application/json'},
+                 content_type='text/html')
+
+
+def test_ctor_both_charset_param_and_header():
+    with pytest.raises(ValueError):
+        Response(headers={'Content-Type': 'application/json'},
+                 charset='koi8-r')
+
+
 def test_assign_nonbyteish_body():
     resp = Response(body=b'data')
 

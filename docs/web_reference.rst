@@ -624,6 +624,7 @@ Response
 ^^^^^^^^
 
 .. class:: Response(*, status=200, headers=None, content_type=None, \
+                    charset=None, \
                     body=None, text=None)
 
    The most usable response class, inherited from :class:`StreamResponse`.
@@ -642,7 +643,13 @@ Response
 
    :param str text: response's BODY
 
-   :param str content_type: response's content type
+   :param str content_type: response's content type. ``'text/plain'``
+                       if *text* is passed also,
+                       ``'application/octet-stream'`` othrewise.
+
+   :param str charset: response's sharset. ``'utf-8'`` if *text* is
+                       passed also, ``None`` othrewise.
+
 
    .. attribute:: body
 

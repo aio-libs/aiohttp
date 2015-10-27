@@ -19,3 +19,8 @@ CHANGES
 - Add Python 3.5 `async for` implementation to client websocket
 
 - Add Python 3.5 `async with` implementation to client websocket
+
+- Add charset parameter to web.Response constructor #593
+
+- Forbid passing both Content-Type header and content_type or charset
+  params into web.Response constructor
