@@ -727,7 +727,8 @@ class StreamResponse(HeadersMixin):
 class Response(StreamResponse):
 
     def __init__(self, *, body=None, status=200,
-                 reason=None, text=None, headers=None, content_type=None):
+                 reason=None, text=None, headers=None, content_type=None,
+                 charset=None):
         super().__init__(status=status, reason=reason, headers=headers)
 
         if body is not None and text is not None:
@@ -741,11 +742,15 @@ class Response(StreamResponse):
                                     type(text))
                 if content_type is None:
                     content_type = 'text/plain'
+                elif ";" in content_type:
+                    raise ValueError('charset must not be in content_type '
+                                     'argument')
+                charset = charset or 'utf-8'
                 self.headers[hdrs.CONTENT_TYPE] = (
-                    content_type + '; charset=utf-8')
+                    content_type + '; charset=%s' % charset)
                 self._content_type = content_type
-                self._content_dict = {'charset': 'utf-8'}
-                self.body = text.encode('utf-8')
+                self._content_dict = {'charset': charset}
+                self.body = text.encode(charset)
             else:
                 self.text = text
         else:
