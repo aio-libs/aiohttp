@@ -12,6 +12,7 @@ before_cache:
   - rm -f $HOME/.cache/pip/log/debug.log
 
 install:
+  - pip install --upgrade pip wheel
   - pip install --upgrade setuptools
   - pip install -r requirements-dev.txt
 
