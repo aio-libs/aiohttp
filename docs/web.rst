@@ -661,4 +661,38 @@ and call ``aiohttp_debugtoolbar.setup``::
 
 Debug toolbar is ready to use. Enjoy!!!
 
+
+Data sharing
+------------
+
+*aiohttp* discourages *global variables* aka *singletons* usage.
+
+Every variable should have own context, and the context should be *not global*.
+
+Thus :class:`aiohttp.web.Application` and :class:`aiohttp.web.Request`
+supports :class:`collections.abc.MutableMapping` interface (they are
+dict-like objects).
+
+
+For storing *global-like* context feel free to save own data in application::
+
+    app['my_private_key'] = data
+
+and get it back in :term:`web-handler`::
+
+    async def handler(request):
+        data = request.app['my_private_key']
+
+Request's storage is mostly useful for :ref:`aiohttp-web-middlewares`
+and :ref:`aiohttp-web-signals` handlers: they may store data into
+request for further processing of the request by next handlers in the chain.
+
+To don't clash with other *aiohttp* users and third-party librariese
+please choose key name for storing data carefully.
+
+If your code is published on PyPI most likely the project name is
+unique and safe to be used as a key.
+Otherwise something based on company name/url would be satisfactory enough.
+
+
 .. disqus::
