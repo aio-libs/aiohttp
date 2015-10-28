@@ -389,6 +389,9 @@ class Request(dict, HeadersMixin):
         self._post = MultiDictProxy(out)
         return self._post
 
+    def copy(self):
+        raise NotImplementedError
+
     def __repr__(self):
         return "<{} {} {} >".format(self.__class__.__name__,
                                     self.method, self.path)
