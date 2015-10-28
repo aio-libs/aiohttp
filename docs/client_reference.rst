@@ -140,9 +140,9 @@ The client session supports context manager protocol for self closing.
 
                      - :class:`collections.abc.Mapping` e.g. :class:`dict`,
                        :class:`aiohttp.MultiDict` or
-                       :class:`aiohttp.MultiDictProxy` e.g. :class:`tuple` or
+                       :class:`aiohttp.MultiDictProxy`
+                     - :class:`collections.abc.Iterable` e.g. :class:`tuple` or
                        :class:`list`
-                     - :class:`collections.abc.Iterable`
                      - :class:`str` with preferably url-encoded content
                        (**Warning:** content will not be encoded by *aiohttp*)
 
