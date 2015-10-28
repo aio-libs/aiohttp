@@ -1,10 +1,13 @@
 import datetime
+import json
 import pytest
 import re
 from unittest import mock
 from aiohttp import hdrs, signals
 from aiohttp.multidict import CIMultiDict
-from aiohttp.web import ContentCoding, Request, StreamResponse, Response
+from aiohttp.web import (
+    ContentCoding, Request, StreamResponse, Response, JSONResponse
+)
 from aiohttp.protocol import HttpVersion, HttpVersion11, HttpVersion10
 from aiohttp.protocol import RawRequestMessage
 
@@ -836,3 +839,30 @@ def test_text_with_empty_payload():
     resp = Response(status=200)
     assert resp.body is None
     assert resp.text is None
+
+
+class TestJSONResponse:
+
+    def test_data_attribute(self):
+        resp = JSONResponse('jaysawhn')
+        assert 'jaysawhn' == resp.data
+
+    def test_content_type_is_application_json_by_default(self):
+        resp = JSONResponse('')
+        assert 'application/json' == resp.content_type
+
+    def test_body_is_json_encoded(self):
+        resp = JSONResponse({'foo': 42})
+        assert json.dumps({'foo': 42}).encode('utf-8') == resp.body
+
+    def test_content_type_is_overrideable(self):
+        resp = JSONResponse({'foo': 42},
+                            content_type='application/vnd.json+api')
+        assert 'application/vnd.json+api' == resp.content_type
+
+    def test_content_type_is_overrideable_as_class_var(self):
+        class MyJSONResponse(JSONResponse):
+            content_type = 'application/vnd.json+api'
+
+        resp = MyJSONResponse('jaysawhn')
+        assert 'application/vnd.json+api' == resp.content_type
