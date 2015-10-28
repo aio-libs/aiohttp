@@ -257,6 +257,9 @@ class Application(dict):
     def register_on_finish(self, func, *args, **kwargs):
         self._finish_callbacks.insert(0, (func, args, kwargs))
 
+    def copy(self):
+        raise NotImplementedError
+
     def __call__(self):
         """gunicorn compatibility"""
         return self
