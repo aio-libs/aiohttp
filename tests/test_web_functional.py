@@ -357,6 +357,32 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
+    def test_expect_default_handler_unknown(self):
+        """Test default Expect handler for unknown Expect value.
+
+        A server that does not understand or is unable to comply with any of
+        the expectation values in the Expect field of a request MUST respond
+        with appropriate error status. The server MUST respond with a 417
+        (Expectation Failed) status if any of the expectations cannot be met
+        or, if there are other problems with the request, some other 4xx
+        status.
+
+        http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.20
+        """
+        @asyncio.coroutine
+        def handler(request):
+            yield from request.post()
+            self.fail('Handler should not proceed to this point in case of '
+                      'unknown Expect header')
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('POST', '/', handler)
+            resp = yield from request('POST', url, headers={'Expect': 'SPAM'},
+                                      loop=self.loop)
+            self.assertEqual(417, resp.status)
+        self.loop.run_until_complete(go())
+
     def test_100_continue(self):
         @asyncio.coroutine
         def handler(request):
