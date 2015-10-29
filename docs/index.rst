@@ -140,6 +140,7 @@ Contents
    gunicorn
    contributing
    changes
+   Python 3.3 support <python33>
    glossary
 
 Indices and tables
