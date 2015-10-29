@@ -305,7 +305,9 @@ The client session supports context manager protocol for self closing.
 
    .. coroutinemethod:: ws_connect(url, *, protocols=(), timeout=10.0,\
                                    auth=None,\
-                                   autoclose=True, autoping=True)
+                                   autoclose=True,\
+                                   autoping=True,\
+                                   origin=None)
 
       Create a websocket connection. Returns a
       :class:`ClientWebSocketResponse` object.
@@ -327,6 +329,8 @@ The client session supports context manager protocol for self closing.
       :param bool autoping: automatically send `pong` on `ping`
                             message from server
 
+      :param str origin: Origin header to send to server
+
       .. versionadded:: 0.16
 
          Add :meth:`ws_connect`.
@@ -334,6 +338,10 @@ The client session supports context manager protocol for self closing.
       .. versionadded:: 0.18
 
          Add *auth* parameter.
+
+      .. versionadded:: 0.19
+
+         Add *origin* parameter.
 
    .. method:: close()
 
