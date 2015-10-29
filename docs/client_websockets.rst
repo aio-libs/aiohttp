@@ -62,7 +62,8 @@ coroutines, do not create an instance of class
 .. coroutinefunction:: ws_connect(url, *, protocols=(), \
                                   timeout=10.0, connector=None, auth=None,\
                                   ws_response_class=ClientWebSocketResponse,\
-                                  autoclose=True, autoping=True, loop=None)
+                                  autoclose=True, autoping=True, loop=None,\
+                                  origin=None)
 
    This function creates a websocket connection, checks the response and
    returns a :class:`ClientWebSocketResponse` object. In case of failure
@@ -98,9 +99,15 @@ coroutines, do not create an instance of class
                 used for getting default event loop, but we strongly
                 recommend to use explicit loops everywhere.
 
+   :param str origin: Origin header to send to server
+
    .. versionadded:: 0.18
 
       Add *auth* parameter.
+
+   .. versionadded:: 0.19
+
+      Add *origin* parameter.
 
 
 ClientWebSocketResponse
