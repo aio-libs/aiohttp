@@ -814,18 +814,16 @@ class Response(StreamResponse):
         yield from super().write_eof()
 
 
-def json_dumps(data):
-    return json.dumps(data).encode('utf-8')
-
-
 class JSONResponse(Response):
-    content_type = 'application/json'
 
-    def __init__(self, data, *, body=None, status=200,
-                 reason=None, headers=None, content_type=None,
-                 dumps=json_dumps):
-        self.data = data
-        body = dumps(self.data)
+    def __init__(self, data=sentinel, *, text=None, body=None, status=200,
+                 reason=None, headers=None, content_type='application/json',
+                 dumps=json.dumps):
+        if data is not sentinel and (text or body):
+            raise ValueError(
+                'only one of data, text, or body should be specified'
+            )
+        text = text or dumps(data)
         content_type = content_type or self.content_type
-        super().__init__(body=body, status=status, reason=reason,
+        super().__init__(text=text, body=body, status=status, reason=reason,
                          content_type=content_type)

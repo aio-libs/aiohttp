@@ -843,17 +843,33 @@ def test_text_with_empty_payload():
 
 class TestJSONResponse:
 
-    def test_data_attribute(self):
-        resp = JSONResponse('jaysawhn')
-        assert 'jaysawhn' == resp.data
-
     def test_content_type_is_application_json_by_default(self):
         resp = JSONResponse('')
         assert 'application/json' == resp.content_type
 
-    def test_body_is_json_encoded(self):
+    def test_passing_text_only(self):
+        resp = JSONResponse(text=json.dumps('jaysawn'))
+        assert resp.text == json.dumps('jaysawn')
+
+    def test_data_and_text_raises_value_error(self):
+        with pytest.raises(ValueError) as excinfo:
+            JSONResponse(data='foo', text='bar')
+        expected_message = (
+            'only one of data, text, or body should be specified'
+        )
+        assert expected_message == excinfo.value.args[0]
+
+    def test_data_and_body_raises_value_error(self):
+        with pytest.raises(ValueError) as excinfo:
+            JSONResponse(data='foo', body=b'bar')
+        expected_message = (
+            'only one of data, text, or body should be specified'
+        )
+        assert expected_message == excinfo.value.args[0]
+
+    def test_text_is_json_encoded(self):
         resp = JSONResponse({'foo': 42})
-        assert json.dumps({'foo': 42}).encode('utf-8') == resp.body
+        assert json.dumps({'foo': 42}) == resp.text
 
     def test_content_type_is_overrideable(self):
         resp = JSONResponse({'foo': 42},
