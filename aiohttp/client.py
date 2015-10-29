@@ -228,7 +228,8 @@ class ClientSession:
                    timeout=10.0,
                    autoclose=True,
                    autoping=True,
-                   auth=None):
+                   auth=None,
+                   origin=None):
         """Initiate websocket connection."""
         return _WSRequestContextManager(
             self._ws_connect(url,
@@ -236,7 +237,8 @@ class ClientSession:
                              timeout=timeout,
                              autoclose=autoclose,
                              autoping=autoping,
-                             auth=auth))
+                             auth=auth,
+                             origin=origin))
 
     @asyncio.coroutine
     def _ws_connect(self, url, *,
@@ -244,7 +246,8 @@ class ClientSession:
                     timeout=10.0,
                     autoclose=True,
                     autoping=True,
-                    auth=None):
+                    auth=None,
+                    origin=None):
 
         sec_key = base64.b64encode(os.urandom(16))
 
@@ -256,6 +259,8 @@ class ClientSession:
         }
         if protocols:
             headers[hdrs.SEC_WEBSOCKET_PROTOCOL] = ','.join(protocols)
+        if origin is not None:
+            headers[hdrs.ORIGIN] = origin
 
         # send request
         resp = yield from self.request('get', url, headers=headers,
@@ -659,7 +664,7 @@ def delete(url, **kwargs):
 
 def ws_connect(url, *, protocols=(), timeout=10.0, connector=None, auth=None,
                ws_response_class=ClientWebSocketResponse, autoclose=True,
-               autoping=True, loop=None):
+               autoping=True, loop=None, origin=None):
 
     if loop is None:
         loop = asyncio.get_event_loop()
@@ -675,5 +680,6 @@ def ws_connect(url, *, protocols=(), timeout=10.0, connector=None, auth=None,
                             protocols=protocols,
                             timeout=timeout,
                             autoclose=autoclose,
-                            autoping=autoping),
+                            autoping=autoping,
+                            origin=origin),
         session=session)
