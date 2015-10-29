@@ -24,3 +24,5 @@ CHANGES
 
 - Forbid passing both Content-Type header and content_type or charset
   params into web.Response constructor
+
+- Forbid duplicating of web.Application and web.Request #602
