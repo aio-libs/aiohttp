@@ -22,6 +22,13 @@ The Request object contains all the information about an incoming HTTP request.
 Every :ref:`handler<aiohttp-web-handler>` accepts a request instance as the
 first positional parameter.
 
+A :class:`Request` is a :obj:`dict`-like object, allowing it to be used for
+:ref:`sharing data<aiohttp-web-data-sharing>` among
+:ref:`aiohttp-web-middlewares` and :ref:`aiohttp-web-signals` handlers.
+
+Although :class:`Request` is :obj:`dict`-like object, it can't be duplicated
+like one using :meth:`Request.copy`.
+
 .. note::
 
    You should never create the :class:`Request` instance manually --
@@ -897,9 +904,10 @@ factory*. *RequestHandlerFactory* could be constructed with
 *Application* contains a *router* instance and a list of callbacks that
 will be called during application finishing.
 
-*Application* is a :class:`dict`, so you can use it as registry for
-arbitrary properties for later access from
-:ref:`handler<aiohttp-web-handler>` via :attr:`Request.app` property::
+:class:`Application` is a :obj:`dict`-like object, so you can use it for
+:ref:`sharing data<aiohttp-web-data-sharing>` globally by storing arbitrary
+properties for later access from a :ref:`handler<aiohttp-web-handler>` via the
+:attr:`Request.app` property::
 
    app = Application(loop=loop)
    app['database'] = await aiopg.create_engine(**db_config)
@@ -908,6 +916,8 @@ arbitrary properties for later access from
        with (await request.app['database']) as conn:
            conn.execute("DELETE * FROM table")
 
+Although :class:`Application` is a :obj:`dict`-like object, it can't be
+duplicated like one using :meth:`Application.copy`.
 
 .. class:: Application(*, loop=None, router=None, logger=<default>, \
                        middlewares=(), **kwargs)
