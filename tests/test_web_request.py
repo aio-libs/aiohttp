@@ -205,6 +205,12 @@ def test_request_is_dict(make_request):
     assert 'value' == req['key']
 
 
+def test_copy(make_request):
+    req = make_request('GET', '/')
+    with pytest.raises(NotImplementedError):
+        req.copy()
+
+
 def test___repr__(make_request):
     req = make_request('GET', '/path/to')
     assert "<Request GET /path/to >" == repr(req)

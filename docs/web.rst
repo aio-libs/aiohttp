@@ -661,6 +661,7 @@ and call ``aiohttp_debugtoolbar.setup``::
 
 Debug toolbar is ready to use. Enjoy!!!
 
+.. _aiohttp-web-data-sharing:
 
 Data sharing
 ------------
