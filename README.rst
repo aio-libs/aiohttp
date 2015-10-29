@@ -39,6 +39,11 @@ Documentation
 
 http://aiohttp.readthedocs.org/
 
+Discussion list
+---------------
+
+*aio-libs* google group: https://groups.google.com/forum/#!forum/aio-libs
+
 Source code
 ------------
 
