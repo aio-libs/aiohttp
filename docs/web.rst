@@ -666,34 +666,43 @@ Debug toolbar is ready to use. Enjoy!!!
 Data sharing
 ------------
 
-*aiohttp* discourages *global variables* aka *singletons* usage.
+*aiohttp* discourages the use of *global variables*, aka *singletons*.
 
-Every variable should have own context, and the context should be *not global*.
+Every variable should have it's own context that is *not global*.
 
-Thus :class:`aiohttp.web.Application` and :class:`aiohttp.web.Request`
-supports :class:`collections.abc.MutableMapping` interface (they are
-dict-like objects).
+Thus, :class:`aiohttp.web.Application` and :class:`aiohttp.web.Request`
+support a :class:`collections.abc.MutableMapping` interface (i.e. they are
+dict-like objects), allowing them to be used as data stores.
 
 
-For storing *global-like* context feel free to save own data in application::
+For storing *global-like* variables, feel free to save them in an
+:class:`~.Application` instance::
 
     app['my_private_key'] = data
 
-and get it back in :term:`web-handler`::
+and get it back in the :term:`web-handler`::
 
     async def handler(request):
         data = request.app['my_private_key']
 
-Request's storage is mostly useful for :ref:`aiohttp-web-middlewares`
-and :ref:`aiohttp-web-signals` handlers: they may store data into
-request for further processing of the request by next handlers in the chain.
+Variables that are only needed for the lifetime of a :class:`~.Request`, can be
+stored in a :class:`~.Request`::
 
-To don't clash with other *aiohttp* users and third-party librariese
-please choose key name for storing data carefully.
+    async def handler(request):
+      request['my_private_key'] = "data"
+      ...
 
-If your code is published on PyPI most likely the project name is
-unique and safe to be used as a key.
-Otherwise something based on company name/url would be satisfactory enough.
+This is mostly useful for :ref:`aiohttp-web-middlewares` and
+:ref:`aiohttp-web-signals` handlers to store data for further processing by the
+next handlers in the chain.
+
+To avoid clashing with other *aiohttp* users and third-party libraries, please
+choose a unique key name for storing data.
+
+If your code is published on PyPI, then the project name is most likely unique
+and safe to use as the key.
+Otherwise, something based on your company name/url would be satisfactory (i.e
+``org.company.app``).
 
 
 .. disqus::
