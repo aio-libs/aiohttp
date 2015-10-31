@@ -27,7 +27,8 @@ from .streams import EOF_MARKER
 
 
 __all__ = (
-    'ContentCoding', 'Request', 'StreamResponse', 'Response', 'JSONResponse'
+    'ContentCoding', 'Request', 'StreamResponse', 'Response',
+    'json_response'
 )
 
 
@@ -817,16 +818,15 @@ class Response(StreamResponse):
         yield from super().write_eof()
 
 
-class JSONResponse(Response):
-
-    def __init__(self, data=sentinel, *, text=None, body=None, status=200,
-                 reason=None, headers=None, content_type='application/json',
-                 dumps=json.dumps):
-        if data is not sentinel and (text or body):
+def json_response(data=sentinel, *, text=None, body=None, status=200,
+                  reason=None, headers=None, content_type='application/json',
+                  dumps=json.dumps):
+    if data is not sentinel:
+        if text or body:
             raise ValueError(
                 'only one of data, text, or body should be specified'
             )
-        text = text or dumps(data)
-        content_type = content_type or self.content_type
-        super().__init__(text=text, body=body, status=status, reason=reason,
-                         content_type=content_type)
+        else:
+            text = dumps(data)
+    return Response(text=text, body=body, status=status, reason=reason,
+                    content_type=content_type)
