@@ -277,12 +277,24 @@ class BaseConnector(object):
         """Get from pool or create new connection."""
         key = (req.host, req.port, req.ssl)
 
-        # use short-circuit
-        if self._limit is not None:
-            while len(self._acquired[key]) >= self._limit:
-                fut = asyncio.Future(loop=self._loop)
-                self._waiters[key].append(fut)
-                yield from fut
+        limit = self._limit
+        if limit is not None:
+            fut = asyncio.Future(loop=self._loop)
+            waiters = self._waiters[key]
+
+            # The limit defines the maximum number of concurrent connections
+            # for a key. Waiters must be counted against the limit, even before
+            # the underlying connection is created.
+            available = limit - len(waiters) - len(self._acquired[key])
+
+            # Don't wait if there are connections available.
+            if available > 0:
+                fut.set_result(None)
+
+            # This connection will now count towards the limit.
+            waiters.append(fut)
+
+            yield from fut
 
         transport, proto = self._get(key)
         if transport is None:
