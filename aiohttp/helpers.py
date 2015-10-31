@@ -6,7 +6,6 @@ import functools
 import io
 import os
 import re
-import warnings
 from urllib.parse import quote, urlencode
 from collections import namedtuple
 
@@ -503,13 +502,9 @@ class Timeout:
         else:
             self._cancel_handler.cancel()
 
-    def __del__(self):
-        if self._task:
-            # just for preventing improper usage
-            warnings.warn("Use async with")
-
     def _cancel_task(self):
         self._cancelled = self._task.cancel()
 
     def cancel(self):
+        """Stop counting time and timeout logic"""
         self._cancel_handler.cancel()
