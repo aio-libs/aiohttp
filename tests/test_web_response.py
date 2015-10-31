@@ -1,10 +1,13 @@
 import datetime
+import json
 import pytest
 import re
 from unittest import mock
 from aiohttp import hdrs, signals
 from aiohttp.multidict import CIMultiDict
-from aiohttp.web import ContentCoding, Request, StreamResponse, Response
+from aiohttp.web import (
+    ContentCoding, Request, StreamResponse, Response, JSONResponse
+)
 from aiohttp.protocol import HttpVersion, HttpVersion11, HttpVersion10
 from aiohttp.protocol import RawRequestMessage
 
@@ -836,3 +839,46 @@ def test_text_with_empty_payload():
     resp = Response(status=200)
     assert resp.body is None
     assert resp.text is None
+
+
+class TestJSONResponse:
+
+    def test_content_type_is_application_json_by_default(self):
+        resp = JSONResponse('')
+        assert 'application/json' == resp.content_type
+
+    def test_passing_text_only(self):
+        resp = JSONResponse(text=json.dumps('jaysawn'))
+        assert resp.text == json.dumps('jaysawn')
+
+    def test_data_and_text_raises_value_error(self):
+        with pytest.raises(ValueError) as excinfo:
+            JSONResponse(data='foo', text='bar')
+        expected_message = (
+            'only one of data, text, or body should be specified'
+        )
+        assert expected_message == excinfo.value.args[0]
+
+    def test_data_and_body_raises_value_error(self):
+        with pytest.raises(ValueError) as excinfo:
+            JSONResponse(data='foo', body=b'bar')
+        expected_message = (
+            'only one of data, text, or body should be specified'
+        )
+        assert expected_message == excinfo.value.args[0]
+
+    def test_text_is_json_encoded(self):
+        resp = JSONResponse({'foo': 42})
+        assert json.dumps({'foo': 42}) == resp.text
+
+    def test_content_type_is_overrideable(self):
+        resp = JSONResponse({'foo': 42},
+                            content_type='application/vnd.json+api')
+        assert 'application/vnd.json+api' == resp.content_type
+
+    def test_content_type_is_overrideable_as_class_var(self):
+        class MyJSONResponse(JSONResponse):
+            content_type = 'application/vnd.json+api'
+
+        resp = MyJSONResponse('jaysawhn')
+        assert 'application/vnd.json+api' == resp.content_type
