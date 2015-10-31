@@ -1,10 +1,12 @@
 """Various helper functions"""
+import asyncio
 import base64
 import datetime
 import functools
 import io
 import os
 import re
+import warnings
 from urllib.parse import quote, urlencode
 from collections import namedtuple
 
@@ -460,3 +462,54 @@ def requote_uri(uri):
         # there may be unquoted '%'s in the URI. We need to make sure they're
         # properly quoted so they do not cause issues elsewhere.
         return quote(uri, safe=safe_without_percent)
+
+
+class Timeout:
+    """Timeout context manager.
+
+    Useful in cases when you want to apply timeout logic around block
+    of code or in cases when asyncio.wait_for is not suitable.
+
+    :param timeout: time out time in seconds
+    :param raise_error: if set, TimeoutError is raised in case of timeout
+    :param loop: asyncio compatible event loop
+    """
+    def __init__(self, timeout, *, raise_error=False, loop=None):
+        self._timeout = timeout
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        self._loop = loop
+        self._raise_error = raise_error
+        self._task = None
+        self._cancelled = False
+        self._cancel_handler = None
+
+    @asyncio.coroutine
+    def __aenter__(self):
+        self._task = asyncio.Task.current_task(loop=self._loop)
+        self._cancel_handler = self._loop.call_later(
+            self._timeout, self._cancel_task)
+        return self
+
+    @asyncio.coroutine
+    def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self._cancelled:
+            if self._raise_error:
+                raise asyncio.TimeoutError
+            else:
+                # suppress
+                self._task = None
+                return True
+        else:
+            self._cancel_handler.cancel()
+
+    def __del__(self):
+        if self._task:
+            # just for preventing improper usage
+            warnings.warn("Use async with")
+
+    def _cancel_task(self):
+        self._cancelled = self._task.cancel()
+
+    def cancel(self):
+        self._cancel_handler.cancel()
