@@ -50,6 +50,7 @@ class TestBaseConnector(unittest.TestCase):
         self.assertFalse(conns_impl)
         transp.close.assert_called_with()
         msg = {'connector': unittest.mock.ANY,  # conn was deleted
+               'connections': unittest.mock.ANY,
                'message': 'Unclosed connector'}
         if self.loop.get_debug():
             msg['source_traceback'] = unittest.mock.ANY

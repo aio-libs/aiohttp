@@ -52,9 +52,12 @@ class Connection(object):
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
+    def __repr__(self):
+        return 'Connection<{}>'.format(self._key)
+
     def __del__(self, _warnings=warnings):
         if self._transport is not None:
-            _warnings.warn("Unclosed connection {!r}".format(self),
+            _warnings.warn('Unclosed connection {!r}'.format(self),
                            ResourceWarning)
             if hasattr(self._loop, 'is_closed'):
                 if self._loop.is_closed():
@@ -146,11 +149,14 @@ class BaseConnector(object):
         if not self._conns:
             return
 
+        conns = [repr(c) for c in self._conns.values()]
+
         self.close()
 
         _warnings.warn("Unclosed connector {!r}".format(self),
                        ResourceWarning)
         context = {'connector': self,
+                   'connections': conns,
                    'message': 'Unclosed connector'}
         if self._source_traceback is not None:
             context['source_traceback'] = self._source_traceback
