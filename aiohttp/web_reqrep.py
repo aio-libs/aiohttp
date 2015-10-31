@@ -26,7 +26,10 @@ from .protocol import Response as ResponseImpl, HttpVersion10, HttpVersion11
 from .streams import EOF_MARKER
 
 
-__all__ = ('ContentCoding', 'Request', 'StreamResponse', 'Response')
+__all__ = (
+    'ContentCoding', 'Request', 'StreamResponse', 'Response',
+    'json_response'
+)
 
 
 sentinel = object()
@@ -813,3 +816,17 @@ class Response(StreamResponse):
         if body is not None:
             self.write(body)
         yield from super().write_eof()
+
+
+def json_response(data=sentinel, *, text=None, body=None, status=200,
+                  reason=None, headers=None, content_type='application/json',
+                  dumps=json.dumps):
+    if data is not sentinel:
+        if text or body:
+            raise ValueError(
+                'only one of data, text, or body should be specified'
+            )
+        else:
+            text = dumps(data)
+    return Response(text=text, body=body, status=status, reason=reason,
+                    content_type=content_type)
