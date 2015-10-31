@@ -884,6 +884,20 @@ WebSocketResponse
 
 .. seealso:: :ref:`WebSockets handling<aiohttp-web-websockets>`
 
+
+json_response
+-------------
+
+.. function:: json_response([data], *, text=None, body=None, \
+                            status=200, reason=None, headers=None, \
+                            content_type='application/json', \
+                            dumps=json.dumps)
+
+Return :class:`Response` with predefined ``'application/json'``
+content type and *data* encoded by *dumps* parameter
+(:func:`json.dumps` by default).
+
+
 .. _aiohttp-web-app-and-router:
 
 Application and Router

@@ -28,3 +28,5 @@ CHANGES
 - Forbid duplicating of web.Application and web.Request #602
 
 - Add an option to pass Origin header in ws_connect #607
+
+- Add json_response function #592
