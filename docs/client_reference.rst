@@ -956,7 +956,7 @@ Response object
 
    .. attribute:: history
 
-      List of :class:`ClientResponse` objects of preceding requests, if there
+      :class:`list` of :class:`ClientResponse` objects of preceding requests, if there
       were redirects.
 
    .. method:: close()
