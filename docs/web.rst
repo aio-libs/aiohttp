@@ -604,9 +604,9 @@ Signals
 
 .. versionadded:: 0.18
 
-While :ref:`middlewares <aiohttp-web-middlewares>` gives very powerful
+While :ref:`middlewares <aiohttp-web-middlewares>` give very powerful
 tool for customizing :ref:`web handler<aiohttp-web-handler>`
-processing we need another machinery also called signals.
+processing we need another machinery called signals also.
 
 For example middleware may change HTTP headers for *unprepared* response only
 (see :meth:`aiohttp.web.StreamResponse.prepare`).
