@@ -350,10 +350,16 @@ def test_history(create_app_and_client):
     app.router.add_route('GET', '/redirect', handler_redirect)
 
     resp = yield from client.get('/ok')
-    assert resp.history == []
-    assert resp.status == 200
+    try:
+        assert resp.history == []
+        assert resp.status == 200
+    finally:
+        resp.release()
 
     resp_redirect = yield from client.get('/redirect')
-    assert len(resp_redirect.history) == 1
-    assert resp_redirect.history[0].status == 301
-    assert resp_redirect.status == 200
+    try:
+        assert len(resp_redirect.history) == 1
+        assert resp_redirect.history[0].status == 301
+        assert resp_redirect.status == 200
+    finally:
+        resp_redirect.release()
