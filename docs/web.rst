@@ -545,6 +545,50 @@ and list of allowed methods::
                          headers=None, reason=None,
                          body=None, text=None, content_type=None)
 
+.. _aiohttp-web-data-sharing:
+
+Data sharing
+------------
+
+*aiohttp* discourages the use of *global variables*, aka *singletons*.
+
+Every variable should have it's own context that is *not global*.
+
+Thus, :class:`aiohttp.web.Application` and :class:`aiohttp.web.Request`
+support a :class:`collections.abc.MutableMapping` interface (i.e. they are
+dict-like objects), allowing them to be used as data stores.
+
+
+For storing *global-like* variables, feel free to save them in an
+:class:`~.Application` instance::
+
+    app['my_private_key'] = data
+
+and get it back in the :term:`web-handler`::
+
+    async def handler(request):
+        data = request.app['my_private_key']
+
+Variables that are only needed for the lifetime of a :class:`~.Request`, can be
+stored in a :class:`~.Request`::
+
+    async def handler(request):
+      request['my_private_key'] = "data"
+      ...
+
+This is mostly useful for :ref:`aiohttp-web-middlewares` and
+:ref:`aiohttp-web-signals` handlers to store data for further processing by the
+next handlers in the chain.
+
+To avoid clashing with other *aiohttp* users and third-party libraries, please
+choose a unique key name for storing data.
+
+If your code is published on PyPI, then the project name is most likely unique
+and safe to use as the key.
+Otherwise, something based on your company name/url would be satisfactory (i.e
+``org.company.app``).
+
+
 .. _aiohttp-web-middlewares:
 
 Middlewares
@@ -660,49 +704,5 @@ and call ``aiohttp_debugtoolbar.setup``::
     aiohttp_debugtoolbar.setup(app)
 
 Debug toolbar is ready to use. Enjoy!!!
-
-.. _aiohttp-web-data-sharing:
-
-Data sharing
-------------
-
-*aiohttp* discourages the use of *global variables*, aka *singletons*.
-
-Every variable should have it's own context that is *not global*.
-
-Thus, :class:`aiohttp.web.Application` and :class:`aiohttp.web.Request`
-support a :class:`collections.abc.MutableMapping` interface (i.e. they are
-dict-like objects), allowing them to be used as data stores.
-
-
-For storing *global-like* variables, feel free to save them in an
-:class:`~.Application` instance::
-
-    app['my_private_key'] = data
-
-and get it back in the :term:`web-handler`::
-
-    async def handler(request):
-        data = request.app['my_private_key']
-
-Variables that are only needed for the lifetime of a :class:`~.Request`, can be
-stored in a :class:`~.Request`::
-
-    async def handler(request):
-      request['my_private_key'] = "data"
-      ...
-
-This is mostly useful for :ref:`aiohttp-web-middlewares` and
-:ref:`aiohttp-web-signals` handlers to store data for further processing by the
-next handlers in the chain.
-
-To avoid clashing with other *aiohttp* users and third-party libraries, please
-choose a unique key name for storing data.
-
-If your code is published on PyPI, then the project name is most likely unique
-and safe to use as the key.
-Otherwise, something based on your company name/url would be satisfactory (i.e
-``org.company.app``).
-
 
 .. disqus::
