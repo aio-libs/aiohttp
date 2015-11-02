@@ -527,6 +527,22 @@ If a response contains some Cookies, you can quickly access them::
    <aiohttp-client-session>` object.
 
 
+Response History
+----------------
+
+If a request was redirected, it is possible to view previous responses using
+the history attribute::
+
+    >>> r = await aiohttp.get('http://example.com/some/redirect/')
+    >>> r
+    <ClientResponse(http://example.com/some/other/url/) [200]>
+    >>> r.history
+    [<ClientResponse(http://example.com/some/redirect/) [301]>]
+
+If no redirects occured or ``allow_redirects`` is set to ``False``, history will
+be an empty list.
+
+
 Timeouts
 --------
 
