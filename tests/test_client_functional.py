@@ -333,3 +333,27 @@ def test_str_params(create_app_and_client):
         assert 200 == resp.status
     finally:
         yield from resp.release()
+
+
+@pytest.mark.run_loop
+def test_history(create_app_and_client):
+    @asyncio.coroutine
+    def handler_redirect(request):
+        return web.Response(status=301, headers={'Location': '/ok'})
+
+    @asyncio.coroutine
+    def handler_ok(request):
+        return web.Response(status=200)
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/ok', handler_ok)
+    app.router.add_route('GET', '/redirect', handler_redirect)
+
+    resp = yield from client.get('/ok')
+    assert resp.history == []
+    assert resp.status == 200
+
+    resp_redirect = yield from client.get('/redirect')
+    assert len(resp_redirect.history) == 1
+    assert resp_redirect.history[0].status == 301
+    assert resp_redirect.status == 200
