@@ -460,7 +460,7 @@ aiohttp supports proxy. You have to use
    conn = aiohttp.ProxyConnector(
       proxy="http://some.proxy.com",
       proxy_auth=aiohttp.BasicAuth('user', 'pass'))
-   session = aiottp.ClientSession(connector=conn)
+   session = aiohttp.ClientSession(connector=conn)
    async with session.get('http://python.org') as r:
        assert r.status == 200
 
@@ -468,7 +468,7 @@ Authentication credentials can be passed in proxy URL::
 
    conn = aiohttp.ProxyConnector(
        proxy="http://user:pass@some.proxy.com")
-   session = aiottp.ClientSession(connector=conn)
+   session = aiohttp.ClientSession(connector=conn)
    async with session.get('http://python.org') as r:
        assert r.status == 200
 
