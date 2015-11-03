@@ -33,4 +33,4 @@ CHANGES
 
 - Make concurrent connections respect limits #581
 
-- Collect history of responses if redirects occur. #614
+- Collect history of responses if redirects occur #614
