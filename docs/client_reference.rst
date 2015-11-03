@@ -954,6 +954,11 @@ Response object
 
       HTTP headers of response, :class:`CIMultiDictProxy`.
 
+   .. attribute:: history
+
+      :class:`list` of :class:`ClientResponse` objects of preceding requests, if there
+      were redirects.
+
    .. method:: close()
 
       Close response and underlying connection.

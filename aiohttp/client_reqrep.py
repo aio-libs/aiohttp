@@ -512,6 +512,7 @@ class ClientResponse:
     cookies = None  # Response cookies (Set-Cookie)
     content = None  # Payload stream
     headers = None  # Response headers, CIMultiDictProxy
+    history = None  # List of responses, if redirects occured
 
     _connection = None  # current connection
     flow_control_class = FlowControlStreamReader  # reader flow control

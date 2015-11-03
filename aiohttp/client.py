@@ -141,6 +141,7 @@ class ClientSession:
             raise RuntimeError('Session is closed')
 
         redirects = 0
+        history = []
         if not isinstance(method, upstr):
             method = upstr(method)
 
@@ -193,6 +194,7 @@ class ClientSession:
             # redirects
             if resp.status in (301, 302, 303, 307) and allow_redirects:
                 redirects += 1
+                history.append(resp)
                 if max_redirects and redirects >= max_redirects:
                     resp.close(force=True)
                     break
@@ -221,6 +223,7 @@ class ClientSession:
 
             break
 
+        resp.history = history
         return resp
 
     def ws_connect(self, url, *,
