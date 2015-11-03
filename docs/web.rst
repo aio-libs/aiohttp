@@ -215,9 +215,9 @@ The next example shows custom processing based on *HTTP Accept* header:
 
        async def do_route(self, request):
            for accept in request.headers.getall('ACCEPT', []):
-                acceptor = self._accepts.get(accept):
-                if acceptor is not None:
-                    return (await acceptor(request))
+               acceptor = self._accepts.get(accept)
+               if acceptor is not None:
+                   return (await acceptor(request))
            raise HTTPNotAcceptable()
 
        def reg_acceptor(self, accept, handler):
