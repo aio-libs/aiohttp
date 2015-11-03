@@ -177,7 +177,7 @@ class ClientSession:
                 try:
                     yield from resp.start(conn, read_until_eof)
                 except:
-                    resp.close(force=True)
+                    resp.close()
                     conn.close()
                     raise
             except (aiohttp.HttpProcessingError,
@@ -196,7 +196,7 @@ class ClientSession:
                 redirects += 1
                 history.append(resp)
                 if max_redirects and redirects >= max_redirects:
-                    resp.close(force=True)
+                    resp.close()
                     break
 
                 # For 301 and 302, mimic IE behaviour, now changed in RFC.
@@ -212,7 +212,7 @@ class ClientSession:
 
                 scheme = urllib.parse.urlsplit(r_url)[0]
                 if scheme not in ('http', 'https', ''):
-                    resp.close(force=True)
+                    resp.close()
                     raise ValueError('Can redirect only to http or https')
                 elif not scheme:
                     r_url = urllib.parse.urljoin(url, r_url)
