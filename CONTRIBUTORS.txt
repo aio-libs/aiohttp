@@ -22,6 +22,7 @@ Brian C. Lane
 Boris Feld
 Carl George
 Chien-Wei Huang
+Chih-Yuan Chen
 Chris Laws
 Chris Moore
 Daniel Nelson
