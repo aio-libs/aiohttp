@@ -351,7 +351,7 @@ def test_history(create_app_and_client):
 
     resp = yield from client.get('/ok')
     try:
-        assert resp.history == []
+        assert len(resp.history) == 0
         assert resp.status == 200
     finally:
         resp.release()

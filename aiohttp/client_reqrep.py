@@ -512,7 +512,6 @@ class ClientResponse:
     cookies = None  # Response cookies (Set-Cookie)
     content = None  # Payload stream
     headers = None  # Response headers, CIMultiDictProxy
-    history = None  # List of responses, if redirects occured
 
     _connection = None  # current connection
     flow_control_class = FlowControlStreamReader  # reader flow control
@@ -535,6 +534,7 @@ class ClientResponse:
         self._continue = continue100
         self._closed = False
         self._should_close = True  # override by message.should_close later
+        self._history = ()
 
     def _post_init(self, loop):
         self._loop = loop
@@ -564,6 +564,11 @@ class ClientResponse:
     @property
     def connection(self):
         return self._connection
+
+    @property
+    def history(self):
+        """A sequence of of responses, if redirects occured."""
+        return self._history
 
     def waiting_for_continue(self):
         return self._continue is not None

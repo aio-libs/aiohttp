@@ -223,7 +223,7 @@ class ClientSession:
 
             break
 
-        resp.history = history
+        resp._history = tuple(history)
         return resp
 
     def ws_connect(self, url, *,

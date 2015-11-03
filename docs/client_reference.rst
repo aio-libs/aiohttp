@@ -956,8 +956,9 @@ Response object
 
    .. attribute:: history
 
-      :class:`list` of :class:`ClientResponse` objects of preceding requests, if there
-      were redirects.
+      A :class:`~collections.abc.Sequence` of :class:`ClientResponse`
+      objects of preceding requests if there were redirects, an empty
+      sequence otherwise.
 
    .. method:: close()
 
