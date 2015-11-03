@@ -32,3 +32,5 @@ CHANGES
 - Add json_response function #592
 
 - Make concurrent connections respect limits #581
+
+- Collect history of responses if redirects occur. #614
