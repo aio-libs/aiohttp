@@ -328,6 +328,23 @@ requests together (aka HTTP pipelining)::
                       data=r.content)
 
 
+Uploading pre-compressed data
+-----------------------------
+
+To upload data that is already compressed before passing it to aiohttp, call
+the request function with ``compress=False`` and set the used compression
+algorithm name (usually deflate or zlib) as the value of the
+``Content-Encoding`` header::
+
+    @asyncio.coroutine
+    def my_coroutine( my_data):
+        data = zlib.compress(my_data)
+        headers = {'Content-Encoding': 'deflate'}
+        yield from aiohttp.post(
+            'http://httpbin.org/post', data=data, headers=headers,
+            compress=False)
+
+
 .. _aiohttp-client-session:
 
 Keep-Alive, connection pooling and cookie sharing

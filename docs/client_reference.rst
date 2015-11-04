@@ -406,6 +406,9 @@ certification chaining.
 
    :param bool compress: Set to ``True`` if request has to be compressed
                          with deflate encoding.
+                         ``False`` instructs aiohttp to not compress data
+                         even if the Content-Encoding header is set. Use it
+                         when sending pre-compressed data.
                          ``None`` by default (optional).
 
    :param int chunked: Set to chunk size for chunked transfer encoding.
