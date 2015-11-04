@@ -231,8 +231,10 @@ class ClientRequest:
         """Set request content encoding."""
         enc = self.headers.get(hdrs.CONTENT_ENCODING, '').lower()
         if enc:
-            self.compress = enc
-            self.chunked = True  # enable chunked, no need to deal with length
+            if self.compress is not False:
+                self.compress = enc
+                # enable chunked, no need to deal with length
+                self.chunked = True
         elif self.compress:
             if not isinstance(self.compress, str):
                 self.compress = 'deflate'
