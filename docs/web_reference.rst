@@ -1210,6 +1210,27 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       .. versionadded:: 0.18
 
+   .. method:: named_routes()
+
+      Returns a :obj:`dict`-like :class:`types.MappingProxyType` *view* over
+      *all* named routes.
+
+      The view maps every named route's :attr:`Route.name` attribute to the
+      :class:`Route`. It supports the usual :obj:`dict`-like operations, except
+      for any mutable operations (i.e. it's **read-only**)::
+
+          len(app.router.named_routes())
+
+          for name, route in app.router.named_routes().items():
+              print(name, route)
+
+          "route_name" in app.router.named_routes()
+
+          app.router.named_routes()["route_name"]
+
+      .. versionadded:: 0.19
+
+
 .. _aiohttp-web-route:
 
 Route

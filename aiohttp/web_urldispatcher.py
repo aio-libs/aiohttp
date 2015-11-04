@@ -10,6 +10,7 @@ import inspect
 
 from collections.abc import Sized, Iterable, Container
 from urllib.parse import urlencode, unquote
+from types import MappingProxyType
 
 from . import hdrs
 from .abc import AbstractRouter, AbstractMatchInfo
@@ -439,6 +440,9 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     def routes(self):
         return RoutesView(self._urls)
+
+    def named_routes(self):
+        return MappingProxyType(self._routes)
 
     def register_route(self, route):
         assert isinstance(route, Route), 'Instance of Route class is required.'
