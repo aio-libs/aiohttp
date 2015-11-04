@@ -1001,7 +1001,7 @@ Response object
 
       :return str: decoded *BODY*
 
-   .. coroutinemethod:: json(encoding=None)
+   .. coroutinemethod:: json(encoding=None, loads=json.loads)
 
       Read response's body as *JSON*, return :class:`dict` using
       specified *encoding* and *loader*.
@@ -1020,6 +1020,6 @@ Response object
       :param callable loads: :func:`callable` used for loading *JSON*
                              data, :func:`json.loads` by default.
 
-      :return dict: *BODY* as *JSON* data.
+      :return: *BODY* as *JSON* data parsed by *loads* parameter.
 
 .. disqus::
