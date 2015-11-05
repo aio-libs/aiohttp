@@ -1,7 +1,7 @@
 import asyncio
 import os
 import unittest
-from collections.abc import Sized, Container, Iterable
+from collections.abc import Sized, Container, Iterable, Mapping, MutableMapping
 from unittest import mock
 from urllib.parse import unquote
 import aiohttp.web
@@ -642,3 +642,26 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIsInstance(self.router.routes(), Sized)
         self.assertIsInstance(self.router.routes(), Iterable)
         self.assertIsInstance(self.router.routes(), Container)
+
+    def fill_named_routes(self):
+        route1 = self.router.add_route('GET', '/plain', self.make_handler(),
+                                       name='route1')
+        route2 = self.router.add_route('GET', '/variable/{name}',
+                                       self.make_handler(), name='route2')
+        route3 = self.router.add_static('/static',
+                                        os.path.dirname(aiohttp.__file__),
+                                        name='route3')
+        return route1, route2, route3
+
+    def test_named_routes_abc(self):
+        self.assertIsInstance(self.router.named_routes(), Mapping)
+        self.assertNotIsInstance(self.router.named_routes(), MutableMapping)
+
+    def test_named_routes(self):
+        named_routes = self.fill_named_routes()
+
+        self.assertEqual(3, len(self.router.named_routes()))
+
+        for route in named_routes:
+            self.assertIn(route.name, self.router.named_routes())
+            self.assertEqual(route, self.router.named_routes()[route.name])
