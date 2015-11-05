@@ -106,6 +106,13 @@ Dependencies
      $ pip install cchardet
 
 
+Discussion list
+---------------
+
+*aio-libs* google group: https://groups.google.com/forum/#!forum/aio-libs
+
+Feel free to post your questions and ideas here.
+
 Contributing
 ------------
 
