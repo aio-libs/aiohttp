@@ -36,3 +36,5 @@ CHANGES
 - Collect history of responses if redirects occur #614
 
 - Enable passing pre-compressed data in requests #621
+
+- Expose named routes via UrlDispatcher.named_routes() #622
