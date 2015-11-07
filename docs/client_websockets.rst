@@ -28,10 +28,10 @@ methods:
        async for msg in ws:
            if msg.tp == aiohttp.MsgType.text:
                if msg.data == 'close cmd':
-                  await ws.close()
-                  break
+                   await ws.close()
+                   break
                else:
-                  ws.send_str(msg.data + '/answer')
+                   ws.send_str(msg.data + '/answer')
            elif msg.tp == aiohttp.MsgType.closed:
                break
            elif msg.tp == aiohttp.MsgType.error:
