@@ -75,8 +75,8 @@ The client session supports context manager protocol for self closing.
 
       Iterable of :class:`str` or :class:`~aiohttp.upstr` (optional)
 
-   :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that represents
-                                          HTTP Basic Authorization (optional)
+   :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
+                                  Authorization (optional)
 
    :param request_class: Request class implementation. ``ClientRequest`` by
                          default.
@@ -163,9 +163,8 @@ The client session supports context manager protocol for self closing.
          Iterable of :class:`str` or :class:`~aiohttp.upstr`
          (optional)
 
-      :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that
-                                             represents HTTP Basic Authorization
-                                             (optional)
+      :param aiohttp.BasicAuth auth: an object that represents HTTP
+                                     Basic Authorization (optional)
 
       :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                    ``True`` by default (optional).
@@ -318,9 +317,8 @@ The client session supports context manager protocol for self closing.
 
       :param float timeout: Timeout for websocket read. 10 seconds by default
 
-      :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that
-                                             represents HTTP Basic Authorization
-                                             (optional)
+      :param aiohttp.BasicAuth auth: an object that represents HTTP
+                                     Basic Authorization (optional)
 
       :param bool autoclose: Automatically close websocket connection on close
                              message from server. If `autoclose` is False
@@ -396,8 +394,8 @@ certification chaining.
 
    :param dict cookies: Cookies to send with the request (optional)
 
-   :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that represents
-                                          HTTP Basic Authorization (optional)
+   :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
+                                  Authorization (optional)
 
    :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                 ``True`` by default (optional).
@@ -801,8 +799,9 @@ ProxyConnector
 
    :param str proxy: URL for proxy, e.g. ``"http://some.proxy.com"``.
 
-   :param aiohttp.helpers.BasicAuth proxy_auth: basic
-      authentication info used for proxies with authorization.
+   :param aiohttp.BasicAuth proxy_auth: basic authentication info used
+                                        for proxies with
+                                        authorization.
 
    .. note::
 
@@ -1026,5 +1025,33 @@ Response object
       :return: *BODY* as *JSON* data parsed by *loads* parameter or
                ``None`` if *BODY* is empty or contains whitespaces
                only.
+
+Utilities
+---------
+
+
+BasicAuth
+^^^^^^^^^
+
+.. class:: BasicAuth(login, password='', encoding='latin1')
+
+   Http basic authentication helper.
+
+   :param str login: login
+   :param str password: password
+   :param str encoding: encoding ('latin1' by default)
+
+
+   Should be used for specifying authorization data in client api,
+   e.g. *auth* parameter for :meth:`ClientSession.request`.
+
+
+   .. method:: encode()
+
+      Encode credentials into string suitable for ``Authorization``
+      header etc.
+
+      :return: encoded auth data, :class:`str`.
+
 
 .. disqus::
