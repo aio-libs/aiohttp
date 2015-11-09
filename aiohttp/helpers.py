@@ -470,15 +470,13 @@ class Timeout:
     of code or in cases when asyncio.wait_for is not suitable.
 
     :param timeout: time out time in seconds
-    :param raise_error: if set, TimeoutError is raised in case of timeout
     :param loop: asyncio compatible event loop
     """
-    def __init__(self, timeout, *, raise_error=False, loop=None):
+    def __init__(self, timeout, *, loop=None):
         self._timeout = timeout
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
-        self._raise_error = raise_error
         self._task = None
         self._cancelled = False
         self._cancel_handler = None
@@ -493,12 +491,8 @@ class Timeout:
     @asyncio.coroutine
     def __aexit__(self, exc_type, exc_val, exc_tb):
         if self._cancelled:
-            if self._raise_error:
-                raise asyncio.TimeoutError
-            else:
-                # suppress
-                self._task = None
-                return True
+            self._task = None
+            raise asyncio.TimeoutError
         else:
             self._cancel_handler.cancel()
 

@@ -5,7 +5,7 @@ import pytest
 from aiohttp.helpers import Timeout
 
 
-def test_timeout_without_error_raising(loop):
+def test_timeout(loop):
     canceled_raised = False
 
     async def long_running_task():
@@ -17,22 +17,11 @@ def test_timeout_without_error_raising(loop):
             raise
 
     async def run():
-        async with Timeout(0.01, loop=loop) as t:
-            await long_running_task()
-            assert t._loop is loop
-        assert canceled_raised, 'CancelledError was not raised'
-
-    loop.run_until_complete(run())
-
-
-def test_timeout_raise_error(loop):
-    async def long_running_task():
-        await asyncio.sleep(10, loop=loop)
-
-    async def run():
         with pytest.raises(asyncio.TimeoutError):
-            async with Timeout(0.01, raise_error=True, loop=loop):
+            async with Timeout(0.01, loop=loop) as t:
                 await long_running_task()
+                assert t._loop is loop
+        assert canceled_raised, 'CancelledError was not raised'
 
     loop.run_until_complete(run())
 
@@ -43,7 +32,7 @@ def test_timeout_finish_in_time(loop):
         return 'done'
 
     async def run():
-        async with Timeout(0.1, raise_error=True, loop=loop):
+        async with Timeout(0.1, loop=loop):
             resp = await long_running_task()
         assert resp == 'done'
 
@@ -76,7 +65,7 @@ def test_timeout_blocking_loop(loop):
         return 'done'
 
     async def run():
-        async with Timeout(0.01, raise_error=True, loop=loop):
+        async with Timeout(0.01, loop=loop):
             result = await long_running_task()
         assert result == 'done'
 
@@ -87,7 +76,7 @@ def test_for_race_conditions(loop):
     async def run():
         fut = asyncio.Future(loop=loop)
         loop.call_later(0.1, fut.set_result('done'))
-        async with Timeout(0.2, raise_error=True, loop=loop):
+        async with Timeout(0.2, loop=loop):
             resp = await fut
         assert resp == 'done'
 
@@ -100,7 +89,7 @@ def test_timeout_time(loop):
 
         start = loop.time()
         with pytest.raises(asyncio.TimeoutError):
-            async with Timeout(0.1, raise_error=True, loop=loop):
+            async with Timeout(0.1, loop=loop):
                 foo_running = True
                 try:
                     await asyncio.sleep(0.2, loop=loop)
