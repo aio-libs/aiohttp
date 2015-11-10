@@ -1019,6 +1019,13 @@ class StaticFileMixin(WebFunctionalSetupMixin):
 
         self.loop.run_until_complete(go(here, filename))
 
+    def test_env_nosendfile(self):
+        directory = os.path.dirname(__file__)
+
+        with mock.patch.dict(os.environ, {'AIOHTTP_NOSENDFILE': '1'}):
+            route = web.StaticRoute(None, "/", directory)
+            self.assertEqual(route._sendfile, route._sendfile_fallback)
+
 
 class TestStaticFileSendfileFallback(StaticFileMixin,
                                      unittest.TestCase):

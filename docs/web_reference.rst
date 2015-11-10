@@ -1125,15 +1125,30 @@ Router is any object that implements :class:`AbstractRouter` interface.
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
                           chunk_size=256*1024, response_factory=StreamResponse)
 
-      Adds router for returning static files.
+      Adds a router and a handler for returning static files.
 
-      Useful for handling static content like images, javascript and css files.
+      Useful for serving static content like images, javascript and css files.
+
+      On platforms that support it, the handler will transfer files more
+      efficiently using the ``sendfile`` system call.
+
+      In some situations it might be necessary to avoid using the ``sendfile``
+      system call even if the platform supports it. This can be accomplished by
+      by setting environment variable ``AIOHTTP_NOSENDFILE=1``.
 
       .. warning::
 
          Use :meth:`add_static` for development only. In production,
          static content should be processed by web servers like *nginx*
          or *apache*.
+
+      .. versionchanged:: 0.18.0
+         Transfer files using the ``sendfile`` system call on supported
+         platforms.
+
+      .. versionchanged:: 0.19.0
+         Disable ``sendfile`` by setting environment variable
+         ``AIOHTTP_NOSENDFILE=1``
 
       :param str prefix: URL path prefix for handled static files
 
