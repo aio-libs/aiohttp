@@ -38,3 +38,5 @@ CHANGES
 - Enable passing pre-compressed data in requests #621
 
 - Expose named routes via UrlDispatcher.named_routes() #622
+
+- Allow disabling sendfile by environment variable AIOHTTP_NOSENDFILE #629

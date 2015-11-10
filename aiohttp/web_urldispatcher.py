@@ -163,7 +163,7 @@ class StaticRoute(Route):
             raise ValueError(
                 "No directory exists at '{}'".format(self._directory))
 
-        if os.environ.get("AIOHTTP_NOSENDFILE") == "1":
+        if bool(os.environ.get("AIOHTTP_NOSENDFILE")):
             self._sendfile = self._sendfile_fallback
 
     def match(self, path):
