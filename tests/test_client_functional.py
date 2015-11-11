@@ -363,3 +363,25 @@ def test_history(create_app_and_client):
         assert resp_redirect.status == 200
     finally:
         resp_redirect.release()
+
+
+@pytest.mark.run_loop
+def test_keepalive_closed_by_server(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        body = yield from request.read()
+        assert b'' == body
+        resp = web.Response(body=b'OK')
+        resp.force_close()
+        return resp
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp1 = yield from client.get('/')
+    val1 = yield from resp1.read()
+    assert val1 == b'OK'
+    resp2 = yield from client.get('/')
+    val2 = yield from resp2.read()
+    assert val2 == b'OK'
+
+    assert 0 == len(client._session.connector._conns)
