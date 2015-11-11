@@ -385,3 +385,32 @@ def test_keepalive_closed_by_server(create_app_and_client):
     assert val2 == b'OK'
 
     assert 0 == len(client._session.connector._conns)
+
+
+@pytest.mark.run_loop
+def test_keepalive_closed_by_server_after_read_by_client(
+        create_app_and_client, loop):
+    fut = asyncio.Future(loop=loop)
+
+    @asyncio.coroutine
+    def handler(request):
+        nonlocal fut
+
+        def cb(f):
+            request.transport.close()
+
+        fut.add_done_callback(cb)
+        return web.Response(body=b'OK')
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp1 = yield from client.get('/')
+    val1 = yield from resp1.read()
+    assert val1 == b'OK'
+    fut.set_result(None)
+    fut = asyncio.Future(loop=loop)
+    resp2 = yield from client.get('/')
+    val2 = yield from resp2.read()
+    assert val2 == b'OK'
+
+    assert 0 == len(client._session.connector._conns)
