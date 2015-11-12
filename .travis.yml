@@ -15,6 +15,7 @@ install:
   - pip install --upgrade pip wheel
   - pip install --upgrade setuptools
   - pip install -r requirements-dev.txt
+  - pip install coveralls
 
 script:
   - flake8 aiohttp
@@ -23,6 +24,9 @@ script:
     fi
   - coverage run --source=aiohttp setup.py test
   - python setup.py check -rm
+
+after_success:
+  coveralls
 
 env:
   matrix:
