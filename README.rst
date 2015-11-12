@@ -9,9 +9,13 @@ http client/server for asyncio
 .. image:: https://travis-ci.org/KeepSafe/aiohttp.svg?branch=master
   :target:  https://travis-ci.org/KeepSafe/aiohttp
   :align: right
+
 .. image:: https://coveralls.io/repos/KeepSafe/aiohttp/badge.svg?branch=master&service=github
   :target:  https://coveralls.io/github/KeepSafe/aiohttp?branch=master
   :align: right
+
+.. image:: https://badge.fury.io/py/aiohttp.svg
+    :target: https://badge.fury.io/py/aiohttp
 
 Features
 --------
