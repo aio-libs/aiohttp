@@ -389,7 +389,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         r'^\{(?P<var>[a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}$')
     GOOD = r'[^{}/]+'
     ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
-    NAME_SPLIT_RE = re.compile('[.:]')
+    NAME_SPLIT_RE = re.compile('[.:-]')
 
     METHODS = {hdrs.METH_ANY, hdrs.METH_POST,
                hdrs.METH_GET, hdrs.METH_PUT, hdrs.METH_DELETE,
@@ -449,10 +449,10 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             parts = self.NAME_SPLIT_RE.split(name)
             for part in parts:
                 if not part.isidentifier() or keyword.iskeyword(part):
-                    raise ValueError('Incorrect route name value, '
-                                     'Route name should be a sequence of '
+                    raise ValueError('Incorrect route name {!r}, '
+                                     'the name should be a sequence of '
                                      'python identifiers separated '
-                                     'by dot or column')
+                                     'by dash, dot or column'.format(name))
             if name in self._routes:
                 raise ValueError('Duplicate {!r}, '
                                  'already handled by {!r}'

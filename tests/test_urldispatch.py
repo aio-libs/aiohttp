@@ -83,7 +83,7 @@ class TestUrlDispatcher(unittest.TestCase):
         route = PlainRoute('GET', handler, 'return', '/handler/to/path')
         self.assertRaises(ValueError, self.router.register_route, route)
 
-        route = PlainRoute('GET', handler, 'test.test:test',
+        route = PlainRoute('GET', handler, 'test.test:test-test',
                            '/handler/to/path')
         self.router.register_route(route)
 

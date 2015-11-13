@@ -1,6 +1,13 @@
 CHANGES
 =======
 
+0.18.4 (13-11-2015)
+-------------------
+
+- Relax rule for router names again by adding dash to allowed
+  characters: they may contain identifiers, dashes, dots and columns
+
+
 0.18.3 (25-10-2015)
 -------------------
 
