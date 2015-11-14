@@ -81,7 +81,7 @@ again::
     r = await aiohttp.get('https://api.github.com/events')
     print(await r.text())
 
-will printout socmething like::
+will printout something like::
 
     '[{"created_at":"2015-06-12T14:06:22Z","public":true,"actor":{...
 
@@ -556,8 +556,8 @@ the :attr:`~ClientResponse.history` attribute::
     >>> r.history
     (<ClientResponse(http://example.com/some/redirect/) [301]>,)
 
-If no redirects occured or ``allow_redirects`` is set to ``False``, history will
-be an empty sequence.
+If no redirects occurred or ``allow_redirects`` is set to ``False``,
+history will be an empty sequence.
 
 
 Timeouts

@@ -652,10 +652,10 @@ Response
 
    :param str content_type: response's content type. ``'text/plain'``
                        if *text* is passed also,
-                       ``'application/octet-stream'`` othrewise.
+                       ``'application/octet-stream'`` otherwise.
 
-   :param str charset: response's sharset. ``'utf-8'`` if *text* is
-                       passed also, ``None`` othrewise.
+   :param str charset: response's charset. ``'utf-8'`` if *text* is
+                       passed also, ``None`` otherwise.
 
 
    .. attribute:: body

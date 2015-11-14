@@ -992,7 +992,7 @@ Response object
 
       If *encoding* is ``None`` content encoding is autocalculated
       using :term:`cchardet` or :term:`chardet` as fallback if
-      *cchardet* is not awailable.
+      *cchardet* is not available.
 
       Close underlying connection if data reading gets an error,
       release connection otherwise.
@@ -1010,7 +1010,7 @@ Response object
 
       If *encoding* is ``None`` content encoding is autocalculated
       using :term:`cchardet` or :term:`chardet` as fallback if
-      *cchardet* is not awailable.
+      *cchardet* is not available.
 
       Close underlying connection if data reading gets an error,
       release connection otherwise.
