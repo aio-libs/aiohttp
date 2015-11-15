@@ -1,4 +1,5 @@
 aiohttp
+async
 autocalculated
 autodetection
 autogeneration
@@ -22,6 +23,7 @@ gunicorn
 Gunicorn
 Indices
 IP
+IPv
 ish
 iterable
 iterables

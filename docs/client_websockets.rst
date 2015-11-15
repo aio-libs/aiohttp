@@ -18,9 +18,7 @@ You have to use the :meth:`aiohttp.ClientSession.ws_connect` coroutine
 for client websocket connection. It accepts a *url* as a first
 parameter and returns :class:`ClientWebSocketResponse`, with that
 object you can communicate with websocket server using response's
-methods:
-
-.. code-block:: python
+methods::
 
    session = aiohttp.ClientSession()
    async with session.ws_connect('http://example.org/websocket') as ws:

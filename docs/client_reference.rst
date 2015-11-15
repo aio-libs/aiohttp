@@ -982,7 +982,7 @@ Response object
    .. coroutinemethod:: release()
 
       Finish response processing, release underlying connection and
-      return it into free connection pool for reusage by next upcoming
+      return it into free connection pool for re-usage by next upcoming
       request.
 
    .. coroutinemethod:: text(encoding=None)
@@ -1023,7 +1023,7 @@ Response object
                              data, :func:`json.loads` by default.
 
       :return: *BODY* as *JSON* data parsed by *loads* parameter or
-               ``None`` if *BODY* is empty or contains whitespaces
+               ``None`` if *BODY* is empty or contains white-spaces
                only.
 
 Utilities
@@ -1035,14 +1035,14 @@ BasicAuth
 
 .. class:: BasicAuth(login, password='', encoding='latin1')
 
-   Http basic authentication helper.
+   HTTP basic authentication helper.
 
    :param str login: login
    :param str password: password
-   :param str encoding: encoding ('latin1' by default)
+   :param str encoding: encoding (`'latin1'` by default)
 
 
-   Should be used for specifying authorization data in client api,
+   Should be used for specifying authorization data in client API,
    e.g. *auth* parameter for :meth:`ClientSession.request`.
 
 
@@ -1051,7 +1051,7 @@ BasicAuth
       Encode credentials into string suitable for ``Authorization``
       header etc.
 
-      :return: encoded auth data, :class:`str`.
+      :return: encoded authentication data, :class:`str`.
 
 
 .. disqus::
