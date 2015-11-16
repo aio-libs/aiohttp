@@ -24,6 +24,9 @@ from .multidict import (CIMultiDictProxy, MultiDictProxy, MultiDict,
 from .multipart import MultipartWriter
 from .protocol import HttpMessage
 
+
+__all__ = ('ClientRequest', 'ClientResponse')
+
 PY_35 = sys.version_info >= (3, 5)
 
 HTTP_PORT = 80
