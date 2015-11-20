@@ -342,49 +342,6 @@ class TestStreamParser(unittest.TestCase):
         self.assertIsInstance(s.exception(), CustomEofErr)
 
 
-class TestStreamProtocol(unittest.TestCase):
-
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
-
-    def test_connection_made(self):
-        tr = unittest.mock.Mock()
-
-        proto = parsers.StreamProtocol(loop=self.loop)
-        self.assertIsNone(proto.transport)
-
-        proto.connection_made(tr)
-        self.assertIs(proto.transport, tr)
-
-    def test_connection_lost(self):
-        proto = parsers.StreamProtocol(loop=self.loop)
-        proto.connection_made(unittest.mock.Mock())
-        proto.connection_lost(None)
-        self.assertIsNone(proto.transport)
-        self.assertIsNone(proto.writer)
-        self.assertTrue(proto.reader._eof)
-
-    def test_connection_lost_exc(self):
-        proto = parsers.StreamProtocol(loop=self.loop)
-        proto.connection_made(unittest.mock.Mock())
-
-        exc = ValueError()
-        proto.connection_lost(exc)
-        self.assertIs(proto.reader.exception(), exc)
-
-    def test_data_received(self):
-        proto = parsers.StreamProtocol(loop=self.loop)
-        proto.connection_made(unittest.mock.Mock())
-        proto.reader = unittest.mock.Mock()
-
-        proto.data_received(b'data')
-        proto.reader.feed_data.assert_called_with(b'data')
-
-
 class TestParserBuffer(unittest.TestCase):
 
     def setUp(self):
