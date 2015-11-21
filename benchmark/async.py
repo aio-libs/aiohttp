@@ -205,7 +205,7 @@ def attack(count, concurrency, client, loop, url):
     in_iter = gen()
     bombers = []
     for i in range(concurrency):
-        bomber = asyncio.async(do_bomb(in_iter))
+        bomber = asyncio.ensure_future(do_bomb(in_iter))
         bombers.append(bomber)
 
     t1 = loop.time()

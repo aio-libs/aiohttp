@@ -315,7 +315,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             text = yield from resp.receive()
             self.assertEqual(text.data, 'test')
 
-            t = asyncio.async(resp.close(), loop=self.loop)
+            t = asyncio.ensure_future(resp.close(), loop=self.loop)
             yield from asyncio.sleep(0.1, loop=self.loop)
             t.cancel()
             yield from asyncio.sleep(0.1, loop=self.loop)

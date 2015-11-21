@@ -204,7 +204,7 @@ class Worker:
             # parent
             os.close(up_read)
             os.close(down_write)
-            asyncio.async(self.connect(pid, up_write, down_read))
+            asyncio.ensure_future(self.connect(pid, up_write, down_read))
         else:
             # child
             os.close(up_write)
@@ -269,8 +269,8 @@ class Worker:
         self.writer = writer
         self.rtransport = read_transport
         self.wtransport = write_transport
-        self.chat_task = asyncio.async(self.chat(reader))
-        self.heartbeat_task = asyncio.async(self.heartbeat(writer))
+        self.chat_task = asyncio.ensure_future(self.chat(reader))
+        self.heartbeat_task = asyncio.ensure_future(self.heartbeat(writer))
 
     def kill(self):
         self._started = False

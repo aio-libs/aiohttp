@@ -517,7 +517,7 @@ class TestBaseConnector(unittest.TestCase):
                 self.assertEqual(1, len(conn._acquired[key]))
                 connection2.release()
 
-            task = asyncio.async(f(), loop=self.loop)
+            task = asyncio.ensure_future(f(), loop=self.loop)
 
             yield from asyncio.sleep(0.01, loop=self.loop)
             self.assertFalse(acquired)

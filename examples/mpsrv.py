@@ -129,7 +129,7 @@ class ChildProcess:
             os.getpid(), x.getsockname()))
 
         # heartbeat
-        asyncio.async(self.heartbeat())
+        asyncio.ensure_future(self.heartbeat())
 
         asyncio.get_event_loop().run_forever()
         os._exit(0)
@@ -185,7 +185,7 @@ class Worker:
             # parent
             os.close(up_read)
             os.close(down_write)
-            asyncio.async(self.connect(pid, up_write, down_read))
+            asyncio.ensure_future(self.connect(pid, up_write, down_read))
         else:
             # child
             os.close(up_write)

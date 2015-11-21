@@ -45,7 +45,7 @@ class TestWorker(unittest.TestCase):
         with self.assertRaises(SystemExit):
             self.worker.run()
 
-        self.assertTrue(m_asyncio.async.called)
+        self.assertTrue(m_asyncio.ensure_future.called)
         self.assertTrue(self.worker.loop.run_until_complete.called)
         self.assertTrue(self.worker.loop.close.called)
 
