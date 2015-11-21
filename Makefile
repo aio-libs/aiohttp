@@ -1,29 +1,34 @@
 # Some simple testing tasks (sorry, UNIX only).
 
+PIP:=pip3
+PYTHON:=python3
+PYTEST:=py.test-3
+TOX:=tox
+
 .install-deps: requirements-dev.txt
-	pip install -U -r requirements-dev.txt
+	$(PIP) install -U -r requirements-dev.txt
 	touch .install-deps
 
 flake: .install-deps
 #	python setup.py check -rms
 	flake8 aiohttp
-	if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then \
+	if $(PYTHON) -c "import sys; sys.exit(sys.version_info < (3,5))"; then \
             flake8 examples tests; \
         fi
 
 
 .develop: .install-deps $(shell find aiohttp -type f)
-	pip install -e .
+	$(PIP) install -e .
 	touch .develop
 
 test: flake .develop
-	py.test -q ./tests/
+	$(PYTEST) -q ./tests/
 
 vtest: flake .develop
-	py.test -s -v ./tests/
+	$(PYTEST) -s -v ./tests/
 
 cov cover coverage:
-	tox
+	$(TOX)
 
 cov-dev: .develop
 	py.test --cov=aiohttp --cov-report=term --cov-report=html tests 
@@ -49,7 +54,7 @@ clean:
 	rm -rf build
 	rm -rf cover
 	make -C docs clean
-	python setup.py clean
+	$(PYTHON) setup.py clean
 	rm -f aiohttp/_multidict.html
 	rm -f aiohttp/_multidict.c
 	rm -f aiohttp/_multidict.*.so
@@ -64,7 +69,7 @@ doc-spelling:
 	make -C docs spelling
 
 install:
-	pip install -U pip
-	pip install -Ur requirements-dev.txt
+	$(PIP) install -U pip
+	$(PIP) install -Ur requirements-dev.txt
 
 .PHONY: all build venv flake test vtest testloop cov clean doc

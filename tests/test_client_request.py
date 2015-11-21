@@ -735,7 +735,7 @@ class TestClientRequest(unittest.TestCase):
             yield from asyncio.sleep(0.01, loop=self.loop)
             fut.set_exception(ValueError)
 
-        asyncio.async(exc(), loop=self.loop)
+        asyncio.ensure_future(exc(), loop=self.loop)
 
         resp = req.send(self.transport, self.protocol)
         resp._connection = self.connection
@@ -773,7 +773,7 @@ class TestClientRequest(unittest.TestCase):
             yield from asyncio.sleep(0.01, loop=self.loop)
             fut.set_exception(inner_exc)
 
-        asyncio.async(exc(), loop=self.loop)
+        asyncio.ensure_future(exc(), loop=self.loop)
 
         resp = req.send(self.transport, self.protocol)
         resp._connection = self.connection
@@ -801,7 +801,7 @@ class TestClientRequest(unittest.TestCase):
             yield from asyncio.sleep(0.0001, loop=self.loop)
             req._continue.set_result(1)
 
-        asyncio.async(coro(), loop=self.loop)
+        asyncio.ensure_future(coro(), loop=self.loop)
 
         resp = req.send(self.transport, self.protocol)
         self.loop.run_until_complete(req._writer)
@@ -822,7 +822,7 @@ class TestClientRequest(unittest.TestCase):
             yield from asyncio.sleep(0.0001, loop=self.loop)
             req._continue.set_result(1)
 
-        asyncio.async(coro(), loop=self.loop)
+        asyncio.ensure_future(coro(), loop=self.loop)
 
         resp = req.send(self.transport, self.protocol)
         self.assertEqual(1, len(self.transport.write.mock_calls))

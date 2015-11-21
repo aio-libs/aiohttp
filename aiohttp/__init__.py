@@ -16,6 +16,14 @@ from .multidict import *  # noqa
 from .multipart import *  # noqa
 from .websocket_client import *  # noqa
 
+# asyncio.async() was renamed to .ensure_future() in 3.4.3/3.5
+# because "async" is a keyword in "async def" coroutines
+import asyncio
+try:
+    asyncio.ensure_future
+except AttributeError:
+    asyncio.ensure_future = getattr(asyncio,'async')
+del asyncio
 
 __all__ = (client.__all__ +
            client_reqrep.__all__ +
