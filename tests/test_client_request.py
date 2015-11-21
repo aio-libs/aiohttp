@@ -9,6 +9,7 @@ import inspect
 import io
 import urllib.parse
 import os.path
+import zlib
 
 from http.cookies import SimpleCookie
 
@@ -372,6 +373,25 @@ def test_query_multivalued_param(make_request):
         assert req.path == '/?test=foo&test=baz'
 
 
+def test_query_str_param(make_request):
+    for meth in ClientRequest.ALL_METHODS:
+        req = make_request(meth, 'http://python.org', params='test=foo')
+        assert req.path == '/?test=foo'
+
+
+def test_query_bytes_param_raises(make_request):
+    for meth in ClientRequest.ALL_METHODS:
+        with pytest.raises_regexp(TypeError,
+                                  'not a valid non-string.*or mapping'):
+            make_request(meth, 'http://python.org', params=b'test=foo')
+
+
+def test_query_str_param_is_not_encoded(make_request):
+    for meth in ClientRequest.ALL_METHODS:
+        req = make_request(meth, 'http://python.org', params='test=f+oo')
+        assert req.path == '/?test=f+oo'
+
+
 def test_params_update_path_and_url(make_request):
     req = make_request('get', 'http://python.org',
                        params=(('test', 'foo'), ('test', 'baz')))
@@ -596,6 +616,20 @@ class TestClientRequest(unittest.TestCase):
             self.assertEqual(req.headers['CONTENT-LENGTH'],
                              str(os.path.getsize(fname)))
             self.loop.run_until_complete(req.close())
+
+    def test_precompressed_data_stays_intact(self):
+        data = zlib.compress(b'foobar')
+        req = ClientRequest(
+            'post', 'http://python.org/',
+            data=data,
+            headers={'CONTENT-ENCODING': 'deflate'},
+            compress=False,
+            loop=self.loop)
+        self.assertFalse(req.compress)
+        self.assertFalse(req.chunked)
+        self.assertEqual(req.headers['CONTENT-ENCODING'],
+                         'deflate')
+        self.loop.run_until_complete(req.close())
 
     def test_file_upload_not_chunked_seek(self):
         here = os.path.dirname(__file__)

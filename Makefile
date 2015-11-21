@@ -31,14 +31,13 @@ cov cover coverage:
 	$(TOX)
 
 cov-dev: .develop
-	@coverage erase
-	@coverage run -m pytest -s tests
-	@mv .coverage .coverage.accel
-	@AIOHTTP_NO_EXTENSIONS=1 coverage run -m pytest -s tests
-	@mv .coverage .coverage.pure
-	@coverage combine
-	@coverage report
-	@coverage html
+	py.test --cov=aiohttp --cov-report=term --cov-report=html tests 
+	@echo "open file://`pwd`/coverage/index.html"
+
+cov-dev-full: .develop
+	AIOHTTP_NO_EXTENSIONS=1 py.test --cov=aiohttp --cov-append tests 
+	PYTHONASYNCIODEBUG=1 py.test --cov=aiohttp --cov-append tests 
+	py.test --cov=aiohttp --cov-report=term --cov-report=html tests 
 	@echo "open file://`pwd`/coverage/index.html"
 
 clean:

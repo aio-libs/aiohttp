@@ -121,6 +121,7 @@ class RequestHandlerFactory:
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
         self._kwargs = kwargs
         self._kwargs.setdefault('logger', app.logger)
+        self.num_connections = 0
 
     @property
     def secure_proxy_ssl_header(self):
@@ -170,10 +171,15 @@ class RequestHandlerFactory:
         self._connections.clear()
 
     def __call__(self):
-        return self._handler(
-            self, self._app, self._router, loop=self._loop,
-            secure_proxy_ssl_header=self._secure_proxy_ssl_header,
-            **self._kwargs)
+        self.num_connections += 1
+        try:
+            return self._handler(
+                self, self._app, self._router, loop=self._loop,
+                secure_proxy_ssl_header=self._secure_proxy_ssl_header,
+                **self._kwargs)
+        except:
+            web_logger.exception(
+                'Can not create request handler: {!r}'.format(self._handler))
 
 
 class Application(dict):
@@ -254,6 +260,9 @@ class Application(dict):
 
     def register_on_finish(self, func, *args, **kwargs):
         self._finish_callbacks.insert(0, (func, args, kwargs))
+
+    def copy(self):
+        raise NotImplementedError
 
     def __call__(self):
         """gunicorn compatibility"""

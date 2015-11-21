@@ -1,7 +1,7 @@
 import pytest
-
+from unittest import mock
 from aiohttp import helpers
-from aiohttp import MultiDict
+import datetime
 
 
 def test_parse_mimetype_1():
@@ -107,6 +107,60 @@ def test_invalid_formdata_content_transfer_encoding():
                            content_transfer_encoding=invalid_val)
 
 
+def test_access_logger_format():
+    log_format = '%T {%{SPAM}e} "%{ETag}o" %X {X} %%P'
+    mock_logger = mock.Mock()
+    access_logger = helpers.AccessLogger(mock_logger, log_format)
+    expected = '%s {%s} "%s" %%X {X} %%%s'
+    assert expected == access_logger._log_format
+
+
+@mock.patch("aiohttp.helpers.datetime")
+@mock.patch("os.getpid")
+def test_access_logger_atoms(mock_getpid, mock_datetime):
+    utcnow = datetime.datetime(1843, 1, 1, 0, 0)
+    mock_datetime.datetime.utcnow.return_value = utcnow
+    mock_getpid.return_value = 42
+    log_format = '%a %t %P %l %u %r %s %b %O %T %D'
+    mock_logger = mock.Mock()
+    access_logger = helpers.AccessLogger(mock_logger, log_format)
+    message = mock.Mock(headers={}, method="GET", path="/path", version=(1, 1))
+    environ = {}
+    response = mock.Mock(headers={}, output_length=123,
+                         body_length=42, status=200)
+    transport = mock.Mock()
+    transport.get_extra_info.return_value = ("127.0.0.2", 1234)
+    access_logger.log(message, environ, response, transport, 3.1415926)
+    assert False == mock_logger.exception.called
+    expected = ('127.0.0.2 [01/Jan/1843:00:00:00 +0000] <42> - - '
+                'GET /path HTTP/1.1 200 42 123 3 3141593')
+    mock_logger.info.assert_called_with(expected)
+
+
+def test_access_logger_dicts():
+    log_format = '%{User-Agent}i %{Content-Length}o %{SPAM}e %{None}i'
+    mock_logger = mock.Mock()
+    access_logger = helpers.AccessLogger(mock_logger, log_format)
+    message = mock.Mock(headers={"USER-AGENT": "Mock/1.0"}, version=(1, 1))
+    environ = {"SPAM": "EGGS"}
+    response = mock.Mock(headers={"CONTENT-LENGTH": 123})
+    transport = mock.Mock()
+    transport.get_extra_info.return_value = ("127.0.0.2", 1234)
+    access_logger.log(message, environ, response, transport, 0.0)
+    assert False == mock_logger.error.called
+    expected = 'Mock/1.0 123 EGGS -'
+    mock_logger.info.assert_called_with(expected)
+
+
+def test_logger_no_message_and_environ():
+    mock_logger = mock.Mock()
+    mock_transport = mock.Mock()
+    mock_transport.get_extra_info.return_value = ("127.0.0.3", 0)
+    access_logger = helpers.AccessLogger(mock_logger, "%r %{FOOBAR}e")
+    access_logger.log(None, None, None, mock_transport, 0.0)
+    mock_logger.info.assert_called_with("- -")
+
+
 def test_reify():
     class A:
         @helpers.reify
@@ -138,33 +192,6 @@ def test_reify_assignment():
 
     with pytest.raises(AttributeError):
         a.prop = 123
-
-
-def test_get_seconds_and_milliseconds():
-    response = dict(status=200, output_length=1)
-    request_time = 321.012345678901234
-
-    atoms = helpers.atoms(None, None, response, None, request_time)
-    assert atoms['T'] == '321'
-    assert atoms['D'] == '012345'
-
-
-def test_get_non_existing():
-    atoms = helpers.SafeAtoms(
-        {}, MultiDict(), MultiDict())
-    assert atoms['unknown'] == '-'
-
-
-def test_get_lower():
-    i_headers = MultiDict([('test', '123')])
-    o_headers = MultiDict([('TEST', '123')])
-
-    atoms = helpers.SafeAtoms({}, i_headers, o_headers)
-    assert atoms['{test}i'] == '123'
-    assert atoms['{test}o'] == '-'
-    assert atoms['{TEST}o'] == '123'
-    assert atoms['{UNKNOWN}o'] == '-'
-    assert atoms['{UNKNOWN}'] == '-'
 
 
 def test_requote_uri_with_unquoted_percents():

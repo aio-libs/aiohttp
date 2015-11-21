@@ -2,13 +2,14 @@
 
 import asyncio
 
-import aiohttp
+import sys
 from .websocket import Message
 from .websocket import WebSocketError
 from .websocket import MSG_BINARY, MSG_TEXT, MSG_CLOSE, MSG_PING, MSG_PONG
 
-__all__ = ('ws_connect', 'MsgType')
+__all__ = ('MsgType',)
 
+PY_35 = sys.version_info >= (3, 5)
 
 try:
     from enum import IntEnum
@@ -25,6 +26,7 @@ class MsgType(IntEnum):
     close = MSG_CLOSE
     closed = 20
     error = 21
+
 
 closedMessage = Message(MsgType.closed, None, None)
 
@@ -97,16 +99,16 @@ class ClientWebSocketResponse:
                 self._writer.close(code, message)
             except asyncio.CancelledError:
                 self._close_code = 1006
-                self._response.close(force=True)
+                self._response.close()
                 raise
             except Exception as exc:
                 self._close_code = 1006
                 self._exception = exc
-                self._response.close(force=True)
+                self._response.close()
                 return True
 
             if self._closing:
-                self._response.close(force=True)
+                self._response.close()
                 return True
 
             while True:
@@ -115,17 +117,17 @@ class ClientWebSocketResponse:
                         self._reader.read(), self._timeout, loop=self._loop)
                 except asyncio.CancelledError:
                     self._close_code = 1006
-                    self._response.close(force=True)
+                    self._response.close()
                     raise
                 except Exception as exc:
                     self._close_code = 1006
                     self._exception = exc
-                    self._response.close(force=True)
+                    self._response.close()
                     return True
 
                 if msg.tp == MsgType.close:
                     self._close_code = msg.data
-                    self._response.close(force=True)
+                    self._response.close()
                     return True
         else:
             return False
@@ -172,29 +174,14 @@ class ClientWebSocketResponse:
         finally:
             self._waiting = False
 
+    if PY_35:
+        @asyncio.coroutine
+        def __aiter__(self):
+            return self
 
-@asyncio.coroutine
-def ws_connect(url, *, protocols=(), timeout=10.0, connector=None, auth=None,
-               ws_response_class=ClientWebSocketResponse, autoclose=True,
-               autoping=True, loop=None):
-
-    if loop is None:
-        loop = asyncio.get_event_loop()
-
-    if connector is None:
-        connector = aiohttp.TCPConnector(loop=loop, force_close=True)
-
-    session = aiohttp.ClientSession(loop=loop, connector=connector, auth=auth,
-                                    ws_response_class=ws_response_class)
-
-    try:
-        resp = yield from session.ws_connect(
-            url,
-            protocols=protocols,
-            timeout=timeout,
-            autoclose=autoclose,
-            autoping=autoping)
-        return resp
-
-    finally:
-        session.detach()
+        @asyncio.coroutine
+        def __anext__(self):
+            msg = yield from self.receive()
+            if msg.tp == MsgType.close:
+                raise StopAsyncIteration  # NOQA
+            return msg

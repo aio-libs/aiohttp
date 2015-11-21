@@ -1,10 +1,13 @@
 import datetime
+import json
 import pytest
 import re
 from unittest import mock
 from aiohttp import hdrs, signals
 from aiohttp.multidict import CIMultiDict
-from aiohttp.web import ContentCoding, Request, StreamResponse, Response
+from aiohttp.web import (
+    ContentCoding, Request, StreamResponse, Response, json_response
+)
 from aiohttp.protocol import HttpVersion, HttpVersion11, HttpVersion10
 from aiohttp.protocol import RawRequestMessage
 
@@ -636,6 +639,54 @@ def test_ctor_text():
     assert resp.text == 'test text'
 
 
+def test_ctor_charset():
+    resp = Response(text='текст', charset='koi8-r')
+
+    assert 'текст'.encode('koi8-r') == resp.body
+    assert 'koi8-r' == resp.charset
+
+
+def test_ctor_charset_default_utf8():
+    resp = Response(text='test test', charset=None)
+
+    assert 'utf-8' == resp.charset
+
+
+def test_ctor_charset_in_content_type():
+    with pytest.raises(ValueError):
+        Response(text='test test', content_type='text/plain; charset=utf-8')
+
+
+def test_ctor_charset_without_text():
+    resp = Response(content_type='text/plain', charset='koi8-r')
+
+    assert 'koi8-r' == resp.charset
+
+
+def test_ctor_both_content_type_param_and_header_with_text():
+    with pytest.raises(ValueError):
+        Response(headers={'Content-Type': 'application/json'},
+                 content_type='text/html', text='text')
+
+
+def test_ctor_both_charset_param_and_header_with_text():
+    with pytest.raises(ValueError):
+        Response(headers={'Content-Type': 'application/json'},
+                 charset='koi8-r', text='text')
+
+
+def test_ctor_both_content_type_param_and_header():
+    with pytest.raises(ValueError):
+        Response(headers={'Content-Type': 'application/json'},
+                 content_type='text/html')
+
+
+def test_ctor_both_charset_param_and_header():
+    with pytest.raises(ValueError):
+        Response(headers={'Content-Type': 'application/json'},
+                 charset='koi8-r')
+
+
 def test_assign_nonbyteish_body():
     resp = Response(body=b'data')
 
@@ -788,3 +839,39 @@ def test_text_with_empty_payload():
     resp = Response(status=200)
     assert resp.body is None
     assert resp.text is None
+
+
+class TestJSONResponse:
+
+    def test_content_type_is_application_json_by_default(self):
+        resp = json_response('')
+        assert 'application/json' == resp.content_type
+
+    def test_passing_text_only(self):
+        resp = json_response(text=json.dumps('jaysawn'))
+        assert resp.text == json.dumps('jaysawn')
+
+    def test_data_and_text_raises_value_error(self):
+        with pytest.raises(ValueError) as excinfo:
+            json_response(data='foo', text='bar')
+        expected_message = (
+            'only one of data, text, or body should be specified'
+        )
+        assert expected_message == excinfo.value.args[0]
+
+    def test_data_and_body_raises_value_error(self):
+        with pytest.raises(ValueError) as excinfo:
+            json_response(data='foo', body=b'bar')
+        expected_message = (
+            'only one of data, text, or body should be specified'
+        )
+        assert expected_message == excinfo.value.args[0]
+
+    def test_text_is_json_encoded(self):
+        resp = json_response({'foo': 42})
+        assert json.dumps({'foo': 42}) == resp.text
+
+    def test_content_type_is_overrideable(self):
+        resp = json_response({'foo': 42},
+                             content_type='application/vnd.json+api')
+        assert 'application/vnd.json+api' == resp.content_type

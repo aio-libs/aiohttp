@@ -26,7 +26,10 @@ from .protocol import Response as ResponseImpl, HttpVersion10, HttpVersion11
 from .streams import EOF_MARKER
 
 
-__all__ = ('ContentCoding', 'Request', 'StreamResponse', 'Response')
+__all__ = (
+    'ContentCoding', 'Request', 'StreamResponse', 'Response',
+    'json_response'
+)
 
 
 sentinel = object()
@@ -389,6 +392,9 @@ class Request(dict, HeadersMixin):
         self._post = MultiDictProxy(out)
         return self._post
 
+    def copy(self):
+        raise NotImplementedError
+
     def __repr__(self):
         return "<{} {} {} >".format(self.__class__.__name__,
                                     self.method, self.path)
@@ -727,7 +733,8 @@ class StreamResponse(HeadersMixin):
 class Response(StreamResponse):
 
     def __init__(self, *, body=None, status=200,
-                 reason=None, text=None, headers=None, content_type=None):
+                 reason=None, text=None, headers=None, content_type=None,
+                 charset=None):
         super().__init__(status=status, reason=reason, headers=headers)
 
         if body is not None and text is not None:
@@ -741,16 +748,31 @@ class Response(StreamResponse):
                                     type(text))
                 if content_type is None:
                     content_type = 'text/plain'
+                elif ";" in content_type:
+                    raise ValueError('charset must not be in content_type '
+                                     'argument')
+                charset = charset or 'utf-8'
                 self.headers[hdrs.CONTENT_TYPE] = (
-                    content_type + '; charset=utf-8')
+                    content_type + '; charset=%s' % charset)
                 self._content_type = content_type
-                self._content_dict = {'charset': 'utf-8'}
-                self.body = text.encode('utf-8')
+                self._content_dict = {'charset': charset}
+                self.body = text.encode(charset)
             else:
                 self.text = text
+                if content_type or charset:
+                    raise ValueError("Passing both Content-Type header and "
+                                     "content_type or charset params "
+                                     "is forbidden")
         else:
+            if hdrs.CONTENT_TYPE in self.headers:
+                if content_type or charset:
+                    raise ValueError("Passing both Content-Type header and "
+                                     "content_type or charset params "
+                                     "is forbidden")
             if content_type:
                 self.content_type = content_type
+            if charset:
+                self.charset = charset
             if body is not None:
                 self.body = body
             else:
@@ -794,3 +816,17 @@ class Response(StreamResponse):
         if body is not None:
             self.write(body)
         yield from super().write_eof()
+
+
+def json_response(data=sentinel, *, text=None, body=None, status=200,
+                  reason=None, headers=None, content_type='application/json',
+                  dumps=json.dumps):
+    if data is not sentinel:
+        if text or body:
+            raise ValueError(
+                'only one of data, text, or body should be specified'
+            )
+        else:
+            text = dumps(data)
+    return Response(text=text, body=body, status=status, reason=reason,
+                    content_type=content_type)

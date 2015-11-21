@@ -1,4 +1,5 @@
 import asyncio
+import collections
 import http.cookies
 import io
 import json
@@ -22,6 +23,9 @@ from .multidict import (CIMultiDictProxy, MultiDictProxy, MultiDict,
                         CIMultiDict)
 from .multipart import MultipartWriter
 from .protocol import HttpMessage
+
+
+__all__ = ('ClientRequest', 'ClientResponse')
 
 PY_35 = sys.version_info >= (3, 5)
 
@@ -161,13 +165,12 @@ class ClientRequest:
         if not path:
             path = '/'
 
-        if isinstance(params, dict):
-            params = list(params.items())
-        elif isinstance(params, (MultiDictProxy, MultiDict)):
+        if isinstance(params, collections.Mapping):
             params = list(params.items())
 
         if params:
-            params = urllib.parse.urlencode(params)
+            if not isinstance(params, str):
+                params = urllib.parse.urlencode(params)
             if query:
                 query = '%s&%s' % (query, params)
             else:
@@ -231,8 +234,10 @@ class ClientRequest:
         """Set request content encoding."""
         enc = self.headers.get(hdrs.CONTENT_ENCODING, '').lower()
         if enc:
-            self.compress = enc
-            self.chunked = True  # enable chunked, no need to deal with length
+            if self.compress is not False:
+                self.compress = enc
+                # enable chunked, no need to deal with length
+                self.chunked = True
         elif self.compress:
             if not isinstance(self.compress, str):
                 self.compress = 'deflate'
@@ -534,6 +539,7 @@ class ClientResponse:
         self._continue = continue100
         self._closed = False
         self._should_close = True  # override by message.should_close later
+        self._history = ()
 
     def _post_init(self, loop):
         self._loop = loop
@@ -563,6 +569,11 @@ class ClientResponse:
     @property
     def connection(self):
         return self._connection
+
+    @property
+    def history(self):
+        """A sequence of of responses, if redirects occured."""
+        return self._history
 
     def waiting_for_continue(self):
         return self._continue is not None

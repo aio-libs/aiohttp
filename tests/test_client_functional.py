@@ -316,3 +316,72 @@ def test_format_task_get(create_server, loop):
     task = loop.create_task(client.get(url))
     assert "{}".format(task)[:18] == "<Task pending coro"
     yield from task
+
+
+@pytest.mark.run_loop
+def test_str_params(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        assert 'q=t+est' in request.query_string
+        return web.Response()
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+
+    resp = yield from client.get('/', params='q=t+est')
+    try:
+        assert 200 == resp.status
+    finally:
+        yield from resp.release()
+
+
+@pytest.mark.run_loop
+def test_history(create_app_and_client):
+    @asyncio.coroutine
+    def handler_redirect(request):
+        return web.Response(status=301, headers={'Location': '/ok'})
+
+    @asyncio.coroutine
+    def handler_ok(request):
+        return web.Response(status=200)
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/ok', handler_ok)
+    app.router.add_route('GET', '/redirect', handler_redirect)
+
+    resp = yield from client.get('/ok')
+    try:
+        assert len(resp.history) == 0
+        assert resp.status == 200
+    finally:
+        resp.release()
+
+    resp_redirect = yield from client.get('/redirect')
+    try:
+        assert len(resp_redirect.history) == 1
+        assert resp_redirect.history[0].status == 301
+        assert resp_redirect.status == 200
+    finally:
+        resp_redirect.release()
+
+
+@pytest.mark.run_loop
+def test_keepalive_closed_by_server(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        body = yield from request.read()
+        assert b'' == body
+        resp = web.Response(body=b'OK')
+        resp.force_close()
+        return resp
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp1 = yield from client.get('/')
+    val1 = yield from resp1.read()
+    assert val1 == b'OK'
+    resp2 = yield from client.get('/')
+    val2 = yield from resp2.read()
+    assert val2 == b'OK'
+
+    assert 0 == len(client._session.connector._conns)

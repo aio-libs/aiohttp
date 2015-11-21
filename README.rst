@@ -6,9 +6,16 @@ http client/server for asyncio
   :width: 64px
   :alt: aiohttp logo
 
-.. image:: https://secure.travis-ci.org/KeepSafe/aiohttp.png
-  :target:  https://secure.travis-ci.org/KeepSafe/aiohttp
+.. image:: https://travis-ci.org/KeepSafe/aiohttp.svg?branch=master
+  :target:  https://travis-ci.org/KeepSafe/aiohttp
   :align: right
+
+.. image:: https://coveralls.io/repos/KeepSafe/aiohttp/badge.svg?branch=master&service=github
+  :target:  https://coveralls.io/github/KeepSafe/aiohttp?branch=master
+  :align: right
+
+.. image:: https://badge.fury.io/py/aiohttp.svg
+    :target: https://badge.fury.io/py/aiohttp
 
 Features
 --------
@@ -39,6 +46,11 @@ Documentation
 
 http://aiohttp.readthedocs.org/
 
+Discussion list
+---------------
+
+*aio-libs* google group: https://groups.google.com/forum/#!forum/aio-libs
+
 Source code
 ------------
 
@@ -48,7 +60,8 @@ https://github.com/KeepSafe/aiohttp
 Benchmarks
 ----------
 
-If you are interested in by efficiency, AsyncIO community maintains a list of benchmarks on the official wiki:
+If you are interested in by efficiency, AsyncIO community maintains a
+list of benchmarks on the official wiki:
 https://github.com/python/asyncio/wiki/Benchmarks
 
 Getting started
@@ -101,11 +114,9 @@ This is simple usage example:
 
     async def wshandler(request):
         ws = web.WebSocketResponse()
-        ws.start(request)
+        await ws.prepare(request)
 
-        while True:
-            msg = await ws.receive()
-
+        async for msg in ws:
             if msg.tp == web.MsgType.text:
                 ws.send_str("Hello, {}".format(msg.data))
             elif msg.tp == web.MsgType.binary:

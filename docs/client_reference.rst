@@ -24,8 +24,8 @@ Usage example::
 
      async def fetch(client):
          async with client.get('http://python.org') as resp:
-         assert resp.status == 200
-         print(await resp.text())
+             assert resp.status == 200
+             print(await resp.text())
 
      with aiohttp.ClientSession() as client:
          asyncio.get_event_loop().run_until_complete(fetch(client))
@@ -75,8 +75,8 @@ The client session supports context manager protocol for self closing.
 
       Iterable of :class:`str` or :class:`~aiohttp.upstr` (optional)
 
-   :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that represents
-                                          HTTP Basic Authorization (optional)
+   :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
+                                  Authorization (optional)
 
    :param request_class: Request class implementation. ``ClientRequest`` by
                          default.
@@ -132,8 +132,19 @@ The client session supports context manager protocol for self closing.
 
       :param str url: Request URL
 
-      :param dict params: Parameters to be sent in the query
-                          string of the new request (optional)
+      :param params: Mapping, iterable of tuple of *key*/*value* pairs or
+                     string to be sent as parameters in the query
+                     string of the new request (optional)
+
+                     Allowed values are:
+
+                     - :class:`collections.abc.Mapping` e.g. :class:`dict`,
+                       :class:`aiohttp.MultiDict` or
+                       :class:`aiohttp.MultiDictProxy`
+                     - :class:`collections.abc.Iterable` e.g. :class:`tuple` or
+                       :class:`list`
+                     - :class:`str` with preferably url-encoded content
+                       (**Warning:** content will not be encoded by *aiohttp*)
 
       :param data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)
@@ -152,9 +163,8 @@ The client session supports context manager protocol for self closing.
          Iterable of :class:`str` or :class:`~aiohttp.upstr`
          (optional)
 
-      :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that
-                                             represents HTTP Basic Authorization
-                                             (optional)
+      :param aiohttp.BasicAuth auth: an object that represents HTTP
+                                     Basic Authorization (optional)
 
       :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                    ``True`` by default (optional).
@@ -294,7 +304,9 @@ The client session supports context manager protocol for self closing.
 
    .. coroutinemethod:: ws_connect(url, *, protocols=(), timeout=10.0,\
                                    auth=None,\
-                                   autoclose=True, autoping=True)
+                                   autoclose=True,\
+                                   autoping=True,\
+                                   origin=None)
 
       Create a websocket connection. Returns a
       :class:`ClientWebSocketResponse` object.
@@ -305,9 +317,8 @@ The client session supports context manager protocol for self closing.
 
       :param float timeout: Timeout for websocket read. 10 seconds by default
 
-      :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that
-                                             represents HTTP Basic Authorization
-                                             (optional)
+      :param aiohttp.BasicAuth auth: an object that represents HTTP
+                                     Basic Authorization (optional)
 
       :param bool autoclose: Automatically close websocket connection on close
                              message from server. If `autoclose` is False
@@ -316,6 +327,8 @@ The client session supports context manager protocol for self closing.
       :param bool autoping: automatically send `pong` on `ping`
                             message from server
 
+      :param str origin: Origin header to send to server
+
       .. versionadded:: 0.16
 
          Add :meth:`ws_connect`.
@@ -323,6 +336,10 @@ The client session supports context manager protocol for self closing.
       .. versionadded:: 0.18
 
          Add *auth* parameter.
+
+      .. versionadded:: 0.19
+
+         Add *origin* parameter.
 
    .. method:: close()
 
@@ -377,8 +394,8 @@ certification chaining.
 
    :param dict cookies: Cookies to send with the request (optional)
 
-   :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that represents
-                                          HTTP Basic Authorization (optional)
+   :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
+                                  Authorization (optional)
 
    :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                 ``True`` by default (optional).
@@ -387,6 +404,9 @@ certification chaining.
 
    :param bool compress: Set to ``True`` if request has to be compressed
                          with deflate encoding.
+                         ``False`` instructs aiohttp to not compress data
+                         even if the Content-Encoding header is set. Use it
+                         when sending pre-compressed data.
                          ``None`` by default (optional).
 
    :param int chunked: Set to chunk size for chunked transfer encoding.
@@ -779,8 +799,9 @@ ProxyConnector
 
    :param str proxy: URL for proxy, e.g. ``"http://some.proxy.com"``.
 
-   :param aiohttp.helpers.BasicAuth proxy_auth: basic
-      authentication info used for proxies with authorization.
+   :param aiohttp.BasicAuth proxy_auth: basic authentication info used
+                                        for proxies with
+                                        authorization.
 
    .. note::
 
@@ -935,6 +956,12 @@ Response object
 
       HTTP headers of response, :class:`CIMultiDictProxy`.
 
+   .. attribute:: history
+
+      A :class:`~collections.abc.Sequence` of :class:`ClientResponse`
+      objects of preceding requests if there were redirects, an empty
+      sequence otherwise.
+
    .. method:: close()
 
       Close response and underlying connection.
@@ -955,7 +982,7 @@ Response object
    .. coroutinemethod:: release()
 
       Finish response processing, release underlying connection and
-      return it into free connection pool for reusage by next upcoming
+      return it into free connection pool for re-usage by next upcoming
       request.
 
    .. coroutinemethod:: text(encoding=None)
@@ -965,7 +992,7 @@ Response object
 
       If *encoding* is ``None`` content encoding is autocalculated
       using :term:`cchardet` or :term:`chardet` as fallback if
-      *cchardet* is not awailable.
+      *cchardet* is not available.
 
       Close underlying connection if data reading gets an error,
       release connection otherwise.
@@ -976,14 +1003,14 @@ Response object
 
       :return str: decoded *BODY*
 
-   .. coroutinemethod:: json(encoding=None)
+   .. coroutinemethod:: json(encoding=None, loads=json.loads)
 
       Read response's body as *JSON*, return :class:`dict` using
       specified *encoding* and *loader*.
 
       If *encoding* is ``None`` content encoding is autocalculated
       using :term:`cchardet` or :term:`chardet` as fallback if
-      *cchardet* is not awailable.
+      *cchardet* is not available.
 
       Close underlying connection if data reading gets an error,
       release connection otherwise.
@@ -995,6 +1022,36 @@ Response object
       :param callable loads: :func:`callable` used for loading *JSON*
                              data, :func:`json.loads` by default.
 
-      :return dict: *BODY* as *JSON* data.
+      :return: *BODY* as *JSON* data parsed by *loads* parameter or
+               ``None`` if *BODY* is empty or contains white-spaces
+               only.
+
+Utilities
+---------
+
+
+BasicAuth
+^^^^^^^^^
+
+.. class:: BasicAuth(login, password='', encoding='latin1')
+
+   HTTP basic authentication helper.
+
+   :param str login: login
+   :param str password: password
+   :param str encoding: encoding (`'latin1'` by default)
+
+
+   Should be used for specifying authorization data in client API,
+   e.g. *auth* parameter for :meth:`ClientSession.request`.
+
+
+   .. method:: encode()
+
+      Encode credentials into string suitable for ``Authorization``
+      header etc.
+
+      :return: encoded authentication data, :class:`str`.
+
 
 .. disqus::

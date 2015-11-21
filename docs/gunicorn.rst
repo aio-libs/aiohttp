@@ -65,12 +65,12 @@ In this case, we will use:
 
 * the *'--bind'* flag to set the server's socket address;
 * the *'--worker-class'* flag to tell Gunicorn that we want to use a
-custom worker subclass instead of one of the Gunicorn default worker
-types;
+  custom worker subclass instead of one of the Gunicorn default worker
+  types;
 * you may also want to use the *'--workers'* flag to tell Gunicorn how
-many worker processes to use for handling requests. (See the
-documentation for recommendations on `How Many Workers?
-<http://docs.gunicorn.org/en/latest/design.html#how-many-workers>`_)
+  many worker processes to use for handling requests. (See the
+  documentation for recommendations on `How Many Workers?
+  <http://docs.gunicorn.org/en/latest/design.html#how-many-workers>`_)
 
 The custom worker subclass is defined in
 *aiohttp.worker.GunicornWebWorker* and should be used instead of the

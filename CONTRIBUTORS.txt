@@ -3,6 +3,7 @@ Contributors
 
 A. Jesse Jiryu Davis
 Alejandro Gómez
+Alex Khomchenko
 Alex Lisovoy
 Alexander Bayandin
 Alexander Karpinsky
@@ -19,7 +20,9 @@ Ben Bader
 Benedikt Reinartz
 Brian C. Lane
 Boris Feld
+Carl George
 Chien-Wei Huang
+Chih-Yuan Chen
 Chris Laws
 Chris Moore
 Daniel Nelson
@@ -40,16 +43,20 @@ Igor Pavlov
 Ingmar Steen
 Jaesung Lee
 Jashandeep Sohi
+Jeroen van der Heijden
+Joel Watts
 Julien Duponchelle
 Junjie Tao
 Kay Zheng
 Kirill Klenov
 Kirill Malovitsa
 Kyrylo Perevozchikov
+Lars P. Søndergaard
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
 Marco Paolini
 Martin Richard
+Mathias Fröjdman
 Morgan Delahaye-Prat
 Moss Collum
 Mikhail Lukyanchenko
@@ -65,9 +72,11 @@ Robert Lu
 Sebastian Hanula
 Sebastian Hüther
 Sergey Ninua
+Sergey Skripnick
 Simon Kennedy
 Stanislav Prokop
 Stephen Granade
+Sviatoslav Bulbakha
 Taras Voinarovskyi
 Tolga Tezel
 Vaibhav Sagar

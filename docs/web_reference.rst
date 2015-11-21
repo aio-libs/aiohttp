@@ -22,6 +22,13 @@ The Request object contains all the information about an incoming HTTP request.
 Every :ref:`handler<aiohttp-web-handler>` accepts a request instance as the
 first positional parameter.
 
+A :class:`Request` is a :obj:`dict`-like object, allowing it to be used for
+:ref:`sharing data<aiohttp-web-data-sharing>` among
+:ref:`aiohttp-web-middlewares` and :ref:`aiohttp-web-signals` handlers.
+
+Although :class:`Request` is :obj:`dict`-like object, it can't be duplicated
+like one using :meth:`Request.copy`.
+
 .. note::
 
    You should never create the :class:`Request` instance manually --
@@ -624,6 +631,7 @@ Response
 ^^^^^^^^
 
 .. class:: Response(*, status=200, headers=None, content_type=None, \
+                    charset=None, \
                     body=None, text=None)
 
    The most usable response class, inherited from :class:`StreamResponse`.
@@ -642,7 +650,13 @@ Response
 
    :param str text: response's BODY
 
-   :param str content_type: response's content type
+   :param str content_type: response's content type. ``'text/plain'``
+                       if *text* is passed also,
+                       ``'application/octet-stream'`` otherwise.
+
+   :param str charset: response's charset. ``'utf-8'`` if *text* is
+                       passed also, ``None`` otherwise.
+
 
    .. attribute:: body
 
@@ -682,6 +696,18 @@ WebSocketResponse
    cannot use :meth:`~StreamResponse.write` method but should to
    communicate with websocket client by :meth:`send_str`,
    :meth:`receive` and others.
+
+   .. versionadded:: 0.19
+
+      The class supports ``async for`` statement for iterating over
+      incoming messages::
+
+         ws = web.WebSocketResponse()
+         await ws.prepare(request)
+
+         async for msg in ws:
+             print(msg.data)
+
 
    .. coroutinemethod:: prepare(request)
 
@@ -858,6 +884,20 @@ WebSocketResponse
 
 .. seealso:: :ref:`WebSockets handling<aiohttp-web-websockets>`
 
+
+json_response
+-------------
+
+.. function:: json_response([data], *, text=None, body=None, \
+                            status=200, reason=None, headers=None, \
+                            content_type='application/json', \
+                            dumps=json.dumps)
+
+Return :class:`Response` with predefined ``'application/json'``
+content type and *data* encoded by *dumps* parameter
+(:func:`json.dumps` by default).
+
+
 .. _aiohttp-web-app-and-router:
 
 Application and Router
@@ -878,9 +918,10 @@ factory*. *RequestHandlerFactory* could be constructed with
 *Application* contains a *router* instance and a list of callbacks that
 will be called during application finishing.
 
-*Application* is a :class:`dict`, so you can use it as registry for
-arbitrary properties for later access from
-:ref:`handler<aiohttp-web-handler>` via :attr:`Request.app` property::
+:class:`Application` is a :obj:`dict`-like object, so you can use it for
+:ref:`sharing data<aiohttp-web-data-sharing>` globally by storing arbitrary
+properties for later access from a :ref:`handler<aiohttp-web-handler>` via the
+:attr:`Request.app` property::
 
    app = Application(loop=loop)
    app['database'] = await aiopg.create_engine(**db_config)
@@ -889,6 +930,8 @@ arbitrary properties for later access from
        with (await request.app['database']) as conn:
            conn.execute("DELETE * FROM table")
 
+Although :class:`Application` is a :obj:`dict`-like object, it can't be
+duplicated like one using :meth:`Application.copy`.
 
 .. class:: Application(*, loop=None, router=None, logger=<default>, \
                        middlewares=(), **kwargs)
@@ -1082,15 +1125,30 @@ Router is any object that implements :class:`AbstractRouter` interface.
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
                           chunk_size=256*1024, response_factory=StreamResponse)
 
-      Adds router for returning static files.
+      Adds a router and a handler for returning static files.
 
-      Useful for handling static content like images, javascript and css files.
+      Useful for serving static content like images, javascript and css files.
+
+      On platforms that support it, the handler will transfer files more
+      efficiently using the ``sendfile`` system call.
+
+      In some situations it might be necessary to avoid using the ``sendfile``
+      system call even if the platform supports it. This can be accomplished by
+      by setting environment variable ``AIOHTTP_NOSENDFILE=1``.
 
       .. warning::
 
          Use :meth:`add_static` for development only. In production,
          static content should be processed by web servers like *nginx*
          or *apache*.
+
+      .. versionchanged:: 0.18.0
+         Transfer files using the ``sendfile`` system call on supported
+         platforms.
+
+      .. versionchanged:: 0.19.0
+         Disable ``sendfile`` by setting environment variable
+         ``AIOHTTP_NOSENDFILE=1``
 
       :param str prefix: URL path prefix for handled static files
 
@@ -1102,7 +1160,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
       :param coroutine expect_handler: optional *expect* header handler.
 
       :param int chunk_size: size of single chunk for file
-                             downloading, 64Kb by default.
+                             downloading, 256Kb by default.
 
                              Increasing *chunk_size* parameter to,
                              say, 1Mb may increase file downloading
@@ -1166,6 +1224,27 @@ Router is any object that implements :class:`AbstractRouter` interface.
            route in app.router.routes()
 
       .. versionadded:: 0.18
+
+   .. method:: named_routes()
+
+      Returns a :obj:`dict`-like :class:`types.MappingProxyType` *view* over
+      *all* named routes.
+
+      The view maps every named route's :attr:`Route.name` attribute to the
+      :class:`Route`. It supports the usual :obj:`dict`-like operations, except
+      for any mutable operations (i.e. it's **read-only**)::
+
+          len(app.router.named_routes())
+
+          for name, route in app.router.named_routes().items():
+              print(name, route)
+
+          "route_name" in app.router.named_routes()
+
+          app.router.named_routes()["route_name"]
+
+      .. versionadded:: 0.19
+
 
 .. _aiohttp-web-route:
 

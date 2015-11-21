@@ -176,7 +176,7 @@ so application developer can use classes if he wants::
 
 
 Route views
------------
+^^^^^^^^^^^
 
 .. versionadded:: 0.18
 
@@ -215,9 +215,9 @@ The next example shows custom processing based on *HTTP Accept* header:
 
        async def do_route(self, request):
            for accept in request.headers.getall('ACCEPT', []):
-                acceptor = self._accepts.get(accept):
-                if acceptor is not None:
-                    return (await acceptor(request))
+               acceptor = self._accepts.get(accept)
+               if acceptor is not None:
+                   return (await acceptor(request))
            raise HTTPNotAcceptable()
 
        def reg_acceptor(self, accept, handler):
@@ -415,19 +415,17 @@ using response's methods:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
 
-        while not ws.closed:
-            msg = await ws.receive()
-
+        async for msg in ws:
             if msg.tp == aiohttp.MsgType.text:
                 if msg.data == 'close':
                     await ws.close()
                 else:
                     ws.send_str(msg.data + '/answer')
-            elif msg.tp == aiohttp.MsgType.close:
-                print('websocket connection closed')
             elif msg.tp == aiohttp.MsgType.error:
                 print('ws connection closed with exception %s' %
                       ws.exception())
+
+        print('websocket connection closed')
 
         return ws
 
@@ -435,6 +433,16 @@ You **must** use the only websocket task for both reading (e.g ``await
 ws.receive()``) and writing but may have multiple writer tasks which
 can only send data asynchronously (by ``ws.send_str('data')`` for
 example).
+
+
+.. note::
+
+   While :mod:`aiohttp.web` itself supports websockets only without
+   downgrading to LONG-POLLING etc. our team supports SockJS_
+   aiohttp-based library for implementing SockJS-compatible server
+   code.
+
+.. _SockJS: https://github.com/aio-libs/sockjs
 
 
 .. _aiohttp-web-exceptions:
@@ -537,6 +545,50 @@ and list of allowed methods::
                          headers=None, reason=None,
                          body=None, text=None, content_type=None)
 
+.. _aiohttp-web-data-sharing:
+
+Data sharing
+------------
+
+*aiohttp* discourages the use of *global variables*, aka *singletons*.
+
+Every variable should have it's own context that is *not global*.
+
+Thus, :class:`aiohttp.web.Application` and :class:`aiohttp.web.Request`
+support a :class:`collections.abc.MutableMapping` interface (i.e. they are
+dict-like objects), allowing them to be used as data stores.
+
+
+For storing *global-like* variables, feel free to save them in an
+:class:`~.Application` instance::
+
+    app['my_private_key'] = data
+
+and get it back in the :term:`web-handler`::
+
+    async def handler(request):
+        data = request.app['my_private_key']
+
+Variables that are only needed for the lifetime of a :class:`~.Request`, can be
+stored in a :class:`~.Request`::
+
+    async def handler(request):
+      request['my_private_key'] = "data"
+      ...
+
+This is mostly useful for :ref:`aiohttp-web-middlewares` and
+:ref:`aiohttp-web-signals` handlers to store data for further processing by the
+next handlers in the chain.
+
+To avoid clashing with other *aiohttp* users and third-party libraries, please
+choose a unique key name for storing data.
+
+If your code is published on PyPI, then the project name is most likely unique
+and safe to use as the key.
+Otherwise, something based on your company name/url would be satisfactory (i.e
+``org.company.app``).
+
+
 .. _aiohttp-web-middlewares:
 
 Middlewares
@@ -596,19 +648,22 @@ Signals
 
 .. versionadded:: 0.18
 
-While :ref:`midlewares <aiohttp-web-middlewares>` gives very powerful
+While :ref:`middlewares <aiohttp-web-middlewares>` give very powerful
 tool for customizing :ref:`web handler<aiohttp-web-handler>`
-processing we need another machinery also called signals.
+processing we also need another machinery called signals.
 
 For example middleware may change HTTP headers for *unprepared* response only
-(see :meth:`aiohttp.web.StreamResponse.prepare`).
+(see :meth:`~aiohttp.web.StreamResponse.prepare`).
 
 But sometimes we need a hook for changing HTTP headers for streamed
-responses and websockets. That can be done by subsribing on
-:attr:`aiohttp.web.Application.on_response_prepare` signal::
+responses and websockets. That can be done by subscribing on
+:attr:`~aiohttp.web.Application.on_response_prepare` signal::
 
-   async def on_prepare(request, response):
-       response.headers['My-Header'] = 'value'
+    async def on_prepare(request, response):
+        response.headers['My-Header'] = 'value'
+
+    app.on_response_prepare.append(on_prepare)
+
 
 Signal handlers should not return a value but may modify incoming
 mutable parameters.

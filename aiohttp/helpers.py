@@ -1,10 +1,12 @@
 """Various helper functions"""
 import base64
+import datetime
+import functools
 import io
 import os
+import re
 from urllib.parse import quote, urlencode
 from collections import namedtuple
-from wsgiref.handlers import format_date_time
 
 from . import hdrs, multidict
 from .errors import InvalidURL
@@ -226,69 +228,156 @@ def parse_remote_addr(forward):
     return remote[0], str(remote[1])
 
 
-def atoms(message, environ, response, transport, request_time):
-    """Gets atoms for log formatting."""
-    if message:
-        r = '{} {} HTTP/{}.{}'.format(
-            message.method, message.path,
-            message.version[0], message.version[1])
-        headers = message.headers
-    else:
-        r = ''
-        headers = {}
+class AccessLogger:
+    """Helper object to log access.
 
-    if transport is not None:
-        remote_addr = parse_remote_addr(
-            transport.get_extra_info('peername', ('127.0.0.1', )))
-    else:
-        remote_addr = ('',)
+    Usage:
+        log = logging.getLogger("spam")
+        log_format = "%a %{User-Agent}i"
+        access_logger = AccessLogger(log, log_format)
+        access_logger.log(message, environ, response, transport, time)
 
-    atoms = {
-        'h': remote_addr[0],
-        'l': '-',
-        'u': '-',
-        't': format_date_time(None),
-        'r': r,
-        's': str(getattr(response, 'status', '')),
-        'b': str(getattr(response, 'output_length', '')),
-        'f': headers.get(hdrs.REFERER, '-'),
-        'a': headers.get(hdrs.USER_AGENT, '-'),
-        'T': str(int(request_time)),
-        'D': str(request_time).split('.', 1)[-1][:6],
-        'p': "<%s>" % os.getpid()
-    }
+    Format:
+        %%  The percent sign
+        %a  Remote IP-address (IP-address of proxy if using reverse proxy)
+        %t  Time when the request was started to process
+        %P  The process ID of the child that serviced the request
+        %r  First line of request
+        %s  Response status code
+        %b  Size of response in bytes, excluding HTTP headers
+        %O  Bytes sent, including headers
+        %T  Time taken to serve the request, in seconds
+        %D  Time taken to serve the request, in microseconds
+        %{FOO}i  request.headers['FOO']
+        %{FOO}o  response.headers['FOO']
+        %{FOO}e  os.environ['FOO']
 
-    return atoms
+    """
 
+    LOG_FORMAT = '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
+    FORMAT_RE = re.compile(r'%(\{([A-Za-z\-]+)\}([ioe])|[atPrsbOTD])')
+    CLEANUP_RE = re.compile(r'(%[^s])')
+    _FORMAT_CACHE = {}
 
-class SafeAtoms(dict):
-    """Copy from gunicorn"""
+    def __init__(self, logger, log_format=LOG_FORMAT):
+        """Initialise the logger.
 
-    def __init__(self, atoms, i_headers, o_headers):
-        dict.__init__(self)
+        :param logger: logger object to be used for logging
+        :param log_format: apache compatible log format
 
-        self._i_headers = i_headers
-        self._o_headers = o_headers
+        """
+        self.logger = logger
+        _compiled_format = AccessLogger._FORMAT_CACHE.get(log_format)
+        if not _compiled_format:
+            _compiled_format = self.compile_format(log_format)
+            AccessLogger._FORMAT_CACHE[log_format] = _compiled_format
+        self._log_format, self._methods = _compiled_format
 
-        for key, value in atoms.items():
-            self[key] = value.replace('"', '\\"')
+    def compile_format(self, log_format):
+        """Translate log_format into form usable by modulo formatting
 
-    def __getitem__(self, k):
-        if k.startswith('{'):
-            if k.endswith('}i'):
-                headers = self._i_headers
-            elif k.endswith('}o'):
-                headers = self._o_headers
+        All known atoms will be replaced with %s
+        Also methods for formatting of those atoms will be added to
+        _methods in apropriate order
+
+        For example we have log_format = "%a %t"
+        This format will be translated to "%s %s"
+        Also contents of _methods will be
+        [self._format_a, self._format_t]
+        These method will be called and results will be passed
+        to translated string format.
+
+        Each _format_* method receive 'args' which is list of arguments
+        given to self.log
+
+        Exceptions are _format_e, _format_i and _format_o methods which
+        also receive key name (by functools.partial)
+
+        """
+
+        log_format = log_format.replace("%l", "-")
+        log_format = log_format.replace("%u", "-")
+        methods = []
+
+        for atom in self.FORMAT_RE.findall(log_format):
+            if atom[1] == '':
+                methods.append(getattr(AccessLogger, '_format_%s' % atom[0]))
             else:
-                headers = None
+                m = getattr(AccessLogger, '_format_%s' % atom[2])
+                methods.append(functools.partial(m, atom[1]))
+        log_format = self.FORMAT_RE.sub(r'%s', log_format)
+        log_format = self.CLEANUP_RE.sub(r'%\1', log_format)
+        return log_format, methods
 
-            if headers is not None:
-                return headers.get(k[1:-2], '-')
+    @staticmethod
+    def _format_e(key, args):
+        return (args[1] or {}).get(multidict.upstr(key), '-')
 
-        if k in self:
-            return super(SafeAtoms, self).__getitem__(k)
-        else:
+    @staticmethod
+    def _format_i(key, args):
+        return args[0].headers.get(multidict.upstr(key), '-')
+
+    @staticmethod
+    def _format_o(key, args):
+        return args[2].headers.get(multidict.upstr(key), '-')
+
+    @staticmethod
+    def _format_a(args):
+        return args[3].get_extra_info('peername')[0]
+
+    @staticmethod
+    def _format_t(args):
+        return datetime.datetime.utcnow().strftime('[%d/%b/%Y:%H:%M:%S +0000]')
+
+    @staticmethod
+    def _format_P(args):
+        return "<%s>" % os.getpid()
+
+    @staticmethod
+    def _format_r(args):
+        msg = args[0]
+        if not msg:
             return '-'
+        return '%s %s HTTP/%s.%s' % tuple((msg.method,
+                                           msg.path) + msg.version)
+
+    @staticmethod
+    def _format_s(args):
+        return args[2].status
+
+    @staticmethod
+    def _format_b(args):
+        return args[2].body_length
+
+    @staticmethod
+    def _format_O(args):
+        return args[2].output_length
+
+    @staticmethod
+    def _format_T(args):
+        return round(args[4])
+
+    @staticmethod
+    def _format_D(args):
+        return round(args[4] * 1000000)
+
+    def _format_line(self, args):
+        return tuple(m(args) for m in self._methods)
+
+    def log(self, message, environ, response, transport, time):
+        """Log access.
+
+        :param message: Request object. May be None.
+        :param environ: Environment dict. May be None.
+        :param response: Response object.
+        :param transport: Tansport object.
+        :param float time: Time taken to serve the request.
+        """
+        try:
+            self.logger.info(self._log_format % self._format_line(
+                [message, environ, response, transport, time]))
+        except Exception:
+            self.logger.exception("Error in logging")
 
 
 _marker = object()

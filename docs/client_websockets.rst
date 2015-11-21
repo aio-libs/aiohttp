@@ -18,39 +18,35 @@ You have to use the :meth:`aiohttp.ClientSession.ws_connect` coroutine
 for client websocket connection. It accepts a *url* as a first
 parameter and returns :class:`ClientWebSocketResponse`, with that
 object you can communicate with websocket server using response's
-methods:
-
-.. code-block:: python
+methods::
 
    session = aiohttp.ClientSession()
-   ws = await session.ws_connect(
-       'http://webscoket-server.org/endpoint')
+   async with session.ws_connect('http://example.org/websocket') as ws:
 
-   while True:
-       msg = await ws.receive()
-
-       if msg.tp == aiohttp.MsgType.text:
-           if msg.data == 'close':
-              await ws.close()
-              break
-           else:
-              ws.send_str(msg.data + '/answer')
-       elif msg.tp == aiohttp.MsgType.closed:
-           break
-       elif msg.tp == aiohttp.MsgType.error:
-           break
+       async for msg in ws:
+           if msg.tp == aiohttp.MsgType.text:
+               if msg.data == 'close cmd':
+                   await ws.close()
+                   break
+               else:
+                   ws.send_str(msg.data + '/answer')
+           elif msg.tp == aiohttp.MsgType.closed:
+               break
+           elif msg.tp == aiohttp.MsgType.error:
+               break
 
 If you prefer to establish *websocket client connection* without
 explicit :class:`~aiohttp.ClientSession` instance please use
 :func:`ws_connect()`::
 
-   ws = await aiohttp.ws_connect(
-       'http://webscoket-server.org/endpoint')
+   async with aiohttp.ws_connect('http://example.org/websocket') as ws:
+       ...
 
 
 You **must** use the only websocket task for both reading (e.g ``await
-ws.receive()``) and writing but may have multiple writer tasks which
-can only send data asynchronously (by ``ws.send_str('data')`` for example).
+ws.receive()`` or ``async for msg in ws:``) and writing but may have
+multiple writer tasks which can only send data asynchronously (by
+``ws.send_str('data')`` for example).
 
 
 ws_connect
@@ -64,7 +60,8 @@ coroutines, do not create an instance of class
 .. coroutinefunction:: ws_connect(url, *, protocols=(), \
                                   timeout=10.0, connector=None, auth=None,\
                                   ws_response_class=ClientWebSocketResponse,\
-                                  autoclose=True, autoping=True, loop=None)
+                                  autoclose=True, autoping=True, loop=None,\
+                                  origin=None)
 
    This function creates a websocket connection, checks the response and
    returns a :class:`ClientWebSocketResponse` object. In case of failure
@@ -100,9 +97,15 @@ coroutines, do not create an instance of class
                 used for getting default event loop, but we strongly
                 recommend to use explicit loops everywhere.
 
+   :param str origin: Origin header to send to server
+
    .. versionadded:: 0.18
 
       Add *auth* parameter.
+
+   .. versionadded:: 0.19
+
+      Add *origin* parameter.
 
 
 ClientWebSocketResponse

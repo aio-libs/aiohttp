@@ -175,14 +175,15 @@ def create_server(loop, unused_port):
     app = handler = srv = None
 
     @asyncio.coroutine
-    def create(*, debug=False, ssl_ctx=None):
+    def create(*, debug=False, ssl_ctx=None, proto='http'):
         nonlocal app, handler, srv
         app = web.Application(loop=loop)
         port = unused_port()
         handler = app.make_handler(debug=debug, keep_alive_on=False)
         srv = yield from loop.create_server(handler, '127.0.0.1', port,
                                             ssl=ssl_ctx)
-        proto = "https" if ssl_ctx else "http"
+        if ssl_ctx:
+            proto += 's'
         url = "{}://127.0.0.1:{}".format(proto, port)
         return app, url
 
@@ -219,6 +220,12 @@ class Client:
             path = path[1:]
         url = self._url + path
         return self._session.post(url, **kwargs)
+
+    def ws_connect(self, path, **kwargs):
+        while path.startswith('/'):
+            path = path[1:]
+        url = self._url + path
+        return self._session.ws_connect(url, **kwargs)
 
 
 @pytest.yield_fixture

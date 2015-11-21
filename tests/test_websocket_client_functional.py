@@ -1,325 +1,285 @@
 import aiohttp
 import asyncio
-import socket
-import unittest
+import pytest
 from aiohttp import web
 
 
-class TestWebSocketClientFunctional(unittest.TestCase):
-
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        if self.handler:
-            self.loop.run_until_complete(self.handler.finish_connections())
-
-        self.loop.close()
-
-    def find_unused_port(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(('127.0.0.1', 0))
-        port = s.getsockname()[1]
-        s.close()
-        return port
+@pytest.mark.run_loop
+def test_send_recv_text(create_app_and_client):
 
     @asyncio.coroutine
-    def create_server(self, method, path, handler):
-        app = web.Application(loop=self.loop)
-        app.router.add_route(method, path, handler)
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
 
-        port = self.find_unused_port()
-        self.handler = app.make_handler()
-        srv = yield from self.loop.create_server(
-            self.handler, '127.0.0.1', port)
-        url = "http://127.0.0.1:{}".format(port) + path
-        self.addCleanup(srv.close)
-        return app, srv, url
+        msg = yield from ws.receive_str()
+        ws.send_str(msg+'/answer')
+        yield from ws.close()
+        return ws
 
-    def test_send_recv_text(self):
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/')
+    resp.send_str('ask')
 
-        @asyncio.coroutine
-        def handler(request):
-            ws = web.WebSocketResponse()
-            ws.start(request)
+    msg = yield from resp.receive()
+    assert msg.data == 'ask/answer'
+    yield from resp.close()
 
-            msg = yield from ws.receive_str()
-            ws.send_str(msg+'/answer')
+
+@pytest.mark.run_loop
+def test_send_recv_bytes(create_app_and_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        msg = yield from ws.receive_bytes()
+        ws.send_bytes(msg+b'/answer')
+        yield from ws.close()
+        return ws
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/')
+
+    resp.send_bytes(b'ask')
+
+    msg = yield from resp.receive()
+    assert msg.data == b'ask/answer'
+
+    yield from resp.close()
+
+
+@pytest.mark.run_loop
+def test_ping_pong(create_app_and_client, loop):
+
+    closed = asyncio.Future(loop=loop)
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        msg = yield from ws.receive_bytes()
+        ws.ping()
+        ws.send_bytes(msg+b'/answer')
+        try:
             yield from ws.close()
-            return ws
+        finally:
+            closed.set_result(1)
+        return ws
 
-        @asyncio.coroutine
-        def go():
-            _, _, url = yield from self.create_server('GET', '/', handler)
-            resp = yield from aiohttp.ws_connect(url, loop=self.loop)
-            resp.send_str('ask')
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/')
 
-            msg = yield from resp.receive()
-            self.assertEqual(msg.data, 'ask/answer')
-            yield from resp.close()
+    resp.ping()
+    resp.send_bytes(b'ask')
 
-        self.loop.run_until_complete(go())
+    msg = yield from resp.receive()
+    assert msg.tp == aiohttp.MsgType.binary
+    assert msg.data == b'ask/answer'
 
-    def test_send_recv_bytes(self):
+    msg = yield from resp.receive()
+    assert msg.tp == aiohttp.MsgType.close
 
-        @asyncio.coroutine
-        def handler(request):
-            ws = web.WebSocketResponse()
-            ws.start(request)
+    yield from resp.close()
+    yield from closed
 
-            msg = yield from ws.receive_bytes()
-            ws.send_bytes(msg+b'/answer')
+
+@pytest.mark.run_loop
+def test_ping_pong_manual(create_app_and_client, loop):
+
+    closed = asyncio.Future(loop=loop)
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        msg = yield from ws.receive_bytes()
+        ws.ping()
+        ws.send_bytes(msg+b'/answer')
+        try:
             yield from ws.close()
-            return ws
+        finally:
+            closed.set_result(1)
+        return ws
 
-        @asyncio.coroutine
-        def go():
-            _, _, url = yield from self.create_server('GET', '/', handler)
-            resp = yield from aiohttp.ws_connect(url, loop=self.loop)
-            resp.send_bytes(b'ask')
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/', autoping=False)
 
-            msg = yield from resp.receive()
-            self.assertEqual(msg.data, b'ask/answer')
+    resp.ping()
+    resp.send_bytes(b'ask')
 
-            yield from resp.close()
+    msg = yield from resp.receive()
+    assert msg.tp == aiohttp.MsgType.pong
 
-        self.loop.run_until_complete(go())
+    msg = yield from resp.receive()
+    assert msg.tp == aiohttp.MsgType.ping
+    resp.pong()
 
-    def test_ping_pong(self):
+    msg = yield from resp.receive()
+    assert msg.data == b'ask/answer'
 
-        closed = asyncio.Future(loop=self.loop)
+    msg = yield from resp.receive()
+    assert msg.tp == aiohttp.MsgType.close
 
-        @asyncio.coroutine
-        def handler(request):
-            ws = web.WebSocketResponse()
-            ws.start(request)
+    yield from closed
 
-            msg = yield from ws.receive_bytes()
-            ws.ping()
-            ws.send_bytes(msg+b'/answer')
-            try:
-                yield from ws.close()
-            finally:
-                closed.set_result(1)
-            return ws
 
-        @asyncio.coroutine
-        def go():
-            _, _, url = yield from self.create_server('GET', '/', handler)
-            resp = yield from aiohttp.ws_connect(url, loop=self.loop)
-            resp.ping()
-            resp.send_bytes(b'ask')
+@pytest.mark.run_loop
+def test_close(create_app_and_client):
 
-            msg = yield from resp.receive()
-            self.assertEqual(msg.tp, aiohttp.MsgType.binary)
-            self.assertEqual(msg.data, b'ask/answer')
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
 
-            msg = yield from resp.receive()
-            self.assertEqual(msg.tp, aiohttp.MsgType.close)
+        yield from ws.receive_bytes()
+        ws.send_str('test')
 
-            yield from resp.close()
-            yield from closed
+        yield from ws.receive()
+        return ws
 
-        self.loop.run_until_complete(go())
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/')
 
-    def test_ping_pong_manual(self):
+    resp.send_bytes(b'ask')
 
-        closed = asyncio.Future(loop=self.loop)
+    closed = yield from resp.close()
+    assert closed
+    assert resp.closed
+    assert resp.close_code == 1000
 
-        @asyncio.coroutine
-        def handler(request):
-            ws = web.WebSocketResponse()
-            ws.start(request)
+    msg = yield from resp.receive()
+    assert msg.tp == aiohttp.MsgType.closed
 
-            msg = yield from ws.receive_bytes()
-            ws.ping()
-            ws.send_bytes(msg+b'/answer')
-            try:
-                yield from ws.close()
-            finally:
-                closed.set_result(1)
-            return ws
 
-        @asyncio.coroutine
-        def go():
-            _, srv, url = yield from self.create_server('GET', '/', handler)
-            resp = yield from aiohttp.ws_connect(
-                url, autoping=False, loop=self.loop)
-            resp.ping()
-            resp.send_bytes(b'ask')
+@pytest.mark.run_loop
+def test_close_from_server(create_app_and_client, loop):
 
-            msg = yield from resp.receive()
-            self.assertEqual(msg.tp, aiohttp.MsgType.pong)
+    closed = asyncio.Future(loop=loop)
 
-            msg = yield from resp.receive()
-            self.assertEqual(msg.tp, aiohttp.MsgType.ping)
-            resp.pong()
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
 
-            msg = yield from resp.receive()
-            self.assertEqual(msg.data, b'ask/answer')
-
-            msg = yield from resp.receive()
-            self.assertEqual(msg.tp, aiohttp.MsgType.close)
-
-            yield from closed
-
-        self.loop.run_until_complete(go())
-
-    def test_close(self):
-
-        @asyncio.coroutine
-        def handler(request):
-            ws = web.WebSocketResponse()
-            ws.start(request)
-
+        try:
             yield from ws.receive_bytes()
-            ws.send_str('test')
+            yield from ws.close()
+        finally:
+            closed.set_result(1)
+        return ws
 
-            yield from ws.receive()
-            return ws
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/')
 
-        @asyncio.coroutine
-        def go():
-            _, _, url = yield from self.create_server('GET', '/', handler)
-            resp = yield from aiohttp.ws_connect(url, loop=self.loop)
-            resp.send_bytes(b'ask')
+    resp.send_bytes(b'ask')
 
-            closed = yield from resp.close()
-            self.assertTrue(closed)
-            self.assertTrue(resp.closed)
-            self.assertEqual(resp.close_code, 1000)
+    msg = yield from resp.receive()
+    assert msg.tp == aiohttp.MsgType.close
+    assert resp.closed
 
-            msg = yield from resp.receive()
-            self.assertEqual(msg.tp, aiohttp.MsgType.closed)
+    msg = yield from resp.receive()
+    assert msg.tp == aiohttp.MsgType.closed
 
-        self.loop.run_until_complete(go())
+    yield from closed
 
-    def test_close_from_server(self):
 
-        closed = asyncio.Future(loop=self.loop)
+@pytest.mark.run_loop
+def test_close_manual(create_app_and_client, loop):
 
-        @asyncio.coroutine
-        def handler(request):
-            ws = web.WebSocketResponse()
-            ws.start(request)
+    closed = asyncio.Future(loop=loop)
 
-            try:
-                yield from ws.receive_bytes()
-                yield from ws.close()
-            finally:
-                closed.set_result(1)
-            return ws
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
 
-        @asyncio.coroutine
-        def go():
-            _, _, url = yield from self.create_server('GET', '/', handler)
-            resp = yield from aiohttp.ws_connect(url, loop=self.loop)
-            resp.send_bytes(b'ask')
+        yield from ws.receive_bytes()
+        ws.send_str('test')
 
-            msg = yield from resp.receive()
-            self.assertEqual(msg.tp, aiohttp.MsgType.close)
-            self.assertTrue(resp.closed)
+        try:
+            yield from ws.close()
+        finally:
+            closed.set_result(1)
+        return ws
 
-            msg = yield from resp.receive()
-            self.assertEqual(msg.tp, aiohttp.MsgType.closed)
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/', autoclose=False)
+    resp.send_bytes(b'ask')
 
-            yield from closed
+    msg = yield from resp.receive()
+    assert msg.data == 'test'
 
-        self.loop.run_until_complete(go())
+    msg = yield from resp.receive()
+    assert msg.tp == aiohttp.MsgType.close
+    assert msg.data == 1000
+    assert msg.extra == ''
+    assert not resp.closed
 
-    def test_close_manual(self):
+    yield from resp.close()
+    yield from closed
+    assert resp.closed
 
-        closed = asyncio.Future(loop=self.loop)
 
-        @asyncio.coroutine
-        def handler(request):
-            ws = web.WebSocketResponse()
-            ws.start(request)
+@pytest.mark.run_loop
+def test_close_timeout(create_app_and_client, loop):
 
-            yield from ws.receive_bytes()
-            ws.send_str('test')
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+        yield from ws.receive_bytes()
+        ws.send_str('test')
+        yield from asyncio.sleep(10, loop=loop)
 
-            try:
-                yield from ws.close()
-            finally:
-                closed.set_result(1)
-            return ws
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/', timeout=0.2, autoclose=False)
 
-        @asyncio.coroutine
-        def go():
-            _, _, url = yield from self.create_server('GET', '/', handler)
-            resp = yield from aiohttp.ws_connect(
-                url, autoclose=False, loop=self.loop)
-            resp.send_bytes(b'ask')
+    resp.send_bytes(b'ask')
 
-            msg = yield from resp.receive()
-            self.assertEqual(msg.data, 'test')
+    msg = yield from resp.receive()
+    assert msg.data == 'test'
+    assert msg.tp == aiohttp.MsgType.text
 
-            msg = yield from resp.receive()
-            self.assertEqual(msg.tp, aiohttp.MsgType.close)
-            self.assertEqual(msg.data, 1000)
-            self.assertEqual(msg.extra, '')
-            self.assertFalse(resp.closed)
+    msg = yield from resp.close()
+    assert resp.closed
+    assert isinstance(resp.exception(), asyncio.TimeoutError)
 
-            yield from resp.close()
-            yield from closed
-            self.assertTrue(resp.closed)
 
-        self.loop.run_until_complete(go())
+@pytest.mark.run_loop
+def test_close_cancel(create_app_and_client, loop):
 
-    def test_close_timeout(self):
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+        yield from ws.receive_bytes()
+        ws.send_str('test')
+        yield from asyncio.sleep(10, loop=loop)
 
-        @asyncio.coroutine
-        def handler(request):
-            ws = web.WebSocketResponse()
-            ws.start(request)
-            yield from ws.receive_bytes()
-            ws.send_str('test')
-            yield from asyncio.sleep(10, loop=self.loop)
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/', autoclose=False)
 
-        @asyncio.coroutine
-        def go():
-            _, _, url = yield from self.create_server('GET', '/', handler)
-            resp = yield from aiohttp.ws_connect(
-                url, timeout=0.2, autoclose=False, loop=self.loop)
-            resp.send_bytes(b'ask')
+    resp.send_bytes(b'ask')
 
-            msg = yield from resp.receive()
-            self.assertEqual(msg.data, 'test')
-            self.assertEqual(msg.tp, aiohttp.MsgType.text)
+    text = yield from resp.receive()
+    assert text.data == 'test'
 
-            msg = yield from resp.close()
-            self.assertTrue(resp.closed)
-            self.assertIsInstance(resp.exception(), asyncio.TimeoutError)
-
-        self.loop.run_until_complete(go())
-
-    def test_close_cancel(self):
-
-        @asyncio.coroutine
-        def handler(request):
-            ws = web.WebSocketResponse()
-            ws.start(request)
-            yield from ws.receive_bytes()
-            ws.send_str('test')
-            yield from asyncio.sleep(10, loop=self.loop)
-
-        @asyncio.coroutine
-        def go():
-            _, _, url = yield from self.create_server('GET', '/', handler)
-            resp = yield from aiohttp.ws_connect(
-                url, autoclose=False, loop=self.loop)
-            resp.send_bytes(b'ask')
-
-            text = yield from resp.receive()
-            self.assertEqual(text.data, 'test')
-
-            t = asyncio.ensure_future(resp.close(), loop=self.loop)
-            yield from asyncio.sleep(0.1, loop=self.loop)
-            t.cancel()
-            yield from asyncio.sleep(0.1, loop=self.loop)
-            self.assertTrue(resp.closed)
-            self.assertIsNone(resp.exception())
-
-        self.loop.run_until_complete(go())
+    t = loop.create_task(resp.close())
+    yield from asyncio.sleep(0.1, loop=loop)
+    t.cancel()
+    yield from asyncio.sleep(0.1, loop=loop)
+    assert resp.closed
+    assert resp.exception() is None

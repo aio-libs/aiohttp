@@ -60,11 +60,17 @@ You can see that the URL has been correctly encoded by printing the URL.
 It is also possible to pass a list of 2 item tuples as parameters, in
 that case you can specify multiple values for each key::
 
-    payload = [('key', 'value1'), ('key': 'value2')]
+    payload = [('key', 'value1'), ('key', 'value2')]
     async with aiohttp.get('http://httpbin.org/get',
                            params=payload) as r:
         assert r.url == 'http://httpbin.org/get?key=value2&key=value1'
 
+You can also pass ``str`` content as param, but beware - content is not encoded
+by library. Note that ``+`` is not encoded::
+
+    async with aiohttp.get('http://httpbin.org/get',
+                            params='key=value+1') as r:
+            assert r.url = 'http://httpbin.org/get?key=value+1'
 
 Response Content
 ----------------
@@ -75,7 +81,7 @@ again::
     r = await aiohttp.get('https://api.github.com/events')
     print(await r.text())
 
-will printout socmething like::
+will printout something like::
 
     '[{"created_at":"2015-06-12T14:06:22Z","public":true,"actor":{...
 
@@ -322,6 +328,23 @@ requests together (aka HTTP pipelining)::
                       data=r.content)
 
 
+Uploading pre-compressed data
+-----------------------------
+
+To upload data that is already compressed before passing it to aiohttp, call
+the request function with ``compress=False`` and set the used compression
+algorithm name (usually deflate or zlib) as the value of the
+``Content-Encoding`` header::
+
+    @asyncio.coroutine
+    def my_coroutine( my_data):
+        data = zlib.compress(my_data)
+        headers = {'Content-Encoding': 'deflate'}
+        yield from aiohttp.post(
+            'http://httpbin.org/post', data=data, headers=headers,
+            compress=False)
+
+
 .. _aiohttp-client-session:
 
 Keep-Alive, connection pooling and cookie sharing
@@ -454,7 +477,7 @@ aiohttp supports proxy. You have to use
    conn = aiohttp.ProxyConnector(
       proxy="http://some.proxy.com",
       proxy_auth=aiohttp.BasicAuth('user', 'pass'))
-   session = aiottp.ClientSession(connector=conn)
+   session = aiohttp.ClientSession(connector=conn)
    async with session.get('http://python.org') as r:
        assert r.status == 200
 
@@ -462,7 +485,7 @@ Authentication credentials can be passed in proxy URL::
 
    conn = aiohttp.ProxyConnector(
        proxy="http://user:pass@some.proxy.com")
-   session = aiottp.ClientSession(connector=conn)
+   session = aiohttp.ClientSession(connector=conn)
    async with session.get('http://python.org') as r:
        assert r.status == 200
 
@@ -519,6 +542,22 @@ If a response contains some Cookies, you can quickly access them::
    of the **last** request in redirection chain. To gather cookies between all
    redirection requests you can use :ref:`aiohttp.ClientSession
    <aiohttp-client-session>` object.
+
+
+Response History
+----------------
+
+If a request was redirected, it is possible to view previous responses using
+the :attr:`~ClientResponse.history` attribute::
+
+    >>> r = await aiohttp.get('http://example.com/some/redirect/')
+    >>> r
+    <ClientResponse(http://example.com/some/other/url/) [200]>
+    >>> r.history
+    (<ClientResponse(http://example.com/some/redirect/) [301]>,)
+
+If no redirects occurred or ``allow_redirects`` is set to ``False``,
+history will be an empty sequence.
 
 
 Timeouts

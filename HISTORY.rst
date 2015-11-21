@@ -1,3 +1,102 @@
+0.18.4 (13-11-2015)
+-------------------
+
+- Relax rule for router names again by adding dash to allowed
+  characters: they may contain identifiers, dashes, dots and columns
+
+0.18.3 (25-10-2015)
+-------------------
+
+- Fix formatting for _RequestContextManager helper #590
+
+0.18.2 (22-10-2015)
+-------------------
+
+- Fix regression for OpenSSL < 1.0.0 #583
+
+0.18.1 (20-10-2015)
+-------------------
+
+- Relax rule for router names: they may contain dots and columns
+  starting from now
+
+0.18.0 (19-10-2015)
+-------------------
+
+- Use errors.HttpProcessingError.message as HTTP error reason and
+  message #459
+
+- Optimize cythonized multidict a bit
+
+- Change repr's of multidicts and multidict views
+
+- default headers in ClientSession are now case-insensitive
+
+- Make '=' char and 'wss://' schema safe in urls #477
+
+- `ClientResponse.close()` forces connection closing by default from now #479
+
+  N.B. Backward incompatible change: was `.close(force=False) Using
+  `force` parameter for the method is deprecated: use `.release()`
+  instead.
+
+- Properly requote URL's path #480
+
+- add `skip_auto_headers` parameter for client API #486
+
+- Properly parse URL path in aiohttp.web.Request #489
+
+- Raise RuntimeError when chunked enabled and HTTP is 1.0 #488
+
+- Fix a bug with processing io.BytesIO as data parameter for client API #500
+
+- Skip auto-generation of Content-Type header #507
+
+- Use sendfile facility for static file handling #503
+
+- Default `response_factory` in `app.router.add_static` now is
+  `StreamResponse`, not `None`. The functionality is not changed if
+  default is not specified.
+
+- Drop `ClientResponse.message` attribute, it was always implementation detail.
+
+- Streams are optimized for speed and mostly memory in case of a big
+  HTTP message sizes #496
+
+- Fix a bug for server-side cookies for dropping cookie and setting it
+  again without Max-Age parameter.
+
+- Don't trim redirect URL in client API #499
+
+- Extend precision of access log "D" to milliseconds #527
+
+- Deprecate `StreamResponse.start()` method in favor of
+  `StreamResponse.prepare()` coroutine #525
+
+  `.start()` is still supported but responses begun with `.start()`
+  doesn't call signal for response preparing to be sent.
+
+- Add `StreamReader.__repr__`
+
+- Drop Python 3.3 support, from now minimal required version is Python
+  3.4.1 #541
+
+- Add `async with` support for `ClientSession.request()` and family #536
+
+- Ignore message body on 204 and 304 responses #505
+
+- `TCPConnector` processed both IPv4 and IPv6 by default #559
+
+- Add `.routes()` view for urldispatcher #519
+
+- Route name should be a valid identifier name from now #567
+
+- Implement server signals #562
+
+- Drop an year-old deprecated *files* parameter from client API.
+
+- Added `async for` support for aiohttp stream #542
+
 0.17.4 (09-29-2015)
 -------------------
 

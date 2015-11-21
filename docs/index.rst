@@ -41,7 +41,7 @@ Client example::
     import asyncio
     import aiohttp
 
-    await def fetch_page(client, url):
+    async def fetch_page(client, url):
         async with client.get(url) as response:
             assert response.status == 200
             return await response.read()
@@ -106,6 +106,13 @@ Dependencies
      $ pip install cchardet
 
 
+Discussion list
+---------------
+
+*aio-libs* google group: https://groups.google.com/forum/#!forum/aio-libs
+
+Feel free to post your questions and ideas here.
+
 Contributing
 ------------
 
@@ -136,9 +143,11 @@ Contents
    multidict
    multipart
    api
+   logging
    gunicorn
    contributing
    changes
+   Python 3.3 support <python33>
    glossary
 
 Indices and tables

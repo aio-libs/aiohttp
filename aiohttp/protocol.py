@@ -546,7 +546,12 @@ class HttpMessage:
         self.headers = CIMultiDict()
         self.headers_sent = False
         self.output_length = 0
+        self.headers_length = 0
         self._output_size = 0
+
+    @property
+    def body_length(self):
+        return self.output_length - self.headers_length
 
     def force_close(self):
         self.closing = True
@@ -651,6 +656,7 @@ class HttpMessage:
         headers = headers.encode('utf-8') + b'\r\n'
 
         self.output_length += len(headers)
+        self.headers_length = len(headers)
         self.transport.write(headers)
 
     def _add_default_headers(self):
