@@ -13,7 +13,6 @@ library activity.
 
 We have the following loggers enumerated by names:
 
-- ``'aiohttp.access'``
 - ``'aiohttp.client'``
 - ``'aiohttp.internal'``
 - ``'aiohttp.server'``
@@ -30,8 +29,19 @@ configuring whole loggers in your application.
 Access logs
 -----------
 
-For tracking access logs the library provides custom micro-language
-to specifying info about request and response:
+Access log is enabled by specifying *access_log* parameter
+(:class:`logging.Logger` instance) on
+:meth:`aiohttp.web.Application.make_handler` call.
+
+Optional *access_log_format* parameter may be used for specifying log
+format (see below).
+
+.. note:: Access log is disabled by default.
+
+Format specification.
+
+The library provides custom micro-language to specifying info about
+request and response:
 
 +--------------+---------------------------------------------------------+
 | Option       | Meaning                                                 |
@@ -71,3 +81,12 @@ Default access log format is::
 
 Error logs
 ----------
+
+*aiohttp.web* uses logger named ``'aiohttp.server'`` to store errors
+given on web requests handling.
+
+The log is always enabled.
+
+To use different logger name please specify *logger* parameter
+(:class:`logging.Logger` instance) onmake
+:meth:`aiohttp.web.Application.make_handler` call.
