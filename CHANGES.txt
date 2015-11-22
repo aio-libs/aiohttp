@@ -42,3 +42,5 @@ CHANGES
 - Allow disabling sendfile by environment variable AIOHTTP_NOSENDFILE #629
 
 - Use ensure_future if available
+
+- Drop unused access_logger log #637
