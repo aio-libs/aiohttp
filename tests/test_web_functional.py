@@ -1,11 +1,12 @@
 import asyncio
 import gc
 import json
+import logging
 import os
 import os.path
 import socket
 import unittest
-from aiohttp import log, web, request, FormData, ClientSession, TCPConnector
+from aiohttp import web, request, FormData, ClientSession, TCPConnector
 from aiohttp.multidict import MultiDict
 from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
 from aiohttp.streams import EOF_MARKER
@@ -49,7 +50,7 @@ class WebFunctionalSetupMixin:
         port = self.find_unused_port()
         self.handler = app.make_handler(
             keep_alive_on=False,
-            access_log=log.access_logger)
+            access_log=logging.getLogger('aiohttp.test.access_logger'))
         srv = yield from self.loop.create_server(
             self.handler, '127.0.0.1', port, ssl=ssl_ctx)
         protocol = "https" if ssl_ctx else "http"
