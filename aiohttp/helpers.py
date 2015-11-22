@@ -1,4 +1,5 @@
 """Various helper functions"""
+import asyncio
 import base64
 import datetime
 import functools
@@ -10,6 +11,12 @@ from collections import namedtuple
 
 from . import hdrs, multidict
 from .errors import InvalidURL
+
+try:
+    from asyncio import ensure_future
+except ImportError:
+    ensure_future = asyncio.async
+
 
 __all__ = ('BasicAuth', 'FormData', 'parse_mimetype')
 

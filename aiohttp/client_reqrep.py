@@ -480,7 +480,7 @@ class ClientRequest:
                            for k, value in self.headers.items())))
         request.send_headers()
 
-        self._writer = asyncio.async(
+        self._writer = helpers.ensure_future(
             self.write_bytes(request, reader), loop=self.loop)
 
         self.response = self.response_class(

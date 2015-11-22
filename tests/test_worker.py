@@ -39,15 +39,15 @@ class TestWorker(unittest.TestCase):
         self.assertTrue(m_asyncio.new_event_loop.called)
         self.assertTrue(m_asyncio.set_event_loop.called)
 
-    @unittest.mock.patch('aiohttp.worker.asyncio')
-    def test_run(self, m_asyncio):
-        self.worker.loop = unittest.mock.Mock()
+    def test_run(self):
+        self.worker.loop = self.loop
+        self.worker._run = unittest.mock.Mock(
+            wraps=asyncio.coroutine(lambda: None))
         with self.assertRaises(SystemExit):
             self.worker.run()
 
-        self.assertTrue(m_asyncio.async.called)
-        self.assertTrue(self.worker.loop.run_until_complete.called)
-        self.assertTrue(self.worker.loop.close.called)
+        self.assertTrue(self.worker._run.called)
+        self.assertTrue(self.loop._closed)
 
     def test_handle_quit(self):
         self.worker.handle_quit(object(), object())

@@ -10,6 +10,7 @@ from html import escape as html_escape
 import aiohttp
 from aiohttp import errors, streams, hdrs, helpers
 from aiohttp.log import server_logger
+from aiohttp.helpers import ensure_future
 
 __all__ = ('ServerHttpProtocol',)
 
@@ -141,7 +142,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     def connection_made(self, transport):
         super().connection_made(transport)
 
-        self._request_handler = asyncio.async(self.start(), loop=self._loop)
+        self._request_handler = ensure_future(self.start(), loop=self._loop)
 
         # start slow request timer
         if self._timeout:
