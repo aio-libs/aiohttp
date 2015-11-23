@@ -165,6 +165,17 @@ class MultipartResponseWrapper(object):
         self.resp = resp
         self.stream = stream
 
+    @asyncio.coroutine
+    def __aiter__(self):
+        return self
+
+    @asyncio.coroutine
+    def __anext__(self):
+        part = yield from self.next()
+        if part is None:
+            raise StopAsyncIteration  # NOQA
+        return part
+
     def at_eof(self):
         """Returns ``True`` when all response data had been read.
 
@@ -201,6 +212,17 @@ class BodyPartReader(object):
         self._length = int(length) if length is not None else None
         self._read_bytes = 0
         self._unread = deque()
+
+    @asyncio.coroutine
+    def __aiter__(self):
+        return self
+
+    @asyncio.coroutine
+    def __anext__(self):
+        part = yield from self.next()
+        if part is None:
+            raise StopAsyncIteration  # NOQA
+        return part
 
     @asyncio.coroutine
     def next(self):
@@ -429,6 +451,17 @@ class MultipartReader(object):
         self._last_part = None
         self._at_eof = False
         self._unread = []
+
+    @asyncio.coroutine
+    def __aiter__(self):
+        return self
+
+    @asyncio.coroutine
+    def __anext__(self):
+        part = yield from self.next()
+        if part is None:
+            raise StopAsyncIteration  # NOQA
+        return part
 
     @classmethod
     def from_response(cls, response):
