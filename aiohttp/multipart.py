@@ -756,11 +756,9 @@ class BodyPartWriter(object):
                     raise ValueError('bad content disposition parameter'
                                      ' {!r}={!r}'.format(key, val))
                 qval = quote(val, '')
+                lparams.append((key, '"%s"' % qval))
                 if key == 'filename':
-                    lparams.append((key, '"%s"' % qval))
                     lparams.append(('filename*', "utf-8''" + qval))
-                else:
-                    lparams.append((key, "%s" % qval))
             sparams = '; '.join('='.join(pair) for pair in lparams)
             value = '; '.join((value, sparams))
         self.headers[CONTENT_DISPOSITION] = value
