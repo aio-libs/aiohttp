@@ -481,15 +481,13 @@ class Timeout:
         self._cancelled = False
         self._cancel_handler = None
 
-    @asyncio.coroutine
-    def __aenter__(self):
+    def __enter__(self):
         self._task = asyncio.Task.current_task(loop=self._loop)
         self._cancel_handler = self._loop.call_later(
             self._timeout, self._cancel_task)
         return self
 
-    @asyncio.coroutine
-    def __aexit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         if self._cancelled:
             self._task = None
             raise asyncio.TimeoutError
