@@ -633,7 +633,7 @@ Middleware usually calls an inner handler, but may do something
 other, like displaying *403 Forbidden page* or raising
 :exc:`HTTPForbidden` exception if user has no permissions to access underlying
 resource.  Also middleware may render errors raised by handler, do
-some pre- and post- processing like handling *CORS* and so on.
+some pre- and post- processing and so on.
 
 .. versionchanged:: 0.14
 
@@ -678,6 +678,15 @@ mutable parameters.
    Most likely signal subscription/sending will be the same but signal
    object creation is subject for changing.  Unless you don't create
    new signals but reuse existing only you are not affected.
+
+
+CORS support
+------------
+
+*aiohttp.web* itself has no support for `Cross-Origin Resource
+Sharing <https://en.wikipedia.org/wiki/Cross-origin_resource_sharing>`_
+but there is aiohttp plugin for it:
+`aiohttp_cors <https://github.com/aio-libs/aiohttp_cors>`_.
 
 
 Debug toolbar
