@@ -46,3 +46,5 @@ CHANGES
 - Always quote params for Content-Disposition #641
 
 - Support async for in multipart reader #640
+
+- Add Timeout context manager #611
