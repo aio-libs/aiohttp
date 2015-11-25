@@ -65,6 +65,16 @@ def test_timeout_not_relevant_exception(loop):
     loop.run_until_complete(run())
 
 
+def test_timeout_canceled_error_is_converted_to_timeout(loop):
+    @asyncio.coroutine
+    def run():
+        with pytest.raises(asyncio.CancelledError):
+            with Timeout(0.001, loop=loop):
+                raise asyncio.CancelledError
+
+    loop.run_until_complete(run())
+
+
 def test_timeout_blocking_loop(loop):
     @asyncio.coroutine
     def long_running_task():
