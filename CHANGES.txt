@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-0.19.0 (XX-XX-XXXX)
+0.19.0 (11-25-2015)
 -------------------
 
 - Memory leak in ParserBuffer #579
