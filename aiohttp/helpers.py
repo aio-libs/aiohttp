@@ -18,7 +18,7 @@ except ImportError:
     ensure_future = asyncio.async
 
 
-__all__ = ('BasicAuth', 'FormData', 'parse_mimetype')
+__all__ = ('BasicAuth', 'FormData', 'parse_mimetype', 'Timeout')
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
@@ -467,3 +467,43 @@ def requote_uri(uri):
         # there may be unquoted '%'s in the URI. We need to make sure they're
         # properly quoted so they do not cause issues elsewhere.
         return quote(uri, safe=safe_without_percent)
+
+
+class Timeout:
+    """Timeout context manager.
+
+    Useful in cases when you want to apply timeout logic around block
+    of code or in cases when asyncio.wait_for is not suitable. For example:
+
+    >>> with aiohttp.Timeout(0.001):
+    >>>     async with aiohttp.get('https://github.com') as r:
+    >>>         await r.text()
+
+
+    :param timeout: timeout value in seconds
+    :param loop: asyncio compatible event loop
+    """
+    def __init__(self, timeout, *, loop=None):
+        self._timeout = timeout
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        self._loop = loop
+        self._task = None
+        self._cancelled = False
+        self._cancel_handler = None
+
+    def __enter__(self):
+        self._task = asyncio.Task.current_task(loop=self._loop)
+        self._cancel_handler = self._loop.call_later(
+            self._timeout, self._cancel_task)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is asyncio.CancelledError and self._cancelled:
+            self._task = None
+            raise asyncio.TimeoutError
+        self._cancel_handler.cancel()
+        self._task = None
+
+    def _cancel_task(self):
+        self._cancelled = self._task.cancel()
