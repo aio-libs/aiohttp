@@ -12,7 +12,7 @@ from collections import namedtuple
 from . import hdrs, multidict
 from .errors import InvalidURL
 
-__all__ = ('BasicAuth', 'FormData', 'parse_mimetype')
+__all__ = ('BasicAuth', 'FormData', 'parse_mimetype', 'Timeout')
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
@@ -467,9 +467,14 @@ class Timeout:
     """Timeout context manager.
 
     Useful in cases when you want to apply timeout logic around block
-    of code or in cases when asyncio.wait_for is not suitable.
+    of code or in cases when asyncio.wait_for is not suitable. For example:
 
-    :param timeout: time out time in seconds
+    >>> with aiohttp.Timeout(0.001):
+    >>>     async with aiohttp.get('https://github.com') as r:
+    >>>         await r.text()
+
+
+    :param timeout: timeout value in seconds
     :param loop: asyncio compatible event loop
     """
     def __init__(self, timeout, *, loop=None):

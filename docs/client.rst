@@ -539,6 +539,11 @@ time to wait for a response from a server::
       File "<stdin>", line 1, in <module>
     asyncio.TimeoutError()
 
+Or wrap your client call in :class:`Timeout` context manager::
+
+    with aiohttp.Timeout(0.001):
+        async with aiohttp.get('https://github.com') as r:
+            await r.text()
 
 .. warning::
 
