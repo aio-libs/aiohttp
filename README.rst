@@ -25,45 +25,6 @@ Features
 - Web-server has middlewares and pluggable routing.
 
 
-Requirements
-------------
-
-- Python >= 3.4.1
-- chardet https://pypi.python.org/pypi/chardet
-
-Optionally you may install cChardet library:
-https://pypi.python.org/pypi/cchardet/1.0.0
-
-
-License
--------
-
-``aiohttp`` is offered under the Apache 2 license.
-
-
-Documentation
--------------
-
-http://aiohttp.readthedocs.org/
-
-Discussion list
----------------
-
-*aio-libs* google group: https://groups.google.com/forum/#!forum/aio-libs
-
-Source code
-------------
-
-The latest developer version is available in a github repository:
-https://github.com/KeepSafe/aiohttp
-
-Benchmarks
-----------
-
-If you are interested in by efficiency, AsyncIO community maintains a
-list of benchmarks on the official wiki:
-https://github.com/python/asyncio/wiki/Benchmarks
-
 Getting started
 ---------------
 
@@ -154,3 +115,42 @@ shoud be replaced by::
     @asyncio.coroutine
     def coro(...):
         ret = yield from f()
+
+Documentation
+-------------
+
+http://aiohttp.readthedocs.org/
+
+Discussion list
+---------------
+
+*aio-libs* google group: https://groups.google.com/forum/#!forum/aio-libs
+
+Requirements
+------------
+
+- Python >= 3.4.1
+- chardet https://pypi.python.org/pypi/chardet
+
+Optionally you may install cChardet library:
+https://pypi.python.org/pypi/cchardet/1.0.0
+
+
+License
+-------
+
+``aiohttp`` is offered under the Apache 2 license.
+
+
+Source code
+------------
+
+The latest developer version is available in a github repository:
+https://github.com/KeepSafe/aiohttp
+
+Benchmarks
+----------
+
+If you are interested in by efficiency, AsyncIO community maintains a
+list of benchmarks on the official wiki:
+https://github.com/python/asyncio/wiki/Benchmarks
