@@ -163,9 +163,10 @@ def loop(request):
 
     yield loop
 
-    loop.stop()
-    loop.run_forever()
-    loop.close()
+    if not loop._closed:
+        loop.stop()
+        loop.run_forever()
+        loop.close()
     gc.collect()
     asyncio.set_event_loop(None)
 

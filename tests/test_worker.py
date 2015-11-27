@@ -1,146 +1,154 @@
 """Tests for aiohttp/worker.py"""
 import asyncio
-import unittest
-import unittest.mock
-
-try:
-    from aiohttp import worker
-except ImportError as error:  # pragma: no cover
-    raise unittest.SkipTest('gunicorn required') from error
+import pytest
+from unittest import mock
 
 
-class MyWorker(worker.GunicornWebWorker):
+base_worker = pytest.importorskip('aiohttp.worker')
+
+
+class MyWorker(base_worker.GunicornWebWorker):
 
     def __init__(self):
         self.servers = []
         self.exit_code = 0
-        self.cfg = unittest.mock.Mock()
+        self.cfg = mock.Mock()
         self.cfg.graceful_timeout = 100
 
 
-class TestWorker(unittest.TestCase):
+@pytest.fixture
+def worker():
+    return MyWorker()
 
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-        self.worker = MyWorker()
 
-    def tearDown(self):
-        self.loop.close()
-
-    @unittest.mock.patch('aiohttp.worker.asyncio')
-    def test_init_process(self, m_asyncio):
+def test_init_process(worker):
+    with mock.patch('aiohttp.worker.asyncio') as m_asyncio:
         try:
-            self.worker.init_process()
+            worker.init_process()
         except TypeError:
             pass
 
-        self.assertTrue(m_asyncio.get_event_loop.return_value.close.called)
-        self.assertTrue(m_asyncio.new_event_loop.called)
-        self.assertTrue(m_asyncio.set_event_loop.called)
+        assert m_asyncio.get_event_loop.return_value.close.called
+        assert m_asyncio.new_event_loop.called
+        assert m_asyncio.set_event_loop.called
 
-    def test_run(self):
-        self.worker.loop = self.loop
-        self.worker._run = unittest.mock.Mock(
-            wraps=asyncio.coroutine(lambda: None))
-        with self.assertRaises(SystemExit):
-            self.worker.run()
 
-        self.assertTrue(self.worker._run.called)
-        self.assertTrue(self.loop._closed)
+def test_run(worker, loop):
+    worker.loop = loop
+    worker._run = mock.Mock(
+        wraps=asyncio.coroutine(lambda: None))
+    with pytest.raises(SystemExit):
+        worker.run()
 
-    def test_handle_quit(self):
-        self.worker.handle_quit(object(), object())
-        self.assertEqual(self.worker.alive, False)
-        self.assertEqual(self.worker.exit_code, 0)
+    assert worker._run.called
+    assert loop._closed
 
-    def test_handle_abort(self):
-        self.worker.handle_abort(object(), object())
-        self.assertEqual(self.worker.alive, False)
-        self.assertEqual(self.worker.exit_code, 1)
 
-    def test_init_signal(self):
-        self.worker.loop = unittest.mock.Mock()
-        self.worker.init_signal()
-        self.assertTrue(self.worker.loop.add_signal_handler.called)
+def test_handle_quit(worker):
+    worker.handle_quit(object(), object())
+    assert not worker.alive
+    assert worker.exit_code == 0
 
-    def test_make_handler(self):
-        self.worker.wsgi = unittest.mock.Mock()
-        self.worker.loop = unittest.mock.Mock()
-        self.worker.log = unittest.mock.Mock()
-        self.worker.cfg = unittest.mock.Mock()
 
-        f = self.worker.make_handler(
-            self.worker.wsgi, 'localhost', 8080)
-        self.assertIs(f, self.worker.wsgi.make_handler.return_value)
+def test_handle_abort(worker):
+    worker.handle_abort(object(), object())
+    assert not worker.alive
+    assert worker.exit_code == 1
 
-    @unittest.mock.patch('aiohttp.worker.asyncio')
-    def test__run(self, m_asyncio):
-        self.worker.ppid = 1
-        self.worker.alive = True
-        self.worker.servers = {}
-        sock = unittest.mock.Mock()
-        sock.cfg_addr = ('localhost', 8080)
-        self.worker.sockets = [sock]
-        self.worker.wsgi = unittest.mock.Mock()
-        self.worker.close = unittest.mock.Mock()
-        self.worker.close.return_value = asyncio.Future(loop=self.loop)
-        self.worker.close.return_value.set_result(())
-        self.worker.log = unittest.mock.Mock()
-        self.worker.notify = unittest.mock.Mock()
-        loop = self.worker.loop = unittest.mock.Mock()
-        loop.create_server.return_value = asyncio.Future(loop=self.loop)
-        loop.create_server.return_value.set_result(sock)
 
-        self.loop.run_until_complete(self.worker._run())
+def test_init_signal(worker):
+    worker.loop = mock.Mock()
+    worker.init_signal()
+    assert worker.loop.add_signal_handler.called
 
-        self.assertTrue(self.worker.log.info.called)
-        self.assertTrue(self.worker.notify.called)
 
-    @unittest.mock.patch('aiohttp.worker.os')
-    @unittest.mock.patch('aiohttp.worker.asyncio.sleep')
-    def test__run_exc(self, m_sleep, m_os):
+def test_make_handler(worker):
+    worker.wsgi = mock.Mock()
+    worker.loop = mock.Mock()
+    worker.log = mock.Mock()
+    worker.cfg = mock.Mock()
+
+    f = worker.make_handler(
+        worker.wsgi, 'localhost', 8080)
+    assert f is worker.wsgi.make_handler.return_value
+
+
+def test__run_ok(worker, loop):
+    worker.ppid = 1
+    worker.alive = True
+    worker.servers = {}
+    sock = mock.Mock()
+    sock.cfg_addr = ('localhost', 8080)
+    worker.sockets = [sock]
+    worker.wsgi = mock.Mock()
+    worker.close = mock.Mock()
+    worker.close.return_value = asyncio.Future(loop=loop)
+    worker.close.return_value.set_result(())
+    worker.log = mock.Mock()
+    worker.notify = mock.Mock()
+    worker.loop = loop
+    ret = asyncio.Future(loop=loop)
+    loop.create_server = mock.Mock(
+        wraps=asyncio.coroutine(lambda *a, **kw: ret))
+    ret.set_result(sock)
+    worker.wsgi.make_handler.return_value.num_connections = 1
+    worker.cfg.max_requests = 100
+
+    with mock.patch('aiohttp.worker.asyncio') as m_asyncio:
+        m_asyncio.sleep = mock.Mock(
+            wraps=asyncio.coroutine(lambda *a, **kw: None))
+        loop.run_until_complete(worker._run())
+
+    assert worker.notify.called
+    assert worker.log.info.called
+
+
+def test__run_exc(worker, loop):
+    with mock.patch('aiohttp.worker.os') as m_os:
         m_os.getpid.return_value = 1
         m_os.getppid.return_value = 1
 
-        self.worker.servers = [unittest.mock.Mock()]
-        self.worker.ppid = 1
-        self.worker.alive = True
-        self.worker.sockets = []
-        self.worker.log = unittest.mock.Mock()
-        self.worker.loop = unittest.mock.Mock()
-        self.worker.notify = unittest.mock.Mock()
+        worker.servers = [mock.Mock()]
+        worker.ppid = 1
+        worker.alive = True
+        worker.sockets = []
+        worker.log = mock.Mock()
+        worker.loop = mock.Mock()
+        worker.notify = mock.Mock()
 
-        slp = asyncio.Future(loop=self.loop)
-        slp.set_exception(KeyboardInterrupt)
-        m_sleep.return_value = slp
+        with mock.patch('aiohttp.worker.asyncio.sleep') as m_sleep:
+            slp = asyncio.Future(loop=loop)
+            slp.set_exception(KeyboardInterrupt)
+            m_sleep.return_value = slp
 
-        self.worker.close = unittest.mock.Mock()
-        self.worker.close.return_value = asyncio.Future(loop=self.loop)
-        self.worker.close.return_value.set_result(1)
+            worker.close = mock.Mock()
+            worker.close.return_value = asyncio.Future(loop=loop)
+            worker.close.return_value.set_result(1)
 
-        self.loop.run_until_complete(self.worker._run())
-        self.assertTrue(m_sleep.called)
-        self.assertTrue(self.worker.close.called)
+            loop.run_until_complete(worker._run())
 
-    def test_close(self):
-        srv = unittest.mock.Mock()
-        handler = unittest.mock.Mock()
-        self.worker.servers = {srv: handler}
-        self.worker.log = unittest.mock.Mock()
-        self.worker.loop = self.loop
-        app = self.worker.wsgi = unittest.mock.Mock()
-        app.finish.return_value = asyncio.Future(loop=self.loop)
-        app.finish.return_value.set_result(1)
-        handler.connections = [object()]
-        handler.finish_connections.return_value = asyncio.Future(
-            loop=self.loop)
-        handler.finish_connections.return_value.set_result(1)
+        assert m_sleep.called
+        assert worker.close.called
 
-        self.loop.run_until_complete(self.worker.close())
-        app.finish.assert_called_with()
-        handler.finish_connections.assert_called_with(timeout=95.0)
-        srv.close.assert_called_with()
-        self.assertIsNone(self.worker.servers)
 
-        self.loop.run_until_complete(self.worker.close())
+def test_close(worker, loop):
+    srv = mock.Mock()
+    handler = mock.Mock()
+    worker.servers = {srv: handler}
+    worker.log = mock.Mock()
+    worker.loop = loop
+    app = worker.wsgi = mock.Mock()
+    app.finish.return_value = asyncio.Future(loop=loop)
+    app.finish.return_value.set_result(1)
+    handler.connections = [object()]
+    handler.finish_connections.return_value = asyncio.Future(
+        loop=loop)
+    handler.finish_connections.return_value.set_result(1)
+
+    loop.run_until_complete(worker.close())
+    app.finish.assert_called_with()
+    handler.finish_connections.assert_called_with(timeout=95.0)
+    srv.close.assert_called_with()
+    assert worker.servers is None
+
+    loop.run_until_complete(worker.close())
