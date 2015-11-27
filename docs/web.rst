@@ -513,6 +513,11 @@ HTTP Exception hierarchy chart::
            * 415 - HTTPUnsupportedMediaType
            * 416 - HTTPRequestRangeNotSatisfiable
            * 417 - HTTPExpectationFailed
+           * 421 - HTTPMisdirectedRequest
+           * 426 - HTTPUpgradeRequired
+           * 428 - HTTPPreconditionRequired
+           * 429 - HTTPTooManyRequests
+           * 431 - HTTPRequestHeaderFieldsTooLarge
          HTTPServerError
            * 500 - HTTPInternalServerError
            * 501 - HTTPNotImplemented
@@ -520,6 +525,9 @@ HTTP Exception hierarchy chart::
            * 503 - HTTPServiceUnavailable
            * 504 - HTTPGatewayTimeout
            * 505 - HTTPVersionNotSupported
+           * 506 - HTTPVariantAlsoNegotiates
+           * 510 - HTTPNotExtended
+           * 511 - HTTPNetworkAuthenticationRequired
 
 All HTTP exceptions have the same constructor::
 
