@@ -326,10 +326,10 @@ class Request(dict, HeadersMixin):
         return bytes_body.decode(encoding)
 
     @asyncio.coroutine
-    def json(self, *, loader=json.loads):
+    def json(self, *, loads=json.loads):
         """Return BODY as JSON."""
         body = yield from self.text()
-        return loader(body)
+        return loads(body)
 
     @asyncio.coroutine
     def post(self):

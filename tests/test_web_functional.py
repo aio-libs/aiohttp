@@ -142,7 +142,7 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
         def handler(request):
             data = yield from request.json()
             self.assertEqual(dct, data)
-            data2 = yield from request.json()
+            data2 = yield from request.json(loads=json.loads)
             self.assertEqual(data, data2)
             resp = web.Response()
             resp.content_type = 'application/json'

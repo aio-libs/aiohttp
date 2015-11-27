@@ -250,14 +250,14 @@ like one using :meth:`Request.copy`.
          The method **does** store read data internally, subsequent
          :meth:`~Request.text` call will return the same value.
 
-   .. coroutinemethod:: json(*, loader=json.loads)
+   .. coroutinemethod:: json(*, loads=json.loads)
 
       Read request body decoded as *json*.
 
       The method is just a boilerplate :ref:`coroutine <coroutine>`
       implemented as::
 
-         async def json(self, *, loader=json.loads):
+         async def json(self, *, loads=json.loads):
              body = await self.text()
              return loader(body)
 
