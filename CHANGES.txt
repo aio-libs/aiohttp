@@ -1,50 +1,11 @@
 CHANGES
 =======
 
-0.19.0 (11-25-2015)
+0.20.0 (XX-XX-XXXX)
 -------------------
 
-- Memory leak in ParserBuffer #579
+- Extend list of web exceptions, add HTTPMisdirectedRequest,
+  HTTPUpgradeRequired, HTTPPreconditionRequired, HTTPTooManyRequests,
+  HTTPRequestHeaderFieldsTooLarge, HTTPVariantAlsoNegotiates,
+  HTTPNotExtended, HTTPNetworkAuthenticationRequired status codes.
 
-- Suppport gunicorn's `max_requests` settings in gunicorn worker
-
-- Fix wsgi environment building #573
-
-- Improve access logging #572
-
-- Drop unused host and port from low-level server #586
-
-- Add Python 3.5 `async for` implementation to server websocket #543
-
-- Add Python 3.5 `async for` implementation to client websocket
-
-- Add Python 3.5 `async with` implementation to client websocket
-
-- Add charset parameter to web.Response constructor #593
-
-- Forbid passing both Content-Type header and content_type or charset
-  params into web.Response constructor
-
-- Forbid duplicating of web.Application and web.Request #602
-
-- Add an option to pass Origin header in ws_connect #607
-
-- Add json_response function #592
-
-- Make concurrent connections respect limits #581
-
-- Collect history of responses if redirects occur #614
-
-- Enable passing pre-compressed data in requests #621
-
-- Expose named routes via UrlDispatcher.named_routes() #622
-
-- Allow disabling sendfile by environment variable AIOHTTP_NOSENDFILE #629
-
-- Use ensure_future if available
-
-- Always quote params for Content-Disposition #641
-
-- Support async for in multipart reader #640
-
-- Add Timeout context manager #611
