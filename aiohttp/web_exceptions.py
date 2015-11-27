@@ -39,6 +39,11 @@ __all__ = (
     'HTTPUnsupportedMediaType',
     'HTTPRequestRangeNotSatisfiable',
     'HTTPExpectationFailed',
+    'HTTPMisdirectedRequest',
+    'HTTPUpgradeRequired',
+    'HTTPPreconditionRequired',
+    'HTTPTooManyRequests',
+    'HTTPRequestHeaderFieldsTooLarge',
     'HTTPServerError',
     'HTTPInternalServerError',
     'HTTPNotImplemented',
@@ -46,6 +51,9 @@ __all__ = (
     'HTTPServiceUnavailable',
     'HTTPGatewayTimeout',
     'HTTPVersionNotSupported',
+    'HTTPVariantAlsoNegotiates',
+    'HTTPNotExtended',
+    'HTTPNetworkAuthenticationRequired',
 )
 
 
