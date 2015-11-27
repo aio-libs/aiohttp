@@ -324,8 +324,10 @@ class HTTPVersionNotSupported(HTTPServerError):
 class HTTPVariantAlsoNegotiates(HTTPServerError):
     status_code = 506
 
+
 class HTTPNotExtended(HTTPServerError):
     status_code = 510
+
 
 class HTTPNetworkAuthenticationRequired(HTTPServerError):
     status_code = 511
