@@ -39,6 +39,11 @@ __all__ = (
     'HTTPUnsupportedMediaType',
     'HTTPRequestRangeNotSatisfiable',
     'HTTPExpectationFailed',
+    'HTTPMisdirectedRequest',
+    'HTTPUpgradeRequired',
+    'HTTPPreconditionRequired',
+    'HTTPTooManyRequests',
+    'HTTPRequestHeaderFieldsTooLarge',
     'HTTPServerError',
     'HTTPInternalServerError',
     'HTTPNotImplemented',
@@ -46,6 +51,9 @@ __all__ = (
     'HTTPServiceUnavailable',
     'HTTPGatewayTimeout',
     'HTTPVersionNotSupported',
+    'HTTPVariantAlsoNegotiates',
+    'HTTPNotExtended',
+    'HTTPNetworkAuthenticationRequired',
 )
 
 
@@ -253,6 +261,26 @@ class HTTPExpectationFailed(HTTPClientError):
     status_code = 417
 
 
+class HTTPMisdirectedRequest(HTTPClientError):
+    status_code = 421
+
+
+class HTTPUpgradeRequired(HTTPClientError):
+    status_code = 426
+
+
+class HTTPPreconditionRequired(HTTPClientError):
+    status_code = 428
+
+
+class HTTPTooManyRequests(HTTPClientError):
+    status_code = 429
+
+
+class HTTPRequestHeaderFieldsTooLarge(HTTPClientError):
+    status_code = 431
+
+
 ############################################################
 # 5xx Server Error
 ############################################################
@@ -291,3 +319,15 @@ class HTTPGatewayTimeout(HTTPServerError):
 
 class HTTPVersionNotSupported(HTTPServerError):
     status_code = 505
+
+
+class HTTPVariantAlsoNegotiates(HTTPServerError):
+    status_code = 506
+
+
+class HTTPNotExtended(HTTPServerError):
+    status_code = 510
+
+
+class HTTPNetworkAuthenticationRequired(HTTPServerError):
+    status_code = 511
