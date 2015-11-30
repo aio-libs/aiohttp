@@ -3,8 +3,6 @@
 HTTP Server Usage
 =================
 
-.. highlight:: python
-
 .. currentmodule:: aiohttp.web
 
 .. versionchanged:: 0.12

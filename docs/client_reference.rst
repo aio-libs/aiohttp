@@ -3,9 +3,8 @@
 HTTP Client Reference
 =====================
 
-.. highlight:: python
-
 .. module:: aiohttp
+
 .. currentmodule:: aiohttp
 
 

@@ -3,8 +3,6 @@
 Logging
 =======
 
-.. highlight:: python
-
 .. currentmodule:: aiohttp
 
 
