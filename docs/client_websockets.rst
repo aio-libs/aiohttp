@@ -3,8 +3,6 @@
 WebSockets Client
 =================
 
-.. highlight:: python
-
 .. module:: aiohttp
 
 .. currentmodule:: aiohttp

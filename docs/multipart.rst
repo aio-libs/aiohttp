@@ -1,5 +1,3 @@
-.. highlight:: python
-
 .. module:: aiohttp.multipart
 
 .. _aiohttp-multipart:

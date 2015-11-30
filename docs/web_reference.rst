@@ -3,8 +3,6 @@
 HTTP Server Reference
 =====================
 
-.. highlight:: python
-
 .. module:: aiohttp.web
 
 .. versionchanged:: 0.12
