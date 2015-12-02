@@ -7,5 +7,6 @@ CHANGES
 - Extend list of web exceptions, add HTTPMisdirectedRequest,
   HTTPUpgradeRequired, HTTPPreconditionRequired, HTTPTooManyRequests,
   HTTPRequestHeaderFieldsTooLarge, HTTPVariantAlsoNegotiates,
-  HTTPNotExtended, HTTPNetworkAuthenticationRequired status codes.
+  HTTPNotExtended, HTTPNetworkAuthenticationRequired status codes #644
 
+- Do not remove AUTHORIZATION header by WSGI handler #649
