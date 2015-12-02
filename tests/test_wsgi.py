@@ -258,14 +258,15 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
         environ = self._make_one()
         self.assertEqual(environ['PATH_INFO'], path)
 
-    def test_not_add_authorization(self):
-        self.headers.extend({'AUTHORIZATION': 'spam',
-                             'X-CUSTOM-HEADER': 'eggs'})
+    def test_authorization(self):
+        # This header should be removed according to CGI/1.1 and WSGI but
+        # in our case basic auth is not handled by server, so should
+        # not be removed
+        self.headers.extend({'AUTHORIZATION': 'spam'})
         self.message = protocol.RawRequestMessage(
             'GET', '/', (1, 1), self.headers, True, 'deflate')
         environ = self._make_one()
-        self.assertEqual('eggs', environ['HTTP_X_CUSTOM_HEADER'])
-        self.assertFalse('AUTHORIZATION' in environ)
+        self.assertEqual('spam', environ['HTTP_AUTHORIZATION'])
 
     def test_http_1_0_no_host(self):
         headers = multidict.MultiDict({})
