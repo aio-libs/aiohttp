@@ -344,7 +344,7 @@ class :class:`StreamResponse`, the *request handler* uses it as the response.
 If all checks pass, the custom handler *must* write a *HTTP/1.1 100 Continue*
 status code before returning.
 
-The following example shows how to setup a custom handler for the *Except*
+The following example shows how to setup a custom handler for the *Expect*
 header:
 
 .. code-block:: python
