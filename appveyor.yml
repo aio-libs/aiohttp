@@ -26,6 +26,15 @@ build: false
 test_script:
   - "python setup.py test"
 
+after_test:
+  - "python setup.py bdist_wheel"
+
+artifacts:
+  - path: dist\*
+
+#on_success:
+#  - TODO: upload the content of dist/*.whl to PyPI
+
 #notifications:
 #  - provider: Webhook
 #    url: https://ci.appveyor.com/api/github/webhook?id=08c7793w1tp839fl
