@@ -830,12 +830,18 @@ class Response(HttpMessage):
         super().__init__(transport, http_version, close)
 
         self.status = status
-        if reason is None:
-            reason = self.calc_reason(status)
+        self.custom_reason = reason
 
-        self.reason = reason
-        self.status_line = 'HTTP/{}.{} {} {}\r\n'.format(
-            http_version[0], http_version[1], status, reason)
+    @property
+    def reason(self):
+        if self.custom_reason is not None:
+            return self.custom_reason
+        return self.calc_reason(self.status)
+
+    @property
+    def status_line(self):
+        return 'HTTP/{}.{} {} {}\r\n'.format(
+            self.version[0], self.version[1], self.status, self.reason)
 
     def _add_default_headers(self):
         super()._add_default_headers()
@@ -861,5 +867,8 @@ class Request(HttpMessage):
 
         self.method = method
         self.path = path
-        self.status_line = '{0} {1} HTTP/{2[0]}.{2[1]}\r\n'.format(
-            method, path, http_version)
+
+    @property
+    def status_line(self):
+        return '{0} {1} HTTP/{2[0]}.{2[1]}\r\n'.format(
+            self.method, self.path, self.version)
