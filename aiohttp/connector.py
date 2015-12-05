@@ -657,7 +657,10 @@ class ProxyConnector(TCPConnector):
         if hdrs.AUTHORIZATION in proxy_req.headers:
             auth = proxy_req.headers[hdrs.AUTHORIZATION]
             del proxy_req.headers[hdrs.AUTHORIZATION]
-            req.headers[hdrs.PROXY_AUTHORIZATION] = auth
+            if not req.ssl:
+                req.headers[hdrs.PROXY_AUTHORIZATION] = auth
+            else:
+                proxy_req.headers[hdrs.PROXY_AUTHORIZATION] = auth
 
         if req.ssl:
             # For HTTPS requests over HTTP proxy
@@ -694,6 +697,8 @@ class ProxyConnector(TCPConnector):
                 transport, proto = yield from self._loop.create_connection(
                     self._factory, ssl=self.ssl_context, sock=rawsock,
                     server_hostname=req.host)
+            finally:
+                proxy_resp.close()
 
         return transport, proto
 
