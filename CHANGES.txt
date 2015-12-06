@@ -10,3 +10,5 @@ CHANGES
   HTTPNotExtended, HTTPNetworkAuthenticationRequired status codes #644
 
 - Do not remove AUTHORIZATION header by WSGI handler #649
+
+- Fix https proxy auth #617
