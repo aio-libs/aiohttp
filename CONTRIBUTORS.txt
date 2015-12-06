@@ -60,6 +60,7 @@ Martin Richard
 Mathias Fröjdman
 Morgan Delahaye-Prat
 Moss Collum
+Michael Ihnatenko
 Mikhail Lukyanchenko
 Nicolas Braem
 Nikolay Novik
