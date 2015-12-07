@@ -275,3 +275,16 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
         environ = self._make_one()
         self.assertEqual(environ['SERVER_NAME'], '2.3.4.5')
         self.assertEqual(environ['SERVER_PORT'], '80')
+
+    def test_unix_socket(self):
+        self.transport.get_extra_info = unittest.mock.Mock(return_value=None)
+        headers = multidict.MultiDict({
+            'SERVER_NAME': '1.2.3.4', 'SERVER_PORT': '5678',
+            'REMOTE_ADDR': '4.3.2.1', 'REMOTE_PORT': '8765'})
+        self.message = protocol.RawRequestMessage(
+            'GET', '/', (1, 0), headers, True, 'deflate')
+        environ = self._make_one()
+        self.assertEqual(environ['SERVER_NAME'], '1.2.3.4')
+        self.assertEqual(environ['SERVER_PORT'], '5678')
+        self.assertEqual(environ['REMOTE_ADDR'], '4.3.2.1')
+        self.assertEqual(environ['REMOTE_PORT'], '8765')
