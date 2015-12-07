@@ -15,3 +15,5 @@ CHANGES
 
 - Get REMOTE_* and SEVER_* http vars from headers when listening on
   unix socket #654
+
+- Added HTTP 308 support #663
