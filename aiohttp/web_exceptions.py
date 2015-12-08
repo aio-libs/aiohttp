@@ -20,6 +20,7 @@ __all__ = (
     'HTTPNotModified',
     'HTTPUseProxy',
     'HTTPTemporaryRedirect',
+    'HTTPPermanentRedirect',
     'HTTPClientError',
     'HTTPBadRequest',
     'HTTPUnauthorized',
@@ -169,6 +170,10 @@ class HTTPUseProxy(_HTTPMove):
 
 class HTTPTemporaryRedirect(_HTTPMove):
     status_code = 307
+
+
+class HTTPPermanentRedirect(_HTTPMove):
+    status_code = 308
 
 
 ############################################################

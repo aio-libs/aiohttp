@@ -20,6 +20,7 @@ install:
   - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
   - "python --version"
   - "pip install -r requirements-dev.txt"
+  - "pip install wheel"
   - "python setup.py develop"
 
 build: false

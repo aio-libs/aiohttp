@@ -88,16 +88,22 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
         # http://www.ietf.org/rfc/rfc3875
 
         remote = self.transport.get_extra_info('peername')
-        environ['REMOTE_ADDR'] = remote[0]
-        environ['REMOTE_PORT'] = remote[1]
-
-        sockname = self.transport.get_extra_info('sockname')
-        environ['SERVER_PORT'] = str(sockname[1])
-        host = message.headers.get("HOST", None)
-        if host:
-            environ['SERVER_NAME'] = host.split(":")[0]
+        if remote:
+            environ['REMOTE_ADDR'] = remote[0]
+            environ['REMOTE_PORT'] = remote[1]
+            _host, port = self.transport.get_extra_info('sockname')
+            environ['SERVER_PORT'] = str(port)
+            host = message.headers.get("HOST", None)
+            # SERVER_NAME should be set to value of Host header, but this
+            # header is not required. In this case we shoud set it to local
+            # address of socket
+            environ['SERVER_NAME'] = host.split(":")[0] if host else _host
         else:
-            environ['SERVER_NAME'] = sockname[0]
+            # Dealing with unix socket, so request was received from client by
+            # upstream server and this data may be found in the headers
+            for header in ('REMOTE_ADDR', 'REMOTE_PORT',
+                           'SERVER_NAME', 'SERVER_PORT'):
+                environ[header] = message.headers.get(header, '')
 
         path_info = uri_parts.path
         if script_name:
