@@ -460,10 +460,10 @@ class TestClientRequest(unittest.TestCase):
 
     def test_content_type_skip_auto_header_bytes(self):
         req = ClientRequest('post', 'http://python.org', data=b'hey you',
-                            skip_auto_headers=set('CONTENT-TYPE'),
+                            skip_auto_headers={'CONTENT-TYPE'},
                             loop=self.loop)
         resp = req.send(self.transport, self.protocol)
-        self.assertNotIn('application/octet-stream', req.headers)
+        self.assertNotIn('CONTENT-TYPE', req.headers)
         resp.close()
 
     def test_content_type_skip_auto_header_form(self):
