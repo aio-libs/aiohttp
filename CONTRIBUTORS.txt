@@ -76,6 +76,7 @@ Sebastian Hüther
 Sergey Ninua
 Sergey Skripnick
 Simon Kennedy
+Stanislas Plum
 Stanislav Prokop
 Stephen Granade
 Sviatoslav Bulbakha

@@ -11,4 +11,9 @@ CHANGES
 
 - Do not remove AUTHORIZATION header by WSGI handler #649
 
-- Fix https proxy auth #617
+- Fix broken support for https proxies with authentication #617
+
+- Get REMOTE_* and SEVER_* http vars from headers when listening on
+  unix socket #654
+
+- Added HTTP 308 support #663
