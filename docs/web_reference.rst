@@ -688,7 +688,8 @@ WebSocketResponse
 .. class:: WebSocketResponse(*, timeout=10.0, autoclose=True, \
                              autoping=True, protocols=())
 
-   Class for handling server-side websockets.
+   Class for handling server-side websockets, inherited from
+   :class:`StreamResponse`.
 
    After starting (by :meth:`prepare` call) the response you
    cannot use :meth:`~StreamResponse.write` method but should to
