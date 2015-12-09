@@ -291,15 +291,20 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                     reader.unset_parser()
 
                 if self._request_handler:
-                    if self._keep_alive and self._keep_alive_period:
-                        self.log_debug(
-                            'Start keep-alive timer for %s sec.',
-                            self._keep_alive_period)
-                        self._keep_alive_handle = self._loop.call_later(
-                            self._keep_alive_period, self.transport.close)
-                    elif self._keep_alive and self._keep_alive_on:
-                        # do nothing, rely on kernel or upstream server
-                        pass
+                    if self._keep_alive:
+                        sock = self.transport.get_extra_info('socket')
+                        sock.setsockopt(socket.IPPROTO_TCP,
+                                        socket.TCP_NODELAY,
+                                        1)
+                        if self._keep_alive_period:
+                            self.log_debug(
+                                'Start keep-alive timer for %s sec.',
+                                self._keep_alive_period)
+                            self._keep_alive_handle = self._loop.call_later(
+                                self._keep_alive_period, self.transport.close)
+                        elif self._keep_alive_on:
+                            # do nothing, rely on kernel or upstream server
+                            pass
                     else:
                         self.log_debug('Close client connection.')
                         self._request_handler = None
