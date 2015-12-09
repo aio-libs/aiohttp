@@ -28,6 +28,7 @@ test_script:
   - "python setup.py test"
 
 after_test:
+  - "pip install wheel"
   - "python setup.py bdist_wheel"
 
 artifacts:
