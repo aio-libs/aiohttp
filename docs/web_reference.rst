@@ -1416,8 +1416,14 @@ Constants
 
    .. attribute:: deflate
 
+      *DEFLATE compression*
+
    .. attribute:: gzip
 
+      *GZIP comression*
+
    .. attribute:: identity
+
+      *no comression*
 
 .. disqus::
