@@ -93,6 +93,8 @@ args = dict(
         'Topic :: Internet :: WWW/HTTP'],
     author='Nikolay Kim',
     author_email='fafhrd91@gmail.com',
+    maintainer='Andrew Svetlov',
+    maintainer_email='andrew.svetlov@gmail.com',
     url='https://github.com/KeepSafe/aiohttp/',
     license='Apache 2',
     packages=['aiohttp'],
