@@ -23,7 +23,10 @@ script:
         flake8 examples tests;
     fi
   - py.test --cov=aiohttp tests
-  - python setup.py check -rms
+  - python setup.py check -rm
+  - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
+        python setup.py check -s;
+    fi
 
 after_success:
   coveralls
