@@ -23,7 +23,7 @@ script:
         flake8 examples tests;
     fi
   - py.test --cov=aiohttp tests
-  - python setup.py check -rm
+  - python setup.py check -rms
 
 after_success:
   coveralls
