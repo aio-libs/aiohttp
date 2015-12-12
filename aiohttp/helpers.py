@@ -255,6 +255,8 @@ class AccessLogger:
         %b  Size of response in bytes, excluding HTTP headers
         %O  Bytes sent, including headers
         %T  Time taken to serve the request, in seconds
+        %Tf Time taken to serve the request, in seconds with floating fraction
+            in .06f format
         %D  Time taken to serve the request, in microseconds
         %{FOO}i  request.headers['FOO']
         %{FOO}o  response.headers['FOO']
@@ -263,7 +265,7 @@ class AccessLogger:
     """
 
     LOG_FORMAT = '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
-    FORMAT_RE = re.compile(r'%(\{([A-Za-z\-]+)\}([ioe])|[atPrsbOTD])')
+    FORMAT_RE = re.compile(r'%(\{([A-Za-z\-]+)\}([ioe])|[atPrsbOD]|Tf?)')
     CLEANUP_RE = re.compile(r'(%[^s])')
     _FORMAT_CACHE = {}
 
@@ -364,6 +366,10 @@ class AccessLogger:
     @staticmethod
     def _format_T(args):
         return round(args[4])
+
+    @staticmethod
+    def _format_Tf(args):
+        return '{:.06f}'.format(args[4])
 
     @staticmethod
     def _format_D(args):
