@@ -369,7 +369,7 @@ class AccessLogger:
 
     @staticmethod
     def _format_Tf(args):
-        return '{:.06f}'.format(args[4])
+        return '%06f' % args[4]
 
     @staticmethod
     def _format_D(args):
