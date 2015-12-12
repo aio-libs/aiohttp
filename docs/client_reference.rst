@@ -643,7 +643,7 @@ TCPConnector
                         family=0, \
                         ssl_context=None, conn_timeout=None, \
                         keepalive_timeout=30, limit=None, share_cookies=False, \
-                        force_close=False, loop=None)
+                        force_close=False, loop=None, local_addr=None)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -696,6 +696,9 @@ TCPConnector
 
       *ssl_context* may be used for configuring certification
       authority channel, supported SSL options etc.
+
+  :param tuple local_addr: tuple of ``(local_addr, local_port)`` used to bind
+      socket locally.
 
    .. attribute:: verify_ssl
 

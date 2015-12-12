@@ -402,13 +402,14 @@ class TCPConnector(BaseConnector):
         https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning
     :param bool resolve: Set to True to do DNS lookup for host name.
     :param family: socket address family
+    :param local_addr: local :class:`tuple` of (host, port) to bind socket to
     :param args: see :class:`BaseConnector`
     :param kwargs: see :class:`BaseConnector`
     """
 
     def __init__(self, *, verify_ssl=True, fingerprint=None,
                  resolve=_marker, use_dns_cache=_marker,
-                 family=0, ssl_context=None,
+                 family=0, ssl_context=None, local_addr=None,
                  **kwargs):
         super().__init__(**kwargs)
 
@@ -447,6 +448,7 @@ class TCPConnector(BaseConnector):
         self._cached_hosts = {}
         self._ssl_context = ssl_context
         self._family = family
+        self._local_addr = local_addr
 
     @property
     def verify_ssl(self):
@@ -572,7 +574,8 @@ class TCPConnector(BaseConnector):
                     self._factory, host, port,
                     ssl=sslcontext, family=hinfo['family'],
                     proto=hinfo['proto'], flags=hinfo['flags'],
-                    server_hostname=hinfo['hostname'] if sslcontext else None)
+                    server_hostname=hinfo['hostname'] if sslcontext else None,
+                    local_addr=self._local_addr)
                 has_cert = transp.get_extra_info('sslcontext')
                 if has_cert and self._fingerprint:
                     sock = transp.get_extra_info('socket')
