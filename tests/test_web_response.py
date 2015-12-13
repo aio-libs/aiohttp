@@ -596,6 +596,43 @@ def test_default_nodelay():
     assert resp.tcp_nodelay
 
 
+def test_set_tcp_nodelay_before_start():
+    resp = StreamResponse()
+    resp.set_tcp_nodelay(False)
+    assert not resp.tcp_nodelay
+    resp.set_tcp_nodelay(True)
+    assert resp.tcp_nodelay
+
+
+@pytest.mark.run_loop
+def test_set_tcp_nodelay_on_start():
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        resp_impl = yield from resp.prepare(req)
+    resp_impl.transport.set_tcp_nodelay.assert_called_with(True)
+
+
+@pytest.mark.run_loop
+def test_set_tcp_nodelay_after_start():
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        resp_impl = yield from resp.prepare(req)
+    resp_impl.transport.set_tcp_nodelay.assert_called_with(True)
+    resp.set_tcp_nodelay(False)
+    assert not resp.tcp_nodelay
+    resp_impl.transport.set_tcp_nodelay.assert_called_with(False)
+    resp.set_tcp_nodelay(True)
+    assert resp.tcp_nodelay
+    resp_impl.transport.set_tcp_nodelay.assert_called_with(True)
+
+
+# Response class
+
+
 def test_response_ctor():
     resp = Response()
 
