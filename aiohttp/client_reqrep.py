@@ -704,14 +704,6 @@ class ClientResponse:
 
         return data
 
-    @asyncio.coroutine
-    def read_and_close(self, decode=False):
-        """Read response payload and then close response."""
-        warnings.warn(
-            'read_and_close is deprecated, use .read() instead',
-            DeprecationWarning)
-        return (yield from self.read(decode))
-
     def _get_encoding(self):
         ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
         mtype, stype, _, params = helpers.parse_mimetype(ctype)
