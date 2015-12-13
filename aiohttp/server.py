@@ -101,6 +101,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         self._keep_alive_period = keep_alive  # number of seconds to keep alive
         self._timeout = timeout  # slow request timeout
         self._loop = loop if loop is not None else asyncio.get_event_loop()
+        self._tcp_nodelay = False
 
         self.logger = log or logger
         self.debug = debug
@@ -291,15 +292,17 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                     reader.unset_parser()
 
                 if self._request_handler:
-                    if self._keep_alive and self._keep_alive_period:
-                        self.log_debug(
-                            'Start keep-alive timer for %s sec.',
-                            self._keep_alive_period)
-                        self._keep_alive_handle = self._loop.call_later(
-                            self._keep_alive_period, self.transport.close)
-                    elif self._keep_alive and self._keep_alive_on:
-                        # do nothing, rely on kernel or upstream server
-                        pass
+                    if self._keep_alive:
+                        self.set_tcp_nodelay(True)
+                        if self._keep_alive_period:
+                            self.log_debug(
+                                'Start keep-alive timer for %s sec.',
+                                self._keep_alive_period)
+                            self._keep_alive_handle = self._loop.call_later(
+                                self._keep_alive_period, self.transport.close)
+                        elif self._keep_alive_on:
+                            # do nothing, rely on kernel or upstream server
+                            pass
                     else:
                         self.log_debug('Close client connection.')
                         self._request_handler = None
@@ -388,3 +391,19 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         self.log_access(message, None, response, self._loop.time() - now)
 
         return drain
+
+    @property
+    def tcp_nodelay(self):
+        return self._tcp_nodelay
+
+    def set_tcp_nodelay(self, nodelay):
+        if nodelay == self._tcp_nodelay:
+            return
+        self._tcp_nodelay = nodelay
+        if self.transport is None:
+            # transport is closed
+            return
+        sock = self.transport.get_extra_info('socket')
+        if sock.family not in (socket.AF_INET, socket.AF_INET6):
+            return
+        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)

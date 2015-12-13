@@ -559,3 +559,11 @@ class TestHttpServerProtocol(unittest.TestCase):
     def test_keep_alive_timeout_nondefault(self):
         srv = server.ServerHttpProtocol(loop=self.loop, keep_alive=10)
         self.assertEqual(10, srv.keep_alive_timeout)
+
+    def test_tcp_nodelay(self):
+        srv = server.ServerHttpProtocol(loop=self.loop)
+        self.assertFalse(srv.tcp_nodelay)
+        srv.set_tcp_nodelay(True)
+        self.assertTrue(srv.tcp_nodelay)
+        srv.set_tcp_nodelay(False)
+        self.assertFalse(srv.tcp_nodelay)
