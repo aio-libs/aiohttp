@@ -421,6 +421,7 @@ class StreamResponse(HeadersMixin):
         self._req = None
         self._resp_impl = None
         self._eof_sent = False
+        self._tcp_nodelay = True
 
         if headers is not None:
             self._headers.extend(headers)
@@ -604,6 +605,16 @@ class StreamResponse(HeadersMixin):
         elif isinstance(value, str):
             self.headers[hdrs.LAST_MODIFIED] = value
 
+    @property
+    def tcp_nodelay(self):
+        return self._tcp_nodelay
+
+    def set_tcp_nodelay(self, value):
+        self._tcp_nodelay = value
+        if self._resp_impl is None:
+            return
+        self._resp_impl.transport.set_tcp_nodelay(value)
+
     def _generate_content_type_header(self, CONTENT_TYPE=hdrs.CONTENT_TYPE):
         params = '; '.join("%s=%s" % i for i in self._content_dict.items())
         if params:
@@ -669,6 +680,7 @@ class StreamResponse(HeadersMixin):
             request.version,
             not keep_alive,
             self._reason)
+        resp_impl.transport.set_tcp_nodelay(self._tcp_nodelay)
 
         self._copy_cookies()
 

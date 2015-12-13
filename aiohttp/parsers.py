@@ -59,6 +59,7 @@ _SocketSocketTransport ->
 import asyncio
 import asyncio.streams
 import inspect
+import socket
 from . import errors
 from .streams import FlowControlDataQueue, EofStream
 
@@ -224,6 +225,22 @@ class StreamWriter(asyncio.streams.StreamWriter):
         self._protocol = protocol
         self._reader = reader
         self._loop = loop
+        self._tcp_nodelay = False
+        self._socket = transport.get_extra_info('socket')
+
+    @property
+    def tcp_nodelay(self):
+        return self._tcp_nodelay
+
+    def set_tcp_nodelay(self, value):
+        if self._tcp_nodelay == value:
+            return
+        self._tcp_nodelay = value
+        if self._socket is None:
+            return
+        if self._socket.family not in (socket.AF_INET, socket.AF_INET6):
+            return
+        self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, value)
 
 
 class StreamProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):

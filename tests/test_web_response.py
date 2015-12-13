@@ -591,6 +591,11 @@ def test_prepare_calls_signal():
     sig.assert_called_with(req, resp)
 
 
+def test_default_nodelay():
+    resp = StreamResponse()
+    assert resp.tcp_nodelay
+
+
 def test_response_ctor():
     resp = Response()
 
