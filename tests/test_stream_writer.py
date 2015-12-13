@@ -1,3 +1,4 @@
+import pytest
 import socket
 from aiohttp.parsers import StreamWriter
 from unittest import mock
@@ -63,6 +64,8 @@ def test_set_nodelay_enable_ipv6(loop):
     assert s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
 
 
+@pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
+                    reason="requires unix sockets")
 def test_set_nodelay_enable_unix(loop):
     transport = mock.Mock()
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
