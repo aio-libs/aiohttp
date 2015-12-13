@@ -16,4 +16,7 @@ CHANGES
 - Get REMOTE_* and SEVER_* http vars from headers when listening on
   unix socket #654
 
-- Added HTTP 308 support #663
+- Add HTTP 308 support #663
+
+- Add Tf format (time to serve request in seconds, %06f format) to
+  access log #669

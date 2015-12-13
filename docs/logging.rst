@@ -63,6 +63,9 @@ request and response:
 +--------------+---------------------------------------------------------+
 | ``%T``       | The time taken to serve the request, in seconds         |
 +--------------+---------------------------------------------------------+
+| ``%Tf``      | The time taken to serve the request, in seconds         |
+|              | with fraction in %.06f format                           |
++--------------+---------------------------------------------------------+
 | ``%D``       | The time taken to serve the request, in microseconds    |
 +--------------+---------------------------------------------------------+
 | ``%{FOO}i``  | ``request.headers['FOO']``                              |
