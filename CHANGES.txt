@@ -20,3 +20,6 @@ CHANGES
 
 - Add Tf format (time to serve request in seconds, %06f format) to
   access log #669
+
+- Remove one and a half year long deprecated
+  ClientResponse.read_and_close() method

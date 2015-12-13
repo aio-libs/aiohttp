@@ -100,16 +100,6 @@ class TestClientResponse(unittest.TestCase):
         self.loop.run_until_complete(self.response.release())
         self.assertIsNone(self.response._connection)
 
-    def test_read_and_close(self):
-        self.response.read = unittest.mock.Mock()
-        self.response.read.return_value = asyncio.Future(loop=self.loop)
-        self.response.read.return_value.set_result(b'data')
-
-        with self.assertWarns(DeprecationWarning):
-            res = self.loop.run_until_complete(self.response.read_and_close())
-        self.assertEqual(res, b'data')
-        self.assertTrue(self.response.read.called)
-
     def test_read_decode_deprecated(self):
         self.response._content = b'data'
         self.response.json = unittest.mock.Mock()
