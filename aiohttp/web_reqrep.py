@@ -702,6 +702,7 @@ class StreamResponse(HeadersMixin):
             not keep_alive,
             self._reason)
         resp_impl.transport.set_tcp_nodelay(self._tcp_nodelay)
+        resp_impl.transport.set_tcp_cork(self._tcp_cork)
 
         self._copy_cookies()
 

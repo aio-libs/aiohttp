@@ -612,6 +612,7 @@ def test_set_tcp_nodelay_on_start():
     with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
         resp_impl = yield from resp.prepare(req)
     resp_impl.transport.set_tcp_nodelay.assert_called_with(True)
+    resp_impl.transport.set_tcp_cork.assert_called_with(False)
 
 
 @pytest.mark.run_loop
@@ -621,6 +622,7 @@ def test_set_tcp_nodelay_after_start():
 
     with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
         resp_impl = yield from resp.prepare(req)
+    resp_impl.transport.set_tcp_cork.assert_called_with(False)
     resp_impl.transport.set_tcp_nodelay.assert_called_with(True)
     resp.set_tcp_nodelay(False)
     assert not resp.tcp_nodelay
@@ -628,6 +630,47 @@ def test_set_tcp_nodelay_after_start():
     resp.set_tcp_nodelay(True)
     assert resp.tcp_nodelay
     resp_impl.transport.set_tcp_nodelay.assert_called_with(True)
+
+
+def test_default_cork():
+    resp = StreamResponse()
+    assert not resp.tcp_cork
+
+
+def test_set_tcp_cork_before_start():
+    resp = StreamResponse()
+    resp.set_tcp_cork(True)
+    assert resp.tcp_cork
+    resp.set_tcp_cork(False)
+    assert not resp.tcp_cork
+
+
+@pytest.mark.run_loop
+def test_set_tcp_cork_on_start():
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+    resp.set_tcp_cork(True)
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        resp_impl = yield from resp.prepare(req)
+    resp_impl.transport.set_tcp_nodelay.assert_called_with(False)
+    resp_impl.transport.set_tcp_cork.assert_called_with(True)
+
+
+@pytest.mark.run_loop
+def test_set_tcp_cork_after_start():
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        resp_impl = yield from resp.prepare(req)
+    resp_impl.transport.set_tcp_cork.assert_called_with(False)
+    resp.set_tcp_cork(True)
+    assert resp.tcp_cork
+    resp_impl.transport.set_tcp_cork.assert_called_with(True)
+    resp.set_tcp_cork(False)
+    assert not resp.tcp_cork
+    resp_impl.transport.set_tcp_cork.assert_called_with(False)
 
 
 # Response class
