@@ -691,9 +691,8 @@ class TestClientRequest(unittest.TestCase):
         self.loop.run_until_complete(resp.wait_for_close())
         self.assertIsNone(req._writer)
         self.assertEqual(
-            self.transport.write.mock_calls[-3:],
-            [unittest.mock.call(b'binary data result'),
-             unittest.mock.call(b'\r\n'),
+            self.transport.write.mock_calls[-2:],
+            [unittest.mock.call(b'12\r\nbinary data result\r\n'),
              unittest.mock.call(b'0\r\n\r\n')])
         self.loop.run_until_complete(req.close())
 
@@ -711,9 +710,8 @@ class TestClientRequest(unittest.TestCase):
         self.loop.run_until_complete(resp.wait_for_close())
         self.assertIsNone(req._writer)
         self.assertEqual(
-            self.transport.write.mock_calls[-3:],
-            [unittest.mock.call(b'*' * 2),
-             unittest.mock.call(b'\r\n'),
+            self.transport.write.mock_calls[-2:],
+            [unittest.mock.call(b'2\r\n' + b'*' * 2 + b'\r\n'),
              unittest.mock.call(b'0\r\n\r\n')])
         self.loop.run_until_complete(req.close())
 
@@ -806,9 +804,8 @@ class TestClientRequest(unittest.TestCase):
         resp = req.send(self.transport, self.protocol)
         self.loop.run_until_complete(req._writer)
         self.assertEqual(
-            self.transport.write.mock_calls[-3:],
-            [unittest.mock.call(b'binary data result'),
-             unittest.mock.call(b'\r\n'),
+            self.transport.write.mock_calls[-2:],
+            [unittest.mock.call(b'12\r\nbinary data result\r\n'),
              unittest.mock.call(b'0\r\n\r\n')])
         self.loop.run_until_complete(req.close())
         resp.close()
@@ -845,9 +842,8 @@ class TestClientRequest(unittest.TestCase):
         resp = req.send(self.transport, self.protocol)
         self.loop.run_until_complete(req.close())
         self.assertEqual(
-            self.transport.write.mock_calls[-3:],
-            [unittest.mock.call(b'result'),
-             unittest.mock.call(b'\r\n'),
+            self.transport.write.mock_calls[-2:],
+            [unittest.mock.call(b'6\r\nresult\r\n'),
              unittest.mock.call(b'0\r\n\r\n')])
         self.loop.run_until_complete(req.close())
         resp.close()
