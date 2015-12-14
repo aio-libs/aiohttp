@@ -68,6 +68,13 @@ __all__ = ('EofStream', 'StreamParser', 'StreamProtocol',
 
 DEFAULT_LIMIT = 2 ** 16
 
+if hasattr(socket, 'TCP_CORK'):  # pragma: no cover
+    CORK = socket.TCP_CORK
+elif hasattr(socket, 'TCP_NOPUSH'):  # pragma: no cover
+    CORK = socket.TCP_NOPUSH
+else:  # pragma: no cover
+    CORK = None
+
 
 class StreamParser:
     """StreamParser manages incoming bytes stream and protocol parsers.
@@ -226,6 +233,7 @@ class StreamWriter(asyncio.streams.StreamWriter):
         self._reader = reader
         self._loop = loop
         self._tcp_nodelay = False
+        self._tcp_cork = False
         self._socket = transport.get_extra_info('socket')
 
     @property
@@ -242,6 +250,22 @@ class StreamWriter(asyncio.streams.StreamWriter):
         if self._socket.family not in (socket.AF_INET, socket.AF_INET6):
             return
         self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, value)
+
+    @property
+    def tcp_cork(self):
+        return self._tcp_cork
+
+    def set_tcp_cork(self, value):
+        value = bool(value)
+        if self._tcp_cork == value:
+            return
+        self._tcp_cork = value
+        if self._socket is None:
+            return
+        if self._socket.family not in (socket.AF_INET, socket.AF_INET6):
+            return
+        if CORK is not None:  # pragma: no branch
+            self._socket.setsockopt(socket.IPPROTO_TCP, CORK, value)
 
 
 class StreamProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
