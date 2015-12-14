@@ -233,6 +233,7 @@ class StreamWriter(asyncio.streams.StreamWriter):
         return self._tcp_nodelay
 
     def set_tcp_nodelay(self, value):
+        value = bool(value)
         if self._tcp_nodelay == value:
             return
         self._tcp_nodelay = value

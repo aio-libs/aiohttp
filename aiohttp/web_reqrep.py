@@ -610,6 +610,7 @@ class StreamResponse(HeadersMixin):
         return self._tcp_nodelay
 
     def set_tcp_nodelay(self, value):
+        value = bool(value)
         self._tcp_nodelay = value
         if self._resp_impl is None:
             return
