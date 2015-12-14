@@ -23,3 +23,6 @@ CHANGES
 
 - Remove one and a half years long deprecated
   ClientResponse.read_and_close() method
+
+- Optimize chunked encoding: use a single syscall instead of 3 calls
+  on sending chunked encoded data
