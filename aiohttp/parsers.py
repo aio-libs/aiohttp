@@ -249,6 +249,10 @@ class StreamWriter(asyncio.streams.StreamWriter):
             return
         if self._socket.family not in (socket.AF_INET, socket.AF_INET6):
             return
+        if self._tcp_cork:
+            self._tcp_cork = False
+            if CORK is not None:  # pragma: no branch
+                self._socket.setsockopt(socket.IPPROTO_TCP, CORK, False)
         self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, value)
 
     @property
@@ -264,6 +268,11 @@ class StreamWriter(asyncio.streams.StreamWriter):
             return
         if self._socket.family not in (socket.AF_INET, socket.AF_INET6):
             return
+        if self._tcp_nodelay:
+            self._socket.setsockopt(socket.IPPROTO_TCP,
+                                    socket.TCP_NODELAY,
+                                    False)
+            self._tcp_nodelay = False
         if CORK is not None:  # pragma: no branch
             self._socket.setsockopt(socket.IPPROTO_TCP, CORK, value)
 
