@@ -770,6 +770,7 @@ class Response(StreamResponse):
                  reason=None, text=None, headers=None, content_type=None,
                  charset=None):
         super().__init__(status=status, reason=reason, headers=headers)
+        self.set_tcp_cork(True)
 
         if body is not None and text is not None:
             raise ValueError("body and text are not allowed together.")
@@ -849,6 +850,7 @@ class Response(StreamResponse):
         body = self._body
         if body is not None:
             self.write(body)
+        self.set_tcp_cork(False)
         yield from super().write_eof()
 
 
