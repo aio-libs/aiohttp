@@ -422,6 +422,7 @@ class StreamResponse(HeadersMixin):
         self._resp_impl = None
         self._eof_sent = False
         self._tcp_nodelay = True
+        self._tcp_cork = False
 
         if headers is not None:
             self._headers.extend(headers)
@@ -612,9 +613,28 @@ class StreamResponse(HeadersMixin):
     def set_tcp_nodelay(self, value):
         value = bool(value)
         self._tcp_nodelay = value
+        if value:
+            self._tcp_cork = False
         if self._resp_impl is None:
             return
+        if value:
+            self._resp_impl.transport.set_tcp_cork(False)
         self._resp_impl.transport.set_tcp_nodelay(value)
+
+    @property
+    def tcp_cork(self):
+        return self._tcp_cork
+
+    def set_tcp_cork(self, value):
+        value = bool(value)
+        self._tcp_cork = value
+        if value:
+            self._tcp_nodelay = False
+        if self._resp_impl is None:
+            return
+        if value:
+            self._resp_impl.transport.set_tcp_nodelay(False)
+        self._resp_impl.transport.set_tcp_cork(value)
 
     def _generate_content_type_header(self, CONTENT_TYPE=hdrs.CONTENT_TYPE):
         params = '; '.join("%s=%s" % i for i in self._content_dict.items())
