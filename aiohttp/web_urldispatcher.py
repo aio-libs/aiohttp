@@ -287,6 +287,7 @@ class StaticRoute(Route):
         file_size = st.st_size
 
         resp.content_length = file_size
+        resp.set_tcp_cork(True)
         yield from resp.prepare(request)
 
         with open(filepath, 'rb') as f:
