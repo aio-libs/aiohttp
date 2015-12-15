@@ -26,3 +26,6 @@ CHANGES
 
 - Optimize chunked encoding: use a single syscall instead of 3 calls
   on sending chunked encoded data
+
+- Use TCP_CORK and TCP_NODELAY to optimize network latency and
+  throughput #680
