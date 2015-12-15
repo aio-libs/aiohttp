@@ -850,7 +850,7 @@ class Response(StreamResponse):
         body = self._body
         if body is not None:
             self.write(body)
-        self.set_tcp_cork(False)
+        self.set_tcp_nodelay(True)
         yield from super().write_eof()
 
 

@@ -293,6 +293,8 @@ class StaticRoute(Route):
         with open(filepath, 'rb') as f:
             yield from self._sendfile(request, resp, f, file_size)
 
+        resp.set_tcp_nodelay(True)
+
         return resp
 
     def __repr__(self):
