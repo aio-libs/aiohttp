@@ -421,6 +421,8 @@ class StreamResponse(HeadersMixin):
         self._req = None
         self._resp_impl = None
         self._eof_sent = False
+        self._tcp_nodelay = True
+        self._tcp_cork = False
 
         if headers is not None:
             self._headers.extend(headers)
@@ -604,6 +606,36 @@ class StreamResponse(HeadersMixin):
         elif isinstance(value, str):
             self.headers[hdrs.LAST_MODIFIED] = value
 
+    @property
+    def tcp_nodelay(self):
+        return self._tcp_nodelay
+
+    def set_tcp_nodelay(self, value):
+        value = bool(value)
+        self._tcp_nodelay = value
+        if value:
+            self._tcp_cork = False
+        if self._resp_impl is None:
+            return
+        if value:
+            self._resp_impl.transport.set_tcp_cork(False)
+        self._resp_impl.transport.set_tcp_nodelay(value)
+
+    @property
+    def tcp_cork(self):
+        return self._tcp_cork
+
+    def set_tcp_cork(self, value):
+        value = bool(value)
+        self._tcp_cork = value
+        if value:
+            self._tcp_nodelay = False
+        if self._resp_impl is None:
+            return
+        if value:
+            self._resp_impl.transport.set_tcp_nodelay(False)
+        self._resp_impl.transport.set_tcp_cork(value)
+
     def _generate_content_type_header(self, CONTENT_TYPE=hdrs.CONTENT_TYPE):
         params = '; '.join("%s=%s" % i for i in self._content_dict.items())
         if params:
@@ -669,6 +701,8 @@ class StreamResponse(HeadersMixin):
             request.version,
             not keep_alive,
             self._reason)
+        resp_impl.transport.set_tcp_nodelay(self._tcp_nodelay)
+        resp_impl.transport.set_tcp_cork(self._tcp_cork)
 
         self._copy_cookies()
 
@@ -736,6 +770,7 @@ class Response(StreamResponse):
                  reason=None, text=None, headers=None, content_type=None,
                  charset=None):
         super().__init__(status=status, reason=reason, headers=headers)
+        self.set_tcp_cork(True)
 
         if body is not None and text is not None:
             raise ValueError("body and text are not allowed together.")
@@ -815,6 +850,7 @@ class Response(StreamResponse):
         body = self._body
         if body is not None:
             self.write(body)
+        self.set_tcp_nodelay(True)
         yield from super().write_eof()
 
 
