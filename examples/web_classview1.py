@@ -24,7 +24,7 @@ class BaseView:
         method = getattr(self, self.request.method, None)
         if method is None:
             allowed_methods = {m for m in ALL_METHODS if hasattr(self, m)}
-            return HTTPMethodNotAllowed(self.request.method, allowed_methods)
+            raise HTTPMethodNotAllowed(self.request.method, allowed_methods)
         resp = method().__await__()
         return resp
 
@@ -70,7 +70,7 @@ async def index(request):
 async def init(loop):
     app = Application(loop=loop)
     app.router.add_route('GET', '/', index)
-    app.router.add_route('GET', '/get', View)
+    app.router.add_route('*', '/get', View)
     app.router.add_route('POST', '/post', View)
     app.router.add_route('PUT', '/put', View)
     app.router.add_route('DELETE', '/delete', View)
