@@ -707,6 +707,26 @@ parameters.
    signals, but simply reusing existing ones, you will not be affected.
 
 
+Flow control
+------------
+
+:mod:`aiohttp.web` has sophisticated flow control for underlaying TCP sockets.
+
+The problem is: by default TCP sockets use `Nagle's algorithm
+<https://en.wikipedia.org/wiki/Nagle%27s_algorithm>`_ for output
+buffer which is not optimal for streaming data protocols like HTTP.
+
+Web server response may have one of the following states:
+
+1. CORK (:attr:`~aiohttp.web.StreamResponse.tcp_cork` is ``True``).
+
+2. NODELAY (:attr:`~aiohttp.web.StreamResponse.tcp_nodelay` is ``True``).
+
+3. Nagle's algorithm enabled (both
+   :attr:`~aiohttp.web.StreamResponse.tcp_cork` and
+   :attr:`~aiohttp.web.StreamResponse.tcp_nodelay` are ``False``),
+
+
 CORS support
 ------------
 
