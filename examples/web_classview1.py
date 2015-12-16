@@ -34,7 +34,7 @@ class View(BaseView):
 
 
 async def index(request):
-    txt  = """
+    txt = """
       <html>
         <head>
           <title>Class based view example</title>
