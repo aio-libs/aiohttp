@@ -70,7 +70,7 @@ async def index(request):
 async def init(loop):
     app = Application(loop=loop)
     app.router.add_route('GET', '/', index)
-    app.router.add_route('*', '/get', View)
+    app.router.add_route('GET', '/get', View)
     app.router.add_route('POST', '/post', View)
     app.router.add_route('PUT', '/put', View)
     app.router.add_route('DELETE', '/delete', View)
