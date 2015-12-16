@@ -4,6 +4,8 @@
 
 
 import asyncio
+import functools
+import json
 from aiohttp import hdrs
 from aiohttp.web import (json_response, Application, Response,
                          HTTPMethodNotAllowed)
@@ -30,7 +32,20 @@ class BaseView:
 class View(BaseView):
 
     async def GET(self):
-        return Response(text='OK')
+        return json_response({
+            'method': 'get',
+            'args': dict(self.request.GET),
+            'headers': dict(self.request.headers),
+        }, dumps=functools.partial(json.dumps, indent=4))
+
+    async def POST(self):
+        data = await self.request.post()
+        return json_response({
+            'method': 'post',
+            'args': dict(self.request.GET),
+            'data': dict(data),
+            'headers': dict(self.request.headers),
+        }, dumps=functools.partial(json.dumps, indent=4))
 
 
 async def index(request):
@@ -45,8 +60,6 @@ async def index(request):
             <li><a href="/">/</a> This page
             <li><a href="/get">/get</a> Returns GET data.
             <li><a href="/post">/post</a> Returns POST data.
-            <li><a href="/put">/put</a> Returns PUT data.
-            <li><a href="/delete">/delete</a> Returns DELETE data.
           </ul>
         </body>
       </html>
