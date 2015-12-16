@@ -104,8 +104,8 @@ This is simple usage example:
 
 
 Note: examples are written for Python 3.5+ and utilize PEP-492 aka
-async/await.  If you are using Python 3.4 please replace `await` with
-`yield from` and `async def` with `@coroutine` e.g.::
+async/await.  If you are using Python 3.4 please replace ``await`` with
+``yield from`` and ``async def`` with ``@coroutine`` e.g.::
 
     async def coro(...):
         ret = await f()
