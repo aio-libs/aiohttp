@@ -210,10 +210,10 @@ def test_chunked_encoding_forbidden_for_http_10():
     resp = StreamResponse()
     resp.enable_chunked_encoding()
 
-    with pytest.raises_regexp(
-            RuntimeError,
-            "Using chunked encoding is forbidden for HTTP/1.0"):
+    with pytest.raises(RuntimeError) as ctx:
         yield from resp.prepare(req)
+    assert re.match("Using chunked encoding is forbidden for HTTP/1.0",
+                    str(ctx.value))
 
 
 @pytest.mark.run_loop

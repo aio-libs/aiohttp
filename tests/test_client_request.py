@@ -2,23 +2,22 @@
 
 import asyncio
 import gc
-import unittest
-import unittest.mock
-
 import inspect
 import io
+import re
+import unittest
+import unittest.mock
 import urllib.parse
-import os.path
 import zlib
-
 from http.cookies import SimpleCookie
 
 import pytest
-
 import aiohttp
-from aiohttp.client_reqrep import ClientRequest, ClientResponse
-from aiohttp.multidict import upstr, CIMultiDict, CIMultiDictProxy
 from aiohttp import BaseConnector
+from aiohttp.client_reqrep import ClientRequest, ClientResponse
+from aiohttp.multidict import CIMultiDict, CIMultiDictProxy, upstr
+
+import os.path
 
 
 @pytest.yield_fixture
@@ -381,9 +380,9 @@ def test_query_str_param(make_request):
 
 def test_query_bytes_param_raises(make_request):
     for meth in ClientRequest.ALL_METHODS:
-        with pytest.raises_regexp(TypeError,
-                                  'not a valid non-string.*or mapping'):
+        with pytest.raises(TypeError) as ctx:
             make_request(meth, 'http://python.org', params=b'test=foo')
+        assert re.match('not a valid non-string.*or mapping', str(ctx.value))
 
 
 def test_query_str_param_is_not_encoded(make_request):
