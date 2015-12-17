@@ -35,5 +35,5 @@ class AbstractView(metaclass=ABCMeta):
     @asyncio.coroutine
     @abstractmethod
     def __iter__(self):
-        while False:
+        while False:  # pragma: no cover
             yield None
