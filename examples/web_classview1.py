@@ -6,39 +6,19 @@
 import asyncio
 import functools
 import json
-from aiohttp import hdrs
-from aiohttp.web import (json_response, Application, Response,
-                         HTTPMethodNotAllowed)
+from aiohttp.web import json_response, Application, Response, View
 
 
-ALL_METHODS = {hdrs.METH_CONNECT, hdrs.METH_HEAD, hdrs.METH_GET,
-               hdrs.METH_DELETE, hdrs.METH_OPTIONS, hdrs.METH_PATCH,
-               hdrs.METH_POST, hdrs.METH_PUT, hdrs.METH_TRACE}
+class MyView(View):
 
-
-class BaseView:
-    def __init__(self, request):
-        self.request = request
-
-    def __await__(self):
-        method = getattr(self, self.request.method, None)
-        if method is None:
-            allowed_methods = {m for m in ALL_METHODS if hasattr(self, m)}
-            raise HTTPMethodNotAllowed(self.request.method, allowed_methods)
-        resp = method().__await__()
-        return resp
-
-
-class View(BaseView):
-
-    async def GET(self):
+    async def get(self):
         return json_response({
             'method': 'get',
             'args': dict(self.request.GET),
             'headers': dict(self.request.headers),
         }, dumps=functools.partial(json.dumps, indent=4))
 
-    async def POST(self):
+    async def post(self):
         data = await self.request.post()
         return json_response({
             'method': 'post',
@@ -70,10 +50,8 @@ async def index(request):
 async def init(loop):
     app = Application(loop=loop)
     app.router.add_route('GET', '/', index)
-    app.router.add_route('GET', '/get', View)
-    app.router.add_route('POST', '/post', View)
-    app.router.add_route('PUT', '/put', View)
-    app.router.add_route('DELETE', '/delete', View)
+    app.router.add_route('GET', '/get', MyView)
+    app.router.add_route('POST', '/post', MyView)
 
     handler = app.make_handler()
     srv = await loop.create_server(handler, '127.0.0.1', 8080)
