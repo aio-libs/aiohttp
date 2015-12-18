@@ -27,7 +27,7 @@ def _websocket_mask_cython(bytes mask, bytearray data):
     # TODO: align in_data ptr to achieve even faster speeds
     # does it need in python ?! malloc() always aligns to sizeof(long) bytes
 
-    if sizeof(uintmax_t) >= 8:
+    if sizeof(size_t) >= 8:
         uint64_msk = uint32_msk
         uint64_msk = (uint64_msk << 32) | uint32_msk
 
