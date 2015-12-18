@@ -234,6 +234,8 @@ def test_stop_listening_inet6(loop, unused_port_ipv6):
     assert not loop.remove_reader(fileno)
 
 
+@pytest.mark.skipif(hasattr(socket, 'AF_UNIX'),
+                    reason='Requires unix sockets support')
 @pytest.mark.run_loop
 def test_stop_listening_unix(loop, tmpdir):
     srv = yield from loop.create_unix_server(
