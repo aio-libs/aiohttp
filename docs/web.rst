@@ -399,7 +399,7 @@ a container for the file as well as some of its metadata:
         data = await request.post()
 
         mp3 = data['mp3']
-        
+
         # .filename contains the name of the file in string format.
         filename = mp3.filename
 
@@ -630,7 +630,7 @@ the keyword-only ``middlewares`` parameter when creating an
    app = web.Application(middlewares=[middleware_factory_1,
                                       middleware_factory_2])
 
-A *middleware factory* is simply a coroutine that implements the logic of a 
+A *middleware factory* is simply a coroutine that implements the logic of a
 *middleware*. For example, here's a trivial *middleware factory*::
 
     async def middleware_factory(app, handler):
