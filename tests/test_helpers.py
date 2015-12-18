@@ -1,4 +1,3 @@
-import asyncio
 import pytest
 from unittest import mock
 from aiohttp import helpers
