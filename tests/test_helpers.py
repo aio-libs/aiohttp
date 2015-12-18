@@ -1,7 +1,9 @@
 import pytest
 from unittest import mock
 from aiohttp import helpers
+from asyncio.base_events import Server
 import datetime
+import socket
 
 
 def test_parse_mimetype_1():
@@ -205,3 +207,70 @@ def test_requote_uri_properly_requotes():
     # Ensure requoting doesn't break expectations.
     quoted = 'http://example.com/fiz?buz=%25ppicture'
     assert quoted == helpers.requote_uri(quoted)
+
+
+@pytest.mark.run_loop
+def test_stop_listening_inet(loop, unused_port):
+    port = unused_port()
+
+    srv = yield from loop.create_server(mock.Mock(), '127.0.0.1', port)
+    assert len(srv.sockets) == 1
+    fileno = srv.sockets[0].fileno()
+    helpers.stop_listening(srv, loop)
+    assert not srv.sockets
+    assert not loop.remove_reader(fileno)
+
+
+@pytest.mark.run_loop
+def test_stop_listening_inet6(loop, unused_port_ipv6):
+    port = unused_port_ipv6()
+
+    srv = yield from loop.create_server(mock.Mock(), '::1', port)
+    assert len(srv.sockets) == 1
+    fileno = srv.sockets[0].fileno()
+    helpers.stop_listening(srv, loop)
+    assert not srv.sockets
+    assert not loop.remove_reader(fileno)
+
+
+@pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
+                    reason='Requires unix sockets support')
+@pytest.mark.run_loop
+def test_stop_listening_unix(loop, tmpdir):
+    srv = yield from loop.create_unix_server(
+        mock.Mock(),
+        str(tmpdir / 'stop_listening_unix.sock'))
+    assert len(srv.sockets) == 1
+    fileno = srv.sockets[0].fileno()
+    helpers.stop_listening(srv, loop)
+    assert not srv.sockets
+    assert not loop.remove_reader(fileno)
+
+
+def test_stop_listening_inet_nonlistening(loop):
+    s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s1.listen(10)
+    fd1 = s1.fileno()
+    loop.add_reader(fd1, mock.Mock())
+    s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    fd2 = s2.fileno()
+    loop.add_reader(fd2, mock.Mock())
+    srv = Server(loop, [s1, s2])
+
+    helpers.stop_listening(srv, loop)
+    assert [s2] == srv.sockets
+    assert not loop.remove_reader(fd1)
+    assert loop.remove_reader(fd2)
+    s2.close()
+
+
+def test_stop_listening_closed(loop):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    fd = s.fileno()
+    loop.add_reader(fd, mock.Mock())
+    srv = Server(loop, [s])
+    s.close()
+
+    helpers.stop_listening(srv, loop)
+    assert [s] == srv.sockets
+    assert loop.remove_reader(fd)
