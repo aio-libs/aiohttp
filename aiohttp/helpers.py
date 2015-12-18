@@ -6,6 +6,7 @@ import datetime
 import functools
 import io
 import os
+import socket
 import re
 from urllib.parse import quote, urlencode
 from collections import namedtuple
@@ -514,3 +515,22 @@ class Timeout:
 
     def _cancel_task(self):
         self._cancelled = self._task.cancel()
+
+
+def stop_listening(srv, loop):
+    """Stop listening Server instance.
+
+    Close all listening sockets leaving accepted connections untouched.
+    """
+    to_remove = []
+    for sock in srv.sockets:
+        try:
+            if sock.getsockopt(socket.SOL_SOCKET, socket.SO_ACCEPTCONN):
+                loop.remove_reader(sock.fileno())
+                sock.close()
+                to_remove.append(sock)
+        except OSError:
+            # socket may be already closed
+            # or it is not streaming socket at all
+            pass
+    srv.sockets = [s for s in srv.sockets if s not in to_remove]

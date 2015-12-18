@@ -156,6 +156,15 @@ def unused_port():
     return f
 
 
+@pytest.fixture
+def unused_port_ipv6():
+    def f():
+        with socket.socket(socket.AF_INET6, socket.SOCK_STREAM) as s:
+            s.bind(('::1', 0))
+            return s.getsockname()[1]
+    return f
+
+
 @pytest.yield_fixture
 def loop(request):
     loop = asyncio.new_event_loop()
