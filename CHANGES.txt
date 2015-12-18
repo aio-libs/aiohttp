@@ -31,3 +31,5 @@ CHANGES
   throughput #680
 
 - Weboscket XOR performance improved #687
+
+- Avoid sending cookie attributes in Cookie header #613
