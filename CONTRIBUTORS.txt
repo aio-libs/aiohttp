@@ -85,6 +85,7 @@ Tolga Tezel
 Thomas Grainger
 Vaibhav Sagar
 Vasyl Baran
+Vitalik Verhovodov
 Vitaly Haritonsky
 Vitaly Magerya
 Vladimir Rutsky
