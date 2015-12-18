@@ -79,6 +79,24 @@ Server example::
     except KeyboardInterrupt:
         pass
 
+.. note::
+
+   Throughout this documentation, examples utilize the `async/await` syntax
+   introduced by :pep:`492` that is only valid for Python 3.5+.
+
+   If you are using Python 3.4, please replace ``await`` with
+   ``yield from`` and ``async def`` with a ``@coroutine`` decorator.
+   For example, this::
+
+       async def coro(...):
+           ret = await f()
+
+   shoud be replaced by::
+
+       @asyncio.coroutine
+       def coro(...):
+           ret = yield from f()
+
 
 Source code
 -----------
