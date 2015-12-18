@@ -223,8 +223,7 @@ class ClientRequest:
 
         for name, value in cookies:
             if isinstance(value, http.cookies.Morsel):
-                # use dict method because SimpleCookie class modifies value
-                dict.__setitem__(c, name, value)
+                c[value.key] = value.value
             else:
                 c[name] = value
 
