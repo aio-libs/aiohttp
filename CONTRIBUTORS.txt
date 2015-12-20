@@ -58,10 +58,11 @@ Lukasz Marcin Dobrzanski
 Marco Paolini
 Martin Richard
 Mathias Fröjdman
-Morgan Delahaye-Prat
-Moss Collum
+Matthieu Hauglustaine
 Michael Ihnatenko
 Mikhail Lukyanchenko
+Morgan Delahaye-Prat
+Moss Collum
 Nicolas Braem
 Nikolay Novik
 Olaf Conradi
