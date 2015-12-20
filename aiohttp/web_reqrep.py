@@ -865,4 +865,4 @@ def json_response(data=sentinel, *, text=None, body=None, status=200,
         else:
             text = dumps(data)
     return Response(text=text, body=body, status=status, reason=reason,
-                    content_type=content_type)
+                    headers=headers, content_type=content_type)
