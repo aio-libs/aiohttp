@@ -266,9 +266,9 @@ class ClientSession:
             headers[hdrs.ORIGIN] = origin
 
         # send request
-        resp = yield from self.request('get', url, headers=headers,
-                                       read_until_eof=False,
-                                       auth=auth)
+        resp = yield from self.get(url, headers=headers,
+                                   read_until_eof=False,
+                                   auth=auth)
 
         # check handshake
         if resp.status != 101:
