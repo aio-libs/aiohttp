@@ -36,3 +36,5 @@ CHANGES
 
 - Round server timeouts to second for grouping pending call.  That
   leads to less amount of poller syscalls e.g epoll.poll(). #702
+
+- Close connection on websocket hadshake error #703
