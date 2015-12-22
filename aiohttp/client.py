@@ -270,46 +270,50 @@ class ClientSession:
                                    read_until_eof=False,
                                    auth=auth)
 
-        # check handshake
-        if resp.status != 101:
-            raise WSServerHandshakeError('Invalid response status')
+        try:
+            # check handshake
+            if resp.status != 101:
+                raise WSServerHandshakeError('Invalid response status')
 
-        if resp.headers.get(hdrs.UPGRADE, '').lower() != 'websocket':
-            raise WSServerHandshakeError('Invalid upgrade header')
+            if resp.headers.get(hdrs.UPGRADE, '').lower() != 'websocket':
+                raise WSServerHandshakeError('Invalid upgrade header')
 
-        if resp.headers.get(hdrs.CONNECTION, '').lower() != 'upgrade':
-            raise WSServerHandshakeError('Invalid connection header')
+            if resp.headers.get(hdrs.CONNECTION, '').lower() != 'upgrade':
+                raise WSServerHandshakeError('Invalid connection header')
 
-        # key calculation
-        key = resp.headers.get(hdrs.SEC_WEBSOCKET_ACCEPT, '')
-        match = base64.b64encode(
-            hashlib.sha1(sec_key + WS_KEY).digest()).decode()
-        if key != match:
-            raise WSServerHandshakeError('Invalid challenge response')
+            # key calculation
+            key = resp.headers.get(hdrs.SEC_WEBSOCKET_ACCEPT, '')
+            match = base64.b64encode(
+                hashlib.sha1(sec_key + WS_KEY).digest()).decode()
+            if key != match:
+                raise WSServerHandshakeError('Invalid challenge response')
 
-        # websocket protocol
-        protocol = None
-        if protocols and hdrs.SEC_WEBSOCKET_PROTOCOL in resp.headers:
-            resp_protocols = [
-                proto.strip() for proto in
-                resp.headers[hdrs.SEC_WEBSOCKET_PROTOCOL].split(',')]
+            # websocket protocol
+            protocol = None
+            if protocols and hdrs.SEC_WEBSOCKET_PROTOCOL in resp.headers:
+                resp_protocols = [
+                    proto.strip() for proto in
+                    resp.headers[hdrs.SEC_WEBSOCKET_PROTOCOL].split(',')]
 
-            for proto in resp_protocols:
-                if proto in protocols:
-                    protocol = proto
-                    break
+                for proto in resp_protocols:
+                    if proto in protocols:
+                        protocol = proto
+                        break
 
-        reader = resp.connection.reader.set_parser(WebSocketParser)
-        writer = WebSocketWriter(resp.connection.writer, use_mask=True)
-
-        return self._ws_response_class(reader,
-                                       writer,
-                                       protocol,
-                                       resp,
-                                       timeout,
-                                       autoclose,
-                                       autoping,
-                                       self._loop)
+            reader = resp.connection.reader.set_parser(WebSocketParser)
+            writer = WebSocketWriter(resp.connection.writer, use_mask=True)
+        except Exception:
+            resp.close()
+            raise
+        else:
+            return self._ws_response_class(reader,
+                                           writer,
+                                           protocol,
+                                           resp,
+                                           timeout,
+                                           autoclose,
+                                           autoping,
+                                           self._loop)
 
     def _update_cookies(self, cookies):
         """Update shared cookies."""

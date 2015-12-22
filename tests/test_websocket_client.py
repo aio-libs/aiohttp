@@ -395,3 +395,25 @@ class TestWebSocketClient(unittest.TestCase):
 
         self.assertRaises(
             RuntimeError, self.loop.run_until_complete, resp.receive())
+
+    @mock.patch('aiohttp.client.os')
+    @mock.patch('aiohttp.client.ClientSession.get')
+    def test_ws_connect_close_resp_on_err(self, m_req, m_os):
+        resp = mock.Mock()
+        resp.status = 500
+        resp.headers = {
+            hdrs.UPGRADE: hdrs.WEBSOCKET,
+            hdrs.CONNECTION: hdrs.UPGRADE,
+            hdrs.SEC_WEBSOCKET_ACCEPT: self.ws_key
+        }
+        m_os.urandom.return_value = self.key_data
+        m_req.return_value = asyncio.Future(loop=self.loop)
+        m_req.return_value.set_result(resp)
+
+        with self.assertRaises(errors.WSServerHandshakeError):
+            self.loop.run_until_complete(
+                aiohttp.ws_connect(
+                    'http://test.org',
+                    protocols=('t1', 't2', 'chat'),
+                    loop=self.loop))
+        resp.close.assert_called_with()
