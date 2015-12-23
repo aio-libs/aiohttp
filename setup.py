@@ -2,7 +2,7 @@ import codecs
 import os
 import re
 import sys
-from setuptools import setup, find_packages, Extension
+from setuptools import setup, Extension
 from distutils.errors import (CCompilerError, DistutilsExecError,
                               DistutilsPlatformError)
 from distutils.command.build_ext import build_ext
