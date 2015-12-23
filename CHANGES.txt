@@ -38,3 +38,5 @@ CHANGES
   leads to less amount of poller syscalls e.g epoll.poll(). #702
 
 - Close connection on websocket hadshake error #703
+
+- Implement calss based views #684
