@@ -13,7 +13,7 @@ from urllib.parse import urlencode, unquote
 from types import MappingProxyType
 
 from . import hdrs
-from .abc import AbstractRouter, AbstractMatchInfo
+from .abc import AbstractRouter, AbstractMatchInfo, AbstractView
 from .protocol import HttpVersion11
 from .web_exceptions import HTTPMethodNotAllowed, HTTPNotFound, HTTPNotModified
 from .web_reqrep import StreamResponse
@@ -21,7 +21,7 @@ from .multidict import upstr
 
 
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
-           'Route', 'PlainRoute', 'DynamicRoute', 'StaticRoute')
+           'Route', 'PlainRoute', 'DynamicRoute', 'StaticRoute', 'View')
 
 
 class UrlMappingMatchInfo(dict, AbstractMatchInfo):
@@ -372,6 +372,23 @@ class _MethodNotAllowedMatchInfo(UrlMappingMatchInfo):
                         ', '.join(sorted(self._allowed_methods))))
 
 
+class View(AbstractView):
+
+    @asyncio.coroutine
+    def __iter__(self):
+        if self.request.method not in hdrs.METH_ALL:
+            self._raise_allowed_methods()
+        method = getattr(self, self.request.method.lower(), None)
+        if method is None:
+            self._raise_allowed_methods()
+        resp = yield from method()
+        return resp
+
+    def _raise_allowed_methods(self):
+        allowed_methods = {m for m in hdrs.METH_ALL if hasattr(self, m)}
+        raise HTTPMethodNotAllowed(self.request.method, allowed_methods)
+
+
 class RoutesView(Sized, Iterable, Container):
 
     __slots__ = '_urls'
@@ -477,8 +494,13 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             raise ValueError("path should be started with /")
 
         assert callable(handler), handler
-        if (not asyncio.iscoroutinefunction(handler) and
-                not inspect.isgeneratorfunction(handler)):
+        if asyncio.iscoroutinefunction(handler):
+            pass
+        elif inspect.isgeneratorfunction(handler):
+            pass
+        elif isinstance(handler, type) and issubclass(handler, AbstractView):
+            pass
+        else:
             handler = asyncio.coroutine(handler)
 
         method = upstr(method)
