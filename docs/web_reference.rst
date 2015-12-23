@@ -1410,6 +1410,45 @@ In general the result may be any object derived from
    :class:`Route` instance for url matching.
 
 
+View
+^^^^
+
+Base class for class based views. Implementations should derive from
+:class:`View` and override methods for handling HTTP verbs like
+``get()`` or ``post()``::
+
+    class MyView(View):
+
+        async def get(self):
+            resp = await get_response(self.request)
+            return resp
+
+        async def post(self):
+            resp = await post_response(self.request)
+            return resp
+
+    app.router.add_route('*', '/view', MyView)
+
+The view raises *405 Method Not allowed*
+(:class:`HTTPMEthodNowAllowed`) if requested web verb is not
+supported.
+
+.. class:: View(request)
+
+   Inherited from :class:`AbstractView`.
+
+   :param Request request: request object that has initiated view processing.
+
+
+   .. attribute:: request
+
+      Request sent to view's contructor, read-only property.
+
+
+   Overridable coroutine methods: ``connect()``, ``delete()``,
+   ``get()``, ``head()``, ``options()``, ``patch()``, ``post()``,
+   ``put()``, ``trace()``.
+
 
 Utilities
 ---------
