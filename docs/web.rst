@@ -510,6 +510,7 @@ HTTP Exception hierarchy chart::
          * 304 - HTTPNotModified
          * 305 - HTTPUseProxy
          * 307 - HTTPTemporaryRedirect
+         * 308 - HTTPPermanentRedirect
        HTTPError
          HTTPClientError
            * 400 - HTTPBadRequest
