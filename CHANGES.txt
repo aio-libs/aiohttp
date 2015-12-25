@@ -40,3 +40,5 @@ CHANGES
 - Close connection on websocket hadshake error #703
 
 - Implement class based views #684
+
+- Add *headers* parameter to ws_connect()

@@ -59,7 +59,7 @@ coroutines, do not create an instance of class
                                   timeout=10.0, connector=None, auth=None,\
                                   ws_response_class=ClientWebSocketResponse,\
                                   autoclose=True, autoping=True, loop=None,\
-                                  origin=None)
+                                  origin=None, headers=None)
 
    This function creates a websocket connection, checks the response and
    returns a :class:`ClientWebSocketResponse` object. In case of failure
@@ -97,6 +97,10 @@ coroutines, do not create an instance of class
 
    :param str origin: Origin header to send to server
 
+   :param headers: :class:`dict`, :class:`CIMultiDict` or
+                   :class:`CIMultiDictProxy` for providing additional
+                   headers for websocket handshake request.
+
    .. versionadded:: 0.18
 
       Add *auth* parameter.
@@ -104,6 +108,10 @@ coroutines, do not create an instance of class
    .. versionadded:: 0.19
 
       Add *origin* parameter.
+
+   .. versionadded:: 0.20
+
+      Add *headers* parameter.
 
 
 ClientWebSocketResponse
