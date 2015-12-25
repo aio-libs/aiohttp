@@ -208,34 +208,6 @@ def guess_filename(obj, default=None):
     return default
 
 
-def parse_remote_addr(forward):
-    if isinstance(forward, str):
-        # we only took the last one
-        # http://en.wikipedia.org/wiki/X-Forwarded-For
-        if ',' in forward:
-            forward = forward.rsplit(',', 1)[-1].strip()
-
-        # find host and port on ipv6 address
-        if '[' in forward and ']' in forward:
-            host = forward.split(']')[0][1:].lower()
-        elif ':' in forward and forward.count(':') == 1:
-            host = forward.split(':')[0].lower()
-        else:
-            host = forward
-
-        forward = forward.split(']')[-1]
-        if ':' in forward and forward.count(':') == 1:
-            port = forward.split(':', 1)[1]
-        else:
-            port = 80
-
-        remote = (host, port)
-    else:
-        remote = forward
-
-    return remote[0], str(remote[1])
-
-
 class AccessLogger:
     """Helper object to log access.
 
