@@ -273,20 +273,32 @@ class ClientSession:
         try:
             # check handshake
             if resp.status != 101:
-                raise WSServerHandshakeError('Invalid response status')
+                raise WSServerHandshakeError(
+                    message='Invalid response status',
+                    code=resp.status,
+                    headers=resp.headers)
 
             if resp.headers.get(hdrs.UPGRADE, '').lower() != 'websocket':
-                raise WSServerHandshakeError('Invalid upgrade header')
+                raise WSServerHandshakeError(
+                    message='Invalid upgrade header',
+                    code=resp.status,
+                    headers=resp.headers)
 
             if resp.headers.get(hdrs.CONNECTION, '').lower() != 'upgrade':
-                raise WSServerHandshakeError('Invalid connection header')
+                raise WSServerHandshakeError(
+                    message='Invalid connection header',
+                    code=resp.status,
+                    headers=resp.headers)
 
             # key calculation
             key = resp.headers.get(hdrs.SEC_WEBSOCKET_ACCEPT, '')
             match = base64.b64encode(
                 hashlib.sha1(sec_key + WS_KEY).digest()).decode()
             if key != match:
-                raise WSServerHandshakeError('Invalid challenge response')
+                raise WSServerHandshakeError(
+                    message='Invalid challenge response',
+                    code=resp.status,
+                    headers=resp.headers)
 
             # websocket protocol
             protocol = None
