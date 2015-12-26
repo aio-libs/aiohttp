@@ -44,9 +44,9 @@ After that, create a server and run the *asyncio loop* as usual::
    except KeyboardInterrupt:
        pass
    finally:
-       loop.run_until_complete(handler.finish_connections(1.0))
        srv.close()
        loop.run_until_complete(srv.wait_closed())
+       loop.run_until_complete(handler.finish_connections(1.0))
        loop.run_until_complete(app.finish())
    loop.close()
 
@@ -187,6 +187,33 @@ application developers can organize handlers in classes if they so wish::
    app.router.add_route('GET', '/intro', handler.handle_intro)
    app.router.add_route('GET', '/greet/{name}', handler.handle_greeting)
 
+
+Class Based Views
+^^^^^^^^^^^^^^^^^
+
+:mod:`aiohttp.web` has support for django-style class based views.
+
+You can derive from :class:`View` and define methods for handling http
+requests::
+
+   class MyView(web.View):
+       async def get(self):
+           return await get_resp(self.request)
+
+       async def post(self):
+           return await post_resp(self.request)
+
+Handlers should be coroutines accepting self only and returning
+response object as regular :term:`web-handler`. Request object can be
+retrieved by :attr:`View.request` property.
+
+After implementing the view (``MyView`` from example above) should be
+registered in application's router::
+
+   app.router.add_route('*', '/path/to', MyView)
+
+Example will process GET and POST requests for */path/to* but raise
+*405 Method not allowed* exception for unimplemented HTTP methods.
 
 Route Views
 ^^^^^^^^^^^
