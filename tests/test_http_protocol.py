@@ -14,6 +14,19 @@ class TestHttpMessage(unittest.TestCase):
         self.transport = unittest.mock.Mock()
         asyncio.set_event_loop(None)
 
+    def test_status_line_request(self):
+        msg = protocol.Request(
+            self.transport, 'GET', '/index.html', close=True)
+        self.assertEqual(msg.status_line, 'GET /index.html HTTP/1.1\r\n')
+        msg.path = '/not-index.html'
+        self.assertEqual(msg.status_line, 'GET /not-index.html HTTP/1.1\r\n')
+
+    def test_status_line_response(self):
+        msg = protocol.Response(self.transport, 200, close=True)
+        self.assertEqual(msg.status_line, 'HTTP/1.1 200 OK\r\n')
+        msg.status = 400
+        self.assertEqual(msg.status_line, 'HTTP/1.1 400 Bad Request\r\n')
+
     def test_start_request(self):
         msg = protocol.Request(
             self.transport, 'GET', '/index.html', close=True)
