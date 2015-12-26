@@ -39,4 +39,4 @@ CHANGES
 
 - Close connection on websocket hadshake error #703
 
-- Implement calss based views #684
+- Implement class based views #684

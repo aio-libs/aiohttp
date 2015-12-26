@@ -188,11 +188,12 @@ def _websocket_mask_python(mask, data):
     version when available.
 
     """
-    assert len(mask) == 4
+    assert isinstance(data, bytearray), data
+    assert len(mask) == 4, mask
     datalen = len(data)
     if datalen == 0:
         # everything work without this, but may be changed later in Python.
-        return b''
+        return bytearray()
     data = int.from_bytes(data, native_byteorder)
     mask = int.from_bytes(mask * (datalen // 4) + mask[: datalen % 4],
                           native_byteorder)
