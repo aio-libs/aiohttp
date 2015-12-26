@@ -359,6 +359,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             response.send_headers()
 
             response.write(html)
+            # disable CORK, enable NODELAY if needed
+            self.writer.set_tcp_nodelay(True)
             drain = response.write_eof()
 
             self.log_access(message, None, response, self._loop.time() - now)
