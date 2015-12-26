@@ -42,3 +42,5 @@ CHANGES
 - Implement class based views #684
 
 - Drop unused function `parse_remote_addr()` #708
+
+- Close session on exception #707
