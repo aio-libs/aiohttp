@@ -19,7 +19,6 @@ class TestHttpMessage(unittest.TestCase):
             self.transport, 'GET', '/index.html', close=True)
 
         self.assertIs(msg.transport, self.transport)
-        self.assertIsNone(msg.status)
         self.assertTrue(msg.closing)
         self.assertEqual(msg.status_line, 'GET /index.html HTTP/1.1\r\n')
 
