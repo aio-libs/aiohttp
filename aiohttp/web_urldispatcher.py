@@ -288,12 +288,14 @@ class StaticRoute(Route):
 
         resp.content_length = file_size
         resp.set_tcp_cork(True)
-        yield from resp.prepare(request)
+        try:
+            yield from resp.prepare(request)
 
-        with open(filepath, 'rb') as f:
-            yield from self._sendfile(request, resp, f, file_size)
+            with open(filepath, 'rb') as f:
+                yield from self._sendfile(request, resp, f, file_size)
 
-        resp.set_tcp_nodelay(True)
+        finally:
+            resp.set_tcp_nodelay(True)
 
         return resp
 
