@@ -559,6 +559,51 @@ If no redirects occurred or ``allow_redirects`` is set to ``False``,
 history will be an empty sequence.
 
 
+.. _aiohttp-client-websockets:
+
+WebSockets
+----------
+
+.. versionadded:: 0.15
+
+
+:mod:`aiohttp` works with client websockets out-of-the-box.
+
+You have to use the :meth:`aiohttp.ClientSession.ws_connect` coroutine
+for client websocket connection. It accepts a *url* as a first
+parameter and returns :class:`ClientWebSocketResponse`, with that
+object you can communicate with websocket server using response's
+methods::
+
+   session = aiohttp.ClientSession()
+   async with session.ws_connect('http://example.org/websocket') as ws:
+
+       async for msg in ws:
+           if msg.tp == aiohttp.MsgType.text:
+               if msg.data == 'close cmd':
+                   await ws.close()
+                   break
+               else:
+                   ws.send_str(msg.data + '/answer')
+           elif msg.tp == aiohttp.MsgType.closed:
+               break
+           elif msg.tp == aiohttp.MsgType.error:
+               break
+
+If you prefer to establish *websocket client connection* without
+explicit :class:`~aiohttp.ClientSession` instance please use
+:func:`ws_connect()`::
+
+   async with aiohttp.ws_connect('http://example.org/websocket') as ws:
+       ...
+
+
+You **must** use the only websocket task for both reading (e.g ``await
+ws.receive()`` or ``async for msg in ws:``) and writing but may have
+multiple writer tasks which can only send data asynchronously (by
+``ws.send_str('data')`` for example).
+
+
 Timeouts
 --------
 
