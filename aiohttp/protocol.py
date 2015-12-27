@@ -8,12 +8,14 @@ import re
 import string
 import sys
 import zlib
+from abc import abstractmethod, ABCMeta
 from wsgiref.handlers import format_date_time
 
 import aiohttp
 from . import errors, hdrs
 from .multidict import CIMultiDict, upstr
 from .log import internal_logger
+from .helpers import reify
 
 __all__ = ('HttpMessage', 'Request', 'Response',
            'HttpVersion', 'HttpVersion10', 'HttpVersion11',
@@ -475,7 +477,7 @@ def filter_pipe(filter, filter2, *,
         chunk = yield EOL_MARKER
 
 
-class HttpMessage:
+class HttpMessage(metaclass=ABCMeta):
     """HttpMessage allows to write headers and payload to a stream.
 
     For example, lets say we want to read file then compress it with deflate
@@ -526,8 +528,6 @@ class HttpMessage:
     SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} aiohttp/{1}'.format(
         sys.version_info, aiohttp.__version__)
 
-    status = None
-    status_line = b''
     upgrade = False  # Connection: UPGRADE
     websocket = False  # Upgrade: WEBSOCKET
     has_chunked_hdr = False  # Transfer-encoding: chunked
@@ -538,7 +538,7 @@ class HttpMessage:
 
     def __init__(self, transport, version, close):
         self.transport = transport
-        self.version = version
+        self._version = version
         self.closing = close
         self.keepalive = None
         self.chunked = False
@@ -548,6 +548,19 @@ class HttpMessage:
         self.output_length = 0
         self.headers_length = 0
         self._output_size = 0
+
+    @property
+    @abstractmethod
+    def status_line(self):
+        return b''
+
+    @abstractmethod
+    def autochunked(self):
+        return False
+
+    @property
+    def version(self):
+        return self._version
 
     @property
     def body_length(self):
@@ -633,9 +646,7 @@ class HttpMessage:
         assert not self.headers_sent, 'headers have been sent already'
         self.headers_sent = True
 
-        if self.chunked or (self.length is None and
-                            self.version >= HttpVersion11 and
-                            self.status not in (304, 204)):
+        if self.chunked or self.autochunked():
             self.writer = self._write_chunked_payload()
             self.headers[hdrs.TRANSFER_ENCODING] = 'chunked'
 
@@ -827,13 +838,29 @@ class Response(HttpMessage):
                  http_version=HttpVersion11, close=False, reason=None):
         super().__init__(transport, http_version, close)
 
-        self.status = status
+        self._status = status
         if reason is None:
             reason = self.calc_reason(status)
 
-        self.reason = reason
-        self.status_line = 'HTTP/{}.{} {} {}\r\n'.format(
-            http_version[0], http_version[1], status, reason)
+        self._reason = reason
+
+    @property
+    def status(self):
+        return self._status
+
+    @property
+    def reason(self):
+        return self._reason
+
+    @reify
+    def status_line(self):
+        version = self.version
+        return 'HTTP/{}.{} {} {}\r\n'.format(
+            version[0], version[1], self.status, self.reason)
+
+    def autochunked(self):
+        return (self.length is None and
+                self.version >= HttpVersion11)
 
     def _add_default_headers(self):
         super()._add_default_headers()
@@ -857,7 +884,23 @@ class Request(HttpMessage):
 
         super().__init__(transport, http_version, close)
 
-        self.method = method
-        self.path = path
-        self.status_line = '{0} {1} HTTP/{2[0]}.{2[1]}\r\n'.format(
-            method, path, http_version)
+        self._method = method
+        self._path = path
+
+    @property
+    def method(self):
+        return self._method
+
+    @property
+    def path(self):
+        return self._path
+
+    @reify
+    def status_line(self):
+        return '{0} {1} HTTP/{2[0]}.{2[1]}\r\n'.format(
+            self.method, self.path, self.version)
+
+    def autochunked(self):
+        return (self.length is None and
+                self.version >= HttpVersion11 and
+                self.status not in (304, 204))
