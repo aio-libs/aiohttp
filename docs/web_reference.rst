@@ -5,9 +5,7 @@ HTTP Server Reference
 
 .. module:: aiohttp.web
 
-.. versionchanged:: 0.12
-
-   The module was deeply refactored in backward incompatible manner.
+.. currentmodule:: aiohttp.web
 
 .. _aiohttp-web-request:
 
@@ -1437,7 +1435,8 @@ supported.
 
    Inherited from :class:`AbstractView`.
 
-   :param Request request: request object that has initiated view processing.
+   :param request: instance of :class:`Request` that has initiated a view
+                   processing.
 
 
    .. attribute:: request

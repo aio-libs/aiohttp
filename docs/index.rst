@@ -154,7 +154,6 @@ Contents
 
    client
    client_reference
-   client_websockets
    web
    web_reference
    server
