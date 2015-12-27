@@ -96,9 +96,6 @@ class HttpProcessingError(Exception):
 class WSServerHandshakeError(HttpProcessingError):
     """websocket server handshake error."""
 
-    def __init__(self, message, *, headers=None):
-        super().__init__(message=message, headers=headers)
-
 
 class HttpProxyError(HttpProcessingError):
     """Http proxy error.
