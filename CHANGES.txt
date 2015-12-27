@@ -44,3 +44,5 @@ CHANGES
 - Drop unused function `parse_remote_addr()` #708
 
 - Close session on exception #707
+
+- Store http code and headers in WSServerHandshakeError #706
