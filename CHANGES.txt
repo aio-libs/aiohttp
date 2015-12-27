@@ -48,4 +48,5 @@ CHANGES
 - Close session on exception #707
 
 - Store http code and headers in WSServerHandshakeError #706
->>>>>>> master
+
+- Make some low-level message properies readonly #710
