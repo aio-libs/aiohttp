@@ -692,7 +692,7 @@ def delete(url, **kwargs):
 
 def ws_connect(url, *, protocols=(), timeout=10.0, connector=None, auth=None,
                ws_response_class=ClientWebSocketResponse, autoclose=True,
-               autoping=True, loop=None, origin=None):
+               autoping=True, loop=None, origin=None, headers=None):
 
     if loop is None:
         loop = asyncio.get_event_loop()
@@ -701,7 +701,8 @@ def ws_connect(url, *, protocols=(), timeout=10.0, connector=None, auth=None,
         connector = aiohttp.TCPConnector(loop=loop, force_close=True)
 
     session = aiohttp.ClientSession(loop=loop, connector=connector, auth=auth,
-                                    ws_response_class=ws_response_class)
+                                    ws_response_class=ws_response_class,
+                                    headers=headers)
 
     return _DetachedWSRequestContextManager(
         session._ws_connect(url,

@@ -41,8 +41,11 @@ CHANGES
 
 - Implement class based views #684
 
+- Add *headers* parameter to ws_connect() #709
+
 - Drop unused function `parse_remote_addr()` #708
 
 - Close session on exception #707
 
 - Store http code and headers in WSServerHandshakeError #706
+>>>>>>> master
