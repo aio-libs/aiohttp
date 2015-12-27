@@ -273,20 +273,32 @@ class ClientSession:
         try:
             # check handshake
             if resp.status != 101:
-                raise WSServerHandshakeError('Invalid response status')
+                raise WSServerHandshakeError(
+                    message='Invalid response status',
+                    code=resp.status,
+                    headers=resp.headers)
 
             if resp.headers.get(hdrs.UPGRADE, '').lower() != 'websocket':
-                raise WSServerHandshakeError('Invalid upgrade header')
+                raise WSServerHandshakeError(
+                    message='Invalid upgrade header',
+                    code=resp.status,
+                    headers=resp.headers)
 
             if resp.headers.get(hdrs.CONNECTION, '').lower() != 'upgrade':
-                raise WSServerHandshakeError('Invalid connection header')
+                raise WSServerHandshakeError(
+                    message='Invalid connection header',
+                    code=resp.status,
+                    headers=resp.headers)
 
             # key calculation
             key = resp.headers.get(hdrs.SEC_WEBSOCKET_ACCEPT, '')
             match = base64.b64encode(
                 hashlib.sha1(sec_key + WS_KEY).digest()).decode()
             if key != match:
-                raise WSServerHandshakeError('Invalid challenge response')
+                raise WSServerHandshakeError(
+                    message='Invalid challenge response',
+                    code=resp.status,
+                    headers=resp.headers)
 
             # websocket protocol
             protocol = None
@@ -525,6 +537,22 @@ class _DetachedRequestContextManager(_RequestContextManager):
     def __init__(self, coro, session):
         super().__init__(coro)
         self._session = session
+
+    @asyncio.coroutine
+    def __iter__(self):
+        try:
+            return (yield from self._coro)
+        except:
+            self._session.close()
+            raise
+
+    if PY_35:
+        def __await__(self):
+            try:
+                return (yield from self._coro)
+            except:
+                self._session.close()
+                raise
 
     def __del__(self):
         self._session.detach()

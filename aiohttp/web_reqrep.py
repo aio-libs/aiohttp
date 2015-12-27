@@ -701,8 +701,6 @@ class StreamResponse(HeadersMixin):
             request.version,
             not keep_alive,
             self._reason)
-        resp_impl.transport.set_tcp_nodelay(self._tcp_nodelay)
-        resp_impl.transport.set_tcp_cork(self._tcp_cork)
 
         self._copy_cookies()
 
@@ -722,6 +720,8 @@ class StreamResponse(HeadersMixin):
         for key, val in headers:
             resp_impl.add_header(key, val)
 
+        resp_impl.transport.set_tcp_nodelay(self._tcp_nodelay)
+        resp_impl.transport.set_tcp_cork(self._tcp_cork)
         resp_impl.send_headers()
         return resp_impl
 
@@ -847,10 +847,12 @@ class Response(StreamResponse):
 
     @asyncio.coroutine
     def write_eof(self):
-        body = self._body
-        if body is not None:
-            self.write(body)
-        self.set_tcp_nodelay(True)
+        try:
+            body = self._body
+            if body is not None:
+                self.write(body)
+        finally:
+            self.set_tcp_nodelay(True)
         yield from super().write_eof()
 
 
