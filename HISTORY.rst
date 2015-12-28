@@ -1,3 +1,54 @@
+0.20.0 (12-28-2015)
+-------------------
+
+- Extend list of web exceptions, add HTTPMisdirectedRequest,
+  HTTPUpgradeRequired, HTTPPreconditionRequired, HTTPTooManyRequests,
+  HTTPRequestHeaderFieldsTooLarge, HTTPVariantAlsoNegotiates,
+  HTTPNotExtended, HTTPNetworkAuthenticationRequired status codes #644
+
+- Do not remove AUTHORIZATION header by WSGI handler #649
+
+- Fix broken support for https proxies with authentication #617
+
+- Get REMOTE_* and SEVER_* http vars from headers when listening on
+  unix socket #654
+
+- Add HTTP 308 support #663
+
+- Add Tf format (time to serve request in seconds, %06f format) to
+  access log #669
+
+- Remove one and a half years long deprecated
+  ClientResponse.read_and_close() method
+
+- Optimize chunked encoding: use a single syscall instead of 3 calls
+  on sending chunked encoded data
+
+- Use TCP_CORK and TCP_NODELAY to optimize network latency and
+  throughput #680
+
+- Websocket XOR performance improved #687
+
+- Avoid sending cookie attributes in Cookie header #613
+
+- Round server timeouts to seconds for grouping pending calls.  That
+  leads to less amount of poller syscalls e.g epoll.poll(). #702
+
+- Close connection on websocket handshake error #703
+
+- Implement class based views #684
+
+- Add *headers* parameter to ws_connect() #709
+
+- Drop unused function `parse_remote_addr()` #708
+
+- Close session on exception #707
+
+- Store http code and headers in WSServerHandshakeError #706
+
+- Make some low-level message properties readonly #710
+
+
 0.19.0 (11-25-2015)
 -------------------
 
