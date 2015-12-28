@@ -4,3 +4,5 @@ CHANGES
 0.21.0 (XX-XX-XXXX)
 -------------------
 
+- Raise RuntimeError is Timeout context manager was used outside of
+  task context.
