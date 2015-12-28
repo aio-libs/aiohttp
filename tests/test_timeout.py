@@ -120,3 +120,9 @@ def test_timeout_time(loop):
         assert not foo_running
 
     loop.run_until_complete(go())
+
+
+def test_raise_runtimeerror_if_no_task(loop):
+    with pytest.raises(RuntimeError):
+        with Timeout(0.1, loop=loop):
+            pass
