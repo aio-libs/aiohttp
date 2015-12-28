@@ -30,14 +30,14 @@ CHANGES
 - Use TCP_CORK and TCP_NODELAY to optimize network latency and
   throughput #680
 
-- Weboscket XOR performance improved #687
+- Websocket XOR performance improved #687
 
 - Avoid sending cookie attributes in Cookie header #613
 
-- Round server timeouts to second for grouping pending call.  That
+- Round server timeouts to seconds for grouping pending calls.  That
   leads to less amount of poller syscalls e.g epoll.poll(). #702
 
-- Close connection on websocket hadshake error #703
+- Close connection on websocket handshake error #703
 
 - Implement class based views #684
 
@@ -49,4 +49,4 @@ CHANGES
 
 - Store http code and headers in WSServerHandshakeError #706
 
-- Make some low-level message properies readonly #710
+- Make some low-level message properties readonly #710
