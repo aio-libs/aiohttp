@@ -44,7 +44,6 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
 
     def create_wsgi_environ(self, message, payload):
         uri_parts = urlsplit(message.path)
-        url_scheme = 'https' if self.is_ssl else 'http'
 
         environ = {
             'wsgi.input': payload,
@@ -55,7 +54,6 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
             'wsgi.multiprocess': False,
             'wsgi.run_once': False,
             'wsgi.file_wrapper': FileWrapper,
-            'wsgi.url_scheme': url_scheme,
             'SERVER_SOFTWARE': aiohttp.HttpMessage.SERVER_SOFTWARE,
             'REQUEST_METHOD': message.method,
             'QUERY_STRING': uri_parts.query or '',
@@ -80,6 +78,11 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
                 hdr_value = '%s,%s' % (environ[key], hdr_value)
 
             environ[key] = hdr_value
+
+        url_scheme = environ.get('HTTP_X_FORWARDED_PROTO')
+        if url_scheme is None:
+            url_scheme = 'https' if self.is_ssl else 'http'
+        environ['wsgi.url_scheme'] = url_scheme
 
         # authors should be aware that REMOTE_HOST and REMOTE_ADDR
         # may not qualify the remote addr
