@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-0.20.0 (XX-XX-XXXX)
+0.20.0 (12-28-2015)
 -------------------
 
 - Extend list of web exceptions, add HTTPMisdirectedRequest,
