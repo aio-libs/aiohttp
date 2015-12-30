@@ -1411,29 +1411,29 @@ In general the result may be any object derived from
 View
 ^^^^
 
-Base class for class based views. Implementations should derive from
-:class:`View` and override methods for handling HTTP verbs like
-``get()`` or ``post()``::
-
-    class MyView(View):
-
-        async def get(self):
-            resp = await get_response(self.request)
-            return resp
-
-        async def post(self):
-            resp = await post_response(self.request)
-            return resp
-
-    app.router.add_route('*', '/view', MyView)
-
-The view raises *405 Method Not allowed*
-(:class:`HTTPMEthodNowAllowed`) if requested web verb is not
-supported.
-
 .. class:: View(request)
 
    Inherited from :class:`AbstractView`.
+
+   Base class for class based views. Implementations should derive from
+   :class:`View` and override methods for handling HTTP verbs like
+   ``get()`` or ``post()``::
+
+       class MyView(View):
+
+           async def get(self):
+               resp = await get_response(self.request)
+               return resp
+
+           async def post(self):
+               resp = await post_response(self.request)
+               return resp
+
+       app.router.add_route('*', '/view', MyView)
+
+   The view raises *405 Method Not allowed*
+   (:class:`HTTPMEthodNowAllowed`) if requested web verb is not
+   supported.
 
    :param request: instance of :class:`Request` that has initiated a view
                    processing.
@@ -1447,6 +1447,8 @@ supported.
    Overridable coroutine methods: ``connect()``, ``delete()``,
    ``get()``, ``head()``, ``options()``, ``patch()``, ``post()``,
    ``put()``, ``trace()``.
+
+.. seealso:: :ref:`aiohttp-web-class-based-views`
 
 
 Utilities

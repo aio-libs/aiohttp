@@ -188,6 +188,8 @@ application developers can organize handlers in classes if they so wish::
    app.router.add_route('GET', '/greet/{name}', handler.handle_greeting)
 
 
+.. _aiohttp-web-class-based-views:
+
 Class Based Views
 ^^^^^^^^^^^^^^^^^
 
