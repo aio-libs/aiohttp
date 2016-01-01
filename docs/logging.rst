@@ -89,5 +89,5 @@ given on web requests handling.
 The log is always enabled.
 
 To use different logger name please specify *logger* parameter
-(:class:`logging.Logger` instance) onmake
+(:class:`logging.Logger` instance) on performing
 :meth:`aiohttp.web.Application.make_handler` call.

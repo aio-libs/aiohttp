@@ -554,7 +554,7 @@ StreamResponse
    .. attribute:: tcp_cork
 
       :const:`~socket.TCP_CORK` (linux) or :const:`~socket.TCP_NOPUSH`
-      (FreeBSD and MacOSX) is applyed to underlying transport if the
+      (FreeBSD and MacOSX) is applied to underlying transport if the
       property is ``True``.
 
       Use :meth:`set_tcp_cork` to assign new value to the property.
@@ -569,7 +569,7 @@ StreamResponse
 
    .. attribute:: tcp_nodelay
 
-      :const:`~socket.TCP_NODELAY` is applyed to underlying transport
+      :const:`~socket.TCP_NODELAY` is applied to underlying transport
       if the property is ``True``.
 
       Use :meth:`set_tcp_nodelay` to assign new value to the property.
@@ -1441,7 +1441,7 @@ View
 
    .. attribute:: request
 
-      Request sent to view's contructor, read-only property.
+      Request sent to view's constructor, read-only property.
 
 
    Overridable coroutine methods: ``connect()``, ``delete()``,
