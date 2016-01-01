@@ -91,7 +91,7 @@ Server example::
        async def coro(...):
            ret = await f()
 
-   shoud be replaced by::
+   should be replaced by::
 
        @asyncio.coroutine
        def coro(...):
