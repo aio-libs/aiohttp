@@ -1,8 +1,8 @@
 """Tests for aiohttp/protocol.py"""
 
-import unittest
-import unittest.mock
 import asyncio
+import unittest
+from unittest import mock
 import zlib
 
 from aiohttp import hdrs, protocol
@@ -11,7 +11,7 @@ from aiohttp import hdrs, protocol
 class TestHttpMessage(unittest.TestCase):
 
     def setUp(self):
-        self.transport = unittest.mock.Mock()
+        self.transport = mock.Mock()
         asyncio.set_event_loop(None)
 
     def test_start_request(self):
@@ -210,7 +210,7 @@ class TestHttpMessage(unittest.TestCase):
         self.assertEqual([('CONNECTION', 'keep-alive')], headers)
 
     def test_send_headers(self):
-        write = self.transport.write = unittest.mock.Mock()
+        write = self.transport.write = mock.Mock()
 
         msg = protocol.Response(self.transport, 200)
         msg.add_headers(('content-type', 'plain/html'))
@@ -228,7 +228,7 @@ class TestHttpMessage(unittest.TestCase):
         msg.writer.close()
 
     def test_send_headers_non_ascii(self):
-        write = self.transport.write = unittest.mock.Mock()
+        write = self.transport.write = mock.Mock()
 
         msg = protocol.Response(self.transport, 200)
         msg.add_headers(('x-header', 'текст'))
@@ -258,7 +258,7 @@ class TestHttpMessage(unittest.TestCase):
 
     def test_prepare_length(self):
         msg = protocol.Response(self.transport, 200)
-        w_l_p = msg._write_length_payload = unittest.mock.Mock()
+        w_l_p = msg._write_length_payload = mock.Mock()
         w_l_p.return_value = iter([1, 2, 3])
 
         msg.add_headers(('content-length', '42'))
@@ -271,7 +271,7 @@ class TestHttpMessage(unittest.TestCase):
         msg = protocol.Response(self.transport, 200)
         msg.enable_chunked_encoding()
 
-        chunked = msg._write_chunked_payload = unittest.mock.Mock()
+        chunked = msg._write_chunked_payload = mock.Mock()
         chunked.return_value = iter([1, 2, 3])
 
         msg.add_headers(('content-length', '42'))
@@ -281,7 +281,7 @@ class TestHttpMessage(unittest.TestCase):
     def test_prepare_chunked_no_length(self):
         msg = protocol.Response(self.transport, 200)
 
-        chunked = msg._write_chunked_payload = unittest.mock.Mock()
+        chunked = msg._write_chunked_payload = mock.Mock()
         chunked.return_value = iter([1, 2, 3])
 
         msg.send_headers()
@@ -290,7 +290,7 @@ class TestHttpMessage(unittest.TestCase):
     def test_prepare_eof(self):
         msg = protocol.Response(self.transport, 200, http_version=(1, 0))
 
-        eof = msg._write_eof_payload = unittest.mock.Mock()
+        eof = msg._write_eof_payload = mock.Mock()
         eof.return_value = iter([1, 2, 3])
 
         msg.send_headers()
@@ -306,7 +306,7 @@ class TestHttpMessage(unittest.TestCase):
         msg.writer.close()
 
     def test_write_payload_eof(self):
-        write = self.transport.write = unittest.mock.Mock()
+        write = self.transport.write = mock.Mock()
         msg = protocol.Response(self.transport, 200, http_version=(1, 0))
         msg.send_headers()
 
@@ -321,7 +321,7 @@ class TestHttpMessage(unittest.TestCase):
             b'data1data2', content.split(b'\r\n\r\n', 1)[-1])
 
     def test_write_payload_chunked(self):
-        write = self.transport.write = unittest.mock.Mock()
+        write = self.transport.write = mock.Mock()
 
         msg = protocol.Response(self.transport, 200)
         msg.enable_chunked_encoding()
@@ -336,7 +336,7 @@ class TestHttpMessage(unittest.TestCase):
             content.split(b'\r\n\r\n', 1)[-1])
 
     def test_write_payload_chunked_multiple(self):
-        write = self.transport.write = unittest.mock.Mock()
+        write = self.transport.write = mock.Mock()
 
         msg = protocol.Response(self.transport, 200)
         msg.enable_chunked_encoding()
@@ -352,7 +352,7 @@ class TestHttpMessage(unittest.TestCase):
             content.split(b'\r\n\r\n', 1)[-1])
 
     def test_write_payload_length(self):
-        write = self.transport.write = unittest.mock.Mock()
+        write = self.transport.write = mock.Mock()
 
         msg = protocol.Response(self.transport, 200)
         msg.add_headers(('content-length', '2'))
@@ -367,7 +367,7 @@ class TestHttpMessage(unittest.TestCase):
             b'da', content.split(b'\r\n\r\n', 1)[-1])
 
     def test_write_payload_chunked_filter(self):
-        write = self.transport.write = unittest.mock.Mock()
+        write = self.transport.write = mock.Mock()
 
         msg = protocol.Response(self.transport, 200)
         msg.send_headers()
@@ -380,7 +380,7 @@ class TestHttpMessage(unittest.TestCase):
         self.assertTrue(content.endswith(b'2\r\nda\r\n2\r\nta\r\n0\r\n\r\n'))
 
     def test_write_payload_chunked_filter_mutiple_chunks(self):
-        write = self.transport.write = unittest.mock.Mock()
+        write = self.transport.write = mock.Mock()
         msg = protocol.Response(self.transport, 200)
         msg.send_headers()
 
@@ -394,7 +394,7 @@ class TestHttpMessage(unittest.TestCase):
             b'2\r\na2\r\n0\r\n\r\n'))
 
     def test_write_payload_chunked_large_chunk(self):
-        write = self.transport.write = unittest.mock.Mock()
+        write = self.transport.write = mock.Mock()
         msg = protocol.Response(self.transport, 200)
         msg.send_headers()
 
@@ -408,7 +408,7 @@ class TestHttpMessage(unittest.TestCase):
     _COMPRESSED = b''.join([_comp.compress(b'data'), _comp.flush()])
 
     def test_write_payload_deflate_filter(self):
-        write = self.transport.write = unittest.mock.Mock()
+        write = self.transport.write = mock.Mock()
         msg = protocol.Response(self.transport, 200)
         msg.add_headers(('content-length', '{}'.format(len(self._COMPRESSED))))
         msg.send_headers()
@@ -424,7 +424,7 @@ class TestHttpMessage(unittest.TestCase):
             self._COMPRESSED, content.split(b'\r\n\r\n', 1)[-1])
 
     def test_write_payload_deflate_and_chunked(self):
-        write = self.transport.write = unittest.mock.Mock()
+        write = self.transport.write = mock.Mock()
         msg = protocol.Response(self.transport, 200)
         msg.send_headers()
 
@@ -442,7 +442,7 @@ class TestHttpMessage(unittest.TestCase):
             content.split(b'\r\n\r\n', 1)[-1])
 
     def test_write_payload_chunked_and_deflate(self):
-        write = self.transport.write = unittest.mock.Mock()
+        write = self.transport.write = mock.Mock()
         msg = protocol.Response(self.transport, 200)
         msg.add_headers(('content-length', '{}'.format(len(self._COMPRESSED))))
 
