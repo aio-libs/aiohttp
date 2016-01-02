@@ -1,11 +1,21 @@
 """Tests for aiohttp/protocol.py"""
 
 import asyncio
+import pytest
 import unittest
 from unittest import mock
 import zlib
 
 from aiohttp import hdrs, protocol
+
+
+@pytest.fixture
+def transport():
+    return mock.Mock()
+
+
+compressor = zlib.compressobj(wbits=-zlib.MAX_WBITS)
+COMPRESSED = b''.join([compressor.compress(b'data'), compressor.flush()])
 
 
 class TestHttpMessage(unittest.TestCase):
@@ -366,121 +376,124 @@ class TestHttpMessage(unittest.TestCase):
         self.assertEqual(
             b'da', content.split(b'\r\n\r\n', 1)[-1])
 
-    def test_write_payload_chunked_filter(self):
-        write = self.transport.write = mock.Mock()
 
-        msg = protocol.Response(self.transport, 200)
-        msg.send_headers()
+def test_write_payload_chunked_filter(transport):
+    write = transport.write = mock.Mock()
 
-        msg.add_chunking_filter(2)
-        msg.write(b'data')
-        msg.write_eof()
+    msg = protocol.Response(transport, 200)
+    msg.send_headers()
 
-        content = b''.join([c[1][0] for c in list(write.mock_calls)])
-        self.assertTrue(content.endswith(b'2\r\nda\r\n2\r\nta\r\n0\r\n\r\n'))
+    msg.add_chunking_filter(2)
+    msg.write(b'data')
+    msg.write_eof()
 
-    def test_write_payload_chunked_filter_mutiple_chunks(self):
-        write = self.transport.write = mock.Mock()
-        msg = protocol.Response(self.transport, 200)
-        msg.send_headers()
+    content = b''.join([c[1][0] for c in list(write.mock_calls)])
+    assert content.endswith(b'2\r\nda\r\n2\r\nta\r\n0\r\n\r\n')
 
-        msg.add_chunking_filter(2)
-        msg.write(b'data1')
-        msg.write(b'data2')
-        msg.write_eof()
-        content = b''.join([c[1][0] for c in list(write.mock_calls)])
-        self.assertTrue(content.endswith(
-            b'2\r\nda\r\n2\r\nta\r\n2\r\n1d\r\n2\r\nat\r\n'
-            b'2\r\na2\r\n0\r\n\r\n'))
 
-    def test_write_payload_chunked_large_chunk(self):
-        write = self.transport.write = mock.Mock()
-        msg = protocol.Response(self.transport, 200)
-        msg.send_headers()
+def test_write_payload_chunked_filter_mutiple_chunks(transport):
+    write = transport.write = mock.Mock()
+    msg = protocol.Response(transport, 200)
+    msg.send_headers()
 
-        msg.add_chunking_filter(1024)
-        msg.write(b'data')
-        msg.write_eof()
-        content = b''.join([c[1][0] for c in list(write.mock_calls)])
-        self.assertTrue(content.endswith(b'4\r\ndata\r\n0\r\n\r\n'))
+    msg.add_chunking_filter(2)
+    msg.write(b'data1')
+    msg.write(b'data2')
+    msg.write_eof()
+    content = b''.join([c[1][0] for c in list(write.mock_calls)])
+    assert content.endswith(
+        b'2\r\nda\r\n2\r\nta\r\n2\r\n1d\r\n2\r\nat\r\n'
+        b'2\r\na2\r\n0\r\n\r\n')
 
-    _comp = zlib.compressobj(wbits=-zlib.MAX_WBITS)
-    _COMPRESSED = b''.join([_comp.compress(b'data'), _comp.flush()])
 
-    def test_write_payload_deflate_filter(self):
-        write = self.transport.write = mock.Mock()
-        msg = protocol.Response(self.transport, 200)
-        msg.add_headers(('content-length', '{}'.format(len(self._COMPRESSED))))
-        msg.send_headers()
+def test_write_payload_chunked_large_chunk(transport):
+    write = transport.write = mock.Mock()
+    msg = protocol.Response(transport, 200)
+    msg.send_headers()
 
-        msg.add_compression_filter('deflate')
-        msg.write(b'data')
-        msg.write_eof()
+    msg.add_chunking_filter(1024)
+    msg.write(b'data')
+    msg.write_eof()
+    content = b''.join([c[1][0] for c in list(write.mock_calls)])
+    assert content.endswith(b'4\r\ndata\r\n0\r\n\r\n')
 
-        chunks = [c[1][0] for c in list(write.mock_calls)]
-        self.assertTrue(all(chunks))
-        content = b''.join(chunks)
-        self.assertEqual(
-            self._COMPRESSED, content.split(b'\r\n\r\n', 1)[-1])
 
-    def test_write_payload_deflate_and_chunked(self):
-        write = self.transport.write = mock.Mock()
-        msg = protocol.Response(self.transport, 200)
-        msg.send_headers()
+def test_write_payload_deflate_filter(transport):
+    write = transport.write = mock.Mock()
+    msg = protocol.Response(transport, 200)
+    msg.add_headers(('content-length', '{}'.format(len(COMPRESSED))))
+    msg.send_headers()
 
-        msg.add_compression_filter('deflate')
-        msg.add_chunking_filter(2)
+    msg.add_compression_filter('deflate')
+    msg.write(b'data')
+    msg.write_eof()
 
-        msg.write(b'data')
-        msg.write_eof()
+    chunks = [c[1][0] for c in list(write.mock_calls)]
+    assert all(chunks)
+    content = b''.join(chunks)
+    assert COMPRESSED == content.split(b'\r\n\r\n', 1)[-1]
 
-        chunks = [c[1][0] for c in list(write.mock_calls)]
-        self.assertTrue(all(chunks))
-        content = b''.join(chunks)
-        self.assertEqual(
-            b'2\r\nKI\r\n2\r\n,I\r\n2\r\n\x04\x00\r\n0\r\n\r\n',
+
+def test_write_payload_deflate_and_chunked(transport):
+    write = transport.write = mock.Mock()
+    msg = protocol.Response(transport, 200)
+    msg.send_headers()
+
+    msg.add_compression_filter('deflate')
+    msg.add_chunking_filter(2)
+
+    msg.write(b'data')
+    msg.write_eof()
+
+    chunks = [c[1][0] for c in list(write.mock_calls)]
+    assert all(chunks)
+    content = b''.join(chunks)
+    assert (b'2\r\nKI\r\n2\r\n,I\r\n2\r\n\x04\x00\r\n0\r\n\r\n' ==
             content.split(b'\r\n\r\n', 1)[-1])
 
-    def test_write_payload_chunked_and_deflate(self):
-        write = self.transport.write = mock.Mock()
-        msg = protocol.Response(self.transport, 200)
-        msg.add_headers(('content-length', '{}'.format(len(self._COMPRESSED))))
 
-        msg.add_chunking_filter(2)
-        msg.add_compression_filter('deflate')
-        msg.send_headers()
+def test_write_payload_chunked_and_deflate(transport):
+    write = transport.write = mock.Mock()
+    msg = protocol.Response(transport, 200)
+    msg.add_headers(('content-length', '{}'.format(len(COMPRESSED))))
 
-        msg.write(b'data')
-        msg.write_eof()
+    msg.add_chunking_filter(2)
+    msg.add_compression_filter('deflate')
+    msg.send_headers()
 
-        chunks = [c[1][0] for c in list(write.mock_calls)]
-        self.assertTrue(all(chunks))
-        content = b''.join(chunks)
-        self.assertEqual(
-            self._COMPRESSED, content.split(b'\r\n\r\n', 1)[-1])
+    msg.write(b'data')
+    msg.write_eof()
 
-    def test_write_drain(self):
-        msg = protocol.Response(self.transport, 200, http_version=(1, 0))
-        msg._send_headers = True
+    chunks = [c[1][0] for c in list(write.mock_calls)]
+    assert all(chunks)
+    content = b''.join(chunks)
+    assert COMPRESSED == content.split(b'\r\n\r\n', 1)[-1]
 
-        msg.write(b'1' * (64 * 1024 * 2))
-        self.assertFalse(self.transport.drain.called)
 
-        msg.write(b'1', drain=True)
-        self.assertTrue(self.transport.drain.called)
-        self.assertEqual(msg._output_size, 0)
+def test_write_drain(transport):
+    msg = protocol.Response(transport, 200, http_version=(1, 0))
+    msg._send_headers = True
 
-    def test_dont_override_request_headers_with_default_values(self):
-        msg = protocol.Request(
-            self.transport, 'GET', '/index.html', close=True)
-        msg.add_header('USER-AGENT', 'custom')
-        msg._add_default_headers()
-        self.assertEqual('custom', msg.headers['USER-AGENT'])
+    msg.write(b'1' * (64 * 1024 * 2))
+    assert not transport.drain.called
 
-    def test_dont_override_response_headers_with_default_values(self):
-        msg = protocol.Response(self.transport, 200, http_version=(1, 0))
-        msg.add_header('DATE', 'now')
-        msg.add_header('SERVER', 'custom')
-        msg._add_default_headers()
-        self.assertEqual('custom', msg.headers['SERVER'])
-        self.assertEqual('now', msg.headers['DATE'])
+    msg.write(b'1', drain=True)
+    assert transport.drain.called
+    assert msg._output_size == 0
+
+
+def test_dont_override_request_headers_with_default_values(transport):
+    msg = protocol.Request(
+        transport, 'GET', '/index.html', close=True)
+    msg.add_header('USER-AGENT', 'custom')
+    msg._add_default_headers()
+    assert 'custom' == msg.headers['USER-AGENT']
+
+
+def test_dont_override_response_headers_with_default_values(transport):
+    msg = protocol.Response(transport, 200, http_version=(1, 0))
+    msg.add_header('DATE', 'now')
+    msg.add_header('SERVER', 'custom')
+    msg._add_default_headers()
+    assert 'custom' == msg.headers['SERVER']
+    assert 'now' == msg.headers['DATE']
