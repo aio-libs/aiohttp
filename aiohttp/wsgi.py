@@ -94,7 +94,7 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
         if remote:
             environ['REMOTE_ADDR'] = remote[0]
             environ['REMOTE_PORT'] = remote[1]
-            _host, port = self.transport.get_extra_info('sockname')
+            _host, port = self.transport.get_extra_info('sockname')[0:2]
             environ['SERVER_PORT'] = str(port)
             host = message.headers.get("HOST", None)
             # SERVER_NAME should be set to value of Host header, but this
