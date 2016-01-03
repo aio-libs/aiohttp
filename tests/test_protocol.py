@@ -345,36 +345,36 @@ class TestHttpMessage(unittest.TestCase):
             b'4\r\ndata\r\n0\r\n\r\n',
             content.split(b'\r\n\r\n', 1)[-1])
 
-    def test_write_payload_chunked_multiple(self):
-        write = self.transport.write = mock.Mock()
 
-        msg = protocol.Response(self.transport, 200)
-        msg.enable_chunked_encoding()
-        msg.send_headers()
+def test_write_payload_chunked_multiple(transport):
+    write = transport.write = mock.Mock()
 
-        msg.write(b'data1')
-        msg.write(b'data2')
-        msg.write_eof()
+    msg = protocol.Response(transport, 200)
+    msg.enable_chunked_encoding()
+    msg.send_headers()
 
-        content = b''.join([c[1][0] for c in list(write.mock_calls)])
-        self.assertEqual(
-            b'5\r\ndata1\r\n5\r\ndata2\r\n0\r\n\r\n',
+    msg.write(b'data1')
+    msg.write(b'data2')
+    msg.write_eof()
+
+    content = b''.join([c[1][0] for c in list(write.mock_calls)])
+    assert (b'5\r\ndata1\r\n5\r\ndata2\r\n0\r\n\r\n' ==
             content.split(b'\r\n\r\n', 1)[-1])
 
-    def test_write_payload_length(self):
-        write = self.transport.write = mock.Mock()
 
-        msg = protocol.Response(self.transport, 200)
-        msg.add_headers(('content-length', '2'))
-        msg.send_headers()
+def test_write_payload_length(transport):
+    write = transport.write = mock.Mock()
 
-        msg.write(b'd')
-        msg.write(b'ata')
-        msg.write_eof()
+    msg = protocol.Response(transport, 200)
+    msg.add_headers(('content-length', '2'))
+    msg.send_headers()
 
-        content = b''.join([c[1][0] for c in list(write.mock_calls)])
-        self.assertEqual(
-            b'da', content.split(b'\r\n\r\n', 1)[-1])
+    msg.write(b'd')
+    msg.write(b'ata')
+    msg.write_eof()
+
+    content = b''.join([c[1][0] for c in list(write.mock_calls)])
+    assert b'da' == content.split(b'\r\n\r\n', 1)[-1]
 
 
 def test_write_payload_chunked_filter(transport):
