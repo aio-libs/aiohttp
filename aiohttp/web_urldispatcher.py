@@ -6,6 +6,7 @@ import collections
 import mimetypes
 import re
 import os
+import sys
 import inspect
 
 from collections.abc import Sized, Iterable, Container
@@ -22,6 +23,9 @@ from .multidict import upstr
 
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'Route', 'PlainRoute', 'DynamicRoute', 'StaticRoute', 'View')
+
+
+PY_35 = sys.version_info >= (3, 5)
 
 
 class UrlMappingMatchInfo(dict, AbstractMatchInfo):
@@ -385,6 +389,10 @@ class View(AbstractView):
             self._raise_allowed_methods()
         resp = yield from method()
         return resp
+
+    if PY_35:
+        def __await__(self):
+            return (yield from self.__iter__())
 
     def _raise_allowed_methods(self):
         allowed_methods = {m for m in hdrs.METH_ALL if hasattr(self, m)}

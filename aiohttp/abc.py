@@ -1,5 +1,9 @@
 import asyncio
+import sys
 from abc import ABCMeta, abstractmethod
+
+
+PY_35 = sys.version_info >= (3, 5)
 
 
 class AbstractRouter(metaclass=ABCMeta):
@@ -37,3 +41,8 @@ class AbstractView(metaclass=ABCMeta):
     def __iter__(self):
         while False:  # pragma: no cover
             yield None
+
+    if PY_35:
+        @abstractmethod
+        def __await__(self):
+            return
