@@ -386,6 +386,9 @@ class View(AbstractView):
         resp = yield from method()
         return resp
 
+    def __await__(self):
+        return (yield from self.__iter__())
+
     def _raise_allowed_methods(self):
         allowed_methods = {m for m in hdrs.METH_ALL if hasattr(self, m)}
         raise HTTPMethodNotAllowed(self.request.method, allowed_methods)
