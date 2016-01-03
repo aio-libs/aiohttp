@@ -10,3 +10,9 @@ CHANGES
 - Add number of bytes to stream.read_nowait #700
 
 - Use X-FORWARDED-PROTO for wsgi.url_scheme when available
+
+
+0.20.2 (01-034-2015)
+--------------------
+
+- Enable use of `await` for a class based view #717
