@@ -1,8 +1,6 @@
 """Tests for aiohttp/protocol.py"""
 
-import asyncio
 import pytest
-import unittest
 from unittest import mock
 import zlib
 
@@ -18,332 +16,351 @@ compressor = zlib.compressobj(wbits=-zlib.MAX_WBITS)
 COMPRESSED = b''.join([compressor.compress(b'data'), compressor.flush()])
 
 
-class TestHttpMessage(unittest.TestCase):
+def test_start_request(transport):
+    msg = protocol.Request(
+        transport, 'GET', '/index.html', close=True)
 
-    def setUp(self):
-        self.transport = mock.Mock()
-        asyncio.set_event_loop(None)
+    assert msg.transport is transport
+    assert msg.closing
+    assert msg.status_line == 'GET /index.html HTTP/1.1\r\n'
 
-    def test_start_request(self):
-        msg = protocol.Request(
-            self.transport, 'GET', '/index.html', close=True)
 
-        self.assertIs(msg.transport, self.transport)
-        self.assertTrue(msg.closing)
-        self.assertEqual(msg.status_line, 'GET /index.html HTTP/1.1\r\n')
+def test_start_response(transport):
+    msg = protocol.Response(transport, 200, close=True)
 
-    def test_start_response(self):
-        msg = protocol.Response(self.transport, 200, close=True)
+    assert msg.transport is transport
+    assert msg.status == 200
+    assert msg.reason == "OK"
+    assert msg.closing
+    assert msg.status_line == 'HTTP/1.1 200 OK\r\n'
 
-        self.assertIs(msg.transport, self.transport)
-        self.assertEqual(msg.status, 200)
-        self.assertEqual(msg.reason, "OK")
-        self.assertTrue(msg.closing)
-        self.assertEqual(msg.status_line, 'HTTP/1.1 200 OK\r\n')
 
-    def test_start_response_with_reason(self):
-        msg = protocol.Response(self.transport, 333, close=True,
-                                reason="My Reason")
+def test_start_response_with_reason(transport):
+    msg = protocol.Response(transport, 333, close=True,
+                            reason="My Reason")
 
-        self.assertEqual(msg.status, 333)
-        self.assertEqual(msg.reason, "My Reason")
-        self.assertEqual(msg.status_line, 'HTTP/1.1 333 My Reason\r\n')
+    assert msg.status == 333
+    assert msg.reason == "My Reason"
+    assert msg.status_line == 'HTTP/1.1 333 My Reason\r\n'
 
-    def test_start_response_with_unknown_reason(self):
-        msg = protocol.Response(self.transport, 777, close=True)
 
-        self.assertEqual(msg.status, 777)
-        self.assertEqual(msg.reason, "777")
-        self.assertEqual(msg.status_line, 'HTTP/1.1 777 777\r\n')
+def test_start_response_with_unknown_reason(transport):
+    msg = protocol.Response(transport, 777, close=True)
 
-    def test_force_close(self):
-        msg = protocol.Response(self.transport, 200)
-        self.assertFalse(msg.closing)
-        msg.force_close()
-        self.assertTrue(msg.closing)
+    assert msg.status == 777
+    assert msg.reason == "777"
+    assert msg.status_line == 'HTTP/1.1 777 777\r\n'
 
-    def test_force_chunked(self):
-        msg = protocol.Response(self.transport, 200)
-        self.assertFalse(msg.chunked)
-        msg.enable_chunked_encoding()
-        self.assertTrue(msg.chunked)
 
-    def test_keep_alive(self):
-        msg = protocol.Response(self.transport, 200, close=True)
-        self.assertFalse(msg.keep_alive())
-        msg.keepalive = True
-        self.assertTrue(msg.keep_alive())
+def test_force_close(transport):
+    msg = protocol.Response(transport, 200)
+    assert not msg.closing
+    msg.force_close()
+    assert msg.closing
 
-        msg.force_close()
-        self.assertFalse(msg.keep_alive())
 
-    def test_keep_alive_http10(self):
-        msg = protocol.Response(self.transport, 200, http_version=(1, 0))
-        self.assertFalse(msg.keepalive)
-        self.assertFalse(msg.keep_alive())
+def test_force_chunked(transport):
+    msg = protocol.Response(transport, 200)
+    assert not msg.chunked
+    msg.enable_chunked_encoding()
+    assert msg.chunked
 
-        msg = protocol.Response(self.transport, 200, http_version=(1, 1))
-        self.assertIsNone(msg.keepalive)
 
-    def test_add_header(self):
-        msg = protocol.Response(self.transport, 200)
-        self.assertEqual([], list(msg.headers))
+def test_keep_alive(transport):
+    msg = protocol.Response(transport, 200, close=True)
+    assert not msg.keep_alive()
+    msg.keepalive = True
+    assert msg.keep_alive()
 
+    msg.force_close()
+    assert not msg.keep_alive()
+
+
+def test_keep_alive_http10(transport):
+    msg = protocol.Response(transport, 200, http_version=(1, 0))
+    assert not msg.keepalive
+    assert not msg.keep_alive()
+
+    msg = protocol.Response(transport, 200, http_version=(1, 1))
+    assert msg.keepalive is None
+
+
+def test_add_header(transport):
+    msg = protocol.Response(transport, 200)
+    assert [] == list(msg.headers)
+
+    msg.add_header('content-type', 'plain/html')
+    assert [('CONTENT-TYPE', 'plain/html')] == list(msg.headers.items())
+
+
+def test_add_header_with_spaces(transport):
+    msg = protocol.Response(transport, 200)
+    assert [] == list(msg.headers)
+
+    msg.add_header('content-type', '  plain/html  ')
+    assert [('CONTENT-TYPE', 'plain/html')] == list(msg.headers.items())
+
+
+def test_add_header_non_ascii(transport):
+    msg = protocol.Response(transport, 200)
+    assert [] == list(msg.headers)
+
+    with pytest.raises(AssertionError):
+        msg.add_header('тип-контента', 'текст/плейн')
+
+
+def test_add_header_invalid_value_type(transport):
+    msg = protocol.Response(transport, 200)
+    assert [] == list(msg.headers)
+
+    with pytest.raises(AssertionError):
+        msg.add_header('content-type', {'test': 'plain'})
+
+    with pytest.raises(AssertionError):
+        msg.add_header(list('content-type'), 'text/plain')
+
+
+def test_add_headers(transport):
+    msg = protocol.Response(transport, 200)
+    assert [] == list(msg.headers)
+
+    msg.add_headers(('content-type', 'plain/html'))
+    assert [('CONTENT-TYPE', 'plain/html')] == list(msg.headers.items())
+
+
+def test_add_headers_length(transport):
+    msg = protocol.Response(transport, 200)
+    assert msg.length is None
+
+    msg.add_headers(('content-length', '42'))
+    assert 42 == msg.length
+
+
+def test_add_headers_upgrade(transport):
+    msg = protocol.Response(transport, 200)
+    assert not msg.upgrade
+
+    msg.add_headers(('connection', 'upgrade'))
+    assert msg.upgrade
+
+
+def test_add_headers_upgrade_websocket(transport):
+    msg = protocol.Response(transport, 200)
+
+    msg.add_headers(('upgrade', 'test'))
+    assert [] == list(msg.headers)
+
+    msg.add_headers(('upgrade', 'websocket'))
+    assert [('UPGRADE', 'websocket')] == list(msg.headers.items())
+
+
+def test_add_headers_connection_keepalive(transport):
+    msg = protocol.Response(transport, 200)
+
+    msg.add_headers(('connection', 'keep-alive'))
+    assert [] == list(msg.headers)
+    assert msg.keepalive
+
+    msg.add_headers(('connection', 'close'))
+    assert not msg.keepalive
+
+
+def test_add_headers_hop_headers(transport):
+    msg = protocol.Response(transport, 200)
+    msg.HOP_HEADERS = (hdrs.TRANSFER_ENCODING,)
+
+    msg.add_headers(('connection', 'test'), ('transfer-encoding', 't'))
+    assert [] == list(msg.headers)
+
+
+def test_default_headers(transport):
+    msg = protocol.Response(transport, 200)
+    msg._add_default_headers()
+
+    headers = [r for r, _ in msg.headers.items()]
+    assert 'DATE' in headers
+    assert 'CONNECTION' in headers
+
+
+def test_default_headers_server(transport):
+    msg = protocol.Response(transport, 200)
+    msg._add_default_headers()
+
+    assert 'SERVER' in msg.headers
+
+
+def test_default_headers_chunked(transport):
+    msg = protocol.Response(transport, 200)
+    msg._add_default_headers()
+
+    headers = [r for r, _ in msg.headers.items()]
+    assert 'TRANSFER-ENCODING' not in headers
+
+    msg = protocol.Response(transport, 200)
+    msg.enable_chunked_encoding()
+    msg.send_headers()
+
+    headers = [r for r, _ in msg.headers.items()]
+    assert 'TRANSFER-ENCODING' in headers
+
+
+def test_default_headers_connection_upgrade(transport):
+    msg = protocol.Response(transport, 200)
+    msg.upgrade = True
+    msg._add_default_headers()
+
+    headers = [r for r in msg.headers.items() if r[0] == 'CONNECTION']
+    assert [('CONNECTION', 'upgrade')] == headers
+
+
+def test_default_headers_connection_close(transport):
+    msg = protocol.Response(transport, 200)
+    msg.force_close()
+    msg._add_default_headers()
+
+    headers = [r for r in msg.headers.items() if r[0] == 'CONNECTION']
+    assert [('CONNECTION', 'close')] == headers
+
+
+def test_default_headers_connection_keep_alive(transport):
+    msg = protocol.Response(transport, 200)
+    msg.keepalive = True
+    msg._add_default_headers()
+
+    headers = [r for r in msg.headers.items() if r[0] == 'CONNECTION']
+    assert [('CONNECTION', 'keep-alive')] == headers
+
+
+def test_send_headers(transport):
+    write = transport.write = mock.Mock()
+
+    msg = protocol.Response(transport, 200)
+    msg.add_headers(('content-type', 'plain/html'))
+    assert not msg.is_headers_sent()
+
+    msg.send_headers()
+
+    content = b''.join([arg[1][0] for arg in list(write.mock_calls)])
+
+    assert content.startswith(b'HTTP/1.1 200 OK\r\n')
+    assert b'CONTENT-TYPE: plain/html' in content
+    assert msg.headers_sent
+    assert msg.is_headers_sent()
+    # cleanup
+    msg.writer.close()
+
+
+def test_send_headers_non_ascii(transport):
+    write = transport.write = mock.Mock()
+
+    msg = protocol.Response(transport, 200)
+    msg.add_headers(('x-header', 'текст'))
+    assert not msg.is_headers_sent()
+
+    msg.send_headers()
+
+    content = b''.join([arg[1][0] for arg in list(write.mock_calls)])
+
+    assert content.startswith(b'HTTP/1.1 200 OK\r\n')
+    assert b'X-HEADER: \xd1\x82\xd0\xb5\xd0\xba\xd1\x81\xd1\x82' in content
+    assert msg.headers_sent
+    assert msg.is_headers_sent()
+    # cleanup
+    msg.writer.close()
+
+
+def test_send_headers_nomore_add(transport):
+    msg = protocol.Response(transport, 200)
+    msg.add_headers(('content-type', 'plain/html'))
+    msg.send_headers()
+
+    with pytest.raises(AssertionError):
         msg.add_header('content-type', 'plain/html')
-        self.assertEqual(
-            [('CONTENT-TYPE', 'plain/html')], list(msg.headers.items()))
+    # cleanup
+    msg.writer.close()
 
-    def test_add_header_with_spaces(self):
-        msg = protocol.Response(self.transport, 200)
-        self.assertEqual([], list(msg.headers))
 
-        msg.add_header('content-type', '  plain/html  ')
-        self.assertEqual(
-            [('CONTENT-TYPE', 'plain/html')], list(msg.headers.items()))
+def test_prepare_length(transport):
+    msg = protocol.Response(transport, 200)
+    w_l_p = msg._write_length_payload = mock.Mock()
+    w_l_p.return_value = iter([1, 2, 3])
 
-    def test_add_header_non_ascii(self):
-        msg = protocol.Response(self.transport, 200)
-        self.assertEqual([], list(msg.headers))
+    msg.add_headers(('content-length', '42'))
+    msg.send_headers()
 
-        with self.assertRaises(AssertionError):
-            msg.add_header('тип-контента', 'текст/плейн')
+    assert w_l_p.called
+    assert (42,) == w_l_p.call_args[0]
 
-    def test_add_header_invalid_value_type(self):
-        msg = protocol.Response(self.transport, 200)
-        self.assertEqual([], list(msg.headers))
 
-        with self.assertRaises(AssertionError):
-            msg.add_header('content-type', {'test': 'plain'})
+def test_prepare_chunked_force(transport):
+    msg = protocol.Response(transport, 200)
+    msg.enable_chunked_encoding()
 
-        with self.assertRaises(AssertionError):
-            msg.add_header(list('content-type'), 'text/plain')
+    chunked = msg._write_chunked_payload = mock.Mock()
+    chunked.return_value = iter([1, 2, 3])
 
-    def test_add_headers(self):
-        msg = protocol.Response(self.transport, 200)
-        self.assertEqual([], list(msg.headers))
+    msg.add_headers(('content-length', '42'))
+    msg.send_headers()
+    assert chunked.called
 
-        msg.add_headers(('content-type', 'plain/html'))
-        self.assertEqual(
-            [('CONTENT-TYPE', 'plain/html')], list(msg.headers.items()))
 
-    def test_add_headers_length(self):
-        msg = protocol.Response(self.transport, 200)
-        self.assertIsNone(msg.length)
+def test_prepare_chunked_no_length(transport):
+    msg = protocol.Response(transport, 200)
 
-        msg.add_headers(('content-length', '42'))
-        self.assertEqual(42, msg.length)
+    chunked = msg._write_chunked_payload = mock.Mock()
+    chunked.return_value = iter([1, 2, 3])
 
-    def test_add_headers_upgrade(self):
-        msg = protocol.Response(self.transport, 200)
-        self.assertFalse(msg.upgrade)
+    msg.send_headers()
+    assert chunked.called
 
-        msg.add_headers(('connection', 'upgrade'))
-        self.assertTrue(msg.upgrade)
 
-    def test_add_headers_upgrade_websocket(self):
-        msg = protocol.Response(self.transport, 200)
+def test_prepare_eof(transport):
+    msg = protocol.Response(transport, 200, http_version=(1, 0))
 
-        msg.add_headers(('upgrade', 'test'))
-        self.assertEqual([], list(msg.headers))
+    eof = msg._write_eof_payload = mock.Mock()
+    eof.return_value = iter([1, 2, 3])
 
-        msg.add_headers(('upgrade', 'websocket'))
-        self.assertEqual(
-            [('UPGRADE', 'websocket')], list(msg.headers.items()))
+    msg.send_headers()
+    assert eof.called
 
-    def test_add_headers_connection_keepalive(self):
-        msg = protocol.Response(self.transport, 200)
 
-        msg.add_headers(('connection', 'keep-alive'))
-        self.assertEqual([], list(msg.headers))
-        self.assertTrue(msg.keepalive)
+def test_write_auto_send_headers(transport):
+    msg = protocol.Response(transport, 200, http_version=(1, 0))
+    msg._send_headers = True
 
-        msg.add_headers(('connection', 'close'))
-        self.assertFalse(msg.keepalive)
+    msg.write(b'data1')
+    assert msg.headers_sent
+    # cleanup
+    msg.writer.close()
 
-    def test_add_headers_hop_headers(self):
-        msg = protocol.Response(self.transport, 200)
-        msg.HOP_HEADERS = (hdrs.TRANSFER_ENCODING,)
 
-        msg.add_headers(('connection', 'test'), ('transfer-encoding', 't'))
-        self.assertEqual([], list(msg.headers))
+def test_write_payload_eof(transport):
+    write = transport.write = mock.Mock()
+    msg = protocol.Response(transport, 200, http_version=(1, 0))
+    msg.send_headers()
 
-    def test_default_headers(self):
-        msg = protocol.Response(self.transport, 200)
-        msg._add_default_headers()
+    msg.write(b'data1')
+    assert msg.headers_sent
 
-        headers = [r for r, _ in msg.headers.items()]
-        self.assertIn('DATE', headers)
-        self.assertIn('CONNECTION', headers)
+    msg.write(b'data2')
+    msg.write_eof()
 
-    def test_default_headers_server(self):
-        msg = protocol.Response(self.transport, 200)
-        msg._add_default_headers()
+    content = b''.join([c[1][0] for c in list(write.mock_calls)])
+    assert b'data1data2' == content.split(b'\r\n\r\n', 1)[-1]
 
-        self.assertIn('SERVER', msg.headers)
 
-    def test_default_headers_chunked(self):
-        msg = protocol.Response(self.transport, 200)
-        msg._add_default_headers()
+def test_write_payload_chunked(transport):
+    write = transport.write = mock.Mock()
 
-        headers = [r for r, _ in msg.headers.items()]
-        self.assertNotIn('TRANSFER-ENCODING', headers)
+    msg = protocol.Response(transport, 200)
+    msg.enable_chunked_encoding()
+    msg.send_headers()
 
-        msg = protocol.Response(self.transport, 200)
-        msg.enable_chunked_encoding()
-        msg.send_headers()
+    msg.write(b'data')
+    msg.write_eof()
 
-        headers = [r for r, _ in msg.headers.items()]
-        self.assertIn('TRANSFER-ENCODING', headers)
-
-    def test_default_headers_connection_upgrade(self):
-        msg = protocol.Response(self.transport, 200)
-        msg.upgrade = True
-        msg._add_default_headers()
-
-        headers = [r for r in msg.headers.items() if r[0] == 'CONNECTION']
-        self.assertEqual([('CONNECTION', 'upgrade')], headers)
-
-    def test_default_headers_connection_close(self):
-        msg = protocol.Response(self.transport, 200)
-        msg.force_close()
-        msg._add_default_headers()
-
-        headers = [r for r in msg.headers.items() if r[0] == 'CONNECTION']
-        self.assertEqual([('CONNECTION', 'close')], headers)
-
-    def test_default_headers_connection_keep_alive(self):
-        msg = protocol.Response(self.transport, 200)
-        msg.keepalive = True
-        msg._add_default_headers()
-
-        headers = [r for r in msg.headers.items() if r[0] == 'CONNECTION']
-        self.assertEqual([('CONNECTION', 'keep-alive')], headers)
-
-    def test_send_headers(self):
-        write = self.transport.write = mock.Mock()
-
-        msg = protocol.Response(self.transport, 200)
-        msg.add_headers(('content-type', 'plain/html'))
-        self.assertFalse(msg.is_headers_sent())
-
-        msg.send_headers()
-
-        content = b''.join([arg[1][0] for arg in list(write.mock_calls)])
-
-        self.assertTrue(content.startswith(b'HTTP/1.1 200 OK\r\n'))
-        self.assertIn(b'CONTENT-TYPE: plain/html', content)
-        self.assertTrue(msg.headers_sent)
-        self.assertTrue(msg.is_headers_sent())
-        # cleanup
-        msg.writer.close()
-
-    def test_send_headers_non_ascii(self):
-        write = self.transport.write = mock.Mock()
-
-        msg = protocol.Response(self.transport, 200)
-        msg.add_headers(('x-header', 'текст'))
-        self.assertFalse(msg.is_headers_sent())
-
-        msg.send_headers()
-
-        content = b''.join([arg[1][0] for arg in list(write.mock_calls)])
-
-        self.assertTrue(content.startswith(b'HTTP/1.1 200 OK\r\n'))
-        self.assertIn(b'X-HEADER: \xd1\x82\xd0\xb5\xd0\xba\xd1\x81\xd1\x82',
-                      content)
-        self.assertTrue(msg.headers_sent)
-        self.assertTrue(msg.is_headers_sent())
-        # cleanup
-        msg.writer.close()
-
-    def test_send_headers_nomore_add(self):
-        msg = protocol.Response(self.transport, 200)
-        msg.add_headers(('content-type', 'plain/html'))
-        msg.send_headers()
-
-        self.assertRaises(AssertionError,
-                          msg.add_header, 'content-type', 'plain/html')
-        # cleanup
-        msg.writer.close()
-
-    def test_prepare_length(self):
-        msg = protocol.Response(self.transport, 200)
-        w_l_p = msg._write_length_payload = mock.Mock()
-        w_l_p.return_value = iter([1, 2, 3])
-
-        msg.add_headers(('content-length', '42'))
-        msg.send_headers()
-
-        self.assertTrue(w_l_p.called)
-        self.assertEqual((42,), w_l_p.call_args[0])
-
-    def test_prepare_chunked_force(self):
-        msg = protocol.Response(self.transport, 200)
-        msg.enable_chunked_encoding()
-
-        chunked = msg._write_chunked_payload = mock.Mock()
-        chunked.return_value = iter([1, 2, 3])
-
-        msg.add_headers(('content-length', '42'))
-        msg.send_headers()
-        self.assertTrue(chunked.called)
-
-    def test_prepare_chunked_no_length(self):
-        msg = protocol.Response(self.transport, 200)
-
-        chunked = msg._write_chunked_payload = mock.Mock()
-        chunked.return_value = iter([1, 2, 3])
-
-        msg.send_headers()
-        self.assertTrue(chunked.called)
-
-    def test_prepare_eof(self):
-        msg = protocol.Response(self.transport, 200, http_version=(1, 0))
-
-        eof = msg._write_eof_payload = mock.Mock()
-        eof.return_value = iter([1, 2, 3])
-
-        msg.send_headers()
-        self.assertTrue(eof.called)
-
-    def test_write_auto_send_headers(self):
-        msg = protocol.Response(self.transport, 200, http_version=(1, 0))
-        msg._send_headers = True
-
-        msg.write(b'data1')
-        self.assertTrue(msg.headers_sent)
-        # cleanup
-        msg.writer.close()
-
-    def test_write_payload_eof(self):
-        write = self.transport.write = mock.Mock()
-        msg = protocol.Response(self.transport, 200, http_version=(1, 0))
-        msg.send_headers()
-
-        msg.write(b'data1')
-        self.assertTrue(msg.headers_sent)
-
-        msg.write(b'data2')
-        msg.write_eof()
-
-        content = b''.join([c[1][0] for c in list(write.mock_calls)])
-        self.assertEqual(
-            b'data1data2', content.split(b'\r\n\r\n', 1)[-1])
-
-    def test_write_payload_chunked(self):
-        write = self.transport.write = mock.Mock()
-
-        msg = protocol.Response(self.transport, 200)
-        msg.enable_chunked_encoding()
-        msg.send_headers()
-
-        msg.write(b'data')
-        msg.write_eof()
-
-        content = b''.join([c[1][0] for c in list(write.mock_calls)])
-        self.assertEqual(
-            b'4\r\ndata\r\n0\r\n\r\n',
-            content.split(b'\r\n\r\n', 1)[-1])
+    content = b''.join([c[1][0] for c in list(write.mock_calls)])
+    assert b'4\r\ndata\r\n0\r\n\r\n' == content.split(b'\r\n\r\n', 1)[-1]
 
 
 def test_write_payload_chunked_multiple(transport):
