@@ -22,7 +22,8 @@ from .multidict import upstr
 
 
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
-           'Route', 'PlainRoute', 'DynamicRoute', 'StaticRoute', 'View')
+           'Resource', 'PlainResource', 'DynamicResource',
+           'Route', 'StaticRoute', 'View')
 
 
 PY_35 = sys.version_info >= (3, 5)
@@ -53,26 +54,9 @@ def _defaultExpectHandler(request):
         request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
 
-class Route(metaclass=abc.ABCMeta):
-
-    def __init__(self, method, handler, name, *, expect_handler=None):
-        if expect_handler is None:
-            expect_handler = _defaultExpectHandler
-        assert asyncio.iscoroutinefunction(expect_handler), \
-            'Coroutine is expected, got {!r}'.format(expect_handler)
-
-        self._method = method
-        self._handler = handler
+class Resource(metaclass=abc.ABCMeta):
+    def __init__(self, *, name=None):
         self._name = name
-        self._expect_handler = expect_handler
-
-    @property
-    def method(self):
-        return self._method
-
-    @property
-    def handler(self):
-        return self._handler
 
     @property
     def name(self):
@@ -87,10 +71,6 @@ class Route(metaclass=abc.ABCMeta):
     def url(self, **kwargs):
         """Construct url for route with additional params."""
 
-    @asyncio.coroutine
-    def handle_expect_header(self, request):
-        return (yield from self._expect_handler(request))
-
     @staticmethod
     def _append_query(url, query):
         if query is not None:
@@ -99,10 +79,10 @@ class Route(metaclass=abc.ABCMeta):
             return url
 
 
-class PlainRoute(Route):
+class PlainResource(Resource):
 
-    def __init__(self, method, handler, name, path, *, expect_handler=None):
-        super().__init__(method, handler, name, expect_handler=expect_handler)
+    def __init__(self, path, *, name=None):
+        super().__init__(name=name)
         self._path = path
 
     def match(self, path):
@@ -117,16 +97,14 @@ class PlainRoute(Route):
 
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
-        return "<PlainRoute {name}[{method}] {path} -> {handler!r}".format(
-            name=name, method=self.method, path=self._path,
-            handler=self.handler)
+        return "<PlainResource {name} {path}".format(name=name,
+                                                     path=self._path)
 
 
-class DynamicRoute(Route):
+class DynamicResource(Resource):
 
-    def __init__(self, method, handler, name, pattern, formatter, *,
-                 expect_handler=None):
-        super().__init__(method, handler, name, expect_handler=expect_handler)
+    def __init__(self, pattern, formatter, *, name=None):
+        super().__init__(name=name)
         self._pattern = pattern
         self._formatter = formatter
 
@@ -143,9 +121,56 @@ class DynamicRoute(Route):
 
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
-        return ("<DynamicRoute {name}[{method}] {formatter} -> {handler!r}"
-                .format(name=name, method=self.method,
-                        formatter=self._formatter, handler=self.handler))
+        return ("<DynamicResource {name} {formatter}"
+                .format(name=name, formatter=self._formatter))
+
+
+class Route(metaclass=abc.ABCMeta):
+
+    def __init__(self, method, handler, resource, *, expect_handler=None):
+        if expect_handler is None:
+            expect_handler = _defaultExpectHandler
+        assert asyncio.iscoroutinefunction(expect_handler), \
+            'Coroutine is expected, got {!r}'.format(expect_handler)
+
+        self._method = method
+        self._handler = handler
+        self._resource = resource
+        self._expect_handler = expect_handler
+
+    def __repr__(self):
+        return "<Route [{method}] {resource} -> {handler!r}".format(
+            method=self.method, resource=self._resource,
+            handler=self.handler)
+
+    @property
+    def method(self):
+        return self._method
+
+    @property
+    def handler(self):
+        return self._handler
+
+    @property
+    def name(self):
+        return self._resource.name
+
+    @property
+    def resource(self):
+        return self._resource
+
+    def match(self, path):
+        """Return dict with info for given path or
+        None if route cannot process path."""
+        return self._resource.match(path)
+
+    def url(self, **kwargs):
+        """Construct url for route with additional params."""
+        return self._resource.url(**kwargs)
+
+    @asyncio.coroutine
+    def handle_expect_header(self, request):
+        return (yield from self._expect_handler(request))
 
 
 class StaticRoute(Route):
@@ -179,7 +204,7 @@ class StaticRoute(Route):
         while filename.startswith('/'):
             filename = filename[1:]
         url = self._prefix + filename
-        return self._append_query(url, query)
+        return Resource._append_query(url, query)
 
     def _sendfile_cb(self, fut, out_fd, in_fd, offset, count, loop,
                      registered):
@@ -497,31 +522,13 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             self._routes[name] = route
         self._urls.append(route)
 
-    def add_route(self, method, path, handler,
-                  *, name=None, expect_handler=None):
-
+    def add_resource(self, path, *, name=None):
         if not path.startswith('/'):
             raise ValueError("path should be started with /")
-
-        assert callable(handler), handler
-        if asyncio.iscoroutinefunction(handler):
-            pass
-        elif inspect.isgeneratorfunction(handler):
-            pass
-        elif isinstance(handler, type) and issubclass(handler, AbstractView):
-            pass
-        else:
-            handler = asyncio.coroutine(handler)
-
-        method = upstr(method)
-        if method not in self.METHODS:
-            raise ValueError("{} is not allowed HTTP method".format(method))
-
         if not ('{' in path or '}' in path or self.ROUTE_RE.search(path)):
-            route = PlainRoute(
-                method, handler, name, path, expect_handler=expect_handler)
-            self.register_route(route)
-            return route
+            resource = PlainResource(path, name=name)
+            # self.register_route(route)
+            return resource
 
         pattern = ''
         formatter = ''
@@ -549,9 +556,29 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         except re.error as exc:
             raise ValueError(
                 "Bad pattern '{}': {}".format(pattern, exc)) from None
-        route = DynamicRoute(
-            method, handler, name, compiled,
-            formatter, expect_handler=expect_handler)
+        resource = DynamicResource(compiled, formatter, name=name)
+        # self.register_route(route)
+        return resource
+
+    def add_route(self, method, path, handler,
+                  *, name=None, expect_handler=None):
+
+        assert callable(handler), handler
+        if asyncio.iscoroutinefunction(handler):
+            pass
+        elif inspect.isgeneratorfunction(handler):
+            pass
+        elif isinstance(handler, type) and issubclass(handler, AbstractView):
+            pass
+        else:
+            handler = asyncio.coroutine(handler)
+
+        method = upstr(method)
+        if method not in self.METHODS:
+            raise ValueError("{} is not allowed HTTP method".format(method))
+
+        resource = self.add_resource(path, name=name)
+        route = Route(method, handler, resource, expect_handler=expect_handler)
         self.register_route(route)
         return route
 
