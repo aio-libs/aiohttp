@@ -23,7 +23,7 @@ from .multidict import upstr
 
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'Resource', 'PlainResource', 'DynamicResource',
-           'Route', 'StaticRoute', 'View')
+           'Route', 'PlainRoute', 'DynamicRoute', 'StaticRoute', 'View')
 
 
 PY_35 = sys.version_info >= (3, 5)
@@ -113,7 +113,8 @@ class DynamicResource(Resource):
         if match is None:
             return None
         else:
-            return match.groupdict()
+            return {key: unquote(value) for key, value in
+                    match.groupdict().items()}
 
     def url(self, *, parts, query=None):
         url = self._formatter.format_map(parts)
@@ -171,6 +172,9 @@ class Route(metaclass=abc.ABCMeta):
     @asyncio.coroutine
     def handle_expect_header(self, request):
         return (yield from self._expect_handler(request))
+
+
+PlainRoute = DynamicRoute = Route
 
 
 class StaticRoute(Route):
@@ -456,8 +460,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     def __init__(self):
         super().__init__()
-        self._urls = []
-        self._routes = {}
+        self._resources = []
+        self._named_resources = {}
 
     @asyncio.coroutine
     def resolve(self, request):
@@ -465,16 +469,13 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         method = request.method
         allowed_methods = set()
 
-        for route in self._urls:
-            match_dict = route.match(path)
+        for resource in self._resources:
+            match_dict = resource.match(path)
             if match_dict is None:
                 continue
 
             route_method = route.method
             if route_method == method or route_method == hdrs.METH_ANY:
-                # Unquote separate matching parts
-                match_dict = {key: unquote(value) for key, value in
-                              match_dict.items()}
                 return UrlMappingMatchInfo(match_dict, route)
 
             allowed_methods.add(route_method)
@@ -485,27 +486,41 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                 return _NotFoundMatchInfo()
 
     def __iter__(self):
-        return iter(self._routes)
+        return iter(self._named_resources)
 
     def __len__(self):
-        return len(self._routes)
+        return len(self._named_resources)
 
     def __contains__(self, name):
-        return name in self._routes
+        return name in self._named_resources
 
     def __getitem__(self, name):
-        return self._routes[name]
+        return self._named_resources[name]
+
+    def resources(self):
+        # TODO: should distinguish between iterating over resources and views
+        return RoutesView(self._resources)
 
     def routes(self):
-        return RoutesView(self._urls)
+        return RoutesView(self._resources)
+
+    def named_resources(self):
+        return MappingProxyType(self._named_resources)
 
     def named_routes(self):
-        return MappingProxyType(self._routes)
+        # TODO: it's ambiguous but it really resources.
+        # DEPRECATE!
+        return MappingProxyType(self._named_resources)
 
     def register_route(self, route):
         assert isinstance(route, Route), 'Instance of Route class is required.'
+        self._reg_resource(route.resource)
 
-        name = route.name
+    def _reg_resource(self, resource):
+        assert isinstance(resource, Resource), \
+            'Instance of Resource class is required.'
+
+        name = resource.name
 
         if name is not None:
             parts = self.NAME_SPLIT_RE.split(name)
@@ -515,19 +530,19 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                                      'the name should be a sequence of '
                                      'python identifiers separated '
                                      'by dash, dot or column'.format(name))
-            if name in self._routes:
+            if name in self._named_resources:
                 raise ValueError('Duplicate {!r}, '
                                  'already handled by {!r}'
-                                 .format(name, self._routes[name]))
-            self._routes[name] = route
-        self._urls.append(route)
+                                 .format(name, self._named_resources[name]))
+            self._named_resources[name] = resource
+        self._resources.append(resource)
 
     def add_resource(self, path, *, name=None):
         if not path.startswith('/'):
             raise ValueError("path should be started with /")
         if not ('{' in path or '}' in path or self.ROUTE_RE.search(path)):
             resource = PlainResource(path, name=name)
-            # self.register_route(route)
+            self._reg_resource(resource)
             return resource
 
         pattern = ''
@@ -557,7 +572,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             raise ValueError(
                 "Bad pattern '{}': {}".format(pattern, exc)) from None
         resource = DynamicResource(compiled, formatter, name=name)
-        # self.register_route(route)
+        self.register_resource(resource)
         return resource
 
     def add_route(self, method, path, handler,
@@ -579,7 +594,6 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
         resource = self.add_resource(path, name=name)
         route = Route(method, handler, resource, expect_handler=expect_handler)
-        self.register_route(route)
         return route
 
     def add_static(self, prefix, path, *, name=None, expect_handler=None,
