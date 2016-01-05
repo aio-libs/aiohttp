@@ -1007,8 +1007,26 @@ duplicated like one using :meth:`Application.copy`.
 
       Signal handlers should have the following signature::
 
-          async def handler(request, response):
+          async def on_prepare(request, response):
               pass
+
+   .. attribute:: on_shutdown
+
+      A :class:`~aiohttp.signals.Signal` that is fired on application shutdown.
+
+      Subscribers may use the signal for gracefully closing long running
+      connections, e.g. websockets and data streaming.
+
+      Signal handlers should have the following signature::
+
+          async def on_shutdown(app):
+              pass
+
+      It's up to end user to figure out which :term:`web-handler`\s
+      are still alive and how to finish them properly.
+
+      We suggest to keep a list of long running handlers in
+      :class:`Application` dictionary.
 
    .. method:: make_handler(**kwargs)
 

@@ -207,6 +207,7 @@ class Application(dict):
         self._on_pre_signal = PreSignal()
         self._on_post_signal = PostSignal()
         self._on_response_prepare = Signal(self)
+        self._on_shutdown = Signal(self)
 
     @property
     def debug(self):
@@ -223,6 +224,10 @@ class Application(dict):
     @property
     def on_post_signal(self):
         return self._on_post_signal
+
+    @property
+    def on_shutdown(self):
+        return self._on_shutdown
 
     @property
     def router(self):
