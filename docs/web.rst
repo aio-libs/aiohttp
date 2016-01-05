@@ -46,6 +46,7 @@ After that, create a server and run the *asyncio loop* as usual::
    finally:
        srv.close()
        loop.run_until_complete(srv.wait_closed())
+       loop.run_until_complete(app.on_shutdown.send())
        loop.run_until_complete(handler.finish_connections(1.0))
        loop.run_until_complete(app.finish())
    loop.close()
@@ -737,6 +738,8 @@ parameters.
    signals, but simply reusing existing ones, you will not be affected.
 
 
+.. _aiohttp-web-flow-control:
+
 Flow control
 ------------
 
@@ -779,6 +782,78 @@ static file handlers work in **CORK** mode.
 To manual mode switch :meth:`~StreamResponse.set_tcp_cork` and
 :meth:`~StreamResponse.set_tcp_nodelay` methods can be used.  It may
 be helpful for better streaming control for example.
+
+
+.. _aiohttp-web-graceful-shutdown:
+
+Graceful shutdown
+------------------
+
+Stopping *aiohttp web server* by just closing all connections is not
+always satisfactory.
+
+The problem is: if application supports :term:`websocket`\s or *data
+streaming* it most likely has open connections at server
+shutdown time.
+
+The *library* has no knowledge how to close them gracefully but
+developer can help by registering :attr:`Application.on_shutdown`
+signal handler and call the signal on *web server* closing.
+
+Developer should keep a list of opened connections
+(:class:`Application` is a good candidate).
+
+The following :term:`websocket` snippet shows an example for websocket
+handler:
+
+.. code-block:: python
+
+    app = web.Application()
+    app['websockets'] = []
+
+    async def websocket_handler(request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        request.app['websockets'].append(ws)
+        try:
+            async for msg in ws:
+                ...
+        finally:
+            request.app['websockets'].remove(ws)
+
+        return ws
+
+Signal handler may looks like:
+
+.. code-block:: python
+
+    async with on_shutdown(app):
+        for ws in app['websockets']:
+            await ws.close(code=999, message='Server shutdown')
+
+    app.on_shutdown.append(on_shutdown)
+
+
+Server finalizer should raise shutdown signal::
+
+   loop = asyncio.get_event_loop()
+   handler = app.make_handler()
+   f = loop.create_server(handler, '0.0.0.0', 8080)
+   srv = loop.run_until_complete(f)
+   print('serving on', srv.sockets[0].getsockname())
+   try:
+       loop.run_forever()
+   except KeyboardInterrupt:
+       pass
+   finally:
+       srv.close()
+       loop.run_until_complete(srv.wait_closed())
+       loop.run_until_complete(app.on_shutdown.send(app))
+       loop.run_until_complete(handler.finish_connections(60.0))
+       loop.run_until_complete(app.finish())
+   loop.close()
+
 
 
 CORS support
