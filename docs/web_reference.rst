@@ -1025,8 +1025,10 @@ duplicated like one using :meth:`Application.copy`.
       It's up to end user to figure out which :term:`web-handler`\s
       are still alive and how to finish them properly.
 
-      We suggest to keep a list of long running handlers in
+      We suggest keeping a list of long running handlers in
       :class:`Application` dictionary.
+
+      .. seealso:: :ref:`aiohttp-web-graceful-shutdown`
 
    .. method:: make_handler(**kwargs)
 
@@ -1048,10 +1050,18 @@ duplicated like one using :meth:`Application.copy`.
          await loop.create_server(app.make_handler(),
                                   '0.0.0.0', 8080)
 
+   .. coroutinemethod:: shutdown()
+
+      A :ref:`coroutine<coroutine>` that should be called on
+      server stopping but before :meth:`finish()`.
+
+      The purpose of the method is calling :attr:`on_shutdown` signal
+      handlers.
+
    .. coroutinemethod:: finish()
 
-      A :ref:`coroutine<coroutine>` that should be called after
-      server stopping.
+      A :ref:`coroutine<coroutine>` that should be called on
+      server stopping but after :meth:`shutdown`.
 
       This method executes functions registered by
       :meth:`register_on_finish` in LIFO order.

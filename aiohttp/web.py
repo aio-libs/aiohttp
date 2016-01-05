@@ -246,7 +246,19 @@ class Application(dict):
             self, self.router, loop=self.loop, **kwargs)
 
     @asyncio.coroutine
+    def shutdown(self):
+        """Causes on_shutdown signal
+
+        Should be called before finish()
+        """
+        yield from self.on_shutdown.send(self)
+
+    @asyncio.coroutine
     def finish(self):
+        """Finalize application by calling all registered callbacks
+
+        Should be called before shutdown()
+        """
         callbacks = self._finish_callbacks
         self._finish_callbacks = []
 
