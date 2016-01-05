@@ -270,3 +270,31 @@ class Application(dict):
 
     def __repr__(self):
         return "<Application>"
+
+
+def run_app(app, host='0.0.0.0', port=None):
+    """Run an app locally"""
+    if port is None:
+        # allow to use 8443 if future ssl=True will be added
+        port = 8080
+
+    loop = asyncio.get_event_loop()
+    handler = app.make_handler()
+    f = loop.create_server(handler, host, port)
+    srv = loop.run_until_complete(f)
+
+    prompt = '127.0.0.1' if host == '0.0.0.0' else host
+    print(" * Running on http://{prompt}:{port}/ \n"
+          "(Press CTRL+C to quit)".format(
+              host=prompt, port=port))
+
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        srv.close()
+        loop.run_until_complete(srv.wait_closed())
+        loop.run_until_complete(handler.finish_connections(1.0))
+        loop.run_until_complete(app.finish())
+    loop.close()
