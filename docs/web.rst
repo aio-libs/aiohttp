@@ -835,7 +835,8 @@ Signal handler may looks like:
     app.on_shutdown.append(on_shutdown)
 
 
-Server finalizer should raise shutdown signal::
+Server finalizer should raise shutdown signal by
+:meth:`Application.shutdown` call::
 
    loop = asyncio.get_event_loop()
    handler = app.make_handler()
@@ -849,7 +850,7 @@ Server finalizer should raise shutdown signal::
    finally:
        srv.close()
        loop.run_until_complete(srv.wait_closed())
-       loop.run_until_complete(app.on_shutdown.send(app))
+       loop.run_until_complete(app.shutdown())
        loop.run_until_complete(handler.finish_connections(60.0))
        loop.run_until_complete(app.finish())
    loop.close()
