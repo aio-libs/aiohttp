@@ -297,6 +297,6 @@ def run_app(app, *, host='0.0.0.0', port=None, loop=None):
         srv.close()
         loop.run_until_complete(srv.wait_closed())
         loop.run_until_complete(app.shutdown())
-        loop.run_until_complete(handler.finish_connections(1.0))
+        loop.run_until_complete(handler.finish_connections(60.0))
         loop.run_until_complete(app.finish())
     loop.close()
