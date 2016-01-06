@@ -273,22 +273,26 @@ class Application(dict):
 
 
 def run_app(app, *, host='0.0.0.0', port=None, loop=None,
-            shutdown_timeout=60.0):
+            shutdown_timeout=60.0, ssl_context=None):
     """Run an app locally"""
     if port is None:
-        # allow to use 8443 if future ssl=True will be added
-        port = 8080
+        if not ssl_context:
+            port = 8080
+        else:
+            port = 8443
 
     if loop is None:
         loop = asyncio.get_event_loop()
 
     handler = app.make_handler()
-    srv = loop.run_until_complete(loop.create_server(handler, host, port))
+    srv = loop.run_until_complete(loop.create_server(handler, host, port,
+                                                     ssl=ssl_context))
 
+    scheme = 'https' if ssl_context else 'http'
     prompt = '127.0.0.1' if host == '0.0.0.0' else host
-    print(" * Running on http://{prompt}:{port}/ \n"
+    print("======== Running on {scheme}://{prompt}:{port}/ ========\n"
           "(Press CTRL+C to quit)".format(
-              host=prompt, port=port))
+              scheme=scheme, host=prompt, port=port))
 
     try:
         loop.run_forever()
