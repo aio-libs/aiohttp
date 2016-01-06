@@ -272,7 +272,8 @@ class Application(dict):
         return "<Application>"
 
 
-def run_app(app, *, host='0.0.0.0', port=None, loop=None):
+def run_app(app, *, host='0.0.0.0', port=None, loop=None,
+            shutdown_timeout=60.0):
     """Run an app locally"""
     if port is None:
         # allow to use 8443 if future ssl=True will be added
@@ -297,6 +298,6 @@ def run_app(app, *, host='0.0.0.0', port=None, loop=None):
         srv.close()
         loop.run_until_complete(srv.wait_closed())
         loop.run_until_complete(app.shutdown())
-        loop.run_until_complete(handler.finish_connections(60.0))
+        loop.run_until_complete(handler.finish_connections(shutdown_timeout))
         loop.run_until_complete(app.finish())
     loop.close()
