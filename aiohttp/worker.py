@@ -67,6 +67,9 @@ class GunicornWebWorker(base.Worker):
                               self.pid, len(handler.connections))
                 server.close()
 
+            # send on_shutdown event
+            yield from self.wsgi.shutdown()
+
             # stop alive connections
             tasks = [
                 handler.finish_connections(
