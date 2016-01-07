@@ -220,7 +220,8 @@ class WsgiResponse:
             self.writer, status_code,
             self.message.version, self.message.should_close)
         resp.HOP_HEADERS = self.HOP_HEADERS
-        resp.add_headers(*headers)
+        for name, value in headers:
+            resp.add_header(name, value)
 
         if resp.has_chunked_hdr:
             resp.enable_chunked_encoding()
