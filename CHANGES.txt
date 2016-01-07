@@ -4,8 +4,4 @@ CHANGES
 0.21.0 (XX-XX-XXXX)
 --------------------
 
-- Enable use of `await` for a class based view #717
-
-- Check address family to fill wsgi env properly #718
-
 - Introduce on_shutdown signal #722
