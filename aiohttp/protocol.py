@@ -3,7 +3,6 @@
 import collections
 import functools
 import http.server
-import itertools
 import re
 import string
 import sys
@@ -661,9 +660,8 @@ class HttpMessage(metaclass=ABCMeta):
         self._add_default_headers()
 
         # status + headers
-        headers = ''.join(itertools.chain(
-            (self.status_line,),
-            *((k, _sep, v, _end) for k, v in self.headers.items())))
+        headers = self.status_line + ''.join(
+            [k + _sep + v + _end for k, v in self.headers.items()])
         headers = headers.encode('utf-8') + b'\r\n'
 
         self.output_length += len(headers)

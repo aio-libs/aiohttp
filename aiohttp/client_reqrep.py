@@ -473,10 +473,8 @@ class ClientRequest:
                 hdrs.CONTENT_TYPE not in self.headers):
             self.headers[hdrs.CONTENT_TYPE] = 'application/octet-stream'
 
-        request.add_headers(
-            *((k, v)
-              for k, v in ((k, value)
-                           for k, value in self.headers.items())))
+        for k, value in self.headers.items():
+            request.add_header(k, value)
         request.send_headers()
 
         self._writer = helpers.ensure_future(
