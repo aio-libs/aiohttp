@@ -42,14 +42,6 @@ aiohttp.parsers module
     :undoc-members:
     :show-inheritance:
 
-aiohttp.protocol module
------------------------
-
-.. automodule:: aiohttp.protocol
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 aiohttp.signals module
 ----------------------
 
