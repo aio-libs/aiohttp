@@ -1,6 +1,8 @@
 version: 0.21.0a0.dev{build}
 
 environment:
+  PYPI_PASSWD:
+    secure: u+K6dKi7+CXXVFEUG4V7zUyV3w7Ntg0Ork/RGVV0eSQ=
   matrix:
     - PYTHON: "C:\\Python34"
       PYTHON_VERSION: "3.4.3"
@@ -21,9 +23,11 @@ install:
   - "python --version"
   - "pip install -r requirements-dev.txt"
   - "pip install wheel"
+  - "pip install twine"
   - "python setup.py develop"
 
 build: false
+
 test_script:
   - "python setup.py test"
 
@@ -33,8 +37,11 @@ after_test:
 artifacts:
   - path: dist\*
 
-#on_success:
-#  - TODO: upload the content of dist/*.whl to PyPI
+deploy_script:
+  - ps: >-
+      if($env:appveyor_repo_tag -eq 'True') {
+          Invoke-Expression "$env:PYTHON/Scripts/twine upload dist/* --username andrew.svetlov --password $env:PYPI_PASSWD"
+      }
 
 #notifications:
 #  - provider: Webhook
