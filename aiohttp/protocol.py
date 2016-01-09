@@ -25,8 +25,8 @@ __all__ = ('HttpMessage', 'Request', 'Response',
 ASCIISET = set(string.printable)
 METHRE = re.compile('[A-Z0-9$-_.]+')
 VERSRE = re.compile('HTTP/(\d+).(\d+)')
-HDRRE = re.compile('[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]')
-CONTINUATION = (' ', '\t')
+HDRRE = re.compile(b'[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]')
+CONTINUATION = (32, 9)  # (' ', '\t')
 EOF_MARKER = object()
 EOL_MARKER = object()
 STATUS_LINE_READY = object()
@@ -43,12 +43,14 @@ RawStatusLineMessage = collections.namedtuple(
 
 RawRequestMessage = collections.namedtuple(
     'RawRequestMessage',
-    ['method', 'path', 'version', 'headers', 'should_close', 'compression'])
+    ['method', 'path', 'version', 'headers', 'raw_headers',
+     'should_close', 'compression'])
 
 
 RawResponseMessage = collections.namedtuple(
     'RawResponseMessage',
-    ['version', 'code', 'reason', 'headers', 'should_close', 'compression'])
+    ['version', 'code', 'reason', 'headers', 'raw_headers',
+     'should_close', 'compression'])
 
 
 class HttpParser:
@@ -60,7 +62,7 @@ class HttpParser:
         self.max_field_size = max_field_size
 
     def parse_headers(self, lines):
-        """Parses RFC2822 headers from a stream.
+        """Parses RFC 5322 headers from a stream.
 
         Line continuations are supported. Returns list of header name
         and value pairs. Header name is in upper case.
@@ -68,6 +70,7 @@ class HttpParser:
         close_conn = None
         encoding = None
         headers = CIMultiDict()
+        raw_headers = []
 
         lines_idx = 1
         line = lines[1]
@@ -77,13 +80,13 @@ class HttpParser:
 
             # Parse initial header name : value pair.
             try:
-                name, value = line.split(':', 1)
+                bname, bvalue = line.split(b':', 1)
             except ValueError:
                 raise errors.InvalidHeader(line) from None
 
-            name = name.strip(' \t').upper()
-            if HDRRE.search(name):
-                raise errors.InvalidHeader(name)
+            bname = bname.strip(b' \t').upper()
+            if HDRRE.search(bname):
+                raise errors.InvalidHeader(bname)
 
             # next line
             lines_idx += 1
@@ -93,25 +96,28 @@ class HttpParser:
             continuation = line and line[0] in CONTINUATION
 
             if continuation:
-                value = [value]
+                bvalue = [bvalue]
                 while continuation:
                     header_length += len(line)
                     if header_length > self.max_field_size:
                         raise errors.LineTooLong(
                             'limit request headers fields size')
-                    value.append(line)
+                    bvalue.append(line)
 
                     # next line
                     lines_idx += 1
                     line = lines[lines_idx]
                     continuation = line[0] in CONTINUATION
-                value = '\r\n'.join(value)
+                bvalue = b'\r\n'.join(bvalue)
             else:
                 if header_length > self.max_field_size:
                     raise errors.LineTooLong(
                         'limit request headers fields size')
 
-            value = value.strip()
+            bvalue = bvalue.strip()
+
+            name = bname.decode('utf-8', 'surrogateescape')
+            value = bvalue.decode('utf-8', 'surrogateescape')
 
             # keep-alive and encoding
             if name == hdrs.CONNECTION:
@@ -126,8 +132,9 @@ class HttpParser:
                     encoding = enc
 
             headers.add(name, value)
+            raw_headers.append((bname, bvalue))
 
-        return headers, close_conn, encoding
+        return headers, raw_headers, close_conn, encoding
 
 
 class HttpPrefixParser:
@@ -167,11 +174,10 @@ class HttpRequestParser(HttpParser):
         except errors.LineLimitExceededParserError as exc:
             raise errors.LineTooLong(exc.limit) from None
 
-        lines = raw_data.decode(
-            'utf-8', 'surrogateescape').split('\r\n')
+        lines = raw_data.split(b'\r\n')
 
         # request line
-        line = lines[0]
+        line = lines[0].decode('utf-8', 'surrogateescape')
         try:
             method, path, version = line.split(None, 2)
         except ValueError:
@@ -193,7 +199,7 @@ class HttpRequestParser(HttpParser):
             raise errors.BadStatusLine(version)
 
         # read headers
-        headers, close, compression = self.parse_headers(lines)
+        headers, raw_headers, close, compression = self.parse_headers(lines)
         if close is None:  # then the headers weren't set in the request
             if version <= HttpVersion10:  # HTTP 1.0 must asks to not close
                 close = True
@@ -202,7 +208,8 @@ class HttpRequestParser(HttpParser):
 
         out.feed_data(
             RawRequestMessage(
-                method, path, version, headers, close, compression),
+                method, path, version, headers, raw_headers,
+                close, compression),
             len(raw_data))
         out.feed_eof()
 
@@ -221,10 +228,9 @@ class HttpResponseParser(HttpParser):
         except errors.LineLimitExceededParserError as exc:
             raise errors.LineTooLong(exc.limit) from None
 
-        lines = raw_data.decode(
-            'utf-8', 'surrogateescape').split('\r\n')
+        lines = raw_data.split(b'\r\n')
 
-        line = lines[0]
+        line = lines[0].decode('utf-8', 'surrogateescape')
         try:
             version, status = line.split(None, 1)
         except ValueError:
@@ -251,7 +257,7 @@ class HttpResponseParser(HttpParser):
             raise errors.BadStatusLine(line)
 
         # read headers
-        headers, close, compression = self.parse_headers(lines)
+        headers, raw_headers, close, compression = self.parse_headers(lines)
 
         if close is None:
             close = version <= HttpVersion10
@@ -259,7 +265,7 @@ class HttpResponseParser(HttpParser):
         out.feed_data(
             RawResponseMessage(
                 version, status, reason.strip(),
-                headers, close, compression),
+                headers, raw_headers, close, compression),
             len(raw_data))
         out.feed_eof()
 

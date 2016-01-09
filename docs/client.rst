@@ -501,7 +501,8 @@ We can check the response status code::
 Response Headers
 ----------------
 
-We can view the server's response headers using a multidict::
+We can view the server's response :attr:`ClientResponse.headers` using
+a :class:`CIMultiDictProxy`::
 
     >>> r.headers
     {'ACCESS-CONTROL-ALLOW-ORIGIN': '*',
@@ -525,6 +526,19 @@ So, we can access the headers using any capitalization we want::
     >>> r.headers.get('content-type')
     'application/json'
 
+All headers converted from binary data using UTF-8 with
+``surrogateescape`` option. That works fine on most cases but
+sometimes unconverted data is needed if a server uses nonstandard
+encoding. While these headers are malformed from :rfc:`7230`
+perspective they are may be retrieved by using
+:attr:`ClientResponse.raw_headers` property::
+
+    >>> r.raw_headers
+    ((b'SERVER', b'nginx'),
+     (b'DATE', b'Sat, 09 Jan 2016 20:28:40 GMT'),
+     (b'CONTENT-TYPE', b'text/html; charset=utf-8'),
+     (b'CONTENT-LENGTH', b'12150'),
+     (b'CONNECTION', b'keep-alive'))
 
 Response Cookies
 ----------------
