@@ -5,3 +5,5 @@ CHANGES
 --------------------
 
 - Introduce on_shutdown signal #722
+
+- Implement raw input headers #726
