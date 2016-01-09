@@ -433,7 +433,7 @@ class TestParseRequest(unittest.TestCase):
              False, None),
             result)
 
-    def test_http_request_parser_nonutf8(self):
+    def test_http_request_parser_non_utf8(self):
         out = aiohttp.FlowControlDataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpRequestParser()(out, buf)
