@@ -10,6 +10,7 @@ import asyncio
 import inspect
 import io
 import os
+import socket
 import sys
 from urllib.parse import urlsplit
 
@@ -90,20 +91,28 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
         # which this request is received from the client.
         # http://www.ietf.org/rfc/rfc3875
 
-        remote = self.transport.get_extra_info('peername')
-        if remote:
-            environ['REMOTE_ADDR'] = remote[0]
-            environ['REMOTE_PORT'] = remote[1]
-            _host, port = self.transport.get_extra_info('sockname')
-            environ['SERVER_PORT'] = str(port)
-            host = message.headers.get("HOST", None)
-            # SERVER_NAME should be set to value of Host header, but this
-            # header is not required. In this case we shoud set it to local
-            # address of socket
-            environ['SERVER_NAME'] = host.split(":")[0] if host else _host
+        family = self.transport.get_extra_info('socket').family
+        if family in (socket.AF_INET, socket.AF_INET6):
+            peername = self.transport.get_extra_info('peername')
+            environ['REMOTE_ADDR'] = peername[0]
+            environ['REMOTE_PORT'] = str(peername[1])
+            http_host = message.headers.get("HOST", None)
+            if http_host:
+                hostport = http_host.split(":")
+                environ['SERVER_NAME'] = hostport[0]
+                if len(hostport) > 1:
+                    environ['SERVER_PORT'] = str(hostport[1])
+                else:
+                    environ['SERVER_PORT'] = '80'
+            else:
+                # SERVER_NAME should be set to value of Host header, but this
+                # header is not required. In this case we shoud set it to local
+                # address of socket
+                sockname = self.transport.get_extra_info('sockname')
+                environ['SERVER_NAME'] = sockname[0]
+                environ['SERVER_PORT'] = str(sockname[1])
         else:
-            # Dealing with unix socket, so request was received from client by
-            # upstream server and this data may be found in the headers
+            # We are behind reverse proxy, so get all vars from headers
             for header in ('REMOTE_ADDR', 'REMOTE_PORT',
                            'SERVER_NAME', 'SERVER_PORT'):
                 environ[header] = message.headers.get(header, '')
@@ -211,7 +220,8 @@ class WsgiResponse:
             self.writer, status_code,
             self.message.version, self.message.should_close)
         resp.HOP_HEADERS = self.HOP_HEADERS
-        resp.add_headers(*headers)
+        for name, value in headers:
+            resp.add_header(name, value)
 
         if resp.has_chunked_hdr:
             resp.enable_chunked_encoding()

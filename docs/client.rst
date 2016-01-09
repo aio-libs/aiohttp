@@ -501,7 +501,8 @@ We can check the response status code::
 Response Headers
 ----------------
 
-We can view the server's response headers using a multidict::
+We can view the server's response :attr:`ClientResponse.headers` using
+a :class:`CIMultiDictProxy`::
 
     >>> r.headers
     {'ACCESS-CONTROL-ALLOW-ORIGIN': '*',
@@ -525,6 +526,19 @@ So, we can access the headers using any capitalization we want::
     >>> r.headers.get('content-type')
     'application/json'
 
+All headers converted from binary data using UTF-8 with
+``surrogateescape`` option. That works fine on most cases but
+sometimes unconverted data is needed if a server uses nonstandard
+encoding. While these headers are malformed from :rfc:`7230`
+perspective they are may be retrieved by using
+:attr:`ClientResponse.raw_headers` property::
+
+    >>> r.raw_headers
+    ((b'SERVER', b'nginx'),
+     (b'DATE', b'Sat, 09 Jan 2016 20:28:40 GMT'),
+     (b'CONTENT-TYPE', b'text/html; charset=utf-8'),
+     (b'CONTENT-LENGTH', b'12150'),
+     (b'CONNECTION', b'keep-alive'))
 
 Response Cookies
 ----------------
@@ -616,18 +630,21 @@ time to wait for a response from a server::
       File "<stdin>", line 1, in <module>
     asyncio.TimeoutError()
 
-Or wrap your client call in :class:`Timeout` context manager::
-
-    with aiohttp.Timeout(0.001):
-        async with aiohttp.get('https://github.com') as r:
-            await r.text()
-
 .. warning::
 
     *timeout* is not a time limit on the entire response download;
     rather, an exception is raised if the server has not issued a
     response for *timeout* seconds (more precisely, if no bytes have been
     received on the underlying socket for *timeout* seconds).
+
+
+The second example wraps client call in :class:`Timeout` context
+manager, adding timeout for both connecting and response body
+reading procedures::
+
+    with aiohttp.Timeout(0.001):
+        async with aiohttp.get('https://github.com') as r:
+            await r.text()
 
 
 .. disqus::
