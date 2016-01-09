@@ -1,3 +1,23 @@
+0.20.2 (01-07-2015)
+--------------------
+
+- Enable use of `await` for a class based view #717
+
+- Check address family to fill wsgi env properly #718
+
+- Fix memory leak in headers processing (thanks to Marco Paolini) #723
+
+0.20.1 (12-30-2015)
+-------------------
+
+- Raise RuntimeError is Timeout context manager was used outside of
+  task context.
+
+- Add number of bytes to stream.read_nowait #700
+
+- Use X-FORWARDED-PROTO for wsgi.url_scheme when available
+
+
 0.20.0 (12-28-2015)
 -------------------
 

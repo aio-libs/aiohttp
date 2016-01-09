@@ -51,5 +51,10 @@
 
        An endpoint that returns HTTP response.
 
+   websocket
+
+       A protocol providing full-duplex communication channels over a
+       single TCP connection. The WebSocket protocol was standardized
+       by the IETF as :rfc:`6455`
 
 .. disqus::

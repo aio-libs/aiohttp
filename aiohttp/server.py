@@ -351,11 +351,11 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                 status=status, reason=reason, message=msg).encode('utf-8')
 
             response = aiohttp.Response(self.writer, status, close=True)
-            response.add_headers(
-                ('CONTENT-TYPE', 'text/html; charset=utf-8'),
-                ('CONTENT-LENGTH', str(len(html))))
+            response.add_header(hdrs.CONTENT_TYPE, 'text/html; charset=utf-8')
+            response.add_header(hdrs.CONTENT_LENGTH, str(len(html)))
             if headers is not None:
-                response.add_headers(*headers)
+                for name, value in headers:
+                    response.add_header(name, value)
             response.send_headers()
 
             response.write(html)
@@ -385,9 +385,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
         body = b'Page Not Found!'
 
-        response.add_headers(
-            ('CONTENT-TYPE', 'text/plain'),
-            ('CONTENT-LENGTH', str(len(body))))
+        response.add_header(hdrs.CONTENT_TYPE, 'text/plain')
+        response.add_header(hdrs.CONTENT_LENGTH, str(len(body)))
         response.send_headers()
         response.write(body)
         drain = response.write_eof()
