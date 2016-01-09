@@ -514,6 +514,7 @@ class ClientResponse:
     cookies = None  # Response cookies (Set-Cookie)
     content = None  # Payload stream
     headers = None  # Response headers, CIMultiDictProxy
+    raw_headers = None  # Response raw headers, a sequence of pairs
 
     _connection = None  # current connection
     flow_control_class = FlowControlStreamReader  # reader flow control
@@ -610,6 +611,7 @@ class ClientResponse:
 
         # headers
         self.headers = CIMultiDictProxy(message.headers)
+        self.raw_headers = tuple(message.raw_headers)
 
         # payload
         response_with_body = self._need_parse_response_body()

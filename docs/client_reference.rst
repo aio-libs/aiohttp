@@ -1013,7 +1013,13 @@ Response object
 
    .. attribute:: headers
 
-      HTTP headers of response, :class:`CIMultiDictProxy`.
+      A case-insensitive multidict proxy with HTTP headers of
+      response, :class:`CIMultiDictProxy`.
+
+   .. attribute:: raw_headers
+
+      HTTP headers of response as unconverted bytes, a sequence of
+      ``(key, value)`` pairs.
 
    .. attribute:: history
 

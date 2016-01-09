@@ -29,7 +29,7 @@ class TestUrlDispatcher(unittest.TestCase):
     def make_request(self, method, path):
         self.app = mock.Mock()
         message = RawRequestMessage(method, path, HttpVersion(1, 1),
-                                    CIMultiDict(), False, False)
+                                    CIMultiDict(), [], False, False)
         self.payload = mock.Mock()
         self.transport = mock.Mock()
         self.reader = mock.Mock()
