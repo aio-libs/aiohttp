@@ -383,7 +383,7 @@ class reify:
         try:
             self.__doc__ = wrapped.__doc__
         except:  # pragma: no cover
-            pass
+            self.__doc__ = ""
         self.name = wrapped.__name__
 
     def __get__(self, inst, owner, _marker=_marker):
