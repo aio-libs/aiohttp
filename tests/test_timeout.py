@@ -99,7 +99,8 @@ def test_timeout_time(loop):
             finally:
                 foo_running = False
 
-    assert abs(0.1 - (loop.time() - start)) < 0.01
+    dt = loop.time() - start
+    assert 0.09 < dt < 0.11
     assert not foo_running
 
 
