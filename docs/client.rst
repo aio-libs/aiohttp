@@ -616,18 +616,21 @@ time to wait for a response from a server::
       File "<stdin>", line 1, in <module>
     asyncio.TimeoutError()
 
-Or wrap your client call in :class:`Timeout` context manager::
-
-    with aiohttp.Timeout(0.001):
-        async with aiohttp.get('https://github.com') as r:
-            await r.text()
-
 .. warning::
 
     *timeout* is not a time limit on the entire response download;
     rather, an exception is raised if the server has not issued a
     response for *timeout* seconds (more precisely, if no bytes have been
     received on the underlying socket for *timeout* seconds).
+
+
+The second example wraps client call in :class:`Timeout` context
+manager, adding timeout for both connecting and response body
+reading procedures::
+
+    with aiohttp.Timeout(0.001):
+        async with aiohttp.get('https://github.com') as r:
+            await r.text()
 
 
 .. disqus::
