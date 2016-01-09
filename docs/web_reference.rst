@@ -118,6 +118,11 @@ like one using :meth:`Request.copy`.
 
       Read-only :class:`~aiohttp.CIMultiDictProxy` property.
 
+   .. attribute:: raw_headers
+
+      HTTP headers of response as unconverted bytes, a sequence of
+      ``(key, value)`` pairs.
+
    .. attribute:: keep_alive
 
       ``True`` if keep-alive connection enabled by HTTP client and
