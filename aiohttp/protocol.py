@@ -26,7 +26,6 @@ ASCIISET = set(string.printable)
 METHRE = re.compile('[A-Z0-9$-_.]+')
 VERSRE = re.compile('HTTP/(\d+).(\d+)')
 HDRRE = re.compile(b'[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]')
-CONTINUATION = (32, 9)  # (' ', '\t')
 EOF_MARKER = object()
 EOL_MARKER = object()
 STATUS_LINE_READY = object()
@@ -93,7 +92,7 @@ class HttpParser:
             line = lines[lines_idx]
 
             # consume continuation lines
-            continuation = line and line[0] in CONTINUATION
+            continuation = line and line[0] in (32, 9)  # (' ', '\t')
 
             if continuation:
                 bvalue = [bvalue]
@@ -107,7 +106,7 @@ class HttpParser:
                     # next line
                     lines_idx += 1
                     line = lines[lines_idx]
-                    continuation = line[0] in CONTINUATION
+                    continuation = line[0] in (32, 9)  # (' ', '\t')
                 bvalue = b'\r\n'.join(bvalue)
             else:
                 if header_length > self.max_field_size:
