@@ -22,6 +22,8 @@ def debug_app(loop):
 
 def make_request(app, method, path, headers=CIMultiDict()):
     message = RawRequestMessage(method, path, HttpVersion11, headers,
+                                [(k.encode('utf-8'), v.encode('utf-8'))
+                                 for k, v in headers.items()],
                                 False, False)
     return request_from_message(message, app)
 

@@ -15,6 +15,8 @@ from aiohttp.protocol import RawRequestMessage
 def make_request(method, path, headers=CIMultiDict(),
                  version=HttpVersion11, **kwargs):
     message = RawRequestMessage(method, path, version, headers,
+                                [(k.encode('utf-8'), v.encode('utf-8'))
+                                 for k, v in headers.items()],
                                 False, False)
     return request_from_message(message, **kwargs)
 
@@ -539,7 +541,7 @@ def test___repr__not_started():
 @pytest.mark.run_loop
 def test_keep_alive_http10_default():
     message = RawRequestMessage('GET', '/', HttpVersion10, CIMultiDict(),
-                                True, False)
+                                [], True, False)
     req = request_from_message(message)
     resp = StreamResponse()
     yield from resp.prepare(req)
@@ -550,6 +552,7 @@ def test_keep_alive_http10_default():
 def test_keep_alive_http10_switched_on():
     headers = CIMultiDict(Connection='keep-alive')
     message = RawRequestMessage('GET', '/', HttpVersion10, headers,
+                                [(b'Connection', b'keep-alive')],
                                 False, False)
     req = request_from_message(message)
     resp = StreamResponse()
@@ -561,6 +564,7 @@ def test_keep_alive_http10_switched_on():
 def test_keep_alive_http09():
     headers = CIMultiDict(Connection='keep-alive')
     message = RawRequestMessage('GET', '/', HttpVersion(0, 9), headers,
+                                [(b'Connection', b'keep-alive')],
                                 False, False)
     req = request_from_message(message)
     resp = StreamResponse()

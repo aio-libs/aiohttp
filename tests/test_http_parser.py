@@ -19,83 +19,92 @@ class TestParseHeaders(unittest.TestCase):
         self.parser = protocol.HttpParser(8190, 32768, 8190)
 
     def test_parse_headers(self):
-        hdrs = ('', 'test: line', ' continue',
-                'test2: data', '', '')
+        hdrs = (b'', b'test: line', b' continue',
+                b'test2: data', b'', b'')
 
-        headers, close, compression = self.parser.parse_headers(hdrs)
+        headers, raw_headers, close, compression = self.parser.parse_headers(
+            hdrs)
 
         self.assertEqual(list(headers.items()),
                          [('TEST', 'line\r\n continue'), ('TEST2', 'data')])
+        self.assertEqual(raw_headers,
+                         [(b'TEST', b'line\r\n continue'),
+                          (b'TEST2', b'data')])
         self.assertIsNone(close)
         self.assertIsNone(compression)
 
     def test_parse_headers_multi(self):
-        hdrs = ('',
-                'Set-Cookie: c1=cookie1',
-                'Set-Cookie: c2=cookie2', '')
+        hdrs = (b'',
+                b'Set-Cookie: c1=cookie1',
+                b'Set-Cookie: c2=cookie2', '')
 
-        headers, close, compression = self.parser.parse_headers(hdrs)
+        headers, raw_headers, close, compression = self.parser.parse_headers(
+            hdrs)
 
         self.assertEqual(list(headers.items()),
                          [('SET-COOKIE', 'c1=cookie1'),
                           ('SET-COOKIE', 'c2=cookie2')])
+        self.assertEqual(raw_headers,
+                         [(b'SET-COOKIE', b'c1=cookie1'),
+                          (b'SET-COOKIE', b'c2=cookie2')])
         self.assertIsNone(close)
         self.assertIsNone(compression)
 
     def test_conn_close(self):
-        headers, close, compression = self.parser.parse_headers(
-            ['', 'connection: close', ''])
+        headers, raw_headers, close, compression = self.parser.parse_headers(
+            [b'', b'connection: close', b''])
         self.assertTrue(close)
 
     def test_conn_keep_alive(self):
-        headers, close, compression = self.parser.parse_headers(
-            ['', 'connection: keep-alive', ''])
+        headers, raw_headers, close, compression = self.parser.parse_headers(
+            [b'', b'connection: keep-alive', b''])
         self.assertFalse(close)
 
     def test_conn_other(self):
-        headers, close, compression = self.parser.parse_headers(
-            ['', 'connection: test', '', ''])
+        headers, raw_headers, close, compression = self.parser.parse_headers(
+            [b'', b'connection: test', b'', b''])
         self.assertIsNone(close)
 
     def test_compression_gzip(self):
-        headers, close, compression = self.parser.parse_headers(
-            ['', 'content-encoding: gzip', '', ''])
+        headers, raw_headers, close, compression = self.parser.parse_headers(
+            [b'', b'content-encoding: gzip', b'', b''])
         self.assertEqual('gzip', compression)
 
     def test_compression_deflate(self):
-        headers, close, compression = self.parser.parse_headers(
-            ['', 'content-encoding: deflate', '', ''])
+        headers, raw_headers, close, compression = self.parser.parse_headers(
+            [b'', b'content-encoding: deflate', b'', b''])
         self.assertEqual('deflate', compression)
 
     def test_compression_unknown(self):
-        headers, close, compression = self.parser.parse_headers(
-            ['', 'content-encoding: compress', '', ''])
+        headers, raw_headers, close, compression = self.parser.parse_headers(
+            [b'', b'content-encoding: compress', b'', b''])
         self.assertIsNone(compression)
 
     def test_max_field_size(self):
         with self.assertRaises(errors.LineTooLong) as cm:
             parser = protocol.HttpParser(8190, 32768, 5)
             parser.parse_headers(
-                ['', 'test: line data data\r\n', 'data\r\n', '\r\n'])
+                [b'', b'test: line data data\r\n', b'data\r\n', b'\r\n'])
         self.assertIn("limit request headers fields size", str(cm.exception))
 
     def test_max_continuation_headers_size(self):
         with self.assertRaises(errors.LineTooLong) as cm:
             parser = protocol.HttpParser(8190, 32768, 5)
-            parser.parse_headers(['', 'test: line\r\n', ' test\r\n', '\r\n'])
+            parser.parse_headers([b'', b'test: line\r\n',
+                                  b' test\r\n', b'\r\n'])
         self.assertIn("limit request headers fields size", str(cm.exception))
 
     def test_invalid_header(self):
         with self.assertRaisesRegex(
                 errors.InvalidHeader,
                 "(400, message='Invalid HTTP Header: test line)"):
-            self.parser.parse_headers(['', 'test line\r\n', '\r\n'])
+            self.parser.parse_headers([b'', b'test line\r\n', b'\r\n'])
 
     def test_invalid_name(self):
         with self.assertRaisesRegex(
                 errors.InvalidHeader,
                 "(400, message='Invalid HTTP Header: TEST..)"):
-            self.parser.parse_headers(['', 'test[]: line\r\n', '\r\n'])
+            self.parser.parse_headers([b'', b'test[]: line\r\n', b'\r\n'])
 
 
 class TestDeflateBuffer(unittest.TestCase):
@@ -245,6 +254,7 @@ class TestParsePayload(unittest.TestCase):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1),
             CIMultiDict([('CONTENT-LENGTH', 'qwe')]),
+            [(b'CONTENT-LENGTH', b'qwe')],
             None, None)
         out = aiohttp.FlowControlDataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
@@ -254,7 +264,9 @@ class TestParsePayload(unittest.TestCase):
     def test_http_payload_parser_length_wrong(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1),
-            CIMultiDict([('CONTENT-LENGTH', '-1')]), None, None)
+            CIMultiDict([('CONTENT-LENGTH', '-1')]),
+            [(b'CONTENT-LENGTH', b'-1')],
+            None, None)
         out = aiohttp.FlowControlDataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg)(out, buf)
@@ -263,7 +275,9 @@ class TestParsePayload(unittest.TestCase):
     def test_http_payload_parser_length(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1),
-            CIMultiDict([('CONTENT-LENGTH', '2')]), None, None)
+            CIMultiDict([('CONTENT-LENGTH', '2')]),
+            [(b'CONTENT-LENGTH', b'2')],
+            None, None)
         out = aiohttp.FlowControlDataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg)(out, buf)
@@ -278,7 +292,7 @@ class TestParsePayload(unittest.TestCase):
 
     def test_http_payload_parser_no_length(self):
         msg = protocol.RawRequestMessage(
-            'GET', '/', (1, 1), CIMultiDict(), None, None)
+            'GET', '/', (1, 1), CIMultiDict(), [], None, None)
         out = aiohttp.FlowControlDataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg, readall=False)(out, buf)
@@ -292,7 +306,8 @@ class TestParsePayload(unittest.TestCase):
     def test_http_payload_parser_deflate(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1),
-            CIMultiDict([('CONTENT-LENGTH', len(self._COMPRESSED))]),
+            CIMultiDict([('CONTENT-LENGTH', str(len(self._COMPRESSED)))]),
+            [(b'CONTENT-LENGTH', str(len(self._COMPRESSED)).encode('ascii'))],
             None, 'deflate')
 
         out = aiohttp.FlowControlDataQueue(self.stream)
@@ -306,6 +321,7 @@ class TestParsePayload(unittest.TestCase):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1),
             CIMultiDict([('CONTENT-LENGTH', len(self._COMPRESSED))]),
+            [(b'CONTENT-LENGTH', str(len(self._COMPRESSED)).encode('ascii'))],
             None, 'deflate')
 
         out = aiohttp.FlowControlDataQueue(self.stream)
@@ -318,7 +334,9 @@ class TestParsePayload(unittest.TestCase):
     def test_http_payload_parser_websocket(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1),
-            CIMultiDict([('SEC-WEBSOCKET-KEY1', '13')]), None, None)
+            CIMultiDict([('SEC-WEBSOCKET-KEY1', '13')]),
+            [(b'SEC-WEBSOCKET-KEY1', b'13')],
+            None, None)
         out = aiohttp.FlowControlDataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg)(out, buf)
@@ -330,6 +348,7 @@ class TestParsePayload(unittest.TestCase):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1),
             CIMultiDict([('TRANSFER-ENCODING', 'chunked')]),
+            [(b'TRANSFER-ENCODING', b'chunked')],
             None, None)
         out = aiohttp.FlowControlDataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
@@ -341,7 +360,7 @@ class TestParsePayload(unittest.TestCase):
 
     def test_http_payload_parser_eof(self):
         msg = protocol.RawRequestMessage(
-            'GET', '/', (1, 1), CIMultiDict(), None, None)
+            'GET', '/', (1, 1), CIMultiDict(), [], None, None)
         out = aiohttp.FlowControlDataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg, readall=True)(out, buf)
@@ -354,7 +373,9 @@ class TestParsePayload(unittest.TestCase):
     def test_http_payload_parser_length_zero(self):
         msg = protocol.RawRequestMessage(
             'GET', '/', (1, 1),
-            CIMultiDict([('CONTENT-LENGTH', '0')]), None, None)
+            CIMultiDict([('CONTENT-LENGTH', '0')]),
+            [(b'CONTENT-LENGTH', b'0')],
+            None, None)
         out = aiohttp.FlowControlDataQueue(self.stream)
         buf = aiohttp.ParserBuffer()
         p = protocol.HttpPayloadParser(msg)(out, buf)
@@ -390,7 +411,7 @@ class TestParseRequest(unittest.TestCase):
             pass
         result = out._buffer[0][0]
         self.assertEqual(
-            ('GET', '/path', (1, 1), CIMultiDict(), False, None),
+            ('GET', '/path', (1, 1), CIMultiDict(), [], False, None),
             result)
 
     def test_http_request_parser_utf8(self):
@@ -407,7 +428,29 @@ class TestParseRequest(unittest.TestCase):
         self.assertEqual(len(msg), length)
         self.assertEqual(
             ('GET', '/path', (1, 1),
-             CIMultiDict([('X-TEST', 'тест')]), False, None),
+             CIMultiDict([('X-TEST', 'тест')]),
+             [(b'X-TEST', 'тест'.encode('utf-8'))],
+             False, None),
+            result)
+
+    def test_http_request_parser_nonutf8(self):
+        out = aiohttp.FlowControlDataQueue(self.stream)
+        buf = aiohttp.ParserBuffer()
+        p = protocol.HttpRequestParser()(out, buf)
+        next(p)
+        msg = 'get /path HTTP/1.1\r\nx-test:тест\r\n\r\n'.encode('cp1251')
+        try:
+            p.send(msg)
+        except StopIteration:
+            pass
+        result, length = out._buffer[0]
+        self.assertEqual(len(msg), length)
+        self.assertEqual(
+            ('GET', '/path', (1, 1),
+             CIMultiDict([('X-TEST', 'тест'.encode('cp1251').decode(
+                 'utf-8', 'surrogateescape'))]),
+             [(b'X-TEST', 'тест'.encode('cp1251'))],
+             False, None),
             result)
 
     def test_http_request_parser_eof(self):
@@ -433,7 +476,7 @@ class TestParseRequest(unittest.TestCase):
         except StopIteration:
             pass
         self.assertEqual(
-            ('GET', '//path', (1, 1), CIMultiDict(), False, None),
+            ('GET', '//path', (1, 1), CIMultiDict(), [], False, None),
             out._buffer[0][0])
 
     def test_http_request_parser_bad_status_line(self):

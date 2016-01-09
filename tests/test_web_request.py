@@ -18,8 +18,10 @@ def make_request():
         app = mock.Mock()
         app._debug = False
         app.on_response_prepare = Signal(app)
-        message = RawRequestMessage(method, path, version, headers, closing,
-                                    False)
+        message = RawRequestMessage(method, path, version, headers,
+                                    [(k.encode('utf-8'), v.encode('utf-8'))
+                                     for k, v in headers.items()],
+                                    closing, False)
         payload = mock.Mock()
         transport = mock.Mock()
 
