@@ -42,9 +42,10 @@ Client example::
     import aiohttp
 
     async def fetch_page(client, url):
-        async with client.get(url) as response:
-            assert response.status == 200
-            return await response.read()
+        with aiohttp.Timeout(10):
+            async with client.get(url) as response:
+                assert response.status == 200
+                return await response.read()
 
     loop = asyncio.get_event_loop()
     client = aiohttp.ClientSession(loop=loop)
