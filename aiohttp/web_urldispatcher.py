@@ -86,14 +86,14 @@ class Resource(metaclass=abc.ABCMeta):
 
         # TODO: add check for duplicated methods
 
-        route = Route(method, handler,
-                      expect_handler=expect_handler,
-                      resource=self)
+        route = ResourceRoute(method, handler, self,
+                              expect_handler=expect_handler)
         self.register_route(route)
         return route
 
     def register_route(self, route):
-        assert isinstance(route, Route), 'Instance of Route class is required.'
+        assert isinstance(route, ResourceRoute), \
+            'Instance of Route class is required, got {!r}'.format(route)
         self._routes.append(route)
 
     @property
@@ -208,21 +208,12 @@ class PrefixResource(Resource):
                                                         prefix=self._prefix)
 
 
-class Route(metaclass=abc.ABCMeta):
-
+class BaseRoute(metaclass=abc.ABCMeta):
     def __init__(self, method, handler, *,
-                 expect_handler=None,
-                 resource=None):
-
+                 expect_handler=None):
         self._method = method
         self._handler = handler
-        self._resource = resource
         self._expect_handler = expect_handler
-
-    def __repr__(self):
-        return "<Route [{method}] {resource} -> {handler!r}".format(
-            method=self.method, resource=self._resource,
-            handler=self.handler)
 
     @property
     def method(self):
@@ -231,6 +222,35 @@ class Route(metaclass=abc.ABCMeta):
     @property
     def handler(self):
         return self._handler
+
+    @abc.abstractmethod  # pragma: no branch
+    def match(self, path):
+        """Return dict with info for given path or
+        None if route cannot process path."""
+
+    @abc.abstractmethod  # pragma: no branch
+    def url(self, **kwargs):
+        """Construct url for route with additional params."""
+
+    @asyncio.coroutine
+    def handle_expect_header(self, request):
+        return (yield from self._expect_handler(request))
+
+    _append_query = Resource._append_query
+
+
+class ResourceRoute(BaseRoute):
+    """A route with resource"""
+
+    def __init__(self, method, handler, resource, *,
+                 expect_handler=None):
+        super().__init__(method, handler, expect_handler=expect_handler)
+        self._resource = resource
+
+    def __repr__(self):
+        return "<Route [{method}] {resource} -> {handler!r}".format(
+            method=self.method, resource=self._resource,
+            handler=self.handler)
 
     @property
     def name(self):
@@ -249,47 +269,81 @@ class Route(metaclass=abc.ABCMeta):
         """Construct url for route with additional params."""
         return self._resource.url(**kwargs)
 
-    @asyncio.coroutine
-    def handle_expect_header(self, request):
-        return (yield from self._expect_handler(request))
+
+class Route(BaseRoute):
+    """Old fashion route"""
+
+    def __init__(self, method, handler, name, *, expect_handler=None):
+        if expect_handler is None:
+            expect_handler = _defaultExpectHandler
+        assert asyncio.iscoroutinefunction(expect_handler), \
+            'Coroutine is expected, got {!r}'.format(expect_handler)
+
+        super().__init__(method, handler, expect_handler=expect_handler)
+        self._name = name
+
+    @property
+    def name(self):
+        return self._name
 
 
 class PlainRoute(Route):
-    # for backward compatibility only, not required for new API
 
-    def __init__(self, method, handler, name, path, *,
-                 expect_handler=None,
-                 resource=None):
-        super().__init__(method, handler,
-                         expect_handler=expect_handler,
-                         resource=resource)
-        self._name = name
+    def __init__(self, method, handler, name, path, *, expect_handler=None):
+        super().__init__(method, handler, name, expect_handler=expect_handler)
         self._path = path
+
+    def match(self, path):
+        # string comparison is about 10 times faster than regexp matching
+        if self._path == path:
+            return {}
+        else:
+            return None
+
+    def url(self, *, query=None):
+        return self._append_query(self._path, query)
+
+    def __repr__(self):
+        name = "'" + self.name + "' " if self.name is not None else ""
+        return "<PlainRoute {name}[{method}] {path} -> {handler!r}".format(
+            name=name, method=self.method, path=self._path,
+            handler=self.handler)
 
 
 class DynamicRoute(Route):
-    # for backward compatibility only, not required for new API
 
-    def __init__(self, method, handler, name, path, *,
-                 expect_handler=None,
-                 resource=None):
-        super().__init__(method, handler,
-                         expect_handler=expect_handler,
-                         resource=resource)
-        self._name = name
-        self._path = path
+    def __init__(self, method, handler, name, pattern, formatter, *,
+                 expect_handler=None):
+        super().__init__(method, handler, name, expect_handler=expect_handler)
+        self._pattern = pattern
+        self._formatter = formatter
+
+    def match(self, path):
+        match = self._pattern.match(path)
+        if match is None:
+            return None
+        else:
+            return match.groupdict()
+
+    def url(self, *, parts, query=None):
+        url = self._formatter.format_map(parts)
+        return self._append_query(url, query)
+
+    def __repr__(self):
+        name = "'" + self.name + "' " if self.name is not None else ""
+        return ("<DynamicRoute {name}[{method}] {formatter} -> {handler!r}"
+                .format(name=name, method=self.method,
+                        formatter=self._formatter, handler=self.handler))
 
 
-class StaticRoute(Route):
+class StaticRoute(ResourceRoute):
 
-    def __init__(self, name, prefix, directory, *,
+    def __init__(self, name, prefix, directory, resource, *,
                  expect_handler=None, chunk_size=256*1024,
-                 response_factory=StreamResponse,
-                 resource=None):
+                 response_factory=StreamResponse):
         super().__init__(
-            'GET', self.handle,
-            expect_handler=expect_handler,
-            resource=resource)
+            'GET', self.handle, resource,
+            expect_handler=expect_handler)
         self._directory = os.path.abspath(directory) + os.sep
         self._chunk_size = chunk_size
         self._response_factory = response_factory
@@ -433,7 +487,7 @@ class StaticRoute(Route):
 class SystemRoute(Route):
 
     def __init__(self, status, reason):
-        super().__init__(hdrs.METH_ANY, None)
+        super().__init__(hdrs.METH_ANY, None, None)
         self._status = status
         self._reason = reason
 
@@ -677,11 +731,11 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         :param prefix - url prefix
         :param path - folder with files
         """
-        route = StaticRoute(name, prefix, path,
+        resource = PrefixResource(prefix, name=name)
+        self._reg_resource(resource)
+        route = StaticRoute(name, prefix, path, resource,
                             expect_handler=expect_handler,
                             chunk_size=chunk_size,
                             response_factory=response_factory)
-        resource = PrefixResource(prefix, name=name)
-        self._reg_resource(resource)
         resource.register_route(route)
         return route
