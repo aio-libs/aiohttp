@@ -167,6 +167,7 @@ Contents
    changes
    Python 3.3 support <python33>
    glossary
+   faq
 
 Indices and tables
 ==================
