@@ -222,33 +222,6 @@ class DynamicResource(Resource):
                 .format(name=name, formatter=self._formatter))
 
 
-class PrefixResource(Resource):
-
-    def __init__(self, prefix, *, name=None):
-        if not prefix.endswith('/'):
-            prefix += '/'
-        assert prefix.endswith('/'), prefix
-        super().__init__(name=name)
-        self._prefix = prefix
-        self._prefix_len = len(self._prefix)
-
-    def match(self, path):
-        if not path.startswith(self._prefix):
-            return None
-        return {'filename': path[self._prefix_len:]}
-
-    def url(self, *, filename, query=None):
-        while filename.startswith('/'):
-            filename = filename[1:]
-        url = self._prefix + filename
-        return Resource._append_query(url, query)
-
-    def __repr__(self):
-        name = "'" + self.name + "' " if self.name is not None else ""
-        return "<PrefixResource {name} {prefix}".format(name=name,
-                                                        prefix=self._prefix)
-
-
 class BaseRoute(metaclass=abc.ABCMeta):
     def __init__(self, method, handler, *,
                  expect_handler=None):
