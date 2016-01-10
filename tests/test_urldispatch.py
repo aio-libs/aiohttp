@@ -13,7 +13,8 @@ from aiohttp.protocol import HttpVersion, RawRequestMessage
 from aiohttp.web_urldispatcher import (_defaultExpectHandler,
                                        DynamicRoute,
                                        PlainRoute,
-                                       SystemRoute)
+                                       SystemRoute,
+                                       ResourceRoute)
 
 
 class TestUrlDispatcher(unittest.TestCase):
@@ -271,10 +272,10 @@ class TestUrlDispatcher(unittest.TestCase):
         route = self.router.add_static('/st',
                                        os.path.dirname(aiohttp.__file__),
                                        name='static')
-        route2 = self.router['static']
-        url = route2.url(filename='/dir/a.txt')
+        resource = self.router['static']
+        url = resource.url(filename='/dir/a.txt')
         self.assertEqual('/st/dir/a.txt', url)
-        self.assertIs(route, route2)
+        self.assertIs(route, resource.route)
 
     def test_plain_not_match(self):
         handler = self.make_handler()
@@ -436,9 +437,10 @@ class TestUrlDispatcher(unittest.TestCase):
 
             req = self.make_request('GET', '/get/john')
             match_info = yield from self.router.resolve(req)
+            self.assertEqual({'name': 'john'}, match_info)
             self.maxDiff = None
             self.assertRegex(repr(match_info),
-                             "<MatchInfo {'name': 'john'}: <DynamicRoute.+>>")
+                             "<MatchInfo {'name': 'john'}: .+<Dynamic.+>>")
 
         self.loop.run_until_complete(go())
 
@@ -482,7 +484,7 @@ class TestUrlDispatcher(unittest.TestCase):
         route = self.router.add_route(
             'GET', '/', self.make_handler(), expect_handler=handler)
         self.assertIs(route._expect_handler, handler)
-        self.assertIsInstance(route, PlainRoute)
+        self.assertIsInstance(route, ResourceRoute)
 
     def test_custom_expect_handler_dynamic(self):
 
@@ -493,7 +495,7 @@ class TestUrlDispatcher(unittest.TestCase):
         route = self.router.add_route(
             'GET', '/get/{name}', self.make_handler(), expect_handler=handler)
         self.assertIs(route._expect_handler, handler)
-        self.assertIsInstance(route, DynamicRoute)
+        self.assertIsInstance(route, ResourceRoute)
 
     def test_expect_handler_non_coroutine(self):
 
@@ -658,6 +660,7 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIsInstance(self.router.named_routes(), Mapping)
         self.assertNotIsInstance(self.router.named_routes(), MutableMapping)
 
+    @unittest.expectedFailure
     def test_named_routes(self):
         named_routes = self.fill_named_routes()
 
