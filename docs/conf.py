@@ -80,7 +80,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'aiohttp'
-copyright = '2013, 2014, 2015, KeepSafe'
+copyright = '2013-2016, KeepSafe'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

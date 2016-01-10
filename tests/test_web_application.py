@@ -82,3 +82,20 @@ def test_non_default_router(loop):
         app = web.Application(loop=self.loop)
         app.logger = logger
         self.assertIs(app.logger, logger)
+
+
+@pytest.mark.run_loop
+def test_on_shutdown(loop):
+    app = web.Application(loop=loop)
+    called = False
+
+    @asyncio.coroutine
+    def on_shutdown(app_param):
+        nonlocal called
+        assert app is app_param
+        called = True
+
+    app.on_shutdown.append(on_shutdown)
+
+    yield from app.shutdown()
+    assert called

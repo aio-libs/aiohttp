@@ -5,9 +5,7 @@ HTTP Server Reference
 
 .. module:: aiohttp.web
 
-.. versionchanged:: 0.12
-
-   The module was deeply refactored in backward incompatible manner.
+.. currentmodule:: aiohttp.web
 
 .. _aiohttp-web-request:
 
@@ -119,6 +117,11 @@ like one using :meth:`Request.copy`.
       A case-insensitive multidict proxy with all headers.
 
       Read-only :class:`~aiohttp.CIMultiDictProxy` property.
+
+   .. attribute:: raw_headers
+
+      HTTP headers of response as unconverted bytes, a sequence of
+      ``(key, value)`` pairs.
 
    .. attribute:: keep_alive
 
@@ -553,6 +556,37 @@ StreamResponse
       as an :class:`int` or a :class:`float` object, and the
       value ``None`` to unset the header.
 
+   .. attribute:: tcp_cork
+
+      :const:`~socket.TCP_CORK` (linux) or :const:`~socket.TCP_NOPUSH`
+      (FreeBSD and MacOSX) is applied to underlying transport if the
+      property is ``True``.
+
+      Use :meth:`set_tcp_cork` to assign new value to the property.
+
+      Default value is ``False``.
+
+   .. method:: set_tcp_cork(value)
+
+      Set :attr:`tcp_cork` property to *value*.
+
+      Clear :attr:`tcp_nodelay` if *value* is ``True``.
+
+   .. attribute:: tcp_nodelay
+
+      :const:`~socket.TCP_NODELAY` is applied to underlying transport
+      if the property is ``True``.
+
+      Use :meth:`set_tcp_nodelay` to assign new value to the property.
+
+      Default value is ``True``.
+
+   .. method:: set_tcp_nodelay(value)
+
+      Set :attr:`tcp_nodelay` property to *value*.
+
+      Clear :attr:`tcp_cork` if *value* is ``True``.
+
    .. method:: start(request)
 
       :param aiohttp.web.Request request: HTTP request object, that the
@@ -688,7 +722,8 @@ WebSocketResponse
 .. class:: WebSocketResponse(*, timeout=10.0, autoclose=True, \
                              autoping=True, protocols=())
 
-   Class for handling server-side websockets.
+   Class for handling server-side websockets, inherited from
+   :class:`StreamResponse`.
 
    After starting (by :meth:`prepare` call) the response you
    cannot use :meth:`~StreamResponse.write` method but should to
@@ -977,8 +1012,28 @@ duplicated like one using :meth:`Application.copy`.
 
       Signal handlers should have the following signature::
 
-          async def handler(request, response):
+          async def on_prepare(request, response):
               pass
+
+   .. attribute:: on_shutdown
+
+      A :class:`~aiohttp.signals.Signal` that is fired on application shutdown.
+
+      Subscribers may use the signal for gracefully closing long running
+      connections, e.g. websockets and data streaming.
+
+      Signal handlers should have the following signature::
+
+          async def on_shutdown(app):
+              pass
+
+      It's up to end user to figure out which :term:`web-handler`\s
+      are still alive and how to finish them properly.
+
+      We suggest keeping a list of long running handlers in
+      :class:`Application` dictionary.
+
+      .. seealso:: :ref:`aiohttp-web-graceful-shutdown`
 
    .. method:: make_handler(**kwargs)
 
@@ -1000,10 +1055,18 @@ duplicated like one using :meth:`Application.copy`.
          await loop.create_server(app.make_handler(),
                                   '0.0.0.0', 8080)
 
+   .. coroutinemethod:: shutdown()
+
+      A :ref:`coroutine<coroutine>` that should be called on
+      server stopping but before :meth:`finish()`.
+
+      The purpose of the method is calling :attr:`on_shutdown` signal
+      handlers.
+
    .. coroutinemethod:: finish()
 
-      A :ref:`coroutine<coroutine>` that should be called after
-      server stopping.
+      A :ref:`coroutine<coroutine>` that should be called on
+      server stopping but after :meth:`shutdown`.
 
       This method executes functions registered by
       :meth:`register_on_finish` in LIFO order.
@@ -1378,14 +1441,56 @@ In general the result may be any object derived from
    :class:`Route` instance for url matching.
 
 
+View
+^^^^
+
+.. class:: View(request)
+
+   Inherited from :class:`AbstractView`.
+
+   Base class for class based views. Implementations should derive from
+   :class:`View` and override methods for handling HTTP verbs like
+   ``get()`` or ``post()``::
+
+       class MyView(View):
+
+           async def get(self):
+               resp = await get_response(self.request)
+               return resp
+
+           async def post(self):
+               resp = await post_response(self.request)
+               return resp
+
+       app.router.add_route('*', '/view', MyView)
+
+   The view raises *405 Method Not allowed*
+   (:class:`HTTPMEthodNowAllowed`) if requested web verb is not
+   supported.
+
+   :param request: instance of :class:`Request` that has initiated a view
+                   processing.
+
+
+   .. attribute:: request
+
+      Request sent to view's constructor, read-only property.
+
+
+   Overridable coroutine methods: ``connect()``, ``delete()``,
+   ``get()``, ``head()``, ``options()``, ``patch()``, ``post()``,
+   ``put()``, ``trace()``.
+
+.. seealso:: :ref:`aiohttp-web-class-based-views`
+
 
 Utilities
 ---------
 
 .. class:: FileField
 
-   A :func:`~collections.namedtuple` that is returned as multidict value
-   by :meth:`Request.POST` if field is uploaded file.
+   A :class:`~collections.namedtuple` instance that is returned as
+   multidict value by :meth:`Request.POST` if field is uploaded file.
 
    .. attribute:: name
 
@@ -1415,8 +1520,14 @@ Constants
 
    .. attribute:: deflate
 
+      *DEFLATE compression*
+
    .. attribute:: gzip
 
+      *GZIP comression*
+
    .. attribute:: identity
+
+      *no comression*
 
 .. disqus::

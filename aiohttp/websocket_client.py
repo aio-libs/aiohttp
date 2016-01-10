@@ -3,6 +3,8 @@
 import asyncio
 
 import sys
+from enum import IntEnum
+
 from .websocket import Message
 from .websocket import WebSocketError
 from .websocket import MSG_BINARY, MSG_TEXT, MSG_CLOSE, MSG_PING, MSG_PONG
@@ -10,11 +12,6 @@ from .websocket import MSG_BINARY, MSG_TEXT, MSG_CLOSE, MSG_PING, MSG_PONG
 __all__ = ('MsgType',)
 
 PY_35 = sys.version_info >= (3, 5)
-
-try:
-    from enum import IntEnum
-except ImportError:  # pragma: no cover
-    IntEnum = object
 
 
 class MsgType(IntEnum):

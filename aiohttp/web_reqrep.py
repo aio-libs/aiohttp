@@ -99,29 +99,20 @@ class Request(dict, HeadersMixin):
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
     def __init__(self, app, message, payload, transport, reader, writer, *,
-                 _HOST=hdrs.HOST, secure_proxy_ssl_header=None):
+                 secure_proxy_ssl_header=None):
         self._app = app
-        self._version = message.version
+        self._message = message
         self._transport = transport
         self._reader = reader
         self._writer = writer
-        self._method = message.method
-        self._host = message.headers.get(_HOST)
-        self._path_qs = message.path
         self._post = None
         self._post_files_cache = None
-        self._headers = CIMultiDictProxy(message.headers)
-        if self._version < HttpVersion10:
-            self._keep_alive = False
-        else:
-            self._keep_alive = not message.should_close
 
         # matchdict, route_name, handler
         # or information about traversal lookup
         self._match_info = None  # initialized after route resolving
 
         self._payload = payload
-        self._cookies = None
 
         self._read_bytes = None
         self._has_body = not payload.at_eof()
@@ -139,48 +130,48 @@ class Request(dict, HeadersMixin):
         secure_proxy_ssl_header = self._secure_proxy_ssl_header
         if secure_proxy_ssl_header is not None:
             header, value = secure_proxy_ssl_header
-            if self._headers.get(header) == value:
+            if self.headers.get(header) == value:
                 return 'https'
         return 'http'
 
-    @property
+    @reify
     def method(self):
         """Read only property for getting HTTP method.
 
         The value is upper-cased str like 'GET', 'POST', 'PUT' etc.
         """
-        return self._method
+        return self._message.method
 
-    @property
+    @reify
     def version(self):
         """Read only property for getting HTTP version of request.
 
         Returns aiohttp.protocol.HttpVersion instance.
         """
-        return self._version
+        return self._message.version
 
-    @property
+    @reify
     def host(self):
         """Read only property for getting *HOST* header of request.
 
         Returns str or None if HTTP request has no HOST header.
         """
-        return self._host
+        return self._message.headers.get(hdrs.HOST)
 
-    @property
+    @reify
     def path_qs(self):
         """The URL including PATH_INFO and the query string.
 
         E.g, /app/blog?id=10
         """
-        return self._path_qs
+        return self._message.path
 
     @reify
     def _splitted_path(self):
-        url = '{}://{}{}'.format(self.scheme, self.host, self._path_qs)
+        url = '{}://{}{}'.format(self.scheme, self.host, self.path_qs)
         return urlsplit(url)
 
-    @property
+    @reify
     def raw_path(self):
         """ The URL including raw *PATH INFO* without the host or scheme.
         Warning, the path is unquoted and may contains non valid URL characters
@@ -224,12 +215,17 @@ class Request(dict, HeadersMixin):
             raise RuntimeError("POST is not available before post()")
         return self._post
 
-    @property
+    @reify
     def headers(self):
         """A case-insensitive multidict proxy with all headers."""
-        return self._headers
+        return CIMultiDictProxy(self._message.headers)
 
-    @property
+    @reify
+    def raw_headers(self):
+        """A sequence of pars for all headers."""
+        return tuple(self._message.raw_headers)
+
+    @reify
     def if_modified_since(self, _IF_MODIFIED_SINCE=hdrs.IF_MODIFIED_SINCE):
         """The value of If-Modified-Since HTTP header, or None.
 
@@ -243,10 +239,13 @@ class Request(dict, HeadersMixin):
                                          tzinfo=datetime.timezone.utc)
         return None
 
-    @property
+    @reify
     def keep_alive(self):
         """Is keepalive enabled by client?"""
-        return self._keep_alive
+        if self.version < HttpVersion10:
+            return False
+        else:
+            return not self._message.should_close
 
     @property
     def match_info(self):
@@ -263,18 +262,16 @@ class Request(dict, HeadersMixin):
         """Transport used for request processing."""
         return self._transport
 
-    @property
+    @reify
     def cookies(self):
         """Return request cookies.
 
         A read-only dictionary-like object.
         """
-        if self._cookies is None:
-            raw = self.headers.get(hdrs.COOKIE, '')
-            parsed = http.cookies.SimpleCookie(raw)
-            self._cookies = MappingProxyType(
-                {key: val.value for key, val in parsed.items()})
-        return self._cookies
+        raw = self.headers.get(hdrs.COOKIE, '')
+        parsed = http.cookies.SimpleCookie(raw)
+        return MappingProxyType(
+            {key: val.value for key, val in parsed.items()})
 
     @property
     def payload(self):
@@ -421,6 +418,8 @@ class StreamResponse(HeadersMixin):
         self._req = None
         self._resp_impl = None
         self._eof_sent = False
+        self._tcp_nodelay = True
+        self._tcp_cork = False
 
         if headers is not None:
             self._headers.extend(headers)
@@ -604,6 +603,36 @@ class StreamResponse(HeadersMixin):
         elif isinstance(value, str):
             self.headers[hdrs.LAST_MODIFIED] = value
 
+    @property
+    def tcp_nodelay(self):
+        return self._tcp_nodelay
+
+    def set_tcp_nodelay(self, value):
+        value = bool(value)
+        self._tcp_nodelay = value
+        if value:
+            self._tcp_cork = False
+        if self._resp_impl is None:
+            return
+        if value:
+            self._resp_impl.transport.set_tcp_cork(False)
+        self._resp_impl.transport.set_tcp_nodelay(value)
+
+    @property
+    def tcp_cork(self):
+        return self._tcp_cork
+
+    def set_tcp_cork(self, value):
+        value = bool(value)
+        self._tcp_cork = value
+        if value:
+            self._tcp_nodelay = False
+        if self._resp_impl is None:
+            return
+        if value:
+            self._resp_impl.transport.set_tcp_nodelay(False)
+        self._resp_impl.transport.set_tcp_cork(value)
+
     def _generate_content_type_header(self, CONTENT_TYPE=hdrs.CONTENT_TYPE):
         params = '; '.join("%s=%s" % i for i in self._content_dict.items())
         if params:
@@ -688,6 +717,8 @@ class StreamResponse(HeadersMixin):
         for key, val in headers:
             resp_impl.add_header(key, val)
 
+        resp_impl.transport.set_tcp_nodelay(self._tcp_nodelay)
+        resp_impl.transport.set_tcp_cork(self._tcp_cork)
         resp_impl.send_headers()
         return resp_impl
 
@@ -736,6 +767,7 @@ class Response(StreamResponse):
                  reason=None, text=None, headers=None, content_type=None,
                  charset=None):
         super().__init__(status=status, reason=reason, headers=headers)
+        self.set_tcp_cork(True)
 
         if body is not None and text is not None:
             raise ValueError("body and text are not allowed together.")
@@ -812,9 +844,12 @@ class Response(StreamResponse):
 
     @asyncio.coroutine
     def write_eof(self):
-        body = self._body
-        if body is not None:
-            self.write(body)
+        try:
+            body = self._body
+            if body is not None:
+                self.write(body)
+        finally:
+            self.set_tcp_nodelay(True)
         yield from super().write_eof()
 
 
@@ -829,4 +864,4 @@ def json_response(data=sentinel, *, text=None, body=None, status=200,
         else:
             text = dumps(data)
     return Response(text=text, body=body, status=status, reason=reason,
-                    content_type=content_type)
+                    headers=headers, content_type=content_type)

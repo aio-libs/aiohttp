@@ -42,9 +42,10 @@ Client example::
     import aiohttp
 
     async def fetch_page(client, url):
-        async with client.get(url) as response:
-            assert response.status == 200
-            return await response.read()
+        with aiohttp.Timeout(10):
+            async with client.get(url) as response:
+                assert response.status == 200
+                return await response.read()
 
     loop = asyncio.get_event_loop()
     client = aiohttp.ClientSession(loop=loop)
@@ -78,6 +79,24 @@ Server example::
         loop.run_forever()
     except KeyboardInterrupt:
         pass
+
+.. note::
+
+   Throughout this documentation, examples utilize the `async/await` syntax
+   introduced by :pep:`492` that is only valid for Python 3.5+.
+
+   If you are using Python 3.4, please replace ``await`` with
+   ``yield from`` and ``async def`` with a ``@coroutine`` decorator.
+   For example, this::
+
+       async def coro(...):
+           ret = await f()
+
+   should be replaced by::
+
+       @asyncio.coroutine
+       def coro(...):
+           ret = yield from f()
 
 
 Source code
@@ -136,7 +155,6 @@ Contents
 
    client
    client_reference
-   client_websockets
    web
    web_reference
    server

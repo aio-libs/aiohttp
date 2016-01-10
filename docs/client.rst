@@ -501,7 +501,8 @@ We can check the response status code::
 Response Headers
 ----------------
 
-We can view the server's response headers using a multidict::
+We can view the server's response :attr:`ClientResponse.headers` using
+a :class:`CIMultiDictProxy`::
 
     >>> r.headers
     {'ACCESS-CONTROL-ALLOW-ORIGIN': '*',
@@ -525,6 +526,19 @@ So, we can access the headers using any capitalization we want::
     >>> r.headers.get('content-type')
     'application/json'
 
+All headers converted from binary data using UTF-8 with
+``surrogateescape`` option. That works fine on most cases but
+sometimes unconverted data is needed if a server uses nonstandard
+encoding. While these headers are malformed from :rfc:`7230`
+perspective they are may be retrieved by using
+:attr:`ClientResponse.raw_headers` property::
+
+    >>> r.raw_headers
+    ((b'SERVER', b'nginx'),
+     (b'DATE', b'Sat, 09 Jan 2016 20:28:40 GMT'),
+     (b'CONTENT-TYPE', b'text/html; charset=utf-8'),
+     (b'CONTENT-LENGTH', b'12150'),
+     (b'CONNECTION', b'keep-alive'))
 
 Response Cookies
 ----------------
@@ -559,6 +573,51 @@ If no redirects occurred or ``allow_redirects`` is set to ``False``,
 history will be an empty sequence.
 
 
+.. _aiohttp-client-websockets:
+
+WebSockets
+----------
+
+.. versionadded:: 0.15
+
+
+:mod:`aiohttp` works with client websockets out-of-the-box.
+
+You have to use the :meth:`aiohttp.ClientSession.ws_connect` coroutine
+for client websocket connection. It accepts a *url* as a first
+parameter and returns :class:`ClientWebSocketResponse`, with that
+object you can communicate with websocket server using response's
+methods::
+
+   session = aiohttp.ClientSession()
+   async with session.ws_connect('http://example.org/websocket') as ws:
+
+       async for msg in ws:
+           if msg.tp == aiohttp.MsgType.text:
+               if msg.data == 'close cmd':
+                   await ws.close()
+                   break
+               else:
+                   ws.send_str(msg.data + '/answer')
+           elif msg.tp == aiohttp.MsgType.closed:
+               break
+           elif msg.tp == aiohttp.MsgType.error:
+               break
+
+If you prefer to establish *websocket client connection* without
+explicit :class:`~aiohttp.ClientSession` instance please use
+:func:`ws_connect()`::
+
+   async with aiohttp.ws_connect('http://example.org/websocket') as ws:
+       ...
+
+
+You **must** use the only websocket task for both reading (e.g ``await
+ws.receive()`` or ``async for msg in ws:``) and writing but may have
+multiple writer tasks which can only send data asynchronously (by
+``ws.send_str('data')`` for example).
+
+
 Timeouts
 --------
 
@@ -571,18 +630,21 @@ time to wait for a response from a server::
       File "<stdin>", line 1, in <module>
     asyncio.TimeoutError()
 
-Or wrap your client call in :class:`Timeout` context manager::
-
-    with aiohttp.Timeout(0.001):
-        async with aiohttp.get('https://github.com') as r:
-            await r.text()
-
 .. warning::
 
     *timeout* is not a time limit on the entire response download;
     rather, an exception is raised if the server has not issued a
     response for *timeout* seconds (more precisely, if no bytes have been
     received on the underlying socket for *timeout* seconds).
+
+
+The second example wraps client call in :class:`Timeout` context
+manager, adding timeout for both connecting and response body
+reading procedures::
+
+    with aiohttp.Timeout(0.001):
+        async with aiohttp.get('https://github.com') as r:
+            await r.text()
 
 
 .. disqus::

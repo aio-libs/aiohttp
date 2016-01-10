@@ -266,50 +266,66 @@ class ClientSession:
             headers[hdrs.ORIGIN] = origin
 
         # send request
-        resp = yield from self.request('get', url, headers=headers,
-                                       read_until_eof=False,
-                                       auth=auth)
+        resp = yield from self.get(url, headers=headers,
+                                   read_until_eof=False,
+                                   auth=auth)
 
-        # check handshake
-        if resp.status != 101:
-            raise WSServerHandshakeError('Invalid response status')
+        try:
+            # check handshake
+            if resp.status != 101:
+                raise WSServerHandshakeError(
+                    message='Invalid response status',
+                    code=resp.status,
+                    headers=resp.headers)
 
-        if resp.headers.get(hdrs.UPGRADE, '').lower() != 'websocket':
-            raise WSServerHandshakeError('Invalid upgrade header')
+            if resp.headers.get(hdrs.UPGRADE, '').lower() != 'websocket':
+                raise WSServerHandshakeError(
+                    message='Invalid upgrade header',
+                    code=resp.status,
+                    headers=resp.headers)
 
-        if resp.headers.get(hdrs.CONNECTION, '').lower() != 'upgrade':
-            raise WSServerHandshakeError('Invalid connection header')
+            if resp.headers.get(hdrs.CONNECTION, '').lower() != 'upgrade':
+                raise WSServerHandshakeError(
+                    message='Invalid connection header',
+                    code=resp.status,
+                    headers=resp.headers)
 
-        # key calculation
-        key = resp.headers.get(hdrs.SEC_WEBSOCKET_ACCEPT, '')
-        match = base64.b64encode(
-            hashlib.sha1(sec_key + WS_KEY).digest()).decode()
-        if key != match:
-            raise WSServerHandshakeError('Invalid challenge response')
+            # key calculation
+            key = resp.headers.get(hdrs.SEC_WEBSOCKET_ACCEPT, '')
+            match = base64.b64encode(
+                hashlib.sha1(sec_key + WS_KEY).digest()).decode()
+            if key != match:
+                raise WSServerHandshakeError(
+                    message='Invalid challenge response',
+                    code=resp.status,
+                    headers=resp.headers)
 
-        # websocket protocol
-        protocol = None
-        if protocols and hdrs.SEC_WEBSOCKET_PROTOCOL in resp.headers:
-            resp_protocols = [
-                proto.strip() for proto in
-                resp.headers[hdrs.SEC_WEBSOCKET_PROTOCOL].split(',')]
+            # websocket protocol
+            protocol = None
+            if protocols and hdrs.SEC_WEBSOCKET_PROTOCOL in resp.headers:
+                resp_protocols = [
+                    proto.strip() for proto in
+                    resp.headers[hdrs.SEC_WEBSOCKET_PROTOCOL].split(',')]
 
-            for proto in resp_protocols:
-                if proto in protocols:
-                    protocol = proto
-                    break
+                for proto in resp_protocols:
+                    if proto in protocols:
+                        protocol = proto
+                        break
 
-        reader = resp.connection.reader.set_parser(WebSocketParser)
-        writer = WebSocketWriter(resp.connection.writer, use_mask=True)
-
-        return self._ws_response_class(reader,
-                                       writer,
-                                       protocol,
-                                       resp,
-                                       timeout,
-                                       autoclose,
-                                       autoping,
-                                       self._loop)
+            reader = resp.connection.reader.set_parser(WebSocketParser)
+            writer = WebSocketWriter(resp.connection.writer, use_mask=True)
+        except Exception:
+            resp.close()
+            raise
+        else:
+            return self._ws_response_class(reader,
+                                           writer,
+                                           protocol,
+                                           resp,
+                                           timeout,
+                                           autoclose,
+                                           autoping,
+                                           self._loop)
 
     def _update_cookies(self, cookies):
         """Update shared cookies."""
@@ -522,6 +538,22 @@ class _DetachedRequestContextManager(_RequestContextManager):
         super().__init__(coro)
         self._session = session
 
+    @asyncio.coroutine
+    def __iter__(self):
+        try:
+            return (yield from self._coro)
+        except:
+            self._session.close()
+            raise
+
+    if PY_35:
+        def __await__(self):
+            try:
+                return (yield from self._coro)
+            except:
+                self._session.close()
+                raise
+
     def __del__(self):
         self._session.detach()
 
@@ -660,7 +692,7 @@ def delete(url, **kwargs):
 
 def ws_connect(url, *, protocols=(), timeout=10.0, connector=None, auth=None,
                ws_response_class=ClientWebSocketResponse, autoclose=True,
-               autoping=True, loop=None, origin=None):
+               autoping=True, loop=None, origin=None, headers=None):
 
     if loop is None:
         loop = asyncio.get_event_loop()
@@ -669,7 +701,8 @@ def ws_connect(url, *, protocols=(), timeout=10.0, connector=None, auth=None,
         connector = aiohttp.TCPConnector(loop=loop, force_close=True)
 
     session = aiohttp.ClientSession(loop=loop, connector=connector, auth=auth,
-                                    ws_response_class=ws_response_class)
+                                    ws_response_class=ws_response_class,
+                                    headers=headers)
 
     return _DetachedWSRequestContextManager(
         session._ws_connect(url,

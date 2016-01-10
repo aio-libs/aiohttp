@@ -1,30 +1,36 @@
-version: 0.19.0a0.dev{build}
+version: 0.21.0a0.dev{build}
 
 environment:
+  PYPI_PASSWD:
+    secure: u+K6dKi7+CXXVFEUG4V7zUyV3w7Ntg0Ork/RGVV0eSQ=
   matrix:
     - PYTHON: "C:\\Python34"
-      PYTHON_VERSION: "3.4.3"
-      PYTHON_ARCH: "32"
-    - PYTHON: "C:\\Python34"
-      PYTHON_VERSION: "3.4.3"
-      PYTHON_ARCH: "64"
+    - PYTHON: "C:\\Python34-x64"
+      DISTUTILS_USE_SDK: "1"
     - PYTHON: "C:\\Python35"
-      PYTHON_VERSION: "3.5.0"
-      PYTHON_ARCH: "32"
-    - PYTHON: "C:\\Python35"
-      PYTHON_VERSION: "3.5.0"
-      PYTHON_ARCH: "64"
+    - PYTHON: "C:\\Python35-x64"
 
 install:
-  - "powershell ./install_python_and_pip.ps1"
-  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
-  - "python --version"
-  - "pip install -r requirements-dev.txt"
-  - "python setup.py develop"
+  - "build.cmd %PYTHON%\\python.exe -m pip install wheel"
+  - "build.cmd %PYTHON%\\python.exe -m pip install twine"
+  - "build.cmd %PYTHON%\\python.exe -m pip install -r requirements-dev.txt"
 
 build: false
+
 test_script:
-  - "python setup.py test"
+  - "build.cmd %PYTHON%\\python.exe setup.py test"
+
+after_test:
+  - "build.cmd %PYTHON%\\python.exe setup.py bdist_wheel"
+
+artifacts:
+  - path: dist\*
+
+deploy_script:
+  - ps: >-
+      if($env:appveyor_repo_tag -eq 'True') {
+          Invoke-Expression "$env:PYTHON\\python.exe -m twine upload dist/* --username andrew.svetlov --password $env:PYPI_PASSWD"
+      }
 
 #notifications:
 #  - provider: Webhook

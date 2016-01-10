@@ -1,14 +1,15 @@
 import asyncio
 import contextlib
 import gc
-import pytest
+import re
 import types
 from unittest import mock
 
 import aiohttp
+import pytest
 from aiohttp.client import ClientSession
-from aiohttp.multidict import MultiDict, CIMultiDict
 from aiohttp.connector import BaseConnector, TCPConnector
+from aiohttp.multidict import CIMultiDict, MultiDict
 
 
 @pytest.fixture
@@ -266,10 +267,10 @@ def test_connector_loop(loop):
         stack.enter_context(contextlib.closing(another_loop))
         connector = TCPConnector(loop=another_loop)
         stack.enter_context(contextlib.closing(connector))
-        with pytest.raises_regexp(
-                ValueError,
-                "loop argument must agree with connector"):
+        with pytest.raises(ValueError) as ctx:
             ClientSession(connector=connector, loop=loop)
+        assert re.match("loop argument must agree with connector",
+                        str(ctx.value))
 
 
 def test_cookies_are_readonly(session):

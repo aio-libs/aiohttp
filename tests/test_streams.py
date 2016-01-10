@@ -452,6 +452,20 @@ class TestStreamReader(unittest.TestCase):
         data = self.loop.run_until_complete(stream.read())
         self.assertEqual(b'', data)
 
+    def test_read_nowait_n(self):
+        stream = self._make_one()
+        stream.feed_data(b'line1\nline2\n')
+
+        self.assertEqual(
+            stream.read_nowait(4), b'line')
+        self.assertEqual(
+            stream.read_nowait(), b'1\nline2\n')
+        self.assertIs(
+            stream.read_nowait(), streams.EOF_MARKER)
+        stream.feed_eof()
+        data = self.loop.run_until_complete(stream.read())
+        self.assertEqual(b'', data)
+
     def test_read_nowait_exception(self):
         stream = self._make_one()
         stream.feed_data(b'line\n')

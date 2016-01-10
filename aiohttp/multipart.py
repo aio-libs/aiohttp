@@ -558,10 +558,10 @@ class MultipartReader(object):
 
     @asyncio.coroutine
     def _read_headers(self):
-        lines = ['']
+        lines = [b'']
         while True:
             chunk = yield from self._content.readline()
-            chunk = chunk.decode().strip()
+            chunk = chunk.strip()
             lines.append(chunk)
             if not chunk:
                 break
