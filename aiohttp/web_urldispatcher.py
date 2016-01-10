@@ -54,11 +54,67 @@ def _defaultExpectHandler(request):
         request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
 
-class Resource(metaclass=abc.ABCMeta):
-    METHODS = hdrs.METH_ALL | {hdrs.METH_ANY}
+class BaseResource(metaclass=abc.ABCMeta):
 
     def __init__(self, *, name=None):
         self._name = name
+
+    @property
+    def name(self):
+        return self._name
+
+    @abc.abstractmethod  # pragma: no branch
+    def match(self, path):
+        """Return dict with info for given path or
+        None if route cannot process path."""
+
+    @abc.abstractmethod  # pragma: no branch
+    def url(self, **kwargs):
+        """Construct url for route with additional params."""
+
+    @abc.abstractmethod  # pragma: no branch
+    def resolve(self, method, path):
+        """Resolve resource
+
+        Return match_dict, allowed_methods pair."""
+
+    @staticmethod
+    def _append_query(url, query):
+        if query is not None:
+            return url + "?" + urlencode(query)
+        else:
+            return url
+
+
+class ResourceAdapter(BaseResource):
+
+    def __init__(self, route):
+        assert isinstance(route, Route), \
+            'Instance of Route class is require, got {!r}'.format(route)
+        super().__init__(name=route.name)
+        self._route = route
+
+    def match(self, path):
+        return self._route.match(path)
+
+    def url(self, **kwargs):
+        return self._route.url(**kwargs)
+
+    def resolve(self, method, path):
+        match_dict = self._route.match(path)
+        allowed_methods = {self._route.method}
+        if match_dict:
+            return (UrlMappingMatchInfo(match_dict, self._route),
+                    allowed_methods)
+        else:
+            return None, allowed_methods
+
+
+class Resource(BaseResource):
+    METHODS = hdrs.METH_ALL | {hdrs.METH_ANY}
+
+    def __init__(self, *, name=None):
+        super().__init__(name=name)
         self._routes = []
 
     def add_route(self, method, handler, *,
@@ -96,18 +152,10 @@ class Resource(metaclass=abc.ABCMeta):
             'Instance of Route class is required, got {!r}'.format(route)
         self._routes.append(route)
 
-    @property
-    def name(self):
-        return self._name
-
     @abc.abstractmethod  # pragma: no branch
     def match(self, path):
         """Return dict with info for given path or
         None if route cannot process path."""
-
-    @abc.abstractmethod  # pragma: no branch
-    def url(self, **kwargs):
-        """Construct url for route with additional params."""
 
     def resolve(self, method, path):
         allowed_methods = set()
@@ -125,13 +173,6 @@ class Resource(metaclass=abc.ABCMeta):
             allowed_methods.add(route_method)
         else:
             return None, allowed_methods
-
-    @staticmethod
-    def _append_query(url, query):
-        if query is not None:
-            return url + "?" + urlencode(query)
-        else:
-            return url
 
 
 class PlainResource(Resource):
@@ -236,7 +277,7 @@ class BaseRoute(metaclass=abc.ABCMeta):
     def handle_expect_header(self, request):
         return (yield from self._expect_handler(request))
 
-    _append_query = Resource._append_query
+    _append_query = staticmethod(Resource._append_query)
 
 
 class ResourceRoute(BaseRoute):
@@ -336,14 +377,17 @@ class DynamicRoute(Route):
                         formatter=self._formatter, handler=self.handler))
 
 
-class StaticRoute(ResourceRoute):
+class StaticRoute(Route):
 
-    def __init__(self, name, prefix, directory, resource, *,
+    def __init__(self, name, prefix, directory, *,
                  expect_handler=None, chunk_size=256*1024,
                  response_factory=StreamResponse):
+        assert prefix.startswith('/'), prefix
+        assert prefix.endswith('/'), prefix
         super().__init__(
-            'GET', self.handle, resource,
-            expect_handler=expect_handler)
+            'GET', self.handle, name, expect_handler=expect_handler)
+        self._prefix = prefix
+        self._prefix_len = len(self._prefix)
         self._directory = os.path.abspath(directory) + os.sep
         self._chunk_size = chunk_size
         self._response_factory = response_factory
@@ -354,6 +398,17 @@ class StaticRoute(ResourceRoute):
 
         if bool(os.environ.get("AIOHTTP_NOSENDFILE")):
             self._sendfile = self._sendfile_fallback
+
+    def match(self, path):
+        if not path.startswith(self._prefix):
+            return None
+        return {'filename': path[self._prefix_len:]}
+
+    def url(self, *, filename, query=None):
+        while filename.startswith('/'):
+            filename = filename[1:]
+        url = self._prefix + filename
+        return self._append_query(url, query)
 
     def _sendfile_cb(self, fut, out_fd, in_fd, offset, count, loop,
                      registered):
@@ -380,15 +435,10 @@ class StaticRoute(ResourceRoute):
         """
         Write `count` bytes of `fobj` to `resp` starting from `offset` using
         the ``sendfile`` system call.
-
         `req` should be a :obj:`aiohttp.web.Request` instance.
-
         `resp` should be a :obj:`aiohttp.web.StreamResponse` instance.
-
         `fobj` should be an open file object.
-
         `offset` should be an integer >= 0.
-
         `count` should be an integer > 0.
         """
         transport = req.transport
@@ -414,7 +464,6 @@ class StaticRoute(ResourceRoute):
         Mimic the :meth:`_sendfile_system` method, but without using the
         ``sendfile`` system call. This should be used on systems that don't
         support the ``sendfile`` system call.
-
         To avoid blocking the event loop & to keep memory usage low, `fobj` is
         transferred in chunks controlled by the `chunk_size` argument to
         :class:`StaticRoute`.
@@ -654,14 +703,13 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         return MappingProxyType(self._named_resources)
 
     def register_route(self, route):
-        assert isinstance(route, Route), \
-            'Instance of Route class is require, got {!r}'.format(route)
-        assert route.resource is None, "Cannot register already registered"
-        self._reg_resource(route.resource)
+        resource = ResourceAdapter(route)
+        self._reg_resource(resource)
 
     def _reg_resource(self, resource):
-        assert isinstance(resource, Resource), \
-            'Instance of Resource class is required, got {!r}'.format(resource)
+        assert isinstance(resource, BaseResource), \
+            'Instance of BaseResource class is required, got {!r}'.format(
+                resource)
 
         name = resource.name
 
@@ -731,11 +779,12 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         :param prefix - url prefix
         :param path - folder with files
         """
-        resource = PrefixResource(prefix, name=name)
-        self._reg_resource(resource)
-        route = StaticRoute(name, prefix, path, resource,
+        assert prefix.startswith('/')
+        if not prefix.endswith('/'):
+            prefix += '/'
+        route = StaticRoute(name, prefix, path,
                             expect_handler=expect_handler,
                             chunk_size=chunk_size,
                             response_factory=response_factory)
-        resource.register_route(route)
+        self.register_route(route)
         return route
