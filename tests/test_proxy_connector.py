@@ -380,3 +380,43 @@ class TestProxyConnector(unittest.TestCase):
         self.loop.run_until_complete(proxy_req.close())
         proxy_resp.close()
         self.loop.run_until_complete(req.close())
+
+    @unittest.mock.patch('aiohttp.connector.ClientRequest')
+    def test_https_auth(self, ClientRequestMock):
+        loop_mock = unittest.mock.Mock()
+        proxy_req = ClientRequest('GET', 'http://proxy.example.com',
+                                  auth=aiohttp.helpers.BasicAuth('user',
+                                                                 'pass'),
+                                  loop=loop_mock)
+        ClientRequestMock.return_value = proxy_req
+
+        proxy_resp = ClientResponse('get', 'http://proxy.example.com')
+        proxy_resp._loop = loop_mock
+        proxy_req.send = send_mock = unittest.mock.Mock()
+        send_mock.return_value = proxy_resp
+        proxy_resp.start = start_mock = unittest.mock.Mock()
+        self._fake_coroutine(start_mock, unittest.mock.Mock(status=200))
+
+        connector = aiohttp.ProxyConnector(
+            'http://proxy.example.com', loop=loop_mock)
+
+        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+        self._fake_coroutine(loop_mock.create_connection, (tr, proto))
+
+        self.assertIn('AUTHORIZATION', proxy_req.headers)
+        self.assertNotIn('PROXY-AUTHORIZATION', proxy_req.headers)
+
+        req = ClientRequest('GET', 'https://www.python.org', loop=self.loop)
+        self.assertNotIn('AUTHORIZATION', req.headers)
+        self.assertNotIn('PROXY-AUTHORIZATION', req.headers)
+        self.loop.run_until_complete(connector._create_connection(req))
+
+        self.assertEqual(req.path, '/')
+        self.assertNotIn('AUTHORIZATION', req.headers)
+        self.assertNotIn('PROXY-AUTHORIZATION', req.headers)
+        self.assertNotIn('AUTHORIZATION', proxy_req.headers)
+        self.assertIn('PROXY-AUTHORIZATION', proxy_req.headers)
+
+        self.loop.run_until_complete(proxy_req.close())
+        proxy_resp.close()
+        self.loop.run_until_complete(req.close())

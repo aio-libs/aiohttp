@@ -63,6 +63,9 @@ request and response:
 +--------------+---------------------------------------------------------+
 | ``%T``       | The time taken to serve the request, in seconds         |
 +--------------+---------------------------------------------------------+
+| ``%Tf``      | The time taken to serve the request, in seconds         |
+|              | with fraction in %.06f format                           |
++--------------+---------------------------------------------------------+
 | ``%D``       | The time taken to serve the request, in microseconds    |
 +--------------+---------------------------------------------------------+
 | ``%{FOO}i``  | ``request.headers['FOO']``                              |
@@ -86,5 +89,5 @@ given on web requests handling.
 The log is always enabled.
 
 To use different logger name please specify *logger* parameter
-(:class:`logging.Logger` instance) onmake
+(:class:`logging.Logger` instance) on performing
 :meth:`aiohttp.web.Application.make_handler` call.

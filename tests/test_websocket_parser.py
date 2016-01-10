@@ -459,3 +459,38 @@ def test_continuation_with_close_empty(out, parser):
     assert res, (Message(websocket.OPCODE_CLOSE, 0, ''), 0)
     res = out._buffer[1]
     assert res == (Message(websocket.OPCODE_TEXT, 'line1line2', ''), 10)
+
+
+websocket_mask_data = bytearray(
+    b'some very long data for masking by websocket')
+websocket_mask_mask = b'1234'
+websocket_mask_masked = (b'B]^Q\x11DVFH\x12_[_U\x13PPFR\x14W]A\x14\\S@_X'
+                         b'\\T\x14SK\x13CTP@[RYV@')
+
+
+def test_websocket_mask_python():
+    ret = websocket._websocket_mask_python(websocket_mask_mask,
+                                           websocket_mask_data)
+    assert ret == websocket_mask_masked
+
+
+@pytest.mark.skipif(not hasattr(websocket, '_websocket_mask_cython'),
+                    reason='Requires Cython')
+def test_websocket_mask_cython():
+    ret = websocket._websocket_mask_cython(websocket_mask_mask,
+                                           websocket_mask_data)
+    assert ret == websocket_mask_masked
+
+
+def test_websocket_mask_python_empty():
+    ret = websocket._websocket_mask_python(websocket_mask_mask,
+                                           bytearray())
+    assert ret == bytearray()
+
+
+@pytest.mark.skipif(not hasattr(websocket, '_websocket_mask_cython'),
+                    reason='Requires Cython')
+def test_websocket_mask_cython_empty():
+    ret = websocket._websocket_mask_cython(websocket_mask_mask,
+                                           bytearray())
+    assert ret == bytearray()

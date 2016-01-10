@@ -1,12 +1,9 @@
 CHANGES
 =======
 
-0.20.0 (XX-XX-XXXX)
--------------------
+0.21.0 (XX-XX-XXXX)
+--------------------
 
-- Extend list of web exceptions, add HTTPMisdirectedRequest,
-  HTTPUpgradeRequired, HTTPPreconditionRequired, HTTPTooManyRequests,
-  HTTPRequestHeaderFieldsTooLarge, HTTPVariantAlsoNegotiates,
-  HTTPNotExtended, HTTPNetworkAuthenticationRequired status codes #644
+- Introduce on_shutdown signal #722
 
-- Do not remove AUTHORIZATION header by WSGI handler #649
+- Implement raw input headers #726

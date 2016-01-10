@@ -44,9 +44,10 @@ After that, create a server and run the *asyncio loop* as usual::
    except KeyboardInterrupt:
        pass
    finally:
-       loop.run_until_complete(handler.finish_connections(1.0))
        srv.close()
        loop.run_until_complete(srv.wait_closed())
+       loop.run_until_complete(app.on_shutdown.send())
+       loop.run_until_complete(handler.finish_connections(1.0))
        loop.run_until_complete(app.finish())
    loop.close()
 
@@ -187,6 +188,35 @@ application developers can organize handlers in classes if they so wish::
    app.router.add_route('GET', '/intro', handler.handle_intro)
    app.router.add_route('GET', '/greet/{name}', handler.handle_greeting)
 
+
+.. _aiohttp-web-class-based-views:
+
+Class Based Views
+^^^^^^^^^^^^^^^^^
+
+:mod:`aiohttp.web` has support for django-style class based views.
+
+You can derive from :class:`View` and define methods for handling http
+requests::
+
+   class MyView(web.View):
+       async def get(self):
+           return await get_resp(self.request)
+
+       async def post(self):
+           return await post_resp(self.request)
+
+Handlers should be coroutines accepting self only and returning
+response object as regular :term:`web-handler`. Request object can be
+retrieved by :attr:`View.request` property.
+
+After implementing the view (``MyView`` from example above) should be
+registered in application's router::
+
+   app.router.add_route('*', '/path/to', MyView)
+
+Example will process GET and POST requests for */path/to* but raise
+*405 Method not allowed* exception for unimplemented HTTP methods.
 
 Route Views
 ^^^^^^^^^^^
@@ -344,7 +374,7 @@ class :class:`StreamResponse`, the *request handler* uses it as the response.
 If all checks pass, the custom handler *must* write a *HTTP/1.1 100 Continue*
 status code before returning.
 
-The following example shows how to setup a custom handler for the *Except*
+The following example shows how to setup a custom handler for the *Expect*
 header:
 
 .. code-block:: python
@@ -399,7 +429,7 @@ a container for the file as well as some of its metadata:
         data = await request.post()
 
         mp3 = data['mp3']
-        
+
         # .filename contains the name of the file in string format.
         filename = mp3.filename
 
@@ -510,6 +540,7 @@ HTTP Exception hierarchy chart::
          * 304 - HTTPNotModified
          * 305 - HTTPUseProxy
          * 307 - HTTPTemporaryRedirect
+         * 308 - HTTPPermanentRedirect
        HTTPError
          HTTPClientError
            * 400 - HTTPBadRequest
@@ -630,7 +661,7 @@ the keyword-only ``middlewares`` parameter when creating an
    app = web.Application(middlewares=[middleware_factory_1,
                                       middleware_factory_2])
 
-A *middleware factory* is simply a coroutine that implements the logic of a 
+A *middleware factory* is simply a coroutine that implements the logic of a
 *middleware*. For example, here's a trivial *middleware factory*::
 
     async def middleware_factory(app, handler):
@@ -705,6 +736,125 @@ parameters.
    Signal subscription and sending will most likely be the same, but signal
    object creation is subject to change. As long as you are not creating new
    signals, but simply reusing existing ones, you will not be affected.
+
+
+.. _aiohttp-web-flow-control:
+
+Flow control
+------------
+
+:mod:`aiohttp.web` has sophisticated flow control for underlying TCP
+sockets write buffer.
+
+The problem is: by default TCP sockets use `Nagle's algorithm
+<https://en.wikipedia.org/wiki/Nagle%27s_algorithm>`_ for output
+buffer which is not optimal for streaming data protocols like HTTP.
+
+Web server response may have one of the following states:
+
+1. **CORK** (:attr:`~StreamResponse.tcp_cork` is ``True``).
+   Don't send out partial TCP/IP frames.  All queued partial frames
+   are sent when the option is cleared again. Optimal for sending big
+   portion of data since data will be sent using minimum
+   frames count.
+
+   If OS doesn't support **CORK** mode (neither ``socket.TCP_CORK``
+   nor ``socket.TCP_NOPUSH`` exists) the mode is equal to *Nagle's
+   enabled* one. The most widespread OS without **CORK** support is
+   *Windows*.
+
+2. **NODELAY** (:attr:`~StreamResponse.tcp_nodelay` is
+   ``True``).  Disable the Nagle algorithm.  This means that small
+   data pieces are always sent as soon as possible, even if there is
+   only a small amount of data. Optimal for transmitting short messages.
+
+3. Nagle's algorithm enabled (both
+   :attr:`~StreamResponse.tcp_cork` and
+   :attr:`~StreamResponse.tcp_nodelay` are ``False``).
+   Data is buffered until there is a sufficient amount to send out.
+   Avoid using this mode for sending HTTP data until you have no doubts.
+
+By default streaming data (:class:`StreamResponse`) and websockets
+(:class:`WebSocketResponse`) use **NODELAY** mode, regular responses
+(:class:`Response` and http exceptions derived from it) as well as
+static file handlers work in **CORK** mode.
+
+To manual mode switch :meth:`~StreamResponse.set_tcp_cork` and
+:meth:`~StreamResponse.set_tcp_nodelay` methods can be used.  It may
+be helpful for better streaming control for example.
+
+
+.. _aiohttp-web-graceful-shutdown:
+
+Graceful shutdown
+------------------
+
+Stopping *aiohttp web server* by just closing all connections is not
+always satisfactory.
+
+The problem is: if application supports :term:`websocket`\s or *data
+streaming* it most likely has open connections at server
+shutdown time.
+
+The *library* has no knowledge how to close them gracefully but
+developer can help by registering :attr:`Application.on_shutdown`
+signal handler and call the signal on *web server* closing.
+
+Developer should keep a list of opened connections
+(:class:`Application` is a good candidate).
+
+The following :term:`websocket` snippet shows an example for websocket
+handler:
+
+.. code-block:: python
+
+    app = web.Application()
+    app['websockets'] = []
+
+    async def websocket_handler(request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        request.app['websockets'].append(ws)
+        try:
+            async for msg in ws:
+                ...
+        finally:
+            request.app['websockets'].remove(ws)
+
+        return ws
+
+Signal handler may looks like:
+
+.. code-block:: python
+
+    async with on_shutdown(app):
+        for ws in app['websockets']:
+            await ws.close(code=999, message='Server shutdown')
+
+    app.on_shutdown.append(on_shutdown)
+
+
+Server finalizer should raise shutdown signal by
+:meth:`Application.shutdown` call::
+
+   loop = asyncio.get_event_loop()
+   handler = app.make_handler()
+   f = loop.create_server(handler, '0.0.0.0', 8080)
+   srv = loop.run_until_complete(f)
+   print('serving on', srv.sockets[0].getsockname())
+   try:
+       loop.run_forever()
+   except KeyboardInterrupt:
+       pass
+   finally:
+       srv.close()
+       loop.run_until_complete(srv.wait_closed())
+       loop.run_until_complete(app.shutdown())
+       loop.run_until_complete(handler.finish_connections(60.0))
+       loop.run_until_complete(app.finish())
+   loop.close()
+
 
 
 CORS support

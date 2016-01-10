@@ -7,6 +7,7 @@ import os
 import os.path
 import pytest
 import ssl
+from unittest import mock
 
 from aiohttp import hdrs, web
 from aiohttp.errors import FingerprintMismatch
@@ -385,3 +386,34 @@ def test_keepalive_closed_by_server(create_app_and_client):
     assert val2 == b'OK'
 
     assert 0 == len(client._session.connector._conns)
+
+
+@pytest.mark.run_loop
+def test_wait_for(create_app_and_client, loop):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(body=b'OK')
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from asyncio.wait_for(client.get('/'), 10, loop=loop)
+    assert resp.status == 200
+    txt = yield from resp.text()
+    assert txt == 'OK'
+
+
+@pytest.mark.run_loop
+def test_raw_headers(create_app_and_client, loop):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response()
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.get('/')
+    assert resp.status == 200
+    assert resp.raw_headers == ((b'CONTENT-LENGTH', b'0'),
+                                (b'CONNECTION', b'keep-alive'),
+                                (b'DATE', mock.ANY),
+                                (b'SERVER', mock.ANY))
+    resp.close()

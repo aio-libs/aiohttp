@@ -770,6 +770,30 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertIn(b'"Cookie": "test1=123; test3=456"', bytes(content))
             r.close()
 
+    def test_morsel_with_attributes(self):
+        with test_utils.run_server(self.loop, router=Functional) as httpd:
+            c = http.cookies.Morsel()
+            c.set('test3', '456', '456')
+            c['httponly'] = True
+            c['secure'] = True
+            c['max-age'] = 1000
+
+            r = self.loop.run_until_complete(
+                client.request(
+                    'get', httpd.url('method', 'get'), loop=self.loop,
+                    cookies={'test2': c}))
+            self.assertEqual(r.status, 200)
+
+            content = self.loop.run_until_complete(r.content.read())
+            # No cookie attribute should pass here
+            # they are only used as filters
+            # whether to send particular cookie or not.
+            # E.g. if cookie expires it just becomes thrown away.
+            # Server who sent the cookie with some attributes
+            # already knows them, no need to send this back again and again
+            self.assertIn(b'"Cookie": "test3=456"', bytes(content))
+            r.close()
+
     @mock.patch('aiohttp.client_reqrep.client_logger')
     def test_set_cookies(self, m_log):
         with test_utils.run_server(self.loop, router=Functional) as httpd:

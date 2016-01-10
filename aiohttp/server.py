@@ -6,6 +6,7 @@ import traceback
 import socket
 
 from html import escape as html_escape
+from math import ceil
 
 import aiohttp
 from aiohttp import errors, streams, hdrs, helpers
@@ -136,8 +137,9 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
             # use slow request timeout for closing
             # connection_lost cleans timeout handler
-            self._timeout_handle = self._loop.call_later(
-                timeout, self.cancel_slow_request)
+            now = self._loop.time()
+            self._timeout_handle = self._loop.call_at(
+                ceil(now+timeout), self.cancel_slow_request)
 
     def connection_made(self, transport):
         super().connection_made(transport)
@@ -146,8 +148,9 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
         # start slow request timer
         if self._timeout:
-            self._timeout_handle = self._loop.call_later(
-                self._timeout, self.cancel_slow_request)
+            now = self._loop.time()
+            self._timeout_handle = self._loop.call_at(
+                ceil(now+self._timeout), self.cancel_slow_request)
 
         if self._keep_alive_on:
             tcp_keepalive(self, transport)
@@ -235,8 +238,9 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
                 # start slow request timer
                 if self._timeout and self._timeout_handle is None:
-                    self._timeout_handle = self._loop.call_later(
-                        self._timeout, self.cancel_slow_request)
+                    now = self._loop.time()
+                    self._timeout_handle = self._loop.call_at(
+                        ceil(now+self._timeout), self.cancel_slow_request)
 
                 # read request headers
                 httpstream = reader.set_parser(self._request_parser)
@@ -295,8 +299,10 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                         self.log_debug(
                             'Start keep-alive timer for %s sec.',
                             self._keep_alive_period)
-                        self._keep_alive_handle = self._loop.call_later(
-                            self._keep_alive_period, self.transport.close)
+                        now = self._loop.time()
+                        self._keep_alive_handle = self._loop.call_at(
+                            ceil(now+self._keep_alive_period),
+                            self.transport.close)
                     elif self._keep_alive and self._keep_alive_on:
                         # do nothing, rely on kernel or upstream server
                         pass
@@ -345,14 +351,16 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                 status=status, reason=reason, message=msg).encode('utf-8')
 
             response = aiohttp.Response(self.writer, status, close=True)
-            response.add_headers(
-                ('CONTENT-TYPE', 'text/html; charset=utf-8'),
-                ('CONTENT-LENGTH', str(len(html))))
+            response.add_header(hdrs.CONTENT_TYPE, 'text/html; charset=utf-8')
+            response.add_header(hdrs.CONTENT_LENGTH, str(len(html)))
             if headers is not None:
-                response.add_headers(*headers)
+                for name, value in headers:
+                    response.add_header(name, value)
             response.send_headers()
 
             response.write(html)
+            # disable CORK, enable NODELAY if needed
+            self.writer.set_tcp_nodelay(True)
             drain = response.write_eof()
 
             self.log_access(message, None, response, self._loop.time() - now)
@@ -377,9 +385,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
         body = b'Page Not Found!'
 
-        response.add_headers(
-            ('CONTENT-TYPE', 'text/plain'),
-            ('CONTENT-LENGTH', str(len(body))))
+        response.add_header(hdrs.CONTENT_TYPE, 'text/plain')
+        response.add_header(hdrs.CONTENT_LENGTH, str(len(body)))
         response.send_headers()
         response.write(body)
         drain = response.write_eof()

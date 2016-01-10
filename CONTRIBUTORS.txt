@@ -44,6 +44,7 @@ Ingmar Steen
 Jaesung Lee
 Jashandeep Sohi
 Jeroen van der Heijden
+Jesus Cea
 Joel Watts
 Julien Duponchelle
 Junjie Tao
@@ -57,9 +58,11 @@ Lukasz Marcin Dobrzanski
 Marco Paolini
 Martin Richard
 Mathias Fröjdman
+Matthieu Hauglustaine
+Michael Ihnatenko
+Mikhail Lukyanchenko
 Morgan Delahaye-Prat
 Moss Collum
-Mikhail Lukyanchenko
 Nicolas Braem
 Nikolay Novik
 Olaf Conradi
@@ -74,13 +77,16 @@ Sebastian Hüther
 Sergey Ninua
 Sergey Skripnick
 Simon Kennedy
+Stanislas Plum
 Stanislav Prokop
 Stephen Granade
 Sviatoslav Bulbakha
 Taras Voinarovskyi
 Tolga Tezel
+Thomas Grainger
 Vaibhav Sagar
 Vasyl Baran
+Vitalik Verhovodov
 Vitaly Haritonsky
 Vitaly Magerya
 Vladimir Rutsky
@@ -88,3 +94,4 @@ Vladimir Shulyak
 Vladimir Zakharov
 W. Trevor King
 Yannick Koechlin
+Коренберг Марк

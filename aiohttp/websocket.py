@@ -6,6 +6,7 @@ import collections
 import hashlib
 import os
 import random
+import sys
 
 from struct import Struct
 from aiohttp import errors, hdrs
@@ -172,6 +173,9 @@ def WebSocketParser(out, buf):
                     Message(OPCODE_BINARY, data, ''), len(data))
 
 
+native_byteorder = sys.byteorder
+
+
 def _websocket_mask_python(mask, data):
     """Websocket masking function.
 
@@ -184,7 +188,16 @@ def _websocket_mask_python(mask, data):
     version when available.
 
     """
-    return bytes(b ^ mask[i % 4] for i, b in enumerate(data))
+    assert isinstance(data, bytearray), data
+    assert len(mask) == 4, mask
+    datalen = len(data)
+    if datalen == 0:
+        # everything work without this, but may be changed later in Python.
+        return bytearray()
+    data = int.from_bytes(data, native_byteorder)
+    mask = int.from_bytes(mask * (datalen // 4) + mask[: datalen % 4],
+                          native_byteorder)
+    return (data ^ mask).to_bytes(datalen, native_byteorder)
 
 
 if bool(os.environ.get('AIOHTTP_NO_EXTENSIONS')):

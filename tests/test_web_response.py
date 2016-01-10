@@ -15,6 +15,8 @@ from aiohttp.protocol import RawRequestMessage
 def make_request(method, path, headers=CIMultiDict(),
                  version=HttpVersion11, **kwargs):
     message = RawRequestMessage(method, path, version, headers,
+                                [(k.encode('utf-8'), v.encode('utf-8'))
+                                 for k, v in headers.items()],
                                 False, False)
     return request_from_message(message, **kwargs)
 
@@ -210,10 +212,10 @@ def test_chunked_encoding_forbidden_for_http_10():
     resp = StreamResponse()
     resp.enable_chunked_encoding()
 
-    with pytest.raises_regexp(
-            RuntimeError,
-            "Using chunked encoding is forbidden for HTTP/1.0"):
+    with pytest.raises(RuntimeError) as ctx:
         yield from resp.prepare(req)
+    assert re.match("Using chunked encoding is forbidden for HTTP/1.0",
+                    str(ctx.value))
 
 
 @pytest.mark.run_loop
@@ -539,7 +541,7 @@ def test___repr__not_started():
 @pytest.mark.run_loop
 def test_keep_alive_http10_default():
     message = RawRequestMessage('GET', '/', HttpVersion10, CIMultiDict(),
-                                True, False)
+                                [], True, False)
     req = request_from_message(message)
     resp = StreamResponse()
     yield from resp.prepare(req)
@@ -550,6 +552,7 @@ def test_keep_alive_http10_default():
 def test_keep_alive_http10_switched_on():
     headers = CIMultiDict(Connection='keep-alive')
     message = RawRequestMessage('GET', '/', HttpVersion10, headers,
+                                [(b'Connection', b'keep-alive')],
                                 False, False)
     req = request_from_message(message)
     resp = StreamResponse()
@@ -561,6 +564,7 @@ def test_keep_alive_http10_switched_on():
 def test_keep_alive_http09():
     headers = CIMultiDict(Connection='keep-alive')
     message = RawRequestMessage('GET', '/', HttpVersion(0, 9), headers,
+                                [(b'Connection', b'keep-alive')],
                                 False, False)
     req = request_from_message(message)
     resp = StreamResponse()
@@ -589,6 +593,91 @@ def test_prepare_calls_signal():
     yield from resp.prepare(req)
 
     sig.assert_called_with(req, resp)
+
+
+def test_default_nodelay():
+    resp = StreamResponse()
+    assert resp.tcp_nodelay
+
+
+def test_set_tcp_nodelay_before_start():
+    resp = StreamResponse()
+    resp.set_tcp_nodelay(False)
+    assert not resp.tcp_nodelay
+    resp.set_tcp_nodelay(True)
+    assert resp.tcp_nodelay
+
+
+@pytest.mark.run_loop
+def test_set_tcp_nodelay_on_start():
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        resp_impl = yield from resp.prepare(req)
+    resp_impl.transport.set_tcp_nodelay.assert_called_with(True)
+    resp_impl.transport.set_tcp_cork.assert_called_with(False)
+
+
+@pytest.mark.run_loop
+def test_set_tcp_nodelay_after_start():
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        resp_impl = yield from resp.prepare(req)
+    resp_impl.transport.set_tcp_cork.assert_called_with(False)
+    resp_impl.transport.set_tcp_nodelay.assert_called_with(True)
+    resp.set_tcp_nodelay(False)
+    assert not resp.tcp_nodelay
+    resp_impl.transport.set_tcp_nodelay.assert_called_with(False)
+    resp.set_tcp_nodelay(True)
+    assert resp.tcp_nodelay
+    resp_impl.transport.set_tcp_nodelay.assert_called_with(True)
+
+
+def test_default_cork():
+    resp = StreamResponse()
+    assert not resp.tcp_cork
+
+
+def test_set_tcp_cork_before_start():
+    resp = StreamResponse()
+    resp.set_tcp_cork(True)
+    assert resp.tcp_cork
+    resp.set_tcp_cork(False)
+    assert not resp.tcp_cork
+
+
+@pytest.mark.run_loop
+def test_set_tcp_cork_on_start():
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+    resp.set_tcp_cork(True)
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        resp_impl = yield from resp.prepare(req)
+    resp_impl.transport.set_tcp_nodelay.assert_called_with(False)
+    resp_impl.transport.set_tcp_cork.assert_called_with(True)
+
+
+@pytest.mark.run_loop
+def test_set_tcp_cork_after_start():
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        resp_impl = yield from resp.prepare(req)
+    resp_impl.transport.set_tcp_cork.assert_called_with(False)
+    resp.set_tcp_cork(True)
+    assert resp.tcp_cork
+    resp_impl.transport.set_tcp_cork.assert_called_with(True)
+    resp.set_tcp_cork(False)
+    assert not resp.tcp_cork
+    resp_impl.transport.set_tcp_cork.assert_called_with(False)
+
+
+# Response class
 
 
 def test_response_ctor():
