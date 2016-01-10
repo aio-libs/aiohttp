@@ -103,7 +103,7 @@ class ResourceAdapter(BaseResource):
     def resolve(self, method, path):
         match_dict = self._route.match(path)
         allowed_methods = {self._route.method}
-        if match_dict:
+        if match_dict is not None:
             return (UrlMappingMatchInfo(match_dict, self._route),
                     allowed_methods)
         else:
@@ -183,10 +183,6 @@ class Resource(BaseResource):
             allowed_methods.add(route_method)
         else:
             return None, allowed_methods
-
-    @property
-    def routes(self):
-        return self._routes
 
     def __len__(self):
         return len(self._routes)
