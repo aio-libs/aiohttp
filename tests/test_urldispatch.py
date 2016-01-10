@@ -321,20 +321,21 @@ class TestUrlDispatcher(unittest.TestCase):
 
     def test_plain_repr(self):
         handler = self.make_handler()
-        self.router.add_route('GET', '/get/path', handler, name='name')
-        self.assertRegex(repr(self.router['name']),
+        route = PlainRoute('GET', handler, 'name', '/get/path')
+        self.assertRegex(repr(route),
                          r"<PlainRoute 'name' \[GET\] /get/path")
 
     def test_dynamic_repr(self):
         handler = self.make_handler()
-        self.router.add_route('GET', '/get/{path}', handler, name='name')
-        self.assertRegex(repr(self.router['name']),
+        route = DynamicRoute('GET', handler, 'name',
+                             'pattern', '/get/{path}')
+        self.assertRegex(repr(route),
                          r"<DynamicRoute 'name' \[GET\] /get/{path}")
 
     def test_static_repr(self):
         self.router.add_static('/get', os.path.dirname(aiohttp.__file__),
                                name='name')
-        self.assertRegex(repr(self.router['name']),
+        self.assertRegex(repr(self.router['name'].route),
                          r"<StaticRoute 'name' \[GET\] /get/")
 
     def test_static_adds_slash(self):

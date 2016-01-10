@@ -54,7 +54,7 @@ def _defaultExpectHandler(request):
         request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
 
-class BaseResource(metaclass=abc.ABCMeta):
+class BaseResource(Sized, Iterable):
 
     def __init__(self, *, name=None):
         self._name = name
@@ -90,7 +90,7 @@ class ResourceAdapter(BaseResource):
 
     def __init__(self, route):
         assert isinstance(route, Route), \
-            'Instance of Route class is require, got {!r}'.format(route)
+            'Instance of Route class is required, got {!r}'.format(route)
         super().__init__(name=route.name)
         self._route = route
 
@@ -108,6 +108,16 @@ class ResourceAdapter(BaseResource):
                     allowed_methods)
         else:
             return None, allowed_methods
+
+    @property
+    def route(self):
+        return self._route
+
+    def __len__(self):
+        return 1
+
+    def __iter__(self):
+        yield self._route
 
 
 class Resource(BaseResource):
@@ -173,6 +183,16 @@ class Resource(BaseResource):
             allowed_methods.add(route_method)
         else:
             return None, allowed_methods
+
+    @property
+    def routes(self):
+        return self._routes
+
+    def __len__(self):
+        return len(self._routes)
+
+    def __iter__(self):
+        return iter(self._routes)
 
 
 class PlainResource(Resource):
@@ -597,19 +617,35 @@ class View(AbstractView):
 
 class RoutesView(Sized, Iterable, Container):
 
-    __slots__ = '_urls'
-
-    def __init__(self, urls):
-        self._urls = urls
+    def __init__(self, resources):
+        self._routes = []
+        for resource in resources:
+            for route in resource:
+                self._routes.append(route)
 
     def __len__(self):
-        return len(self._urls)
+        return len(self._routes)
 
     def __iter__(self):
-        yield from self._urls
+        yield from self._routes
 
     def __contains__(self, route):
-        return route in self._urls
+        return route in self._routes
+
+
+class ResourcesView(Sized, Iterable, Container):
+
+    def __init__(self, resources):
+        self._resources = resources
+
+    def __len__(self):
+        return len(self._resources)
+
+    def __iter__(self):
+        yield from self._resources
+
+    def __contains__(self, resource):
+        return resource in self._resources
 
 
 class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
