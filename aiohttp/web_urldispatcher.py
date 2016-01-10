@@ -278,7 +278,7 @@ class ResourceRoute(BaseRoute):
         self._resource = resource
 
     def __repr__(self):
-        return "<Route [{method}] {resource} -> {handler!r}".format(
+        return "<ResourceRoute [{method}] {resource} -> {handler!r}".format(
             method=self.method, resource=self._resource,
             handler=self.handler)
 
