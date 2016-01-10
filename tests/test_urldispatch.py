@@ -241,7 +241,7 @@ class TestUrlDispatcher(unittest.TestCase):
     def test_route_plain(self):
         handler = self.make_handler()
         route = self.router.add_route('GET', '/get', handler, name='name')
-        route2 = self.router['name']
+        route2 = next(iter(self.router['name']))
         url = route2.url()
         self.assertEqual('/get', url)
         self.assertIs(route, route2)
@@ -255,7 +255,7 @@ class TestUrlDispatcher(unittest.TestCase):
         route = self.router.add_route('GET', '/get/{name}', handler,
                                       name='name')
 
-        route2 = self.router['name']
+        route2 = next(iter(self.router['name']))
         url = route2.url(parts={'name': 'John'})
         self.assertEqual('/get/John', url)
         self.assertIs(route, route2)
