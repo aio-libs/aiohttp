@@ -39,8 +39,9 @@ To retrieve something from the web:
   import asyncio
 
   async def get_body(client, url):
-      async with client.get(url) as response:
-          return await response.read()
+      with aiohttp.Timeout(10):
+          async with client.get(url) as response:
+              return await response.read()
 
   if __name__ == '__main__':
       loop = asyncio.get_event_loop()
@@ -48,14 +49,6 @@ To retrieve something from the web:
       raw_html = loop.run_until_complete(get_body(client, 'http://python.org'))
       print(raw_html)
       client.close()
-
-
-If you want to use timeouts for aiohttp client please use standard
-asyncio approach:
-
-.. code-block:: python
-
-   yield from asyncio.wait_for(client.get(url), 10)
 
 
 Server
