@@ -55,8 +55,46 @@ def _defaultExpectHandler(request):
 
 
 class Resource(metaclass=abc.ABCMeta):
+    METHODS = hdrs.METH_ALL | {hdrs.METH_ANY}
+
     def __init__(self, *, name=None):
         self._name = name
+        self._routes = []
+
+    def add_route(self, method, handler, *,
+                  expect_handler=None):
+
+        if expect_handler is None:
+            expect_handler = _defaultExpectHandler
+
+        assert asyncio.iscoroutinefunction(expect_handler), \
+            'Coroutine is expected, got {!r}'.format(expect_handler)
+
+        assert callable(handler), handler
+        if asyncio.iscoroutinefunction(handler):
+            pass
+        elif inspect.isgeneratorfunction(handler):
+            pass
+        elif isinstance(handler, type) and issubclass(handler, AbstractView):
+            pass
+        else:
+            handler = asyncio.coroutine(handler)
+
+        method = upstr(method)
+        if method not in self.METHODS:
+            raise ValueError("{} is not allowed HTTP method".format(method))
+
+        # TODO: add check for duplicated methods
+
+        route = Route(method, handler,
+                      expect_handler=expect_handler,
+                      resource=self)
+        self.register_route(route)
+        return route
+
+    def register_route(self, route):
+        assert isinstance(route, Route), 'Instance of Route class is required.'
+        self._routes.append(route)
 
     @property
     def name(self):
@@ -70,6 +108,23 @@ class Resource(metaclass=abc.ABCMeta):
     @abc.abstractmethod  # pragma: no branch
     def url(self, **kwargs):
         """Construct url for route with additional params."""
+
+    def resolve(self, method, path):
+        allowed_methods = set()
+
+        match_dict = self.match(path)
+        if match_dict is None:
+            return None, allowed_methods
+
+        for route in self._routes:
+            route_method = route.method
+
+            if route_method == method or route_method == hdrs.METH_ANY:
+                return UrlMappingMatchInfo(match_dict, route), allowed_methods
+
+            allowed_methods.add(route_method)
+        else:
+            return None, allowed_methods
 
     @staticmethod
     def _append_query(url, query):
@@ -126,13 +181,38 @@ class DynamicResource(Resource):
                 .format(name=name, formatter=self._formatter))
 
 
+class PrefixResource(Resource):
+
+    def __init__(self, prefix, *, name=None):
+        if not prefix.endswith('/'):
+            prefix += '/'
+        assert prefix.endswith('/'), prefix
+        super().__init__(name=name)
+        self._prefix = prefix
+        self._prefix_len = len(self._prefix)
+
+    def match(self, path):
+        if not path.startswith(self._prefix):
+            return None
+        return {'filename': path[self._prefix_len:]}
+
+    def url(self, *, filename, query=None):
+        while filename.startswith('/'):
+            filename = filename[1:]
+        url = self._prefix + filename
+        return Resource._append_query(url, query)
+
+    def __repr__(self):
+        name = "'" + self.name + "' " if self.name is not None else ""
+        return "<PrefixResource {name} {prefix}".format(name=name,
+                                                        prefix=self._prefix)
+
+
 class Route(metaclass=abc.ABCMeta):
 
-    def __init__(self, method, handler, resource, *, expect_handler=None):
-        if expect_handler is None:
-            expect_handler = _defaultExpectHandler
-        assert asyncio.iscoroutinefunction(expect_handler), \
-            'Coroutine is expected, got {!r}'.format(expect_handler)
+    def __init__(self, method, handler, *,
+                 expect_handler=None,
+                 resource=None):
 
         self._method = method
         self._handler = handler
@@ -174,20 +254,42 @@ class Route(metaclass=abc.ABCMeta):
         return (yield from self._expect_handler(request))
 
 
-PlainRoute = DynamicRoute = Route
+class PlainRoute(Route):
+    # for backward compatibility only, not required for new API
+
+    def __init__(self, method, handler, name, path, *,
+                 expect_handler=None,
+                 resource=None):
+        super().__init__(method, handler,
+                         expect_handler=expect_handler,
+                         resource=resource)
+        self._name = name
+        self._path = path
+
+
+class DynamicRoute(Route):
+    # for backward compatibility only, not required for new API
+
+    def __init__(self, method, handler, name, path, *,
+                 expect_handler=None,
+                 resource=None):
+        super().__init__(method, handler,
+                         expect_handler=expect_handler,
+                         resource=resource)
+        self._name = name
+        self._path = path
 
 
 class StaticRoute(Route):
 
     def __init__(self, name, prefix, directory, *,
                  expect_handler=None, chunk_size=256*1024,
-                 response_factory=StreamResponse):
-        assert prefix.startswith('/'), prefix
-        assert prefix.endswith('/'), prefix
+                 response_factory=StreamResponse,
+                 resource=None):
         super().__init__(
-            'GET', self.handle, name, expect_handler=expect_handler)
-        self._prefix = prefix
-        self._prefix_len = len(self._prefix)
+            'GET', self.handle,
+            expect_handler=expect_handler,
+            resource=resource)
         self._directory = os.path.abspath(directory) + os.sep
         self._chunk_size = chunk_size
         self._response_factory = response_factory
@@ -198,17 +300,6 @@ class StaticRoute(Route):
 
         if bool(os.environ.get("AIOHTTP_NOSENDFILE")):
             self._sendfile = self._sendfile_fallback
-
-    def match(self, path):
-        if not path.startswith(self._prefix):
-            return None
-        return {'filename': path[self._prefix_len:]}
-
-    def url(self, *, filename, query=None):
-        while filename.startswith('/'):
-            filename = filename[1:]
-        url = self._prefix + filename
-        return Resource._append_query(url, query)
 
     def _sendfile_cb(self, fut, out_fd, in_fd, offset, count, loop,
                      registered):
@@ -342,7 +433,7 @@ class StaticRoute(Route):
 class SystemRoute(Route):
 
     def __init__(self, status, reason):
-        super().__init__(hdrs.METH_ANY, None, None)
+        super().__init__(hdrs.METH_ANY, None)
         self._status = status
         self._reason = reason
 
@@ -470,15 +561,11 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         allowed_methods = set()
 
         for resource in self._resources:
-            match_dict = resource.match(path)
-            if match_dict is None:
-                continue
-
-            route_method = route.method
-            if route_method == method or route_method == hdrs.METH_ANY:
-                return UrlMappingMatchInfo(match_dict, route)
-
-            allowed_methods.add(route_method)
+            match_dict, allowed = resource.resolve(method, path)
+            if match_dict is not None:
+                return match_dict
+            else:
+                allowed_methods |= allowed
         else:
             if allowed_methods:
                 return _MethodNotAllowedMatchInfo(method, allowed_methods)
@@ -513,12 +600,14 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         return MappingProxyType(self._named_resources)
 
     def register_route(self, route):
-        assert isinstance(route, Route), 'Instance of Route class is required.'
+        assert isinstance(route, Route), \
+            'Instance of Route class is require, got {!r}'.format(route)
+        assert route.resource is None, "Cannot register already registered"
         self._reg_resource(route.resource)
 
     def _reg_resource(self, resource):
         assert isinstance(resource, Resource), \
-            'Instance of Resource class is required.'
+            'Instance of Resource class is required, got {!r}'.format(resource)
 
         name = resource.name
 
@@ -572,29 +661,14 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             raise ValueError(
                 "Bad pattern '{}': {}".format(pattern, exc)) from None
         resource = DynamicResource(compiled, formatter, name=name)
-        self.register_resource(resource)
+        self._reg_resource(resource)
         return resource
 
     def add_route(self, method, path, handler,
                   *, name=None, expect_handler=None):
-
-        assert callable(handler), handler
-        if asyncio.iscoroutinefunction(handler):
-            pass
-        elif inspect.isgeneratorfunction(handler):
-            pass
-        elif isinstance(handler, type) and issubclass(handler, AbstractView):
-            pass
-        else:
-            handler = asyncio.coroutine(handler)
-
-        method = upstr(method)
-        if method not in self.METHODS:
-            raise ValueError("{} is not allowed HTTP method".format(method))
-
         resource = self.add_resource(path, name=name)
-        route = Route(method, handler, resource, expect_handler=expect_handler)
-        return route
+        return resource.add_route(method, handler,
+                                  expect_handler=expect_handler)
 
     def add_static(self, prefix, path, *, name=None, expect_handler=None,
                    chunk_size=256*1024, response_factory=StreamResponse):
@@ -603,12 +677,11 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         :param prefix - url prefix
         :param path - folder with files
         """
-        assert prefix.startswith('/')
-        if not prefix.endswith('/'):
-            prefix += '/'
         route = StaticRoute(name, prefix, path,
                             expect_handler=expect_handler,
                             chunk_size=chunk_size,
                             response_factory=response_factory)
-        self.register_route(route)
+        resource = PrefixResource(prefix, name=name)
+        self._reg_resource(resource)
+        resource.register_route(route)
         return route
