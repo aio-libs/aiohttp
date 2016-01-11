@@ -109,10 +109,6 @@ class ResourceAdapter(BaseResource):
         else:
             return None, allowed_methods
 
-    @property
-    def route(self):
-        return self._route
-
     def __len__(self):
         return 1
 

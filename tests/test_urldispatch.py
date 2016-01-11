@@ -275,7 +275,7 @@ class TestUrlDispatcher(unittest.TestCase):
         resource = self.router['static']
         url = resource.url(filename='/dir/a.txt')
         self.assertEqual('/st/dir/a.txt', url)
-        self.assertIs(route, resource.route)
+        self.assertIs(route, next(iter(resource)))
 
     def test_plain_not_match(self):
         handler = self.make_handler()
@@ -336,7 +336,7 @@ class TestUrlDispatcher(unittest.TestCase):
     def test_static_repr(self):
         self.router.add_static('/get', os.path.dirname(aiohttp.__file__),
                                name='name')
-        self.assertRegex(repr(self.router['name'].route),
+        self.assertRegex(repr(next(iter(self.router['name']))),
                          r"<StaticRoute 'name' \[GET\] /get/")
 
     def test_static_adds_slash(self):
