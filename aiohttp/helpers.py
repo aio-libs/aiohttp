@@ -455,8 +455,8 @@ class Timeout:
     of code or in cases when asyncio.wait_for is not suitable. For example:
 
     >>> with aiohttp.Timeout(0.001):
-    >>>     async with aiohttp.get('https://github.com') as r:
-    >>>         await r.text()
+    ...     async with aiohttp.get('https://github.com') as r:
+    ...         await r.text()
 
 
     :param timeout: timeout value in seconds
