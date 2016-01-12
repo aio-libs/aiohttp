@@ -1,3 +1,12 @@
+0.20.2 (01-07-2015)
+--------------------
+
+- Enable use of `await` for a class based view #717
+
+- Check address family to fill wsgi env properly #718
+
+- Fix memory leak in headers processing (thanks to Marco Paolini) #723
+
 0.20.1 (12-30-2015)
 -------------------
 
