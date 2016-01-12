@@ -163,11 +163,10 @@ Contents
    api
    logging
    gunicorn
+   faq
    contributing
    changes
-   Python 3.3 support <python33>
    glossary
-   faq
 
 Indices and tables
 ==================

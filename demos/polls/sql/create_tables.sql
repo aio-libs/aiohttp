@@ -1,3 +1,5 @@
+SET ROLE 'aiohttpdemo_user';
+
 BEGIN;
 --
 -- Create model Choice
