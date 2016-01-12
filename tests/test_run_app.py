@@ -1,7 +1,6 @@
 import asyncio
 import pytest
 import ssl
-import sys
 
 from unittest import mock
 from aiohttp import web
