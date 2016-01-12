@@ -8,10 +8,9 @@ from aiohttp import web
 
 def test_run_app_http(loop):
     loop = mock.Mock(spec=asyncio.AbstractEventLoop, wrap=loop)
-    loop.run_forever.return_value = None  # to disable wrapping
-    loop.run_forever.side_effect = KeyboardInterrupt()
-
+    loop.call_later(0.01, loop.stop)
     app = mock.Mock(wrap=web.Application(loop=loop))
+
 
     web.run_app(app, loop=loop)
 
@@ -26,8 +25,7 @@ def test_run_app_http(loop):
 
 def test_run_app_https(loop):
     loop = mock.Mock(spec=asyncio.AbstractEventLoop, wrap=loop)
-    loop.run_forever.return_value = None  # to disable wrapping
-    loop.run_forever.side_effect = KeyboardInterrupt()
+    loop.call_later(0.01, loop.stop)
 
     app = mock.Mock(wrap=web.Application(loop=loop))
 
@@ -50,8 +48,7 @@ def test_run_app_nondefault_host_port(loop, unused_port):
     host = 'localhost'
 
     loop = mock.Mock(spec=asyncio.AbstractEventLoop, wrap=loop)
-    loop.run_forever.return_value = None  # to disable wrapping
-    loop.run_forever.side_effect = KeyboardInterrupt()
+    loop.call_later(0.01, loop.stop)
 
     app = mock.Mock(wrap=web.Application(loop=loop))
 
@@ -62,8 +59,7 @@ def test_run_app_nondefault_host_port(loop, unused_port):
 
 def test_run_app_default_eventloop(loop, unused_port):
     loop = mock.Mock(spec=asyncio.AbstractEventLoop, wrap=loop)
-    loop.run_forever.return_value = None  # to disable wrapping
-    loop.run_forever.side_effect = KeyboardInterrupt()
+    loop.call_later(0.01, loop.stop)
 
     asyncio.set_event_loop(loop)
 
@@ -76,6 +72,7 @@ def test_run_app_default_eventloop(loop, unused_port):
 
 def test_run_app_exit_with_exception(loop):
     loop = mock.Mock(spec=asyncio.AbstractEventLoop, wrap=loop)
+
     loop.run_forever.return_value = None  # to disable wrapping
     loop.run_forever.side_effect = exc = RuntimeError()
 
