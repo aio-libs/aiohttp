@@ -57,10 +57,7 @@ def test_run_app_nondefault_host_port(loop, unused_port):
     loop.create_server.assert_called_with(mock.ANY, host, port, ssl=None)
 
 
-@pytest.mark.skipIf(sys.version_info < (3, 5))
 def test_run_app_default_eventloop(loop, unused_port):
-    # Python 3.4 fails on running in debug mode if loop is wrapped by mock
-
     loop = mock.Mock(spec=asyncio.AbstractEventLoop, wrap=loop)
 
     asyncio.set_event_loop(loop)
