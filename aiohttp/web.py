@@ -309,7 +309,7 @@ def run_app(app, *, host='0.0.0.0', port=None, loop=None,
     prompt = '127.0.0.1' if host == '0.0.0.0' else host
     print("======== Running on {scheme}://{prompt}:{port}/ ========\n"
           "(Press CTRL+C to quit)".format(
-              scheme=scheme, host=prompt, port=port))
+              scheme=scheme, prompt=prompt, port=port))
 
     try:
         loop.run_forever()
