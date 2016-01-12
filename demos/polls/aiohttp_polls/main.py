@@ -23,8 +23,16 @@ async def init(loop):
         app, loader=jinja2.FileSystemLoader(str(TEMPLATES_ROOT)))
     # load config from yaml file
     conf = load_config(str(PROJ_ROOT / 'config' / 'polls.yaml'))
+
     # create connection to the database
     pg = await init_postgres(conf['postgres'], loop)
+
+    async def close_pg():
+        pg.close()
+        await pg.wait_closed()
+
+    app.register_on_finish(pg)
+
     # setup views and routes
     handler = SiteHandler(pg)
     setup_routes(app, handler, PROJ_ROOT)
@@ -38,15 +46,22 @@ async def init(loop):
     return srv, app_handler
 
 
-loop = asyncio.get_event_loop()
-srv, app_handler = loop.run_until_complete(init(loop))
+def main():
+    loop = asyncio.get_event_loop()
+    srv, app_handler = loop.run_until_complete(init(loop))
 
-try:
-    loop.run_forever()
-except KeyboardInterrupt:
-    pass
-finally:
-    loop.run_until_complete(app_handler.finish_connections())
-    srv.close()
-    loop.run_until_complete(srv.wait_closed())
-loop.close()
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        srv.close()
+        loop.run_until_complete(srv.wait_closed())
+        loop.run_until_complete(app.shutdown())
+        loop.run_until_complete(handler.finish_connections(shutdown_timeout))
+        loop.run_until_complete(app.finish())
+    loop.close()
+
+
+if __name__ == '__main__':
+    main()
