@@ -57,11 +57,14 @@ def test_run_app_nondefault_host_port(loop, unused_port):
 
 
 def test_run_app_default_eventloop(loop):
+    # don't perform any assert checks just make sure the run_app was successful
+    # mocking a default loop produces a failure on Python 3.4
+    # with PYTHONASYNCIODEBUG enabled
+
     asyncio.set_event_loop(loop)
     loop.call_later(0.01, loop.stop)
 
     web.run_app(web.Application())
-    # don't analise a return value, jut make sure the call was successful
 
 
 def test_run_app_exit_with_exception(loop):
