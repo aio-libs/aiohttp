@@ -56,17 +56,12 @@ def test_run_app_nondefault_host_port(loop, unused_port):
     loop.create_server.assert_called_with(mock.ANY, host, port, ssl=None)
 
 
-def test_run_app_default_eventloop(loop, unused_port):
-    loop = mock.Mock(spec=asyncio.AbstractEventLoop, wrap=loop)
-
+def test_run_app_default_eventloop(loop):
     asyncio.set_event_loop(loop)
     loop.call_later(0.01, loop.stop)
 
-    app = mock.Mock(wrap=web.Application())
-
-    web.run_app(app)
-
-    loop.create_server.assert_called_with(mock.ANY, '0.0.0.0', 8080, ssl=None)
+    web.run_app(web.Application())
+    # don't analise a return value, jut make sure the call was successful
 
 
 def test_run_app_exit_with_exception(loop):
