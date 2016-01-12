@@ -57,9 +57,9 @@ def test_run_app_nondefault_host_port(loop, unused_port):
 
 
 def test_run_app_default_eventloop(loop, unused_port):
-    asyncio.set_event_loop(loop)
-
     loop = mock.Mock(spec=asyncio.AbstractEventLoop, wrap=loop)
+
+    asyncio.set_event_loop(loop)
     loop.call_later(0.01, loop.stop)
 
     app = mock.Mock(wrap=web.Application())
