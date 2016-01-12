@@ -1515,7 +1515,8 @@ Utilities
                       shutdown_timeout=60.0, ssl_context=None)
 
    An utility function for running an application, serving it until
-   keyboard iterrupt and performing graceful shutdown.
+   keyboard interrupt and performing a
+   :ref:`aiohttp-web-graceful-shutdown`.
 
    Suitable as handy tool for scaffolding aiohttp based projects.
    Perhaps production config will use more sophisticated runner but it
@@ -1530,13 +1531,14 @@ Utilities
                     (when *ssl_context* parameter is specified).
 
    :param int shutdown_timeout: a delay to wait for graceful server
-                                shutdown before diconnecting all
-                                opened sockets hard way.
+                                shutdown before disconnecting all
+                                open client sockets hard way.
 
-                                A system with
+                                A system with properly
                                 :ref:`aiohttp-web-graceful-shutdown`
                                 implemented never waits for this
-                                timeout.
+                                timeout but closes a server in a few
+                                milliseconds.
 
    :param ssl_context: :class:`ssl.SSLContext` for HTTPS server,
                        ``None`` for HTTP connection.
