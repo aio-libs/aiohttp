@@ -6,9 +6,9 @@ import aiohttp_jinja2
 import jinja2
 from aiohttp import web
 
-from aiohttp_polls.routes import setup_routes
-from aiohttp_polls.utils import init_postgres, load_config
-from aiohttp_polls.views import SiteHandler
+from aiohttpdemo_polls.routes import setup_routes
+from aiohttpdemo_polls.utils import init_postgres, load_config
+from aiohttpdemo_polls.views import SiteHandler
 
 
 PROJ_ROOT = pathlib.Path(__file__).parent.parent
