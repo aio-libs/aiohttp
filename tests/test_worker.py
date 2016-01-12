@@ -145,7 +145,11 @@ def test_close(worker, loop):
         loop=loop)
     handler.finish_connections.return_value.set_result(1)
 
+    app.shutdown.return_value = asyncio.Future(loop=loop)
+    app.shutdown.return_value.set_result(None)
+
     loop.run_until_complete(worker.close())
+    app.shutdown.assert_called_with()
     app.finish.assert_called_with()
     handler.finish_connections.assert_called_with(timeout=95.0)
     srv.close.assert_called_with()

@@ -31,7 +31,7 @@ def request(buf):
     app = mock.Mock()
     app._debug = False
     app.on_response_prepare = signals.Signal(app)
-    message = RawRequestMessage(method, path, HttpVersion11, headers,
+    message = RawRequestMessage(method, path, HttpVersion11, headers, [],
                                 False, False)
     req = Request(app, message, payload,
                   transport, reader, writer)
