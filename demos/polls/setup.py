@@ -18,15 +18,15 @@ def read_version():
             raise RuntimeError(msg)
 
 
-install_requires = ['aiohttp>=0.20.0',
+install_requires = ['aiohttp',
                     'aiopg[sa]',
                     'aiohttp_jinja2',
                     'pyyaml']
 
 
-setup(name='aiohttp_polls',
+setup(name='aiohttpdemo_polls',
       version=read_version(),
-      description='Project example',
+      description='Polls project example from aiohttp',
       platforms=['POSIX'],
       packages=find_packages(),
       include_package_data=True,
