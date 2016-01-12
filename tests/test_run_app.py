@@ -11,7 +11,6 @@ def test_run_app_http(loop):
     loop.call_later(0.01, loop.stop)
     app = mock.Mock(wrap=web.Application(loop=loop))
 
-
     web.run_app(app, loop=loop)
 
     app.make_handler.assert_called_with()
