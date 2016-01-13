@@ -835,7 +835,7 @@ Proper finalization procedure has three steps:
      :meth:`RequestHandlerFactory.finish_connections` call with
      reasonable small delay.
 
-  4. Call registered application finalizers by :meth:`Application.finish`.
+  4. Call registered application finalizers by :meth:`Application.cleanup`.
 
 The following code snippet performs proper application start, run and
 finalizing.  It's pretty close to :func:`run_app` utility function::
@@ -854,7 +854,7 @@ finalizing.  It's pretty close to :func:`run_app` utility function::
        loop.run_until_complete(srv.wait_closed())
        loop.run_until_complete(app.shutdown())
        loop.run_until_complete(handler.finish_connections(60.0))
-       loop.run_until_complete(app.finish())
+       loop.run_until_complete(app.cleanup())
    loop.close()
 
 

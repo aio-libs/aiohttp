@@ -33,11 +33,11 @@ def test_app_register_on_finish(loop):
     app = web.Application(loop=loop)
     cb1 = mock.Mock()
     cb2 = mock.Mock()
-    app.register_on_finish(cb1, 1, b=2)
-    app.register_on_finish(cb2, 2, c=3)
-    yield from app.finish()
-    cb1.assert_called_once_with(app, 1, b=2)
-    cb2.assert_called_once_with(app, 2, c=3)
+    app.on_cleanup.append(cb1)
+    app.on_cleanup.append(cb2)
+    yield from app.cleanup()
+    cb1.assert_called_once_with(app)
+    cb2.assert_called_once_with(app)
 
 
 @pytest.mark.run_loop
@@ -51,25 +51,25 @@ def test_app_register_coro(loop):
         yield from asyncio.sleep(0.001, loop=loop)
         fut.set_result(123)
 
-    app.register_on_finish(cb)
-    yield from app.finish()
+    app.on_cleanup.append(cb)
+    yield from app.cleanup()
     assert fut.done()
     assert 123 == fut.result()
 
 
 @pytest.mark.run_loop
-def test_app_error_in_finish_callbacks(loop):
+def test_app_register_and_finish_are_deprecated(loop, warning):
     app = web.Application(loop=loop)
-
-    err = RuntimeError('bad call')
-    app.register_on_finish(mock.Mock(side_effect=err))
-    handler = mock.Mock()
-    loop.set_exception_handler(handler)
-    yield from app.finish()
-    exc_info = {'exception': err,
-                'application': app,
-                'message': 'Error in finish callback'}
-    handler.assert_called_once_with(loop, exc_info)
+    cb1 = mock.Mock()
+    cb2 = mock.Mock()
+    with warning(DeprecationWarning):
+        app.register_on_finish(cb1, 1, b=2)
+    with warning(DeprecationWarning):
+        app.register_on_finish(cb2, 2, c=3)
+    with warning(DeprecationWarning):
+        yield from app.finish()
+    cb1.assert_called_once_with(app, 1, b=2)
+    cb2.assert_called_once_with(app, 2, c=3)
 
 
 def test_non_default_router(loop):
