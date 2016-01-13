@@ -26,13 +26,13 @@ cov cover coverage:
 	tox
 
 cov-dev: .develop
-	py.test --cov=aiohttp --cov-report=term --cov-report=html tests 
+	py.test --cov=aiohttp --cov-report=term --cov-report=html tests
 	@echo "open file://`pwd`/coverage/index.html"
 
 cov-dev-full: .develop
-	AIOHTTP_NO_EXTENSIONS=1 py.test --cov=aiohttp --cov-append tests 
-	PYTHONASYNCIODEBUG=1 py.test --cov=aiohttp --cov-append tests 
-	py.test --cov=aiohttp --cov-report=term --cov-report=html tests 
+	AIOHTTP_NO_EXTENSIONS=1 py.test --cov=aiohttp --cov-append tests
+	PYTHONASYNCIODEBUG=1 py.test --cov=aiohttp --cov-append tests
+	py.test --cov=aiohttp --cov-report=term --cov-report=html tests
 	@echo "open file://`pwd`/coverage/index.html"
 
 clean:

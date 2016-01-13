@@ -16,11 +16,11 @@ the `demo source`_.
    :maxdepth: 2
 
    introduction
-   project_skeleton
    setup
-   database schema
-   request-response cycle
-   views
-   templates
-   css
-   testing
+   .. setup
+   .. database schema
+   .. request-response cycle
+   .. views
+   .. templates
+   .. css
+   .. testing
