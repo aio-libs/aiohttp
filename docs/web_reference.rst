@@ -1512,7 +1512,8 @@ Utilities
 
 
 .. function:: run_app(app, *, host='0.0.0.0', port=None, loop=None, \
-                      shutdown_timeout=60.0, ssl_context=None)
+                      shutdown_timeout=60.0, ssl_context=None,
+                      print=print)
 
    An utility function for running an application, serving it until
    keyboard interrupt and performing a
@@ -1544,6 +1545,9 @@ Utilities
 
    :param ssl_context: :class:`ssl.SSLContext` for HTTPS server,
                        ``None`` for HTTP connection.
+
+   :param print: a callable compatible with :func:`print`. May be used
+                 to override stdout output or supppress it.
 
 
 Constants
