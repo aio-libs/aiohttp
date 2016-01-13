@@ -520,6 +520,23 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
+    def test_http11_keep_alive_default(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            yield from request.read()
+            return web.Response(body=b'OK')
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('GET', '/', handler)
+            resp = yield from request('GET', url, loop=self.loop,
+                                      version=HttpVersion10)
+            self.assertNotIn('CONNECTION', resp.headers)
+            resp.close()
+
+        self.loop.run_until_complete(go())
+
     def test_http10_keep_alive_default(self):
 
         @asyncio.coroutine
@@ -532,7 +549,8 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
             _, _, url = yield from self.create_server('GET', '/', handler)
             resp = yield from request('GET', url, loop=self.loop,
                                       version=HttpVersion10)
-            self.assertEqual('close', resp.headers['CONNECTION'])
+            self.assertEqual(resp.version, HttpVersion10)
+            self.assertEqual('keep-alive', resp.headers['CONNECTION'])
             resp.close()
 
         self.loop.run_until_complete(go())
@@ -551,7 +569,7 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
             resp = yield from request('GET', url, loop=self.loop,
                                       headers=headers,
                                       version=HttpVersion(0, 9))
-            self.assertEqual('close', resp.headers['CONNECTION'])
+            self.assertNotIn('CONNECTION', resp.headers)
             resp.close()
 
         self.loop.run_until_complete(go())
