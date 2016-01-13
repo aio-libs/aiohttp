@@ -886,7 +886,7 @@ class Request(HttpMessage):
                  http_version=HttpVersion11, close=False):
         # set the default for HTTP 1.0 to be different
         # will only be overwritten with keep-alive header
-        if http_version < HttpVersion11:
+        if http_version < HttpVersion10:
             close = True
 
         super().__init__(transport, http_version, close)

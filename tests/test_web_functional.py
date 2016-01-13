@@ -531,7 +531,7 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
         def go():
             _, _, url = yield from self.create_server('GET', '/', handler)
             resp = yield from request('GET', url, loop=self.loop,
-                                      version=HttpVersion10)
+                                      version=HttpVersion11)
             self.assertNotIn('CONNECTION', resp.headers)
             resp.close()
 
@@ -547,11 +547,12 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
         @asyncio.coroutine
         def go():
             _, _, url = yield from self.create_server('GET', '/', handler)
-            resp = yield from request('GET', url, loop=self.loop,
-                                      version=HttpVersion10)
-            self.assertEqual(resp.version, HttpVersion10)
-            self.assertEqual('keep-alive', resp.headers['CONNECTION'])
-            resp.close()
+            with ClientSession(loop=self.loop) as session:
+                resp = yield from session.get(url,
+                                              version=HttpVersion10)
+                self.assertEqual(resp.version, HttpVersion10)
+                self.assertEqual('keep-alive', resp.headers['CONNECTION'])
+                resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -587,7 +588,7 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
             headers = {'Connection': 'close'}
             resp = yield from request('GET', url, loop=self.loop,
                                       headers=headers, version=HttpVersion10)
-            self.assertEqual('close', resp.headers['CONNECTION'])
+            self.assertNotIn('CONNECTION', resp.headers)
             resp.close()
 
         self.loop.run_until_complete(go())
