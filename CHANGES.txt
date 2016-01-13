@@ -37,4 +37,5 @@ CHANGES
 
       - don't send `Connection` header for HTTP 1.0
 
-  
+- Add version parameter to ClientSession constructor,
+  deprecate it for session.request() and family #736  
