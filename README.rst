@@ -38,17 +38,17 @@ To retrieve something from the web:
   import aiohttp
   import asyncio
 
-  async def get_body(client, url):
+  async def fetch(session, url):
       with aiohttp.Timeout(10):
-          async with client.get(url) as response:
-              return await response.read()
+          async with session.get(url) as response:
+              return await response.text()
 
   if __name__ == '__main__':
       loop = asyncio.get_event_loop()
-      client = aiohttp.ClientSession(loop=loop)
-      raw_html = loop.run_until_complete(get_body(client, 'http://python.org'))
-      print(raw_html)
-      client.close()
+      with aiohttp.ClientSession(loop=loop) as session:
+          html = loop.run_until_complete(
+              fetch(session, 'http://python.org'))
+          print(html)
 
 
 Server
