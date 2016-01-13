@@ -9,3 +9,10 @@ CHANGES
 - Implement raw input headers #726
 
 - Implement web.run_app utility function #734
+
+- Introduce on_cleanup signal
+
+- Deprecate Application.finish() / Application.register_on_finish() in favor of
+  on_cleanup.
+
+  
