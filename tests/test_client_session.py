@@ -368,3 +368,9 @@ def test_request_ctx_manager_props(loop):
         assert isinstance(ctx_mgr.gi_frame, types.FrameType)
         assert not ctx_mgr.gi_running
         assert isinstance(ctx_mgr.gi_code, types.CodeType)
+
+
+def test_http_request_with_version(session, warning):
+    with mock.patch("aiohttp.client.ClientSession._request"):
+        with warning(DeprecationWarning):
+            session.get("http://test.example.com")
