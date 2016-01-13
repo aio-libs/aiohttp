@@ -99,18 +99,13 @@ class ClientSession:
                 allow_redirects=True,
                 max_redirects=10,
                 encoding='utf-8',
-                version=aiohttp.HttpVersion11,
+                version=None,
                 compress=None,
                 chunked=None,
                 expect100=False,
                 read_until_eof=True):
         """Perform HTTP request."""
 
-        if version is None:
-            warnings.warn("HTTP version should be specified "
-                          "by ClientSession constructor", DeprecationWarning)
-        else:
-            version = self._version
         return _RequestContextManager(
             self._request(
                 method,
@@ -131,19 +126,25 @@ class ClientSession:
 
     @asyncio.coroutine
     def _request(self, method, url, *,
-                 params,
-                 data,
-                 headers,
-                 skip_auto_headers,
-                 auth,
-                 allow_redirects,
-                 max_redirects,
-                 encoding,
-                 version,
-                 compress,
-                 chunked,
-                 expect100,
-                 read_until_eof):
+                 params=None,
+                 data=None,
+                 headers=None,
+                 skip_auto_headers=None,
+                 auth=None,
+                 allow_redirects=True,
+                 max_redirects=10,
+                 encoding='utf-8',
+                 version=None,
+                 compress=None,
+                 chunked=None,
+                 expect100=False,
+                 read_until_eof=True):
+
+        if version is not None:
+            warnings.warn("HTTP version should be specified "
+                          "by ClientSession constructor", DeprecationWarning)
+        else:
+            version = self._version
 
         if self.closed:
             raise RuntimeError('Session is closed')
