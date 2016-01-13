@@ -581,6 +581,7 @@ Usage::
       Add *headers* parameter.
 
 
+.. _aiohttp-client-reference-connectors:
 
 Connectors
 ----------
