@@ -39,3 +39,5 @@ CHANGES
 
 - Add version parameter to ClientSession constructor,
   deprecate it for session.request() and family #736  
+
+- Enable access log by default #735
