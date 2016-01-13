@@ -629,6 +629,7 @@ def request(method, url, *,
       >>> data = yield from resp.read()
 
     """
+    warnings.warn("Use ClientSession().request() instead", DeprecationWarning)
     if connector is None:
         connector = aiohttp.TCPConnector(loop=loop, force_close=True)
 
@@ -663,30 +664,37 @@ def request(method, url, *,
 
 
 def get(url, **kwargs):
+    warnings.warn("Use ClientSession().get() instead", DeprecationWarning)
     return request(hdrs.METH_GET, url, **kwargs)
 
 
 def options(url, **kwargs):
+    warnings.warn("Use ClientSession().options() instead", DeprecationWarning)
     return request(hdrs.METH_OPTIONS, url, **kwargs)
 
 
 def head(url, **kwargs):
+    warnings.warn("Use ClientSession().head() instead", DeprecationWarning)
     return request(hdrs.METH_HEAD, url, **kwargs)
 
 
 def post(url, **kwargs):
+    warnings.warn("Use ClientSession().post() instead", DeprecationWarning)
     return request(hdrs.METH_POST, url, **kwargs)
 
 
 def put(url, **kwargs):
+    warnings.warn("Use ClientSession().put() instead", DeprecationWarning)
     return request(hdrs.METH_PUT, url, **kwargs)
 
 
 def patch(url, **kwargs):
+    warnings.warn("Use ClientSession().patch() instead", DeprecationWarning)
     return request(hdrs.METH_PATCH, url, **kwargs)
 
 
 def delete(url, **kwargs):
+    warnings.warn("Use ClientSession().delete() instead", DeprecationWarning)
     return request(hdrs.METH_DELETE, url, **kwargs)
 
 
@@ -694,6 +702,8 @@ def ws_connect(url, *, protocols=(), timeout=10.0, connector=None, auth=None,
                ws_response_class=ClientWebSocketResponse, autoclose=True,
                autoping=True, loop=None, origin=None, headers=None):
 
+    warnings.warn("Use ClientSession().ws_connect() instead",
+                  DeprecationWarning)
     if loop is None:
         loop = asyncio.get_event_loop()
 
