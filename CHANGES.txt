@@ -7,3 +7,5 @@ CHANGES
 - Introduce on_shutdown signal #722
 
 - Implement raw input headers #726
+
+- Implement web.run_app utility function #734

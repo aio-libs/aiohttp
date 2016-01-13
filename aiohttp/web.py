@@ -290,7 +290,8 @@ class Application(dict):
 
 
 def run_app(app, *, host='0.0.0.0', port=None,
-            shutdown_timeout=60.0, ssl_context=None):
+            shutdown_timeout=60.0, ssl_context=None,
+            print=print):
     """Run an app locally"""
     if port is None:
         if not ssl_context:
