@@ -31,7 +31,7 @@ async def init(loop):
         pg.close()
         await pg.wait_closed()
 
-    app.register_on_finish(pg)
+    app.register_on_finish(close_pg)
 
     # setup views and routes
     handler = SiteHandler(pg)
