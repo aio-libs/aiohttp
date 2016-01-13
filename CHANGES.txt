@@ -15,4 +15,6 @@ CHANGES
 - Deprecate Application.finish() / Application.register_on_finish() in favor of
   on_cleanup.
 
+- Get rid of bare aiohttp.request(), aiohttp.get() and family #729
+
   
