@@ -1511,6 +1511,41 @@ Utilities
    .. seealso:: :ref:`aiohttp-web-file-upload`
 
 
+.. function:: run_app(app, *, host='0.0.0.0', port=None, loop=None, \
+                      shutdown_timeout=60.0, ssl_context=None)
+
+   An utility function for running an application, serving it until
+   keyboard interrupt and performing a
+   :ref:`aiohttp-web-graceful-shutdown`.
+
+   Suitable as handy tool for scaffolding aiohttp based projects.
+   Perhaps production config will use more sophisticated runner but it
+   good enough at least at very beginning stage.
+
+   The function uses *app.loop* as event loop to run.
+
+   :param app: :class:`Application` instance to run
+
+   :param str host: host for HTTP server, ``'0.0.0.0'`` by default
+
+   :param int port: port for HTTP server. By default is ``8080`` for
+                    plain text HTTP and ``8443`` for HTTP via SSL
+                    (when *ssl_context* parameter is specified).
+
+   :param int shutdown_timeout: a delay to wait for graceful server
+                                shutdown before disconnecting all
+                                open client sockets hard way.
+
+                                A system with properly
+                                :ref:`aiohttp-web-graceful-shutdown`
+                                implemented never waits for this
+                                timeout but closes a server in a few
+                                milliseconds.
+
+   :param ssl_context: :class:`ssl.SSLContext` for HTTPS server,
+                       ``None`` for HTTP connection.
+
+
 Constants
 ---------
 

@@ -287,3 +287,37 @@ class Application(dict):
 
     def __repr__(self):
         return "<Application>"
+
+
+def run_app(app, *, host='0.0.0.0', port=None,
+            shutdown_timeout=60.0, ssl_context=None):
+    """Run an app locally"""
+    if port is None:
+        if not ssl_context:
+            port = 8080
+        else:
+            port = 8443
+
+    loop = app.loop
+
+    handler = app.make_handler()
+    srv = loop.run_until_complete(loop.create_server(handler, host, port,
+                                                     ssl=ssl_context))
+
+    scheme = 'https' if ssl_context else 'http'
+    prompt = '127.0.0.1' if host == '0.0.0.0' else host
+    print("======== Running on {scheme}://{prompt}:{port}/ ========\n"
+          "(Press CTRL+C to quit)".format(
+              scheme=scheme, prompt=prompt, port=port))
+
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt:  # pragma: no branch
+        pass
+    finally:
+        srv.close()
+        loop.run_until_complete(srv.wait_closed())
+        loop.run_until_complete(app.shutdown())
+        loop.run_until_complete(handler.finish_connections(shutdown_timeout))
+        loop.run_until_complete(app.finish())
+    loop.close()
