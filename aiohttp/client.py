@@ -35,7 +35,8 @@ class ClientSession:
                  headers=None, skip_auto_headers=None,
                  auth=None, request_class=ClientRequest,
                  response_class=ClientResponse,
-                 ws_response_class=ClientWebSocketResponse):
+                 ws_response_class=ClientWebSocketResponse,
+                 version=aiohttp.HttpVersion11):
 
         if connector is None:
             connector = aiohttp.TCPConnector(loop=loop)
@@ -59,6 +60,7 @@ class ClientSession:
             self._update_cookies(cookies)
         self._connector = connector
         self._default_auth = auth
+        self._version = version
 
         # Convert to list of tuples
         if headers:
@@ -97,12 +99,13 @@ class ClientSession:
                 allow_redirects=True,
                 max_redirects=10,
                 encoding='utf-8',
-                version=aiohttp.HttpVersion11,
+                version=None,
                 compress=None,
                 chunked=None,
                 expect100=False,
                 read_until_eof=True):
         """Perform HTTP request."""
+
         return _RequestContextManager(
             self._request(
                 method,
@@ -131,11 +134,17 @@ class ClientSession:
                  allow_redirects=True,
                  max_redirects=10,
                  encoding='utf-8',
-                 version=aiohttp.HttpVersion11,
+                 version=None,
                  compress=None,
                  chunked=None,
                  expect100=False,
                  read_until_eof=True):
+
+        if version is not None:
+            warnings.warn("HTTP version should be specified "
+                          "by ClientSession constructor", DeprecationWarning)
+        else:
+            version = self._version
 
         if self.closed:
             raise RuntimeError('Session is closed')
@@ -432,6 +441,11 @@ class ClientSession:
         """The session cookies."""
         return self._cookies
 
+    @property
+    def version(self):
+        """The session HTTP protocol version."""
+        return self._version
+
     def detach(self):
         """Detach connector from session without closing the former.
 
@@ -580,7 +594,7 @@ def request(method, url, *,
             allow_redirects=True,
             max_redirects=10,
             encoding='utf-8',
-            version=aiohttp.HttpVersion11,
+            version=None,
             compress=None,
             chunked=None,
             expect100=False,
