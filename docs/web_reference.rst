@@ -1522,6 +1522,8 @@ Utilities
    Perhaps production config will use more sophisticated runner but it
    good enough at least at very beginning stage.
 
+   The function uses *app.loop* as event loop to run.
+
    :param app: :class:`Application` instance to run
 
    :param str host: host for HTTP server, ``'0.0.0.0'`` by default
@@ -1542,12 +1544,6 @@ Utilities
 
    :param ssl_context: :class:`ssl.SSLContext` for HTTPS server,
                        ``None`` for HTTP connection.
-
-   :param loop: :ref:`event loop<asyncio-event-loop>` used
-                for processing HTTP requests.
-
-                If param is ``None`` :func:`asyncio.get_event_loop`
-                used for getting default event loop.
 
 
 Constants

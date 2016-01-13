@@ -289,7 +289,7 @@ class Application(dict):
         return "<Application>"
 
 
-def run_app(app, *, host='0.0.0.0', port=None, loop=None,
+def run_app(app, *, host='0.0.0.0', port=None,
             shutdown_timeout=60.0, ssl_context=None):
     """Run an app locally"""
     if port is None:
@@ -298,8 +298,7 @@ def run_app(app, *, host='0.0.0.0', port=None, loop=None,
         else:
             port = 8443
 
-    if loop is None:
-        loop = asyncio.get_event_loop()
+    loop = app.loop
 
     handler = app.make_handler()
     srv = loop.run_until_complete(loop.create_server(handler, host, port,
@@ -313,7 +312,7 @@ def run_app(app, *, host='0.0.0.0', port=None, loop=None,
 
     try:
         loop.run_forever()
-    except KeyboardInterrupt:
+    except KeyboardInterrupt:  # pragma: no branch
         pass
     finally:
         srv.close()
