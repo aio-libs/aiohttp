@@ -675,14 +675,18 @@ class HttpMessage(metaclass=ABCMeta):
 
     def _add_default_headers(self):
         # set the connection header
+        connection = None
         if self.upgrade:
             connection = 'upgrade'
         elif not self.closing if self.keepalive is None else self.keepalive:
-            connection = 'keep-alive'
+            if self.version == HttpVersion10:
+                connection = 'keep-alive'
         else:
-            connection = 'close'
+            if self.version == HttpVersion11:
+                connection = 'close'
 
-        self.headers[hdrs.CONNECTION] = connection
+        if connection is not None:
+            self.headers[hdrs.CONNECTION] = connection
 
     def write(self, chunk, *,
               drain=False, EOF_MARKER=EOF_MARKER, EOL_MARKER=EOL_MARKER):
@@ -882,7 +886,7 @@ class Request(HttpMessage):
                  http_version=HttpVersion11, close=False):
         # set the default for HTTP 1.0 to be different
         # will only be overwritten with keep-alive header
-        if http_version < HttpVersion11:
+        if http_version < HttpVersion10:
             close = True
 
         super().__init__(transport, http_version, close)

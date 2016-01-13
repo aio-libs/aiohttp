@@ -57,7 +57,6 @@ def test_HTTPOk(buf, request):
     assert re.match(('HTTP/1.1 200 OK\r\n'
                      'CONTENT-TYPE: text/plain; charset=utf-8\r\n'
                      'CONTENT-LENGTH: 7\r\n'
-                     'CONNECTION: keep-alive\r\n'
                      'DATE: .+\r\n'
                      'SERVER: .+\r\n\r\n'
                      '200: OK'), txt)
@@ -95,7 +94,6 @@ def test_HTTPFound(buf, request):
                     'CONTENT-TYPE: text/plain; charset=utf-8\r\n'
                     'CONTENT-LENGTH: 10\r\n'
                     'LOCATION: /redirect\r\n'
-                    'CONNECTION: keep-alive\r\n'
                     'DATE: .+\r\n'
                     'SERVER: .+\r\n\r\n'
                     '302: Found', txt)
@@ -122,7 +120,6 @@ def test_HTTPMethodNotAllowed(buf, request):
                     'CONTENT-TYPE: text/plain; charset=utf-8\r\n'
                     'CONTENT-LENGTH: 23\r\n'
                     'ALLOW: POST,PUT\r\n'
-                    'CONNECTION: keep-alive\r\n'
                     'DATE: .+\r\n'
                     'SERVER: .+\r\n\r\n'
                     '405: Method Not Allowed', txt)

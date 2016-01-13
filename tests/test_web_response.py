@@ -813,7 +813,6 @@ def test_send_headers_for_empty_body():
     yield from resp.write_eof()
     txt = buf.decode('utf8')
     assert re.match('HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 0\r\n'
-                    'CONNECTION: keep-alive\r\n'
                     'DATE: .+\r\nSERVER: .+\r\n\r\n', txt)
 
 
@@ -836,7 +835,6 @@ def test_render_with_body():
     yield from resp.write_eof()
     txt = buf.decode('utf8')
     assert re.match('HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 4\r\n'
-                    'CONNECTION: keep-alive\r\n'
                     'DATE: .+\r\nSERVER: .+\r\n\r\ndata', txt)
 
 
@@ -861,7 +859,6 @@ def test_send_set_cookie_header():
     txt = buf.decode('utf8')
     assert re.match('HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 0\r\n'
                     'SET-COOKIE: name=value\r\n'
-                    'CONNECTION: keep-alive\r\n'
                     'DATE: .+\r\nSERVER: .+\r\n\r\n', txt)
 
 
