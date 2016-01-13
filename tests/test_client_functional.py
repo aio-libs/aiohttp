@@ -413,7 +413,6 @@ def test_raw_headers(create_app_and_client, loop):
     resp = yield from client.get('/')
     assert resp.status == 200
     assert resp.raw_headers == ((b'CONTENT-LENGTH', b'0'),
-                                (b'CONNECTION', b'keep-alive'),
                                 (b'DATE', mock.ANY),
                                 (b'SERVER', mock.ANY))
     resp.close()
