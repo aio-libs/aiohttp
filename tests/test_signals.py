@@ -119,9 +119,15 @@ def test_copy_forbidden(app):
 
 
 def test_sort_forbidden(app):
-    l1 = lambda: None
-    l2 = lambda: None
-    l3 = lambda: None
+    def l1():
+        pass
+
+    def l2():
+        pass
+
+    def l3():
+        pass
+
     signal = Signal(app)
     signal.extend([l1, l2, l3])
     with pytest.raises(NotImplementedError):

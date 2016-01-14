@@ -1,0 +1,12 @@
+<link rel="stylesheet" type="text/css"
+href="{{ url('static', filename='style.css') }}" />
+
+{% if questions %}
+    <ul>
+    {% for question in questions %}
+    <li><a href="{{ url('poll', parts={'question_id': question.id}) }}">{{ question.question_text }}</a></li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No polls are available.</p>
+{% endif %}

@@ -41,17 +41,17 @@ Client example::
     import asyncio
     import aiohttp
 
-    async def fetch_page(client, url):
-        async with client.get(url) as response:
-            assert response.status == 200
-            return await response.read()
+    async def fetch_page(session, url):
+        with aiohttp.Timeout(10):
+            async with session.get(url) as response:
+                assert response.status == 200
+                return await response.read()
 
     loop = asyncio.get_event_loop()
-    client = aiohttp.ClientSession(loop=loop)
-    content = loop.run_until_complete(
-        fetch_page(client, 'http://python.org'))
-    print(content)
-    client.close()
+    with aiohttp.ClientSession(loop=loop) as session:
+        content = loop.run_until_complete(
+            fetch_page(session, 'http://python.org'))
+        print(content)
 
 Server example::
 
@@ -162,9 +162,9 @@ Contents
    api
    logging
    gunicorn
+   faq
    contributing
    changes
-   Python 3.3 support <python33>
    glossary
 
 Indices and tables
