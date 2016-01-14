@@ -1307,25 +1307,42 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       .. versionadded:: 0.18
 
-   .. method:: named_routes()
+   .. method:: named_resources()
 
       Returns a :obj:`dict`-like :class:`types.MappingProxyType` *view* over
-      *all* named routes.
+      *all* named **resources**.
 
-      The view maps every named route's :attr:`Route.name` attribute to the
-      :class:`Route`. It supports the usual :obj:`dict`-like operations, except
-      for any mutable operations (i.e. it's **read-only**)::
+      The view maps every named resources's **name** to the
+      :class:`BaseResource` instance. It supports the usual
+      :obj:`dict`-like operations, except for any mutable operations
+      (i.e. it's **read-only**)::
 
-          len(app.router.named_routes())
+          len(app.router.named_resources())
 
-          for name, route in app.router.named_routes().items():
-              print(name, route)
+          for name, resource in app.router.named_resources().items():
+              print(name, resource)
 
-          "route_name" in app.router.named_routes()
+          "name" in app.router.named_resources()
 
-          app.router.named_routes()["route_name"]
+          app.router.named_resources()["name"]
+
+   .. method:: named_routes()
+
+      An alias for :meth:`named_resources` starting from aiohttp 0.21.
 
       .. versionadded:: 0.19
+
+      .. versionchanged:: 0.21
+
+         The method is an alias for :meth:`named_resources`, so it
+         iterates over resources instead of routes.
+
+      .. deprecated:: 0.21
+
+         Please use named **resources** instead of named **routes**.
+
+         Several routes which belongs to the same resource shares the
+         resource name.
 
 
 .. _aiohttp-web-route:

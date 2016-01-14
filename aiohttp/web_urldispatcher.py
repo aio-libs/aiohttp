@@ -682,7 +682,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         return MappingProxyType(self._named_resources)
 
     def named_routes(self):
-        # TODO: it's ambiguous but it really resources.
+        # NB: it's ambiguous but it's really resources.
         warnings.warn("Use .named_resources instead", DeprecationWarning)
         return self.named_resources()
 
