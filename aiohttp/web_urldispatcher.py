@@ -140,11 +140,6 @@ class Resource(BaseResource):
             'Instance of Route class is required, got {!r}'.format(route)
         self._routes.append(route)
 
-    @abc.abstractmethod  # pragma: no branch
-    def match(self, path):
-        """Return dict with info for given path or
-        None if route cannot process path."""
-
     def resolve(self, method, path):
         allowed_methods = set()
 
