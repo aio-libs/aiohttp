@@ -120,7 +120,6 @@ class ResourceAdapter(BaseResource):
 
 
 class Resource(BaseResource):
-    METHODS = hdrs.METH_ALL | {hdrs.METH_ANY}
 
     def __init__(self, *, name=None):
         super().__init__(name=name)
@@ -134,20 +133,6 @@ class Resource(BaseResource):
 
         assert asyncio.iscoroutinefunction(expect_handler), \
             'Coroutine is expected, got {!r}'.format(expect_handler)
-
-        assert callable(handler), handler
-        if asyncio.iscoroutinefunction(handler):
-            pass
-        elif inspect.isgeneratorfunction(handler):
-            pass
-        elif isinstance(handler, type) and issubclass(handler, AbstractView):
-            pass
-        else:
-            handler = asyncio.coroutine(handler)
-
-        method = upstr(method)
-        if method not in self.METHODS:
-            raise ValueError("{} is not allowed HTTP method".format(method))
 
         # TODO: add check for duplicated methods
 
@@ -238,9 +223,28 @@ class DynamicResource(Resource):
 
 
 class BaseRoute(metaclass=abc.ABCMeta):
+    METHODS = hdrs.METH_ALL | {hdrs.METH_ANY}
+
     def __init__(self, method, handler, *,
                  expect_handler=None,
                  resource=None):
+
+        method = upstr(method)
+        if method not in self.METHODS:
+            raise ValueError("{} is not allowed HTTP method".format(method))
+
+        if handler is not None:
+            assert callable(handler), handler
+            if asyncio.iscoroutinefunction(handler):
+                pass
+            elif inspect.isgeneratorfunction(handler):
+                pass
+            elif (isinstance(handler, type) and
+                  issubclass(handler, AbstractView)):
+                pass
+            else:
+                handler = asyncio.coroutine(handler)
+
         self._method = method
         self._handler = handler
         self._expect_handler = expect_handler
@@ -638,10 +642,6 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     GOOD = r'[^{}/]+'
     ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
     NAME_SPLIT_RE = re.compile('[.:-]')
-
-    METHODS = {hdrs.METH_ANY, hdrs.METH_POST,
-               hdrs.METH_GET, hdrs.METH_PUT, hdrs.METH_DELETE,
-               hdrs.METH_PATCH, hdrs.METH_HEAD, hdrs.METH_OPTIONS}
 
     def __init__(self):
         super().__init__()
