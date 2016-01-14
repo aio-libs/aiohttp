@@ -703,3 +703,10 @@ class TestUrlDispatcher(unittest.TestCase):
         resource = self.router.register_route(route)
         self.assertEqual(1, len(resource))
         self.assertEqual([route], list(resource))
+
+    def test_resource_iter(self):
+        resource = self.router.add_resource('/path')
+        r1 = resource.add_route('GET', lambda req: None)
+        r2 = resource.add_route('POST', lambda req: None)
+        self.assertEqual(2, len(resource))
+        self.assertEqual([r1, r2], list(resource))
