@@ -683,24 +683,29 @@ class TestUrlDispatcher(unittest.TestCase):
 
     def test_resource_adapter_not_match(self):
         route = PlainRoute('GET', lambda req: None, None, '/path')
-        resource = self.router.register_route(route)
+        self.router.register_route(route)
+        resource = route.resource
+        self.assertIsNotNone(resource)
         self.assertIsNone(resource.match('/another/path'))
 
     def test_resource_adapter_resolve_not_math(self):
         route = PlainRoute('GET', lambda req: None, None, '/path')
-        resource = self.router.register_route(route)
+        self.router.register_route(route)
+        resource = route.resource
         self.assertEqual((None, {'GET'}),
                          resource.resolve('GET', '/another/path'))
 
     def test_resource_adapter_resolve_bad_method(self):
         route = PlainRoute('POST', lambda req: None, None, '/path')
-        resource = self.router.register_route(route)
+        self.router.register_route(route)
+        resource = route.resource
         self.assertEqual((None, {'POST'}),
                          resource.resolve('GET', '/path'))
 
     def test_resource_adapter_iter(self):
         route = PlainRoute('GET', lambda req: None, None, '/path')
-        resource = self.router.register_route(route)
+        self.router.register_route(route)
+        resource = route.resource
         self.assertEqual(1, len(resource))
         self.assertEqual([route], list(resource))
 
