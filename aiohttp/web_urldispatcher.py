@@ -94,6 +94,7 @@ class ResourceAdapter(BaseResource):
             'Instance of Route class is required, got {!r}'.format(route)
         super().__init__(name=route.name)
         self._route = route
+        route._resource = self
 
     def match(self, path):
         return self._route.match(path)
@@ -237,10 +238,12 @@ class DynamicResource(Resource):
 
 class BaseRoute(metaclass=abc.ABCMeta):
     def __init__(self, method, handler, *,
-                 expect_handler=None):
+                 expect_handler=None,
+                 resource=None):
         self._method = method
         self._handler = handler
         self._expect_handler = expect_handler
+        self._resource = resource
 
     @property
     def method(self):
@@ -249,6 +252,10 @@ class BaseRoute(metaclass=abc.ABCMeta):
     @property
     def handler(self):
         return self._handler
+
+    @property
+    def resource(self):
+        return self._resource
 
     @abc.abstractmethod  # pragma: no branch
     def match(self, path):
@@ -271,8 +278,8 @@ class ResourceRoute(BaseRoute):
 
     def __init__(self, method, handler, resource, *,
                  expect_handler=None):
-        super().__init__(method, handler, expect_handler=expect_handler)
-        self._resource = resource
+        super().__init__(method, handler, expect_handler=expect_handler,
+                         resource=resource)
 
     def __repr__(self):
         return "<ResourceRoute [{method}] {resource} -> {handler!r}".format(
@@ -282,10 +289,6 @@ class ResourceRoute(BaseRoute):
     @property
     def name(self):
         return self._resource.name
-
-    @property
-    def resource(self):
-        return self._resource
 
     def match(self, path):
         """Return dict with info for given path or
@@ -688,7 +691,6 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     def register_route(self, route):
         resource = ResourceAdapter(route)
         self._reg_resource(resource)
-        return resource
 
     def _reg_resource(self, resource):
         assert isinstance(resource, BaseResource), \
