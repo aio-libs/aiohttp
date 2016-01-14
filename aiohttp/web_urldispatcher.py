@@ -128,12 +128,6 @@ class Resource(BaseResource):
     def add_route(self, method, handler, *,
                   expect_handler=None):
 
-        if expect_handler is None:
-            expect_handler = _defaultExpectHandler
-
-        assert asyncio.iscoroutinefunction(expect_handler), \
-            'Coroutine is expected, got {!r}'.format(expect_handler)
-
         # TODO: add check for duplicated methods
 
         route = ResourceRoute(method, handler, self,
@@ -229,6 +223,12 @@ class BaseRoute(metaclass=abc.ABCMeta):
                  expect_handler=None,
                  resource=None):
 
+        if expect_handler is None:
+            expect_handler = _defaultExpectHandler
+
+        assert asyncio.iscoroutinefunction(expect_handler), \
+            'Coroutine is expected, got {!r}'.format(expect_handler)
+
         method = upstr(method)
         if method not in self.METHODS:
             raise ValueError("{} is not allowed HTTP method".format(method))
@@ -309,11 +309,6 @@ class Route(BaseRoute):
     """Old fashion route"""
 
     def __init__(self, method, handler, name, *, expect_handler=None):
-        if expect_handler is None:
-            expect_handler = _defaultExpectHandler
-        assert asyncio.iscoroutinefunction(expect_handler), \
-            'Coroutine is expected, got {!r}'.format(expect_handler)
-
         super().__init__(method, handler, expect_handler=expect_handler)
         self._name = name
 
