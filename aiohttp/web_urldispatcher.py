@@ -687,6 +687,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         return self.named_resources()
 
     def register_route(self, route):
+        warnings.warn("Use resource-based interface", DeprecationWarning)
         resource = ResourceAdapter(route)
         self._reg_resource(resource)
 
