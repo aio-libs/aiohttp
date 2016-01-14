@@ -1,5 +1,6 @@
 import asyncio
 import os
+import re
 import unittest
 from collections.abc import Sized, Container, Iterable, Mapping, MutableMapping
 from unittest import mock
@@ -739,3 +740,32 @@ class TestUrlDispatcher(unittest.TestCase):
 
         route = resource.add_route('GET', View)
         self.assertIs(View, route.handler)
+
+    def test_resource_route_match(self):
+        resource = self.router.add_resource('/path')
+        route = resource.add_route('GET', lambda req: None)
+        self.assertEqual({}, route.match('/path'))
+
+    def test_plain_route_url(self):
+        route = PlainRoute('GET', lambda req: None, None, '/path')
+        self.router.register_route(route)
+        self.assertEqual('/path?arg=1', route.url(query={'arg': 1}))
+
+    def test_dynamic_route_url(self):
+        route = DynamicRoute('GET', lambda req: None, None,
+                             '<pattern>', '/{path}')
+        self.router.register_route(route)
+        self.assertEqual('/path?arg=1', route.url(parts={'path': 'path'},
+                                                  query={'arg': 1}))
+
+    def test_dynamic_route_match_not_found(self):
+        route = DynamicRoute('GET', lambda req: None, None,
+                             re.compile('/path/(?P<to>.+)'), '/path/{to}')
+        self.router.register_route(route)
+        self.assertEqual(None, route.match('/another/path'))
+
+    def test_dynamic_route_match_found(self):
+        route = DynamicRoute('GET', lambda req: None, None,
+                             re.compile('/path/(?P<to>.+)'), '/path/{to}')
+        self.router.register_route(route)
+        self.assertEqual({'to': 'to'}, route.match('/path/to'))
