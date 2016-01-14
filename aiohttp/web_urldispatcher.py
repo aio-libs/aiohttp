@@ -104,7 +104,7 @@ class ResourceAdapter(BaseResource):
     def resolve(self, method, path):
         match_dict = self._route.match(path)
         allowed_methods = {self._route.method}
-        if match_dict is not None:
+        if match_dict is not None and method == self._route.method:
             return (UrlMappingMatchInfo(match_dict, self._route),
                     allowed_methods)
         else:
@@ -688,6 +688,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     def register_route(self, route):
         resource = ResourceAdapter(route)
         self._reg_resource(resource)
+        return resource
 
     def _reg_resource(self, resource):
         assert isinstance(resource, BaseResource), \
