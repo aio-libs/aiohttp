@@ -233,7 +233,7 @@ class BaseRoute(metaclass=abc.ABCMeta):
             if asyncio.iscoroutinefunction(handler):
                 pass
             elif inspect.isgeneratorfunction(handler):
-                warnings.warn("Bare generators are forbidden, "
+                warnings.warn("Bare generators are deprecated, "
                               "use @coroutine wrapper", DeprecationWarning)
             elif (isinstance(handler, type) and
                   issubclass(handler, AbstractView)):
