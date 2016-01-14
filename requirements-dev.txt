@@ -13,6 +13,7 @@ pyenchant
 sphinxcontrib-newsfeed
 pytest
 pytest-cov
+pytest-sugar
 gunicorn
 pygments
 -e .
