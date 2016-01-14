@@ -14,7 +14,8 @@ from aiohttp.web_urldispatcher import (_defaultExpectHandler,
                                        DynamicRoute,
                                        PlainRoute,
                                        SystemRoute,
-                                       ResourceRoute)
+                                       ResourceRoute,
+                                       BaseResource)
 
 
 class TestUrlDispatcher(unittest.TestCase):
@@ -646,7 +647,7 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIsInstance(self.router.routes(), Iterable)
         self.assertIsInstance(self.router.routes(), Container)
 
-    def fill_named_routes(self):
+    def fill_named_resources(self):
         route1 = self.router.add_route('GET', '/plain', self.make_handler(),
                                        name='route1')
         route2 = self.router.add_route('GET', '/variable/{name}',
@@ -654,18 +655,28 @@ class TestUrlDispatcher(unittest.TestCase):
         route3 = self.router.add_static('/static',
                                         os.path.dirname(aiohttp.__file__),
                                         name='route3')
-        return route1, route2, route3
+        return route1.name, route2.name, route3.name
 
     def test_named_routes_abc(self):
         self.assertIsInstance(self.router.named_routes(), Mapping)
         self.assertNotIsInstance(self.router.named_routes(), MutableMapping)
 
-    @unittest.expectedFailure
+    def test_named_resources_abc(self):
+        self.assertIsInstance(self.router.named_resources(), Mapping)
+        self.assertNotIsInstance(self.router.named_resources(), MutableMapping)
+
     def test_named_routes(self):
-        named_routes = self.fill_named_routes()
+        self.fill_named_resources()
 
-        self.assertEqual(3, len(self.router.named_routes()))
+        with self.assertWarns(DeprecationWarning):
+            self.assertEqual(3, len(self.router.named_routes()))
 
-        for route in named_routes:
-            self.assertIn(route.name, self.router.named_routes())
-            self.assertEqual(route, self.router.named_routes()[route.name])
+    def test_named_resources(self):
+        names = self.fill_named_resources()
+
+        self.assertEqual(3, len(self.router.named_resources()))
+
+        for name in names:
+            self.assertIn(name, self.router.named_routes())
+            self.assertIsInstance(self.router.named_routes()[name],
+                                  BaseResource)

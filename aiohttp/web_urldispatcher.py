@@ -8,6 +8,7 @@ import re
 import os
 import sys
 import inspect
+import warnings
 
 from collections.abc import Sized, Iterable, Container
 from urllib.parse import urlencode, unquote
@@ -625,21 +626,6 @@ class RoutesView(Sized, Iterable, Container):
         return route in self._routes
 
 
-class ResourcesView(Sized, Iterable, Container):
-
-    def __init__(self, resources):
-        self._resources = resources
-
-    def __len__(self):
-        return len(self._resources)
-
-    def __iter__(self):
-        yield from self._resources
-
-    def __contains__(self, resource):
-        return resource in self._resources
-
-
 class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     DYN = re.compile(r'^\{(?P<var>[a-zA-Z][_a-zA-Z0-9]*)\}$')
@@ -688,10 +674,6 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     def __getitem__(self, name):
         return self._named_resources[name]
 
-    def resources(self):
-        # TODO: should distinguish between iterating over resources and views
-        return RoutesView(self._resources)
-
     def routes(self):
         return RoutesView(self._resources)
 
@@ -700,8 +682,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     def named_routes(self):
         # TODO: it's ambiguous but it really resources.
-        # DEPRECATE!
-        return MappingProxyType(self._named_resources)
+        warnings.warn("Use .named_resources instead", DeprecationWarning)
+        return self.named_resources()
 
     def register_route(self, route):
         resource = ResourceAdapter(route)
