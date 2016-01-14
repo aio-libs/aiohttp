@@ -769,3 +769,8 @@ class TestUrlDispatcher(unittest.TestCase):
                              re.compile('/path/(?P<to>.+)'), '/path/{to}')
         self.router.register_route(route)
         self.assertEqual({'to': 'to'}, route.match('/path/to'))
+
+    def test_deprecate_register_route(self):
+        route = PlainRoute('GET', lambda req: None, None, '/path')
+        with self.assertWarns(DeprecationWarning):
+            self.router.register_route(route)
