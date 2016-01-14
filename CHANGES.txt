@@ -41,3 +41,8 @@ CHANGES
   deprecate it for session.request() and family #736  
 
 - Enable access log by default #735
+
+- Deprecate app.router.register_route() (the method was not documented
+  intentionally BTW).
+
+- Deprecate app.router.named_routes() in favor of app.router.named_resources()
