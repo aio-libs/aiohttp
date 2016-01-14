@@ -702,6 +702,14 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertEqual((None, {'POST'}),
                          resource.resolve('GET', '/path'))
 
+    def test_resource_adapter_resolve_wildcard(self):
+        route = PlainRoute('*', lambda req: None, None, '/path')
+        self.router.register_route(route)
+        resource = route.resource
+        match_info, allowed = resource.resolve('GET', '/path')
+        self.assertEqual(allowed, {'*'})  # TODO: expand wildcard
+        self.assertIsNotNone(match_info)
+
     def test_resource_adapter_iter(self):
         route = PlainRoute('GET', lambda req: None, None, '/path')
         self.router.register_route(route)

@@ -103,13 +103,14 @@ class ResourceAdapter(BaseResource):
         return self._route.url(**kwargs)
 
     def resolve(self, method, path):
-        match_dict = self._route.match(path)
-        allowed_methods = {self._route.method}
-        if match_dict is not None and method == self._route.method:
-            return (UrlMappingMatchInfo(match_dict, self._route),
-                    allowed_methods)
-        else:
-            return None, allowed_methods
+        route_method = self._route.method
+        allowed_methods = {route_method}
+        if route_method == method or route_method == hdrs.METH_ANY:
+            match_dict = self._route.match(path)
+            if match_dict is not None:
+                return (UrlMappingMatchInfo(match_dict, self._route),
+                        allowed_methods)
+        return None, allowed_methods
 
     def __len__(self):
         return 1
