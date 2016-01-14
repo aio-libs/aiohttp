@@ -15,7 +15,8 @@ from aiohttp.web_urldispatcher import (_defaultExpectHandler,
                                        PlainRoute,
                                        SystemRoute,
                                        ResourceRoute,
-                                       BaseResource)
+                                       BaseResource,
+                                       View)
 
 
 class TestUrlDispatcher(unittest.TestCase):
@@ -723,3 +724,18 @@ class TestUrlDispatcher(unittest.TestCase):
         r2 = resource.add_route('POST', lambda req: None)
         self.assertEqual(2, len(resource))
         self.assertEqual([r1, r2], list(resource))
+
+    def test_deprecate_bare_generators(self):
+        resource = self.router.add_resource('/path')
+
+        def gen(request):
+            yield
+
+        with self.assertWarns(DeprecationWarning):
+            resource.add_route('GET', gen)
+
+    def test_view_route(self):
+        resource = self.router.add_resource('/path')
+
+        route = resource.add_route('GET', View)
+        self.assertIs(View, route.handler)
