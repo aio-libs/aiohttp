@@ -413,7 +413,20 @@ def test_raw_headers(create_app_and_client, loop):
     resp = yield from client.get('/')
     assert resp.status == 200
     assert resp.raw_headers == ((b'CONTENT-LENGTH', b'0'),
-                                (b'CONNECTION', b'keep-alive'),
                                 (b'DATE', mock.ANY),
                                 (b'SERVER', mock.ANY))
     resp.close()
+
+
+@pytest.mark.run_loop
+def test_http_request_with_version(create_app_and_client, loop, warning):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response()
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    with warning(DeprecationWarning):
+        resp = yield from client.get('/', version=aiohttp.HttpVersion11)
+        assert resp.status == 200
+        resp.close()

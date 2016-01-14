@@ -32,26 +32,15 @@ particular *HTTP method* and *path*::
    app = web.Application()
    app.router.add_route('GET', '/', hello)
 
-After that, create a server and run the *asyncio loop* as usual::
+After that, run the application by :func:`run_app` call::
 
-   loop = asyncio.get_event_loop()
-   handler = app.make_handler()
-   f = loop.create_server(handler, '0.0.0.0', 8080)
-   srv = loop.run_until_complete(f)
-   print('serving on', srv.sockets[0].getsockname())
-   try:
-       loop.run_forever()
-   except KeyboardInterrupt:
-       pass
-   finally:
-       srv.close()
-       loop.run_until_complete(srv.wait_closed())
-       loop.run_until_complete(app.on_shutdown.send())
-       loop.run_until_complete(handler.finish_connections(1.0))
-       loop.run_until_complete(app.finish())
-   loop.close()
+   run_app(app)
 
 That's it. Now, head over to ``http://localhost:8080/`` to see the results.
+
+.. seealso:: :ref:`aiohttp-web-graceful-shutdown` section
+             explains what :func:`run_app` does and how implement
+             complex server initialization/finalization from scratch.
 
 
 .. _aiohttp-web-handler:
@@ -834,9 +823,22 @@ Signal handler may looks like:
 
     app.on_shutdown.append(on_shutdown)
 
+Proper finalization procedure has three steps:
 
-Server finalizer should raise shutdown signal by
-:meth:`Application.shutdown` call::
+  1. Stop accepting new client connections by
+     :meth:`asyncio.Server.close` and
+     :meth:`asyncio.Server.wait_closed` calls.
+
+  2. Fire :meth:`Application.shutdown` event.
+
+  3. Close accepted connections from clients by
+     :meth:`RequestHandlerFactory.finish_connections` call with
+     reasonable small delay.
+
+  4. Call registered application finalizers by :meth:`Application.cleanup`.
+
+The following code snippet performs proper application start, run and
+finalizing.  It's pretty close to :func:`run_app` utility function::
 
    loop = asyncio.get_event_loop()
    handler = app.make_handler()
@@ -852,8 +854,9 @@ Server finalizer should raise shutdown signal by
        loop.run_until_complete(srv.wait_closed())
        loop.run_until_complete(app.shutdown())
        loop.run_until_complete(handler.finish_connections(60.0))
-       loop.run_until_complete(app.finish())
+       loop.run_until_complete(app.cleanup())
    loop.close()
+
 
 
 

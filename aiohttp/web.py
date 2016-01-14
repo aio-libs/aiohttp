@@ -1,21 +1,21 @@
+import asyncio
+import warnings
+
+
+from . import hdrs
 from . import web_reqrep
 from . import web_exceptions
 from . import web_urldispatcher
 from . import web_ws
+from .abc import AbstractRouter, AbstractMatchInfo
+from .log import web_logger
+from .protocol import HttpVersion  # noqa
+from .server import ServerHttpProtocol
+from .signals import Signal, PreSignal, PostSignal
 from .web_reqrep import *  # noqa
 from .web_exceptions import *  # noqa
 from .web_urldispatcher import *  # noqa
 from .web_ws import *  # noqa
-from .protocol import HttpVersion  # noqa
-from .signals import Signal, PreSignal, PostSignal
-
-
-import asyncio
-
-from . import hdrs
-from .abc import AbstractRouter, AbstractMatchInfo
-from .log import web_logger
-from .server import ServerHttpProtocol
 
 
 __all__ = (web_reqrep.__all__ +
@@ -196,7 +196,6 @@ class Application(dict):
         self._debug = debug
         self._router = router
         self._handler_factory = handler_factory
-        self._finish_callbacks = []
         self._loop = loop
         self.logger = logger
 
@@ -208,6 +207,7 @@ class Application(dict):
         self._on_post_signal = PostSignal()
         self._on_response_prepare = Signal(self)
         self._on_shutdown = Signal(self)
+        self._on_cleanup = Signal(self)
 
     @property
     def debug(self):
@@ -230,6 +230,10 @@ class Application(dict):
         return self._on_shutdown
 
     @property
+    def on_cleanup(self):
+        return self._on_cleanup
+
+    @property
     def router(self):
         return self._router
 
@@ -249,34 +253,30 @@ class Application(dict):
     def shutdown(self):
         """Causes on_shutdown signal
 
-        Should be called before finish()
+        Should be called before cleanup()
         """
         yield from self.on_shutdown.send(self)
 
     @asyncio.coroutine
-    def finish(self):
-        """Finalize application by calling all registered callbacks
+    def cleanup(self):
+        """Causes on_cleanup signal
 
-        Should be called before shutdown()
+        Should be called after shutdown()
         """
-        callbacks = self._finish_callbacks
-        self._finish_callbacks = []
+        yield from self.on_cleanup.send(self)
 
-        for (cb, args, kwargs) in callbacks:
-            try:
-                res = cb(self, *args, **kwargs)
-                if (asyncio.iscoroutine(res) or
-                        isinstance(res, asyncio.Future)):
-                    yield from res
-            except Exception as exc:
-                self._loop.call_exception_handler({
-                    'message': "Error in finish callback",
-                    'exception': exc,
-                    'application': self,
-                })
+    @asyncio.coroutine
+    def finish(self):
+        """Finalize an application.
+
+        Deprecated alias for .cleanup()
+        """
+        warnings.warn("Use .cleanup() instead", DeprecationWarning)
+        yield from self.cleanup()
 
     def register_on_finish(self, func, *args, **kwargs):
-        self._finish_callbacks.insert(0, (func, args, kwargs))
+        warnings.warn("Use .on_cleanup.append() instead", DeprecationWarning)
+        self.on_cleanup.append(lambda app: func(app, *args, **kwargs))
 
     def copy(self):
         raise NotImplementedError
@@ -287,3 +287,38 @@ class Application(dict):
 
     def __repr__(self):
         return "<Application>"
+
+
+def run_app(app, *, host='0.0.0.0', port=None,
+            shutdown_timeout=60.0, ssl_context=None,
+            print=print):
+    """Run an app locally"""
+    if port is None:
+        if not ssl_context:
+            port = 8080
+        else:
+            port = 8443
+
+    loop = app.loop
+
+    handler = app.make_handler()
+    srv = loop.run_until_complete(loop.create_server(handler, host, port,
+                                                     ssl=ssl_context))
+
+    scheme = 'https' if ssl_context else 'http'
+    prompt = '127.0.0.1' if host == '0.0.0.0' else host
+    print("======== Running on {scheme}://{prompt}:{port}/ ========\n"
+          "(Press CTRL+C to quit)".format(
+              scheme=scheme, prompt=prompt, port=port))
+
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt:  # pragma: no branch
+        pass
+    finally:
+        srv.close()
+        loop.run_until_complete(srv.wait_closed())
+        loop.run_until_complete(app.shutdown())
+        loop.run_until_complete(handler.finish_connections(shutdown_timeout))
+        loop.run_until_complete(app.cleanup())
+    loop.close()

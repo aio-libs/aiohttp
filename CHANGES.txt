@@ -7,3 +7,37 @@ CHANGES
 - Introduce on_shutdown signal #722
 
 - Implement raw input headers #726
+
+- Implement web.run_app utility function #734
+
+- Introduce on_cleanup signal
+
+- Deprecate Application.finish() / Application.register_on_finish() in favor of
+  on_cleanup.
+
+- Get rid of bare aiohttp.request(), aiohttp.get() and family in docs #729
+
+- Deprecate bare aiohttp.request(), aiohttp.get() and family #729
+
+- Refactor keep-alive support #737:
+
+  - Enable keepalive for HTTP 1.0 by default
+
+  - Disable it for HTTP 0.9 (who cares about 0.9, BTW?)
+  
+  - For keepalived connections
+
+      - Send `Connection: keep-alive` for HTTP 1.0 only
+
+      - don't send `Connection` header for HTTP 1.1
+
+  - For non-keepalived connections
+
+      - Send `Connection: close` for HTTP 1.1 only
+
+      - don't send `Connection` header for HTTP 1.0
+
+- Add version parameter to ClientSession constructor,
+  deprecate it for session.request() and family #736  
+
+- Enable access log by default #735
