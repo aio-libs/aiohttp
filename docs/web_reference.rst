@@ -1174,6 +1174,21 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
    .. seealso:: :ref:`Route classes <aiohttp-web-route>`
 
+   .. method:: add_resource(path, *, name=None)
+
+      Append a :term:`resource` to the end of route table.
+
+      *path* may be either *constant* string like ``'/a/b/c'`` or
+      *variable rule* like ``'/a/{var}'`` (see
+      :ref:`handling variable pathes<aiohttp-web-variable-handler>`)
+
+      :param str path: resource path spec.
+
+      :param str name: optional resource name.
+
+      :return: created resource instance (:class:`PlainResource` or
+               :class:`DynamicResource`).
+
    .. method:: add_route(method, path, handler, *, \
                          name=None, expect_handler=None)
 
