@@ -34,13 +34,34 @@ particular *HTTP method* and *path*::
 
 After that, run the application by :func:`run_app` call::
 
-   run_app(app)
+   web.run_app(app)
 
 That's it. Now, head over to ``http://localhost:8080/`` to see the results.
 
-.. seealso:: :ref:`aiohttp-web-graceful-shutdown` section
-             explains what :func:`run_app` does and how implement
-             complex server initialization/finalization from scratch.
+.. seealso::
+
+   :ref:`aiohttp-web-graceful-shutdown` section explains what :func:`run_app`
+   does and how to implement complex server initialization/finalization
+   from scratch.
+
+
+.. _aiohttp-web-cli:
+
+Command Line Interface (CLI)
+----------------------------
+:mod:`aiohttp.web` implements a basic CLI for quickly serving an
+:class:`Application` in *development* over TCP/IP::
+
+    $ python -m aiohttp.web -n localhost -p 8080 package.module.init_func
+
+``package.module.init_func`` should be an importable :term:`callable` that
+accepts a list of any non-parsed command-line arguments and returns an
+:class:`Application` instance after setting it up::
+
+    def init_function(args):
+        app = web.Application()
+        app.router.add_route("GET", "/", index_handler)
+        return app
 
 
 .. _aiohttp-web-handler:
@@ -856,8 +877,6 @@ finalizing.  It's pretty close to :func:`run_app` utility function::
        loop.run_until_complete(handler.finish_connections(60.0))
        loop.run_until_complete(app.cleanup())
    loop.close()
-
-
 
 
 CORS support
