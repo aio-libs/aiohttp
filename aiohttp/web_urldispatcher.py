@@ -67,17 +67,17 @@ class AbstractResource(Sized, Iterable):
     @abc.abstractmethod  # pragma: no branch
     def match(self, path):
         """Return dict with info for given path or
-        None if route cannot process path."""
+        None if route cannot process the path."""
 
     @abc.abstractmethod  # pragma: no branch
     def url(self, **kwargs):
-        """Construct url for route with additional params."""
+        """Construct url for resource with additional params."""
 
     @abc.abstractmethod  # pragma: no branch
     def resolve(self, method, path):
         """Resolve resource
 
-        Return match_dict, allowed_methods pair."""
+        Return (UrlMappingMatchInfo, allowed_methods) pair."""
 
     @staticmethod
     def _append_query(url, query):
