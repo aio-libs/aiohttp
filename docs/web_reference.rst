@@ -1404,6 +1404,80 @@ Resource classes hierarhy::
      ResourceAdapter
 
 
+.. class:: AbstractResource
+
+   A base class for all resources.
+
+   Inherited from :class:`collections.abc.Sized` and
+   :class:`collections.abc.Iterable`.
+
+   .. attribute:: name
+
+      Read-only *name* of resource or ``None``.
+
+   .. method:: match(path)
+
+      :param str path: *path* part of requested URL.
+
+      :return: :class:`dict` with info for given *path* or
+               ``None`` if route cannot process the path.
+
+   .. method:: resolve(method, path)
+
+      Resolve resource by finding appropriate :term:`web-handler` for
+      ``(method, path)`` combination.
+
+      Calls :meth:`match` internally.
+
+      :param str method: requested HTTP method.
+
+      :return: (*match_info*, *allowed_methods*) pair.
+
+               *allowed_methods* is a :class:`set` or HTTP methods accepted by
+               resource.
+
+               *match_info* is either :class:`UrlMappingMatchInfo` if
+               request is resolved or ``None`` if no :term:`route` is
+               found.
+
+   .. method:: url(**kwargs)
+
+      Construct an URL for route with additional params.
+
+      **kwargs** depends on a list accepted by inherited resource
+      class parameters.
+
+      :return: :class:`str` -- resulting URL.
+
+
+.. class:: Resource
+
+   A base class for new-style resources, inherits :class:`AbstractResource`.
+
+
+.. class:: PlainResource
+
+   A new-style resource, inherited from :class:`Resource`.
+
+   The class corresponds to resources with plain-text matching,
+   ``'/path/to'`` for example.
+
+
+.. class:: DynamicResource
+
+   A new-style resource, inherited from :class:`Resource`.
+
+   The class corresponds to resources with
+   :ref:`variable <aiohttp-web-variable-handler>` matching,
+   e.g. ``'/path/{to}/{param}'`` etc.
+
+
+.. class:: ResourceAdapter
+
+   An adapter for old-style routes.
+
+   The adapter is used by ``router.register_route()`` call, the method
+   is deprecated and will be removed eventually.
 
 
 .. _aiohttp-web-route:
