@@ -7,6 +7,7 @@ from . import web_reqrep
 from . import web_exceptions
 from . import web_urldispatcher
 from . import web_ws
+from . import web_main
 from .abc import AbstractRouter, AbstractMatchInfo
 from .log import web_logger
 from .protocol import HttpVersion  # noqa
@@ -16,7 +17,6 @@ from .web_reqrep import *  # noqa
 from .web_exceptions import *  # noqa
 from .web_urldispatcher import *  # noqa
 from .web_ws import *  # noqa
-
 
 __all__ = (web_reqrep.__all__ +
            web_exceptions.__all__ +
@@ -322,3 +322,6 @@ def run_app(app, *, host='0.0.0.0', port=None,
         loop.run_until_complete(handler.finish_connections(shutdown_timeout))
         loop.run_until_complete(app.cleanup())
     loop.close()
+
+if __name__ == "__main__":
+    web_main.main()
