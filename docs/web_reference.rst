@@ -1360,12 +1360,52 @@ Router is any object that implements :class:`AbstractRouter` interface.
          resource name.
 
 
+.. _aiohttp-web-resource:
+
+Resource
+^^^^^^^^
+
+Default router :class:`UrlDispatcher` operates with :term:`resource`\s.
+
+Resource is an item in *routing table* which has a *path*, an optional
+unique *name* and at least one :term:`route`.
+
+:term:`web-handler` lookup is performed in the following way:
+
+1. Router iterates over *resources* one-by-one.
+2. If *resource* matches to requested URL the resource iterates over
+   own *routes*.
+3. If route matches to requested HTTP method (or ``'*'`` wildcard) the
+   route's handler is used as found :term:`web-handler`. The lookup is
+   finished.
+4. Otherwise router tries next resource from the *routing table*.
+5. If the end of *routing table* is reached and no *resource* /
+   *route* pair found the *router* returns special :class:`SystemRoute`
+   instance with  either *HTTP 404 Not Found* or *HTTP 405
+   Method Not Allowed* status code. Registerd :term:`web-handler` for
+   *system route* raises corresponding :ref:`web exception
+   <aiohttp-web-exceptions>`.
+
+User should never instantiate resource classes but give it by
+:meth:`UrlDispatcher.add_resource` call.
+
+After that he may add a :term:`route` by calling :meth:`Resource.add_route`.
+
+:meth:`UrlDispatcher.add_route` is just shortcut for::
+
+   router.add_resource(path).add_route(method, handler)
+
 .. _aiohttp-web-route:
 
 Route
 ^^^^^
 
-Default router :class:`UrlDispatcher` operates with *routes*.
+Route has HTTP method (wildcard ``'*'`` is an option),
+:term:`web-handler` and optional *expect handler*.
+
+Every route belong to some resource.
+
+
 
 User should not instantiate route classes by hand but can give *named
 route instance* by ``router[name]`` if he have added route by
