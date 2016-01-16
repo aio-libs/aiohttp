@@ -774,3 +774,17 @@ class TestUrlDispatcher(unittest.TestCase):
         route = PlainRoute('GET', lambda req: None, None, '/path')
         with self.assertWarns(DeprecationWarning):
             self.router.register_route(route)
+
+    def test_error_on_double_route_adding(self):
+        resource = self.router.add_resource('/path')
+
+        resource.add_route('GET', lambda: None)
+        with self.assertRaises(RuntimeError):
+            resource.add_route('GET', lambda: None)
+
+    def test_error_on_adding_route_after_wildcard(self):
+        resource = self.router.add_resource('/path')
+
+        resource.add_route('*', lambda: None)
+        with self.assertRaises(RuntimeError):
+            resource.add_route('GET', lambda: None)
