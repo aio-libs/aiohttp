@@ -16,7 +16,7 @@ from aiohttp.web_urldispatcher import (_defaultExpectHandler,
                                        PlainRoute,
                                        SystemRoute,
                                        ResourceRoute,
-                                       BaseResource,
+                                       AbstractResource,
                                        View)
 
 
@@ -681,7 +681,7 @@ class TestUrlDispatcher(unittest.TestCase):
         for name in names:
             self.assertIn(name, self.router.named_routes())
             self.assertIsInstance(self.router.named_routes()[name],
-                                  BaseResource)
+                                  AbstractResource)
 
     def test_resource_adapter_not_match(self):
         route = PlainRoute('GET', lambda req: None, None, '/path')
