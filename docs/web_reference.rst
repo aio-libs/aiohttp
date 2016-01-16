@@ -1395,6 +1395,17 @@ After that he may add a :term:`route` by calling :meth:`Resource.add_route`.
 
    router.add_resource(path).add_route(method, handler)
 
+Resource classes hierarhy::
+
+   AbstractResource
+     Resource
+       PlainResource
+       DynamicResource
+     ResourceAdapter
+
+
+
+
 .. _aiohttp-web-route:
 
 Route

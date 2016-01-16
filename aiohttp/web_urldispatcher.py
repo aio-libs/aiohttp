@@ -55,7 +55,7 @@ def _defaultExpectHandler(request):
         request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
 
-class BaseResource(Sized, Iterable):
+class AbstractResource(Sized, Iterable):
 
     def __init__(self, *, name=None):
         self._name = name
@@ -87,7 +87,7 @@ class BaseResource(Sized, Iterable):
             return url
 
 
-class ResourceAdapter(BaseResource):
+class ResourceAdapter(AbstractResource):
 
     def __init__(self, route):
         assert isinstance(route, Route), \
@@ -119,7 +119,7 @@ class ResourceAdapter(BaseResource):
         yield self._route
 
 
-class Resource(BaseResource):
+class Resource(AbstractResource):
 
     def __init__(self, *, name=None):
         super().__init__(name=name)
@@ -215,7 +215,7 @@ class DynamicResource(Resource):
                 .format(name=name, formatter=self._formatter))
 
 
-class BaseRoute(metaclass=abc.ABCMeta):
+class AbstractRoute(metaclass=abc.ABCMeta):
     METHODS = hdrs.METH_ALL | {hdrs.METH_ANY}
 
     def __init__(self, method, handler, *,
@@ -278,7 +278,7 @@ class BaseRoute(metaclass=abc.ABCMeta):
     _append_query = staticmethod(Resource._append_query)
 
 
-class ResourceRoute(BaseRoute):
+class ResourceRoute(AbstractRoute):
     """A route with resource"""
 
     def __init__(self, method, handler, resource, *,
@@ -305,7 +305,7 @@ class ResourceRoute(BaseRoute):
         return self._resource.url(**kwargs)
 
 
-class Route(BaseRoute):
+class Route(AbstractRoute):
     """Old fashion route"""
 
     def __init__(self, method, handler, name, *, expect_handler=None):
@@ -696,8 +696,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         self._reg_resource(resource)
 
     def _reg_resource(self, resource):
-        assert isinstance(resource, BaseResource), \
-            'Instance of BaseResource class is required, got {!r}'.format(
+        assert isinstance(resource, AbstractResource), \
+            'Instance of AbstractResource class is required, got {!r}'.format(
                 resource)
 
         name = resource.name
