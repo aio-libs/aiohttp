@@ -128,7 +128,6 @@ class Resource(BaseResource):
     def add_route(self, method, handler, *,
                   expect_handler=None):
 
-        # TODO: add check for duplicated methods
         for route in self._routes:
             if route.method == method or route.method == hdrs.METH_ANY:
                 raise RuntimeError("Added route will never be executed, "
