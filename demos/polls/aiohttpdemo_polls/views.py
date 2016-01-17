@@ -1,5 +1,3 @@
-import asyncio
-
 import aiohttp_jinja2
 from aiohttp import web
 from . import db
@@ -11,16 +9,12 @@ class SiteHandler:
         self.postgres = pg
 
     @aiohttp_jinja2.template('index.html')
-    @asyncio.coroutine
-    def index(self, request):
-        with (yield from self.postgres) as conn:
-            cursor = yield from conn.execute(
-                db.question.select())
-            records = yield from cursor.fetchall()
+    async def index(self, request):
+        async with self.postgres.acquire() as conn:
+            cursor = await conn.execute(db.question.select())
+            records = await cursor.fetchall()
         questions = [dict(q) for q in records]
-        return {
-            'questions': questions
-        }
+        return {'questions': questions}
 
     @aiohttp_jinja2.template('detail.html')
     async def poll(self, request):
