@@ -334,8 +334,7 @@ def main():
     arg_parser.add_argument(
         "entry_func",
         help=("Callable returning the `aiohttp.web.Application` instance to "
-              "run. Should be specified in the Python import syntax, "
-              "e.g. 'package.module.function')"),
+              "run. Should be specified in the 'module:function' syntax."),
         metavar="entry-func"
     )
     arg_parser.add_argument(
@@ -352,14 +351,21 @@ def main():
     args, extra_args = arg_parser.parse_known_args()
 
     # Import logic
-    mod_str, _, func_str = args.entry_func.rpartition(".")
+    mod_str, _, func_str = args.entry_func.partition(":")
+    if not func_str or not mod_str:
+        arg_parser.error(
+            "'entry-func' not in 'module:function' syntax"
+        )
+    if mod_str.startswith("."):
+        arg_parser.error("relative module names not supported")
     try:
         module = import_module(mod_str)
+    except ImportError:
+        arg_parser.error("module %r not found" % mod_str)
+    try:
         func = getattr(module, func_str)
-    except (ImportError, ValueError) as e:
-        arg_parser.error(e)
-    except AttributeError as e:
-        arg_parser.error(e)
+    except AttributeError:
+        arg_parser.error("module %r has no attribute %r" % (mod_str, func_str))
 
     app = func(extra_args)
     run_app(app, host=args.hostname, port=args.port)
