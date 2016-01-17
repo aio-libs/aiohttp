@@ -1,4 +1,4 @@
-from . import web
+from .web import run_app
 from argparse import ArgumentParser
 from importlib import import_module
 
@@ -39,5 +39,5 @@ def main():
         arg_parser.error(e)
 
     app = func(extra_args)
-    web.run_app(app, host=args.hostname, port=args.port)
+    run_app(app, host=args.hostname, port=args.port)
     arg_parser.exit(message="Stopped\n")
