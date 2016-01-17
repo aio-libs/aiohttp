@@ -36,7 +36,6 @@ async def init(loop):
     handler = SiteHandler(pg)
     setup_routes(app, handler, PROJ_ROOT)
 
-    app_handler = app.make_handler(access_log=log)
     host, port = conf['host'], conf['port']
     return app, host, port
 
