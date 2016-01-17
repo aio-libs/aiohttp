@@ -7,7 +7,6 @@ from . import web_reqrep
 from . import web_exceptions
 from . import web_urldispatcher
 from . import web_ws
-from . import web_main
 from .abc import AbstractRouter, AbstractMatchInfo
 from .log import web_logger
 from .protocol import HttpVersion  # noqa
@@ -324,4 +323,5 @@ def run_app(app, *, host='0.0.0.0', port=None,
     loop.close()
 
 if __name__ == "__main__":
-    web_main.main()
+    from .web_main import main
+    main()
