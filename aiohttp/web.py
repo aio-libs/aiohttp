@@ -328,7 +328,7 @@ def run_app(app, *, host='0.0.0.0', port=None,
 
 def main():
     arg_parser = ArgumentParser(
-        description="aiohttp.web TCP/IP Application server",
+        description="aiohttp.web Application server",
         prog="aiohttp.web"
     )
     arg_parser.add_argument(
@@ -338,12 +338,12 @@ def main():
         metavar="entry-func"
     )
     arg_parser.add_argument(
-        "-n", "--hostname",
+        "-H", "--hostname",
         help="TCP/IP hostname to serve on (default: %(default)r)",
         default="localhost"
     )
     arg_parser.add_argument(
-        "-p", "--port",
+        "-P", "--port",
         help="TCP/IP port to serve on (default: %(default)r)",
         type=int,
         default="8080"
