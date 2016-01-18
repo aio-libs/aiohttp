@@ -1234,8 +1234,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       :param str prefix: URL path prefix for handled static files
 
-      :param str path: path to the folder in file system that contains
-                       handled static files.
+      :param path: path to the folder in file system that contains
+                   handled static files, :class:`str` or :class:`pathlib.Path`.
 
       :param str name: optional route name.
 

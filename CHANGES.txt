@@ -41,3 +41,5 @@ CHANGES
   deprecate it for session.request() and family #736  
 
 - Enable access log by default #735
+
+- route.add_static accepts pathlib.Path now #743
