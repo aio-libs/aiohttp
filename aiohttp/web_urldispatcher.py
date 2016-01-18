@@ -44,6 +44,10 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
     def route(self):
         return self._route
 
+    @property
+    def expect_handler(self):
+        return self._route.handle_expect_header
+
     def __repr__(self):
         return "<MatchInfo {}: {}>".format(super().__repr__(), self._route)
 
@@ -569,6 +573,10 @@ class _NotFoundMatchInfo(UrlMappingMatchInfo):
     def _not_found(self, request):
         raise HTTPNotFound()
 
+    @property
+    def expect_handler(self):
+        return self.route.handle_expect_header
+
     def __repr__(self):
         return "<MatchInfo: not found>"
 
@@ -589,6 +597,10 @@ class _MethodNotAllowedMatchInfo(UrlMappingMatchInfo):
     @asyncio.coroutine
     def _not_allowed(self, request):
         raise HTTPMethodNotAllowed(self._method, self._allowed_methods)
+
+    @property
+    def expect_handler(self):
+        return self.route.handle_expect_header
 
     def __repr__(self):
         return ("<MatchInfo: method {} is not allowed (allowed methods: {}>"
