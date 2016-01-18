@@ -23,7 +23,7 @@ class AbstractMatchInfo(metaclass=ABCMeta):
 
     @property  # pragma: no branch
     @abstractmethod
-    def expect_header(self, request):
+    def expect_handler(self):
         """Expect handler for 100-continue processing"""
 
 
