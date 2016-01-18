@@ -11,6 +11,7 @@ import warnings
 import zlib
 from urllib.parse import quote, unquote, urlencode, parse_qsl
 from collections import deque, Mapping, Sequence
+from pathlib import Path
 
 from .helpers import parse_mimetype
 from .multidict import CIMultiDict
@@ -652,7 +653,7 @@ class BodyPartWriter(object):
         if isinstance(obj, io.IOBase):
             name = getattr(obj, 'name', None)
             if name is not None:
-                return os.path.basename(name)
+                return Path(name).name
 
     def serialize(self):
         """Yields byte chunks for body part."""
