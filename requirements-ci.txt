@@ -1,0 +1,6 @@
+-r requirements-ci.txt
+ipdb
+pytest-sugar
+ipython
+pyenchant
+sphinxcontrib-spelling

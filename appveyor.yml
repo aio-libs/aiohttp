@@ -13,7 +13,7 @@ environment:
 install:
   - "build.cmd %PYTHON%\\python.exe -m pip install wheel"
   - "build.cmd %PYTHON%\\python.exe -m pip install twine"
-  - "build.cmd %PYTHON%\\python.exe -m pip install -r requirements-dev.txt"
+  - "build.cmd %PYTHON%\\python.exe -m pip install -r requirements-ci.txt"
 
 build: false
 
