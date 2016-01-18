@@ -289,8 +289,7 @@ class StaticRoute(Route):
         if modsince is not None and st.st_mtime <= modsince.timestamp():
             raise HTTPNotModified()
 
-        path = str(getattr(filepath, 'path', filename))
-        ct, encoding = mimetypes.guess_type(path)
+        ct, encoding = mimetypes.guess_type(str(filepath))
         if not ct:
             ct = 'application/octet-stream'
 
