@@ -181,7 +181,7 @@ class StaticRoute(Route):
 
     def url(self, *, filename, query=None):
         if isinstance(filename, Path):
-            filename = str(getattr(filename, 'path', filename))
+            filename = str(filename)
         while filename.startswith('/'):
             filename = filename[1:]
         url = self._prefix + filename
