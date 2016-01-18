@@ -69,9 +69,9 @@ async def test_context_manager_timeout_on_release(create_server, loop):
     app.router.add_route('GET', '/', handler)
 
     with aiohttp.ClientSession(loop=loop) as session:
+        resp = await session.get(url+'/')
         with pytest.raises(asyncio.TimeoutError):
             with aiohttp.Timeout(0.01, loop=loop):
-                resp = await session.get(url+'/')
                 async with resp:
                     assert resp.status == 200
                     assert resp.connection is not None
