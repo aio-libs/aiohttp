@@ -7,13 +7,9 @@ alabaster>=0.6.2
 cython
 chardet
 tox
-ipdb
-sphinxcontrib-spelling
-pyenchant
 sphinxcontrib-newsfeed
 pytest
 pytest-cov
-pytest-sugar
 gunicorn
 pygments
 -e .
