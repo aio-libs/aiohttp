@@ -17,7 +17,7 @@ from types import MappingProxyType
 from urllib.parse import urlsplit, parse_qsl, unquote
 
 from . import hdrs
-from .helpers import reify
+from .helpers import reify, BasicAuth
 from .multidict import (CIMultiDictProxy,
                         CIMultiDict,
                         MultiDictProxy,
@@ -237,6 +237,22 @@ class Request(dict, HeadersMixin):
             if timetuple is not None:
                 return datetime.datetime(*timetuple[:6],
                                          tzinfo=datetime.timezone.utc)
+        return None
+
+    @reify
+    def authorization(self, _AUTHORIZATION=hdrs.AUTHORIZATION):
+        """Parse the Authorization header and return the username and password,
+        or ``None`` if the header is absent or cannot be parsed.
+
+        :rtype:  :class:`aiohttp.helpers.BasicAuth`
+
+        """
+        header = self.headers.get(_AUTHORIZATION)
+        if header is not None:
+            try:
+                return BasicAuth.decode(header)
+            except ValueError:
+                return None
         return None
 
     @reify
