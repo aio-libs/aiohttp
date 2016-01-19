@@ -1,4 +1,5 @@
 import asyncio
+import os
 import time
 
 import pytest
@@ -100,6 +101,8 @@ def test_timeout_time(loop):
                 foo_running = False
 
     dt = loop.time() - start
+    if not (0.09 < dt < 0.11) and os.environ.get('APPVEYOR'):
+        pytest.xfail('appveyor sometimes is toooo sloooow')
     assert 0.09 < dt < 0.11
     assert not foo_running
 
