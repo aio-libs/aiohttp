@@ -3,6 +3,8 @@
 import asyncio
 
 import sys
+from enum import IntEnum
+
 from .websocket import Message
 from .websocket import WebSocketError
 from .websocket import MSG_BINARY, MSG_TEXT, MSG_CLOSE, MSG_PING, MSG_PONG
@@ -10,11 +12,6 @@ from .websocket import MSG_BINARY, MSG_TEXT, MSG_CLOSE, MSG_PING, MSG_PONG
 __all__ = ('MsgType',)
 
 PY_35 = sys.version_info >= (3, 5)
-
-try:
-    from enum import IntEnum
-except ImportError:  # pragma: no cover
-    IntEnum = object
 
 
 class MsgType(IntEnum):
@@ -99,16 +96,16 @@ class ClientWebSocketResponse:
                 self._writer.close(code, message)
             except asyncio.CancelledError:
                 self._close_code = 1006
-                self._response.close(force=True)
+                self._response.close()
                 raise
             except Exception as exc:
                 self._close_code = 1006
                 self._exception = exc
-                self._response.close(force=True)
+                self._response.close()
                 return True
 
             if self._closing:
-                self._response.close(force=True)
+                self._response.close()
                 return True
 
             while True:
@@ -117,17 +114,17 @@ class ClientWebSocketResponse:
                         self._reader.read(), self._timeout, loop=self._loop)
                 except asyncio.CancelledError:
                     self._close_code = 1006
-                    self._response.close(force=True)
+                    self._response.close()
                     raise
                 except Exception as exc:
                     self._close_code = 1006
                     self._exception = exc
-                    self._response.close(force=True)
+                    self._response.close()
                     return True
 
                 if msg.tp == MsgType.close:
                     self._close_code = msg.data
-                    self._response.close(force=True)
+                    self._response.close()
                     return True
         else:
             return False

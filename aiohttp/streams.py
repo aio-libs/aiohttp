@@ -297,7 +297,7 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
 
         return b''.join(blocks)
 
-    def read_nowait(self):
+    def read_nowait(self, n=None):
         if self._exception is not None:
             raise self._exception
 
@@ -305,7 +305,7 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
             raise RuntimeError(
                 'Called while some coroutine is waiting for incoming data.')
 
-        return self._read_nowait()
+        return self._read_nowait(n)
 
     def _read_nowait(self, n=None):
         if not self._buffer:

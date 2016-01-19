@@ -24,7 +24,7 @@ class TestWebSocketClient(unittest.TestCase):
         self.loop.close()
 
     @mock.patch('aiohttp.client.os')
-    @mock.patch('aiohttp.client.ClientSession.request')
+    @mock.patch('aiohttp.client.ClientSession.get')
     def test_ws_connect(self, m_req, m_os):
         resp = mock.Mock()
         resp.status = 101
@@ -49,7 +49,7 @@ class TestWebSocketClient(unittest.TestCase):
         self.assertNotIn(hdrs.ORIGIN, m_req.call_args[1]["headers"])
 
     @mock.patch('aiohttp.client.os')
-    @mock.patch('aiohttp.client.ClientSession.request')
+    @mock.patch('aiohttp.client.ClientSession.get')
     def test_ws_connect_with_origin(self, m_req, m_os):
         resp = mock.Mock()
         resp.status = 403
@@ -69,7 +69,7 @@ class TestWebSocketClient(unittest.TestCase):
         self.assertEqual(m_req.call_args[1]["headers"][hdrs.ORIGIN], origin)
 
     @mock.patch('aiohttp.client.os')
-    @mock.patch('aiohttp.client.ClientSession.request')
+    @mock.patch('aiohttp.client.ClientSession.get')
     def test_ws_connect_custom_response(self, m_req, m_os):
 
         class CustomResponse(websocket_client.ClientWebSocketResponse):
@@ -96,7 +96,7 @@ class TestWebSocketClient(unittest.TestCase):
         self.assertEqual(res.read(), 'customized!')
 
     @mock.patch('aiohttp.client.os')
-    @mock.patch('aiohttp.client.ClientSession.request')
+    @mock.patch('aiohttp.client.ClientSession.get')
     def test_ws_connect_global_loop(self, m_req, m_os):
         asyncio.set_event_loop(self.loop)
 
@@ -118,7 +118,7 @@ class TestWebSocketClient(unittest.TestCase):
         asyncio.set_event_loop(None)
 
     @mock.patch('aiohttp.client.os')
-    @mock.patch('aiohttp.client.ClientSession.request')
+    @mock.patch('aiohttp.client.ClientSession.get')
     def test_ws_connect_err_status(self, m_req, m_os):
         resp = mock.Mock()
         resp.status = 500
@@ -141,7 +141,7 @@ class TestWebSocketClient(unittest.TestCase):
             ctx.exception.message, 'Invalid response status')
 
     @mock.patch('aiohttp.client.os')
-    @mock.patch('aiohttp.client.ClientSession.request')
+    @mock.patch('aiohttp.client.ClientSession.get')
     def test_ws_connect_err_upgrade(self, m_req, m_os):
         resp = mock.Mock()
         resp.status = 101
@@ -164,7 +164,7 @@ class TestWebSocketClient(unittest.TestCase):
             ctx.exception.message, 'Invalid upgrade header')
 
     @mock.patch('aiohttp.client.os')
-    @mock.patch('aiohttp.client.ClientSession.request')
+    @mock.patch('aiohttp.client.ClientSession.get')
     def test_ws_connect_err_conn(self, m_req, m_os):
         resp = mock.Mock()
         resp.status = 101
@@ -187,7 +187,7 @@ class TestWebSocketClient(unittest.TestCase):
             ctx.exception.message, 'Invalid connection header')
 
     @mock.patch('aiohttp.client.os')
-    @mock.patch('aiohttp.client.ClientSession.request')
+    @mock.patch('aiohttp.client.ClientSession.get')
     def test_ws_connect_err_challenge(self, m_req, m_os):
         resp = mock.Mock()
         resp.status = 101
@@ -211,7 +211,7 @@ class TestWebSocketClient(unittest.TestCase):
 
     @mock.patch('aiohttp.client.WebSocketWriter')
     @mock.patch('aiohttp.client.os')
-    @mock.patch('aiohttp.client.ClientSession.request')
+    @mock.patch('aiohttp.client.ClientSession.get')
     def test_close(self, m_req, m_os, WebSocketWriter):
         resp = mock.Mock()
         resp.status = 101
@@ -247,7 +247,7 @@ class TestWebSocketClient(unittest.TestCase):
 
     @mock.patch('aiohttp.client.WebSocketWriter')
     @mock.patch('aiohttp.client.os')
-    @mock.patch('aiohttp.client.ClientSession.request')
+    @mock.patch('aiohttp.client.ClientSession.get')
     def test_close_exc(self, m_req, m_os, WebSocketWriter):
         resp = mock.Mock()
         resp.status = 101
@@ -277,7 +277,7 @@ class TestWebSocketClient(unittest.TestCase):
 
     @mock.patch('aiohttp.client.WebSocketWriter')
     @mock.patch('aiohttp.client.os')
-    @mock.patch('aiohttp.client.ClientSession.request')
+    @mock.patch('aiohttp.client.ClientSession.get')
     def test_close_exc2(self, m_req, m_os, WebSocketWriter):
         resp = mock.Mock()
         resp.status = 101
@@ -311,7 +311,7 @@ class TestWebSocketClient(unittest.TestCase):
 
     @mock.patch('aiohttp.client.WebSocketWriter')
     @mock.patch('aiohttp.client.os')
-    @mock.patch('aiohttp.client.ClientSession.request')
+    @mock.patch('aiohttp.client.ClientSession.get')
     def test_send_data_after_close(self, m_req, m_os, WebSocketWriter):
         resp = mock.Mock()
         resp.status = 101
@@ -337,7 +337,7 @@ class TestWebSocketClient(unittest.TestCase):
 
     @mock.patch('aiohttp.client.WebSocketWriter')
     @mock.patch('aiohttp.client.os')
-    @mock.patch('aiohttp.client.ClientSession.request')
+    @mock.patch('aiohttp.client.ClientSession.get')
     def test_send_data_type_errors(self, m_req, m_os, WebSocketWriter):
         resp = mock.Mock()
         resp.status = 101
@@ -360,7 +360,7 @@ class TestWebSocketClient(unittest.TestCase):
 
     @mock.patch('aiohttp.client.WebSocketWriter')
     @mock.patch('aiohttp.client.os')
-    @mock.patch('aiohttp.client.ClientSession.request')
+    @mock.patch('aiohttp.client.ClientSession.get')
     def test_reader_read_exception(self, m_req, m_os, WebSocketWriter):
         hresp = mock.Mock()
         hresp.status = 101
@@ -395,3 +395,25 @@ class TestWebSocketClient(unittest.TestCase):
 
         self.assertRaises(
             RuntimeError, self.loop.run_until_complete, resp.receive())
+
+    @mock.patch('aiohttp.client.os')
+    @mock.patch('aiohttp.client.ClientSession.get')
+    def test_ws_connect_close_resp_on_err(self, m_req, m_os):
+        resp = mock.Mock()
+        resp.status = 500
+        resp.headers = {
+            hdrs.UPGRADE: hdrs.WEBSOCKET,
+            hdrs.CONNECTION: hdrs.UPGRADE,
+            hdrs.SEC_WEBSOCKET_ACCEPT: self.ws_key
+        }
+        m_os.urandom.return_value = self.key_data
+        m_req.return_value = asyncio.Future(loop=self.loop)
+        m_req.return_value.set_result(resp)
+
+        with self.assertRaises(errors.WSServerHandshakeError):
+            self.loop.run_until_complete(
+                aiohttp.ws_connect(
+                    'http://test.org',
+                    protocols=('t1', 't2', 'chat'),
+                    loop=self.loop))
+        resp.close.assert_called_with()

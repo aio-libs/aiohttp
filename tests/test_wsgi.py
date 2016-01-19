@@ -2,6 +2,7 @@
 
 import io
 import asyncio
+import socket
 import unittest
 import unittest.mock
 
@@ -22,12 +23,16 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
         self.writer = unittest.mock.Mock()
         self.writer.drain.return_value = ()
         self.transport = unittest.mock.Mock()
-        self.transport.get_extra_info.side_effect = [('1.2.3.4', 1234),
-                                                     ('2.3.4.5', 80)]
+        self.transport.get_extra_info.side_effect = [
+            unittest.mock.Mock(family=socket.AF_INET),
+            ('1.2.3.4', 1234),
+            ('2.3.4.5', 80)]
 
         self.headers = multidict.MultiDict({"HOST": "python.org"})
+        self.raw_headers = [(b"HOST", b"python.org")]
         self.message = protocol.RawRequestMessage(
-            'GET', '/path', (1, 0), self.headers, True, 'deflate')
+            'GET', '/path', (1, 0), self.headers, self.raw_headers,
+            True, 'deflate')
         self.payload = aiohttp.FlowControlDataQueue(self.reader)
         self.payload.feed_data(b'data', 4)
         self.payload.feed_data(b'data', 4)
@@ -78,26 +83,20 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
         self.assertEqual(environ['SERVER_PORT'], '80')
         get_extra_info_calls = self.transport.get_extra_info.mock_calls
         expected_calls = [
+            unittest.mock.call('socket'),
             unittest.mock.call('peername'),
-            unittest.mock.call('sockname'),
         ]
         self.assertEqual(expected_calls, get_extra_info_calls)
 
     def test_environ_host_header_alternate_port(self):
-        self.transport.get_extra_info = unittest.mock.Mock(
-            side_effect=[('1.2.3.4', 1234), ('3.4.5.6', 82)]
-        )
         self.headers.update({'HOST': 'example.com:9999'})
         environ = self._make_one()
-        self.assertEqual(environ['SERVER_PORT'], '82')
+        self.assertEqual(environ['SERVER_PORT'], '9999')
 
     def test_environ_host_header_alternate_port_ssl(self):
-        self.transport.get_extra_info = unittest.mock.Mock(
-            side_effect=[('1.2.3.4', 1234), ('3.4.5.6', 82)]
-        )
         self.headers.update({'HOST': 'example.com:9999'})
         environ = self._make_one(is_ssl=True)
-        self.assertEqual(environ['SERVER_PORT'], '82')
+        self.assertEqual(environ['SERVER_PORT'], '9999')
 
     def test_wsgi_response(self):
         srv = self._make_srv()
@@ -183,7 +182,8 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
         stream.feed_eof()
 
         self.message = protocol.RawRequestMessage(
-            'GET', '/path', (1, 1), self.headers, True, 'deflate')
+            'GET', '/path', (1, 1), self.headers, self.raw_headers,
+            True, 'deflate')
 
         srv = self._make_srv(wsgi_app, readpayload=True)
         self.loop.run_until_complete(
@@ -222,7 +222,8 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
         stream.feed_eof()
 
         self.message = protocol.RawRequestMessage(
-            'GET', '/path', (1, 1), self.headers, False, 'deflate')
+            'GET', '/path', (1, 1), self.headers, self.raw_headers,
+            False, 'deflate')
 
         srv = self._make_srv(wsgi_app, readpayload=True)
 
@@ -254,23 +255,56 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
     def test_dont_unquote_environ_path_info(self):
         path = '/path/some%20text'
         self.message = protocol.RawRequestMessage(
-            'GET', path, (1, 0), self.headers, True, 'deflate')
+            'GET', path, (1, 0), self.headers, self.raw_headers,
+            True, 'deflate')
         environ = self._make_one()
         self.assertEqual(environ['PATH_INFO'], path)
 
-    def test_not_add_authorization(self):
-        self.headers.extend({'AUTHORIZATION': 'spam',
-                             'X-CUSTOM-HEADER': 'eggs'})
+    def test_authorization(self):
+        # This header should be removed according to CGI/1.1 and WSGI but
+        # in our case basic auth is not handled by server, so should
+        # not be removed
+        self.headers.extend({'AUTHORIZATION': 'spam'})
         self.message = protocol.RawRequestMessage(
-            'GET', '/', (1, 1), self.headers, True, 'deflate')
+            'GET', '/', (1, 1), self.headers, self.raw_headers,
+            True, 'deflate')
         environ = self._make_one()
-        self.assertEqual('eggs', environ['HTTP_X_CUSTOM_HEADER'])
-        self.assertFalse('AUTHORIZATION' in environ)
+        self.assertEqual('spam', environ['HTTP_AUTHORIZATION'])
 
     def test_http_1_0_no_host(self):
         headers = multidict.MultiDict({})
         self.message = protocol.RawRequestMessage(
-            'GET', '/', (1, 0), headers, True, 'deflate')
+            'GET', '/', (1, 0), headers, [], True, 'deflate')
         environ = self._make_one()
         self.assertEqual(environ['SERVER_NAME'], '2.3.4.5')
         self.assertEqual(environ['SERVER_PORT'], '80')
+
+    def test_family_inet6(self):
+        self.transport.get_extra_info.side_effect = [
+            unittest.mock.Mock(family=socket.AF_INET6),
+            ("::", 1122, 0, 0),
+            ('2.3.4.5', 80)]
+        self.message = protocol.RawRequestMessage(
+            'GET', '/', (1, 0), self.headers, self.raw_headers,
+            True, 'deflate')
+        environ = self._make_one()
+        self.assertEqual(environ['SERVER_NAME'], 'python.org')
+        self.assertEqual(environ['SERVER_PORT'], '80')
+        self.assertEqual(environ['REMOTE_ADDR'], '::')
+        self.assertEqual(environ['REMOTE_PORT'], '1122')
+
+    def test_family_unix(self):
+        if not hasattr(socket, "AF_UNIX"):
+            self.skipTest("No UNIX address family. (Windows?)")
+        self.transport.get_extra_info.side_effect = [
+            unittest.mock.Mock(family=socket.AF_UNIX)]
+        headers = multidict.MultiDict({
+            'SERVER_NAME': '1.2.3.4', 'SERVER_PORT': '5678',
+            'REMOTE_ADDR': '4.3.2.1', 'REMOTE_PORT': '8765'})
+        self.message = protocol.RawRequestMessage(
+            'GET', '/', (1, 0), headers, self.raw_headers, True, 'deflate')
+        environ = self._make_one()
+        self.assertEqual(environ['SERVER_NAME'], '1.2.3.4')
+        self.assertEqual(environ['SERVER_PORT'], '5678')
+        self.assertEqual(environ['REMOTE_ADDR'], '4.3.2.1')
+        self.assertEqual(environ['REMOTE_PORT'], '8765')

@@ -4,8 +4,6 @@
  Multidicts
 ============
 
-.. highlight:: python
-
 .. module:: aiohttp
 
 

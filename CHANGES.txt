@@ -1,30 +1,47 @@
 CHANGES
 =======
 
-0.19.0 (XX-XX-XXXX)
--------------------
+0.21.0 (XX-XX-XXXX)
+--------------------
 
-- Memory leak in ParserBuffer #579
+- Introduce on_shutdown signal #722
 
-- Suppport gunicorn's `max_requests` settings in gunicorn worker
+- Implement raw input headers #726
 
-- Fix wsgi environment building #573
+- Implement web.run_app utility function #734
 
-- Improve access logging #572
+- Introduce on_cleanup signal
 
-- Drop unused host and port from low-level server #586
+- Deprecate Application.finish() / Application.register_on_finish() in favor of
+  on_cleanup.
 
-- Add Python 3.5 `async for` implementation to server websocket #543
+- Get rid of bare aiohttp.request(), aiohttp.get() and family in docs #729
 
-- Add Python 3.5 `async for` implementation to client websocket
+- Deprecate bare aiohttp.request(), aiohttp.get() and family #729
 
-- Add Python 3.5 `async with` implementation to client websocket
+- Refactor keep-alive support #737:
 
-- Add charset parameter to web.Response constructor #593
+  - Enable keepalive for HTTP 1.0 by default
 
-- Forbid passing both Content-Type header and content_type or charset
-  params into web.Response constructor
+  - Disable it for HTTP 0.9 (who cares about 0.9, BTW?)
+  
+  - For keepalived connections
 
-- Forbid duplicating of web.Application and web.Request #602
+      - Send `Connection: keep-alive` for HTTP 1.0 only
 
-- Add an option to pass Origin header in ws_connect #607
+      - don't send `Connection` header for HTTP 1.1
+
+  - For non-keepalived connections
+
+      - Send `Connection: close` for HTTP 1.1 only
+
+      - don't send `Connection` header for HTTP 1.0
+
+- Add version parameter to ClientSession constructor,
+  deprecate it for session.request() and family #736  
+
+- Enable access log by default #735
+
+- route.add_static accepts pathlib.Path now #743
+
+- Add command line support: `$ python -m aiohttp.web package.main` #740

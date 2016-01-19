@@ -1,3 +1,128 @@
+0.20.2 (01-07-2015)
+--------------------
+
+- Enable use of `await` for a class based view #717
+
+- Check address family to fill wsgi env properly #718
+
+- Fix memory leak in headers processing (thanks to Marco Paolini) #723
+
+0.20.1 (12-30-2015)
+-------------------
+
+- Raise RuntimeError is Timeout context manager was used outside of
+  task context.
+
+- Add number of bytes to stream.read_nowait #700
+
+- Use X-FORWARDED-PROTO for wsgi.url_scheme when available
+
+
+0.20.0 (12-28-2015)
+-------------------
+
+- Extend list of web exceptions, add HTTPMisdirectedRequest,
+  HTTPUpgradeRequired, HTTPPreconditionRequired, HTTPTooManyRequests,
+  HTTPRequestHeaderFieldsTooLarge, HTTPVariantAlsoNegotiates,
+  HTTPNotExtended, HTTPNetworkAuthenticationRequired status codes #644
+
+- Do not remove AUTHORIZATION header by WSGI handler #649
+
+- Fix broken support for https proxies with authentication #617
+
+- Get REMOTE_* and SEVER_* http vars from headers when listening on
+  unix socket #654
+
+- Add HTTP 308 support #663
+
+- Add Tf format (time to serve request in seconds, %06f format) to
+  access log #669
+
+- Remove one and a half years long deprecated
+  ClientResponse.read_and_close() method
+
+- Optimize chunked encoding: use a single syscall instead of 3 calls
+  on sending chunked encoded data
+
+- Use TCP_CORK and TCP_NODELAY to optimize network latency and
+  throughput #680
+
+- Websocket XOR performance improved #687
+
+- Avoid sending cookie attributes in Cookie header #613
+
+- Round server timeouts to seconds for grouping pending calls.  That
+  leads to less amount of poller syscalls e.g epoll.poll(). #702
+
+- Close connection on websocket handshake error #703
+
+- Implement class based views #684
+
+- Add *headers* parameter to ws_connect() #709
+
+- Drop unused function `parse_remote_addr()` #708
+
+- Close session on exception #707
+
+- Store http code and headers in WSServerHandshakeError #706
+
+- Make some low-level message properties readonly #710
+
+
+0.19.0 (11-25-2015)
+-------------------
+
+- Memory leak in ParserBuffer #579
+
+- Suppport gunicorn's `max_requests` settings in gunicorn worker
+
+- Fix wsgi environment building #573
+
+- Improve access logging #572
+
+- Drop unused host and port from low-level server #586
+
+- Add Python 3.5 `async for` implementation to server websocket #543
+
+- Add Python 3.5 `async for` implementation to client websocket
+
+- Add Python 3.5 `async with` implementation to client websocket
+
+- Add charset parameter to web.Response constructor #593
+
+- Forbid passing both Content-Type header and content_type or charset
+  params into web.Response constructor
+
+- Forbid duplicating of web.Application and web.Request #602
+
+- Add an option to pass Origin header in ws_connect #607
+
+- Add json_response function #592
+
+- Make concurrent connections respect limits #581
+
+- Collect history of responses if redirects occur #614
+
+- Enable passing pre-compressed data in requests #621
+
+- Expose named routes via UrlDispatcher.named_routes() #622
+
+- Allow disabling sendfile by environment variable AIOHTTP_NOSENDFILE #629
+
+- Use ensure_future if available
+
+- Always quote params for Content-Disposition #641
+
+- Support async for in multipart reader #640
+
+- Add Timeout context manager #611
+
+0.18.4 (13-11-2015)
+-------------------
+
+- Relax rule for router names again by adding dash to allowed
+  characters: they may contain identifiers, dashes, dots and columns
+
 0.18.3 (25-10-2015)
 -------------------
 

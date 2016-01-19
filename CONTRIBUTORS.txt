@@ -22,6 +22,7 @@ Brian C. Lane
 Boris Feld
 Carl George
 Chien-Wei Huang
+Chih-Yuan Chen
 Chris Laws
 Chris Moore
 Daniel Nelson
@@ -43,19 +44,25 @@ Ingmar Steen
 Jaesung Lee
 Jashandeep Sohi
 Jeroen van der Heijden
+Jesus Cea
+Joel Watts
 Julien Duponchelle
 Junjie Tao
 Kay Zheng
 Kirill Klenov
 Kirill Malovitsa
 Kyrylo Perevozchikov
+Lars P. Søndergaard
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
 Marco Paolini
 Martin Richard
+Mathias Fröjdman
+Matthieu Hauglustaine
+Michael Ihnatenko
+Mikhail Lukyanchenko
 Morgan Delahaye-Prat
 Moss Collum
-Mikhail Lukyanchenko
 Nicolas Braem
 Nikolay Novik
 Olaf Conradi
@@ -70,12 +77,16 @@ Sebastian Hüther
 Sergey Ninua
 Sergey Skripnick
 Simon Kennedy
+Stanislas Plum
 Stanislav Prokop
 Stephen Granade
+Sviatoslav Bulbakha
 Taras Voinarovskyi
 Tolga Tezel
+Thomas Grainger
 Vaibhav Sagar
 Vasyl Baran
+Vitalik Verhovodov
 Vitaly Haritonsky
 Vitaly Magerya
 Vladimir Rutsky
@@ -83,3 +94,4 @@ Vladimir Shulyak
 Vladimir Zakharov
 W. Trevor King
 Yannick Koechlin
+Коренберг Марк

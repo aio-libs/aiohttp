@@ -1,0 +1,11 @@
+postgres:
+  database: aiohttpdemo_polls
+  user: aiohttpdemo_user
+  password: aiohttpdemo_user
+  host: localhost
+  port: 5432
+  minsize: 1
+  maxsize: 5
+
+host: 127.0.0.1
+port: 8080

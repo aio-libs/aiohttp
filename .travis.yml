@@ -1,28 +1,41 @@
 sudo: no
 
 language: python
+
 python:
   - 3.4
   - 3.5
 
+os:
+  - linux
+#  - osx
+
 cache:
   directories:
   - $HOME/.cache/pip
+
 before_cache:
   - rm -f $HOME/.cache/pip/log/debug.log
 
 install:
   - pip install --upgrade pip wheel
   - pip install --upgrade setuptools
-  - pip install -r requirements-dev.txt
+  - pip install -r requirements-ci.txt
+  - pip install coveralls
 
 script:
   - flake8 aiohttp
   - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
         flake8 examples tests;
     fi
-  - coverage run --source=aiohttp setup.py test
+  - py.test --cov=aiohttp tests
   - python setup.py check -rm
+  - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
+        python setup.py check -s;
+    fi
+
+after_success:
+  coveralls
 
 env:
   matrix:
@@ -32,3 +45,14 @@ env:
     - PYTHONASYNCIODEBUG=  AIOHTTP_NO_EXTENSIONS=
     - PYTHONASYNCIODEBUG=X AIOHTTP_NO_EXTENSIONS=X
     - PYTHONASYNCIODEBUG=  AIOHTTP_NO_EXTENSIONS=X
+
+deploy:
+  provider: pypi
+  user: andrew.svetlov
+  password:
+    secure: ZQKbdPT9BlNqP5CTbWRQyeyig7Bpf7wsnYVQIQPOZc9Ec74A+dsbagstR1sPkAO+d+5PN0pZMovvmU7OQhSVPAnJ74nsN90/fL4ux3kqYecMbevv0rJg20hMXSSkwMEIpjUsMdMjJvZAcaKytGWmKL0qAlOJHhixd1pBbWyuIUE=
+  distributions: "sdist"
+  on:
+    tags: true
+    all_branches: true
+    python: 3.5

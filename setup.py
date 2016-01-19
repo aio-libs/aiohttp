@@ -2,7 +2,7 @@ import codecs
 import os
 import re
 import sys
-from setuptools import setup, find_packages, Extension
+from setuptools import setup, Extension
 from distutils.errors import (CCompilerError, DistutilsExecError,
                               DistutilsPlatformError)
 from distutils.command.build_ext import build_ext
@@ -93,9 +93,11 @@ args = dict(
         'Topic :: Internet :: WWW/HTTP'],
     author='Nikolay Kim',
     author_email='fafhrd91@gmail.com',
+    maintainer='Andrew Svetlov',
+    maintainer_email='andrew.svetlov@gmail.com',
     url='https://github.com/KeepSafe/aiohttp/',
     license='Apache 2',
-    packages=find_packages(),
+    packages=['aiohttp'],
     install_requires=install_requires,
     tests_require=tests_require,
     include_package_data=True,

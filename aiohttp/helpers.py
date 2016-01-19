@@ -1,4 +1,6 @@
 """Various helper functions"""
+
+import asyncio
 import base64
 import binascii
 import datetime
@@ -8,11 +10,18 @@ import os
 import re
 from urllib.parse import quote, urlencode
 from collections import namedtuple
+from pathlib import Path
 
 from . import hdrs, multidict
 from .errors import InvalidURL
 
-__all__ = ('BasicAuth', 'FormData', 'parse_mimetype')
+try:
+    from asyncio import ensure_future
+except ImportError:
+    ensure_future = asyncio.async
+
+
+__all__ = ('BasicAuth', 'FormData', 'parse_mimetype', 'Timeout')
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
@@ -230,36 +239,8 @@ def str_to_bytes(s, encoding='utf-8'):
 def guess_filename(obj, default=None):
     name = getattr(obj, 'name', None)
     if name and name[0] != '<' and name[-1] != '>':
-        return os.path.split(name)[-1]
+        return Path(name).name
     return default
-
-
-def parse_remote_addr(forward):
-    if isinstance(forward, str):
-        # we only took the last one
-        # http://en.wikipedia.org/wiki/X-Forwarded-For
-        if ',' in forward:
-            forward = forward.rsplit(',', 1)[-1].strip()
-
-        # find host and port on ipv6 address
-        if '[' in forward and ']' in forward:
-            host = forward.split(']')[0][1:].lower()
-        elif ':' in forward and forward.count(':') == 1:
-            host = forward.split(':')[0].lower()
-        else:
-            host = forward
-
-        forward = forward.split(']')[-1]
-        if ':' in forward and forward.count(':') == 1:
-            port = forward.split(':', 1)[1]
-        else:
-            port = 80
-
-        remote = (host, port)
-    else:
-        remote = forward
-
-    return remote[0], str(remote[1])
 
 
 class AccessLogger:
@@ -281,6 +262,8 @@ class AccessLogger:
         %b  Size of response in bytes, excluding HTTP headers
         %O  Bytes sent, including headers
         %T  Time taken to serve the request, in seconds
+        %Tf Time taken to serve the request, in seconds with floating fraction
+            in .06f format
         %D  Time taken to serve the request, in microseconds
         %{FOO}i  request.headers['FOO']
         %{FOO}o  response.headers['FOO']
@@ -289,7 +272,7 @@ class AccessLogger:
     """
 
     LOG_FORMAT = '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
-    FORMAT_RE = re.compile(r'%(\{([A-Za-z\-]+)\}([ioe])|[atPrsbOTD])')
+    FORMAT_RE = re.compile(r'%(\{([A-Za-z\-]+)\}([ioe])|[atPrsbOD]|Tf?)')
     CLEANUP_RE = re.compile(r'(%[^s])')
     _FORMAT_CACHE = {}
 
@@ -392,6 +375,10 @@ class AccessLogger:
         return round(args[4])
 
     @staticmethod
+    def _format_Tf(args):
+        return '%06f' % args[4]
+
+    @staticmethod
     def _format_D(args):
         return round(args[4] * 1000000)
 
@@ -419,10 +406,10 @@ _marker = object()
 
 class reify:
     """Use as a class method decorator.  It operates almost exactly like
-    the Python ``@property`` decorator, but it puts the result of the
+    the Python `@property` decorator, but it puts the result of the
     method it decorates into the instance dict after the first call,
     effectively replacing the function it decorates with an instance
-    variable.  It is, in Python parlance, a non-data descriptor.
+    variable.  It is, in Python parlance, a data descriptor.
 
     """
 
@@ -431,7 +418,7 @@ class reify:
         try:
             self.__doc__ = wrapped.__doc__
         except:  # pragma: no cover
-            pass
+            self.__doc__ = ""
         self.name = wrapped.__name__
 
     def __get__(self, inst, owner, _marker=_marker):
@@ -494,3 +481,48 @@ def requote_uri(uri):
         # there may be unquoted '%'s in the URI. We need to make sure they're
         # properly quoted so they do not cause issues elsewhere.
         return quote(uri, safe=safe_without_percent)
+
+
+class Timeout:
+    """Timeout context manager.
+
+    Useful in cases when you want to apply timeout logic around block
+    of code or in cases when asyncio.wait_for is not suitable. For example:
+
+    >>> with aiohttp.Timeout(0.001):
+    ...     async with aiohttp.get('https://github.com') as r:
+    ...         await r.text()
+
+
+    :param timeout: timeout value in seconds
+    :param loop: asyncio compatible event loop
+    """
+    def __init__(self, timeout, *, loop=None):
+        self._timeout = timeout
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        self._loop = loop
+        self._task = None
+        self._cancelled = False
+        self._cancel_handler = None
+
+    def __enter__(self):
+        self._task = asyncio.Task.current_task(loop=self._loop)
+        if self._task is None:
+            raise RuntimeError('Timeout context manager should be used '
+                               'inside a task')
+        self._cancel_handler = self._loop.call_later(
+            self._timeout, self._cancel_task)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is asyncio.CancelledError and self._cancelled:
+            self._cancel_handler = None
+            self._task = None
+            raise asyncio.TimeoutError
+        self._cancel_handler.cancel()
+        self._cancel_handler = None
+        self._task = None
+
+    def _cancel_task(self):
+        self._cancelled = self._task.cancel()
