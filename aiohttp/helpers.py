@@ -65,7 +65,7 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
         except binascii.Error:
             raise ValueError('Invalid base64 encoding.')
 
-        return cls(username, password)
+        return cls(username, password, encoding=encoding)
 
     def encode(self):
         """Encode credentials."""
