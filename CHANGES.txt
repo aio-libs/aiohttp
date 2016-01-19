@@ -46,3 +46,7 @@ CHANGES
   intentionally BTW).
 
 - Deprecate app.router.named_routes() in favor of app.router.named_resources()
+
+- route.add_static accepts pathlib.Path now #743
+
+- Add command line support: `$ python -m aiohttp.web package.main` #740
