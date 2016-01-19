@@ -1,5 +1,6 @@
 """Various helper functions"""
 import base64
+import binascii
 import datetime
 import functools
 import io
@@ -30,6 +31,41 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
             raise ValueError('None is not allowed as password value')
 
         return super().__new__(cls, login, password, encoding)
+
+    @classmethod
+    def decode(cls, auth_header, encoding='latin1'):
+        """Create a :class:`BasicAuth` object from an ``Authorization`` HTTP
+        header.
+
+        :param auth_header:  The value of the ``Authorization`` header.
+        :type auth_header:  str
+        :param encoding:  The character encoding used on the password.
+        :type encoding:  str
+
+        :returns:  The decoded authentication.
+        :rtype:  :class:`BasicAuth`
+
+        :raises ValueError:  if the headers are unable to be decoded.
+
+        """
+        split = auth_header.strip().split(' ')
+        if len(split) == 2:
+            if split[0].strip().lower() != 'basic':
+                raise ValueError('Unknown authorization method %s' % split[0])
+            to_decode = split[1]
+        elif len(split) == 1:
+            to_decode = split[0]
+        else:
+            raise ValueError('Could not parse authorization header.')
+
+        try:
+            username, _, password = base64.b64decode(
+                to_decode.encode('ascii')
+            ).decode(encoding).partition(':')
+        except binascii.Error:
+            raise ValueError('Invalid base64 encoding.')
+
+        return cls(username, password)
 
     def encode(self):
         """Encode credentials."""
