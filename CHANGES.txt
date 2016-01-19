@@ -45,3 +45,5 @@ CHANGES
 - route.add_static accepts pathlib.Path now #743
 
 - Add command line support: `$ python -m aiohttp.web package.main` #740
+
+- FAQ section was added to docs. Enjoy and fill free to contribute new topics
