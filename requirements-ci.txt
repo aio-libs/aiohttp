@@ -1,0 +1,15 @@
+pip
+flake8
+pyflakes>=1.0.0
+coverage
+sphinx
+alabaster>=0.6.2
+cython
+chardet
+tox
+sphinxcontrib-newsfeed
+pytest
+pytest-cov
+gunicorn
+pygments
+-e .
