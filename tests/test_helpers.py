@@ -79,12 +79,12 @@ def test_basic_auth_decode():
 
 def test_basic_auth_decode_not_basic():
     with pytest.raises(ValueError):
-        auth = helpers.BasicAuth.decode('Complex bmtpbTpwd2Q=')
+        helpers.BasicAuth.decode('Complex bmtpbTpwd2Q=')
 
 
 def test_basic_auth_decode_bad_base64():
     with pytest.raises(ValueError):
-        auth = helpers.BasicAuth.decode('Basic bmtpbTpwd2Q')
+        helpers.BasicAuth.decode('Basic bmtpbTpwd2Q')
 
 
 def test_invalid_formdata_params():
