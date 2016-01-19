@@ -1,5 +1,6 @@
 import asyncio
 import warnings
+import sys
 
 
 from . import hdrs
@@ -16,6 +17,8 @@ from .web_reqrep import *  # noqa
 from .web_exceptions import *  # noqa
 from .web_urldispatcher import *  # noqa
 from .web_ws import *  # noqa
+from argparse import ArgumentParser
+from importlib import import_module
 
 
 __all__ = (web_reqrep.__all__ +
@@ -322,3 +325,52 @@ def run_app(app, *, host='0.0.0.0', port=None,
         loop.run_until_complete(handler.finish_connections(shutdown_timeout))
         loop.run_until_complete(app.cleanup())
     loop.close()
+
+
+def main(argv):
+    arg_parser = ArgumentParser(
+        description="aiohttp.web Application server",
+        prog="aiohttp.web"
+    )
+    arg_parser.add_argument(
+        "entry_func",
+        help=("Callable returning the `aiohttp.web.Application` instance to "
+              "run. Should be specified in the 'module:function' syntax."),
+        metavar="entry-func"
+    )
+    arg_parser.add_argument(
+        "-H", "--hostname",
+        help="TCP/IP hostname to serve on (default: %(default)r)",
+        default="localhost"
+    )
+    arg_parser.add_argument(
+        "-P", "--port",
+        help="TCP/IP port to serve on (default: %(default)r)",
+        type=int,
+        default="8080"
+    )
+    args, extra_args = arg_parser.parse_known_args(argv)
+
+    # Import logic
+    mod_str, _, func_str = args.entry_func.partition(":")
+    if not func_str or not mod_str:
+        arg_parser.error(
+            "'entry-func' not in 'module:function' syntax"
+        )
+    if mod_str.startswith("."):
+        arg_parser.error("relative module names not supported")
+    try:
+        module = import_module(mod_str)
+    except ImportError:
+        arg_parser.error("module %r not found" % mod_str)
+    try:
+        func = getattr(module, func_str)
+    except AttributeError:
+        arg_parser.error("module %r has no attribute %r" % (mod_str, func_str))
+
+    app = func(extra_args)
+    run_app(app, host=args.hostname, port=args.port)
+    arg_parser.exit(message="Stopped\n")
+
+if __name__ == "__main__":
+    main(sys.argv)
