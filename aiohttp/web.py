@@ -1,5 +1,6 @@
 import asyncio
 import warnings
+import sys
 
 
 from . import hdrs
@@ -326,7 +327,7 @@ def run_app(app, *, host='0.0.0.0', port=None,
     loop.close()
 
 
-def main():
+def main(argv):
     arg_parser = ArgumentParser(
         description="aiohttp.web Application server",
         prog="aiohttp.web"
@@ -348,7 +349,7 @@ def main():
         type=int,
         default="8080"
     )
-    args, extra_args = arg_parser.parse_known_args()
+    args, extra_args = arg_parser.parse_known_args(argv)
 
     # Import logic
     mod_str, _, func_str = args.entry_func.partition(":")
@@ -372,4 +373,4 @@ def main():
     arg_parser.exit(message="Stopped\n")
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv)
