@@ -38,12 +38,12 @@ def test_timeout_finish_in_time(loop):
     assert resp == 'done'
 
 
-def test_timeout_gloabal_loop(loop):
+def test_timeout_global_loop(loop):
     asyncio.set_event_loop(loop)
 
     @asyncio.coroutine
     def run():
-        with Timeout(0.1) as t:
+        with Timeout(10) as t:
             yield from asyncio.sleep(0.01)
             assert t._loop is loop
 
