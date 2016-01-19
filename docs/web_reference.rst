@@ -3,13 +3,9 @@
 HTTP Server Reference
 =====================
 
-.. highlight:: python
-
 .. module:: aiohttp.web
 
-.. versionchanged:: 0.12
-
-   The module was deeply refactored in backward incompatible manner.
+.. currentmodule:: aiohttp.web
 
 .. _aiohttp-web-request:
 
@@ -121,6 +117,11 @@ like one using :meth:`Request.copy`.
       A case-insensitive multidict proxy with all headers.
 
       Read-only :class:`~aiohttp.CIMultiDictProxy` property.
+
+   .. attribute:: raw_headers
+
+      HTTP headers of response as unconverted bytes, a sequence of
+      ``(key, value)`` pairs.
 
    .. attribute:: keep_alive
 
@@ -555,6 +556,37 @@ StreamResponse
       as an :class:`int` or a :class:`float` object, and the
       value ``None`` to unset the header.
 
+   .. attribute:: tcp_cork
+
+      :const:`~socket.TCP_CORK` (linux) or :const:`~socket.TCP_NOPUSH`
+      (FreeBSD and MacOSX) is applied to underlying transport if the
+      property is ``True``.
+
+      Use :meth:`set_tcp_cork` to assign new value to the property.
+
+      Default value is ``False``.
+
+   .. method:: set_tcp_cork(value)
+
+      Set :attr:`tcp_cork` property to *value*.
+
+      Clear :attr:`tcp_nodelay` if *value* is ``True``.
+
+   .. attribute:: tcp_nodelay
+
+      :const:`~socket.TCP_NODELAY` is applied to underlying transport
+      if the property is ``True``.
+
+      Use :meth:`set_tcp_nodelay` to assign new value to the property.
+
+      Default value is ``True``.
+
+   .. method:: set_tcp_nodelay(value)
+
+      Set :attr:`tcp_nodelay` property to *value*.
+
+      Clear :attr:`tcp_cork` if *value* is ``True``.
+
    .. method:: start(request)
 
       :param aiohttp.web.Request request: HTTP request object, that the
@@ -652,10 +684,10 @@ Response
 
    :param str content_type: response's content type. ``'text/plain'``
                        if *text* is passed also,
-                       ``'application/octet-stream'`` othrewise.
+                       ``'application/octet-stream'`` otherwise.
 
-   :param str charset: response's sharset. ``'utf-8'`` if *text* is
-                       passed also, ``None`` othrewise.
+   :param str charset: response's charset. ``'utf-8'`` if *text* is
+                       passed also, ``None`` otherwise.
 
 
    .. attribute:: body
@@ -690,7 +722,8 @@ WebSocketResponse
 .. class:: WebSocketResponse(*, timeout=10.0, autoclose=True, \
                              autoping=True, protocols=())
 
-   Class for handling server-side websockets.
+   Class for handling server-side websockets, inherited from
+   :class:`StreamResponse`.
 
    After starting (by :meth:`prepare` call) the response you
    cannot use :meth:`~StreamResponse.write` method but should to
@@ -884,6 +917,20 @@ WebSocketResponse
 
 .. seealso:: :ref:`WebSockets handling<aiohttp-web-websockets>`
 
+
+json_response
+-------------
+
+.. function:: json_response([data], *, text=None, body=None, \
+                            status=200, reason=None, headers=None, \
+                            content_type='application/json', \
+                            dumps=json.dumps)
+
+Return :class:`Response` with predefined ``'application/json'``
+content type and *data* encoded by *dumps* parameter
+(:func:`json.dumps` by default).
+
+
 .. _aiohttp-web-app-and-router:
 
 Application and Router
@@ -965,8 +1012,43 @@ duplicated like one using :meth:`Application.copy`.
 
       Signal handlers should have the following signature::
 
-          async def handler(request, response):
+          async def on_prepare(request, response):
               pass
+
+   .. attribute:: on_shutdown
+
+      A :class:`~aiohttp.signals.Signal` that is fired on application shutdown.
+
+      Subscribers may use the signal for gracefully closing long running
+      connections, e.g. websockets and data streaming.
+
+      Signal handlers should have the following signature::
+
+          async def on_shutdown(app):
+              pass
+
+      It's up to end user to figure out which :term:`web-handler`\s
+      are still alive and how to finish them properly.
+
+      We suggest keeping a list of long running handlers in
+      :class:`Application` dictionary.
+
+      .. seealso:: :ref:`aiohttp-web-graceful-shutdown` and :attr:`on_cleanup`.
+
+   .. attribute:: on_cleanup
+
+      A :class:`~aiohttp.signals.Signal` that is fired on application cleanup.
+
+      Subscribers may use the signal for gracefully closing
+      connections to database server etc.
+
+      Signal handlers should have the following signature::
+
+          async def on_cleanup(app):
+              pass
+
+      .. seealso:: :ref:`aiohttp-web-graceful-shutdown` and :attr:`on_shutdown`.
+
 
    .. method:: make_handler(**kwargs)
 
@@ -988,17 +1070,27 @@ duplicated like one using :meth:`Application.copy`.
          await loop.create_server(app.make_handler(),
                                   '0.0.0.0', 8080)
 
+   .. coroutinemethod:: shutdown()
+
+      A :ref:`coroutine<coroutine>` that should be called on
+      server stopping but before :meth:`finish()`.
+
+      The purpose of the method is calling :attr:`on_shutdown` signal
+      handlers.
+
+   .. coroutinemethod:: cleanup()
+
+      A :ref:`coroutine<coroutine>` that should be called on
+      server stopping but after :meth:`shutdown`.
+
+      The purpose of the method is calling :attr:`on_cleanup` signal
+      handlers.
+
    .. coroutinemethod:: finish()
 
-      A :ref:`coroutine<coroutine>` that should be called after
-      server stopping.
+      A deprecated alias for :meth:`cleanup`.
 
-      This method executes functions registered by
-      :meth:`register_on_finish` in LIFO order.
-
-      If callback raises an exception, the error will be stored by
-      :meth:`~asyncio.BaseEventLoop.call_exception_handler` with keys:
-      *message*, *exception*, *application*.
+      .. deprecated:: 0.21
 
    .. method:: register_on_finish(self, func, *args, **kwargs):
 
@@ -1012,6 +1104,10 @@ duplicated like one using :meth:`Application.copy`.
 
       *func* may be either regular function or :ref:`coroutine<coroutine>`,
       :meth:`finish` will un-yield (`await`) the later.
+
+      .. deprecated:: 0.21
+
+         Use :attr:`on_cleanup` instead: ``app.on_cleanup.append(handler)``.
 
    .. note::
 
@@ -1111,9 +1207,16 @@ Router is any object that implements :class:`AbstractRouter` interface.
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
                           chunk_size=256*1024, response_factory=StreamResponse)
 
-      Adds router for returning static files.
+      Adds a router and a handler for returning static files.
 
-      Useful for handling static content like images, javascript and css files.
+      Useful for serving static content like images, javascript and css files.
+
+      On platforms that support it, the handler will transfer files more
+      efficiently using the ``sendfile`` system call.
+
+      In some situations it might be necessary to avoid using the ``sendfile``
+      system call even if the platform supports it. This can be accomplished by
+      by setting environment variable ``AIOHTTP_NOSENDFILE=1``.
 
       .. warning::
 
@@ -1121,10 +1224,18 @@ Router is any object that implements :class:`AbstractRouter` interface.
          static content should be processed by web servers like *nginx*
          or *apache*.
 
+      .. versionchanged:: 0.18.0
+         Transfer files using the ``sendfile`` system call on supported
+         platforms.
+
+      .. versionchanged:: 0.19.0
+         Disable ``sendfile`` by setting environment variable
+         ``AIOHTTP_NOSENDFILE=1``
+
       :param str prefix: URL path prefix for handled static files
 
-      :param str path: path to the folder in file system that contains
-                       handled static files.
+      :param path: path to the folder in file system that contains
+                   handled static files, :class:`str` or :class:`pathlib.Path`.
 
       :param str name: optional route name.
 
@@ -1195,6 +1306,27 @@ Router is any object that implements :class:`AbstractRouter` interface.
            route in app.router.routes()
 
       .. versionadded:: 0.18
+
+   .. method:: named_routes()
+
+      Returns a :obj:`dict`-like :class:`types.MappingProxyType` *view* over
+      *all* named routes.
+
+      The view maps every named route's :attr:`Route.name` attribute to the
+      :class:`Route`. It supports the usual :obj:`dict`-like operations, except
+      for any mutable operations (i.e. it's **read-only**)::
+
+          len(app.router.named_routes())
+
+          for name, route in app.router.named_routes().items():
+              print(name, route)
+
+          "route_name" in app.router.named_routes()
+
+          app.router.named_routes()["route_name"]
+
+      .. versionadded:: 0.19
+
 
 .. _aiohttp-web-route:
 
@@ -1330,14 +1462,56 @@ In general the result may be any object derived from
    :class:`Route` instance for url matching.
 
 
+View
+^^^^
+
+.. class:: View(request)
+
+   Inherited from :class:`AbstractView`.
+
+   Base class for class based views. Implementations should derive from
+   :class:`View` and override methods for handling HTTP verbs like
+   ``get()`` or ``post()``::
+
+       class MyView(View):
+
+           async def get(self):
+               resp = await get_response(self.request)
+               return resp
+
+           async def post(self):
+               resp = await post_response(self.request)
+               return resp
+
+       app.router.add_route('*', '/view', MyView)
+
+   The view raises *405 Method Not allowed*
+   (:class:`HTTPMEthodNowAllowed`) if requested web verb is not
+   supported.
+
+   :param request: instance of :class:`Request` that has initiated a view
+                   processing.
+
+
+   .. attribute:: request
+
+      Request sent to view's constructor, read-only property.
+
+
+   Overridable coroutine methods: ``connect()``, ``delete()``,
+   ``get()``, ``head()``, ``options()``, ``patch()``, ``post()``,
+   ``put()``, ``trace()``.
+
+.. seealso:: :ref:`aiohttp-web-class-based-views`
+
 
 Utilities
 ---------
 
 .. class:: FileField
 
-   A :func:`~collections.namedtuple` that is returned as multidict value
-   by :meth:`Request.POST` if field is uploaded file.
+   A :class:`~collections.namedtuple` instance that is returned as
+   multidict value by :meth:`Request.POST` if field is uploaded file.
 
    .. attribute:: name
 
@@ -1358,6 +1532,45 @@ Utilities
    .. seealso:: :ref:`aiohttp-web-file-upload`
 
 
+.. function:: run_app(app, *, host='0.0.0.0', port=None, loop=None, \
+                      shutdown_timeout=60.0, ssl_context=None, \
+                      print=print)
+
+   An utility function for running an application, serving it until
+   keyboard interrupt and performing a
+   :ref:`aiohttp-web-graceful-shutdown`.
+
+   Suitable as handy tool for scaffolding aiohttp based projects.
+   Perhaps production config will use more sophisticated runner but it
+   good enough at least at very beginning stage.
+
+   The function uses *app.loop* as event loop to run.
+
+   :param app: :class:`Application` instance to run
+
+   :param str host: host for HTTP server, ``'0.0.0.0'`` by default
+
+   :param int port: port for HTTP server. By default is ``8080`` for
+                    plain text HTTP and ``8443`` for HTTP via SSL
+                    (when *ssl_context* parameter is specified).
+
+   :param int shutdown_timeout: a delay to wait for graceful server
+                                shutdown before disconnecting all
+                                open client sockets hard way.
+
+                                A system with properly
+                                :ref:`aiohttp-web-graceful-shutdown`
+                                implemented never waits for this
+                                timeout but closes a server in a few
+                                milliseconds.
+
+   :param ssl_context: :class:`ssl.SSLContext` for HTTPS server,
+                       ``None`` for HTTP connection.
+
+   :param print: a callable compatible with :func:`print`. May be used
+                 to override stdout output or supppress it.
+
+
 Constants
 ---------
 
@@ -1367,8 +1580,14 @@ Constants
 
    .. attribute:: deflate
 
+      *DEFLATE compression*
+
    .. attribute:: gzip
 
+      *GZIP comression*
+
    .. attribute:: identity
+
+      *no comression*
 
 .. disqus::

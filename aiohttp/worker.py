@@ -7,6 +7,8 @@ import signal
 import sys
 import gunicorn.workers.base as base
 
+from aiohttp.helpers import ensure_future
+
 __all__ = ('GunicornWebWorker',)
 
 
@@ -28,7 +30,7 @@ class GunicornWebWorker(base.Worker):
         super().init_process()
 
     def run(self):
-        self._runner = asyncio.async(self._run(), loop=self.loop)
+        self._runner = ensure_future(self._run(), loop=self.loop)
 
         try:
             self.loop.run_until_complete(self._runner)
@@ -64,6 +66,9 @@ class GunicornWebWorker(base.Worker):
                 self.log.info("Stopping server: %s, connections: %s",
                               self.pid, len(handler.connections))
                 server.close()
+
+            # send on_shutdown event
+            yield from self.wsgi.shutdown()
 
             # stop alive connections
             tasks = [

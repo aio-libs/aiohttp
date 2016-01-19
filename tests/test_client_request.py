@@ -2,22 +2,22 @@
 
 import asyncio
 import gc
-import unittest
-import unittest.mock
-
 import inspect
 import io
+import re
+import unittest
+import unittest.mock
 import urllib.parse
-import os.path
-
+import zlib
 from http.cookies import SimpleCookie
 
 import pytest
-
 import aiohttp
-from aiohttp.client_reqrep import ClientRequest, ClientResponse
-from aiohttp.multidict import upstr, CIMultiDict, CIMultiDictProxy
 from aiohttp import BaseConnector
+from aiohttp.client_reqrep import ClientRequest, ClientResponse
+from aiohttp.multidict import CIMultiDict, CIMultiDictProxy, upstr
+
+import os.path
 
 
 @pytest.yield_fixture
@@ -380,9 +380,9 @@ def test_query_str_param(make_request):
 
 def test_query_bytes_param_raises(make_request):
     for meth in ClientRequest.ALL_METHODS:
-        with pytest.raises_regexp(TypeError,
-                                  'not a valid non-string.*or mapping'):
+        with pytest.raises(TypeError) as ctx:
             make_request(meth, 'http://python.org', params=b'test=foo')
+        assert re.match('not a valid non-string.*or mapping', str(ctx.value))
 
 
 def test_query_str_param_is_not_encoded(make_request):
@@ -459,10 +459,10 @@ class TestClientRequest(unittest.TestCase):
 
     def test_content_type_skip_auto_header_bytes(self):
         req = ClientRequest('post', 'http://python.org', data=b'hey you',
-                            skip_auto_headers=set('CONTENT-TYPE'),
+                            skip_auto_headers={'CONTENT-TYPE'},
                             loop=self.loop)
         resp = req.send(self.transport, self.protocol)
-        self.assertNotIn('application/octet-stream', req.headers)
+        self.assertNotIn('CONTENT-TYPE', req.headers)
         resp.close()
 
     def test_content_type_skip_auto_header_form(self):
@@ -616,6 +616,20 @@ class TestClientRequest(unittest.TestCase):
                              str(os.path.getsize(fname)))
             self.loop.run_until_complete(req.close())
 
+    def test_precompressed_data_stays_intact(self):
+        data = zlib.compress(b'foobar')
+        req = ClientRequest(
+            'post', 'http://python.org/',
+            data=data,
+            headers={'CONTENT-ENCODING': 'deflate'},
+            compress=False,
+            loop=self.loop)
+        self.assertFalse(req.compress)
+        self.assertFalse(req.chunked)
+        self.assertEqual(req.headers['CONTENT-ENCODING'],
+                         'deflate')
+        self.loop.run_until_complete(req.close())
+
     def test_file_upload_not_chunked_seek(self):
         here = os.path.dirname(__file__)
         fname = os.path.join(here, 'sample.key')
@@ -676,9 +690,8 @@ class TestClientRequest(unittest.TestCase):
         self.loop.run_until_complete(resp.wait_for_close())
         self.assertIsNone(req._writer)
         self.assertEqual(
-            self.transport.write.mock_calls[-3:],
-            [unittest.mock.call(b'binary data result'),
-             unittest.mock.call(b'\r\n'),
+            self.transport.write.mock_calls[-2:],
+            [unittest.mock.call(b'12\r\nbinary data result\r\n'),
              unittest.mock.call(b'0\r\n\r\n')])
         self.loop.run_until_complete(req.close())
 
@@ -696,9 +709,8 @@ class TestClientRequest(unittest.TestCase):
         self.loop.run_until_complete(resp.wait_for_close())
         self.assertIsNone(req._writer)
         self.assertEqual(
-            self.transport.write.mock_calls[-3:],
-            [unittest.mock.call(b'*' * 2),
-             unittest.mock.call(b'\r\n'),
+            self.transport.write.mock_calls[-2:],
+            [unittest.mock.call(b'2\r\n' + b'*' * 2 + b'\r\n'),
              unittest.mock.call(b'0\r\n\r\n')])
         self.loop.run_until_complete(req.close())
 
@@ -791,9 +803,8 @@ class TestClientRequest(unittest.TestCase):
         resp = req.send(self.transport, self.protocol)
         self.loop.run_until_complete(req._writer)
         self.assertEqual(
-            self.transport.write.mock_calls[-3:],
-            [unittest.mock.call(b'binary data result'),
-             unittest.mock.call(b'\r\n'),
+            self.transport.write.mock_calls[-2:],
+            [unittest.mock.call(b'12\r\nbinary data result\r\n'),
              unittest.mock.call(b'0\r\n\r\n')])
         self.loop.run_until_complete(req.close())
         resp.close()
@@ -830,9 +841,8 @@ class TestClientRequest(unittest.TestCase):
         resp = req.send(self.transport, self.protocol)
         self.loop.run_until_complete(req.close())
         self.assertEqual(
-            self.transport.write.mock_calls[-3:],
-            [unittest.mock.call(b'result'),
-             unittest.mock.call(b'\r\n'),
+            self.transport.write.mock_calls[-2:],
+            [unittest.mock.call(b'6\r\nresult\r\n'),
              unittest.mock.call(b'0\r\n\r\n')])
         self.loop.run_until_complete(req.close())
         resp.close()

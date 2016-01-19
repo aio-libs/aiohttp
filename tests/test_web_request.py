@@ -18,8 +18,10 @@ def make_request():
         app = mock.Mock()
         app._debug = False
         app.on_response_prepare = Signal(app)
-        message = RawRequestMessage(method, path, version, headers, closing,
-                                    False)
+        message = RawRequestMessage(method, path, version, headers,
+                                    [(k.encode('utf-8'), v.encode('utf-8'))
+                                     for k, v in headers.items()],
+                                    closing, False)
         payload = mock.Mock()
         transport = mock.Mock()
 
@@ -238,3 +240,9 @@ def test_https_scheme_by_secure_proxy_ssl_header_false_test(make_request):
                        secure_proxy_ssl_header=('X-HEADER', '1'),
                        headers=CIMultiDict({'X-HEADER': '0'}))
     assert "http" == req.scheme
+
+
+def test_raw_headers(make_request):
+    req = make_request('GET', '/',
+                       headers=CIMultiDict({'X-HEADER': 'aaa'}))
+    assert req.raw_headers == ((b'X-HEADER', b'aaa'),)

@@ -1,10 +1,13 @@
 import datetime
+import json
 import pytest
 import re
 from unittest import mock
 from aiohttp import hdrs, signals
 from aiohttp.multidict import CIMultiDict
-from aiohttp.web import ContentCoding, Request, StreamResponse, Response
+from aiohttp.web import (
+    ContentCoding, Request, StreamResponse, Response, json_response
+)
 from aiohttp.protocol import HttpVersion, HttpVersion11, HttpVersion10
 from aiohttp.protocol import RawRequestMessage
 
@@ -12,6 +15,8 @@ from aiohttp.protocol import RawRequestMessage
 def make_request(method, path, headers=CIMultiDict(),
                  version=HttpVersion11, **kwargs):
     message = RawRequestMessage(method, path, version, headers,
+                                [(k.encode('utf-8'), v.encode('utf-8'))
+                                 for k, v in headers.items()],
                                 False, False)
     return request_from_message(message, **kwargs)
 
@@ -207,10 +212,10 @@ def test_chunked_encoding_forbidden_for_http_10():
     resp = StreamResponse()
     resp.enable_chunked_encoding()
 
-    with pytest.raises_regexp(
-            RuntimeError,
-            "Using chunked encoding is forbidden for HTTP/1.0"):
+    with pytest.raises(RuntimeError) as ctx:
         yield from resp.prepare(req)
+    assert re.match("Using chunked encoding is forbidden for HTTP/1.0",
+                    str(ctx.value))
 
 
 @pytest.mark.run_loop
@@ -536,7 +541,7 @@ def test___repr__not_started():
 @pytest.mark.run_loop
 def test_keep_alive_http10_default():
     message = RawRequestMessage('GET', '/', HttpVersion10, CIMultiDict(),
-                                True, False)
+                                [], True, False)
     req = request_from_message(message)
     resp = StreamResponse()
     yield from resp.prepare(req)
@@ -547,6 +552,7 @@ def test_keep_alive_http10_default():
 def test_keep_alive_http10_switched_on():
     headers = CIMultiDict(Connection='keep-alive')
     message = RawRequestMessage('GET', '/', HttpVersion10, headers,
+                                [(b'Connection', b'keep-alive')],
                                 False, False)
     req = request_from_message(message)
     resp = StreamResponse()
@@ -558,6 +564,7 @@ def test_keep_alive_http10_switched_on():
 def test_keep_alive_http09():
     headers = CIMultiDict(Connection='keep-alive')
     message = RawRequestMessage('GET', '/', HttpVersion(0, 9), headers,
+                                [(b'Connection', b'keep-alive')],
                                 False, False)
     req = request_from_message(message)
     resp = StreamResponse()
@@ -586,6 +593,91 @@ def test_prepare_calls_signal():
     yield from resp.prepare(req)
 
     sig.assert_called_with(req, resp)
+
+
+def test_default_nodelay():
+    resp = StreamResponse()
+    assert resp.tcp_nodelay
+
+
+def test_set_tcp_nodelay_before_start():
+    resp = StreamResponse()
+    resp.set_tcp_nodelay(False)
+    assert not resp.tcp_nodelay
+    resp.set_tcp_nodelay(True)
+    assert resp.tcp_nodelay
+
+
+@pytest.mark.run_loop
+def test_set_tcp_nodelay_on_start():
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        resp_impl = yield from resp.prepare(req)
+    resp_impl.transport.set_tcp_nodelay.assert_called_with(True)
+    resp_impl.transport.set_tcp_cork.assert_called_with(False)
+
+
+@pytest.mark.run_loop
+def test_set_tcp_nodelay_after_start():
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        resp_impl = yield from resp.prepare(req)
+    resp_impl.transport.set_tcp_cork.assert_called_with(False)
+    resp_impl.transport.set_tcp_nodelay.assert_called_with(True)
+    resp.set_tcp_nodelay(False)
+    assert not resp.tcp_nodelay
+    resp_impl.transport.set_tcp_nodelay.assert_called_with(False)
+    resp.set_tcp_nodelay(True)
+    assert resp.tcp_nodelay
+    resp_impl.transport.set_tcp_nodelay.assert_called_with(True)
+
+
+def test_default_cork():
+    resp = StreamResponse()
+    assert not resp.tcp_cork
+
+
+def test_set_tcp_cork_before_start():
+    resp = StreamResponse()
+    resp.set_tcp_cork(True)
+    assert resp.tcp_cork
+    resp.set_tcp_cork(False)
+    assert not resp.tcp_cork
+
+
+@pytest.mark.run_loop
+def test_set_tcp_cork_on_start():
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+    resp.set_tcp_cork(True)
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        resp_impl = yield from resp.prepare(req)
+    resp_impl.transport.set_tcp_nodelay.assert_called_with(False)
+    resp_impl.transport.set_tcp_cork.assert_called_with(True)
+
+
+@pytest.mark.run_loop
+def test_set_tcp_cork_after_start():
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+
+    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+        resp_impl = yield from resp.prepare(req)
+    resp_impl.transport.set_tcp_cork.assert_called_with(False)
+    resp.set_tcp_cork(True)
+    assert resp.tcp_cork
+    resp_impl.transport.set_tcp_cork.assert_called_with(True)
+    resp.set_tcp_cork(False)
+    assert not resp.tcp_cork
+    resp_impl.transport.set_tcp_cork.assert_called_with(False)
+
+
+# Response class
 
 
 def test_response_ctor():
@@ -721,7 +813,6 @@ def test_send_headers_for_empty_body():
     yield from resp.write_eof()
     txt = buf.decode('utf8')
     assert re.match('HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 0\r\n'
-                    'CONNECTION: keep-alive\r\n'
                     'DATE: .+\r\nSERVER: .+\r\n\r\n', txt)
 
 
@@ -744,7 +835,6 @@ def test_render_with_body():
     yield from resp.write_eof()
     txt = buf.decode('utf8')
     assert re.match('HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 4\r\n'
-                    'CONNECTION: keep-alive\r\n'
                     'DATE: .+\r\nSERVER: .+\r\n\r\ndata', txt)
 
 
@@ -769,7 +859,6 @@ def test_send_set_cookie_header():
     txt = buf.decode('utf8')
     assert re.match('HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 0\r\n'
                     'SET-COOKIE: name=value\r\n'
-                    'CONNECTION: keep-alive\r\n'
                     'DATE: .+\r\nSERVER: .+\r\n\r\n', txt)
 
 
@@ -836,3 +925,39 @@ def test_text_with_empty_payload():
     resp = Response(status=200)
     assert resp.body is None
     assert resp.text is None
+
+
+class TestJSONResponse:
+
+    def test_content_type_is_application_json_by_default(self):
+        resp = json_response('')
+        assert 'application/json' == resp.content_type
+
+    def test_passing_text_only(self):
+        resp = json_response(text=json.dumps('jaysawn'))
+        assert resp.text == json.dumps('jaysawn')
+
+    def test_data_and_text_raises_value_error(self):
+        with pytest.raises(ValueError) as excinfo:
+            json_response(data='foo', text='bar')
+        expected_message = (
+            'only one of data, text, or body should be specified'
+        )
+        assert expected_message == excinfo.value.args[0]
+
+    def test_data_and_body_raises_value_error(self):
+        with pytest.raises(ValueError) as excinfo:
+            json_response(data='foo', body=b'bar')
+        expected_message = (
+            'only one of data, text, or body should be specified'
+        )
+        assert expected_message == excinfo.value.args[0]
+
+    def test_text_is_json_encoded(self):
+        resp = json_response({'foo': 42})
+        assert json.dumps({'foo': 42}) == resp.text
+
+    def test_content_type_is_overrideable(self):
+        resp = json_response({'foo': 42},
+                             content_type='application/vnd.json+api')
+        assert 'application/vnd.json+api' == resp.content_type

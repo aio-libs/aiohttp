@@ -1,5 +1,3 @@
-.. highlight:: python
-
 .. module:: aiohttp.multipart
 
 .. _aiohttp-multipart:
@@ -151,7 +149,7 @@ For file objects `Content-Type` will be determined by using Python's
 `mimetypes`_ module and additionally `Content-Disposition` header will include
 the file's basename::
 
-    part = root.append(open(__file__, 'rb))
+    part = root.append(open(__file__, 'rb'))
 
 If you want to send a file with a different name, just handle the
 :class:`BodyPartWriter` instance which :meth:`MultipartWriter.append` will

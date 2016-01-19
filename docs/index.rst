@@ -41,17 +41,17 @@ Client example::
     import asyncio
     import aiohttp
 
-    async def fetch_page(client, url):
-        async with client.get(url) as response:
-            assert response.status == 200
-            return await response.read()
+    async def fetch_page(session, url):
+        with aiohttp.Timeout(10):
+            async with session.get(url) as response:
+                assert response.status == 200
+                return await response.read()
 
     loop = asyncio.get_event_loop()
-    client = aiohttp.ClientSession(loop=loop)
-    content = loop.run_until_complete(
-        fetch_page(client, 'http://python.org'))
-    print(content)
-    client.close()
+    with aiohttp.ClientSession(loop=loop) as session:
+        content = loop.run_until_complete(
+            fetch_page(session, 'http://python.org'))
+        print(content)
 
 Server example::
 
@@ -78,6 +78,24 @@ Server example::
         loop.run_forever()
     except KeyboardInterrupt:
         pass
+
+.. note::
+
+   Throughout this documentation, examples utilize the `async/await` syntax
+   introduced by :pep:`492` that is only valid for Python 3.5+.
+
+   If you are using Python 3.4, please replace ``await`` with
+   ``yield from`` and ``async def`` with a ``@coroutine`` decorator.
+   For example, this::
+
+       async def coro(...):
+           ret = await f()
+
+   should be replaced by::
+
+       @asyncio.coroutine
+       def coro(...):
+           ret = yield from f()
 
 
 Source code
@@ -106,6 +124,13 @@ Dependencies
      $ pip install cchardet
 
 
+Discussion list
+---------------
+
+*aio-libs* google group: https://groups.google.com/forum/#!forum/aio-libs
+
+Feel free to post your questions and ideas here.
+
 Contributing
 ------------
 
@@ -129,7 +154,6 @@ Contents
 
    client
    client_reference
-   client_websockets
    web
    web_reference
    server
@@ -138,9 +162,9 @@ Contents
    api
    logging
    gunicorn
+   faq
    contributing
    changes
-   Python 3.3 support <python33>
    glossary
 
 Indices and tables

@@ -3,8 +3,6 @@
 Low-level HTTP Server
 =====================
 
-.. highlight:: python
-
 .. currentmodule:: aiohttp.server
 
 .. note::

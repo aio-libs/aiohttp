@@ -24,6 +24,9 @@ from .multidict import (CIMultiDictProxy, MultiDictProxy, MultiDict,
 from .multipart import MultipartWriter
 from .protocol import HttpMessage
 
+
+__all__ = ('ClientRequest', 'ClientResponse')
+
 PY_35 = sys.version_info >= (3, 5)
 
 HTTP_PORT = 80
@@ -220,8 +223,7 @@ class ClientRequest:
 
         for name, value in cookies:
             if isinstance(value, http.cookies.Morsel):
-                # use dict method because SimpleCookie class modifies value
-                dict.__setitem__(c, name, value)
+                c[value.key] = value.value
             else:
                 c[name] = value
 
@@ -231,8 +233,10 @@ class ClientRequest:
         """Set request content encoding."""
         enc = self.headers.get(hdrs.CONTENT_ENCODING, '').lower()
         if enc:
-            self.compress = enc
-            self.chunked = True  # enable chunked, no need to deal with length
+            if self.compress is not False:
+                self.compress = enc
+                # enable chunked, no need to deal with length
+                self.chunked = True
         elif self.compress:
             if not isinstance(self.compress, str):
                 self.compress = 'deflate'
@@ -469,13 +473,11 @@ class ClientRequest:
                 hdrs.CONTENT_TYPE not in self.headers):
             self.headers[hdrs.CONTENT_TYPE] = 'application/octet-stream'
 
-        request.add_headers(
-            *((k, v)
-              for k, v in ((k, value)
-                           for k, value in self.headers.items())))
+        for k, value in self.headers.items():
+            request.add_header(k, value)
         request.send_headers()
 
-        self._writer = asyncio.async(
+        self._writer = helpers.ensure_future(
             self.write_bytes(request, reader), loop=self.loop)
 
         self.response = self.response_class(
@@ -512,6 +514,7 @@ class ClientResponse:
     cookies = None  # Response cookies (Set-Cookie)
     content = None  # Payload stream
     headers = None  # Response headers, CIMultiDictProxy
+    raw_headers = None  # Response raw headers, a sequence of pairs
 
     _connection = None  # current connection
     flow_control_class = FlowControlStreamReader  # reader flow control
@@ -534,6 +537,7 @@ class ClientResponse:
         self._continue = continue100
         self._closed = False
         self._should_close = True  # override by message.should_close later
+        self._history = ()
 
     def _post_init(self, loop):
         self._loop = loop
@@ -563,6 +567,11 @@ class ClientResponse:
     @property
     def connection(self):
         return self._connection
+
+    @property
+    def history(self):
+        """A sequence of of responses, if redirects occured."""
+        return self._history
 
     def waiting_for_continue(self):
         return self._continue is not None
@@ -602,6 +611,7 @@ class ClientResponse:
 
         # headers
         self.headers = CIMultiDictProxy(message.headers)
+        self.raw_headers = tuple(message.raw_headers)
 
         # payload
         response_with_body = self._need_parse_response_body()
@@ -692,14 +702,6 @@ class ClientResponse:
             return (yield from self.json())
 
         return data
-
-    @asyncio.coroutine
-    def read_and_close(self, decode=False):
-        """Read response payload and then close response."""
-        warnings.warn(
-            'read_and_close is deprecated, use .read() instead',
-            DeprecationWarning)
-        return (yield from self.read(decode))
 
     def _get_encoding(self):
         ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()

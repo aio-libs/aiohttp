@@ -3,9 +3,8 @@
 HTTP Client Reference
 =====================
 
-.. highlight:: python
-
 .. module:: aiohttp
+
 .. currentmodule:: aiohttp
 
 
@@ -24,8 +23,8 @@ Usage example::
 
      async def fetch(client):
          async with client.get('http://python.org') as resp:
-         assert resp.status == 200
-         print(await resp.text())
+             assert resp.status == 200
+             print(await resp.text())
 
      with aiohttp.ClientSession() as client:
          asyncio.get_event_loop().run_until_complete(fetch(client))
@@ -75,8 +74,8 @@ The client session supports context manager protocol for self closing.
 
       Iterable of :class:`str` or :class:`~aiohttp.upstr` (optional)
 
-   :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that represents
-                                          HTTP Basic Authorization (optional)
+   :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
+                                  Authorization (optional)
 
    :param request_class: Request class implementation. ``ClientRequest`` by
                          default.
@@ -163,9 +162,8 @@ The client session supports context manager protocol for self closing.
          Iterable of :class:`str` or :class:`~aiohttp.upstr`
          (optional)
 
-      :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that
-                                             represents HTTP Basic Authorization
-                                             (optional)
+      :param aiohttp.BasicAuth auth: an object that represents HTTP
+                                     Basic Authorization (optional)
 
       :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                    ``True`` by default (optional).
@@ -318,9 +316,8 @@ The client session supports context manager protocol for self closing.
 
       :param float timeout: Timeout for websocket read. 10 seconds by default
 
-      :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that
-                                             represents HTTP Basic Authorization
-                                             (optional)
+      :param aiohttp.BasicAuth auth: an object that represents HTTP
+                                     Basic Authorization (optional)
 
       :param bool autoclose: Automatically close websocket connection on close
                              message from server. If `autoclose` is False
@@ -396,8 +393,8 @@ certification chaining.
 
    :param dict cookies: Cookies to send with the request (optional)
 
-   :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that represents
-                                          HTTP Basic Authorization (optional)
+   :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
+                                  Authorization (optional)
 
    :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                 ``True`` by default (optional).
@@ -406,6 +403,9 @@ certification chaining.
 
    :param bool compress: Set to ``True`` if request has to be compressed
                          with deflate encoding.
+                         ``False`` instructs aiohttp to not compress data
+                         even if the Content-Encoding header is set. Use it
+                         when sending pre-compressed data.
                          ``None`` by default (optional).
 
    :param int chunked: Set to chunk size for chunked transfer encoding.
@@ -444,6 +444,10 @@ Usage::
              assert resp.status == 200
              print(await resp.text())
 
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.request`.
+
 
 .. coroutinefunction:: get(url, **kwargs)
 
@@ -454,6 +458,10 @@ Usage::
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
    :return: :class:`ClientResponse` or derived from
+
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.get`.
 
 
 .. coroutinefunction:: options(url, **kwargs)
@@ -466,6 +474,10 @@ Usage::
 
    :return: :class:`ClientResponse` or derived from
 
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.options`.
+
 
 .. coroutinefunction:: head(url, **kwargs)
 
@@ -476,6 +488,10 @@ Usage::
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
    :return: :class:`ClientResponse` or derived from
+
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.head`.
 
 
 .. coroutinefunction:: delete(url, **kwargs)
@@ -488,6 +504,10 @@ Usage::
 
    :return: :class:`ClientResponse` or derived from
 
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.delete`.
+
 
 .. coroutinefunction:: post(url, *, data=None, **kwargs)
 
@@ -498,6 +518,10 @@ Usage::
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
    :return: :class:`ClientResponse` or derived from
+
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.post`.
 
 
 .. coroutinefunction:: put(url, *, data=None, **kwargs)
@@ -510,6 +534,10 @@ Usage::
 
    :return: :class:`ClientResponse` or derived from
 
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.put`.
+
 
 .. coroutinefunction:: patch(url, *, data=None, **kwargs)
 
@@ -521,6 +549,75 @@ Usage::
 
    :return: :class:`ClientResponse` or derived from
 
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.patch`.
+
+
+.. coroutinefunction:: ws_connect(url, *, protocols=(), \
+                                  timeout=10.0, connector=None, auth=None,\
+                                  ws_response_class=ClientWebSocketResponse,\
+                                  autoclose=True, autoping=True, loop=None,\
+                                  origin=None, headers=None)
+
+   This function creates a websocket connection, checks the response and
+   returns a :class:`ClientWebSocketResponse` object. In case of failure
+   it may raise a :exc:`~aiohttp.errors.WSServerHandshakeError` exception.
+
+   :param str url: Websocket server url
+
+   :param tuple protocols: Websocket protocols
+
+   :param float timeout: Timeout for websocket read. 10 seconds by default
+
+   :param obj connector: object :class:`TCPConnector`
+
+   :param ws_response_class: WebSocketResponse class implementation.
+                             ``ClientWebSocketResponse`` by default.
+
+                             .. versionadded:: 0.16
+
+   :param bool autoclose: Automatically close websocket connection
+                          on close message from server. If `autoclose` is
+                          False them close procedure has to be handled manually
+
+   :param bool autoping: Automatically send `pong` on `ping` message from server
+
+   :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that
+                                          represents HTTP Basic Authorization
+                                          (optional)
+
+   :param loop: :ref:`event loop<asyncio-event-loop>` used
+                for processing HTTP requests.
+
+                If param is ``None`` :func:`asyncio.get_event_loop`
+                used for getting default event loop, but we strongly
+                recommend to use explicit loops everywhere.
+
+   :param str origin: Origin header to send to server
+
+   :param headers: :class:`dict`, :class:`CIMultiDict` or
+                   :class:`CIMultiDictProxy` for providing additional
+                   headers for websocket handshake request.
+
+   .. versionadded:: 0.18
+
+      Add *auth* parameter.
+
+   .. versionadded:: 0.19
+
+      Add *origin* parameter.
+
+   .. versionadded:: 0.20
+
+      Add *headers* parameter.
+
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.ws_connect`.
+
+
+.. _aiohttp-client-reference-connectors:
 
 Connectors
 ----------
@@ -798,8 +895,9 @@ ProxyConnector
 
    :param str proxy: URL for proxy, e.g. ``"http://some.proxy.com"``.
 
-   :param aiohttp.helpers.BasicAuth proxy_auth: basic
-      authentication info used for proxies with authorization.
+   :param aiohttp.BasicAuth proxy_auth: basic authentication info used
+                                        for proxies with
+                                        authorization.
 
    .. note::
 
@@ -952,7 +1050,19 @@ Response object
 
    .. attribute:: headers
 
-      HTTP headers of response, :class:`CIMultiDictProxy`.
+      A case-insensitive multidict proxy with HTTP headers of
+      response, :class:`CIMultiDictProxy`.
+
+   .. attribute:: raw_headers
+
+      HTTP headers of response as unconverted bytes, a sequence of
+      ``(key, value)`` pairs.
+
+   .. attribute:: history
+
+      A :class:`~collections.abc.Sequence` of :class:`ClientResponse`
+      objects of preceding requests if there were redirects, an empty
+      sequence otherwise.
 
    .. method:: close()
 
@@ -974,7 +1084,7 @@ Response object
    .. coroutinemethod:: release()
 
       Finish response processing, release underlying connection and
-      return it into free connection pool for reusage by next upcoming
+      return it into free connection pool for re-usage by next upcoming
       request.
 
    .. coroutinemethod:: text(encoding=None)
@@ -984,7 +1094,7 @@ Response object
 
       If *encoding* is ``None`` content encoding is autocalculated
       using :term:`cchardet` or :term:`chardet` as fallback if
-      *cchardet* is not awailable.
+      *cchardet* is not available.
 
       Close underlying connection if data reading gets an error,
       release connection otherwise.
@@ -995,14 +1105,14 @@ Response object
 
       :return str: decoded *BODY*
 
-   .. coroutinemethod:: json(encoding=None)
+   .. coroutinemethod:: json(encoding=None, loads=json.loads)
 
       Read response's body as *JSON*, return :class:`dict` using
       specified *encoding* and *loader*.
 
       If *encoding* is ``None`` content encoding is autocalculated
       using :term:`cchardet` or :term:`chardet` as fallback if
-      *cchardet* is not awailable.
+      *cchardet* is not available.
 
       Close underlying connection if data reading gets an error,
       release connection otherwise.
@@ -1014,6 +1124,119 @@ Response object
       :param callable loads: :func:`callable` used for loading *JSON*
                              data, :func:`json.loads` by default.
 
-      :return dict: *BODY* as *JSON* data.
+      :return: *BODY* as *JSON* data parsed by *loads* parameter or
+               ``None`` if *BODY* is empty or contains white-spaces
+               only.
+
+ClientWebSocketResponse
+-----------------------
+
+To connect to a websocket server :func:`aiohttp.ws_connect` or
+:meth:`aiohttp.ClientSession.ws_connect` coroutines should be used, do
+not create an instance of class :class:`ClientWebSocketResponse`
+manually.
+
+.. class:: ClientWebSocketResponse()
+
+   Class for handling client-side websockets.
+
+   .. attribute:: closed
+
+      Read-only property, ``True`` if :meth:`close` has been called of
+      :const:`~aiohttp.websocket.MSG_CLOSE` message has been received from peer.
+
+   .. attribute:: protocol
+
+      Websocket *subprotocol* chosen after :meth:`start` call.
+
+      May be ``None`` if server and client protocols are
+      not overlapping.
+
+   .. method:: exception()
+
+      Returns exception if any occurs or returns None.
+
+   .. method:: ping(message=b'')
+
+      Send :const:`~aiohttp.websocket.MSG_PING` to peer.
+
+      :param message: optional payload of *ping* message,
+                      :class:`str` (converted to *UTF-8* encoded bytes)
+                      or :class:`bytes`.
+
+   .. method:: send_str(data)
+
+      Send *data* to peer as :const:`~aiohttp.websocket.MSG_TEXT` message.
+
+      :param str data: data to send.
+
+      :raise TypeError: if data is not :class:`str`
+
+   .. method:: send_bytes(data)
+
+      Send *data* to peer as :const:`~aiohttp.websocket.MSG_BINARY` message.
+
+      :param data: data to send.
+
+      :raise TypeError: if data is not :class:`bytes`,
+                        :class:`bytearray` or :class:`memoryview`.
+
+   .. coroutinemethod:: close(*, code=1000, message=b'')
+
+      A :ref:`coroutine<coroutine>` that initiates closing handshake by sending
+      :const:`~aiohttp.websocket.MSG_CLOSE` message. It waits for
+      close response from server. It add timeout to `close()` call just wrap
+      call with `asyncio.wait()` or `asyncio.wait_for()`.
+
+      :param int code: closing code
+
+      :param message: optional payload of *pong* message,
+                      :class:`str` (converted to *UTF-8* encoded bytes)
+                      or :class:`bytes`.
+
+   .. coroutinemethod:: receive()
+
+      A :ref:`coroutine<coroutine>` that waits upcoming *data*
+      message from peer and returns it.
+
+      The coroutine implicitly handles
+      :const:`~aiohttp.websocket.MSG_PING`,
+      :const:`~aiohttp.websocket.MSG_PONG` and
+      :const:`~aiohttp.websocket.MSG_CLOSE` without returning the
+      message.
+
+      It process *ping-pong game* and performs *closing handshake* internally.
+
+      :return: :class:`~aiohttp.websocket.Message`, `tp` is types of
+         `~aiohttp.MsgType`
+
+
+Utilities
+---------
+
+
+BasicAuth
+^^^^^^^^^
+
+.. class:: BasicAuth(login, password='', encoding='latin1')
+
+   HTTP basic authentication helper.
+
+   :param str login: login
+   :param str password: password
+   :param str encoding: encoding (`'latin1'` by default)
+
+
+   Should be used for specifying authorization data in client API,
+   e.g. *auth* parameter for :meth:`ClientSession.request`.
+
+
+   .. method:: encode()
+
+      Encode credentials into string suitable for ``Authorization``
+      header etc.
+
+      :return: encoded authentication data, :class:`str`.
+
 
 .. disqus::

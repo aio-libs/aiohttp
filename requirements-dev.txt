@@ -1,19 +1,6 @@
-pip
-flake8
-pyflakes>=1.0.0
-coverage
-sphinx
-alabaster>=0.6.2
-cython
-chardet
-tox
+-r requirements-ci.txt
 ipdb
-sphinxcontrib-spelling
+pytest-sugar
+ipython
 pyenchant
-sphinxcontrib-newsfeed
-pytest
-pytest-cov
-pytest-raisesregexp
-gunicorn
-pygments
--e .
+sphinxcontrib-spelling

@@ -520,7 +520,7 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
-    def test_http10_keep_alive_default(self):
+    def test_http11_keep_alive_default(self):
 
         @asyncio.coroutine
         def handler(request):
@@ -531,9 +531,28 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
         def go():
             _, _, url = yield from self.create_server('GET', '/', handler)
             resp = yield from request('GET', url, loop=self.loop,
-                                      version=HttpVersion10)
-            self.assertEqual('close', resp.headers['CONNECTION'])
+                                      version=HttpVersion11)
+            self.assertNotIn('CONNECTION', resp.headers)
             resp.close()
+
+        self.loop.run_until_complete(go())
+
+    def test_http10_keep_alive_default(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            yield from request.read()
+            return web.Response(body=b'OK')
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('GET', '/', handler)
+            with ClientSession(loop=self.loop) as session:
+                resp = yield from session.get(url,
+                                              version=HttpVersion10)
+                self.assertEqual(resp.version, HttpVersion10)
+                self.assertEqual('keep-alive', resp.headers['CONNECTION'])
+                resp.close()
 
         self.loop.run_until_complete(go())
 
@@ -551,7 +570,7 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
             resp = yield from request('GET', url, loop=self.loop,
                                       headers=headers,
                                       version=HttpVersion(0, 9))
-            self.assertEqual('close', resp.headers['CONNECTION'])
+            self.assertNotIn('CONNECTION', resp.headers)
             resp.close()
 
         self.loop.run_until_complete(go())
@@ -569,7 +588,7 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
             headers = {'Connection': 'close'}
             resp = yield from request('GET', url, loop=self.loop,
                                       headers=headers, version=HttpVersion10)
-            self.assertEqual('close', resp.headers['CONNECTION'])
+            self.assertNotIn('CONNECTION', resp.headers)
             resp.close()
 
         self.loop.run_until_complete(go())
@@ -1018,6 +1037,13 @@ class StaticFileMixin(WebFunctionalSetupMixin):
         file_st = os.stat(fname)
 
         self.loop.run_until_complete(go(here, filename))
+
+    def test_env_nosendfile(self):
+        directory = os.path.dirname(__file__)
+
+        with mock.patch.dict(os.environ, {'AIOHTTP_NOSENDFILE': '1'}):
+            route = web.StaticRoute(None, "/", directory)
+            self.assertEqual(route._sendfile, route._sendfile_fallback)
 
 
 class TestStaticFileSendfileFallback(StaticFileMixin,

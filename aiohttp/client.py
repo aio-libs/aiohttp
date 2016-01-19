@@ -35,7 +35,8 @@ class ClientSession:
                  headers=None, skip_auto_headers=None,
                  auth=None, request_class=ClientRequest,
                  response_class=ClientResponse,
-                 ws_response_class=ClientWebSocketResponse):
+                 ws_response_class=ClientWebSocketResponse,
+                 version=aiohttp.HttpVersion11):
 
         if connector is None:
             connector = aiohttp.TCPConnector(loop=loop)
@@ -59,6 +60,7 @@ class ClientSession:
             self._update_cookies(cookies)
         self._connector = connector
         self._default_auth = auth
+        self._version = version
 
         # Convert to list of tuples
         if headers:
@@ -97,12 +99,13 @@ class ClientSession:
                 allow_redirects=True,
                 max_redirects=10,
                 encoding='utf-8',
-                version=aiohttp.HttpVersion11,
+                version=None,
                 compress=None,
                 chunked=None,
                 expect100=False,
                 read_until_eof=True):
         """Perform HTTP request."""
+
         return _RequestContextManager(
             self._request(
                 method,
@@ -131,16 +134,23 @@ class ClientSession:
                  allow_redirects=True,
                  max_redirects=10,
                  encoding='utf-8',
-                 version=aiohttp.HttpVersion11,
+                 version=None,
                  compress=None,
                  chunked=None,
                  expect100=False,
                  read_until_eof=True):
 
+        if version is not None:
+            warnings.warn("HTTP version should be specified "
+                          "by ClientSession constructor", DeprecationWarning)
+        else:
+            version = self._version
+
         if self.closed:
             raise RuntimeError('Session is closed')
 
         redirects = 0
+        history = []
         if not isinstance(method, upstr):
             method = upstr(method)
 
@@ -176,7 +186,7 @@ class ClientSession:
                 try:
                     yield from resp.start(conn, read_until_eof)
                 except:
-                    resp.close(force=True)
+                    resp.close()
                     conn.close()
                     raise
             except (aiohttp.HttpProcessingError,
@@ -193,8 +203,9 @@ class ClientSession:
             # redirects
             if resp.status in (301, 302, 303, 307) and allow_redirects:
                 redirects += 1
+                history.append(resp)
                 if max_redirects and redirects >= max_redirects:
-                    resp.close(force=True)
+                    resp.close()
                     break
 
                 # For 301 and 302, mimic IE behaviour, now changed in RFC.
@@ -210,7 +221,7 @@ class ClientSession:
 
                 scheme = urllib.parse.urlsplit(r_url)[0]
                 if scheme not in ('http', 'https', ''):
-                    resp.close(force=True)
+                    resp.close()
                     raise ValueError('Can redirect only to http or https')
                 elif not scheme:
                     r_url = urllib.parse.urljoin(url, r_url)
@@ -221,6 +232,7 @@ class ClientSession:
 
             break
 
+        resp._history = tuple(history)
         return resp
 
     def ws_connect(self, url, *,
@@ -263,50 +275,66 @@ class ClientSession:
             headers[hdrs.ORIGIN] = origin
 
         # send request
-        resp = yield from self.request('get', url, headers=headers,
-                                       read_until_eof=False,
-                                       auth=auth)
+        resp = yield from self.get(url, headers=headers,
+                                   read_until_eof=False,
+                                   auth=auth)
 
-        # check handshake
-        if resp.status != 101:
-            raise WSServerHandshakeError('Invalid response status')
+        try:
+            # check handshake
+            if resp.status != 101:
+                raise WSServerHandshakeError(
+                    message='Invalid response status',
+                    code=resp.status,
+                    headers=resp.headers)
 
-        if resp.headers.get(hdrs.UPGRADE, '').lower() != 'websocket':
-            raise WSServerHandshakeError('Invalid upgrade header')
+            if resp.headers.get(hdrs.UPGRADE, '').lower() != 'websocket':
+                raise WSServerHandshakeError(
+                    message='Invalid upgrade header',
+                    code=resp.status,
+                    headers=resp.headers)
 
-        if resp.headers.get(hdrs.CONNECTION, '').lower() != 'upgrade':
-            raise WSServerHandshakeError('Invalid connection header')
+            if resp.headers.get(hdrs.CONNECTION, '').lower() != 'upgrade':
+                raise WSServerHandshakeError(
+                    message='Invalid connection header',
+                    code=resp.status,
+                    headers=resp.headers)
 
-        # key calculation
-        key = resp.headers.get(hdrs.SEC_WEBSOCKET_ACCEPT, '')
-        match = base64.b64encode(
-            hashlib.sha1(sec_key + WS_KEY).digest()).decode()
-        if key != match:
-            raise WSServerHandshakeError('Invalid challenge response')
+            # key calculation
+            key = resp.headers.get(hdrs.SEC_WEBSOCKET_ACCEPT, '')
+            match = base64.b64encode(
+                hashlib.sha1(sec_key + WS_KEY).digest()).decode()
+            if key != match:
+                raise WSServerHandshakeError(
+                    message='Invalid challenge response',
+                    code=resp.status,
+                    headers=resp.headers)
 
-        # websocket protocol
-        protocol = None
-        if protocols and hdrs.SEC_WEBSOCKET_PROTOCOL in resp.headers:
-            resp_protocols = [
-                proto.strip() for proto in
-                resp.headers[hdrs.SEC_WEBSOCKET_PROTOCOL].split(',')]
+            # websocket protocol
+            protocol = None
+            if protocols and hdrs.SEC_WEBSOCKET_PROTOCOL in resp.headers:
+                resp_protocols = [
+                    proto.strip() for proto in
+                    resp.headers[hdrs.SEC_WEBSOCKET_PROTOCOL].split(',')]
 
-            for proto in resp_protocols:
-                if proto in protocols:
-                    protocol = proto
-                    break
+                for proto in resp_protocols:
+                    if proto in protocols:
+                        protocol = proto
+                        break
 
-        reader = resp.connection.reader.set_parser(WebSocketParser)
-        writer = WebSocketWriter(resp.connection.writer, use_mask=True)
-
-        return self._ws_response_class(reader,
-                                       writer,
-                                       protocol,
-                                       resp,
-                                       timeout,
-                                       autoclose,
-                                       autoping,
-                                       self._loop)
+            reader = resp.connection.reader.set_parser(WebSocketParser)
+            writer = WebSocketWriter(resp.connection.writer, use_mask=True)
+        except Exception:
+            resp.close()
+            raise
+        else:
+            return self._ws_response_class(reader,
+                                           writer,
+                                           protocol,
+                                           resp,
+                                           timeout,
+                                           autoclose,
+                                           autoping,
+                                           self._loop)
 
     def _update_cookies(self, cookies):
         """Update shared cookies."""
@@ -413,6 +441,11 @@ class ClientSession:
         """The session cookies."""
         return self._cookies
 
+    @property
+    def version(self):
+        """The session HTTP protocol version."""
+        return self._version
+
     def detach(self):
         """Detach connector from session without closing the former.
 
@@ -485,13 +518,6 @@ class _BaseRequestContextManager(base):
             self._resp = yield from self._coro
             return self._resp
 
-        @asyncio.coroutine
-        def __aexit__(self, exc_type, exc, tb):
-            if exc_type is not None:
-                self._resp.close()
-            else:
-                yield from self._resp.release()
-
 
 if not PY_35:
     try:
@@ -526,6 +552,22 @@ class _DetachedRequestContextManager(_RequestContextManager):
         super().__init__(coro)
         self._session = session
 
+    @asyncio.coroutine
+    def __iter__(self):
+        try:
+            return (yield from self._coro)
+        except:
+            self._session.close()
+            raise
+
+    if PY_35:
+        def __await__(self):
+            try:
+                return (yield from self._coro)
+            except:
+                self._session.close()
+                raise
+
     def __del__(self):
         self._session.detach()
 
@@ -552,7 +594,7 @@ def request(method, url, *,
             allow_redirects=True,
             max_redirects=10,
             encoding='utf-8',
-            version=aiohttp.HttpVersion11,
+            version=None,
             compress=None,
             chunked=None,
             expect100=False,
@@ -601,6 +643,7 @@ def request(method, url, *,
       >>> data = yield from resp.read()
 
     """
+    warnings.warn("Use ClientSession().request() instead", DeprecationWarning)
     if connector is None:
         connector = aiohttp.TCPConnector(loop=loop, force_close=True)
 
@@ -635,37 +678,46 @@ def request(method, url, *,
 
 
 def get(url, **kwargs):
+    warnings.warn("Use ClientSession().get() instead", DeprecationWarning)
     return request(hdrs.METH_GET, url, **kwargs)
 
 
 def options(url, **kwargs):
+    warnings.warn("Use ClientSession().options() instead", DeprecationWarning)
     return request(hdrs.METH_OPTIONS, url, **kwargs)
 
 
 def head(url, **kwargs):
+    warnings.warn("Use ClientSession().head() instead", DeprecationWarning)
     return request(hdrs.METH_HEAD, url, **kwargs)
 
 
 def post(url, **kwargs):
+    warnings.warn("Use ClientSession().post() instead", DeprecationWarning)
     return request(hdrs.METH_POST, url, **kwargs)
 
 
 def put(url, **kwargs):
+    warnings.warn("Use ClientSession().put() instead", DeprecationWarning)
     return request(hdrs.METH_PUT, url, **kwargs)
 
 
 def patch(url, **kwargs):
+    warnings.warn("Use ClientSession().patch() instead", DeprecationWarning)
     return request(hdrs.METH_PATCH, url, **kwargs)
 
 
 def delete(url, **kwargs):
+    warnings.warn("Use ClientSession().delete() instead", DeprecationWarning)
     return request(hdrs.METH_DELETE, url, **kwargs)
 
 
 def ws_connect(url, *, protocols=(), timeout=10.0, connector=None, auth=None,
                ws_response_class=ClientWebSocketResponse, autoclose=True,
-               autoping=True, loop=None, origin=None):
+               autoping=True, loop=None, origin=None, headers=None):
 
+    warnings.warn("Use ClientSession().ws_connect() instead",
+                  DeprecationWarning)
     if loop is None:
         loop = asyncio.get_event_loop()
 
@@ -673,7 +725,8 @@ def ws_connect(url, *, protocols=(), timeout=10.0, connector=None, auth=None,
         connector = aiohttp.TCPConnector(loop=loop, force_close=True)
 
     session = aiohttp.ClientSession(loop=loop, connector=connector, auth=auth,
-                                    ws_response_class=ws_response_class)
+                                    ws_response_class=ws_response_class,
+                                    headers=headers)
 
     return _DetachedWSRequestContextManager(
         session._ws_connect(url,

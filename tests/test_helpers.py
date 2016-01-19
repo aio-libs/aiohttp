@@ -137,7 +137,7 @@ def test_access_logger_atoms(mock_getpid, mock_datetime):
     utcnow = datetime.datetime(1843, 1, 1, 0, 0)
     mock_datetime.datetime.utcnow.return_value = utcnow
     mock_getpid.return_value = 42
-    log_format = '%a %t %P %l %u %r %s %b %O %T %D'
+    log_format = '%a %t %P %l %u %r %s %b %O %T %Tf %D'
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, log_format)
     message = mock.Mock(headers={}, method="GET", path="/path", version=(1, 1))
@@ -147,9 +147,9 @@ def test_access_logger_atoms(mock_getpid, mock_datetime):
     transport = mock.Mock()
     transport.get_extra_info.return_value = ("127.0.0.2", 1234)
     access_logger.log(message, environ, response, transport, 3.1415926)
-    assert False == mock_logger.exception.called
+    assert not mock_logger.exception.called
     expected = ('127.0.0.2 [01/Jan/1843:00:00:00 +0000] <42> - - '
-                'GET /path HTTP/1.1 200 42 123 3 3141593')
+                'GET /path HTTP/1.1 200 42 123 3 3.141593 3141593')
     mock_logger.info.assert_called_with(expected)
 
 
@@ -163,7 +163,7 @@ def test_access_logger_dicts():
     transport = mock.Mock()
     transport.get_extra_info.return_value = ("127.0.0.2", 1234)
     access_logger.log(message, environ, response, transport, 0.0)
-    assert False == mock_logger.error.called
+    assert not mock_logger.error.called
     expected = 'Mock/1.0 123 EGGS -'
     mock_logger.info.assert_called_with(expected)
 

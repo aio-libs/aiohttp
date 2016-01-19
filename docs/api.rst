@@ -23,6 +23,7 @@ aiohttp.helpers module
 .. automodule:: aiohttp.helpers
     :members:
     :undoc-members:
+    :exclude-members: BasicAuth
     :show-inheritance:
 
 aiohttp.multipart module
@@ -37,14 +38,6 @@ aiohttp.parsers module
 ----------------------
 
 .. automodule:: aiohttp.parsers
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-aiohttp.protocol module
------------------------
-
-.. automodule:: aiohttp.protocol
     :members:
     :undoc-members:
     :show-inheritance:

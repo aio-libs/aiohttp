@@ -61,9 +61,9 @@ extensions = [
 
 intersphinx_mapping = {
     'python': ('http://docs.python.org/3', None),
-    'aiohttp_jinja2':
+    'aiohttpjinja2':
         ('http://aiohttp-jinja2.readthedocs.org/en/stable/', None),
-    'aiohttp_session':
+    'aiohttpsession':
         ('http://aiohttp-session.readthedocs.org/en/stable/', None)}
 
 # Add any paths that contain templates here, relative to this directory.
@@ -80,7 +80,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'aiohttp'
-copyright = '2013, 2014, 2015, KeepSafe'
+copyright = '2013-2016, KeepSafe'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -122,6 +122,9 @@ exclude_patterns = ['_build']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
+
+# The default language to highlight source code in.
+highlight_language = 'python3'
 
 # A list of ignored prefixes for module index sorting.
 # modindex_common_prefix = []

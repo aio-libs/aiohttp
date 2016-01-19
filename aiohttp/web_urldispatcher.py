@@ -6,13 +6,16 @@ import collections
 import mimetypes
 import re
 import os
+import sys
 import inspect
 
 from collections.abc import Sized, Iterable, Container
+from pathlib import Path
 from urllib.parse import urlencode, unquote
+from types import MappingProxyType
 
 from . import hdrs
-from .abc import AbstractRouter, AbstractMatchInfo
+from .abc import AbstractRouter, AbstractMatchInfo, AbstractView
 from .protocol import HttpVersion11
 from .web_exceptions import HTTPMethodNotAllowed, HTTPNotFound, HTTPNotModified
 from .web_reqrep import StreamResponse
@@ -20,7 +23,10 @@ from .multidict import upstr
 
 
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
-           'Route', 'PlainRoute', 'DynamicRoute', 'StaticRoute')
+           'Route', 'PlainRoute', 'DynamicRoute', 'StaticRoute', 'View')
+
+
+PY_35 = sys.version_info >= (3, 5)
 
 
 class UrlMappingMatchInfo(dict, AbstractMatchInfo):
@@ -154,13 +160,19 @@ class StaticRoute(Route):
             'GET', self.handle, name, expect_handler=expect_handler)
         self._prefix = prefix
         self._prefix_len = len(self._prefix)
-        self._directory = os.path.abspath(directory) + os.sep
+        try:
+            directory = Path(directory).resolve()
+            if not directory.is_dir():
+                raise ValueError('Not a directory')
+        except (FileNotFoundError, ValueError) as error:
+            raise ValueError(
+                "No directory exists at '{}'".format(directory)) from error
+        self._directory = directory
         self._chunk_size = chunk_size
         self._response_factory = response_factory
 
-        if not os.path.isdir(self._directory):
-            raise ValueError(
-                "No directory exists at '{}'".format(self._directory))
+        if bool(os.environ.get("AIOHTTP_NOSENDFILE")):
+            self._sendfile = self._sendfile_fallback
 
     def match(self, path):
         if not path.startswith(self._prefix):
@@ -168,6 +180,8 @@ class StaticRoute(Route):
         return {'filename': path[self._prefix_len:]}
 
     def url(self, *, filename, query=None):
+        if isinstance(filename, Path):
+            filename = str(filename)
         while filename.startswith('/'):
             filename = filename[1:]
         url = self._prefix + filename
@@ -258,19 +272,24 @@ class StaticRoute(Route):
     @asyncio.coroutine
     def handle(self, request):
         filename = request.match_info['filename']
-        filepath = os.path.abspath(os.path.join(self._directory, filename))
-        if not filepath.startswith(self._directory):
-            raise HTTPNotFound()
-        if not os.path.exists(filepath) or not os.path.isfile(filepath):
-            raise HTTPNotFound()
+        try:
+            filepath = self._directory.joinpath(filename).resolve()
+            filepath.relative_to(self._directory)
+        except (ValueError, FileNotFoundError) as error:
+            # relatively safe
+            raise HTTPNotFound() from error
+        except Exception as error:
+            # perm error or other kind!
+            request.logger.exception(error)
+            raise HTTPNotFound() from error
 
-        st = os.stat(filepath)
+        st = filepath.stat()
 
         modsince = request.if_modified_since
         if modsince is not None and st.st_mtime <= modsince.timestamp():
             raise HTTPNotModified()
 
-        ct, encoding = mimetypes.guess_type(filepath)
+        ct, encoding = mimetypes.guess_type(str(filepath))
         if not ct:
             ct = 'application/octet-stream'
 
@@ -283,10 +302,15 @@ class StaticRoute(Route):
         file_size = st.st_size
 
         resp.content_length = file_size
-        yield from resp.prepare(request)
+        resp.set_tcp_cork(True)
+        try:
+            yield from resp.prepare(request)
 
-        with open(filepath, 'rb') as f:
-            yield from self._sendfile(request, resp, f, file_size)
+            with filepath.open('rb') as f:
+                yield from self._sendfile(request, resp, f, file_size)
+
+        finally:
+            resp.set_tcp_nodelay(True)
 
         return resp
 
@@ -365,6 +389,27 @@ class _MethodNotAllowedMatchInfo(UrlMappingMatchInfo):
                         ', '.join(sorted(self._allowed_methods))))
 
 
+class View(AbstractView):
+
+    @asyncio.coroutine
+    def __iter__(self):
+        if self.request.method not in hdrs.METH_ALL:
+            self._raise_allowed_methods()
+        method = getattr(self, self.request.method.lower(), None)
+        if method is None:
+            self._raise_allowed_methods()
+        resp = yield from method()
+        return resp
+
+    if PY_35:
+        def __await__(self):
+            return (yield from self.__iter__())
+
+    def _raise_allowed_methods(self):
+        allowed_methods = {m for m in hdrs.METH_ALL if hasattr(self, m)}
+        raise HTTPMethodNotAllowed(self.request.method, allowed_methods)
+
+
 class RoutesView(Sized, Iterable, Container):
 
     __slots__ = '_urls'
@@ -389,7 +434,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         r'^\{(?P<var>[a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}$')
     GOOD = r'[^{}/]+'
     ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
-    NAME_SPLIT_RE = re.compile('[.:]')
+    NAME_SPLIT_RE = re.compile('[.:-]')
 
     METHODS = {hdrs.METH_ANY, hdrs.METH_POST,
                hdrs.METH_GET, hdrs.METH_PUT, hdrs.METH_DELETE,
@@ -440,6 +485,9 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     def routes(self):
         return RoutesView(self._urls)
 
+    def named_routes(self):
+        return MappingProxyType(self._routes)
+
     def register_route(self, route):
         assert isinstance(route, Route), 'Instance of Route class is required.'
 
@@ -449,10 +497,10 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             parts = self.NAME_SPLIT_RE.split(name)
             for part in parts:
                 if not part.isidentifier() or keyword.iskeyword(part):
-                    raise ValueError('Incorrect route name value, '
-                                     'Route name should be a sequence of '
+                    raise ValueError('Incorrect route name {!r}, '
+                                     'the name should be a sequence of '
                                      'python identifiers separated '
-                                     'by dot or column')
+                                     'by dash, dot or column'.format(name))
             if name in self._routes:
                 raise ValueError('Duplicate {!r}, '
                                  'already handled by {!r}'
@@ -467,8 +515,13 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             raise ValueError("path should be started with /")
 
         assert callable(handler), handler
-        if (not asyncio.iscoroutinefunction(handler) and
-                not inspect.isgeneratorfunction(handler)):
+        if asyncio.iscoroutinefunction(handler):
+            pass
+        elif inspect.isgeneratorfunction(handler):
+            pass
+        elif isinstance(handler, type) and issubclass(handler, AbstractView):
+            pass
+        else:
             handler = asyncio.coroutine(handler)
 
         method = upstr(method)

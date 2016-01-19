@@ -52,9 +52,12 @@ class Connection(object):
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
+    def __repr__(self):
+        return 'Connection<{}>'.format(self._key)
+
     def __del__(self, _warnings=warnings):
         if self._transport is not None:
-            _warnings.warn("Unclosed connection {!r}".format(self),
+            _warnings.warn('Unclosed connection {!r}'.format(self),
                            ResourceWarning)
             if hasattr(self._loop, 'is_closed'):
                 if self._loop.is_closed():
@@ -146,11 +149,14 @@ class BaseConnector(object):
         if not self._conns:
             return
 
+        conns = [repr(c) for c in self._conns.values()]
+
         self.close()
 
         _warnings.warn("Unclosed connector {!r}".format(self),
                        ResourceWarning)
         context = {'connector': self,
+                   'connections': conns,
                    'message': 'Unclosed connector'}
         if self._source_traceback is not None:
             context['source_traceback'] = self._source_traceback
@@ -271,12 +277,24 @@ class BaseConnector(object):
         """Get from pool or create new connection."""
         key = (req.host, req.port, req.ssl)
 
-        # use short-circuit
-        if self._limit is not None:
-            while len(self._acquired[key]) >= self._limit:
-                fut = asyncio.Future(loop=self._loop)
-                self._waiters[key].append(fut)
-                yield from fut
+        limit = self._limit
+        if limit is not None:
+            fut = asyncio.Future(loop=self._loop)
+            waiters = self._waiters[key]
+
+            # The limit defines the maximum number of concurrent connections
+            # for a key. Waiters must be counted against the limit, even before
+            # the underlying connection is created.
+            available = limit - len(waiters) - len(self._acquired[key])
+
+            # Don't wait if there are connections available.
+            if available > 0:
+                fut.set_result(None)
+
+            # This connection will now count towards the limit.
+            waiters.append(fut)
+
+            yield from fut
 
         transport, proto = self._get(key)
         if transport is None:
@@ -639,7 +657,10 @@ class ProxyConnector(TCPConnector):
         if hdrs.AUTHORIZATION in proxy_req.headers:
             auth = proxy_req.headers[hdrs.AUTHORIZATION]
             del proxy_req.headers[hdrs.AUTHORIZATION]
-            req.headers[hdrs.PROXY_AUTHORIZATION] = auth
+            if not req.ssl:
+                req.headers[hdrs.PROXY_AUTHORIZATION] = auth
+            else:
+                proxy_req.headers[hdrs.PROXY_AUTHORIZATION] = auth
 
         if req.ssl:
             # For HTTPS requests over HTTP proxy
@@ -676,6 +697,8 @@ class ProxyConnector(TCPConnector):
                 transport, proto = yield from self._loop.create_connection(
                     self._factory, ssl=self.ssl_context, sock=rawsock,
                     server_hostname=req.host)
+            finally:
+                proxy_resp.close()
 
         return transport, proto
 
