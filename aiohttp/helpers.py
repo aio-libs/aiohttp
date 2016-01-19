@@ -53,8 +53,6 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
             if split[0].strip().lower() != 'basic':
                 raise ValueError('Unknown authorization method %s' % split[0])
             to_decode = split[1]
-        elif len(split) == 1:
-            to_decode = split[0]
         else:
             raise ValueError('Could not parse authorization header.')
 
