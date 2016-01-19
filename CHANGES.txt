@@ -43,3 +43,5 @@ CHANGES
 - Enable access log by default #735
 
 - route.add_static accepts pathlib.Path now #743
+
+- Add command line support: `$ python -m aiohttp.web package.main` #740
