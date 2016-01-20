@@ -459,6 +459,15 @@ class ClientSession:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+    if PY_35:
+        @asyncio.coroutine
+        def __aenter__(self):
+            return self
+
+        @asyncio.coroutine
+        def __aexit__(self, exc_type, exc_val, exc_tb):
+            self.close()
+
 if PY_35:
     from collections.abc import Coroutine
     base = Coroutine
