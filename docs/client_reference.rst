@@ -1033,6 +1033,10 @@ Response object
 
       HTTP status reason of response (:class:`str`), e.g. ``"OK"``.
 
+   .. attribute:: url
+
+      URL of request (:class:`str`).
+
    .. attribute:: connection
 
       :class:`Connection` used for handling response.
