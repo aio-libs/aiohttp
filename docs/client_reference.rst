@@ -1033,6 +1033,14 @@ Response object
 
       HTTP status reason of response (:class:`str`), e.g. ``"OK"``.
 
+   .. attribute:: host
+
+      Host part of requested url (:class:`str`).
+
+   .. attribute:: method
+
+      Request's method (:class:`str`).
+
    .. attribute:: url
 
       URL of request (:class:`str`).
