@@ -18,9 +18,8 @@ class ExecutorResolver(AbstractResolver):
             loop = asyncio.get_event_loop()
         self._loop = loop
 
+    @asyncio.coroutine
     def resolve(self, host, port=0, family=socket.AF_INET):
-        """Resolve!"""
-
         infos = yield from self._loop.getaddrinfo(
             host, port, type=socket.SOCK_STREAM, family=family)
 
@@ -63,10 +62,10 @@ class AsyncResolver(AbstractResolver):
 
         for rr in resp:
             hosts.append(
-                    {'hostname': host,
-                     'host': rr.host, 'port': port,
-                     'family': family, 'proto': 0,
-                     'flags': socket.AI_NUMERICHOST})
+                {'hostname': host,
+                 'host': rr.host, 'port': port,
+                 'family': family, 'proto': 0,
+                 'flags': socket.AI_NUMERICHOST})
         return hosts
 
     def close(self):

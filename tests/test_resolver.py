@@ -1,12 +1,13 @@
 import asyncio
 import socket
-from unittest.mock import patch
 import ipaddress
 import aiodns
 import unittest
+import pytest
 from aiohttp.resolver import AsyncResolver, ExecutorResolver
 
 
+@pytest.skip
 class _ResolverTestCase(unittest.TestCase):
 
     def setUp(self):
@@ -39,7 +40,7 @@ class TestAsyncResolver(_ResolverTestCase):
         @asyncio.coroutine
         def go():
             with self.assertRaises(aiodns.error.DNSError):
-                real = yield from self.resolver.resolve('doesnotexist.bla')
+                yield from self.resolver.resolve('doesnotexist.bla')
         self.loop.run_until_complete(go())
 
 
@@ -53,6 +54,5 @@ class TestExecutorResolver(_ResolverTestCase):
         @asyncio.coroutine
         def go():
             with self.assertRaises(socket.gaierror):
-                real = yield from self.resolver.resolve('doesnotexist.bla')
+                yield from self.resolver.resolve('doesnotexist.bla')
         self.loop.run_until_complete(go())
-
