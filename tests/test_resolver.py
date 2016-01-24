@@ -3,12 +3,12 @@ import socket
 import ipaddress
 import aiodns
 import unittest
-import pytest
 from aiohttp.resolver import AsyncResolver, ExecutorResolver
 
 
-@pytest.skip
-class _ResolverTestCase(unittest.TestCase):
+class BaseResolverTestCase(unittest.TestCase):
+
+    __test__ = False
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
@@ -30,7 +30,9 @@ class _ResolverTestCase(unittest.TestCase):
         self.loop.run_until_complete(go())
 
 
-class TestAsyncResolver(_ResolverTestCase):
+class TestAsyncResolver(BaseResolverTestCase):
+
+    __test__ = True
 
     def setUp(self):
         super(TestAsyncResolver, self).setUp()
@@ -44,7 +46,9 @@ class TestAsyncResolver(_ResolverTestCase):
         self.loop.run_until_complete(go())
 
 
-class TestExecutorResolver(_ResolverTestCase):
+class TestExecutorResolver(BaseResolverTestCase):
+
+    __test__ = True
 
     def setUp(self):
         super(TestExecutorResolver, self).setUp()
