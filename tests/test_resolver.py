@@ -3,7 +3,7 @@ import socket
 import ipaddress
 import aiodns
 import unittest
-from aiohttp.resolver import AsyncResolver, ExecutorResolver
+from aiohttp.resolver import AsyncResolver, DefaultResolver
 
 
 class BaseResolverTestCase(unittest.TestCase):
@@ -52,7 +52,7 @@ class TestExecutorResolver(BaseResolverTestCase):
 
     def setUp(self):
         super(TestExecutorResolver, self).setUp()
-        self.resolver = ExecutorResolver(loop=self.loop)
+        self.resolver = DefaultResolver(loop=self.loop)
 
     def test_negative_lookup(self):
         @asyncio.coroutine
