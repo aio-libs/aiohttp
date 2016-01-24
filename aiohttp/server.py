@@ -10,7 +10,7 @@ from math import ceil
 
 import aiohttp
 from aiohttp import errors, streams, hdrs, helpers
-from aiohttp.log import server_logger
+from aiohttp.log import access_logger, server_logger
 from aiohttp.helpers import ensure_future
 
 __all__ = ('ServerHttpProtocol',)
@@ -89,7 +89,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                  keep_alive_on=True,
                  timeout=0,
                  logger=server_logger,
-                 access_log=None,
+                 access_log=access_logger,
                  access_log_format=helpers.AccessLogger.LOG_FORMAT,
                  debug=False,
                  log=None,

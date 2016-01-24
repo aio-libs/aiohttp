@@ -127,6 +127,7 @@ def test_sort_forbidden(app):
 
     def l3():
         pass
+
     signal = Signal(app)
     signal.extend([l1, l2, l3])
     with pytest.raises(NotImplementedError):

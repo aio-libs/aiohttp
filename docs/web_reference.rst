@@ -1033,7 +1033,22 @@ duplicated like one using :meth:`Application.copy`.
       We suggest keeping a list of long running handlers in
       :class:`Application` dictionary.
 
-      .. seealso:: :ref:`aiohttp-web-graceful-shutdown`
+      .. seealso:: :ref:`aiohttp-web-graceful-shutdown` and :attr:`on_cleanup`.
+
+   .. attribute:: on_cleanup
+
+      A :class:`~aiohttp.signals.Signal` that is fired on application cleanup.
+
+      Subscribers may use the signal for gracefully closing
+      connections to database server etc.
+
+      Signal handlers should have the following signature::
+
+          async def on_cleanup(app):
+              pass
+
+      .. seealso:: :ref:`aiohttp-web-graceful-shutdown` and :attr:`on_shutdown`.
+
 
    .. method:: make_handler(**kwargs)
 
@@ -1063,17 +1078,19 @@ duplicated like one using :meth:`Application.copy`.
       The purpose of the method is calling :attr:`on_shutdown` signal
       handlers.
 
-   .. coroutinemethod:: finish()
+   .. coroutinemethod:: cleanup()
 
       A :ref:`coroutine<coroutine>` that should be called on
       server stopping but after :meth:`shutdown`.
 
-      This method executes functions registered by
-      :meth:`register_on_finish` in LIFO order.
+      The purpose of the method is calling :attr:`on_cleanup` signal
+      handlers.
 
-      If callback raises an exception, the error will be stored by
-      :meth:`~asyncio.BaseEventLoop.call_exception_handler` with keys:
-      *message*, *exception*, *application*.
+   .. coroutinemethod:: finish()
+
+      A deprecated alias for :meth:`cleanup`.
+
+      .. deprecated:: 0.21
 
    .. method:: register_on_finish(self, func, *args, **kwargs):
 
@@ -1087,6 +1104,10 @@ duplicated like one using :meth:`Application.copy`.
 
       *func* may be either regular function or :ref:`coroutine<coroutine>`,
       :meth:`finish` will un-yield (`await`) the later.
+
+      .. deprecated:: 0.21
+
+         Use :attr:`on_cleanup` instead: ``app.on_cleanup.append(handler)``.
 
    .. note::
 
@@ -1213,8 +1234,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       :param str prefix: URL path prefix for handled static files
 
-      :param str path: path to the folder in file system that contains
-                       handled static files.
+      :param path: path to the folder in file system that contains
+                   handled static files, :class:`str` or :class:`pathlib.Path`.
 
       :param str name: optional route name.
 
@@ -1509,6 +1530,45 @@ Utilities
       *MIME type* of uploaded file, ``'text/plain'`` by default.
 
    .. seealso:: :ref:`aiohttp-web-file-upload`
+
+
+.. function:: run_app(app, *, host='0.0.0.0', port=None, loop=None, \
+                      shutdown_timeout=60.0, ssl_context=None, \
+                      print=print)
+
+   An utility function for running an application, serving it until
+   keyboard interrupt and performing a
+   :ref:`aiohttp-web-graceful-shutdown`.
+
+   Suitable as handy tool for scaffolding aiohttp based projects.
+   Perhaps production config will use more sophisticated runner but it
+   good enough at least at very beginning stage.
+
+   The function uses *app.loop* as event loop to run.
+
+   :param app: :class:`Application` instance to run
+
+   :param str host: host for HTTP server, ``'0.0.0.0'`` by default
+
+   :param int port: port for HTTP server. By default is ``8080`` for
+                    plain text HTTP and ``8443`` for HTTP via SSL
+                    (when *ssl_context* parameter is specified).
+
+   :param int shutdown_timeout: a delay to wait for graceful server
+                                shutdown before disconnecting all
+                                open client sockets hard way.
+
+                                A system with properly
+                                :ref:`aiohttp-web-graceful-shutdown`
+                                implemented never waits for this
+                                timeout but closes a server in a few
+                                milliseconds.
+
+   :param ssl_context: :class:`ssl.SSLContext` for HTTPS server,
+                       ``None`` for HTTP connection.
+
+   :param print: a callable compatible with :func:`print`. May be used
+                 to override stdout output or supppress it.
 
 
 Constants
