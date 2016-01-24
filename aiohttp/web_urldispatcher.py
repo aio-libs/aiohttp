@@ -10,6 +10,7 @@ import sys
 import inspect
 
 from collections.abc import Sized, Iterable, Container
+from pathlib import Path
 from urllib.parse import urlencode, unquote
 from types import MappingProxyType
 
@@ -159,13 +160,16 @@ class StaticRoute(Route):
             'GET', self.handle, name, expect_handler=expect_handler)
         self._prefix = prefix
         self._prefix_len = len(self._prefix)
-        self._directory = os.path.abspath(directory) + os.sep
+        try:
+            directory = Path(directory).resolve()
+            if not directory.is_dir():
+                raise ValueError('Not a directory')
+        except (FileNotFoundError, ValueError) as error:
+            raise ValueError(
+                "No directory exists at '{}'".format(directory)) from error
+        self._directory = directory
         self._chunk_size = chunk_size
         self._response_factory = response_factory
-
-        if not os.path.isdir(self._directory):
-            raise ValueError(
-                "No directory exists at '{}'".format(self._directory))
 
         if bool(os.environ.get("AIOHTTP_NOSENDFILE")):
             self._sendfile = self._sendfile_fallback
@@ -176,6 +180,8 @@ class StaticRoute(Route):
         return {'filename': path[self._prefix_len:]}
 
     def url(self, *, filename, query=None):
+        if isinstance(filename, Path):
+            filename = str(filename)
         while filename.startswith('/'):
             filename = filename[1:]
         url = self._prefix + filename
@@ -266,19 +272,24 @@ class StaticRoute(Route):
     @asyncio.coroutine
     def handle(self, request):
         filename = request.match_info['filename']
-        filepath = os.path.abspath(os.path.join(self._directory, filename))
-        if not filepath.startswith(self._directory):
-            raise HTTPNotFound()
-        if not os.path.exists(filepath) or not os.path.isfile(filepath):
-            raise HTTPNotFound()
+        try:
+            filepath = self._directory.joinpath(filename).resolve()
+            filepath.relative_to(self._directory)
+        except (ValueError, FileNotFoundError) as error:
+            # relatively safe
+            raise HTTPNotFound() from error
+        except Exception as error:
+            # perm error or other kind!
+            request.logger.exception(error)
+            raise HTTPNotFound() from error
 
-        st = os.stat(filepath)
+        st = filepath.stat()
 
         modsince = request.if_modified_since
         if modsince is not None and st.st_mtime <= modsince.timestamp():
             raise HTTPNotModified()
 
-        ct, encoding = mimetypes.guess_type(filepath)
+        ct, encoding = mimetypes.guess_type(str(filepath))
         if not ct:
             ct = 'application/octet-stream'
 
@@ -295,7 +306,7 @@ class StaticRoute(Route):
         try:
             yield from resp.prepare(request)
 
-            with open(filepath, 'rb') as f:
+            with filepath.open('rb') as f:
                 yield from self._sendfile(request, resp, f, file_size)
 
         finally:

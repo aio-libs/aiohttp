@@ -444,6 +444,10 @@ Usage::
              assert resp.status == 200
              print(await resp.text())
 
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.request`.
+
 
 .. coroutinefunction:: get(url, **kwargs)
 
@@ -454,6 +458,10 @@ Usage::
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
    :return: :class:`ClientResponse` or derived from
+
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.get`.
 
 
 .. coroutinefunction:: options(url, **kwargs)
@@ -466,6 +474,10 @@ Usage::
 
    :return: :class:`ClientResponse` or derived from
 
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.options`.
+
 
 .. coroutinefunction:: head(url, **kwargs)
 
@@ -476,6 +488,10 @@ Usage::
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
    :return: :class:`ClientResponse` or derived from
+
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.head`.
 
 
 .. coroutinefunction:: delete(url, **kwargs)
@@ -488,6 +504,10 @@ Usage::
 
    :return: :class:`ClientResponse` or derived from
 
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.delete`.
+
 
 .. coroutinefunction:: post(url, *, data=None, **kwargs)
 
@@ -498,6 +518,10 @@ Usage::
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
    :return: :class:`ClientResponse` or derived from
+
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.post`.
 
 
 .. coroutinefunction:: put(url, *, data=None, **kwargs)
@@ -510,6 +534,10 @@ Usage::
 
    :return: :class:`ClientResponse` or derived from
 
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.put`.
+
 
 .. coroutinefunction:: patch(url, *, data=None, **kwargs)
 
@@ -520,6 +548,10 @@ Usage::
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
    :return: :class:`ClientResponse` or derived from
+
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.patch`.
 
 
 .. coroutinefunction:: ws_connect(url, *, protocols=(), \
@@ -580,7 +612,12 @@ Usage::
 
       Add *headers* parameter.
 
+   .. deprecated:: 0.21
 
+      Use :meth:`ClientSession.ws_connect`.
+
+
+.. _aiohttp-client-reference-connectors:
 
 Connectors
 ----------
@@ -995,6 +1032,18 @@ Response object
    .. attribute:: reason
 
       HTTP status reason of response (:class:`str`), e.g. ``"OK"``.
+
+   .. attribute:: host
+
+      Host part of requested url (:class:`str`).
+
+   .. attribute:: method
+
+      Request's method (:class:`str`).
+
+   .. attribute:: url
+
+      URL of request (:class:`str`).
 
    .. attribute:: connection
 
