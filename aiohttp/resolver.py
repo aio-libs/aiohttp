@@ -8,7 +8,7 @@ except ImportError:
     aiodns = None
 
 
-class ExecutorResolver(AbstractResolver):
+class DefaultResolver(AbstractResolver):
     """Use Executor for synchronous getaddrinfo() calls, which defaults to
     concurrent.futures.ThreadPoolExecutor.
     """

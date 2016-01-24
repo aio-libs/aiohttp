@@ -20,7 +20,7 @@ from .errors import HttpProxyError, ProxyConnectionError
 from .errors import ClientOSError, ClientTimeoutError
 from .errors import FingerprintMismatch
 from .helpers import BasicAuth
-from .resolver import ExecutorResolver
+from .resolver import DefaultResolver
 
 
 __all__ = ('BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector')
@@ -447,7 +447,7 @@ class TCPConnector(BaseConnector):
         else:
             _use_dns_cache = False
 
-        self._resolver = resolver or ExecutorResolver(loop=self._loop)
+        self._resolver = resolver or DefaultResolver(loop=self._loop)
 
         if _use_dns_cache or resolver:
             self._use_resolver = True
