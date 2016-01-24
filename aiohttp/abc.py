@@ -50,8 +50,6 @@ class AbstractView(metaclass=ABCMeta):
 
 class AbstractResolver(metaclass=ABCMeta):
 
-
-
     @asyncio.coroutine
     @abstractmethod
     def resolve(self, hostname):
