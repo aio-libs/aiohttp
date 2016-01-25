@@ -29,9 +29,10 @@ third - handler.
 Where to put my database connection so handlers can access it?
 --------------------------------------------------------------
 
-``Application`` object supports ``dict`` interface, and right place to store
-your database connections or any other resource you want to share between
-handlers. Take a look on following example::
+:class:`aiohttp.web.Application` object supports :class:`dict`
+interface, and right place to store your database connections or any
+other resource you want to share between handlers. Take a look on
+following example::
 
     async def go(request):
         db = request.app['db']
@@ -64,3 +65,19 @@ This should not be an issue for most aiohttp users (for example Ubuntu
 14.04.3 LTS provides python upgraded to 3.4.3), however libraries
 depending on aiohttp should consider this and either freeze aiohttp
 version or drop Python 3.3 support as well.
+
+
+How a middleware may store a data for using by web-handler later?
+-----------------------------------------------------------------
+
+:class:`aiohttp.web.Request` supports :class:`dict` interface as well
+as :class:`aiohttp.web.Application`.
+
+Just put data inside *request*::
+
+   async def handler(request):
+       requset['unique_key'] = data
+
+See https://github.com/aio-libs/aiohttp_session code for inspiration,
+``aiohttp_session.get_session(request)`` method uses ``SESSION_KEY``
+for saving request specific session info.

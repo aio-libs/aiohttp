@@ -50,3 +50,13 @@ CHANGES
 - route.add_static accepts pathlib.Path now #743
 
 - Add command line support: `$ python -m aiohttp.web package.main` #740
+
+- FAQ section was added to docs. Enjoy and fill free to contribute new topics
+
+- Add async context manager support to ClientSession
+
+- Document ClientResponse's host, method, url properties
+
+- Use CORK/NODELAY in client API #748
+
+- ClientSession.close and Connector.close are coroutines now

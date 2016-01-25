@@ -322,6 +322,7 @@ class ClientSession:
                         break
 
             reader = resp.connection.reader.set_parser(WebSocketParser)
+            resp.connection.writer.set_tcp_nodelay(True)
             writer = WebSocketWriter(resp.connection.writer, use_mask=True)
         except Exception:
             resp.close()
@@ -422,6 +423,9 @@ class ClientSession:
         if not self.closed:
             self._connector.close()
             self._connector = None
+        ret = asyncio.Future(loop=self._loop)
+        ret.set_result(None)
+        return ret
 
     @property
     def closed(self):
@@ -458,6 +462,15 @@ class ClientSession:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
+    if PY_35:
+        @asyncio.coroutine
+        def __aenter__(self):
+            return self
+
+        @asyncio.coroutine
+        def __aexit__(self, exc_type, exc_val, exc_tb):
+            yield from self.close()
 
 if PY_35:
     from collections.abc import Coroutine
