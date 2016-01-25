@@ -51,3 +51,5 @@ CHANGES
 - Add async context manager support to ClientSession
 
 - Document ClientResponse's host, method, url properties
+
+- Use CORK/NODELAY in client API #748
