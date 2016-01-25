@@ -53,3 +53,5 @@ CHANGES
 - Document ClientResponse's host, method, url properties
 
 - Use CORK/NODELAY in client API #748
+
+- ClientSession.close and Connector.close are coroutines now
