@@ -322,6 +322,7 @@ class ClientSession:
                         break
 
             reader = resp.connection.reader.set_parser(WebSocketParser)
+            resp.connection.writer.set_tcp_nodelay(True)
             writer = WebSocketWriter(resp.connection.writer, use_mask=True)
         except Exception:
             resp.close()
