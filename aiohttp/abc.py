@@ -23,8 +23,8 @@ class AbstractMatchInfo(metaclass=ABCMeta):
 
     @property  # pragma: no branch
     @abstractmethod
-    def route(self):
-        """Return route for match info"""
+    def expect_handler(self):
+        """Expect handler for 100-continue processing"""
 
 
 class AbstractView(metaclass=ABCMeta):

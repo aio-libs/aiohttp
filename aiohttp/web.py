@@ -33,7 +33,6 @@ class RequestHandler(ServerHttpProtocol):
 
     _meth = 'none'
     _path = 'none'
-    _request = None
 
     def __init__(self, manager, app, router, *,
                  secure_proxy_ssl_header=None, **kwargs):
@@ -59,8 +58,6 @@ class RequestHandler(ServerHttpProtocol):
         self._manager.connection_lost(self, exc)
 
         super().connection_lost(exc)
-        if self._request is not None:
-            pass
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
@@ -72,40 +69,35 @@ class RequestHandler(ServerHttpProtocol):
             app, message, payload,
             self.transport, self.reader, self.writer,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header)
-        self._request = request
         self._meth = request.method
         self._path = request.path
         try:
-            try:
-                match_info = yield from self._router.resolve(request)
+            match_info = yield from self._router.resolve(request)
 
-                assert isinstance(match_info, AbstractMatchInfo), match_info
+            assert isinstance(match_info, AbstractMatchInfo), match_info
 
-                resp = None
-                request._match_info = match_info
-                expect = request.headers.get(hdrs.EXPECT)
-                if expect and expect.lower() == "100-continue":
-                    resp = (
-                        yield from match_info.route.handle_expect_header(
-                            request))
+            resp = None
+            request._match_info = match_info
+            expect = request.headers.get(hdrs.EXPECT)
+            if expect and expect.lower() == "100-continue":
+                resp = (
+                    yield from match_info.expect_handler(request))
 
-                if resp is None:
-                    handler = match_info.handler
-                    for factory in reversed(self._middlewares):
-                        handler = yield from factory(app, handler)
-                    resp = yield from handler(request)
+            if resp is None:
+                handler = match_info.handler
+                for factory in reversed(self._middlewares):
+                    handler = yield from factory(app, handler)
+                resp = yield from handler(request)
 
-                assert isinstance(resp, StreamResponse), \
-                    ("Handler {!r} should return response instance, "
-                     "got {!r} [middlewares {!r}]").format(
-                         match_info.handler, type(resp), self._middlewares)
-            except HTTPException as exc:
-                resp = exc
+            assert isinstance(resp, StreamResponse), \
+                ("Handler {!r} should return response instance, "
+                 "got {!r} [middlewares {!r}]").format(
+                     match_info.handler, type(resp), self._middlewares)
+        except HTTPException as exc:
+            resp = exc
 
-            resp_msg = yield from resp.prepare(request)
-            yield from resp.write_eof()
-        finally:
-            self._request = None
+        resp_msg = yield from resp.prepare(request)
+        yield from resp.write_eof()
 
         # notify server about keep-alive
         self.keep_alive(resp_msg.keep_alive())

@@ -1174,6 +1174,21 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
    .. seealso:: :ref:`Route classes <aiohttp-web-route>`
 
+   .. method:: add_resource(path, *, name=None)
+
+      Append a :term:`resource` to the end of route table.
+
+      *path* may be either *constant* string like ``'/a/b/c'`` or
+      *variable rule* like ``'/a/{var}'`` (see
+      :ref:`handling variable pathes<aiohttp-web-variable-handler>`)
+
+      :param str path: resource path spec.
+
+      :param str name: optional resource name.
+
+      :return: created resource instance (:class:`PlainResource` or
+               :class:`DynamicResource`).
+
    .. method:: add_route(method, path, handler, *, \
                          name=None, expect_handler=None)
 
@@ -1307,25 +1322,162 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       .. versionadded:: 0.18
 
-   .. method:: named_routes()
+   .. method:: named_resources()
 
       Returns a :obj:`dict`-like :class:`types.MappingProxyType` *view* over
-      *all* named routes.
+      *all* named **resources**.
 
-      The view maps every named route's :attr:`Route.name` attribute to the
-      :class:`Route`. It supports the usual :obj:`dict`-like operations, except
-      for any mutable operations (i.e. it's **read-only**)::
+      The view maps every named resources's **name** to the
+      :class:`BaseResource` instance. It supports the usual
+      :obj:`dict`-like operations, except for any mutable operations
+      (i.e. it's **read-only**)::
 
-          len(app.router.named_routes())
+          len(app.router.named_resources())
 
-          for name, route in app.router.named_routes().items():
-              print(name, route)
+          for name, resource in app.router.named_resources().items():
+              print(name, resource)
 
-          "route_name" in app.router.named_routes()
+          "name" in app.router.named_resources()
 
-          app.router.named_routes()["route_name"]
+          app.router.named_resources()["name"]
+
+   .. method:: named_routes()
+
+      An alias for :meth:`named_resources` starting from aiohttp 0.21.
 
       .. versionadded:: 0.19
+
+      .. versionchanged:: 0.21
+
+         The method is an alias for :meth:`named_resources`, so it
+         iterates over resources instead of routes.
+
+      .. deprecated:: 0.21
+
+         Please use named **resources** instead of named **routes**.
+
+         Several routes which belongs to the same resource shares the
+         resource name.
+
+
+.. _aiohttp-web-resource:
+
+Resource
+^^^^^^^^
+
+Default router :class:`UrlDispatcher` operates with :term:`resource`\s.
+
+Resource is an item in *routing table* which has a *path*, an optional
+unique *name* and at least one :term:`route`.
+
+:term:`web-handler` lookup is performed in the following way:
+
+1. Router iterates over *resources* one-by-one.
+2. If *resource* matches to requested URL the resource iterates over
+   own *routes*.
+3. If route matches to requested HTTP method (or ``'*'`` wildcard) the
+   route's handler is used as found :term:`web-handler`. The lookup is
+   finished.
+4. Otherwise router tries next resource from the *routing table*.
+5. If the end of *routing table* is reached and no *resource* /
+   *route* pair found the *router* returns special :class:`SystemRoute`
+   instance with  either *HTTP 404 Not Found* or *HTTP 405
+   Method Not Allowed* status code. Registerd :term:`web-handler` for
+   *system route* raises corresponding :ref:`web exception
+   <aiohttp-web-exceptions>`.
+
+User should never instantiate resource classes but give it by
+:meth:`UrlDispatcher.add_resource` call.
+
+After that he may add a :term:`route` by calling :meth:`Resource.add_route`.
+
+:meth:`UrlDispatcher.add_route` is just shortcut for::
+
+   router.add_resource(path).add_route(method, handler)
+
+Resource classes hierarhy::
+
+   AbstractResource
+     Resource
+       PlainResource
+       DynamicResource
+     ResourceAdapter
+
+
+.. class:: AbstractResource
+
+   A base class for all resources.
+
+   Inherited from :class:`collections.abc.Sized` and
+   :class:`collections.abc.Iterable`.
+
+   .. attribute:: name
+
+      Read-only *name* of resource or ``None``.
+
+   .. method:: match(path)
+
+      :param str path: *path* part of requested URL.
+
+      :return: :class:`dict` with info for given *path* or
+               ``None`` if route cannot process the path.
+
+   .. method:: resolve(method, path)
+
+      Resolve resource by finding appropriate :term:`web-handler` for
+      ``(method, path)`` combination.
+
+      Calls :meth:`match` internally.
+
+      :param str method: requested HTTP method.
+
+      :return: (*match_info*, *allowed_methods*) pair.
+
+               *allowed_methods* is a :class:`set` or HTTP methods accepted by
+               resource.
+
+               *match_info* is either :class:`UrlMappingMatchInfo` if
+               request is resolved or ``None`` if no :term:`route` is
+               found.
+
+   .. method:: url(**kwargs)
+
+      Construct an URL for route with additional params.
+
+      **kwargs** depends on a list accepted by inherited resource
+      class parameters.
+
+      :return: :class:`str` -- resulting URL.
+
+
+.. class:: Resource
+
+   A base class for new-style resources, inherits :class:`AbstractResource`.
+
+
+.. class:: PlainResource
+
+   A new-style resource, inherited from :class:`Resource`.
+
+   The class corresponds to resources with plain-text matching,
+   ``'/path/to'`` for example.
+
+
+.. class:: DynamicResource
+
+   A new-style resource, inherited from :class:`Resource`.
+
+   The class corresponds to resources with
+   :ref:`variable <aiohttp-web-variable-handler>` matching,
+   e.g. ``'/path/{to}/{param}'`` etc.
+
+
+.. class:: ResourceAdapter
+
+   An adapter for old-style routes.
+
+   The adapter is used by ``router.register_route()`` call, the method
+   is deprecated and will be removed eventually.
 
 
 .. _aiohttp-web-route:
@@ -1333,7 +1485,12 @@ Router is any object that implements :class:`AbstractRouter` interface.
 Route
 ^^^^^
 
-Default router :class:`UrlDispatcher` operates with *routes*.
+Route has HTTP method (wildcard ``'*'`` is an option),
+:term:`web-handler` and optional *expect handler*.
+
+Every route belong to some resource.
+
+
 
 User should not instantiate route classes by hand but can give *named
 route instance* by ``router[name]`` if he have added route by

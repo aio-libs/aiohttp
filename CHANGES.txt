@@ -42,6 +42,11 @@ CHANGES
 
 - Enable access log by default #735
 
+- Deprecate app.router.register_route() (the method was not documented
+  intentionally BTW).
+
+- Deprecate app.router.named_routes() in favor of app.router.named_resources()
+
 - route.add_static accepts pathlib.Path now #743
 
 - Add command line support: `$ python -m aiohttp.web package.main` #740

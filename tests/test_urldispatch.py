@@ -1,5 +1,6 @@
 import asyncio
 import os
+import re
 import unittest
 from collections.abc import Sized, Container, Iterable, Mapping, MutableMapping
 from unittest import mock
@@ -13,7 +14,10 @@ from aiohttp.protocol import HttpVersion, RawRequestMessage
 from aiohttp.web_urldispatcher import (_defaultExpectHandler,
                                        DynamicRoute,
                                        PlainRoute,
-                                       SystemRoute)
+                                       SystemRoute,
+                                       ResourceRoute,
+                                       AbstractResource,
+                                       View)
 
 
 class TestUrlDispatcher(unittest.TestCase):
@@ -241,7 +245,7 @@ class TestUrlDispatcher(unittest.TestCase):
     def test_route_plain(self):
         handler = self.make_handler()
         route = self.router.add_route('GET', '/get', handler, name='name')
-        route2 = self.router['name']
+        route2 = next(iter(self.router['name']))
         url = route2.url()
         self.assertEqual('/get', url)
         self.assertIs(route, route2)
@@ -255,7 +259,7 @@ class TestUrlDispatcher(unittest.TestCase):
         route = self.router.add_route('GET', '/get/{name}', handler,
                                       name='name')
 
-        route2 = self.router['name']
+        route2 = next(iter(self.router['name']))
         url = route2.url(parts={'name': 'John'})
         self.assertEqual('/get/John', url)
         self.assertIs(route, route2)
@@ -271,10 +275,10 @@ class TestUrlDispatcher(unittest.TestCase):
         route = self.router.add_static('/st',
                                        os.path.dirname(aiohttp.__file__),
                                        name='static')
-        route2 = self.router['static']
-        url = route2.url(filename='/dir/a.txt')
+        resource = self.router['static']
+        url = resource.url(filename='/dir/a.txt')
         self.assertEqual('/st/dir/a.txt', url)
-        self.assertIs(route, route2)
+        self.assertIs(route, next(iter(resource)))
 
     def test_plain_not_match(self):
         handler = self.make_handler()
@@ -321,20 +325,21 @@ class TestUrlDispatcher(unittest.TestCase):
 
     def test_plain_repr(self):
         handler = self.make_handler()
-        self.router.add_route('GET', '/get/path', handler, name='name')
-        self.assertRegex(repr(self.router['name']),
+        route = PlainRoute('GET', handler, 'name', '/get/path')
+        self.assertRegex(repr(route),
                          r"<PlainRoute 'name' \[GET\] /get/path")
 
     def test_dynamic_repr(self):
         handler = self.make_handler()
-        self.router.add_route('GET', '/get/{path}', handler, name='name')
-        self.assertRegex(repr(self.router['name']),
+        route = DynamicRoute('GET', handler, 'name',
+                             'pattern', '/get/{path}')
+        self.assertRegex(repr(route),
                          r"<DynamicRoute 'name' \[GET\] /get/{path}")
 
     def test_static_repr(self):
         self.router.add_static('/get', os.path.dirname(aiohttp.__file__),
                                name='name')
-        self.assertRegex(repr(self.router['name']),
+        self.assertRegex(repr(next(iter(self.router['name']))),
                          r"<StaticRoute 'name' \[GET\] /get/")
 
     def test_static_adds_slash(self):
@@ -435,9 +440,10 @@ class TestUrlDispatcher(unittest.TestCase):
 
             req = self.make_request('GET', '/get/john')
             match_info = yield from self.router.resolve(req)
+            self.assertEqual({'name': 'john'}, match_info)
             self.maxDiff = None
             self.assertRegex(repr(match_info),
-                             "<MatchInfo {'name': 'john'}: <DynamicRoute.+>>")
+                             "<MatchInfo {'name': 'john'}: .+<Dynamic.+>>")
 
         self.loop.run_until_complete(go())
 
@@ -481,7 +487,7 @@ class TestUrlDispatcher(unittest.TestCase):
         route = self.router.add_route(
             'GET', '/', self.make_handler(), expect_handler=handler)
         self.assertIs(route._expect_handler, handler)
-        self.assertIsInstance(route, PlainRoute)
+        self.assertIsInstance(route, ResourceRoute)
 
     def test_custom_expect_handler_dynamic(self):
 
@@ -492,7 +498,7 @@ class TestUrlDispatcher(unittest.TestCase):
         route = self.router.add_route(
             'GET', '/get/{name}', self.make_handler(), expect_handler=handler)
         self.assertIs(route._expect_handler, handler)
-        self.assertIsInstance(route, DynamicRoute)
+        self.assertIsInstance(route, ResourceRoute)
 
     def test_expect_handler_non_coroutine(self):
 
@@ -643,7 +649,7 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIsInstance(self.router.routes(), Iterable)
         self.assertIsInstance(self.router.routes(), Container)
 
-    def fill_named_routes(self):
+    def fill_named_resources(self):
         route1 = self.router.add_route('GET', '/plain', self.make_handler(),
                                        name='route1')
         route2 = self.router.add_route('GET', '/variable/{name}',
@@ -651,17 +657,134 @@ class TestUrlDispatcher(unittest.TestCase):
         route3 = self.router.add_static('/static',
                                         os.path.dirname(aiohttp.__file__),
                                         name='route3')
-        return route1, route2, route3
+        return route1.name, route2.name, route3.name
 
     def test_named_routes_abc(self):
         self.assertIsInstance(self.router.named_routes(), Mapping)
         self.assertNotIsInstance(self.router.named_routes(), MutableMapping)
 
+    def test_named_resources_abc(self):
+        self.assertIsInstance(self.router.named_resources(), Mapping)
+        self.assertNotIsInstance(self.router.named_resources(), MutableMapping)
+
     def test_named_routes(self):
-        named_routes = self.fill_named_routes()
+        self.fill_named_resources()
 
-        self.assertEqual(3, len(self.router.named_routes()))
+        with self.assertWarns(DeprecationWarning):
+            self.assertEqual(3, len(self.router.named_routes()))
 
-        for route in named_routes:
-            self.assertIn(route.name, self.router.named_routes())
-            self.assertEqual(route, self.router.named_routes()[route.name])
+    def test_named_resources(self):
+        names = self.fill_named_resources()
+
+        self.assertEqual(3, len(self.router.named_resources()))
+
+        for name in names:
+            self.assertIn(name, self.router.named_routes())
+            self.assertIsInstance(self.router.named_routes()[name],
+                                  AbstractResource)
+
+    def test_resource_adapter_not_match(self):
+        route = PlainRoute('GET', lambda req: None, None, '/path')
+        self.router.register_route(route)
+        resource = route.resource
+        self.assertIsNotNone(resource)
+        self.assertIsNone(resource.match('/another/path'))
+
+    def test_resource_adapter_resolve_not_math(self):
+        route = PlainRoute('GET', lambda req: None, None, '/path')
+        self.router.register_route(route)
+        resource = route.resource
+        self.assertEqual((None, {'GET'}),
+                         resource.resolve('GET', '/another/path'))
+
+    def test_resource_adapter_resolve_bad_method(self):
+        route = PlainRoute('POST', lambda req: None, None, '/path')
+        self.router.register_route(route)
+        resource = route.resource
+        self.assertEqual((None, {'POST'}),
+                         resource.resolve('GET', '/path'))
+
+    def test_resource_adapter_resolve_wildcard(self):
+        route = PlainRoute('*', lambda req: None, None, '/path')
+        self.router.register_route(route)
+        resource = route.resource
+        match_info, allowed = resource.resolve('GET', '/path')
+        self.assertEqual(allowed, {'*'})  # TODO: expand wildcard
+        self.assertIsNotNone(match_info)
+
+    def test_resource_adapter_iter(self):
+        route = PlainRoute('GET', lambda req: None, None, '/path')
+        self.router.register_route(route)
+        resource = route.resource
+        self.assertEqual(1, len(resource))
+        self.assertEqual([route], list(resource))
+
+    def test_resource_iter(self):
+        resource = self.router.add_resource('/path')
+        r1 = resource.add_route('GET', lambda req: None)
+        r2 = resource.add_route('POST', lambda req: None)
+        self.assertEqual(2, len(resource))
+        self.assertEqual([r1, r2], list(resource))
+
+    def test_deprecate_bare_generators(self):
+        resource = self.router.add_resource('/path')
+
+        def gen(request):
+            yield
+
+        with self.assertWarns(DeprecationWarning):
+            resource.add_route('GET', gen)
+
+    def test_view_route(self):
+        resource = self.router.add_resource('/path')
+
+        route = resource.add_route('GET', View)
+        self.assertIs(View, route.handler)
+
+    def test_resource_route_match(self):
+        resource = self.router.add_resource('/path')
+        route = resource.add_route('GET', lambda req: None)
+        self.assertEqual({}, route.match('/path'))
+
+    def test_plain_route_url(self):
+        route = PlainRoute('GET', lambda req: None, None, '/path')
+        self.router.register_route(route)
+        self.assertEqual('/path?arg=1', route.url(query={'arg': 1}))
+
+    def test_dynamic_route_url(self):
+        route = DynamicRoute('GET', lambda req: None, None,
+                             '<pattern>', '/{path}')
+        self.router.register_route(route)
+        self.assertEqual('/path?arg=1', route.url(parts={'path': 'path'},
+                                                  query={'arg': 1}))
+
+    def test_dynamic_route_match_not_found(self):
+        route = DynamicRoute('GET', lambda req: None, None,
+                             re.compile('/path/(?P<to>.+)'), '/path/{to}')
+        self.router.register_route(route)
+        self.assertEqual(None, route.match('/another/path'))
+
+    def test_dynamic_route_match_found(self):
+        route = DynamicRoute('GET', lambda req: None, None,
+                             re.compile('/path/(?P<to>.+)'), '/path/{to}')
+        self.router.register_route(route)
+        self.assertEqual({'to': 'to'}, route.match('/path/to'))
+
+    def test_deprecate_register_route(self):
+        route = PlainRoute('GET', lambda req: None, None, '/path')
+        with self.assertWarns(DeprecationWarning):
+            self.router.register_route(route)
+
+    def test_error_on_double_route_adding(self):
+        resource = self.router.add_resource('/path')
+
+        resource.add_route('GET', lambda: None)
+        with self.assertRaises(RuntimeError):
+            resource.add_route('GET', lambda: None)
+
+    def test_error_on_adding_route_after_wildcard(self):
+        resource = self.router.add_resource('/path')
+
+        resource.add_route('*', lambda: None)
+        with self.assertRaises(RuntimeError):
+            resource.add_route('GET', lambda: None)

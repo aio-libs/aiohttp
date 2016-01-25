@@ -47,6 +47,19 @@
        It makes communication faster by getting rid of connection
        establishment for every request.
 
+   resource
+
+      A concept reflects the HTTP **path**, every resource corresponsd
+      to *URI*.
+
+      May have an unique name.
+
+      Contains :term:`route`\'s for different HTTP methods.
+
+   route
+
+       A part of :term:`resource`, resource's *path* coupled with HTTP method.
+
    web-handler
 
        An endpoint that returns HTTP response.
