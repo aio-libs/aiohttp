@@ -340,11 +340,17 @@ The client session supports context manager protocol for self closing.
 
          Add *origin* parameter.
 
-   .. method:: close()
+   .. coroutinemethod:: close()
 
       Close underlying connector.
 
       Release all acquired resources.
+
+      .. versionchanged:: 0.21
+
+         The method is converted into coroutine (but technically
+         returns a future for keeping backward compatibility during
+         transition period).
 
    .. method:: detach()
 
@@ -706,9 +712,15 @@ BaseConnector
 
       .. versionadded:: 0.16
 
-   .. method:: close()
+   .. coroutinemethod:: close()
 
       Close all opened connections.
+
+      .. versionchanged:: 0.21
+
+         The method is converted into coroutine (but technically
+         returns a future for keeping backward compatibility during
+         transition period).
 
    .. coroutinemethod:: connect(request)
 

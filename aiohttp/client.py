@@ -423,6 +423,9 @@ class ClientSession:
         if not self.closed:
             self._connector.close()
             self._connector = None
+        ret = asyncio.Future(loop=self._loop)
+        ret.set_result(None)
+        return ret
 
     @property
     def closed(self):
@@ -467,7 +470,7 @@ class ClientSession:
 
         @asyncio.coroutine
         def __aexit__(self, exc_type, exc_val, exc_tb):
-            self.close()
+            yield from self.close()
 
 if PY_35:
     from collections.abc import Coroutine
