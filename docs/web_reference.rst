@@ -1395,6 +1395,12 @@ After that he may add a :term:`route` by calling :meth:`Resource.add_route`.
 
    router.add_resource(path).add_route(method, handler)
 
+Resource with a *name* is called *named resource*.
+The main purpose of *named resource* is constructing URL by route name for
+passing it into *template engine* for example::
+
+   url = app.router['resource_name'].url(query={'a': 1, 'b': 2})
+
 Resource classes hierarhy::
 
    AbstractResource
@@ -1410,6 +1416,9 @@ Resource classes hierarhy::
 
    Inherited from :class:`collections.abc.Sized` and
    :class:`collections.abc.Iterable`.
+
+   ``len(resource)`` returns amount of :term:`route`\s belongs to the resource,
+   ``for route in resource: ...`` allows to iterate over these routes.
 
    .. attribute:: name
 
@@ -1490,17 +1499,21 @@ Route has HTTP method (wildcard ``'*'`` is an option),
 
 Every route belong to some resource.
 
+Route classes hierarhy::
 
+   AbstractRoute
+     ResourceRoute
+     Route
+       PlainRoute
+       DynamicRoute
+       StaticRoute
+       SystemRoute
 
 User should not instantiate route classes by hand but can give *named
 route instance* by ``router[name]`` if he have added route by
 :meth:`UrlDispatcher.add_route` or :meth:`UrlDispatcher.add_static`
 calls with non-empty *name* parameter.
 
-The main usage of *named routes* is constructing URL by route name for
-passing it into *template engine* for example::
-
-   url = app.router['route_name'].url(query={'a': 1, 'b': 2})
 
 There are three concrete route classes:
 
