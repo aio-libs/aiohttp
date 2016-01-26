@@ -1418,7 +1418,7 @@ Resource classes hierarhy::
    :class:`collections.abc.Iterable`.
 
    ``len(resource)`` returns amount of :term:`route`\s belongs to the resource,
-   ``for route in resource: ...`` allows to iterate over these routes.
+   ``for route in resource`` allows to iterate over these routes.
 
    .. attribute:: name
 
