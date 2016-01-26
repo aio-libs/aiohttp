@@ -151,6 +151,7 @@ Contents
    logging
    gunicorn
    faq
+   new_router
    contributing
    changes
    glossary

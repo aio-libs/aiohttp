@@ -1,7 +1,7 @@
-=============================
-Router refactoring in 0.21
-=============================
+.. _aiohttp-router-refactoring-021:
 
+Router refactoring in 0.21
+==========================
 
 Rationale
 ---------
@@ -58,7 +58,7 @@ applications as well.
 Decoupling of *HTTP location* and *HTTP method* makes life easier.
 
 Backward compatibility
------------------------
+----------------------
 
 The refactoring is 99% compatible with previous implementation.
 
