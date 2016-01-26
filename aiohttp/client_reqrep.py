@@ -660,6 +660,8 @@ class ClientResponse:
 
     @asyncio.coroutine
     def release(self):
+        if self._closed:
+            return
         try:
             content = self.content
             if content is not None and not content.at_eof():
