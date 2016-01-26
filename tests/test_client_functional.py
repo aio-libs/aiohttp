@@ -316,7 +316,9 @@ def test_format_task_get(create_server, loop):
     client = aiohttp.ClientSession(loop=loop)
     task = loop.create_task(client.get(url))
     assert "{}".format(task)[:18] == "<Task pending coro"
-    yield from task
+    resp = yield from task
+    resp.close()
+    client.close()
 
 
 @pytest.mark.run_loop
