@@ -207,6 +207,13 @@ class ClientSession:
                 if max_redirects and redirects >= max_redirects:
                     resp.close()
                     break
+                else:
+                    # TODO: close the connection if BODY is large enough
+                    # Redirect with big BODY is forbidden by HTTP protocol
+                    # but malformed server may send illegal response.
+                    # Small BODIES with text like "Not Found" are still
+                    # perfectly fine and should be accepted.
+                    yield from resp.release()
 
                 # For 301 and 302, mimic IE behaviour, now changed in RFC.
                 # Details: https://github.com/kennethreitz/requests/pull/269
