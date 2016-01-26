@@ -264,6 +264,11 @@ class AbstractRoute(metaclass=abc.ABCMeta):
         return self._handler
 
     @property
+    @abc.abstractmethod
+    def name(self):
+        """Optional route's name, always equals to resource's name."""
+
+    @property
     def resource(self):
         return self._resource
 
