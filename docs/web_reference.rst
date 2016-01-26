@@ -1494,7 +1494,7 @@ Resource classes hierarhy::
 Route
 ^^^^^
 
-Route has HTTP method (wildcard ``'*'`` is an option),
+Route has *HTTP method* (wildcard ``'*'`` is an option),
 :term:`web-handler` and optional *expect handler*.
 
 Every route belong to some resource.
@@ -1554,6 +1554,11 @@ So the only non-deprecated and not internal route is
       The method exists for internal usage, end user unlikely need to
       call it.
 
+      .. note::
+
+         The method is kept for sake of backward compatibility, usually
+         you should use :meth:`Resource.match` instead.
+
    .. method:: url(*, query=None, **kwargs)
 
       Abstract method for constructing url handled by the route.
@@ -1564,6 +1569,12 @@ So the only non-deprecated and not internal route is
 
       Other available parameters depends on concrete route class and
       described in descendant classes.
+
+
+      .. note::
+
+         The method is kept for sake of backward compatibility, usually
+         you should use :meth:`Resource.url` instead.
 
    .. coroutinemethod:: handle_expect_header(request)
 
