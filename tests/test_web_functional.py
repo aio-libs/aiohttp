@@ -41,7 +41,8 @@ class WebFunctionalSetupMixin:
         return port
 
     @asyncio.coroutine
-    def create_server(self, method, path, handler=None, ssl_ctx=None):
+    def create_server(self, method, path, handler=None, ssl_ctx=None,
+                      logger=log.server_logger):
         app = web.Application(loop=self.loop)
         if handler:
             app.router.add_route(method, path, handler)
@@ -49,7 +50,8 @@ class WebFunctionalSetupMixin:
         port = self.find_unused_port()
         self.handler = app.make_handler(
             keep_alive_on=False,
-            access_log=log.access_logger)
+            access_log=log.access_logger,
+            logger=logger)
         srv = yield from self.loop.create_server(
             self.handler, '127.0.0.1', port, ssl=ssl_ctx)
         protocol = "https" if ssl_ctx else "http"
@@ -79,6 +81,7 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
         self.loop.run_until_complete(go())
 
     def test_handler_returns_not_response(self):
+        logger = mock.Mock()
 
         @asyncio.coroutine
         def handler(request):
@@ -86,13 +89,14 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
 
         @asyncio.coroutine
         def go():
-            _, _, url = yield from self.create_server('GET', '/', handler)
+            _, _, url = yield from self.create_server('GET', '/', handler,
+                                                      logger=logger)
             resp = yield from request('GET', url, loop=self.loop)
             self.assertEqual(500, resp.status)
             resp.close()
 
-        with mock.patch('aiohttp.server.server_logger'):
-            self.loop.run_until_complete(go())
+        self.loop.run_until_complete(go())
+        logger.exception.assert_called_with("Error handling request")
 
     def test_post_form(self):
 
