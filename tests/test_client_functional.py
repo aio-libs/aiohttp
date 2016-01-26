@@ -355,7 +355,7 @@ def test_history(create_app_and_client):
         assert len(resp.history) == 0
         assert resp.status == 200
     finally:
-        resp.release()
+        yield from resp.release()
 
     resp_redirect = yield from client.get('/redirect')
     try:
@@ -363,7 +363,7 @@ def test_history(create_app_and_client):
         assert resp_redirect.history[0].status == 301
         assert resp_redirect.status == 200
     finally:
-        resp_redirect.release()
+        yield from resp_redirect.release()
 
 
 @pytest.mark.run_loop
