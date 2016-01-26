@@ -726,7 +726,7 @@ class TestHttpClientConnector(unittest.TestCase):
         app = web.Application(loop=self.loop)
         app.router.add_route(method, path, handler)
 
-        self.handler = app.make_handler(keep_alive_on=False)
+        self.handler = app.make_handler(keep_alive_on=False, access_log=None)
         sock_path = os.path.join(tmpdir, 'socket.sock')
         srv = yield from self.loop.create_unix_server(
             self.handler, sock_path)
