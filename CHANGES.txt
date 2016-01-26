@@ -60,3 +60,5 @@ CHANGES
 - Use CORK/NODELAY in client API #748
 
 - ClientSession.close and Connector.close are coroutines now
+
+- Close client connection on exception in ClientResponse.release()
