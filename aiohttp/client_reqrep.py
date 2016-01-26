@@ -389,7 +389,7 @@ class ClientRequest:
                             yield from request.write(exc.value, drain=True)
                         break
                     except:
-                        self.response.close(True)
+                        self.response.close()
                         raise
 
                     if isinstance(result, asyncio.Future):
