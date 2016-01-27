@@ -155,6 +155,20 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
         finally:
             self._eof_waiter = None
 
+    def unread_data(self, data):
+        """ rollback reading some data from stream, inserting it to buffer head.
+        """
+        assert not self._eof, 'unread_data after feed_eof'
+
+        if not data:
+            return
+
+        if self._buffer_offset:
+            self._buffer[0] = self._buffer[0][self._buffer_offset:]
+            self._buffer_offset = 0
+        self._buffer.appendleft(data)
+        self._buffer_size += len(data)
+
     def feed_data(self, data):
         assert not self._eof, 'feed_data after feed_eof'
 
