@@ -56,7 +56,8 @@ class AsyncStreamReaderMixin:
             return AsyncStreamIterator(lambda: self.read(n))
 
         def iter_any(self):
-            """Returns an asynchronous iterator that yields slices of data as they come.
+            """Returns an asynchronous iterator that yields slices of data
+            as they come.
 
             .. versionadded:: Python-3.5 available for Python 3.5+ only
             """
