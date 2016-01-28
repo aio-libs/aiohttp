@@ -62,3 +62,5 @@ CHANGES
 - ClientSession.close and Connector.close are coroutines now
 
 - Close client connection on exception in ClientResponse.release()
+
+- Allow to read multipart parts without content-length specified #750
