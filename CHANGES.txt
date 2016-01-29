@@ -64,3 +64,5 @@ CHANGES
 - Close client connection on exception in ClientResponse.release()
 
 - Allow to read multipart parts without content-length specified #750
+
+- Add support for unix domain sockets to gunicorn worker #470
