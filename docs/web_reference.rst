@@ -1382,7 +1382,7 @@ unique *name* and at least one :term:`route`.
 5. If the end of *routing table* is reached and no *resource* /
    *route* pair found the *router* returns special :class:`SystemRoute`
    instance with  either *HTTP 404 Not Found* or *HTTP 405
-   Method Not Allowed* status code. Registerd :term:`web-handler` for
+   Method Not Allowed* status code. Registered :term:`web-handler` for
    *system route* raises corresponding :ref:`web exception
    <aiohttp-web-exceptions>`.
 
@@ -1401,7 +1401,7 @@ passing it into *template engine* for example::
 
    url = app.router['resource_name'].url(query={'a': 1, 'b': 2})
 
-Resource classes hierarhy::
+Resource classes hierarchy::
 
    AbstractResource
      Resource
@@ -1499,7 +1499,7 @@ Route has *HTTP method* (wildcard ``'*'`` is an option),
 
 Every route belong to some resource.
 
-Route classes hierarhy::
+Route classes hierarchy::
 
    AbstractRoute
      ResourceRoute
@@ -1770,7 +1770,7 @@ Utilities
                        ``None`` for HTTP connection.
 
    :param print: a callable compatible with :func:`print`. May be used
-                 to override stdout output or supppress it.
+                 to override stdout output or suppress it.
 
 
 Constants
