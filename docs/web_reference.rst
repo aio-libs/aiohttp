@@ -1464,6 +1464,29 @@ Resource classes hierarchy::
    A base class for new-style resources, inherits :class:`AbstractResource`.
 
 
+   .. method:: add_route(method, handler, *, expect_handler=None)
+
+      Add a :term:`web-handler` to resource.
+
+      :param str method: HTTP method for route. Should be one of
+                         ``'GET'``, ``'POST'``, ``'PUT'``,
+                         ``'DELETE'``, ``'PATCH'``, ``'HEAD'``,
+                         ``'OPTIONS'`` or ``'*'`` for any method.
+
+                         The parameter is case-insensitive, e.g. you
+                         can push ``'get'`` as well as ``'GET'``.
+
+                         The method should be unique for resource.
+
+      :param str path: route path. Should be started with slash (``'/'``).
+
+      :param callable handler: route handler.
+
+      :param coroutine expect_handler: optional *expect* header handler.
+
+      :returns: new :class:`ResourceRoute` instance.
+
+
 .. class:: PlainResource
 
    A new-style resource, inherited from :class:`Resource`.
