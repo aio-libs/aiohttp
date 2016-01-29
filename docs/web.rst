@@ -404,17 +404,28 @@ third-party library, :mod:`aiohttp_session`, that adds *session* support::
 
 .. versionadded:: 0.15
 
-By default, :mod:`aiohttp.web` simply responds with an ``HTTP/1.1 100 Continue``
-status code whenever a requests contains an *Expect* header; however, it is
-possible to specify a custom *Expect* handler on a per route basis.
+:mod:`aiohttp.web` supports *Expect* header. By default it sends
+``HTTP/1.1 100 Continue`` line to client, or raises
+:exc:`HTTPExpectationFailed` if header value is not equal to
+"100-continue". It is possible to specify custom *Expect* header
+handler on per route basis. This handler gets called if *Expect*
+header exist in request after receiving all headers and before
+processing application middlewares :ref:`aiohttp-web-middlewares` and
+route handler. Handler can return *None*, in that case the request
+processing continues as usual. If handler returns an instance of class
+:class:`StreamResponse`, *request handler* uses it as response. Also
+handler can raise a subclass of :exc:`HTTPException`. In this case all
+further processing will not happen and client will receive appropriate
+http response.
 
-This handler gets called **after** receiving the request headers, but **before**
-calling application :ref:`middlewares <aiohttp-web-middlewares>`, or route
-:ref:`handlers <aiohttp-web-handler>`.
+.. note::
+    A server that does not understand or is unable to comply with any of the
+    expectation values in the Expect field of a request MUST respond with
+    appropriate error status. The server MUST respond with a 417
+    (Expectation Failed) status if any of the expectations cannot be met or,
+    if there are other problems with the request, some other 4xx status.
 
-The *Expect* handler *may* return *None*, in which case the request processing
-continues as usual. If the handler returns an instance of
-class :class:`StreamResponse`, the *request handler* uses it as the response.
+    http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.20
 
 If all checks pass, the custom handler *must* write a *HTTP/1.1 100 Continue*
 status code before returning.
@@ -428,8 +439,11 @@ header:
        if request.version != aiohttp.HttpVersion11:
            return
 
+       if request.headers.get('EXPECT') != '100-continue':
+           raise HTTPExpectationFailed(text="Unknown Expect: %s" % expect)
+
        if request.headers.get('AUTHORIZATION') is None:
-           return web.HTTPForbidden()
+           raise HTTPForbidden()
 
        request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
