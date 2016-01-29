@@ -18,7 +18,8 @@ from types import MappingProxyType
 from . import hdrs
 from .abc import AbstractRouter, AbstractMatchInfo, AbstractView
 from .protocol import HttpVersion11
-from .web_exceptions import HTTPMethodNotAllowed, HTTPNotFound, HTTPNotModified
+from .web_exceptions import (HTTPMethodNotAllowed, HTTPNotFound,
+                             HTTPNotModified, HTTPExpectationFailed)
 from .web_reqrep import StreamResponse
 from .multidict import upstr
 
@@ -55,9 +56,17 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
 
 @asyncio.coroutine
 def _defaultExpectHandler(request):
-    """Default handler for Except: 100-continue"""
+    """Default handler for Except header.
+
+    Just send "100 Continue" to client.
+    raise HTTPExpectationFailed if value of header is not "100-continue"
+    """
+    expect = request.headers.get(hdrs.EXPECT)
     if request.version == HttpVersion11:
-        request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+        if expect.lower() == "100-continue":
+            request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+        else:
+            raise HTTPExpectationFailed(text="Unknown Expect: %s" % expect)
 
 
 class AbstractResource(Sized, Iterable):
