@@ -15,7 +15,7 @@ For this reason feature will not be implemented. But if you really want to
 use decorators just derive from web.Application and add desired method.
 
 
-How to create route that catches urls with givevn prefix?
+How to create route that catches urls with given prefix?
 ---------------------------------------------------------
 Try something like::
 
