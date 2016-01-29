@@ -68,3 +68,5 @@ CHANGES
 - Add support for unix domain sockets to gunicorn worker #470
 
 - Add test for default Expect handler #601
+
+- Add the first demo project
