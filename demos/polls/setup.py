@@ -7,7 +7,7 @@ from setuptools import find_packages, setup
 def read_version():
     regexp = re.compile(r"^__version__\W*=\W*'([\d.abrc]+)'")
     init_py = os.path.join(os.path.dirname(__file__),
-                           'aiohttp_polls', '__init__.py')
+                           'aiohttpdemo_polls', '__init__.py')
     with open(init_py) as f:
         for line in f:
             match = regexp.match(line)
