@@ -148,7 +148,8 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
             self.assertEqual(dct, data)
             data2 = yield from request.json(loads=json.loads)
             self.assertEqual(data, data2)
-            data3 = yield from request.json(loader=json.loads)
+            with self.assertWarns(DeprecationWarning):
+                data3 = yield from request.json(loader=json.loads)
             self.assertEqual(data, data3)
             resp = web.Response()
             resp.content_type = 'application/json'
