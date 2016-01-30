@@ -1,7 +1,7 @@
-=============================
-Router refactoring in 0.21
-=============================
+.. _aiohttp-router-refactoring-021:
 
+Router refactoring in 0.21
+==========================
 
 Rationale
 ---------
@@ -13,11 +13,11 @@ unique names if any.
 The main mistake with the design is coupling the **route** to
 ``(method, path)`` pair while really URL construction operates with
 **resources** (**location** is a synonym). HTTP method is not part of URI
-but applyed on sending HTTP request only.
+but applied on sending HTTP request only.
 
 Having different **route names** for the same path is confusing. Moreover
 **named routes** constructed for the same path should have unique
-nonoverlapping names which is cumbersome is certain situations.
+non overlapping names which is cumbersome is certain situations.
 
 From other side sometimes it's desirable to bind several HTTP methods
 to the same web handler. For *v1* router it can be solved by passing '*'
@@ -37,7 +37,7 @@ The name is **unique** in router context.
 
 *Resource* has **routes**.
 
-*Route* correspons to *HTTP method* and :term:`web-handler` for the method::
+*Route* corresponds to *HTTP method* and :term:`web-handler` for the method::
 
    route = resource.add_route('GET', handler)
 
@@ -58,7 +58,7 @@ applications as well.
 Decoupling of *HTTP location* and *HTTP method* makes life easier.
 
 Backward compatibility
------------------------
+----------------------
 
 The refactoring is 99% compatible with previous implementation.
 

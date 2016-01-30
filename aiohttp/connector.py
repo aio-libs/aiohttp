@@ -222,14 +222,16 @@ class BaseConnector(object):
 
     def close(self):
         """Close all opened transports."""
+        ret = asyncio.Future(loop=self._loop)
+        ret.set_result(None)
         if self._closed:
-            return
+            return ret
         self._closed = True
 
         try:
             if hasattr(self._loop, 'is_closed'):
                 if self._loop.is_closed():
-                    return
+                    return ret
 
             for key, data in self._conns.items():
                 for transport, proto, t0 in data:
@@ -245,6 +247,7 @@ class BaseConnector(object):
             self._conns.clear()
             self._acquired.clear()
             self._cleanup_handle = None
+        return ret
 
     @property
     def closed(self):

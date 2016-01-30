@@ -373,6 +373,7 @@ class ClientRequest:
 
         try:
             if asyncio.iscoroutine(self.body):
+                request.transport.set_tcp_nodelay(True)
                 exc = None
                 value = None
                 stream = self.body
@@ -388,7 +389,7 @@ class ClientRequest:
                             yield from request.write(exc.value, drain=True)
                         break
                     except:
-                        self.response.close(True)
+                        self.response.close()
                         raise
 
                     if isinstance(result, asyncio.Future):
@@ -407,12 +408,14 @@ class ClientRequest:
                             type(result))
 
             elif isinstance(self.body, asyncio.StreamReader):
+                request.transport.set_tcp_nodelay(True)
                 chunk = yield from self.body.read(streams.DEFAULT_LIMIT)
                 while chunk:
                     yield from request.write(chunk, drain=True)
                     chunk = yield from self.body.read(streams.DEFAULT_LIMIT)
 
             elif isinstance(self.body, streams.DataQueue):
+                request.transport.set_tcp_nodelay(True)
                 while True:
                     try:
                         chunk = yield from self.body.read()
@@ -427,6 +430,7 @@ class ClientRequest:
                 while chunk:
                     request.write(chunk)
                     chunk = self.body.read(self.chunked)
+                request.transport.set_tcp_nodelay(True)
 
             else:
                 if isinstance(self.body, (bytes, bytearray)):
@@ -434,6 +438,8 @@ class ClientRequest:
 
                 for chunk in self.body:
                     request.write(chunk)
+                request.transport.set_tcp_nodelay(True)
+
         except Exception as exc:
             new_exc = aiohttp.ClientRequestError(
                 'Can not write request body for %s' % self.url)
@@ -441,6 +447,7 @@ class ClientRequest:
             new_exc.__cause__ = exc
             reader.set_exception(new_exc)
         else:
+            assert request.transport.tcp_nodelay
             try:
                 ret = request.write_eof()
                 # NB: in asyncio 3.4.1+ StreamWriter.drain() is coroutine
@@ -458,6 +465,7 @@ class ClientRequest:
         self._writer = None
 
     def send(self, writer, reader):
+        writer.set_tcp_cork(True)
         request = aiohttp.Request(writer, self.method, self.path, self.version)
 
         if self.compress:
@@ -652,12 +660,18 @@ class ClientResponse:
 
     @asyncio.coroutine
     def release(self):
+        if self._closed:
+            return
         try:
             content = self.content
             if content is not None and not content.at_eof():
                 chunk = yield from content.readany()
                 while chunk is not EOF_MARKER or chunk:
                     chunk = yield from content.readany()
+        except Exception:
+            self._connection.close()
+            self._connection = None
+            raise
         finally:
             self._closed = True
             if self._connection is not None:
