@@ -41,22 +41,20 @@ Client example::
     import asyncio
     import aiohttp
 
-    async def fetch_page(client, url):
+    async def fetch_page(session, url):
         with aiohttp.Timeout(10):
-            async with client.get(url) as response:
+            async with session.get(url) as response:
                 assert response.status == 200
                 return await response.read()
 
     loop = asyncio.get_event_loop()
-    client = aiohttp.ClientSession(loop=loop)
-    content = loop.run_until_complete(
-        fetch_page(client, 'http://python.org'))
-    print(content)
-    client.close()
+    with aiohttp.ClientSession(loop=loop) as session:
+        content = loop.run_until_complete(
+            fetch_page(session, 'http://python.org'))
+        print(content)
 
 Server example::
 
-    import asyncio
     from aiohttp import web
 
     async def handle(request):
@@ -64,21 +62,10 @@ Server example::
         text = "Hello, " + name
         return web.Response(body=text.encode('utf-8'))
 
-    async def init(loop):
-        app = web.Application(loop=loop)
-        app.router.add_route('GET', '/{name}', handle)
+    app = web.Application()
+    app.router.add_route('GET', '/{name}', handle)
 
-        srv = await loop.create_server(app.make_handler(),
-                                            '127.0.0.1', 8080)
-        print("Server started at http://127.0.0.1:8080")
-        return srv
-
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(init(loop))
-    try:
-        loop.run_forever()
-    except KeyboardInterrupt:
-        pass
+    web.run_app(app)
 
 .. note::
 
@@ -163,9 +150,10 @@ Contents
    api
    logging
    gunicorn
+   faq
+   new_router
    contributing
    changes
-   Python 3.3 support <python33>
    glossary
 
 Indices and tables

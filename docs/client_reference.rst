@@ -340,11 +340,17 @@ The client session supports context manager protocol for self closing.
 
          Add *origin* parameter.
 
-   .. method:: close()
+   .. coroutinemethod:: close()
 
       Close underlying connector.
 
       Release all acquired resources.
+
+      .. versionchanged:: 0.21
+
+         The method is converted into coroutine (but technically
+         returns a future for keeping backward compatibility during
+         transition period).
 
    .. method:: detach()
 
@@ -444,6 +450,10 @@ Usage::
              assert resp.status == 200
              print(await resp.text())
 
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.request`.
+
 
 .. coroutinefunction:: get(url, **kwargs)
 
@@ -454,6 +464,10 @@ Usage::
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
    :return: :class:`ClientResponse` or derived from
+
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.get`.
 
 
 .. coroutinefunction:: options(url, **kwargs)
@@ -466,6 +480,10 @@ Usage::
 
    :return: :class:`ClientResponse` or derived from
 
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.options`.
+
 
 .. coroutinefunction:: head(url, **kwargs)
 
@@ -476,6 +494,10 @@ Usage::
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
    :return: :class:`ClientResponse` or derived from
+
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.head`.
 
 
 .. coroutinefunction:: delete(url, **kwargs)
@@ -488,6 +510,10 @@ Usage::
 
    :return: :class:`ClientResponse` or derived from
 
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.delete`.
+
 
 .. coroutinefunction:: post(url, *, data=None, **kwargs)
 
@@ -498,6 +524,10 @@ Usage::
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
    :return: :class:`ClientResponse` or derived from
+
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.post`.
 
 
 .. coroutinefunction:: put(url, *, data=None, **kwargs)
@@ -510,6 +540,10 @@ Usage::
 
    :return: :class:`ClientResponse` or derived from
 
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.put`.
+
 
 .. coroutinefunction:: patch(url, *, data=None, **kwargs)
 
@@ -520,6 +554,10 @@ Usage::
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
    :return: :class:`ClientResponse` or derived from
+
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.patch`.
 
 
 .. coroutinefunction:: ws_connect(url, *, protocols=(), \
@@ -580,7 +618,12 @@ Usage::
 
       Add *headers* parameter.
 
+   .. deprecated:: 0.21
 
+      Use :meth:`ClientSession.ws_connect`.
+
+
+.. _aiohttp-client-reference-connectors:
 
 Connectors
 ----------
@@ -669,9 +712,15 @@ BaseConnector
 
       .. versionadded:: 0.16
 
-   .. method:: close()
+   .. coroutinemethod:: close()
 
       Close all opened connections.
+
+      .. versionchanged:: 0.21
+
+         The method is converted into coroutine (but technically
+         returns a future for keeping backward compatibility during
+         transition period).
 
    .. coroutinemethod:: connect(request)
 
@@ -998,6 +1047,18 @@ Response object
    .. attribute:: reason
 
       HTTP status reason of response (:class:`str`), e.g. ``"OK"``.
+
+   .. attribute:: host
+
+      Host part of requested url (:class:`str`).
+
+   .. attribute:: method
+
+      Request's method (:class:`str`).
+
+   .. attribute:: url
+
+      URL of request (:class:`str`).
 
    .. attribute:: connection
 

@@ -251,14 +251,14 @@ like one using :meth:`Request.copy`.
          The method **does** store read data internally, subsequent
          :meth:`~Request.text` call will return the same value.
 
-   .. coroutinemethod:: json(*, loader=json.loads)
+   .. coroutinemethod:: json(*, loads=json.loads)
 
       Read request body decoded as *json*.
 
       The method is just a boilerplate :ref:`coroutine <coroutine>`
       implemented as::
 
-         async def json(self, *, loader=json.loads):
+         async def json(self, *, loads=json.loads):
              body = await self.text()
              return loader(body)
 
@@ -1033,7 +1033,22 @@ duplicated like one using :meth:`Application.copy`.
       We suggest keeping a list of long running handlers in
       :class:`Application` dictionary.
 
-      .. seealso:: :ref:`aiohttp-web-graceful-shutdown`
+      .. seealso:: :ref:`aiohttp-web-graceful-shutdown` and :attr:`on_cleanup`.
+
+   .. attribute:: on_cleanup
+
+      A :class:`~aiohttp.signals.Signal` that is fired on application cleanup.
+
+      Subscribers may use the signal for gracefully closing
+      connections to database server etc.
+
+      Signal handlers should have the following signature::
+
+          async def on_cleanup(app):
+              pass
+
+      .. seealso:: :ref:`aiohttp-web-graceful-shutdown` and :attr:`on_shutdown`.
+
 
    .. method:: make_handler(**kwargs)
 
@@ -1063,17 +1078,19 @@ duplicated like one using :meth:`Application.copy`.
       The purpose of the method is calling :attr:`on_shutdown` signal
       handlers.
 
-   .. coroutinemethod:: finish()
+   .. coroutinemethod:: cleanup()
 
       A :ref:`coroutine<coroutine>` that should be called on
       server stopping but after :meth:`shutdown`.
 
-      This method executes functions registered by
-      :meth:`register_on_finish` in LIFO order.
+      The purpose of the method is calling :attr:`on_cleanup` signal
+      handlers.
 
-      If callback raises an exception, the error will be stored by
-      :meth:`~asyncio.BaseEventLoop.call_exception_handler` with keys:
-      *message*, *exception*, *application*.
+   .. coroutinemethod:: finish()
+
+      A deprecated alias for :meth:`cleanup`.
+
+      .. deprecated:: 0.21
 
    .. method:: register_on_finish(self, func, *args, **kwargs):
 
@@ -1087,6 +1104,10 @@ duplicated like one using :meth:`Application.copy`.
 
       *func* may be either regular function or :ref:`coroutine<coroutine>`,
       :meth:`finish` will un-yield (`await`) the later.
+
+      .. deprecated:: 0.21
+
+         Use :attr:`on_cleanup` instead: ``app.on_cleanup.append(handler)``.
 
    .. note::
 
@@ -1153,6 +1174,21 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
    .. seealso:: :ref:`Route classes <aiohttp-web-route>`
 
+   .. method:: add_resource(path, *, name=None)
+
+      Append a :term:`resource` to the end of route table.
+
+      *path* may be either *constant* string like ``'/a/b/c'`` or
+      *variable rule* like ``'/a/{var}'`` (see
+      :ref:`handling variable pathes<aiohttp-web-variable-handler>`)
+
+      :param str path: resource path spec.
+
+      :param str name: optional resource name.
+
+      :return: created resource instance (:class:`PlainResource` or
+               :class:`DynamicResource`).
+
    .. method:: add_route(method, path, handler, *, \
                          name=None, expect_handler=None)
 
@@ -1213,8 +1249,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       :param str prefix: URL path prefix for handled static files
 
-      :param str path: path to the folder in file system that contains
-                       handled static files.
+      :param path: path to the folder in file system that contains
+                   handled static files, :class:`str` or :class:`pathlib.Path`.
 
       :param str name: optional route name.
 
@@ -1286,25 +1322,194 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       .. versionadded:: 0.18
 
-   .. method:: named_routes()
+   .. method:: named_resources()
 
       Returns a :obj:`dict`-like :class:`types.MappingProxyType` *view* over
-      *all* named routes.
+      *all* named **resources**.
 
-      The view maps every named route's :attr:`Route.name` attribute to the
-      :class:`Route`. It supports the usual :obj:`dict`-like operations, except
-      for any mutable operations (i.e. it's **read-only**)::
+      The view maps every named resources's **name** to the
+      :class:`BaseResource` instance. It supports the usual
+      :obj:`dict`-like operations, except for any mutable operations
+      (i.e. it's **read-only**)::
 
-          len(app.router.named_routes())
+          len(app.router.named_resources())
 
-          for name, route in app.router.named_routes().items():
-              print(name, route)
+          for name, resource in app.router.named_resources().items():
+              print(name, resource)
 
-          "route_name" in app.router.named_routes()
+          "name" in app.router.named_resources()
 
-          app.router.named_routes()["route_name"]
+          app.router.named_resources()["name"]
+
+   .. method:: named_routes()
+
+      An alias for :meth:`named_resources` starting from aiohttp 0.21.
 
       .. versionadded:: 0.19
+
+      .. versionchanged:: 0.21
+
+         The method is an alias for :meth:`named_resources`, so it
+         iterates over resources instead of routes.
+
+      .. deprecated:: 0.21
+
+         Please use named **resources** instead of named **routes**.
+
+         Several routes which belongs to the same resource shares the
+         resource name.
+
+
+.. _aiohttp-web-resource:
+
+Resource
+^^^^^^^^
+
+Default router :class:`UrlDispatcher` operates with :term:`resource`\s.
+
+Resource is an item in *routing table* which has a *path*, an optional
+unique *name* and at least one :term:`route`.
+
+:term:`web-handler` lookup is performed in the following way:
+
+1. Router iterates over *resources* one-by-one.
+2. If *resource* matches to requested URL the resource iterates over
+   own *routes*.
+3. If route matches to requested HTTP method (or ``'*'`` wildcard) the
+   route's handler is used as found :term:`web-handler`. The lookup is
+   finished.
+4. Otherwise router tries next resource from the *routing table*.
+5. If the end of *routing table* is reached and no *resource* /
+   *route* pair found the *router* returns special :class:`SystemRoute`
+   instance with  either *HTTP 404 Not Found* or *HTTP 405
+   Method Not Allowed* status code. Registered :term:`web-handler` for
+   *system route* raises corresponding :ref:`web exception
+   <aiohttp-web-exceptions>`.
+
+User should never instantiate resource classes but give it by
+:meth:`UrlDispatcher.add_resource` call.
+
+After that he may add a :term:`route` by calling :meth:`Resource.add_route`.
+
+:meth:`UrlDispatcher.add_route` is just shortcut for::
+
+   router.add_resource(path).add_route(method, handler)
+
+Resource with a *name* is called *named resource*.
+The main purpose of *named resource* is constructing URL by route name for
+passing it into *template engine* for example::
+
+   url = app.router['resource_name'].url(query={'a': 1, 'b': 2})
+
+Resource classes hierarchy::
+
+   AbstractResource
+     Resource
+       PlainResource
+       DynamicResource
+     ResourceAdapter
+
+
+.. class:: AbstractResource
+
+   A base class for all resources.
+
+   Inherited from :class:`collections.abc.Sized` and
+   :class:`collections.abc.Iterable`.
+
+   ``len(resource)`` returns amount of :term:`route`\s belongs to the resource,
+   ``for route in resource`` allows to iterate over these routes.
+
+   .. attribute:: name
+
+      Read-only *name* of resource or ``None``.
+
+   .. method:: match(path)
+
+      :param str path: *path* part of requested URL.
+
+      :return: :class:`dict` with info for given *path* or
+               ``None`` if route cannot process the path.
+
+   .. method:: resolve(method, path)
+
+      Resolve resource by finding appropriate :term:`web-handler` for
+      ``(method, path)`` combination.
+
+      Calls :meth:`match` internally.
+
+      :param str method: requested HTTP method.
+
+      :return: (*match_info*, *allowed_methods*) pair.
+
+               *allowed_methods* is a :class:`set` or HTTP methods accepted by
+               resource.
+
+               *match_info* is either :class:`UrlMappingMatchInfo` if
+               request is resolved or ``None`` if no :term:`route` is
+               found.
+
+   .. method:: url(**kwargs)
+
+      Construct an URL for route with additional params.
+
+      **kwargs** depends on a list accepted by inherited resource
+      class parameters.
+
+      :return: :class:`str` -- resulting URL.
+
+
+.. class:: Resource
+
+   A base class for new-style resources, inherits :class:`AbstractResource`.
+
+
+   .. method:: add_route(method, handler, *, expect_handler=None)
+
+      Add a :term:`web-handler` to resource.
+
+      :param str method: HTTP method for route. Should be one of
+                         ``'GET'``, ``'POST'``, ``'PUT'``,
+                         ``'DELETE'``, ``'PATCH'``, ``'HEAD'``,
+                         ``'OPTIONS'`` or ``'*'`` for any method.
+
+                         The parameter is case-insensitive, e.g. you
+                         can push ``'get'`` as well as ``'GET'``.
+
+                         The method should be unique for resource.
+
+      :param str path: route path. Should be started with slash (``'/'``).
+
+      :param callable handler: route handler.
+
+      :param coroutine expect_handler: optional *expect* header handler.
+
+      :returns: new :class:`ResourceRoute` instance.
+
+
+.. class:: PlainResource
+
+   A new-style resource, inherited from :class:`Resource`.
+
+   The class corresponds to resources with plain-text matching,
+   ``'/path/to'`` for example.
+
+
+.. class:: DynamicResource
+
+   A new-style resource, inherited from :class:`Resource`.
+
+   The class corresponds to resources with
+   :ref:`variable <aiohttp-web-variable-handler>` matching,
+   e.g. ``'/path/{to}/{param}'`` etc.
+
+
+.. class:: ResourceAdapter
+
+   An adapter for old-style routes.
+
+   The adapter is used by ``router.register_route()`` call, the method
+   is deprecated and will be removed eventually.
 
 
 .. _aiohttp-web-route:
@@ -1312,62 +1517,95 @@ Router is any object that implements :class:`AbstractRouter` interface.
 Route
 ^^^^^
 
-Default router :class:`UrlDispatcher` operates with *routes*.
+Route has *HTTP method* (wildcard ``'*'`` is an option),
+:term:`web-handler` and optional *expect handler*.
 
-User should not instantiate route classes by hand but can give *named
-route instance* by ``router[name]`` if he have added route by
-:meth:`UrlDispatcher.add_route` or :meth:`UrlDispatcher.add_static`
-calls with non-empty *name* parameter.
+Every route belong to some resource.
 
-The main usage of *named routes* is constructing URL by route name for
-passing it into *template engine* for example::
+Route classes hierarchy::
 
-   url = app.router['route_name'].url(query={'a': 1, 'b': 2})
+   AbstractRoute
+     ResourceRoute
+     Route
+       PlainRoute
+       DynamicRoute
+       StaticRoute
+       SystemRoute
 
-There are three concrete route classes:
+:class:`ResourceRoute` is the route used for new-style resources,
+:class:`PlainRoute` and :class:`DynamicRoute` serves old-style
+routes kept for backward compatibility only.
 
-* :class:`PlainRoute` for urls without :ref:`variable
-  pathes<aiohttp-web-variable-handler>` spec.
+:class:`StaticRoute` is used for static file serving
+(:meth:`UrlDispatcher.add_static`).  Don't rely on the route
+implementation too hard, static file handling most likely will be
+rewritten eventually.
 
-* :class:`DynamicRoute` for urls with :ref:`variable
-  pathes<aiohttp-web-variable-handler>` spec.
+:class:`SystemRoute` exists for representing errors when requested url
+is not found or requested http method is not supported.  It's very
+deep implementation details for now actually.
 
-* :class:`StaticRoute` for static file handlers.
+So the only non-deprecated and not internal route is
+:class:`ResourceRoute` only.
 
-.. class:: Route
+.. class:: AbstractRoute
 
    Base class for routes served by :class:`UrlDispatcher`.
 
    .. attribute:: method
 
-   HTTP method handled by the route, e.g. *GET*, *POST* etc.
+      HTTP method handled by the route, e.g. *GET*, *POST* etc.
 
    .. attribute:: handler
 
-   :ref:`handler<aiohttp-web-handler>` that processes the route.
+      :ref:`handler<aiohttp-web-handler>` that processes the route.
 
    .. attribute:: name
 
-   Name of the route.
+      Name of the route, always equals to name of resource which owns the route.
+
+   .. attribute:: resource
+
+      Resource instance which holds the route.
 
    .. method:: match(path)
 
-   Abstract method, accepts *URL path* and returns :class:`dict` with
-   parsed *path parts* for :class:`UrlMappingMatchInfo` or ``None`` if
-   the route cannot handle given *path*.
+      Abstract method, accepts *URL path* and returns :class:`dict`
+      with parsed *path parts* for :class:`UrlMappingMatchInfo` or
+      ``None`` if the route cannot handle given *path*.
 
-   The method exists for internal usage, end user unlikely need to call it.
+      The method exists for internal usage, end user unlikely need to
+      call it.
+
+      .. note::
+
+         The method is kept for sake of backward compatibility, usually
+         you should use :meth:`Resource.match` instead.
 
    .. method:: url(*, query=None, **kwargs)
 
-   Abstract method for constructing url handled by the route.
+      Abstract method for constructing url handled by the route.
 
-   *query* is a mapping or list of *(name, value)* pairs for
-   specifying *query* part of url (parameter is processed by
-   :func:`~urllib.parse.urlencode`).
+      *query* is a mapping or list of *(name, value)* pairs for
+      specifying *query* part of url (parameter is processed by
+      :func:`~urllib.parse.urlencode`).
 
-   Other available parameters depends on concrete route class and
-   described in descendant classes.
+      Other available parameters depends on concrete route class and
+      described in descendant classes.
+
+
+      .. note::
+
+         The method is kept for sake of backward compatibility, usually
+         you should use :meth:`Resource.url` instead.
+
+   .. coroutinemethod:: handle_expect_header(request)
+
+      ``100-continue`` handler.
+
+.. class:: ResourceRoute
+
+   The route class for handling different HTTP methods for :class:`Resource`.
 
 .. class:: PlainRoute
 
@@ -1375,10 +1613,10 @@ There are three concrete route classes:
 
    .. method:: url(*, parts, query=None)
 
-   Construct url, doesn't accepts extra parameters::
+       Construct url, doesn't accepts extra parameters::
 
-      >>> route.url(query={'d': 1, 'e': 2})
-      '/a/b/c/?d=1&e=2'
+          >>> route.url(query={'d': 1, 'e': 2})
+          '/a/b/c/?d=1&e=2'
 
 .. class:: DynamicRoute
 
@@ -1387,11 +1625,11 @@ There are three concrete route classes:
 
    .. method:: url(*, parts, query=None)
 
-   Construct url with given *dynamic parts*::
+      Construct url with given *dynamic parts*::
 
-       >>> route.url(parts={'name1': 'b', 'name2': 'c'},
-                     query={'d': 1, 'e': 2})
-       '/a/b/c/?d=1&e=2'
+          >>> route.url(parts={'name1': 'b', 'name2': 'c'},
+                        query={'d': 1, 'e': 2})
+          '/a/b/c/?d=1&e=2'
 
 
 .. class:: StaticRoute
@@ -1401,10 +1639,10 @@ There are three concrete route classes:
 
    .. method:: url(*, filename, query=None)
 
-   Construct url for given *filename*::
+      Construct url for given *filename*::
 
-      >>> route.url(filename='img/logo.png', query={'param': 1})
-      '/path/to/static/img/logo.png?param=1'
+         >>> route.url(filename='img/logo.png', query={'param': 1})
+         '/path/to/static/img/logo.png?param=1'
 
 
 .. class:: SystemRoute
@@ -1415,8 +1653,8 @@ There are three concrete route classes:
 
    .. method:: url()
 
-   Always raises :exc:`RuntimeError`, :class:`SystemRoute` should not
-   be used in url construction expressions.
+      Always raises :exc:`RuntimeError`, :class:`SystemRoute` should not
+      be used in url construction expressions.
 
 
 MatchInfo
@@ -1436,9 +1674,17 @@ In general the result may be any object derived from
    Inherited from :class:`dict` and :class:`AbstractMatchInfo`. Dict
    items are given from :meth:`Route.match` call return value.
 
+   .. attribute:: expect_handler
+
+      A coroutine for handling ``100-continue``.
+
+   .. attribute:: handler
+
+      A coroutine for handling request.
+
    .. attribute:: route
 
-   :class:`Route` instance for url matching.
+      :class:`Route` instance for url matching.
 
 
 View
@@ -1509,6 +1755,45 @@ Utilities
       *MIME type* of uploaded file, ``'text/plain'`` by default.
 
    .. seealso:: :ref:`aiohttp-web-file-upload`
+
+
+.. function:: run_app(app, *, host='0.0.0.0', port=None, loop=None, \
+                      shutdown_timeout=60.0, ssl_context=None, \
+                      print=print)
+
+   An utility function for running an application, serving it until
+   keyboard interrupt and performing a
+   :ref:`aiohttp-web-graceful-shutdown`.
+
+   Suitable as handy tool for scaffolding aiohttp based projects.
+   Perhaps production config will use more sophisticated runner but it
+   good enough at least at very beginning stage.
+
+   The function uses *app.loop* as event loop to run.
+
+   :param app: :class:`Application` instance to run
+
+   :param str host: host for HTTP server, ``'0.0.0.0'`` by default
+
+   :param int port: port for HTTP server. By default is ``8080`` for
+                    plain text HTTP and ``8443`` for HTTP via SSL
+                    (when *ssl_context* parameter is specified).
+
+   :param int shutdown_timeout: a delay to wait for graceful server
+                                shutdown before disconnecting all
+                                open client sockets hard way.
+
+                                A system with properly
+                                :ref:`aiohttp-web-graceful-shutdown`
+                                implemented never waits for this
+                                timeout but closes a server in a few
+                                milliseconds.
+
+   :param ssl_context: :class:`ssl.SSLContext` for HTTPS server,
+                       ``None`` for HTTP connection.
+
+   :param print: a callable compatible with :func:`print`. May be used
+                 to override stdout output or suppress it.
 
 
 Constants

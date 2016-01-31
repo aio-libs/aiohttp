@@ -371,6 +371,49 @@ class TestStreamReader(unittest.TestCase):
         self.assertRaises(
             ValueError, self.loop.run_until_complete, stream.readexactly(2))
 
+    def test_unread_data(self):
+        stream = self._make_one()
+        stream.feed_data(b'line1')
+        stream.feed_data(b'line2')
+        stream.feed_data(b'onemoreline')
+
+        data = self.loop.run_until_complete(stream.read(5))
+        self.assertEqual(b'line1', data)
+
+        stream.unread_data(data)
+
+        data = self.loop.run_until_complete(stream.read(5))
+        self.assertEqual(b'line1', data)
+
+        data = self.loop.run_until_complete(stream.read(4))
+        self.assertEqual(b'line', data)
+
+        stream.unread_data(b'line1line')
+
+        data = b''
+        while len(data) < 10:
+            data += self.loop.run_until_complete(stream.read(10))
+        self.assertEqual(b'line1line2', data)
+
+        data = self.loop.run_until_complete(stream.read(7))
+        self.assertEqual(b'onemore', data)
+
+        stream.unread_data(data)
+
+        data = b''
+        while len(data) < 11:
+            data += self.loop.run_until_complete(stream.read(11))
+        self.assertEqual(b'onemoreline', data)
+
+        stream.unread_data(b'line')
+        data = self.loop.run_until_complete(stream.read(4))
+        self.assertEqual(b'line', data)
+
+        stream.feed_eof()
+        stream.unread_data(b'at_eof')
+        data = self.loop.run_until_complete(stream.read(6))
+        self.assertEqual(b'at_eof', data)
+
     def test_exception(self):
         stream = self._make_one()
         self.assertIsNone(stream.exception())

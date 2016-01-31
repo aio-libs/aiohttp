@@ -7,3 +7,68 @@ CHANGES
 - Introduce on_shutdown signal #722
 
 - Implement raw input headers #726
+
+- Implement web.run_app utility function #734
+
+- Introduce on_cleanup signal
+
+- Deprecate Application.finish() / Application.register_on_finish() in favor of
+  on_cleanup.
+
+- Get rid of bare aiohttp.request(), aiohttp.get() and family in docs #729
+
+- Deprecate bare aiohttp.request(), aiohttp.get() and family #729
+
+- Refactor keep-alive support #737:
+
+  - Enable keepalive for HTTP 1.0 by default
+
+  - Disable it for HTTP 0.9 (who cares about 0.9, BTW?)
+  
+  - For keepalived connections
+
+      - Send `Connection: keep-alive` for HTTP 1.0 only
+
+      - don't send `Connection` header for HTTP 1.1
+
+  - For non-keepalived connections
+
+      - Send `Connection: close` for HTTP 1.1 only
+
+      - don't send `Connection` header for HTTP 1.0
+
+- Add version parameter to ClientSession constructor,
+  deprecate it for session.request() and family #736  
+
+- Enable access log by default #735
+
+- Deprecate app.router.register_route() (the method was not documented
+  intentionally BTW).
+
+- Deprecate app.router.named_routes() in favor of app.router.named_resources()
+
+- route.add_static accepts pathlib.Path now #743
+
+- Add command line support: `$ python -m aiohttp.web package.main` #740
+
+- FAQ section was added to docs. Enjoy and fill free to contribute new topics
+
+- Add async context manager support to ClientSession
+
+- Document ClientResponse's host, method, url properties
+
+- Use CORK/NODELAY in client API #748
+
+- ClientSession.close and Connector.close are coroutines now
+
+- Close client connection on exception in ClientResponse.release()
+
+- Allow to read multipart parts without content-length specified #750
+
+- Add support for unix domain sockets to gunicorn worker #470
+
+- Add test for default Expect handler #601
+
+- Add the first demo project
+
+- Rename `loader` keyword argument in `web.Request.json` method. #646
