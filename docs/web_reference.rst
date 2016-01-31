@@ -1282,8 +1282,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
       The method never raises exception, but returns
       :class:`AbstractMatchInfo` instance with:
 
-      1. :attr:`~AbstractMatchInfo.route` assigned to
-         :class:`SystemRoute` instance
+      1. :attr:`~AbstractMatchInfo.http_exception` assigned to
+         :exc:`HTTPException` instance.
       2. :attr:`~AbstractMatchInfo.handler` which raises
          :exc:`HTTPNotFound` or :exc:`HTTPMethodNotAllowed` on handler's
          execution if there is no registered route for *request*.
@@ -1380,11 +1380,11 @@ unique *name* and at least one :term:`route`.
    finished.
 4. Otherwise router tries next resource from the *routing table*.
 5. If the end of *routing table* is reached and no *resource* /
-   *route* pair found the *router* returns special :class:`SystemRoute`
-   instance with  either *HTTP 404 Not Found* or *HTTP 405
-   Method Not Allowed* status code. Registered :term:`web-handler` for
-   *system route* raises corresponding :ref:`web exception
-   <aiohttp-web-exceptions>`.
+   *route* pair found the *router* returns special :class:`AbstractMatchInfo`
+   instance with :attr:`AbstractMatchInfo.http_exception` is not ``None``
+   but :exc:`HTTPException` with  either *HTTP 404 Not Found* or
+   *HTTP 405 Method Not Allowed* status code.
+   Registered :attr:`AbstractMatchInfo.handler` raises this exception on call.
 
 User should never instantiate resource classes but give it by
 :meth:`UrlDispatcher.add_resource` call.
@@ -1530,7 +1530,6 @@ Route classes hierarchy::
        PlainRoute
        DynamicRoute
        StaticRoute
-       SystemRoute
 
 :class:`ResourceRoute` is the route used for new-style resources,
 :class:`PlainRoute` and :class:`DynamicRoute` serves old-style
@@ -1540,10 +1539,6 @@ routes kept for backward compatibility only.
 (:meth:`UrlDispatcher.add_static`).  Don't rely on the route
 implementation too hard, static file handling most likely will be
 rewritten eventually.
-
-:class:`SystemRoute` exists for representing errors when requested url
-is not found or requested http method is not supported.  It's very
-deep implementation details for now actually.
 
 So the only non-deprecated and not internal route is
 :class:`ResourceRoute` only.
@@ -1643,18 +1638,6 @@ So the only non-deprecated and not internal route is
 
          >>> route.url(filename='img/logo.png', query={'param': 1})
          '/path/to/static/img/logo.png?param=1'
-
-
-.. class:: SystemRoute
-
-   The route class for internal purposes.
-
-   Now it has used for handling *404: Not Found* and *405: Method Not Allowed*.
-
-   .. method:: url()
-
-      Always raises :exc:`RuntimeError`, :class:`SystemRoute` should not
-      be used in url construction expressions.
 
 
 MatchInfo
