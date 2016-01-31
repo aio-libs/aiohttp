@@ -409,6 +409,11 @@ class TestStreamReader(unittest.TestCase):
         data = self.loop.run_until_complete(stream.read(4))
         self.assertEqual(b'line', data)
 
+        stream.feed_eof()
+        stream.unread_data(b'at_eof')
+        data = self.loop.run_until_complete(stream.read(6))
+        self.assertEqual(b'at_eof', data)
+
     def test_exception(self):
         stream = self._make_one()
         self.assertIsNone(stream.exception())
