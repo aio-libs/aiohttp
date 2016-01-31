@@ -69,6 +69,9 @@ class Stream(object):
     def read(self, size=None):
         return self.content.read(size)
 
+    def at_eof(self):
+        return self.content.tell() == len(self.content.getbuffer())
+
     @asyncio.coroutine
     def readline(self):
         return self.content.readline()
@@ -190,6 +193,47 @@ class PartReaderTestCase(TestCase):
             self.assertEqual(c2, b'World')
             c3 = yield from obj.read_chunk(8)
             self.assertEqual(c3, b'!')
+
+    def test_read_all_at_once(self):
+        stream = Stream(b'Hello, World!\r\n--:--\r\n')
+        obj = aiohttp.multipart.BodyPartReader(self.boundary, {}, stream)
+        result = yield from obj.read_chunk()
+        self.assertEqual(b'Hello, World!', result)
+        result = yield from obj.read_chunk()
+        self.assertEqual(b'', result)
+        self.assertTrue(obj.at_eof())
+
+    def test_read_incomplete_body_chunked(self):
+        stream = Stream(b'Hello, World!\r\n-')
+        obj = aiohttp.multipart.BodyPartReader(self.boundary, {}, stream)
+        result = b''
+        with self.assertRaises(AssertionError):
+            for _ in range(4):
+                result += yield from obj.read_chunk(7)
+        self.assertEqual(b'Hello, World!\r\n-', result)
+
+    def test_read_boundary_with_incomplete_chunk(self):
+        stream = Stream(b'')
+
+        def prepare(data):
+            f = asyncio.Future(loop=self.loop)
+            f.set_result(data)
+            return f
+
+        with mock.patch.object(stream, 'read', side_effect=[
+            prepare(b'Hello, World'),
+            prepare(b'!\r\n'),
+            prepare(b'--:'),
+            prepare(b'')
+        ]):
+            obj = aiohttp.multipart.BodyPartReader(
+                self.boundary, {}, stream)
+            c1 = yield from obj.read_chunk(12)
+            self.assertEqual(c1, b'Hello, World')
+            c2 = yield from obj.read_chunk(8)
+            self.assertEqual(c2, b'!')
+            c3 = yield from obj.read_chunk(8)
+            self.assertEqual(c3, b'')
 
     def test_multi_read_chunk(self):
         stream = Stream(b'Hello,\r\n--:\r\n\r\nworld!\r\n--:--')
