@@ -164,7 +164,7 @@ def loop(request):
     yield loop
 
     if not loop._closed:
-        loop.stop()
+        loop.call_soon(loop.stop)
         loop.run_forever()
         loop.close()
     gc.collect()

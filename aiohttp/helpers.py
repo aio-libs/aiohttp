@@ -9,6 +9,7 @@ import os
 import re
 from urllib.parse import quote, urlencode
 from collections import namedtuple
+from pathlib import Path
 
 from . import hdrs, multidict
 from .errors import InvalidURL
@@ -204,7 +205,7 @@ def str_to_bytes(s, encoding='utf-8'):
 def guess_filename(obj, default=None):
     name = getattr(obj, 'name', None)
     if name and name[0] != '<' and name[-1] != '>':
-        return os.path.split(name)[-1]
+        return Path(name).name
     return default
 
 
@@ -455,8 +456,8 @@ class Timeout:
     of code or in cases when asyncio.wait_for is not suitable. For example:
 
     >>> with aiohttp.Timeout(0.001):
-    >>>     async with aiohttp.get('https://github.com') as r:
-    >>>         await r.text()
+    ...     async with aiohttp.get('https://github.com') as r:
+    ...         await r.text()
 
 
     :param timeout: timeout value in seconds

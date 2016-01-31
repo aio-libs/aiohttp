@@ -68,8 +68,7 @@ def test_make_handler(worker):
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
 
-    f = worker.make_handler(
-        worker.wsgi, 'localhost', 8080)
+    f = worker.make_handler(worker.wsgi)
     assert f is worker.wsgi.make_handler.return_value
 
 

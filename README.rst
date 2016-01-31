@@ -38,17 +38,17 @@ To retrieve something from the web:
   import aiohttp
   import asyncio
 
-  async def get_body(client, url):
+  async def fetch(session, url):
       with aiohttp.Timeout(10):
-          async with client.get(url) as response:
-              return await response.read()
+          async with session.get(url) as response:
+              return await response.text()
 
   if __name__ == '__main__':
       loop = asyncio.get_event_loop()
-      client = aiohttp.ClientSession(loop=loop)
-      raw_html = loop.run_until_complete(get_body(client, 'http://python.org'))
-      print(raw_html)
-      client.close()
+      with aiohttp.ClientSession(loop=loop) as session:
+          html = loop.run_until_complete(
+              fetch(session, 'http://python.org'))
+          print(html)
 
 
 Server
@@ -58,7 +58,6 @@ This is simple usage example:
 
 .. code-block:: python
 
-    import asyncio
     from aiohttp import web
 
     async def handle(request):
@@ -81,19 +80,11 @@ This is simple usage example:
         return ws
 
 
-    async def init(loop):
-        app = web.Application(loop=loop)
-        app.router.add_route('GET', '/echo', wshandler)
-        app.router.add_route('GET', '/{name}', handle)
+    app = web.Application()
+    app.router.add_route('GET', '/echo', wshandler)
+    app.router.add_route('GET', '/{name}', handle)
 
-        srv = await loop.create_server(app.make_handler(),
-                                            '127.0.0.1', 8080)
-        print("Server started at http://127.0.0.1:8080")
-        return srv
-
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(init(loop))
-    loop.run_forever()
+    web.run_app(app)
 
 
 Note: examples are written for Python 3.5+ and utilize PEP-492 aka
