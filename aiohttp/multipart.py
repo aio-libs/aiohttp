@@ -318,7 +318,7 @@ class BodyPartReader(object):
             self._content.unread_data(window[idx:])
             if size > idx:
                 self._prev_chunk = self._prev_chunk[:idx]
-            chunk = window[size:idx]
+            chunk = window[len(self._prev_chunk):idx]
             if not chunk:
                 self._at_eof = True
         result = self._prev_chunk
