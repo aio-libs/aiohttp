@@ -170,10 +170,12 @@ class PartReaderTestCase(TestCase):
 
     def test_read_incomplete_chunk(self):
         stream = Stream(b'')
+
         def prepare(data):
             f = asyncio.Future(loop=self.loop)
             f.set_result(data)
             return f
+
         with mock.patch.object(stream, 'read', side_effect=[
             prepare(b'Hello, '),
             prepare(b'World'),
