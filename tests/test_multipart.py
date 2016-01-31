@@ -168,6 +168,29 @@ class PartReaderTestCase(TestCase):
         self.assertEqual(c1 + c2, b'Hello, world!')
         self.assertEqual(c3, b'')
 
+    def test_read_incomplete_chunk(self):
+        stream = Stream(b'')
+
+        def prepare(data):
+            f = asyncio.Future(loop=self.loop)
+            f.set_result(data)
+            return f
+
+        with mock.patch.object(stream, 'read', side_effect=[
+            prepare(b'Hello, '),
+            prepare(b'World'),
+            prepare(b'!\r\n--:'),
+            prepare(b'')
+        ]):
+            obj = aiohttp.multipart.BodyPartReader(
+                self.boundary, {}, stream)
+            c1 = yield from obj.read_chunk(8)
+            self.assertEqual(c1, b'Hello, ')
+            c2 = yield from obj.read_chunk(8)
+            self.assertEqual(c2, b'World')
+            c3 = yield from obj.read_chunk(8)
+            self.assertEqual(c3, b'!')
+
     def test_multi_read_chunk(self):
         stream = Stream(b'Hello,\r\n--:\r\n\r\nworld!\r\n--:--')
         obj = aiohttp.multipart.BodyPartReader(self.boundary, {}, stream)

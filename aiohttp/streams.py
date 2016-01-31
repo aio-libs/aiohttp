@@ -159,8 +159,6 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
     def unread_data(self, data):
         """ rollback reading some data from stream, inserting it to buffer head.
         """
-        assert not self._eof, 'unread_data after feed_eof'
-
         if not data:
             return
 
