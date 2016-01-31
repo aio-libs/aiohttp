@@ -26,6 +26,11 @@ class AbstractMatchInfo(metaclass=ABCMeta):
     def expect_handler(self):
         """Expect handler for 100-continue processing"""
 
+    @property  # pragma: no branch
+    @abstractmethod
+    def http_exception(self):
+        """HTTPException instance raised on router's resolving, or None"""
+
 
 class AbstractView(metaclass=ABCMeta):
 

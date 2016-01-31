@@ -51,14 +51,15 @@ class AsyncStreamReaderMixin:
         def iter_chunked(self, n):
             """Returns an asynchronous iterator that yields chunks of size n.
 
-            .. versionadded:: Python-3.5 available for Python 3.5+ only
+            Python-3.5 available for Python 3.5+ only
             """
             return AsyncStreamIterator(lambda: self.read(n))
 
         def iter_any(self):
-            """Returns an asynchronous iterator that yields slices of data as they come.
+            """Returns an asynchronous iterator that yields slices of data
+            as they come.
 
-            .. versionadded:: Python-3.5 available for Python 3.5+ only
+            Python-3.5 available for Python 3.5+ only
             """
             return AsyncStreamIterator(self.readany)
 

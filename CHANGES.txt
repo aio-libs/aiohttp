@@ -64,3 +64,11 @@ CHANGES
 - Close client connection on exception in ClientResponse.release()
 
 - Allow to read multipart parts without content-length specified #750
+
+- Add support for unix domain sockets to gunicorn worker #470
+
+- Add test for default Expect handler #601
+
+- Add the first demo project
+
+- Rename `loader` keyword argument in `web.Request.json` method. #646

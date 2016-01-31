@@ -76,3 +76,23 @@ async def test_context_manager_timeout_on_release(create_server, loop):
                     assert resp.status == 200
                     assert resp.connection is not None
         assert resp.connection is None
+
+
+@pytest.mark.run_loop
+async def test_iter_any(create_server, loop):
+
+    data = b'0123456789' * 1024
+
+    async def handler(request):
+        buf = []
+        async for raw in request.content.iter_any():
+            buf.append(raw)
+        assert b''.join(buf) == data
+        return web.Response()
+
+    app, url = await create_server()
+    app.router.add_route('POST', '/', handler)
+
+    with aiohttp.ClientSession(loop=loop) as session:
+        async with await session.post(url+'/', data=data) as resp:
+            assert resp.status == 200

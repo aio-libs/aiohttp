@@ -79,7 +79,7 @@ class RequestHandler(ServerHttpProtocol):
             resp = None
             request._match_info = match_info
             expect = request.headers.get(hdrs.EXPECT)
-            if expect and expect.lower() == "100-continue":
+            if expect:
                 resp = (
                     yield from match_info.expect_handler(request))
 

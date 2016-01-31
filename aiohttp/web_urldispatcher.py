@@ -18,7 +18,8 @@ from types import MappingProxyType
 from . import hdrs
 from .abc import AbstractRouter, AbstractMatchInfo, AbstractView
 from .protocol import HttpVersion11
-from .web_exceptions import HTTPMethodNotAllowed, HTTPNotFound, HTTPNotModified
+from .web_exceptions import (HTTPMethodNotAllowed, HTTPNotFound,
+                             HTTPNotModified, HTTPExpectationFailed)
 from .web_reqrep import StreamResponse
 from .multidict import upstr
 
@@ -49,15 +50,46 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
     def expect_handler(self):
         return self._route.handle_expect_header
 
+    @property
+    def http_exception(self):
+        return None
+
     def __repr__(self):
         return "<MatchInfo {}: {}>".format(super().__repr__(), self._route)
 
 
+class MatchInfoError(UrlMappingMatchInfo):
+
+    def __init__(self, http_exception):
+        self._exception = http_exception
+        super().__init__({}, SystemRoute(self._exception))
+
+    @property
+    def expect_handler(self):
+        return self._route.handler
+
+    @property
+    def http_exception(self):
+        return self._exception
+
+    def __repr__(self):
+        return "<MatchInfoError {}: {}>".format(self._exception.status,
+                                                self._exception.reason)
+
+
 @asyncio.coroutine
 def _defaultExpectHandler(request):
-    """Default handler for Except: 100-continue"""
+    """Default handler for Except header.
+
+    Just send "100 Continue" to client.
+    raise HTTPExpectationFailed if value of header is not "100-continue"
+    """
+    expect = request.headers.get(hdrs.EXPECT)
     if request.version == HttpVersion11:
-        request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+        if expect.lower() == "100-continue":
+            request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+        else:
+            raise HTTPExpectationFailed(text="Unknown Expect: %s" % expect)
 
 
 class AbstractResource(Sized, Iterable):
@@ -550,10 +582,9 @@ class StaticRoute(Route):
 
 class SystemRoute(Route):
 
-    def __init__(self, status, reason):
-        super().__init__(hdrs.METH_ANY, None, None)
-        self._status = status
-        self._reason = reason
+    def __init__(self, http_exception):
+        super().__init__(hdrs.METH_ANY, self._handler, None)
+        self._http_exception = http_exception
 
     def url(self, **kwargs):
         raise RuntimeError(".url() is not allowed for SystemRoute")
@@ -561,67 +592,20 @@ class SystemRoute(Route):
     def match(self, path):
         return None
 
+    @asyncio.coroutine
+    def _handler(self, request):
+        raise self._http_exception
+
     @property
     def status(self):
-        return self._status
+        return self._http_exception.status
 
     @property
     def reason(self):
-        return self._reason
+        return self._http_exception.reason
 
     def __repr__(self):
-        return "<SystemRoute {status}: {reason}>".format(status=self._status,
-                                                         reason=self._reason)
-
-
-class _NotFoundMatchInfo(UrlMappingMatchInfo):
-
-    route = SystemRoute(404, 'Not Found')
-
-    def __init__(self):
-        super().__init__({}, None)
-
-    @property
-    def handler(self):
-        return self._not_found
-
-    @asyncio.coroutine
-    def _not_found(self, request):
-        raise HTTPNotFound()
-
-    @property
-    def expect_handler(self):
-        return self.route.handle_expect_header
-
-    def __repr__(self):
-        return "<MatchInfo: not found>"
-
-
-class _MethodNotAllowedMatchInfo(UrlMappingMatchInfo):
-
-    route = SystemRoute(405, 'Method Not Allowed')
-
-    def __init__(self, method, allowed_methods):
-        super().__init__({}, None)
-        self._method = method
-        self._allowed_methods = allowed_methods
-
-    @property
-    def handler(self):
-        return self._not_allowed
-
-    @asyncio.coroutine
-    def _not_allowed(self, request):
-        raise HTTPMethodNotAllowed(self._method, self._allowed_methods)
-
-    @property
-    def expect_handler(self):
-        return self.route.handle_expect_header
-
-    def __repr__(self):
-        return ("<MatchInfo: method {} is not allowed (allowed methods: {}>"
-                .format(self._method,
-                        ', '.join(sorted(self._allowed_methods))))
+        return "<SystemRoute {self.status}: {self.reason}>".format(self=self)
 
 
 class View(AbstractView):
@@ -691,9 +675,10 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                 allowed_methods |= allowed
         else:
             if allowed_methods:
-                return _MethodNotAllowedMatchInfo(method, allowed_methods)
+                return MatchInfoError(HTTPMethodNotAllowed(method,
+                                                           allowed_methods))
             else:
-                return _NotFoundMatchInfo()
+                return MatchInfoError(HTTPNotFound())
 
     def __iter__(self):
         return iter(self._named_resources)

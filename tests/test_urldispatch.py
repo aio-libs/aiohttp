@@ -8,7 +8,8 @@ from urllib.parse import unquote
 import aiohttp.web
 from aiohttp import hdrs
 from aiohttp.web import (UrlDispatcher, Request, Response,
-                         HTTPMethodNotAllowed, HTTPNotFound)
+                         HTTPMethodNotAllowed, HTTPNotFound,
+                         HTTPCreated)
 from aiohttp.multidict import CIMultiDict
 from aiohttp.protocol import HttpVersion, RawRequestMessage
 from aiohttp.web_urldispatcher import (_defaultExpectHandler,
@@ -51,7 +52,7 @@ class TestUrlDispatcher(unittest.TestCase):
         return handler
 
     def test_system_route(self):
-        route = SystemRoute(201, 'test')
+        route = SystemRoute(HTTPCreated(reason='test'))
         self.assertIsNone(route.match('any'))
         with self.assertRaises(RuntimeError):
             route.url()
@@ -453,7 +454,8 @@ class TestUrlDispatcher(unittest.TestCase):
         def go():
             req = self.make_request('POST', '/path/to')
             match_info = yield from self.router.resolve(req)
-            self.assertEqual("<MatchInfo: not found>", repr(match_info))
+            self.assertEqual("<MatchInfoError 404: Not Found>",
+                             repr(match_info))
 
         self.loop.run_until_complete(go())
 
@@ -469,8 +471,8 @@ class TestUrlDispatcher(unittest.TestCase):
 
             req = self.make_request('PUT', '/path/to')
             match_info = yield from self.router.resolve(req)
-            self.assertEqual("<MatchInfo: method PUT is not allowed "
-                             "(allowed methods: GET, POST>", repr(match_info))
+            self.assertEqual("<MatchInfoError 405: Method Not Allowed>",
+                             repr(match_info))
 
         self.loop.run_until_complete(go())
 

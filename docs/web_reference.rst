@@ -251,14 +251,14 @@ like one using :meth:`Request.copy`.
          The method **does** store read data internally, subsequent
          :meth:`~Request.text` call will return the same value.
 
-   .. coroutinemethod:: json(*, loader=json.loads)
+   .. coroutinemethod:: json(*, loads=json.loads)
 
       Read request body decoded as *json*.
 
       The method is just a boilerplate :ref:`coroutine <coroutine>`
       implemented as::
 
-         async def json(self, *, loader=json.loads):
+         async def json(self, *, loads=json.loads):
              body = await self.text()
              return loader(body)
 
@@ -1382,7 +1382,7 @@ unique *name* and at least one :term:`route`.
 5. If the end of *routing table* is reached and no *resource* /
    *route* pair found the *router* returns special :class:`SystemRoute`
    instance with  either *HTTP 404 Not Found* or *HTTP 405
-   Method Not Allowed* status code. Registerd :term:`web-handler` for
+   Method Not Allowed* status code. Registered :term:`web-handler` for
    *system route* raises corresponding :ref:`web exception
    <aiohttp-web-exceptions>`.
 
@@ -1401,7 +1401,7 @@ passing it into *template engine* for example::
 
    url = app.router['resource_name'].url(query={'a': 1, 'b': 2})
 
-Resource classes hierarhy::
+Resource classes hierarchy::
 
    AbstractResource
      Resource
@@ -1464,6 +1464,29 @@ Resource classes hierarhy::
    A base class for new-style resources, inherits :class:`AbstractResource`.
 
 
+   .. method:: add_route(method, handler, *, expect_handler=None)
+
+      Add a :term:`web-handler` to resource.
+
+      :param str method: HTTP method for route. Should be one of
+                         ``'GET'``, ``'POST'``, ``'PUT'``,
+                         ``'DELETE'``, ``'PATCH'``, ``'HEAD'``,
+                         ``'OPTIONS'`` or ``'*'`` for any method.
+
+                         The parameter is case-insensitive, e.g. you
+                         can push ``'get'`` as well as ``'GET'``.
+
+                         The method should be unique for resource.
+
+      :param str path: route path. Should be started with slash (``'/'``).
+
+      :param callable handler: route handler.
+
+      :param coroutine expect_handler: optional *expect* header handler.
+
+      :returns: new :class:`ResourceRoute` instance.
+
+
 .. class:: PlainResource
 
    A new-style resource, inherited from :class:`Resource`.
@@ -1499,7 +1522,7 @@ Route has *HTTP method* (wildcard ``'*'`` is an option),
 
 Every route belong to some resource.
 
-Route classes hierarhy::
+Route classes hierarchy::
 
    AbstractRoute
      ResourceRoute
@@ -1770,7 +1793,7 @@ Utilities
                        ``None`` for HTTP connection.
 
    :param print: a callable compatible with :func:`print`. May be used
-                 to override stdout output or supppress it.
+                 to override stdout output or suppress it.
 
 
 Constants

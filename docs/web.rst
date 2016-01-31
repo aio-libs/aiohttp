@@ -100,16 +100,46 @@ The *HTTP method* can be queried later in the request handler using the
 :attr:`Request.method` property.
 
 .. versionadded:: 0.15.2
+
    Support for wildcard *HTTP method* routes.
+
+
+.. _aiohttp-web-resource-and-route:
+
+Resources and Routes
+--------------------
+
+Internally *router* is a list of *resources*.
+
+Resource is an entry in *route table* which corresponds to requested URL.
+
+Resource in turn has at least one *route*.
+
+Route corresponds to handling *HTTP method* by calling *web handler*.
+
+:meth:`UrlDispatcher.add_route` is just a shortcut for pair of
+:meth:`UrlDispatcher.add_resource` and :meth:`Resource.add_route`::
+
+   resource = app.router.add_resource(path, name=name)
+   route = resource.add_route(method, handler)
+   return route
+
+.. seealso::
+
+   :ref:`aiohttp-router-refactoring-021` for more details
+
+.. versionadded:: 0.21.0
+
+   Introduce resources.
 
 
 .. _aiohttp-web-variable-handler:
 
-Variable Routes
-^^^^^^^^^^^^^^^
+Variable Resources
+^^^^^^^^^^^^^^^^^^
 
-Handlers can also be attached to routes with *variable paths*. For instance,
-a route with the path ``'/a/{name}/c'`` would match all incoming requests with
+Resource may have *variable path* also. For instance, a resource with
+the path ``'/a/{name}/c'`` would match all incoming requests with
 paths such as ``'/a/b/c'``, ``'/a/1/c'``, and ``'/a/etc/c'``.
 
 A variable *part* is specified in the form ``{identifier}``, where the
@@ -122,13 +152,14 @@ that *part*. This is done by looking up the ``identifier`` in the
        return web.Response(
            text="Hello, {}".format(request.match_info['name']))
 
-   app.router.add_route('GET', '/{name}', variable_handler)
+   resource = app.router.add_route('/{name}')
+   resource.add_route('GET', variable_handler)
 
 By default, each *part* matches the regular expression ``[^{}/]+``.
 
 You can also specify a custom regex in the form ``{identifier:regex}``::
 
-   app.router.add_route('GET', r'/{name:\d+}', variable_handler)
+   resource = app.router.add_resource(r'/{name:\d+}')
 
 .. versionadded:: 0.13
    Support for custom regexs in variable routes.
@@ -136,24 +167,23 @@ You can also specify a custom regex in the form ``{identifier:regex}``::
 
 .. _aiohttp-web-named-routes:
 
-Reverse URL Constructing using Named Routes
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Reverse URL Constructing using Named Resources
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Routes can also be given a *name*::
 
-   app.router.add_route('GET', '/root', handler, name='root')
+   resource = app.router.add_resource('/root', name='root')
 
-Which can then be used to access and build a *URL* for that route later (e.g.
+Which can then be used to access and build a *URL* for that resource later (e.g.
 in a :ref:`request handler <aiohttp-web-handler>`)::
 
-   >>> request.app.router['root'].url(query={"a": "b", "c": "d"})
+   >>> request.app.named_resource['root'].url(query={"a": "b", "c": "d"})
    '/root?a=b&c=d'
 
 A more interesting example is building *URLs* for :ref:`variable
-routes <aiohttp-web-variable-handler>`::
+resources <aiohttp-web-variable-handler>`::
 
-   app.router.add_route('GET', r'/{user}/info',
-                        variable_handler, name='user-info')
+   app.router.add_resource(r'/{user}/info', name='user-info')
 
 
 In this case you can also pass in the *parts* of the route::
@@ -228,20 +258,20 @@ registered in application's router::
 Example will process GET and POST requests for */path/to* but raise
 *405 Method not allowed* exception for unimplemented HTTP methods.
 
-Route Views
-^^^^^^^^^^^
+Resource Views
+^^^^^^^^^^^^^^
 
-*All* registered routes in a router can be viewed using the
-:meth:`UrlDispatcher.routes` method::
+*All* registered ressources in a router can be viewed using the
+:meth:`UrlDispatcher.resources` method::
 
-   for route in app.router.routes():
-       print(route)
+   for resource in app.router.resources():
+       print(resource)
 
-Similarly, a *subset* of the routes that were registered with a *name* can be
-viewed using the :meth:`UrlDispatcher.named_routes` method::
+Similarly, a *subset* of the resources that were registered with a *name* can be
+viewed using the :meth:`UrlDispatcher.named_resources` method::
 
-   for name, route in app.router.named_routes().items():
-       print(name, route)
+   for name, resource in app.router.named_resources().items():
+       print(name, resource)
 
 
 
@@ -251,6 +281,11 @@ viewed using the :meth:`UrlDispatcher.named_routes` method::
 .. versionadded:: 0.19
    :meth:`UrlDispatcher.named_routes`
 
+.. deprecated:: 0.21
+
+   Use :meth:`UrlDispatcher.named_resources` /
+   :meth:`UrlDispatcher.resources` instead of
+   :meth:`UrlDispatcher.named_routes` / :meth:`UrlDispatcher.routes`.
 
 Custom Routing Criteria
 -----------------------
@@ -369,17 +404,28 @@ third-party library, :mod:`aiohttp_session`, that adds *session* support::
 
 .. versionadded:: 0.15
 
-By default, :mod:`aiohttp.web` simply responds with an ``HTTP/1.1 100 Continue``
-status code whenever a requests contains an *Expect* header; however, it is
-possible to specify a custom *Expect* handler on a per route basis.
+:mod:`aiohttp.web` supports *Expect* header. By default it sends
+``HTTP/1.1 100 Continue`` line to client, or raises
+:exc:`HTTPExpectationFailed` if header value is not equal to
+"100-continue". It is possible to specify custom *Expect* header
+handler on per route basis. This handler gets called if *Expect*
+header exist in request after receiving all headers and before
+processing application middlewares :ref:`aiohttp-web-middlewares` and
+route handler. Handler can return *None*, in that case the request
+processing continues as usual. If handler returns an instance of class
+:class:`StreamResponse`, *request handler* uses it as response. Also
+handler can raise a subclass of :exc:`HTTPException`. In this case all
+further processing will not happen and client will receive appropriate
+http response.
 
-This handler gets called **after** receiving the request headers, but **before**
-calling application :ref:`middlewares <aiohttp-web-middlewares>`, or route
-:ref:`handlers <aiohttp-web-handler>`.
+.. note::
+    A server that does not understand or is unable to comply with any of the
+    expectation values in the Expect field of a request MUST respond with
+    appropriate error status. The server MUST respond with a 417
+    (Expectation Failed) status if any of the expectations cannot be met or,
+    if there are other problems with the request, some other 4xx status.
 
-The *Expect* handler *may* return *None*, in which case the request processing
-continues as usual. If the handler returns an instance of
-class :class:`StreamResponse`, the *request handler* uses it as the response.
+    http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.20
 
 If all checks pass, the custom handler *must* write a *HTTP/1.1 100 Continue*
 status code before returning.
@@ -393,8 +439,11 @@ header:
        if request.version != aiohttp.HttpVersion11:
            return
 
+       if request.headers.get('EXPECT') != '100-continue':
+           raise HTTPExpectationFailed(text="Unknown Expect: %s" % expect)
+
        if request.headers.get('AUTHORIZATION') is None:
-           return web.HTTPForbidden()
+           raise HTTPForbidden()
 
        request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
