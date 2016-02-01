@@ -1,0 +1,64 @@
+.. _aiohttp-abc:
+
+aihttp abstract classes
+=======================
+
+.. module:: aiohttp.abc
+
+.. currentmodule:: aiohttp.abc
+
+Abstract routing
+----------------
+
+aiohttp has abstract classes for managing web interfaces.
+
+The most part of :mod:`aiohttp.web` is not intended to be inherited
+but few of them are.
+
+aiohttp.web is built on top of few concepts: *application*, *router*,
+*request* and *response*.
+
+*router* is a *pluggable* part: a library user may build a *router*
+from scratch, all other parts should work with new router seamlessly.
+
+:class:`AbstractRouter` has the only mandatory method:
+:meth:`AbstractRouter.resolve` coroutine. It should return an
+::class:`AbstractMatchInfo` instance.
+
+If the requested URL handler is found
+:attr:`AbstractMatchInfo.handler` is a :term:`web-handler` for
+requested URL and :attr:`AbstractMatchInfo.http_exception` is ``None``.
+
+Otherwise :attr:`AbstractMatchInfo.http_exception` is an instance of
+:exc:`aiohttp.web.HTTPException` like *404: NotFound* or *405: Method
+Not Allowed*. :attr:`AbstractMatchInfo.handler` points to internal
+:term:`web-handler` which raises
+:attr:`AbstractMatchInfo.http_exception` on call.
+
+
+.. class:: AbstractRouter
+
+   Abstract router, :class:`aiohttp.web.Application` accepts it as
+   *router* parameter and returns as
+   :attr:`aiohttp.web.Application.router`.
+
+   .. coroutinemethod:: resolve(request)
+
+      Performs URL resolving. It's an abstract method, should be
+      overriden in *router* implementation.
+
+      :param request: :class:`aiohttp.web.Request` instance for
+                      resolving, the request has
+                      :attr:`aiohttp.web.Request.match_info` equals to
+                      ``None`` at resolving stage.
+
+      :return: :class:`AbstractMatchInfo` instance.
+
+
+.. class:: AbstractMatchInfo
+
+   Abstract *math info*, returned by :meth:`AbstractRouter` call.
+
+   .. coroutinemethod:: handler(request)
+
+      Abstract method performing :term:`web-handler` processing.
