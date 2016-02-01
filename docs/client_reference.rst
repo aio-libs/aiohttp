@@ -806,8 +806,10 @@ TCPConnector
       *ssl_context* may be used for configuring certification
       authority channel, supported SSL options etc.
 
-  :param tuple local_addr: tuple of ``(local_host, local_port)`` used to bind
-      socket locally.
+   :param tuple local_addr: tuple of ``(local_host, local_port)`` used to bind
+      socket locally if specified.
+
+      .. versionadded:: 0.21
 
    .. attribute:: verify_ssl
 
