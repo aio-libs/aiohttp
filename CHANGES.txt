@@ -72,3 +72,5 @@ CHANGES
 - Add the first demo project
 
 - Rename `loader` keyword argument in `web.Request.json` method. #646
+
+- Add local socket binding for TCPConnector #678
