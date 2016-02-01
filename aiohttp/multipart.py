@@ -214,6 +214,7 @@ class BodyPartReader(object):
         self._read_bytes = 0
         self._unread = deque()
         self._prev_chunk = None
+        self._content_eof = 0
 
     @asyncio.coroutine
     def __aiter__(self):
@@ -310,13 +311,14 @@ class BodyPartReader(object):
             self._prev_chunk = yield from self._content.read(size)
 
         chunk = yield from self._content.read(size)
-
+        self._content_eof += int(self._content.at_eof())
+        assert self._content_eof < 3, "Reading after EOF"
         window = self._prev_chunk + chunk
         sub = b'\r\n' + self._boundary
         if first_chunk:
             idx = window.find(sub)
         else:
-            idx = window.find(sub, len(self._prev_chunk) - len(sub))
+            idx = window.find(sub, max(0, len(self._prev_chunk) - len(sub)))
         if idx >= 0:
             # pushing boundary back to content
             self._content.unread_data(window[idx:])
@@ -325,6 +327,10 @@ class BodyPartReader(object):
             chunk = window[len(self._prev_chunk):idx]
             if not chunk:
                 self._at_eof = True
+        if 0 < len(chunk) < len(sub) and not self._content_eof:
+            self._prev_chunk += chunk
+            self._at_eof = False
+            return b''
         result = self._prev_chunk
         self._prev_chunk = chunk
         return result
