@@ -758,7 +758,7 @@ class TestHttpClientConnector(unittest.TestCase):
             return web.HTTPOk()
 
         app, srv, url = self.loop.run_until_complete(
-                self.create_server('get', '/', handler)
+            self.create_server('get', '/', handler)
         )
 
         port = self.find_unused_port()
