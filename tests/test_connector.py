@@ -752,6 +752,32 @@ class TestHttpClientConnector(unittest.TestCase):
         r.close()
         conn.close()
 
+    def test_tcp_connector_uses_provided_local_addr(self):
+        @asyncio.coroutine
+        def handler(request):
+            return web.HTTPOk()
+
+        app, srv, url = self.loop.run_until_complete(
+            self.create_server('get', '/', handler)
+        )
+
+        port = self.find_unused_port()
+        conn = aiohttp.TCPConnector(loop=self.loop,
+                                    local_addr=('127.0.0.1', port))
+
+        r = self.loop.run_until_complete(
+            aiohttp.request(
+                'get', url,
+                connector=conn
+            ))
+
+        self.loop.run_until_complete(r.release())
+        first_conn = next(iter(conn._conns.values()))[0][0]
+        self.assertEqual(first_conn._sock.getsockname(), ('127.0.0.1', port))
+        r.close()
+
+        conn.close()
+
     @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'requires unix')
     def test_unix_connector(self):
         @asyncio.coroutine
