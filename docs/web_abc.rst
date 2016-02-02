@@ -1,7 +1,7 @@
 .. _aiohttp-abc:
 
-aihttp abstract classes
-=======================
+Abstract Classes
+================
 
 .. module:: aiohttp.abc
 
@@ -23,17 +23,16 @@ from scratch, all other parts should work with new router seamlessly.
 
 :class:`AbstractRouter` has the only mandatory method:
 :meth:`AbstractRouter.resolve` coroutine. It should return an
-::class:`AbstractMatchInfo` instance.
+:class:`AbstractMatchInfo` instance.
 
 If the requested URL handler is found
-:attr:`AbstractMatchInfo.handler` is a :term:`web-handler` for
+:meth:`AbstractMatchInfo.handler` is a :term:`web-handler` for
 requested URL and :attr:`AbstractMatchInfo.http_exception` is ``None``.
 
 Otherwise :attr:`AbstractMatchInfo.http_exception` is an instance of
-:exc:`aiohttp.web.HTTPException` like *404: NotFound* or *405: Method
-Not Allowed*. :attr:`AbstractMatchInfo.handler` points to internal
-:term:`web-handler` which raises
-:attr:`AbstractMatchInfo.http_exception` on call.
+:exc:`~aiohttp.web.HTTPException` like *404: NotFound* or *405: Method
+Not Allowed*. :meth:`AbstractMatchInfo.handler` raises
+:attr:`~AbstractMatchInfo.http_exception` on call.
 
 
 .. class:: AbstractRouter
@@ -61,11 +60,20 @@ Not Allowed*. :attr:`AbstractMatchInfo.handler` points to internal
 
    .. attribute:: http_exception
 
-      Abstract method performing :term:`web-handler` processing.
+      :exc:`aiohttp.web.HTTPException` if no match was found, ``None``
+      otherwise.
 
    .. coroutinemethod:: handler(request)
 
       Abstract method performing :term:`web-handler` processing.
+
+      :param request: :class:`aiohttp.web.Request` instance for
+                      resolving, the request has
+                      :attr:`aiohttp.web.Request.match_info` equals to
+                      ``None`` at resolving stage.
+      :return: :class:`aiohttp.web.StramResponse` or descenants.
+
+      :raise: :class:`aiohttp.web.HTTPException` on error
 
    .. coroutinemethod:: expect_handler(request)
 
