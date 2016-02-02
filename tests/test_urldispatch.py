@@ -697,20 +697,23 @@ class TestUrlDispatcher(unittest.TestCase):
         self.router.register_route(route)
         resource = route.resource
         self.assertEqual((None, {'GET'}),
-                         resource.resolve('GET', '/another/path'))
+                         self.loop.run_until_complete(
+                             resource.resolve('GET', '/another/path')))
 
     def test_resource_adapter_resolve_bad_method(self):
         route = PlainRoute('POST', lambda req: None, None, '/path')
         self.router.register_route(route)
         resource = route.resource
         self.assertEqual((None, {'POST'}),
-                         resource.resolve('GET', '/path'))
+                         self.loop.run_until_complete(
+                         resource.resolve('GET', '/path')))
 
     def test_resource_adapter_resolve_wildcard(self):
         route = PlainRoute('*', lambda req: None, None, '/path')
         self.router.register_route(route)
         resource = route.resource
-        match_info, allowed = resource.resolve('GET', '/path')
+        match_info, allowed = self.loop.run_until_complete(
+            resource.resolve('GET', '/path'))
         self.assertEqual(allowed, {'*'})  # TODO: expand wildcard
         self.assertIsNotNone(match_info)
 
