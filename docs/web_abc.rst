@@ -78,3 +78,22 @@ Not Allowed*. :meth:`AbstractMatchInfo.handler` raises
    .. coroutinemethod:: expect_handler(request)
 
       Abstract method for handling *100-continue* processing.
+
+
+Abstract Class Based Views
+--------------------------
+
+For *class based view* support aiohttp has abstract
+:class:`AbstractView` class which is *awaitable* (may be uses like
+``await Cls()`` or ``yield from Cls()`` and has a *request* as an
+attribute.
+
+.. class:: AbstractView
+
+   An abstract class, base for all *class based views* implementations.
+
+   Methods ``__iter__`` and ``__await__`` should be overridden.
+
+   .. attribute:: request
+
+      :class:`aiohttp.web.Request` instance for performing the request.
