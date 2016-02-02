@@ -31,6 +31,10 @@ class AbstractMatchInfo(metaclass=ABCMeta):
     def http_exception(self):
         """HTTPException instance raised on router's resolving, or None"""
 
+    @abstractmethod
+    def get_info(self):
+        """Return a dict with additional info useful for introspection"""
+
 
 class AbstractView(metaclass=ABCMeta):
 

@@ -54,6 +54,9 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
     def http_exception(self):
         return None
 
+    def get_info(self):
+        return self._route.get_info()
+
     def __repr__(self):
         return "<MatchInfo {}: {}>".format(super().__repr__(), self._route)
 
@@ -106,6 +109,7 @@ class AbstractResource(Sized, Iterable):
     def url(self, **kwargs):
         """Construct url for resource with additional params."""
 
+    @asyncio.coroutine
     @abc.abstractmethod  # pragma: no branch
     def resolve(self, method, path):
         """Resolve resource
@@ -135,6 +139,7 @@ class ResourceAdapter(AbstractResource):
     def url(self, **kwargs):
         return self._route.url(**kwargs)
 
+    @asyncio.coroutine
     def resolve(self, method, path):
         route_method = self._route.method
         allowed_methods = {route_method}
@@ -177,6 +182,7 @@ class Resource(AbstractResource):
             'Instance of Route class is required, got {!r}'.format(route)
         self._routes.append(route)
 
+    @asyncio.coroutine
     def resolve(self, method, path):
         allowed_methods = set()
 
@@ -342,6 +348,9 @@ class ResourceRoute(AbstractRoute):
         """Construct url for route with additional params."""
         return self._resource.url(**kwargs)
 
+    def get_info(self):
+        return {}
+
 
 class Route(AbstractRoute):
     """Old fashion route"""
@@ -371,6 +380,9 @@ class PlainRoute(Route):
     def url(self, *, query=None):
         return self._append_query(self._path, query)
 
+    def get_info(self):
+        return {'path': self._path}
+
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
         return "<PlainRoute {name}[{method}] {path} -> {handler!r}".format(
@@ -396,6 +408,10 @@ class DynamicRoute(Route):
     def url(self, *, parts, query=None):
         url = self._formatter.format_map(parts)
         return self._append_query(url, query)
+
+    def get_info(self):
+        return {'formatter': self._formatter,
+                'pattern': self._pattern}
 
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
@@ -441,6 +457,10 @@ class StaticRoute(Route):
             filename = filename[1:]
         url = self._prefix + filename
         return self._append_query(url, query)
+
+    def get_info(self):
+        return {'direcotry': self._directory,
+                'prefix': self._prefix}
 
     def _sendfile_cb(self, fut, out_fd, in_fd, offset, count, loop,
                      registered):
@@ -588,6 +608,9 @@ class SystemRoute(Route):
     def match(self, path):
         return None
 
+    def get_info(self):
+        return {'http_exception': self._http_exception}
+
     @asyncio.coroutine
     def _handler(self, request):
         raise self._http_exception
@@ -664,7 +687,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         allowed_methods = set()
 
         for resource in self._resources:
-            match_dict, allowed = resource.resolve(method, path)
+            match_dict, allowed = yield from resource.resolve(method, path)
             if match_dict is not None:
                 return match_dict
             else:
