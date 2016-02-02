@@ -16,14 +16,14 @@ class AbstractRouter(metaclass=ABCMeta):
 
 class AbstractMatchInfo(metaclass=ABCMeta):
 
-    @property  # pragma: no branch
+    @asyncio.coroutine  # pragma: no branch
     @abstractmethod
-    def handler(self):
-        """Return handler for match info"""
+    def handler(self, request):
+        """Execute matched request handler"""
 
-    @property  # pragma: no branch
+    @asyncio.coroutine  # pragma: no branch
     @abstractmethod
-    def expect_handler(self):
+    def expect_handler(self, request):
         """Expect handler for 100-continue processing"""
 
     @property  # pragma: no branch

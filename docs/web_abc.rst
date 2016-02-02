@@ -59,6 +59,14 @@ Not Allowed*. :attr:`AbstractMatchInfo.handler` points to internal
 
    Abstract *math info*, returned by :meth:`AbstractRouter` call.
 
+   .. attribute:: http_exception
+
+      Abstract method performing :term:`web-handler` processing.
+
    .. coroutinemethod:: handler(request)
 
       Abstract method performing :term:`web-handler` processing.
+
+   .. coroutinemethod:: expect_handler(request)
+
+      Abstract method for handling *100-continue* processing.
