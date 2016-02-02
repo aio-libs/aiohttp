@@ -65,10 +65,6 @@ class MatchInfoError(UrlMappingMatchInfo):
         super().__init__({}, SystemRoute(self._exception))
 
     @property
-    def expect_handler(self):
-        return self._route.handler
-
-    @property
     def http_exception(self):
         return self._exception
 
