@@ -32,6 +32,103 @@ __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
 PY_35 = sys.version_info >= (3, 5)
 
 
+class AbstractResource(Sized, Iterable):
+
+    def __init__(self, *, name=None):
+        self._name = name
+
+    @property
+    def name(self):
+        return self._name
+
+    @abc.abstractmethod  # pragma: no branch
+    def url(self, **kwargs):
+        """Construct url for resource with additional params."""
+
+    @asyncio.coroutine
+    @abc.abstractmethod  # pragma: no branch
+    def resolve(self, method, path):
+        """Resolve resource
+
+        Return (UrlMappingMatchInfo, allowed_methods) pair."""
+
+    @abc.abstractmethod
+    def get_info(self):
+        """Return a dict with additional info useful for introspection"""
+
+    @staticmethod
+    def _append_query(url, query):
+        if query is not None:
+            return url + "?" + urlencode(query)
+        else:
+            return url
+
+
+class AbstractRoute(metaclass=abc.ABCMeta):
+    METHODS = hdrs.METH_ALL | {hdrs.METH_ANY}
+
+    def __init__(self, method, handler, *,
+                 expect_handler=None,
+                 resource=None):
+
+        if expect_handler is None:
+            expect_handler = _defaultExpectHandler
+
+        assert asyncio.iscoroutinefunction(expect_handler), \
+            'Coroutine is expected, got {!r}'.format(expect_handler)
+
+        method = upstr(method)
+        if method not in self.METHODS:
+            raise ValueError("{} is not allowed HTTP method".format(method))
+
+        if handler is not None:
+            assert callable(handler), handler
+            if asyncio.iscoroutinefunction(handler):
+                pass
+            elif inspect.isgeneratorfunction(handler):
+                warnings.warn("Bare generators are deprecated, "
+                              "use @coroutine wrapper", DeprecationWarning)
+            elif (isinstance(handler, type) and
+                  issubclass(handler, AbstractView)):
+                pass
+            else:
+                handler = asyncio.coroutine(handler)
+
+        self._method = method
+        self._handler = handler
+        self._expect_handler = expect_handler
+        self._resource = resource
+
+    @property
+    def method(self):
+        return self._method
+
+    @property
+    def handler(self):
+        return self._handler
+
+    @property
+    @abc.abstractmethod
+    def name(self):
+        """Optional route's name, always equals to resource's name."""
+
+    @property
+    def resource(self):
+        return self._resource
+
+    @abc.abstractmethod
+    def get_info(self):
+        """Return a dict with additional info useful for introspection"""
+
+    @abc.abstractmethod  # pragma: no branch
+    def url(self, **kwargs):
+        """Construct url for route with additional params."""
+
+    @asyncio.coroutine
+    def handle_expect_header(self, request):
+        return (yield from self._expect_handler(request))
+
+
 class UrlMappingMatchInfo(dict, AbstractMatchInfo):
 
     def __init__(self, match_dict, route):
@@ -91,34 +188,6 @@ def _defaultExpectHandler(request):
             raise HTTPExpectationFailed(text="Unknown Expect: %s" % expect)
 
 
-class AbstractResource(Sized, Iterable):
-
-    def __init__(self, *, name=None):
-        self._name = name
-
-    @property
-    def name(self):
-        return self._name
-
-    @abc.abstractmethod  # pragma: no branch
-    def url(self, **kwargs):
-        """Construct url for resource with additional params."""
-
-    @asyncio.coroutine
-    @abc.abstractmethod  # pragma: no branch
-    def resolve(self, method, path):
-        """Resolve resource
-
-        Return (UrlMappingMatchInfo, allowed_methods) pair."""
-
-    @staticmethod
-    def _append_query(url, query):
-        if query is not None:
-            return url + "?" + urlencode(query)
-        else:
-            return url
-
-
 class ResourceAdapter(AbstractResource):
 
     def __init__(self, route):
@@ -141,6 +210,9 @@ class ResourceAdapter(AbstractResource):
                 return (UrlMappingMatchInfo(match_dict, self._route),
                         allowed_methods)
         return None, allowed_methods
+
+    def get_info(self):
+        return self._route.get_info()
 
     def __len__(self):
         return 1
@@ -212,6 +284,9 @@ class PlainResource(Resource):
         else:
             return None
 
+    def get_info(self):
+        return {'path': self._path}
+
     def url(self, *, query=None):
         return self._append_query(self._path, query)
 
@@ -236,6 +311,10 @@ class DynamicResource(Resource):
             return {key: unquote(value) for key, value in
                     match.groupdict().items()}
 
+    def get_info(self):
+        return {'formatter': self._formatter,
+                'pattern': self._pattern}
+
     def url(self, *, parts, query=None):
         url = self._formatter.format_map(parts)
         return self._append_query(url, query)
@@ -244,69 +323,6 @@ class DynamicResource(Resource):
         name = "'" + self.name + "' " if self.name is not None else ""
         return ("<DynamicResource {name} {formatter}"
                 .format(name=name, formatter=self._formatter))
-
-
-class AbstractRoute(metaclass=abc.ABCMeta):
-    METHODS = hdrs.METH_ALL | {hdrs.METH_ANY}
-
-    def __init__(self, method, handler, *,
-                 expect_handler=None,
-                 resource=None):
-
-        if expect_handler is None:
-            expect_handler = _defaultExpectHandler
-
-        assert asyncio.iscoroutinefunction(expect_handler), \
-            'Coroutine is expected, got {!r}'.format(expect_handler)
-
-        method = upstr(method)
-        if method not in self.METHODS:
-            raise ValueError("{} is not allowed HTTP method".format(method))
-
-        if handler is not None:
-            assert callable(handler), handler
-            if asyncio.iscoroutinefunction(handler):
-                pass
-            elif inspect.isgeneratorfunction(handler):
-                warnings.warn("Bare generators are deprecated, "
-                              "use @coroutine wrapper", DeprecationWarning)
-            elif (isinstance(handler, type) and
-                  issubclass(handler, AbstractView)):
-                pass
-            else:
-                handler = asyncio.coroutine(handler)
-
-        self._method = method
-        self._handler = handler
-        self._expect_handler = expect_handler
-        self._resource = resource
-
-    @property
-    def method(self):
-        return self._method
-
-    @property
-    def handler(self):
-        return self._handler
-
-    @property
-    @abc.abstractmethod
-    def name(self):
-        """Optional route's name, always equals to resource's name."""
-
-    @property
-    def resource(self):
-        return self._resource
-
-    @abc.abstractmethod  # pragma: no branch
-    def url(self, **kwargs):
-        """Construct url for route with additional params."""
-
-    @asyncio.coroutine
-    def handle_expect_header(self, request):
-        return (yield from self._expect_handler(request))
-
-    _append_query = staticmethod(Resource._append_query)
 
 
 class ResourceRoute(AbstractRoute):
@@ -331,7 +347,9 @@ class ResourceRoute(AbstractRoute):
         return self._resource.url(**kwargs)
 
     def get_info(self):
-        return {}
+        return self._resource.get_info()
+
+    _append_query = staticmethod(Resource._append_query)
 
 
 class Route(AbstractRoute):
@@ -350,6 +368,8 @@ class Route(AbstractRoute):
         """Return dict with info for given path or
         None if route cannot process path."""
         return self._resource.match(path)
+
+    _append_query = staticmethod(Resource._append_query)
 
 
 class PlainRoute(Route):
