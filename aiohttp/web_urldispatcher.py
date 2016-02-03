@@ -81,18 +81,17 @@ class AbstractRoute(metaclass=abc.ABCMeta):
         if method not in self.METHODS:
             raise ValueError("{} is not allowed HTTP method".format(method))
 
-        if handler is not None:
-            assert callable(handler), handler
-            if asyncio.iscoroutinefunction(handler):
-                pass
-            elif inspect.isgeneratorfunction(handler):
-                warnings.warn("Bare generators are deprecated, "
-                              "use @coroutine wrapper", DeprecationWarning)
-            elif (isinstance(handler, type) and
-                  issubclass(handler, AbstractView)):
-                pass
-            else:
-                handler = asyncio.coroutine(handler)
+        assert callable(handler), handler
+        if asyncio.iscoroutinefunction(handler):
+            pass
+        elif inspect.isgeneratorfunction(handler):
+            warnings.warn("Bare generators are deprecated, "
+                          "use @coroutine wrapper", DeprecationWarning)
+        elif (isinstance(handler, type) and
+              issubclass(handler, AbstractView)):
+            pass
+        else:
+            handler = asyncio.coroutine(handler)
 
         self._method = method
         self._handler = handler
