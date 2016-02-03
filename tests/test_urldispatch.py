@@ -285,25 +285,25 @@ class TestUrlDispatcher(unittest.TestCase):
         handler = self.make_handler()
         self.router.add_route('GET', '/get/path', handler, name='name')
         route = self.router['name']
-        self.assertIsNone(route.match('/another/path'))
+        self.assertIsNone(route._match('/another/path'))
 
     def test_dynamic_not_match(self):
         handler = self.make_handler()
         self.router.add_route('GET', '/get/{name}', handler, name='name')
         route = self.router['name']
-        self.assertIsNone(route.match('/another/path'))
+        self.assertIsNone(route._match('/another/path'))
 
     def test_static_not_match(self):
         self.router.add_static('/pre', os.path.dirname(aiohttp.__file__),
                                name='name')
         route = self.router['name']
-        self.assertIsNone(route.match('/another/path'))
+        self.assertIsNone(route._route.match('/another/path'))
 
     def test_dynamic_with_trailing_slash(self):
         handler = self.make_handler()
         self.router.add_route('GET', '/get/{name}/', handler, name='name')
         route = self.router['name']
-        self.assertEqual({'name': 'John'}, route.match('/get/John/'))
+        self.assertEqual({'name': 'John'}, route._match('/get/John/'))
 
     def test_len(self):
         handler = self.make_handler()
@@ -690,7 +690,7 @@ class TestUrlDispatcher(unittest.TestCase):
         self.router.register_route(route)
         resource = route.resource
         self.assertIsNotNone(resource)
-        self.assertIsNone(resource.match('/another/path'))
+        self.assertIsNone(resource._route.match('/another/path'))
 
     def test_resource_adapter_resolve_not_math(self):
         route = PlainRoute('GET', lambda req: None, None, '/path')
@@ -749,7 +749,7 @@ class TestUrlDispatcher(unittest.TestCase):
     def test_resource_route_match(self):
         resource = self.router.add_resource('/path')
         route = resource.add_route('GET', lambda req: None)
-        self.assertEqual({}, route.match('/path'))
+        self.assertEqual({}, route.resource._match('/path'))
 
     def test_plain_route_url(self):
         route = PlainRoute('GET', lambda req: None, None, '/path')

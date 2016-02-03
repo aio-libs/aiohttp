@@ -101,11 +101,6 @@ class AbstractResource(Sized, Iterable):
         return self._name
 
     @abc.abstractmethod  # pragma: no branch
-    def match(self, path):
-        """Return dict with info for given path or
-        None if route cannot process the path."""
-
-    @abc.abstractmethod  # pragma: no branch
     def url(self, **kwargs):
         """Construct url for resource with additional params."""
 
@@ -132,9 +127,6 @@ class ResourceAdapter(AbstractResource):
         super().__init__(name=route.name)
         self._route = route
         route._resource = self
-
-    def match(self, path):
-        return self._route.match(path)
 
     def url(self, **kwargs):
         return self._route.url(**kwargs)
@@ -186,7 +178,7 @@ class Resource(AbstractResource):
     def resolve(self, method, path):
         allowed_methods = set()
 
-        match_dict = self.match(path)
+        match_dict = self._match(path)
         if match_dict is None:
             return None, allowed_methods
 
@@ -213,7 +205,7 @@ class PlainResource(Resource):
         super().__init__(name=name)
         self._path = path
 
-    def match(self, path):
+    def _match(self, path):
         # string comparison is about 10 times faster than regexp matching
         if self._path == path:
             return {}
@@ -236,7 +228,7 @@ class DynamicResource(Resource):
         self._pattern = pattern
         self._formatter = formatter
 
-    def match(self, path):
+    def _match(self, path):
         match = self._pattern.match(path)
         if match is None:
             return None
@@ -307,11 +299,6 @@ class AbstractRoute(metaclass=abc.ABCMeta):
         return self._resource
 
     @abc.abstractmethod  # pragma: no branch
-    def match(self, path):
-        """Return dict with info for given path or
-        None if route cannot process path."""
-
-    @abc.abstractmethod  # pragma: no branch
     def url(self, **kwargs):
         """Construct url for route with additional params."""
 
@@ -339,11 +326,6 @@ class ResourceRoute(AbstractRoute):
     def name(self):
         return self._resource.name
 
-    def match(self, path):
-        """Return dict with info for given path or
-        None if route cannot process path."""
-        return self._resource.match(path)
-
     def url(self, **kwargs):
         """Construct url for route with additional params."""
         return self._resource.url(**kwargs)
@@ -362,6 +344,12 @@ class Route(AbstractRoute):
     @property
     def name(self):
         return self._name
+
+    @abc.abstractmethod
+    def match(self, path):
+        """Return dict with info for given path or
+        None if route cannot process path."""
+        return self._resource.match(path)
 
 
 class PlainRoute(Route):

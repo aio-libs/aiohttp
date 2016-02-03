@@ -1424,19 +1424,10 @@ Resource classes hierarchy::
 
       Read-only *name* of resource or ``None``.
 
-   .. method:: match(path)
-
-      :param str path: *path* part of requested URL.
-
-      :return: :class:`dict` with info for given *path* or
-               ``None`` if route cannot process the path.
-
-   .. method:: resolve(method, path)
+   .. coroutinemethod:: resolve(method, path)
 
       Resolve resource by finding appropriate :term:`web-handler` for
       ``(method, path)`` combination.
-
-      Calls :meth:`match` internally.
 
       :param str method: requested HTTP method.
 
@@ -1562,20 +1553,6 @@ So the only non-deprecated and not internal route is
    .. attribute:: resource
 
       Resource instance which holds the route.
-
-   .. method:: match(path)
-
-      Abstract method, accepts *URL path* and returns :class:`dict`
-      with parsed *path parts* for :class:`UrlMappingMatchInfo` or
-      ``None`` if the route cannot handle given *path*.
-
-      The method exists for internal usage, end user unlikely need to
-      call it.
-
-      .. note::
-
-         The method is kept for sake of backward compatibility, usually
-         you should use :meth:`Resource.match` instead.
 
    .. method:: url(*, query=None, **kwargs)
 
