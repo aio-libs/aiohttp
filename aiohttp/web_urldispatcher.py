@@ -366,7 +366,6 @@ class Route(AbstractRoute):
     def match(self, path):
         """Return dict with info for given path or
         None if route cannot process path."""
-        return self._resource.match(path)
 
     _append_query = staticmethod(Resource._append_query)
 
@@ -466,7 +465,7 @@ class StaticRoute(Route):
         return self._append_query(url, query)
 
     def get_info(self):
-        return {'direcotry': self._directory,
+        return {'directory': self._directory,
                 'prefix': self._prefix}
 
     def _sendfile_cb(self, fut, out_fd, in_fd, offset, count, loop,

@@ -1,5 +1,6 @@
 import asyncio
 import os
+import pathlib
 import re
 import unittest
 from collections.abc import Sized, Container, Iterable, Mapping, MutableMapping
@@ -793,3 +794,60 @@ class TestUrlDispatcher(unittest.TestCase):
         resource.add_route('*', lambda: None)
         with self.assertRaises(RuntimeError):
             resource.add_route('GET', lambda: None)
+
+    def test_http_exception_is_none_when_resolved(self):
+        handler = self.make_handler()
+        self.router.add_route('GET', '/', handler)
+        req = self.make_request('GET', '/')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNone(info.http_exception)
+
+    def test_http_exception_is_not_none_when_not_resolved(self):
+        handler = self.make_handler()
+        self.router.add_route('GET', '/', handler)
+        req = self.make_request('GET', '/abc')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertEqual(info.http_exception.status, 404)
+
+    def test_match_info_get_info_plain(self):
+        handler = self.make_handler()
+        self.router.add_route('GET', '/', handler)
+        req = self.make_request('GET', '/')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertEqual(info.get_info(), {'path': '/'})
+
+    def test_match_info_get_info_dynamic(self):
+        handler = self.make_handler()
+        self.router.add_route('GET', '/{a}', handler)
+        req = self.make_request('GET', '/value')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertEqual(info.get_info(),
+                         {'pattern': re.compile('^\\/(?P<a>[^{}/]+)$'),
+                          'formatter': '/{a}'})
+
+    def test_resource_adapter_get_info(self):
+        directory = pathlib.Path(aiohttp.__file__).parent
+        route = self.router.add_static('/st', directory)
+        self.assertEqual(route.resource.get_info(), {'directory': directory,
+                                                     'prefix': '/st/'})
+
+    def test_plain_old_style_route_get_info(self):
+        handler = self.make_handler()
+        route = PlainRoute('GET', handler, 'test', '/handler/to/path')
+        self.router.register_route(route)
+        self.assertEqual(route.get_info(), {'path': '/handler/to/path'})
+
+    def test_dynamic_old_style_get_info(self):
+        handler = self.make_handler()
+        route = DynamicRoute('GET', handler, 'name',
+                             '<pattern>', '/get/{path}')
+        self.router.register_route(route)
+        self.assertEqual(route.get_info(), {'formatter': '/get/{path}',
+                                            'pattern': '<pattern>'})
+
+    def test_system_route_get_info(self):
+        handler = self.make_handler()
+        self.router.add_route('GET', '/', handler)
+        req = self.make_request('GET', '/abc')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertEqual(info.get_info()['http_exception'].status, 404)
