@@ -1632,7 +1632,7 @@ In general the result may be any object derived from
 .. class:: UrlMappingMatchInfo
 
    Inherited from :class:`dict` and :class:`AbstractMatchInfo`. Dict
-   items are given from :meth:`Route.match` call return value.
+   items are filled by matching info and is :term:`resource`\-specific.
 
    .. attribute:: expect_handler
 
