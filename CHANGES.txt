@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-0.21.0 (XX-XX-XXXX)
+0.21.0 (02-04-2016)
 --------------------
 
 - Introduce on_shutdown signal #722
