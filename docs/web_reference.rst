@@ -1301,24 +1301,30 @@ Router is any object that implements :class:`AbstractRouter` interface.
          The method don't raise :exc:`HTTPNotFound` and
          :exc:`HTTPMethodNotAllowed` anymore.
 
-   .. method:: routes()
+   .. method:: resources()
 
-      The method returns a *view* for *all* registered routes.
+      The method returns a *view* for *all* registered resources.
 
       The view is an object that allows to:
 
       1. Get size of the router table::
 
-           len(app.router.routes())
+           len(app.router.resources())
 
-      2. Iterate over registered routes::
+      2. Iterate over registered resources::
 
-           for route in app.router.routes():
-               print(route)
+           for resource in app.router.resources():
+               print(resource)
 
-      3. Make a check if the route is registered in the router table::
+      3. Make a check if the resources is registered in the router table::
 
-           route in app.router.routes()
+           route in app.router.resources()
+
+      .. versionadded:: 0.21.1
+
+   .. method:: routes()
+
+      The method returns a *view* for *all* registered routes.
 
       .. versionadded:: 0.18
 
@@ -1340,6 +1346,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
           "name" in app.router.named_resources()
 
           app.router.named_resources()["name"]
+
+      .. versionadded:: 0.21
 
    .. method:: named_routes()
 
