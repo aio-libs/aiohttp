@@ -77,7 +77,7 @@ not used widely).
 shortcut for::
 
     resource = app.router.add_resource(path, name=name)
-    route = resource.add_route(methoc, handler)
+    route = resource.add_route(method, handler)
     return route
 
 ``app.router.register_route(...)`` is still supported, it creates
