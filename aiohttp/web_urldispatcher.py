@@ -25,7 +25,9 @@ from .multidict import upstr
 
 
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
-           'Resource', 'PlainResource', 'DynamicResource',
+           'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',
+           'ResourceAdapter',
+           'AbstractRoute', 'ResourceRoute',
            'Route', 'PlainRoute', 'DynamicRoute', 'StaticRoute', 'View')
 
 
