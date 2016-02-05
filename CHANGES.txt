@@ -1,6 +1,11 @@
 CHANGES
 =======
 
+0.21.1 (XX-XX-XXXX)
+-------------------
+
+- Make new resources classes public #767
+
 0.21.0 (02-04-2016)
 --------------------
 
