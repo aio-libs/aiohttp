@@ -6,6 +6,8 @@ CHANGES
 
 - Make new resources classes public #767
 
+- Add `router.resources()` view
+
 0.21.0 (02-04-2016)
 --------------------
 

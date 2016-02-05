@@ -851,3 +851,26 @@ class TestUrlDispatcher(unittest.TestCase):
         req = self.make_request('GET', '/abc')
         info = self.loop.run_until_complete(self.router.resolve(req))
         self.assertEqual(info.get_info()['http_exception'].status, 404)
+
+    def fill_resources(self):
+        resource1 = self.router.add_resource('/plain')
+        resource2 = self.router.add_resource('/variable/{name}')
+        return resource1, resource2
+
+    def test_resources_view_len(self):
+        self.fill_resources()
+        self.assertEqual(2, len(self.router.resources()))
+
+    def test_resources_view_iter(self):
+        resources = self.fill_resources()
+        self.assertEqual(list(resources), list(self.router.resources()))
+
+    def test_resources_view_contains(self):
+        resources = self.fill_resources()
+        for resource in resources:
+            self.assertIn(resource, self.router.resources())
+
+    def test_resources_abc(self):
+        self.assertIsInstance(self.router.resources(), Sized)
+        self.assertIsInstance(self.router.resources(), Iterable)
+        self.assertIsInstance(self.router.resources(), Container)
