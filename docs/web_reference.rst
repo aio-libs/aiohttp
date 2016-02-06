@@ -1761,7 +1761,7 @@ Utilities
                        ``None`` for HTTP connection.
 
    :param print: a callable compatible with :func:`print`. May be used
-                 to override stdout output or suppress it.
+                 to override STDOUT output or suppress it.
 
 
 Constants

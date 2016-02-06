@@ -44,7 +44,7 @@ Not Allowed*. :meth:`AbstractMatchInfo.handler` raises
    .. coroutinemethod:: resolve(request)
 
       Performs URL resolving. It's an abstract method, should be
-      overriden in *router* implementation.
+      overridden in *router* implementation.
 
       :param request: :class:`aiohttp.web.Request` instance for
                       resolving, the request has
@@ -71,7 +71,7 @@ Not Allowed*. :meth:`AbstractMatchInfo.handler` raises
                       resolving, the request has
                       :attr:`aiohttp.web.Request.match_info` equals to
                       ``None`` at resolving stage.
-      :return: :class:`aiohttp.web.StramResponse` or descenants.
+      :return: :class:`aiohttp.web.StramResponse` or descendants.
 
       :raise: :class:`aiohttp.web.HTTPException` on error
 
