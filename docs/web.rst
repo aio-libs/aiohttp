@@ -261,7 +261,7 @@ Example will process GET and POST requests for */path/to* but raise
 Resource Views
 ^^^^^^^^^^^^^^
 
-*All* registered ressources in a router can be viewed using the
+*All* registered resources in a router can be viewed using the
 :meth:`UrlDispatcher.resources` method::
 
    for resource in app.router.resources():
