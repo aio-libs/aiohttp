@@ -11,5 +11,5 @@ sphinxcontrib-newsfeed
 pytest
 pytest-cov
 gunicorn
-pygments
+pygments>=2.1
 -e .
