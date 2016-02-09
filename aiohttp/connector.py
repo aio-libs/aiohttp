@@ -412,7 +412,7 @@ class TCPConnector(BaseConnector):
 
     def __init__(self, *, verify_ssl=True, fingerprint=None,
                  resolve=_marker, use_dns_cache=_marker, family=0,
-                 ssl_context=None, local_addr=None, tcp_timeout=None,
+                 ssl_context=None, local_addr=None, timeout=None,
                  **kwargs):
         super().__init__(**kwargs)
 
@@ -452,7 +452,7 @@ class TCPConnector(BaseConnector):
         self._ssl_context = ssl_context
         self._family = family
         self._local_addr = local_addr
-        self._tcp_timeout = tcp_timeout
+        self._timeout = timeout
 
     @property
     def verify_ssl(self):
@@ -581,8 +581,8 @@ class TCPConnector(BaseConnector):
                     server_hostname=hinfo['hostname'] if sslcontext else None,
                     local_addr=self._local_addr)
                 sock = transp.get_extra_info('socket')
-                if self._tcp_timeout is not None:
-                        sock.settimeout(self._tcp_timeout)
+                if self._timeout is not None:
+                        sock.settimeout(self._timeout)
                 has_cert = transp.get_extra_info('sslcontext')
                 if has_cert and self._fingerprint:
                     if not hasattr(sock, 'getpeercert'):
