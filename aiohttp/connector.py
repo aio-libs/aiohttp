@@ -582,7 +582,7 @@ class TCPConnector(BaseConnector):
                     local_addr=self._local_addr)
                 sock = transp.get_extra_info('socket')
                 if self._timeout is not None:
-                        sock.settimeout(self._timeout)
+                    sock.settimeout(self._timeout)
                 has_cert = transp.get_extra_info('sslcontext')
                 if has_cert and self._fingerprint:
                     if not hasattr(sock, 'getpeercert'):
