@@ -411,8 +411,8 @@ class TCPConnector(BaseConnector):
     """
 
     def __init__(self, *, verify_ssl=True, fingerprint=None,
-                 resolve=_marker, use_dns_cache=_marker,
-                 family=0, ssl_context=None, local_addr=None,
+                 resolve=_marker, use_dns_cache=_marker, family=0,
+                 ssl_context=None, local_addr=None, timeout=None,
                  **kwargs):
         super().__init__(**kwargs)
 
@@ -452,6 +452,7 @@ class TCPConnector(BaseConnector):
         self._ssl_context = ssl_context
         self._family = family
         self._local_addr = local_addr
+        self._timeout = timeout
 
     @property
     def verify_ssl(self):
@@ -579,9 +580,11 @@ class TCPConnector(BaseConnector):
                     proto=hinfo['proto'], flags=hinfo['flags'],
                     server_hostname=hinfo['hostname'] if sslcontext else None,
                     local_addr=self._local_addr)
+                sock = transp.get_extra_info('socket')
+                if self._timeout is not None:
+                    sock.settimeout(self._timeout)
                 has_cert = transp.get_extra_info('sslcontext')
                 if has_cert and self._fingerprint:
-                    sock = transp.get_extra_info('socket')
                     if not hasattr(sock, 'getpeercert'):
                         # Workaround for asyncio 3.5.0
                         # Starting from 3.5.1 version

@@ -61,7 +61,10 @@ class TestProxyConnector(unittest.TestCase):
         self.assertIs(conn._protocol, proto)
 
         # resolve_host.assert_called_once_with('proxy.example.com', 80)
-        tr.get_extra_info.assert_called_once_with('sslcontext')
+        tr.get_extra_info.assert_has_calls([
+            unittest.mock.call('socket'),
+            unittest.mock.call('sslcontext')])
+        self.assertIs(tr.get_extra_info.call_count, 2)
 
         ClientRequestMock.assert_called_with(
             'GET', 'http://proxy.example.com',
