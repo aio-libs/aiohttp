@@ -580,11 +580,11 @@ class TCPConnector(BaseConnector):
                     proto=hinfo['proto'], flags=hinfo['flags'],
                     server_hostname=hinfo['hostname'] if sslcontext else None,
                     local_addr=self._local_addr)
+                sock = transp.get_extra_info('socket')
+                if self._tcp_timeout is not None:
+                        sock.settimeout(self._tcp_timeout)
                 has_cert = transp.get_extra_info('sslcontext')
                 if has_cert and self._fingerprint:
-                    sock = transp.get_extra_info('socket')
-                    if self._tcp_timeout is not None:
-                        sock.settimeout(self._tcp_timeout)
                     if not hasattr(sock, 'getpeercert'):
                         # Workaround for asyncio 3.5.0
                         # Starting from 3.5.1 version
