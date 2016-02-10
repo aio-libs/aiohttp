@@ -8,6 +8,8 @@ CHANGES
 
 - Add `router.resources()` view
 
+- Fix cmd-line parameter names in doc
+
 0.21.0 (02-04-2016)
 --------------------
 
