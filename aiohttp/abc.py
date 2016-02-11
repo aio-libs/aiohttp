@@ -55,3 +55,15 @@ class AbstractView(metaclass=ABCMeta):
         @abstractmethod
         def __await__(self):
             return
+
+
+class AbstractResolver(metaclass=ABCMeta):
+
+    @asyncio.coroutine
+    @abstractmethod
+    def resolve(self, hostname):
+        """Return IP address for given hostname"""
+
+    @abstractmethod
+    def close(self):
+        """Release resolver"""
