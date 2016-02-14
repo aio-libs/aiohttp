@@ -6,13 +6,15 @@ import asyncio
 
 
 def curl(url):
-    response = yield from aiohttp.request('GET', url)
+    session = aiohttp.ClientSession()
+    response = yield from session.request('GET', url)
     print(repr(response))
 
     chunk = yield from response.content.read()
     print('Downloaded: %s' % len(chunk))
 
     response.close()
+    session.close()
 
 
 if __name__ == '__main__':
