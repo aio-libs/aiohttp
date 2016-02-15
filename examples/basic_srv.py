@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Basic http server with minimal setup"""
+"""Basic HTTP server with minimal setup"""
 
 import aiohttp
 import aiohttp.server
