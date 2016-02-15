@@ -297,9 +297,7 @@ Although :class:`UrlDispatcher` does not support any extra criteria, routing
 based on custom conditions can be accomplished by implementing a second layer
 of routing in your application.
 
-The following example shows custom routing based on the *HTTP Accept* header:
-
-.. code-block:: python
+The following example shows custom routing based on the *HTTP Accept* header::
 
    class AcceptChooser:
 
@@ -431,9 +429,7 @@ If all checks pass, the custom handler *must* write a *HTTP/1.1 100 Continue*
 status code before returning.
 
 The following example shows how to setup a custom handler for the *Expect*
-header:
-
-.. code-block:: python
+header::
 
    async def check_auth(request):
        if request.version != aiohttp.HttpVersion11:
@@ -479,9 +475,7 @@ accepts a MP3 file:
 
 Then, in the :ref:`request handler <aiohttp-web-handler>` you can access the
 file input field as a :class:`FileField` instance. :class:`FileField` is simply
-a container for the file as well as some of its metadata:
-
-.. code-block:: python
+a container for the file as well as some of its metadata::
 
     async def store_mp3_handler(request):
 
@@ -513,9 +507,7 @@ WebSockets
 
 To setup a *WebSocket*, create a :class:`WebSocketResponse` in a
 :ref:`request handler <aiohttp-web-handler>` and then use it to communicate
-with the peer:
-
-.. code-block:: python
+with the peer::
 
     async def websocket_handler(request):
 
@@ -863,9 +855,7 @@ Developer should keep a list of opened connections
 (:class:`Application` is a good candidate).
 
 The following :term:`websocket` snippet shows an example for websocket
-handler:
-
-.. code-block:: python
+handler::
 
     app = web.Application()
     app['websockets'] = []
@@ -883,11 +873,9 @@ handler:
 
         return ws
 
-Signal handler may looks like:
+Signal handler may looks like::
 
-.. code-block:: python
-
-    async with on_shutdown(app):
+    async def on_shutdown(app):
         for ws in app['websockets']:
             await ws.close(code=999, message='Server shutdown')
 
