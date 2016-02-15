@@ -883,3 +883,8 @@ class TestUrlDispatcher(unittest.TestCase):
         static_dir = '~/' + str(here.relative_to(home))
         route = self.router.add_static('/st', static_dir)
         self.assertEqual(here, route.get_info()['directory'])
+
+    def test_static_route_points_to_file(self):
+        here = pathlib.Path(aiohttp.__file__).parent / '__init__.py'
+        with self.assertRaises(ValueError):
+            self.router.add_static('/st', here)
