@@ -1,4 +1,4 @@
-"""simple http server."""
+"""simple HTTP server."""
 
 import asyncio
 import http.server
@@ -42,9 +42,9 @@ EMPTY_PAYLOAD = streams.EmptyStreamReader()
 
 
 class ServerHttpProtocol(aiohttp.StreamProtocol):
-    """Simple http protocol implementation.
+    """Simple HTTP protocol implementation.
 
-    ServerHttpProtocol handles incoming http request. It reads request line,
+    ServerHttpProtocol handles incoming HTTP request. It reads request line,
     request headers and request payload and calls handle_request() method.
     By default it always returns with 404 response.
 
@@ -82,7 +82,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     _keep_alive_handle = None  # keep alive timer handle
     _timeout_handle = None  # slow request timer handle
 
-    _request_prefix = aiohttp.HttpPrefixParser()  # http method parser
+    _request_prefix = aiohttp.HttpPrefixParser()  # HTTP method parser
     _request_parser = aiohttp.HttpRequestParser()  # default request parser
 
     def __init__(self, *, loop=None,
@@ -236,7 +236,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
             payload = None
             try:
-                # read http request method
+                # read HTTP request method
                 prefix = reader.set_parser(self._request_prefix)
                 yield from prefix.read()
 
@@ -323,7 +323,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                      payload=None, exc=None, headers=None, reason=None):
         """Handle errors.
 
-        Returns http response with specific status code. Logs additional
+        Returns HTTP response with specific status code. Logs additional
         information. It always closes current connection."""
         now = self._loop.time()
         try:
@@ -371,7 +371,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             self.keep_alive(False)
 
     def handle_request(self, message, payload):
-        """Handle a single http request.
+        """Handle a single HTTP request.
 
         Subclass should override this method. By default it always
         returns 404 response.

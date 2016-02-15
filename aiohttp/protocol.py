@@ -159,7 +159,7 @@ class HttpRequestParser(HttpParser):
     """
 
     def __call__(self, out, buf):
-        # read http message (request line + headers)
+        # read HTTP message (request line + headers)
         try:
             raw_data = yield from buf.readuntil(
                 b'\r\n\r\n', self.max_headers)
@@ -213,7 +213,7 @@ class HttpResponseParser(HttpParser):
     Returns RawResponseMessage"""
 
     def __call__(self, out, buf):
-        # read http message (response line + headers)
+        # read HTTP message (response line + headers)
         try:
             raw_data = yield from buf.readuntil(
                 b'\r\n\r\n', self.max_line_size + self.max_headers)
@@ -615,7 +615,7 @@ class HttpMessage:
             self.headers.add(name, value)
 
     def add_headers(self, *headers):
-        """Adds headers to a http message."""
+        """Adds headers to a HTTP message."""
         for name, value in headers:
             self.add_header(name, value)
 
@@ -801,11 +801,11 @@ class HttpMessage:
 
 
 class Response(HttpMessage):
-    """Create http response message.
+    """Create HTTP response message.
 
     Transport is a socket stream transport. status is a response status code,
     status has to be integer value. http_version is a tuple that represents
-    http version, (1, 0) stands for HTTP/1.0 and (1, 1) is for HTTP/1.1
+    HTTP version, (1, 0) stands for HTTP/1.0 and (1, 1) is for HTTP/1.1
     """
 
     HOP_HEADERS = ()
