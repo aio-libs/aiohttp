@@ -4,6 +4,8 @@ CHANGES
 0.22.0 (XX-XX-XXXX)
 -------------------
 
+- Optional support for aiodns #728
+
 
 0.21.1 (02-10-2016)
 -------------------

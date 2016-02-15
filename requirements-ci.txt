@@ -12,4 +12,5 @@ pytest
 pytest-cov
 gunicorn
 pygments>=2.1
+aiodns
 -e .
