@@ -1,4 +1,4 @@
-"""Http client functional tests against aiohttp.web server"""
+"""HTTP client functional tests against aiohttp.web server"""
 
 import aiohttp
 import asyncio
