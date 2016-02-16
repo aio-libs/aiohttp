@@ -4,10 +4,10 @@ CHANGES
 0.22.0 (XX-XX-XXXX)
 -------------------
 
-0.21.2 (XX-XX-XXXX)
+0.21.2 (02-16-2016)
 -------------------
 
-- Fix regression support for handling ~/path in static file routes was
+- Fix a regression: support for handling ~/path in static file routes was
   broken #782
 
 0.21.1 (02-10-2016)
