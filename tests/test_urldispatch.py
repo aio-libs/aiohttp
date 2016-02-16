@@ -877,7 +877,7 @@ class TestUrlDispatcher(unittest.TestCase):
 
     def test_static_route_user_home(self):
         here = pathlib.Path(aiohttp.__file__).parent
-        home = pathlib.Path('~').expanduser()
+        home = pathlib.Path(os.path.expanduser('~'))
         if not str(here).startswith(str(home)):  # pragma: no cover
             self.skipTest("aiohttp folder is not placed in user's HOME")
         static_dir = '~/' + str(here.relative_to(home))
