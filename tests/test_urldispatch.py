@@ -874,3 +874,17 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIsInstance(self.router.resources(), Sized)
         self.assertIsInstance(self.router.resources(), Iterable)
         self.assertIsInstance(self.router.resources(), Container)
+
+    def test_static_route_user_home(self):
+        here = pathlib.Path(aiohttp.__file__).parent
+        home = pathlib.Path(os.path.expanduser('~'))
+        if not str(here).startswith(str(home)):  # pragma: no cover
+            self.skipTest("aiohttp folder is not placed in user's HOME")
+        static_dir = '~/' + str(here.relative_to(home))
+        route = self.router.add_static('/st', static_dir)
+        self.assertEqual(here, route.get_info()['directory'])
+
+    def test_static_route_points_to_file(self):
+        here = pathlib.Path(aiohttp.__file__).parent / '__init__.py'
+        with self.assertRaises(ValueError):
+            self.router.add_static('/st', here)
