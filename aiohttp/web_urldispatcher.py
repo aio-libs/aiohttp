@@ -440,7 +440,10 @@ class StaticRoute(Route):
         self._prefix = prefix
         self._prefix_len = len(self._prefix)
         try:
-            directory = Path(directory).resolve()
+            directory = Path(directory)
+            if str(directory).startswith('~'):
+                directory = Path(os.path.expanduser(str(directory)))
+            directory = directory.resolve()
             if not directory.is_dir():
                 raise ValueError('Not a directory')
         except (FileNotFoundError, ValueError) as error:
