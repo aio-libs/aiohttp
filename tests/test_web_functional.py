@@ -790,6 +790,18 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
+    def test_start_without_routes(self):
+        @asyncio.coroutine
+        def go():
+            _, srv, url = yield from self.create_server(None, '/', None)
+            client = ClientSession(loop=self.loop)
+            resp = yield from client.get(url)
+            self.assertEqual(404, resp.status)
+            yield from resp.release()
+            client.close()
+
+        self.loop.run_until_complete(go())
+
 
 class StaticFileMixin(WebFunctionalSetupMixin):
 
