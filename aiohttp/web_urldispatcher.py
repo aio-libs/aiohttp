@@ -442,7 +442,7 @@ class StaticRoute(Route):
         try:
             directory = Path(directory)
             if str(directory).startswith('~'):
-                directory = directory.expanduser()
+                directory = Path(os.path.expanduser(str(directory)))
             directory = directory.resolve()
             if not directory.is_dir():
                 raise ValueError('Not a directory')
