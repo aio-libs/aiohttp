@@ -189,39 +189,6 @@ def _defaultExpectHandler(request):
             raise HTTPExpectationFailed(text="Unknown Expect: %s" % expect)
 
 
-class ResourceAdapter(AbstractResource):
-
-    def __init__(self, route):
-        assert isinstance(route, Route), \
-            'Instance of Route class is required, got {!r}'.format(route)
-        super().__init__(name=route.name)
-        self._route = route
-        route._resource = self
-
-    def url(self, **kwargs):
-        return self._route.url(**kwargs)
-
-    @asyncio.coroutine
-    def resolve(self, method, path):
-        route_method = self._route.method
-        allowed_methods = {route_method}
-        if route_method == method or route_method == hdrs.METH_ANY:
-            match_dict = self._route.match(path)
-            if match_dict is not None:
-                return (UrlMappingMatchInfo(match_dict, self._route),
-                        allowed_methods)
-        return None, allowed_methods
-
-    def get_info(self):
-        return self._route.get_info()
-
-    def __len__(self):
-        return 1
-
-    def __iter__(self):
-        yield self._route
-
-
 class Resource(AbstractResource):
 
     def __init__(self, *, name=None):
@@ -270,6 +237,32 @@ class Resource(AbstractResource):
 
     def __iter__(self):
         return iter(self._routes)
+
+
+class ResourceAdapter(Resource):
+
+    def __init__(self, route):
+        assert isinstance(route, Route), \
+            'Instance of Route class is required, got {!r}'.format(route)
+        super().__init__(name=route.name)
+        self._route = route
+        route._resource = self
+        self._routes.append(route)
+
+    def _match(self, path):
+        return self._route.match(path)
+
+    def url(self, **kwargs):
+        return self._route.url(**kwargs)
+
+    def get_info(self):
+        return self._route.get_info()
+
+    def __len__(self):
+        return 1
+
+    def __iter__(self):
+        yield self._route
 
 
 class PlainResource(Resource):

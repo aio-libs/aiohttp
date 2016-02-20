@@ -223,6 +223,7 @@ class TestUrlDispatcher(unittest.TestCase):
     def test_raise_method_not_found(self):
         handler = self.make_handler()
         self.router.add_route('GET', '/a', handler)
+        self.router.add_static('/static', '/')
         req = self.make_request('GET', '/b')
 
         match_info = self.loop.run_until_complete(self.router.resolve(req))
@@ -697,7 +698,7 @@ class TestUrlDispatcher(unittest.TestCase):
         route = PlainRoute('GET', lambda req: None, None, '/path')
         self.router.register_route(route)
         resource = route.resource
-        self.assertEqual((None, {'GET'}),
+        self.assertEqual((None, set()),
                          self.loop.run_until_complete(
                              resource.resolve('GET', '/another/path')))
 
@@ -715,7 +716,7 @@ class TestUrlDispatcher(unittest.TestCase):
         resource = route.resource
         match_info, allowed = self.loop.run_until_complete(
             resource.resolve('GET', '/path'))
-        self.assertEqual(allowed, {'*'})  # TODO: expand wildcard
+        self.assertEqual(allowed, set())  # TODO: expand wildcard
         self.assertIsNotNone(match_info)
 
     def test_resource_adapter_iter(self):
