@@ -66,7 +66,7 @@ class AbstractResource(Sized, Iterable):
             return url
 
 
-class AbstractRoute(metaclass=abc.ABCMeta):
+class AbstractRoute(abc.ABC):
     METHODS = hdrs.METH_ALL | {hdrs.METH_ANY}
 
     def __init__(self, method, handler, *,
