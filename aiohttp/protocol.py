@@ -7,7 +7,7 @@ import re
 import string
 import sys
 import zlib
-from abc import abstractmethod, ABCMeta
+from abc import abstractmethod, ABC
 from wsgiref.handlers import format_date_time
 
 import aiohttp
@@ -481,7 +481,7 @@ def filter_pipe(filter, filter2, *,
         chunk = yield EOL_MARKER
 
 
-class HttpMessage(metaclass=ABCMeta):
+class HttpMessage(ABC):
     """HttpMessage allows to write headers and payload to a stream.
 
     For example, lets say we want to read file then compress it with deflate
