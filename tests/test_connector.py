@@ -16,7 +16,7 @@ from aiohttp import web
 from aiohttp import client
 from aiohttp import helpers
 from aiohttp.client import ClientResponse
-from aiohttp.connector import Connection, host_is_ip
+from aiohttp.connector import Connection
 
 
 class TestBaseConnector(unittest.TestCase):
@@ -884,7 +884,7 @@ class TestHttpClientConnector(unittest.TestCase):
             '1::1',
         ]
         for address in ip_addresses:
-            assert host_is_ip(address) is True
+            assert helpers.is_ip_address(address) is True
 
     def test_host_addresses(self):
         hosts = [
@@ -894,4 +894,4 @@ class TestHttpClientConnector(unittest.TestCase):
             'localhost',
         ]
         for host in hosts:
-            assert host_is_ip(host) is False
+            assert helpers.is_ip_address(host) is False
