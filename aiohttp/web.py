@@ -349,7 +349,7 @@ def main(argv):
         type=int,
         default="8080"
     )
-    args, extra_args = arg_parser.parse_known_args(argv)
+    args, extra_args = arg_parser.parse_known_args(argv[1:])
 
     # Import logic
     mod_str, _, func_str = args.entry_func.partition(":")
