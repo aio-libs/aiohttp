@@ -388,7 +388,7 @@ class ClientSession:
             if (
                     not morsel_domain or
                     self._is_domain_match(morsel_domain, netloc)):
-                filtered[name] = morsel
+                dict.__setitem__(filtered, name, morsel)
 
         return filtered
 
