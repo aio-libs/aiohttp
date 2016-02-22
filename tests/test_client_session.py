@@ -3,10 +3,12 @@ import contextlib
 import gc
 import re
 import types
+import http.cookies
 from unittest import mock
 
 import aiohttp
 import pytest
+from aiohttp import test_utils
 from aiohttp.client import ClientSession
 from aiohttp.connector import BaseConnector, TCPConnector
 from aiohttp.multidict import CIMultiDict, MultiDict
@@ -368,3 +370,97 @@ def test_request_ctx_manager_props(loop):
         assert isinstance(ctx_mgr.gi_frame, types.FrameType)
         assert not ctx_mgr.gi_running
         assert isinstance(ctx_mgr.gi_code, types.CodeType)
+
+
+@pytest.fixture
+def get_with_cookies(create_session):
+    cookie_string = """
+        shared-cookie=first;
+        domain-cookie=second; domain=example.com;
+        subdomain1-cookie=third; domain=test1.example.com;
+        subdomain2-cookie=fourth; domain=test2.example.com;
+        dotted-domain-cookie=fifth; domain=.example.com;
+        different-domain-cookie=sixth; domain=different.org;
+        """
+
+    err = NotImplementedError()
+
+    req = mock.Mock()
+    req_factory = mock.Mock(return_value=req)
+
+    req.send = mock.Mock(side_effect=err)
+
+    session = create_session(
+        request_class=req_factory,
+        cookies=http.cookies.SimpleCookie(cookie_string))
+
+    @asyncio.coroutine
+    def create_connection(req):
+        # return self.transport, self.protocol
+        return mock.Mock(), mock.Mock()
+    session._connector._create_connection = create_connection
+
+    return session.get, req_factory
+
+
+@pytest.fixture
+def send_cookie_request(get_with_cookies):
+    get, req = get_with_cookies
+
+    @asyncio.coroutine
+    def maker(*args, **kwargs):
+        with pytest.raises(NotImplementedError):
+            yield from get(*args, **kwargs)
+
+        cookies = req.call_args[1]["cookies"]
+        return cookies
+    return maker
+
+
+@pytest.mark.run_loop
+def test_cookie_domain_filter_ip(send_cookie_request):
+    cookies = yield from send_cookie_request("http://1.2.3.4/")
+    assert set(cookies.keys()) == {
+        "shared-cookie"
+    }
+
+
+@pytest.mark.run_loop
+def test_cookie_domain_filter_same_host(send_cookie_request):
+    cookies = yield from send_cookie_request("http://example.com/")
+    assert set(cookies.keys()) == {
+        "shared-cookie",
+        "domain-cookie",
+        "dotted-domain-cookie"
+    }
+
+
+@pytest.mark.run_loop
+def test_cookie_domain_filter_same_host_and_subdomain(send_cookie_request):
+    cookies = yield from send_cookie_request("http://test1.example.com/")
+    assert set(cookies.keys()) == {
+        "shared-cookie",
+        "domain-cookie",
+        "subdomain1-cookie",
+        "dotted-domain-cookie"
+    }
+
+
+@pytest.mark.run_loop
+def test_cookie_domain_filter_same_host_different_subdomain(send_cookie_request):
+    cookies = yield from send_cookie_request("http://different.example.com/")
+    assert set(cookies.keys()) == {
+        "shared-cookie",
+        "domain-cookie",
+        "dotted-domain-cookie"
+    }
+
+
+@pytest.mark.run_loop
+def test_cookie_domain_filter_different_host(send_cookie_request):
+    cookies = yield from send_cookie_request("http://different.org/")
+    assert set(cookies.keys()) == {
+        "shared-cookie",
+        "different-domain-cookie"
+    }
+
