@@ -7,6 +7,7 @@ import os
 import sys
 import traceback
 import warnings
+import re
 import http.cookies
 import urllib.parse
 
@@ -23,6 +24,8 @@ __all__ = ('ClientSession', 'request', 'get', 'options', 'head',
            'delete', 'post', 'put', 'patch', 'ws_connect')
 
 PY_35 = sys.version_info >= (3, 5)
+
+IPV4_PATTERN = re.compile(r"(\d{1,3}\.){3}\d{1,3}")
 
 
 class ClientSession:
@@ -172,10 +175,13 @@ class ClientSession:
                 skip_headers.add(upstr(i))
 
         while True:
+
+            cookies = self._filter_cookies(url)
+
             req = self._request_class(
                 method, url, params=params, headers=headers,
                 skip_auto_headers=skip_headers, data=data,
-                cookies=self.cookies, encoding=encoding,
+                cookies=cookies, encoding=encoding,
                 auth=auth, version=version, compress=compress, chunked=chunked,
                 expect100=expect100,
                 loop=self._loop, response_class=self._response_class)
@@ -353,9 +359,57 @@ class ClientSession:
             if isinstance(value, http.cookies.Morsel):
                 # use dict method because SimpleCookie class modifies value
                 # before Python 3.4
+                domain = value["domain"]
+                if domain.startswith("."):
+                    value["domain"] = domain[1:]
                 dict.__setitem__(self.cookies, name, value)
             else:
                 self.cookies[name] = value
+
+    def _filter_cookies(self, url):
+        """Returns this session's cookies filtered by their attributes"""
+        # TODO: filter by 'expires', 'path', ...
+        netloc = urllib.parse.urlsplit(url).netloc
+        is_ip = IPV4_PATTERN.match(netloc) is not None
+
+        filtered = http.cookies.SimpleCookie()
+
+        for name, morsel in self.cookies.items():
+            morsel_domain = morsel["domain"]
+
+            if is_ip and morsel_domain:
+                # not requesting from a domain, don't send cookies that aren't shared
+                continue
+
+            # Copy cookies with matching or empty (shared) domain
+            if not morsel_domain or self._is_domain_match(morsel_domain, netloc):
+                filtered[name] = morsel
+
+        return filtered
+
+    @staticmethod
+    def _is_domain_match(domain_string, string):
+        """Implements domain matching according to RFC 6265"""
+        if domain_string == string:
+            return True
+
+        if not string.endswith(domain_string):
+            return False
+
+        rest = string[:-len(domain_string)]
+
+        if not rest:
+            return False
+
+        if rest[-1] != ".":
+            return False
+
+        netloc = urllib.parse.urlsplit(string).netloc
+        is_ip = IPV4_PATTERN.match(netloc) is not None
+        if is_ip:
+            return False
+
+        return True
 
     def _prepare_headers(self, headers):
         """ Add default headers and transform it to CIMultiDict
