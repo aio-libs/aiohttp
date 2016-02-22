@@ -3,11 +3,11 @@
 import asyncio
 import base64
 import hashlib
+import ipaddress
 import os
 import sys
 import traceback
 import warnings
-import re
 import http.cookies
 import urllib.parse
 
@@ -24,8 +24,6 @@ __all__ = ('ClientSession', 'request', 'get', 'options', 'head',
            'delete', 'post', 'put', 'patch', 'ws_connect')
 
 PY_35 = sys.version_info >= (3, 5)
-
-IPV4_PATTERN = re.compile(r"(\d{1,3}\.){3}\d{1,3}")
 
 
 class ClientSession:
@@ -370,7 +368,11 @@ class ClientSession:
         """Returns this session's cookies filtered by their attributes"""
         # TODO: filter by 'expires', 'path', ...
         netloc = urllib.parse.urlsplit(url).netloc
-        is_ip = IPV4_PATTERN.match(netloc) is not None
+        is_ip = True
+        try:
+            ipaddress.ip_address(netloc)
+        except ValueError:
+            is_ip = False
 
         filtered = http.cookies.SimpleCookie()
 
@@ -408,7 +410,12 @@ class ClientSession:
             return False
 
         netloc = urllib.parse.urlsplit(string).netloc
-        is_ip = IPV4_PATTERN.match(netloc) is not None
+        is_ip = True
+        try:
+            ipaddress.ip_address(netloc)
+        except ValueError:
+            is_ip = False
+
         if is_ip:
             return False
 
