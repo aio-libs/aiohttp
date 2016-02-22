@@ -7,7 +7,7 @@ from unittest import mock
 
 @mock.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
 def test_entry_func_empty(error):
-    argv = [""]
+    argv = ["web.py", ""]
 
     with pytest.raises(SystemExit):
         web.main(argv)
@@ -19,7 +19,7 @@ def test_entry_func_empty(error):
 
 @mock.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
 def test_entry_func_only_module(error):
-    argv = ["test"]
+    argv = ["web.py", "test"]
 
     with pytest.raises(SystemExit):
         web.main(argv)
@@ -31,7 +31,7 @@ def test_entry_func_only_module(error):
 
 @mock.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
 def test_entry_func_only_function(error):
-    argv = [":test"]
+    argv = ["web.py", ":test"]
 
     with pytest.raises(SystemExit):
         web.main(argv)
@@ -43,7 +43,7 @@ def test_entry_func_only_function(error):
 
 @mock.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
 def test_entry_func_only_seperator(error):
-    argv = [":"]
+    argv = ["web.py", ":"]
 
     with pytest.raises(SystemExit):
         web.main(argv)
@@ -55,7 +55,7 @@ def test_entry_func_only_seperator(error):
 
 @mock.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
 def test_entry_func_relative_module(error):
-    argv = [".a.b:c"]
+    argv = ["web.py", ".a.b:c"]
 
     with pytest.raises(SystemExit):
         web.main(argv)
@@ -66,7 +66,7 @@ def test_entry_func_relative_module(error):
 @mock.patch("aiohttp.web.import_module", side_effect=ImportError)
 @mock.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
 def test_entry_func_non_existent_module(error, import_module):
-    argv = ["alpha.beta:func"]
+    argv = ["web.py", "alpha.beta:func"]
 
     with pytest.raises(SystemExit):
         web.main(argv)
@@ -77,7 +77,7 @@ def test_entry_func_non_existent_module(error, import_module):
 @mock.patch("aiohttp.web.import_module")
 @mock.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
 def test_entry_func_non_existent_attribute(error, import_module):
-    argv = ["alpha.beta:func"]
+    argv = ["web.py", "alpha.beta:func"]
     module = import_module("alpha.beta")
     del module.func
 
@@ -92,7 +92,7 @@ def test_entry_func_non_existent_attribute(error, import_module):
 @mock.patch("aiohttp.web.run_app")
 @mock.patch("aiohttp.web.import_module")
 def test_entry_func_call(import_module, run_app):
-    argv = ("-H testhost -P 6666 --extra-optional-eins alpha.beta:func "
+    argv = ("web.py -H testhost -P 6666 --extra-optional-eins alpha.beta:func "
             "--extra-optional-zwei extra positional args").split()
     module = import_module("alpha.beta")
 
@@ -109,7 +109,7 @@ def test_entry_func_call(import_module, run_app):
 @mock.patch("aiohttp.web.import_module")
 @mock.patch("aiohttp.web.ArgumentParser.exit", side_effect=SystemExit)
 def test_running_application(exit, import_module, run_app):
-    argv = ("-H testhost -P 6666 --extra-optional-eins alpha.beta:func "
+    argv = ("web.py -H testhost -P 6666 --extra-optional-eins alpha.beta:func "
             "--extra-optional-zwei extra positional args").split()
     module = import_module("alpha.beta")
     app = module.func()

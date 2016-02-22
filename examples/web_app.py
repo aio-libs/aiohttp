@@ -3,7 +3,7 @@ Example of serving an Application using the `aiohttp.web` CLI.
 
 Serve this app using::
 
-    $ python -m aiohttp.web -H localhost -P 8080 --repeat 10 web_app.init \
+    $ python -m aiohttp.web -H localhost -P 8080 --repeat 10 web_app:init \
     > "Hello World"
 
 Here ``--repeat`` & ``"Hello World"`` are application specific command-line
