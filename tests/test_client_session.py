@@ -8,7 +8,6 @@ from unittest import mock
 
 import aiohttp
 import pytest
-from aiohttp import test_utils
 from aiohttp.client import ClientSession
 from aiohttp.connector import BaseConnector, TCPConnector
 from aiohttp.multidict import CIMultiDict, MultiDict
@@ -447,7 +446,7 @@ def test_cookie_domain_filter_same_host_and_subdomain(send_cookie_request):
 
 
 @pytest.mark.run_loop
-def test_cookie_domain_filter_same_host_different_subdomain(send_cookie_request):
+def test_cookie_domain_filter_same_host_diff_subdomain(send_cookie_request):
     cookies = yield from send_cookie_request("http://different.example.com/")
     assert set(cookies.keys()) == {
         "shared-cookie",
@@ -457,10 +456,9 @@ def test_cookie_domain_filter_same_host_different_subdomain(send_cookie_request)
 
 
 @pytest.mark.run_loop
-def test_cookie_domain_filter_different_host(send_cookie_request):
+def test_cookie_domain_filter_diff_host(send_cookie_request):
     cookies = yield from send_cookie_request("http://different.org/")
     assert set(cookies.keys()) == {
         "shared-cookie",
         "different-domain-cookie"
     }
-

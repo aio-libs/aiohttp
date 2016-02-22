@@ -378,11 +378,14 @@ class ClientSession:
             morsel_domain = morsel["domain"]
 
             if is_ip and morsel_domain:
-                # not requesting from a domain, don't send cookies that aren't shared
+                # not requesting from a domain,
+                # don't send cookies that aren't shared
                 continue
 
             # Copy cookies with matching or empty (shared) domain
-            if not morsel_domain or self._is_domain_match(morsel_domain, netloc):
+            if (
+                    not morsel_domain or
+                    self._is_domain_match(morsel_domain, netloc)):
                 filtered[name] = morsel
 
         return filtered
