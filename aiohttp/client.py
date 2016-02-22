@@ -7,7 +7,6 @@ import os
 import sys
 import traceback
 import warnings
-import http.cookies
 import urllib.parse
 
 from multidict import MultiDictProxy, MultiDict, CIMultiDict, upstr
@@ -15,6 +14,7 @@ from multidict import MultiDictProxy, MultiDict, CIMultiDict, upstr
 import aiohttp
 from .client_reqrep import ClientRequest, ClientResponse
 from .errors import WSServerHandshakeError
+from .helpers import CookieJar
 from .websocket import WS_KEY, WebSocketParser, WebSocketWriter
 from .websocket_client import ClientWebSocketResponse
 from . import hdrs, helpers
@@ -52,13 +52,13 @@ class ClientSession:
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
-        self._cookies = http.cookies.SimpleCookie()
+        self._cookie_jar = CookieJar(loop=loop)
 
         # For Backward compatability with `share_cookies` connectors
         if connector._share_cookies:
-            self._update_cookies(connector.cookies)
+            self._cookie_jar.update_cookies(connector.cookies)
         if cookies is not None:
-            self._update_cookies(cookies)
+            self._cookie_jar.update_cookies(cookies)
         self._connector = connector
         self._default_auth = auth
         self._version = version
@@ -173,10 +173,13 @@ class ClientSession:
                 skip_headers.add(upstr(i))
 
         while True:
+
+            cookies = self._cookie_jar.filter_cookies(url)
+
             req = self._request_class(
                 method, url, params=params, headers=headers,
                 skip_auto_headers=skip_headers, data=data,
-                cookies=self.cookies, encoding=encoding,
+                cookies=cookies, encoding=encoding,
                 auth=auth, version=version, compress=compress, chunked=chunked,
                 expect100=expect100,
                 loop=self._loop, response_class=self._response_class)
@@ -196,7 +199,8 @@ class ClientSession:
             except OSError as exc:
                 raise aiohttp.ClientOSError(*exc.args) from exc
 
-            self._update_cookies(resp.cookies)
+            self._cookie_jar.update_cookies(resp.cookies, resp.url)
+
             # For Backward compatability with `share_cookie` connectors
             if self._connector._share_cookies:
                 self._connector.update_cookies(resp.cookies)
@@ -357,19 +361,6 @@ class ClientSession:
                                            autoping,
                                            self._loop)
 
-    def _update_cookies(self, cookies):
-        """Update shared cookies."""
-        if isinstance(cookies, dict):
-            cookies = cookies.items()
-
-        for name, value in cookies:
-            if isinstance(value, http.cookies.Morsel):
-                # use dict method because SimpleCookie class modifies value
-                # before Python 3.4
-                dict.__setitem__(self.cookies, name, value)
-            else:
-                self.cookies[name] = value
-
     def _prepare_headers(self, headers):
         """ Add default headers and transform it to CIMultiDict
         """
@@ -463,7 +454,7 @@ class ClientSession:
     @property
     def cookies(self):
         """The session cookies."""
-        return self._cookies
+        return self._cookie_jar.cookies
 
     @property
     def version(self):

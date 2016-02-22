@@ -3,12 +3,14 @@ import contextlib
 import gc
 import re
 import types
+import http.cookies
 from unittest import mock
 
 from multidict import CIMultiDict, MultiDict
 
 import aiohttp
 import pytest
+from aiohttp import web
 from aiohttp.client import ClientSession
 from aiohttp.connector import BaseConnector, TCPConnector
 
@@ -369,3 +371,56 @@ def test_request_ctx_manager_props(loop):
         assert isinstance(ctx_mgr.gi_frame, types.FrameType)
         assert not ctx_mgr.gi_running
         assert isinstance(ctx_mgr.gi_code, types.CodeType)
+
+
+@pytest.mark.run_loop
+def test_cookie_jar_usage(create_app_and_client):
+    req_url = None
+
+    init_mock = mock.Mock(return_value=None)
+    update_mock = mock.Mock(return_value=None)
+    filter_mock = mock.Mock(return_value=None)
+
+    patches = mock.patch.multiple(
+        "aiohttp.helpers.CookieJar",
+        __init__=init_mock,
+        update_cookies=update_mock,
+        filter_cookies=filter_mock,
+    )
+
+    @asyncio.coroutine
+    def handler(request):
+        nonlocal req_url
+        req_url = "http://%s/" % request.host
+
+        resp = web.Response()
+        resp.set_cookie("response", "resp_value")
+        return resp
+
+    with patches:
+        app, client = yield from create_app_and_client(
+            client_params={"cookies": {"request": "req_value"}}
+        )
+        app.router.add_route('GET', '/', handler)
+
+        # Updating the cookie jar with initial user defined cookies
+        assert init_mock.called
+        assert update_mock.called
+        assert update_mock.call_args[0] == (
+            {"request": "req_value"},
+        )
+
+        update_mock.reset_mock()
+        yield from client.get("/")
+
+        # Filtering the cookie jar before sending the request,
+        # getting the request URL as only parameter
+        assert filter_mock.called
+        assert filter_mock.call_args[0] == (req_url,)
+
+        # Updating the cookie jar with the response cookies
+        assert update_mock.called
+        resp_cookies = update_mock.call_args[0][0]
+        assert isinstance(resp_cookies, http.cookies.SimpleCookie)
+        assert "response" in resp_cookies
+        assert resp_cookies["response"].value == "resp_value"
