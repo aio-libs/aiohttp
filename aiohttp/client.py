@@ -199,7 +199,7 @@ class ClientSession:
             except OSError as exc:
                 raise aiohttp.ClientOSError(*exc.args) from exc
 
-            self._update_cookies(resp.cookies)
+            self._update_cookies(resp.cookies, resp.url)
             # For Backward compatability with `share_cookie` connectors
             if self._connector._share_cookies:
                 self._connector.update_cookies(resp.cookies)
@@ -348,29 +348,51 @@ class ClientSession:
                                            autoping,
                                            self._loop)
 
-    def _update_cookies(self, cookies):
+    def _update_cookies(self, cookies, url=None):
         """Update shared cookies."""
+        hostname = ""
+        if url is not None:
+            hostname = urllib.parse.urlsplit(url).hostname or ""
+
         if isinstance(cookies, dict):
             cookies = cookies.items()
 
         for name, value in cookies:
             if isinstance(value, http.cookies.Morsel):
+
+                cookie_domain = value["domain"]
+                if cookie_domain:
+
+                    if cookie_domain.startswith("."):
+                        # Remove leading dot
+                        cookie_domain = cookie_domain[1:]
+                        value["domain"] = cookie_domain
+
+                    if (
+                            url is not None and
+                            not self._is_domain_match(
+                                cookie_domain, hostname)):
+                        # Setting cookies for different domains is not allowed
+                        continue
+
                 # use dict method because SimpleCookie class modifies value
                 # before Python 3.4
-                domain = value["domain"]
-                if domain.startswith("."):
-                    value["domain"] = domain[1:]
                 dict.__setitem__(self.cookies, name, value)
+
             else:
                 self.cookies[name] = value
+
+            if not self.cookies[name]["domain"] and url is not None:
+                # Set the cookie's domain to the response hostname
+                self.cookies[name]["domain"] = hostname
 
     def _filter_cookies(self, url):
         """Returns this session's cookies filtered by their attributes"""
         # TODO: filter by 'expires', 'path', ...
-        netloc = urllib.parse.urlsplit(url).netloc
+        hostname = urllib.parse.urlsplit(url).hostname or ""
         is_ip = True
         try:
-            ipaddress.ip_address(netloc)
+            ipaddress.ip_address(hostname)
         except ValueError:
             is_ip = False
 
@@ -387,21 +409,21 @@ class ClientSession:
             # Copy cookies with matching or empty (shared) domain
             if (
                     not morsel_domain or
-                    self._is_domain_match(morsel_domain, netloc)):
+                    self._is_domain_match(morsel_domain, hostname)):
                 dict.__setitem__(filtered, name, morsel)
 
         return filtered
 
     @staticmethod
-    def _is_domain_match(domain_string, string):
+    def _is_domain_match(domain, hostname):
         """Implements domain matching according to RFC 6265"""
-        if domain_string == string:
+        if hostname == domain:
             return True
 
-        if not string.endswith(domain_string):
+        if not hostname.endswith(domain):
             return False
 
-        rest = string[:-len(domain_string)]
+        rest = hostname[:-len(domain)]
 
         if not rest:
             return False
@@ -409,10 +431,8 @@ class ClientSession:
         if rest[-1] != ".":
             return False
 
-        netloc = urllib.parse.urlsplit(string).netloc
-        is_ip = True
         try:
-            ipaddress.ip_address(netloc)
+            ipaddress.ip_address(hostname)
         except ValueError:
             is_ip = False
 
