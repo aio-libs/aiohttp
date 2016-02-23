@@ -354,6 +354,14 @@ class ClientSession:
         if url is not None:
             hostname = urllib.parse.urlsplit(url).hostname or ""
 
+        try:
+            ipaddress.ip_address(hostname)
+        except ValueError:
+            pass
+        else:
+            # Don't take cookies from IPs
+            return
+
         if isinstance(cookies, dict):
             cookies = cookies.items()
 
