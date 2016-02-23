@@ -53,6 +53,7 @@ class ClientSession:
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
         self._cookies = http.cookies.SimpleCookie()
+        self._host_only_cookies = set()
 
         # For Backward compatability with `share_cookies` connectors
         if connector._share_cookies:
@@ -390,9 +391,13 @@ class ClientSession:
             else:
                 self.cookies[name] = value
 
-            if not self.cookies[name]["domain"] and url is not None:
+            cookie = self.cookies[name]
+
+            if not cookie["domain"] and url is not None:
                 # Set the cookie's domain to the response hostname
-                self.cookies[name]["domain"] = hostname
+                # and set its host-only-flag
+                self._host_only_cookies.add(name)
+                cookie["domain"] = hostname
 
     def _filter_cookies(self, url):
         """Returns this session's cookies filtered by their attributes"""
@@ -406,19 +411,24 @@ class ClientSession:
 
         filtered = http.cookies.SimpleCookie()
 
-        for name, morsel in self.cookies.items():
-            morsel_domain = morsel["domain"]
+        for name, cookie in self.cookies.items():
+            cookie_domain = cookie["domain"]
 
-            if is_ip and morsel_domain:
-                # not requesting from a domain,
-                # don't send cookies that aren't shared
+            # Send shared cookies
+            if not cookie_domain:
+                dict.__setitem__(filtered, name, cookie)
                 continue
 
-            # Copy cookies with matching or empty (shared) domain
-            if (
-                    not morsel_domain or
-                    self._is_domain_match(morsel_domain, hostname)):
-                dict.__setitem__(filtered, name, morsel)
+            if is_ip:
+                continue
+
+            if name in self._host_only_cookies:
+                if cookie_domain != hostname:
+                    continue
+            elif not self._is_domain_match(cookie_domain, hostname):
+                continue
+
+            dict.__setitem__(filtered, name, cookie)
 
         return filtered
 
