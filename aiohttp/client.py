@@ -433,9 +433,6 @@ class ClientSession:
 
         rest = hostname[:-len(domain)]
 
-        if not rest:
-            return False
-
         if rest[-1] != ".":
             return False
 
