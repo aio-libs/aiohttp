@@ -349,7 +349,7 @@ def main(argv):
         type=int,
         default="8080"
     )
-    args, extra_args = arg_parser.parse_known_args(argv[1:])
+    args, extra_argv = arg_parser.parse_known_args(argv)
 
     # Import logic
     mod_str, _, func_str = args.entry_func.partition(":")
@@ -368,9 +368,9 @@ def main(argv):
     except AttributeError:
         arg_parser.error("module %r has no attribute %r" % (mod_str, func_str))
 
-    app = func(extra_args)
+    app = func(extra_argv)
     run_app(app, host=args.hostname, port=args.port)
     arg_parser.exit(message="Stopped\n")
 
 if __name__ == "__main__":
-    main(sys.argv)
+    main(sys.argv[1:])
