@@ -1,7 +1,9 @@
 import pytest
+import unittest
+import datetime
+import http.cookies
 from unittest import mock
 from aiohttp import helpers
-import datetime
 
 
 def test_parse_mimetype_1():
@@ -205,3 +207,116 @@ def test_requote_uri_properly_requotes():
     # Ensure requoting doesn't break expectations.
     quoted = 'http://example.com/fiz?buz=%25ppicture'
     assert quoted == helpers.requote_uri(quoted)
+
+
+class TestSessionCookieStore(unittest.TestCase):
+
+    def setUp(self):
+        # Cookies to send from client to server as "Cookie" header
+        self.cookies_to_send = http.cookies.SimpleCookie(
+            "shared-cookie=first; "
+            "domain-cookie=second; Domain=example.com; "
+            "subdomain1-cookie=third; Domain=test1.example.com; "
+            "subdomain2-cookie=fourth; Domain=test2.example.com; "
+            "dotted-domain-cookie=fifth; Domain=.example.com; "
+            "different-domain-cookie=sixth; Domain=different.org; "
+        )
+
+        # Cookies received from the server as "Set-Cookie" header
+        self.cookies_to_receive = http.cookies.SimpleCookie(
+            "unconstrained-cookie=first; "
+            "domain-cookie=second; Domain=example.com; "
+            "subdomain1-cookie=third; Domain=test1.example.com; "
+            "subdomain2-cookie=fourth; Domain=test2.example.com; "
+            "dotted-domain-cookie=fifth; Domain=.example.com; "
+            "different-domain-cookie=sixth; Domain=different.org; "
+        )
+
+        self.store = helpers.SessionCookieStore(self.cookies_to_send)
+
+    def request_reply_with_same_url(self, url):
+        cookies_sent = self.store.filter_cookies(url)
+
+        self.store.cookies.clear()
+
+        self.store.update_cookies(self.cookies_to_receive, url)
+        cookies_received = self.store.cookies
+
+        return cookies_sent, cookies_received
+
+    def test_constructor(self):
+        self.assertEqual(self.store.cookies, self.cookies_to_send)
+
+    def test_domain_filter_ip(self):
+        cookies_sent, cookies_received = (
+            self.request_reply_with_same_url("http://1.2.3.4/"))
+
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie"
+        }
+
+        assert set(cookies_received.keys()) == set()
+
+    def test_domain_filter_same_host(self):
+        cookies_sent, cookies_received = (
+            self.request_reply_with_same_url("http://example.com/"))
+
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie",
+            "domain-cookie",
+            "dotted-domain-cookie"
+        }
+
+        assert set(cookies_received.keys()) == {
+            "unconstrained-cookie",
+            "domain-cookie",
+            "dotted-domain-cookie"
+        }
+
+    def test_domain_filter_same_host_and_subdomain(self):
+        cookies_sent, cookies_received = (
+            self.request_reply_with_same_url("http://test1.example.com/"))
+
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie",
+            "domain-cookie",
+            "subdomain1-cookie",
+            "dotted-domain-cookie"
+        }
+
+        assert set(cookies_received.keys()) == {
+            "unconstrained-cookie",
+            "domain-cookie",
+            "subdomain1-cookie",
+            "dotted-domain-cookie"
+        }
+
+    def test_domain_filter_same_host_diff_subdomain(self):
+        cookies_sent, cookies_received = (
+            self.request_reply_with_same_url("http://different.example.com/"))
+
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie",
+            "domain-cookie",
+            "dotted-domain-cookie"
+        }
+
+        assert set(cookies_received.keys()) == {
+            "unconstrained-cookie",
+            "domain-cookie",
+            "dotted-domain-cookie"
+        }
+
+    def test_cookie_domain_filter_diff_host(self):
+        cookies_sent, cookies_received = (
+            self.request_reply_with_same_url("http://different.org/"))
+
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie",
+            "different-domain-cookie"
+        }
+
+        assert set(cookies_received.keys()) == {
+            "unconstrained-cookie",
+            "different-domain-cookie"
+        }
