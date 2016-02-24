@@ -3,13 +3,13 @@ Example of serving an Application using the `aiohttp.web` CLI.
 
 Serve this app using::
 
-    $ python -m aiohttp.web -H localhost -P 8080 --repeat 10 web_app:init \
+    $ python -m aiohttp.web -H localhost -P 8080 --repeat 10 cli_app:init \
     > "Hello World"
 
 Here ``--repeat`` & ``"Hello World"`` are application specific command-line
 arguments. `aiohttp.web` only parses & consumes the command-line arguments it
 needs (i.e. ``-H``, ``-P`` & ``entry-func``) and passes on any additional
-arguments to the `web_app.init` function for processing.
+arguments to the `cli_app:init` function for processing.
 """
 
 from aiohttp.web import Application, Response
