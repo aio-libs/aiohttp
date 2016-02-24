@@ -22,7 +22,7 @@ def display_message(req):
     return Response(text=text)
 
 
-def init(args):
+def init(argv):
     arg_parser = ArgumentParser(
         prog="aiohttp.web ...", description="Application CLI", add_help=False
     )
@@ -45,10 +45,10 @@ def init(args):
         help="show this message and exit", action="help"
     )
 
-    parsed_args = arg_parser.parse_args(args)
+    args = arg_parser.parse_args(argv)
 
     app = Application()
-    app["args"] = parsed_args
+    app["args"] = args
     app.router.add_route('GET', '/', display_message)
 
     return app
