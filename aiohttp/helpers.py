@@ -5,9 +5,11 @@ import base64
 import datetime
 import functools
 import io
+import ipaddress
 import os
 import re
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urlsplit
+from http.cookies import SimpleCookie, Morsel
 from collections import namedtuple
 from pathlib import Path
 
@@ -449,6 +451,14 @@ def requote_uri(uri):
         return quote(uri, safe=safe_without_percent)
 
 
+def is_ip_address(hostname):
+    try:
+        ipaddress.ip_address(hostname)
+    except ValueError:
+        return False
+    return True
+
+
 class Timeout:
     """Timeout context manager.
 
@@ -492,3 +502,115 @@ class Timeout:
 
     def _cancel_task(self):
         self._cancelled = self._task.cancel()
+
+
+class SessionCookieStore:
+    """Implements cookie storage adhering to RFC 6265."""
+
+    def __init__(self, cookies=None):
+        self._cookies = SimpleCookie()
+        self._host_only_cookies = set()
+
+        if cookies is not None:
+            self.update_cookies(cookies)
+
+    @property
+    def cookies(self):
+        """The session cookies."""
+        return self._cookies
+
+    def update_cookies(self, cookies, response_url=None):
+        """Update cookies."""
+        hostname = urlsplit(response_url).hostname
+
+        if is_ip_address(hostname):
+            # Don't accept cookies from IPs
+            return
+
+        if isinstance(cookies, dict):
+            cookies = cookies.items()
+
+        for name, value in cookies:
+            if isinstance(value, Morsel):
+
+                if not self._add_morsel(name, value, hostname):
+                    continue
+
+            else:
+                self._cookies[name] = value
+
+            cookie = self._cookies[name]
+
+            if not cookie["domain"] and hostname is not None:
+                # Set the cookie's domain to the response hostname
+                # and set its host-only-flag
+                self._host_only_cookies.add(name)
+                cookie["domain"] = hostname
+
+        # Remove the host-only flags of nonexistent cookies
+        self._host_only_cookies -= (
+            self._host_only_cookies.difference(self._cookies.keys()))
+
+    def _add_morsel(self, name, value, hostname):
+        """Add a Morsel to the cookie store."""
+        cookie_domain = value["domain"]
+        if cookie_domain.startswith("."):
+            # Remove leading dot
+            cookie_domain = cookie_domain[1:]
+            value["domain"] = cookie_domain
+
+        if not cookie_domain or not hostname:
+            dict.__setitem__(self._cookies, name, value)
+            return True
+
+        if not self._is_domain_match(cookie_domain, hostname):
+            # Setting cookies for different domains is not allowed
+            return False
+
+        # use dict method because SimpleCookie class modifies value
+        # before Python 3.4
+        dict.__setitem__(self._cookies, name, value)
+        return True
+
+    def filter_cookies(self, request_url):
+        """Returns this store's cookies filtered by their attributes."""
+        # TODO: filter by 'expires', 'path', ...
+        hostname = urlsplit(request_url).hostname or ""
+        filtered = SimpleCookie()
+
+        for name, cookie in self._cookies.items():
+            cookie_domain = cookie["domain"]
+
+            # Send shared cookies
+            if not cookie_domain:
+                dict.__setitem__(filtered, name, cookie)
+                continue
+
+            if is_ip_address(hostname):
+                continue
+
+            if name in self._host_only_cookies:
+                if cookie_domain != hostname:
+                    continue
+            elif not self._is_domain_match(cookie_domain, hostname):
+                continue
+
+            dict.__setitem__(filtered, name, cookie)
+
+        return filtered
+
+    @staticmethod
+    def _is_domain_match(domain, hostname):
+        """Implements domain matching adhering to RFC 6265."""
+        if hostname == domain:
+            return True
+
+        if not hostname.endswith(domain):
+            return False
+
+        rest = hostname[:-len(domain)]
+
+        if rest[-1] != ".":
+            return False
+
+        return not is_ip_address(hostname)

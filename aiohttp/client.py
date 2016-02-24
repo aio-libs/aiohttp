@@ -3,17 +3,16 @@
 import asyncio
 import base64
 import hashlib
-import ipaddress
 import os
 import sys
 import traceback
 import warnings
-import http.cookies
 import urllib.parse
 
 import aiohttp
 from .client_reqrep import ClientRequest, ClientResponse
 from .errors import WSServerHandshakeError
+from .helpers import SessionCookieStore
 from .multidict import MultiDictProxy, MultiDict, CIMultiDict, upstr
 from .websocket import WS_KEY, WebSocketParser, WebSocketWriter
 from .websocket_client import ClientWebSocketResponse
@@ -52,14 +51,13 @@ class ClientSession:
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
-        self._cookies = http.cookies.SimpleCookie()
-        self._host_only_cookies = set()
+        self._cookie_store = SessionCookieStore()
 
         # For Backward compatability with `share_cookies` connectors
         if connector._share_cookies:
-            self._update_cookies(connector.cookies)
+            self._cookie_store.update_cookies(connector.cookies)
         if cookies is not None:
-            self._update_cookies(cookies)
+            self._cookie_store.update_cookies(cookies)
         self._connector = connector
         self._default_auth = auth
         self._version = version
@@ -175,7 +173,7 @@ class ClientSession:
 
         while True:
 
-            cookies = self._filter_cookies(url)
+            cookies = self._cookie_store.filter_cookies(url)
 
             req = self._request_class(
                 method, url, params=params, headers=headers,
@@ -200,7 +198,8 @@ class ClientSession:
             except OSError as exc:
                 raise aiohttp.ClientOSError(*exc.args) from exc
 
-            self._update_cookies(resp.cookies, resp.url)
+            self._cookie_store.update_cookies(resp.cookies, resp.url)
+
             # For Backward compatability with `share_cookie` connectors
             if self._connector._share_cookies:
                 self._connector.update_cookies(resp.cookies)
@@ -349,113 +348,6 @@ class ClientSession:
                                            autoping,
                                            self._loop)
 
-    def _update_cookies(self, cookies, url=None):
-        """Update shared cookies."""
-        hostname = ""
-        if url is not None:
-            hostname = urllib.parse.urlsplit(url).hostname or ""
-
-        try:
-            ipaddress.ip_address(hostname)
-        except ValueError:
-            pass
-        else:
-            # Don't take cookies from IPs
-            return
-
-        if isinstance(cookies, dict):
-            cookies = cookies.items()
-
-        for name, value in cookies:
-            if isinstance(value, http.cookies.Morsel):
-
-                cookie_domain = value["domain"]
-                if cookie_domain:
-
-                    if cookie_domain.startswith("."):
-                        # Remove leading dot
-                        cookie_domain = cookie_domain[1:]
-                        value["domain"] = cookie_domain
-
-                    if (
-                            url is not None and
-                            not self._is_domain_match(
-                                cookie_domain, hostname)):
-                        # Setting cookies for different domains is not allowed
-                        continue
-
-                # use dict method because SimpleCookie class modifies value
-                # before Python 3.4
-                dict.__setitem__(self.cookies, name, value)
-
-            else:
-                self.cookies[name] = value
-
-            cookie = self.cookies[name]
-
-            if not cookie["domain"] and url is not None:
-                # Set the cookie's domain to the response hostname
-                # and set its host-only-flag
-                self._host_only_cookies.add(name)
-                cookie["domain"] = hostname
-
-    def _filter_cookies(self, url):
-        """Returns this session's cookies filtered by their attributes"""
-        # TODO: filter by 'expires', 'path', ...
-        hostname = urllib.parse.urlsplit(url).hostname or ""
-        is_ip = True
-        try:
-            ipaddress.ip_address(hostname)
-        except ValueError:
-            is_ip = False
-
-        filtered = http.cookies.SimpleCookie()
-
-        for name, cookie in self.cookies.items():
-            cookie_domain = cookie["domain"]
-
-            # Send shared cookies
-            if not cookie_domain:
-                dict.__setitem__(filtered, name, cookie)
-                continue
-
-            if is_ip:
-                continue
-
-            if name in self._host_only_cookies:
-                if cookie_domain != hostname:
-                    continue
-            elif not self._is_domain_match(cookie_domain, hostname):
-                continue
-
-            dict.__setitem__(filtered, name, cookie)
-
-        return filtered
-
-    @staticmethod
-    def _is_domain_match(domain, hostname):
-        """Implements domain matching according to RFC 6265"""
-        if hostname == domain:
-            return True
-
-        if not hostname.endswith(domain):
-            return False
-
-        rest = hostname[:-len(domain)]
-
-        if rest[-1] != ".":
-            return False
-
-        try:
-            ipaddress.ip_address(hostname)
-        except ValueError:
-            is_ip = False
-
-        if is_ip:
-            return False
-
-        return True
-
     def _prepare_headers(self, headers):
         """ Add default headers and transform it to CIMultiDict
         """
@@ -549,7 +441,7 @@ class ClientSession:
     @property
     def cookies(self):
         """The session cookies."""
-        return self._cookies
+        return self._cookie_store.cookies
 
     @property
     def version(self):
