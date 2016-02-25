@@ -868,7 +868,8 @@ class TestHttpClientFunctional(unittest.TestCase):
     def test_keepalive(self):
         from aiohttp import connector
         with self.assertWarns(DeprecationWarning):
-            c = connector.TCPConnector(share_cookies=True, loop=self.loop)
+            c = connector.TCPConnector(share_cookies=True, loop=self.loop,
+                                       keepalive_timeout=30.0)
 
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
@@ -976,7 +977,8 @@ class TestHttpClientFunctional(unittest.TestCase):
 
         @asyncio.coroutine
         def go(url):
-            connector = aiohttp.TCPConnector(loop=self.loop)
+            connector = aiohttp.TCPConnector(
+                loop=self.loop, keepalive_timeout=30.0)
 
             r = yield from client.request('GET', url,
                                           connector=connector,
@@ -1061,7 +1063,8 @@ class TestHttpClientFunctional(unittest.TestCase):
 
             addr = server.sockets[0].getsockname()
 
-            connector = aiohttp.TCPConnector(loop=self.loop)
+            connector = aiohttp.TCPConnector(
+                loop=self.loop, keepalive_timeout=30.0)
 
             url = 'http://{}:{}/'.format(*addr)
 

@@ -38,7 +38,7 @@ def test_keepalive_two_requests_success(create_app_and_client):
     resp2 = yield from client.get('/')
     yield from resp2.read()
 
-    assert 1 == len(client._session.connector._conns)
+    assert 0 == len(client._session.connector._conns)
 
 
 @pytest.mark.run_loop
@@ -57,7 +57,7 @@ def test_keepalive_response_released(create_app_and_client):
     resp2 = yield from client.get('/')
     yield from resp2.release()
 
-    assert 1 == len(client._session.connector._conns)
+    assert 0 == len(client._session.connector._conns)
 
 
 @pytest.mark.run_loop
