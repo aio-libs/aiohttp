@@ -9,13 +9,16 @@ import asyncio
 # Timeout in seconds for an asynchronous test:
 ASYNC_TEST_TIMEOUT = 1
 
-class ExceptAsyncTestTimeout(Exception): pass
 
-def run_timeout(cor,loop,timeout=ASYNC_TEST_TIMEOUT):
+class ExceptAsyncTestTimeout(Exception):
+    pass
+
+
+def run_timeout(cor, loop, timeout=ASYNC_TEST_TIMEOUT):
     """
     Run a given coroutine with timeout.
     """
-    task_with_timeout = asyncio.wait_for(cor,timeout,loop=loop)
+    task_with_timeout = asyncio.wait_for(cor, timeout, loop=loop)
     try:
         return loop.run_until_complete(task_with_timeout)
     except asyncio.futures.TimeoutError:
@@ -67,8 +70,8 @@ def test_access_root_of_static_handler(tloop, tmp_dir_path, unused_port):
     SERVER_HOST = 'localhost'
 
     # Put a file inside tmp_dir_path:
-    my_file_path = os.path.join(tmp_dir_path,'my_file')
-    with open(my_file_path,'w') as fw:
+    my_file_path = os.path.join(tmp_dir_path, 'my_file')
+    with open(my_file_path, 'w') as fw:
         fw.write('hello')
 
     asyncio.set_event_loop(None)
@@ -79,15 +82,14 @@ def test_access_root_of_static_handler(tloop, tmp_dir_path, unused_port):
     @asyncio.coroutine
     def inner_cor():
         handler = app.make_handler()
-        srv = yield from tloop.create_server(handler,\
-                SERVER_HOST,SERVER_PORT ,reuse_address=True) 
+        srv = yield from tloop.create_server(
+            handler, SERVER_HOST, SERVER_PORT, reuse_address=True)
 
         # Request the root of the static directory.
         # Expect an 404 error page.
-        url = 'http://{}:{}/'.format(\
-                SERVER_HOST,SERVER_PORT) 
+        url = 'http://{}:{}/'.format(SERVER_HOST, SERVER_PORT)
 
-        r = ( yield from aiohttp.get(url,loop=tloop) )
+        r = (yield from aiohttp.get(url, loop=tloop))
         assert r.status == 404
         # data = (yield from r.read())
         yield from r.release()
@@ -99,5 +101,4 @@ def test_access_root_of_static_handler(tloop, tmp_dir_path, unused_port):
         yield from handler.finish_connections(10.0)
         yield from app.cleanup()
 
-
-    run_timeout(inner_cor(),tloop,timeout=5)
+    run_timeout(inner_cor(), tloop, timeout=5)
