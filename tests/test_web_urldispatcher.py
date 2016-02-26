@@ -27,23 +27,6 @@ def run_timeout(cor, loop, timeout=ASYNC_TEST_TIMEOUT):
 
 
 @pytest.fixture(scope='function')
-def tloop(request):
-    """
-    Obtain a test loop. We want each test case to have its own loop.
-    """
-    # Create a new test loop:
-    tloop = asyncio.new_event_loop()
-    asyncio.set_event_loop(None)
-
-    def teardown():
-        # Close the test loop:
-        tloop.close()
-
-    request.addfinalizer(teardown)
-    return tloop
-
-
-@pytest.fixture(scope='function')
 def tmp_dir_path(request):
     """
     Give a path for a temporary directory
@@ -60,7 +43,7 @@ def tmp_dir_path(request):
     return tmp_dir
 
 
-def test_access_root_of_static_handler(tloop, tmp_dir_path, unused_port):
+def test_access_root_of_static_handler(loop, tmp_dir_path, unused_port):
     """
     Tests the operation of static file server.
     Try to access the root of static file server, and make
@@ -75,21 +58,21 @@ def test_access_root_of_static_handler(tloop, tmp_dir_path, unused_port):
         fw.write('hello')
 
     asyncio.set_event_loop(None)
-    app = web.Application(loop=tloop)
+    app = web.Application(loop=loop)
     # Register global static route:
     app.router.add_static('/', tmp_dir_path)
 
     @asyncio.coroutine
     def inner_cor():
         handler = app.make_handler()
-        srv = yield from tloop.create_server(
+        srv = yield from loop.create_server(
             handler, SERVER_HOST, SERVER_PORT, reuse_address=True)
 
         # Request the root of the static directory.
         # Expect an 404 error page.
         url = 'http://{}:{}/'.format(SERVER_HOST, SERVER_PORT)
 
-        r = (yield from aiohttp.get(url, loop=tloop))
+        r = (yield from aiohttp.get(url, loop=loop))
         assert r.status == 404
         # data = (yield from r.read())
         yield from r.release()
@@ -101,4 +84,4 @@ def test_access_root_of_static_handler(tloop, tmp_dir_path, unused_port):
         yield from handler.finish_connections(10.0)
         yield from app.cleanup()
 
-    run_timeout(inner_cor(), tloop, timeout=5)
+    run_timeout(inner_cor(), loop, timeout=5)
