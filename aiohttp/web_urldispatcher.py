@@ -571,7 +571,7 @@ class StaticRoute(Route):
 
         # Make sure that filepath is a file
         if not filepath.is_file():
-            raise HTTPNotFound() 
+            raise HTTPNotFound()
 
         st = filepath.stat()
 
