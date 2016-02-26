@@ -6,9 +6,6 @@ import os
 import shutil
 import asyncio
 
-SERVER_HOST = '127.0.0.1'
-SERVER_PORT = 8080
-
 # Timeout in seconds for an asynchronous test:
 ASYNC_TEST_TIMEOUT = 1
 
@@ -60,12 +57,15 @@ def tmp_dir_path(request):
     return tmp_dir
 
 
-def test_access_root_of_static_handler(tloop,tmp_dir_path):
+def test_access_root_of_static_handler(tloop, tmp_dir_path, unused_port):
     """
     Tests the operation of static file server.
     Try to access the root of static file server, and make
     sure that a proper not found error is returned.
     """
+    SERVER_PORT = unused_port()
+    SERVER_HOST = 'localhost'
+
     # Put a file inside tmp_dir_path:
     my_file_path = os.path.join(tmp_dir_path,'my_file')
     with open(my_file_path,'w') as fw:
