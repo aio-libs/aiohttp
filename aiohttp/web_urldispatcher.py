@@ -569,6 +569,10 @@ class StaticRoute(Route):
             request.logger.exception(error)
             raise HTTPNotFound() from error
 
+        # Make sure that filepath is a file
+        if not filepath.is_file():
+            raise HTTPNotFound()
+
         st = filepath.stat()
 
         modsince = request.if_modified_since
