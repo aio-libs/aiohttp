@@ -40,7 +40,7 @@ def test_access_root_of_static_handler(tmp_dir_path, create_app_and_client):
 
     # Request the root of the static directory.
     # Expect an 404 error page.
-    r = (yield from client.get('/'))
+    r = yield from client.get('/')
     assert r.status == 404
     # data = (yield from r.read())
     yield from r.release()
