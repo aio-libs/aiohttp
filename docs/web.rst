@@ -52,13 +52,13 @@ Command Line Interface (CLI)
 :mod:`aiohttp.web` implements a basic CLI for quickly serving an
 :class:`Application` in *development* over TCP/IP::
 
-    $ python -m aiohttp.web -H localhost -P 8080 package.module.init_func
+    $ python -m aiohttp.web -H localhost -P 8080 package.module:init_func
 
 ``package.module.init_func`` should be an importable :term:`callable` that
 accepts a list of any non-parsed command-line arguments and returns an
 :class:`Application` instance after setting it up::
 
-    def init_function(args):
+    def init_function(argv):
         app = web.Application()
         app.router.add_route("GET", "/", index_handler)
         return app
