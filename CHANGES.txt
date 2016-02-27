@@ -4,6 +4,8 @@ CHANGES
 0.22.0 (XX-XX-XXXX)
 -------------------
 
+- Fix bug in serving static directory #803
+
 0.21.2 (02-16-2016)
 -------------------
 
