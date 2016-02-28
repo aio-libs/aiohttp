@@ -286,7 +286,8 @@ class HttpPayloadParser:
             length = 8
 
         # payload decompression wrapper
-        if self.compression and self.message.compression:
+        if (self.response_with_body and
+                self.compression and self.message.compression):
             out = DeflateBuffer(out, self.message.compression)
 
         # payload parser
