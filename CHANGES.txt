@@ -6,6 +6,10 @@ CHANGES
 
 - Fix bug in serving static directory #803
 
+- Fix command line arg parsing #797
+
+- Fix a documentation chapter about cookie usage #790
+
 0.21.2 (02-16-2016)
 -------------------
 

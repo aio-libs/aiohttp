@@ -18,7 +18,7 @@ Begin by importing the aiohttp module::
 Now, let's try to get a web-page. For example let's get GitHub's public
 time-line ::
 
-    with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession() as session:
         async with session.get('https://api.github.com/events') as resp:
             print(resp.status)
             print(await resp.text())
@@ -200,14 +200,13 @@ Custom Cookies
 --------------
 
 To send your own cookies to the server, you can use the *cookies*
-parameter::
+parameter of :class:`ClientSession` constructor::
 
     url = 'http://httpbin.org/cookies'
-    cookies = dict(cookies_are='working')
-
-    async with session.get(url, cookies=cookies) as resp:
-        assert await resp.json() == {"cookies":
-                                         {"cookies_are": "working"}}
+    async with ClientSession({'cookies_are': 'working'}) as session:
+        async with session.get(url) as resp:
+            assert await resp.json() == {"cookies":
+                                             {"cookies_are": "working"}}
 
 
 More complicated POST requests
@@ -362,20 +361,20 @@ Keep-Alive, connection pooling and cookie sharing
 :class:`~aiohttp.ClientSession` may be used for sharing cookies
 between multiple requests::
 
-    session = aiohttp.ClientSession()
-    await session.post(
-         'http://httpbin.org/cookies/set/my_cookie/my_value')
-    async with session.get('http://httpbin.org/cookies') as r:
-        json = await r.json()
-        assert json['cookies']['my_cookie'] == 'my_value'
+    async with aiohttp.ClientSession() as session:
+        await session.post(
+            'http://httpbin.org/cookies/set/my_cookie/my_value')
+        async with session.get('http://httpbin.org/cookies') as r:
+            json = await r.json()
+            assert json['cookies']['my_cookie'] == 'my_value'
 
 You also can set default headers for all session requests::
 
-    session = aiohttp.ClientSession(
-        headers={"Authorization": "Basic bG9naW46cGFzcw=="})
-    async with s.get("http://httpbin.org/headers") as r:
-        json = yield from r.json()
-        assert json['headers']['Authorization'] == 'Basic bG9naW46cGFzcw=='
+    async with aiohttp.ClientSession(
+        headers={"Authorization": "Basic bG9naW46cGFzcw=="}) as session:
+        async with s.get("http://httpbin.org/headers") as r:
+            json = yield from r.json()
+            assert json['headers']['Authorization'] == 'Basic bG9naW46cGFzcw=='
 
 :class:`~aiohttp.ClientSession` supports keep-alive requests
 and connection pooling out-of-the-box.
