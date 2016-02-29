@@ -575,7 +575,7 @@ class CookieJar:
     def filter_cookies(self, request_url):
         """Returns this store's cookies filtered by their attributes."""
         # TODO: filter by 'expires', 'path', ...
-        hostname = urlsplit(request_url).hostname or ""
+        url_parsed = urlsplit(request_url)
         filtered = SimpleCookie()
 
         for name, cookie in self._cookies.items():
@@ -586,6 +586,8 @@ class CookieJar:
                 dict.__setitem__(filtered, name, cookie)
                 continue
 
+            hostname = url_parsed.hostname or ""
+
             if is_ip_address(hostname):
                 continue
 
@@ -593,6 +595,11 @@ class CookieJar:
                 if cookie_domain != hostname:
                     continue
             elif not self._is_domain_match(cookie_domain, hostname):
+                continue
+
+            is_secure = url_parsed.scheme in ("https", "wss")
+
+            if cookie["secure"] and not is_secure:
                 continue
 
             dict.__setitem__(filtered, name, cookie)
