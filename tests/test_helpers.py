@@ -209,7 +209,7 @@ def test_requote_uri_properly_requotes():
     assert quoted == helpers.requote_uri(quoted)
 
 
-class TestSessionCookieStore(unittest.TestCase):
+class TestCookieJar(unittest.TestCase):
 
     def setUp(self):
         # Cookies to send from client to server as "Cookie" header
@@ -232,20 +232,21 @@ class TestSessionCookieStore(unittest.TestCase):
             "different-domain-cookie=sixth; Domain=different.org; "
         )
 
-        self.store = helpers.SessionCookieStore(self.cookies_to_send)
-
     def request_reply_with_same_url(self, url):
-        cookies_sent = self.store.filter_cookies(url)
+        self.jar = helpers.CookieJar(self.cookies_to_send)
 
-        self.store.cookies.clear()
+        cookies_sent = self.jar.filter_cookies(url)
 
-        self.store.update_cookies(self.cookies_to_receive, url)
-        cookies_received = self.store.cookies
+        self.jar.cookies.clear()
+
+        self.jar.update_cookies(self.cookies_to_receive, url)
+        cookies_received = self.jar.cookies.copy()
 
         return cookies_sent, cookies_received
 
     def test_constructor(self):
-        self.assertEqual(self.store.cookies, self.cookies_to_send)
+        jar = helpers.CookieJar(self.cookies_to_send)
+        self.assertEqual(jar.cookies, self.cookies_to_send)
 
     def test_domain_filter_ip(self):
         cookies_sent, cookies_received = (

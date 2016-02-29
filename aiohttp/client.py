@@ -12,7 +12,7 @@ import urllib.parse
 import aiohttp
 from .client_reqrep import ClientRequest, ClientResponse
 from .errors import WSServerHandshakeError
-from .helpers import SessionCookieStore
+from .helpers import CookieJar
 from .multidict import MultiDictProxy, MultiDict, CIMultiDict, upstr
 from .websocket import WS_KEY, WebSocketParser, WebSocketWriter
 from .websocket_client import ClientWebSocketResponse
@@ -51,13 +51,13 @@ class ClientSession:
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
-        self._cookie_store = SessionCookieStore()
+        self._cookie_jar = CookieJar()
 
         # For Backward compatability with `share_cookies` connectors
         if connector._share_cookies:
-            self._cookie_store.update_cookies(connector.cookies)
+            self._cookie_jar.update_cookies(connector.cookies)
         if cookies is not None:
-            self._cookie_store.update_cookies(cookies)
+            self._cookie_jar.update_cookies(cookies)
         self._connector = connector
         self._default_auth = auth
         self._version = version
@@ -173,7 +173,7 @@ class ClientSession:
 
         while True:
 
-            cookies = self._cookie_store.filter_cookies(url)
+            cookies = self._cookie_jar.filter_cookies(url)
 
             req = self._request_class(
                 method, url, params=params, headers=headers,
@@ -198,7 +198,7 @@ class ClientSession:
             except OSError as exc:
                 raise aiohttp.ClientOSError(*exc.args) from exc
 
-            self._cookie_store.update_cookies(resp.cookies, resp.url)
+            self._cookie_jar.update_cookies(resp.cookies, resp.url)
 
             # For Backward compatability with `share_cookie` connectors
             if self._connector._share_cookies:
@@ -441,7 +441,7 @@ class ClientSession:
     @property
     def cookies(self):
         """The session cookies."""
-        return self._cookie_store.cookies
+        return self._cookie_jar.cookies
 
     @property
     def version(self):

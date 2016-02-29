@@ -504,7 +504,7 @@ class Timeout:
         self._cancelled = self._task.cancel()
 
 
-class SessionCookieStore:
+class CookieJar:
     """Implements cookie storage adhering to RFC 6265."""
 
     def __init__(self, cookies=None):

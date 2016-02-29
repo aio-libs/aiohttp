@@ -373,7 +373,7 @@ def test_request_ctx_manager_props(loop):
 
 
 @pytest.mark.run_loop
-def test_cookie_store_usage(create_app_and_client):
+def test_cookie_jar_usage(create_app_and_client):
     req_url = None
 
     init_mock = mock.Mock(return_value=None)
@@ -381,7 +381,7 @@ def test_cookie_store_usage(create_app_and_client):
     filter_mock = mock.Mock(return_value=None)
 
     patches = mock.patch.multiple(
-        "aiohttp.helpers.SessionCookieStore",
+        "aiohttp.helpers.CookieJar",
         __init__=init_mock,
         update_cookies=update_mock,
         filter_cookies=filter_mock,
@@ -402,7 +402,7 @@ def test_cookie_store_usage(create_app_and_client):
         )
         app.router.add_route('GET', '/', handler)
 
-        # Updating the cookie store with initial user defined cookies
+        # Updating the cookie jar with initial user defined cookies
         assert init_mock.called
         assert update_mock.called
         assert update_mock.call_args[0] == (
@@ -412,12 +412,12 @@ def test_cookie_store_usage(create_app_and_client):
         update_mock.reset_mock()
         yield from client.get("/")
 
-        # Filtering the cookie store before sending the request,
+        # Filtering the cookie jar before sending the request,
         # getting the request URL as only parameter
         assert filter_mock.called
         assert filter_mock.call_args[0] == (req_url,)
 
-        # Updating the cookie store with the response cookies
+        # Updating the cookie jar with the response cookies
         assert update_mock.called
         resp_cookies = update_mock.call_args[0][0]
         assert isinstance(resp_cookies, http.cookies.SimpleCookie)
