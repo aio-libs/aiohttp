@@ -220,6 +220,7 @@ class TestCookieJar(unittest.TestCase):
             "subdomain2-cookie=fourth; Domain=test2.example.com; "
             "dotted-domain-cookie=fifth; Domain=.example.com; "
             "different-domain-cookie=sixth; Domain=different.org; "
+            "secure-cookie=seventh: Domain=secure.com; Secure;"
         )
 
         # Cookies received from the server as "Set-Cookie" header
@@ -320,4 +321,20 @@ class TestCookieJar(unittest.TestCase):
         assert set(cookies_received.keys()) == {
             "unconstrained-cookie",
             "different-domain-cookie"
+        }
+
+    def test_cookie_secure_filter(self):
+        cookies_sent, _ = (
+            self.request_reply_with_same_url("http://secure.com/"))
+
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie"
+        }
+
+        cookies_sent, _ = (
+            self.request_reply_with_same_url("https://secure.com/"))
+
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie",
+            "secure-cookie"
         }
