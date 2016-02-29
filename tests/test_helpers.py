@@ -209,6 +209,24 @@ def test_requote_uri_properly_requotes():
     assert quoted == helpers.requote_uri(quoted)
 
 
+def test_is_ip_address():
+    assert helpers.is_ip_address("127.0.0.1")
+    assert helpers.is_ip_address("::1")
+    assert helpers.is_ip_address("FE80:0000:0000:0000:0202:B3FF:FE1E:8329")
+
+    # Hostnames
+    assert not helpers.is_ip_address("localhost")
+    assert not helpers.is_ip_address("www.example.com")
+
+    # Out of range
+    assert not helpers.is_ip_address("999.999.999.999")
+    # Contain a port
+    assert not helpers.is_ip_address("127.0.0.1:80")
+    assert not helpers.is_ip_address("[2001:db8:0:1]:80")
+    # Too many "::"
+    assert not helpers.is_ip_address("1200::AB00:1234::2552:7777:1313")
+
+
 class TestCookieJar(unittest.TestCase):
 
     def setUp(self):
