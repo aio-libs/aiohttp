@@ -8,6 +8,7 @@ from unittest import mock
 
 import aiohttp
 import pytest
+from aiohttp import web
 from aiohttp.client import ClientSession
 from aiohttp.connector import BaseConnector, TCPConnector
 from aiohttp.multidict import CIMultiDict, MultiDict
@@ -372,42 +373,53 @@ def test_request_ctx_manager_props(loop):
 
 
 @pytest.mark.run_loop
-def test_cookie_store_usage(create_session):
-    url = "http://example.com/"
+def test_cookie_store_usage(create_app_and_client):
+    req_url = None
 
-    req = mock.Mock()
-    req_factory = mock.Mock(return_value=req)
-    resp = mock.Mock()
-    resp.url = url
-    resp.cookies = http.cookies.SimpleCookie("reply=value")
-    req_cookies = http.cookies.SimpleCookie("request=value")
+    init_mock = mock.Mock(return_value=None)
+    update_mock = mock.Mock(return_value=None)
+    filter_mock = mock.Mock(return_value=None)
 
-    store = mock.Mock()
-
-    def req_send(writer, reader):
-        assert store.filter_cookies.called
-        assert store.filter_cookies.call_args[0] == (url,)
-        store.reset_mock()
-
-        return resp
-    req.send = req_send
+    patches = mock.patch.multiple(
+        "aiohttp.helpers.SessionCookieStore",
+        __init__=init_mock,
+        update_cookies=update_mock,
+        filter_cookies=filter_mock,
+    )
 
     @asyncio.coroutine
-    def resp_start(connection, read_until_eof=False):
-        connection.close()
+    def handler(request):
+        nonlocal req_url
+        req_url = "http://%s/" % request.host
+
+        resp = web.Response()
+        resp.set_cookie("response", "resp_value")
         return resp
-    resp.start = resp_start
 
-    session = create_session(request_class=req_factory, cookies=req_cookies)
-    assert set(session.cookies.keys()) == {"request"}
+    with patches:
+        app, client = yield from create_app_and_client(
+            client_params={"cookies": {"request": "req_value"}}
+        )
+        app.router.add_route('GET', '/', handler)
 
-    @asyncio.coroutine
-    def create_connection(req):
-        # return self.transport, self.protocol
-        return mock.Mock(), mock.Mock()
-    session._connector._create_connection = create_connection
+        # Updating the cookie store with initial user defined cookies
+        assert init_mock.called
+        assert update_mock.called
+        assert update_mock.call_args[0] == (
+            {"request": "req_value"},
+        )
 
-    session._cookie_store = store
-    yield from session.get(url)
-    assert store.update_cookies.called
-    assert store.update_cookies.call_args[0] == (resp.cookies, url)
+        update_mock.reset_mock()
+        yield from client.get("/")
+
+        # Filtering the cookie store before sending the request,
+        # getting the request URL as only parameter
+        assert filter_mock.called
+        assert filter_mock.call_args[0] == (req_url,)
+
+        # Updating the cookie store with the response cookies
+        assert update_mock.called
+        resp_cookies = update_mock.call_args[0][0]
+        assert isinstance(resp_cookies, http.cookies.SimpleCookie)
+        assert "response" in resp_cookies
+        assert resp_cookies["response"].value == "resp_value"
