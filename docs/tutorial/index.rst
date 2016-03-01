@@ -17,7 +17,6 @@ the `demo source`_.
 
    introduction
    setup
-   .. setup
    .. database schema
    .. request-response cycle
    .. views
