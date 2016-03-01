@@ -83,7 +83,7 @@ class ClientRequest:
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
         self.update_version(version)
-        self.update_host(self.url)
+        self.update_host(url)
         self.update_path(params)
         self.update_headers(headers)
         self.update_auto_headers(skip_auto_headers)
