@@ -71,7 +71,7 @@ class ClientRequest:
         if loop is None:
             loop = asyncio.get_event_loop()
 
-        self.url = url
+        self.url = helpers.requote_uri(url)
         self.method = method.upper()
         self.encoding = encoding
         self.chunked = chunked
@@ -83,7 +83,7 @@ class ClientRequest:
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
         self.update_version(version)
-        self.update_host(url)
+        self.update_host(self.url)
         self.update_path(params)
         self.update_headers(headers)
         self.update_auto_headers(skip_auto_headers)
