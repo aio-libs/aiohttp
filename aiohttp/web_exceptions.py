@@ -45,6 +45,7 @@ __all__ = (
     'HTTPPreconditionRequired',
     'HTTPTooManyRequests',
     'HTTPRequestHeaderFieldsTooLarge',
+    'HTTPUnavailableForLegalReasons',
     'HTTPServerError',
     'HTTPInternalServerError',
     'HTTPNotImplemented',
@@ -284,6 +285,18 @@ class HTTPTooManyRequests(HTTPClientError):
 
 class HTTPRequestHeaderFieldsTooLarge(HTTPClientError):
     status_code = 431
+
+
+class HTTPUnavailableForLegalReasons(HTTPClientError):
+    status_code = 451
+
+    def __init__(self, link=None, *, headers=None, reason=None,
+                 body=None, text=None, content_type=None):
+        super().__init__(headers=headers, reason=reason,
+                         body=body, text=text, content_type=content_type)
+        if link:
+            self.headers['Link'] = '<%s>; rel="blocked-by"' % link
+            self.link = link
 
 
 ############################################################
