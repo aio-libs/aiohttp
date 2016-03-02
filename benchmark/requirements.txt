@@ -1,5 +1,2 @@
 twisted
 tornado
-numpy
-scipy
-matplotlib

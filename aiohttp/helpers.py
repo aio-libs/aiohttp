@@ -9,6 +9,7 @@ import os
 import re
 from urllib.parse import quote, urlencode
 from collections import namedtuple
+from pathlib import Path
 
 from . import hdrs, multidict
 from .errors import InvalidURL
@@ -204,7 +205,7 @@ def str_to_bytes(s, encoding='utf-8'):
 def guess_filename(obj, default=None):
     name = getattr(obj, 'name', None)
     if name and name[0] != '<' and name[-1] != '>':
-        return os.path.split(name)[-1]
+        return Path(name).name
     return default
 
 
@@ -371,10 +372,10 @@ _marker = object()
 
 class reify:
     """Use as a class method decorator.  It operates almost exactly like
-    the Python ``@property`` decorator, but it puts the result of the
+    the Python `@property` decorator, but it puts the result of the
     method it decorates into the instance dict after the first call,
     effectively replacing the function it decorates with an instance
-    variable.  It is, in Python parlance, a non-data descriptor.
+    variable.  It is, in Python parlance, a data descriptor.
 
     """
 
@@ -383,7 +384,7 @@ class reify:
         try:
             self.__doc__ = wrapped.__doc__
         except:  # pragma: no cover
-            pass
+            self.__doc__ = ""
         self.name = wrapped.__name__
 
     def __get__(self, inst, owner, _marker=_marker):
@@ -455,8 +456,8 @@ class Timeout:
     of code or in cases when asyncio.wait_for is not suitable. For example:
 
     >>> with aiohttp.Timeout(0.001):
-    >>>     async with aiohttp.get('https://github.com') as r:
-    >>>         await r.text()
+    ...     async with aiohttp.get('https://github.com') as r:
+    ...         await r.text()
 
 
     :param timeout: timeout value in seconds
@@ -482,9 +483,11 @@ class Timeout:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is asyncio.CancelledError and self._cancelled:
+            self._cancel_handler = None
             self._task = None
             raise asyncio.TimeoutError
         self._cancel_handler.cancel()
+        self._cancel_handler = None
         self._task = None
 
     def _cancel_task(self):

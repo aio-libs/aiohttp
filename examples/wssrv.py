@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Multiprocess WebSocket http chat example."""
+"""Multiprocess WebSocket HTTP chat example."""
 
 import argparse
 import os
@@ -12,7 +12,7 @@ import aiohttp
 import aiohttp.server
 from aiohttp import websocket
 
-ARGS = argparse.ArgumentParser(description="Run simple http server.")
+ARGS = argparse.ArgumentParser(description="Run simple HTTP server.")
 ARGS.add_argument(
     '--host', action="store", dest='host',
     default='127.0.0.1', help='Host name')

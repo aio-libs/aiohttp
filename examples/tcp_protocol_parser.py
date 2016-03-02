@@ -25,7 +25,7 @@ def my_protocol_parser(out, buf):
 
     more details in asyncio/parsers.py
     existing parsers:
-      * http protocol parsers asyncio/http/protocol.py
+      * HTTP protocol parsers asyncio/http/protocol.py
       * websocket parser asyncio/http/websocket.py
     """
     while True:

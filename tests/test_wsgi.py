@@ -29,8 +29,10 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
             ('2.3.4.5', 80)]
 
         self.headers = multidict.MultiDict({"HOST": "python.org"})
+        self.raw_headers = [(b"HOST", b"python.org")]
         self.message = protocol.RawRequestMessage(
-            'GET', '/path', (1, 0), self.headers, True, 'deflate')
+            'GET', '/path', (1, 0), self.headers, self.raw_headers,
+            True, 'deflate')
         self.payload = aiohttp.FlowControlDataQueue(self.reader)
         self.payload.feed_data(b'data', 4)
         self.payload.feed_data(b'data', 4)
@@ -180,7 +182,8 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
         stream.feed_eof()
 
         self.message = protocol.RawRequestMessage(
-            'GET', '/path', (1, 1), self.headers, True, 'deflate')
+            'GET', '/path', (1, 1), self.headers, self.raw_headers,
+            True, 'deflate')
 
         srv = self._make_srv(wsgi_app, readpayload=True)
         self.loop.run_until_complete(
@@ -219,7 +222,8 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
         stream.feed_eof()
 
         self.message = protocol.RawRequestMessage(
-            'GET', '/path', (1, 1), self.headers, False, 'deflate')
+            'GET', '/path', (1, 1), self.headers, self.raw_headers,
+            False, 'deflate')
 
         srv = self._make_srv(wsgi_app, readpayload=True)
 
@@ -251,7 +255,8 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
     def test_dont_unquote_environ_path_info(self):
         path = '/path/some%20text'
         self.message = protocol.RawRequestMessage(
-            'GET', path, (1, 0), self.headers, True, 'deflate')
+            'GET', path, (1, 0), self.headers, self.raw_headers,
+            True, 'deflate')
         environ = self._make_one()
         self.assertEqual(environ['PATH_INFO'], path)
 
@@ -261,14 +266,15 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
         # not be removed
         self.headers.extend({'AUTHORIZATION': 'spam'})
         self.message = protocol.RawRequestMessage(
-            'GET', '/', (1, 1), self.headers, True, 'deflate')
+            'GET', '/', (1, 1), self.headers, self.raw_headers,
+            True, 'deflate')
         environ = self._make_one()
         self.assertEqual('spam', environ['HTTP_AUTHORIZATION'])
 
     def test_http_1_0_no_host(self):
         headers = multidict.MultiDict({})
         self.message = protocol.RawRequestMessage(
-            'GET', '/', (1, 0), headers, True, 'deflate')
+            'GET', '/', (1, 0), headers, [], True, 'deflate')
         environ = self._make_one()
         self.assertEqual(environ['SERVER_NAME'], '2.3.4.5')
         self.assertEqual(environ['SERVER_PORT'], '80')
@@ -279,7 +285,8 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
             ("::", 1122, 0, 0),
             ('2.3.4.5', 80)]
         self.message = protocol.RawRequestMessage(
-            'GET', '/', (1, 0), self.headers, True, 'deflate')
+            'GET', '/', (1, 0), self.headers, self.raw_headers,
+            True, 'deflate')
         environ = self._make_one()
         self.assertEqual(environ['SERVER_NAME'], 'python.org')
         self.assertEqual(environ['SERVER_PORT'], '80')
@@ -295,7 +302,7 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
             'SERVER_NAME': '1.2.3.4', 'SERVER_PORT': '5678',
             'REMOTE_ADDR': '4.3.2.1', 'REMOTE_PORT': '8765'})
         self.message = protocol.RawRequestMessage(
-            'GET', '/', (1, 0), headers, True, 'deflate')
+            'GET', '/', (1, 0), headers, self.raw_headers, True, 'deflate')
         environ = self._make_one()
         self.assertEqual(environ['SERVER_NAME'], '1.2.3.4')
         self.assertEqual(environ['SERVER_PORT'], '5678')

@@ -164,7 +164,7 @@ def loop(request):
     yield loop
 
     if not loop._closed:
-        loop.stop()
+        loop.call_soon(loop.stop)
         loop.run_forever()
         loop.close()
     gc.collect()
@@ -221,6 +221,12 @@ class Client:
             path = path[1:]
         url = self._url + path
         return self._session.post(url, **kwargs)
+
+    def delete(self, path, **kwargs):
+        while path.startswith('/'):
+            path = path[1:]
+        url = self._url + path
+        return self._session.delete(url)
 
     def ws_connect(self, path, **kwargs):
         while path.startswith('/'):

@@ -222,14 +222,16 @@ class BaseConnector(object):
 
     def close(self):
         """Close all opened transports."""
+        ret = asyncio.Future(loop=self._loop)
+        ret.set_result(None)
         if self._closed:
-            return
+            return ret
         self._closed = True
 
         try:
             if hasattr(self._loop, 'is_closed'):
                 if self._loop.is_closed():
-                    return
+                    return ret
 
             for key, data in self._conns.items():
                 for transport, proto, t0 in data:
@@ -245,6 +247,7 @@ class BaseConnector(object):
             self._conns.clear()
             self._acquired.clear()
             self._cleanup_handle = None
+        return ret
 
     @property
     def closed(self):
@@ -402,13 +405,14 @@ class TCPConnector(BaseConnector):
         https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning
     :param bool resolve: Set to True to do DNS lookup for host name.
     :param family: socket address family
+    :param local_addr: local :class:`tuple` of (host, port) to bind socket to
     :param args: see :class:`BaseConnector`
     :param kwargs: see :class:`BaseConnector`
     """
 
     def __init__(self, *, verify_ssl=True, fingerprint=None,
                  resolve=_marker, use_dns_cache=_marker,
-                 family=0, ssl_context=None,
+                 family=0, ssl_context=None, local_addr=None,
                  **kwargs):
         super().__init__(**kwargs)
 
@@ -447,6 +451,7 @@ class TCPConnector(BaseConnector):
         self._cached_hosts = {}
         self._ssl_context = ssl_context
         self._family = family
+        self._local_addr = local_addr
 
     @property
     def verify_ssl(self):
@@ -572,7 +577,8 @@ class TCPConnector(BaseConnector):
                     self._factory, host, port,
                     ssl=sslcontext, family=hinfo['family'],
                     proto=hinfo['proto'], flags=hinfo['flags'],
-                    server_hostname=hinfo['hostname'] if sslcontext else None)
+                    server_hostname=hinfo['hostname'] if sslcontext else None,
+                    local_addr=self._local_addr)
                 has_cert = transp.get_extra_info('sslcontext')
                 if has_cert and self._fingerprint:
                     sock = transp.get_extra_info('socket')
@@ -601,7 +607,7 @@ class TCPConnector(BaseConnector):
 class ProxyConnector(TCPConnector):
     """Http Proxy connector.
 
-    :param str proxy: Proxy URL address. Only http proxy supported.
+    :param str proxy: Proxy URL address. Only HTTP proxy supported.
     :param proxy_auth: (optional) Proxy HTTP Basic Auth
     :type proxy_auth: aiohttp.helpers.BasicAuth
     :param args: see :class:`TCPConnector`

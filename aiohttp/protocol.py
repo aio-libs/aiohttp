@@ -7,7 +7,7 @@ import re
 import string
 import sys
 import zlib
-from abc import abstractmethod, ABCMeta
+from abc import abstractmethod, ABC
 from wsgiref.handlers import format_date_time
 
 import aiohttp
@@ -25,8 +25,7 @@ __all__ = ('HttpMessage', 'Request', 'Response',
 ASCIISET = set(string.printable)
 METHRE = re.compile('[A-Z0-9$-_.]+')
 VERSRE = re.compile('HTTP/(\d+).(\d+)')
-HDRRE = re.compile('[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]')
-CONTINUATION = (' ', '\t')
+HDRRE = re.compile(b'[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]')
 EOF_MARKER = object()
 EOL_MARKER = object()
 STATUS_LINE_READY = object()
@@ -43,12 +42,14 @@ RawStatusLineMessage = collections.namedtuple(
 
 RawRequestMessage = collections.namedtuple(
     'RawRequestMessage',
-    ['method', 'path', 'version', 'headers', 'should_close', 'compression'])
+    ['method', 'path', 'version', 'headers', 'raw_headers',
+     'should_close', 'compression'])
 
 
 RawResponseMessage = collections.namedtuple(
     'RawResponseMessage',
-    ['version', 'code', 'reason', 'headers', 'should_close', 'compression'])
+    ['version', 'code', 'reason', 'headers', 'raw_headers',
+     'should_close', 'compression'])
 
 
 class HttpParser:
@@ -60,7 +61,7 @@ class HttpParser:
         self.max_field_size = max_field_size
 
     def parse_headers(self, lines):
-        """Parses RFC2822 headers from a stream.
+        """Parses RFC 5322 headers from a stream.
 
         Line continuations are supported. Returns list of header name
         and value pairs. Header name is in upper case.
@@ -68,6 +69,7 @@ class HttpParser:
         close_conn = None
         encoding = None
         headers = CIMultiDict()
+        raw_headers = []
 
         lines_idx = 1
         line = lines[1]
@@ -77,41 +79,44 @@ class HttpParser:
 
             # Parse initial header name : value pair.
             try:
-                name, value = line.split(':', 1)
+                bname, bvalue = line.split(b':', 1)
             except ValueError:
                 raise errors.InvalidHeader(line) from None
 
-            name = name.strip(' \t').upper()
-            if HDRRE.search(name):
-                raise errors.InvalidHeader(name)
+            bname = bname.strip(b' \t').upper()
+            if HDRRE.search(bname):
+                raise errors.InvalidHeader(bname)
 
             # next line
             lines_idx += 1
             line = lines[lines_idx]
 
             # consume continuation lines
-            continuation = line and line[0] in CONTINUATION
+            continuation = line and line[0] in (32, 9)  # (' ', '\t')
 
             if continuation:
-                value = [value]
+                bvalue = [bvalue]
                 while continuation:
                     header_length += len(line)
                     if header_length > self.max_field_size:
                         raise errors.LineTooLong(
                             'limit request headers fields size')
-                    value.append(line)
+                    bvalue.append(line)
 
                     # next line
                     lines_idx += 1
                     line = lines[lines_idx]
-                    continuation = line[0] in CONTINUATION
-                value = '\r\n'.join(value)
+                    continuation = line[0] in (32, 9)  # (' ', '\t')
+                bvalue = b'\r\n'.join(bvalue)
             else:
                 if header_length > self.max_field_size:
                     raise errors.LineTooLong(
                         'limit request headers fields size')
 
-            value = value.strip()
+            bvalue = bvalue.strip()
+
+            name = bname.decode('utf-8', 'surrogateescape')
+            value = bvalue.decode('utf-8', 'surrogateescape')
 
             # keep-alive and encoding
             if name == hdrs.CONNECTION:
@@ -126,8 +131,9 @@ class HttpParser:
                     encoding = enc
 
             headers.add(name, value)
+            raw_headers.append((bname, bvalue))
 
-        return headers, close_conn, encoding
+        return headers, raw_headers, close_conn, encoding
 
 
 class HttpPrefixParser:
@@ -160,18 +166,17 @@ class HttpRequestParser(HttpParser):
     """
 
     def __call__(self, out, buf):
-        # read http message (request line + headers)
+        # read HTTP message (request line + headers)
         try:
             raw_data = yield from buf.readuntil(
                 b'\r\n\r\n', self.max_headers)
         except errors.LineLimitExceededParserError as exc:
             raise errors.LineTooLong(exc.limit) from None
 
-        lines = raw_data.decode(
-            'utf-8', 'surrogateescape').split('\r\n')
+        lines = raw_data.split(b'\r\n')
 
         # request line
-        line = lines[0]
+        line = lines[0].decode('utf-8', 'surrogateescape')
         try:
             method, path, version = line.split(None, 2)
         except ValueError:
@@ -193,7 +198,7 @@ class HttpRequestParser(HttpParser):
             raise errors.BadStatusLine(version)
 
         # read headers
-        headers, close, compression = self.parse_headers(lines)
+        headers, raw_headers, close, compression = self.parse_headers(lines)
         if close is None:  # then the headers weren't set in the request
             if version <= HttpVersion10:  # HTTP 1.0 must asks to not close
                 close = True
@@ -202,7 +207,8 @@ class HttpRequestParser(HttpParser):
 
         out.feed_data(
             RawRequestMessage(
-                method, path, version, headers, close, compression),
+                method, path, version, headers, raw_headers,
+                close, compression),
             len(raw_data))
         out.feed_eof()
 
@@ -214,17 +220,16 @@ class HttpResponseParser(HttpParser):
     Returns RawResponseMessage"""
 
     def __call__(self, out, buf):
-        # read http message (response line + headers)
+        # read HTTP message (response line + headers)
         try:
             raw_data = yield from buf.readuntil(
                 b'\r\n\r\n', self.max_line_size + self.max_headers)
         except errors.LineLimitExceededParserError as exc:
             raise errors.LineTooLong(exc.limit) from None
 
-        lines = raw_data.decode(
-            'utf-8', 'surrogateescape').split('\r\n')
+        lines = raw_data.split(b'\r\n')
 
-        line = lines[0]
+        line = lines[0].decode('utf-8', 'surrogateescape')
         try:
             version, status = line.split(None, 1)
         except ValueError:
@@ -251,7 +256,7 @@ class HttpResponseParser(HttpParser):
             raise errors.BadStatusLine(line)
 
         # read headers
-        headers, close, compression = self.parse_headers(lines)
+        headers, raw_headers, close, compression = self.parse_headers(lines)
 
         if close is None:
             close = version <= HttpVersion10
@@ -259,7 +264,7 @@ class HttpResponseParser(HttpParser):
         out.feed_data(
             RawResponseMessage(
                 version, status, reason.strip(),
-                headers, close, compression),
+                headers, raw_headers, close, compression),
             len(raw_data))
         out.feed_eof()
 
@@ -281,7 +286,8 @@ class HttpPayloadParser:
             length = 8
 
         # payload decompression wrapper
-        if self.compression and self.message.compression:
+        if (self.response_with_body and
+                self.compression and self.message.compression):
             out = DeflateBuffer(out, self.message.compression)
 
         # payload parser
@@ -476,7 +482,7 @@ def filter_pipe(filter, filter2, *,
         chunk = yield EOL_MARKER
 
 
-class HttpMessage(metaclass=ABCMeta):
+class HttpMessage(ABC):
     """HttpMessage allows to write headers and payload to a stream.
 
     For example, lets say we want to read file then compress it with deflate
@@ -632,7 +638,7 @@ class HttpMessage(metaclass=ABCMeta):
             self.headers.add(name, value)
 
     def add_headers(self, *headers):
-        """Adds headers to a http message."""
+        """Adds headers to a HTTP message."""
         for name, value in headers:
             self.add_header(name, value)
 
@@ -670,14 +676,18 @@ class HttpMessage(metaclass=ABCMeta):
 
     def _add_default_headers(self):
         # set the connection header
+        connection = None
         if self.upgrade:
             connection = 'upgrade'
         elif not self.closing if self.keepalive is None else self.keepalive:
-            connection = 'keep-alive'
+            if self.version == HttpVersion10:
+                connection = 'keep-alive'
         else:
-            connection = 'close'
+            if self.version == HttpVersion11:
+                connection = 'close'
 
-        self.headers[hdrs.CONNECTION] = connection
+        if connection is not None:
+            self.headers[hdrs.CONNECTION] = connection
 
     def write(self, chunk, *,
               drain=False, EOF_MARKER=EOF_MARKER, EOL_MARKER=EOL_MARKER):
@@ -814,11 +824,11 @@ class HttpMessage(metaclass=ABCMeta):
 
 
 class Response(HttpMessage):
-    """Create http response message.
+    """Create HTTP response message.
 
     Transport is a socket stream transport. status is a response status code,
     status has to be integer value. http_version is a tuple that represents
-    http version, (1, 0) stands for HTTP/1.0 and (1, 1) is for HTTP/1.1
+    HTTP version, (1, 0) stands for HTTP/1.0 and (1, 1) is for HTTP/1.1
     """
 
     HOP_HEADERS = ()
@@ -875,9 +885,9 @@ class Request(HttpMessage):
 
     def __init__(self, transport, method, path,
                  http_version=HttpVersion11, close=False):
-        # set the default for HTTP 1.0 to be different
+        # set the default for HTTP 0.9 to be different
         # will only be overwritten with keep-alive header
-        if http_version < HttpVersion11:
+        if http_version < HttpVersion10:
             close = True
 
         super().__init__(transport, http_version, close)

@@ -1,4 +1,4 @@
-0.20.2 (01-07-2015)
+0.20.2 (01-07-2016)
 --------------------
 
 - Enable use of `await` for a class based view #717

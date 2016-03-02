@@ -173,13 +173,21 @@ def test_add_headers_hop_headers(transport):
     assert [] == list(msg.headers)
 
 
-def test_default_headers(transport):
+def test_default_headers_http_10(transport):
+    msg = protocol.Response(transport, 200,
+                            http_version=protocol.HttpVersion10)
+    msg._add_default_headers()
+
+    assert 'DATE' in msg.headers
+    assert 'keep-alive' == msg.headers['CONNECTION']
+
+
+def test_default_headers_http_11(transport):
     msg = protocol.Response(transport, 200)
     msg._add_default_headers()
 
-    headers = [r for r, _ in msg.headers.items()]
-    assert 'DATE' in headers
-    assert 'CONNECTION' in headers
+    assert 'DATE' in msg.headers
+    assert 'CONNECTION' not in msg.headers
 
 
 def test_default_headers_server(transport):
@@ -222,13 +230,24 @@ def test_default_headers_connection_close(transport):
     assert [('CONNECTION', 'close')] == headers
 
 
-def test_default_headers_connection_keep_alive(transport):
-    msg = protocol.Response(transport, 200)
+def test_default_headers_connection_keep_alive_http_10(transport):
+    msg = protocol.Response(transport, 200,
+                            http_version=protocol.HttpVersion10)
     msg.keepalive = True
     msg._add_default_headers()
 
     headers = [r for r in msg.headers.items() if r[0] == 'CONNECTION']
     assert [('CONNECTION', 'keep-alive')] == headers
+
+
+def test_default_headers_connection_keep_alive_11(transport):
+    msg = protocol.Response(transport, 200,
+                            http_version=protocol.HttpVersion11)
+    msg.keepalive = True
+    msg._add_default_headers()
+
+    headers = [r for r in msg.headers.items() if r[0] == 'CONNECTION']
+    assert 'CONNECTION' not in headers
 
 
 def test_send_headers(transport):
