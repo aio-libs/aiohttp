@@ -617,6 +617,7 @@ HTTP Exception hierarchy chart::
            * 428 - HTTPPreconditionRequired
            * 429 - HTTPTooManyRequests
            * 431 - HTTPRequestHeaderFieldsTooLarge
+           * 451 - HTTPUnavailableForLegalReasons
          HTTPServerError
            * 500 - HTTPInternalServerError
            * 501 - HTTPNotImplemented
