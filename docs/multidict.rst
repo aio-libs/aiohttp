@@ -51,9 +51,9 @@ MultiDict
 
    If the same key appears several times it will be added, e.g.::
 
-      >>> d = MultiDict[('a', 1), ('b', 2), ('a', 3)])
+      >>> d = MultiDict([('a', 1), ('b', 2), ('a', 3)])
       >>> d
-      <MultiDict {'a': 1, 'b': 2, 'a': 3}>
+      <MultiDict ('a': 1, 'b': 2, 'a': 3)>
 
    .. method:: len(d)
 

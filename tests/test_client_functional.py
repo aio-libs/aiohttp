@@ -1,4 +1,4 @@
-"""Http client functional tests against aiohttp.web server"""
+"""HTTP client functional tests against aiohttp.web server"""
 
 import aiohttp
 import asyncio
@@ -7,6 +7,7 @@ import os
 import os.path
 import pytest
 import ssl
+from unittest import mock
 
 from aiohttp import hdrs, web
 from aiohttp.errors import FingerprintMismatch
@@ -315,7 +316,9 @@ def test_format_task_get(create_server, loop):
     client = aiohttp.ClientSession(loop=loop)
     task = loop.create_task(client.get(url))
     assert "{}".format(task)[:18] == "<Task pending coro"
-    yield from task
+    resp = yield from task
+    resp.close()
+    client.close()
 
 
 @pytest.mark.run_loop
@@ -354,7 +357,7 @@ def test_history(create_app_and_client):
         assert len(resp.history) == 0
         assert resp.status == 200
     finally:
-        resp.release()
+        yield from resp.release()
 
     resp_redirect = yield from client.get('/redirect')
     try:
@@ -362,7 +365,7 @@ def test_history(create_app_and_client):
         assert resp_redirect.history[0].status == 301
         assert resp_redirect.status == 200
     finally:
-        resp_redirect.release()
+        yield from resp_redirect.release()
 
 
 @pytest.mark.run_loop
@@ -399,3 +402,52 @@ def test_wait_for(create_app_and_client, loop):
     assert resp.status == 200
     txt = yield from resp.text()
     assert txt == 'OK'
+
+
+@pytest.mark.run_loop
+def test_raw_headers(create_app_and_client, loop):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response()
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.get('/')
+    assert resp.status == 200
+    assert resp.raw_headers == ((b'CONTENT-LENGTH', b'0'),
+                                (b'DATE', mock.ANY),
+                                (b'SERVER', mock.ANY))
+    resp.close()
+
+
+@pytest.mark.run_loop
+def test_http_request_with_version(create_app_and_client, loop, warning):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response()
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    with warning(DeprecationWarning):
+        resp = yield from client.get('/', version=aiohttp.HttpVersion11)
+        assert resp.status == 200
+        resp.close()
+
+
+@pytest.mark.run_loop
+def test_204_with_gzipped_content_encoding(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.StreamResponse(status=204)
+        resp.content_length = 0
+        resp.content_type = 'application/json'
+        # resp.enable_compression(web.ContentCoding.gzip)
+        resp.headers['Content-Encoding'] = 'gzip'
+        yield from resp.prepare(request)
+        return resp
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('DELETE', '/', handler)
+    resp = yield from client.delete('/')
+    assert resp.status == 204
+    yield from resp.release()

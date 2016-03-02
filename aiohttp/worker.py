@@ -39,15 +39,13 @@ class GunicornWebWorker(base.Worker):
 
         sys.exit(self.exit_code)
 
-    def make_handler(self, app, host, port):
+    def make_handler(self, app):
         if hasattr(self.cfg, 'debug'):
             is_debug = self.cfg.debug
         else:
             is_debug = self.log.loglevel == logging.DEBUG
 
         return app.make_handler(
-            host=host,
-            port=port,
             logger=self.log,
             debug=is_debug,
             timeout=self.cfg.timeout,
@@ -83,7 +81,7 @@ class GunicornWebWorker(base.Worker):
     @asyncio.coroutine
     def _run(self):
         for sock in self.sockets:
-            handler = self.make_handler(self.wsgi, *sock.cfg_addr)
+            handler = self.make_handler(self.wsgi)
             srv = yield from self.loop.create_server(handler, sock=sock.sock)
             self.servers[srv] = handler
 

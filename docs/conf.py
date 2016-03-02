@@ -316,4 +316,3 @@ texinfo_documents = [
 
 
 disqus_shortname = 'aiohttp'
-disqus_developer = True

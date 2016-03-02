@@ -54,6 +54,10 @@ clean:
 	rm -f aiohttp/_multidict.c
 	rm -f aiohttp/_multidict.*.so
 	rm -f aiohttp/_multidict.*.pyd
+	rm -f aiohttp/_websocket.html
+	rm -f aiohttp/_websocket.c
+	rm -f aiohttp/_websocket.*.so
+	rm -f aiohttp/_websocket.*.pyd
 	rm -rf .tox
 
 doc:

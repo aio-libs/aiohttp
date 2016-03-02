@@ -18,6 +18,7 @@ Anton Kasyanov
 Arthur Darcet
 Ben Bader
 Benedikt Reinartz
+Brett Cannon
 Brian C. Lane
 Boris Feld
 Carl George

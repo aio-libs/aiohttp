@@ -726,7 +726,7 @@ class TestHttpClientConnector(unittest.TestCase):
         app = web.Application(loop=self.loop)
         app.router.add_route(method, path, handler)
 
-        self.handler = app.make_handler(keep_alive_on=False)
+        self.handler = app.make_handler(keep_alive_on=False, access_log=None)
         sock_path = os.path.join(tmpdir, 'socket.sock')
         srv = yield from self.loop.create_unix_server(
             self.handler, sock_path)
@@ -750,6 +750,32 @@ class TestHttpClientConnector(unittest.TestCase):
         self.loop.run_until_complete(r.release())
         self.assertEqual(r.status, 200)
         r.close()
+        conn.close()
+
+    def test_tcp_connector_uses_provided_local_addr(self):
+        @asyncio.coroutine
+        def handler(request):
+            return web.HTTPOk()
+
+        app, srv, url = self.loop.run_until_complete(
+            self.create_server('get', '/', handler)
+        )
+
+        port = self.find_unused_port()
+        conn = aiohttp.TCPConnector(loop=self.loop,
+                                    local_addr=('127.0.0.1', port))
+
+        r = self.loop.run_until_complete(
+            aiohttp.request(
+                'get', url,
+                connector=conn
+            ))
+
+        self.loop.run_until_complete(r.release())
+        first_conn = next(iter(conn._conns.values()))[0][0]
+        self.assertEqual(first_conn._sock.getsockname(), ('127.0.0.1', port))
+        r.close()
+
         conn.close()
 
     @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'requires unix')
