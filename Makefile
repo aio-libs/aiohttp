@@ -8,8 +8,8 @@ flake: .install-deps
 #	python setup.py check -rms
 	flake8 aiohttp
 	if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then \
-            flake8 examples tests; \
-        fi
+	    flake8 examples tests; \
+	fi
 
 
 .develop: .install-deps $(shell find aiohttp -type f)
@@ -26,13 +26,13 @@ cov cover coverage:
 	tox
 
 cov-dev: .develop
-	py.test --cov=aiohttp --cov-report=term --cov-report=html tests 
+	py.test --cov=aiohttp --cov-report=term --cov-report=html tests
 	@echo "open file://`pwd`/coverage/index.html"
 
 cov-dev-full: .develop
-	AIOHTTP_NO_EXTENSIONS=1 py.test --cov=aiohttp --cov-append tests 
-	PYTHONASYNCIODEBUG=1 py.test --cov=aiohttp --cov-append tests 
-	py.test --cov=aiohttp --cov-report=term --cov-report=html tests 
+	AIOHTTP_NO_EXTENSIONS=1 py.test --cov=aiohttp --cov-append tests
+	PYTHONASYNCIODEBUG=1 py.test --cov=aiohttp --cov-append tests
+	py.test --cov=aiohttp --cov-report=term --cov-report=html tests
 	@echo "open file://`pwd`/coverage/index.html"
 
 clean:
