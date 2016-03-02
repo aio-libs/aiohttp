@@ -12,6 +12,8 @@ CHANGES
 
 - Handle empty body with gzipped encoding #758
 
+- Support 451 Unavailable For Legal Reasons http status  #697
+
 0.21.2 (02-16-2016)
 -------------------
 
