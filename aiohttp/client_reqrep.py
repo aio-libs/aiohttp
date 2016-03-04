@@ -146,7 +146,7 @@ class ClientRequest:
     def update_version(self, version):
         """Convert request version to two elements tuple.
 
-        parser http version '1.1' => (1, 1)
+        parser HTTP version '1.1' => (1, 1)
         """
         if isinstance(version, str):
             v = [l.strip() for l in version.split('.', 1)]

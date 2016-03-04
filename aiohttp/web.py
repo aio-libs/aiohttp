@@ -65,7 +65,7 @@ class RequestHandler(ServerHttpProtocol):
             now = self._loop.time()
 
         app = self._app
-        request = Request(
+        request = web_reqrep.Request(
             app, message, payload,
             self.transport, self.reader, self.writer,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header)
@@ -89,11 +89,11 @@ class RequestHandler(ServerHttpProtocol):
                     handler = yield from factory(app, handler)
                 resp = yield from handler(request)
 
-            assert isinstance(resp, StreamResponse), \
+            assert isinstance(resp, web_reqrep.StreamResponse), \
                 ("Handler {!r} should return response instance, "
                  "got {!r} [middlewares {!r}]").format(
                      match_info.handler, type(resp), self._middlewares)
-        except HTTPException as exc:
+        except web_exceptions.HTTPException as exc:
             resp = exc
 
         resp_msg = yield from resp.prepare(request)
@@ -193,7 +193,7 @@ class Application(dict):
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:
-            router = UrlDispatcher()
+            router = web_urldispatcher.UrlDispatcher()
         assert isinstance(router, AbstractRouter), router
 
         self._debug = debug
@@ -349,7 +349,7 @@ def main(argv):
         type=int,
         default="8080"
     )
-    args, extra_args = arg_parser.parse_known_args(argv)
+    args, extra_argv = arg_parser.parse_known_args(argv)
 
     # Import logic
     mod_str, _, func_str = args.entry_func.partition(":")
@@ -368,9 +368,9 @@ def main(argv):
     except AttributeError:
         arg_parser.error("module %r has no attribute %r" % (mod_str, func_str))
 
-    app = func(extra_args)
+    app = func(extra_argv)
     run_app(app, host=args.hostname, port=args.port)
     arg_parser.exit(message="Stopped\n")
 
 if __name__ == "__main__":
-    main(sys.argv)
+    main(sys.argv[1:])
