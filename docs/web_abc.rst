@@ -56,7 +56,7 @@ Not Allowed*. :meth:`AbstractMatchInfo.handler` raises
 
 .. class:: AbstractMatchInfo
 
-   Abstract *math info*, returned by :meth:`AbstractRouter` call.
+   Abstract *match info*, returned by :meth:`AbstractRouter` call.
 
    .. attribute:: http_exception
 
