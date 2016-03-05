@@ -93,7 +93,13 @@ class AbstractRoute(abc.ABC):
               issubclass(handler, AbstractView)):
             pass
         else:
-            handler = asyncio.coroutine(handler)
+            @asyncio.coroutine
+            def handler_wrapper(*args, **kwargs):
+                result = handler(*args, **kwargs)
+                if asyncio.iscoroutine(result):
+                    result = yield from result
+                return result
+            handler = handler_wrapper
 
         self._method = method
         self._handler = handler
