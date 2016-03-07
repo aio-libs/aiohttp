@@ -14,6 +14,8 @@ CHANGES
 
 - Support 451 Unavailable For Legal Reasons http status  #697
 
+- Fix Cookie share example and few small typos in docs #817
+
 0.21.2 (02-16-2016)
 -------------------
 
