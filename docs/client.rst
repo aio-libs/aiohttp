@@ -208,6 +208,11 @@ parameter of :class:`ClientSession` constructor::
             assert await resp.json() == {"cookies":
                                              {"cookies_are": "working"}}
 
+.. note::
+   ``httpbin.org/cookies`` endpoint returns request cookies
+   in JSON-encoded body.
+   To access session cookies see :attr:`ClientSession.cookies`.
+
 
 More complicated POST requests
 ------------------------------
@@ -362,19 +367,21 @@ Keep-Alive, connection pooling and cookie sharing
 between multiple requests::
 
     async with aiohttp.ClientSession() as session:
-        await session.post(
-            'http://httpbin.org/cookies/set/my_cookie/my_value')
+        await session.get(
+            'http://httpbin.org/cookies/set?my_cookie=my_value')
+        assert session.cookies['my_cookie'].value == 'my_value'
         async with session.get('http://httpbin.org/cookies') as r:
-            json = await r.json()
-            assert json['cookies']['my_cookie'] == 'my_value'
+            json_body = await r.json()
+            assert json_body['cookies']['my_cookie'] == 'my_value'
 
 You also can set default headers for all session requests::
 
     async with aiohttp.ClientSession(
         headers={"Authorization": "Basic bG9naW46cGFzcw=="}) as session:
-        async with s.get("http://httpbin.org/headers") as r:
-            json = yield from r.json()
-            assert json['headers']['Authorization'] == 'Basic bG9naW46cGFzcw=='
+        async with session.get("http://httpbin.org/headers") as r:
+            json_body = await r.json()
+            assert json_body['headers']['Authorization'] == \
+                'Basic bG9naW46cGFzcw=='
 
 :class:`~aiohttp.ClientSession` supports keep-alive requests
 and connection pooling out-of-the-box.
