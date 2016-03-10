@@ -16,9 +16,7 @@ Run a basic server
 Start implementing the basic server by inheriting the
 :class:`ServerHttpProtocol` object. Your class should
 implement the only method :meth:`ServerHttpProtocol.handle_request`
-which must be a coroutine to handle requests asynchronously
-
- .. code-block:: python
+which must be a coroutine to handle requests asynchronously::
 
       from urllib.parse import urlparse, parse_qsl
 
@@ -43,9 +41,7 @@ which must be a coroutine to handle requests asynchronously
 
 The next step is to create a loop and register your handler within a server.
 :exc:`KeyboardInterrupt` exception handling is necessary so you can stop
-your server with Ctrl+C at any time.
-
- .. code-block:: python
+your server with Ctrl+C at any time::
 
     if __name__ == '__main__':
         loop = asyncio.get_event_loop()
@@ -73,10 +69,7 @@ Handling GET params
 
 Currently aiohttp does not provide automatic parsing of incoming GET
 params.  However aiohttp does provide a nice
-:class:`MulitiDict` wrapper for already parsed params.
-
-
- .. code-block:: python
+:class:`MulitiDict` wrapper for already parsed params::
 
     from urllib.parse import urlparse, parse_qsl
 
@@ -97,9 +90,7 @@ Handling POST data
 
 POST data is accessed through the ``payload.read()`` generator method.
 If you have form data in the request body, you can parse it in the same way as
-GET params.
-
- .. code-block:: python
+GET params::
 
     from urllib.parse import urlparse, parse_qsl
 
@@ -119,9 +110,7 @@ SSL
 ---
 
 To use asyncio's SSL support, just pass an SSLContext object to the
-:meth:`asyncio.BaseEventLoop.create_server` method of the loop.
-
- .. code-block:: python
+:meth:`asyncio.BaseEventLoop.create_server` method of the loop::
 
     import ssl
 

@@ -4,8 +4,25 @@ CHANGES
 0.22.0 (XX-XX-XXXX)
 -------------------
 
+- Fix bug in serving static directory #803
+
+- Fix command line arg parsing #797
+
+- Fix a documentation chapter about cookie usage #790
+
+- Handle empty body with gzipped encoding #758
+
+- Support 451 Unavailable For Legal Reasons http status  #697
+
+- Fix Cookie share example and few small typos in docs #817
+
 - Optional support for aiodns #728
 
+0.21.2 (02-16-2016)
+-------------------
+
+- Fix a regression: support for handling ~/path in static file routes was
+  broken #782
 
 0.21.1 (02-10-2016)
 -------------------

@@ -66,7 +66,7 @@ class AbstractResource(Sized, Iterable):
             return url
 
 
-class AbstractRoute(metaclass=abc.ABCMeta):
+class AbstractRoute(abc.ABC):
     METHODS = hdrs.METH_ALL | {hdrs.METH_ANY}
 
     def __init__(self, method, handler, *,
@@ -440,7 +440,10 @@ class StaticRoute(Route):
         self._prefix = prefix
         self._prefix_len = len(self._prefix)
         try:
-            directory = Path(directory).resolve()
+            directory = Path(directory)
+            if str(directory).startswith('~'):
+                directory = Path(os.path.expanduser(str(directory)))
+            directory = directory.resolve()
             if not directory.is_dir():
                 raise ValueError('Not a directory')
         except (FileNotFoundError, ValueError) as error:
@@ -565,6 +568,10 @@ class StaticRoute(Route):
             # perm error or other kind!
             request.logger.exception(error)
             raise HTTPNotFound() from error
+
+        # Make sure that filepath is a file
+        if not filepath.is_file():
+            raise HTTPNotFound()
 
         st = filepath.stat()
 

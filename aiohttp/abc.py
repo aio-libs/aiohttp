@@ -1,12 +1,12 @@
 import asyncio
 import sys
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
 
 PY_35 = sys.version_info >= (3, 5)
 
 
-class AbstractRouter(metaclass=ABCMeta):
+class AbstractRouter(ABC):
 
     @asyncio.coroutine  # pragma: no branch
     @abstractmethod
@@ -14,7 +14,7 @@ class AbstractRouter(metaclass=ABCMeta):
         """Return MATCH_INFO for given request"""
 
 
-class AbstractMatchInfo(metaclass=ABCMeta):
+class AbstractMatchInfo(ABC):
 
     @asyncio.coroutine  # pragma: no branch
     @abstractmethod
@@ -36,7 +36,7 @@ class AbstractMatchInfo(metaclass=ABCMeta):
         """Return a dict with additional info useful for introspection"""
 
 
-class AbstractView(metaclass=ABCMeta):
+class AbstractView(ABC):
 
     def __init__(self, request):
         self._request = request

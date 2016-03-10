@@ -5,12 +5,10 @@ import cProfile
 import gc
 import random
 import socket
+from statistics import stdev, mean, median
 import string
 import sys
 from multiprocessing import Process, set_start_method, Barrier
-
-from scipy.stats import tmean, tstd
-from numpy import array, median
 
 import aiohttp
 
@@ -284,13 +282,13 @@ def main(argv):
     print()
 
     for test_name in sorted(all_rps):
-        rps = array(all_rps[test_name])
-        times = array(all_times[test_name]) * 1000
+        rps = all_rps[test_name]
+        times = [t * 1000 for t in all_times[test_name]]
 
-        rps_mean = tmean(rps)
-        times_mean = tmean(times)
-        times_stdev = tstd(times)
-        times_median = float(median(times))
+        rps_mean = mean(rps)
+        times_mean = mean(times)
+        times_stdev = stdev(times)
+        times_median = median(times)
         print('Results for', test_name)
         print('RPS: {:d},\tmean: {:.3f} ms,'
               '\tstandard deviation {:.3f} ms\tmedian {:.3f} ms'
