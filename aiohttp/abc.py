@@ -1,6 +1,6 @@
 import asyncio
 import sys
-from abc import ABC, abstractmethod
+from abc import ABC, ABCMeta, abstractmethod
 
 
 PY_35 = sys.version_info >= (3, 5)
