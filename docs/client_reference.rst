@@ -13,8 +13,11 @@ Client Session
 
 Client session is the recommended interface for making HTTP requests.
 
-Session encapsulates *connection pool* (*connector* instance) and
-supports keepalives by default.
+Session encapsulates a *connection pool* (*connector* instance) and
+supports keepalives by default. Unless you are connecting to a large,
+unknown number of different servers over the lifetime of your
+application, it is suggested you use a single session for the
+lifetime of your application to benefit from connection pooling.
 
 Usage example::
 
@@ -31,7 +34,7 @@ Usage example::
 
 .. versionadded:: 0.17
 
-The client session supports context manager protocol for self closing.
+The client session supports the context manager protocol for self closing.
 
 .. class:: ClientSession(*, connector=None, loop=None, cookies=None,\
                          headers=None, skip_auto_headers=None, \

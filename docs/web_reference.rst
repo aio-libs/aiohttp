@@ -1132,11 +1132,11 @@ RequestHandlerFactory
 RequestHandlerFactory is responsible for creating HTTP protocol objects that
 can handle HTTP connections.
 
-   .. attribute:: connections
+   .. attribute:: RequestHandlerFactory.connections
 
       List of all currently opened connections.
 
-   .. method:: finish_connections(timeout)
+   .. coroutinemethod:: RequestHandlerFactory.finish_connections(timeout)
 
       A :ref:`coroutine<coroutine>` that should be called to close all opened
       connections.
@@ -1438,6 +1438,7 @@ Resource classes hierarchy::
       ``(method, path)`` combination.
 
       :param str method: requested HTTP method.
+      :param str path: *path* part of request.
 
       :return: (*match_info*, *allowed_methods*) pair.
 
@@ -1476,8 +1477,6 @@ Resource classes hierarchy::
                          can push ``'get'`` as well as ``'GET'``.
 
                          The method should be unique for resource.
-
-      :param str path: route path. Should be started with slash (``'/'``).
 
       :param callable handler: route handler.
 
@@ -1679,7 +1678,7 @@ View
        app.router.add_route('*', '/view', MyView)
 
    The view raises *405 Method Not allowed*
-   (:class:`HTTPMEthodNowAllowed`) if requested web verb is not
+   (:class:`HTTPMethodNowAllowed`) if requested web verb is not
    supported.
 
    :param request: instance of :class:`Request` that has initiated a view

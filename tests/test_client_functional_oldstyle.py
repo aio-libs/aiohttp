@@ -1,4 +1,4 @@
-"""Http client functional tests."""
+"""HTTP client functional tests."""
 
 import binascii
 import gc
