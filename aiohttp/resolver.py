@@ -33,6 +33,7 @@ class DefaultResolver(AbstractResolver):
 
         return hosts
 
+    @asyncio.coroutine
     def close(self):
         pass
 
@@ -68,5 +69,6 @@ class AsyncResolver(AbstractResolver):
                  'flags': socket.AI_NUMERICHOST})
         return hosts
 
+    @asyncio.coroutine
     def close(self):
         return self._resolver.cancel()
