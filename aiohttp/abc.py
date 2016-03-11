@@ -1,6 +1,6 @@
 import asyncio
 import sys
-from abc import ABC, ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
 
 PY_35 = sys.version_info >= (3, 5)
@@ -57,13 +57,14 @@ class AbstractView(ABC):
             return
 
 
-class AbstractResolver(metaclass=ABCMeta):
+class AbstractResolver(ABC):
 
     @asyncio.coroutine
     @abstractmethod
     def resolve(self, hostname):
         """Return IP address for given hostname"""
 
+    @asyncio.coroutine
     @abstractmethod
     def close(self):
         """Release resolver"""
