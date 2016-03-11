@@ -76,7 +76,7 @@ as :class:`aiohttp.web.Application`.
 Just put data inside *request*::
 
    async def handler(request):
-       requset['unique_key'] = data
+       request['unique_key'] = data
 
 See https://github.com/aio-libs/aiohttp_session code for inspiration,
 ``aiohttp_session.get_session(request)`` method uses ``SESSION_KEY``
