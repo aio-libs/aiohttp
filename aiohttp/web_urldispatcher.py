@@ -66,7 +66,7 @@ class AbstractResource(Sized, Iterable):
             return url
 
 
-class AbstractRoute(metaclass=abc.ABCMeta):
+class AbstractRoute(abc.ABC):
     METHODS = hdrs.METH_ALL | {hdrs.METH_ANY}
 
     def __init__(self, method, handler, *,
@@ -568,6 +568,10 @@ class StaticRoute(Route):
             # perm error or other kind!
             request.logger.exception(error)
             raise HTTPNotFound() from error
+
+        # Make sure that filepath is a file
+        if not filepath.is_file():
+            raise HTTPNotFound()
 
         st = filepath.stat()
 

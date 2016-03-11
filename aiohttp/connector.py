@@ -607,7 +607,7 @@ class TCPConnector(BaseConnector):
 class ProxyConnector(TCPConnector):
     """Http Proxy connector.
 
-    :param str proxy: Proxy URL address. Only http proxy supported.
+    :param str proxy: Proxy URL address. Only HTTP proxy supported.
     :param proxy_auth: (optional) Proxy HTTP Basic Auth
     :type proxy_auth: aiohttp.helpers.BasicAuth
     :param args: see :class:`TCPConnector`
