@@ -44,7 +44,7 @@ following example::
 
     async def init_app(loop):
         app = Application(loop=loop)
-        db = await crate_connection(user='user', password='123')
+        db = await create_connection(user='user', password='123')
         app['db'] = db
         app.router.add_route('GET', '/', go)
         return app
