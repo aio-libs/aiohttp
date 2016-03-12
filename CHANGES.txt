@@ -16,6 +16,8 @@ CHANGES
 
 - Fix Cookie share example and few small typos in docs #817
 
+- UrlDispatcher.add_route with partial coroutine handler #814
+
 0.21.2 (02-16-2016)
 -------------------
 
