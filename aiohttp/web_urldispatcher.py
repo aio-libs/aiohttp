@@ -258,11 +258,10 @@ class Resource(AbstractResource):
 
         for route in self._routes:
             route_method = route.method
+            allowed_methods.add(route_method)
 
             if route_method == method or route_method == hdrs.METH_ANY:
                 return UrlMappingMatchInfo(match_dict, route), allowed_methods
-
-            allowed_methods.add(route_method)
         else:
             return None, allowed_methods
 

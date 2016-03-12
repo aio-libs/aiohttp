@@ -10,6 +10,8 @@ CHANGES
 - Fix ResourceAdapter: dont add method to allowed if resource is not
   match #826
 
+- Fix Resouce: append found method to returned allowed methods
+
 0.21.1 (02-10-2016)
 -------------------
 
