@@ -697,7 +697,7 @@ class TestUrlDispatcher(unittest.TestCase):
         route = PlainRoute('GET', lambda req: None, None, '/path')
         self.router.register_route(route)
         resource = route.resource
-        self.assertEqual((None, {'GET'}),
+        self.assertEqual((None, set()),
                          self.loop.run_until_complete(
                              resource.resolve('GET', '/another/path')))
 
@@ -888,3 +888,19 @@ class TestUrlDispatcher(unittest.TestCase):
         here = pathlib.Path(aiohttp.__file__).parent / '__init__.py'
         with self.assertRaises(ValueError):
             self.router.add_static('/st', here)
+
+    def test_404_for_resource_adapter(self):
+        route = self.router.add_static('/st',
+                                       os.path.dirname(aiohttp.__file__))
+        resource = route.resource
+        ret = self.loop.run_until_complete(
+            resource.resolve('GET', '/unknown/path'))
+        self.assertEqual((None, set()), ret)
+
+    def test_405_for_resource_adapter(self):
+        route = self.router.add_static('/st',
+                                       os.path.dirname(aiohttp.__file__))
+        resource = route.resource
+        ret = self.loop.run_until_complete(
+            resource.resolve('POST', '/st/abc.py'))
+        self.assertEqual((None, {'GET'}), ret)
