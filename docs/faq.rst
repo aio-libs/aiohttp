@@ -44,7 +44,7 @@ following example::
 
     async def init_app(loop):
         app = Application(loop=loop)
-        db = await crate_connection(user='user', password='123')
+        db = await create_connection(user='user', password='123')
         app['db'] = db
         app.router.add_route('GET', '/', go)
         return app
@@ -76,7 +76,7 @@ as :class:`aiohttp.web.Application`.
 Just put data inside *request*::
 
    async def handler(request):
-       requset['unique_key'] = data
+       request['unique_key'] = data
 
 See https://github.com/aio-libs/aiohttp_session code for inspiration,
 ``aiohttp_session.get_session(request)`` method uses ``SESSION_KEY``
