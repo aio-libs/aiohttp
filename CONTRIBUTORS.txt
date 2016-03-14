@@ -54,6 +54,7 @@ Kirill Klenov
 Kirill Malovitsa
 Kyrylo Perevozchikov
 Lars P. Søndergaard
+Louis-Philippe Huberdeau
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
 Marco Paolini
@@ -95,5 +96,6 @@ Vladimir Rutsky
 Vladimir Shulyak
 Vladimir Zakharov
 W. Trevor King
+Willem de Groot
 Yannick Koechlin
 Коренберг Марк
