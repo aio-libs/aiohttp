@@ -53,6 +53,10 @@ def test_close(transport, writer):
     writer.close(1001, b'msg')
     transport.write.assert_called_with(b'\x88\x05\x03\xe9msg')
 
+    # Test that Service Restart close code is also supported
+    writer.close(1012, b'msg')
+    transport.write.assert_called_with(b'\x88\x05\x03\xf4msg')
+
 
 def test_send_text_masked(transport, writer):
     writer = websocket.WebSocketWriter(transport,
