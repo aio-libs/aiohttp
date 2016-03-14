@@ -93,7 +93,14 @@ class AbstractRoute(abc.ABC):
               issubclass(handler, AbstractView)):
             pass
         else:
-            handler = asyncio.coroutine(handler)
+            @asyncio.coroutine
+            def handler_wrapper(*args, **kwargs):
+                result = old_handler(*args, **kwargs)
+                if asyncio.iscoroutine(result):
+                    result = yield from result
+                return result
+            old_handler = handler
+            handler = handler_wrapper
 
         self._method = method
         self._handler = handler
@@ -204,10 +211,11 @@ class ResourceAdapter(AbstractResource):
     @asyncio.coroutine
     def resolve(self, method, path):
         route_method = self._route.method
-        allowed_methods = {route_method}
-        if route_method == method or route_method == hdrs.METH_ANY:
-            match_dict = self._route.match(path)
-            if match_dict is not None:
+        allowed_methods = set()
+        match_dict = self._route.match(path)
+        if match_dict is not None:
+            allowed_methods.add(route_method)
+            if route_method == hdrs.METH_ANY or route_method == method:
                 return (UrlMappingMatchInfo(match_dict, self._route),
                         allowed_methods)
         return None, allowed_methods
@@ -257,11 +265,10 @@ class Resource(AbstractResource):
 
         for route in self._routes:
             route_method = route.method
+            allowed_methods.add(route_method)
 
             if route_method == method or route_method == hdrs.METH_ANY:
                 return UrlMappingMatchInfo(match_dict, route), allowed_methods
-
-            allowed_methods.add(route_method)
         else:
             return None, allowed_methods
 

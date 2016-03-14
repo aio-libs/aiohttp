@@ -16,7 +16,17 @@ CHANGES
 
 - Fix Cookie share example and few small typos in docs #817
 
+- UrlDispatcher.add_route with partial coroutine handler #814
+
 - Optional support for aiodns #728
+
+0.21.4 (03-12-2016)
+-------------------
+
+- Fix ResourceAdapter: dont add method to allowed if resource is not
+  match #826
+
+- Fix Resouce: append found method to returned allowed methods
 
 0.21.2 (02-16-2016)
 -------------------
