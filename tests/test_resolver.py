@@ -4,7 +4,6 @@ import socket
 import ipaddress
 from aiohttp.resolver import AsyncResolver, DefaultResolver
 from unittest.mock import patch
-from conftest import loop
 
 try:
     import aiodns
