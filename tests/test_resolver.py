@@ -4,6 +4,7 @@ import socket
 import ipaddress
 from aiohttp.resolver import AsyncResolver, DefaultResolver
 from unittest.mock import patch
+from conftest import loop
 
 try:
     import aiodns
@@ -14,13 +15,6 @@ except ImportError:
 class FakeResult:
     def __init__(self, host):
         self.host = host
-
-
-@pytest.fixture
-def loop():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(None)
-    return loop
 
 
 @asyncio.coroutine
