@@ -18,6 +18,8 @@ CHANGES
 
 - UrlDispatcher.add_route with partial coroutine handler #814
 
+- Optional support for aiodns #728
+
 0.21.4 (03-12-2016)
 -------------------
 

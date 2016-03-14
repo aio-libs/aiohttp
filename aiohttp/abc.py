@@ -55,3 +55,16 @@ class AbstractView(ABC):
         @abstractmethod
         def __await__(self):
             return
+
+
+class AbstractResolver(ABC):
+
+    @asyncio.coroutine
+    @abstractmethod
+    def resolve(self, hostname):
+        """Return IP address for given hostname"""
+
+    @asyncio.coroutine
+    @abstractmethod
+    def close(self):
+        """Release resolver"""
