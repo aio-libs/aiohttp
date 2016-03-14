@@ -788,6 +788,15 @@ TCPConnector
 
       .. versionadded:: 0.17
 
+   :param aiohttp.abc.AbstractResolver resolver: Custom resolver instance to use.
+      ``aiohttp.resolver.DefaultResolver`` by default.
+
+      Custom resolvers allow to resolve hostnames differently than the way the
+      host is configured. Alternate resolvers include aiodns, which does not rely
+      on a thread executor.
+
+      .. versionadded:: 0.22
+
    :param bool resolve: alias for *use_dns_cache* parameter.
 
       .. deprecated:: 0.17
