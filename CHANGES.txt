@@ -20,6 +20,8 @@ CHANGES
 
 - Optional support for aiodns #728
 
+- Add ServiceRestart and TryAgainLater websocket close codes #828
+
 0.21.4 (03-12-2016)
 -------------------
 
