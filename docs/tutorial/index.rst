@@ -3,7 +3,7 @@
 Tutorial
 ========
 
-Are you going to learn `aiohttp`? We have example for you. Polls application
+Are you going to learn `aiohttp` but don't where to start? We have example for you. Polls application
 is a great example for getting started with aiohttp.
 
 If you want the full source code in advance or for comparison, check out
@@ -15,11 +15,9 @@ the `demo source`_.
 .. toctree::
    :maxdepth: 2
 
-   introduction
    setup
-   .. database schema
-   .. request-response cycle
-   .. views
-   .. templates
-   .. css
-   .. testing
+   introduction
+   database
+   views
+   templates
+   static

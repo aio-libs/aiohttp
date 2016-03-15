@@ -1,6 +1,6 @@
 .. _tutorial-introduction:
 
-Introduction to aiohttp Polls
-=============================
+Getting started with aiohttp first app
+======================================
 
-This tutorial based on Django polls tutorial, but we use
+This tutorial based on Django polls tutorial.
