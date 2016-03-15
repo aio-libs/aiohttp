@@ -1,21 +1,24 @@
+import asyncio
+import warnings
+import sys
+
+
+from . import hdrs
 from . import web_reqrep
 from . import web_exceptions
 from . import web_urldispatcher
 from . import web_ws
+from .abc import AbstractRouter, AbstractMatchInfo
+from .log import web_logger
+from .protocol import HttpVersion  # noqa
+from .server import ServerHttpProtocol
+from .signals import Signal, PreSignal, PostSignal
 from .web_reqrep import *  # noqa
 from .web_exceptions import *  # noqa
 from .web_urldispatcher import *  # noqa
 from .web_ws import *  # noqa
-from .protocol import HttpVersion  # noqa
-from .signals import Signal, PreSignal, PostSignal
-
-
-import asyncio
-
-from . import hdrs
-from .abc import AbstractRouter, AbstractMatchInfo
-from .log import web_logger
-from .server import ServerHttpProtocol
+from argparse import ArgumentParser
+from importlib import import_module
 
 
 __all__ = (web_reqrep.__all__ +
@@ -62,7 +65,7 @@ class RequestHandler(ServerHttpProtocol):
             now = self._loop.time()
 
         app = self._app
-        request = Request(
+        request = web_reqrep.Request(
             app, message, payload,
             self.transport, self.reader, self.writer,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header)
@@ -76,9 +79,9 @@ class RequestHandler(ServerHttpProtocol):
             resp = None
             request._match_info = match_info
             expect = request.headers.get(hdrs.EXPECT)
-            if expect and expect.lower() == "100-continue":
+            if expect:
                 resp = (
-                    yield from match_info.route.handle_expect_header(request))
+                    yield from match_info.expect_handler(request))
 
             if resp is None:
                 handler = match_info.handler
@@ -86,11 +89,11 @@ class RequestHandler(ServerHttpProtocol):
                     handler = yield from factory(app, handler)
                 resp = yield from handler(request)
 
-            assert isinstance(resp, StreamResponse), \
+            assert isinstance(resp, web_reqrep.StreamResponse), \
                 ("Handler {!r} should return response instance, "
                  "got {!r} [middlewares {!r}]").format(
                      match_info.handler, type(resp), self._middlewares)
-        except HTTPException as exc:
+        except web_exceptions.HTTPException as exc:
             resp = exc
 
         resp_msg = yield from resp.prepare(request)
@@ -139,6 +142,14 @@ class RequestHandlerFactory:
             del self._connections[handler]
 
     @asyncio.coroutine
+    def _connections_cleanup(self):
+        sleep = 0.05
+        while self._connections:
+            yield from asyncio.sleep(sleep, loop=self._loop)
+            if sleep < 5:
+                sleep = sleep * 2
+
+    @asyncio.coroutine
     def finish_connections(self, timeout=None):
         # try to close connections in 90% of graceful timeout
         timeout90 = None
@@ -148,18 +159,10 @@ class RequestHandlerFactory:
         for handler in self._connections.keys():
             handler.closing(timeout=timeout90)
 
-        @asyncio.coroutine
-        def cleanup():
-            sleep = 0.05
-            while self._connections:
-                yield from asyncio.sleep(sleep, loop=self._loop)
-                if sleep < 5:
-                    sleep = sleep * 2
-
         if timeout:
             try:
                 yield from asyncio.wait_for(
-                    cleanup(), timeout, loop=self._loop)
+                    self._connections_cleanup(), timeout, loop=self._loop)
             except asyncio.TimeoutError:
                 self._app.logger.warning(
                     "Not all connections are closed (pending: %d)",
@@ -190,13 +193,12 @@ class Application(dict):
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:
-            router = UrlDispatcher()
+            router = web_urldispatcher.UrlDispatcher()
         assert isinstance(router, AbstractRouter), router
 
         self._debug = debug
         self._router = router
         self._handler_factory = handler_factory
-        self._finish_callbacks = []
         self._loop = loop
         self.logger = logger
 
@@ -208,6 +210,7 @@ class Application(dict):
         self._on_post_signal = PostSignal()
         self._on_response_prepare = Signal(self)
         self._on_shutdown = Signal(self)
+        self._on_cleanup = Signal(self)
 
     @property
     def debug(self):
@@ -230,6 +233,10 @@ class Application(dict):
         return self._on_shutdown
 
     @property
+    def on_cleanup(self):
+        return self._on_cleanup
+
+    @property
     def router(self):
         return self._router
 
@@ -249,34 +256,30 @@ class Application(dict):
     def shutdown(self):
         """Causes on_shutdown signal
 
-        Should be called before finish()
+        Should be called before cleanup()
         """
         yield from self.on_shutdown.send(self)
 
     @asyncio.coroutine
-    def finish(self):
-        """Finalize application by calling all registered callbacks
+    def cleanup(self):
+        """Causes on_cleanup signal
 
-        Should be called before shutdown()
+        Should be called after shutdown()
         """
-        callbacks = self._finish_callbacks
-        self._finish_callbacks = []
+        yield from self.on_cleanup.send(self)
 
-        for (cb, args, kwargs) in callbacks:
-            try:
-                res = cb(self, *args, **kwargs)
-                if (asyncio.iscoroutine(res) or
-                        isinstance(res, asyncio.Future)):
-                    yield from res
-            except Exception as exc:
-                self._loop.call_exception_handler({
-                    'message': "Error in finish callback",
-                    'exception': exc,
-                    'application': self,
-                })
+    @asyncio.coroutine
+    def finish(self):
+        """Finalize an application.
+
+        Deprecated alias for .cleanup()
+        """
+        warnings.warn("Use .cleanup() instead", DeprecationWarning)
+        yield from self.cleanup()
 
     def register_on_finish(self, func, *args, **kwargs):
-        self._finish_callbacks.insert(0, (func, args, kwargs))
+        warnings.warn("Use .on_cleanup.append() instead", DeprecationWarning)
+        self.on_cleanup.append(lambda app: func(app, *args, **kwargs))
 
     def copy(self):
         raise NotImplementedError
@@ -320,5 +323,54 @@ def run_app(app, *, host='0.0.0.0', port=None,
         loop.run_until_complete(srv.wait_closed())
         loop.run_until_complete(app.shutdown())
         loop.run_until_complete(handler.finish_connections(shutdown_timeout))
-        loop.run_until_complete(app.finish())
+        loop.run_until_complete(app.cleanup())
     loop.close()
+
+
+def main(argv):
+    arg_parser = ArgumentParser(
+        description="aiohttp.web Application server",
+        prog="aiohttp.web"
+    )
+    arg_parser.add_argument(
+        "entry_func",
+        help=("Callable returning the `aiohttp.web.Application` instance to "
+              "run. Should be specified in the 'module:function' syntax."),
+        metavar="entry-func"
+    )
+    arg_parser.add_argument(
+        "-H", "--hostname",
+        help="TCP/IP hostname to serve on (default: %(default)r)",
+        default="localhost"
+    )
+    arg_parser.add_argument(
+        "-P", "--port",
+        help="TCP/IP port to serve on (default: %(default)r)",
+        type=int,
+        default="8080"
+    )
+    args, extra_argv = arg_parser.parse_known_args(argv)
+
+    # Import logic
+    mod_str, _, func_str = args.entry_func.partition(":")
+    if not func_str or not mod_str:
+        arg_parser.error(
+            "'entry-func' not in 'module:function' syntax"
+        )
+    if mod_str.startswith("."):
+        arg_parser.error("relative module names not supported")
+    try:
+        module = import_module(mod_str)
+    except ImportError:
+        arg_parser.error("module %r not found" % mod_str)
+    try:
+        func = getattr(module, func_str)
+    except AttributeError:
+        arg_parser.error("module %r has no attribute %r" % (mod_str, func_str))
+
+    app = func(extra_argv)
+    run_app(app, host=args.hostname, port=args.port)
+    arg_parser.exit(message="Stopped\n")
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

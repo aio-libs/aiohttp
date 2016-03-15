@@ -55,9 +55,16 @@ extensions = [
     'sphinx.ext.intersphinx',
     'alabaster',
     'aiohttp_doctools',
-    'sphinxcontrib.spelling',
     'sphinxcontrib.newsfeed',
 ]
+
+
+try:
+    import sphinxcontrib.spelling  # noqa
+    extensions.append('sphinxcontrib.spelling')
+except ImportError:
+    pass
+
 
 intersphinx_mapping = {
     'python': ('http://docs.python.org/3', None),
@@ -316,4 +323,3 @@ texinfo_documents = [
 
 
 disqus_shortname = 'aiohttp'
-disqus_developer = True

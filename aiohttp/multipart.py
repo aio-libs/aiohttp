@@ -11,6 +11,7 @@ import warnings
 import zlib
 from urllib.parse import quote, unquote, urlencode, parse_qsl
 from collections import deque, Mapping, Sequence
+from pathlib import Path
 
 from .helpers import parse_mimetype
 from .multidict import CIMultiDict
@@ -212,6 +213,8 @@ class BodyPartReader(object):
         self._length = int(length) if length is not None else None
         self._read_bytes = 0
         self._unread = deque()
+        self._prev_chunk = None
+        self._content_eof = 0
 
     @asyncio.coroutine
     def __aiter__(self):
@@ -257,7 +260,6 @@ class BodyPartReader(object):
     @asyncio.coroutine
     def read_chunk(self, size=chunk_size):
         """Reads body part content chunk of the specified size.
-        The body part must has `Content-Length` header with proper value.
 
         :param int size: chunk size
 
@@ -265,16 +267,73 @@ class BodyPartReader(object):
         """
         if self._at_eof:
             return b''
+        if self._length:
+            chunk = yield from self._read_chunk_from_length(size)
+        else:
+            chunk = yield from self._read_chunk_from_stream(size)
+
+        self._read_bytes += len(chunk)
+        if self._read_bytes == self._length:
+            self._at_eof = True
+        if self._at_eof:
+            assert b'\r\n' == (yield from self._content.readline()), \
+                'reader did not read all the data or it is malformed'
+        return chunk
+
+    @asyncio.coroutine
+    def _read_chunk_from_length(self, size):
+        """Reads body part content chunk of the specified size.
+        The body part must has `Content-Length` header with proper value.
+
+        :param int size: chunk size
+
+        :rtype: bytearray
+        """
         assert self._length is not None, \
             'Content-Length required for chunked read'
         chunk_size = min(size, self._length - self._read_bytes)
         chunk = yield from self._content.read(chunk_size)
-        self._read_bytes += len(chunk)
-        if self._read_bytes == self._length:
-            self._at_eof = True
-            assert b'\r\n' == (yield from self._content.readline()), \
-                'reader did not read all the data or it is malformed'
         return chunk
+
+    @asyncio.coroutine
+    def _read_chunk_from_stream(self, size):
+        """Reads content chunk of body part with unknown length.
+        The `Content-Length` header for body part is not necessary.
+
+        :param int size: chunk size
+
+        :rtype: bytearray
+        """
+        assert size >= len(self._boundary) + 2, \
+            'Chunk size must be greater or equal than boundary length + 2'
+        first_chunk = self._prev_chunk is None
+        if first_chunk:
+            self._prev_chunk = yield from self._content.read(size)
+
+        chunk = yield from self._content.read(size)
+        self._content_eof += int(self._content.at_eof())
+        assert self._content_eof < 3, "Reading after EOF"
+        window = self._prev_chunk + chunk
+        sub = b'\r\n' + self._boundary
+        if first_chunk:
+            idx = window.find(sub)
+        else:
+            idx = window.find(sub, max(0, len(self._prev_chunk) - len(sub)))
+        if idx >= 0:
+            # pushing boundary back to content
+            self._content.unread_data(window[idx:])
+            if size > idx:
+                self._prev_chunk = self._prev_chunk[:idx]
+            chunk = window[len(self._prev_chunk):idx]
+            if not chunk:
+                self._at_eof = True
+        if 0 < len(chunk) < len(sub) and not self._content_eof:
+            self._prev_chunk += chunk
+            self._at_eof = False
+            return b''
+        result = self._prev_chunk
+        self._prev_chunk = chunk
+        return result
 
     @asyncio.coroutine
     def readline(self):
@@ -652,7 +711,7 @@ class BodyPartWriter(object):
         if isinstance(obj, io.IOBase):
             name = getattr(obj, 'name', None)
             if name is not None:
-                return os.path.basename(name)
+                return Path(name).name
 
     def serialize(self):
         """Yields byte chunks for body part."""

@@ -8,8 +8,8 @@ flake: .install-deps
 #	python setup.py check -rms
 	flake8 aiohttp
 	if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then \
-            flake8 examples tests; \
-        fi
+	    flake8 examples tests; \
+	fi
 
 
 .develop: .install-deps $(shell find aiohttp -type f)
@@ -54,6 +54,10 @@ clean:
 	rm -f aiohttp/_multidict.c
 	rm -f aiohttp/_multidict.*.so
 	rm -f aiohttp/_multidict.*.pyd
+	rm -f aiohttp/_websocket.html
+	rm -f aiohttp/_websocket.c
+	rm -f aiohttp/_websocket.*.so
+	rm -f aiohttp/_websocket.*.pyd
 	rm -rf .tox
 
 doc:

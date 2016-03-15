@@ -18,6 +18,7 @@ Anton Kasyanov
 Arthur Darcet
 Ben Bader
 Benedikt Reinartz
+Brett Cannon
 Brian C. Lane
 Boris Feld
 Carl George
@@ -53,6 +54,7 @@ Kirill Klenov
 Kirill Malovitsa
 Kyrylo Perevozchikov
 Lars P. Søndergaard
+Louis-Philippe Huberdeau
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
 Marco Paolini
@@ -77,6 +79,7 @@ Sebastian Hüther
 Sergey Ninua
 Sergey Skripnick
 Simon Kennedy
+Sin-Woo Bang
 Stanislas Plum
 Stanislav Prokop
 Stephen Granade
@@ -93,5 +96,6 @@ Vladimir Rutsky
 Vladimir Shulyak
 Vladimir Zakharov
 W. Trevor King
+Willem de Groot
 Yannick Koechlin
 Коренберг Марк

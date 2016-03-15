@@ -70,3 +70,10 @@ async def test_data_queue_items(loop):
     async for item in buffer:
         assert item is next(item_iter, None)
     pytest.raises(StopIteration, next, item_iter)
+
+
+@pytest.mark.run_loop
+async def test_stream_reader_iter_any(loop):
+    it = iter([b'line1\nline2\nline3\n'])
+    async for raw in create_stream(loop).iter_any():
+        assert raw == next(it)

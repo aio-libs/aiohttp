@@ -13,8 +13,11 @@ Client Session
 
 Client session is the recommended interface for making HTTP requests.
 
-Session encapsulates *connection pool* (*connector* instance) and
-supports keepalives by default.
+Session encapsulates a *connection pool* (*connector* instance) and
+supports keepalives by default. Unless you are connecting to a large,
+unknown number of different servers over the lifetime of your
+application, it is suggested you use a single session for the
+lifetime of your application to benefit from connection pooling.
 
 Usage example::
 
@@ -31,7 +34,7 @@ Usage example::
 
 .. versionadded:: 0.17
 
-The client session supports context manager protocol for self closing.
+The client session supports the context manager protocol for self closing.
 
 .. class:: ClientSession(*, connector=None, loop=None, cookies=None,\
                          headers=None, skip_auto_headers=None, \
@@ -340,11 +343,17 @@ The client session supports context manager protocol for self closing.
 
          Add *origin* parameter.
 
-   .. method:: close()
+   .. coroutinemethod:: close()
 
       Close underlying connector.
 
       Release all acquired resources.
+
+      .. versionchanged:: 0.21
+
+         The method is converted into coroutine (but technically
+         returns a future for keeping backward compatibility during
+         transition period).
 
    .. method:: detach()
 
@@ -444,6 +453,10 @@ Usage::
              assert resp.status == 200
              print(await resp.text())
 
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.request`.
+
 
 .. coroutinefunction:: get(url, **kwargs)
 
@@ -454,6 +467,10 @@ Usage::
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
    :return: :class:`ClientResponse` or derived from
+
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.get`.
 
 
 .. coroutinefunction:: options(url, **kwargs)
@@ -466,6 +483,10 @@ Usage::
 
    :return: :class:`ClientResponse` or derived from
 
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.options`.
+
 
 .. coroutinefunction:: head(url, **kwargs)
 
@@ -476,6 +497,10 @@ Usage::
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
    :return: :class:`ClientResponse` or derived from
+
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.head`.
 
 
 .. coroutinefunction:: delete(url, **kwargs)
@@ -488,6 +513,10 @@ Usage::
 
    :return: :class:`ClientResponse` or derived from
 
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.delete`.
+
 
 .. coroutinefunction:: post(url, *, data=None, **kwargs)
 
@@ -498,6 +527,10 @@ Usage::
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
    :return: :class:`ClientResponse` or derived from
+
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.post`.
 
 
 .. coroutinefunction:: put(url, *, data=None, **kwargs)
@@ -510,6 +543,10 @@ Usage::
 
    :return: :class:`ClientResponse` or derived from
 
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.put`.
+
 
 .. coroutinefunction:: patch(url, *, data=None, **kwargs)
 
@@ -520,6 +557,10 @@ Usage::
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
    :return: :class:`ClientResponse` or derived from
+
+   .. deprecated:: 0.21
+
+      Use :meth:`ClientSession.patch`.
 
 
 .. coroutinefunction:: ws_connect(url, *, protocols=(), \
@@ -580,7 +621,12 @@ Usage::
 
       Add *headers* parameter.
 
+   .. deprecated:: 0.21
 
+      Use :meth:`ClientSession.ws_connect`.
+
+
+.. _aiohttp-client-reference-connectors:
 
 Connectors
 ----------
@@ -669,9 +715,15 @@ BaseConnector
 
       .. versionadded:: 0.16
 
-   .. method:: close()
+   .. coroutinemethod:: close()
 
       Close all opened connections.
+
+      .. versionchanged:: 0.21
+
+         The method is converted into coroutine (but technically
+         returns a future for keeping backward compatibility during
+         transition period).
 
    .. coroutinemethod:: connect(request)
 
@@ -703,7 +755,7 @@ TCPConnector
                         family=0, \
                         ssl_context=None, conn_timeout=None, \
                         keepalive_timeout=30, limit=None, share_cookies=False, \
-                        force_close=False, loop=None)
+                        force_close=False, loop=None, local_addr=None)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -736,6 +788,15 @@ TCPConnector
 
       .. versionadded:: 0.17
 
+   :param aiohttp.abc.AbstractResolver resolver: Custom resolver instance to use.
+      ``aiohttp.resolver.DefaultResolver`` by default.
+
+      Custom resolvers allow to resolve hostnames differently than the way the
+      host is configured. Alternate resolvers include aiodns, which does not rely
+      on a thread executor.
+
+      .. versionadded:: 0.22
+
    :param bool resolve: alias for *use_dns_cache* parameter.
 
       .. deprecated:: 0.17
@@ -756,6 +817,11 @@ TCPConnector
 
       *ssl_context* may be used for configuring certification
       authority channel, supported SSL options etc.
+
+   :param tuple local_addr: tuple of ``(local_host, local_port)`` used to bind
+      socket locally if specified.
+
+      .. versionadded:: 0.21
 
    .. attribute:: verify_ssl
 
@@ -995,6 +1061,18 @@ Response object
    .. attribute:: reason
 
       HTTP status reason of response (:class:`str`), e.g. ``"OK"``.
+
+   .. attribute:: host
+
+      Host part of requested url (:class:`str`).
+
+   .. attribute:: method
+
+      Request's method (:class:`str`).
+
+   .. attribute:: url
+
+      URL of request (:class:`str`).
 
    .. attribute:: connection
 

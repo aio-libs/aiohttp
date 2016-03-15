@@ -323,10 +323,15 @@ class Request(dict, HeadersMixin):
         return bytes_body.decode(encoding)
 
     @asyncio.coroutine
-    def json(self, *, loader=json.loads):
+    def json(self, *, loads=json.loads, loader=None):
         """Return BODY as JSON."""
+        if loader is not None:
+            warnings.warn(
+                "Using loader argument is deprecated, use loads instead",
+                DeprecationWarning)
+            loads = loader
         body = yield from self.text()
-        return loader(body)
+        return loads(body)
 
     @asyncio.coroutine
     def post(self):
@@ -477,6 +482,10 @@ class StreamResponse(HeadersMixin):
         # Backwards compatibility for when force was a bool <0.17.
         if type(force) == bool:
             force = ContentCoding.deflate if force else ContentCoding.identity
+        elif force is not None:
+            assert isinstance(force, ContentCoding), ("force should one of "
+                                                      "None, bool or "
+                                                      "ContentEncoding")
 
         self._compression = True
         self._compression_force = force
@@ -651,21 +660,21 @@ class StreamResponse(HeadersMixin):
         else:
             return None
 
-    def _start_compression(self, request):
-        def _start(coding):
-            if coding != ContentCoding.identity:
-                self.headers[hdrs.CONTENT_ENCODING] = coding.value
-                self._resp_impl.add_compression_filter(coding.value)
-                self.content_length = None
+    def _do_start_compression(self, coding):
+        if coding != ContentCoding.identity:
+            self.headers[hdrs.CONTENT_ENCODING] = coding.value
+            self._resp_impl.add_compression_filter(coding.value)
+            self.content_length = None
 
+    def _start_compression(self, request):
         if self._compression_force:
-            _start(self._compression_force)
+            self._do_start_compression(self._compression_force)
         else:
             accept_encoding = request.headers.get(
                 hdrs.ACCEPT_ENCODING, '').lower()
             for coding in ContentCoding:
                 if coding.value in accept_encoding:
-                    _start(coding)
+                    self._do_start_compression(coding)
                     return
 
     def start(self, request):
