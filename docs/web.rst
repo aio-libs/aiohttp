@@ -408,7 +408,7 @@ third-party library, :mod:`aiohttp_session`, that adds *session* support::
 "100-continue". It is possible to specify custom *Expect* header
 handler on per route basis. This handler gets called if *Expect*
 header exist in request after receiving all headers and before
-processing application middlewares :ref:`aiohttp-web-middlewares` and
+processing application's :ref:`aiohttp-web-middlewares` and
 route handler. Handler can return *None*, in that case the request
 processing continues as usual. If handler returns an instance of class
 :class:`StreamResponse`, *request handler* uses it as response. Also
