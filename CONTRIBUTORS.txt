@@ -98,4 +98,5 @@ Vladimir Zakharov
 W. Trevor King
 Willem de Groot
 Yannick Koechlin
-Коренберг Марк
+Марк Коренберг
+Семён Марьясин
