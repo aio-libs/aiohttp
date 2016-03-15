@@ -6,6 +6,7 @@ import aiohttp_jinja2
 import jinja2
 from aiohttp import web
 
+from aiohttpdemo_polls.middlewares import setup_middlewares
 from aiohttpdemo_polls.routes import setup_routes
 from aiohttpdemo_polls.utils import init_postgres, load_config
 from aiohttpdemo_polls.views import SiteHandler
@@ -35,6 +36,7 @@ async def init(loop):
     # setup views and routes
     handler = SiteHandler(pg)
     setup_routes(app, handler, PROJ_ROOT)
+    setup_middlewares(app)
 
     host, port = conf['host'], conf['port']
     return app, host, port
