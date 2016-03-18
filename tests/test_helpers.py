@@ -279,177 +279,177 @@ class TestCookieJar(unittest.TestCase):
         cookies_sent, cookies_received = (
             self.request_reply_with_same_url("http://1.2.3.4/"))
 
-        assert set(cookies_sent.keys()) == {
+        self.assertEqual(set(cookies_sent.keys()), {
             "shared-cookie"
-        }
+        })
 
-        assert set(cookies_received.keys()) == set()
+        self.assertEqual(set(cookies_received.keys()), set())
 
     def test_domain_filter_same_host(self):
         cookies_sent, cookies_received = (
             self.request_reply_with_same_url("http://example.com/"))
 
-        assert set(cookies_sent.keys()) == {
+        self.assertEqual(set(cookies_sent.keys()), {
             "shared-cookie",
             "domain-cookie",
             "dotted-domain-cookie"
-        }
+        })
 
-        assert set(cookies_received.keys()) == {
+        self.assertEqual(set(cookies_received.keys()), {
             "unconstrained-cookie",
             "domain-cookie",
             "dotted-domain-cookie"
-        }
+        })
 
     def test_domain_filter_same_host_and_subdomain(self):
         cookies_sent, cookies_received = (
             self.request_reply_with_same_url("http://test1.example.com/"))
 
-        assert set(cookies_sent.keys()) == {
+        self.assertEqual(set(cookies_sent.keys()), {
             "shared-cookie",
             "domain-cookie",
             "subdomain1-cookie",
             "dotted-domain-cookie"
-        }
+        })
 
-        assert set(cookies_received.keys()) == {
+        self.assertEqual(set(cookies_received.keys()), {
             "unconstrained-cookie",
             "domain-cookie",
             "subdomain1-cookie",
             "dotted-domain-cookie"
-        }
+        })
 
     def test_domain_filter_same_host_diff_subdomain(self):
         cookies_sent, cookies_received = (
             self.request_reply_with_same_url("http://different.example.com/"))
 
-        assert set(cookies_sent.keys()) == {
+        self.assertEqual(set(cookies_sent.keys()), {
             "shared-cookie",
             "domain-cookie",
             "dotted-domain-cookie"
-        }
+        })
 
-        assert set(cookies_received.keys()) == {
+        self.assertEqual(set(cookies_received.keys()), {
             "unconstrained-cookie",
             "domain-cookie",
             "dotted-domain-cookie"
-        }
+        })
 
     def test_cookie_domain_filter_diff_host(self):
         cookies_sent, cookies_received = (
             self.request_reply_with_same_url("http://different.org/"))
 
-        assert set(cookies_sent.keys()) == {
+        self.assertEqual(set(cookies_sent.keys()), {
             "shared-cookie",
             "different-domain-cookie"
-        }
+        })
 
-        assert set(cookies_received.keys()) == {
+        self.assertEqual(set(cookies_received.keys()), {
             "unconstrained-cookie",
             "different-domain-cookie"
-        }
+        })
 
     def test_cookie_secure_filter(self):
         cookies_sent, _ = (
             self.request_reply_with_same_url("http://secure.com/"))
 
-        assert set(cookies_sent.keys()) == {
+        self.assertEqual(set(cookies_sent.keys()), {
             "shared-cookie"
-        }
+        })
 
         cookies_sent, _ = (
             self.request_reply_with_same_url("https://secure.com/"))
 
-        assert set(cookies_sent.keys()) == {
+        self.assertEqual(set(cookies_sent.keys()), {
             "shared-cookie",
             "secure-cookie"
-        }
+        })
 
     def test_cookie_path_filter_root(self):
         cookies_sent, _ = (
             self.request_reply_with_same_url("http://pathtest.com/"))
 
-        assert set(cookies_sent.keys()) == {
+        self.assertEqual(set(cookies_sent.keys()), {
             "shared-cookie",
             "no-path-cookie",
             "path1-cookie"
-        }
+        })
 
     def test_cookie_path_filter_folder(self):
 
         cookies_sent, _ = (
             self.request_reply_with_same_url("http://pathtest.com/one/"))
 
-        assert set(cookies_sent.keys()) == {
+        self.assertEqual(set(cookies_sent.keys()), {
             "shared-cookie",
             "no-path-cookie",
             "path1-cookie",
             "path2-cookie"
-        }
+        })
 
     def test_cookie_path_filter_file(self):
 
         cookies_sent, _ = self.request_reply_with_same_url(
             "http://pathtest.com/one/two")
 
-        assert set(cookies_sent.keys()) == {
+        self.assertEqual(set(cookies_sent.keys()), {
             "shared-cookie",
             "no-path-cookie",
             "path1-cookie",
             "path2-cookie",
             "path3-cookie"
-        }
+        })
 
     def test_cookie_path_filter_subfolder(self):
 
         cookies_sent, _ = self.request_reply_with_same_url(
             "http://pathtest.com/one/two/")
 
-        assert set(cookies_sent.keys()) == {
+        self.assertEqual(set(cookies_sent.keys()), {
             "shared-cookie",
             "no-path-cookie",
             "path1-cookie",
             "path2-cookie",
             "path3-cookie",
             "path4-cookie"
-        }
+        })
 
     def test_cookie_path_filter_subsubfolder(self):
 
         cookies_sent, _ = self.request_reply_with_same_url(
             "http://pathtest.com/one/two/three/")
 
-        assert set(cookies_sent.keys()) == {
+        self.assertEqual(set(cookies_sent.keys()), {
             "shared-cookie",
             "no-path-cookie",
             "path1-cookie",
             "path2-cookie",
             "path3-cookie",
             "path4-cookie"
-        }
+        })
 
     def test_cookie_path_filter_different_folder(self):
 
         cookies_sent, _ = (
             self.request_reply_with_same_url("http://pathtest.com/hundred/"))
 
-        assert set(cookies_sent.keys()) == {
+        self.assertEqual(set(cookies_sent.keys()), {
             "shared-cookie",
             "no-path-cookie",
             "path1-cookie"
-        }
+        })
 
     def test_cookie_path_value(self):
         _, cookies_received = (
             self.request_reply_with_same_url("http://pathtest.com/"))
 
-        assert set(cookies_received.keys()) == {
+        self.assertEqual(set(cookies_received.keys()), {
             "unconstrained-cookie",
             "no-path-cookie",
             "path-cookie",
             "wrong-path-cookie"
-        }
+        })
 
-        assert cookies_received["no-path-cookie"]["path"] == "/"
-        assert cookies_received["path-cookie"]["path"] == "/somepath"
-        assert cookies_received["wrong-path-cookie"]["path"] == "/"
+        self.assertEqual(cookies_received["no-path-cookie"]["path"], "/")
+        self.assertEqual(cookies_received["path-cookie"]["path"], "/somepath")
+        self.assertEqual(cookies_received["wrong-path-cookie"]["path"], "/")
