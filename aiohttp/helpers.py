@@ -521,7 +521,8 @@ class CookieJar:
 
     def update_cookies(self, cookies, response_url=None):
         """Update cookies."""
-        hostname = urlsplit(response_url).hostname
+        url_parsed = urlsplit(response_url or "")
+        hostname = url_parsed.hostname
 
         if is_ip_address(hostname):
             # Don't accept cookies from IPs
@@ -546,6 +547,16 @@ class CookieJar:
                 # and set its host-only-flag
                 self._host_only_cookies.add(name)
                 cookie["domain"] = hostname
+
+            if not cookie["path"] or not cookie["path"].startswith("/"):
+                # Set the cookie's path to the response path
+                path = url_parsed.path
+                if not path.startswith("/"):
+                    path = "/"
+                else:
+                    # Cut everything from the last slash to the end
+                    path = "/" + path[1:path.rfind("/")]
+                cookie["path"] = path
 
         # Remove the host-only flags of nonexistent cookies
         self._host_only_cookies -= (
@@ -597,6 +608,9 @@ class CookieJar:
             elif not self._is_domain_match(cookie_domain, hostname):
                 continue
 
+            if not self._is_path_match(url_parsed.path, cookie["path"]):
+                continue
+
             is_secure = url_parsed.scheme in ("https", "wss")
 
             if cookie["secure"] and not is_secure:
@@ -615,9 +629,25 @@ class CookieJar:
         if not hostname.endswith(domain):
             return False
 
-        rest = hostname[:-len(domain)]
+        non_matching = hostname[:-len(domain)]
 
-        if rest[-1] != ".":
+        if not non_matching.endswith("."):
             return False
 
         return not is_ip_address(hostname)
+
+    @staticmethod
+    def _is_path_match(req_path, cookie_path):
+        """Implements path matching adhering to RFC 6265."""
+        if req_path == cookie_path:
+            return True
+
+        if not req_path.startswith(cookie_path):
+            return False
+
+        if cookie_path.endswith("/"):
+            return True
+
+        non_matching = req_path[len(cookie_path):]
+
+        return non_matching.startswith("/")
