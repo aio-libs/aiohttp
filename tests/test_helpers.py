@@ -238,28 +238,33 @@ class TestCookieJar(unittest.TestCase):
             "subdomain2-cookie=fourth; Domain=test2.example.com; "
             "dotted-domain-cookie=fifth; Domain=.example.com; "
             "different-domain-cookie=sixth; Domain=different.org; "
-            "secure-cookie=seventh: Domain=secure.com; Secure;"
+            "secure-cookie=seventh; Domain=secure.com; Secure; "
+            "no-path-cookie=eighth; Domain=pathtest.com; "
+            "path1-cookie=nineth; Domain=pathtest.com; Path=/ "
+            "path2-cookie=tenth; Domain=pathtest.com; Path=/one "
+            "path3-cookie=eleventh; Domain=pathtest.com; Path=/one/two "
+            "path4-cookie=twelfth; Domain=pathtest.com; Path=/one/two/"
         )
 
         # Cookies received from the server as "Set-Cookie" header
         self.cookies_to_receive = http.cookies.SimpleCookie(
-            "unconstrained-cookie=first; "
-            "domain-cookie=second; Domain=example.com; "
-            "subdomain1-cookie=third; Domain=test1.example.com; "
-            "subdomain2-cookie=fourth; Domain=test2.example.com; "
-            "dotted-domain-cookie=fifth; Domain=.example.com; "
-            "different-domain-cookie=sixth; Domain=different.org; "
+            "unconstrained-cookie=first; Path=/ "
+            "domain-cookie=second; Domain=example.com; Path=/ "
+            "subdomain1-cookie=third; Domain=test1.example.com; Path=/ "
+            "subdomain2-cookie=fourth; Domain=test2.example.com; Path=/ "
+            "dotted-domain-cookie=fifth; Domain=.example.com; Path=/ "
+            "different-domain-cookie=sixth; Domain=different.org; Path=/"
         )
 
     def request_reply_with_same_url(self, url):
-        self.jar = helpers.CookieJar(self.cookies_to_send)
+        jar = helpers.CookieJar(self.cookies_to_send)
 
-        cookies_sent = self.jar.filter_cookies(url)
+        cookies_sent = jar.filter_cookies(url)
 
-        self.jar.cookies.clear()
+        jar.cookies.clear()
 
-        self.jar.update_cookies(self.cookies_to_receive, url)
-        cookies_received = self.jar.cookies.copy()
+        jar.update_cookies(self.cookies_to_receive, url)
+        cookies_received = jar.cookies.copy()
 
         return cookies_sent, cookies_received
 
@@ -355,4 +360,78 @@ class TestCookieJar(unittest.TestCase):
         assert set(cookies_sent.keys()) == {
             "shared-cookie",
             "secure-cookie"
+        }
+
+    def test_cookie_path_filter_root(self):
+        cookies_sent, _ = (
+            self.request_reply_with_same_url("http://pathtest.com/"))
+
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie",
+            "no-path-cookie",
+            "path1-cookie"
+        }
+
+    def test_cookie_path_filter_folder(self):
+
+        cookies_sent, _ = (
+            self.request_reply_with_same_url("http://pathtest.com/one/"))
+
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie",
+            "no-path-cookie",
+            "path1-cookie",
+            "path2-cookie"
+        }
+
+    def test_cookie_path_filter_file(self):
+
+        cookies_sent, _ = self.request_reply_with_same_url(
+            "http://pathtest.com/one/two")
+
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie",
+            "no-path-cookie",
+            "path1-cookie",
+            "path2-cookie",
+            "path3-cookie"
+        }
+
+    def test_cookie_path_filter_subfolder(self):
+
+        cookies_sent, _ = self.request_reply_with_same_url(
+            "http://pathtest.com/one/two/")
+
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie",
+            "no-path-cookie",
+            "path1-cookie",
+            "path2-cookie",
+            "path3-cookie",
+            "path4-cookie"
+        }
+
+    def test_cookie_path_filter_subsubfolder(self):
+
+        cookies_sent, _ = self.request_reply_with_same_url(
+            "http://pathtest.com/one/two/three/")
+
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie",
+            "no-path-cookie",
+            "path1-cookie",
+            "path2-cookie",
+            "path3-cookie",
+            "path4-cookie"
+        }
+
+    def test_cookie_path_filter_different_folder(self):
+
+        cookies_sent, _ = (
+            self.request_reply_with_same_url("http://pathtest.com/hundred/"))
+
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie",
+            "no-path-cookie",
+            "path1-cookie"
         }
