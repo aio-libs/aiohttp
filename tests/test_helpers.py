@@ -240,20 +240,23 @@ class TestCookieJar(unittest.TestCase):
             "different-domain-cookie=sixth; Domain=different.org; "
             "secure-cookie=seventh; Domain=secure.com; Secure; "
             "no-path-cookie=eighth; Domain=pathtest.com; "
-            "path1-cookie=nineth; Domain=pathtest.com; Path=/ "
-            "path2-cookie=tenth; Domain=pathtest.com; Path=/one "
-            "path3-cookie=eleventh; Domain=pathtest.com; Path=/one/two "
-            "path4-cookie=twelfth; Domain=pathtest.com; Path=/one/two/"
+            "path1-cookie=nineth; Domain=pathtest.com; Path=/; "
+            "path2-cookie=tenth; Domain=pathtest.com; Path=/one; "
+            "path3-cookie=eleventh; Domain=pathtest.com; Path=/one/two; "
+            "path4-cookie=twelfth; Domain=pathtest.com; Path=/one/two/;"
         )
 
         # Cookies received from the server as "Set-Cookie" header
         self.cookies_to_receive = http.cookies.SimpleCookie(
-            "unconstrained-cookie=first; Path=/ "
-            "domain-cookie=second; Domain=example.com; Path=/ "
-            "subdomain1-cookie=third; Domain=test1.example.com; Path=/ "
-            "subdomain2-cookie=fourth; Domain=test2.example.com; Path=/ "
-            "dotted-domain-cookie=fifth; Domain=.example.com; Path=/ "
-            "different-domain-cookie=sixth; Domain=different.org; Path=/"
+            "unconstrained-cookie=first; Path=/; "
+            "domain-cookie=second; Domain=example.com; Path=/; "
+            "subdomain1-cookie=third; Domain=test1.example.com; Path=/; "
+            "subdomain2-cookie=fourth; Domain=test2.example.com; Path=/; "
+            "dotted-domain-cookie=fifth; Domain=.example.com; Path=/; "
+            "different-domain-cookie=sixth; Domain=different.org; Path=/; "
+            "no-path-cookie=seventh; Domain=pathtest.com; "
+            "path-cookie=eighth; Domain=pathtest.com; Path=/somepath;"
+            "wrong-path-cookie=nineth; Domain=pathtest.com; Path=somepath;"
         )
 
     def request_reply_with_same_url(self, url):
@@ -435,3 +438,18 @@ class TestCookieJar(unittest.TestCase):
             "no-path-cookie",
             "path1-cookie"
         }
+
+    def test_cookie_path_value(self):
+        _, cookies_received = (
+            self.request_reply_with_same_url("http://pathtest.com/"))
+
+        assert set(cookies_received.keys()) == {
+            "unconstrained-cookie",
+            "no-path-cookie",
+            "path-cookie",
+            "wrong-path-cookie"
+        }
+
+        assert cookies_received["no-path-cookie"]["path"] == "/"
+        assert cookies_received["path-cookie"]["path"] == "/somepath"
+        assert cookies_received["wrong-path-cookie"]["path"] == "/"
