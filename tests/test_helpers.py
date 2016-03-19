@@ -1,9 +1,10 @@
+import asyncio
 import pytest
 import unittest
 import datetime
 import http.cookies
 from unittest import mock
-from aiohttp import helpers
+from aiohttp import helpers, test_utils
 
 
 def test_parse_mimetype_1():
@@ -243,7 +244,11 @@ class TestCookieJar(unittest.TestCase):
             "path1-cookie=nineth; Domain=pathtest.com; Path=/; "
             "path2-cookie=tenth; Domain=pathtest.com; Path=/one; "
             "path3-cookie=eleventh; Domain=pathtest.com; Path=/one/two; "
-            "path4-cookie=twelfth; Domain=pathtest.com; Path=/one/two/;"
+            "path4-cookie=twelfth; Domain=pathtest.com; Path=/one/two/; "
+            "expires-cookie=thirteenth; Domain=expirestest.com; Path=/;"
+            " Expires=Tue, 1 Jan 1980 12:00:00 GMT; "
+            "max-age-cookie=fourteenth; Domain=maxagetest.com; Path=/;"
+            " Max-Age=60;"
         )
 
         # Cookies received from the server as "Set-Cookie" header
@@ -255,25 +260,51 @@ class TestCookieJar(unittest.TestCase):
             "dotted-domain-cookie=fifth; Domain=.example.com; Path=/; "
             "different-domain-cookie=sixth; Domain=different.org; Path=/; "
             "no-path-cookie=seventh; Domain=pathtest.com; "
-            "path-cookie=eighth; Domain=pathtest.com; Path=/somepath;"
+            "path-cookie=eighth; Domain=pathtest.com; Path=/somepath; "
             "wrong-path-cookie=nineth; Domain=pathtest.com; Path=somepath;"
         )
 
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+        self.jar = helpers.CookieJar(loop=self.loop)
+
+    def tearDown(self):
+        self.loop.close()
+
     def request_reply_with_same_url(self, url):
-        jar = helpers.CookieJar(self.cookies_to_send)
+        self.jar.update_cookies(self.cookies_to_send)
+        cookies_sent = self.jar.filter_cookies(url)
 
-        cookies_sent = jar.filter_cookies(url)
+        self.jar.cookies.clear()
 
-        jar.cookies.clear()
+        self.jar.update_cookies(self.cookies_to_receive, url)
+        cookies_received = self.jar.cookies.copy()
 
-        jar.update_cookies(self.cookies_to_receive, url)
-        cookies_received = jar.cookies.copy()
+        self.jar.cookies.clear()
 
         return cookies_sent, cookies_received
 
+    def timed_request(
+            self, url, update_time, send_time):
+        time_func = "time.monotonic"
+
+        with mock.patch(time_func, return_value=update_time):
+            self.jar.update_cookies(self.cookies_to_send)
+
+        with mock.patch(time_func, return_value=send_time):
+            test_utils.run_briefly(self.loop)
+
+            cookies_sent = self.jar.filter_cookies(url)
+
+        self.jar.cookies.clear()
+
+        return cookies_sent
+
     def test_constructor(self):
-        jar = helpers.CookieJar(self.cookies_to_send)
+        jar = helpers.CookieJar(self.cookies_to_send, self.loop)
         self.assertEqual(jar.cookies, self.cookies_to_send)
+        self.assertEqual(jar._loop, self.loop)
 
     def test_domain_filter_ip(self):
         cookies_sent, cookies_received = (
@@ -453,3 +484,41 @@ class TestCookieJar(unittest.TestCase):
         self.assertEqual(cookies_received["no-path-cookie"]["path"], "/")
         self.assertEqual(cookies_received["path-cookie"]["path"], "/somepath")
         self.assertEqual(cookies_received["wrong-path-cookie"]["path"], "/")
+
+    def test_cookie_expires(self):
+        ts_before = datetime.datetime(
+            1975, 1, 1, tzinfo=datetime.timezone.utc).timestamp()
+
+        ts_after = datetime.datetime(
+            1985, 1, 1, tzinfo=datetime.timezone.utc).timestamp()
+
+        cookies_sent = self.timed_request(
+            "http://expirestest.com/", ts_before, ts_before)
+
+        self.assertEqual(set(cookies_sent.keys()), {
+            "shared-cookie",
+            "expires-cookie"
+        })
+
+        cookies_sent = self.timed_request(
+            "http://expirestest.com/", ts_before, ts_after)
+
+        self.assertEqual(set(cookies_sent.keys()), {
+            "shared-cookie"
+        })
+
+    def test_cookie_max_age(self):
+        cookies_sent = self.timed_request(
+            "http://maxagetest.com/", 1000, 1000)
+
+        self.assertEqual(set(cookies_sent.keys()), {
+            "shared-cookie",
+            "max-age-cookie"
+        })
+
+        cookies_sent = self.timed_request(
+            "http://maxagetest.com/", 1000, 2000)
+
+        self.assertEqual(set(cookies_sent.keys()), {
+            "shared-cookie"
+        })
