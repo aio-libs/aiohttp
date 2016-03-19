@@ -51,7 +51,7 @@ class ClientSession:
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
-        self._cookie_jar = CookieJar()
+        self._cookie_jar = CookieJar(loop=loop)
 
         # For Backward compatability with `share_cookies` connectors
         if connector._share_cookies:
