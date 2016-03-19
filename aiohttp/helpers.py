@@ -507,8 +507,22 @@ class Timeout:
 class CookieJar:
     """Implements cookie storage adhering to RFC 6265."""
 
-    def __init__(self, cookies=None):
+    DATE_TOKENS_RE = re.compile(
+        "[\x09\x20-\x2F\x3B-\x40\x5B-\x60\x7B-\x7E]*"
+        "(?P<token>[\x00-\x08\x0A-\x1F\d:a-zA-Z\x7F-\xFF]+)")
+
+    DATE_HMS_TIME_RE = re.compile("(\d{1,2}):(\d{1,2}):(\d{1,2})")
+
+    DATE_DAY_OF_MONTH_RE = re.compile("(\d{1,2})")
+
+    DATE_MONTH_RE = re.compile(
+        "(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)", re.I)
+
+    DATE_YEAR_RE = re.compile("(\d{2,4})")
+
+    def __init__(self, cookies=None, loop=None):
         self._cookies = SimpleCookie()
+        self._loop = loop or asyncio.get_event_loop()
         self._host_only_cookies = set()
 
         if cookies is not None:
@@ -518,6 +532,10 @@ class CookieJar:
     def cookies(self):
         """The session cookies."""
         return self._cookies
+
+    def _expire_cookie(self, name):
+        if name in self._cookies:
+            del self._cookies[name]
 
     def update_cookies(self, cookies, response_url=None):
         """Update cookies."""
@@ -558,12 +576,31 @@ class CookieJar:
                     path = "/" + path[1:path.rfind("/")]
                 cookie["path"] = path
 
+            max_age = cookie["max-age"]
+            if max_age:
+                try:
+                    delta_seconds = int(max_age)
+                    self._loop.call_later(
+                        delta_seconds, self._expire_cookie, name)
+                except ValueError:
+                    cookie["max-age"] = ""
+
+            expires = cookie["expires"]
+            if not cookie["max-age"] and expires:
+                expire_time = self._parse_date(expires)
+                if expire_time:
+                    self._loop.call_at(
+                        expire_time.timestamp(),
+                        self._expire_cookie, name)
+                else:
+                    cookie["expires"] = ""
+
         # Remove the host-only flags of nonexistent cookies
         self._host_only_cookies -= (
             self._host_only_cookies.difference(self._cookies.keys()))
 
     def _add_morsel(self, name, value, hostname):
-        """Add a Morsel to the cookie store."""
+        """Add a Morsel to the cookie jar."""
         cookie_domain = value["domain"]
         if cookie_domain.startswith("."):
             # Remove leading dot
@@ -584,8 +621,7 @@ class CookieJar:
         return True
 
     def filter_cookies(self, request_url):
-        """Returns this store's cookies filtered by their attributes."""
-        # TODO: filter by 'expires', 'path', ...
+        """Returns this jar's cookies filtered by their attributes."""
         url_parsed = urlsplit(request_url)
         filtered = SimpleCookie()
 
@@ -651,3 +687,72 @@ class CookieJar:
         non_matching = req_path[len(cookie_path):]
 
         return non_matching.startswith("/")
+
+    @classmethod
+    def _parse_date(cls, date_str):
+        """Implements date string parsing adhering to RFC 6265."""
+        if not date_str:
+            return
+
+        found_time = False
+        found_day_of_month = False
+        found_month = False
+        found_year = False
+
+        hour = minute = second = 0
+        day_of_month = 0
+        month = ""
+        year = 0
+
+        for token_match in cls.DATE_TOKENS_RE.finditer(date_str):
+
+            token = token_match.group("token")
+
+            if not found_time:
+                time_match = cls.DATE_HMS_TIME_RE.match(token)
+                if time_match:
+                    found_time = True
+                    hour, minute, second = [
+                        int(s) for s in time_match.groups()]
+                    continue
+
+            if not found_day_of_month:
+                day_of_month_match = cls.DATE_DAY_OF_MONTH_RE.match(token)
+                if day_of_month_match:
+                    found_day_of_month = True
+                    day_of_month = int(day_of_month_match.group())
+                    continue
+
+            if not found_month:
+                month_match = cls.DATE_MONTH_RE.match(token)
+                if month_match:
+                    found_month = True
+                    month = month_match.group()
+                    continue
+
+            if not found_year:
+                year_match = cls.DATE_YEAR_RE.match(token)
+                if year_match:
+                    found_year = True
+                    year = int(year_match.group())
+
+        if 70 <= year <= 99:
+            year += 1900
+        elif 0 <= year <= 69:
+            year += 2000
+
+        if False in (found_day_of_month, found_month, found_year, found_time):
+            return
+
+        if not 1 <= day_of_month <= 31:
+            return
+
+        if year < 1601 or hour > 23 or minute > 59 or second > 59:
+            return
+
+        dt = datetime.datetime.strptime(
+            "%s %d %d:%d:%d %d" % (
+                month, day_of_month, hour, minute, second, year
+            ), "%b %d %H:%M:%S %Y")
+
+        return dt.replace(tzinfo=datetime.timezone.utc)
