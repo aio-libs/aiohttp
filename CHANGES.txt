@@ -24,6 +24,8 @@ CHANGES
 
 - Fix prompt message for `web.run_app` #832
 
+- Allow to pass None as a timeout value to disable timeout logic #834
+
 0.21.4 (03-12-2016)
 -------------------
 
