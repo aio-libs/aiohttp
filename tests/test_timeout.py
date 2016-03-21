@@ -51,6 +51,18 @@ def test_timeout_global_loop(loop):
 
 
 @pytest.mark.run_loop
+def test_timeout_disable(loop):
+    @asyncio.coroutine
+    def long_running_task():
+        yield from asyncio.sleep(0.1, loop=loop)
+        return 'done'
+
+    with Timeout(None, loop=loop):
+        resp = yield from long_running_task()
+    assert resp == 'done'
+
+
+@pytest.mark.run_loop
 def test_timeout_not_relevant_exception(loop):
     yield from asyncio.sleep(0, loop=loop)
     with pytest.raises(KeyError):
