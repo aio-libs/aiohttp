@@ -22,6 +22,8 @@ CHANGES
 
 - Add ServiceRestart and TryAgainLater websocket close codes #828
 
+- Fix prompt message for `web.run_app` #832
+
 0.21.4 (03-12-2016)
 -------------------
 
