@@ -852,7 +852,7 @@ class Response(StreamResponse):
         self.body = text.encode(self.charset)
 
     def should_send_body(self):
-        return (self._req.method.lower() != 'head' and
+        return (self._req.method != hdrs.METH_HEAD and
                 self._status not in [204, 304])
 
     @asyncio.coroutine
