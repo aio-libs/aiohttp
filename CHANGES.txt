@@ -26,6 +26,11 @@ CHANGES
 
 - Allow to pass None as a timeout value to disable timeout logic #834
 
+0.21.5 (04-22-2016)
+-------------------
+
+- Fix command line arg parsing #797
+
 0.21.4 (03-12-2016)
 -------------------
 
