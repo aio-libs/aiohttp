@@ -17,8 +17,7 @@ except ImportError:
 
 ext = '.pyx' if USE_CYTHON else '.c'
 
-extensions = [Extension('aiohttp._multidict', ['aiohttp/_multidict' + ext]),
-              Extension('aiohttp._websocket', ['aiohttp/_websocket' + ext])]
+extensions = [Extension('aiohttp._websocket', ['aiohttp/_websocket' + ext])]
 
 
 if USE_CYTHON:
@@ -55,7 +54,7 @@ with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
         raise RuntimeError('Unable to determine version.')
 
 
-install_requires = ['chardet']
+install_requires = ['chardet', 'multidict']
 
 if sys.version_info < (3, 4, 1):
     raise RuntimeError("aiohttp requires Python 3.4.1+")

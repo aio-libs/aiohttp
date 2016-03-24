@@ -2,7 +2,9 @@
 
 __version__ = '0.22.0a0'
 
+import multidict  # noqa
 
+from multidict import *  # noqa
 from . import hdrs  # noqa
 from .protocol import *  # noqa
 from .connector import *  # noqa
@@ -12,7 +14,6 @@ from .errors import *  # noqa
 from .helpers import *  # noqa
 from .parsers import *  # noqa
 from .streams import *  # noqa
-from .multidict import *  # noqa
 from .multipart import *  # noqa
 from .websocket_client import *  # noqa
 

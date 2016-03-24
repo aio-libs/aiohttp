@@ -68,6 +68,8 @@ except ImportError:
 
 intersphinx_mapping = {
     'python': ('http://docs.python.org/3', None),
+    'multidict':
+        ('http://multidict.readthedocs.org/en/stable/', None),
     'aiohttpjinja2':
         ('http://aiohttp-jinja2.readthedocs.org/en/stable/', None),
     'aiohttpsession':
