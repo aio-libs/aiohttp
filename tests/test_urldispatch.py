@@ -6,12 +6,12 @@ import unittest
 from collections.abc import Sized, Container, Iterable, Mapping, MutableMapping
 from unittest import mock
 from urllib.parse import unquote
+from multidict import CIMultiDict
 import aiohttp.web
 from aiohttp import hdrs
 from aiohttp.web import (UrlDispatcher, Request, Response,
                          HTTPMethodNotAllowed, HTTPNotFound,
                          HTTPCreated)
-from aiohttp.multidict import CIMultiDict
 from aiohttp.protocol import HttpVersion, RawRequestMessage
 from aiohttp.web_urldispatcher import (_defaultExpectHandler,
                                        DynamicRoute,

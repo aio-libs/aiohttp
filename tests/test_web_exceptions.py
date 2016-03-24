@@ -1,8 +1,8 @@
 import collections
 import pytest
 import re
+from multidict import CIMultiDict
 from unittest import mock
-from aiohttp.multidict import CIMultiDict
 from aiohttp.web import Request
 from aiohttp.protocol import RawRequestMessage, HttpVersion11
 
