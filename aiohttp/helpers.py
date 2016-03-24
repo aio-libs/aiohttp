@@ -11,7 +11,9 @@ from urllib.parse import quote, urlencode
 from collections import namedtuple
 from pathlib import Path
 
-from . import hdrs, multidict
+import multidict
+
+from . import hdrs
 from .errors import InvalidURL
 
 try:

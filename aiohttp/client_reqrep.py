@@ -15,12 +15,13 @@ try:
 except ImportError:
     import chardet
 
+from multidict import (CIMultiDictProxy, MultiDictProxy, MultiDict,
+                       CIMultiDict)
+
 import aiohttp
 from . import hdrs, helpers, streams
 from .log import client_logger
 from .streams import EOF_MARKER, FlowControlStreamReader
-from .multidict import (CIMultiDictProxy, MultiDictProxy, MultiDict,
-                        CIMultiDict)
 from .multipart import MultipartWriter
 from .protocol import HttpMessage
 

@@ -13,8 +13,9 @@ from urllib.parse import quote, unquote, urlencode, parse_qsl
 from collections import deque, Mapping, Sequence
 from pathlib import Path
 
+from multidict import CIMultiDict
+
 from .helpers import parse_mimetype
-from .multidict import CIMultiDict
 from .protocol import HttpParser
 from .hdrs import (
     CONTENT_DISPOSITION,
