@@ -529,8 +529,10 @@ with the peer::
         return ws
 
 Reading from the *WebSocket* (``await ws.receive()``) **must only** be
-done inside the request handler coroutine; however, writing
-(``ws.send_str(...)``) to the *WebSocket* may be delegated to other coroutines.
+done inside the request handler *task*; however, writing
+(``ws.send_str(...)``) to the *WebSocket* may be delegated to other tasks.
+*aiohttp.web* creates an implicit :class:`asyncio.Task` for handling every
+incoming request.
 
 .. note::
 
