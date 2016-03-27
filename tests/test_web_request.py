@@ -1,8 +1,10 @@
+import asyncio
 import pytest
 from unittest import mock
 from multidict import MultiDict, CIMultiDict
 from aiohttp.signals import Signal
 from aiohttp.web import Request
+from aiohttp.abc import AbstractRequest
 from aiohttp.protocol import HttpVersion
 from aiohttp.protocol import RawRequestMessage
 
@@ -246,3 +248,32 @@ def test_raw_headers(make_request):
     req = make_request('GET', '/',
                        headers=CIMultiDict({'X-HEADER': 'aaa'}))
     assert req.raw_headers == ((b'X-HEADER', b'aaa'),)
+
+
+class AbstractRequestTest:
+
+    @pytest.mark.run_loop
+    def test_partial_subclass_method(self):
+        class MockRequest:
+            @asyncio.coroutine
+            def json(self):
+                return dict(foo='bar')
+
+        AbstractRequest.register(MockRequest)
+
+        req = MockRequest()
+
+        text = yield from req.json()
+        assert text == dict(foo='bar')
+
+    def test_partial_subclass_property(self):
+        class MockRequest:
+            @property
+            def scheme(self):
+                return 'http'
+
+        AbstractRequest.register(MockRequest)
+
+        req = MockRequest()
+
+        assert req.scheme == 'http'

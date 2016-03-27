@@ -22,6 +22,7 @@ from multidict import (CIMultiDictProxy,
                        MultiDict)
 
 from . import hdrs
+from .abc import AbstractRequest
 from .helpers import reify
 from .protocol import Response as ResponseImpl, HttpVersion10, HttpVersion11
 from .streams import EOF_MARKER
@@ -94,7 +95,7 @@ class ContentCoding(enum.Enum):
 ############################################################
 
 
-class Request(dict, HeadersMixin):
+class Request(AbstractRequest, dict, HeadersMixin):
 
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
