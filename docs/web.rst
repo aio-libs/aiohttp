@@ -152,7 +152,7 @@ that *part*. This is done by looking up the ``identifier`` in the
        return web.Response(
            text="Hello, {}".format(request.match_info['name']))
 
-   resource = app.router.add_route('/{name}')
+   resource = app.router.add_resource('/{name}')
    resource.add_route('GET', variable_handler)
 
 By default, each *part* matches the regular expression ``[^{}/]+``.
