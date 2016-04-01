@@ -54,7 +54,7 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
     'alabaster',
-    'aiohttp_doctools',
+    'sphinxcontrib.asyncio',
     'sphinxcontrib.newsfeed',
 ]
 
