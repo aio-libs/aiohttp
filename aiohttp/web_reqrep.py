@@ -16,12 +16,13 @@ from email.utils import parsedate
 from types import MappingProxyType
 from urllib.parse import urlsplit, parse_qsl, unquote
 
+from multidict import (CIMultiDictProxy,
+                       CIMultiDict,
+                       MultiDictProxy,
+                       MultiDict)
+
 from . import hdrs
 from .helpers import reify
-from .multidict import (CIMultiDictProxy,
-                        CIMultiDict,
-                        MultiDictProxy,
-                        MultiDict)
 from .protocol import Response as ResponseImpl, HttpVersion10, HttpVersion11
 from .streams import EOF_MARKER
 

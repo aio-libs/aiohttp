@@ -1,5 +1,5 @@
 """HTTP Headers constants."""
-from .multidict import upstr
+from multidict import upstr
 
 METH_ANY = upstr('*')
 METH_CONNECT = upstr('CONNECT')

@@ -152,7 +152,7 @@ that *part*. This is done by looking up the ``identifier`` in the
        return web.Response(
            text="Hello, {}".format(request.match_info['name']))
 
-   resource = app.router.add_route('/{name}')
+   resource = app.router.add_resource('/{name}')
    resource.add_route('GET', variable_handler)
 
 By default, each *part* matches the regular expression ``[^{}/]+``.
@@ -529,8 +529,10 @@ with the peer::
         return ws
 
 Reading from the *WebSocket* (``await ws.receive()``) **must only** be
-done inside the request handler coroutine; however, writing
-(``ws.send_str(...)``) to the *WebSocket* may be delegated to other coroutines.
+done inside the request handler *task*; however, writing
+(``ws.send_str(...)``) to the *WebSocket* may be delegated to other tasks.
+*aiohttp.web* creates an implicit :class:`asyncio.Task` for handling every
+incoming request.
 
 .. note::
 

@@ -15,13 +15,14 @@ from pathlib import Path
 from urllib.parse import urlencode, unquote
 from types import MappingProxyType
 
+from multidict import upstr
+
 from . import hdrs
 from .abc import AbstractRouter, AbstractMatchInfo, AbstractView
 from .protocol import HttpVersion11
 from .web_exceptions import (HTTPMethodNotAllowed, HTTPNotFound,
                              HTTPNotModified, HTTPExpectationFailed)
 from .web_reqrep import StreamResponse
-from .multidict import upstr
 
 
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',

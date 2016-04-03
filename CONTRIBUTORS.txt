@@ -5,6 +5,7 @@ A. Jesse Jiryu Davis
 Alejandro Gómez
 Alex Khomchenko
 Alex Lisovoy
+Alex Key
 Alexander Bayandin
 Alexander Karpinsky
 Alexander Malev
@@ -98,4 +99,5 @@ Vladimir Zakharov
 W. Trevor King
 Willem de Groot
 Yannick Koechlin
-Коренберг Марк
+Марк Коренберг
+Семён Марьясин
