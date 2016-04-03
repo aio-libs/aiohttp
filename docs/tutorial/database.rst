@@ -3,6 +3,7 @@
 Database
 ========
 
+For this tutorial we can use two simple tables `question` and `choice`.
 You can find below description of tables in database:
 
 First table is question:
