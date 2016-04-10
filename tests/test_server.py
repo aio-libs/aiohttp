@@ -546,3 +546,34 @@ def test_keep_alive_timeout_default(srv):
 def test_keep_alive_timeout_nondefault(make_srv):
     srv = make_srv(keep_alive=10)
     assert 10 == srv.keep_alive_timeout
+
+
+def test_supports_connect_method(srv, loop):
+    transport = mock.Mock()
+    srv.connection_made(transport)
+
+    with mock.patch.object(srv, 'handle_request') as m_handle_request:
+        srv.reader.feed_data(
+            b'CONNECT aiohttp.readthedocs.org:80 HTTP/1.0\r\n'
+            b'Content-Length: 0\r\n\r\n')
+
+        loop.run_until_complete(srv._request_handler)
+
+    assert m_handle_request.called
+    assert m_handle_request.call_args[0] != (mock.ANY, server.EMPTY_PAYLOAD)
+
+
+def test_content_length_0(srv, loop):
+    transport = mock.Mock()
+    srv.connection_made(transport)
+
+    with mock.patch.object(srv, 'handle_request') as m_handle_request:
+        srv.reader.feed_data(
+            b'GET / HTTP/1.1\r\n'
+            b'Host: example.org\r\n'
+            b'Content-Length: 0\r\n\r\n')
+
+        loop.run_until_complete(srv._request_handler)
+
+    assert m_handle_request.called
+    assert m_handle_request.call_args[0] == (mock.ANY, server.EMPTY_PAYLOAD)
