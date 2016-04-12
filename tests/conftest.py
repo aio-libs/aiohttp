@@ -163,7 +163,12 @@ def loop(request):
 
     yield loop
 
-    if not loop._closed:
+    is_closed = getattr(loop, 'is_closed')
+    if is_closed is not None:
+        closed = is_closed()
+    else:
+        closed = loop._closed
+    if not closed:
         loop.call_soon(loop.stop)
         loop.run_forever()
         loop.close()
