@@ -41,7 +41,12 @@ def test_run(worker, loop):
         worker.run()
 
     assert worker._run.called
-    assert loop._closed
+    is_closed = getattr(loop, 'is_closed')
+    if is_closed is not None:
+        closed = is_closed()
+    else:
+        closed = loop._closed
+    assert closed
 
 
 def test_handle_quit(worker):
