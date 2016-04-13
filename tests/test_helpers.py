@@ -248,7 +248,11 @@ class TestCookieJar(unittest.TestCase):
             "expires-cookie=thirteenth; Domain=expirestest.com; Path=/;"
             " Expires=Tue, 1 Jan 1980 12:00:00 GMT; "
             "max-age-cookie=fourteenth; Domain=maxagetest.com; Path=/;"
-            " Max-Age=60;"
+            " Max-Age=60; "
+            "invalid-max-age-cookie=fifteenth; Domain=invalid-values.com; "
+            " Max-Age=string; "
+            "invalid-expires-cookie=sixteenth; Domain=invalid-values.com; "
+            " Expires=string;"
         )
 
         # Cookies received from the server as "Set-Cookie" header
@@ -366,7 +370,7 @@ class TestCookieJar(unittest.TestCase):
             "dotted-domain-cookie"
         })
 
-    def test_cookie_domain_filter_diff_host(self):
+    def test_domain_filter_diff_host(self):
         cookies_sent, cookies_received = (
             self.request_reply_with_same_url("http://different.org/"))
 
@@ -380,7 +384,16 @@ class TestCookieJar(unittest.TestCase):
             "different-domain-cookie"
         })
 
-    def test_cookie_secure_filter(self):
+    def test_domain_filter_host_only(self):
+        self.jar.update_cookies(self.cookies_to_receive, "http://example.com/")
+
+        cookies_sent = self.jar.filter_cookies("http://example.com/")
+        self.assertIn("unconstrained-cookie", set(cookies_sent.keys()))
+
+        cookies_sent = self.jar.filter_cookies("http://different.org/")
+        self.assertNotIn("unconstrained-cookie", set(cookies_sent.keys()))
+
+    def test_secure_filter(self):
         cookies_sent, _ = (
             self.request_reply_with_same_url("http://secure.com/"))
 
@@ -396,7 +409,7 @@ class TestCookieJar(unittest.TestCase):
             "secure-cookie"
         })
 
-    def test_cookie_path_filter_root(self):
+    def test_path_filter_root(self):
         cookies_sent, _ = (
             self.request_reply_with_same_url("http://pathtest.com/"))
 
@@ -406,7 +419,7 @@ class TestCookieJar(unittest.TestCase):
             "path1-cookie"
         })
 
-    def test_cookie_path_filter_folder(self):
+    def test_path_filter_folder(self):
 
         cookies_sent, _ = (
             self.request_reply_with_same_url("http://pathtest.com/one/"))
@@ -418,7 +431,7 @@ class TestCookieJar(unittest.TestCase):
             "path2-cookie"
         })
 
-    def test_cookie_path_filter_file(self):
+    def test_path_filter_file(self):
 
         cookies_sent, _ = self.request_reply_with_same_url(
             "http://pathtest.com/one/two")
@@ -431,7 +444,7 @@ class TestCookieJar(unittest.TestCase):
             "path3-cookie"
         })
 
-    def test_cookie_path_filter_subfolder(self):
+    def test_path_filter_subfolder(self):
 
         cookies_sent, _ = self.request_reply_with_same_url(
             "http://pathtest.com/one/two/")
@@ -445,7 +458,7 @@ class TestCookieJar(unittest.TestCase):
             "path4-cookie"
         })
 
-    def test_cookie_path_filter_subsubfolder(self):
+    def test_path_filter_subsubfolder(self):
 
         cookies_sent, _ = self.request_reply_with_same_url(
             "http://pathtest.com/one/two/three/")
@@ -459,7 +472,7 @@ class TestCookieJar(unittest.TestCase):
             "path4-cookie"
         })
 
-    def test_cookie_path_filter_different_folder(self):
+    def test_path_filter_different_folder(self):
 
         cookies_sent, _ = (
             self.request_reply_with_same_url("http://pathtest.com/hundred/"))
@@ -470,7 +483,7 @@ class TestCookieJar(unittest.TestCase):
             "path1-cookie"
         })
 
-    def test_cookie_path_value(self):
+    def test_path_value(self):
         _, cookies_received = (
             self.request_reply_with_same_url("http://pathtest.com/"))
 
@@ -485,7 +498,7 @@ class TestCookieJar(unittest.TestCase):
         self.assertEqual(cookies_received["path-cookie"]["path"], "/somepath")
         self.assertEqual(cookies_received["wrong-path-cookie"]["path"], "/")
 
-    def test_cookie_expires(self):
+    def test_expires(self):
         ts_before = datetime.datetime(
             1975, 1, 1, tzinfo=datetime.timezone.utc).timestamp()
 
@@ -507,7 +520,7 @@ class TestCookieJar(unittest.TestCase):
             "shared-cookie"
         })
 
-    def test_cookie_max_age(self):
+    def test_max_age(self):
         cookies_sent = self.timed_request(
             "http://maxagetest.com/", 1000, 1000)
 
@@ -522,3 +535,98 @@ class TestCookieJar(unittest.TestCase):
         self.assertEqual(set(cookies_sent.keys()), {
             "shared-cookie"
         })
+
+    def test_invalid_values(self):
+        cookies_sent, cookies_received = (
+            self.request_reply_with_same_url("http://invalid-values.com/"))
+
+        self.assertEqual(set(cookies_sent.keys()), {
+            "shared-cookie",
+            "invalid-max-age-cookie",
+            "invalid-expires-cookie"
+        })
+
+        cookie = cookies_sent["invalid-max-age-cookie"]
+        self.assertEqual(cookie["max-age"], "")
+
+        cookie = cookies_sent["invalid-expires-cookie"]
+        self.assertEqual(cookie["expires"], "")
+
+    def test_domain_matching(self):
+        test_func = helpers.CookieJar._is_domain_match
+
+        self.assertTrue(test_func("test.com", "test.com"))
+        self.assertTrue(test_func("test.com", "sub.test.com"))
+
+        self.assertFalse(test_func("test.com", ""))
+        self.assertFalse(test_func("test.com", "test.org"))
+        self.assertFalse(test_func("diff-test.com", "test.com"))
+        self.assertFalse(test_func("test.com", "diff-test.com"))
+        self.assertFalse(test_func("test.com", "127.0.0.1"))
+
+    def test_path_matching(self):
+        test_func = helpers.CookieJar._is_path_match
+
+        self.assertTrue(test_func("/", ""))
+        self.assertTrue(test_func("/file", ""))
+        self.assertTrue(test_func("/folder/file", ""))
+        self.assertTrue(test_func("/", "/"))
+        self.assertTrue(test_func("/file", "/"))
+        self.assertTrue(test_func("/file", "/file"))
+        self.assertTrue(test_func("/folder/", "/folder/"))
+        self.assertTrue(test_func("/folder/", "/"))
+        self.assertTrue(test_func("/folder/file", "/"))
+
+        self.assertFalse(test_func("/", "/file"))
+        self.assertFalse(test_func("/", "/folder/"))
+        self.assertFalse(test_func("/file", "/folder/file"))
+        self.assertFalse(test_func("/folder/", "/folder/file"))
+        self.assertFalse(test_func("/different-file", "/file"))
+        self.assertFalse(test_func("/different-folder/", "/folder/"))
+
+    def test_date_parsing(self):
+        parse_func = helpers.CookieJar._parse_date
+        utc=datetime.timezone.utc
+
+        self.assertEqual(parse_func(""), None)
+
+        # 70 -> 1970
+        self.assertEqual(
+            parse_func("Tue, 1 Jan 70 00:00:00 GMT"),
+            datetime.datetime(1970, 1, 1, tzinfo=utc))
+
+        # 10 -> 2010
+        self.assertEqual(
+            parse_func("Tue, 1 Jan 10 00:00:00 GMT"),
+            datetime.datetime(2010, 1, 1, tzinfo=utc))
+
+        # No day of week string
+        self.assertEqual(
+            parse_func("1 Jan 1970 00:00:00 GMT"),
+            datetime.datetime(1970, 1, 1, tzinfo=utc))
+
+        # No timezone string
+        self.assertEqual(
+            parse_func("Tue, 1 Jan 1970 00:00:00"),
+            datetime.datetime(1970, 1, 1, tzinfo=utc))
+
+        # No year
+        self.assertEqual(parse_func("Tue, 1 Jan 00:00:00 GMT"), None)
+
+        # No month
+        self.assertEqual(parse_func("Tue, 1 1970 00:00:00 GMT"), None)
+
+        # No day of month
+        self.assertEqual(parse_func("Tue, Jan 1970 00:00:00 GMT"), None)
+
+        # No time
+        self.assertEqual(parse_func("Tue, 1 Jan 1970 GMT"), None)
+
+        # Invalid day of month
+        self.assertEqual(parse_func("Tue, 0 Jan 1970 00:00:00 GMT"), None)
+
+        # Invalid year
+        self.assertEqual(parse_func("Tue, 1 Jan 1500 00:00:00 GMT"), None)
+
+        # Invalid time
+        self.assertEqual(parse_func("Tue, 1 Jan 1970 77:88:99 GMT"), None)
