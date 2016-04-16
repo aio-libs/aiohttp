@@ -13,14 +13,13 @@ from aiohttpdemo_polls.views import SiteHandler
 
 
 PROJ_ROOT = pathlib.Path(__file__).parent.parent
-TEMPLATES_ROOT = pathlib.Path(__file__).parent / 'templates'
 
 
 async def init(loop):
     # setup application and extensions
     app = web.Application(loop=loop)
     aiohttp_jinja2.setup(
-        app, loader=jinja2.FileSystemLoader(str(TEMPLATES_ROOT)))
+        app, loader=jinja2.PackageLoader('aiohttpdemo_polls', 'templates'))
     # load config from yaml file
     conf = load_config(str(PROJ_ROOT / 'config' / 'polls.yaml'))
 
