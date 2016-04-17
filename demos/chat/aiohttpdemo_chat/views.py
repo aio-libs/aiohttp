@@ -6,12 +6,11 @@ import aiohttp_jinja2
 log = logging.getLogger(__name__)
 
 
-@aiohttp_jinja2.template('index.html')
 async def index(request):
     resp = web.WebSocketResponse()
     ok, protocol = resp.can_start(request)
     if not ok:
-        return {}
+        return aiohttp_jinja2.render_template('index.html', request, {})
 
     await resp.prepare(request)
     log.info('Someone joined.')
