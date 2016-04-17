@@ -11,7 +11,7 @@ from aiohttpdemo_chat.views import setup as setup_routes
 async def init(loop):
     app = web.Application(loop=loop)
     app['sockets'] = []
-    app.on_cleanup.append(cleanup)
+    app.on_shutdown.append(shutdown)
 
     aiohttp_jinja2.setup(
         app, loader=jinja2.PackageLoader('aiohttpdemo_chat', 'templates'))
@@ -21,9 +21,9 @@ async def init(loop):
     return app
 
 
-async def cleanup(app):
+async def shutdown(app):
     for ws in app['sockets']:
-        ws.close()
+        await ws.close()
     app['sockets'].clear()
 
 
