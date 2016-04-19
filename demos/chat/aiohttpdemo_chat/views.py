@@ -1,4 +1,8 @@
+import json
 import logging
+import random
+import string
+
 from aiohttp import web
 import aiohttp_jinja2
 
@@ -13,25 +17,33 @@ async def index(request):
         return aiohttp_jinja2.render_template('index.html', request, {})
 
     await resp.prepare(request)
-    log.info('Someone joined.')
-    for ws in request.app['sockets']:
-        ws.send_str('Someone joined')
-    request.app['sockets'].append(resp)
+    name = (random.choice(string.ascii_uppercase) +
+            ''.join(random.sample(string.ascii_lowercase*10, 10)))
+    log.info('%s joined.', name)
+    resp.send_str(json.dumps({'action': 'connect',
+                              'name': name}))
+    for ws in request.app['sockets'].values():
+        ws.send_str(json.dumps({'action': 'join',
+                                'name': name}))
+    request.app['sockets'][name] = resp
 
     while True:
         msg = await resp.receive()
 
         if msg.tp == web.MsgType.text:
-            for ws in request.app['sockets']:
+            for ws in request.app['sockets'].values():
                 if ws is not resp:
-                    ws.send_str(msg.data)
+                    ws.send_str(json.dumps({'action': 'sent',
+                                            'name': name,
+                                            'text': msg.data}))
         else:
             break
 
     request.app['sockets'].remove(resp)
-    log.info('Someone disconnected.')
-    for ws in request.app['sockets']:
-        ws.send_str('Someone disconnected.')
+    log.info('%s disconnected.', name)
+    for ws in request.app['sockets'].values():
+        ws.send_str(json.dumps({'action': 'disconnect',
+                                'name': name}))
     return resp
 
 
