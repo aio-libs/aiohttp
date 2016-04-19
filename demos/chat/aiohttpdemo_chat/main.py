@@ -10,7 +10,7 @@ from aiohttpdemo_chat.views import setup as setup_routes
 
 async def init(loop):
     app = web.Application(loop=loop)
-    app['sockets'] = []
+    app['sockets'] = {}
     app.on_shutdown.append(shutdown)
 
     aiohttp_jinja2.setup(
@@ -22,7 +22,7 @@ async def init(loop):
 
 
 async def shutdown(app):
-    for ws in app['sockets']:
+    for ws in app['sockets'].values():
         await ws.close()
     app['sockets'].clear()
 

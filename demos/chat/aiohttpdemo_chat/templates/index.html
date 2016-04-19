@@ -2,11 +2,12 @@
 <meta charset="utf-8" />
 <html>
   <head>
-    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js">
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js">
     </script>
     <script language="javascript" type="text/javascript">
      $(function() {
        var conn = null;
+       var name = "UNKNOWN";
        function log(msg) {
          var control = $('#log');
          control.html(control.html() + msg + '<br/>');
@@ -22,7 +23,20 @@
            update_ui();
          };
          conn.onmessage = function(e) {
-           log('Received: ' + e.data);
+           var data = JSON.parse(e.data);
+           switch (data.action) {
+             case  'connect':
+               name = data.name;
+               log('Connected as ' + name);
+               update_ui();
+               break;
+             case 'join':
+               log('Joined ' + data.name);
+               break;
+             case 'sent':
+               log(data.name + ': ' + data.text);
+               break;
+           }
          };
          conn.onclose = function() {
            log('Disconnected.');
@@ -35,6 +49,7 @@
            log('Disconnecting...');
            conn.close();
            conn = null;
+           name = 'UNKNOWN';
            update_ui();
          }
        }
@@ -47,8 +62,9 @@
            $('#status').text('connected (' + conn.protocol + ')');
            $('#connect').html('Disconnect');
          }
+         $('#name').text(name);
        }
-       $('#connect').click(function() {
+       $('#connect').on('click', function() {
          if (conn == null) {
            connect();
          } else {
@@ -57,14 +73,14 @@
          update_ui();
          return false;
        });
-       $('#send').click(function() {
+       $('#send').on('click', function() {
          var text = $('#text').val();
          log('Sending: ' + text);
          conn.send(text);
          $('#text').val('').focus();
          return false;
        });
-       $('#text').keyup(function(e) {
+       $('#text').on('keyup', function(e) {
          if (e.keyCode === 13) {
            $('#send').click();
            return false;
@@ -77,6 +93,7 @@
     <h3>Chat!</h3>
     <div>
       <button id="connect">Connect</button>&nbsp;|&nbsp;Status:
+      <span id="name">UNKNOWN</span>
       <span id="status">disconnected</span>
     </div>
     <div id="log"
