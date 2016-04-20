@@ -39,7 +39,7 @@ async def index(request):
         else:
             break
 
-    request.app['sockets'].remove(resp)
+    del request.app['sockets'][name]
     log.info('%s disconnected.', name)
     for ws in request.app['sockets'].values():
         ws.send_str(json.dumps({'action': 'disconnect',
