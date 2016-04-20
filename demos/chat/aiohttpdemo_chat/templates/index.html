@@ -30,6 +30,11 @@
                log('Connected as ' + name);
                update_ui();
                break;
+             case  'disconnect':
+               name = data.name;
+               log('Disconnected ' + name);
+               update_ui();
+               break;
              case 'join':
                log('Joined ' + data.name);
                break;
