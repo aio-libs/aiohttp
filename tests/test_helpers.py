@@ -586,7 +586,7 @@ class TestCookieJar(unittest.TestCase):
 
     def test_date_parsing(self):
         parse_func = helpers.CookieJar._parse_date
-        utc=datetime.timezone.utc
+        utc = datetime.timezone.utc
 
         self.assertEqual(parse_func(""), None)
 
