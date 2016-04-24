@@ -12,4 +12,5 @@ pytest
 pytest-cov
 gunicorn
 pygments>=2.1
+#aiodns  # Enable from .travis.yml as required c-ares will not build on windows
 -e .

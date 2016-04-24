@@ -5,6 +5,7 @@ A. Jesse Jiryu Davis
 Alejandro Gómez
 Alex Khomchenko
 Alex Lisovoy
+Alex Key
 Alexander Bayandin
 Alexander Karpinsky
 Alexander Malev
@@ -54,6 +55,7 @@ Kirill Klenov
 Kirill Malovitsa
 Kyrylo Perevozchikov
 Lars P. Søndergaard
+Louis-Philippe Huberdeau
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
 Marco Paolini
@@ -78,6 +80,7 @@ Sebastian Hüther
 Sergey Ninua
 Sergey Skripnick
 Simon Kennedy
+Sin-Woo Bang
 Stanislas Plum
 Stanislav Prokop
 Stephen Granade
@@ -94,5 +97,7 @@ Vladimir Rutsky
 Vladimir Shulyak
 Vladimir Zakharov
 W. Trevor King
+Willem de Groot
 Yannick Koechlin
-Коренберг Марк
+Марк Коренберг
+Семён Марьясин

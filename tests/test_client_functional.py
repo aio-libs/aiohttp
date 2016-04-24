@@ -432,3 +432,22 @@ def test_http_request_with_version(create_app_and_client, loop, warning):
         resp = yield from client.get('/', version=aiohttp.HttpVersion11)
         assert resp.status == 200
         resp.close()
+
+
+@pytest.mark.run_loop
+def test_204_with_gzipped_content_encoding(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.StreamResponse(status=204)
+        resp.content_length = 0
+        resp.content_type = 'application/json'
+        # resp.enable_compression(web.ContentCoding.gzip)
+        resp.headers['Content-Encoding'] = 'gzip'
+        yield from resp.prepare(request)
+        return resp
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('DELETE', '/', handler)
+    resp = yield from client.delete('/')
+    assert resp.status == 204
+    yield from resp.release()

@@ -6,12 +6,13 @@ import types
 import http.cookies
 from unittest import mock
 
+from multidict import CIMultiDict, MultiDict
+
 import aiohttp
 import pytest
 from aiohttp import web
 from aiohttp.client import ClientSession
 from aiohttp.connector import BaseConnector, TCPConnector
-from aiohttp.multidict import CIMultiDict, MultiDict
 
 
 @pytest.fixture

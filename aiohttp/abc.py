@@ -31,7 +31,7 @@ class AbstractMatchInfo(ABC):
     def http_exception(self):
         """HTTPException instance raised on router's resolving, or None"""
 
-    @abstractmethod
+    @abstractmethod  # pragma: no branch
     def get_info(self):
         """Return a dict with additional info useful for introspection"""
 
@@ -45,13 +45,26 @@ class AbstractView(ABC):
     def request(self):
         return self._request
 
-    @asyncio.coroutine
+    @asyncio.coroutine  # pragma: no branch
     @abstractmethod
     def __iter__(self):
         while False:  # pragma: no cover
             yield None
 
-    if PY_35:
+    if PY_35:  # pragma: no branch
         @abstractmethod
         def __await__(self):
-            return
+            return  # pragma: no cover
+
+
+class AbstractResolver(ABC):
+
+    @asyncio.coroutine  # pragma: no branch
+    @abstractmethod
+    def resolve(self, hostname):
+        """Return IP address for given hostname"""
+
+    @asyncio.coroutine  # pragma: no branch
+    @abstractmethod
+    def close(self):
+        """Release resolver"""

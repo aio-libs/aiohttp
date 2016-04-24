@@ -9,10 +9,10 @@ import sys
 import zlib
 from abc import abstractmethod, ABC
 from wsgiref.handlers import format_date_time
+from multidict import CIMultiDict, upstr
 
 import aiohttp
 from . import errors, hdrs
-from .multidict import CIMultiDict, upstr
 from .log import internal_logger
 from .helpers import reify
 
@@ -286,7 +286,8 @@ class HttpPayloadParser:
             length = 8
 
         # payload decompression wrapper
-        if self.compression and self.message.compression:
+        if (self.response_with_body and
+                self.compression and self.message.compression):
             out = DeflateBuffer(out, self.message.compression)
 
         # payload parser

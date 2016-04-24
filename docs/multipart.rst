@@ -51,7 +51,7 @@ returned - that's the signal to break the loop::
 Both :class:`BodyPartReader` and :class:`MultipartReader` provides access to
 body part headers: this allows you to filter parts by their attributes::
 
-    if part.headers[aiohttp.hdrs.CONTENT-TYPE] == 'application/json':
+    if part.headers[aiohttp.hdrs.CONTENT_TYPE] == 'application/json':
         metadata = await part.json()
         continue
 

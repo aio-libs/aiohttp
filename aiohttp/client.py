@@ -9,11 +9,12 @@ import traceback
 import warnings
 import urllib.parse
 
+from multidict import MultiDictProxy, MultiDict, CIMultiDict, upstr
+
 import aiohttp
 from .client_reqrep import ClientRequest, ClientResponse
 from .errors import WSServerHandshakeError
 from .helpers import CookieJar
-from .multidict import MultiDictProxy, MultiDict, CIMultiDict, upstr
 from .websocket import WS_KEY, WebSocketParser, WebSocketWriter
 from .websocket_client import ClientWebSocketResponse
 from . import hdrs

@@ -4,6 +4,41 @@ CHANGES
 0.22.0 (XX-XX-XXXX)
 -------------------
 
+- Fix bug in serving static directory #803
+
+- Fix command line arg parsing #797
+
+- Fix a documentation chapter about cookie usage #790
+
+- Handle empty body with gzipped encoding #758
+
+- Support 451 Unavailable For Legal Reasons http status  #697
+
+- Fix Cookie share example and few small typos in docs #817
+
+- UrlDispatcher.add_route with partial coroutine handler #814
+
+- Optional support for aiodns #728
+
+- Add ServiceRestart and TryAgainLater websocket close codes #828
+
+- Fix prompt message for `web.run_app` #832
+
+- Allow to pass None as a timeout value to disable timeout logic #834
+
+0.21.5 (04-22-2016)
+-------------------
+
+- Fix command line arg parsing #797
+
+0.21.4 (03-12-2016)
+-------------------
+
+- Fix ResourceAdapter: dont add method to allowed if resource is not
+  match #826
+
+- Fix Resouce: append found method to returned allowed methods
+
 0.21.2 (02-16-2016)
 -------------------
 
