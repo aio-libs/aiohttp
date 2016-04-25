@@ -133,7 +133,8 @@ The client session supports context manager protocol for self closing.
 
       :param params: Mapping, iterable of tuple of *key*/*value* pairs or
                      string to be sent as parameters in the query
-                     string of the new request (optional)
+                     string of the new request. Ignored for subsequent
+                     redirected requests (optional)
 
                      Allowed values are:
 
