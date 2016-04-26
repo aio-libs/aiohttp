@@ -339,6 +339,28 @@ def test_str_params(create_app_and_client):
 
 
 @pytest.mark.run_loop
+def test_drop_params_on_redirect(create_app_and_client):
+    @asyncio.coroutine
+    def handler_redirect(request):
+        return web.Response(status=301, headers={'Location': '/ok?a=redirect'})
+
+    @asyncio.coroutine
+    def handler_ok(request):
+        assert request.query_string == 'a=redirect'
+        return web.Response(status=200)
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/ok', handler_ok)
+    app.router.add_route('GET', '/redirect', handler_redirect)
+
+    resp = yield from client.get('/redirect', params={'a': 'initial'})
+    try:
+        assert resp.status == 200
+    finally:
+        yield from resp.release()
+
+
+@pytest.mark.run_loop
 def test_history(create_app_and_client):
     @asyncio.coroutine
     def handler_redirect(request):
