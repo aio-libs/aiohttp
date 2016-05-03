@@ -1,4 +1,4 @@
-"""Http client functional tests against aiohttp.web server"""
+"""HTTP client functional tests against aiohttp.web server"""
 
 import aiohttp
 import asyncio
@@ -316,7 +316,9 @@ def test_format_task_get(create_server, loop):
     client = aiohttp.ClientSession(loop=loop)
     task = loop.create_task(client.get(url))
     assert "{}".format(task)[:18] == "<Task pending coro"
-    yield from task
+    resp = yield from task
+    resp.close()
+    client.close()
 
 
 @pytest.mark.run_loop
@@ -355,7 +357,7 @@ def test_history(create_app_and_client):
         assert len(resp.history) == 0
         assert resp.status == 200
     finally:
-        resp.release()
+        yield from resp.release()
 
     resp_redirect = yield from client.get('/redirect')
     try:
@@ -363,7 +365,7 @@ def test_history(create_app_and_client):
         assert resp_redirect.history[0].status == 301
         assert resp_redirect.status == 200
     finally:
-        resp_redirect.release()
+        yield from resp_redirect.release()
 
 
 @pytest.mark.run_loop
@@ -430,3 +432,22 @@ def test_http_request_with_version(create_app_and_client, loop, warning):
         resp = yield from client.get('/', version=aiohttp.HttpVersion11)
         assert resp.status == 200
         resp.close()
+
+
+@pytest.mark.run_loop
+def test_204_with_gzipped_content_encoding(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.StreamResponse(status=204)
+        resp.content_length = 0
+        resp.content_type = 'application/json'
+        # resp.enable_compression(web.ContentCoding.gzip)
+        resp.headers['Content-Encoding'] = 'gzip'
+        yield from resp.prepare(request)
+        return resp
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('DELETE', '/', handler)
+    resp = yield from client.delete('/')
+    assert resp.status == 204
+    yield from resp.release()

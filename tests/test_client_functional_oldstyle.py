@@ -1,4 +1,4 @@
-"""Http client functional tests."""
+"""HTTP client functional tests."""
 
 import binascii
 import gc
@@ -10,10 +10,11 @@ import asyncio
 import unittest
 from unittest import mock
 
+from multidict import MultiDict
+
 import aiohttp
 from aiohttp import client, helpers
 from aiohttp import test_utils
-from aiohttp.multidict import MultiDict
 from aiohttp.multipart import MultipartWriter
 
 
@@ -853,19 +854,17 @@ class TestHttpClientFunctional(unittest.TestCase):
             r.close()
 
     def test_request_conn_error(self):
-        self.assertRaises(
-            aiohttp.ClientConnectionError,
-            self.loop.run_until_complete,
-            client.request('get', 'http://0.0.0.0:1', loop=self.loop))
+        with self.assertRaises(aiohttp.ClientConnectionError):
+            self.loop.run_until_complete(
+                client.request('get', 'http://0.0.0.0:1', loop=self.loop))
 
     def test_request_conn_closed(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             httpd['close'] = True
-            self.assertRaises(
-                aiohttp.ClientHttpProcessingError,
-                self.loop.run_until_complete,
-                client.request(
-                    'get', httpd.url('method', 'get'), loop=self.loop))
+            with self.assertRaises(aiohttp.ClientHttpProcessingError):
+                self.loop.run_until_complete(
+                    client.request('get', httpd.url('method', 'get'),
+                                   loop=self.loop))
 
     def test_keepalive(self):
         from aiohttp import connector

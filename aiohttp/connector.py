@@ -3,7 +3,6 @@ import aiohttp
 import functools
 import http.cookies
 import ssl
-import socket
 import sys
 import traceback
 import warnings
@@ -21,6 +20,7 @@ from .errors import HttpProxyError, ProxyConnectionError
 from .errors import ClientOSError, ClientTimeoutError
 from .errors import FingerprintMismatch
 from .helpers import BasicAuth
+from .resolver import DefaultResolver
 
 
 __all__ = ('BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector')
@@ -222,14 +222,16 @@ class BaseConnector(object):
 
     def close(self):
         """Close all opened transports."""
+        ret = asyncio.Future(loop=self._loop)
+        ret.set_result(None)
         if self._closed:
-            return
+            return ret
         self._closed = True
 
         try:
             if hasattr(self._loop, 'is_closed'):
                 if self._loop.is_closed():
-                    return
+                    return ret
 
             for key, data in self._conns.items():
                 for transport, proto, t0 in data:
@@ -245,6 +247,7 @@ class BaseConnector(object):
             self._conns.clear()
             self._acquired.clear()
             self._cleanup_handle = None
+        return ret
 
     @property
     def closed(self):
@@ -400,15 +403,20 @@ class TCPConnector(BaseConnector):
         digest of the expected certificate in DER format to verify
         that the certificate the server presents matches. See also
         https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning
-    :param bool resolve: Set to True to do DNS lookup for host name.
+    :param bool resolve: (Deprecated) Set to True to do DNS lookup for
+        host name.
+    :param AbstractResolver resolver: Enable DNS lookups and use this
+        resolver
+    :param bool use_dns_cache: Use memory cache for DNS lookups.
     :param family: socket address family
+    :param local_addr: local :class:`tuple` of (host, port) to bind socket to
     :param args: see :class:`BaseConnector`
     :param kwargs: see :class:`BaseConnector`
     """
 
     def __init__(self, *, verify_ssl=True, fingerprint=None,
                  resolve=_marker, use_dns_cache=_marker,
-                 family=0, ssl_context=None,
+                 family=0, ssl_context=None, local_addr=None, resolver=None,
                  **kwargs):
         super().__init__(**kwargs)
 
@@ -443,10 +451,18 @@ class TCPConnector(BaseConnector):
         else:
             _use_dns_cache = False
 
+        self._resolver = resolver or DefaultResolver(loop=self._loop)
+
+        if _use_dns_cache or resolver:
+            self._use_resolver = True
+        else:
+            self._use_resolver = False
+
         self._use_dns_cache = _use_dns_cache
         self._cached_hosts = {}
         self._ssl_context = ssl_context
         self._family = family
+        self._local_addr = local_addr
 
     @property
     def verify_ssl(self):
@@ -529,26 +545,24 @@ class TCPConnector(BaseConnector):
 
     @asyncio.coroutine
     def _resolve_host(self, host, port):
+        if not self._use_resolver:
+            return [{'hostname': host, 'host': host, 'port': port,
+                     'family': self._family, 'proto': 0, 'flags': 0}]
+
+        assert self._resolver
+
         if self._use_dns_cache:
             key = (host, port)
 
             if key not in self._cached_hosts:
-                infos = yield from self._loop.getaddrinfo(
-                    host, port, type=socket.SOCK_STREAM, family=self._family)
+                self._cached_hosts[key] = yield from \
+                    self._resolver.resolve(host, port, family=self._family)
 
-                hosts = []
-                for family, _, proto, _, address in infos:
-                    hosts.append(
-                        {'hostname': host,
-                         'host': address[0], 'port': address[1],
-                         'family': family, 'proto': proto,
-                         'flags': socket.AI_NUMERICHOST})
-                self._cached_hosts[key] = hosts
-
-            return list(self._cached_hosts[key])
+            return self._cached_hosts[key]
         else:
-            return [{'hostname': host, 'host': host, 'port': port,
-                     'family': self._family, 'proto': 0, 'flags': 0}]
+            res = yield from self._resolver.resolve(
+                host, port, family=self._family)
+            return res
 
     @asyncio.coroutine
     def _create_connection(self, req):
@@ -572,7 +586,8 @@ class TCPConnector(BaseConnector):
                     self._factory, host, port,
                     ssl=sslcontext, family=hinfo['family'],
                     proto=hinfo['proto'], flags=hinfo['flags'],
-                    server_hostname=hinfo['hostname'] if sslcontext else None)
+                    server_hostname=hinfo['hostname'] if sslcontext else None,
+                    local_addr=self._local_addr)
                 has_cert = transp.get_extra_info('sslcontext')
                 if has_cert and self._fingerprint:
                     sock = transp.get_extra_info('socket')
@@ -601,7 +616,7 @@ class TCPConnector(BaseConnector):
 class ProxyConnector(TCPConnector):
     """Http Proxy connector.
 
-    :param str proxy: Proxy URL address. Only http proxy supported.
+    :param str proxy: Proxy URL address. Only HTTP proxy supported.
     :param proxy_auth: (optional) Proxy HTTP Basic Auth
     :type proxy_auth: aiohttp.helpers.BasicAuth
     :param args: see :class:`TCPConnector`

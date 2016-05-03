@@ -17,7 +17,8 @@ def make_srv(loop):
 
     def maker(**kwargs):
         nonlocal srv
-        srv = server.ServerHttpProtocol(loop=loop, **kwargs)
+        srv = server.ServerHttpProtocol(loop=loop, access_log=None,
+                                        **kwargs)
         return srv
 
     yield maker

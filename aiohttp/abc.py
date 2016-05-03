@@ -1,12 +1,12 @@
 import asyncio
 import sys
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
 
 PY_35 = sys.version_info >= (3, 5)
 
 
-class AbstractRouter(metaclass=ABCMeta):
+class AbstractRouter(ABC):
 
     @asyncio.coroutine  # pragma: no branch
     @abstractmethod
@@ -14,20 +14,29 @@ class AbstractRouter(metaclass=ABCMeta):
         """Return MATCH_INFO for given request"""
 
 
-class AbstractMatchInfo(metaclass=ABCMeta):
+class AbstractMatchInfo(ABC):
+
+    @asyncio.coroutine  # pragma: no branch
+    @abstractmethod
+    def handler(self, request):
+        """Execute matched request handler"""
+
+    @asyncio.coroutine  # pragma: no branch
+    @abstractmethod
+    def expect_handler(self, request):
+        """Expect handler for 100-continue processing"""
 
     @property  # pragma: no branch
     @abstractmethod
-    def handler(self):
-        """Return handler for match info"""
+    def http_exception(self):
+        """HTTPException instance raised on router's resolving, or None"""
 
-    @property  # pragma: no branch
-    @abstractmethod
-    def route(self):
-        """Return route for match info"""
+    @abstractmethod  # pragma: no branch
+    def get_info(self):
+        """Return a dict with additional info useful for introspection"""
 
 
-class AbstractView(metaclass=ABCMeta):
+class AbstractView(ABC):
 
     def __init__(self, request):
         self._request = request
@@ -36,13 +45,26 @@ class AbstractView(metaclass=ABCMeta):
     def request(self):
         return self._request
 
-    @asyncio.coroutine
+    @asyncio.coroutine  # pragma: no branch
     @abstractmethod
     def __iter__(self):
         while False:  # pragma: no cover
             yield None
 
-    if PY_35:
+    if PY_35:  # pragma: no branch
         @abstractmethod
         def __await__(self):
-            return
+            return  # pragma: no cover
+
+
+class AbstractResolver(ABC):
+
+    @asyncio.coroutine  # pragma: no branch
+    @abstractmethod
+    def resolve(self, hostname):
+        """Return IP address for given hostname"""
+
+    @asyncio.coroutine  # pragma: no branch
+    @abstractmethod
+    def close(self):
+        """Release resolver"""

@@ -56,9 +56,9 @@ class Crawler:
 
         self.todo.remove(url)
         self.busy.add(url)
+        session = aiohttp.ClientSession(connector=self.connector)
         try:
-            resp = yield from aiohttp.request(
-                'get', url, connector=self.connector)
+            resp = yield from session.request('get', url)
         except Exception as exc:
             print('...', url, 'has error', repr(str(exc)))
             self.done[url] = False
@@ -71,6 +71,8 @@ class Crawler:
 
             resp.close()
             self.done[url] = True
+        finally:
+            session.close()
 
         self.busy.remove(url)
         print(len(self.done), 'completed tasks,', len(self.tasks),

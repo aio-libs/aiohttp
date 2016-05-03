@@ -37,9 +37,7 @@ Application
 -----------
 
 Lets write a simple application, which we will save to file. We'll
-name this file *my_app_module.py*:
-
-.. code-block:: python
+name this file *my_app_module.py*::
 
    from aiohttp import web
 
