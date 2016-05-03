@@ -5,7 +5,6 @@ from aiohttp.web import Request
 from aiohttp.multidict import MultiDict, CIMultiDict
 from aiohttp.protocol import HttpVersion
 from aiohttp.protocol import RawRequestMessage
-from aiohttp.helpers import BasicAuth
 
 
 @pytest.fixture
@@ -191,23 +190,6 @@ def test_request_cookie__set_item(make_request):
 
     with pytest.raises(TypeError):
         req.cookies['my'] = 'value'
-
-
-def test_request_authorization(make_request):
-    headers = CIMultiDict(AUTHORIZATION='Basic bmtpbTpwd2Q=')
-    req = make_request('GET', '/', headers=headers)
-    assert req.authorization == BasicAuth(login='nkim', password='pwd')
-
-
-def test_request_authorization_absent(make_request):
-    req = make_request('GET', '/')
-    assert req.authorization is None
-
-
-def test_request_authorization_invalid(make_request):
-    headers = CIMultiDict(AUTHORIZATION='Foobar')
-    req = make_request('GET', '/', headers=headers)
-    assert req.authorization is None
 
 
 def test_match_info(make_request):
