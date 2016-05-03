@@ -54,13 +54,22 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
     'alabaster',
-    'aiohttp_doctools',
-    'sphinxcontrib.spelling',
+    'sphinxcontrib.asyncio',
     'sphinxcontrib.newsfeed',
 ]
 
+
+try:
+    import sphinxcontrib.spelling  # noqa
+    extensions.append('sphinxcontrib.spelling')
+except ImportError:
+    pass
+
+
 intersphinx_mapping = {
     'python': ('http://docs.python.org/3', None),
+    'multidict':
+        ('http://multidict.readthedocs.org/en/stable/', None),
     'aiohttpjinja2':
         ('http://aiohttp-jinja2.readthedocs.org/en/stable/', None),
     'aiohttpsession':
@@ -316,4 +325,3 @@ texinfo_documents = [
 
 
 disqus_shortname = 'aiohttp'
-disqus_developer = True

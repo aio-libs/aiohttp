@@ -7,12 +7,12 @@ import re
 import string
 import sys
 import zlib
-from abc import abstractmethod, ABCMeta
+from abc import abstractmethod, ABC
 from wsgiref.handlers import format_date_time
+from multidict import CIMultiDict, upstr
 
 import aiohttp
 from . import errors, hdrs
-from .multidict import CIMultiDict, upstr
 from .log import internal_logger
 from .helpers import reify
 
@@ -166,7 +166,7 @@ class HttpRequestParser(HttpParser):
     """
 
     def __call__(self, out, buf):
-        # read http message (request line + headers)
+        # read HTTP message (request line + headers)
         try:
             raw_data = yield from buf.readuntil(
                 b'\r\n\r\n', self.max_headers)
@@ -220,7 +220,7 @@ class HttpResponseParser(HttpParser):
     Returns RawResponseMessage"""
 
     def __call__(self, out, buf):
-        # read http message (response line + headers)
+        # read HTTP message (response line + headers)
         try:
             raw_data = yield from buf.readuntil(
                 b'\r\n\r\n', self.max_line_size + self.max_headers)
@@ -286,7 +286,8 @@ class HttpPayloadParser:
             length = 8
 
         # payload decompression wrapper
-        if self.compression and self.message.compression:
+        if (self.response_with_body and
+                self.compression and self.message.compression):
             out = DeflateBuffer(out, self.message.compression)
 
         # payload parser
@@ -481,7 +482,7 @@ def filter_pipe(filter, filter2, *,
         chunk = yield EOL_MARKER
 
 
-class HttpMessage(metaclass=ABCMeta):
+class HttpMessage(ABC):
     """HttpMessage allows to write headers and payload to a stream.
 
     For example, lets say we want to read file then compress it with deflate
@@ -637,7 +638,7 @@ class HttpMessage(metaclass=ABCMeta):
             self.headers.add(name, value)
 
     def add_headers(self, *headers):
-        """Adds headers to a http message."""
+        """Adds headers to a HTTP message."""
         for name, value in headers:
             self.add_header(name, value)
 
@@ -823,11 +824,11 @@ class HttpMessage(metaclass=ABCMeta):
 
 
 class Response(HttpMessage):
-    """Create http response message.
+    """Create HTTP response message.
 
     Transport is a socket stream transport. status is a response status code,
     status has to be integer value. http_version is a tuple that represents
-    http version, (1, 0) stands for HTTP/1.0 and (1, 1) is for HTTP/1.1
+    HTTP version, (1, 0) stands for HTTP/1.0 and (1, 1) is for HTTP/1.1
     """
 
     HOP_HEADERS = ()

@@ -3,8 +3,8 @@ import json
 import pytest
 import re
 from unittest import mock
+from multidict import CIMultiDict
 from aiohttp import hdrs, signals
-from aiohttp.multidict import CIMultiDict
 from aiohttp.web import (
     ContentCoding, Request, StreamResponse, Response, json_response
 )

@@ -10,10 +10,11 @@ import warnings
 import http.cookies
 import urllib.parse
 
+from multidict import MultiDictProxy, MultiDict, CIMultiDict, upstr
+
 import aiohttp
 from .client_reqrep import ClientRequest, ClientResponse
 from .errors import WSServerHandshakeError
-from .multidict import MultiDictProxy, MultiDict, CIMultiDict, upstr
 from .websocket import WS_KEY, WebSocketParser, WebSocketWriter
 from .websocket_client import ClientWebSocketResponse
 from . import hdrs
@@ -207,6 +208,13 @@ class ClientSession:
                 if max_redirects and redirects >= max_redirects:
                     resp.close()
                     break
+                else:
+                    # TODO: close the connection if BODY is large enough
+                    # Redirect with big BODY is forbidden by HTTP protocol
+                    # but malformed server may send illegal response.
+                    # Small BODIES with text like "Not Found" are still
+                    # perfectly fine and should be accepted.
+                    yield from resp.release()
 
                 # For 301 and 302, mimic IE behaviour, now changed in RFC.
                 # Details: https://github.com/kennethreitz/requests/pull/269
@@ -322,6 +330,7 @@ class ClientSession:
                         break
 
             reader = resp.connection.reader.set_parser(WebSocketParser)
+            resp.connection.writer.set_tcp_nodelay(True)
             writer = WebSocketWriter(resp.connection.writer, use_mask=True)
         except Exception:
             resp.close()
@@ -422,6 +431,9 @@ class ClientSession:
         if not self.closed:
             self._connector.close()
             self._connector = None
+        ret = asyncio.Future(loop=self._loop)
+        ret.set_result(None)
+        return ret
 
     @property
     def closed(self):
@@ -458,6 +470,15 @@ class ClientSession:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
+    if PY_35:
+        @asyncio.coroutine
+        def __aenter__(self):
+            return self
+
+        @asyncio.coroutine
+        def __aexit__(self, exc_type, exc_val, exc_tb):
+            yield from self.close()
 
 if PY_35:
     from collections.abc import Coroutine
@@ -605,7 +626,7 @@ def request(method, url, *,
             response_class=None):
     """Constructs and sends a request. Returns response object.
 
-    :param str method: http method
+    :param str method: HTTP method
     :param str url: request url
     :param params: (optional) Dictionary or bytes to be sent in the query
       string of the new request
@@ -618,7 +639,7 @@ def request(method, url, *,
     :type auth: aiohttp.helpers.BasicAuth
     :param bool allow_redirects: (optional) If set to False, do not follow
       redirects
-    :param version: Request http version.
+    :param version: Request HTTP version.
     :type version: aiohttp.protocol.HttpVersion
     :param bool compress: Set to True if request has to be compressed
        with deflate encoding.

@@ -65,7 +65,7 @@ class RequestHandler(ServerHttpProtocol):
             now = self._loop.time()
 
         app = self._app
-        request = Request(
+        request = web_reqrep.Request(
             app, message, payload,
             self.transport, self.reader, self.writer,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header)
@@ -79,9 +79,9 @@ class RequestHandler(ServerHttpProtocol):
             resp = None
             request._match_info = match_info
             expect = request.headers.get(hdrs.EXPECT)
-            if expect and expect.lower() == "100-continue":
+            if expect:
                 resp = (
-                    yield from match_info.route.handle_expect_header(request))
+                    yield from match_info.expect_handler(request))
 
             if resp is None:
                 handler = match_info.handler
@@ -89,11 +89,11 @@ class RequestHandler(ServerHttpProtocol):
                     handler = yield from factory(app, handler)
                 resp = yield from handler(request)
 
-            assert isinstance(resp, StreamResponse), \
+            assert isinstance(resp, web_reqrep.StreamResponse), \
                 ("Handler {!r} should return response instance, "
                  "got {!r} [middlewares {!r}]").format(
                      match_info.handler, type(resp), self._middlewares)
-        except HTTPException as exc:
+        except web_exceptions.HTTPException as exc:
             resp = exc
 
         resp_msg = yield from resp.prepare(request)
@@ -142,6 +142,14 @@ class RequestHandlerFactory:
             del self._connections[handler]
 
     @asyncio.coroutine
+    def _connections_cleanup(self):
+        sleep = 0.05
+        while self._connections:
+            yield from asyncio.sleep(sleep, loop=self._loop)
+            if sleep < 5:
+                sleep = sleep * 2
+
+    @asyncio.coroutine
     def finish_connections(self, timeout=None):
         # try to close connections in 90% of graceful timeout
         timeout90 = None
@@ -151,18 +159,10 @@ class RequestHandlerFactory:
         for handler in self._connections.keys():
             handler.closing(timeout=timeout90)
 
-        @asyncio.coroutine
-        def cleanup():
-            sleep = 0.05
-            while self._connections:
-                yield from asyncio.sleep(sleep, loop=self._loop)
-                if sleep < 5:
-                    sleep = sleep * 2
-
         if timeout:
             try:
                 yield from asyncio.wait_for(
-                    cleanup(), timeout, loop=self._loop)
+                    self._connections_cleanup(), timeout, loop=self._loop)
             except asyncio.TimeoutError:
                 self._app.logger.warning(
                     "Not all connections are closed (pending: %d)",
@@ -193,7 +193,7 @@ class Application(dict):
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:
-            router = UrlDispatcher()
+            router = web_urldispatcher.UrlDispatcher()
         assert isinstance(router, AbstractRouter), router
 
         self._debug = debug
@@ -309,10 +309,9 @@ def run_app(app, *, host='0.0.0.0', port=None,
                                                      ssl=ssl_context))
 
     scheme = 'https' if ssl_context else 'http'
-    prompt = '127.0.0.1' if host == '0.0.0.0' else host
-    print("======== Running on {scheme}://{prompt}:{port}/ ========\n"
+    print("======== Running on {scheme}://{host}:{port}/ ========\n"
           "(Press CTRL+C to quit)".format(
-              scheme=scheme, prompt=prompt, port=port))
+              scheme=scheme, host=host, port=port))
 
     try:
         loop.run_forever()
@@ -349,7 +348,7 @@ def main(argv):
         type=int,
         default="8080"
     )
-    args, extra_args = arg_parser.parse_known_args(argv)
+    args, extra_argv = arg_parser.parse_known_args(argv)
 
     # Import logic
     mod_str, _, func_str = args.entry_func.partition(":")
@@ -368,9 +367,9 @@ def main(argv):
     except AttributeError:
         arg_parser.error("module %r has no attribute %r" % (mod_str, func_str))
 
-    app = func(extra_args)
+    app = func(extra_argv)
     run_app(app, host=args.hostname, port=args.port)
     arg_parser.exit(message="Stopped\n")
 
 if __name__ == "__main__":
-    main(sys.argv)
+    main(sys.argv[1:])

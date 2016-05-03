@@ -5,8 +5,8 @@ import os
 import os.path
 import socket
 import unittest
+from multidict import MultiDict
 from aiohttp import log, web, request, FormData, ClientSession, TCPConnector
-from aiohttp.multidict import MultiDict
 from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
 from aiohttp.streams import EOF_MARKER
 
@@ -41,7 +41,8 @@ class WebFunctionalSetupMixin:
         return port
 
     @asyncio.coroutine
-    def create_server(self, method, path, handler=None, ssl_ctx=None):
+    def create_server(self, method, path, handler=None, ssl_ctx=None,
+                      logger=log.server_logger):
         app = web.Application(loop=self.loop)
         if handler:
             app.router.add_route(method, path, handler)
@@ -49,7 +50,8 @@ class WebFunctionalSetupMixin:
         port = self.find_unused_port()
         self.handler = app.make_handler(
             keep_alive_on=False,
-            access_log=log.access_logger)
+            access_log=log.access_logger,
+            logger=logger)
         srv = yield from self.loop.create_server(
             self.handler, '127.0.0.1', port, ssl=ssl_ctx)
         protocol = "https" if ssl_ctx else "http"
@@ -79,6 +81,7 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
         self.loop.run_until_complete(go())
 
     def test_handler_returns_not_response(self):
+        logger = mock.Mock()
 
         @asyncio.coroutine
         def handler(request):
@@ -86,13 +89,14 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
 
         @asyncio.coroutine
         def go():
-            _, _, url = yield from self.create_server('GET', '/', handler)
+            _, _, url = yield from self.create_server('GET', '/', handler,
+                                                      logger=logger)
             resp = yield from request('GET', url, loop=self.loop)
             self.assertEqual(500, resp.status)
             resp.close()
 
-        with mock.patch('aiohttp.server.server_logger'):
-            self.loop.run_until_complete(go())
+        self.loop.run_until_complete(go())
+        logger.exception.assert_called_with("Error handling request")
 
     def test_post_form(self):
 
@@ -142,8 +146,11 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
         def handler(request):
             data = yield from request.json()
             self.assertEqual(dct, data)
-            data2 = yield from request.json()
+            data2 = yield from request.json(loads=json.loads)
             self.assertEqual(data, data2)
+            with self.assertWarns(DeprecationWarning):
+                data3 = yield from request.json(loader=json.loads)
+            self.assertEqual(data, data3)
             resp = web.Response()
             resp.content_type = 'application/json'
             resp.body = json.dumps(data).encode('utf8')
@@ -355,6 +362,32 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
             app, _, _ = yield from self.create_server('POST', '/')
             self.assertEqual("<Application>", repr(app))
 
+        self.loop.run_until_complete(go())
+
+    def test_expect_default_handler_unknown(self):
+        """Test default Expect handler for unknown Expect value.
+
+        A server that does not understand or is unable to comply with any of
+        the expectation values in the Expect field of a request MUST respond
+        with appropriate error status. The server MUST respond with a 417
+        (Expectation Failed) status if any of the expectations cannot be met
+        or, if there are other problems with the request, some other 4xx
+        status.
+
+        http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.20
+        """
+        @asyncio.coroutine
+        def handler(request):
+            yield from request.post()
+            self.fail('Handler should not proceed to this point in case of '
+                      'unknown Expect header')
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('POST', '/', handler)
+            resp = yield from request('POST', url, headers={'Expect': 'SPAM'},
+                                      loop=self.loop)
+            self.assertEqual(417, resp.status)
         self.loop.run_until_complete(go())
 
     def test_100_continue(self):
@@ -752,6 +785,18 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
             self.assertEqual(200, resp.status)
             data = yield from resp.read()
             self.assertEqual(b'xyz', data)
+            yield from resp.release()
+            client.close()
+
+        self.loop.run_until_complete(go())
+
+    def test_start_without_routes(self):
+        @asyncio.coroutine
+        def go():
+            _, srv, url = yield from self.create_server(None, '/', None)
+            client = ClientSession(loop=self.loop)
+            resp = yield from client.get(url)
+            self.assertEqual(404, resp.status)
             yield from resp.release()
             client.close()
 

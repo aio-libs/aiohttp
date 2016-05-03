@@ -12,7 +12,9 @@ from urllib.parse import quote, urlencode
 from collections import namedtuple
 from pathlib import Path
 
-from . import hdrs, multidict
+import multidict
+
+from . import hdrs
 from .errors import InvalidURL
 
 try:
@@ -494,7 +496,7 @@ class Timeout:
     ...         await r.text()
 
 
-    :param timeout: timeout value in seconds
+    :param timeout: timeout value in seconds or None to disable timeout logic
     :param loop: asyncio compatible event loop
     """
     def __init__(self, timeout, *, loop=None):
@@ -511,8 +513,9 @@ class Timeout:
         if self._task is None:
             raise RuntimeError('Timeout context manager should be used '
                                'inside a task')
-        self._cancel_handler = self._loop.call_later(
-            self._timeout, self._cancel_task)
+        if self._timeout is not None:
+            self._cancel_handler = self._loop.call_later(
+                self._timeout, self._cancel_task)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -520,8 +523,9 @@ class Timeout:
             self._cancel_handler = None
             self._task = None
             raise asyncio.TimeoutError
-        self._cancel_handler.cancel()
-        self._cancel_handler = None
+        if self._timeout is not None:
+            self._cancel_handler.cancel()
+            self._cancel_handler = None
         self._task = None
 
     def _cancel_task(self):

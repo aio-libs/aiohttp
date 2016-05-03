@@ -41,11 +41,24 @@
    keep-alive
 
        A technique for communicating between HTTP client and server
-       when connection is not closed after sending response but keeped
+       when connection is not closed after sending response but kept
        open for sending next request through the same socket.
 
        It makes communication faster by getting rid of connection
        establishment for every request.
+
+   resource
+
+      A concept reflects the HTTP **path**, every resource corresponds
+      to *URI*.
+
+      May have an unique name.
+
+      Contains :term:`route`\'s for different HTTP methods.
+
+   route
+
+       A part of :term:`resource`, resource's *path* coupled with HTTP method.
 
    web-handler
 
