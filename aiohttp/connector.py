@@ -297,27 +297,33 @@ class BaseConnector(object):
             # This connection will now count towards the limit.
             waiters.append(fut)
 
-            yield from fut
+        try:
+            if limit is not None:
+                yield from fut
 
-        transport, proto = self._get(key)
-        if transport is None:
-            try:
-                if self._conn_timeout:
-                    transport, proto = yield from asyncio.wait_for(
-                        self._create_connection(req),
-                        self._conn_timeout, loop=self._loop)
-                else:
-                    transport, proto = yield from self._create_connection(req)
+            transport, proto = self._get(key)
+            if transport is None:
+                try:
+                    if self._conn_timeout:
+                        transport, proto = yield from asyncio.wait_for(
+                            self._create_connection(req),
+                            self._conn_timeout, loop=self._loop)
+                    else:
+                        transport, proto = \
+                            yield from self._create_connection(req)
 
-            except asyncio.TimeoutError as exc:
-                raise ClientTimeoutError(
-                    'Connection timeout to host {0[0]}:{0[1]} ssl:{0[2]}'
-                    .format(key)) from exc
-            except OSError as exc:
-                raise ClientOSError(
-                    exc.errno,
-                    'Cannot connect to host {0[0]}:{0[1]} ssl:{0[2]} [{1}]'
-                    .format(key, exc.strerror)) from exc
+                except asyncio.TimeoutError as exc:
+                    raise ClientTimeoutError(
+                        'Connection timeout to host {0[0]}:{0[1]} ssl:{0[2]}'
+                        .format(key)) from exc
+                except OSError as exc:
+                    raise ClientOSError(
+                        exc.errno,
+                        'Cannot connect to host {0[0]}:{0[1]} ssl:{0[2]} [{1}]'
+                        .format(key, exc.strerror)) from exc
+        except:
+            self._release_waiter(key)
+            raise
 
         self._acquired[key].add(transport)
         conn = Connection(self, key, req, transport, proto, self._loop)
@@ -344,6 +350,14 @@ class BaseConnector(object):
         del self._conns[key]
         return None, None
 
+    def _release_waiter(self, key):
+        waiters = self._waiters[key]
+        while waiters:
+            waiter = waiters.pop(0)
+            if not waiter.done():
+                waiter.set_result(None)
+                break
+
     def _release(self, key, req, transport, protocol, *, should_close=False):
         if self._closed:
             # acquired connection is already released on connector closing
@@ -358,12 +372,7 @@ class BaseConnector(object):
             pass
         else:
             if self._limit is not None and len(acquired) < self._limit:
-                waiters = self._waiters[key]
-                while waiters:
-                    waiter = waiters.pop(0)
-                    if not waiter.done():
-                        waiter.set_result(None)
-                        break
+                self._release_waiter(key)
 
         resp = req.response
 
