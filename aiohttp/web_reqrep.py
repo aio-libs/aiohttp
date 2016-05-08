@@ -14,7 +14,7 @@ import enum
 
 from email.utils import parsedate
 from types import MappingProxyType
-from urllib.parse import urlsplit, parse_qsl, unquote
+from urllib.parse import urlsplit, parse_qsl, parse_qs, unquote
 
 from multidict import (CIMultiDictProxy,
                        CIMultiDict,
