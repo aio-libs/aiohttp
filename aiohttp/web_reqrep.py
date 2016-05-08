@@ -332,7 +332,12 @@ class Request(dict, HeadersMixin):
                 DeprecationWarning)
             loads = loader
         body = yield from self.text()
-        return loads(body)
+        parsed_body = parse_qs(body)
+        # parsed_body is null if body is not a querystring, i.e. client sends json object
+        if not parsed_body:
+            return loads(body)
+        else:
+            return loads(json.dumps(parsed_body))
 
     @asyncio.coroutine
     def post(self):
