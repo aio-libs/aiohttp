@@ -26,6 +26,9 @@ CHANGES
 
 - Allow to pass None as a timeout value to disable timeout logic #834
 
+- Fix leak of connection slot during connection erro #835
+
+
 0.21.6 (05-05-2016)
 -------------------
 
