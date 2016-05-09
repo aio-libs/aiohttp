@@ -118,13 +118,21 @@ class WebSocketResponse(StreamResponse):
 
     def exception(self):
         return self._exception
-
+    
+    def check_con(self):
+        if self._conn_lost >= THRESHOLD_CONNLOST_ACCESS:
+            raise RuntimeError('WebSocket connection is closed.')
+    
     def ping(self, message='b'):
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')
         if self._closed:
             raise RuntimeError('websocket connection is closing')
+        
+        conn_lost_start = self._writer.writer._conn_lost
         self._writer.ping(message)
+        self._conn_lost += self._writer.writer._conn_lost - conn_lost_start
+        self.check_con()
 
     def pong(self, message='b'):
         # unsolicited pong
@@ -132,7 +140,11 @@ class WebSocketResponse(StreamResponse):
             raise RuntimeError('Call .prepare() first')
         if self._closed:
             raise RuntimeError('websocket connection is closing')
+        
+        conn_lost_start = self._writer.writer._conn_lost
         self._writer.pong(message)
+        self._conn_lost += self._writer.writer._conn_lost - conn_lost_start
+        self.check_con()
 
     def send_str(self, data):
         if self._writer is None:
@@ -141,7 +153,10 @@ class WebSocketResponse(StreamResponse):
             raise RuntimeError('websocket connection is closing')
         if not isinstance(data, str):
             raise TypeError('data argument must be str (%r)' % type(data))
+        conn_lost_start = self._writer.writer._conn_lost
         self._writer.send(data, binary=False)
+        self._conn_lost += self._writer.writer._conn_lost - conn_lost_start
+        self.check_con()
 
     def send_bytes(self, data):
         if self._writer is None:
@@ -151,7 +166,10 @@ class WebSocketResponse(StreamResponse):
         if not isinstance(data, (bytes, bytearray, memoryview)):
             raise TypeError('data argument must be byte-ish (%r)' %
                             type(data))
+        conn_lost_start = self._writer.writer._conn_lost
         self._writer.send(data, binary=True)
+        self._conn_lost += self._writer.writer._conn_lost - conn_lost_start
+        self.check_con()
 
     @asyncio.coroutine
     def wait_closed(self):  # pragma: no cover
@@ -222,8 +240,7 @@ class WebSocketResponse(StreamResponse):
             while True:
                 if self._closed:
                     self._conn_lost += 1
-                    if self._conn_lost >= THRESHOLD_CONNLOST_ACCESS:
-                        raise RuntimeError('WebSocket connection is closed.')
+                    self.check_con()
                     return closedMessage
 
                 try:
@@ -253,7 +270,7 @@ class WebSocketResponse(StreamResponse):
                     return msg
                 elif not self._closed:
                     if msg.tp == MsgType.ping and self._autoping:
-                        self._writer.pong(msg.data)
+                        self.pong(msg.data)
                     elif msg.tp == MsgType.pong and self._autoping:
                         continue
                     else:

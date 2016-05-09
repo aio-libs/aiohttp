@@ -1,4 +1,4 @@
-"""Http client functional tests."""
+"""HTTP client functional tests."""
 
 import binascii
 import gc
@@ -10,10 +10,11 @@ import asyncio
 import unittest
 from unittest import mock
 
+from multidict import MultiDict
+
 import aiohttp
 from aiohttp import client, helpers
 from aiohttp import test_utils
-from aiohttp.multidict import MultiDict
 from aiohttp.multipart import MultipartWriter
 
 

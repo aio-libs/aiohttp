@@ -52,7 +52,7 @@ Command Line Interface (CLI)
 :mod:`aiohttp.web` implements a basic CLI for quickly serving an
 :class:`Application` in *development* over TCP/IP::
 
-    $ python -m aiohttp.web -H localhost -P 8080 package.module.init_func
+    $ python -m aiohttp.web -H localhost -P 8080 package.module:init_func
 
 ``package.module.init_func`` should be an importable :term:`callable` that
 accepts a list of any non-parsed command-line arguments and returns an
@@ -408,7 +408,7 @@ third-party library, :mod:`aiohttp_session`, that adds *session* support::
 "100-continue". It is possible to specify custom *Expect* header
 handler on per route basis. This handler gets called if *Expect*
 header exist in request after receiving all headers and before
-processing application middlewares :ref:`aiohttp-web-middlewares` and
+processing application's :ref:`aiohttp-web-middlewares` and
 route handler. Handler can return *None*, in that case the request
 processing continues as usual. If handler returns an instance of class
 :class:`StreamResponse`, *request handler* uses it as response. Also
@@ -529,8 +529,10 @@ with the peer::
         return ws
 
 Reading from the *WebSocket* (``await ws.receive()``) **must only** be
-done inside the request handler coroutine; however, writing
-(``ws.send_str(...)``) to the *WebSocket* may be delegated to other coroutines.
+done inside the request handler *task*; however, writing
+(``ws.send_str(...)``) to the *WebSocket* may be delegated to other tasks.
+*aiohttp.web* creates an implicit :class:`asyncio.Task` for handling every
+incoming request.
 
 .. note::
 
@@ -617,6 +619,7 @@ HTTP Exception hierarchy chart::
            * 428 - HTTPPreconditionRequired
            * 429 - HTTPTooManyRequests
            * 431 - HTTPRequestHeaderFieldsTooLarge
+           * 451 - HTTPUnavailableForLegalReasons
          HTTPServerError
            * 500 - HTTPInternalServerError
            * 501 - HTTPNotImplemented

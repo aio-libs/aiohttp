@@ -5,8 +5,8 @@ import os
 import os.path
 import socket
 import unittest
+from multidict import MultiDict
 from aiohttp import log, web, request, FormData, ClientSession, TCPConnector
-from aiohttp.multidict import MultiDict
 from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
 from aiohttp.streams import EOF_MARKER
 

@@ -1,6 +1,8 @@
-<link rel="stylesheet" type="text/css"
-href="{{ url('static', filename='style.css') }}" />
+{% extends "base.html" %}
 
+{% set title = "Main" %}
+
+{% block content %}
 {% if questions %}
     <ul>
     {% for question in questions %}
@@ -10,3 +12,4 @@ href="{{ url('static', filename='style.css') }}" />
 {% else %}
     <p>No polls are available.</p>
 {% endif %}
+{% endblock %}

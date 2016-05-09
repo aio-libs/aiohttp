@@ -309,10 +309,9 @@ def run_app(app, *, host='0.0.0.0', port=None,
                                                      ssl=ssl_context))
 
     scheme = 'https' if ssl_context else 'http'
-    prompt = '127.0.0.1' if host == '0.0.0.0' else host
-    print("======== Running on {scheme}://{prompt}:{port}/ ========\n"
+    print("======== Running on {scheme}://{host}:{port}/ ========\n"
           "(Press CTRL+C to quit)".format(
-              scheme=scheme, prompt=prompt, port=port))
+              scheme=scheme, host=host, port=port))
 
     try:
         loop.run_forever()
