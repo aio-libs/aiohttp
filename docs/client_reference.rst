@@ -1290,6 +1290,13 @@ BasicAuth
    e.g. *auth* parameter for :meth:`ClientSession.request`.
 
 
+   .. classmethod:: decode()
+
+      Decode HTTP basic authentication credentials.
+
+      :return:  decoded authentication data, :class:`BasicAuth`.
+
+
    .. method:: encode()
 
       Encode credentials into string suitable for ``Authorization``
