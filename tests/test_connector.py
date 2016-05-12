@@ -839,3 +839,18 @@ class TestHttpClientConnector(unittest.TestCase):
         self.assertTrue(conn.use_dns_cache)
         with self.assertWarns(DeprecationWarning):
             self.assertTrue(conn.resolve)
+
+    def test_resolver_not_called_with_address_is_ip(self):
+        resolver = unittest.mock.MagicMock()
+        connector = aiohttp.TCPConnector(resolver=resolver, loop=self.loop)
+
+        class Req:
+            host = '127.0.1.2'
+            port = 63830
+            ssl = False
+            response = unittest.mock.Mock()
+
+        with self.assertRaises(OSError):
+            self.loop.run_until_complete(connector.connect(Req()))
+
+        resolver.resolve.assert_not_called()
