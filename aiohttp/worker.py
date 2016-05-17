@@ -9,7 +9,7 @@ import gunicorn.workers.base as base
 
 from aiohttp.helpers import ensure_future
 
-__all__ = ('GunicornWebWorker',)
+__all__ = ('GunicornWebWorker', 'GunicornUVLoopWebWorker')
 
 
 class GunicornWebWorker(base.Worker):
@@ -141,3 +141,20 @@ class GunicornWebWorker(base.Worker):
     def handle_abort(self, sig, frame):
         self.alive = False
         self.exit_code = 1
+
+
+class GunicornUVLoopWebWorker(GunicornWebWorker):
+
+    def init_process(self):
+        import uvloop
+
+        # Close any existing event loop before setting a
+        # new policy.
+        asyncio.get_event_loop().close()
+
+        # Setup uvloop policy, so that every
+        # asyncio.get_event_loop() will create an instance
+        # of uvloop event loop.
+        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
+        super().init_process()
