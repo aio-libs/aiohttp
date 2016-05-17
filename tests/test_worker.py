@@ -1,13 +1,16 @@
 """Tests for aiohttp/worker.py"""
 import asyncio
 import pytest
+import sys
+import unittest
+
 from unittest import mock
 
 
 base_worker = pytest.importorskip('aiohttp.worker')
 
 
-class MyWorker(base_worker.GunicornWebWorker):
+class BaseTestWorker:
 
     def __init__(self):
         self.servers = []
@@ -16,9 +19,24 @@ class MyWorker(base_worker.GunicornWebWorker):
         self.cfg.graceful_timeout = 100
 
 
-@pytest.fixture
-def worker():
-    return MyWorker()
+class AsyncioWorker(BaseTestWorker, base_worker.GunicornWebWorker):
+    pass
+
+
+class UvloopWorker(BaseTestWorker, base_worker.GunicornUVLoopWebWorker):
+
+    def __init__(self):
+        if sys.version_info < (3, 5) \
+                or sys.platform in ('win32', 'cygwin', 'cli'):
+            # uvloop requires Python 3.5 and *nix.
+            raise unittest.SkipTest()
+
+        super().__init__()
+
+
+@pytest.fixture(params=[AsyncioWorker, UvloopWorker])
+def worker(request):
+    return request.param()
 
 
 def test_init_process(worker):
