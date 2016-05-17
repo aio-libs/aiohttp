@@ -61,9 +61,9 @@ def test_handle_abort(worker):
     assert worker.exit_code == 1
 
 
-def test_init_signal(worker):
+def test_init_signals(worker):
     worker.loop = mock.Mock()
-    worker.init_signal()
+    worker.init_signals()
     assert worker.loop.add_signal_handler.called
 
 
