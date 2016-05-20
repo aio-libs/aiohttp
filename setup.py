@@ -54,7 +54,7 @@ with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
         raise RuntimeError('Unable to determine version.')
 
 
-install_requires = ['chardet', 'multidict']
+install_requires = ['chardet', 'multidict', 'h2']
 
 if sys.version_info < (3, 4, 1):
     raise RuntimeError("aiohttp requires Python 3.4.1+")
