@@ -30,6 +30,8 @@ CHANGES
 
 - Gunicorn worker with uvloop support `aiohttp.worker.GunicornUVLoopWebWorker` #878
 
+- Don't send body in response to HEAD request #838
+
 
 0.21.6 (05-05-2016)
 -------------------
