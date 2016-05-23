@@ -32,6 +32,8 @@ CHANGES
 
 - Don't send body in response to HEAD request #838
 
+- Skip the preamble in MultipartReader #881
+
 
 0.21.6 (05-05-2016)
 -------------------
