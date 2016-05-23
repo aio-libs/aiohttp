@@ -2,6 +2,7 @@
 
 import asyncio
 import base64
+import binascii
 import datetime
 import functools
 import io
@@ -41,6 +42,27 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
             raise ValueError('None is not allowed as password value')
 
         return super().__new__(cls, login, password, encoding)
+
+    @classmethod
+    def decode(cls, auth_header, encoding='latin1'):
+        """Create a :class:`BasicAuth` object from an ``Authorization`` HTTP
+        header."""
+        split = auth_header.strip().split(' ')
+        if len(split) == 2:
+            if split[0].strip().lower() != 'basic':
+                raise ValueError('Unknown authorization method %s' % split[0])
+            to_decode = split[1]
+        else:
+            raise ValueError('Could not parse authorization header.')
+
+        try:
+            username, _, password = base64.b64decode(
+                to_decode.encode('ascii')
+            ).decode(encoding).partition(':')
+        except binascii.Error:
+            raise ValueError('Invalid base64 encoding.')
+
+        return cls(username, password, encoding=encoding)
 
     def encode(self):
         """Encode credentials."""
