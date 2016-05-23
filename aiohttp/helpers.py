@@ -46,19 +46,7 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
     @classmethod
     def decode(cls, auth_header, encoding='latin1'):
         """Create a :class:`BasicAuth` object from an ``Authorization`` HTTP
-        header.
-
-        :param auth_header:  The value of the ``Authorization`` header.
-        :type auth_header:  str
-        :param encoding:  The character encoding used on the password.
-        :type encoding:  str
-
-        :returns:  The decoded authentication.
-        :rtype:  :class:`BasicAuth`
-
-        :raises ValueError:  if the headers are unable to be decoded.
-
-        """
+        header."""
         split = auth_header.strip().split(' ')
         if len(split) == 2:
             if split[0].strip().lower() != 'basic':

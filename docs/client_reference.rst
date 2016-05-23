@@ -1290,9 +1290,12 @@ BasicAuth
    e.g. *auth* parameter for :meth:`ClientSession.request`.
 
 
-   .. classmethod:: decode()
+   .. classmethod:: decode(auth_header, encoding='latin1')
 
       Decode HTTP basic authentication credentials.
+
+      :param str auth_header:  The ``Authorization`` header to decode.
+      :param str encoding: (optional) encoding ('latin1' by default)
 
       :return:  decoded authentication data, :class:`BasicAuth`.
 
