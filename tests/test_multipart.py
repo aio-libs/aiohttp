@@ -683,6 +683,24 @@ class MultipartReaderTestCase(TestCase):
             body_parts.append(read_part)
         self.assertListEqual(body_parts, [b'chunk', b'two_chunks'])
 
+    def test_reading_skips_prelude(self):
+        reader = aiohttp.multipart.MultipartReader(
+            {CONTENT_TYPE: 'multipart/related;boundary=":"'},
+            Stream(b'Multi-part data is not supported.\r\n'
+                   b'\r\n'
+                   b'--:\r\n'
+                   b'\r\n'
+                   b'test\r\n'
+                   b'--:\r\n'
+                   b'\r\n'
+                   b'passed\r\n'
+                   b'--:--'))
+        first = yield from reader.next()
+        self.assertIsInstance(first, aiohttp.multipart.BodyPartReader)
+        second = yield from reader.next()
+        self.assertTrue(first.at_eof())
+        self.assertFalse(second.at_eof())
+
 
 class BodyPartWriterTestCase(unittest.TestCase):
 
