@@ -77,6 +77,11 @@ def test_basic_auth_decode():
     assert auth.password == 'pwd'
 
 
+def test_basic_auth_invalid():
+    with pytest.raises(ValueError):
+        helpers.BasicAuth.decode('bmtpbTpwd2Q=')
+
+
 def test_basic_auth_decode_not_basic():
     with pytest.raises(ValueError):
         helpers.BasicAuth.decode('Complex bmtpbTpwd2Q=')
