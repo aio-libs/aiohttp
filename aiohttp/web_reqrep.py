@@ -852,11 +852,15 @@ class Response(StreamResponse):
 
         self.body = text.encode(self.charset)
 
+    def should_send_body(self):
+        return (self._req.method != hdrs.METH_HEAD and
+                self._status not in [204, 304])
+
     @asyncio.coroutine
     def write_eof(self):
         try:
             body = self._body
-            if body is not None:
+            if body is not None and self.should_send_body():
                 self.write(body)
         finally:
             self.set_tcp_nodelay(True)
