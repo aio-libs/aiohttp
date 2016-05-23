@@ -26,7 +26,21 @@ CHANGES
 
 - Allow to pass None as a timeout value to disable timeout logic #834
 
-0.21.5 (04-22-2016)
+- Fix leak of connection slot during connection erro #835
+
+- Gunicorn worker with uvloop support `aiohttp.worker.GunicornUVLoopWebWorker` #878
+
+- Don't send body in response to HEAD request #838
+
+- Skip the preamble in MultipartReader #881
+
+
+0.21.6 (05-05-2016)
+-------------------
+
+- Drop initial query parameters on redirects #853
+
+0.21.5 (03-22-2016)
 -------------------
 
 - Fix command line arg parsing #797

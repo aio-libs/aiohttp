@@ -235,6 +235,7 @@ class ClientSession:
                     r_url = urllib.parse.urljoin(url, r_url)
 
                 url = r_url
+                params = None
                 yield from resp.release()
                 continue
 

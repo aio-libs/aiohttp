@@ -510,6 +510,7 @@ class MultipartReader(object):
         self._content = content
         self._last_part = None
         self._at_eof = False
+        self._at_bof = True
         self._unread = []
 
     @asyncio.coroutine
@@ -544,10 +545,15 @@ class MultipartReader(object):
     @asyncio.coroutine
     def next(self):
         """Emits the next multipart body part."""
+        # So, if we're at BOF, we need to skip till the boundary.
         if self._at_eof:
             return
         yield from self._maybe_release_last_part()
-        yield from self._read_boundary()
+        if self._at_bof:
+            yield from self._read_until_first_boundary()
+            self._at_bof = False
+        else:
+            yield from self._read_boundary()
         if self._at_eof:  # we just read the last boundary, nothing to do there
             return
         self._last_part = yield from self.fetch_next_part()
@@ -604,6 +610,20 @@ class MultipartReader(object):
         if self._unread:
             return self._unread.pop()
         return (yield from self._content.readline())
+
+    @asyncio.coroutine
+    def _read_until_first_boundary(self):
+        while True:
+            chunk = yield from self._readline()
+            if chunk == b'':
+                raise ValueError("Could not find starting boundary %r"
+                                 % (self._boundary))
+            chunk = chunk.rstrip()
+            if chunk == self._boundary:
+                return
+            elif chunk == self._boundary + b'--':
+                self._at_eof = True
+                return
 
     @asyncio.coroutine
     def _read_boundary(self):

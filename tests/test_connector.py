@@ -560,10 +560,27 @@ class TestBaseConnector(unittest.TestCase):
                 # limit exhausted
                 yield from asyncio.wait_for(conn.connect(Req), 0.01,
                                             loop=self.loop)
-
             connection.close()
-
         self.loop.run_until_complete(go())
+
+    def test_connect_with_limit_release_waiters(self):
+
+        def check_with_exc(err):
+            conn = aiohttp.BaseConnector(limit=1, loop=self.loop)
+            conn._create_connection = unittest.mock.Mock()
+            conn._create_connection.return_value = \
+                asyncio.Future(loop=self.loop)
+            conn._create_connection.return_value.set_exception(err)
+
+            with self.assertRaises(Exception):
+                req = unittest.mock.Mock()
+                self.loop.run_until_complete(conn.connect(req))
+            key = (req.host, req.port, req.ssl)
+            self.assertFalse(conn._waiters[key])
+
+        check_with_exc(OSError(1, 'permission error'))
+        check_with_exc(RuntimeError())
+        check_with_exc(asyncio.TimeoutError())
 
     def test_connect_with_limit_concurrent(self):
 
