@@ -5,8 +5,8 @@ import os
 import os.path
 import socket
 import unittest
+from multidict import MultiDict
 from aiohttp import log, web, request, FormData, ClientSession, TCPConnector
-from aiohttp.multidict import MultiDict
 from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
 from aiohttp.streams import EOF_MARKER
 
@@ -97,6 +97,32 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
 
         self.loop.run_until_complete(go())
         logger.exception.assert_called_with("Error handling request")
+
+    def test_head_returns_empty_body(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            body = yield from request.read()
+            self.assertEqual(b'', body)
+            return web.Response(body=b'test')
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('HEAD', '/', handler)
+            with ClientSession(loop=self.loop) as session:
+                resp = yield from session.head(url, version=HttpVersion11)
+                self.assertEqual(200, resp.status)
+                txt = yield from resp.text()
+                self.assertEqual('', txt)
+                resp.close()
+
+                resp = yield from session.head(url, version=HttpVersion11)
+                self.assertEqual(200, resp.status)
+                txt = yield from resp.text()
+                self.assertEqual('', txt)
+                resp.close()
+
+        self.loop.run_until_complete(go())
 
     def test_post_form(self):
 

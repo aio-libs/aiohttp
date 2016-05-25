@@ -11,11 +11,12 @@ import urllib.parse
 import zlib
 from http.cookies import SimpleCookie
 
+from multidict import CIMultiDict, CIMultiDictProxy, upstr
+
 import pytest
 import aiohttp
 from aiohttp import BaseConnector
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
-from aiohttp.multidict import CIMultiDict, CIMultiDictProxy, upstr
 
 import os.path
 

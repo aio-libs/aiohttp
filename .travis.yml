@@ -21,7 +21,11 @@ install:
   - pip install --upgrade pip wheel
   - pip install --upgrade setuptools
   - pip install -r requirements-ci.txt
+  - pip install aiodns
   - pip install coveralls
+  - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
+        pip install uvloop;
+    fi
 
 script:
   - flake8 aiohttp

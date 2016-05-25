@@ -71,6 +71,27 @@ def test_basic_auth4():
     assert auth.encode() == 'Basic bmtpbTpwd2Q='
 
 
+def test_basic_auth_decode():
+    auth = helpers.BasicAuth.decode('Basic bmtpbTpwd2Q=')
+    assert auth.login == 'nkim'
+    assert auth.password == 'pwd'
+
+
+def test_basic_auth_invalid():
+    with pytest.raises(ValueError):
+        helpers.BasicAuth.decode('bmtpbTpwd2Q=')
+
+
+def test_basic_auth_decode_not_basic():
+    with pytest.raises(ValueError):
+        helpers.BasicAuth.decode('Complex bmtpbTpwd2Q=')
+
+
+def test_basic_auth_decode_bad_base64():
+    with pytest.raises(ValueError):
+        helpers.BasicAuth.decode('Basic bmtpbTpwd2Q')
+
+
 def test_invalid_formdata_params():
     with pytest.raises(TypeError):
         helpers.FormData('asdasf')

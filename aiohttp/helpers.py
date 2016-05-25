@@ -2,6 +2,7 @@
 
 import asyncio
 import base64
+import binascii
 import datetime
 import functools
 import io
@@ -11,7 +12,9 @@ from urllib.parse import quote, urlencode
 from collections import namedtuple
 from pathlib import Path
 
-from . import hdrs, multidict
+import multidict
+
+from . import hdrs
 from .errors import InvalidURL
 
 try:
@@ -39,6 +42,27 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
             raise ValueError('None is not allowed as password value')
 
         return super().__new__(cls, login, password, encoding)
+
+    @classmethod
+    def decode(cls, auth_header, encoding='latin1'):
+        """Create a :class:`BasicAuth` object from an ``Authorization`` HTTP
+        header."""
+        split = auth_header.strip().split(' ')
+        if len(split) == 2:
+            if split[0].strip().lower() != 'basic':
+                raise ValueError('Unknown authorization method %s' % split[0])
+            to_decode = split[1]
+        else:
+            raise ValueError('Could not parse authorization header.')
+
+        try:
+            username, _, password = base64.b64decode(
+                to_decode.encode('ascii')
+            ).decode(encoding).partition(':')
+        except binascii.Error:
+            raise ValueError('Invalid base64 encoding.')
+
+        return cls(username, password, encoding=encoding)
 
     def encode(self):
         """Encode credentials."""
@@ -460,7 +484,7 @@ class Timeout:
     ...         await r.text()
 
 
-    :param timeout: timeout value in seconds
+    :param timeout: timeout value in seconds or None to disable timeout logic
     :param loop: asyncio compatible event loop
     """
     def __init__(self, timeout, *, loop=None):
@@ -477,8 +501,9 @@ class Timeout:
         if self._task is None:
             raise RuntimeError('Timeout context manager should be used '
                                'inside a task')
-        self._cancel_handler = self._loop.call_later(
-            self._timeout, self._cancel_task)
+        if self._timeout is not None:
+            self._cancel_handler = self._loop.call_later(
+                self._timeout, self._cancel_task)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -486,8 +511,9 @@ class Timeout:
             self._cancel_handler = None
             self._task = None
             raise asyncio.TimeoutError
-        self._cancel_handler.cancel()
-        self._cancel_handler = None
+        if self._timeout is not None:
+            self._cancel_handler.cancel()
+            self._cancel_handler = None
         self._task = None
 
     def _cancel_task(self):

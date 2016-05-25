@@ -13,8 +13,11 @@ Client Session
 
 Client session is the recommended interface for making HTTP requests.
 
-Session encapsulates *connection pool* (*connector* instance) and
-supports keepalives by default.
+Session encapsulates a *connection pool* (*connector* instance) and
+supports keepalives by default. Unless you are connecting to a large,
+unknown number of different servers over the lifetime of your
+application, it is suggested you use a single session for the
+lifetime of your application to benefit from connection pooling.
 
 Usage example::
 
@@ -31,7 +34,7 @@ Usage example::
 
 .. versionadded:: 0.17
 
-The client session supports context manager protocol for self closing.
+The client session supports the context manager protocol for self closing.
 
 .. class:: ClientSession(*, connector=None, loop=None, cookies=None,\
                          headers=None, skip_auto_headers=None, \
@@ -116,13 +119,15 @@ The client session supports context manager protocol for self closing.
       forbidden, but you may modify the object in-place if needed.
 
 
-   .. coroutinemethod:: request(method, url, *, params=None, data=None,\
-                                headers=None, skip_auto_headers=None, \
-                                auth=None, allow_redirects=True,\
-                                max_redirects=10, encoding='utf-8',\
-                                version=HttpVersion(major=1, minor=1),\
-                                compress=None, chunked=None, expect100=False,\
-                                read_until_eof=True)
+   .. comethod:: request(method, url, *, params=None, data=None,\
+                         headers=None, skip_auto_headers=None, \
+                         auth=None, allow_redirects=True,\
+                         max_redirects=10, encoding='utf-8',\
+                         version=HttpVersion(major=1, minor=1),\
+                         compress=None, chunked=None, expect100=False,\
+                         read_until_eof=True)
+      :async-with:
+      :coroutine:
 
       Performs an asynchronous HTTP request. Returns a response object.
 
@@ -189,7 +194,9 @@ The client session supports context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-   .. coroutinemethod:: get(url, *, allow_redirects=True, **kwargs)
+   .. comethod:: get(url, *, allow_redirects=True, **kwargs)
+      :async-with:
+      :coroutine:
 
       Perform a ``GET`` request.
 
@@ -205,7 +212,9 @@ The client session supports context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-   .. coroutinemethod:: post(url, *, data=None, **kwargs)
+   .. comethod:: post(url, *, data=None, **kwargs)
+      :async-with:
+      :coroutine:
 
       Perform a ``POST`` request.
 
@@ -222,7 +231,9 @@ The client session supports context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-   .. coroutinemethod:: put(url, *, data=None, **kwargs)
+   .. comethod:: put(url, *, data=None, **kwargs)
+      :async-with:
+      :coroutine:
 
       Perform a ``PUT`` request.
 
@@ -239,7 +250,9 @@ The client session supports context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-   .. coroutinemethod:: delete(url, **kwargs)
+   .. comethod:: delete(url, **kwargs)
+      :async-with:
+      :coroutine:
 
       Perform a ``DELETE`` request.
 
@@ -252,7 +265,9 @@ The client session supports context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-   .. coroutinemethod:: head(url, *, allow_redirects=False, **kwargs)
+   .. comethod:: head(url, *, allow_redirects=False, **kwargs)
+      :async-with:
+      :coroutine:
 
       Perform a ``HEAD`` request.
 
@@ -268,7 +283,9 @@ The client session supports context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-   .. coroutinemethod:: options(url, *, allow_redirects=True, **kwargs)
+   .. comethod:: options(url, *, allow_redirects=True, **kwargs)
+      :async-with:
+      :coroutine:
 
       Perform an ``OPTIONS`` request.
 
@@ -285,7 +302,9 @@ The client session supports context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-   .. coroutinemethod:: patch(url, *, data=None, **kwargs)
+   .. comethod:: patch(url, *, data=None, **kwargs)
+      :async-with:
+      :coroutine:
 
       Perform a ``PATCH`` request.
 
@@ -302,11 +321,13 @@ The client session supports context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-   .. coroutinemethod:: ws_connect(url, *, protocols=(), timeout=10.0,\
-                                   auth=None,\
-                                   autoclose=True,\
-                                   autoping=True,\
-                                   origin=None)
+   .. comethod:: ws_connect(url, *, protocols=(), timeout=10.0,\
+                            auth=None,\
+                            autoclose=True,\
+                            autoping=True,\
+                            origin=None)
+      :async-with:
+      :coroutine:
 
       Create a websocket connection. Returns a
       :class:`ClientWebSocketResponse` object.
@@ -341,7 +362,7 @@ The client session supports context manager protocol for self closing.
 
          Add *origin* parameter.
 
-   .. coroutinemethod:: close()
+   .. comethod:: close()
 
       Close underlying connector.
 
@@ -713,7 +734,7 @@ BaseConnector
 
       .. versionadded:: 0.16
 
-   .. coroutinemethod:: close()
+   .. comethod:: close()
 
       Close all opened connections.
 
@@ -723,7 +744,7 @@ BaseConnector
          returns a future for keeping backward compatibility during
          transition period).
 
-   .. coroutinemethod:: connect(request)
+   .. comethod:: connect(request)
 
       Get a free connection from pool or create new one if connection
       is absent in the pool.
@@ -737,7 +758,7 @@ BaseConnector
 
       :return: :class:`Connection` object.
 
-   .. coroutinemethod:: _create_connection(req)
+   .. comethod:: _create_connection(req)
 
       Abstract method for actual connection establishing, should be
       overridden in subclasses.
@@ -785,6 +806,15 @@ TCPConnector
       *side effects* also.
 
       .. versionadded:: 0.17
+
+   :param aiohttp.abc.AbstractResolver resolver: Custom resolver instance to use.
+      ``aiohttp.resolver.DefaultResolver`` by default.
+
+      Custom resolvers allow to resolve hostnames differently than the way the
+      host is configured. Alternate resolvers include aiodns, which does not rely
+      on a thread executor.
+
+      .. versionadded:: 0.22
 
    :param bool resolve: alias for *use_dns_cache* parameter.
 
@@ -1100,7 +1130,7 @@ Response object
 
       For :term:`keep-alive` support see :meth:`release`.
 
-   .. coroutinemethod:: read()
+   .. comethod:: read()
 
       Read the whole response's body as :class:`bytes`.
 
@@ -1111,13 +1141,13 @@ Response object
 
       .. seealso:: :meth:`close`, :meth:`release`.
 
-   .. coroutinemethod:: release()
+   .. comethod:: release()
 
       Finish response processing, release underlying connection and
       return it into free connection pool for re-usage by next upcoming
       request.
 
-   .. coroutinemethod:: text(encoding=None)
+   .. comethod:: text(encoding=None)
 
       Read response's body and return decoded :class:`str` using
       specified *encoding* parameter.
@@ -1135,7 +1165,7 @@ Response object
 
       :return str: decoded *BODY*
 
-   .. coroutinemethod:: json(encoding=None, loads=json.loads)
+   .. comethod:: json(encoding=None, loads=json.loads)
 
       Read response's body as *JSON*, return :class:`dict` using
       specified *encoding* and *loader*.
@@ -1211,7 +1241,7 @@ manually.
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
 
-   .. coroutinemethod:: close(*, code=1000, message=b'')
+   .. comethod:: close(*, code=1000, message=b'')
 
       A :ref:`coroutine<coroutine>` that initiates closing handshake by sending
       :const:`~aiohttp.websocket.MSG_CLOSE` message. It waits for
@@ -1224,7 +1254,7 @@ manually.
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
-   .. coroutinemethod:: receive()
+   .. comethod:: receive()
 
       A :ref:`coroutine<coroutine>` that waits upcoming *data*
       message from peer and returns it.
@@ -1259,6 +1289,16 @@ BasicAuth
 
    Should be used for specifying authorization data in client API,
    e.g. *auth* parameter for :meth:`ClientSession.request`.
+
+
+   .. classmethod:: decode(auth_header, encoding='latin1')
+
+      Decode HTTP basic authentication credentials.
+
+      :param str auth_header:  The ``Authorization`` header to decode.
+      :param str encoding: (optional) encoding ('latin1' by default)
+
+      :return:  decoded authentication data, :class:`BasicAuth`.
 
 
    .. method:: encode()
