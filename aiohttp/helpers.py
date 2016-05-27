@@ -330,7 +330,8 @@ class AccessLogger:
 
     @staticmethod
     def _format_a(args):
-        return args[3].get_extra_info('peername')[0]
+        return args[3].get_extra_info('peername')[0] if args[3] is not None \
+            else '-'
 
     @staticmethod
     def _format_t(args):
@@ -381,7 +382,7 @@ class AccessLogger:
         :param message: Request object. May be None.
         :param environ: Environment dict. May be None.
         :param response: Response object.
-        :param transport: Tansport object.
+        :param transport: Tansport object. May be None
         :param float time: Time taken to serve the request.
         """
         try:
