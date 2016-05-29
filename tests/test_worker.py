@@ -8,6 +8,7 @@ from unittest import mock
 
 
 base_worker = pytest.importorskip('aiohttp.worker')
+pytest.importorskip('uvloop')
 
 
 class BaseTestWorker:
