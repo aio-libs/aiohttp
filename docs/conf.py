@@ -69,11 +69,11 @@ except ImportError:
 intersphinx_mapping = {
     'python': ('http://docs.python.org/3', None),
     'multidict':
-        ('http://multidict.readthedocs.org/en/stable/', None),
+        ('https://multidict.readthedocs.io/en/stable/', None),
     'aiohttpjinja2':
-        ('http://aiohttp-jinja2.readthedocs.org/en/stable/', None),
+        ('https://aiohttp-jinja2.readthedocs.io/en/stable/', None),
     'aiohttpsession':
-        ('http://aiohttp-session.readthedocs.org/en/stable/', None)}
+        ('https://aiohttp-session.readthedocs.io/en/stable/', None)}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
