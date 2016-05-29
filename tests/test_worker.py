@@ -2,7 +2,6 @@
 import asyncio
 import pytest
 import sys
-import unittest
 
 from unittest import mock
 
@@ -29,8 +28,7 @@ class UvloopWorker(BaseTestWorker, base_worker.GunicornUVLoopWebWorker):
     def __init__(self):
         if sys.version_info < (3, 5) \
                 or sys.platform in ('win32', 'cygwin', 'cli'):
-            # uvloop requires Python 3.5 and *nix.
-            raise unittest.SkipTest()
+            raise pytest.skip("uvloop requires Python 3.5 and *nix.")
 
         super().__init__()
 
