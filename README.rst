@@ -103,7 +103,7 @@ shoud be replaced by::
 Documentation
 -------------
 
-http://aiohttp.readthedocs.org/
+https://aiohttp.readthedocs.io/
 
 Discussion list
 ---------------
