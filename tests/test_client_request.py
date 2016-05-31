@@ -528,7 +528,7 @@ class TestClientRequest(unittest.TestCase):
 
     @unittest.mock.patch('aiohttp.client_reqrep.aiohttp')
     def test_content_encoding(self, m_http):
-        req = ClientRequest('get', 'http://python.org/',
+        req = ClientRequest('get', 'http://python.org/', data='foo',
                             compress='deflate', loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertEqual(req.headers['TRANSFER-ENCODING'], 'chunked')
@@ -539,9 +539,19 @@ class TestClientRequest(unittest.TestCase):
         resp.close()
 
     @unittest.mock.patch('aiohttp.client_reqrep.aiohttp')
+    def test_content_encoding_dont_set_headers_if_no_body(self, m_http):
+        req = ClientRequest('get', 'http://python.org/',
+                            compress='deflate', loop=self.loop)
+        resp = req.send(self.transport, self.protocol)
+        self.assertNotIn('TRANSFER-ENCODING', req.headers)
+        self.assertNotIn('CONTENT-ENCODING', req.headers)
+        self.loop.run_until_complete(req.close())
+        resp.close()
+
+    @unittest.mock.patch('aiohttp.client_reqrep.aiohttp')
     def test_content_encoding_header(self, m_http):
         req = ClientRequest(
-            'get', 'http://python.org/',
+            'get', 'http://python.org/', data='foo',
             headers={'Content-Encoding': 'deflate'}, loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertEqual(req.headers['TRANSFER-ENCODING'], 'chunked')
