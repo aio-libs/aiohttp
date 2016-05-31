@@ -89,7 +89,7 @@ class ClientRequest:
         self.update_headers(headers)
         self.update_auto_headers(skip_auto_headers)
         self.update_cookies(cookies)
-        self.update_content_encoding()
+        self.update_content_encoding(data)
         self.update_auth(auth)
 
         self.update_body_from_data(data, skip_auto_headers)
@@ -230,8 +230,11 @@ class ClientRequest:
 
         self.headers[hdrs.COOKIE] = c.output(header='', sep=';').strip()
 
-    def update_content_encoding(self):
+    def update_content_encoding(self, data):
         """Set request content encoding."""
+        if not data:
+            return
+
         enc = self.headers.get(hdrs.CONTENT_ENCODING, '').lower()
         if enc:
             if self.compress is not False:
