@@ -54,7 +54,7 @@ Command Line Interface (CLI)
 
     $ python -m aiohttp.web -H localhost -P 8080 package.module:init_func
 
-``package.module.init_func`` should be an importable :term:`callable` that
+``package.module:init_func`` should be an importable :term:`callable` that
 accepts a list of any non-parsed command-line arguments and returns an
 :class:`Application` instance after setting it up::
 
