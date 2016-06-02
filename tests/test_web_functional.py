@@ -836,6 +836,10 @@ class StaticFileMixin(WebFunctionalSetupMixin):
             self.assertEqual(404, resp.status)
             resp.close()
 
+            resp = yield from request('GET', url + 'x' * 500, loop=self.loop)
+            self.assertEqual(404, resp.status)
+            resp.close()
+
             resp = yield from request('GET', url + '/../../', loop=self.loop)
             self.assertEqual(404, resp.status)
             resp.close()
