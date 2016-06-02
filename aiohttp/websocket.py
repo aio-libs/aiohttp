@@ -4,6 +4,7 @@ import base64
 import binascii
 import collections
 import hashlib
+import json
 import os
 import random
 import sys
@@ -57,7 +58,6 @@ WS_HDRS = (hdrs.UPGRADE,
            hdrs.SEC_WEBSOCKET_KEY,
            hdrs.SEC_WEBSOCKET_PROTOCOL)
 
-Message = collections.namedtuple('Message', ['tp', 'data', 'extra'])
 
 UNPACK_LEN2 = Struct('!H').unpack_from
 UNPACK_LEN3 = Struct('!Q').unpack_from
@@ -67,6 +67,15 @@ PACK_LEN2 = Struct('!BBH').pack
 PACK_LEN3 = Struct('!BBQ').pack
 PACK_CLOSE_CODE = Struct('!H').pack
 MSG_SIZE = 2 ** 14
+
+
+MessageBase = collections.namedtuple('Message', ['tp', 'data', 'extra'])
+
+
+class Message(MessageBase):
+    def json(self, *, loads=json.loads):
+        """Return parsed JSON data."""
+        return loads(self.data)
 
 
 class WebSocketError(Exception):

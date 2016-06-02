@@ -285,6 +285,15 @@ class WebSocketResponse(StreamResponse):
                                                                msg.data))
         return msg.data
 
+    @asyncio.coroutine
+    def receive_json(self):
+        msg = yield from self.receive()
+        if msg.tp != MsgType.text:
+            raise TypeError(
+                "Received message {}:{!r} is not str".format(msg.tp, msg.data)
+            )
+        return msg.json()
+
     def write(self, data):
         raise RuntimeError("Cannot call .write() for websocket")
 
