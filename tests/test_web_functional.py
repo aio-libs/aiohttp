@@ -1108,34 +1108,3 @@ class StaticFileMixin(WebFunctionalSetupMixin):
         file_st = os.stat(fname)
 
         self.loop.run_until_complete(go(here, filename))
-
-    def test_env_nosendfile(self):
-        directory = os.path.dirname(__file__)
-
-        with mock.patch.dict(os.environ, {'AIOHTTP_NOSENDFILE': '1'}):
-            route = web.StaticRoute(None, "/", directory)
-            self.assertEqual(route._sendfile, route._sendfile_fallback)
-
-
-class TestStaticFileSendfileFallback(StaticFileMixin,
-                                     unittest.TestCase):
-
-    def patch_sendfile(self, add_static):
-        def f(*args, **kwargs):
-            route = add_static(*args, **kwargs)
-            route._sendfile = route._sendfile_fallback
-            return route
-        return f
-
-
-@unittest.skipUnless(hasattr(os, "sendfile"),
-                     "sendfile system call not supported")
-class TestStaticFileSendfile(StaticFileMixin,
-                             unittest.TestCase):
-
-    def patch_sendfile(self, add_static):
-        def f(*args, **kwargs):
-            route = add_static(*args, **kwargs)
-            route._sendfile = route._sendfile_system
-            return route
-        return f
