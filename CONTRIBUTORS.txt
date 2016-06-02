@@ -43,6 +43,7 @@ Greg Holt
 Hugo Herter
 Igor Pavlov
 Ingmar Steen
+Jacob Champion
 Jaesung Lee
 Jashandeep Sohi
 Jeroen van der Heijden

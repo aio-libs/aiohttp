@@ -1,7 +1,7 @@
 import aiohttp
 import asyncio
 import pytest
-from aiohttp import web, hdrs
+from aiohttp import helpers, hdrs, web
 
 
 @pytest.mark.run_loop
@@ -55,7 +55,7 @@ def test_send_recv_bytes(create_app_and_client):
 @pytest.mark.run_loop
 def test_ping_pong(create_app_and_client, loop):
 
-    closed = asyncio.Future(loop=loop)
+    closed = helpers.create_future(loop)
 
     @asyncio.coroutine
     def handler(request):
@@ -92,7 +92,7 @@ def test_ping_pong(create_app_and_client, loop):
 @pytest.mark.run_loop
 def test_ping_pong_manual(create_app_and_client, loop):
 
-    closed = asyncio.Future(loop=loop)
+    closed = helpers.create_future(loop)
 
     @asyncio.coroutine
     def handler(request):
@@ -163,7 +163,7 @@ def test_close(create_app_and_client):
 @pytest.mark.run_loop
 def test_close_from_server(create_app_and_client, loop):
 
-    closed = asyncio.Future(loop=loop)
+    closed = helpers.create_future(loop)
 
     @asyncio.coroutine
     def handler(request):
@@ -196,7 +196,7 @@ def test_close_from_server(create_app_and_client, loop):
 @pytest.mark.run_loop
 def test_close_manual(create_app_and_client, loop):
 
-    closed = asyncio.Future(loop=loop)
+    closed = helpers.create_future(loop)
 
     @asyncio.coroutine
     def handler(request):

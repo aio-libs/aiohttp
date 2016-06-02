@@ -5,6 +5,7 @@ import functools
 import traceback
 
 from .log import internal_logger
+from . import helpers
 
 __all__ = (
     'EofStream', 'StreamReader', 'DataQueue', 'ChunksQueue',
@@ -150,7 +151,7 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
             return
 
         assert self._eof_waiter is None
-        self._eof_waiter = asyncio.Future(loop=self._loop)
+        self._eof_waiter = helpers.create_future(self._loop)
         try:
             yield from self._eof_waiter
         finally:
@@ -192,7 +193,7 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
         if self._waiter is not None:
             raise RuntimeError('%s() called while another coroutine is '
                                'already waiting for incoming data' % func_name)
-        return asyncio.Future(loop=self._loop)
+        return helpers.create_future(self._loop)
 
     @asyncio.coroutine
     def readline(self):
@@ -441,7 +442,7 @@ class DataQueue:
                 raise self._exception
 
             assert not self._waiter
-            self._waiter = asyncio.Future(loop=self._loop)
+            self._waiter = helpers.create_future(self._loop)
             try:
                 yield from self._waiter
             except (asyncio.CancelledError, asyncio.TimeoutError):
