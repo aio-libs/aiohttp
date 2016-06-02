@@ -33,7 +33,7 @@ def test_run_app_https(loop):
 
 
 def test_run_app_nondefault_host_port(loop, unused_port):
-    port = unused_port()
+    port = unused_port
     host = 'localhost'
 
     loop = mock.Mock(spec=asyncio.AbstractEventLoop, wrap=loop)
