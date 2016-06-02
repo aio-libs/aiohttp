@@ -1154,8 +1154,11 @@ class TestHttpClientFunctional(unittest.TestCase):
                 session.request('get', httpd.url('cookies')))
             self.assertEqual(resp.cookies['c1'].value, 'cookie1')
             self.assertEqual(resp.cookies['c2'].value, 'cookie2')
-            self.assertEqual(session.cookies, resp.cookies)
             resp.close()
+
+            # Add the received cookies as shared for sending them to the test
+            # server, which is only accessible via IP
+            session.cookies.update(resp.cookies)
 
             # Assert, that we send those cookies in next requests
             r = self.loop.run_until_complete(
