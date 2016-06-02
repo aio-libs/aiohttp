@@ -6,6 +6,8 @@ CHANGES
 
 - Drop initial query parameters on redirects #853
 
+- Fix error handling in StaticFileMixin #856
+
 
 0.21.5 (03-22-2016)
 -------------------
