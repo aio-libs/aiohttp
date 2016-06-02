@@ -6,6 +6,7 @@ from unittest import mock
 
 from aiohttp import streams
 from aiohttp import test_utils
+from aiohttp import helpers
 
 
 class TestStreamReader(unittest.TestCase):
@@ -24,7 +25,7 @@ class TestStreamReader(unittest.TestCase):
 
     def test_create_waiter(self):
         stream = self._make_one()
-        stream._waiter = asyncio.Future(loop=self.loop)
+        stream._waiter = helpers.create_future(self.loop)
         self.assertRaises(RuntimeError, stream._create_waiter, 'test')
 
     @mock.patch('aiohttp.streams.asyncio')

@@ -17,7 +17,7 @@ from .client_reqrep import ClientRequest, ClientResponse
 from .errors import WSServerHandshakeError
 from .websocket import WS_KEY, WebSocketParser, WebSocketWriter
 from .websocket_client import ClientWebSocketResponse
-from . import hdrs
+from . import hdrs, helpers
 
 
 __all__ = ('ClientSession', 'request', 'get', 'options', 'head',
@@ -443,7 +443,7 @@ class ClientSession:
         if not self.closed:
             self._connector.close()
             self._connector = None
-        ret = asyncio.Future(loop=self._loop)
+        ret = helpers.create_future(self._loop)
         ret.set_result(None)
         return ret
 
