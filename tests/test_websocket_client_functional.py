@@ -300,7 +300,8 @@ def test_override_default_headers(create_app_and_client, loop):
 
     app, client = yield from create_app_and_client()
     app.router.add_route('GET', '/', handler)
-    resp = yield from client.ws_connect('/', headers={hdrs.SEC_WEBSOCKET_VERSION: '8'})
+    headers = {hdrs.SEC_WEBSOCKET_VERSION: '8'}
+    resp = yield from client.ws_connect('/', headers=headers)
     msg = yield from resp.receive()
     assert msg.data == 'answer'
     yield from resp.close()
