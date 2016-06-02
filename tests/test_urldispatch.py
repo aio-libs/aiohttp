@@ -8,7 +8,7 @@ from unittest import mock
 from urllib.parse import unquote
 from multidict import CIMultiDict
 import aiohttp.web
-from aiohttp import hdrs
+from aiohttp import hdrs, helpers
 from aiohttp.web import (UrlDispatcher, Request, Response,
                          HTTPMethodNotAllowed, HTTPNotFound,
                          HTTPCreated)
@@ -583,7 +583,7 @@ class TestUrlDispatcher(unittest.TestCase):
         with mock.patch('aiohttp.web_urldispatcher.os') as m_os:
             out_fd = 30
             in_fd = 31
-            fut = asyncio.Future(loop=self.loop)
+            fut = helpers.create_future(self.loop)
             m_os.sendfile.return_value = 0
             route._sendfile_cb(fut, out_fd, in_fd, 0, 100, loop, False)
             m_os.sendfile.assert_called_with(out_fd, in_fd, 0, 100)
@@ -599,7 +599,7 @@ class TestUrlDispatcher(unittest.TestCase):
         with mock.patch('aiohttp.web_urldispatcher.os') as m_os:
             out_fd = 30
             in_fd = 31
-            fut = asyncio.Future(loop=self.loop)
+            fut = helpers.create_future(self.loop)
             m_os.sendfile.side_effect = BlockingIOError()
             route._sendfile_cb(fut, out_fd, in_fd, 0, 100, loop, False)
             m_os.sendfile.assert_called_with(out_fd, in_fd, 0, 100)
@@ -616,7 +616,7 @@ class TestUrlDispatcher(unittest.TestCase):
         with mock.patch('aiohttp.web_urldispatcher.os') as m_os:
             out_fd = 30
             in_fd = 31
-            fut = asyncio.Future(loop=self.loop)
+            fut = helpers.create_future(self.loop)
             exc = OSError()
             m_os.sendfile.side_effect = exc
             route._sendfile_cb(fut, out_fd, in_fd, 0, 100, loop, False)

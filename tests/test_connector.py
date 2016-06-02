@@ -14,6 +14,7 @@ from unittest import mock
 import aiohttp
 from aiohttp import web
 from aiohttp import client
+from aiohttp import helpers
 from aiohttp.client import ClientResponse
 from aiohttp.connector import Connection
 
@@ -273,7 +274,7 @@ class TestBaseConnector(unittest.TestCase):
         key = ('host', 80, False)
         conn._conns[key] = [(tr, proto, self.loop.time())]
         conn._create_connection = unittest.mock.Mock()
-        conn._create_connection.return_value = asyncio.Future(loop=self.loop)
+        conn._create_connection.return_value = helpers.create_future(self.loop)
         conn._create_connection.return_value.set_result((tr, proto))
 
         connection = self.loop.run_until_complete(conn.connect(Req()))
@@ -286,7 +287,7 @@ class TestBaseConnector(unittest.TestCase):
     def test_connect_timeout(self):
         conn = aiohttp.BaseConnector(loop=self.loop)
         conn._create_connection = unittest.mock.Mock()
-        conn._create_connection.return_value = asyncio.Future(loop=self.loop)
+        conn._create_connection.return_value = helpers.create_future(self.loop)
         conn._create_connection.return_value.set_exception(
             asyncio.TimeoutError())
 
@@ -297,7 +298,7 @@ class TestBaseConnector(unittest.TestCase):
     def test_connect_oserr(self):
         conn = aiohttp.BaseConnector(loop=self.loop)
         conn._create_connection = unittest.mock.Mock()
-        conn._create_connection.return_value = asyncio.Future(loop=self.loop)
+        conn._create_connection.return_value = helpers.create_future(self.loop)
         err = OSError(1, 'permission error')
         conn._create_connection.return_value.set_exception(err)
 
@@ -499,8 +500,8 @@ class TestBaseConnector(unittest.TestCase):
             key = ('host', 80, False)
             conn._conns[key] = [(tr, proto, self.loop.time())]
             conn._create_connection = unittest.mock.Mock()
-            conn._create_connection.return_value = asyncio.Future(
-                loop=self.loop)
+            conn._create_connection.return_value = helpers.create_future(
+                self.loop)
             conn._create_connection.return_value.set_result((tr, proto))
 
             connection1 = yield from conn.connect(Req())
@@ -547,8 +548,8 @@ class TestBaseConnector(unittest.TestCase):
             key = ('host', 80, False)
             conn._conns[key] = [(tr, proto, self.loop.time())]
             conn._create_connection = unittest.mock.Mock()
-            conn._create_connection.return_value = asyncio.Future(
-                loop=self.loop)
+            conn._create_connection.return_value = helpers.create_future(
+                self.loop)
             conn._create_connection.return_value.set_result((tr, proto))
 
             connection = yield from conn.connect(Req())
@@ -569,7 +570,7 @@ class TestBaseConnector(unittest.TestCase):
             conn = aiohttp.BaseConnector(limit=1, loop=self.loop)
             conn._create_connection = unittest.mock.Mock()
             conn._create_connection.return_value = \
-                asyncio.Future(loop=self.loop)
+                helpers.create_future(self.loop)
             conn._create_connection.return_value.set_exception(err)
 
             with self.assertRaises(Exception):
@@ -668,8 +669,8 @@ class TestBaseConnector(unittest.TestCase):
             key = ('host', 80, False)
             conn._conns[key] = [(tr, proto, self.loop.time())]
             conn._create_connection = unittest.mock.Mock()
-            conn._create_connection.return_value = asyncio.Future(
-                loop=self.loop)
+            conn._create_connection.return_value = helpers.create_future(
+                self.loop)
             conn._create_connection.return_value.set_result((tr, proto))
 
             connection = yield from conn.connect(Req())

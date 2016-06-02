@@ -10,6 +10,7 @@ import aiohttp
 from aiohttp import multidict
 from aiohttp import wsgi
 from aiohttp import protocol
+from aiohttp import helpers
 
 
 class TestHttpWsgiServerProtocol(unittest.TestCase):
@@ -156,9 +157,9 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
 
         def wsgi_app(env, start):
             start('200 OK', [('Content-Type', 'text/plain')])
-            f1 = asyncio.Future(loop=self.loop)
+            f1 = helpers.create_future(self.loop)
             f1.set_result(b'data')
-            fut = asyncio.Future(loop=self.loop)
+            fut = helpers.create_future(self.loop)
             fut.set_result([f1])
             return fut
 
