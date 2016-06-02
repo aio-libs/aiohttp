@@ -136,7 +136,8 @@ class TestBaseConnector(unittest.TestCase):
         self.assertTrue(conn.closed)
 
     def test_get(self):
-        conn = aiohttp.BaseConnector(loop=self.loop)
+        conn = aiohttp.BaseConnector(loop=self.loop,
+                                     keepalive_timeout=30.0)
         self.assertEqual(conn._get(1), (None, None))
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
@@ -157,7 +158,8 @@ class TestBaseConnector(unittest.TestCase):
     def test_release(self):
         self.loop.time = mock.Mock(return_value=10)
 
-        conn = aiohttp.BaseConnector(loop=self.loop)
+        conn = aiohttp.BaseConnector(loop=self.loop,
+                                     keepalive_timeout=30.0)
         conn._start_cleanup_task = unittest.mock.Mock()
         req = unittest.mock.Mock()
         resp = req.response = unittest.mock.Mock()
@@ -236,7 +238,8 @@ class TestBaseConnector(unittest.TestCase):
     def test_release_not_started(self):
         self.loop.time = mock.Mock(return_value=10)
 
-        conn = aiohttp.BaseConnector(loop=self.loop)
+        conn = aiohttp.BaseConnector(loop=self.loop,
+                                     keepalive_timeout=30.0)
         req = unittest.mock.Mock()
         req.response = None
 
@@ -270,7 +273,8 @@ class TestBaseConnector(unittest.TestCase):
             ssl = False
             response = unittest.mock.Mock()
 
-        conn = aiohttp.BaseConnector(loop=self.loop)
+        conn = aiohttp.BaseConnector(loop=self.loop,
+                                     keepalive_timeout=30.0)
         key = ('host', 80, False)
         conn._conns[key] = [(tr, proto, self.loop.time())]
         conn._create_connection = unittest.mock.Mock()
@@ -599,7 +603,9 @@ class TestBaseConnector(unittest.TestCase):
             max_connections = 2
             num_connections = 0
 
-            conn = aiohttp.BaseConnector(limit=max_connections, loop=self.loop)
+            conn = aiohttp.BaseConnector(limit=max_connections,
+                                         loop=self.loop,
+                                         keepalive_timeout=30.0)
 
             # Use a real coroutine for _create_connection; a mock would mask
             # problems that only happen when the method yields.
@@ -689,7 +695,7 @@ class TestBaseConnector(unittest.TestCase):
 
     def test_default_force_close(self):
         connector = aiohttp.BaseConnector(loop=self.loop)
-        self.assertFalse(connector.force_close)
+        self.assertTrue(connector.force_close)
 
     def test_limit_property(self):
         conn = aiohttp.BaseConnector(loop=self.loop, limit=15)
@@ -781,7 +787,8 @@ class TestHttpClientConnector(unittest.TestCase):
 
         port = self.find_unused_port()
         conn = aiohttp.TCPConnector(loop=self.loop,
-                                    local_addr=('127.0.0.1', port))
+                                    local_addr=('127.0.0.1', port),
+                                    keepalive_timeout=30.0)
 
         r = self.loop.run_until_complete(
             aiohttp.request(

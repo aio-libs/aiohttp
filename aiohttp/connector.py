@@ -99,6 +99,9 @@ class Connection(object):
         return self._transport is None
 
 
+_marker = object()
+
+
 class BaseConnector(object):
     """Base connector class.
 
@@ -112,7 +115,7 @@ class BaseConnector(object):
     _closed = True  # prevent AttributeError in __del__ if ctor was failed
     _source_traceback = None
 
-    def __init__(self, *, conn_timeout=None, keepalive_timeout=30,
+    def __init__(self, *, conn_timeout=None, keepalive_timeout=None,
                  share_cookies=False, force_close=False, limit=None,
                  loop=None):
         if loop is None:
@@ -125,14 +128,14 @@ class BaseConnector(object):
         self._conns = {}
         self._acquired = defaultdict(set)
         self._conn_timeout = conn_timeout
-        self._keepalive_timeout = keepalive_timeout
+        self._validate_and_assign_keepalive_timeout_with_force_close(
+            keepalive_timeout, force_close)
         if share_cookies:
             warnings.warn(
                 'Using `share_cookies` is deprecated. '
                 'Use Session object instead', DeprecationWarning)
         self._share_cookies = share_cookies
         self._cleanup_handle = None
-        self._force_close = force_close
         self._limit = limit
         self._waiters = defaultdict(list)
 
@@ -142,6 +145,48 @@ class BaseConnector(object):
             disconnect_error=ServerDisconnectedError)
 
         self.cookies = http.cookies.SimpleCookie()
+
+    def _validate_and_assign_keepalive_timeout_with_force_close(
+            self, keepalive_timeout, force_close):
+        if keepalive_timeout is not _marker and force_close is not _marker:
+            # if keepalive and force_close are something different
+            # rather than object class instance
+            if keepalive_timeout and force_close:
+                # if both keepalive and force_close
+                # were passed as positive values
+                raise ValueError("Can't accept both 'force_close=True' "
+                                 "and 'keepalive_timeout={0}'"
+                                 .format(keepalive_timeout))
+            decide = (keepalive_timeout != 0.0 and keepalive_timeout
+                      is not None and not force_close)
+            self._force_close = False if decide else True
+            self._keepalive_timeout = keepalive_timeout if decide else 0.0
+        elif keepalive_timeout is not _marker:
+            # if only keepalive was passed as something different
+            # rather than object class instance
+            self._force_close = False
+            if not isinstance(keepalive_timeout, float):
+                # if keepalive is not a float
+                if keepalive_timeout is None:
+                    # possibly keepalive can be None
+                    self._keepalive_timeout = 0.0
+                else:
+                    # if keepalive is not float and not None
+                    raise TypeError("keepalive_timeout: float required.")
+            else:
+                self._keepalive_timeout = keepalive_timeout
+        elif force_close is not _marker:
+            # if force_close is something different from object class instance
+            if not isinstance(force_close, bool):
+                raise TypeError("force_close: bool required.")
+            else:
+                self._force_close = force_close
+                self._keepalive_timeout = 0.0 if force_close else 30.0
+        elif keepalive_timeout is _marker and force_close is _marker:
+            # if keepalive was not passed - using default value (30.0 secs)
+            # and force_close set to False
+            self._keepalive_timeout = 30.0
+            self._force_close = False
 
     def __del__(self, _warnings=warnings):
         if self._closed:
@@ -400,8 +445,6 @@ class BaseConnector(object):
 
 
 _SSL_OP_NO_COMPRESSION = getattr(ssl, "OP_NO_COMPRESSION", 0)
-
-_marker = object()
 
 
 class TCPConnector(BaseConnector):
