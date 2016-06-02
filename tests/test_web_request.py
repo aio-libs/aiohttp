@@ -218,6 +218,11 @@ def test___repr__(make_request):
     assert "<Request GET /path/to >" == repr(req)
 
 
+def test___repr___non_ascii_path(make_request):
+    req = make_request('GET', '/path/\U0001f415\U0001f308')
+    assert "<Request GET /path/\\U0001f415\\U0001f308 >" == repr(req)
+
+
 def test_http_scheme(make_request):
     req = make_request('GET', '/')
     assert "http" == req.scheme
