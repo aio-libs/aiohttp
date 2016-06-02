@@ -635,7 +635,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             with open(fname, 'rb') as f:
                 data = f.read()
 
-            fut = asyncio.Future(loop=self.loop)
+            fut = helpers.create_future(self.loop)
 
             @asyncio.coroutine
             def stream():

@@ -1,14 +1,13 @@
 import pytest
 
-import asyncio
-
 import aiohttp
 from aiohttp import web
+from aiohttp import helpers
 
 
 @pytest.mark.run_loop
 async def test_server_ws_async_for(loop, create_server):
-    closed = asyncio.Future(loop=loop)
+    closed = helpers.create_future(loop)
 
     async def handler(request):
         ws = web.WebSocketResponse()

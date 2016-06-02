@@ -6,7 +6,7 @@ import unittest
 from unittest import mock
 
 import aiohttp
-from aiohttp import errors, hdrs, websocket, websocket_client
+from aiohttp import errors, hdrs, helpers, websocket, websocket_client
 
 
 class TestWebSocketClient(unittest.TestCase):
@@ -35,7 +35,7 @@ class TestWebSocketClient(unittest.TestCase):
             hdrs.SEC_WEBSOCKET_PROTOCOL: 'chat'
         }
         m_os.urandom.return_value = self.key_data
-        m_req.return_value = asyncio.Future(loop=self.loop)
+        m_req.return_value = helpers.create_future(self.loop)
         m_req.return_value.set_result(resp)
 
         res = self.loop.run_until_complete(
@@ -54,7 +54,7 @@ class TestWebSocketClient(unittest.TestCase):
         resp = mock.Mock()
         resp.status = 403
         m_os.urandom.return_value = self.key_data
-        m_req.return_value = asyncio.Future(loop=self.loop)
+        m_req.return_value = helpers.create_future(self.loop)
         m_req.return_value.set_result(resp)
 
         origin = 'https://example.org/page.html'
@@ -84,7 +84,7 @@ class TestWebSocketClient(unittest.TestCase):
             hdrs.SEC_WEBSOCKET_ACCEPT: self.ws_key,
         }
         m_os.urandom.return_value = self.key_data
-        m_req.return_value = asyncio.Future(loop=self.loop)
+        m_req.return_value = helpers.create_future(self.loop)
         m_req.return_value.set_result(resp)
 
         res = self.loop.run_until_complete(
@@ -108,7 +108,7 @@ class TestWebSocketClient(unittest.TestCase):
             hdrs.SEC_WEBSOCKET_ACCEPT: self.ws_key
         }
         m_os.urandom.return_value = self.key_data
-        m_req.return_value = asyncio.Future(loop=self.loop)
+        m_req.return_value = helpers.create_future(self.loop)
         m_req.return_value.set_result(resp)
 
         resp = self.loop.run_until_complete(
@@ -128,7 +128,7 @@ class TestWebSocketClient(unittest.TestCase):
             hdrs.SEC_WEBSOCKET_ACCEPT: self.ws_key
         }
         m_os.urandom.return_value = self.key_data
-        m_req.return_value = asyncio.Future(loop=self.loop)
+        m_req.return_value = helpers.create_future(self.loop)
         m_req.return_value.set_result(resp)
 
         with self.assertRaises(errors.WSServerHandshakeError) as ctx:
@@ -151,7 +151,7 @@ class TestWebSocketClient(unittest.TestCase):
             hdrs.SEC_WEBSOCKET_ACCEPT: self.ws_key
         }
         m_os.urandom.return_value = self.key_data
-        m_req.return_value = asyncio.Future(loop=self.loop)
+        m_req.return_value = helpers.create_future(self.loop)
         m_req.return_value.set_result(resp)
 
         with self.assertRaises(errors.WSServerHandshakeError) as ctx:
@@ -174,7 +174,7 @@ class TestWebSocketClient(unittest.TestCase):
             hdrs.SEC_WEBSOCKET_ACCEPT: self.ws_key
         }
         m_os.urandom.return_value = self.key_data
-        m_req.return_value = asyncio.Future(loop=self.loop)
+        m_req.return_value = helpers.create_future(self.loop)
         m_req.return_value.set_result(resp)
 
         with self.assertRaises(errors.WSServerHandshakeError) as ctx:
@@ -197,7 +197,7 @@ class TestWebSocketClient(unittest.TestCase):
             hdrs.SEC_WEBSOCKET_ACCEPT: 'asdfasdfasdfasdfasdfasdf'
         }
         m_os.urandom.return_value = self.key_data
-        m_req.return_value = asyncio.Future(loop=self.loop)
+        m_req.return_value = helpers.create_future(self.loop)
         m_req.return_value.set_result(resp)
 
         with self.assertRaises(errors.WSServerHandshakeError) as ctx:
@@ -221,7 +221,7 @@ class TestWebSocketClient(unittest.TestCase):
             hdrs.SEC_WEBSOCKET_ACCEPT: self.ws_key,
         }
         m_os.urandom.return_value = self.key_data
-        m_req.return_value = asyncio.Future(loop=self.loop)
+        m_req.return_value = helpers.create_future(self.loop)
         m_req.return_value.set_result(resp)
         writer = WebSocketWriter.return_value = mock.Mock()
         reader = resp.connection.reader.set_parser.return_value = mock.Mock()
@@ -231,7 +231,7 @@ class TestWebSocketClient(unittest.TestCase):
         self.assertFalse(resp.closed)
 
         msg = websocket.Message(websocket.MSG_CLOSE, b'', b'')
-        reader.read.return_value = asyncio.Future(loop=self.loop)
+        reader.read.return_value = helpers.create_future(self.loop)
         reader.read.return_value.set_result(msg)
 
         res = self.loop.run_until_complete(resp.close())
@@ -257,7 +257,7 @@ class TestWebSocketClient(unittest.TestCase):
             hdrs.SEC_WEBSOCKET_ACCEPT: self.ws_key,
         }
         m_os.urandom.return_value = self.key_data
-        m_req.return_value = asyncio.Future(loop=self.loop)
+        m_req.return_value = helpers.create_future(self.loop)
         m_req.return_value.set_result(resp)
         WebSocketWriter.return_value = mock.Mock()
         reader = resp.connection.reader.set_parser.return_value = mock.Mock()
@@ -268,7 +268,7 @@ class TestWebSocketClient(unittest.TestCase):
         self.assertFalse(resp.closed)
 
         exc = ValueError()
-        reader.read.return_value = asyncio.Future(loop=self.loop)
+        reader.read.return_value = helpers.create_future(self.loop)
         reader.read.return_value.set_exception(exc)
 
         self.loop.run_until_complete(resp.close())
@@ -287,7 +287,7 @@ class TestWebSocketClient(unittest.TestCase):
             hdrs.SEC_WEBSOCKET_ACCEPT: self.ws_key,
         }
         m_os.urandom.return_value = self.key_data
-        m_req.return_value = asyncio.Future(loop=self.loop)
+        m_req.return_value = helpers.create_future(self.loop)
         m_req.return_value.set_result(resp)
         writer = WebSocketWriter.return_value = mock.Mock()
         resp.connection.reader.set_parser.return_value = mock.Mock()
@@ -321,7 +321,7 @@ class TestWebSocketClient(unittest.TestCase):
             hdrs.SEC_WEBSOCKET_ACCEPT: self.ws_key,
         }
         m_os.urandom.return_value = self.key_data
-        m_req.return_value = asyncio.Future(loop=self.loop)
+        m_req.return_value = helpers.create_future(self.loop)
         m_req.return_value.set_result(resp)
         WebSocketWriter.return_value = mock.Mock()
 
@@ -347,7 +347,7 @@ class TestWebSocketClient(unittest.TestCase):
             hdrs.SEC_WEBSOCKET_ACCEPT: self.ws_key,
         }
         m_os.urandom.return_value = self.key_data
-        m_req.return_value = asyncio.Future(loop=self.loop)
+        m_req.return_value = helpers.create_future(self.loop)
         m_req.return_value.set_result(resp)
         WebSocketWriter.return_value = mock.Mock()
 
@@ -370,7 +370,7 @@ class TestWebSocketClient(unittest.TestCase):
             hdrs.SEC_WEBSOCKET_ACCEPT: self.ws_key,
         }
         m_os.urandom.return_value = self.key_data
-        m_req.return_value = asyncio.Future(loop=self.loop)
+        m_req.return_value = helpers.create_future(self.loop)
         m_req.return_value.set_result(hresp)
         WebSocketWriter.return_value = mock.Mock()
         reader = hresp.connection.reader.set_parser.return_value = mock.Mock()
@@ -380,7 +380,7 @@ class TestWebSocketClient(unittest.TestCase):
                 'http://test.org', loop=self.loop))
 
         exc = ValueError()
-        reader.read.return_value = asyncio.Future(loop=self.loop)
+        reader.read.return_value = helpers.create_future(self.loop)
         reader.read.return_value.set_exception(exc)
 
         msg = self.loop.run_until_complete(resp.receive())
@@ -407,7 +407,7 @@ class TestWebSocketClient(unittest.TestCase):
             hdrs.SEC_WEBSOCKET_ACCEPT: self.ws_key
         }
         m_os.urandom.return_value = self.key_data
-        m_req.return_value = asyncio.Future(loop=self.loop)
+        m_req.return_value = helpers.create_future(self.loop)
         m_req.return_value.set_result(resp)
 
         with self.assertRaises(errors.WSServerHandshakeError):
