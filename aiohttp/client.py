@@ -276,7 +276,7 @@ class ClientSession:
         sec_key = base64.b64encode(os.urandom(16))
 
         if headers is None:
-            headers = {}
+            headers = CIMultiDict()
 
         default_headers = {
             hdrs.UPGRADE: hdrs.WEBSOCKET,
