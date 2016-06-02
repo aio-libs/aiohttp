@@ -19,7 +19,6 @@ A request handler is a :ref:`coroutine <coroutine>` or regular function that
 accepts a :class:`Request` instance as its only parameter and returns a
 :class:`Response` instance::
 
-   import asyncio
    from aiohttp import web
 
    async def hello(request):
