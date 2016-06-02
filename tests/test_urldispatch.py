@@ -576,56 +576,6 @@ class TestUrlDispatcher(unittest.TestCase):
             handler = self.make_handler()
             self.router.add_route('INVALID_METHOD', '/path', handler)
 
-    def test_static_handle_eof(self):
-        loop = mock.Mock()
-        route = self.router.add_static('/st',
-                                       os.path.dirname(aiohttp.__file__))
-        with mock.patch('aiohttp.web_urldispatcher.os') as m_os:
-            out_fd = 30
-            in_fd = 31
-            fut = asyncio.Future(loop=self.loop)
-            m_os.sendfile.return_value = 0
-            route._sendfile_cb(fut, out_fd, in_fd, 0, 100, loop, False)
-            m_os.sendfile.assert_called_with(out_fd, in_fd, 0, 100)
-            self.assertTrue(fut.done())
-            self.assertIsNone(fut.result())
-            self.assertFalse(loop.add_writer.called)
-            self.assertFalse(loop.remove_writer.called)
-
-    def test_static_handle_again(self):
-        loop = mock.Mock()
-        route = self.router.add_static('/st',
-                                       os.path.dirname(aiohttp.__file__))
-        with mock.patch('aiohttp.web_urldispatcher.os') as m_os:
-            out_fd = 30
-            in_fd = 31
-            fut = asyncio.Future(loop=self.loop)
-            m_os.sendfile.side_effect = BlockingIOError()
-            route._sendfile_cb(fut, out_fd, in_fd, 0, 100, loop, False)
-            m_os.sendfile.assert_called_with(out_fd, in_fd, 0, 100)
-            self.assertFalse(fut.done())
-            loop.add_writer.assert_called_with(out_fd, route._sendfile_cb,
-                                               fut, out_fd, in_fd, 0, 100,
-                                               loop, True)
-            self.assertFalse(loop.remove_writer.called)
-
-    def test_static_handle_exception(self):
-        loop = mock.Mock()
-        route = self.router.add_static('/st',
-                                       os.path.dirname(aiohttp.__file__))
-        with mock.patch('aiohttp.web_urldispatcher.os') as m_os:
-            out_fd = 30
-            in_fd = 31
-            fut = asyncio.Future(loop=self.loop)
-            exc = OSError()
-            m_os.sendfile.side_effect = exc
-            route._sendfile_cb(fut, out_fd, in_fd, 0, 100, loop, False)
-            m_os.sendfile.assert_called_with(out_fd, in_fd, 0, 100)
-            self.assertTrue(fut.done())
-            self.assertIs(exc, fut.exception())
-            self.assertFalse(loop.add_writer.called)
-            self.assertFalse(loop.remove_writer.called)
-
     def fill_routes(self):
         route1 = self.router.add_route('GET', '/plain', self.make_handler())
         route2 = self.router.add_route('GET', '/variable/{name}',
