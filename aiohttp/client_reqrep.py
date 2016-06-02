@@ -363,7 +363,7 @@ class ClientRequest:
             expect = True
 
         if expect:
-            self._continue = asyncio.Future(loop=self.loop)
+            self._continue = helpers.create_future(self.loop)
 
     @asyncio.coroutine
     def write_bytes(self, request, reader):
