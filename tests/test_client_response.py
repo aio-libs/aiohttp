@@ -7,6 +7,7 @@ import unittest
 import unittest.mock
 
 import aiohttp
+from aiohttp import helpers
 from aiohttp.client_reqrep import ClientResponse
 
 
@@ -71,7 +72,7 @@ class TestClientResponse(unittest.TestCase):
 
     def test_read_and_release_connection(self):
         def side_effect(*args, **kwargs):
-            fut = asyncio.Future(loop=self.loop)
+            fut = helpers.create_future(self.loop)
             fut.set_result(b'payload')
             return fut
         content = self.response.content = unittest.mock.Mock()
@@ -83,7 +84,7 @@ class TestClientResponse(unittest.TestCase):
 
     def test_read_and_release_connection_with_error(self):
         content = self.response.content = unittest.mock.Mock()
-        content.read.return_value = asyncio.Future(loop=self.loop)
+        content.read.return_value = helpers.create_future(self.loop)
         content.read.return_value.set_exception(ValueError)
 
         self.assertRaises(
@@ -92,7 +93,7 @@ class TestClientResponse(unittest.TestCase):
         self.assertTrue(self.response._closed)
 
     def test_release(self):
-        fut = asyncio.Future(loop=self.loop)
+        fut = helpers.create_future(self.loop)
         fut.set_result(b'')
         content = self.response.content = unittest.mock.Mock()
         content.readany.return_value = fut
@@ -103,7 +104,7 @@ class TestClientResponse(unittest.TestCase):
     def test_read_decode_deprecated(self):
         self.response._content = b'data'
         self.response.json = unittest.mock.Mock()
-        self.response.json.return_value = asyncio.Future(loop=self.loop)
+        self.response.json.return_value = helpers.create_future(self.loop)
         self.response.json.return_value.set_result('json')
 
         with self.assertWarns(DeprecationWarning):
@@ -113,7 +114,7 @@ class TestClientResponse(unittest.TestCase):
 
     def test_text(self):
         def side_effect(*args, **kwargs):
-            fut = asyncio.Future(loop=self.loop)
+            fut = helpers.create_future(self.loop)
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
         self.response.headers = {
@@ -127,7 +128,7 @@ class TestClientResponse(unittest.TestCase):
 
     def test_text_custom_encoding(self):
         def side_effect(*args, **kwargs):
-            fut = asyncio.Future(loop=self.loop)
+            fut = helpers.create_future(self.loop)
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
         self.response.headers = {
@@ -144,7 +145,7 @@ class TestClientResponse(unittest.TestCase):
 
     def test_text_detect_encoding(self):
         def side_effect(*args, **kwargs):
-            fut = asyncio.Future(loop=self.loop)
+            fut = helpers.create_future(self.loop)
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
         self.response.headers = {'CONTENT-TYPE': 'application/json'}
@@ -158,7 +159,7 @@ class TestClientResponse(unittest.TestCase):
 
     def test_text_after_read(self):
         def side_effect(*args, **kwargs):
-            fut = asyncio.Future(loop=self.loop)
+            fut = helpers.create_future(self.loop)
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
         self.response.headers = {
@@ -172,7 +173,7 @@ class TestClientResponse(unittest.TestCase):
 
     def test_json(self):
         def side_effect(*args, **kwargs):
-            fut = asyncio.Future(loop=self.loop)
+            fut = helpers.create_future(self.loop)
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
         self.response.headers = {
@@ -209,7 +210,7 @@ class TestClientResponse(unittest.TestCase):
 
     def test_json_override_encoding(self):
         def side_effect(*args, **kwargs):
-            fut = asyncio.Future(loop=self.loop)
+            fut = helpers.create_future(self.loop)
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
         self.response.headers = {
@@ -226,7 +227,7 @@ class TestClientResponse(unittest.TestCase):
 
     def test_json_detect_encoding(self):
         def side_effect(*args, **kwargs):
-            fut = asyncio.Future(loop=self.loop)
+            fut = helpers.create_future(self.loop)
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
         self.response.headers = {'CONTENT-TYPE': 'application/json'}

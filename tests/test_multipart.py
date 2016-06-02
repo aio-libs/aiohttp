@@ -7,6 +7,7 @@ import unittest.mock as mock
 import zlib
 
 import aiohttp.multipart
+from aiohttp import helpers
 from aiohttp.helpers import parse_mimetype
 from aiohttp.hdrs import (
     CONTENT_DISPOSITION,
@@ -48,7 +49,7 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
         self.loop.close()
 
     def future(self, obj):
-        fut = asyncio.Future(loop=self.loop)
+        fut = helpers.create_future(self.loop)
         fut.set_result(obj)
         return fut
 
@@ -175,7 +176,7 @@ class PartReaderTestCase(TestCase):
         stream = Stream(b'')
 
         def prepare(data):
-            f = asyncio.Future(loop=self.loop)
+            f = helpers.create_future(self.loop)
             f.set_result(data)
             return f
 
@@ -216,7 +217,7 @@ class PartReaderTestCase(TestCase):
         stream = Stream(b'')
 
         def prepare(data):
-            f = asyncio.Future(loop=self.loop)
+            f = helpers.create_future(self.loop)
             f.set_result(data)
             return f
 

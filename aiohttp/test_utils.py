@@ -121,7 +121,7 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
                 listen_addr, ssl=sslcontext)
         server = thread_loop.run_until_complete(server_coroutine)
 
-        waiter = asyncio.Future(loop=thread_loop)
+        waiter = helpers.create_future(thread_loop)
         loop.call_soon_threadsafe(
             fut.set_result, (thread_loop, waiter,
                              server.sockets[0].getsockname()))
@@ -143,7 +143,7 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
             thread_loop.close()
             gc.collect()
 
-    fut = asyncio.Future(loop=loop)
+    fut = helpers.create_future(loop)
     server_thread = threading.Thread(target=run, args=(loop, fut))
     server_thread.start()
 

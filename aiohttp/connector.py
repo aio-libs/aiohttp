@@ -13,7 +13,7 @@ from itertools import chain
 from math import ceil
 from types import MappingProxyType
 
-from . import hdrs
+from . import hdrs, helpers
 from .client import ClientRequest
 from .errors import ServerDisconnectedError
 from .errors import HttpProxyError, ProxyConnectionError
@@ -222,7 +222,7 @@ class BaseConnector(object):
 
     def close(self):
         """Close all opened transports."""
-        ret = asyncio.Future(loop=self._loop)
+        ret = helpers.create_future(self._loop)
         ret.set_result(None)
         if self._closed:
             return ret
@@ -282,7 +282,7 @@ class BaseConnector(object):
 
         limit = self._limit
         if limit is not None:
-            fut = asyncio.Future(loop=self._loop)
+            fut = helpers.create_future(self._loop)
             waiters = self._waiters[key]
 
             # The limit defines the maximum number of concurrent connections
