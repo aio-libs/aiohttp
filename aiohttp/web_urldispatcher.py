@@ -17,7 +17,7 @@ from types import MappingProxyType
 
 from multidict import upstr
 
-from . import hdrs
+from . import hdrs, helpers
 from .abc import AbstractRouter, AbstractMatchInfo, AbstractView
 from .protocol import HttpVersion11
 from .web_exceptions import (HTTPMethodNotAllowed, HTTPNotFound,
@@ -528,7 +528,7 @@ class StaticRoute(Route):
         loop = req.app.loop
         out_fd = transport.get_extra_info("socket").fileno()
         in_fd = fobj.fileno()
-        fut = asyncio.Future(loop=loop)
+        fut = helpers.create_future(loop)
 
         self._sendfile_cb(fut, out_fd, in_fd, 0, count, loop, False)
 

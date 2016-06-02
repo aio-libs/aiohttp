@@ -226,3 +226,26 @@ def test_requote_uri_properly_requotes():
     # Ensure requoting doesn't break expectations.
     quoted = 'http://example.com/fiz?buz=%25ppicture'
     assert quoted == helpers.requote_uri(quoted)
+
+
+def test_create_future_with_new_loop():
+    # We should use the new create_future() if it's available.
+    mock_loop = mock.Mock()
+    expected = 'hello'
+    mock_loop.create_future.return_value = expected
+    assert expected == helpers.create_future(mock_loop)
+
+
+@mock.patch('asyncio.Future')
+def test_create_future_with_old_loop(MockFuture):
+    # The old loop (without create_future()) should just have a Future object
+    # wrapped around it.
+    mock_loop = mock.Mock()
+    del mock_loop.create_future
+
+    expected = 'hello'
+    MockFuture.return_value = expected
+
+    future = helpers.create_future(mock_loop)
+    MockFuture.assert_called_with(loop=mock_loop)
+    assert expected == future

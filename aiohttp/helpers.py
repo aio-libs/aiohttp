@@ -23,7 +23,8 @@ except ImportError:
     ensure_future = asyncio.async
 
 
-__all__ = ('BasicAuth', 'FormData', 'parse_mimetype', 'Timeout')
+__all__ = ('BasicAuth', 'create_future', 'FormData', 'parse_mimetype',
+           'Timeout')
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
@@ -68,6 +69,15 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
         """Encode credentials."""
         creds = ('%s:%s' % (self.login, self.password)).encode(self.encoding)
         return 'Basic %s' % base64.b64encode(creds).decode(self.encoding)
+
+
+def create_future(loop):
+    """Compatiblity wrapper for the loop.create_future() call introduced in
+    3.5.2."""
+    if hasattr(loop, 'create_future'):
+        return loop.create_future()
+    else:
+        return asyncio.Future(loop=loop)
 
 
 class FormData:
