@@ -1,7 +1,7 @@
 import aiohttp
 import asyncio
 import pytest
-from aiohttp import web
+from aiohttp import web, hdrs
 
 
 @pytest.mark.run_loop
@@ -283,3 +283,45 @@ def test_close_cancel(create_app_and_client, loop):
     yield from asyncio.sleep(0.1, loop=loop)
     assert resp.closed
     assert resp.exception() is None
+
+
+@pytest.mark.run_loop
+def test_override_default_headers(create_app_and_client, loop):
+
+    @asyncio.coroutine
+    def handler(request):
+        assert request.headers[hdrs.SEC_WEBSOCKET_VERSION] == '8'
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        ws.send_str('answer')
+        yield from ws.close()
+        return ws
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/', headers={hdrs.SEC_WEBSOCKET_VERSION: '8'})
+    msg = yield from resp.receive()
+    assert msg.data == 'answer'
+    yield from resp.close()
+
+
+@pytest.mark.run_loop
+def test_additional_headers(create_app_and_client, loop):
+
+    @asyncio.coroutine
+    def handler(request):
+        assert request.headers['x-hdr'] == 'xtra'
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        ws.send_str('answer')
+        yield from ws.close()
+        return ws
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/', headers={'x-hdr': 'xtra'})
+    msg = yield from resp.receive()
+    assert msg.data == 'answer'
+    yield from resp.close()
