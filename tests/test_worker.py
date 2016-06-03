@@ -5,6 +5,8 @@ import sys
 
 from unittest import mock
 
+from aiohttp import helpers
+
 
 base_worker = pytest.importorskip('aiohttp.worker')
 pytest.importorskip('uvloop')
@@ -103,12 +105,12 @@ def test__run_ok(worker, loop):
     worker.sockets = [sock]
     worker.wsgi = mock.Mock()
     worker.close = mock.Mock()
-    worker.close.return_value = asyncio.Future(loop=loop)
+    worker.close.return_value = helpers.create_future(loop)
     worker.close.return_value.set_result(())
     worker.log = mock.Mock()
     worker.notify = mock.Mock()
     worker.loop = loop
-    ret = asyncio.Future(loop=loop)
+    ret = helpers.create_future(loop)
     loop.create_server = mock.Mock(
         wraps=asyncio.coroutine(lambda *a, **kw: ret))
     ret.set_result(sock)
@@ -138,12 +140,12 @@ def test__run_exc(worker, loop):
         worker.notify = mock.Mock()
 
         with mock.patch('aiohttp.worker.asyncio.sleep') as m_sleep:
-            slp = asyncio.Future(loop=loop)
+            slp = helpers.create_future(loop)
             slp.set_exception(KeyboardInterrupt)
             m_sleep.return_value = slp
 
             worker.close = mock.Mock()
-            worker.close.return_value = asyncio.Future(loop=loop)
+            worker.close.return_value = helpers.create_future(loop)
             worker.close.return_value.set_result(1)
 
             loop.run_until_complete(worker._run())
@@ -159,14 +161,13 @@ def test_close(worker, loop):
     worker.log = mock.Mock()
     worker.loop = loop
     app = worker.wsgi = mock.Mock()
-    app.finish.return_value = asyncio.Future(loop=loop)
+    app.finish.return_value = helpers.create_future(loop)
     app.finish.return_value.set_result(1)
     handler.connections = [object()]
-    handler.finish_connections.return_value = asyncio.Future(
-        loop=loop)
+    handler.finish_connections.return_value = helpers.create_future(loop)
     handler.finish_connections.return_value.set_result(1)
 
-    app.shutdown.return_value = asyncio.Future(loop=loop)
+    app.shutdown.return_value = helpers.create_future(loop)
     app.shutdown.return_value.set_result(None)
 
     loop.run_until_complete(worker.close())

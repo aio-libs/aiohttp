@@ -16,6 +16,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, upstr
 import pytest
 import aiohttp
 from aiohttp import BaseConnector
+from aiohttp import helpers
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
 
 import os.path
@@ -716,7 +717,7 @@ class TestClientRequest(unittest.TestCase):
         self.loop.run_until_complete(req.close())
 
     def test_data_stream_exc(self):
-        fut = asyncio.Future(loop=self.loop)
+        fut = helpers.create_future(self.loop)
 
         def gen():
             yield b'binary data'
@@ -756,7 +757,7 @@ class TestClientRequest(unittest.TestCase):
         resp.close()
 
     def test_data_stream_exc_chain(self):
-        fut = asyncio.Future(loop=self.loop)
+        fut = helpers.create_future(self.loop)
 
         def gen():
             yield from fut
