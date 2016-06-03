@@ -1,8 +1,8 @@
 import asyncio
 import aiohttp
-import ipaddress
 import functools
 import http.cookies
+import re
 import ssl
 import sys
 import traceback
@@ -404,13 +404,28 @@ _SSL_OP_NO_COMPRESSION = getattr(ssl, "OP_NO_COMPRESSION", 0)
 
 _marker = object()
 
+ipv4_pattern = ('^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}'
+                '(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
+ipv6_pattern = (
+    '^(?:(?:(?:[A-F0-9]{1,4}:){6}|(?=(?:[A-F0-9]{0,4}:){0,6}'
+    '(?:[0-9]{1,3}\.){3}[0-9]{1,3}$)(([0-9A-F]{1,4}:){0,5}|:)'
+    '((:[0-9A-F]{1,4}){1,5}:|:)|::(?:[A-F0-9]{1,4}:){5})'
+    '(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}'
+    '(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])|(?:[A-F0-9]{1,4}:){7}'
+    '[A-F0-9]{1,4}|(?=(?:[A-F0-9]{0,4}:){0,7}[A-F0-9]{0,4}$)'
+    '(([0-9A-F]{1,4}:){1,7}|:)((:[0-9A-F]{1,4}){1,7}|:)|(?:[A-F0-9]{1,4}:){7}'
+    ':|:(:[A-F0-9]{1,4}){7})$')
+ipv4_regex = re.compile(ipv4_pattern)
+ipv6_regex = re.compile(ipv6_pattern)
+
 
 def host_is_ip(host):
-    try:
-        ipaddress.ip_address(host)
+    if re.match(ipv4_pattern, host) or re.match(ipv6_pattern, host,
+                                                flags=re.IGNORECASE):
         return True
-    except ValueError:
+    else:
         return False
+
 
 class TCPConnector(BaseConnector):
     """TCP connector.
