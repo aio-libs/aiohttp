@@ -1,15 +1,15 @@
 import asyncio
 import aiohttp
 import collections
-import gc
 import logging
 import pytest
 import re
-import socket
 import sys
 import warnings
-
 from aiohttp import web
+from aiohttp.test_utils import (
+    loop_context, unused_port
+)
 
 
 class _AssertWarnsContext:
@@ -147,37 +147,18 @@ def log():
     yield _AssertLogsContext
 
 
-@pytest.fixture
-def unused_port():
-    def f():
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(('127.0.0.1', 0))
-            return s.getsockname()[1]
-    return f
+# add the unused_port and loop fixtures
+pytest.fixture(unused_port)
 
 
 @pytest.yield_fixture
-def loop(request):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(None)
-
-    yield loop
-
-    is_closed = getattr(loop, 'is_closed')
-    if is_closed is not None:
-        closed = is_closed()
-    else:
-        closed = loop._closed
-    if not closed:
-        loop.call_soon(loop.stop)
-        loop.run_forever()
-        loop.close()
-    gc.collect()
-    asyncio.set_event_loop(None)
+def loop():
+    with loop_context() as loop:
+        yield loop
 
 
 @pytest.yield_fixture
-def create_server(loop, unused_port):
+def create_server(loop):
     app = handler = srv = None
 
     @asyncio.coroutine

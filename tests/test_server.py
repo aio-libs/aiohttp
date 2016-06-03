@@ -9,6 +9,7 @@ from unittest import mock
 
 from aiohttp import server
 from aiohttp import errors
+from aiohttp import helpers
 
 
 @pytest.yield_fixture
@@ -507,7 +508,7 @@ def test_keep_alive_close_existing(make_srv, loop):
     srv._keep_alive_period = 15
     keep_alive_handle = srv._keep_alive_handle = mock.Mock()
     srv.handle_request = mock.Mock()
-    srv.handle_request.return_value = asyncio.Future(loop=loop)
+    srv.handle_request.return_value = helpers.create_future(loop)
     srv.handle_request.return_value.set_result(1)
 
     srv.data_received(
