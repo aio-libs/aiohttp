@@ -59,6 +59,8 @@ CHANGES
 
 - Implement cookie filter #799
 
+- Include an example of middleware to handle error pages #909
+
 
 0.21.6 (05-05-2016)
 -------------------
