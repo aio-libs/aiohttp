@@ -149,6 +149,7 @@ Contents
    multipart
    api
    logging
+   testing
    gunicorn
    faq
    new_router

@@ -59,14 +59,6 @@ aiohttp.streams module
     :show-inheritance:
 
 
-aiohttp.test_utils module
--------------------------
-
-.. automodule:: aiohttp.test_utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 aiohttp.websocket module
 ------------------------
 

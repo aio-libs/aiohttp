@@ -21,10 +21,10 @@ import unittest
 
 import asyncio
 import aiohttp
-from aiohttp import server
-from aiohttp import helpers
-from aiohttp import ClientSession
-from aiohttp.client import _RequestContextManager
+from . import server
+from . import helpers
+from . import ClientSession
+from . import hdrs
 
 
 def run_briefly(loop):
@@ -322,15 +322,16 @@ class TestClient:
     """
     A test client implementation, for a aiohttp.web.Application.
 
-    :param app: the aiohttp.web application passed
-    to create_test_server
+    :param app: the aiohttp.web application passed to create_test_server
 
     :type app: aiohttp.web.Application
 
-    :param protocol: the aiohttp.web application passed
-    to create_test_server
+    :param protocol: the aiohttp.web application passed to create_test_server
 
     :type app: aiohttp.web.Application
+
+    TestClient can also be used as a contextmanager, returning
+    the instance of itself instantiated.
     """
 
     def __init__(self, app, protocol="http"):
@@ -347,23 +348,72 @@ class TestClient:
         )
         self._closed = False
 
-    def request(self, method, url, *args, **kwargs):
-        return _RequestContextManager(self._request(
-            method, url, *args, **kwargs
-        ))
+    @property
+    def session(self):
+        """a raw handler to the aiohttp.ClientSession.  unlike the methods on
+        the TestClient, client session requests do not automatically
+        include the host in the url queried, and will require an
+        absolute path to the resource.
+        """
+        return self._session
 
-    @asyncio.coroutine
-    def _request(self, method, url, *args, **kwargs):
+    def request(self, method, path, *args, **kwargs):
         """ routes a request to the http server.
         the interface is identical to asyncio.request,
         except the loop kwarg is overriden
         by the instance used by the application.
         """
-        return (yield from self._session.request(
-            method, self._root + url, *args, **kwargs
-        ))
+        return self._session.request(
+            method, self._root + path, *args, **kwargs
+        )
+
+    def get(self, path, *args, **kwargs):
+        """Perform an HTTP GET request. """
+        return self.request(hdrs.METH_GET, path, *args, **kwargs)
+
+    def post(self, path, *args, **kwargs):
+        """Perform an HTTP POST request. """
+        return self.request(hdrs.METH_POST, path, *args, **kwargs)
+
+    def options(self, path, *args, **kwargs):
+        """Perform an HTTP OPTIONS request. """
+        return self.request(hdrs.METH_OPTIONS, path, *args, **kwargs)
+
+    def head(self, path, *args, **kwargs):
+        """Perform an HTTP HEAD request. """
+        return self.request(hdrs.METH_HEAD, path, *args, **kwargs)
+
+    def put(self, path, *args, **kwargs):
+        """Perform an HTTP PUT request."""
+        return self.request(hdrs.METH_PUT, path, *args, **kwargs)
+
+    def patch(self, path, *args, **kwargs):
+        """Perform an HTTP PATCH request."""
+        return self.request(hdrs.METH_PATCH, path, *args, **kwargs)
+
+    def delete(self, path, *args, **kwargs):
+        """Perform an HTTP PATCH request."""
+        return self.request(hdrs.METH_DELETE, path, *args, **kwargs)
+
+    def ws_connect(self, path, *args, **kwargs):
+        """Initiate websocket connection. the api is identical to
+        aiohttp.ClientSession.ws_connect.
+        """
+        return self._session.ws_connect(
+            self._root + path, *args, **kwargs
+        )
 
     def close(self):
+        """ close all fixtures created by the test client.
+        After that point, the TestClient is no longer
+        usable.
+
+        This is an idempotent function: running close
+        multiple times will not have any additional effects.
+
+        close is also run when the object is garbage collected,
+        and on exit when used as a context manager.
+        """
         if not self._closed:
             loop = self._loop
             loop.run_until_complete(self._session.close())
@@ -384,6 +434,20 @@ class TestClient:
 
 
 class AioHTTPTestCase(unittest.TestCase):
+    """A base class to allow for unittest web applications using
+    aiohttp.
+
+    provides the following:
+
+    * self.client (aiohttp.test_utils.TestClient): an aiohttp test client.
+    * self.loop (asyncio.BaseEventLoop): the event loop in which the
+        application and server are running.
+    * self.app (aiohttp.web.Application): the application returned by
+        self.get_app()
+
+    note that the TestClient's methods are asynchronous: you will have to
+    execute function on the test client using asynchronous methods.
+    """
 
     def get_app(self, loop):
         """
@@ -406,11 +470,10 @@ class AioHTTPTestCase(unittest.TestCase):
         teardown_test_loop(self.loop)
 
 
-def run_loop(func):
-    """
-    to be used with AioHTTPTestCase. Handles
-    executing an asynchronous function, using
-    the event loop of AioHTTPTestCase.
+def unittest_run_loop(func):
+    """a decorator that should be used with asynchronous methods of an
+    AioHTTPTestCase. Handles executing an asynchronous function, using
+    the self.loop of the AioHTTPTestCase.
     """
 
     @functools.wraps(func)
@@ -422,8 +485,7 @@ def run_loop(func):
 
 @contextlib.contextmanager
 def loop_context():
-    """
-    create an event_loop, for test purposes.
+    """a contextmanager that creates an event_loop, for test purposes.
     handles the creation and cleanup of a test loop.
     """
     loop = setup_test_loop()
@@ -432,12 +494,22 @@ def loop_context():
 
 
 def setup_test_loop():
+    """create and return an asyncio.BaseEventLoop
+    instance. The caller should also call teardown_test_loop,
+    once they are done with the loop.
+    """
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(None)
     return loop
 
 
 def teardown_test_loop(loop):
+    """teardown and cleanup an event_loop created
+    by setup_test_loop.
+
+    :param loop: the loop to teardown
+    :type loop: asyncio.BaseEventLoop
+    """
     is_closed = getattr(loop, 'is_closed')
     if is_closed is not None:
         closed = is_closed()

@@ -1,8 +1,10 @@
 import asyncio
+import aiohttp
 from aiohttp import web
 from aiohttp.test_utils import (
     TestClient, loop_context,
-    AioHTTPTestCase, run_loop
+    AioHTTPTestCase, unittest_run_loop,
+    setup_test_loop, teardown_test_loop
 )
 import pytest
 
@@ -13,8 +15,23 @@ def _create_example_app(loop):
     def hello(request):
         return web.Response(body=b"Hello, world")
 
+    @asyncio.coroutine
+    def websocket_handler(request):
+
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+        msg = yield from ws.receive()
+        if msg.tp == aiohttp.MsgType.text:
+            if msg.data == 'close':
+                yield from ws.close()
+            else:
+                ws.send_str(msg.data + '/answer')
+
+        return ws
+
     app = web.Application(loop=loop)
-    app.router.add_route('GET', '/', hello)
+    app.router.add_route('*', '/', hello)
+    app.router.add_route('*', '/websocket', websocket_handler)
     return app
 
 
@@ -55,10 +72,11 @@ def test_test_client_close_is_idempotent():
     a test client, called multiple times, should
     not attempt to close the loop again.
     """
-    with loop_context() as loop:
-        app = _create_example_app(loop)
-        client = TestClient(app)
-        client.close()
+    loop = setup_test_loop()
+    app = _create_example_app(loop)
+    client = TestClient(app)
+    client.close()
+    teardown_test_loop(loop)
     client.close()
 
 
@@ -67,7 +85,7 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
     def get_app(self, loop):
         return _create_example_app(loop)
 
-    @run_loop
+    @unittest_run_loop
     @asyncio.coroutine
     def test_example_with_loop(self):
         request = yield from self.client.request("GET", "/")
@@ -115,3 +133,35 @@ def test_get_route(loop, test_client):
         assert "Hello, world" in text
 
     loop.run_until_complete(test_get_route())
+
+
+@pytest.mark.run_loop
+@asyncio.coroutine
+def test_client_websocket(loop, test_client):
+    resp = yield from test_client.ws_connect("/websocket")
+    resp.send_str("foo")
+    msg = yield from resp.receive()
+    assert msg.tp == aiohttp.MsgType.text
+    assert "foo" in msg.data
+    resp.send_str("close")
+    msg = yield from resp.receive()
+    assert msg.tp == aiohttp.MsgType.close
+
+
+@pytest.mark.run_loop
+@pytest.mark.parametrize("method", [
+    "get", "post", "options", "post", "put", "patch", "delete"
+])
+@asyncio.coroutine
+def test_test_client_methods(method, loop, test_client):
+    resp = yield from getattr(test_client, method)("/")
+    assert resp.status == 200
+    text = yield from resp.text()
+    assert "Hello, world" in text
+
+
+@pytest.mark.run_loop
+@asyncio.coroutine
+def test_test_client_head(loop, test_client):
+    resp = yield from test_client.head("/")
+    assert resp.status == 200
