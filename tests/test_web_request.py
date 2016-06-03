@@ -1,4 +1,5 @@
 import pytest
+from unittest import mock
 
 from multidict import MultiDict, CIMultiDict
 from aiohttp.protocol import HttpVersion
@@ -29,6 +30,20 @@ def test_ctor(make_request, warning):
         req.payload
 
     assert req.keep_alive
+
+    # just make sure that all lines of make_mocked_request covered
+    reader = mock.Mock()
+    writer = mock.Mock()
+    payload = mock.Mock()
+    transport = mock.Mock()
+    app = mock.Mock()
+    req = make_request('GET', '/path/to?a=1&b=2', writer=writer, reader=reader,
+                       payload=payload, transport=transport, app=app)
+    assert req.app is app
+    assert req.content is payload
+    assert req.transport is transport
+    assert req._reader is reader
+    assert req._writer is writer
 
 
 def test_doubleslashes(make_request):
