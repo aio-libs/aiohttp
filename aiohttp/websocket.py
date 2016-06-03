@@ -69,12 +69,15 @@ PACK_CLOSE_CODE = Struct('!H').pack
 MSG_SIZE = 2 ** 14
 
 
-MessageBase = collections.namedtuple('Message', ['tp', 'data', 'extra'])
+_MessageBase = collections.namedtuple('Message', ['tp', 'data', 'extra'])
 
 
-class Message(MessageBase):
+class Message(_MessageBase):
     def json(self, *, loads=json.loads):
-        """Return parsed JSON data."""
+        """Return parsed JSON data.
+
+        .. versionadded:: 0.22
+        """
         return loads(self.data)
 
 

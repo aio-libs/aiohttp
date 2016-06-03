@@ -912,7 +912,7 @@ WebSocketResponse
 
       :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_TEXT`.
 
-   .. coroutinemethod:: recieve_json(*, loads=json.loads)
+   .. coroutinemethod:: receive_json(*, loads=json.loads)
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive`, asserts the
       message type is :const:`~aiohttp.websocket.MSG_TEXT`, and loads the JSON
@@ -927,6 +927,8 @@ WebSocketResponse
 
       :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_BINARY`.
       :raise ValueError: if message is not valid JSON.
+
+      .. versionadded:: 0.22
 
 
 .. versionadded:: 0.14
