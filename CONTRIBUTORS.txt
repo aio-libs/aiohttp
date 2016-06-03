@@ -12,6 +12,7 @@ Alexander Malev
 Alexander Shorin
 Alexander Travov
 Alexey Popravka
+Amy Boyle
 Andrei Ursulenko
 Andrej Antonov
 Andrew Svetlov
@@ -102,5 +103,6 @@ W. Trevor King
 Willem de Groot
 Yannick Koechlin
 Yury Selivanov
+Yusuke Tsutsumi
 Марк Коренберг
 Семён Марьясин

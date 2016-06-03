@@ -4,22 +4,27 @@ import cgi
 import contextlib
 import gc
 import email.parser
+import functools
 import http.server
 import json
 import logging
 import io
 import os
 import re
+import socket
 import ssl
 import sys
 import threading
 import traceback
 import urllib.parse
+import unittest
 
 import asyncio
 import aiohttp
 from aiohttp import server
 from aiohttp import helpers
+from aiohttp import ClientSession
+from aiohttp.client import _RequestContextManager
 
 
 def run_briefly(loop):
@@ -304,3 +309,143 @@ class Router:
         # keep-alive
         if response.keep_alive():
             self._srv.keep_alive(True)
+
+
+def unused_port():
+    """ return a port that is unused on the current host. """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('127.0.0.1', 0))
+        return s.getsockname()[1]
+
+
+class TestClient:
+    """
+    A test client implementation, for a aiohttp.web.Application.
+
+    :param app: the aiohttp.web application passed
+    to create_test_server
+
+    :type app: aiohttp.web.Application
+
+    :param protocol: the aiohttp.web application passed
+    to create_test_server
+
+    :type app: aiohttp.web.Application
+    """
+
+    def __init__(self, app, protocol="http"):
+        self._app = app
+        self._loop = loop = app.loop
+        self.port = unused_port()
+        self._handler = handler = app.make_handler()
+        self._server = loop.run_until_complete(loop.create_server(
+            handler, '127.0.0.1', self.port
+        ))
+        self._session = ClientSession(loop=self._loop)
+        self._root = "{}://127.0.0.1:{}".format(
+            protocol, self.port
+        )
+        self._closed = False
+
+    def request(self, method, url, *args, **kwargs):
+        return _RequestContextManager(self._request(
+            method, url, *args, **kwargs
+        ))
+
+    @asyncio.coroutine
+    def _request(self, method, url, *args, **kwargs):
+        """ routes a request to the http server.
+        the interface is identical to asyncio.request,
+        except the loop kwarg is overriden
+        by the instance used by the application.
+        """
+        return (yield from self._session.request(
+            method, self._root + url, *args, **kwargs
+        ))
+
+    def close(self):
+        if not self._closed:
+            loop = self._loop
+            loop.run_until_complete(self._session.close())
+            loop.run_until_complete(self._handler.finish_connections())
+            loop.run_until_complete(self._app.finish())
+            self._server.close()
+            loop.run_until_complete(self._server.wait_closed())
+            self._closed = True
+
+    def __del__(self):
+        self.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
+
+class AioHTTPTestCase(unittest.TestCase):
+
+    def get_app(self, loop):
+        """
+        this method should be overriden
+        to return the aiohttp.web.Application
+        object to test.
+
+        :param loop: the event_loop to use
+        :type loop: asyncio.BaseEventLoop
+        """
+        pass
+
+    def setUp(self):
+        self.loop = setup_test_loop()
+        self.app = self.get_app(self.loop)
+        self.client = TestClient(self.app)
+
+    def tearDown(self):
+        del self.client
+        teardown_test_loop(self.loop)
+
+
+def run_loop(func):
+    """
+    to be used with AioHTTPTestCase. Handles
+    executing an asynchronous function, using
+    the event loop of AioHTTPTestCase.
+    """
+
+    @functools.wraps(func)
+    def new_func(self):
+        return self.loop.run_until_complete(func(self))
+
+    return new_func
+
+
+@contextlib.contextmanager
+def loop_context():
+    """
+    create an event_loop, for test purposes.
+    handles the creation and cleanup of a test loop.
+    """
+    loop = setup_test_loop()
+    yield loop
+    teardown_test_loop(loop)
+
+
+def setup_test_loop():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(None)
+    return loop
+
+
+def teardown_test_loop(loop):
+    is_closed = getattr(loop, 'is_closed')
+    if is_closed is not None:
+        closed = is_closed()
+    else:
+        closed = loop._closed
+    if not closed:
+        loop.call_soon(loop.stop)
+        loop.run_forever()
+        loop.close()
+    gc.collect()
+    asyncio.set_event_loop(None)
