@@ -15,7 +15,7 @@ from pathlib import Path
 
 import multidict
 
-from . import hdrs
+from . import hdrs, helpers
 from .errors import InvalidURL
 try:
     from asyncio import ensure_future
@@ -588,7 +588,7 @@ class FileSender:
         loop = req.app.loop
         out_fd = transport.get_extra_info("socket").fileno()
         in_fd = fobj.fileno()
-        fut = asyncio.Future(loop=loop)
+        fut = helpers.create_future(loop)
 
         self._sendfile_cb(fut, out_fd, in_fd, 0, count, loop, False)
 

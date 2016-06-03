@@ -3,7 +3,7 @@ import asyncio
 import os
 import unittest
 from unittest import mock
-from aiohttp import web
+from aiohttp import helpers, web
 from aiohttp.web import UrlDispatcher
 from aiohttp.helpers import FileSender
 from tests.test_web_functional import StaticFileMixin
@@ -43,7 +43,7 @@ class TestWebSendFile(unittest.TestCase):
         with mock.patch('aiohttp.helpers.os') as m_os:
             out_fd = 30
             in_fd = 31
-            fut = asyncio.Future(loop=self.loop)
+            fut = helpers.create_future(self.loop)
             m_os.sendfile.return_value = 0
             file_sender = FileSender(resp_factory=route._response_factory,
                                      chunk_size=route._chunk_size
@@ -62,7 +62,7 @@ class TestWebSendFile(unittest.TestCase):
         with mock.patch('aiohttp.helpers.os') as m_os:
             out_fd = 30
             in_fd = 31
-            fut = asyncio.Future(loop=self.loop)
+            fut = helpers.create_future(self.loop)
             m_os.sendfile.side_effect = BlockingIOError()
             file_sender = FileSender(resp_factory=route._response_factory,
                                      chunk_size=route._chunk_size
@@ -83,7 +83,7 @@ class TestWebSendFile(unittest.TestCase):
         with mock.patch('aiohttp.helpers.os') as m_os:
             out_fd = 30
             in_fd = 31
-            fut = asyncio.Future(loop=self.loop)
+            fut = helpers.create_future(self.loop)
             exc = OSError()
             m_os.sendfile.side_effect = exc
             file_sender = FileSender(resp_factory=route._response_factory,
