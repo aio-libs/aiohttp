@@ -55,6 +55,8 @@ CHANGES
 
 - Add json() convenience methods to websocket message objects #897
 
+- Add client_resp.raise_for_status() #908
+
 
 0.21.6 (05-05-2016)
 -------------------
