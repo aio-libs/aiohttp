@@ -57,6 +57,8 @@ CHANGES
 
 - Add client_resp.raise_for_status() #908
 
+- Implement cookie filter #799
+
 
 0.21.6 (05-05-2016)
 -------------------
