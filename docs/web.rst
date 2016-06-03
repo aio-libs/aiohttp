@@ -753,6 +753,35 @@ post-processing like handling *CORS* and so on.
    Middlewares accept route exceptions (:exc:`HTTPNotFound` and
    :exc:`HTTPMethodNotAllowed`).
 
+Example
+.......
+
+A common use of middlewares is to implement custom error pages.  The following
+example will render 404 errors using a JSON response, as might be appropriate
+a JSON REST service:
+
+    import json
+    from aiohttp import web
+
+    def json_error(message):
+        return web.Response(
+            body=json.dumps({'error': message}).encode('utf-8'),
+            content_type='application/json')
+
+    async def error_middleware(app, handler):
+        async def middleware_handler(request):
+            try:
+                response = await handler(request)
+                if response.status == 404:
+                    return json_error(response.message)
+                return response
+            except web.HTTPException as ex:
+                if ex.status == 404:
+                    return json_error(ex.reason)
+                raise
+        return middleware_handler
+
+    app = web.Application(middlewares=[error_middleware])
 
 .. _aiohttp-web-signals:
 
