@@ -1,5 +1,6 @@
 import asyncio
 import aiohttp
+import ipaddress
 import functools
 import http.cookies
 import ssl
@@ -554,7 +555,7 @@ class TCPConnector(BaseConnector):
 
     @asyncio.coroutine
     def _resolve_host(self, host, port):
-        if not self._use_resolver:
+        if not self._use_resolver or self._host_is_ip(host):
             return [{'hostname': host, 'host': host, 'port': port,
                      'family': self._family, 'proto': 0, 'flags': 0}]
 
@@ -572,6 +573,13 @@ class TCPConnector(BaseConnector):
             res = yield from self._resolver.resolve(
                 host, port, family=self._family)
             return res
+
+    def _host_is_ip(self, host):
+        try:
+            ipaddress.ip_address(host)
+            return True
+        except ValueError:
+            return False
 
     @asyncio.coroutine
     def _create_connection(self, req):
