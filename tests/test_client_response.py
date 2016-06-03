@@ -274,3 +274,16 @@ class TestClientResponse(unittest.TestCase):
         with self.assertWarns(DeprecationWarning):
             self.response.close(force=False)
         self.assertIsNone(self.response._connection)
+
+    def test_raise_for_status_2xx(self):
+        self.response.status = 200
+        self.response.reason = 'OK'
+        self.response.raise_for_status()  # should not raise
+
+    def test_raise_for_status_4xx(self):
+        self.response.status = 409
+        self.response.reason = 'CONFLICT'
+        with self.assertRaises(aiohttp.HttpProcessingError) as cm:
+            self.response.raise_for_status()
+        self.assertEqual(str(cm.exception.code), '409')
+        self.assertEqual(str(cm.exception.message), "CONFLICT")
