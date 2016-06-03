@@ -5,24 +5,23 @@
 
      - If you propose a new feature or improvement, select "master"
        as a target branch;
-     - If this is code bug fix or documentation correction, select
-       the lastest release branch (which looks like "0.xx") -->
+     - If this is a bug fix or documentation amendment, select
+       the latest release branch (which looks like "0.xx") -->
 
-## What these changes does?
+## What do these changes do?
 
 <!-- Please give a short brief about these changes. -->
 
-## How to test your changes?
+## Are there changes in behavior for the user?
 
-<!-- Describe how we can test your changes if they provides
-     any notable behaviour for the end users. -->
+<!-- Outline any notable behaviour for the end users. -->
 
 ## Related issue number
 
-<!-- Is there any issue opened that get fixed by this? -->
+<!-- Are there any issues opened that will be resolved by merging this change? -->
 
 ## Checklist
 
-- [ ] Code is written and well
-- [ ] Tests for the changes are provided
+- [ ] I think the code is well written
+- [ ] Unit tests for the changes exist
 - [ ] Documentation reflects the changes

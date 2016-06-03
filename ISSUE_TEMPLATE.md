@@ -4,11 +4,11 @@
 
 ## Expected behaviour
 
-<!-- What the behaviour did you expect? -->
+<!-- What is the behaviour you expect? -->
 
 ## Actual behaviour
 
-<!-- What's actually happened? -->
+<!-- What's actually happening? -->
 
 ## Steps to reproduce
 
@@ -18,6 +18,6 @@
 
 ## Your environment
 
-<!-- Describe the environment you have that leed to your issue.
-     This includes project version, OS, proxy server and else bits that
+<!-- Describe the environment you have that lead to your issue.
+     This includes project version, OS, proxy server and other bits that
      are related to your case. -->
