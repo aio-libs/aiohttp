@@ -5,6 +5,7 @@ import os
 import os.path
 import socket
 import unittest
+import zlib
 from multidict import MultiDict
 from aiohttp import log, web, request, FormData, ClientSession, TCPConnector
 from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
@@ -791,6 +792,25 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
             yield from resp.release()
 
         self.loop.run_until_complete(go())
+
+    def test_response_with_precompressed_body(self):
+        @asyncio.coroutine
+        def handler(request):
+            headers = {'Content-Encoding': 'gzip'}
+            deflated_data = zlib.compress(b'mydata')
+            return web.Response(body=deflated_data, headers=headers)
+
+        @asyncio.coroutine
+        def go():
+            _, srv, url = yield from self.create_server('GET', '/', handler)
+            client = ClientSession(loop=self.loop)
+            resp = yield from client.get(url)
+            self.assertEqual(200, resp.status)
+            data = yield from resp.read()
+            self.assertEqual(b'mydata', data)
+            self.assertEqual(resp.headers.get('CONTENT-ENCODING'), 'deflate')
+            yield from resp.release()
+            client.close()
 
     def test_stream_response_multiple_chunks(self):
         @asyncio.coroutine
