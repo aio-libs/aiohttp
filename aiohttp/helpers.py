@@ -332,6 +332,8 @@ class AccessLogger:
 
     @staticmethod
     def _format_i(key, args):
+        if not args[0]:
+            return '(no headers)'
         return args[0].headers.get(multidict.upstr(key), '-')
 
     @staticmethod

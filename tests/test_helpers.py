@@ -177,9 +177,10 @@ def test_logger_no_message_and_environ():
     mock_logger = mock.Mock()
     mock_transport = mock.Mock()
     mock_transport.get_extra_info.return_value = ("127.0.0.3", 0)
-    access_logger = helpers.AccessLogger(mock_logger, "%r %{FOOBAR}e")
+    access_logger = helpers.AccessLogger(mock_logger,
+                                         "%r %{FOOBAR}e %{content-type}i")
     access_logger.log(None, None, None, mock_transport, 0.0)
-    mock_logger.info.assert_called_with("- -")
+    mock_logger.info.assert_called_with("- - (no headers)")
 
 
 def test_reify():
