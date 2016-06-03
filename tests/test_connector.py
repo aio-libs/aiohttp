@@ -16,7 +16,7 @@ from aiohttp import web
 from aiohttp import client
 from aiohttp import helpers
 from aiohttp.client import ClientResponse
-from aiohttp.connector import Connection
+from aiohttp.connector import Connection, host_is_ip
 
 
 class TestBaseConnector(unittest.TestCase):
@@ -840,3 +840,45 @@ class TestHttpClientConnector(unittest.TestCase):
         self.assertTrue(conn.use_dns_cache)
         with self.assertWarns(DeprecationWarning):
             self.assertTrue(conn.resolve)
+
+    def test_resolver_not_called_with_address_is_ip(self):
+        resolver = unittest.mock.MagicMock()
+        connector = aiohttp.TCPConnector(resolver=resolver, loop=self.loop)
+
+        class Req:
+            host = '127.0.0.1'
+            port = 80
+            ssl = False
+            response = unittest.mock.Mock()
+
+        with self.assertRaises(OSError):
+            self.loop.run_until_complete(connector.connect(Req()))
+
+        resolver.resolve.assert_not_called()
+
+    def test_ip_addresses(self):
+        ip_addresses = [
+            '0.0.0.0',
+            '127.0.0.1',
+            '255.255.255.255',
+            '0:0:0:0:0:0:0:0',
+            'FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF',
+            '00AB:0002:3008:8CFD:00AB:0002:3008:8CFD',
+            '00ab:0002:3008:8cfd:00ab:0002:3008:8cfd',
+            'AB:02:3008:8CFD:AB:02:3008:8CFD',
+            'AB:02:3008:8CFD::02:3008:8CFD',
+            '::',
+            '1::1',
+        ]
+        for address in ip_addresses:
+            assert host_is_ip(address) is True
+
+    def test_host_addresses(self):
+        hosts = [
+            'www.four.part.host'
+            'www.python.org',
+            'foo.bar',
+            'localhost',
+        ]
+        for host in hosts:
+            assert host_is_ip(host) is False
