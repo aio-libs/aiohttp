@@ -43,6 +43,7 @@ CHANGES
 
 - Add test utilities to aiohttp. #902
 
+- Improve Request.__repr__ #875
 
 0.21.6 (05-05-2016)
 -------------------
