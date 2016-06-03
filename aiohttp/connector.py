@@ -405,6 +405,13 @@ _SSL_OP_NO_COMPRESSION = getattr(ssl, "OP_NO_COMPRESSION", 0)
 _marker = object()
 
 
+def host_is_ip(host):
+    try:
+        ipaddress.ip_address(host)
+        return True
+    except ValueError:
+        return False
+
 class TCPConnector(BaseConnector):
     """TCP connector.
 
@@ -555,7 +562,7 @@ class TCPConnector(BaseConnector):
 
     @asyncio.coroutine
     def _resolve_host(self, host, port):
-        if not self._use_resolver or self._host_is_ip(host):
+        if not self._use_resolver or host_is_ip(host):
             return [{'hostname': host, 'host': host, 'port': port,
                      'family': self._family, 'proto': 0, 'flags': 0}]
 
@@ -573,13 +580,6 @@ class TCPConnector(BaseConnector):
             res = yield from self._resolver.resolve(
                 host, port, family=self._family)
             return res
-
-    def _host_is_ip(self, host):
-        try:
-            ipaddress.ip_address(host)
-            return True
-        except ValueError:
-            return False
 
     @asyncio.coroutine
     def _create_connection(self, req):
