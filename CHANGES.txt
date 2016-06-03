@@ -49,6 +49,8 @@ CHANGES
 
 - Add headers to ClientSession.ws_connect #785
 
+- Document that server can send pre-compressed data #906
+
 0.21.6 (05-05-2016)
 -------------------
 

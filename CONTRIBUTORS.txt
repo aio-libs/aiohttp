@@ -33,6 +33,7 @@ David Michael Brown
 Dima Veselov
 Dimitar Dimitrov
 Dmytro Kuznetsov
+Dustin J. Mitchell
 Elizabeth Leddy
 Erich Healy
 Eugene Chernyshov
