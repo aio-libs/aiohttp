@@ -1,5 +1,6 @@
 import sys
 import asyncio
+import json
 import warnings
 
 from . import hdrs
@@ -284,6 +285,15 @@ class WebSocketResponse(StreamResponse):
                 "Received message {}:{!r} is not bytes".format(msg.tp,
                                                                msg.data))
         return msg.data
+
+    @asyncio.coroutine
+    def receive_json(self, *, loads=json.loads):
+        msg = yield from self.receive()
+        if msg.tp != MsgType.text:
+            raise TypeError(
+                "Received message {}:{!r} is not str".format(msg.tp, msg.data)
+            )
+        return msg.json(loads=loads)
 
     def write(self, data):
         raise RuntimeError("Cannot call .write() for websocket")
