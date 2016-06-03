@@ -3,8 +3,10 @@
 Testing
 =======
 
-Testing aiohttp servers
------------------------
+.. currentmodule:: aiohttp.test_utils
+
+Testing aiohttp web servers
+---------------------------
 
 aiohttp provides test framework agnostic utilities for web
 servers. An example would be::
@@ -20,7 +22,7 @@ servers. An example would be::
 
             async def test_get_route():
                 nonlocal client
-                resp = await client.request("GET", "/")
+                resp = await client.get("/")
                 assert resp.status == 200
                 text = await resp.text()
                 assert "Hello, world" in text
@@ -39,7 +41,7 @@ basis, the TestClient object can be used directly::
         root = "http://127.0.0.1:{}".format(port)
 
         async def test_get_route():
-            resp = await test_client.request("GET", url)
+            resp = await client.get("/")
             assert resp.status == 200
             text = await resp.text()
             assert "Hello, world" in text
@@ -49,8 +51,24 @@ basis, the TestClient object can be used directly::
         # the deletion of the TestServer.
         del client
 
-pytest example
-==============
+
+A full list of the utilities provided can be found at the
+:data:`api reference <aiohttp.test_utils>`
+
+The Test Client
+~~~~~~~~~~~~~~~
+
+The :data:`aiohttp.test_utils.TestClient` creates an asyncio server
+for the web.Application object, as well as a ClientSession to perform
+requests. In addition, TestClient provides proxy methods to the client for
+common operations such as ws_connect, get, post, etc.
+
+Please see the full api at the :class:`TestClass api reference <aiohttp.test_utils.TestClient>`
+
+
+
+Pytest example
+~~~~~~~~~~~~~~
 
 A pytest example could look like::
 
@@ -85,13 +103,13 @@ A pytest example could look like::
         loop.run_until_complete(test_get_route())
 
 
-unittest example
-================
+Unittest example
+~~~~~~~~~~~~~~~~
 
 To test applications with the standard library's unittest or unittest-based
 functionality, the AioHTTPTestCase is provided::
 
-    from aiohttp.test_utils import AioHTTPTestCase, run_loop
+    from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
     from aiohttp import web
 
     class MyAppTestCase(AioHTTPTestCase):
@@ -104,10 +122,10 @@ functionality, the AioHTTPTestCase is provided::
             # it's important to use the loop passed here.
             return web.Application(loop=loop)
 
-        # the run_loop decorator can be used in tandem with
+        # the unittest_run_loop decorator can be used in tandem with
         # the AioHTTPTestCase to simplify running
         # tests that are asynchronous
-        @run_loop
+        @unittest_run_loop
         async def test_example(self):
             request = await self.client.request("GET", "/")
             assert request.status == 200
@@ -124,3 +142,11 @@ functionality, the AioHTTPTestCase is provided::
                 assert "Hello, world" in text
 
             self.loop.run_until_complete(test_get_route())
+
+aiohttp.test_utils
+------------------
+
+.. automodule:: aiohttp.test_utils
+   :members: TestClient, AioHTTPTestCase, run_loop, loop_context, setup_test_loop, teardown_test_loop
+   :undoc-members:
+   :show-inheritance:
