@@ -51,6 +51,11 @@ CHANGES
 
 - Document that server can send pre-compressed data #906
 
+- Don't add Content-Encoding and Transfer-Encoding if no body #891
+
+- Add json() convenience methods to websocket message objects #897
+
+
 0.21.6 (05-05-2016)
 -------------------
 
