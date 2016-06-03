@@ -16,7 +16,7 @@ from aiohttp import web
 from aiohttp import client
 from aiohttp import helpers
 from aiohttp.client import ClientResponse
-from aiohttp.connector import Connection
+from aiohttp.connector import Connection, host_is_ip
 
 
 class TestBaseConnector(unittest.TestCase):
@@ -846,8 +846,8 @@ class TestHttpClientConnector(unittest.TestCase):
         connector = aiohttp.TCPConnector(resolver=resolver, loop=self.loop)
 
         class Req:
-            host = '127.0.1.2'
-            port = 63830
+            host = '127.0.0.1'
+            port = 80
             ssl = False
             response = unittest.mock.Mock()
 
@@ -855,3 +855,22 @@ class TestHttpClientConnector(unittest.TestCase):
             self.loop.run_until_complete(connector.connect(Req()))
 
         resolver.resolve.assert_not_called()
+
+    def test_ip_addresses(self):
+        ip_addresses = [
+            '0.0.0.0',
+            '127.0.0.1',
+            '255.255.255.255',
+        ]
+        for address in ip_addresses:
+            assert host_is_ip(address) is True
+
+    def test_host_addresses(self):
+        hosts = [
+            'www.four.part.host'
+            'www.python.org',
+            'foo.bar',
+            'localhost',
+        ]
+        for host in hosts:
+            assert host_is_ip(host) is False
