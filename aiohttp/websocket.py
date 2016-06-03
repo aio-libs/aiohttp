@@ -382,7 +382,7 @@ def do_handshake(method, headers, transport, protocols=()):
             # No overlap found: Return no protocol as per spec
             ws_logger.warning(
                 'Client protocols %r don’t overlap server-known ones %r',
-                protocols, req_protocols)
+                req_protocols, protocols)
 
     # check supported version
     version = headers.get(hdrs.SEC_WEBSOCKET_VERSION, '')
