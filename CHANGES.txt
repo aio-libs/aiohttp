@@ -41,9 +41,13 @@ CHANGES
 - Use a create_future compatibility wrapper instead of creating
   Futures directly #896
 
-- Add test utilities to aiohttp. #902
+- Add test utilities to aiohttp #902
 
 - Improve Request.__repr__ #875
+
+- Skip DNS resolving if provided host is already an ip address #874
+
+- Add headers to ClientSession.ws_connect #785
 
 0.21.6 (05-05-2016)
 -------------------
