@@ -683,7 +683,9 @@ BaseConnector
 
    :param float keepalive_timeout: timeout for connection reusing
                                    after releasing (optional). Values
-                                   ``0`` or ``None`` mean no timeout.
+                                   ``0``. For disabling *keep-alive*
+                                   feature use ``force_close=True``
+                                   flag.
 
    :param int limit: limit for simultaneous connections to the same
                      endpoint.  Endpoints are the same if they are
