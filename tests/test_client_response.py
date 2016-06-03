@@ -70,6 +70,21 @@ class TestClientResponse(unittest.TestCase):
             '<ClientResponse(http://def-cl-resp.org) [200 Ok]>',
             repr(self.response))
 
+    def test_repr_non_ascii_url(self):
+        response = ClientResponse('get', 'http://fake-host.org/\u03bb')
+        self.assertIn(
+            "<ClientResponse(http://fake-host.org/\\u03bb) [None None]>",
+            repr(response))
+        response.close()
+
+    def test_repr_non_ascii_reason(self):
+        response = ClientResponse('get', 'http://fake-host.org/path')
+        response.reason = '\u03bb'
+        self.assertIn(
+            "<ClientResponse(http://fake-host.org/path) [None \\u03bb]>",
+            repr(response))
+        response.close()
+
     def test_read_and_release_connection(self):
         def side_effect(*args, **kwargs):
             fut = helpers.create_future(self.loop)
