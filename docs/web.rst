@@ -19,7 +19,6 @@ A request handler is a :ref:`coroutine <coroutine>` or regular function that
 accepts a :class:`Request` instance as its only parameter and returns a
 :class:`Response` instance::
 
-   import asyncio
    from aiohttp import web
 
    async def hello(request):
@@ -177,7 +176,7 @@ Routes can also be given a *name*::
 Which can then be used to access and build a *URL* for that resource later (e.g.
 in a :ref:`request handler <aiohttp-web-handler>`)::
 
-   >>> request.app.named_resource['root'].url(query={"a": "b", "c": "d"})
+   >>> request.app.router.named_resources()['root'].url(query={"a": "b", "c": "d"})
    '/root?a=b&c=d'
 
 A more interesting example is building *URLs* for :ref:`variable
