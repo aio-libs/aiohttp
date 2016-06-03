@@ -574,7 +574,7 @@ class StaticRoute(Route):
             raise HTTPNotFound() from error
         except Exception as error:
             # perm error or other kind!
-            request.logger.exception(error)
+            request.app.logger.exception(error)
             raise HTTPNotFound() from error
 
         # Make sure that filepath is a file
