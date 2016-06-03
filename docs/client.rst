@@ -76,7 +76,7 @@ is not encoded by library. Note that ``+`` is not encoded::
 
     async with session.get('http://httpbin.org/get',
                            params='key=value+1') as r:
-            assert r.url = 'http://httpbin.org/get?key=value+1'
+            assert r.url == 'http://httpbin.org/get?key=value+1'
 
 Response Content
 ----------------
