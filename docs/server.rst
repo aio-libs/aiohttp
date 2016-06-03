@@ -85,6 +85,19 @@ params.  However aiohttp does provide a nice
             print("Passed in GET", get_params)
 
 
+Sending pre-compressed data
+---------------------------
+
+To include data in the response that is already compressed, do not call
+`enable_compression`.  Instead, set the `Content-Encoding` header explicitly:
+
+    @asyncio.coroutine
+    def handler(request):
+        headers = {'Content-Encoding': 'gzip'}
+        deflated_data = zlib.compress(b'mydata')
+        return web.Response(body=deflated_data, headers=headers)
+
+
 Handling POST data
 ------------------
 
