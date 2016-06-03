@@ -250,7 +250,8 @@ class ClientSession:
                    autoclose=True,
                    autoping=True,
                    auth=None,
-                   origin=None):
+                   origin=None,
+                   headers=None):
         """Initiate websocket connection."""
         return _WSRequestContextManager(
             self._ws_connect(url,
@@ -259,7 +260,8 @@ class ClientSession:
                              autoclose=autoclose,
                              autoping=autoping,
                              auth=auth,
-                             origin=origin))
+                             origin=origin,
+                             headers=headers))
 
     @asyncio.coroutine
     def _ws_connect(self, url, *,
@@ -268,16 +270,25 @@ class ClientSession:
                     autoclose=True,
                     autoping=True,
                     auth=None,
-                    origin=None):
+                    origin=None,
+                    headers=None):
 
         sec_key = base64.b64encode(os.urandom(16))
 
-        headers = {
+        if headers is None:
+            headers = CIMultiDict()
+
+        default_headers = {
             hdrs.UPGRADE: hdrs.WEBSOCKET,
             hdrs.CONNECTION: hdrs.UPGRADE,
             hdrs.SEC_WEBSOCKET_VERSION: '13',
             hdrs.SEC_WEBSOCKET_KEY: sec_key.decode(),
         }
+
+        for key, value in default_headers.items():
+            if key not in headers:
+                headers[key] = value
+
         if protocols:
             headers[hdrs.SEC_WEBSOCKET_PROTOCOL] = ','.join(protocols)
         if origin is not None:
