@@ -701,6 +701,19 @@ class TestBaseConnector(unittest.TestCase):
         self.assertIsNone(conn.limit)
         conn.close()
 
+    def test_force_close_and_explicit_keep_alive(self):
+        with self.assertRaises(ValueError):
+            aiohttp.BaseConnector(loop=self.loop, keepalive_timeout=30,
+                                  force_close=True)
+
+        conn = aiohttp.BaseConnector(loop=self.loop, force_close=True,
+                                     keepalive_timeout=None)
+        assert conn
+
+        conn = aiohttp.BaseConnector(loop=self.loop, force_close=True)
+
+        assert conn
+
 
 class TestHttpClientConnector(unittest.TestCase):
 
