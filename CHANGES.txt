@@ -41,6 +41,8 @@ CHANGES
 - Use a create_future compatibility wrapper instead of creating
   Futures directly #896
 
+- Add test utilities to aiohttp. #902
+
 
 0.21.6 (05-05-2016)
 -------------------

@@ -102,5 +102,6 @@ W. Trevor King
 Willem de Groot
 Yannick Koechlin
 Yury Selivanov
+Yusuke Tsutsumi
 Марк Коренберг
 Семён Марьясин
