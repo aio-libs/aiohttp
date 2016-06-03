@@ -1147,6 +1147,11 @@ Response object
       return it into free connection pool for re-usage by next upcoming
       request.
 
+   .. method:: raise_for_status()
+
+      Raise an HttpProcessingError if the response status is 400 or higher.
+      Do nothing for success responses (less than 400).
+
    .. comethod:: text(encoding=None)
 
       Read response's body and return decoded :class:`str` using

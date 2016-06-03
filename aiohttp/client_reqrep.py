@@ -691,6 +691,12 @@ class ClientResponse:
                 self._connection = None
             self._cleanup_writer()
 
+    def raise_for_status(self):
+        if 400 <= self.status:
+            raise aiohttp.HttpProcessingError(
+                code=self.status,
+                message=self.reason)
+
     def _cleanup_writer(self):
         if self._writer is not None and not self._writer.done():
             self._writer.cancel()
