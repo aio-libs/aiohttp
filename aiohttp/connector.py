@@ -100,6 +100,9 @@ class Connection(object):
         return self._transport is None
 
 
+_default = object()
+
+
 class BaseConnector(object):
     """Base connector class.
 
@@ -113,9 +116,19 @@ class BaseConnector(object):
     _closed = True  # prevent AttributeError in __del__ if ctor was failed
     _source_traceback = None
 
-    def __init__(self, *, conn_timeout=None, keepalive_timeout=30,
+    def __init__(self, *, conn_timeout=None, keepalive_timeout=_default,
                  share_cookies=False, force_close=False, limit=None,
                  loop=None):
+
+        if force_close:
+            if keepalive_timeout is not None and \
+               keepalive_timeout is not _default:
+                raise ValueError('keepalive_timeout cannot '
+                                 'be set if force_close is True')
+        else:
+            if keepalive_timeout is _default:
+                keepalive_timeout = 30
+
         if loop is None:
             loop = asyncio.get_event_loop()
 
