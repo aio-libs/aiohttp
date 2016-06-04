@@ -417,10 +417,11 @@ class TestClient:
         if not self._closed:
             loop = self._loop
             loop.run_until_complete(self._session.close())
-            loop.run_until_complete(self._handler.finish_connections())
-            loop.run_until_complete(self.app.finish())
             self._server.close()
             loop.run_until_complete(self._server.wait_closed())
+            loop.run_until_complete(self.app.shutdown())
+            loop.run_until_complete(self._handler.finish_connections())
+            loop.run_until_complete(self.app.cleanup())
             self._closed = True
 
     def __del__(self):
