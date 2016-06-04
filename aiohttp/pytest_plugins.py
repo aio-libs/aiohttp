@@ -3,7 +3,8 @@ import contextlib
 
 import pytest
 
-from .test_utils import TestClient, loop_context, setup_test_loop, teardown_test_loop
+from .test_utils import (TestClient, loop_context, setup_test_loop,
+                         teardown_test_loop)
 
 
 @contextlib.contextmanager
@@ -31,9 +32,13 @@ def pytest_pyfunc_call(pyfuncitem):
     Run coroutines in an event loop instead of a normal function call.
     """
     if asyncio.iscoroutinefunction(pyfuncitem.function):
-        with _passthrough_loop_context(pyfuncitem.funcargs.get('loop')) as _loop:
-            testargs = {arg: pyfuncitem.funcargs[arg] for arg in pyfuncitem._fixtureinfo.argnames}
-            _loop.run_until_complete(_loop.create_task(pyfuncitem.obj(**testargs)))
+        existing_loop = pyfuncitem.funcargs.get('loop', None)
+        with _passthrough_loop_context(existing_loop) as _loop:
+            testargs = {arg: pyfuncitem.funcargs[arg]
+                        for arg in pyfuncitem._fixtureinfo.argnames}
+
+            task = _loop.create_task(pyfuncitem.obj(**testargs))
+            _loop.run_until_complete(task)
 
         return True
 
@@ -48,11 +53,12 @@ def loop():
 def test_client(loop):
     client = None
 
-    async def _create_from_app_factory(app_factory):
+    @asyncio.coroutine
+    def _create_from_app_factory(app_factory, *args, **kwargs):
         nonlocal client
-        app = app_factory(loop)
+        app = app_factory(loop, *args, **kwargs)
         client = TestClient(app)
-        await client.start_server()
+        yield from client.start_server()
         return client
 
     yield _create_from_app_factory
