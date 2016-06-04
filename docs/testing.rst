@@ -81,8 +81,8 @@ A pytest example could look like::
             yield loop
 
     @pytest.fixture
-    def app(test_loop):
-        return create_app(event_loop)
+    def app(loop):
+        return create_app(loop)
 
 
     @pytest.yield_fixture
