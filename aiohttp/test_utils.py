@@ -326,16 +326,16 @@ class TestClient:
 
     :type app: aiohttp.web.Application
 
-    :param protocol: the aiohttp.web application passed to create_test_server
+    :param protocol: http or https
 
-    :type app: aiohttp.web.Application
+    :type protocol: str
 
     TestClient can also be used as a contextmanager, returning
     the instance of itself instantiated.
     """
 
     def __init__(self, app, protocol="http"):
-        self._app = app
+        self.app = app
         self._loop = loop = app.loop
         self.port = unused_port()
         self._handler = handler = app.make_handler()
@@ -418,7 +418,7 @@ class TestClient:
             loop = self._loop
             loop.run_until_complete(self._session.close())
             loop.run_until_complete(self._handler.finish_connections())
-            loop.run_until_complete(self._app.finish())
+            loop.run_until_complete(self.app.finish())
             self._server.close()
             loop.run_until_complete(self._server.wait_closed())
             self._closed = True
