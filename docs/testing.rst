@@ -73,7 +73,7 @@ Pytest example
 A pytest example could look like::
 
     # assuming you are using pytest-asyncio
-    from asyncio.test_utils import TestClient, loop_context
+    from aiohttp.test_utils import TestClient, loop_context
 
     @pytest.yield_fixture
     def loop():
@@ -87,7 +87,7 @@ A pytest example could look like::
 
     @pytest.yield_fixture
     def test_client(app):
-        server = TestClient(app)
+        client = TestClient(app)
         yield client
         client.close()
 
