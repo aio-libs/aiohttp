@@ -68,3 +68,141 @@ class AbstractResolver(ABC):
     @abstractmethod
     def close(self):
         """Release resolver"""
+
+
+class AbstractRequest(ABC):
+
+    @property
+    @abstractmethod
+    def scheme(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def method(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def version(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def host(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def path_qs(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def _splitted_path(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def raw_path(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def path(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def query_string(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def GET(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def POST(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def headers(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def raw_headers(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def if_modified_since(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def keep_alive(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def match_info(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def app(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def transport(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def cookies(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def payload(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def content(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def has_body(self):
+        raise NotImplementedError
+
+    @asyncio.coroutine
+    @abstractmethod
+    def release(self):
+        raise NotImplementedError
+
+    @asyncio.coroutine
+    @abstractmethod
+    def read(self):
+        raise NotImplementedError
+
+    @asyncio.coroutine
+    @abstractmethod
+    def text(self):
+        raise NotImplementedError
+
+    @asyncio.coroutine
+    @abstractmethod
+    def json(self):
+        raise NotImplementedError
+
+    @asyncio.coroutine
+    @abstractmethod
+    def post(self):
+        raise NotImplementedError
