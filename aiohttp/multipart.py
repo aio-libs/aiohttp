@@ -851,7 +851,7 @@ class BodyPartWriter(object):
             raise RuntimeError('unknown content transfer encoding: {}'
                                ''.format(encoding))
 
-    def set_content_disposition(self, disptype, **params):
+    def set_content_disposition(self, disptype, quote_fields=True, **params):
         """Sets ``Content-Disposition`` header.
 
         :param str disptype: Disposition type: inline, attachment, form-data.
@@ -868,7 +868,7 @@ class BodyPartWriter(object):
                 if not key or not (TOKEN > set(key)):
                     raise ValueError('bad content disposition parameter'
                                      ' {!r}={!r}'.format(key, val))
-                qval = quote(val, '')
+                qval = quote(val, '') if quote_fields else val
                 lparams.append((key, '"%s"' % qval))
                 if key == 'filename':
                     lparams.append(('filename*', "utf-8''" + qval))
