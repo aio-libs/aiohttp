@@ -53,18 +53,47 @@ def test_noop():
     pass
 
 
+@asyncio.coroutine
+def previous(request):
+    if request.method == 'POST':
+        request.app['value'] = (yield from request.post())['value']
+        return web.Response(body=b'thanks for the data')
+    else:
+        v = request.app.get('value', 'unknown')
+        return web.Response(body='value: {}'.format(v).encode())
+
+
+def create_stateful_app(loop):
+    app = web.Application(loop=loop)
+    app.router.add_route('*', '/', previous)
+    return app
+
+
 @pytest.fixture
-def client_alias(loop, test_client):
-    cli = loop.run_until_complete(test_client(create_app))
-    return cli
+def cli(loop, test_client):
+    return loop.run_until_complete(test_client(create_stateful_app))
 
 
 @asyncio.coroutine
-def test_hello_with_alias(client_alias):
-    resp = yield from client_alias.get('/')
+def test_set_value(cli):
+    resp = yield from cli.post('/', data={'value': 'foo'})
     assert resp.status == 200
     text = yield from resp.text()
-    assert 'Hello, world' in text
+    assert text == 'thanks for the data'
+    assert cli.app['value'] == 'foo'
+
+
+@asyncio.coroutine
+def test_get_value(cli):
+    resp = yield from cli.get('/')
+    assert resp.status == 200
+    text = yield from resp.text()
+    assert text == 'value: unknown'
+    cli.app['value'] = 'bar'
+    resp = yield from cli.get('/')
+    assert resp.status == 200
+    text = yield from resp.text()
+    assert text == 'value: bar'
 """)
     result = testdir.runpytest()
-    result.assert_outcomes(passed=4, failed=1)
+    result.assert_outcomes(passed=5, failed=1)
