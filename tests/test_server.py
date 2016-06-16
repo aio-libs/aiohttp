@@ -393,19 +393,18 @@ def test_lingering(srv, loop):
         srv.reader.feed_data(
             b'GET / HTTP/1.0\r\n'
             b'Host: example.com\r\n'
-            b'Content-Length: 3\r\n\r\n')
+            b'Content-Length: 4\r\n\r\n')
         yield from asyncio.sleep(0, loop=loop)
         srv.reader.feed_data(b'123')
         srv.reader.feed_eof()
 
     srv.handle_request = mock.Mock()
 
-    req = asyncio.ensure_future(srv._request_handler, loop=loop)
-    ling = asyncio.ensure_future(linger(), loop=loop)
+    req = helpers.ensure_future(srv._request_handler, loop=loop)
+    ling = helpers.ensure_future(linger(), loop=loop)
 
     done, pending = yield from asyncio.wait(
         [req, ling], loop=loop, return_when=asyncio.FIRST_COMPLETED)
-
     assert ling in done
     assert req in pending
 
