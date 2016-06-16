@@ -353,8 +353,17 @@ def test_handle(srv, loop):
     assert transport.close.called
 
 
-def test_handle_uncompleted(srv, loop):
+def test_handle_uncompleted(make_srv, loop):
     transport = mock.Mock()
+    closed = False
+
+    def close():
+        nonlocal closed
+        closed = True
+
+    transport.close = close
+
+    srv = make_srv(lingering_timeout=0)
     srv.connection_made(transport)
     srv.logger.exception = mock.Mock()
 
@@ -368,8 +377,37 @@ def test_handle_uncompleted(srv, loop):
 
     loop.run_until_complete(srv._request_handler)
     assert handle.called
-    assert transport.close.called
+    assert closed
     srv.logger.exception.assert_called_with("Error handling request")
+
+
+@pytest.mark.run_loop
+def test_lingering(srv, loop):
+
+    transport = mock.Mock()
+    transport.close = lambda: None
+    srv.connection_made(transport)
+
+    @asyncio.coroutine
+    def linger():
+        srv.reader.feed_data(
+            b'GET / HTTP/1.0\r\n'
+            b'Host: example.com\r\n'
+            b'Content-Length: 3\r\n\r\n')
+        yield from asyncio.sleep(0, loop=loop)
+        srv.reader.feed_data(b'123')
+        srv.reader.feed_eof()
+
+    srv.handle_request = mock.Mock()
+
+    req = asyncio.ensure_future(srv._request_handler, loop=loop)
+    ling = asyncio.ensure_future(linger(), loop=loop)
+
+    done, pending = yield from asyncio.wait(
+        [req, ling], loop=loop, return_when=asyncio.FIRST_COMPLETED)
+
+    assert ling in done
+    assert req in pending
 
 
 def test_handle_coro(srv, loop):
