@@ -74,7 +74,7 @@ To retrieve four things from the web with concurrency:
           coroutines = [fetch(session, url) for url in URLS]
           pages = [loop.run_until_complete(coroutine) for coroutine in coroutines]
           for url, page in zip(URLS, pages):
-              print('{:>15}\n{}\n{:.100}\n'.format(url, '=' * len(url), page))
+              print('{}:\n{}=\n{:.100}\n'.format(url, '=' * len(url), page))
 
 Server
 ^^^^^^
