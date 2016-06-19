@@ -320,7 +320,7 @@ calculate the file SHA1 hash::
            if not chunk:
                break
            h.update(chunk)
-           s.feed_data(chunk)
+           stream.feed_data(chunk)
 
        return h.hexdigest()
 
@@ -335,7 +335,7 @@ Because the response content attribute is a
 :class:`~aiohttp.streams.StreamReader`, you can chain get and post
 requests together (aka HTTP pipelining)::
 
-   r = await session.get, 'http://python.org')
+   r = await session.get('http://python.org')
    await session.post('http://httpbin.org/post',
                       data=r.content)
 
