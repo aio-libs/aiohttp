@@ -4,6 +4,7 @@ import base64
 import binascii
 import collections
 import hashlib
+import json
 import os
 import random
 import sys
@@ -33,6 +34,8 @@ CLOSE_POLICY_VIOLATION = 1008
 CLOSE_MESSAGE_TOO_BIG = 1009
 CLOSE_MANDATORY_EXTENSION = 1010
 CLOSE_INTERNAL_ERROR = 1011
+CLOSE_SERVICE_RESTART = 1012
+CLOSE_TRY_AGAIN_LATER = 1013
 
 ALLOWED_CLOSE_CODES = (
     CLOSE_OK,
@@ -44,6 +47,8 @@ ALLOWED_CLOSE_CODES = (
     CLOSE_MESSAGE_TOO_BIG,
     CLOSE_MANDATORY_EXTENSION,
     CLOSE_INTERNAL_ERROR,
+    CLOSE_SERVICE_RESTART,
+    CLOSE_TRY_AGAIN_LATER,
 )
 
 WS_KEY = b'258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
@@ -53,7 +58,6 @@ WS_HDRS = (hdrs.UPGRADE,
            hdrs.SEC_WEBSOCKET_KEY,
            hdrs.SEC_WEBSOCKET_PROTOCOL)
 
-Message = collections.namedtuple('Message', ['tp', 'data', 'extra'])
 
 UNPACK_LEN2 = Struct('!H').unpack_from
 UNPACK_LEN3 = Struct('!Q').unpack_from
@@ -63,6 +67,18 @@ PACK_LEN2 = Struct('!BBH').pack
 PACK_LEN3 = Struct('!BBQ').pack
 PACK_CLOSE_CODE = Struct('!H').pack
 MSG_SIZE = 2 ** 14
+
+
+_MessageBase = collections.namedtuple('Message', ['tp', 'data', 'extra'])
+
+
+class Message(_MessageBase):
+    def json(self, *, loads=json.loads):
+        """Return parsed JSON data.
+
+        .. versionadded:: 0.22
+        """
+        return loads(self.data)
 
 
 class WebSocketError(Exception):
@@ -341,7 +357,7 @@ class WebSocketWriter:
 def do_handshake(method, headers, transport, protocols=()):
     """Prepare WebSocket handshake.
 
-    It return http response code, response headers, websocket parser,
+    It return HTTP response code, response headers, websocket parser,
     websocket writer. It does not perform any IO.
 
     `protocols` is a sequence of known protocols. On successful handshake,
@@ -378,7 +394,7 @@ def do_handshake(method, headers, transport, protocols=()):
             # No overlap found: Return no protocol as per spec
             ws_logger.warning(
                 'Client protocols %r don’t overlap server-known ones %r',
-                protocols, req_protocols)
+                req_protocols, protocols)
 
     # check supported version
     version = headers.get(hdrs.SEC_WEBSOCKET_VERSION, '')

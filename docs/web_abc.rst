@@ -56,7 +56,7 @@ Not Allowed*. :meth:`AbstractMatchInfo.handler` raises
 
 .. class:: AbstractMatchInfo
 
-   Abstract *math info*, returned by :meth:`AbstractRouter` call.
+   Abstract *match info*, returned by :meth:`AbstractRouter` call.
 
    .. attribute:: http_exception
 
@@ -71,7 +71,7 @@ Not Allowed*. :meth:`AbstractMatchInfo.handler` raises
                       resolving, the request has
                       :attr:`aiohttp.web.Request.match_info` equals to
                       ``None`` at resolving stage.
-      :return: :class:`aiohttp.web.StramResponse` or descendants.
+      :return: :class:`aiohttp.web.StreamResponse` or descendants.
 
       :raise: :class:`aiohttp.web.HTTPException` on error
 

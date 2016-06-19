@@ -260,9 +260,9 @@ like one using :meth:`Request.copy`.
 
          async def json(self, *, loads=json.loads):
              body = await self.text()
-             return loader(body)
+             return loads(body)
 
-      :param callable loader: any :term:`callable` that accepts
+      :param callable loads: any :term:`callable` that accepts
                               :class:`str` and returns :class:`dict`
                               with parsed JSON (:func:`json.loads` by
                               default).
@@ -894,7 +894,7 @@ WebSocketResponse
 
    .. coroutinemethod:: receive_str()
 
-      A :ref:`coroutine<coroutine>` that calls :meth:`receive_mgs` but
+      A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
       :const:`~aiohttp.websocket.MSG_TEXT`.
 
@@ -904,13 +904,31 @@ WebSocketResponse
 
    .. coroutinemethod:: receive_bytes()
 
-      A :ref:`coroutine<coroutine>` that calls :meth:`receive_mgs` but
+      A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
       :const:`~aiohttp.websocket.MSG_BINARY`.
 
       :return bytes: peer's message content.
 
       :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_TEXT`.
+
+   .. coroutinemethod:: receive_json(*, loads=json.loads)
+
+      A :ref:`coroutine<coroutine>` that calls :meth:`receive`, asserts the
+      message type is :const:`~aiohttp.websocket.MSG_TEXT`, and loads the JSON
+      string to a Python dict.
+
+      :param callable loads: any :term:`callable` that accepts
+                              :class:`str` and returns :class:`dict`
+                              with parsed JSON (:func:`json.loads` by
+                              default).
+
+      :return dict: loaded JSON content
+
+      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_BINARY`.
+      :raise ValueError: if message is not valid JSON.
+
+      .. versionadded:: 0.22
 
 
 .. versionadded:: 0.14
@@ -1132,11 +1150,11 @@ RequestHandlerFactory
 RequestHandlerFactory is responsible for creating HTTP protocol objects that
 can handle HTTP connections.
 
-   .. attribute:: connections
+   .. attribute:: RequestHandlerFactory.connections
 
       List of all currently opened connections.
 
-   .. method:: finish_connections(timeout)
+   .. coroutinemethod:: RequestHandlerFactory.finish_connections(timeout)
 
       A :ref:`coroutine<coroutine>` that should be called to close all opened
       connections.
@@ -1438,6 +1456,7 @@ Resource classes hierarchy::
       ``(method, path)`` combination.
 
       :param str method: requested HTTP method.
+      :param str path: *path* part of request.
 
       :return: (*match_info*, *allowed_methods*) pair.
 
@@ -1476,8 +1495,6 @@ Resource classes hierarchy::
                          can push ``'get'`` as well as ``'GET'``.
 
                          The method should be unique for resource.
-
-      :param str path: route path. Should be started with slash (``'/'``).
 
       :param callable handler: route handler.
 

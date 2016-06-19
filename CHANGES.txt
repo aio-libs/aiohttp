@@ -1,12 +1,73 @@
 CHANGES
 =======
 
+0.22.0 (XX-XX-XXXX)
+-------------------
+
+- Fix bug in serving static directory #803
+
+- Fix command line arg parsing #797
+
+- Fix a documentation chapter about cookie usage #790
+
+- Handle empty body with gzipped encoding #758
+
+- Support 451 Unavailable For Legal Reasons http status  #697
+
+- Fix Cookie share example and few small typos in docs #817
+
+- UrlDispatcher.add_route with partial coroutine handler #814
+
+- Optional support for aiodns #728
+
+- Add ServiceRestart and TryAgainLater websocket close codes #828
+
+- Fix prompt message for `web.run_app` #832
+
+- Allow to pass None as a timeout value to disable timeout logic #834
+
+- Fix leak of connection slot during connection erro #835
+
+- Gunicorn worker with uvloop support `aiohttp.worker.GunicornUVLoopWebWorker` #878
+
+- Don't send body in response to HEAD request #838
+
+- Skip the preamble in MultipartReader #881
+
+- Implement BasicAuth decode classmethod. #744
+
+- Don't crash logger when transport is None #889
+
+- Use a create_future compatibility wrapper instead of creating
+  Futures directly #896
+
+- Add test utilities to aiohttp #902
+
+- Improve Request.__repr__ #875
+
+- Skip DNS resolving if provided host is already an ip address #874
+
+- Add headers to ClientSession.ws_connect #785
+
+- Document that server can send pre-compressed data #906
+
+- Don't add Content-Encoding and Transfer-Encoding if no body #891
+
+- Add json() convenience methods to websocket message objects #897
+
+- Add client_resp.raise_for_status() #908
+
+- Implement cookie filter #799
+
+- Include an example of middleware to handle error pages #909
+
+- Fix error handling in StaticFileMixin #856
+
+
 0.21.6 (05-05-2016)
 -------------------
 
 - Drop initial query parameters on redirects #853
-
-- Fix error handling in StaticFileMixin #856
 
 
 0.21.5 (03-22-2016)

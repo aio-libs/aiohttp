@@ -1,13 +1,18 @@
 """Tests for aiohttp/worker.py"""
 import asyncio
 import pytest
+import sys
+
 from unittest import mock
+
+from aiohttp import helpers
 
 
 base_worker = pytest.importorskip('aiohttp.worker')
+pytest.importorskip('uvloop')
 
 
-class MyWorker(base_worker.GunicornWebWorker):
+class BaseTestWorker:
 
     def __init__(self):
         self.servers = []
@@ -16,9 +21,23 @@ class MyWorker(base_worker.GunicornWebWorker):
         self.cfg.graceful_timeout = 100
 
 
-@pytest.fixture
-def worker():
-    return MyWorker()
+class AsyncioWorker(BaseTestWorker, base_worker.GunicornWebWorker):
+    pass
+
+
+class UvloopWorker(BaseTestWorker, base_worker.GunicornUVLoopWebWorker):
+
+    def __init__(self):
+        if sys.version_info < (3, 5) \
+                or sys.platform in ('win32', 'cygwin', 'cli'):
+            raise pytest.skip("uvloop requires Python 3.5 and *nix.")
+
+        super().__init__()
+
+
+@pytest.fixture(params=[AsyncioWorker, UvloopWorker])
+def worker(request):
+    return request.param()
 
 
 def test_init_process(worker):
@@ -41,7 +60,12 @@ def test_run(worker, loop):
         worker.run()
 
     assert worker._run.called
-    assert loop._closed
+    is_closed = getattr(loop, 'is_closed')
+    if is_closed is not None:
+        closed = is_closed()
+    else:
+        closed = loop._closed
+    assert closed
 
 
 def test_handle_quit(worker):
@@ -56,9 +80,9 @@ def test_handle_abort(worker):
     assert worker.exit_code == 1
 
 
-def test_init_signal(worker):
+def test_init_signals(worker):
     worker.loop = mock.Mock()
-    worker.init_signal()
+    worker.init_signals()
     assert worker.loop.add_signal_handler.called
 
 
@@ -81,12 +105,12 @@ def test__run_ok(worker, loop):
     worker.sockets = [sock]
     worker.wsgi = mock.Mock()
     worker.close = mock.Mock()
-    worker.close.return_value = asyncio.Future(loop=loop)
+    worker.close.return_value = helpers.create_future(loop)
     worker.close.return_value.set_result(())
     worker.log = mock.Mock()
     worker.notify = mock.Mock()
     worker.loop = loop
-    ret = asyncio.Future(loop=loop)
+    ret = helpers.create_future(loop)
     loop.create_server = mock.Mock(
         wraps=asyncio.coroutine(lambda *a, **kw: ret))
     ret.set_result(sock)
@@ -116,12 +140,12 @@ def test__run_exc(worker, loop):
         worker.notify = mock.Mock()
 
         with mock.patch('aiohttp.worker.asyncio.sleep') as m_sleep:
-            slp = asyncio.Future(loop=loop)
+            slp = helpers.create_future(loop)
             slp.set_exception(KeyboardInterrupt)
             m_sleep.return_value = slp
 
             worker.close = mock.Mock()
-            worker.close.return_value = asyncio.Future(loop=loop)
+            worker.close.return_value = helpers.create_future(loop)
             worker.close.return_value.set_result(1)
 
             loop.run_until_complete(worker._run())
@@ -137,14 +161,13 @@ def test_close(worker, loop):
     worker.log = mock.Mock()
     worker.loop = loop
     app = worker.wsgi = mock.Mock()
-    app.finish.return_value = asyncio.Future(loop=loop)
+    app.finish.return_value = helpers.create_future(loop)
     app.finish.return_value.set_result(1)
     handler.connections = [object()]
-    handler.finish_connections.return_value = asyncio.Future(
-        loop=loop)
+    handler.finish_connections.return_value = helpers.create_future(loop)
     handler.finish_connections.return_value.set_result(1)
 
-    app.shutdown.return_value = asyncio.Future(loop=loop)
+    app.shutdown.return_value = helpers.create_future(loop)
     app.shutdown.return_value.set_result(None)
 
     loop.run_until_complete(worker.close())

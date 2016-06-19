@@ -7,6 +7,7 @@ import unittest.mock as mock
 import zlib
 
 import aiohttp.multipart
+from aiohttp import helpers
 from aiohttp.helpers import parse_mimetype
 from aiohttp.hdrs import (
     CONTENT_DISPOSITION,
@@ -48,7 +49,7 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
         self.loop.close()
 
     def future(self, obj):
-        fut = asyncio.Future(loop=self.loop)
+        fut = helpers.create_future(self.loop)
         fut.set_result(obj)
         return fut
 
@@ -175,7 +176,7 @@ class PartReaderTestCase(TestCase):
         stream = Stream(b'')
 
         def prepare(data):
-            f = asyncio.Future(loop=self.loop)
+            f = helpers.create_future(self.loop)
             f.set_result(data)
             return f
 
@@ -216,7 +217,7 @@ class PartReaderTestCase(TestCase):
         stream = Stream(b'')
 
         def prepare(data):
-            f = asyncio.Future(loop=self.loop)
+            f = helpers.create_future(self.loop)
             f.set_result(data)
             return f
 
@@ -682,6 +683,24 @@ class MultipartReaderTestCase(TestCase):
                 read_part += chunk
             body_parts.append(read_part)
         self.assertListEqual(body_parts, [b'chunk', b'two_chunks'])
+
+    def test_reading_skips_prelude(self):
+        reader = aiohttp.multipart.MultipartReader(
+            {CONTENT_TYPE: 'multipart/related;boundary=":"'},
+            Stream(b'Multi-part data is not supported.\r\n'
+                   b'\r\n'
+                   b'--:\r\n'
+                   b'\r\n'
+                   b'test\r\n'
+                   b'--:\r\n'
+                   b'\r\n'
+                   b'passed\r\n'
+                   b'--:--'))
+        first = yield from reader.next()
+        self.assertIsInstance(first, aiohttp.multipart.BodyPartReader)
+        second = yield from reader.next()
+        self.assertTrue(first.at_eof())
+        self.assertFalse(second.at_eof())
 
 
 class BodyPartWriterTestCase(unittest.TestCase):

@@ -7,16 +7,17 @@ import os
 import sys
 import traceback
 import warnings
-import http.cookies
 import urllib.parse
+
+from multidict import MultiDictProxy, MultiDict, CIMultiDict, upstr
 
 import aiohttp
 from .client_reqrep import ClientRequest, ClientResponse
 from .errors import WSServerHandshakeError
-from .multidict import MultiDictProxy, MultiDict, CIMultiDict, upstr
+from .helpers import CookieJar
 from .websocket import WS_KEY, WebSocketParser, WebSocketWriter
 from .websocket_client import ClientWebSocketResponse
-from . import hdrs
+from . import hdrs, helpers
 
 
 __all__ = ('ClientSession', 'request', 'get', 'options', 'head',
@@ -51,13 +52,13 @@ class ClientSession:
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
-        self._cookies = http.cookies.SimpleCookie()
+        self._cookie_jar = CookieJar(loop=loop)
 
         # For Backward compatability with `share_cookies` connectors
         if connector._share_cookies:
-            self._update_cookies(connector.cookies)
+            self._cookie_jar.update_cookies(connector.cookies)
         if cookies is not None:
-            self._update_cookies(cookies)
+            self._cookie_jar.update_cookies(cookies)
         self._connector = connector
         self._default_auth = auth
         self._version = version
@@ -172,10 +173,13 @@ class ClientSession:
                 skip_headers.add(upstr(i))
 
         while True:
+
+            cookies = self._cookie_jar.filter_cookies(url)
+
             req = self._request_class(
                 method, url, params=params, headers=headers,
                 skip_auto_headers=skip_headers, data=data,
-                cookies=self.cookies, encoding=encoding,
+                cookies=cookies, encoding=encoding,
                 auth=auth, version=version, compress=compress, chunked=chunked,
                 expect100=expect100,
                 loop=self._loop, response_class=self._response_class)
@@ -195,7 +199,8 @@ class ClientSession:
             except OSError as exc:
                 raise aiohttp.ClientOSError(*exc.args) from exc
 
-            self._update_cookies(resp.cookies)
+            self._cookie_jar.update_cookies(resp.cookies, resp.url)
+
             # For Backward compatability with `share_cookie` connectors
             if self._connector._share_cookies:
                 self._connector.update_cookies(resp.cookies)
@@ -249,7 +254,8 @@ class ClientSession:
                    autoclose=True,
                    autoping=True,
                    auth=None,
-                   origin=None):
+                   origin=None,
+                   headers=None):
         """Initiate websocket connection."""
         return _WSRequestContextManager(
             self._ws_connect(url,
@@ -258,7 +264,8 @@ class ClientSession:
                              autoclose=autoclose,
                              autoping=autoping,
                              auth=auth,
-                             origin=origin))
+                             origin=origin,
+                             headers=headers))
 
     @asyncio.coroutine
     def _ws_connect(self, url, *,
@@ -267,16 +274,25 @@ class ClientSession:
                     autoclose=True,
                     autoping=True,
                     auth=None,
-                    origin=None):
+                    origin=None,
+                    headers=None):
 
         sec_key = base64.b64encode(os.urandom(16))
 
-        headers = {
+        if headers is None:
+            headers = CIMultiDict()
+
+        default_headers = {
             hdrs.UPGRADE: hdrs.WEBSOCKET,
             hdrs.CONNECTION: hdrs.UPGRADE,
             hdrs.SEC_WEBSOCKET_VERSION: '13',
             hdrs.SEC_WEBSOCKET_KEY: sec_key.decode(),
         }
+
+        for key, value in default_headers.items():
+            if key not in headers:
+                headers[key] = value
+
         if protocols:
             headers[hdrs.SEC_WEBSOCKET_PROTOCOL] = ','.join(protocols)
         if origin is not None:
@@ -344,19 +360,6 @@ class ClientSession:
                                            autoclose,
                                            autoping,
                                            self._loop)
-
-    def _update_cookies(self, cookies):
-        """Update shared cookies."""
-        if isinstance(cookies, dict):
-            cookies = cookies.items()
-
-        for name, value in cookies:
-            if isinstance(value, http.cookies.Morsel):
-                # use dict method because SimpleCookie class modifies value
-                # before Python 3.4
-                dict.__setitem__(self.cookies, name, value)
-            else:
-                self.cookies[name] = value
 
     def _prepare_headers(self, headers):
         """ Add default headers and transform it to CIMultiDict
@@ -431,7 +434,7 @@ class ClientSession:
         if not self.closed:
             self._connector.close()
             self._connector = None
-        ret = asyncio.Future(loop=self._loop)
+        ret = helpers.create_future(self._loop)
         ret.set_result(None)
         return ret
 
@@ -451,7 +454,7 @@ class ClientSession:
     @property
     def cookies(self):
         """The session cookies."""
-        return self._cookies
+        return self._cookie_jar.cookies
 
     @property
     def version(self):
@@ -626,7 +629,7 @@ def request(method, url, *,
             response_class=None):
     """Constructs and sends a request. Returns response object.
 
-    :param str method: http method
+    :param str method: HTTP method
     :param str url: request url
     :param params: (optional) Dictionary or bytes to be sent in the query
       string of the new request
@@ -639,7 +642,7 @@ def request(method, url, *,
     :type auth: aiohttp.helpers.BasicAuth
     :param bool allow_redirects: (optional) If set to False, do not follow
       redirects
-    :param version: Request http version.
+    :param version: Request HTTP version.
     :type version: aiohttp.protocol.HttpVersion
     :param bool compress: Set to True if request has to be compressed
        with deflate encoding.

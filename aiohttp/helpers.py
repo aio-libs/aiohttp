@@ -2,16 +2,20 @@
 
 import asyncio
 import base64
+import binascii
 import datetime
 import functools
 import io
 import os
 import re
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urlsplit
+from http.cookies import SimpleCookie, Morsel
 from collections import namedtuple
 from pathlib import Path
 
-from . import hdrs, multidict
+import multidict
+
+from . import hdrs
 from .errors import InvalidURL
 
 try:
@@ -20,7 +24,8 @@ except ImportError:
     ensure_future = asyncio.async
 
 
-__all__ = ('BasicAuth', 'FormData', 'parse_mimetype', 'Timeout')
+__all__ = ('BasicAuth', 'create_future', 'FormData', 'parse_mimetype',
+           'Timeout')
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
@@ -40,10 +45,40 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
 
         return super().__new__(cls, login, password, encoding)
 
+    @classmethod
+    def decode(cls, auth_header, encoding='latin1'):
+        """Create a :class:`BasicAuth` object from an ``Authorization`` HTTP
+        header."""
+        split = auth_header.strip().split(' ')
+        if len(split) == 2:
+            if split[0].strip().lower() != 'basic':
+                raise ValueError('Unknown authorization method %s' % split[0])
+            to_decode = split[1]
+        else:
+            raise ValueError('Could not parse authorization header.')
+
+        try:
+            username, _, password = base64.b64decode(
+                to_decode.encode('ascii')
+            ).decode(encoding).partition(':')
+        except binascii.Error:
+            raise ValueError('Invalid base64 encoding.')
+
+        return cls(username, password, encoding=encoding)
+
     def encode(self):
         """Encode credentials."""
         creds = ('%s:%s' % (self.login, self.password)).encode(self.encoding)
         return 'Basic %s' % base64.b64encode(creds).decode(self.encoding)
+
+
+def create_future(loop):
+    """Compatiblity wrapper for the loop.create_future() call introduced in
+    3.5.2."""
+    if hasattr(loop, 'create_future'):
+        return loop.create_future()
+    else:
+        return asyncio.Future(loop=loop)
 
 
 class FormData:
@@ -306,7 +341,8 @@ class AccessLogger:
 
     @staticmethod
     def _format_a(args):
-        return args[3].get_extra_info('peername')[0]
+        return args[3].get_extra_info('peername')[0] if args[3] is not None \
+            else '-'
 
     @staticmethod
     def _format_t(args):
@@ -357,7 +393,7 @@ class AccessLogger:
         :param message: Request object. May be None.
         :param environ: Environment dict. May be None.
         :param response: Response object.
-        :param transport: Tansport object.
+        :param transport: Tansport object. May be None
         :param float time: Time taken to serve the request.
         """
         try:
@@ -449,6 +485,41 @@ def requote_uri(uri):
         return quote(uri, safe=safe_without_percent)
 
 
+_ipv4_pattern = ('^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}'
+                 '(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
+_ipv6_pattern = (
+    '^(?:(?:(?:[A-F0-9]{1,4}:){6}|(?=(?:[A-F0-9]{0,4}:){0,6}'
+    '(?:[0-9]{1,3}\.){3}[0-9]{1,3}$)(([0-9A-F]{1,4}:){0,5}|:)'
+    '((:[0-9A-F]{1,4}){1,5}:|:)|::(?:[A-F0-9]{1,4}:){5})'
+    '(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}'
+    '(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])|(?:[A-F0-9]{1,4}:){7}'
+    '[A-F0-9]{1,4}|(?=(?:[A-F0-9]{0,4}:){0,7}[A-F0-9]{0,4}$)'
+    '(([0-9A-F]{1,4}:){1,7}|:)((:[0-9A-F]{1,4}){1,7}|:)|(?:[A-F0-9]{1,4}:){7}'
+    ':|:(:[A-F0-9]{1,4}){7})$')
+_ipv4_regex = re.compile(_ipv4_pattern)
+_ipv6_regex = re.compile(_ipv6_pattern, flags=re.IGNORECASE)
+_ipv4_regexb = re.compile(_ipv4_pattern.encode('ascii'))
+_ipv6_regexb = re.compile(_ipv6_pattern.encode('ascii'), flags=re.IGNORECASE)
+
+
+def is_ip_address(host):
+    if host is None:
+        return False
+    if isinstance(host, str):
+        if _ipv4_regex.match(host) or _ipv6_regex.match(host):
+            return True
+        else:
+            return False
+    elif isinstance(host, (bytes, bytearray, memoryview)):
+        if _ipv4_regexb.match(host) or _ipv6_regexb.match(host):
+            return True
+        else:
+            return False
+    else:
+        raise TypeError("{} [{}] is not a str or bytes"
+                        .format(host, type(host)))
+
+
 class Timeout:
     """Timeout context manager.
 
@@ -460,7 +531,7 @@ class Timeout:
     ...         await r.text()
 
 
-    :param timeout: timeout value in seconds
+    :param timeout: timeout value in seconds or None to disable timeout logic
     :param loop: asyncio compatible event loop
     """
     def __init__(self, timeout, *, loop=None):
@@ -477,8 +548,9 @@ class Timeout:
         if self._task is None:
             raise RuntimeError('Timeout context manager should be used '
                                'inside a task')
-        self._cancel_handler = self._loop.call_later(
-            self._timeout, self._cancel_task)
+        if self._timeout is not None:
+            self._cancel_handler = self._loop.call_later(
+                self._timeout, self._cancel_task)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -486,9 +558,264 @@ class Timeout:
             self._cancel_handler = None
             self._task = None
             raise asyncio.TimeoutError
-        self._cancel_handler.cancel()
-        self._cancel_handler = None
+        if self._timeout is not None:
+            self._cancel_handler.cancel()
+            self._cancel_handler = None
         self._task = None
 
     def _cancel_task(self):
         self._cancelled = self._task.cancel()
+
+
+class CookieJar:
+    """Implements cookie storage adhering to RFC 6265."""
+
+    DATE_TOKENS_RE = re.compile(
+        "[\x09\x20-\x2F\x3B-\x40\x5B-\x60\x7B-\x7E]*"
+        "(?P<token>[\x00-\x08\x0A-\x1F\d:a-zA-Z\x7F-\xFF]+)")
+
+    DATE_HMS_TIME_RE = re.compile("(\d{1,2}):(\d{1,2}):(\d{1,2})")
+
+    DATE_DAY_OF_MONTH_RE = re.compile("(\d{1,2})")
+
+    DATE_MONTH_RE = re.compile(
+        "(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)", re.I)
+
+    DATE_YEAR_RE = re.compile("(\d{2,4})")
+
+    def __init__(self, cookies=None, loop=None):
+        self._cookies = SimpleCookie()
+        self._loop = loop or asyncio.get_event_loop()
+        self._host_only_cookies = set()
+
+        if cookies is not None:
+            self.update_cookies(cookies)
+
+    @property
+    def cookies(self):
+        """The session cookies."""
+        return self._cookies
+
+    def _expire_cookie(self, name):
+        if name in self._cookies:
+            del self._cookies[name]
+
+    def update_cookies(self, cookies, response_url=None):
+        """Update cookies."""
+        url_parsed = urlsplit(response_url or "")
+        hostname = url_parsed.hostname
+
+        if is_ip_address(hostname):
+            # Don't accept cookies from IPs
+            return
+
+        if isinstance(cookies, dict):
+            cookies = cookies.items()
+
+        for name, value in cookies:
+            if isinstance(value, Morsel):
+
+                if not self._add_morsel(name, value, hostname):
+                    continue
+
+            else:
+                self._cookies[name] = value
+
+            cookie = self._cookies[name]
+
+            if not cookie["domain"] and hostname is not None:
+                # Set the cookie's domain to the response hostname
+                # and set its host-only-flag
+                self._host_only_cookies.add(name)
+                cookie["domain"] = hostname
+
+            if not cookie["path"] or not cookie["path"].startswith("/"):
+                # Set the cookie's path to the response path
+                path = url_parsed.path
+                if not path.startswith("/"):
+                    path = "/"
+                else:
+                    # Cut everything from the last slash to the end
+                    path = "/" + path[1:path.rfind("/")]
+                cookie["path"] = path
+
+            max_age = cookie["max-age"]
+            if max_age:
+                try:
+                    delta_seconds = int(max_age)
+                    self._loop.call_later(
+                        delta_seconds, self._expire_cookie, name)
+                except ValueError:
+                    cookie["max-age"] = ""
+
+            expires = cookie["expires"]
+            if not cookie["max-age"] and expires:
+                expire_time = self._parse_date(expires)
+                if expire_time:
+                    self._loop.call_at(
+                        expire_time.timestamp(),
+                        self._expire_cookie, name)
+                else:
+                    cookie["expires"] = ""
+
+        # Remove the host-only flags of nonexistent cookies
+        self._host_only_cookies -= (
+            self._host_only_cookies.difference(self._cookies.keys()))
+
+    def _add_morsel(self, name, value, hostname):
+        """Add a Morsel to the cookie jar."""
+        cookie_domain = value["domain"]
+        if cookie_domain.startswith("."):
+            # Remove leading dot
+            cookie_domain = cookie_domain[1:]
+            value["domain"] = cookie_domain
+
+        if not cookie_domain or not hostname:
+            dict.__setitem__(self._cookies, name, value)
+            return True
+
+        if not self._is_domain_match(cookie_domain, hostname):
+            # Setting cookies for different domains is not allowed
+            return False
+
+        # use dict method because SimpleCookie class modifies value
+        # before Python 3.4
+        dict.__setitem__(self._cookies, name, value)
+        return True
+
+    def filter_cookies(self, request_url):
+        """Returns this jar's cookies filtered by their attributes."""
+        url_parsed = urlsplit(request_url)
+        filtered = SimpleCookie()
+
+        for name, cookie in self._cookies.items():
+            cookie_domain = cookie["domain"]
+
+            # Send shared cookies
+            if not cookie_domain:
+                dict.__setitem__(filtered, name, cookie)
+                continue
+
+            hostname = url_parsed.hostname or ""
+
+            if is_ip_address(hostname):
+                continue
+
+            if name in self._host_only_cookies:
+                if cookie_domain != hostname:
+                    continue
+            elif not self._is_domain_match(cookie_domain, hostname):
+                continue
+
+            if not self._is_path_match(url_parsed.path, cookie["path"]):
+                continue
+
+            is_secure = url_parsed.scheme in ("https", "wss")
+
+            if cookie["secure"] and not is_secure:
+                continue
+
+            dict.__setitem__(filtered, name, cookie)
+
+        return filtered
+
+    @staticmethod
+    def _is_domain_match(domain, hostname):
+        """Implements domain matching adhering to RFC 6265."""
+        if hostname == domain:
+            return True
+
+        if not hostname.endswith(domain):
+            return False
+
+        non_matching = hostname[:-len(domain)]
+
+        if not non_matching.endswith("."):
+            return False
+
+        return not is_ip_address(hostname)
+
+    @staticmethod
+    def _is_path_match(req_path, cookie_path):
+        """Implements path matching adhering to RFC 6265."""
+        if req_path == cookie_path:
+            return True
+
+        if not req_path.startswith(cookie_path):
+            return False
+
+        if cookie_path.endswith("/"):
+            return True
+
+        non_matching = req_path[len(cookie_path):]
+
+        return non_matching.startswith("/")
+
+    @classmethod
+    def _parse_date(cls, date_str):
+        """Implements date string parsing adhering to RFC 6265."""
+        if not date_str:
+            return
+
+        found_time = False
+        found_day_of_month = False
+        found_month = False
+        found_year = False
+
+        hour = minute = second = 0
+        day_of_month = 0
+        month = ""
+        year = 0
+
+        for token_match in cls.DATE_TOKENS_RE.finditer(date_str):
+
+            token = token_match.group("token")
+
+            if not found_time:
+                time_match = cls.DATE_HMS_TIME_RE.match(token)
+                if time_match:
+                    found_time = True
+                    hour, minute, second = [
+                        int(s) for s in time_match.groups()]
+                    continue
+
+            if not found_day_of_month:
+                day_of_month_match = cls.DATE_DAY_OF_MONTH_RE.match(token)
+                if day_of_month_match:
+                    found_day_of_month = True
+                    day_of_month = int(day_of_month_match.group())
+                    continue
+
+            if not found_month:
+                month_match = cls.DATE_MONTH_RE.match(token)
+                if month_match:
+                    found_month = True
+                    month = month_match.group()
+                    continue
+
+            if not found_year:
+                year_match = cls.DATE_YEAR_RE.match(token)
+                if year_match:
+                    found_year = True
+                    year = int(year_match.group())
+
+        if 70 <= year <= 99:
+            year += 1900
+        elif 0 <= year <= 69:
+            year += 2000
+
+        if False in (found_day_of_month, found_month, found_year, found_time):
+            return
+
+        if not 1 <= day_of_month <= 31:
+            return
+
+        if year < 1601 or hour > 23 or minute > 59 or second > 59:
+            return
+
+        dt = datetime.datetime.strptime(
+            "%s %d %d:%d:%d %d" % (
+                month, day_of_month, hour, minute, second, year
+            ), "%b %d %H:%M:%S %Y")
+
+        return dt.replace(tzinfo=datetime.timezone.utc)

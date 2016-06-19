@@ -15,12 +15,13 @@ try:
 except ImportError:
     import chardet
 
+from multidict import (CIMultiDictProxy, MultiDictProxy, MultiDict,
+                       CIMultiDict)
+
 import aiohttp
 from . import hdrs, helpers, streams
 from .log import client_logger
 from .streams import EOF_MARKER, FlowControlStreamReader
-from .multidict import (CIMultiDictProxy, MultiDictProxy, MultiDict,
-                        CIMultiDict)
 from .multipart import MultipartWriter
 from .protocol import HttpMessage
 
@@ -88,7 +89,7 @@ class ClientRequest:
         self.update_headers(headers)
         self.update_auto_headers(skip_auto_headers)
         self.update_cookies(cookies)
-        self.update_content_encoding()
+        self.update_content_encoding(data)
         self.update_auth(auth)
 
         self.update_body_from_data(data, skip_auto_headers)
@@ -146,7 +147,7 @@ class ClientRequest:
     def update_version(self, version):
         """Convert request version to two elements tuple.
 
-        parser http version '1.1' => (1, 1)
+        parser HTTP version '1.1' => (1, 1)
         """
         if isinstance(version, str):
             v = [l.strip() for l in version.split('.', 1)]
@@ -229,8 +230,11 @@ class ClientRequest:
 
         self.headers[hdrs.COOKIE] = c.output(header='', sep=';').strip()
 
-    def update_content_encoding(self):
+    def update_content_encoding(self, data):
         """Set request content encoding."""
+        if not data:
+            return
+
         enc = self.headers.get(hdrs.CONTENT_ENCODING, '').lower()
         if enc:
             if self.compress is not False:
@@ -362,7 +366,7 @@ class ClientRequest:
             expect = True
 
         if expect:
-            self._continue = asyncio.Future(loop=self.loop)
+            self._continue = helpers.create_future(self.loop)
 
     @asyncio.coroutine
     def write_bytes(self, request, reader):
@@ -567,8 +571,17 @@ class ClientResponse:
 
     def __repr__(self):
         out = io.StringIO()
+        ascii_encodable_url = self.url.encode('ascii', 'backslashreplace') \
+            .decode('ascii')
+        if self.reason:
+            ascii_encodable_reason = self.reason.encode('ascii',
+                                                        'backslashreplace') \
+                .decode('ascii')
+        else:
+            ascii_encodable_reason = self.reason
         print('<ClientResponse({}) [{} {}]>'.format(
-            self.url, self.status, self.reason), file=out)
+            ascii_encodable_url, self.status, ascii_encodable_reason),
+            file=out)
         print(self.headers, file=out)
         return out.getvalue()
 
@@ -680,6 +693,12 @@ class ClientResponse:
                     self._reader.unset_parser()
                 self._connection = None
             self._cleanup_writer()
+
+    def raise_for_status(self):
+        if 400 <= self.status:
+            raise aiohttp.HttpProcessingError(
+                code=self.status,
+                message=self.reason)
 
     def _cleanup_writer(self):
         if self._writer is not None and not self._writer.done():

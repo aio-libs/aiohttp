@@ -51,9 +51,9 @@ Command Line Interface (CLI)
 :mod:`aiohttp.web` implements a basic CLI for quickly serving an
 :class:`Application` in *development* over TCP/IP::
 
-    $ python -m aiohttp.web -H localhost -P 8080 package.module.init_func
+    $ python -m aiohttp.web -H localhost -P 8080 package.module:init_func
 
-``package.module.init_func`` should be an importable :term:`callable` that
+``package.module:init_func`` should be an importable :term:`callable` that
 accepts a list of any non-parsed command-line arguments and returns an
 :class:`Application` instance after setting it up::
 
@@ -407,7 +407,7 @@ third-party library, :mod:`aiohttp_session`, that adds *session* support::
 "100-continue". It is possible to specify custom *Expect* header
 handler on per route basis. This handler gets called if *Expect*
 header exist in request after receiving all headers and before
-processing application middlewares :ref:`aiohttp-web-middlewares` and
+processing application's :ref:`aiohttp-web-middlewares` and
 route handler. Handler can return *None*, in that case the request
 processing continues as usual. If handler returns an instance of class
 :class:`StreamResponse`, *request handler* uses it as response. Also
@@ -528,8 +528,10 @@ with the peer::
         return ws
 
 Reading from the *WebSocket* (``await ws.receive()``) **must only** be
-done inside the request handler coroutine; however, writing
-(``ws.send_str(...)``) to the *WebSocket* may be delegated to other coroutines.
+done inside the request handler *task*; however, writing
+(``ws.send_str(...)``) to the *WebSocket* may be delegated to other tasks.
+*aiohttp.web* creates an implicit :class:`asyncio.Task` for handling every
+incoming request.
 
 .. note::
 
@@ -616,6 +618,7 @@ HTTP Exception hierarchy chart::
            * 428 - HTTPPreconditionRequired
            * 429 - HTTPTooManyRequests
            * 431 - HTTPRequestHeaderFieldsTooLarge
+           * 451 - HTTPUnavailableForLegalReasons
          HTTPServerError
            * 500 - HTTPInternalServerError
            * 501 - HTTPNotImplemented
@@ -749,6 +752,35 @@ post-processing like handling *CORS* and so on.
    Middlewares accept route exceptions (:exc:`HTTPNotFound` and
    :exc:`HTTPMethodNotAllowed`).
 
+Example
+.......
+
+A common use of middlewares is to implement custom error pages.  The following
+example will render 404 errors using a JSON response, as might be appropriate
+a JSON REST service:
+
+    import json
+    from aiohttp import web
+
+    def json_error(message):
+        return web.Response(
+            body=json.dumps({'error': message}).encode('utf-8'),
+            content_type='application/json')
+
+    async def error_middleware(app, handler):
+        async def middleware_handler(request):
+            try:
+                response = await handler(request)
+                if response.status == 404:
+                    return json_error(response.message)
+                return response
+            except web.HTTPException as ex:
+                if ex.status == 404:
+                    return json_error(ex.reason)
+                raise
+        return middleware_handler
+
+    app = web.Application(middlewares=[error_middleware])
 
 .. _aiohttp-web-signals:
 

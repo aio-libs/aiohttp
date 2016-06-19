@@ -14,6 +14,7 @@ from unittest import mock
 import aiohttp
 from aiohttp import web
 from aiohttp import client
+from aiohttp import helpers
 from aiohttp.client import ClientResponse
 from aiohttp.connector import Connection
 
@@ -273,7 +274,7 @@ class TestBaseConnector(unittest.TestCase):
         key = ('host', 80, False)
         conn._conns[key] = [(tr, proto, self.loop.time())]
         conn._create_connection = unittest.mock.Mock()
-        conn._create_connection.return_value = asyncio.Future(loop=self.loop)
+        conn._create_connection.return_value = helpers.create_future(self.loop)
         conn._create_connection.return_value.set_result((tr, proto))
 
         connection = self.loop.run_until_complete(conn.connect(Req()))
@@ -286,7 +287,7 @@ class TestBaseConnector(unittest.TestCase):
     def test_connect_timeout(self):
         conn = aiohttp.BaseConnector(loop=self.loop)
         conn._create_connection = unittest.mock.Mock()
-        conn._create_connection.return_value = asyncio.Future(loop=self.loop)
+        conn._create_connection.return_value = helpers.create_future(self.loop)
         conn._create_connection.return_value.set_exception(
             asyncio.TimeoutError())
 
@@ -297,7 +298,7 @@ class TestBaseConnector(unittest.TestCase):
     def test_connect_oserr(self):
         conn = aiohttp.BaseConnector(loop=self.loop)
         conn._create_connection = unittest.mock.Mock()
-        conn._create_connection.return_value = asyncio.Future(loop=self.loop)
+        conn._create_connection.return_value = helpers.create_future(self.loop)
         err = OSError(1, 'permission error')
         conn._create_connection.return_value.set_exception(err)
 
@@ -499,8 +500,8 @@ class TestBaseConnector(unittest.TestCase):
             key = ('host', 80, False)
             conn._conns[key] = [(tr, proto, self.loop.time())]
             conn._create_connection = unittest.mock.Mock()
-            conn._create_connection.return_value = asyncio.Future(
-                loop=self.loop)
+            conn._create_connection.return_value = helpers.create_future(
+                self.loop)
             conn._create_connection.return_value.set_result((tr, proto))
 
             connection1 = yield from conn.connect(Req())
@@ -547,8 +548,8 @@ class TestBaseConnector(unittest.TestCase):
             key = ('host', 80, False)
             conn._conns[key] = [(tr, proto, self.loop.time())]
             conn._create_connection = unittest.mock.Mock()
-            conn._create_connection.return_value = asyncio.Future(
-                loop=self.loop)
+            conn._create_connection.return_value = helpers.create_future(
+                self.loop)
             conn._create_connection.return_value.set_result((tr, proto))
 
             connection = yield from conn.connect(Req())
@@ -560,10 +561,27 @@ class TestBaseConnector(unittest.TestCase):
                 # limit exhausted
                 yield from asyncio.wait_for(conn.connect(Req), 0.01,
                                             loop=self.loop)
-
             connection.close()
-
         self.loop.run_until_complete(go())
+
+    def test_connect_with_limit_release_waiters(self):
+
+        def check_with_exc(err):
+            conn = aiohttp.BaseConnector(limit=1, loop=self.loop)
+            conn._create_connection = unittest.mock.Mock()
+            conn._create_connection.return_value = \
+                helpers.create_future(self.loop)
+            conn._create_connection.return_value.set_exception(err)
+
+            with self.assertRaises(Exception):
+                req = unittest.mock.Mock()
+                self.loop.run_until_complete(conn.connect(req))
+            key = (req.host, req.port, req.ssl)
+            self.assertFalse(conn._waiters[key])
+
+        check_with_exc(OSError(1, 'permission error'))
+        check_with_exc(RuntimeError())
+        check_with_exc(asyncio.TimeoutError())
 
     def test_connect_with_limit_concurrent(self):
 
@@ -651,8 +669,8 @@ class TestBaseConnector(unittest.TestCase):
             key = ('host', 80, False)
             conn._conns[key] = [(tr, proto, self.loop.time())]
             conn._create_connection = unittest.mock.Mock()
-            conn._create_connection.return_value = asyncio.Future(
-                loop=self.loop)
+            conn._create_connection.return_value = helpers.create_future(
+                self.loop)
             conn._create_connection.return_value.set_result((tr, proto))
 
             connection = yield from conn.connect(Req())
@@ -682,6 +700,19 @@ class TestBaseConnector(unittest.TestCase):
         conn = aiohttp.BaseConnector(loop=self.loop)
         self.assertIsNone(conn.limit)
         conn.close()
+
+    def test_force_close_and_explicit_keep_alive(self):
+        with self.assertRaises(ValueError):
+            aiohttp.BaseConnector(loop=self.loop, keepalive_timeout=30,
+                                  force_close=True)
+
+        conn = aiohttp.BaseConnector(loop=self.loop, force_close=True,
+                                     keepalive_timeout=None)
+        assert conn
+
+        conn = aiohttp.BaseConnector(loop=self.loop, force_close=True)
+
+        assert conn
 
 
 class TestHttpClientConnector(unittest.TestCase):
@@ -822,3 +853,45 @@ class TestHttpClientConnector(unittest.TestCase):
         self.assertTrue(conn.use_dns_cache)
         with self.assertWarns(DeprecationWarning):
             self.assertTrue(conn.resolve)
+
+    def test_resolver_not_called_with_address_is_ip(self):
+        resolver = unittest.mock.MagicMock()
+        connector = aiohttp.TCPConnector(resolver=resolver, loop=self.loop)
+
+        class Req:
+            host = '127.0.0.1'
+            port = 80
+            ssl = False
+            response = unittest.mock.Mock()
+
+        with self.assertRaises(OSError):
+            self.loop.run_until_complete(connector.connect(Req()))
+
+        resolver.resolve.assert_not_called()
+
+    def test_ip_addresses(self):
+        ip_addresses = [
+            '0.0.0.0',
+            '127.0.0.1',
+            '255.255.255.255',
+            '0:0:0:0:0:0:0:0',
+            'FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF',
+            '00AB:0002:3008:8CFD:00AB:0002:3008:8CFD',
+            '00ab:0002:3008:8cfd:00ab:0002:3008:8cfd',
+            'AB:02:3008:8CFD:AB:02:3008:8CFD',
+            'AB:02:3008:8CFD::02:3008:8CFD',
+            '::',
+            '1::1',
+        ]
+        for address in ip_addresses:
+            assert helpers.is_ip_address(address) is True
+
+    def test_host_addresses(self):
+        hosts = [
+            'www.four.part.host'
+            'www.python.org',
+            'foo.bar',
+            'localhost',
+        ]
+        for host in hosts:
+            assert helpers.is_ip_address(host) is False

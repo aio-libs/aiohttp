@@ -5,8 +5,9 @@ import os
 import os.path
 import socket
 import unittest
+import zlib
+from multidict import MultiDict
 from aiohttp import log, web, request, FormData, ClientSession, TCPConnector
-from aiohttp.multidict import MultiDict
 from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
 from aiohttp.streams import EOF_MARKER
 
@@ -97,6 +98,32 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
 
         self.loop.run_until_complete(go())
         logger.exception.assert_called_with("Error handling request")
+
+    def test_head_returns_empty_body(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            body = yield from request.read()
+            self.assertEqual(b'', body)
+            return web.Response(body=b'test')
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('HEAD', '/', handler)
+            with ClientSession(loop=self.loop) as session:
+                resp = yield from session.head(url, version=HttpVersion11)
+                self.assertEqual(200, resp.status)
+                txt = yield from resp.text()
+                self.assertEqual('', txt)
+                resp.close()
+
+                resp = yield from session.head(url, version=HttpVersion11)
+                self.assertEqual(200, resp.status)
+                txt = yield from resp.text()
+                self.assertEqual('', txt)
+                resp.close()
+
+        self.loop.run_until_complete(go())
 
     def test_post_form(self):
 
@@ -765,6 +792,25 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
             yield from resp.release()
 
         self.loop.run_until_complete(go())
+
+    def test_response_with_precompressed_body(self):
+        @asyncio.coroutine
+        def handler(request):
+            headers = {'Content-Encoding': 'gzip'}
+            deflated_data = zlib.compress(b'mydata')
+            return web.Response(body=deflated_data, headers=headers)
+
+        @asyncio.coroutine
+        def go():
+            _, srv, url = yield from self.create_server('GET', '/', handler)
+            client = ClientSession(loop=self.loop)
+            resp = yield from client.get(url)
+            self.assertEqual(200, resp.status)
+            data = yield from resp.read()
+            self.assertEqual(b'mydata', data)
+            self.assertEqual(resp.headers.get('CONTENT-ENCODING'), 'deflate')
+            yield from resp.release()
+            client.close()
 
     def test_stream_response_multiple_chunks(self):
         @asyncio.coroutine

@@ -3,7 +3,7 @@ import os
 import time
 
 import pytest
-from aiohttp.helpers import ensure_future, Timeout
+from aiohttp.helpers import create_future, ensure_future, Timeout
 
 
 @pytest.mark.run_loop
@@ -51,6 +51,21 @@ def test_timeout_global_loop(loop):
 
 
 @pytest.mark.run_loop
+def test_timeout_disable(loop):
+    @asyncio.coroutine
+    def long_running_task():
+        yield from asyncio.sleep(0.1, loop=loop)
+        return 'done'
+
+    t0 = loop.time()
+    with Timeout(None, loop=loop):
+        resp = yield from long_running_task()
+    assert resp == 'done'
+    dt = loop.time() - t0
+    assert 0.09 < dt < 0.11, dt
+
+
+@pytest.mark.run_loop
 def test_timeout_not_relevant_exception(loop):
     yield from asyncio.sleep(0, loop=loop)
     with pytest.raises(KeyError):
@@ -80,7 +95,7 @@ def test_timeout_blocking_loop(loop):
 
 @pytest.mark.run_loop
 def test_for_race_conditions(loop):
-    fut = asyncio.Future(loop=loop)
+    fut = create_future(loop)
     loop.call_later(0.1, fut.set_result('done'))
     with Timeout(0.2, loop=loop):
         resp = yield from fut
@@ -136,7 +151,7 @@ def test_outer_coro_is_not_cancelled(loop):
 
 @pytest.mark.run_loop
 def test_cancel_outer_coro(loop):
-    fut = asyncio.Future(loop=loop)
+    fut = create_future(loop)
 
     @asyncio.coroutine
     def outer():

@@ -1,7 +1,7 @@
 import asyncio
 import pytest
 
-from aiohttp import web, log
+from aiohttp import web, log, helpers
 from unittest import mock
 
 
@@ -44,7 +44,7 @@ def test_app_register_on_finish(loop):
 def test_app_register_coro(loop):
     app = web.Application(loop=loop)
 
-    fut = asyncio.Future(loop=loop)
+    fut = helpers.create_future(loop)
 
     @asyncio.coroutine
     def cb(app):

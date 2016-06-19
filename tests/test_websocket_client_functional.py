@@ -1,7 +1,7 @@
 import aiohttp
 import asyncio
 import pytest
-from aiohttp import web
+from aiohttp import helpers, hdrs, web
 
 
 @pytest.mark.run_loop
@@ -55,7 +55,7 @@ def test_send_recv_bytes(create_app_and_client):
 @pytest.mark.run_loop
 def test_ping_pong(create_app_and_client, loop):
 
-    closed = asyncio.Future(loop=loop)
+    closed = helpers.create_future(loop)
 
     @asyncio.coroutine
     def handler(request):
@@ -92,7 +92,7 @@ def test_ping_pong(create_app_and_client, loop):
 @pytest.mark.run_loop
 def test_ping_pong_manual(create_app_and_client, loop):
 
-    closed = asyncio.Future(loop=loop)
+    closed = helpers.create_future(loop)
 
     @asyncio.coroutine
     def handler(request):
@@ -163,7 +163,7 @@ def test_close(create_app_and_client):
 @pytest.mark.run_loop
 def test_close_from_server(create_app_and_client, loop):
 
-    closed = asyncio.Future(loop=loop)
+    closed = helpers.create_future(loop)
 
     @asyncio.coroutine
     def handler(request):
@@ -196,7 +196,7 @@ def test_close_from_server(create_app_and_client, loop):
 @pytest.mark.run_loop
 def test_close_manual(create_app_and_client, loop):
 
-    closed = asyncio.Future(loop=loop)
+    closed = helpers.create_future(loop)
 
     @asyncio.coroutine
     def handler(request):
@@ -283,3 +283,46 @@ def test_close_cancel(create_app_and_client, loop):
     yield from asyncio.sleep(0.1, loop=loop)
     assert resp.closed
     assert resp.exception() is None
+
+
+@pytest.mark.run_loop
+def test_override_default_headers(create_app_and_client, loop):
+
+    @asyncio.coroutine
+    def handler(request):
+        assert request.headers[hdrs.SEC_WEBSOCKET_VERSION] == '8'
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        ws.send_str('answer')
+        yield from ws.close()
+        return ws
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    headers = {hdrs.SEC_WEBSOCKET_VERSION: '8'}
+    resp = yield from client.ws_connect('/', headers=headers)
+    msg = yield from resp.receive()
+    assert msg.data == 'answer'
+    yield from resp.close()
+
+
+@pytest.mark.run_loop
+def test_additional_headers(create_app_and_client, loop):
+
+    @asyncio.coroutine
+    def handler(request):
+        assert request.headers['x-hdr'] == 'xtra'
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        ws.send_str('answer')
+        yield from ws.close()
+        return ws
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/', headers={'x-hdr': 'xtra'})
+    msg = yield from resp.receive()
+    assert msg.data == 'answer'
+    yield from resp.close()

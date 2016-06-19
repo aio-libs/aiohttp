@@ -1,8 +1,8 @@
 import pytest
 from unittest import mock
+from multidict import MultiDict, CIMultiDict
 from aiohttp.signals import Signal
 from aiohttp.web import Request
-from aiohttp.multidict import MultiDict, CIMultiDict
 from aiohttp.protocol import HttpVersion
 from aiohttp.protocol import RawRequestMessage
 
@@ -216,6 +216,11 @@ def test_copy(make_request):
 def test___repr__(make_request):
     req = make_request('GET', '/path/to')
     assert "<Request GET /path/to >" == repr(req)
+
+
+def test___repr___non_ascii_path(make_request):
+    req = make_request('GET', '/path/\U0001f415\U0001f308')
+    assert "<Request GET /path/\\U0001f415\\U0001f308 >" == repr(req)
 
 
 def test_http_scheme(make_request):

@@ -3,7 +3,6 @@ import aiohttp
 import functools
 import http.cookies
 import ssl
-import socket
 import sys
 import traceback
 import warnings
@@ -14,13 +13,14 @@ from itertools import chain
 from math import ceil
 from types import MappingProxyType
 
-from . import hdrs
+from . import hdrs, helpers
 from .client import ClientRequest
 from .errors import ServerDisconnectedError
 from .errors import HttpProxyError, ProxyConnectionError
 from .errors import ClientOSError, ClientTimeoutError
 from .errors import FingerprintMismatch
-from .helpers import BasicAuth
+from .helpers import BasicAuth, is_ip_address
+from .resolver import DefaultResolver
 
 
 __all__ = ('BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector')
@@ -99,6 +99,9 @@ class Connection(object):
         return self._transport is None
 
 
+_default = object()
+
+
 class BaseConnector(object):
     """Base connector class.
 
@@ -112,9 +115,19 @@ class BaseConnector(object):
     _closed = True  # prevent AttributeError in __del__ if ctor was failed
     _source_traceback = None
 
-    def __init__(self, *, conn_timeout=None, keepalive_timeout=30,
+    def __init__(self, *, conn_timeout=None, keepalive_timeout=_default,
                  share_cookies=False, force_close=False, limit=None,
                  loop=None):
+
+        if force_close:
+            if keepalive_timeout is not None and \
+               keepalive_timeout is not _default:
+                raise ValueError('keepalive_timeout cannot '
+                                 'be set if force_close is True')
+        else:
+            if keepalive_timeout is _default:
+                keepalive_timeout = 30
+
         if loop is None:
             loop = asyncio.get_event_loop()
 
@@ -222,7 +235,7 @@ class BaseConnector(object):
 
     def close(self):
         """Close all opened transports."""
-        ret = asyncio.Future(loop=self._loop)
+        ret = helpers.create_future(self._loop)
         ret.set_result(None)
         if self._closed:
             return ret
@@ -282,7 +295,7 @@ class BaseConnector(object):
 
         limit = self._limit
         if limit is not None:
-            fut = asyncio.Future(loop=self._loop)
+            fut = helpers.create_future(self._loop)
             waiters = self._waiters[key]
 
             # The limit defines the maximum number of concurrent connections
@@ -297,27 +310,33 @@ class BaseConnector(object):
             # This connection will now count towards the limit.
             waiters.append(fut)
 
-            yield from fut
+        try:
+            if limit is not None:
+                yield from fut
 
-        transport, proto = self._get(key)
-        if transport is None:
-            try:
-                if self._conn_timeout:
-                    transport, proto = yield from asyncio.wait_for(
-                        self._create_connection(req),
-                        self._conn_timeout, loop=self._loop)
-                else:
-                    transport, proto = yield from self._create_connection(req)
+            transport, proto = self._get(key)
+            if transport is None:
+                try:
+                    if self._conn_timeout:
+                        transport, proto = yield from asyncio.wait_for(
+                            self._create_connection(req),
+                            self._conn_timeout, loop=self._loop)
+                    else:
+                        transport, proto = \
+                            yield from self._create_connection(req)
 
-            except asyncio.TimeoutError as exc:
-                raise ClientTimeoutError(
-                    'Connection timeout to host {0[0]}:{0[1]} ssl:{0[2]}'
-                    .format(key)) from exc
-            except OSError as exc:
-                raise ClientOSError(
-                    exc.errno,
-                    'Cannot connect to host {0[0]}:{0[1]} ssl:{0[2]} [{1}]'
-                    .format(key, exc.strerror)) from exc
+                except asyncio.TimeoutError as exc:
+                    raise ClientTimeoutError(
+                        'Connection timeout to host {0[0]}:{0[1]} ssl:{0[2]}'
+                        .format(key)) from exc
+                except OSError as exc:
+                    raise ClientOSError(
+                        exc.errno,
+                        'Cannot connect to host {0[0]}:{0[1]} ssl:{0[2]} [{1}]'
+                        .format(key, exc.strerror)) from exc
+        except:
+            self._release_waiter(key)
+            raise
 
         self._acquired[key].add(transport)
         conn = Connection(self, key, req, transport, proto, self._loop)
@@ -344,6 +363,14 @@ class BaseConnector(object):
         del self._conns[key]
         return None, None
 
+    def _release_waiter(self, key):
+        waiters = self._waiters[key]
+        while waiters:
+            waiter = waiters.pop(0)
+            if not waiter.done():
+                waiter.set_result(None)
+                break
+
     def _release(self, key, req, transport, protocol, *, should_close=False):
         if self._closed:
             # acquired connection is already released on connector closing
@@ -358,12 +385,7 @@ class BaseConnector(object):
             pass
         else:
             if self._limit is not None and len(acquired) < self._limit:
-                waiters = self._waiters[key]
-                while waiters:
-                    waiter = waiters.pop(0)
-                    if not waiter.done():
-                        waiter.set_result(None)
-                        break
+                self._release_waiter(key)
 
         resp = req.response
 
@@ -403,7 +425,11 @@ class TCPConnector(BaseConnector):
         digest of the expected certificate in DER format to verify
         that the certificate the server presents matches. See also
         https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning
-    :param bool resolve: Set to True to do DNS lookup for host name.
+    :param bool resolve: (Deprecated) Set to True to do DNS lookup for
+        host name.
+    :param AbstractResolver resolver: Enable DNS lookups and use this
+        resolver
+    :param bool use_dns_cache: Use memory cache for DNS lookups.
     :param family: socket address family
     :param local_addr: local :class:`tuple` of (host, port) to bind socket to
     :param args: see :class:`BaseConnector`
@@ -412,7 +438,7 @@ class TCPConnector(BaseConnector):
 
     def __init__(self, *, verify_ssl=True, fingerprint=None,
                  resolve=_marker, use_dns_cache=_marker,
-                 family=0, ssl_context=None, local_addr=None,
+                 family=0, ssl_context=None, local_addr=None, resolver=None,
                  **kwargs):
         super().__init__(**kwargs)
 
@@ -446,6 +472,13 @@ class TCPConnector(BaseConnector):
             _use_dns_cache = resolve
         else:
             _use_dns_cache = False
+
+        self._resolver = resolver or DefaultResolver(loop=self._loop)
+
+        if _use_dns_cache or resolver:
+            self._use_resolver = True
+        else:
+            self._use_resolver = False
 
         self._use_dns_cache = _use_dns_cache
         self._cached_hosts = {}
@@ -534,26 +567,24 @@ class TCPConnector(BaseConnector):
 
     @asyncio.coroutine
     def _resolve_host(self, host, port):
+        if not self._use_resolver or is_ip_address(host):
+            return [{'hostname': host, 'host': host, 'port': port,
+                     'family': self._family, 'proto': 0, 'flags': 0}]
+
+        assert self._resolver
+
         if self._use_dns_cache:
             key = (host, port)
 
             if key not in self._cached_hosts:
-                infos = yield from self._loop.getaddrinfo(
-                    host, port, type=socket.SOCK_STREAM, family=self._family)
+                self._cached_hosts[key] = yield from \
+                    self._resolver.resolve(host, port, family=self._family)
 
-                hosts = []
-                for family, _, proto, _, address in infos:
-                    hosts.append(
-                        {'hostname': host,
-                         'host': address[0], 'port': address[1],
-                         'family': family, 'proto': proto,
-                         'flags': socket.AI_NUMERICHOST})
-                self._cached_hosts[key] = hosts
-
-            return list(self._cached_hosts[key])
+            return self._cached_hosts[key]
         else:
-            return [{'hostname': host, 'host': host, 'port': port,
-                     'family': self._family, 'proto': 0, 'flags': 0}]
+            res = yield from self._resolver.resolve(
+                host, port, family=self._family)
+            return res
 
     @asyncio.coroutine
     def _create_connection(self, req):
@@ -607,7 +638,7 @@ class TCPConnector(BaseConnector):
 class ProxyConnector(TCPConnector):
     """Http Proxy connector.
 
-    :param str proxy: Proxy URL address. Only http proxy supported.
+    :param str proxy: Proxy URL address. Only HTTP proxy supported.
     :param proxy_auth: (optional) Proxy HTTP Basic Auth
     :type proxy_auth: aiohttp.helpers.BasicAuth
     :param args: see :class:`TCPConnector`

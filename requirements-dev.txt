@@ -4,3 +4,4 @@ pytest-sugar
 ipython
 pyenchant
 sphinxcontrib-spelling
+sphinxcontrib-asyncio

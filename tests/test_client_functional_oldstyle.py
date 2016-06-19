@@ -1,4 +1,4 @@
-"""Http client functional tests."""
+"""HTTP client functional tests."""
 
 import binascii
 import gc
@@ -7,14 +7,24 @@ import os.path
 import json
 import http.cookies
 import asyncio
+import socket
 import unittest
 from unittest import mock
+
+from multidict import MultiDict
 
 import aiohttp
 from aiohttp import client, helpers
 from aiohttp import test_utils
-from aiohttp.multidict import MultiDict
 from aiohttp.multipart import MultipartWriter
+
+
+def find_unused_port():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(('127.0.0.1', 0))
+    port = s.getsockname()[1]
+    s.close()
+    return port
 
 
 class TestHttpClientFunctional(unittest.TestCase):
@@ -625,7 +635,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             with open(fname, 'rb') as f:
                 data = f.read()
 
-            fut = asyncio.Future(loop=self.loop)
+            fut = helpers.create_future(self.loop)
 
             @asyncio.coroutine
             def stream():
@@ -1014,7 +1024,7 @@ class TestHttpClientFunctional(unittest.TestCase):
         @asyncio.coroutine
         def go():
             server = yield from self.loop.create_server(
-                Proto, '127.0.0.1')
+                Proto, '127.0.0.1', find_unused_port())
 
             addr = server.sockets[0].getsockname()
 
@@ -1057,7 +1067,7 @@ class TestHttpClientFunctional(unittest.TestCase):
         @asyncio.coroutine
         def go():
             server = yield from self.loop.create_server(
-                Proto, '127.0.0.1')
+                Proto, '127.0.0.1', find_unused_port())
 
             addr = server.sockets[0].getsockname()
 
@@ -1144,8 +1154,11 @@ class TestHttpClientFunctional(unittest.TestCase):
                 session.request('get', httpd.url('cookies')))
             self.assertEqual(resp.cookies['c1'].value, 'cookie1')
             self.assertEqual(resp.cookies['c2'].value, 'cookie2')
-            self.assertEqual(session.cookies, resp.cookies)
             resp.close()
+
+            # Add the received cookies as shared for sending them to the test
+            # server, which is only accessible via IP
+            session.cookies.update(resp.cookies)
 
             # Assert, that we send those cookies in next requests
             r = self.loop.run_until_complete(

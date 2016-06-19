@@ -1,4 +1,4 @@
-"""http related errors."""
+"""HTTP related errors."""
 
 from asyncio import TimeoutError
 
@@ -39,7 +39,7 @@ class ClientError(Exception):
 
 
 class ClientHttpProcessingError(ClientError):
-    """Base class for client http processing errors."""
+    """Base class for client HTTP processing errors."""
 
 
 class ClientRequestError(ClientHttpProcessingError):
@@ -71,9 +71,9 @@ class ProxyConnectionError(ClientConnectionError):
 
 
 class HttpProcessingError(Exception):
-    """Http error.
+    """HTTP error.
 
-    Shortcut for raising http errors with custom code, message and headers.
+    Shortcut for raising HTTP errors with custom code, message and headers.
 
     :param int code: HTTP Error code.
     :param str message: (optional) Error message.
@@ -98,7 +98,7 @@ class WSServerHandshakeError(HttpProcessingError):
 
 
 class HttpProxyError(HttpProcessingError):
-    """Http proxy error.
+    """HTTP proxy error.
 
     Raised in :class:`aiohttp.connector.ProxyConnector` if
     proxy responds with status other than ``200 OK``

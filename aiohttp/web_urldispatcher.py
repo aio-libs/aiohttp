@@ -15,13 +15,14 @@ from pathlib import Path
 from urllib.parse import urlencode, unquote
 from types import MappingProxyType
 
-from . import hdrs
+from multidict import upstr
+
+from . import hdrs, helpers
 from .abc import AbstractRouter, AbstractMatchInfo, AbstractView
 from .protocol import HttpVersion11
 from .web_exceptions import (HTTPMethodNotAllowed, HTTPNotFound,
                              HTTPNotModified, HTTPExpectationFailed)
 from .web_reqrep import StreamResponse
-from .multidict import upstr
 
 
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
@@ -66,7 +67,7 @@ class AbstractResource(Sized, Iterable):
             return url
 
 
-class AbstractRoute(metaclass=abc.ABCMeta):
+class AbstractRoute(abc.ABC):
     METHODS = hdrs.METH_ALL | {hdrs.METH_ANY}
 
     def __init__(self, method, handler, *,
@@ -93,7 +94,14 @@ class AbstractRoute(metaclass=abc.ABCMeta):
               issubclass(handler, AbstractView)):
             pass
         else:
-            handler = asyncio.coroutine(handler)
+            @asyncio.coroutine
+            def handler_wrapper(*args, **kwargs):
+                result = old_handler(*args, **kwargs)
+                if asyncio.iscoroutine(result):
+                    result = yield from result
+                return result
+            old_handler = handler
+            handler = handler_wrapper
 
         self._method = method
         self._handler = handler
@@ -520,7 +528,7 @@ class StaticRoute(Route):
         loop = req.app.loop
         out_fd = transport.get_extra_info("socket").fileno()
         in_fd = fobj.fileno()
-        fut = asyncio.Future(loop=loop)
+        fut = helpers.create_future(loop)
 
         self._sendfile_cb(fut, out_fd, in_fd, 0, count, loop, False)
 
@@ -568,6 +576,10 @@ class StaticRoute(Route):
             # perm error or other kind!
             request.app.logger.exception(error)
             raise HTTPNotFound() from error
+
+        # Make sure that filepath is a file
+        if not filepath.is_file():
+            raise HTTPNotFound()
 
         st = filepath.stat()
 
