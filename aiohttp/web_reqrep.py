@@ -100,7 +100,8 @@ class Request(dict, HeadersMixin):
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
     def __init__(self, app, message, payload, transport, reader, writer, *,
-                 secure_proxy_ssl_header=None):
+                 secure_proxy_ssl_header=None, h2_conn=None,
+                 h2_stream_id=None):
         self._app = app
         self._message = message
         self._transport = transport
@@ -119,6 +120,8 @@ class Request(dict, HeadersMixin):
         self._has_body = not payload.at_eof()
 
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
+        self._h2_conn = h2_conn
+        self._h2_stream_id = h2_stream_id
 
     @reify
     def scheme(self):
