@@ -174,7 +174,7 @@ class Request(dict, HeadersMixin):
     @reify
     def raw_path(self):
         """ The URL including raw *PATH INFO* without the host or scheme.
-        Warning, the path is unquoted and may contains non valid URL characters
+        Warning, the path is unquoted and may contain non valid URL characters
 
         E.g., ``/my%2Fpath%7Cwith%21some%25strange%24characters``
         """

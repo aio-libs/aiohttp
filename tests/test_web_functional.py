@@ -5,6 +5,7 @@ import os
 import os.path
 import socket
 import unittest
+from urllib.parse import quote
 from aiohttp import log, web, request, FormData, ClientSession, TCPConnector
 from aiohttp.multidict import MultiDict
 from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
@@ -55,7 +56,7 @@ class WebFunctionalSetupMixin:
         srv = yield from self.loop.create_server(
             self.handler, '127.0.0.1', port, ssl=ssl_ctx)
         protocol = "https" if ssl_ctx else "http"
-        url = "{}://127.0.0.1:{}".format(protocol, port) + path
+        url = "{}://127.0.0.1:{}".format(protocol, port) + quote(path)
         self.addCleanup(srv.close)
         return app, srv, url
 
@@ -1085,6 +1086,23 @@ class StaticFileMixin(WebFunctionalSetupMixin):
         self.addCleanup(os.unlink, fname)
         file_st = os.stat(fname)
 
+        self.loop.run_until_complete(go(here, filename))
+
+    def test_static_file_unicode_and_spaces(self):
+
+        @asyncio.coroutine
+        def go(dirname, filename):
+            app, _, url = yield from self.create_server(
+                'GET', '/static/' + filename
+            )
+            app.router.add_static('/static', dirname)
+
+            resp = yield from request('GET', url, loop=self.loop)
+            self.assertEqual(200, resp.status)
+            resp.close()
+
+        here = os.path.dirname(__file__)
+        filename = 'unicode ünd spaces.txt'
         self.loop.run_until_complete(go(here, filename))
 
     def test_env_nosendfile(self):

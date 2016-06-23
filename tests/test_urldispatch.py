@@ -5,7 +5,7 @@ import re
 import unittest
 from collections.abc import Sized, Container, Iterable, Mapping, MutableMapping
 from unittest import mock
-from urllib.parse import unquote
+from urllib.parse import quote
 import aiohttp.web
 from aiohttp import hdrs
 from aiohttp.web import (UrlDispatcher, Request, Response,
@@ -556,12 +556,12 @@ class TestUrlDispatcher(unittest.TestCase):
         def go():
             handler = self.make_handler()
             self.router.add_route('GET', '/{path}/{subpath}', handler)
-            resource_id = 'my%2Fpath%7Cwith%21some%25strange%24characters'
-            req = self.make_request('GET', '/path/{0}'.format(resource_id))
+            resource_id = 'my path|with!some%strànge$characters'
+            req = self.make_request('GET', '/path/{0}'.format(quote(resource_id)))
             match_info = yield from self.router.resolve(req)
             self.assertEqual(match_info, {
                 'path': 'path',
-                'subpath': unquote(resource_id)
+                'subpath': resource_id
             })
 
         self.loop.run_until_complete(go())

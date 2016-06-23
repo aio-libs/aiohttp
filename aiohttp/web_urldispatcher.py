@@ -708,7 +708,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     @asyncio.coroutine
     def resolve(self, request):
-        path = request.raw_path
+        path = request.path
         method = request.method
         allowed_methods = set()
 
