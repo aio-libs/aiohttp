@@ -557,7 +557,7 @@ class TestUrlDispatcher(unittest.TestCase):
             handler = self.make_handler()
             self.router.add_route('GET', '/{path}/{subpath}', handler)
             resource_id = 'my path|with!some%strànge$characters'
-            req = self.make_request('GET', '/path/{0}'.format(quote(resource_id)))
+            req = self.make_request('GET', quote('/path/' + resource_id))
             match_info = yield from self.router.resolve(req)
             self.assertEqual(match_info, {
                 'path': 'path',
