@@ -562,6 +562,48 @@ def make_mocked_request(method, path, headers=CIMultiDict(), *,
                         payload=_not_set,
                         sslcontext=None,
                         secure_proxy_ssl_header=None):
+    """Creates mocked web.Request testing purposes. Useful in unit tests,
+    when spinning full web server is overkill or specific conditions and
+    errors is hard to trigger.
+
+    :param method: str, that represents HTTP method, like; GET, POST.
+    :type method: str
+
+    :param path: str, The URL including *PATH INFO* without the host or scheme
+    :type path: multidict.CIMultiDict
+
+    :param headers: str, The URL including *PATH INFO* without the host or scheme
+    :type headers: str
+
+    :param version: namedtuple with encoded HTTP version
+    :type version: aiohttp.protocol.HttpVersion
+
+    :param closing: flag idicates that connection should be closed after
+        response.
+    :type closing: bool
+
+    :param app: the aiohttp.web application attached for fake request
+    :type app: aiohttp.web.Application
+
+    :param reader: object for storing and managing incoming data
+    :type reader: aiohttp.parsers.StreamParser
+
+    :param writer: object for managing outcoming data
+    :type wirter: aiohttp.parsers.StreamWriter
+
+    :param transport: asyncio transport instance
+    :type transport: asyncio.transports.Transport
+
+    :param payload: raw payload reader object
+    :type  payload: aiohttp.streams.FlowControlStreamReader
+
+    :param sslcontext: ssl.SSLContext object, for HTTPS connection
+    :type sslcontext: ssl.SSLContext
+
+    :param secure_proxy_ssl_header: A tuple representing a HTTP header/value
+        combination that signifies a request is secure.
+    :type secure_proxy_ssl_header: tuple
+    """
 
     if version < HttpVersion(1, 1):
         closing = True
