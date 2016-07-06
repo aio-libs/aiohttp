@@ -652,9 +652,11 @@ class SystemRoute(Route):
 
 class View(AbstractView):
 
+    METHODS = set(hdrs.METH_ALL)
+
     @asyncio.coroutine
     def __iter__(self):
-        if self.request.method not in hdrs.METH_ALL:
+        if self.request.method not in self.METHODS:
             self._raise_allowed_methods()
         method = getattr(self, self.request.method.lower(), None)
         if method is None:
@@ -667,7 +669,7 @@ class View(AbstractView):
             return (yield from self.__iter__())
 
     def _raise_allowed_methods(self):
-        allowed_methods = {m for m in hdrs.METH_ALL if hasattr(self, m)}
+        allowed_methods = {m for m in self.METHODS if hasattr(self, m)}
         raise HTTPMethodNotAllowed(self.request.method, allowed_methods)
 
 
