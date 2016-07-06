@@ -70,8 +70,8 @@ instance instead of :class:`aiohttp.web.Route` but resource has the
 same ``resource.url(...)`` most useful method, so end user should feel no
 difference.
 
-``resource.match(...)`` is supported as well (while we believe it's
-not used widely).
+``route.match(...)`` is **not** supported anymore, use
+:meth:`aiohttp.web.AbstractResource.resolve` instead.
 
 ``app.router.add_route(method, path, handler, name='name')`` now is just
 shortcut for::
