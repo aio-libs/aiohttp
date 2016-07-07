@@ -143,6 +143,26 @@ functionality, the AioHTTPTestCase is provided::
 
             self.loop.run_until_complete(test_get_route())
 
+Faking request object
+---------------------
+
+aiohttp provides test utility for creating fake `web.Request` objects:
+:data:`aiohttp.test_utils.make_mocked_request`, it could be useful in case of
+simple unit tests, like handler tests, or simulate error conditions that
+hard to reproduce on real server. ::
+
+    from aiohttp import web
+
+    def handler(request):
+        assert request.headers.get('token') == 'x'
+        return web.Response(body=b'data')
+
+    def test_handler()
+        req = make_request('get', 'http://python.org/', headers={'token': 'x')
+        resp = header(req)
+        assert resp.body == b'data'
+
+
 aiohttp.test_utils
 ------------------
 

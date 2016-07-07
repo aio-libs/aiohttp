@@ -6,13 +6,11 @@ import unittest
 from collections.abc import Sized, Container, Iterable, Mapping, MutableMapping
 from unittest import mock
 from urllib.parse import unquote
-from multidict import CIMultiDict
 import aiohttp.web
 from aiohttp import hdrs, helpers
-from aiohttp.web import (UrlDispatcher, Request, Response,
+from aiohttp.web import (UrlDispatcher, Response,
                          HTTPMethodNotAllowed, HTTPNotFound,
                          HTTPCreated)
-from aiohttp.protocol import HttpVersion, RawRequestMessage
 from aiohttp.web_urldispatcher import (_defaultExpectHandler,
                                        DynamicRoute,
                                        PlainRoute,
@@ -20,6 +18,7 @@ from aiohttp.web_urldispatcher import (_defaultExpectHandler,
                                        ResourceRoute,
                                        AbstractResource,
                                        View)
+from aiohttp.test_utils import make_mocked_request
 
 
 class TestUrlDispatcher(unittest.TestCase):
@@ -33,16 +32,7 @@ class TestUrlDispatcher(unittest.TestCase):
         self.loop.close()
 
     def make_request(self, method, path):
-        self.app = mock.Mock()
-        message = RawRequestMessage(method, path, HttpVersion(1, 1),
-                                    CIMultiDict(), [], False, False)
-        self.payload = mock.Mock()
-        self.transport = mock.Mock()
-        self.reader = mock.Mock()
-        self.writer = mock.Mock()
-        req = Request(self.app, message, self.payload,
-                      self.transport, self.reader, self.writer)
-        return req
+        return make_mocked_request(method, path)
 
     def make_handler(self):
 
