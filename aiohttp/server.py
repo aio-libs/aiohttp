@@ -58,6 +58,14 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
     :param int timeout: slow request timeout
 
+    :param bool lingering_on: enable lingering close
+
+    :param int lingering_time: maximum time during which the server reads and
+    ignore additionnal data comming from the client when lingering close is on
+
+    :param int lingering_timeout: maximum waiting time for more client data to
+    arrive when lingering close is in effect
+
     :param allowed_methods: (optional) List of allowed request methods.
                             Set to empty list to allow all methods.
     :type allowed_methods: tuple
@@ -73,6 +81,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     :param str access_log_format: access log format string
 
     :param loop: Optional event loop
+
     """
     _request_count = 0
     _request_handler = None
@@ -88,6 +97,9 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                  keep_alive=75,  # NGINX default value is 75 secs
                  keep_alive_on=True,
                  timeout=0,
+                 lingering_on=True,
+                 lingering_time=30,    # NGINX default value is 30 secs
+                 lingering_timeout=5,  # NGINX default value is 5 secs
                  logger=server_logger,
                  access_log=access_logger,
                  access_log_format=helpers.AccessLogger.LOG_FORMAT,
@@ -101,6 +113,9 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         self._keep_alive_on = keep_alive_on
         self._keep_alive_period = keep_alive  # number of seconds to keep alive
         self._timeout = timeout  # slow request timeout
+        self._lingering_on = lingering_on  # lingering close
+        self._lingering_time = lingering_time
+        self._lingering_timeout = lingering_timeout
         self._loop = loop if loop is not None else asyncio.get_event_loop()
 
         self.logger = log or logger
@@ -295,7 +310,34 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                 if payload and not payload.is_eof():
                     self.log_debug('Uncompleted request.')
                     self._request_handler = None
-                    self.transport.close()
+
+                    if self._lingering_on:
+                        self.transport.write_eof()
+                        self.log_debug(
+                            'Start lingering close timer for %s sec.',
+                            self._lingering_time)
+
+                        now = self._loop.time()
+                        lingering_handle = self._loop.call_at(
+                            ceil(now+self._lingering_time),
+                            self.transport.close)
+
+                        while True:
+                            try:
+                                # read and ignore
+                                yield from asyncio.wait_for(
+                                    payload.readany(),
+                                    timeout=self._lingering_timeout,
+                                    loop=self._loop)
+                            except (asyncio.TimeoutError,
+                                    errors.ClientDisconnectedError):
+                                break
+
+                        lingering_handle.cancel()
+
+                    if self.transport is not None:
+                        self.transport.close()
+
                     return
                 else:
                     reader.unset_parser()
