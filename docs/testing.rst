@@ -72,7 +72,6 @@ Pytest example
 
 A pytest example could look like::
 
-    # assuming you are using pytest-asyncio
     from aiohttp.test_utils import TestClient, loop_context
 
     @pytest.yield_fixture
