@@ -753,11 +753,11 @@ post-processing like handling *CORS* and so on.
    :exc:`HTTPMethodNotAllowed`).
 
 Example
-.......
+^^^^^^^
 
 A common use of middlewares is to implement custom error pages.  The following
 example will render 404 errors using a JSON response, as might be appropriate
-a JSON REST service:
+a JSON REST service::
 
     import json
     from aiohttp import web

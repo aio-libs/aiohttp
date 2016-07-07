@@ -89,7 +89,7 @@ Sending pre-compressed data
 ---------------------------
 
 To include data in the response that is already compressed, do not call
-`enable_compression`.  Instead, set the `Content-Encoding` header explicitly:
+`enable_compression`.  Instead, set the `Content-Encoding` header explicitly::
 
     @asyncio.coroutine
     def handler(request):
