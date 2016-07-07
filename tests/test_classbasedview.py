@@ -34,11 +34,13 @@ def test_render_unknown_method():
         @asyncio.coroutine
         def get(self):
             return web.Response(text='OK')
+        options = get
 
     request = mock.Mock()
     request.method = 'UNKNOWN'
     with pytest.raises(web.HTTPMethodNotAllowed) as ctx:
         yield from MyView(request)
+    assert ctx.value.headers['allow'] == 'GET,OPTIONS'
     assert ctx.value.status == 405
 
 
@@ -49,9 +51,11 @@ def test_render_unsupported_method():
         @asyncio.coroutine
         def get(self):
             return web.Response(text='OK')
+        options = delete = get
 
     request = mock.Mock()
     request.method = 'POST'
     with pytest.raises(web.HTTPMethodNotAllowed) as ctx:
         yield from MyView(request)
+    assert ctx.value.headers['allow'] == 'DELETE,GET,OPTIONS'
     assert ctx.value.status == 405
