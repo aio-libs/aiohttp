@@ -176,7 +176,7 @@ class MatchInfoError(UrlMappingMatchInfo):
 
 @asyncio.coroutine
 def _defaultExpectHandler(request):
-    """Default handler for Except header.
+    """Default handler for Expect header.
 
     Just send "100 Continue" to client.
     raise HTTPExpectationFailed if value of header is not "100-continue"
