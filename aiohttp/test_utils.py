@@ -18,13 +18,19 @@ import threading
 import traceback
 import urllib.parse
 import unittest
+from unittest import mock
 
 import asyncio
 import aiohttp
+from multidict import CIMultiDict
+
 from . import server
 from . import helpers
 from . import ClientSession
 from . import hdrs
+from .protocol import HttpVersion
+from .protocol import RawRequestMessage
+from .signals import Signal
 
 
 def run_briefly(loop):
@@ -522,3 +528,111 @@ def teardown_test_loop(loop):
         loop.close()
     gc.collect()
     asyncio.set_event_loop(None)
+
+
+def _create_app_mock():
+    app = mock.Mock()
+    app._debug = False
+    app.on_response_prepare = Signal(app)
+    return app
+
+
+def _create_transport(sslcontext=None):
+    transport = mock.Mock()
+
+    def get_extra_info(key):
+        if key == 'sslcontext':
+            return sslcontext
+        else:
+            return None
+
+    transport.get_extra_info.side_effect = get_extra_info
+    return transport
+
+
+_not_set = object()
+
+
+def make_mocked_request(method, path, headers=CIMultiDict(), *,
+                        version=HttpVersion(1, 1), closing=False,
+                        app=None,
+                        reader=_not_set,
+                        writer=_not_set,
+                        transport=_not_set,
+                        payload=_not_set,
+                        sslcontext=None,
+                        secure_proxy_ssl_header=None):
+    """Creates mocked web.Request testing purposes. Useful in unit tests,
+    when spinning full web server is overkill or specific conditions and
+    errors is hard to trigger.
+
+    :param method: str, that represents HTTP method, like; GET, POST.
+    :type method: str
+
+    :param path: str, The URL including *PATH INFO* without the host or scheme
+    :type path: multidict.CIMultiDict
+
+    :param headers: str, The URL including *PATH INFO* without the host or scheme
+    :type headers: str
+
+    :param version: namedtuple with encoded HTTP version
+    :type version: aiohttp.protocol.HttpVersion
+
+    :param closing: flag idicates that connection should be closed after
+        response.
+    :type closing: bool
+
+    :param app: the aiohttp.web application attached for fake request
+    :type app: aiohttp.web.Application
+
+    :param reader: object for storing and managing incoming data
+    :type reader: aiohttp.parsers.StreamParser
+
+    :param writer: object for managing outcoming data
+    :type wirter: aiohttp.parsers.StreamWriter
+
+    :param transport: asyncio transport instance
+    :type transport: asyncio.transports.Transport
+
+    :param payload: raw payload reader object
+    :type  payload: aiohttp.streams.FlowControlStreamReader
+
+    :param sslcontext: ssl.SSLContext object, for HTTPS connection
+    :type sslcontext: ssl.SSLContext
+
+    :param secure_proxy_ssl_header: A tuple representing a HTTP header/value
+        combination that signifies a request is secure.
+    :type secure_proxy_ssl_header: tuple
+    """
+
+    if version < HttpVersion(1, 1):
+        closing = True
+    message = RawRequestMessage(method, path, version, headers,
+                                [(k.encode('utf-8'), v.encode('utf-8'))
+                                 for k, v in headers.items()],
+                                closing, False)
+    if app is None:
+        app = _create_app_mock()
+
+    if reader is _not_set:
+        reader = mock.Mock()
+
+    if writer is _not_set:
+        writer = mock.Mock()
+
+    if transport is _not_set:
+        transport = _create_transport(sslcontext)
+
+    if payload is _not_set:
+        payload = mock.Mock()
+
+    from .web import Request
+    req = Request(app, message, payload,
+                  transport, reader, writer,
+                  secure_proxy_ssl_header=secure_proxy_ssl_header)
+
+    assert req.app is app
+    assert req.content is payload
+    assert req.transport is transport
+
+    return req

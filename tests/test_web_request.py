@@ -1,49 +1,14 @@
 import pytest
 from unittest import mock
+
 from multidict import MultiDict, CIMultiDict
-from aiohttp.signals import Signal
-from aiohttp.web import Request
 from aiohttp.protocol import HttpVersion
-from aiohttp.protocol import RawRequestMessage
+from aiohttp.test_utils import make_mocked_request
 
 
 @pytest.fixture
 def make_request():
-    def maker(method, path, headers=CIMultiDict(), *,
-              version=HttpVersion(1, 1), closing=False,
-              sslcontext=None,
-              secure_proxy_ssl_header=None):
-        if version < HttpVersion(1, 1):
-            closing = True
-        app = mock.Mock()
-        app._debug = False
-        app.on_response_prepare = Signal(app)
-        message = RawRequestMessage(method, path, version, headers,
-                                    [(k.encode('utf-8'), v.encode('utf-8'))
-                                     for k, v in headers.items()],
-                                    closing, False)
-        payload = mock.Mock()
-        transport = mock.Mock()
-
-        def get_extra_info(key):
-            if key == 'sslcontext':
-                return sslcontext
-            else:
-                return None
-
-        transport.get_extra_info.side_effect = get_extra_info
-        writer = mock.Mock()
-        reader = mock.Mock()
-        req = Request(app, message, payload,
-                      transport, reader, writer,
-                      secure_proxy_ssl_header=secure_proxy_ssl_header)
-
-        assert req.app is app
-        assert req.content is payload
-        assert req.transport is transport
-
-        return req
-    return maker
+    return make_mocked_request
 
 
 def test_ctor(make_request, warning):
@@ -65,6 +30,20 @@ def test_ctor(make_request, warning):
         req.payload
 
     assert req.keep_alive
+
+    # just make sure that all lines of make_mocked_request covered
+    reader = mock.Mock()
+    writer = mock.Mock()
+    payload = mock.Mock()
+    transport = mock.Mock()
+    app = mock.Mock()
+    req = make_request('GET', '/path/to?a=1&b=2', writer=writer, reader=reader,
+                       payload=payload, transport=transport, app=app)
+    assert req.app is app
+    assert req.content is payload
+    assert req.transport is transport
+    assert req._reader is reader
+    assert req._writer is writer
 
 
 def test_doubleslashes(make_request):
