@@ -63,6 +63,8 @@ CHANGES
 
 - Fix error handling in StaticFileMixin #856
 
+- Add mocked request helper #900
+
 
 0.21.6 (05-05-2016)
 -------------------

@@ -167,6 +167,6 @@ aiohttp.test_utils
 ------------------
 
 .. automodule:: aiohttp.test_utils
-   :members: TestClient, AioHTTPTestCase, run_loop, loop_context, setup_test_loop, teardown_test_loop
+   :members: TestClient, AioHTTPTestCase, run_loop, loop_context, setup_test_loop, teardown_test_loop make_mocked_request
    :undoc-members:
    :show-inheritance:
