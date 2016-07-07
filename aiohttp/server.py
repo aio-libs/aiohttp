@@ -252,7 +252,13 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                     self._timeout_handle = None
 
                 # request may not have payload
-                if (message.headers.get(hdrs.CONTENT_LENGTH, 0) or
+                try:
+                    content_length = int(message.headers.get(hdrs.CONTENT_LENGTH, 0))
+                except ValueError:
+                    content_length = 0
+
+                if (content_length > 0 or
+                    message.method == 'CONNECT' or
                     hdrs.SEC_WEBSOCKET_KEY1 in message.headers or
                     'chunked' in message.headers.get(
                         hdrs.TRANSFER_ENCODING, '')):
