@@ -65,6 +65,8 @@ CHANGES
 
 - Add mocked request helper #900
 
+- Fix empty ALLOW Response header for cls based View #929
+
 
 0.21.6 (05-05-2016)
 -------------------
