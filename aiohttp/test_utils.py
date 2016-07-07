@@ -572,7 +572,8 @@ def make_mocked_request(method, path, headers=CIMultiDict(), *,
     :param path: str, The URL including *PATH INFO* without the host or scheme
     :type path: multidict.CIMultiDict
 
-    :param headers: str, The URL including *PATH INFO* without the host or scheme
+    :param headers: str, The URL including *PATH INFO* without the host
+        or scheme
     :type headers: str
 
     :param version: namedtuple with encoded HTTP version
