@@ -67,6 +67,7 @@ CHANGES
 
 - Fix empty ALLOW Response header for cls based View #929
 
+- Respect CONNECT method to implement a proxy server #847
 
 0.21.6 (05-05-2016)
 -------------------
