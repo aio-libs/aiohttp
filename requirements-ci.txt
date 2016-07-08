@@ -8,7 +8,8 @@ cython
 chardet
 tox
 sphinxcontrib-newsfeed
-pytest
+pytest>=2.9.2
+py>=1.4.31
 pytest-cov
 gunicorn
 pygments>=2.1

@@ -339,20 +339,25 @@ class TestClient:
     TestClient can also be used as a contextmanager, returning
     the instance of itself instantiated.
     """
+    _address = '127.0.0.1'
 
     def __init__(self, app, protocol="http"):
         self.app = app
         self._loop = loop = app.loop
         self.port = unused_port()
-        self._handler = handler = app.make_handler()
-        self._server = loop.run_until_complete(loop.create_server(
-            handler, '127.0.0.1', self.port
-        ))
+        self._handler = app.make_handler()
+        self._server = None
+        if not loop.is_running():
+            loop.run_until_complete(self.start_server())
         self._session = ClientSession(loop=self._loop)
-        self._root = "{}://127.0.0.1:{}".format(
-            protocol, self.port
-        )
+        self._root = '{}://{}:{}'.format(protocol, self._address, self.port)
         self._closed = False
+
+    @asyncio.coroutine
+    def start_server(self):
+        self._server = yield from self._loop.create_server(
+            self._handler, self._address, self.port
+        )
 
     @property
     def session(self):
