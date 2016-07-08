@@ -253,7 +253,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
                 # request may not have payload
                 try:
-                    content_length = int(message.headers.get(hdrs.CONTENT_LENGTH, 0))
+                    content_length = int(
+                        message.headers.get(hdrs.CONTENT_LENGTH, 0))
                 except ValueError:
                     content_length = 0
 

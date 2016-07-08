@@ -8,8 +8,81 @@ Testing
 Testing aiohttp web servers
 ---------------------------
 
-aiohttp provides test framework agnostic utilities for web
-servers. An example would be::
+aiohttp provides plugins for pytest_ making writing web
+server tests extremely easy, it also provides
+:ref:`test framework agnostic utilities <framework-agnostic-utilities>` for
+testing with other frameworks such as :ref:`unittest <unittest-example>`.
+
+Pytest example
+~~~~~~~~~~~~~~
+
+The :data:`test_client` fixture available from :data:`aiohttp.pytest_plugins`
+allows you to create a client to make requests to test your app.
+
+A simple would be::
+
+    from aiohttp import web
+    pytest_plugins = 'aiohttp.pytest_plugins'
+
+    async def hello(request):
+        return web.Response(body=b'Hello, world')
+
+    def create_app(loop):
+        app = web.Application(loop=loop)
+        app.router.add_route('GET', '/', hello)
+        return app
+
+    async def test_hello(test_client):
+        client = await test_client(create_app)
+        resp = await client.get('/')
+        assert resp.status == 200
+        text = await resp.text()
+        assert 'Hello, world' in text
+
+
+It also provides access to the app instance allowing tests to check the state
+of the app. Tests can be made even more succinct with a fixture to create an
+app test client::
+
+    import pytest
+    from aiohttp import web
+    pytest_plugins = 'aiohttp.pytest_plugins'
+
+
+    async def previous(request):
+        if request.method == 'POST':
+            request.app['value'] = (await request.post())['value']
+            return web.Response(body=b'thanks for the data')
+        return web.Response(body='value: {}'.format(request.app['value']).encode())
+
+    def create_app(loop):
+        app = web.Application(loop=loop)
+        app.router.add_route('*', '/', previous)
+        return app
+
+    @pytest.fixture
+    def cli(loop, test_client):
+        return loop.run_until_complete(test_client(create_app))
+
+    async def test_set_value(cli):
+        resp = await cli.post('/', data={'value': 'foo'})
+        assert resp.status == 200
+        assert await resp.text() == 'thanks for the data'
+        assert cli.app['value'] == 'foo'
+
+    async def test_get_value(cli):
+        cli.app['value'] = 'bar'
+        resp = await cli.get('/')
+        assert resp.status == 200
+        assert await resp.text() == 'value: bar'
+
+
+.. _framework-agnostic-utilities:
+
+Framework agnostic utilities
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+High level test creation::
 
     from aiohttp.test_utils import TestClient, loop_context
     from aiohttp import request
@@ -63,44 +136,11 @@ for the web.Application object, as well as a ClientSession to perform
 requests. In addition, TestClient provides proxy methods to the client for
 common operations such as ws_connect, get, post, etc.
 
-Please see the full api at the :class:`TestClass api reference <aiohttp.test_utils.TestClient>`
+Please see the full api at the
+:class:`TestClass api reference <aiohttp.test_utils.TestClient>`
 
 
-
-Pytest example
-~~~~~~~~~~~~~~
-
-A pytest example could look like::
-
-    from aiohttp.test_utils import TestClient, loop_context
-
-    @pytest.yield_fixture
-    def loop():
-        with loop_context() as loop:
-            yield loop
-
-    @pytest.fixture
-    def app(loop):
-        return create_app(loop)
-
-
-    @pytest.yield_fixture
-    def test_client(app):
-        client = TestClient(app)
-        yield client
-        client.close()
-
-    def test_get_route(loop, test_client):
-        @asyncio.coroutine
-        def test_get_route():
-            nonlocal test_client
-            resp = yield from test_client.request("GET", "/")
-            assert resp.status == 200
-            text = yield from resp.text()
-            assert "Hello, world" in text
-
-        loop.run_until_complete(test_get_route())
-
+.. _unittest-example:
 
 Unittest example
 ~~~~~~~~~~~~~~~~
@@ -165,6 +205,7 @@ hard to reproduce on real server. ::
 aiohttp.test_utils
 ------------------
 
+.. _pytest: http://pytest.org/latest/
 .. automodule:: aiohttp.test_utils
    :members: TestClient, AioHTTPTestCase, run_loop, loop_context, setup_test_loop, teardown_test_loop make_mocked_request
    :undoc-members:
