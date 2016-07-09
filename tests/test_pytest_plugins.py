@@ -95,5 +95,5 @@ def test_get_value(cli):
     text = yield from resp.text()
     assert text == 'value: bar'
 """)
-    result = testdir.runpytest()
+    result = testdir.runpytest('-p', 'no:sugar')
     result.assert_outcomes(passed=5, failed=1)
