@@ -8,7 +8,7 @@ Testing
 Testing aiohttp web servers
 ---------------------------
 
-aiohttp provides plugins for pytest_ making writing web
+aiohttp provides plugin for pytest_ making writing web
 server tests extremely easy, it also provides
 :ref:`test framework agnostic utilities <framework-agnostic-utilities>` for
 testing with other frameworks such as :ref:`unittest <unittest-example>`.
@@ -16,13 +16,13 @@ testing with other frameworks such as :ref:`unittest <unittest-example>`.
 Pytest example
 ~~~~~~~~~~~~~~
 
-The :data:`test_client` fixture available from :data:`aiohttp.pytest_plugins`
+The :data:`test_client` fixture available from :data:`aiohttp.pytest_plugin`
 allows you to create a client to make requests to test your app.
 
 A simple would be::
 
     from aiohttp import web
-    pytest_plugins = 'aiohttp.pytest_plugins'
+    pytest_plugins = 'aiohttp.pytest_plugin'
 
     async def hello(request):
         return web.Response(body=b'Hello, world')
@@ -46,7 +46,7 @@ app test client::
 
     import pytest
     from aiohttp import web
-    pytest_plugins = 'aiohttp.pytest_plugins'
+    pytest_plugins = 'aiohttp.pytest_plugin'
 
 
     async def previous(request):
