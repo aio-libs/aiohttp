@@ -8,6 +8,7 @@ import unittest
 import zlib
 from multidict import MultiDict
 from aiohttp import log, web, request, FormData, ClientSession, TCPConnector
+from aiohttp.file_sender import FileSender
 from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
 from aiohttp.streams import EOF_MARKER
 
@@ -1172,3 +1173,14 @@ class StaticFileMixin(WebFunctionalSetupMixin):
         file_st = os.stat(fname)
 
         self.loop.run_until_complete(go(here, filename))
+
+
+class TestStaticFileSendfileFallback(StaticFileMixin,
+                                     unittest.TestCase):
+    def patch_sendfile(self, add_static):
+        def f(*args, **kwargs):
+            route = add_static(*args, **kwargs)
+            file_sender = FileSender()
+            file_sender._sendfile = file_sender._sendfile_fallback
+            return route
+        return f
