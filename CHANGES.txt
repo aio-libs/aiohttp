@@ -78,6 +78,8 @@ CHANGES
 
 - Allow configuration of header size limits #912
 
+- Separate sending file logic from StaticRoute dispatcher #901
+
 
 
 0.21.6 (05-05-2016)
