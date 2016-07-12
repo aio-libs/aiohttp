@@ -71,6 +71,8 @@ CHANGES
 
 - Add pytest_plugin #914
 
+- Add tutorial
+
 
 0.21.6 (05-05-2016)
 -------------------

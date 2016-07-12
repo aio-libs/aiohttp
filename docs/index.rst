@@ -86,6 +86,12 @@ Server example::
            ret = yield from f()
 
 
+Tutorial
+--------
+
+:ref:`Polls tutorial <tutorial>`
+
+
 Source code
 -----------
 
@@ -142,6 +148,7 @@ Contents
 
    client
    client_reference
+   tutorial
    web
    web_reference
    web_abc
