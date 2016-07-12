@@ -43,8 +43,9 @@ class WebFunctionalSetupMixin:
 
     @asyncio.coroutine
     def create_server(self, method, path, handler=None, ssl_ctx=None,
-                      logger=log.server_logger):
-        app = web.Application(loop=self.loop)
+                      logger=log.server_logger, handler_kwargs=None):
+        app = web.Application(
+            loop=self.loop)
         if handler:
             app.router.add_route(method, path, handler)
 
@@ -52,7 +53,8 @@ class WebFunctionalSetupMixin:
         self.handler = app.make_handler(
             keep_alive_on=False,
             access_log=log.access_logger,
-            logger=logger)
+            logger=logger,
+            **(handler_kwargs or {}))
         srv = yield from self.loop.create_server(
             self.handler, '127.0.0.1', port, ssl=ssl_ctx)
         protocol = "https" if ssl_ctx else "http"
@@ -771,6 +773,44 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
         def go():
             _, srv, url = yield from self.create_server('GET', '/', handler)
             resp = yield from request('GET', url+'?arg', loop=self.loop)
+            self.assertEqual(200, resp.status)
+            yield from resp.release()
+
+        self.loop.run_until_complete(go())
+
+    def test_large_header(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            return web.Response()
+
+        @asyncio.coroutine
+        def go():
+            _, srv, url = yield from self.create_server('GET', '/', handler)
+            headers = {'Long-Header': 'ab' * 8129}
+            resp = yield from request('GET', url,
+                                      headers=headers,
+                                      loop=self.loop)
+            self.assertEqual(400, resp.status)
+            yield from resp.release()
+
+        self.loop.run_until_complete(go())
+
+    def test_large_header_allowed(self):
+
+        @asyncio.coroutine
+        def handler(request):
+            return web.Response()
+
+        @asyncio.coroutine
+        def go():
+            handler_kwargs = {'max_field_size': 81920}
+            _, srv, url = yield from self.create_server(
+                'GET', '/', handler, handler_kwargs=handler_kwargs)
+            headers = {'Long-Header': 'ab' * 8129}
+            resp = yield from request('GET', url,
+                                      headers=headers,
+                                      loop=self.loop)
             self.assertEqual(200, resp.status)
             yield from resp.release()
 
