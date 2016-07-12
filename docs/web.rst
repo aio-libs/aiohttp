@@ -327,6 +327,25 @@ The following example shows custom routing based on the *HTTP Accept* header::
    chooser.reg_acceptor('application/xml', handle_xml)
 
 
+Static file handling
+--------------------
+
+The best way to handle static files (images, JavaScripts, CSS files
+etc.) is using `Reverse Proxy`_ like `nginx`_ or `CDN`_ services.
+
+.. _Reverse Proxy: https://en.wikipedia.org/wiki/Reverse_proxy
+.. _nginx: https://nginx.org/
+.. _CDN: https://en.wikipedia.org/wiki/Content_delivery_network
+
+But for development it's very convenient to handle static files by
+aiohttp server itself.
+
+To do it just register a new static route by
+:meth:`UrlDispatcher.add_static` call::
+
+   app.router.add_static('/prefix', path_to_static_folder)
+
+
 Template Rendering
 ------------------
 
