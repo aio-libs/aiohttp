@@ -73,6 +73,12 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     :param str access_log_format: access log format string
 
     :param loop: Optional event loop
+
+    :param int max_line_size: Optional maximum header line size
+
+    :param int max_field_size: Optional maximum header field size
+
+    :param int max_headers: Optional maximum header size
     """
     _request_count = 0
     _request_handler = None
@@ -80,9 +86,6 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     _keep_alive = False  # keep transport open
     _keep_alive_handle = None  # keep alive timer handle
     _timeout_handle = None  # slow request timer handle
-
-    _request_prefix = aiohttp.HttpPrefixParser()  # HTTP method parser
-    _request_parser = aiohttp.HttpRequestParser()  # default request parser
 
     def __init__(self, *, loop=None,
                  keep_alive=75,  # NGINX default value is 75 secs
@@ -102,6 +105,14 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         self._keep_alive_period = keep_alive  # number of seconds to keep alive
         self._timeout = timeout  # slow request timeout
         self._loop = loop if loop is not None else asyncio.get_event_loop()
+
+        parser_kwargs = {}
+        for kwarg in ['max_line_size', 'max_field_size', 'max_headers']:
+            if kwarg in kwargs:
+                parser_kwargs[kwarg] = kwargs.pop(kwarg)
+
+        self._request_prefix = aiohttp.HttpPrefixParser()
+        self._request_parser = aiohttp.HttpRequestParser(**parser_kwargs)
 
         self.logger = log or logger
         self.debug = debug
