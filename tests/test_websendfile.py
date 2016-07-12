@@ -1,4 +1,3 @@
-import aiohttp
 import asyncio
 import os
 import unittest
@@ -6,7 +5,6 @@ from unittest import mock
 from aiohttp import helpers
 from aiohttp.web import UrlDispatcher
 from aiohttp.file_sender import FileSender
-from tests.test_web_functional import StaticFileMixin
 
 
 class TestWebSendFile(unittest.TestCase):
@@ -71,15 +69,3 @@ class TestWebSendFile(unittest.TestCase):
             self.assertIs(exc, fut.exception())
             self.assertFalse(loop.add_writer.called)
             self.assertFalse(loop.remove_writer.called)
-
-
-class TestStaticFileSendfileFallback(StaticFileMixin,
-                                     unittest.TestCase):
-    def patch_sendfile(self, add_static):
-        def f(*args, **kwargs):
-            route = add_static(*args, **kwargs)
-            from aiohttp.file_sender import FileSender
-            file_sender = FileSender()
-            file_sender._sendfile = file_sender._sendfile_fallback
-            return route
-        return f
