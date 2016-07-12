@@ -96,6 +96,9 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                  access_log_format=helpers.AccessLogger.LOG_FORMAT,
                  debug=False,
                  log=None,
+                 max_line_size=8190,
+                 max_headers=32768,
+                 max_field_size=8190,
                  **kwargs):
         super().__init__(
             loop=loop,
@@ -106,13 +109,11 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         self._timeout = timeout  # slow request timeout
         self._loop = loop if loop is not None else asyncio.get_event_loop()
 
-        parser_kwargs = {}
-        for kwarg in ['max_line_size', 'max_field_size', 'max_headers']:
-            if kwarg in kwargs:
-                parser_kwargs[kwarg] = kwargs.pop(kwarg)
-
         self._request_prefix = aiohttp.HttpPrefixParser()
-        self._request_parser = aiohttp.HttpRequestParser(**parser_kwargs)
+        self._request_parser = aiohttp.HttpRequestParser(
+            max_line_size=max_line_size,
+            max_field_size=max_field_size,
+            max_headers=max_headers)
 
         self.logger = log or logger
         self.debug = debug
