@@ -17,7 +17,6 @@ import multidict
 
 from . import hdrs
 from .errors import InvalidURL
-
 try:
     from asyncio import ensure_future
 except ImportError:
