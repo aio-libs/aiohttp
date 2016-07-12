@@ -1,4 +1,4 @@
-.. _tutorial:
+.. _aiohttp-tutorial:
 
 Tutorial
 ========
@@ -14,10 +14,10 @@ the `demo source`_.
    https://github.com/KeepSafe/aiohttp/tree/master/demos/polls/
 
 
-.. _tutorial-setup:
+.. _aiohttp-tutorial-setup:
 
 Setup your environment
-======================
+----------------------
 
 First of all check you python version::
 
@@ -35,7 +35,6 @@ command::
 
 Project structure looks very similar to other python based web projects::
 
-    $ tree -L 3
     .
     ├── README.rst
     └── polls
@@ -63,27 +62,28 @@ Project structure looks very similar to other python based web projects::
             └── style.css
 
 
-.. _tutorial-introduction:
+.. _aiohttp-tutorial-introduction:
 
 Getting started with aiohttp first app
-======================================
+--------------------------------------
 
 This tutorial based on Django polls tutorial.
 
 
-.. _tutorial-database:
+.. _aiohttp-tutorial-database:
 
 Database
-========
+--------
 
 Setup
------
+^^^^^
 
 In this tutorial we use latest PostgreSQL database.  You can install
 PostgreSQL using this instruction http://www.postgresql.org/download/
 
 Database schema
----------------
+^^^^^^^^^^^^^^^
+
 We use SQLAlchemy for describe database schema.
 For this tutorial we can use two simple models ``question`` and ``choice``::
 
@@ -145,10 +145,10 @@ and second table is choice table:
 +---------------+
 
 
-.. _tutorial-views:
+.. _aiohttp-tutorial-views:
 
 Views
-=====
+-----
 
 Let's start from first views. Open polls/aiohttpdemo_polls/views.py and put
 next Python code inside file (``polls/aiohttpdemo_polls/views.py``)::
@@ -173,10 +173,10 @@ Now if we open browser we can see::
     Hello Aiohttp!
 
 
-.. _tutorial-templates:
+.. _aiohttp-tutorial-templates:
 
 Templates
-=========
+---------
 
 Let's add more useful views::
 
@@ -215,10 +215,10 @@ In the tutorial we push template files under
 ``polls/aiohttpdemo_polls/templates`` folder.
 
 
-.. _tutorial-static:
+.. _aiohttp-tutorial-static:
 
-Static
-======
+Static files
+------------
 
 Any web site has static files: images, JavaScript sources, CSS files etc.
 
