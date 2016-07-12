@@ -1744,7 +1744,7 @@ Utilities
 
 .. function:: run_app(app, *, host='0.0.0.0', port=None, loop=None, \
                       shutdown_timeout=60.0, ssl_context=None, \
-                      print=print)
+                      print=print, backlog=128)
 
    An utility function for running an application, serving it until
    keyboard interrupt and performing a
@@ -1779,6 +1779,10 @@ Utilities
 
    :param print: a callable compatible with :func:`print`. May be used
                  to override STDOUT output or suppress it.
+
+   :param int backlog: the number of unaccepted connections that the
+                       system will allow before refusing new
+                       connections (``128`` by default).
 
 
 Constants

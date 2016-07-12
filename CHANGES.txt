@@ -73,6 +73,10 @@ CHANGES
 
 - Add tutorial
 
+- Add backlog option to support more than 128 (default value in
+  "create_server" function) concurrent connections #892
+
+
 
 0.21.6 (05-05-2016)
 -------------------
