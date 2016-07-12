@@ -306,7 +306,7 @@ def run_app(app, *, host='0.0.0.0', port=None,
 
     handler = app.make_handler()
     srv = loop.run_until_complete(loop.create_server(handler, host, port,
-                                                     ssl=ssl_context, 
+                                                     ssl=ssl_context,
                                                      backlog=backlog))
 
     scheme = 'https' if ssl_context else 'http'

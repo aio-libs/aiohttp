@@ -29,6 +29,7 @@ Chien-Wei Huang
 Chih-Yuan Chen
 Chris Laws
 Chris Moore
+Daniel García
 Daniel Nelson
 David Michael Brown
 Dima Veselov
