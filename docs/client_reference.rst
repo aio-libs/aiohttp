@@ -40,7 +40,9 @@ The client session supports the context manager protocol for self closing.
                          headers=None, skip_auto_headers=None, \
                          auth=None, request_class=ClientRequest,\
                          response_class=ClientResponse, \
-                         ws_response_class=ClientWebSocketResponse)
+                         ws_response_class=ClientWebSocketResponse,
+                         version=aiohttp.HttpVersion11,
+                         cookie_jar=None)
 
    The class for creating client sessions and making requests.
 
@@ -91,6 +93,21 @@ The client session supports the context manager protocol for self closing.
                              ``ClientWebSocketResponse`` by default.
 
                              .. versionadded:: 0.16
+
+   :param version: supported HTTP version, ``HTTP 1.1`` by default.
+
+      .. versionadded:: 0.21
+
+   :param cookie_jar: Cookie Jar, :class:`AbstractCookieJar` instance.
+
+      By default every session instance has own private cookie jar for
+      automatic cookies processing but user may redefine this behavior
+      by providing own jar implementation.
+
+      One example is not processing cookies at all when working in
+      proxy mode.
+
+      .. versionadded:: 0.22
 
    .. versionchanged:: 0.16
       *request_class* default changed from ``None`` to ``ClientRequest``

@@ -16,6 +16,7 @@ from pathlib import Path
 import multidict
 
 from . import hdrs
+from .abc import AbstractCookieJar
 from .errors import InvalidURL
 try:
     from asyncio import ensure_future
@@ -568,7 +569,7 @@ class Timeout:
         self._cancelled = self._task.cancel()
 
 
-class CookieJar:
+class CookieJar(AbstractCookieJar):
     """Implements cookie storage adhering to RFC 6265."""
 
     DATE_TOKENS_RE = re.compile(
@@ -584,18 +585,9 @@ class CookieJar:
 
     DATE_YEAR_RE = re.compile("(\d{2,4})")
 
-    def __init__(self, cookies=None, loop=None):
-        self._cookies = SimpleCookie()
-        self._loop = loop or asyncio.get_event_loop()
+    def __init__(self, *, loop=None):
+        super().__init__(loop=loop)
         self._host_only_cookies = set()
-
-        if cookies is not None:
-            self.update_cookies(cookies)
-
-    @property
-    def cookies(self):
-        """The session cookies."""
-        return self._cookies
 
     def _expire_cookie(self, name):
         if name in self._cookies:
