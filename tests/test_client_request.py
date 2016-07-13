@@ -267,13 +267,10 @@ def test_basic_auth_utf8(make_request):
     assert 'Basic bmtpbTrRgdC10LrRgNC10YI=' == req.headers['AUTHORIZATION']
 
 
-def test_basic_auth_tuple_deprecated(make_request, warning):
-    with warning(DeprecationWarning):
-        req = make_request('get', 'http://python.org',
-                           auth=('nkim', '1234'))
-
-        assert 'AUTHORIZATION' in req.headers
-        assert 'Basic bmtpbToxMjM0' == req.headers['AUTHORIZATION']
+def test_basic_auth_tuple_forbidden(make_request, warning):
+    with pytest.raises(TypeError):
+        make_request('get', 'http://python.org',
+                     auth=('nkim', '1234'))
 
 
 def test_basic_auth_from_url(make_request):

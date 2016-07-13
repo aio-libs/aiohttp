@@ -255,9 +255,7 @@ class ClientRequest:
             return
 
         if not isinstance(auth, helpers.BasicAuth):
-            warnings.warn(
-                'BasicAuth() tuple is required instead ', DeprecationWarning)
-            auth = helpers.BasicAuth(*auth)
+            raise TypeError('BasicAuth() tuple is required instead')
 
         self.headers[hdrs.AUTHORIZATION] = auth.encode()
 

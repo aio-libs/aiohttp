@@ -82,6 +82,8 @@ CHANGES
 
 - Drop deprecated share_cookies connector option (BACKWARD INCOMPATIBLE)
 
+- Drop deprecated support for tuple as auth paramter.
+  Use aiohttp.BasicAuth instead (BACKWARD INCOMPATIBLE)
 
 
 0.21.6 (05-05-2016)
