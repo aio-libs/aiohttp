@@ -19,19 +19,21 @@ class Crawler:
         self.busy = set()
         self.done = {}
         self.tasks = set()
-        self.sem = asyncio.Semaphore(maxtasks)
+        self.sem = asyncio.Semaphore(maxtasks, loop=loop)
 
         # connector stores cookies between requests and uses connection pool
-        self.connector = aiohttp.TCPConnector(share_cookies=True, loop=loop)
+        self.session = aiohttp.ClientSession(loop=loop)
 
     @asyncio.coroutine
     def run(self):
-        asyncio.Task(self.addurls([(self.rooturl, '')]))  # Set initial work.
-        yield from asyncio.sleep(1)
+        t = asyncio.ensure_future(self.addurls([(self.rooturl, '')]),
+                                  loop=self.loop)
+        yield from asyncio.sleep(1, loop=self.loop)
         while self.busy:
-            yield from asyncio.sleep(1)
+            yield from asyncio.sleep(1, loop=self.loop)
 
-        self.connector.close()
+        yield from t
+        yield from self.session.close()
         self.loop.stop()
 
     @asyncio.coroutine
@@ -45,7 +47,7 @@ class Crawler:
                     url not in self.todo):
                 self.todo.add(url)
                 yield from self.sem.acquire()
-                task = asyncio.Task(self.process(url))
+                task = asyncio.ensure_future(self.process(url), loop=self.loop)
                 task.add_done_callback(lambda t: self.sem.release())
                 task.add_done_callback(self.tasks.remove)
                 self.tasks.add(task)
@@ -56,9 +58,8 @@ class Crawler:
 
         self.todo.remove(url)
         self.busy.add(url)
-        session = aiohttp.ClientSession(connector=self.connector)
         try:
-            resp = yield from session.request('get', url)
+            resp = yield from self.session.get(url)
         except Exception as exc:
             print('...', url, 'has error', repr(str(exc)))
             self.done[url] = False
@@ -71,8 +72,6 @@ class Crawler:
 
             resp.close()
             self.done[url] = True
-        finally:
-            session.close()
 
         self.busy.remove(url)
         print(len(self.done), 'completed tasks,', len(self.tasks),
@@ -83,7 +82,7 @@ def main():
     loop = asyncio.get_event_loop()
 
     c = Crawler(sys.argv[1], loop)
-    asyncio.Task(c.run())
+    asyncio.ensure_future(c.run(), loop=loop)
 
     try:
         loop.add_signal_handler(signal.SIGINT, loop.stop)

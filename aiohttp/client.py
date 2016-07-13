@@ -54,9 +54,6 @@ class ClientSession:
 
         self._cookie_jar = CookieJar(loop=loop)
 
-        # For Backward compatability with `share_cookies` connectors
-        if connector._share_cookies:
-            self._cookie_jar.update_cookies(connector.cookies)
         if cookies is not None:
             self._cookie_jar.update_cookies(cookies)
         self._connector = connector
@@ -200,10 +197,6 @@ class ClientSession:
                 raise aiohttp.ClientOSError(*exc.args) from exc
 
             self._cookie_jar.update_cookies(resp.cookies, resp.url)
-
-            # For Backward compatability with `share_cookie` connectors
-            if self._connector._share_cookies:
-                self._connector.update_cookies(resp.cookies)
 
             # redirects
             if resp.status in (301, 302, 303, 307) and allow_redirects:

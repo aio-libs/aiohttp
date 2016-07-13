@@ -116,7 +116,7 @@ class BaseConnector(object):
     _source_traceback = None
 
     def __init__(self, *, conn_timeout=None, keepalive_timeout=_default,
-                 share_cookies=False, force_close=False, limit=None,
+                 force_close=False, limit=None,
                  loop=None):
 
         if force_close:
@@ -139,11 +139,6 @@ class BaseConnector(object):
         self._acquired = defaultdict(set)
         self._conn_timeout = conn_timeout
         self._keepalive_timeout = keepalive_timeout
-        if share_cookies:
-            warnings.warn(
-                'Using `share_cookies` is deprecated. '
-                'Use Session object instead', DeprecationWarning)
-        self._share_cookies = share_cookies
         self._cleanup_handle = None
         self._force_close = force_close
         self._limit = limit

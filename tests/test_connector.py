@@ -172,16 +172,11 @@ class TestBaseConnector(unittest.TestCase):
         conn.close()
 
     def test_release_close(self):
-        with self.assertWarns(DeprecationWarning):
-            conn = aiohttp.BaseConnector(share_cookies=True, loop=self.loop)
+        conn = aiohttp.BaseConnector(loop=self.loop)
         req = unittest.mock.Mock()
         resp = unittest.mock.Mock()
         resp.message.should_close = True
         req.response = resp
-
-        cookies = resp.cookies = http.cookies.SimpleCookie()
-        cookies['c1'] = 'cookie1'
-        cookies['c2'] = 'cookie2'
 
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
         key = 1
@@ -218,8 +213,7 @@ class TestBaseConnector(unittest.TestCase):
         key = ('127.0.0.1', 80, False)
         tr1, proto1 = unittest.mock.Mock(), unittest.mock.Mock()
 
-        with self.assertWarns(DeprecationWarning):
-            conn = aiohttp.BaseConnector(share_cookies=True, loop=self.loop)
+        conn = aiohttp.BaseConnector(loop=self.loop)
         conn._conns[key] = [(tr1, proto1, 1)]
         req = unittest.mock.Mock()
         resp = unittest.mock.Mock()
@@ -828,12 +822,6 @@ class TestHttpClientConnector(unittest.TestCase):
                 loop=self.loop))
         self.assertEqual(r.status, 200)
         r.close()
-
-    def test_connector_cookie_deprecation(self):
-        with self.assertWarnsRegex(DeprecationWarning,
-                                   "^Using `share_cookies` is deprecated"):
-            conn = aiohttp.TCPConnector(share_cookies=True, loop=self.loop)
-        conn.close()
 
     def test_ambiguous_ctor_params(self):
         with self.assertRaises(ValueError):

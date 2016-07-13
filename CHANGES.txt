@@ -80,6 +80,8 @@ CHANGES
 
 - Separate sending file logic from StaticRoute dispatcher #901
 
+- Drop deprecated share_cookies connector option (BACKWARD INCOMPATIBLE)
+
 
 
 0.21.6 (05-05-2016)
