@@ -89,7 +89,7 @@ Server example::
 Tutorial
 --------
 
-:ref:`Polls tutorial <tutorial>`
+:ref:`Polls tutorial <aiohttp-tutorial>`
 
 
 Source code

@@ -673,7 +673,7 @@ BaseConnector
 
 .. class:: BaseConnector(*, conn_timeout=None, keepalive_timeout=30, \
                          limit=None, \
-                         share_cookies=False, force_close=False, loop=None)
+                         force_close=False, loop=None)
 
    Base class for all connectors.
 
@@ -692,9 +692,6 @@ BaseConnector
                      have equal ``(host, port, is_ssl)`` triple.
                      If *limit* is ``None`` the connector has no limit.
 
-   :param bool share_cookies: update :attr:`cookies` on connection
-                              processing (optional, deprecated).
-
    :param bool force_close: do close underlying sockets after
                             connection releasing (optional).
 
@@ -704,12 +701,6 @@ BaseConnector
       is used for getting default event loop, but we strongly
       recommend to use explicit loops everywhere.
       (optional)
-
-   .. deprecated:: 0.15.2
-
-      *share_cookies* parameter is deprecated, use
-      :class:`~aiohttp.client.ClientSession` for handling cookies for
-      client connections.
 
    .. attribute:: closed
 
@@ -775,7 +766,7 @@ TCPConnector
                         use_dns_cache=False, \
                         family=0, \
                         ssl_context=None, conn_timeout=None, \
-                        keepalive_timeout=30, limit=None, share_cookies=False, \
+                        keepalive_timeout=30, limit=None, \
                         force_close=False, loop=None, local_addr=None)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
@@ -923,7 +914,6 @@ ProxyConnector
 .. class:: ProxyConnector(proxy, *, proxy_auth=None, \
                           conn_timeout=None, \
                           keepalive_timeout=30, limit=None, \
-                          share_cookies=False, \
                           force_close=True, loop=None)
 
    HTTP Proxy connector.
@@ -978,7 +968,6 @@ UnixConnector
 .. class:: UnixConnector(path, *, \
                          conn_timeout=None, \
                          keepalive_timeout=30, limit=None, \
-                         share_cookies=False, \
                          force_close=False, loop=None)
 
    Unix socket connector.
