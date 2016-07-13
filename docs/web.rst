@@ -5,9 +5,6 @@ HTTP Server Usage
 
 .. currentmodule:: aiohttp.web
 
-.. versionchanged:: 0.12
-   :mod:`aiohttp.web` was deeply refactored making it backwards incompatible.
-
 
 Run a Simple Web Server
 -----------------------
@@ -159,9 +156,6 @@ By default, each *part* matches the regular expression ``[^{}/]+``.
 You can also specify a custom regex in the form ``{identifier:regex}``::
 
    resource = app.router.add_resource(r'/{name:\d+}')
-
-.. versionadded:: 0.13
-   Support for custom regexs in variable routes.
 
 
 .. _aiohttp-web-named-routes:
@@ -519,8 +513,6 @@ a container for the file as well as some of its metadata::
 WebSockets
 ----------
 
-.. versionadded:: 0.14
-
 :mod:`aiohttp.web` supports *WebSockets* out-of-the-box.
 
 To setup a *WebSocket*, create a :class:`WebSocketResponse` in a
@@ -721,8 +713,6 @@ Otherwise, something based on your company name/url would be satisfactory (i.e
 Middlewares
 -----------
 
-.. versionadded:: 0.13
-
 :mod:`aiohttp.web` provides a powerful mechanism for customizing
 :ref:`request handlers<aiohttp-web-handler>` via *middlewares*.
 
@@ -767,9 +757,6 @@ if user has no permissions to access the underlying resource.
 They may also render errors raised by the handler, perform some pre- or
 post-processing like handling *CORS* and so on.
 
-.. versionchanged:: 0.14
-   Middlewares accept route exceptions (:exc:`HTTPNotFound` and
-   :exc:`HTTPMethodNotAllowed`).
 
 Example
 ^^^^^^^

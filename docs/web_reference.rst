@@ -407,8 +407,6 @@ StreamResponse
 
       ``False`` by default.
 
-      .. versionadded:: 0.14
-
       .. seealso:: :meth:`enable_compression`
 
    .. method:: enable_compression(force=None)
@@ -421,8 +419,6 @@ StreamResponse
       *Accept-Encoding* is not checked if *force* is set to a
       :class:`ContentCoding`.
 
-      .. versionadded:: 0.14
-
       .. seealso:: :attr:`compression`
 
    .. attribute:: chunked
@@ -431,8 +427,6 @@ StreamResponse
 
       Can be enabled by :meth:`enable_chunked_encoding` call.
 
-      .. versionadded:: 0.14
-
       .. seealso:: :attr:`enable_chunked_encoding`
 
    .. method:: enable_chunked_encoding
@@ -440,8 +434,6 @@ StreamResponse
       Enables :attr:`chunked` encoding for response. There are no ways to
       disable it back. With enabled :attr:`chunked` encoding each `write()`
       operation encoded in separate chunk.
-
-      .. versionadded:: 0.14
 
       .. warning:: chunked encoding can be enabled for ``HTTP/1.1`` only.
 
@@ -515,10 +507,6 @@ StreamResponse
                           specification the cookie
                           conforms. (Optional, *version=1* by default)
 
-      .. versionchanged:: 0.14.3
-
-         Default value for *path* changed from ``None`` to ``'/'``.
-
    .. method:: del_cookie(name, *, path='/', domain=None)
 
       Deletes cookie.
@@ -528,10 +516,6 @@ StreamResponse
       :param str domain: optional cookie domain
 
       :param str path: optional cookie path, ``'/'`` by default
-
-      .. versionchanged:: 0.14.3
-
-         Default value for *path* changed from ``None`` to ``'/'``.
 
    .. attribute:: content_length
 
@@ -644,8 +628,6 @@ StreamResponse
       especially be used when a possibly large amount of data is
       written to the transport, and the coroutine does not yield-from
       between calls to :meth:`write`.
-
-      .. versionadded:: 0.14
 
    .. coroutinemethod:: write_eof()
 
@@ -931,8 +913,6 @@ WebSocketResponse
       .. versionadded:: 0.22
 
 
-.. versionadded:: 0.14
-
 .. seealso:: :ref:`WebSockets handling<aiohttp-web-websockets>`
 
 
@@ -1006,8 +986,6 @@ duplicated like one using :meth:`Application.copy`.
 
    :param middlewares: :class:`list` of middleware factories, see
                        :ref:`aiohttp-web-middlewares` for details.
-
-                       .. versionadded:: 0.13
 
    .. attribute:: router
 
@@ -1313,11 +1291,6 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       .. note:: The method uses :attr:`Request.raw_path` for pattern
          matching against registered routes.
-
-      .. versionchanged:: 0.14
-
-         The method don't raise :exc:`HTTPNotFound` and
-         :exc:`HTTPMethodNotAllowed` anymore.
 
    .. method:: resources()
 
