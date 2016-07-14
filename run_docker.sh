@@ -1,5 +1,4 @@
-if [[ ! -z $TRAVIS_TAG && -z $PYTHONASYNCIODEBUG && -z $AIOHTTP_NO_EXTENSIONS]]
-then
+if [ ! -z $TRAVIS_TAG ] && [ -z $PYTHONASYNCIODEBUG ] && [ -z $AIOHTTP_NO_EXTENSIONS] ;then
     echo "x86_64"
     docker pull quay.io/pypa/manylinux1_x86_64
     docker run --rm -v `pwd`:/io quay.io/pypa/manylinux1_x86_64 /io/build-wheels.sh
