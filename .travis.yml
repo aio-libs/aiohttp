@@ -1,4 +1,6 @@
-sudo: no
+sudo: required
+services:
+  - docker
 
 language: python
 
@@ -40,6 +42,7 @@ script:
 
 after_success:
   coveralls
+  - ./run_docker.sh
 
 env:
   matrix:
