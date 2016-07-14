@@ -275,12 +275,6 @@ class Request(dict, HeadersMixin):
             {key: val.value for key, val in parsed.items()})
 
     @property
-    def payload(self):
-        """Return raw payload stream."""
-        warnings.warn('use Request.content instead', DeprecationWarning)
-        return self._payload
-
-    @property
     def content(self):
         """Return raw payload stream."""
         return self._payload

@@ -95,10 +95,6 @@ allowing a handler to serve incoming requests on a *path* having **any**
 The *HTTP method* can be queried later in the request handler using the
 :attr:`Request.method` property.
 
-.. versionadded:: 0.15.2
-
-   Support for wildcard *HTTP method* routes.
-
 
 .. _aiohttp-web-resource-and-route:
 
@@ -411,8 +407,6 @@ third-party library, :mod:`aiohttp_session`, that adds *session* support::
 
 *Expect* Header
 ---------------
-
-.. versionadded:: 0.15
 
 :mod:`aiohttp.web` supports *Expect* header. By default it sends
 ``HTTP/1.1 100 Continue`` line to client, or raises
