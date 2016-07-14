@@ -1,7 +1,7 @@
 .. _aiohttp-abc:
 
-Abstract Classes
-================
+Abstract Base Classes
+=====================
 
 .. module:: aiohttp.abc
 
