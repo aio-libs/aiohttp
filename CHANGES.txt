@@ -94,3 +94,5 @@ CHANGES
 - Allow to override default cookie jar #963
 
 - Add manylinux wheel builds
+
+- Dup a socket for sendfile usage #964
