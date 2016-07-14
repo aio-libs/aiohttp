@@ -39,7 +39,7 @@ class FileSender:
     @asyncio.coroutine
     def _sendfile_system(self, req, resp, fobj, count):
         """
-        Write `count` bytes of `fobj` to `resp` starting from `offset` using
+        Write `count` bytes of `fobj` to `resp` using
         the ``sendfile`` system call.
 
         `req` should be a :obj:`aiohttp.web.Request` instance.
@@ -47,8 +47,6 @@ class FileSender:
         `resp` should be a :obj:`aiohttp.web.StreamResponse` instance.
 
         `fobj` should be an open file object.
-
-        `offset` should be an integer >= 0.
 
         `count` should be an integer > 0.
         """
@@ -61,13 +59,18 @@ class FileSender:
         yield from resp.drain()
 
         loop = req.app.loop
-        out_fd = transport.get_extra_info("socket").fileno()
+        # See https://github.com/KeepSafe/aiohttp/issues/958 for details
+        out_socket = transport.get_extra_info("socket").dup()
+        out_fd = out_socket.fileno()
         in_fd = fobj.fileno()
         fut = create_future(loop)
 
-        self._sendfile_cb(fut, out_fd, in_fd, 0, count, loop, False)
+        try:
+            self._sendfile_cb(fut, out_fd, in_fd, 0, count, loop, False)
 
-        yield from fut
+            yield from fut
+        finally:
+            out_socket.close()
 
     @asyncio.coroutine
     def _sendfile_fallback(self, req, resp, fobj, count):
