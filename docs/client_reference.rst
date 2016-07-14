@@ -27,18 +27,19 @@ Usage example::
      async def fetch(client):
          async with client.get('http://python.org') as resp:
              assert resp.status == 200
-             print(await resp.text())
+             return await resp.text()
 
      with aiohttp.ClientSession() as client:
-         asyncio.get_event_loop().run_until_complete(fetch(client))
+         html = asyncio.get_event_loop().run_until_complete(fetch(client))
+         print(html)
 
 .. versionadded:: 0.17
 
 The client session supports the context manager protocol for self closing.
 
-.. class:: ClientSession(*, connector=None, loop=None, cookies=None,\
+.. class:: ClientSession(*, connector=None, loop=None, cookies=None, \
                          headers=None, skip_auto_headers=None, \
-                         auth=None, request_class=ClientRequest,\
+                         auth=None, request_class=ClientRequest, \
                          response_class=ClientResponse, \
                          ws_response_class=ClientWebSocketResponse)
 
