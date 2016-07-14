@@ -26,9 +26,6 @@ def test_ctor(make_request, warning):
     # second call should return the same object
     assert get is req.GET
 
-    with warning(DeprecationWarning):
-        req.payload
-
     assert req.keep_alive
 
     # just make sure that all lines of make_mocked_request covered
