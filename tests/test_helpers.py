@@ -351,9 +351,10 @@ class TestCookieJar(unittest.TestCase):
         return cookies_sent
 
     def test_constructor(self):
-        jar = helpers.CookieJar(self.cookies_to_send, self.loop)
+        jar = helpers.CookieJar(loop=self.loop)
+        jar.update_cookies(self.cookies_to_send)
         self.assertEqual(jar.cookies, self.cookies_to_send)
-        self.assertEqual(jar._loop, self.loop)
+        self.assertIs(jar._loop, self.loop)
 
     def test_domain_filter_ip(self):
         cookies_sent, cookies_received = (

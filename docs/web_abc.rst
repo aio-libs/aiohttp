@@ -97,3 +97,30 @@ attribute.
    .. attribute:: request
 
       :class:`aiohttp.web.Request` instance for performing the request.
+
+
+Abstract Cookie Jar
+-------------------
+
+.. class:: AbstractCookieJar(*, loop=None)
+
+   An abstract class for cookie storage.
+
+   :param loop: an :ref:`event loop<asyncio-event-loop>` instance.
+
+                If param is ``None`` :func:`asyncio.get_event_loop`
+                used for getting default event loop, but we strongly
+                recommend to use explicit loops everywhere.
+
+
+   .. attribute:: cookies
+
+      :class:`http.cookies.SimpleCookie` instance for storing cookies info.
+
+   .. method:: update_cookies(cookies, response_url=None)
+
+       Update cookies.
+
+   .. method:: filter_cookies(request_url)
+
+      Returns this jar's cookies filtered by their attributes.

@@ -37,7 +37,8 @@ class ClientSession:
                  auth=None, request_class=ClientRequest,
                  response_class=ClientResponse,
                  ws_response_class=ClientWebSocketResponse,
-                 version=aiohttp.HttpVersion11):
+                 version=aiohttp.HttpVersion11,
+                 cookie_jar=None):
 
         if connector is None:
             connector = aiohttp.TCPConnector(loop=loop)
@@ -52,7 +53,9 @@ class ClientSession:
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
-        self._cookie_jar = CookieJar(loop=loop)
+        if cookie_jar is None:
+            cookie_jar = CookieJar(loop=loop)
+        self._cookie_jar = cookie_jar
 
         if cookies is not None:
             self._cookie_jar.update_cookies(cookies)
