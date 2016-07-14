@@ -184,7 +184,7 @@ class MatchInfoError(UrlMappingMatchInfo):
 
 @asyncio.coroutine
 def _defaultExpectHandler(request):
-    """Default handler for Except header.
+    """Default handler for Expect header.
 
     Just send "100 Continue" to client.
     raise HTTPExpectationFailed if value of header is not "100-continue"
@@ -554,7 +554,8 @@ class View(AbstractView):
             return (yield from self.__iter__())
 
     def _raise_allowed_methods(self):
-        allowed_methods = {m for m in hdrs.METH_ALL if hasattr(self, m)}
+        allowed_methods = {
+            m for m in hdrs.METH_ALL if hasattr(self, m.lower())}
         raise HTTPMethodNotAllowed(self.request.method, allowed_methods)
 
 
