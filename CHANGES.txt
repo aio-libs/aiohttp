@@ -90,3 +90,5 @@ CHANGES
 
 - Drop all mentions about api changes in documentaion for versions
   older than 0.16
+
+- Allow to override default cookie jar #963
