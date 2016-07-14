@@ -1,6 +1,6 @@
 # This relies on each of the submodules having an __all__ variable.
 
-__version__ = '0.22.0b5'
+__version__ = '0.22.0b6'
 
 import multidict  # noqa
 
