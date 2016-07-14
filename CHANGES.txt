@@ -92,3 +92,5 @@ CHANGES
   older than 0.16
 
 - Allow to override default cookie jar #963
+
+- Add manylinux wheel builds
