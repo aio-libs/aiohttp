@@ -377,16 +377,8 @@ def test_request_ctx_manager_props(loop):
 def test_cookie_jar_usage(create_app_and_client):
     req_url = None
 
-    init_mock = mock.Mock(return_value=None)
-    update_mock = mock.Mock(return_value=None)
-    filter_mock = mock.Mock(return_value=None)
-
-    patches = mock.patch.multiple(
-        "aiohttp.helpers.CookieJar",
-        __init__=init_mock,
-        update_cookies=update_mock,
-        filter_cookies=filter_mock,
-    )
+    jar = mock.Mock()
+    jar.filter_cookies.return_value = None
 
     @asyncio.coroutine
     def handler(request):
@@ -397,30 +389,25 @@ def test_cookie_jar_usage(create_app_and_client):
         resp.set_cookie("response", "resp_value")
         return resp
 
-    with patches:
-        app, client = yield from create_app_and_client(
-            client_params={"cookies": {"request": "req_value"}}
-        )
-        app.router.add_route('GET', '/', handler)
+    app, client = yield from create_app_and_client(
+        client_params={"cookies": {"request": "req_value"},
+                       "cookie_jar": jar}
+    )
+    app.router.add_route('GET', '/', handler)
 
-        # Updating the cookie jar with initial user defined cookies
-        assert init_mock.called
-        assert update_mock.called
-        assert update_mock.call_args[0] == (
-            {"request": "req_value"},
-        )
+    # Updating the cookie jar with initial user defined cookies
+    jar.update_cookies.assert_called_with({"request": "req_value"})
 
-        update_mock.reset_mock()
-        yield from client.get("/")
+    jar.update_cookies.reset_mock()
+    yield from client.get("/")
 
-        # Filtering the cookie jar before sending the request,
-        # getting the request URL as only parameter
-        assert filter_mock.called
-        assert filter_mock.call_args[0] == (req_url,)
+    # Filtering the cookie jar before sending the request,
+    # getting the request URL as only parameter
+    jar.filter_cookies.assert_called_with(req_url)
 
-        # Updating the cookie jar with the response cookies
-        assert update_mock.called
-        resp_cookies = update_mock.call_args[0][0]
-        assert isinstance(resp_cookies, http.cookies.SimpleCookie)
-        assert "response" in resp_cookies
-        assert resp_cookies["response"].value == "resp_value"
+    # Updating the cookie jar with the response cookies
+    assert jar.update_cookies.called
+    resp_cookies = jar.update_cookies.call_args[0][0]
+    assert isinstance(resp_cookies, http.cookies.SimpleCookie)
+    assert "response" in resp_cookies
+    assert resp_cookies["response"].value == "resp_value"
