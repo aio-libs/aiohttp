@@ -604,9 +604,6 @@ history will be an empty sequence.
 WebSockets
 ----------
 
-.. versionadded:: 0.15
-
-
 :mod:`aiohttp` works with client websockets out-of-the-box.
 
 You have to use the :meth:`aiohttp.ClientSession.ws_connect` coroutine

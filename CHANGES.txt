@@ -85,6 +85,12 @@ CHANGES
 - Drop deprecated support for tuple as auth paramter.
   Use aiohttp.BasicAuth instead (BACKWARD INCOMPATIBLE)
 
+- Remove deprecated `request.payload` property, use `content` instead.
+  (BACKWARD INCOMPATIBLE)
+
+- Drop all mentions about api changes in documentaion for versions
+  older than 0.16
+
 
 0.21.6 (05-05-2016)
 -------------------

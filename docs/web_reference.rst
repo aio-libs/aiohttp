@@ -171,8 +171,6 @@ like one using :meth:`Request.copy`.
 
       Read-only property.
 
-      .. versionadded:: 0.15
-
    .. attribute:: has_body
 
       Return ``True`` if request has *HTTP BODY*, ``False`` otherwise.
@@ -180,17 +178,6 @@ like one using :meth:`Request.copy`.
       Read-only :class:`bool` property.
 
       .. versionadded:: 0.16
-
-   .. attribute:: payload
-
-      A :class:`~aiohttp.streams.FlowControlStreamReader` instance,
-      input stream for reading request's *BODY*.
-
-      Read-only property.
-
-      .. deprecated:: 0.15
-
-         Use :attr:`~Request.content` instead.
 
    .. attribute:: content_type
 
