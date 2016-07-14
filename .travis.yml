@@ -41,7 +41,7 @@ script:
     fi
 
 after_success:
-  coveralls
+  - coveralls
   - ./run_docker.sh
 
 env:
