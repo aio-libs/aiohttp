@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-0.22.0 (XX-XX-XXXX)
+0.22.0 (08-15-2016)
 -------------------
 
 - Fix bug in serving static directory #803
