@@ -8,10 +8,12 @@ import functools
 import io
 import os
 import re
-from urllib.parse import quote, urlencode, urlsplit
-from http.cookies import SimpleCookie, Morsel
+
 from collections import namedtuple
+from http.cookies import SimpleCookie, Morsel
+from math import ceil
 from pathlib import Path
+from urllib.parse import quote, urlencode, urlsplit
 
 import multidict
 
@@ -589,9 +591,17 @@ class CookieJar(AbstractCookieJar):
         super().__init__(loop=loop)
         self._host_only_cookies = set()
 
-    def _expire_cookie(self, name):
-        if name in self._cookies:
-            del self._cookies[name]
+    def _expire_cookie(self, when, name, DAY=24*3600):
+        now = self._loop.time()
+        delta = when - now
+        if delta <= 0:
+            # expired
+            self._cookies.pop(name, None)
+        if delta > DAY:
+            # Huge timeouts (more than 24 days) breaks event loop
+            self._loop.call_at(ceil(now+DAY), self._expire_cookie, when, name)
+        else:
+            self._loop.call_at(ceil(when), self._expire_cookie, when, name)
 
     def update_cookies(self, cookies, response_url=None):
         """Update cookies."""
@@ -636,8 +646,8 @@ class CookieJar(AbstractCookieJar):
             if max_age:
                 try:
                     delta_seconds = int(max_age)
-                    self._loop.call_later(
-                        delta_seconds, self._expire_cookie, name)
+                    self._expire_cookie(self._loop.time() + delta_seconds,
+                                        name)
                 except ValueError:
                     cookie["max-age"] = ""
 
@@ -645,9 +655,8 @@ class CookieJar(AbstractCookieJar):
             if not cookie["max-age"] and expires:
                 expire_time = self._parse_date(expires)
                 if expire_time:
-                    self._loop.call_at(
-                        expire_time.timestamp(),
-                        self._expire_cookie, name)
+                    self._expire_cookie(expire_time.timestamp(),
+                                        name)
                 else:
                     cookie["expires"] = ""
 
