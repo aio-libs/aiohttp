@@ -165,3 +165,13 @@ def test_cancel_outer_coro(loop):
         yield from task
     assert task.cancelled()
     assert task.done()
+
+
+@pytest.mark.run_loop
+def test_timeout_suppress_exception_chain(loop):
+
+    with pytest.raises(asyncio.TimeoutError) as ctx:
+        with Timeout(0.01, loop=loop) as t:
+            yield from asyncio.sleep(10, loop=loop)
+            assert t._loop is loop
+    assert ctx.value.__suppress_context__
