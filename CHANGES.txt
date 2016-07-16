@@ -1,6 +1,11 @@
 CHANGES
 =======
 
+0.22.2 (XX-XX-XXXX)
+-------------------
+
+- Suppress CancelledError when Timeout raises TimeoutError #970
+
 0.22.1 (08-16-2016)
 -------------------
 
