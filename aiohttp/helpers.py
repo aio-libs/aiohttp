@@ -561,7 +561,7 @@ class Timeout:
         if exc_type is asyncio.CancelledError and self._cancelled:
             self._cancel_handler = None
             self._task = None
-            raise asyncio.TimeoutError
+            raise asyncio.TimeoutError from None
         if self._timeout is not None:
             self._cancel_handler.cancel()
             self._cancel_handler = None
