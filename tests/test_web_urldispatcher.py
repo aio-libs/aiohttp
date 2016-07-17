@@ -6,6 +6,9 @@ import functools
 import asyncio
 import aiohttp.web
 
+from aiohttp.web_urldispatcher import SystemRoute
+from aiohttp.web import HTTPCreated
+
 
 @pytest.fixture(scope='function')
 def tmp_dir_path(request):
@@ -63,3 +66,13 @@ def test_partialy_applied_handler(create_app_and_client):
     data = (yield from r.read())
     assert data == b'hello'
     yield from r.release()
+
+
+def test_system_route():
+    route = SystemRoute(HTTPCreated(reason='test'))
+    assert route.match('any') is None
+    with pytest.raises(RuntimeError):
+        route.url()
+    assert "<SystemRoute 201: test>" == repr(route)
+    assert 201 == route.status
+    assert 'test' == route.reason
