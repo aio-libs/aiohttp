@@ -5,6 +5,7 @@ import pytest
 
 from .test_utils import (TestClient, loop_context, setup_test_loop,
                          teardown_test_loop)
+from .client_reqrep import ClientResponse
 
 
 @contextlib.contextmanager
@@ -65,3 +66,27 @@ def test_client(loop):
 
     if client:
         client.close()
+
+
+@pytest.fixture()
+def build_aiohttp_client_response():
+    """ This is a parametrized fixture for building aiohttp client responses as needed
+
+    An example usage:
+        ```
+        resp = yield from build_aiohttp_client_response(
+            "GET", "http://example.com",
+            b"{'a': 'a', 'b': 'b'},
+            {"CONTENT-TYPE": "application/json"},
+            200)
+        ```
+
+        dict_resp = yield from resp.json()
+    """
+    async def build_response(method, url, content, headers=None, status=200):
+        cr = ClientResponse(method, url)
+        cr._content = content
+        cr.status = status
+        cr.headers = headers or {}
+        return cr
+    return build_response
