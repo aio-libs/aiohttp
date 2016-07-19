@@ -70,9 +70,11 @@ def test_client(loop):
 
 @pytest.fixture()
 def build_aiohttp_client_response():
-    """ This is a parametrized fixture for building aiohttp client responses as needed
+    """
+    This is a parametrized fixture for building aiohttp client responses as
+    needed.
 
-    An example usage:
+    Example usage:
         ```
         resp = yield from build_aiohttp_client_response(
             "GET", "http://example.com",
@@ -83,7 +85,8 @@ def build_aiohttp_client_response():
 
         dict_resp = yield from resp.json()
     """
-    async def build_response(method, url, content, headers=None, status=200):
+    @asyncio.coroutine
+    def build_response(method, url, content, headers=None, status=200):
         cr = ClientResponse(method, url)
         cr._content = content
         cr.status = status
