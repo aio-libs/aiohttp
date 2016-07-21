@@ -94,6 +94,22 @@ def test_get_value(cli):
     assert resp.status == 200
     text = yield from resp.text()
     assert text == 'value: bar'
+
+@asyncio.coroutine
+def test_build_aiohttp_response_json(build_aiohttp_client_response):
+    resp = yield from build_aiohttp_client_response(
+        "POST", "https://github.com/python/asyncio",
+        b'{"value": "foo"}', status=200)
+
+    dict_resp = yield from resp.json()
+    text_resp = yield from resp.text()
+
+    assert '{"value": "foo"}' == text_resp
+    assert {"value": "foo"} == dict_resp
+    assert resp.status == 200
+    assert resp.headers == {}
+    assert resp.method == "POST"
+    assert resp.url == "https://github.com/python/asyncio"
 """)
     result = testdir.runpytest('-p', 'no:sugar')
-    result.assert_outcomes(passed=5, failed=1)
+    result.assert_outcomes(passed=6, failed=1)

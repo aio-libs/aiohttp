@@ -77,6 +77,30 @@ app test client::
         assert await resp.text() == 'value: bar'
 
 
+You can list the fixtures provided by the pytest plugin using the --fixtures
+option from pytest::
+
+    py.test --fixtures
+
+    loop
+        no docstring available
+    test_client
+        no docstring available
+    build_aiohttp_client_response
+        This is a parametrized fixture for building aiohttp client responses as needed
+
+        An example usage:
+        ```
+        resp = yield from build_aiohttp_client_response(
+        "GET", "http://example.com",
+        b'{"a": "a", "b": "b"}',
+        {"CONTENT-TYPE": "application/json"},
+        200)
+
+        dict_resp = yield from resp.json()
+        ```
+
+
 .. _framework-agnostic-utilities:
 
 Framework agnostic utilities
