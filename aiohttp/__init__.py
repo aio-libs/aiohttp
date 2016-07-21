@@ -1,6 +1,6 @@
 # This relies on each of the submodules having an __all__ variable.
 
-__version__ = '0.22.1'
+__version__ = '0.22.2b0'
 
 import multidict  # noqa
 
@@ -30,4 +30,4 @@ __all__ = (client.__all__ +  # noqa
            multidict.__all__ +  # noqa
            multipart.__all__ +  # noqa
            websocket_client.__all__ +  # noqa
-           ('hdrs', '__version__', 'FileSender'))
+           ('hdrs', 'FileSender'))

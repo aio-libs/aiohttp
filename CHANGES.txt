@@ -6,6 +6,8 @@ CHANGES
 
 - Suppress CancelledError when Timeout raises TimeoutError #970
 
+- Don't expose `aiohttp.__version__`
+
 0.22.1 (07-16-2016)
 -------------------
 
