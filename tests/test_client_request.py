@@ -6,7 +6,7 @@ import inspect
 import io
 import re
 import unittest
-import unittest.mock
+from unittest import mock
 import urllib.parse
 import zlib
 from http.cookies import SimpleCookie
@@ -403,9 +403,9 @@ class TestClientRequest(unittest.TestCase):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
 
-        self.transport = unittest.mock.Mock()
-        self.connection = unittest.mock.Mock()
-        self.protocol = unittest.mock.Mock()
+        self.transport = mock.Mock()
+        self.connection = mock.Mock()
+        self.protocol = mock.Mock()
         self.protocol.writer.drain.return_value = ()
         self.stream = aiohttp.StreamParser(loop=self.loop)
         self.connector = BaseConnector(loop=self.loop)
@@ -493,7 +493,7 @@ class TestClientRequest(unittest.TestCase):
             self.loop.run_until_complete(req.close())
             resp.close()
 
-    @unittest.mock.patch(
+    @mock.patch(
         'aiohttp.client_reqrep.ClientRequest.update_body_from_data')
     def test_pass_falsy_data(self, _):
         req = ClientRequest(
@@ -524,7 +524,7 @@ class TestClientRequest(unittest.TestCase):
             self.loop.run_until_complete(req.close())
             resp.close()
 
-    @unittest.mock.patch('aiohttp.client_reqrep.aiohttp')
+    @mock.patch('aiohttp.client_reqrep.aiohttp')
     def test_content_encoding(self, m_http):
         req = ClientRequest('get', 'http://python.org/', data='foo',
                             compress='deflate', loop=self.loop)
@@ -536,7 +536,7 @@ class TestClientRequest(unittest.TestCase):
         self.loop.run_until_complete(req.close())
         resp.close()
 
-    @unittest.mock.patch('aiohttp.client_reqrep.aiohttp')
+    @mock.patch('aiohttp.client_reqrep.aiohttp')
     def test_content_encoding_dont_set_headers_if_no_body(self, m_http):
         req = ClientRequest('get', 'http://python.org/',
                             compress='deflate', loop=self.loop)
@@ -546,7 +546,7 @@ class TestClientRequest(unittest.TestCase):
         self.loop.run_until_complete(req.close())
         resp.close()
 
-    @unittest.mock.patch('aiohttp.client_reqrep.aiohttp')
+    @mock.patch('aiohttp.client_reqrep.aiohttp')
     def test_content_encoding_header(self, m_http):
         req = ClientRequest(
             'get', 'http://python.org/', data='foo',
@@ -579,7 +579,7 @@ class TestClientRequest(unittest.TestCase):
         self.loop.run_until_complete(req.close())
         resp.close()
 
-    @unittest.mock.patch('aiohttp.client_reqrep.aiohttp')
+    @mock.patch('aiohttp.client_reqrep.aiohttp')
     def test_chunked_explicit(self, m_http):
         req = ClientRequest(
             'get', 'http://python.org/', chunked=True, loop=self.loop)
@@ -591,7 +591,7 @@ class TestClientRequest(unittest.TestCase):
         self.loop.run_until_complete(req.close())
         resp.close()
 
-    @unittest.mock.patch('aiohttp.client_reqrep.aiohttp')
+    @mock.patch('aiohttp.client_reqrep.aiohttp')
     def test_chunked_explicit_size(self, m_http):
         req = ClientRequest(
             'get', 'http://python.org/', chunked=1024, loop=self.loop)
@@ -700,8 +700,8 @@ class TestClientRequest(unittest.TestCase):
         self.assertIsNone(req._writer)
         self.assertEqual(
             self.transport.write.mock_calls[-2:],
-            [unittest.mock.call(b'12\r\nbinary data result\r\n'),
-             unittest.mock.call(b'0\r\n\r\n')])
+            [mock.call(b'12\r\nbinary data result\r\n'),
+             mock.call(b'0\r\n\r\n')])
         self.loop.run_until_complete(req.close())
 
     def test_data_file(self):
@@ -719,8 +719,8 @@ class TestClientRequest(unittest.TestCase):
         self.assertIsNone(req._writer)
         self.assertEqual(
             self.transport.write.mock_calls[-2:],
-            [unittest.mock.call(b'2\r\n' + b'*' * 2 + b'\r\n'),
-             unittest.mock.call(b'0\r\n\r\n')])
+            [mock.call(b'2\r\n' + b'*' * 2 + b'\r\n'),
+             mock.call(b'0\r\n\r\n')])
         self.loop.run_until_complete(req.close())
 
     def test_data_stream_exc(self):
@@ -813,8 +813,8 @@ class TestClientRequest(unittest.TestCase):
         self.loop.run_until_complete(req._writer)
         self.assertEqual(
             self.transport.write.mock_calls[-2:],
-            [unittest.mock.call(b'12\r\nbinary data result\r\n'),
-             unittest.mock.call(b'0\r\n\r\n')])
+            [mock.call(b'12\r\nbinary data result\r\n'),
+             mock.call(b'0\r\n\r\n')])
         self.loop.run_until_complete(req.close())
         resp.close()
 
@@ -835,7 +835,7 @@ class TestClientRequest(unittest.TestCase):
         self.loop.run_until_complete(req._writer)
         self.assertEqual(
             self.transport.write.mock_calls[-1],
-            unittest.mock.call(b'data'))
+            mock.call(b'data'))
         self.loop.run_until_complete(req.close())
         resp.close()
 
@@ -851,8 +851,8 @@ class TestClientRequest(unittest.TestCase):
         self.loop.run_until_complete(req.close())
         self.assertEqual(
             self.transport.write.mock_calls[-2:],
-            [unittest.mock.call(b'6\r\nresult\r\n'),
-             unittest.mock.call(b'0\r\n\r\n')])
+            [mock.call(b'6\r\nresult\r\n'),
+             mock.call(b'0\r\n\r\n')])
         self.loop.run_until_complete(req.close())
         resp.close()
 
@@ -873,7 +873,7 @@ class TestClientRequest(unittest.TestCase):
         req = ClientRequest('get', 'http://python.org', loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertIsNotNone(req._writer)
-        writer = req._writer = unittest.mock.Mock()
+        writer = req._writer = mock.Mock()
 
         req.terminate()
         self.assertIsNone(req._writer)
@@ -886,7 +886,7 @@ class TestClientRequest(unittest.TestCase):
         req = ClientRequest('get', 'http://python.org', loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertIsNotNone(req._writer)
-        writer = req._writer = unittest.mock.Mock()
+        writer = req._writer = mock.Mock()
 
         self.loop.close()
         req.terminate()

@@ -1,13 +1,13 @@
 import asyncio
 import unittest
-import unittest.mock
+from unittest import mock
 from aiohttp import streams
 
 
 class TestFlowControlStreamReader(unittest.TestCase):
 
     def setUp(self):
-        self.stream = unittest.mock.Mock()
+        self.stream = mock.Mock()
         self.transp = self.stream.transport
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
@@ -61,7 +61,7 @@ class TestFlowControlStreamReader(unittest.TestCase):
 class FlowControlMixin:
 
     def test_resume_on_init(self):
-        stream = unittest.mock.Mock()
+        stream = mock.Mock()
         stream.paused = True
 
         streams.FlowControlDataQueue(stream, limit=1, loop=self.loop)
@@ -69,7 +69,7 @@ class FlowControlMixin:
         self.assertFalse(stream.paused)
 
     def test_no_transport_in_init(self):
-        stream = unittest.mock.Mock()
+        stream = mock.Mock()
         stream.paused = True
         stream.transport = None
 
@@ -187,7 +187,7 @@ class FlowControlMixin:
 class TestFlowControlDataQueue(unittest.TestCase, FlowControlMixin):
 
     def setUp(self):
-        self.stream = unittest.mock.Mock()
+        self.stream = mock.Mock()
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
 
@@ -202,7 +202,7 @@ class TestFlowControlDataQueue(unittest.TestCase, FlowControlMixin):
 class TestFlowControlChunksQueue(unittest.TestCase, FlowControlMixin):
 
     def setUp(self):
-        self.stream = unittest.mock.Mock()
+        self.stream = mock.Mock()
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
 

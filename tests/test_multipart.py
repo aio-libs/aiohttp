@@ -3,7 +3,7 @@ import functools
 import io
 import os
 import unittest
-import unittest.mock as mock
+from unittest import mock
 import zlib
 
 import aiohttp.multipart
