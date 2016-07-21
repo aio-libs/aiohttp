@@ -15,6 +15,11 @@ from aiohttpdemo_polls.views import SiteHandler
 PROJ_ROOT = pathlib.Path(__file__).parent.parent
 
 
+async def close_pg(app):
+    app['db'].close()
+    await app['db'].wait_closed()
+
+
 async def init(loop):
     # setup application and extensions
     app = web.Application(loop=loop)
@@ -24,16 +29,13 @@ async def init(loop):
     conf = load_config(str(PROJ_ROOT / 'config' / 'polls.yaml'))
 
     # create connection to the database
-    pg = await init_postgres(conf['postgres'], loop)
-
-    async def close_pg(app):
-        pg.close()
-        await pg.wait_closed()
+    db = await init_postgres(conf['postgres'], loop)
+    app['db'] = db
 
     app.on_cleanup.append(close_pg)
 
     # setup views and routes
-    handler = SiteHandler(pg)
+    handler = SiteHandler(db)
     setup_routes(app, handler, PROJ_ROOT)
     setup_middlewares(app)
 
