@@ -4,7 +4,7 @@
 import asyncio
 import gc
 import unittest
-import unittest.mock
+from unittest import mock
 
 import aiohttp
 from aiohttp import helpers
@@ -17,7 +17,7 @@ class TestClientResponse(unittest.TestCase):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
 
-        self.connection = unittest.mock.Mock()
+        self.connection = mock.Mock()
         self.stream = aiohttp.StreamParser(loop=self.loop)
         self.response = ClientResponse('get', 'http://def-cl-resp.org')
         self.response._post_init(self.loop)
@@ -32,7 +32,7 @@ class TestClientResponse(unittest.TestCase):
         response = ClientResponse('get', 'http://del-cl-resp.org')
         response._post_init(self.loop)
 
-        connection = unittest.mock.Mock()
+        connection = mock.Mock()
         response._setup_connection(connection)
         self.loop.set_exception_handler(lambda loop, ctx: None)
 
@@ -90,7 +90,7 @@ class TestClientResponse(unittest.TestCase):
             fut = helpers.create_future(self.loop)
             fut.set_result(b'payload')
             return fut
-        content = self.response.content = unittest.mock.Mock()
+        content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
 
         res = self.loop.run_until_complete(self.response.read())
@@ -98,7 +98,7 @@ class TestClientResponse(unittest.TestCase):
         self.assertIsNone(self.response._connection)
 
     def test_read_and_release_connection_with_error(self):
-        content = self.response.content = unittest.mock.Mock()
+        content = self.response.content = mock.Mock()
         content.read.return_value = helpers.create_future(self.loop)
         content.read.return_value.set_exception(ValueError)
 
@@ -110,7 +110,7 @@ class TestClientResponse(unittest.TestCase):
     def test_release(self):
         fut = helpers.create_future(self.loop)
         fut.set_result(b'')
-        content = self.response.content = unittest.mock.Mock()
+        content = self.response.content = mock.Mock()
         content.readany.return_value = fut
 
         self.loop.run_until_complete(self.response.release())
@@ -118,7 +118,7 @@ class TestClientResponse(unittest.TestCase):
 
     def test_read_decode_deprecated(self):
         self.response._content = b'data'
-        self.response.json = unittest.mock.Mock()
+        self.response.json = mock.Mock()
         self.response.json.return_value = helpers.create_future(self.loop)
         self.response.json.return_value.set_result('json')
 
@@ -134,7 +134,7 @@ class TestClientResponse(unittest.TestCase):
             return fut
         self.response.headers = {
             'CONTENT-TYPE': 'application/json;charset=cp1251'}
-        content = self.response.content = unittest.mock.Mock()
+        content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
 
         res = self.loop.run_until_complete(self.response.text())
@@ -148,9 +148,9 @@ class TestClientResponse(unittest.TestCase):
             return fut
         self.response.headers = {
             'CONTENT-TYPE': 'application/json'}
-        content = self.response.content = unittest.mock.Mock()
+        content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
-        self.response._get_encoding = unittest.mock.Mock()
+        self.response._get_encoding = mock.Mock()
 
         res = self.loop.run_until_complete(
             self.response.text(encoding='cp1251'))
@@ -164,7 +164,7 @@ class TestClientResponse(unittest.TestCase):
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
         self.response.headers = {'CONTENT-TYPE': 'application/json'}
-        content = self.response.content = unittest.mock.Mock()
+        content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
 
         self.loop.run_until_complete(self.response.read())
@@ -179,7 +179,7 @@ class TestClientResponse(unittest.TestCase):
             return fut
         self.response.headers = {
             'CONTENT-TYPE': 'application/json;charset=cp1251'}
-        content = self.response.content = unittest.mock.Mock()
+        content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
 
         res = self.loop.run_until_complete(self.response.text())
@@ -193,7 +193,7 @@ class TestClientResponse(unittest.TestCase):
             return fut
         self.response.headers = {
             'CONTENT-TYPE': 'application/json;charset=cp1251'}
-        content = self.response.content = unittest.mock.Mock()
+        content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
 
         res = self.loop.run_until_complete(self.response.json())
@@ -211,7 +211,7 @@ class TestClientResponse(unittest.TestCase):
         res = self.loop.run_until_complete(self.response.json(loads=custom))
         self.assertEqual(res, 'data-custom')
 
-    @unittest.mock.patch('aiohttp.client_reqrep.client_logger')
+    @mock.patch('aiohttp.client_reqrep.client_logger')
     def test_json_no_content(self, m_log):
         self.response.headers = {
             'CONTENT-TYPE': 'data/octet-stream'}
@@ -230,9 +230,9 @@ class TestClientResponse(unittest.TestCase):
             return fut
         self.response.headers = {
             'CONTENT-TYPE': 'application/json;charset=utf8'}
-        content = self.response.content = unittest.mock.Mock()
+        content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
-        self.response._get_encoding = unittest.mock.Mock()
+        self.response._get_encoding = mock.Mock()
 
         res = self.loop.run_until_complete(
             self.response.json(encoding='cp1251'))
@@ -246,7 +246,7 @@ class TestClientResponse(unittest.TestCase):
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
         self.response.headers = {'CONTENT-TYPE': 'application/json'}
-        content = self.response.content = unittest.mock.Mock()
+        content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
 
         res = self.loop.run_until_complete(self.response.json())
@@ -262,7 +262,7 @@ class TestClientResponse(unittest.TestCase):
         self.assertIsInstance(response.content, aiohttp.FlowControlDataQueue)
         response.close()
 
-    @unittest.mock.patch('aiohttp.client_reqrep.chardet')
+    @mock.patch('aiohttp.client_reqrep.chardet')
     def test_get_encoding_unknown(self, m_chardet):
         m_chardet.detect.return_value = {'encoding': None}
 
