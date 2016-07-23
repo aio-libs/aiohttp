@@ -1,5 +1,6 @@
 import asyncio
 import unittest
+import json
 from unittest import mock
 from aiohttp import CIMultiDict, helpers
 from aiohttp.web import (
@@ -65,6 +66,11 @@ class TestWebWebSocket(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             ws.send_bytes(b'bytes')
 
+    def test_nonstarted_send_json(self):
+        ws = WebSocketResponse()
+        with self.assertRaises(RuntimeError):
+            ws.send_json({'type': 'json'})
+
     def test_nonstarted_close(self):
         ws = WebSocketResponse()
         with self.assertRaises(RuntimeError):
@@ -87,6 +93,16 @@ class TestWebWebSocket(unittest.TestCase):
             ws = WebSocketResponse()
             with self.assertRaises(RuntimeError):
                 yield from ws.receive_bytes()
+
+        self.loop.run_until_complete(go())
+
+    def test_nonstarted_receive_json(self):
+
+        @asyncio.coroutine
+        def go():
+            ws = WebSocketResponse()
+            with self.assertRaises(RuntimeError):
+                yield from ws.receive_json()
 
         self.loop.run_until_complete(go())
 
@@ -128,6 +144,25 @@ class TestWebWebSocket(unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
+    def test_receive_json_nonjson(self):
+
+        @asyncio.coroutine
+        def go():
+            req = self.make_request('GET', '/')
+            ws = WebSocketResponse()
+            yield from ws.prepare(req)
+
+            @asyncio.coroutine
+            def receive():
+                return websocket.Message(websocket.MSG_TEXT, 'data', b'')
+
+            ws.receive = receive
+
+            with self.assertRaises(json.decoder.JSONDecodeError):
+                yield from ws.receive_json()
+
+        self.loop.run_until_complete(go())
+
     def test_send_str_nonstring(self):
         req = self.make_request('GET', '/')
         ws = WebSocketResponse()
@@ -141,6 +176,13 @@ class TestWebWebSocket(unittest.TestCase):
         self.loop.run_until_complete(ws.prepare(req))
         with self.assertRaises(TypeError):
             ws.send_bytes('string')
+
+    def test_send_json_nonjson(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        self.loop.run_until_complete(ws.prepare(req))
+        with self.assertRaises(TypeError):
+            ws.send_json(set())
 
     def test_write(self):
         ws = WebSocketResponse()
@@ -195,6 +237,14 @@ class TestWebWebSocket(unittest.TestCase):
         self.loop.run_until_complete(ws.close())
         with self.assertRaises(RuntimeError):
             ws.send_bytes(b'bytes')
+
+    def test_send_json_closed(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        self.loop.run_until_complete(ws.prepare(req))
+        self.loop.run_until_complete(ws.close())
+        with self.assertRaises(RuntimeError):
+            ws.send_json({'type': 'json'})
 
     def test_ping_closed(self):
         req = self.make_request('GET', '/')

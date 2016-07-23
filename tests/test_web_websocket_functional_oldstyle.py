@@ -152,6 +152,41 @@ class TestWebWebSocketFunctional(unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
+    def test_send_recv_json(self):
+        closed = helpers.create_future(self.loop)
+
+        @asyncio.coroutine
+        def handler(request):
+            ws = web.WebSocketResponse()
+            yield from ws.prepare(request)
+            data = yield from ws.receive_json()
+            ws.send_json({'response': data['request']})
+            yield from ws.close()
+            closed.set_result(1)
+            return ws
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('GET', '/', handler)
+            resp, reader, writer = yield from self.connect_ws(url)
+            writer.send('{"request": "test"}')
+            msg = yield from reader.read()
+            data = msg.json()
+            self.assertEqual(msg.tp, websocket.MSG_TEXT)
+            self.assertEqual(data['response'], 'test')
+
+            msg = yield from reader.read()
+            self.assertEqual(msg.tp, websocket.MSG_CLOSE)
+            self.assertEqual(msg.data, 1000)
+            self.assertEqual(msg.extra, '')
+
+            writer.close()
+
+            yield from closed
+            resp.close()
+
+        self.loop.run_until_complete(go())
+
     def test_auto_pong_with_closing_by_peer(self):
 
         closed = helpers.create_future(self.loop)

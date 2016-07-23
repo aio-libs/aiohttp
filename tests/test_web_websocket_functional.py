@@ -62,6 +62,30 @@ def test_websocket_json_invalid_message(create_app_and_client):
 
 
 @pytest.mark.run_loop
+def test_websocket_send_json(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        data = yield from ws.receive_json()
+        ws.send_json(data)
+
+        yield from ws.close()
+        return ws
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+
+    ws = yield from client.ws_connect('/')
+    expected_value = 'value'
+    ws.send_json({'test': expected_value})
+
+    data = yield from ws.receive_json()
+    assert data['test'] == expected_value
+
+
+@pytest.mark.run_loop
 def test_websocket_receive_json(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
