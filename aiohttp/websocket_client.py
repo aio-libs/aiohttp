@@ -90,8 +90,6 @@ class ClientWebSocketResponse:
         self._writer.send(data, binary=True)
 
     def send_json(self, data, *, dumps=json.dumps):
-        if self._closed:
-            raise RuntimeError('websocket connection is closed')
         self.send_str(dumps(data))
 
     @asyncio.coroutine
@@ -177,6 +175,24 @@ class ClientWebSocketResponse:
         finally:
             self._waiting = False
 
+    @asyncio.coroutine
+    def receive_str(self):
+        msg = yield from self.receive()
+        if msg.tp != MsgType.text:
+            raise TypeError(
+                "Received message {}:{!r} is not str".format(msg.tp, msg.data))
+        return msg.data
+
+    @asyncio.coroutine
+    def receive_bytes(self):
+        msg = yield from self.receive()
+        if msg.tp != MsgType.binary:
+            raise TypeError(
+                "Received message {}:{!r} is not bytes".format(msg.tp,
+                                                               msg.data))
+        return msg.data
+
+    @asyncio.coroutine
     def receive_json(self, *, loads=json.loads):
         msg = yield from self.receive()
         if msg.tp != MsgType.text:
