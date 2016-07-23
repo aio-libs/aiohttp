@@ -743,3 +743,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                 *, name=None, expect_handler=None):
         return self.add_route('GET', path, handler, name=name,
                               expect_handler=expect_handler)
+
+    def add_post(self, path, handler,
+                 *, name=None, expect_handler=None):
+        return self.add_route('POST', path, handler, name=name,
+                              expect_handler=expect_handler)

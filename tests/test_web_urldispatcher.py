@@ -111,3 +111,22 @@ def test_add_get(create_app_and_client):
 
     r = yield from client.get('/')
     assert r.status == 200
+
+    app.router.add_post('/', handler)
+
+    r = yield from client.post('/')
+    assert r.status == 200
+
+
+@pytest.mark.run_loop
+def test_add_post(create_app_and_client):
+    app, client = yield from create_app_and_client()
+
+    @asyncio.coroutine
+    def handler(request):
+        return aiohttp.web.Response()
+
+    app.router.add_post('/', handler)
+
+    r = yield from client.post('/')
+    assert r.status == 200
