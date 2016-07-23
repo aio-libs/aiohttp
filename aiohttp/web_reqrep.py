@@ -511,8 +511,12 @@ class StreamResponse(HeadersMixin):
 
         self._cookies[name] = value
         c = self._cookies[name]
+
         if expires is not None:
             c['expires'] = expires
+        elif c.get('expires') == 'Thu, 01 Jan 1970 00:00:00 GMT':
+            del c['expires']
+
         if domain is not None:
             c['domain'] = domain
 
@@ -537,7 +541,9 @@ class StreamResponse(HeadersMixin):
         """
         # TODO: do we need domain/path here?
         self._cookies.pop(name, None)
-        self.set_cookie(name, '', max_age=0, domain=domain, path=path)
+        self.set_cookie(name, '', max_age=0,
+                        expires="Thu, 01 Jan 1970 00:00:00 GMT",
+                        domain=domain, path=path)
 
     @property
     def content_length(self):

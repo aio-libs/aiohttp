@@ -504,6 +504,11 @@ StreamResponse
 
       :param str path: optional cookie path, ``'/'`` by default
 
+      .. versionchanged:: 0.23
+
+         Fixed cookie expiration support for
+         Internet Explorer (version less than 11).
+
    .. attribute:: content_length
 
       *Content-Length* for outgoing response.
