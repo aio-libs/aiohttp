@@ -29,12 +29,15 @@ def tmp_dir_path(request):
     return tmp_dir
 
 
+@pytest.mark.parametrize("show_index,status", [(False, 403), (True, 200)])
 @pytest.mark.run_loop
-def test_access_root_of_static_handler(tmp_dir_path, create_app_and_client):
+def test_access_root_of_static_handler(tmp_dir_path, create_app_and_client,
+                                       show_index, status):
     """
     Tests the operation of static file server.
     Try to access the root of static file server, and make
-    sure that a `HTTP 403 - Forbidden` is returned.
+    sure that correct HTTP statuses are returned depending if we directory
+    index should be shown or not.
     """
     # Put a file inside tmp_dir_path:
     my_file_path = os.path.join(tmp_dir_path, 'my_file')
@@ -44,12 +47,12 @@ def test_access_root_of_static_handler(tmp_dir_path, create_app_and_client):
     app, client = yield from create_app_and_client()
 
     # Register global static route:
-    app.router.add_static('/', tmp_dir_path)
+    app.router.add_static('/', tmp_dir_path, show_index=show_index)
 
     # Request the root of the static directory.
     # Expect an 403 error page.
     r = yield from client.get('/')
-    assert r.status == 403
+    assert r.status == status
     # data = (yield from r.read())
     yield from r.release()
 

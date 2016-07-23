@@ -497,16 +497,15 @@ class StaticRoute(Route):
         # on opening a dir, load it's contents if allowed
         if filepath.is_dir():
             if self._show_index:
-                return Response(text=self._dir_index_html(filepath))
+                ret = Response(text=self._dir_index_html(filepath))
             else:
                 raise HTTPForbidden()
-
-        # on opening a file, load it's contents if they exist
-        if filepath.is_file():
+        elif filepath.is_file():
             ret = yield from self._file_sender.send(request, filepath)
-            return ret
         else:
             raise HTTPNotFound
+
+        return ret
 
     def _dir_index_html(self, filepath):
         "returns directory's index as html"
