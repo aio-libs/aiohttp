@@ -453,7 +453,7 @@ def test_response_cookies():
             'Set-Cookie: name=another_other_value; Max-Age=10; Path=/')
 
     resp.del_cookie('name')
-    expected = ('Set-Cookie: name=""; '
+    expected = ('Set-Cookie: name=("")?; '
                 'expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; Path=/')
     assert re.match(expected, str(resp.cookies))
 
@@ -493,8 +493,8 @@ def test_response_cookie__issue_del_cookie():
     assert str(resp.cookies) == ''
 
     resp.del_cookie('name')
-    expected = ('Set-Cookie: name=""; expires=Thu, 01 Jan 1970 00:00:00 GMT; '
-                'Max-Age=0; Path=/')
+    expected = ('Set-Cookie: name=("")?; '
+                'expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; Path=/')
     assert re.match(expected, str(resp.cookies))
 
 
