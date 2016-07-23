@@ -34,7 +34,7 @@ def test_access_root_of_static_handler(tmp_dir_path, create_app_and_client):
     """
     Tests the operation of static file server.
     Try to access the root of static file server, and make
-    sure that a proper not found error is returned.
+    sure that a `HTTP 403 - Forbidden` is returned.
     """
     # Put a file inside tmp_dir_path:
     my_file_path = os.path.join(tmp_dir_path, 'my_file')
@@ -47,9 +47,9 @@ def test_access_root_of_static_handler(tmp_dir_path, create_app_and_client):
     app.router.add_static('/', tmp_dir_path)
 
     # Request the root of the static directory.
-    # Expect an 404 error page.
+    # Expect an 403 error page.
     r = yield from client.get('/')
-    assert r.status == 404
+    assert r.status == 403
     # data = (yield from r.read())
     yield from r.release()
 
