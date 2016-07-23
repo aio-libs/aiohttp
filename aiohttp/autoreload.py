@@ -24,9 +24,6 @@ except ImportError:
 
 from .log import web_logger
 
-__version__ = "0.0.1"
-__all__ = ("start", )
-
 
 
 _has_execv = sys.platform != 'win32'
@@ -36,7 +33,7 @@ _reload_attempted = False
 _io_loops = weakref.WeakKeyDictionary()
 
 
-def start(io_loop=None, check_time=2):
+def start(io_loop=None, check_time=0.5):
 
     """Begins watching source files for changes.
 

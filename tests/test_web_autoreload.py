@@ -24,16 +24,16 @@ def test_autoreload_simple(unused_port, tmpdir):
             time.sleep(0.03)
         assert urllib.request.urlopen(url).read() == v
 
-    with chdir_context(str(tmpdir)):
-        with open('watchfile.py', 'wt') as f:
-            f.write('a = b"0"')
+    FILE = 'watchfile.py'
 
-        p = subprocess.Popen([sys.executable, autoreloadapp.__file__, host, str(port)])
+    with chdir_context(str(tmpdir)):
+        with open(FILE, 'wt') as f:
+            f.write('a = b"0"')
+        p = subprocess.Popen([sys.executable, autoreloadapp.__file__, host, str(port)], stdout=sys.stdout, stderr=subprocess.STDOUT)
         atexit.register(lambda p=p: (p.kill(), p.wait()))
 
         wait_value(b'0')
-
-        with open('watchfile.py', 'wt') as f:
+        time.sleep(1)
+        with open(FILE, 'wt') as f:
             f.write('a = b"1"')
-
         wait_value(b'1')
