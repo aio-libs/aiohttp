@@ -690,7 +690,7 @@ BaseConnector
 ^^^^^^^^^^^^^
 
 .. class:: BaseConnector(*, conn_timeout=None, keepalive_timeout=30, \
-                         limit=None, \
+                         limit=20, \
                          force_close=False, loop=None)
 
    Base class for all connectors.
@@ -719,6 +719,12 @@ BaseConnector
       is used for getting default event loop, but we strongly
       recommend to use explicit loops everywhere.
       (optional)
+
+   .. versionchanged:: 0.23
+
+      ``limit`` changed from unlimited (``None``) to 20.
+      Expect a max of up to 20 connections to the same endpoint, if it is not especified.
+      For limitless connections, pass `None` explicitly.
 
    .. attribute:: closed
 
