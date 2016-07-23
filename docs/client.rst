@@ -413,6 +413,13 @@ parameter to *connector*::
 
 The example limits amount of parallel connections to `30`.
 
+The default is `20`.
+
+If you explicitly want not to have limits to the same endpoint,
+pass `None`. For example::
+
+    conn = aiohttp.TCPConnector(limit=None)
+
 
 Resolving using custom nameservers
 ----------------------------------
@@ -421,8 +428,8 @@ In order to specify the nameservers to when resolving the hostnames,
 aiodns is required.
 
     from aiohttp.resolver import AsyncResolver
-    
-    
+
+
     resolver = AsyncResolver(nameservers=["8.8.8.8", "8.8.4.4"])
     conn = aiohttp.TCPConnector(resolver=resolver)
 
