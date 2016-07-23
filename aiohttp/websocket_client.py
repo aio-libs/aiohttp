@@ -194,12 +194,8 @@ class ClientWebSocketResponse:
 
     @asyncio.coroutine
     def receive_json(self, *, loads=json.loads):
-        msg = yield from self.receive()
-        if msg.tp != MsgType.text:
-            raise TypeError(
-                "Received message {}:{!r} is not str".format(msg.tp, msg.data)
-            )
-        return msg.json(loads=loads)
+        data = yield from self.receive_str()
+        return loads(data)
 
     if PY_35:
         @asyncio.coroutine
