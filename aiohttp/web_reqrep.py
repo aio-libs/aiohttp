@@ -511,8 +511,12 @@ class StreamResponse(HeadersMixin):
 
         self._cookies[name] = value
         c = self._cookies[name]
+
         if expires is not None:
             c['expires'] = expires
+        elif c.get('expires') == 'Thu, 01 Jan 1970 00:00:00 GMT':
+            del c['expires']
+
         if domain is not None:
             c['domain'] = domain
 
