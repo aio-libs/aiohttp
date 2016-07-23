@@ -33,6 +33,8 @@ HASHFUNC_BY_DIGESTLEN = {
     32: sha256,
 }
 
+DEFAULT_CONN_LIMIT = 20
+
 
 class Connection(object):
 
@@ -109,6 +111,7 @@ class BaseConnector(object):
     :param keepalive_timeout: (optional) Keep-alive timeout.
     :param bool force_close: Set to True to force close and do reconnect
         after each request (and between redirects).
+    :param limit: The limit of simultaneous connections to the same endpoint.
     :param loop: Optional event loop.
     """
 
@@ -116,7 +119,7 @@ class BaseConnector(object):
     _source_traceback = None
 
     def __init__(self, *, conn_timeout=None, keepalive_timeout=_default,
-                 force_close=False, limit=None,
+                 force_close=False, limit=DEFAULT_CONN_LIMIT,
                  loop=None):
 
         if force_close:
@@ -188,7 +191,8 @@ class BaseConnector(object):
         Endpoints are the same if they are have equal
         (host, port, is_ssl) triple.
 
-        If limit is None the connector has no limit (default).
+        If limit is None the connector has no limit.
+        The default limit size is 20.
         """
         return self._limit
 
