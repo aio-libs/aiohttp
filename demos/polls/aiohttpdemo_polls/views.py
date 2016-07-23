@@ -5,17 +5,16 @@ from . import db
 
 @aiohttp_jinja2.template('index.html')
 async def index(request):
-    async with request['db'].acquire() as conn:
+    async with request.app['db'].acquire() as conn:
         cursor = await conn.execute(db.question.select())
         records = await cursor.fetchall()
-
         questions = [dict(q) for q in records]
         return {'questions': questions}
 
 
 @aiohttp_jinja2.template('detail.html')
 async def poll(request):
-    async with request['db'].acquire() as conn:
+    async with request.app['db'].acquire() as conn:
         question_id = request.match_info['question_id']
         try:
             question, choices = await db.get_question(conn,
@@ -30,7 +29,7 @@ async def poll(request):
 
 @aiohttp_jinja2.template('results.html')
 async def results(request):
-    async with request['db'].acquire() as conn:
+    async with request.app['db'].acquire() as conn:
         question_id = request.match_info['question_id']
 
         try:
@@ -46,7 +45,7 @@ async def results(request):
 
 
 async def vote(request):
-    async with request['db'].acquire() as conn:
+    async with request.app['db'].acquire() as conn:
         question_id = int(request.match_info['question_id'])
         data = await request.post()
         try:
