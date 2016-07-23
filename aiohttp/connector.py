@@ -33,8 +33,6 @@ HASHFUNC_BY_DIGESTLEN = {
     32: sha256,
 }
 
-DEFAULT_CONN_LIMIT = 20
-
 
 class Connection(object):
 
@@ -119,7 +117,7 @@ class BaseConnector(object):
     _source_traceback = None
 
     def __init__(self, *, conn_timeout=None, keepalive_timeout=_default,
-                 force_close=False, limit=DEFAULT_CONN_LIMIT,
+                 force_close=False, limit=20,
                  loop=None):
 
         if force_close:
