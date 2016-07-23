@@ -170,6 +170,12 @@ class BaseConnector(object):
             context['source_traceback'] = self._source_traceback
         self._loop.call_exception_handler(context)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
     @property
     def force_close(self):
         """Ultimately close connection on releasing if True."""
