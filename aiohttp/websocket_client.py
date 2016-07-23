@@ -92,7 +92,7 @@ class ClientWebSocketResponse:
     def send_json(self, data, *, dumps=json.dumps):
         if self._closed:
             raise RuntimeError('websocket connection is closed')
-        self._writer.send(dumps(data), binary=False)
+        self.send_str(dumps(data))
 
     @asyncio.coroutine
     def close(self, *, code=1000, message=b''):

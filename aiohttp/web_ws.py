@@ -159,7 +159,7 @@ class WebSocketResponse(StreamResponse):
             raise RuntimeError('Call .prepare() first')
         if self._closed:
             raise RuntimeError('websocket connection is closing')
-        self._writer.send(dumps(data), binary=False)
+        self.send_str(dumps(data))
 
     @asyncio.coroutine
     def wait_closed(self):  # pragma: no cover
