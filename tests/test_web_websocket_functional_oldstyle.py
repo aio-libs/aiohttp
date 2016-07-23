@@ -63,7 +63,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             headers=headers,
             connector=conn,
             loop=self.loop)
-        self.addCleanup(response.close, True)
+        self.addCleanup(response.close)
 
         self.assertEqual(101, response.status)
         self.assertEqual(response.headers.get('upgrade', '').lower(),

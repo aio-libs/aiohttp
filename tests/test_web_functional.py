@@ -521,7 +521,7 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
                 loop=self.loop)
 
             self.assertEqual(200, resp.status)
-            resp.close(force=True)
+            resp.close()
 
             auth_err = True
             resp = yield from request(
@@ -529,7 +529,7 @@ class TestWebFunctional(WebFunctionalSetupMixin, unittest.TestCase):
                 expect100=True,  # wait until server returns 100 continue
                 loop=self.loop)
             self.assertEqual(403, resp.status)
-            resp.close(force=True)
+            resp.close()
 
         self.loop.run_until_complete(go())
 
