@@ -9,6 +9,8 @@ CHANGES
 
 - Add IE support for cookie deletion. #994
 
+- Remove deprecated `WebSocketResponse.wait_closed` method
+
 0.22.2 (07-23-2016)
 -------------------
 
