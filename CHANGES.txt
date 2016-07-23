@@ -8,14 +8,14 @@ CHANGES
 
 - Don't expose `aiohttp.__version__`
 
-0.22.1 (08-16-2016)
+0.22.1 (07-16-2016)
 -------------------
 
 - Large cookie expiration/max-age doesn't break an event loop from now
   (fixes #967)
 
 
-0.22.0 (08-15-2016)
+0.22.0 (07-15-2016)
 -------------------
 
 - Fix bug in serving static directory #803

@@ -29,6 +29,9 @@ setup(name='aiohttpdemo_polls',
       description='Polls project example from aiohttp',
       platforms=['POSIX'],
       packages=find_packages(),
+      package_data={
+          '': ['templates/*.html', 'static/*.*']
+      },
       include_package_data=True,
       install_requires=install_requires,
       zip_safe=False)
