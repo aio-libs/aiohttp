@@ -8,6 +8,13 @@ CHANGES
 
 - Don't expose `aiohttp.__version__`
 
+- Add unsafe parameter to CookieJar #968
+
+- Use unsafe cookie jar in test client tools
+
+- Expose aiohttp.CookieJar name
+
+
 0.22.1 (08-16-2016)
 -------------------
 

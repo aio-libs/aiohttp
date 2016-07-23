@@ -386,6 +386,24 @@ You also can set default headers for all session requests::
 :class:`~aiohttp.ClientSession` supports keep-alive requests
 and connection pooling out-of-the-box.
 
+.. _aiohttp-client-cookie-safety:
+
+Cookie safety
+-------------
+
+By default :class:`~aiohttp.ClientSession` uses strict version of
+:class:`~aiohttp.CookieJar`. :rfc:`2109` explicitly forbids cookie
+accepting from URLs with IP address instead of DNS name
+(e.g. `http://127.0.0.1:80/cookie`).
+
+It's good but sometimes for testing we need to enable support for such
+cookies. It should be done by passing `usafe=True` to
+:class:`~aiohttp.CookieJar` constructor::
+
+
+    jar = aiohttp.CookieJar(unsafe=True)
+    session = aiohttp.ClientSession(cookie_jar=jar)
+
 
 Connectors
 ----------
@@ -421,8 +439,8 @@ In order to specify the nameservers to when resolving the hostnames,
 aiodns is required.
 
     from aiohttp.resolver import AsyncResolver
-    
-    
+
+
     resolver = AsyncResolver(nameservers=["8.8.8.8", "8.8.4.4"])
     conn = aiohttp.TCPConnector(resolver=resolver)
 
