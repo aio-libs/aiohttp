@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """Example for aiohttp.web basic server
 """
-
 import asyncio
 import textwrap
-from aiohttp.web import Application, Response, StreamResponse
-
+from aiohttp.web import Application, Response, StreamResponse, run_app
 
 def intro(request):
     txt = textwrap.dedent("""\
@@ -42,7 +40,6 @@ def hello(request):
     return resp
 
 
-@asyncio.coroutine
 def init(loop):
     app = Application(loop=loop)
     app.router.add_route('GET', '/', intro)
@@ -52,14 +49,8 @@ def init(loop):
     app.router.add_route('GET', '/hello', hello)
 
     handler = app.make_handler()
-    srv = yield from loop.create_server(handler, '127.0.0.1', 8080)
-    print("Server started at http://127.0.0.1:8080")
-    return srv, handler
-
+    return (app, '127.0.0.1', 8080)
 
 loop = asyncio.get_event_loop()
-srv, handler = loop.run_until_complete(init(loop))
-try:
-    loop.run_forever()
-except KeyboardInterrupt:
-    loop.run_until_complete(handler.finish_connections())
+app, host, port = init(loop)
+run_app(app, host=host, port=port)
