@@ -21,8 +21,8 @@ from .abc import AbstractRouter, AbstractMatchInfo, AbstractView
 from .file_sender import FileSender
 from .protocol import HttpVersion11
 from .web_exceptions import (HTTPMethodNotAllowed, HTTPNotFound,
-                             HTTPExpectationFailed)
-from .web_reqrep import StreamResponse
+                             HTTPExpectationFailed, HTTPForbidden)
+from .web_reqrep import Response, StreamResponse
 
 
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
@@ -494,11 +494,19 @@ class StaticRoute(Route):
             request.app.logger.exception(error)
             raise HTTPNotFound() from error
 
-        # Make sure that filepath is a file
-        if not filepath.is_file():
-            raise HTTPNotFound()
+        # on opening a dir, load it's contents if allowed
+        if filepath.is_dir():
+            if self._show_index:
+                ret = Response(text="")
+            else:
+                raise HTTPForbidden()
 
-        ret = yield from self._file_sender.send(request, filepath)
+        # on opening a file, load it's contents if they exist
+        if filepath.is_file():
+            ret = yield from self._file_sender.send(request, filepath)
+        else:
+            raise HTTPNotFound
+
         return ret
 
     def __repr__(self):
