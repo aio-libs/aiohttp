@@ -738,3 +738,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                             response_factory=response_factory)
         self.register_route(route)
         return route
+
+    def add_get(self, path, handler,
+                *, name=None, expect_handler=None):
+        return self.add_route('GET', path, handler, name=name,
+                              expect_handler=expect_handler)
