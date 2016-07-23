@@ -6,11 +6,12 @@ import pytest
 import re
 import sys
 import warnings
+import os
 from aiohttp import web
 from aiohttp.test_utils import (
     loop_context, unused_port
 )
-
+from contextlib import contextmanager
 
 class _AssertWarnsContext:
     """A context manager used to implement TestCase.assertWarns* methods."""
@@ -277,3 +278,13 @@ def pytest_ignore_collect(path, config):
     if 'test_py35' in str(path):
         if sys.version_info < (3, 5, 0):
             return True
+
+@contextmanager
+def chdir_context(path): 
+    '''Context manager to change directory and restore it'''
+    old_dir = os.getcwd()
+    os.chdir(path) 
+    try: 
+        yield 
+    finally: 
+        os.chdir(old_dir)
