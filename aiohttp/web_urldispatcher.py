@@ -497,17 +497,39 @@ class StaticRoute(Route):
         # on opening a dir, load it's contents if allowed
         if filepath.is_dir():
             if self._show_index:
-                ret = Response(text="")
+                return Response(text=self._dir_index_html(filepath))
             else:
                 raise HTTPForbidden()
 
         # on opening a file, load it's contents if they exist
         if filepath.is_file():
             ret = yield from self._file_sender.send(request, filepath)
+            return ret
         else:
             raise HTTPNotFound
 
-        return ret
+    def _dir_index_html(self, filepath):
+        "returns directory's index as html"
+        assert filepath.is_dir()
+        dir_index = filepath.iterdir()
+        index_of = "Index of {}".format(filepath.as_posix())
+        head = "<head><title>{}</title></head>".format(index_of)
+        h1 = "<h1>{}</h1>".format(index_of)
+
+        index_list = []
+        for i in dir_index:
+            # remove the beginning of posix path, so it would be relative
+            # to our added static url
+            posix_dir_len = len(self._directory.as_posix())
+            file_url = i.as_posix()[posix_dir_len:]
+            index_list.append(
+                '<li><a href="{url}">{url}</a></li>'.format(url=file_url)
+            )
+        ul = "<ul>{}</ul>".format(''.join(index_list))
+        body = "<body>{}{}</body>".format(h1, ul)
+
+        html = "<html>{}{}</html".format(head, body)
+        return html
 
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
