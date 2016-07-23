@@ -1322,9 +1322,8 @@ manually.
 
    .. coroutinemethod:: receive_json(*, loads=json.loads)
 
-      A :ref:`coroutine<coroutine>` that calls :meth:`receive`, asserts the
-      message type is :const:`~aiohttp.websocket.MSG_TEXT`, and loads the JSON
-      string to a Python dict.
+      A :ref:`coroutine<coroutine>` that calls :meth:`receive_str` and loads
+      the JSON string to a Python dict.
 
       :param callable loads: any :term:`callable` that accepts
                               :class:`str` and returns :class:`dict`
