@@ -504,7 +504,6 @@ def test_cookie_set_after_del():
     resp.set_cookie('name', 'val')
     # check for Max-Age dropped
     expected = 'Set-Cookie: name=val; Path=/'
-    print(expected)
     assert str(resp.cookies) == expected
 
 
