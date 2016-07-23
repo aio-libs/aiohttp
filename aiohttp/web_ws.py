@@ -154,6 +154,13 @@ class WebSocketResponse(StreamResponse):
                             type(data))
         self._writer.send(data, binary=True)
 
+    def send_json(self, data, *, dumps=json.dumps):
+        if self._writer is None:
+            raise RuntimeError('Call .prepare() first')
+        if self._closed:
+            raise RuntimeError('websocket connection is closing')
+        self._writer.send(dumps(data), binary=False)
+
     @asyncio.coroutine
     def wait_closed(self):  # pragma: no cover
         warnings.warn(

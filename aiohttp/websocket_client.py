@@ -3,6 +3,7 @@
 import asyncio
 
 import sys
+import json
 from enum import IntEnum
 
 from .websocket import Message
@@ -88,6 +89,11 @@ class ClientWebSocketResponse:
                             type(data))
         self._writer.send(data, binary=True)
 
+    def send_json(self, data, *, dumps=json.dumps):
+        if self._closed:
+            raise RuntimeError('websocket connection is closed')
+        self._writer.send(dumps(data), binary=False)
+
     @asyncio.coroutine
     def close(self, *, code=1000, message=b''):
         if not self._closed:
@@ -170,6 +176,14 @@ class ClientWebSocketResponse:
                         return msg
         finally:
             self._waiting = False
+
+    def receive_json(self, *, loads=json.loads):
+        msg = yield from self.receive()
+        if msg.tp != MsgType.text:
+            raise TypeError(
+                "Received message {}:{!r} is not str".format(msg.tp, msg.data)
+            )
+        return msg.json(loads=loads)
 
     if PY_35:
         @asyncio.coroutine
