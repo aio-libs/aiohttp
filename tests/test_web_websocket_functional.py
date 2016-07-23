@@ -38,14 +38,12 @@ def test_websocket_json_invalid_message(create_app_and_client):
     def handler(request):
         ws = web.WebSocketResponse()
         yield from ws.prepare(request)
-        msg = yield from ws.receive()
-
         try:
-            msg.json()
+            yield from ws.receive_json()
         except ValueError:
-            ws.send_str("ValueError raised: '%s'" % msg.data)
+            ws.send_str('ValueError was raised')
         else:
-            raise Exception("No ValueError was raised")
+            raise Exception('No Exception')
         finally:
             yield from ws.close()
         return ws
@@ -57,8 +55,8 @@ def test_websocket_json_invalid_message(create_app_and_client):
     payload = 'NOT A VALID JSON STRING'
     ws.send_str(payload)
 
-    resp = yield from ws.receive()
-    assert payload in resp.data
+    data = yield from ws.receive_str()
+    assert 'ValueError was raised' in data
 
 
 @pytest.mark.run_loop

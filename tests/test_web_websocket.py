@@ -1,6 +1,5 @@
 import asyncio
 import unittest
-import json
 from unittest import mock
 from aiohttp import CIMultiDict, helpers
 from aiohttp.web import (
@@ -141,25 +140,6 @@ class TestWebWebSocket(unittest.TestCase):
 
             with self.assertRaises(TypeError):
                 yield from ws.receive_bytes()
-
-        self.loop.run_until_complete(go())
-
-    def test_receive_json_nonjson(self):
-
-        @asyncio.coroutine
-        def go():
-            req = self.make_request('GET', '/')
-            ws = WebSocketResponse()
-            yield from ws.prepare(req)
-
-            @asyncio.coroutine
-            def receive():
-                return websocket.Message(websocket.MSG_TEXT, 'data', b'')
-
-            ws.receive = receive
-
-            with self.assertRaises(json.decoder.JSONDecodeError):
-                yield from ws.receive_json()
 
         self.loop.run_until_complete(go())
 

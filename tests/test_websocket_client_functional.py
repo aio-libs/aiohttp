@@ -22,8 +22,8 @@ def test_send_recv_text(create_app_and_client):
     resp = yield from client.ws_connect('/')
     resp.send_str('ask')
 
-    msg = yield from resp.receive()
-    assert msg.data == 'ask/answer'
+    data = yield from resp.receive_str()
+    assert data == 'ask/answer'
     yield from resp.close()
 
 
@@ -46,8 +46,8 @@ def test_send_recv_bytes(create_app_and_client):
 
     resp.send_bytes(b'ask')
 
-    msg = yield from resp.receive()
-    assert msg.data == b'ask/answer'
+    data = yield from resp.receive_bytes()
+    assert data == b'ask/answer'
 
     yield from resp.close()
 
