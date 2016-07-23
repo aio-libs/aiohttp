@@ -99,6 +99,46 @@ class TestUrlDispatcher(unittest.TestCase):
         self.assertIs(handler, info.handler)
         self.assertIsNone(info.route.name)
 
+    def test_add_route_with_add_post_shortcut(self):
+        handler = self.make_handler()
+        self.router.add_post('/handler/to/path', handler)
+        req = self.make_request('POST', '/handler/to/path')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info)
+        self.assertEqual(0, len(info))
+        self.assertIs(handler, info.handler)
+        self.assertIsNone(info.route.name)
+
+    def test_add_route_with_add_put_shortcut(self):
+        handler = self.make_handler()
+        self.router.add_put('/handler/to/path', handler)
+        req = self.make_request('PUT', '/handler/to/path')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info)
+        self.assertEqual(0, len(info))
+        self.assertIs(handler, info.handler)
+        self.assertIsNone(info.route.name)
+
+    def test_add_route_with_add_patch_shortcut(self):
+        handler = self.make_handler()
+        self.router.add_patch('/handler/to/path', handler)
+        req = self.make_request('PATCH', '/handler/to/path')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info)
+        self.assertEqual(0, len(info))
+        self.assertIs(handler, info.handler)
+        self.assertIsNone(info.route.name)
+
+    def test_add_route_with_add_delete_shortcut(self):
+        handler = self.make_handler()
+        self.router.add_delete('/handler/to/path', handler)
+        req = self.make_request('DELETE', '/handler/to/path')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info)
+        self.assertEqual(0, len(info))
+        self.assertIs(handler, info.handler)
+        self.assertIsNone(info.route.name)
+
     def test_add_with_name(self):
         handler = self.make_handler()
         self.router.add_route('GET', '/handler/to/path', handler,
