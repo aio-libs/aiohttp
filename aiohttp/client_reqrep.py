@@ -651,10 +651,7 @@ class ClientResponse:
                         'Can not load response cookies: %s', exc)
         return self
 
-    def close(self, force=True):
-        if not force:
-            warnings.warn("force parameter should be True", DeprecationWarning,
-                          stacklevel=2)
+    def close(self):
         if self._closed:
             return
 
