@@ -16,6 +16,7 @@ from aiohttp import client
 from aiohttp import helpers
 from aiohttp.client import ClientResponse
 from aiohttp.connector import Connection
+from aiohttp.connector import DEFAULT_CONN_LIMIT
 
 
 class TestBaseConnector(unittest.TestCase):
@@ -691,8 +692,12 @@ class TestBaseConnector(unittest.TestCase):
 
     def test_limit_property_default(self):
         conn = aiohttp.BaseConnector(loop=self.loop)
-        self.assertIsNone(conn.limit)
+        self.assertEquals(conn.limit, DEFAULT_CONN_LIMIT)
         conn.close()
+
+    def test_limitless(self):
+        with aiohttp.BaseConnector(loop=self.loop, limit=None) as conn:
+            self.assertIsNone(conn.limit)
 
     def test_force_close_and_explicit_keep_alive(self):
         with self.assertRaises(ValueError):
