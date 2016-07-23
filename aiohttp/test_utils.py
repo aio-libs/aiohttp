@@ -349,7 +349,10 @@ class TestClient:
         self._server = None
         if not loop.is_running():
             loop.run_until_complete(self.start_server())
-        self._session = ClientSession(loop=self._loop)
+        self._session = ClientSession(
+            loop=self._loop,
+            cookie_jar=aiohttp.CookieJar(unsafe=True,
+                                         loop=self._loop))
         self._root = '{}://{}:{}'.format(protocol, self._address, self.port)
         self._closed = False
 
