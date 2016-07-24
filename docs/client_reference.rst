@@ -1277,6 +1277,22 @@ manually.
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
 
+   .. method:: send_json(data, *, dumps=json.loads)
+
+      Send *data* to peer as JSON string.
+
+      :param data: data to send.
+
+      :param callable dumps: any :term:`callable` that accepts an object and
+                             returns a JSON string
+                             (:func:`json.dumps` by default).
+
+      :raise RuntimeError: if connection is not started or closing
+
+      :raise ValueError: if data is not serializable object
+
+      :raise TypeError: if value returned by :term:`dumps` is not :class:`str`
+
    .. comethod:: close(*, code=1000, message=b'')
 
       A :ref:`coroutine<coroutine>` that initiates closing handshake by sending
@@ -1306,6 +1322,40 @@ manually.
       :return: :class:`~aiohttp.websocket.Message`, `tp` is types of
          `~aiohttp.MsgType`
 
+   .. coroutinemethod:: receive_str()
+
+      A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
+      also asserts the message type is
+      :const:`~aiohttp.websocket.MSG_TEXT`.
+
+      :return str: peer's message content.
+
+      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_BINARY`.
+
+   .. coroutinemethod:: receive_bytes()
+
+      A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
+      also asserts the message type is
+      :const:`~aiohttp.websocket.MSG_BINARY`.
+
+      :return bytes: peer's message content.
+
+      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_TEXT`.
+
+   .. coroutinemethod:: receive_json(*, loads=json.loads)
+
+      A :ref:`coroutine<coroutine>` that calls :meth:`receive_str` and loads
+      the JSON string to a Python dict.
+
+      :param callable loads: any :term:`callable` that accepts
+                              :class:`str` and returns :class:`dict`
+                              with parsed JSON (:func:`json.loads` by
+                              default).
+
+      :return dict: loaded JSON content
+
+      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_BINARY`.
+      :raise ValueError: if message is not valid JSON.
 
 Utilities
 ---------
