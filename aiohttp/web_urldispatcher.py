@@ -738,3 +738,33 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                             response_factory=response_factory)
         self.register_route(route)
         return route
+
+    def add_get(self, *args, **kwargs):
+        """
+        Shortcut for add_route with method GET
+        """
+        return self.add_route('GET', *args, **kwargs)
+
+    def add_post(self, *args, **kwargs):
+        """
+        Shortcut for add_route with method POST
+        """
+        return self.add_route('POST', *args, **kwargs)
+
+    def add_put(self, *args, **kwargs):
+        """
+        Shortcut for add_route with method PUT
+        """
+        return self.add_route('PUT', *args, **kwargs)
+
+    def add_patch(self, *args, **kwargs):
+        """
+        Shortcut for add_route with method PATCH
+        """
+        return self.add_route('PATCH', *args, **kwargs)
+
+    def add_delete(self, *args, **kwargs):
+        """
+        Shortcut for add_route with method DELETE
+        """
+        return self.add_route('DELETE', *args, **kwargs)
