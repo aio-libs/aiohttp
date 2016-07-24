@@ -518,26 +518,27 @@ Proxy support
 -------------
 
 aiohttp supports proxy. You have to use
-:class:`~aiohttp.ProxyConnector`::
+:attr:`proxy`::
 
-   conn = aiohttp.ProxyConnector(proxy="http://some.proxy.com")
-   session = aiohttp.ClientSession(connector=conn)
-   async with session.get('http://python.org') as resp:
-       print(resp.status)
+   async with aiohttp.ClientSession() as session:
+       async with session.get("http://python.org",
+                              proxy="http://some.proxy.com") as resp:
+           print(resp.status)
 
-:class:`~aiohttp.ProxyConnector` also supports proxy authorization::
+it also supports proxy authorization::
 
-   conn = aiohttp.ProxyConnector(
-       proxy="http://some.proxy.com",
-       proxy_auth=aiohttp.BasicAuth('user', 'pass'))
-   session = aiohttp.ClientSession(connector=conn)
-   async with session.get('http://python.org') as r:
-       assert r.status == 200
+
+   async with aiohttp.ClientSession() as session:
+       proxy_auth = aiohttp.BasicAuth('user', 'pass')
+       async with session.get("http://python.org",
+                              proxy="http://some.proxy.com",
+                              proxy_auth=proxy_auth) as resp:
+           print(resp.status)
 
 Authentication credentials can be passed in proxy URL::
 
-   conn = aiohttp.ProxyConnector(
-       proxy="http://user:pass@some.proxy.com")
+   session.get("http://python.org",
+               proxy="http://user:pass@some.proxy.com")
 
 
 Response Status Codes
