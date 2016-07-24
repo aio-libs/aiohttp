@@ -24,6 +24,9 @@ CHANGES
 - Add `proxy` and `proxy_auth` params to `client.get()` and family,
   deprecate `ProxyConnector` #998
 
+- Add support for websocket send_json and receive_json, synchronize
+  server and client API for websockets #984
+
 0.22.2 (07-23-2016)
 -------------------
 
