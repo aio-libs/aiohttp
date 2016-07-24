@@ -27,6 +27,10 @@ CHANGES
 - Add support for websocket send_json and receive_json, synchronize
   server and client API for websockets #984
 
+- Implement router shourtcuts for most useful HTTP methods, use
+  `app.router.add_get()`, `app.router.add_post()` etc. instead of
+  `app.router.add_route()` #986
+
 0.22.2 (07-23-2016)
 -------------------
 

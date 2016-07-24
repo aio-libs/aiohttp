@@ -12,6 +12,7 @@ Alexander Karpinsky
 Alexander Malev
 Alexander Shorin
 Alexander Travov
+Alexandru Mihai
 Alexey Popravka
 Amy Boyle
 Andrei Ursulenko
