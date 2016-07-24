@@ -561,7 +561,7 @@ def _create_transport(sslcontext=None):
 _not_set = object()
 
 
-def make_mocked_request(method, path, headers=CIMultiDict(), *,
+def make_mocked_request(method, path, headers=None, *,
                         version=HttpVersion(1, 1), closing=False,
                         app=None,
                         reader=_not_set,
@@ -616,10 +616,17 @@ def make_mocked_request(method, path, headers=CIMultiDict(), *,
 
     if version < HttpVersion(1, 1):
         closing = True
-    message = RawRequestMessage(method, path, version, headers,
-                                [(k.encode('utf-8'), v.encode('utf-8'))
-                                 for k, v in headers.items()],
-                                closing, False)
+
+    if headers:
+        hdrs = headers
+        raw_hdrs = [
+            (k.encode('utf-8'), v.encode('utf-8')) for k, v in headers.items()]
+    else:
+        hdrs = CIMultiDict()
+        raw_hdrs = []
+
+    message = RawRequestMessage(method, path, version, hdrs,
+                                raw_hdrs, closing, False)
     if app is None:
         app = _create_app_mock()
 
