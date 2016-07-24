@@ -6,7 +6,9 @@ import aiohttp.server
 
 import asyncio
 from urllib.parse import urlparse, parse_qsl
-from aiohttp.multidict import MultiDict
+from aiohttp import multidict 
+
+MultiDict = multidict.MultiDict
 
 
 class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
