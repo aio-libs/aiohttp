@@ -19,7 +19,7 @@ from .errors import ServerDisconnectedError
 from .errors import HttpProxyError, ProxyConnectionError
 from .errors import ClientOSError, ClientTimeoutError
 from .errors import FingerprintMismatch
-from .helpers import BasicAuth, is_ip_address
+from .helpers import is_ip_address
 from .resolver import DefaultResolver
 
 
@@ -587,6 +587,15 @@ class TCPConnector(BaseConnector):
 
         Has same keyword arguments as BaseEventLoop.create_connection.
         """
+        if req.proxy:
+            transport, proto = yield from self._create_proxy_connection(req)
+        else:
+            transport, proto = yield from self._create_direct_connection(req)
+
+        return transport, proto
+
+    @asyncio.coroutine
+    def _create_direct_connection(self, req):
         if req.ssl:
             sslcontext = self.ssl_context
         else:
@@ -629,56 +638,17 @@ class TCPConnector(BaseConnector):
                                 'Can not connect to %s:%s [%s]' %
                                 (req.host, req.port, exc.strerror)) from exc
 
-
-class ProxyConnector(TCPConnector):
-    """Http Proxy connector.
-
-    :param str proxy: Proxy URL address. Only HTTP proxy supported.
-    :param proxy_auth: (optional) Proxy HTTP Basic Auth
-    :type proxy_auth: aiohttp.helpers.BasicAuth
-    :param args: see :class:`TCPConnector`
-    :param kwargs: see :class:`TCPConnector`
-
-    Usage:
-
-    >>> conn = ProxyConnector(proxy="http://some.proxy.com")
-    >>> session = ClientSession(connector=conn)
-    >>> resp = yield from session.get('http://python.org')
-
-    """
-
-    def __init__(self, proxy, *, proxy_auth=None, force_close=True,
-                 **kwargs):
-        super().__init__(force_close=force_close, **kwargs)
-        self._proxy = proxy
-        self._proxy_auth = proxy_auth
-        assert proxy.startswith('http://'), (
-            "Only http proxy supported", proxy)
-        assert proxy_auth is None or isinstance(proxy_auth, BasicAuth), (
-            "proxy_auth must be None or BasicAuth() tuple", proxy_auth)
-
-    @property
-    def proxy(self):
-        """Proxy URL."""
-        return self._proxy
-
-    @property
-    def proxy_auth(self):
-        """Proxy auth info.
-
-        Should be BasicAuth instance.
-        """
-        return self._proxy_auth
-
     @asyncio.coroutine
-    def _create_connection(self, req):
+    def _create_proxy_connection(self, req):
         proxy_req = ClientRequest(
-            hdrs.METH_GET, self._proxy,
+            hdrs.METH_GET, req.proxy,
             headers={hdrs.HOST: req.host},
-            auth=self._proxy_auth,
+            auth=req.proxy_auth,
             loop=self._loop)
         try:
-            transport, proto = yield from super()._create_connection(proxy_req)
+            # create connection to proxy server
+            transport, proto = yield from self._create_direct_connection(
+                proxy_req)
         except OSError as exc:
             raise ProxyConnectionError(*exc.args) from exc
 
@@ -731,6 +701,50 @@ class ProxyConnector(TCPConnector):
                     server_hostname=req.host)
             finally:
                 proxy_resp.close()
+
+        return transport, proto
+
+
+class ProxyConnector(TCPConnector):
+    """Http Proxy connector.
+    Deprecated, use ClientSession.request with proxy parameters.
+    Is still here for backward compatibility.
+
+    :param str proxy: Proxy URL address. Only HTTP proxy supported.
+    :param proxy_auth: (optional) Proxy HTTP Basic Auth
+    :type proxy_auth: aiohttp.helpers.BasicAuth
+    :param args: see :class:`TCPConnector`
+    :param kwargs: see :class:`TCPConnector`
+
+    Usage:
+
+    >>> conn = ProxyConnector(proxy="http://some.proxy.com")
+    >>> session = ClientSession(connector=conn)
+    >>> resp = yield from session.get('http://python.org')
+
+    """
+
+    def __init__(self, proxy, *, proxy_auth=None, force_close=True,
+                 **kwargs):
+        super().__init__(force_close=force_close, **kwargs)
+        self._proxy = proxy
+        self._proxy_auth = proxy_auth
+
+    @property
+    def proxy(self):
+        return self._proxy
+
+    @property
+    def proxy_auth(self):
+        return self._proxy_auth
+
+    @asyncio.coroutine
+    def _create_connection(self, req):
+        """
+        Use TCPConnector _create_connection, to emulate old ProxyConnector.
+        """
+        req.update_proxy(self._proxy, self._proxy_auth)
+        transport, proto = yield from super()._create_connection(req)
 
         return transport, proto
 

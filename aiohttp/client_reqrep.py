@@ -67,7 +67,8 @@ class ClientRequest:
                  auth=None, encoding='utf-8',
                  version=aiohttp.HttpVersion11, compress=None,
                  chunked=None, expect100=False,
-                 loop=None, response_class=None):
+                 loop=None, response_class=None,
+                 proxy=None, proxy_auth=None):
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -91,6 +92,7 @@ class ClientRequest:
         self.update_cookies(cookies)
         self.update_content_encoding(data)
         self.update_auth(auth)
+        self.update_proxy(proxy, proxy_auth)
 
         self.update_body_from_data(data, skip_auto_headers)
         self.update_transfer_encoding()
@@ -365,6 +367,14 @@ class ClientRequest:
 
         if expect:
             self._continue = helpers.create_future(self.loop)
+
+    def update_proxy(self, proxy, proxy_auth):
+        if proxy and not proxy.startswith('http://'):
+            raise ValueError("Only http proxies are supported")
+        if proxy_auth and not isinstance(proxy_auth, helpers.BasicAuth):
+            raise ValueError("proxy_auth must be None or BasicAuth() tuple")
+        self.proxy = proxy
+        self.proxy_auth = proxy_auth
 
     @asyncio.coroutine
     def write_bytes(self, request, reader):

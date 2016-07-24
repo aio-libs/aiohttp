@@ -143,7 +143,8 @@ The client session supports the context manager protocol for self closing.
                          max_redirects=10, encoding='utf-8',\
                          version=HttpVersion(major=1, minor=1),\
                          compress=None, chunked=None, expect100=False,\
-                         read_until_eof=True)
+                         read_until_eof=True,\
+                         proxy=None, proxy_auth=None)
       :async-with:
       :coroutine:
 
@@ -209,8 +210,17 @@ The client session supports the context manager protocol for self closing.
                                   does not have Content-Length header.
                                   ``True`` by default (optional).
 
+      :param str proxy: Proxy URL (optional)
+
+      :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
+                                           Basic Authorization (optional)
+
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
+
+      .. versionadded:: 0.23
+
+         Added :attr:`proxy` and :attr:`proxy_auth` parameters.
 
    .. comethod:: get(url, *, allow_redirects=True, **kwargs)
       :async-with:
@@ -674,7 +684,7 @@ There are standard connectors:
 
 1. :class:`TCPConnector` for regular *TCP sockets* (both *HTTP* and
    *HTTPS* schemes supported).
-2. :class:`ProxyConnector` for connecting via HTTP proxy.
+2. :class:`ProxyConnector` for connecting via HTTP proxy (deprecated).
 3. :class:`UnixConnector` for connecting via UNIX socket (it's used mostly for
    testing purposes).
 
@@ -940,6 +950,11 @@ ProxyConnector
    through *HTTP proxy*.
 
    :class:`ProxyConnector` is inherited from :class:`TCPConnector`.
+
+   .. deprecated:: 0.23
+
+      Use :meth:`ClientSession.request` with :attr:`proxy` and :attr:`proxy_auth`
+      parameters.
 
    Usage::
 
