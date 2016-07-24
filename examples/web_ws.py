@@ -44,7 +44,7 @@ def wshandler(request):
 def init(loop):
     app = Application(loop=loop)
     app['sockets'] = []
-    app.router.add_route('GET', '/', wshandler)
+    app.router.add_get('/', wshandler)
 
     handler = app.make_handler()
     srv = yield from loop.create_server(handler, '127.0.0.1', 8080)

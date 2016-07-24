@@ -46,7 +46,7 @@ following example::
         app = Application(loop=loop)
         db = await create_connection(user='user', password='123')
         app['db'] = db
-        app.router.add_route('GET', '/', go)
+        app.router.add_get('/', go)
         return app
 
 

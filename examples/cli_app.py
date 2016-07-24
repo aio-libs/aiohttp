@@ -49,6 +49,6 @@ def init(argv):
 
     app = Application()
     app["args"] = args
-    app.router.add_route('GET', '/', display_message)
+    app.router.add_get('/', display_message)
 
     return app

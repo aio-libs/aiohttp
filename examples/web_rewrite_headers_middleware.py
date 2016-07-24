@@ -31,7 +31,7 @@ def middleware_factory(app, next_handler):
 @asyncio.coroutine
 def init(loop):
     app = Application(loop=loop, middlewares=[middleware_factory])
-    app.router.add_route('GET', '/', handler)
+    app.router.add_get('/', handler)
 
     requests_handler = app.make_handler()
     srv = yield from loop.create_server(requests_handler, '127.0.0.1', 8080)

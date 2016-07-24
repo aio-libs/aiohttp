@@ -40,9 +40,9 @@ def logout(request):
 @asyncio.coroutine
 def init(loop):
     app = web.Application(loop=loop)
-    app.router.add_route('GET', '/', root)
-    app.router.add_route('GET', '/login', login)
-    app.router.add_route('GET', '/logout', logout)
+    app.router.add_get('/', root)
+    app.router.add_get('/login', login)
+    app.router.add_get('/logout', logout)
 
     handler = app.make_handler()
     srv = yield from loop.create_server(handler, '127.0.0.1', 8080)

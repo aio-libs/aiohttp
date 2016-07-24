@@ -45,11 +45,11 @@ def hello(request):
 @asyncio.coroutine
 def init(loop):
     app = Application(loop=loop)
-    app.router.add_route('GET', '/', intro)
-    app.router.add_route('GET', '/simple', simple)
-    app.router.add_route('GET', '/change_body', change_body)
-    app.router.add_route('GET', '/hello/{name}', hello)
-    app.router.add_route('GET', '/hello', hello)
+    app.router.add_get('/', intro)
+    app.router.add_get('/simple', simple)
+    app.router.add_get('/change_body', change_body)
+    app.router.add_get('/hello/{name}', hello)
+    app.router.add_get('/hello', hello)
 
     handler = app.make_handler()
     srv = yield from loop.create_server(handler, '127.0.0.1', 8080)

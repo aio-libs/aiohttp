@@ -46,7 +46,7 @@ name this file *my_app_module.py*::
 
 
    my_web_app = web.Application()
-   my_web_app.router.add_route('GET', '/', index)
+   my_web_app.router.add_get('/', index)
 
 
 Start Gunicorn

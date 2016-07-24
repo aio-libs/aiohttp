@@ -1227,25 +1227,35 @@ Router is any object that implements :class:`AbstractRouter` interface.
       Shortcut for adding a GET handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'GET'``.
 
+      .. versionadded:: 0.23
+
    .. method:: add_post(path, *args, **kwargs)
 
       Shortcut for adding a POST handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'POST'``.
+
+      .. versionadded:: 0.23
 
    .. method:: add_put(path, *args, **kwargs)
 
       Shortcut for adding a PUT handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'PUT'``.
 
+      .. versionadded:: 0.23
+
    .. method:: add_patch(path, *args, **kwargs)
 
       Shortcut for adding a PATCH handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'PATCH'``.
 
+      .. versionadded:: 0.23
+
    .. method:: add_delete(path, *args, **kwargs)
 
       Shortcut for adding a DELETE handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'DELETE'``.
+
+      .. versionadded:: 0.23
 
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
                           chunk_size=256*1024, response_factory=StreamResponse)

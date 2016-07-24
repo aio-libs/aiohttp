@@ -170,7 +170,7 @@ to ``polls/aiohttpdemo_polls/routes.py``::
 
 
     def setup_routes(app, project_root):
-        app.router.add_route('GET', '/', index)
+        app.router.add_get('/', index)
 
 Now if we open browser we can see::
 
