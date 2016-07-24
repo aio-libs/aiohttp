@@ -15,6 +15,9 @@ CHANGES
 - Remove deprecated `force` parameter for `ClientResponse.close`
   method (BACKWARD INCOMPATIBLE)
 
+- Avoid using of mutable CIMultiDict kw param in make_mocked_request
+  #997
+
 0.22.2 (07-23-2016)
 -------------------
 
