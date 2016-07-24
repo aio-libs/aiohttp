@@ -386,6 +386,24 @@ You also can set default headers for all session requests::
 :class:`~aiohttp.ClientSession` supports keep-alive requests
 and connection pooling out-of-the-box.
 
+.. _aiohttp-client-cookie-safety:
+
+Cookie safety
+-------------
+
+By default :class:`~aiohttp.ClientSession` uses strict version of
+:class:`~aiohttp.CookieJar`. :rfc:`2109` explicitly forbids cookie
+accepting from URLs with IP address instead of DNS name
+(e.g. `http://127.0.0.1:80/cookie`).
+
+It's good but sometimes for testing we need to enable support for such
+cookies. It should be done by passing `usafe=True` to
+:class:`~aiohttp.CookieJar` constructor::
+
+
+    jar = aiohttp.CookieJar(unsafe=True)
+    session = aiohttp.ClientSession(cookie_jar=jar)
+
 
 Connectors
 ----------
@@ -412,6 +430,13 @@ parameter to *connector*::
     conn = aiohttp.TCPConnector(limit=30)
 
 The example limits amount of parallel connections to `30`.
+
+The default is `20`.
+
+If you explicitly want not to have limits to the same endpoint,
+pass `None`. For example::
+
+    conn = aiohttp.TCPConnector(limit=None)
 
 
 Resolving using custom nameservers

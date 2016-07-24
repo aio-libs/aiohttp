@@ -27,7 +27,7 @@ except ImportError:
 
 
 __all__ = ('BasicAuth', 'create_future', 'FormData', 'parse_mimetype',
-           'Timeout')
+           'Timeout', 'CookieJar')
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
@@ -587,9 +587,10 @@ class CookieJar(AbstractCookieJar):
 
     DATE_YEAR_RE = re.compile("(\d{2,4})")
 
-    def __init__(self, *, loop=None):
+    def __init__(self, *, unsafe=False, loop=None):
         super().__init__(loop=loop)
         self._host_only_cookies = set()
+        self._unsafe = unsafe
 
     def _expire_cookie(self, when, name, DAY=24*3600):
         now = self._loop.time()
@@ -608,7 +609,7 @@ class CookieJar(AbstractCookieJar):
         url_parsed = urlsplit(response_url or "")
         hostname = url_parsed.hostname
 
-        if is_ip_address(hostname):
+        if not self._unsafe and is_ip_address(hostname):
             # Don't accept cookies from IPs
             return
 

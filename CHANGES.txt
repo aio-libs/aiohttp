@@ -1,12 +1,36 @@
 CHANGES
 =======
 
-0.22.2 (XX-XX-XXXX)
+0.23.0 (XX-XX-XXXX)
+-------------------
+
+- Change default size for client session's connection pool from
+  unlimited to 20 #977
+
+- Add IE support for cookie deletion. #994
+
+- Remove deprecated `WebSocketResponse.wait_closed` method (BACKWARD
+  INCOMPATIBLE)
+
+- Remove deprecated `force` parameter for `ClientResponse.close`
+  method (BACKWARD INCOMPATIBLE)
+
+- Avoid using of mutable CIMultiDict kw param in make_mocked_request
+  #997
+
+0.22.2 (07-23-2016)
 -------------------
 
 - Suppress CancelledError when Timeout raises TimeoutError #970
 
 - Don't expose `aiohttp.__version__`
+
+- Add unsafe parameter to CookieJar #968
+
+- Use unsafe cookie jar in test client tools
+
+- Expose aiohttp.CookieJar name
+
 
 0.22.1 (07-16-2016)
 -------------------

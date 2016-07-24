@@ -109,6 +109,7 @@ class BaseConnector(object):
     :param keepalive_timeout: (optional) Keep-alive timeout.
     :param bool force_close: Set to True to force close and do reconnect
         after each request (and between redirects).
+    :param limit: The limit of simultaneous connections to the same endpoint.
     :param loop: Optional event loop.
     """
 
@@ -116,7 +117,7 @@ class BaseConnector(object):
     _source_traceback = None
 
     def __init__(self, *, conn_timeout=None, keepalive_timeout=_default,
-                 force_close=False, limit=None,
+                 force_close=False, limit=20,
                  loop=None):
 
         if force_close:
@@ -170,6 +171,12 @@ class BaseConnector(object):
             context['source_traceback'] = self._source_traceback
         self._loop.call_exception_handler(context)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
     @property
     def force_close(self):
         """Ultimately close connection on releasing if True."""
@@ -182,7 +189,8 @@ class BaseConnector(object):
         Endpoints are the same if they are have equal
         (host, port, is_ssl) triple.
 
-        If limit is None the connector has no limit (default).
+        If limit is None the connector has no limit.
+        The default limit size is 20.
         """
         return self._limit
 
