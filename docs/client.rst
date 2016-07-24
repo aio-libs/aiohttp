@@ -392,13 +392,13 @@ Cookie safety
 -------------
 
 By default :class:`~aiohttp.ClientSession` uses strict version of
-:class:`~aiohttp.CookieJar`. :rfc:`2109` explicitly forbids cookie
+:class:`aiohttp.CookieJar`. :rfc:`2109` explicitly forbids cookie
 accepting from URLs with IP address instead of DNS name
 (e.g. `http://127.0.0.1:80/cookie`).
 
 It's good but sometimes for testing we need to enable support for such
 cookies. It should be done by passing `usafe=True` to
-:class:`~aiohttp.CookieJar` constructor::
+:class:`aiohttp.CookieJar` constructor::
 
 
     jar = aiohttp.CookieJar(unsafe=True)

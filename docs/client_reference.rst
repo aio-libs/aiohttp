@@ -1395,4 +1395,32 @@ BasicAuth
       :return: encoded authentication data, :class:`str`.
 
 
+CookieJar
+^^^^^^^^^
+
+.. class:: CookieJar(unsafe=False, loop=None)
+
+   Implements cookie storage adhering to RFC 6265.
+
+   :param bool unsafe: (optional) Whether to accept cookies from IPs.
+   :param bool loop: an :ref:`event loop<asyncio-event-loop>` instance.
+      See :class:`aiohttp.abc.AbstractCookieJar`
+
+   .. method:: update_cookies(cookies, response_url=None)
+
+      Update cookies.
+
+      :param cookies: cookies to update.
+         The parameter can be of :class:`str`, :class:`dict` or :class:`http.cookies.Morsel`
+         instance representing cookies to send.
+
+      :param str response_url: (optional) URL to store cookies for.
+
+   .. method:: filter_cookies(request_url)
+
+      Returns this jar's cookies filtered by their attributes.
+
+      :param str request_url: URL to fetch cookies for.
+
+
 .. disqus::
