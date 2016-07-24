@@ -104,7 +104,9 @@ class ClientSession:
                 compress=None,
                 chunked=None,
                 expect100=False,
-                read_until_eof=True):
+                read_until_eof=True,
+                proxy=None,
+                proxy_auth=None):
         """Perform HTTP request."""
 
         return _RequestContextManager(
@@ -123,7 +125,9 @@ class ClientSession:
                 compress=compress,
                 chunked=chunked,
                 expect100=expect100,
-                read_until_eof=read_until_eof))
+                read_until_eof=read_until_eof,
+                proxy=proxy,
+                proxy_auth=proxy_auth,))
 
     @asyncio.coroutine
     def _request(self, method, url, *,
@@ -139,7 +143,9 @@ class ClientSession:
                  compress=None,
                  chunked=None,
                  expect100=False,
-                 read_until_eof=True):
+                 read_until_eof=True,
+                 proxy=None,
+                 proxy_auth=None):
 
         if version is not None:
             warnings.warn("HTTP version should be specified "
@@ -181,7 +187,8 @@ class ClientSession:
                 cookies=cookies, encoding=encoding,
                 auth=auth, version=version, compress=compress, chunked=chunked,
                 expect100=expect100,
-                loop=self._loop, response_class=self._response_class)
+                loop=self._loop, response_class=self._response_class,
+                proxy=proxy, proxy_auth=proxy_auth,)
 
             conn = yield from self._connector.connect(req)
             try:
@@ -621,7 +628,9 @@ def request(method, url, *,
             loop=None,
             read_until_eof=True,
             request_class=None,
-            response_class=None):
+            response_class=None,
+            proxy=None,
+            proxy_auth=None):
     """Constructs and sends a request. Returns response object.
 
     :param str method: HTTP method
@@ -692,7 +701,9 @@ def request(method, url, *,
                          compress=compress,
                          chunked=chunked,
                          expect100=expect100,
-                         read_until_eof=read_until_eof),
+                         read_until_eof=read_until_eof,
+                         proxy=proxy,
+                         proxy_auth=proxy_auth,),
         session=session)
 
 
