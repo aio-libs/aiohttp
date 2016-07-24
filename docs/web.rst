@@ -552,6 +552,16 @@ incoming request.
 .. _SockJS: https://github.com/aio-libs/sockjs
 
 
+.. warning::
+
+   Parallel reads from websocket are forbidden, there is no
+   possibility to call :meth:`aiohttp.web.WebSocketResponse.receive`
+   from two tasks.
+
+   See :ref:`FAQ section <aiohttp_faq_parallel_event_sources>` for
+   instructions how to solve the problem.
+
+
 .. _aiohttp-web-exceptions:
 
 Exceptions
