@@ -3,7 +3,7 @@ import asyncio
 import json
 import warnings
 
-from . import hdrs
+from . import hdrs, Timeout
 from .errors import HttpProcessingError, ClientDisconnectedError
 from .websocket import do_handshake, Message, WebSocketError
 from .websocket_client import MsgType, closedMessage
@@ -186,9 +186,9 @@ class WebSocketResponse(StreamResponse):
 
             while True:
                 try:
-                    msg = yield from asyncio.wait_for(
-                        self._reader.read(),
-                        timeout=self._timeout, loop=self._loop)
+                    with Timeout(timeout=self._timeout,
+                                 loop=self._loop):
+                        msg = yield from self._reader.read()
                 except asyncio.CancelledError:
                     self._close_code = 1006
                     raise
