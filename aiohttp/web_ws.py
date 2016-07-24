@@ -154,6 +154,9 @@ class WebSocketResponse(StreamResponse):
                             type(data))
         self._writer.send(data, binary=True)
 
+    def send_json(self, data, *, dumps=json.dumps):
+        self.send_str(dumps(data))
+
     @asyncio.coroutine
     def write_eof(self):
         if self._eof_sent:
@@ -280,12 +283,8 @@ class WebSocketResponse(StreamResponse):
 
     @asyncio.coroutine
     def receive_json(self, *, loads=json.loads):
-        msg = yield from self.receive()
-        if msg.tp != MsgType.text:
-            raise TypeError(
-                "Received message {}:{!r} is not str".format(msg.tp, msg.data)
-            )
-        return msg.json(loads=loads)
+        data = yield from self.receive_str()
+        return loads(data)
 
     def write(self, data):
         raise RuntimeError("Cannot call .write() for websocket")
