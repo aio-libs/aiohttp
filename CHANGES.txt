@@ -21,6 +21,9 @@ CHANGES
 - Make WebSocketResponse.close a little bit faster by avoiding new
   task creating just for timeout measurement
 
+- Add `proxy` and `proxy_auth` params to `client.get()` and family,
+  deprecate `ProxyConnector` #998
+
 0.22.2 (07-23-2016)
 -------------------
 
