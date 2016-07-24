@@ -18,6 +18,9 @@ CHANGES
 - Avoid using of mutable CIMultiDict kw param in make_mocked_request
   #997
 
+- Make WebSocketResponse.close a little bit faster by avoiding new
+  task creating just for timeout measurement
+
 0.22.2 (07-23-2016)
 -------------------
 
