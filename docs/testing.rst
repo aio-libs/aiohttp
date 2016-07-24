@@ -29,7 +29,7 @@ A simple would be::
 
     def create_app(loop):
         app = web.Application(loop=loop)
-        app.router.add_route('GET', '/', hello)
+        app.router.add_get('/', hello)
         return app
 
     async def test_hello(test_client):

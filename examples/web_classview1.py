@@ -49,9 +49,9 @@ async def index(request):
 
 async def init(loop):
     app = Application(loop=loop)
-    app.router.add_route('GET', '/', index)
-    app.router.add_route('GET', '/get', MyView)
-    app.router.add_route('POST', '/post', MyView)
+    app.router.add_get('/', index)
+    app.router.add_get('/get', MyView)
+    app.router.add_post('/post', MyView)
 
     handler = app.make_handler()
     srv = await loop.create_server(handler, '127.0.0.1', 8080)
