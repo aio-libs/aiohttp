@@ -17,10 +17,6 @@ class GunicornWebWorker(base.Worker):
 
     def __init__(self, *args, **kw):  # pragma: no cover
         super().__init__(*args, **kw)
-        if self.cfg.is_ssl:
-            self.ssl_context = self._create_ssl_context(self.cfg)
-        else:
-            self.ssl_context = None
 
         self.servers = {}
         self.exit_code = 0
@@ -85,10 +81,13 @@ class GunicornWebWorker(base.Worker):
 
     @asyncio.coroutine
     def _run(self):
+
+        ctx = self._create_ssl_context(self.cfg) if self.cfg.is_ssl else None
+
         for sock in self.sockets:
             handler = self.make_handler(self.wsgi)
             srv = yield from self.loop.create_server(handler, sock=sock.sock,
-                                                     ssl=self.ssl_context)
+                                                     ssl=ctx)
             self.servers[srv] = handler
 
         # If our parent changed then we shut down.
