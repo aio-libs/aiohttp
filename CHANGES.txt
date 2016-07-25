@@ -31,6 +31,9 @@ CHANGES
   `app.router.add_get()`, `app.router.add_post()` etc. instead of
   `app.router.add_route()` #986
 
+- Support SSL connections for gunicorn worker #1003
+
+
 0.22.2 (07-23-2016)
 -------------------
 
