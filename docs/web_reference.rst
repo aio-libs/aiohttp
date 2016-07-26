@@ -859,7 +859,19 @@ WebSocketResponse
 
       :raise RuntimeError: if connection is not started or closing
 
-   .. coroutinemethod:: receive()
+   .. method:: terminate()
+
+      Kill a websocket from a task that is not the request handler.
+
+      This method does not close the websocket, it only cancels the ongoing read tasks.
+
+   .. attribute:: terminated
+
+      Read-only property, ``True`` if connection has been terminated server-side.
+
+      A terminated connection has to be explicitly closed by the handler function.
+
+    .. coroutinemethod:: receive()
 
       A :ref:`coroutine<coroutine>` that waits upcoming *data*
       message from peer and returns it.
