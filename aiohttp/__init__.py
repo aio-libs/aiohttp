@@ -1,8 +1,9 @@
-# This relies on each of the submodules having an __all__ variable.
+__version__ = '0.22.3'
 
-__version__ = '0.22.2'
-
+# Deprecated, keep it here for a while for backward compatibility.
 import multidict  # noqa
+
+# This relies on each of the submodules having an __all__ variable.
 
 from multidict import *  # noqa
 from . import hdrs  # noqa
