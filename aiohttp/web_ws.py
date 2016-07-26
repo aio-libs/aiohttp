@@ -244,7 +244,6 @@ class WebSocketResponse(StreamResponse):
                     msg = yield from self._reader.read()
                 except (asyncio.CancelledError, asyncio.TimeoutError):
                     if self._terminating:
-                        #self._waiting = False
                         return Message(MsgType.close, None, None)
                     raise
                 except WebSocketError as exc:
