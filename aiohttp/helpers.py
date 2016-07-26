@@ -701,7 +701,7 @@ class CookieJar(AbstractCookieJar):
 
             hostname = url_parsed.hostname or ""
 
-            if is_ip_address(hostname):
+            if not self._unsafe and is_ip_address(hostname):
                 continue
 
             if name in self._host_only_cookies:
