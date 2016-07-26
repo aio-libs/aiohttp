@@ -33,6 +33,11 @@ CHANGES
 
 - Support SSL connections for gunicorn worker #1003
 
+0.22.3 (07-26-2016)
+-------------------
+
+- Do not filter cookies if unsafe flag provided #1005
+
 
 0.22.2 (07-23-2016)
 -------------------
