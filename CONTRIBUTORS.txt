@@ -70,6 +70,7 @@ Mathias Fröjdman
 Matthieu Hauglustaine
 Michael Ihnatenko
 Mikhail Lukyanchenko
+Misha Behersky
 Morgan Delahaye-Prat
 Moss Collum
 Nicolas Braem
