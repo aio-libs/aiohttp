@@ -20,12 +20,13 @@ async def close_pg(app):
 
 
 async def init(loop):
+    # load config from yaml file in current dir
+    conf = load_config(str(pathlib.Path('.') / 'config' / 'polls.yaml'))
+
     # setup application and extensions
     app = web.Application(loop=loop)
     aiohttp_jinja2.setup(
         app, loader=jinja2.PackageLoader('aiohttpdemo_polls', 'templates'))
-    # load config from yaml file in current dir
-    conf = load_config(str(pathlib.Path('.') / 'config' / 'polls.yaml'))
 
     # create connection to the database
     db = await init_postgres(conf['postgres'], loop)
