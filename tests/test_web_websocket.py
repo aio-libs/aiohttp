@@ -447,3 +447,16 @@ class TestWebWebSocket(unittest.TestCase):
         ws = WebSocketResponse(protocols=('chat',))
         with self.assertWarns(DeprecationWarning):
             self.assertEqual((True, 'chat'), ws.can_start(req))
+
+    @asyncio.coroutine
+    def _prepare_and_read(self, request, ws):
+        yield from ws.prepare(request)
+        while True:
+            yield from ws.receive()
+
+    def test_terminate_raises_exception_outside_reading(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        ws.terminate()
+        with self.assertRaises(websocket.WebSocketTerminate):
+            self.loop.run_until_complete(self._prepare_and_read(req, ws))
