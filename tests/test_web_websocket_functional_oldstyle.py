@@ -2,8 +2,8 @@ import asyncio
 import base64
 import hashlib
 import os
-import socket
 import unittest
+from aiohttp.test_utils import unused_port
 
 import aiohttp
 from aiohttp import helpers, web, websocket
@@ -21,19 +21,12 @@ class TestWebWebSocketFunctional(unittest.TestCase):
     def tearDown(self):
         self.loop.close()
 
-    def find_unused_port(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(('127.0.0.1', 0))
-        port = s.getsockname()[1]
-        s.close()
-        return port
-
     @asyncio.coroutine
     def create_server(self, method, path, handler):
         app = web.Application(loop=self.loop)
         app.router.add_route(method, path, handler)
 
-        port = self.find_unused_port()
+        port = unused_port()
         srv = yield from self.loop.create_server(
             app.make_handler(), '127.0.0.1', port)
         url = "http://127.0.0.1:{}".format(port) + path

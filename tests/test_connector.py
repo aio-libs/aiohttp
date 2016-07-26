@@ -16,6 +16,7 @@ from aiohttp import client
 from aiohttp import helpers
 from aiohttp.client import ClientResponse, ClientRequest
 from aiohttp.connector import Connection
+from aiohttp.test_utils import unused_port
 
 
 class TestBaseConnector(unittest.TestCase):
@@ -718,19 +719,12 @@ class TestHttpClientConnector(unittest.TestCase):
         self.loop.close()
         gc.collect()
 
-    def find_unused_port(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(('127.0.0.1', 0))
-        port = s.getsockname()[1]
-        s.close()
-        return port
-
     @asyncio.coroutine
     def create_server(self, method, path, handler):
         app = web.Application(loop=self.loop)
         app.router.add_route(method, path, handler)
 
-        port = self.find_unused_port()
+        port = unused_port()
         self.handler = app.make_handler(keep_alive_on=False)
         srv = yield from self.loop.create_server(
             self.handler, '127.0.0.1', port)
@@ -780,7 +774,7 @@ class TestHttpClientConnector(unittest.TestCase):
             self.create_server('get', '/', handler)
         )
 
-        port = self.find_unused_port()
+        port = unused_port()
         conn = aiohttp.TCPConnector(loop=self.loop,
                                     local_addr=('127.0.0.1', port))
 
@@ -840,7 +834,7 @@ class TestHttpClientConnector(unittest.TestCase):
         resolver = unittest.mock.MagicMock()
         connector = aiohttp.TCPConnector(resolver=resolver, loop=self.loop)
 
-        req = ClientRequest('GET', 'http://127.0.0.1:80',
+        req = ClientRequest('GET', 'http://127.0.0.1:{}'.format(unused_port()),
                             loop=self.loop,
                             response_class=unittest.mock.Mock())
 
