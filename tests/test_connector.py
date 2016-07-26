@@ -16,7 +16,6 @@ from aiohttp import client
 from aiohttp import helpers
 from aiohttp.client import ClientResponse, ClientRequest
 from aiohttp.connector import Connection
-from aiohttp.test_utils import unused_port
 
 
 class TestBaseConnector(unittest.TestCase):
