@@ -31,14 +31,14 @@ async def wshandler(request):
                     if ws is not resp:
                         ws.send_str(msg.data)
             else:
-                break
+                return resp
+        return resp
 
     finally:
         request.app['sockets'].remove(resp)
         print('Someone disconnected.')
         for ws in request.app['sockets']:
             ws.send_str('Someone disconnected.')
-    return resp
 
 
 async def on_shutdown(app):
