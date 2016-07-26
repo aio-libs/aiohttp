@@ -3,7 +3,6 @@ import gc
 import json
 import os
 import os.path
-import socket
 import unittest
 import zlib
 from multidict import MultiDict
@@ -11,6 +10,7 @@ from aiohttp import log, web, request, FormData, ClientSession, TCPConnector
 from aiohttp.file_sender import FileSender
 from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
 from aiohttp.streams import EOF_MARKER
+from aiohttp.test_utils import unused_port
 
 from unittest import mock
 
@@ -35,13 +35,6 @@ class WebFunctionalSetupMixin:
         self.loop.close()
         gc.collect()
 
-    def find_unused_port(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(('127.0.0.1', 0))
-        port = s.getsockname()[1]
-        s.close()
-        return port
-
     @asyncio.coroutine
     def create_server(self, method, path, handler=None, ssl_ctx=None,
                       logger=log.server_logger, handler_kwargs=None):
@@ -50,7 +43,7 @@ class WebFunctionalSetupMixin:
         if handler:
             app.router.add_route(method, path, handler)
 
-        port = self.find_unused_port()
+        port = unused_port()
         self.handler = app.make_handler(
             keep_alive_on=False,
             access_log=log.access_logger,
