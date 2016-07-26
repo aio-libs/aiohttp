@@ -162,9 +162,10 @@ the user and ``terminate()`` them::
                 # handle incoming messages
                 ...
 
+        except asyncio.websocket.WebSocketTerminate:
+            print('websocket terminated')
         finally:
-            request.app['websockets'][user_id].pop(ws)
-
+            request.app['websockets'][user_id].remove(ws)
         await ws.close()
         return ws
 
