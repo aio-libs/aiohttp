@@ -7,7 +7,6 @@ import os.path
 import json
 import http.cookies
 import asyncio
-import socket
 import unittest
 from unittest import mock
 
@@ -17,14 +16,7 @@ import aiohttp
 from aiohttp import client, helpers
 from aiohttp import test_utils
 from aiohttp.multipart import MultipartWriter
-
-
-def find_unused_port():
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(('127.0.0.1', 0))
-    port = s.getsockname()[1]
-    s.close()
-    return port
+from aiohttp.test_utils import unused_port
 
 
 class TestHttpClientFunctional(unittest.TestCase):
@@ -952,7 +944,7 @@ class TestHttpClientFunctional(unittest.TestCase):
         @asyncio.coroutine
         def go():
             server = yield from self.loop.create_server(
-                Proto, '127.0.0.1', find_unused_port())
+                Proto, '127.0.0.1', unused_port())
 
             addr = server.sockets[0].getsockname()
 
@@ -995,7 +987,7 @@ class TestHttpClientFunctional(unittest.TestCase):
         @asyncio.coroutine
         def go():
             server = yield from self.loop.create_server(
-                Proto, '127.0.0.1', find_unused_port())
+                Proto, '127.0.0.1', unused_port())
 
             addr = server.sockets[0].getsockname()
 
