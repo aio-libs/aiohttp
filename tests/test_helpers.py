@@ -273,10 +273,41 @@ def test_is_ip_address():
     assert not helpers.is_ip_address("1200::AB00:1234::2552:7777:1313")
 
 
-class TestCookieJar(unittest.TestCase):
+class TestCookieJarBase(unittest.TestCase):
 
     def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+        # N.B. those need to be overriden in child test cases
+        self.jar = helpers.CookieJar(loop=self.loop)
         # Cookies to send from client to server as "Cookie" header
+        self.cookies_to_send = http.cookies.SimpleCookie()
+        # Cookies received from the server as "Set-Cookie" header
+        self.cookies_to_receive = http.cookies.SimpleCookie()
+
+    def tearDown(self):
+        self.loop.close()
+
+    def request_reply_with_same_url(self, url):
+        self.jar.update_cookies(self.cookies_to_send)
+        cookies_sent = self.jar.filter_cookies(url)
+
+        self.jar.cookies.clear()
+
+        self.jar.update_cookies(self.cookies_to_receive, url)
+        cookies_received = self.jar.cookies.copy()
+
+        self.jar.cookies.clear()
+
+        return cookies_sent, cookies_received
+
+
+class TestCookieJarSafe(TestCookieJarBase):
+
+    def setUp(self):
+        super().setUp()
+
         self.cookies_to_send = http.cookies.SimpleCookie(
             "shared-cookie=first; "
             "domain-cookie=second; Domain=example.com; "
@@ -300,7 +331,6 @@ class TestCookieJar(unittest.TestCase):
             " Expires=string;"
         )
 
-        # Cookies received from the server as "Set-Cookie" header
         self.cookies_to_receive = http.cookies.SimpleCookie(
             "unconstrained-cookie=first; Path=/; "
             "domain-cookie=second; Domain=example.com; Path=/; "
@@ -313,26 +343,7 @@ class TestCookieJar(unittest.TestCase):
             "wrong-path-cookie=nineth; Domain=pathtest.com; Path=somepath;"
         )
 
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-
         self.jar = helpers.CookieJar(loop=self.loop)
-
-    def tearDown(self):
-        self.loop.close()
-
-    def request_reply_with_same_url(self, url):
-        self.jar.update_cookies(self.cookies_to_send)
-        cookies_sent = self.jar.filter_cookies(url)
-
-        self.jar.cookies.clear()
-
-        self.jar.update_cookies(self.cookies_to_receive, url)
-        cookies_received = self.jar.cookies.copy()
-
-        self.jar.cookies.clear()
-
-        return cookies_sent, cookies_received
 
     def timed_request(
             self, url, update_time, send_time):
@@ -676,3 +687,34 @@ class TestCookieJar(unittest.TestCase):
 
         # Invalid time
         self.assertEqual(parse_func("Tue, 1 Jan 1970 77:88:99 GMT"), None)
+
+
+class TestCookieJarUnsafe(TestCookieJarBase):
+
+    def setUp(self):
+        super().setUp()
+        self.cookies_to_send = http.cookies.SimpleCookie(
+            "shared-cookie=first; "
+            "ip-cookie=second; Domain=127.0.0.1;"
+        )
+
+        self.cookies_to_receive = http.cookies.SimpleCookie(
+            "shared-cookie=first; "
+            "ip-cookie=second; Domain=127.0.0.1;"
+        )
+
+        self.jar = helpers.CookieJar(loop=self.loop, unsafe=True)
+
+    def test_preserving_ip_domain_cookies(self):
+        cookies_sent, cookies_received = (
+            self.request_reply_with_same_url("http://127.0.0.1/"))
+
+        self.assertEqual(set(cookies_sent.keys()), {
+            "shared-cookie",
+            "ip-cookie",
+        })
+
+        self.assertEqual(set(cookies_received.keys()), {
+            "shared-cookie",
+            "ip-cookie",
+        })
