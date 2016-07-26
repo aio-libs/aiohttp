@@ -2,6 +2,7 @@ import sys
 import asyncio
 import json
 import warnings
+import weakref
 
 from . import hdrs, Timeout
 from .errors import HttpProcessingError, ClientDisconnectedError
@@ -37,6 +38,8 @@ class WebSocketResponse(StreamResponse):
         self._timeout = timeout
         self._autoclose = autoclose
         self._autoping = autoping
+        self._reader_task = None
+        self._terminating = False
 
     @asyncio.coroutine
     def prepare(self, request):
@@ -76,6 +79,8 @@ class WebSocketResponse(StreamResponse):
         self._writer = writer
         self._protocol = protocol
         self._loop = request.app.loop
+        self._reader_task = weakref.proxy(
+            asyncio.Task.current_task(loop=self._loop))
 
     def start(self, request):
         warnings.warn('use .prepare(request) instead', DeprecationWarning)
@@ -167,6 +172,17 @@ class WebSocketResponse(StreamResponse):
         yield from self.close()
         self._eof_sent = True
 
+    def _cancel_reader_task(self):
+        self._reader_task.cancel()
+
+    @property
+    def terminating(self):
+        return self._terminating
+
+    def terminate(self):
+        self._terminating = True
+        self._cancel_reader_task()
+
     @asyncio.coroutine
     def close(self, *, code=1000, message=b''):
         if self._writer is None:
@@ -193,13 +209,14 @@ class WebSocketResponse(StreamResponse):
                                  loop=self._loop):
                         msg = yield from self._reader.read()
                 except asyncio.CancelledError:
+                    if self._terminating:
+                        return True
                     self._close_code = 1006
                     raise
                 except Exception as exc:
                     self._close_code = 1006
                     self._exception = exc
                     return True
-
                 if msg.tp == MsgType.close:
                     self._close_code = msg.data
                     return True
@@ -225,6 +242,9 @@ class WebSocketResponse(StreamResponse):
                 try:
                     msg = yield from self._reader.read()
                 except (asyncio.CancelledError, asyncio.TimeoutError):
+                    if self._terminating:
+                        #self._waiting = False
+                        return Message(MsgType.close, None, None)
                     raise
                 except WebSocketError as exc:
                     self._close_code = exc.code
