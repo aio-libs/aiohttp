@@ -1,7 +1,7 @@
 .. _aiohttp-tutorial:
 
-Tutorial
-========
+HTTP Server Tutorial
+====================
 
 Are you going to learn *aiohttp* but don't where to start? We have
 example for you. Polls application is a great example for getting
@@ -69,6 +69,47 @@ Getting started with aiohttp first app
 
 This tutorial based on Django polls tutorial.
 
+.. _aiohttp-tutorial-config:
+
+Configuration files
+-------------------
+
+aiohttp is configuration agnostic. It means the library doesn't
+require any configuration approach and doesn't have builtin support
+for any config schema.
+
+But please take into account these facts:
+
+   1. 99% of servers have configuration files.
+
+   2. Every product (except Python-based solutions like Django and
+      Flask) doesn't store config files as part as source code.
+
+      For example Nginx has own configuration files stored by default
+      under ``/etc/nginx`` folder.
+
+      Mongo pushes config as ``/etc/mongodb.conf``.
+
+   3. Config files validation is good idea, strong checks may prevent
+      silly errors during product deployment.
+
+Thus we **suggest** to use the following approach:
+
+   1. Pushing configs as ``yaml`` files (``json`` or ``ini`` is also
+      good but ``yaml`` is the best).
+
+   2. Loading ``yaml`` config from a list of predifined locations,
+      e.g. ``./config/app_cfg.yaml``, ``/etc/app_cfg.yaml``.
+
+   3. Keeping ability to override config file by command line
+      parameter, e.g. ``./run_app --config=/opt/config/app_cfg.yaml``.
+
+   4. Applying strict validation checks to loaded dict. `trafaret
+      <https://github.com/Deepwalker/trafaret>`_, `collander
+      <http://docs.pylonsproject.org/projects/colander/en/latest/>`_
+      or `JSON schema
+      <http://python-jsonschema.readthedocs.io/en/latest/>`_ are good
+      candidates for such job.
 
 .. _aiohttp-tutorial-database:
 
