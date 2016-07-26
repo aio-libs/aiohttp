@@ -176,7 +176,7 @@ class WebSocketResponse(StreamResponse):
         self._reader_task.cancel()
 
     @property
-    def terminating(self):
+    def terminated(self):
         return self._terminating
 
     def terminate(self):

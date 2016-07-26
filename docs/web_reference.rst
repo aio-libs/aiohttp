@@ -861,15 +861,15 @@ WebSocketResponse
 
    .. method:: terminate()
 
-      Kill a websocket from a task that is not the request handler.
+      Kill a *Websocket* from a *task* that is not the request handler.
 
-      This method does not close the websocket, it only cancels the ongoing read tasks.
+      This method does not close the *Websocket*, it only cancels the ongoing read tasks.
 
    .. attribute:: terminated
 
       Read-only property, ``True`` if connection has been terminated server-side.
 
-      A terminated connection has to be explicitly closed by the handler function.
+      A terminated connection has to be explicitly closed by the request handler *task*.
 
     .. coroutinemethod:: receive()
 
