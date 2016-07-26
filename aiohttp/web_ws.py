@@ -79,8 +79,9 @@ class WebSocketResponse(StreamResponse):
         self._writer = writer
         self._protocol = protocol
         self._loop = request.app.loop
-        self._reader_task = weakref.proxy(
-            asyncio.Task.current_task(loop=self._loop))
+        current_task = asyncio.Task.current_task(loop=self._loop)
+        if current_task is not None:
+            self._reader_task = weakref.proxy(current_task)
 
     def start(self, request):
         warnings.warn('use .prepare(request) instead', DeprecationWarning)

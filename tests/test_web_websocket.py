@@ -435,6 +435,13 @@ class TestWebWebSocket(unittest.TestCase):
             impl2 = ws.start(req)
             self.assertIs(impl1, impl2)
 
+    def test_prepare_twice_idempotent(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        impl1 = self.loop.run_until_complete(ws.prepare(req))
+        impl2 = self.loop.run_until_complete(ws.prepare(req))
+        self.assertIs(impl1, impl2)
+
     def test_can_start_ok(self):
         req = self.make_request('GET', '/', protocols=True)
         ws = WebSocketResponse(protocols=('chat',))
