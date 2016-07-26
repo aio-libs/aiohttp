@@ -16,6 +16,7 @@ from aiohttp import client
 from aiohttp import helpers
 from aiohttp.client import ClientResponse, ClientRequest
 from aiohttp.connector import Connection
+from aiohttp.test_utils import unused_port
 
 
 class TestBaseConnector(unittest.TestCase):
@@ -840,7 +841,7 @@ class TestHttpClientConnector(unittest.TestCase):
         resolver = unittest.mock.MagicMock()
         connector = aiohttp.TCPConnector(resolver=resolver, loop=self.loop)
 
-        req = ClientRequest('GET', 'http://127.0.0.1:80',
+        req = ClientRequest('GET', 'http://127.0.0.1:{}'.format(unused_port()),
                             loop=self.loop,
                             response_class=unittest.mock.Mock())
 
