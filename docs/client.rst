@@ -392,13 +392,13 @@ Cookie safety
 -------------
 
 By default :class:`~aiohttp.ClientSession` uses strict version of
-:class:`~aiohttp.CookieJar`. :rfc:`2109` explicitly forbids cookie
+:class:`aiohttp.CookieJar`. :rfc:`2109` explicitly forbids cookie
 accepting from URLs with IP address instead of DNS name
 (e.g. `http://127.0.0.1:80/cookie`).
 
 It's good but sometimes for testing we need to enable support for such
 cookies. It should be done by passing `usafe=True` to
-:class:`~aiohttp.CookieJar` constructor::
+:class:`aiohttp.CookieJar` constructor::
 
 
     jar = aiohttp.CookieJar(unsafe=True)
@@ -430,6 +430,13 @@ parameter to *connector*::
     conn = aiohttp.TCPConnector(limit=30)
 
 The example limits amount of parallel connections to `30`.
+
+The default is `20`.
+
+If you explicitly want not to have limits to the same endpoint,
+pass `None`. For example::
+
+    conn = aiohttp.TCPConnector(limit=None)
 
 
 Resolving using custom nameservers
@@ -511,26 +518,27 @@ Proxy support
 -------------
 
 aiohttp supports proxy. You have to use
-:class:`~aiohttp.ProxyConnector`::
+:attr:`proxy`::
 
-   conn = aiohttp.ProxyConnector(proxy="http://some.proxy.com")
-   session = aiohttp.ClientSession(connector=conn)
-   async with session.get('http://python.org') as resp:
-       print(resp.status)
+   async with aiohttp.ClientSession() as session:
+       async with session.get("http://python.org",
+                              proxy="http://some.proxy.com") as resp:
+           print(resp.status)
 
-:class:`~aiohttp.ProxyConnector` also supports proxy authorization::
+it also supports proxy authorization::
 
-   conn = aiohttp.ProxyConnector(
-       proxy="http://some.proxy.com",
-       proxy_auth=aiohttp.BasicAuth('user', 'pass'))
-   session = aiohttp.ClientSession(connector=conn)
-   async with session.get('http://python.org') as r:
-       assert r.status == 200
+
+   async with aiohttp.ClientSession() as session:
+       proxy_auth = aiohttp.BasicAuth('user', 'pass')
+       async with session.get("http://python.org",
+                              proxy="http://some.proxy.com",
+                              proxy_auth=proxy_auth) as resp:
+           print(resp.status)
 
 Authentication credentials can be passed in proxy URL::
 
-   conn = aiohttp.ProxyConnector(
-       proxy="http://user:pass@some.proxy.com")
+   session.get("http://python.org",
+               proxy="http://user:pass@some.proxy.com")
 
 
 Response Status Codes

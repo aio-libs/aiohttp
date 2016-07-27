@@ -1,7 +1,7 @@
 .. _aiohttp-tutorial:
 
-Tutorial
-========
+HTTP Server Tutorial
+====================
 
 Are you going to learn *aiohttp* but don't where to start? We have
 example for you. Polls application is a great example for getting
@@ -69,6 +69,47 @@ Getting started with aiohttp first app
 
 This tutorial based on Django polls tutorial.
 
+.. _aiohttp-tutorial-config:
+
+Configuration files
+-------------------
+
+aiohttp is configuration agnostic. It means the library doesn't
+require any configuration approach and doesn't have builtin support
+for any config schema.
+
+But please take into account these facts:
+
+   1. 99% of servers have configuration files.
+
+   2. Every product (except Python-based solutions like Django and
+      Flask) doesn't store config files as part as source code.
+
+      For example Nginx has own configuration files stored by default
+      under ``/etc/nginx`` folder.
+
+      Mongo pushes config as ``/etc/mongodb.conf``.
+
+   3. Config files validation is good idea, strong checks may prevent
+      silly errors during product deployment.
+
+Thus we **suggest** to use the following approach:
+
+   1. Pushing configs as ``yaml`` files (``json`` or ``ini`` is also
+      good but ``yaml`` is the best).
+
+   2. Loading ``yaml`` config from a list of predifined locations,
+      e.g. ``./config/app_cfg.yaml``, ``/etc/app_cfg.yaml``.
+
+   3. Keeping ability to override config file by command line
+      parameter, e.g. ``./run_app --config=/opt/config/app_cfg.yaml``.
+
+   4. Applying strict validation checks to loaded dict. `trafaret
+      <https://github.com/Deepwalker/trafaret>`_, `collander
+      <http://docs.pylonsproject.org/projects/colander/en/latest/>`_
+      or `JSON schema
+      <http://python-jsonschema.readthedocs.io/en/latest/>`_ are good
+      candidates for such job.
 
 .. _aiohttp-tutorial-database:
 
@@ -144,6 +185,10 @@ and second table is choice table:
 | question_id   |
 +---------------+
 
+TBD: aiopg.sa.create_engine and pushing it into app's storage
+
+TBD: graceful cleanup
+
 
 .. _aiohttp-tutorial-views:
 
@@ -156,16 +201,17 @@ next Python code inside file (``polls/aiohttpdemo_polls/views.py``)::
     from aiohttp import web
 
 
-    class SiteHandler:
-        async def index(self, request):
-            return web.Response(text='Hello Aiohttp!')
+    async def index(self, request):
+        return web.Response(text='Hello Aiohttp!')
 
 This is the simplest view possible in Aiohttp. Now we should add ``index`` view
 to ``polls/aiohttpdemo_polls/routes.py``::
 
-    def setup_routes(app, handler, project_root):
-        add_route = app.router.add_route
-        add_route('GET', '/', handler.index)
+    from .views import index
+
+
+    def setup_routes(app, project_root):
+        app.router.add_get('/', index)
 
 Now if we open browser we can see::
 
@@ -181,17 +227,18 @@ Templates
 Let's add more useful views::
 
    @aiohttp_jinja2.template('detail.html')
-   async def poll(self, request):
-       question_id = request.match_info['question_id']
-       try:
-           question, choices = await db.get_question(self.postgres,
-                                                     question_id)
-       except db.RecordNotFound as e:
-           raise web.HTTPNotFound(text=str(e))
-       return {
-           'question': question,
-           'choices': choices
-       }
+   async def poll(request):
+       async with request['db'].acquire() as conn:
+           question_id = request.match_info['question_id']
+           try:
+               question, choices = await db.get_question(conn,
+                                                         question_id)
+           except db.RecordNotFound as e:
+               raise web.HTTPNotFound(text=str(e))
+           return {
+               'question': question,
+               'choices': choices
+           }
 
 Templates are very convinient way forweb page writing. We return a
 dict with page content, ``aiohttp_jinja2.template`` decorator
@@ -235,3 +282,9 @@ Fortunatelly it can be done easy by single call::
 
 
 where ``project_root`` is the path to root folder.
+
+
+Middlewares
+-----------
+
+TBD

@@ -3,6 +3,7 @@
 import asyncio
 
 import sys
+import json
 from enum import IntEnum
 
 from .websocket import Message
@@ -88,6 +89,9 @@ class ClientWebSocketResponse:
                             type(data))
         self._writer.send(data, binary=True)
 
+    def send_json(self, data, *, dumps=json.dumps):
+        self.send_str(dumps(data))
+
     @asyncio.coroutine
     def close(self, *, code=1000, message=b''):
         if not self._closed:
@@ -170,6 +174,28 @@ class ClientWebSocketResponse:
                         return msg
         finally:
             self._waiting = False
+
+    @asyncio.coroutine
+    def receive_str(self):
+        msg = yield from self.receive()
+        if msg.tp != MsgType.text:
+            raise TypeError(
+                "Received message {}:{!r} is not str".format(msg.tp, msg.data))
+        return msg.data
+
+    @asyncio.coroutine
+    def receive_bytes(self):
+        msg = yield from self.receive()
+        if msg.tp != MsgType.binary:
+            raise TypeError(
+                "Received message {}:{!r} is not bytes".format(msg.tp,
+                                                               msg.data))
+        return msg.data
+
+    @asyncio.coroutine
+    def receive_json(self, *, loads=json.loads):
+        data = yield from self.receive_str()
+        return loads(data)
 
     if PY_35:
         @asyncio.coroutine

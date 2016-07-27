@@ -1,6 +1,38 @@
 CHANGES
 =======
 
+0.23.0 (XX-XX-XXXX)
+-------------------
+
+- Change default size for client session's connection pool from
+  unlimited to 20 #977
+
+- Add IE support for cookie deletion. #994
+
+- Remove deprecated `WebSocketResponse.wait_closed` method (BACKWARD
+  INCOMPATIBLE)
+
+- Remove deprecated `force` parameter for `ClientResponse.close`
+  method (BACKWARD INCOMPATIBLE)
+
+- Avoid using of mutable CIMultiDict kw param in make_mocked_request
+  #997
+
+- Make WebSocketResponse.close a little bit faster by avoiding new
+  task creating just for timeout measurement
+
+- Add `proxy` and `proxy_auth` params to `client.get()` and family,
+  deprecate `ProxyConnector` #998
+
+- Add support for websocket send_json and receive_json, synchronize
+  server and client API for websockets #984
+
+- Implement router shourtcuts for most useful HTTP methods, use
+  `app.router.add_get()`, `app.router.add_post()` etc. instead of
+  `app.router.add_route()` #986
+
+- Support SSL connections for gunicorn worker #1003
+
 0.22.3 (07-26-2016)
 -------------------
 

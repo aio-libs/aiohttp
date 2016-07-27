@@ -29,7 +29,7 @@ A simple would be::
 
     def create_app(loop):
         app = web.Application(loop=loop)
-        app.router.add_route('GET', '/', hello)
+        app.router.add_get('/', hello)
         return app
 
     async def test_hello(test_client):
@@ -185,10 +185,11 @@ functionality, the AioHTTPTestCase is provided::
 Faking request object
 ---------------------
 
-aiohttp provides test utility for creating fake `web.Request` objects:
-:data:`aiohttp.test_utils.make_mocked_request`, it could be useful in case of
-simple unit tests, like handler tests, or simulate error conditions that
-hard to reproduce on real server. ::
+aiohttp provides test utility for creating fake
+:class:`aiohttp.web.Request` objects:
+:func:`aiohttp.test_utils.make_mocked_request`, it could be useful in
+case of simple unit tests, like handler tests, or simulate error
+conditions that hard to reproduce on real server::
 
     from aiohttp import web
 
@@ -200,6 +201,18 @@ hard to reproduce on real server. ::
         req = make_request('get', 'http://python.org/', headers={'token': 'x')
         resp = header(req)
         assert resp.body == b'data'
+
+.. warning::
+
+   We don't recommed to apply
+   :func:`~aiohttp.test_utils.make_mocked_request` everywhere for
+   testing web-handler's business object -- please use test client and
+   real networking via 'localhost' as shown in examples before.
+
+   :func:`~aiohttp.test_utils.make_mocked_request` exists only for
+   testing complex cases (e.g. emulating network errors) which
+   are extremely hard or even impossible to test by conventional
+   way.
 
 
 aiohttp.test_utils

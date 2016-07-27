@@ -3,6 +3,7 @@ Contributors
 
 A. Jesse Jiryu Davis
 Alejandro Gómez
+Aleksey Kutepov
 Alex Khomchenko
 Alex Lisovoy
 Alex Key
@@ -11,6 +12,7 @@ Alexander Karpinsky
 Alexander Malev
 Alexander Shorin
 Alexander Travov
+Alexandru Mihai
 Alexey Popravka
 Amy Boyle
 Andrei Ursulenko
@@ -65,6 +67,7 @@ Lubomir Gelo
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
 Marco Paolini
+Mariano Anaya
 Martin Richard
 Mathias Fröjdman
 Matthieu Hauglustaine
@@ -112,3 +115,4 @@ Yury Selivanov
 Yusuke Tsutsumi
 Марк Коренберг
 Семён Марьясин
+Pau Freixes

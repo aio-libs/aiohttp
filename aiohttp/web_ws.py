@@ -3,7 +3,7 @@ import asyncio
 import json
 import warnings
 
-from . import hdrs
+from . import hdrs, Timeout
 from .errors import HttpProcessingError, ClientDisconnectedError
 from .websocket import do_handshake, Message, WebSocketError
 from .websocket_client import MsgType, closedMessage
@@ -154,13 +154,8 @@ class WebSocketResponse(StreamResponse):
                             type(data))
         self._writer.send(data, binary=True)
 
-    @asyncio.coroutine
-    def wait_closed(self):  # pragma: no cover
-        warnings.warn(
-            'wait_closed() coroutine is deprecated. use close() instead',
-            DeprecationWarning)
-
-        return (yield from self.close())
+    def send_json(self, data, *, dumps=json.dumps):
+        self.send_str(dumps(data))
 
     @asyncio.coroutine
     def write_eof(self):
@@ -194,9 +189,9 @@ class WebSocketResponse(StreamResponse):
 
             while True:
                 try:
-                    msg = yield from asyncio.wait_for(
-                        self._reader.read(),
-                        timeout=self._timeout, loop=self._loop)
+                    with Timeout(timeout=self._timeout,
+                                 loop=self._loop):
+                        msg = yield from self._reader.read()
                 except asyncio.CancelledError:
                     self._close_code = 1006
                     raise
@@ -288,12 +283,8 @@ class WebSocketResponse(StreamResponse):
 
     @asyncio.coroutine
     def receive_json(self, *, loads=json.loads):
-        msg = yield from self.receive()
-        if msg.tp != MsgType.text:
-            raise TypeError(
-                "Received message {}:{!r} is not str".format(msg.tp, msg.data)
-            )
-        return msg.json(loads=loads)
+        data = yield from self.receive_str()
+        return loads(data)
 
     def write(self, data):
         raise RuntimeError("Cannot call .write() for websocket")

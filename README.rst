@@ -81,8 +81,8 @@ This is simple usage example:
 
 
     app = web.Application()
-    app.router.add_route('GET', '/echo', wshandler)
-    app.router.add_route('GET', '/{name}', handle)
+    app.router.add_get('/echo', wshandler)
+    app.router.add_get('/{name}', handle)
 
     web.run_app(app)
 
@@ -114,11 +114,14 @@ Requirements
 ------------
 
 - Python >= 3.4.1
-- chardet https://pypi.python.org/pypi/chardet
+- chardet_
+- multidict_
 
-Optionally you may install cChardet library:
-https://pypi.python.org/pypi/cchardet/1.0.0
+Optionally you may install the cChardet_ library.
 
+.. _chardet: https://pypi.python.org/pypi/chardet
+.. _multidict: https://pypi.python.org/pypi/multidict
+.. _cChardet: https://pypi.python.org/pypi/cchardet
 
 License
 -------

@@ -8,8 +8,7 @@ from urllib.parse import unquote
 import aiohttp.web
 from aiohttp import hdrs
 from aiohttp.web import (UrlDispatcher, Response,
-                         HTTPMethodNotAllowed, HTTPNotFound,
-                         HTTPCreated)
+                         HTTPMethodNotAllowed, HTTPNotFound)
 from aiohttp.web_urldispatcher import (_defaultExpectHandler,
                                        DynamicRoute,
                                        PlainRoute,
@@ -40,28 +39,6 @@ class TestUrlDispatcher(unittest.TestCase):
             return Response(request)  # pragma: no cover
 
         return handler
-
-    def test_system_route(self):
-        route = SystemRoute(HTTPCreated(reason='test'))
-        self.assertIsNone(route.match('any'))
-        with self.assertRaises(RuntimeError):
-            route.url()
-        self.assertEqual("<SystemRoute 201: test>", repr(route))
-        self.assertEqual(201, route.status)
-        self.assertEqual('test', route.reason)
-
-    def test_register_route(self):
-        handler = self.make_handler()
-        route = PlainRoute('GET', handler, 'test', '/handler/to/path')
-        self.router.register_route(route)
-
-        req = self.make_request('GET', '/handler/to/path')
-        info = self.loop.run_until_complete(self.router.resolve(req))
-        self.assertIsNotNone(info)
-        self.assertEqual(0, len(info))
-        self.assertIs(route, info.route)
-        self.assertIs(handler, info.handler)
-        self.assertEqual(info.route.name, 'test')
 
     def test_register_route_checks(self):
         self.assertRaises(
@@ -109,6 +86,56 @@ class TestUrlDispatcher(unittest.TestCase):
         info = self.loop.run_until_complete(self.router.resolve(req))
         self.assertIsNotNone(info)
         self.assertEqual({'to': 'tail'}, info)
+        self.assertIs(handler, info.handler)
+        self.assertIsNone(info.route.name)
+
+    def test_add_route_with_add_get_shortcut(self):
+        handler = self.make_handler()
+        self.router.add_get('/handler/to/path', handler)
+        req = self.make_request('GET', '/handler/to/path')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info)
+        self.assertEqual(0, len(info))
+        self.assertIs(handler, info.handler)
+        self.assertIsNone(info.route.name)
+
+    def test_add_route_with_add_post_shortcut(self):
+        handler = self.make_handler()
+        self.router.add_post('/handler/to/path', handler)
+        req = self.make_request('POST', '/handler/to/path')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info)
+        self.assertEqual(0, len(info))
+        self.assertIs(handler, info.handler)
+        self.assertIsNone(info.route.name)
+
+    def test_add_route_with_add_put_shortcut(self):
+        handler = self.make_handler()
+        self.router.add_put('/handler/to/path', handler)
+        req = self.make_request('PUT', '/handler/to/path')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info)
+        self.assertEqual(0, len(info))
+        self.assertIs(handler, info.handler)
+        self.assertIsNone(info.route.name)
+
+    def test_add_route_with_add_patch_shortcut(self):
+        handler = self.make_handler()
+        self.router.add_patch('/handler/to/path', handler)
+        req = self.make_request('PATCH', '/handler/to/path')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info)
+        self.assertEqual(0, len(info))
+        self.assertIs(handler, info.handler)
+        self.assertIsNone(info.route.name)
+
+    def test_add_route_with_add_delete_shortcut(self):
+        handler = self.make_handler()
+        self.router.add_delete('/handler/to/path', handler)
+        req = self.make_request('DELETE', '/handler/to/path')
+        info = self.loop.run_until_complete(self.router.resolve(req))
+        self.assertIsNotNone(info)
+        self.assertEqual(0, len(info))
         self.assertIs(handler, info.handler)
         self.assertIsNone(info.route.name)
 

@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 import signal
+import ssl
 import sys
 import gunicorn.workers.base as base
 
@@ -80,9 +81,13 @@ class GunicornWebWorker(base.Worker):
 
     @asyncio.coroutine
     def _run(self):
+
+        ctx = self._create_ssl_context(self.cfg) if self.cfg.is_ssl else None
+
         for sock in self.sockets:
             handler = self.make_handler(self.wsgi)
-            srv = yield from self.loop.create_server(handler, sock=sock.sock)
+            srv = yield from self.loop.create_server(handler, sock=sock.sock,
+                                                     ssl=ctx)
             self.servers[srv] = handler
 
         # If our parent changed then we shut down.
@@ -141,6 +146,21 @@ class GunicornWebWorker(base.Worker):
     def handle_abort(self, sig, frame):
         self.alive = False
         self.exit_code = 1
+
+    @staticmethod
+    def _create_ssl_context(cfg):
+        """ Creates SSLContext instance for usage in asyncio.create_server.
+
+        See ssl.SSLSocket.__init__ for more details.
+        """
+        ctx = ssl.SSLContext(cfg.ssl_version)
+        ctx.load_cert_chain(cfg.certfile, cfg.keyfile)
+        ctx.verify_mode = cfg.cert_reqs
+        if cfg.ca_certs:
+            ctx.load_verify_locations(cfg.ca_certs)
+        if cfg.ciphers:
+            ctx.set_ciphers(cfg.ciphers)
+        return ctx
 
 
 class GunicornUVLoopWebWorker(GunicornWebWorker):

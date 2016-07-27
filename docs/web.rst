@@ -26,7 +26,7 @@ request handler with the application's :class:`router <UrlDispatcher>` on a
 particular *HTTP method* and *path*::
 
    app = web.Application()
-   app.router.add_route('GET', '/', hello)
+   app.router.add_get('/', hello)
 
 After that, run the application by :func:`run_app` call::
 
@@ -56,7 +56,7 @@ accepts a list of any non-parsed command-line arguments and returns an
 
     def init_function(argv):
         app = web.Application()
-        app.router.add_route("GET", "/", index_handler)
+        app.router.add_get("/", index_handler)
         return app
 
 
@@ -79,12 +79,13 @@ A handler **may** also be a :ref:`coroutine<coroutine>`, in which case
        return web.Response()
 
 Handlers are setup to handle requests by registering them with the
-:attr:`Application.router` on a particular route (*HTTP method* and *path*
-pair)::
+:attr:`Application.router` on a particular route (*HTTP method* and
+*path* pair) using methods like :class:`UrlDispatcher.add_get` and
+:class:`UrlDispatcher.add_post`::
 
-   app.router.add_route('GET', '/', handler)
-   app.router.add_route('POST', '/post', post_handler)
-   app.router.add_route('PUT', '/put', put_handler)
+   app.router.add_get('/', handler)
+   app.router.add_post('/post', post_handler)
+   app.router.add_put('/put', put_handler)
 
 :meth:`~UrlDispatcher.add_route` also supports the wildcard *HTTP method*,
 allowing a handler to serve incoming requests on a *path* having **any**
@@ -109,7 +110,10 @@ Resource in turn has at least one *route*.
 
 Route corresponds to handling *HTTP method* by calling *web handler*.
 
-:meth:`UrlDispatcher.add_route` is just a shortcut for pair of
+:meth:`UrlDispatcher.add_get` / :meth:`UrlDispatcher.add_post` and
+family are plain shortcuts for :meth:`UrlDispatcher.add_route`.
+
+:meth:`UrlDispatcher.add_route` in turn is just a shortcut for pair of
 :meth:`UrlDispatcher.add_resource` and :meth:`Resource.add_route`::
 
    resource = app.router.add_resource(path, name=name)
@@ -192,7 +196,7 @@ functions or coroutines::
    async def hello(request):
        return web.Response(body=b"Hello, world")
 
-   app.router.add_route('GET', '/', hello)
+   app.router.add_get('/', hello)
 
 But sometimes it's convenient to group logically similar handlers into a Python
 *class*.
@@ -214,8 +218,8 @@ application developers can organize handlers in classes if they so wish::
            return web.Response(text=txt)
 
    handler = Handler()
-   app.router.add_route('GET', '/intro', handler.handle_intro)
-   app.router.add_route('GET', '/greet/{name}', handler.handle_greeting)
+   app.router.add_get('/intro', handler.handle_intro)
+   app.router.add_get('/greet/{name}', handler.handle_greeting)
 
 
 .. _aiohttp-web-class-based-views:
@@ -311,7 +315,7 @@ The following example shows custom routing based on the *HTTP Accept* header::
        # do xml handling
 
    chooser = AcceptChooser()
-   app.router.add_route('GET', '/', chooser.do_route)
+   app.router.add_get('/', chooser.do_route)
 
    chooser.reg_acceptor('application/json', handle_json)
    chooser.reg_acceptor('application/xml', handle_xml)
@@ -390,7 +394,7 @@ third-party library, :mod:`aiohttp_session`, that adds *session* support::
     async def init(loop):
         app = web.Application(middlewares=[session_middleware(
             EncryptedCookieStorage(b'Sixteen byte key'))])
-        app.router.add_route('GET', '/', handler)
+        app.router.add_get('/', handler)
         srv = await loop.create_server(
             app.make_handler(), '0.0.0.0', 8080)
         return srv
@@ -453,7 +457,7 @@ header::
        return web.Response(body=b"Hello, world")
 
    app = web.Application()
-   app.router.add_route('GET', '/', hello, expect_handler=check_auth)
+   app.router.add_get('/', hello, expect_handler=check_auth)
 
 
 .. _aiohttp-web-file-upload:
@@ -546,6 +550,16 @@ incoming request.
    code.
 
 .. _SockJS: https://github.com/aio-libs/sockjs
+
+
+.. warning::
+
+   Parallel reads from websocket are forbidden, there is no
+   possibility to call :meth:`aiohttp.web.WebSocketResponse.receive`
+   from two tasks.
+
+   See :ref:`FAQ section <aiohttp_faq_parallel_event_sources>` for
+   instructions how to solve the problem.
 
 
 .. _aiohttp-web-exceptions:

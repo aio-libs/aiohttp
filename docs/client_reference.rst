@@ -143,7 +143,8 @@ The client session supports the context manager protocol for self closing.
                          max_redirects=10, encoding='utf-8',\
                          version=HttpVersion(major=1, minor=1),\
                          compress=None, chunked=None, expect100=False,\
-                         read_until_eof=True)
+                         read_until_eof=True,\
+                         proxy=None, proxy_auth=None)
       :async-with:
       :coroutine:
 
@@ -209,8 +210,17 @@ The client session supports the context manager protocol for self closing.
                                   does not have Content-Length header.
                                   ``True`` by default (optional).
 
+      :param str proxy: Proxy URL (optional)
+
+      :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
+                                           Basic Authorization (optional)
+
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
+
+      .. versionadded:: 0.23
+
+         Added :attr:`proxy` and :attr:`proxy_auth` parameters.
 
    .. comethod:: get(url, *, allow_redirects=True, **kwargs)
       :async-with:
@@ -674,7 +684,7 @@ There are standard connectors:
 
 1. :class:`TCPConnector` for regular *TCP sockets* (both *HTTP* and
    *HTTPS* schemes supported).
-2. :class:`ProxyConnector` for connecting via HTTP proxy.
+2. :class:`ProxyConnector` for connecting via HTTP proxy (deprecated).
 3. :class:`UnixConnector` for connecting via UNIX socket (it's used mostly for
    testing purposes).
 
@@ -690,7 +700,7 @@ BaseConnector
 ^^^^^^^^^^^^^
 
 .. class:: BaseConnector(*, conn_timeout=None, keepalive_timeout=30, \
-                         limit=None, \
+                         limit=20, \
                          force_close=False, loop=None)
 
    Base class for all connectors.
@@ -719,6 +729,13 @@ BaseConnector
       is used for getting default event loop, but we strongly
       recommend to use explicit loops everywhere.
       (optional)
+
+   .. versionchanged:: 0.23
+
+      ``limit`` changed from unlimited (``None``) to 20.
+      Expect a max of up to 20 connections to the same endpoint,
+      if it is not especified.
+      For limitless connections, pass `None` explicitly.
 
    .. attribute:: closed
 
@@ -940,6 +957,11 @@ ProxyConnector
    through *HTTP proxy*.
 
    :class:`ProxyConnector` is inherited from :class:`TCPConnector`.
+
+   .. deprecated:: 0.23
+
+      Use :meth:`ClientSession.request` with :attr:`proxy` and :attr:`proxy_auth`
+      parameters.
 
    Usage::
 
@@ -1255,6 +1277,22 @@ manually.
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
 
+   .. method:: send_json(data, *, dumps=json.loads)
+
+      Send *data* to peer as JSON string.
+
+      :param data: data to send.
+
+      :param callable dumps: any :term:`callable` that accepts an object and
+                             returns a JSON string
+                             (:func:`json.dumps` by default).
+
+      :raise RuntimeError: if connection is not started or closing
+
+      :raise ValueError: if data is not serializable object
+
+      :raise TypeError: if value returned by :term:`dumps` is not :class:`str`
+
    .. comethod:: close(*, code=1000, message=b'')
 
       A :ref:`coroutine<coroutine>` that initiates closing handshake by sending
@@ -1284,6 +1322,40 @@ manually.
       :return: :class:`~aiohttp.websocket.Message`, `tp` is types of
          `~aiohttp.MsgType`
 
+   .. coroutinemethod:: receive_str()
+
+      A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
+      also asserts the message type is
+      :const:`~aiohttp.websocket.MSG_TEXT`.
+
+      :return str: peer's message content.
+
+      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_BINARY`.
+
+   .. coroutinemethod:: receive_bytes()
+
+      A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
+      also asserts the message type is
+      :const:`~aiohttp.websocket.MSG_BINARY`.
+
+      :return bytes: peer's message content.
+
+      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_TEXT`.
+
+   .. coroutinemethod:: receive_json(*, loads=json.loads)
+
+      A :ref:`coroutine<coroutine>` that calls :meth:`receive_str` and loads
+      the JSON string to a Python dict.
+
+      :param callable loads: any :term:`callable` that accepts
+                              :class:`str` and returns :class:`dict`
+                              with parsed JSON (:func:`json.loads` by
+                              default).
+
+      :return dict: loaded JSON content
+
+      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_BINARY`.
+      :raise ValueError: if message is not valid JSON.
 
 Utilities
 ---------
@@ -1321,6 +1393,34 @@ BasicAuth
       header etc.
 
       :return: encoded authentication data, :class:`str`.
+
+
+CookieJar
+^^^^^^^^^
+
+.. class:: CookieJar(unsafe=False, loop=None)
+
+   Implements cookie storage adhering to RFC 6265.
+
+   :param bool unsafe: (optional) Whether to accept cookies from IPs.
+   :param bool loop: an :ref:`event loop<asyncio-event-loop>` instance.
+      See :class:`aiohttp.abc.AbstractCookieJar`
+
+   .. method:: update_cookies(cookies, response_url=None)
+
+      Update cookies.
+
+      :param cookies: cookies to update.
+         The parameter can be of :class:`str`, :class:`dict` or :class:`http.cookies.Morsel`
+         instance representing cookies to send.
+
+      :param str response_url: (optional) URL to store cookies for.
+
+   .. method:: filter_cookies(request_url)
+
+      Returns this jar's cookies filtered by their attributes.
+
+      :param str request_url: URL to fetch cookies for.
 
 
 .. disqus::

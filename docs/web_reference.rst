@@ -504,6 +504,11 @@ StreamResponse
 
       :param str path: optional cookie path, ``'/'`` by default
 
+      .. versionchanged:: 0.23
+
+         Fixed cookie expiration support for
+         Internet Explorer (version less than 11).
+
    .. attribute:: content_length
 
       *Content-Length* for outgoing response.
@@ -825,6 +830,22 @@ WebSocketResponse
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
 
+   .. method:: send_json(data, *, dumps=json.loads)
+
+      Send *data* to peer as JSON string.
+
+      :param data: data to send.
+
+      :param callable dumps: any :term:`callable` that accepts an object and
+                             returns a JSON string
+                             (:func:`json.dumps` by default).
+
+      :raise RuntimeError: if connection is not started or closing
+
+      :raise ValueError: if data is not serializable object
+
+      :raise TypeError: if value returned by :term:`dumps` is not :class:`str`
+
    .. coroutinemethod:: close(*, code=1000, message=b'')
 
       A :ref:`coroutine<coroutine>` that initiates closing
@@ -883,9 +904,8 @@ WebSocketResponse
 
    .. coroutinemethod:: receive_json(*, loads=json.loads)
 
-      A :ref:`coroutine<coroutine>` that calls :meth:`receive`, asserts the
-      message type is :const:`~aiohttp.websocket.MSG_TEXT`, and loads the JSON
-      string to a Python dict.
+      A :ref:`coroutine<coroutine>` that calls :meth:`receive_str` and loads the
+      JSON string to a Python dict.
 
       :param callable loads: any :term:`callable` that accepts
                               :class:`str` and returns :class:`dict`
@@ -1201,6 +1221,41 @@ Router is any object that implements :class:`AbstractRouter` interface.
       :param coroutine expect_handler: optional *expect* header handler.
 
       :returns: new :class:`PlainRoute` or :class:`DynamicRoute` instance.
+
+   .. method:: add_get(path, *args, **kwargs)
+
+      Shortcut for adding a GET handler. Calls the :meth:`add_route` with \
+      ``method`` equals to ``'GET'``.
+
+      .. versionadded:: 0.23
+
+   .. method:: add_post(path, *args, **kwargs)
+
+      Shortcut for adding a POST handler. Calls the :meth:`add_route` with \
+      ``method`` equals to ``'POST'``.
+
+      .. versionadded:: 0.23
+
+   .. method:: add_put(path, *args, **kwargs)
+
+      Shortcut for adding a PUT handler. Calls the :meth:`add_route` with \
+      ``method`` equals to ``'PUT'``.
+
+      .. versionadded:: 0.23
+
+   .. method:: add_patch(path, *args, **kwargs)
+
+      Shortcut for adding a PATCH handler. Calls the :meth:`add_route` with \
+      ``method`` equals to ``'PATCH'``.
+
+      .. versionadded:: 0.23
+
+   .. method:: add_delete(path, *args, **kwargs)
+
+      Shortcut for adding a DELETE handler. Calls the :meth:`add_route` with \
+      ``method`` equals to ``'DELETE'``.
+
+      .. versionadded:: 0.23
 
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
                           chunk_size=256*1024, response_factory=StreamResponse)

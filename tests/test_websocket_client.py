@@ -334,6 +334,7 @@ class TestWebSocketClient(unittest.TestCase):
         self.assertRaises(RuntimeError, resp.pong)
         self.assertRaises(RuntimeError, resp.send_str, 's')
         self.assertRaises(RuntimeError, resp.send_bytes, b'b')
+        self.assertRaises(RuntimeError, resp.send_json, {})
 
     @mock.patch('aiohttp.client.WebSocketWriter')
     @mock.patch('aiohttp.client.os')
@@ -357,6 +358,7 @@ class TestWebSocketClient(unittest.TestCase):
 
         self.assertRaises(TypeError, resp.send_str, b's')
         self.assertRaises(TypeError, resp.send_bytes, 'b')
+        self.assertRaises(TypeError, resp.send_json, set())
 
     @mock.patch('aiohttp.client.WebSocketWriter')
     @mock.patch('aiohttp.client.os')

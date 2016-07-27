@@ -22,8 +22,8 @@ def test_send_recv_text(create_app_and_client):
     resp = yield from client.ws_connect('/')
     resp.send_str('ask')
 
-    msg = yield from resp.receive()
-    assert msg.data == 'ask/answer'
+    data = yield from resp.receive_str()
+    assert data == 'ask/answer'
     yield from resp.close()
 
 
@@ -46,9 +46,33 @@ def test_send_recv_bytes(create_app_and_client):
 
     resp.send_bytes(b'ask')
 
-    msg = yield from resp.receive()
-    assert msg.data == b'ask/answer'
+    data = yield from resp.receive_bytes()
+    assert data == b'ask/answer'
 
+    yield from resp.close()
+
+
+@pytest.mark.run_loop
+def test_send_recv_json(create_app_and_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        data = yield from ws.receive_json()
+        ws.send_json({'response': data['request']})
+        yield from ws.close()
+        return ws
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/')
+    payload = {'request': 'test'}
+    resp.send_json(payload)
+
+    data = yield from resp.receive_json()
+    assert data['response'] == payload['request']
     yield from resp.close()
 
 
