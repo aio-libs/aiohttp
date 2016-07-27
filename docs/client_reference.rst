@@ -218,7 +218,7 @@ The client session supports the context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-      .. versionadded:: 0.23
+      .. versionadded:: 1.0
 
          Added :attr:`proxy` and :attr:`proxy_auth` parameters.
 
@@ -730,7 +730,7 @@ BaseConnector
       recommend to use explicit loops everywhere.
       (optional)
 
-   .. versionchanged:: 0.23
+   .. versionchanged:: 1.0
 
       ``limit`` changed from unlimited (``None``) to 20.
       Expect a max of up to 20 connections to the same endpoint,
@@ -958,10 +958,10 @@ ProxyConnector
 
    :class:`ProxyConnector` is inherited from :class:`TCPConnector`.
 
-   .. deprecated:: 0.23
+   .. deprecated:: 1.0
 
-      Use :meth:`ClientSession.request` with :attr:`proxy` and :attr:`proxy_auth`
-      parameters.
+      Use :meth:`ClientSession.request` with :attr:`proxy` and
+      :attr:`proxy_auth` parameters.
 
    Usage::
 

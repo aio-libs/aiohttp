@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-0.23.0 (XX-XX-XXXX)
+1.0.0 (XX-XX-XXXX)
 -------------------
 
 - Change default size for client session's connection pool from
