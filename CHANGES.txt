@@ -33,6 +33,8 @@ CHANGES
 
 - Support SSL connections for gunicorn worker #1003
 
+- Move obsolete examples to legacy folder
+
 0.22.3 (07-26-2016)
 -------------------
 
