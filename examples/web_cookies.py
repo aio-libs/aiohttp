@@ -43,15 +43,8 @@ def init(loop):
     app.router.add_get('/', root)
     app.router.add_get('/login', login)
     app.router.add_get('/logout', logout)
-
-    handler = app.make_handler()
-    srv = yield from loop.create_server(handler, '127.0.0.1', 8080)
-    print("Server started at http://127.0.0.1:8080")
-    return srv, handler
+    return app
 
 loop = asyncio.get_event_loop()
-srv, handler = loop.run_until_complete(init(loop))
-try:
-    loop.run_forever()
-except KeyboardInterrupt:
-    loop.run_until_complete(handler.finish_connections())
+app = loop.run_until_complete(init(loop))
+web.run_app(app, loop=loop)

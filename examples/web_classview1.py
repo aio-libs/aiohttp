@@ -54,11 +54,6 @@ async def init(loop):
     app.router.add_post('/post', MyView)
     return app
 
-    handler = app.make_handler()
-    srv = await loop.create_server(handler, '127.0.0.1', 8080)
-    print("Server started at http://127.0.0.1:8080")
-    return srv, handler
-
 
 loop = asyncio.get_event_loop()
 app = loop.run_until_complete(init(loop))
