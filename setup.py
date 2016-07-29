@@ -74,7 +74,7 @@ class PyTest(TestCommand):
         raise SystemExit(errno)
 
 
-tests_require = install_requires + ['pytest', 'gunicorn']
+tests_require = install_requires + ['pytest', 'gunicorn', 'pytest-timeout']
 
 
 args = dict(
