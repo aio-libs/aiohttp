@@ -218,6 +218,46 @@ def test_send_str_closed(make_request):
         ws.send_str('string')
 
 
+@pytest.mark.run_loop
+def test_send_bytes_closed(make_request):
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    yield from ws.prepare(req)
+    yield from ws.close()
+    with pytest.raises(RuntimeError):
+        ws.send_bytes(b'bytes')
+
+
+@pytest.mark.run_loop
+def test_send_json_closed(make_request):
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    yield from ws.prepare(req)
+    yield from ws.close()
+    with pytest.raises(RuntimeError):
+        ws.send_json({'type': 'json'})
+
+
+@pytest.mark.run_loop
+def test_ping_closed(make_request):
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    yield from ws.prepare(req)
+    yield from ws.close()
+    with pytest.raises(RuntimeError):
+        ws.ping()
+
+
+@pytest.mark.run_loop
+def test_pong_closed(make_request):
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    yield from ws.prepare(req)
+    yield from ws.close()
+    with pytest.raises(RuntimeError):
+        ws.pong()
+
+
 class TestWebWebSocket(unittest.TestCase):
 
     def setUp(self):
@@ -254,38 +294,6 @@ class TestWebWebSocket(unittest.TestCase):
         req = Request(self.app, message, self.payload,
                       self.transport, self.reader, self.writer)
         return req
-
-    def test_send_bytes_closed(self):
-        req = self.make_request('GET', '/')
-        ws = WebSocketResponse()
-        self.loop.run_until_complete(ws.prepare(req))
-        self.loop.run_until_complete(ws.close())
-        with self.assertRaises(RuntimeError):
-            ws.send_bytes(b'bytes')
-
-    def test_send_json_closed(self):
-        req = self.make_request('GET', '/')
-        ws = WebSocketResponse()
-        self.loop.run_until_complete(ws.prepare(req))
-        self.loop.run_until_complete(ws.close())
-        with self.assertRaises(RuntimeError):
-            ws.send_json({'type': 'json'})
-
-    def test_ping_closed(self):
-        req = self.make_request('GET', '/')
-        ws = WebSocketResponse()
-        self.loop.run_until_complete(ws.prepare(req))
-        self.loop.run_until_complete(ws.close())
-        with self.assertRaises(RuntimeError):
-            ws.ping()
-
-    def test_pong_closed(self):
-        req = self.make_request('GET', '/')
-        ws = WebSocketResponse()
-        self.loop.run_until_complete(ws.prepare(req))
-        self.loop.run_until_complete(ws.close())
-        with self.assertRaises(RuntimeError):
-            ws.pong()
 
     def test_close_idempotent(self):
         req = self.make_request('GET', '/')
