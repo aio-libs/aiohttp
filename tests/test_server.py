@@ -255,7 +255,7 @@ def test_handle_error(srv):
     content = b''.join(
         [c[1][0] for c in list(srv.writer.write.mock_calls)])
     assert b'HTTP/1.1 404 Not Found' in content
-    assert b'X-SERVER: asyncio' in content
+    assert b'X-Server: asyncio' in content
     assert not srv._keep_alive
 
 
@@ -274,7 +274,7 @@ def test_handle_error__utf(make_srv):
     content = b''.join(
         [c[1][0] for c in list(srv.writer.write.mock_calls)])
     assert b'HTTP/1.1 500 Internal Server Error' in content
-    assert b'CONTENT-TYPE: text/html; charset=utf-8' in content
+    assert b'Content-Type: text/html; charset=utf-8' in content
     pattern = escape("raise RuntimeError('что-то пошло не так')")
     assert pattern.encode('utf-8') in content
     assert not srv._keep_alive
