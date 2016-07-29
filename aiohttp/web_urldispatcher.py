@@ -14,8 +14,6 @@ from pathlib import Path
 from urllib.parse import urlencode, unquote
 from types import MappingProxyType
 
-from multidict import upstr
-
 from . import hdrs
 from .abc import AbstractRouter, AbstractMatchInfo, AbstractView
 from .file_sender import FileSender
@@ -80,7 +78,7 @@ class AbstractRoute(abc.ABC):
         assert asyncio.iscoroutinefunction(expect_handler), \
             'Coroutine is expected, got {!r}'.format(expect_handler)
 
-        method = upstr(method)
+        method = method.upper()
         if method not in self.METHODS:
             raise ValueError("{} is not allowed HTTP method".format(method))
 
@@ -743,28 +741,28 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         """
         Shortcut for add_route with method GET
         """
-        return self.add_route('GET', *args, **kwargs)
+        return self.add_route(hdrs.METH_GET, *args, **kwargs)
 
     def add_post(self, *args, **kwargs):
         """
         Shortcut for add_route with method POST
         """
-        return self.add_route('POST', *args, **kwargs)
+        return self.add_route(hdrs.METH_POST, *args, **kwargs)
 
     def add_put(self, *args, **kwargs):
         """
         Shortcut for add_route with method PUT
         """
-        return self.add_route('PUT', *args, **kwargs)
+        return self.add_route(hdrs.METH_PUT, *args, **kwargs)
 
     def add_patch(self, *args, **kwargs):
         """
         Shortcut for add_route with method PATCH
         """
-        return self.add_route('PATCH', *args, **kwargs)
+        return self.add_route(hdrs.METH_PATCH, *args, **kwargs)
 
     def add_delete(self, *args, **kwargs):
         """
         Shortcut for add_route with method DELETE
         """
-        return self.add_route('DELETE', *args, **kwargs)
+        return self.add_route(hdrs.METH_DELETE, *args, **kwargs)
