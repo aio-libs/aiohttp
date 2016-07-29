@@ -20,7 +20,12 @@ def app(loop):
 
 
 @pytest.fixture
-def make_request(app):
+def writer():
+    return mock.Mock()
+
+
+@pytest.fixture
+def make_request(app, writer):
     def maker(method, path, headers=None, protocols=False):
         if headers is None:
             headers = CIMultiDict(
@@ -33,9 +38,8 @@ def make_request(app):
         if protocols:
             headers['SEC-WEBSOCKET-PROTOCOL'] = 'chat, superchat'
 
-
         return make_mocked_request(method, path, headers,
-                                   app=app)
+                                   app=app, writer=writer)
 
     return maker
 
@@ -258,6 +262,60 @@ def test_pong_closed(make_request):
         ws.pong()
 
 
+@pytest.mark.run_loop
+def test_close_idempotent(make_request, writer):
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    yield from ws.prepare(req)
+    assert (yield from ws.close(code=1, message='message1'))
+    assert ws.closed
+    assert not (yield from ws.close(code=2, message='message2'))
+
+
+@pytest.mark.run_loop
+def test_start_invalid_method(make_request):
+    req = make_request('POST', '/')
+    ws = WebSocketResponse()
+    with pytest.raises(HTTPMethodNotAllowed):
+        yield from ws.prepare(req)
+
+
+@pytest.mark.run_loop
+def test_start_without_upgrade(make_request):
+    req = make_request('GET', '/',
+                       headers=CIMultiDict({}))
+    ws = WebSocketResponse()
+    with pytest.raises(HTTPBadRequest):
+        yield from ws.prepare(req)
+
+
+@pytest.mark.run_loop
+def test_wait_closed_before_start():
+    ws = WebSocketResponse()
+    with pytest.raises(RuntimeError):
+        yield from ws.close()
+
+
+@pytest.mark.run_loop
+def test_write_eof_not_started():
+
+    ws = WebSocketResponse()
+    with pytest.raises(RuntimeError):
+        yield from ws.write_eof()
+
+
+@pytest.mark.run_loop
+def test_write_eof_idempotent(make_request):
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    yield from ws.prepare(req)
+    yield from ws.close()
+
+    yield from ws.write_eof()
+    yield from ws.write_eof()
+    yield from ws.write_eof()
+
+
 class TestWebWebSocket(unittest.TestCase):
 
     def setUp(self):
@@ -294,65 +352,6 @@ class TestWebWebSocket(unittest.TestCase):
         req = Request(self.app, message, self.payload,
                       self.transport, self.reader, self.writer)
         return req
-
-    def test_close_idempotent(self):
-        req = self.make_request('GET', '/')
-        ws = WebSocketResponse()
-        self.loop.run_until_complete(ws.prepare(req))
-        writer = mock.Mock()
-        ws._writer = writer
-        self.assertTrue(
-            self.loop.run_until_complete(ws.close(code=1, message='message1')))
-        self.assertTrue(ws.closed)
-        self.assertFalse(
-            self.loop.run_until_complete(ws.close(code=2, message='message2')))
-
-    def test_start_invalid_method(self):
-        req = self.make_request('POST', '/')
-        ws = WebSocketResponse()
-        with self.assertRaises(HTTPMethodNotAllowed):
-            self.loop.run_until_complete(ws.prepare(req))
-
-    def test_start_without_upgrade(self):
-        req = self.make_request('GET', '/',
-                                headers=CIMultiDict({}))
-        ws = WebSocketResponse()
-        with self.assertRaises(HTTPBadRequest):
-            self.loop.run_until_complete(ws.prepare(req))
-
-    def test_wait_closed_before_start(self):
-
-        @asyncio.coroutine
-        def go():
-            ws = WebSocketResponse()
-            with self.assertRaises(RuntimeError):
-                yield from ws.close()
-
-        self.loop.run_until_complete(go())
-
-    def test_write_eof_not_started(self):
-
-        @asyncio.coroutine
-        def go():
-            ws = WebSocketResponse()
-            with self.assertRaises(RuntimeError):
-                yield from ws.write_eof()
-
-        self.loop.run_until_complete(go())
-
-    def test_write_eof_idempotent(self):
-        req = self.make_request('GET', '/')
-        ws = WebSocketResponse()
-        self.loop.run_until_complete(ws.prepare(req))
-        self.loop.run_until_complete(ws.close())
-
-        @asyncio.coroutine
-        def go():
-            yield from ws.write_eof()
-            yield from ws.write_eof()
-            yield from ws.write_eof()
-
-        self.loop.run_until_complete(go())
 
     def test_receive_exc_in_reader(self):
         req = self.make_request('GET', '/')
