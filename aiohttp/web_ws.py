@@ -3,6 +3,7 @@ import asyncio
 import json
 import warnings
 
+from collections import namedtuple
 from . import hdrs, Timeout
 from .errors import HttpProcessingError, ClientDisconnectedError
 from .websocket import do_handshake, Message, WebSocketError
@@ -90,6 +91,7 @@ class WebSocketResponse(StreamResponse):
         return resp_impl
 
     def can_prepare(self, request):
+        web_socket_ready = namedtuple('web_socket_ready', 'allowed protocol')
         if self._writer is not None:
             raise RuntimeError('Already started')
         try:
@@ -97,9 +99,9 @@ class WebSocketResponse(StreamResponse):
                 request.method, request.headers, request.transport,
                 self._protocols)
         except HttpProcessingError:
-            return False, None
+            return web_socket_ready(False, None)
         else:
-            return True, protocol
+            return web_socket_ready(True, protocol)
 
     def can_start(self, request):
         warnings.warn('use .can_prepare(request) instead', DeprecationWarning)

@@ -753,11 +753,12 @@ WebSocketResponse
       :param aiohttp.web.Request request: HTTP request object, that the
                                           response answers.
 
-      :return: ``(ok, protocol)`` pair, *ok* is ``True`` on success,
-               *protocol* is websocket subprotocol which is passed by
-               client and accepted by server (one of *protocols*
-               sequence from :class:`WebSocketResponse` ctor). *protocol* may be
-               ``None`` if client and server subprotocols are nit overlapping.
+      :return: ``namedtuple(ok, protocol)``, *namedtuple.ok* is ``True`` on
+               success, *namedtuple.protocol* is websocket subprotocol which
+               is passed by client and accepted by server (one of *protocols*
+               sequence from :class:`WebSocketResponse` ctor).
+               *namedtuple.protocol* may be ``None`` if client and server
+               subprotocols are not overlapping.
 
       .. note:: The method never raises exception.
 
