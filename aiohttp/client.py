@@ -158,7 +158,6 @@ class ClientSession:
 
         redirects = 0
         history = []
-        method = method.upper()
 
         # Merge with default headers and transform to CIMultiDict
         headers = self._prepare_headers(headers)
