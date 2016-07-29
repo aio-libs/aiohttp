@@ -1,11 +1,72 @@
 import asyncio
 import unittest
 from unittest import mock
+import pytest
 from aiohttp import CIMultiDict, helpers
 from aiohttp.web import (
     MsgType, Request, WebSocketResponse, HTTPMethodNotAllowed, HTTPBadRequest)
 from aiohttp.protocol import RawRequestMessage, HttpVersion11
 from aiohttp import errors, signals, websocket
+
+
+def test_nonstarted_ping():
+    ws = WebSocketResponse()
+    with pytest.raises(RuntimeError):
+        ws.ping()
+
+
+def test_nonstarted_pong():
+    ws = WebSocketResponse()
+    with pytest.raises(RuntimeError):
+        ws.pong()
+
+
+def test_nonstarted_send_str():
+    ws = WebSocketResponse()
+    with pytest.raises(RuntimeError):
+        ws.send_str('string')
+
+
+def test_nonstarted_send_bytes():
+    ws = WebSocketResponse()
+    with pytest.raises(RuntimeError):
+        ws.send_bytes(b'bytes')
+
+
+def test_nonstarted_send_json():
+    ws = WebSocketResponse()
+    with pytest.raises(RuntimeError):
+        ws.send_json({'type': 'json'})
+
+
+@pytest.mark.run_loop
+def test_nonstarted_close():
+    ws = WebSocketResponse()
+    with pytest.raises(RuntimeError):
+        yield from ws.close()
+
+
+@pytest.mark.run_Loop
+def test_nonstarted_receive_str():
+
+    ws = WebSocketResponse()
+    with pytest.raises(RuntimeError):
+        yield from ws.receive_str()
+
+
+@pytest.mark.run_loop
+def test_nonstarted_receive_bytes():
+
+    ws = WebSocketResponse()
+    with pytest.raises(RuntimeError):
+        yield from ws.receive_bytes()
+
+
+@pytest.mark.run_loop
+def test_nonstarted_receive_json():
+    ws = WebSocketResponse()
+    with pytest.raises(RuntimeError):
+        yield from ws.receive_json()
 
 
 class TestWebWebSocket(unittest.TestCase):
@@ -44,66 +105,6 @@ class TestWebWebSocket(unittest.TestCase):
         req = Request(self.app, message, self.payload,
                       self.transport, self.reader, self.writer)
         return req
-
-    def test_nonstarted_ping(self):
-        ws = WebSocketResponse()
-        with self.assertRaises(RuntimeError):
-            ws.ping()
-
-    def test_nonstarted_pong(self):
-        ws = WebSocketResponse()
-        with self.assertRaises(RuntimeError):
-            ws.pong()
-
-    def test_nonstarted_send_str(self):
-        ws = WebSocketResponse()
-        with self.assertRaises(RuntimeError):
-            ws.send_str('string')
-
-    def test_nonstarted_send_bytes(self):
-        ws = WebSocketResponse()
-        with self.assertRaises(RuntimeError):
-            ws.send_bytes(b'bytes')
-
-    def test_nonstarted_send_json(self):
-        ws = WebSocketResponse()
-        with self.assertRaises(RuntimeError):
-            ws.send_json({'type': 'json'})
-
-    def test_nonstarted_close(self):
-        ws = WebSocketResponse()
-        with self.assertRaises(RuntimeError):
-            self.loop.run_until_complete(ws.close())
-
-    def test_nonstarted_receive_str(self):
-
-        @asyncio.coroutine
-        def go():
-            ws = WebSocketResponse()
-            with self.assertRaises(RuntimeError):
-                yield from ws.receive_str()
-
-        self.loop.run_until_complete(go())
-
-    def test_nonstarted_receive_bytes(self):
-
-        @asyncio.coroutine
-        def go():
-            ws = WebSocketResponse()
-            with self.assertRaises(RuntimeError):
-                yield from ws.receive_bytes()
-
-        self.loop.run_until_complete(go())
-
-    def test_nonstarted_receive_json(self):
-
-        @asyncio.coroutine
-        def go():
-            ws = WebSocketResponse()
-            with self.assertRaises(RuntimeError):
-                yield from ws.receive_json()
-
-        self.loop.run_until_complete(go())
 
     def test_receive_str_nonstring(self):
 
