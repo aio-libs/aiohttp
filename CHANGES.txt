@@ -35,6 +35,10 @@ CHANGES
 
 - Move obsolete examples to legacy folder
 
+- Switch to multidict 2.0 and title-cased strings #1015
+
+- `{FOO}e` logger format is case-sensetive now
+
 0.22.3 (07-26-2016)
 -------------------
 
