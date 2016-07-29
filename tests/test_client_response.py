@@ -133,7 +133,7 @@ class TestClientResponse(unittest.TestCase):
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
         self.response.headers = {
-            'CONTENT-TYPE': 'application/json;charset=cp1251'}
+            'Content-Type': 'application/json;charset=cp1251'}
         content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
 
@@ -147,7 +147,7 @@ class TestClientResponse(unittest.TestCase):
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
         self.response.headers = {
-            'CONTENT-TYPE': 'application/json'}
+            'Content-Type': 'application/json'}
         content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
         self.response._get_encoding = mock.Mock()
@@ -163,7 +163,7 @@ class TestClientResponse(unittest.TestCase):
             fut = helpers.create_future(self.loop)
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
-        self.response.headers = {'CONTENT-TYPE': 'application/json'}
+        self.response.headers = {'Content-Type': 'application/json'}
         content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
 
@@ -178,7 +178,7 @@ class TestClientResponse(unittest.TestCase):
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
         self.response.headers = {
-            'CONTENT-TYPE': 'application/json;charset=cp1251'}
+            'Content-Type': 'application/json;charset=cp1251'}
         content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
 
@@ -192,7 +192,7 @@ class TestClientResponse(unittest.TestCase):
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
         self.response.headers = {
-            'CONTENT-TYPE': 'application/json;charset=cp1251'}
+            'Content-Type': 'application/json;charset=cp1251'}
         content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
 
@@ -202,7 +202,7 @@ class TestClientResponse(unittest.TestCase):
 
     def test_json_custom_loader(self):
         self.response.headers = {
-            'CONTENT-TYPE': 'application/json;charset=cp1251'}
+            'Content-Type': 'application/json;charset=cp1251'}
         self.response._content = b'data'
 
         def custom(content):
@@ -214,7 +214,7 @@ class TestClientResponse(unittest.TestCase):
     @mock.patch('aiohttp.client_reqrep.client_logger')
     def test_json_no_content(self, m_log):
         self.response.headers = {
-            'CONTENT-TYPE': 'data/octet-stream'}
+            'Content-Type': 'data/octet-stream'}
         self.response._content = b''
 
         res = self.loop.run_until_complete(self.response.json())
@@ -229,7 +229,7 @@ class TestClientResponse(unittest.TestCase):
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
         self.response.headers = {
-            'CONTENT-TYPE': 'application/json;charset=utf8'}
+            'Content-Type': 'application/json;charset=utf8'}
         content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
         self.response._get_encoding = mock.Mock()
@@ -245,7 +245,7 @@ class TestClientResponse(unittest.TestCase):
             fut = helpers.create_future(self.loop)
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
-        self.response.headers = {'CONTENT-TYPE': 'application/json'}
+        self.response.headers = {'Content-Type': 'application/json'}
         content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
 
@@ -266,7 +266,7 @@ class TestClientResponse(unittest.TestCase):
     def test_get_encoding_unknown(self, m_chardet):
         m_chardet.detect.return_value = {'encoding': None}
 
-        self.response.headers = {'CONTENT-TYPE': 'application/json'}
+        self.response.headers = {'Content-Type': 'application/json'}
         self.assertEqual(self.response._get_encoding(), 'utf-8')
 
     def test_raise_for_status_2xx(self):

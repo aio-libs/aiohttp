@@ -165,9 +165,9 @@ def test_access_logger_dicts():
     log_format = '%{User-Agent}i %{Content-Length}o %{SPAM}e %{None}i'
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, log_format)
-    message = mock.Mock(headers={"USER-AGENT": "Mock/1.0"}, version=(1, 1))
+    message = mock.Mock(headers={"User-Agent": "Mock/1.0"}, version=(1, 1))
     environ = {"SPAM": "EGGS"}
-    response = mock.Mock(headers={"CONTENT-LENGTH": 123})
+    response = mock.Mock(headers={"Content-Length": 123})
     transport = mock.Mock()
     transport.get_extra_info.return_value = ("127.0.0.2", 1234)
     access_logger.log(message, environ, response, transport, 0.0)

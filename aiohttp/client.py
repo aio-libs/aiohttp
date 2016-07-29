@@ -9,7 +9,7 @@ import traceback
 import warnings
 import urllib.parse
 
-from multidict import MultiDictProxy, MultiDict, CIMultiDict, upstr
+from multidict import MultiDictProxy, MultiDict, CIMultiDict, istr
 
 import aiohttp
 from .client_reqrep import ClientRequest, ClientResponse
@@ -70,7 +70,7 @@ class ClientSession:
             headers = CIMultiDict()
         self._default_headers = headers
         if skip_auto_headers is not None:
-            self._skip_auto_headers = frozenset([upstr(i)
+            self._skip_auto_headers = frozenset([istr(i)
                                                  for i in skip_auto_headers])
         else:
             self._skip_auto_headers = frozenset()
@@ -158,7 +158,6 @@ class ClientSession:
 
         redirects = 0
         history = []
-        method = upstr(method)
 
         # Merge with default headers and transform to CIMultiDict
         headers = self._prepare_headers(headers)
@@ -175,7 +174,7 @@ class ClientSession:
         skip_headers = set(self._skip_auto_headers)
         if skip_auto_headers is not None:
             for i in skip_auto_headers:
-                skip_headers.add(upstr(i))
+                skip_headers.add(istr(i))
 
         while True:
 

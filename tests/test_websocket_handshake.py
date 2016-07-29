@@ -23,12 +23,12 @@ def message():
 
 def gen_ws_headers(protocols=''):
     key = base64.b64encode(os.urandom(16)).decode()
-    hdrs = [('UPGRADE', 'websocket'),
-            ('CONNECTION', 'upgrade'),
-            ('SEC-WEBSOCKET-VERSION', '13'),
-            ('SEC-WEBSOCKET-KEY', key)]
+    hdrs = [('Upgrade', 'websocket'),
+            ('Connection', 'upgrade'),
+            ('Sec-Websocket-Version', '13'),
+            ('Sec-Websocket-Key', key)]
     if protocols:
-        hdrs += [('SEC-WEBSOCKET-PROTOCOL', protocols)]
+        hdrs += [('Sec-Websocket-Protocol', protocols)]
     return hdrs, key
 
 
@@ -43,45 +43,45 @@ def test_no_upgrade(message, transport):
 
 
 def test_no_connection(message, transport):
-    message.headers.extend([('UPGRADE', 'websocket'),
-                            ('CONNECTION', 'keep-alive')])
+    message.headers.extend([('Upgrade', 'websocket'),
+                            ('Connection', 'keep-alive')])
     with pytest.raises(errors.HttpBadRequest):
         websocket.do_handshake(message.method, message.headers, transport)
 
 
 def test_protocol_version(message, transport):
-    message.headers.extend([('UPGRADE', 'websocket'),
-                            ('CONNECTION', 'upgrade')])
+    message.headers.extend([('Upgrade', 'websocket'),
+                            ('Connection', 'upgrade')])
     with pytest.raises(errors.HttpBadRequest):
         websocket.do_handshake(message.method, message.headers, transport)
 
-    message.headers.extend([('UPGRADE', 'websocket'),
-                            ('CONNECTION', 'upgrade'),
-                            ('SEC-WEBSOCKET-VERSION', '1')])
+    message.headers.extend([('Upgrade', 'websocket'),
+                            ('Connection', 'upgrade'),
+                            ('Sec-Websocket-Version', '1')])
 
     with pytest.raises(errors.HttpBadRequest):
         websocket.do_handshake(message.method, message.headers, transport)
 
 
 def test_protocol_key(message, transport):
-    message.headers.extend([('UPGRADE', 'websocket'),
-                            ('CONNECTION', 'upgrade'),
-                            ('SEC-WEBSOCKET-VERSION', '13')])
+    message.headers.extend([('Upgrade', 'websocket'),
+                            ('Connection', 'upgrade'),
+                            ('Sec-Websocket-Version', '13')])
     with pytest.raises(errors.HttpBadRequest):
         websocket.do_handshake(message.method, message.headers, transport)
 
-    message.headers.extend([('UPGRADE', 'websocket'),
-                            ('CONNECTION', 'upgrade'),
-                            ('SEC-WEBSOCKET-VERSION', '13'),
-                            ('SEC-WEBSOCKET-KEY', '123')])
+    message.headers.extend([('Upgrade', 'websocket'),
+                            ('Connection', 'upgrade'),
+                            ('Sec-Websocket-Version', '13'),
+                            ('Sec-Websocket-Key', '123')])
     with pytest.raises(errors.HttpBadRequest):
         websocket.do_handshake(message.method, message.headers, transport)
 
     sec_key = base64.b64encode(os.urandom(2))
-    message.headers.extend([('UPGRADE', 'websocket'),
-                            ('CONNECTION', 'upgrade'),
-                            ('SEC-WEBSOCKET-VERSION', '13'),
-                            ('SEC-WEBSOCKET-KEY', sec_key.decode())])
+    message.headers.extend([('Upgrade', 'websocket'),
+                            ('Connection', 'upgrade'),
+                            ('Sec-Websocket-Version', '13'),
+                            ('Sec-Websocket-Key', sec_key.decode())])
     with pytest.raises(errors.HttpBadRequest):
         websocket.do_handshake(message.method, message.headers, transport)
 
@@ -98,7 +98,7 @@ def test_handshake(message, transport):
     key = base64.b64encode(
         hashlib.sha1(sec_key.encode() + websocket.WS_KEY).digest())
     headers = dict(headers)
-    assert headers['SEC-WEBSOCKET-ACCEPT'] == key.decode()
+    assert headers['Sec-Websocket-Accept'] == key.decode()
 
 
 def test_handshake_protocol(message, transport):
@@ -114,7 +114,7 @@ def test_handshake_protocol(message, transport):
 
     # also test if we reply with the protocol
     resp_headers = dict(resp_headers)
-    assert resp_headers['SEC-WEBSOCKET-PROTOCOL'] == proto
+    assert resp_headers['Sec-Websocket-Protocol'] == proto
 
 
 def test_handshake_protocol_agreement(message, transport):

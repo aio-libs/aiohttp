@@ -26,7 +26,8 @@ class TestParseHeaders(unittest.TestCase):
             hdrs)
 
         self.assertEqual(list(headers.items()),
-                         [('TEST', 'line\r\n continue'), ('TEST2', 'data')])
+                         [('Test', 'line\r\n continue'),
+                          ('Test2', 'data')])
         self.assertEqual(raw_headers,
                          [(b'TEST', b'line\r\n continue'),
                           (b'TEST2', b'data')])
@@ -42,8 +43,8 @@ class TestParseHeaders(unittest.TestCase):
             hdrs)
 
         self.assertEqual(list(headers.items()),
-                         [('SET-COOKIE', 'c1=cookie1'),
-                          ('SET-COOKIE', 'c2=cookie2')])
+                         [('Set-Cookie', 'c1=cookie1'),
+                          ('Set-Cookie', 'c2=cookie2')])
         self.assertEqual(raw_headers,
                          [(b'SET-COOKIE', b'c1=cookie1'),
                           (b'SET-COOKIE', b'c2=cookie2')])
