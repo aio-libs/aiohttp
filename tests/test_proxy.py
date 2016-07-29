@@ -65,7 +65,7 @@ class TestProxy(unittest.TestCase):
         ClientRequestMock.assert_called_with(
             'GET', 'http://proxy.example.com',
             auth=None,
-            headers={'HOST': 'www.python.org'},
+            headers={'Host': 'www.python.org'},
             loop=loop_mock)
 
     def test_proxy_auth(self):
@@ -524,6 +524,6 @@ class TestProxyConnector(unittest.TestCase):
         ClientRequestMock.assert_called_with(
             'GET', 'http://proxy.example.com',
             auth=None,
-            headers={'HOST': 'www.python.org'},
+            headers={'Host': 'www.python.org'},
             loop=loop_mock)
         conn.close()

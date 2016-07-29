@@ -83,7 +83,7 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
                 return
 
             for hdr, val in message.headers.items():
-                if (hdr == 'EXPECT') and (val == '100-continue'):
+                if (hdr.upper() == 'EXPECT') and (val == '100-continue'):
                     self.transport.write(b'HTTP/1.0 100 Continue\r\n\r\n')
                     break
 

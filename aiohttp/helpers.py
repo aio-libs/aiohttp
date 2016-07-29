@@ -15,7 +15,7 @@ from math import ceil
 from pathlib import Path
 from urllib.parse import quote, urlencode, urlsplit
 
-import multidict
+from multidict import MultiDict, MultiDictProxy
 
 from . import hdrs
 from .abc import AbstractCookieJar
@@ -119,7 +119,7 @@ class FormData:
             if filename is None and content_transfer_encoding is None:
                 filename = name
 
-        type_options = multidict.MultiDict({'name': name})
+        type_options = MultiDict({'name': name})
         if filename is not None and not isinstance(filename, str):
             raise TypeError('filename must be an instance of str. '
                             'Got: %s' % filename)
@@ -155,9 +155,7 @@ class FormData:
                 k = guess_filename(rec, 'unknown')
                 self.add_field(k, rec)
 
-            elif isinstance(rec,
-                            (multidict.MultiDictProxy,
-                             multidict.MultiDict)):
+            elif isinstance(rec, (MultiDictProxy, MultiDict)):
                 to_add.extend(rec.items())
 
             elif isinstance(rec, (list, tuple)) and len(rec) == 2:
@@ -331,17 +329,19 @@ class AccessLogger:
 
     @staticmethod
     def _format_e(key, args):
-        return (args[1] or {}).get(multidict.upstr(key), '-')
+        return (args[1] or {}).get(key, '-')
 
     @staticmethod
     def _format_i(key, args):
         if not args[0]:
             return '(no headers)'
-        return args[0].headers.get(multidict.upstr(key), '-')
+        # suboptimal, make istr(key) once
+        return args[0].headers.get(key, '-')
 
     @staticmethod
     def _format_o(key, args):
-        return args[2].headers.get(multidict.upstr(key), '-')
+        # suboptimal, make istr(key) once
+        return args[2].headers.get(key, '-')
 
     @staticmethod
     def _format_a(args):
