@@ -15,7 +15,7 @@ from math import ceil
 from pathlib import Path
 from urllib.parse import quote, urlencode, urlsplit
 
-from multidict import istr, MultiDict, MultiDictProxy
+from multidict import MultiDict, MultiDictProxy
 
 from . import hdrs
 from .abc import AbstractCookieJar
@@ -329,17 +329,19 @@ class AccessLogger:
 
     @staticmethod
     def _format_e(key, args):
-        return (args[1] or {}).get(istr(key), '-')
+        return (args[1] or {}).get(key, '-')
 
     @staticmethod
     def _format_i(key, args):
         if not args[0]:
             return '(no headers)'
-        return args[0].headers.get(istr(key), '-')
+        # suboptimal, make istr(key) once
+        return args[0].headers.get(key, '-')
 
     @staticmethod
     def _format_o(key, args):
-        return args[2].headers.get(istr(key), '-')
+        # suboptimal, make istr(key) once
+        return args[2].headers.get(key, '-')
 
     @staticmethod
     def _format_a(args):
