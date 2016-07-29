@@ -7,6 +7,37 @@ from aiohttp.web import (
     MsgType, Request, WebSocketResponse, HTTPMethodNotAllowed, HTTPBadRequest)
 from aiohttp.protocol import RawRequestMessage, HttpVersion11
 from aiohttp import errors, signals, websocket
+from aiohttp.test_utils import make_mocked_request
+
+
+@pytest.fixture
+def app(loop):
+    ret = mock.Mock()
+    ret.loop = loop
+    ret._debug = False
+    ret.on_response_prepare = signals.Signal(ret)
+    return ret
+
+
+@pytest.fixture
+def make_request(app):
+    def maker(method, path, headers=None, protocols=False):
+        if headers is None:
+            headers = CIMultiDict(
+                {'HOST': 'server.example.com',
+                 'UPGRADE': 'websocket',
+                 'CONNECTION': 'Upgrade',
+                 'SEC-WEBSOCKET-KEY': 'dGhlIHNhbXBsZSBub25jZQ==',
+                 'ORIGIN': 'http://example.com',
+                 'SEC-WEBSOCKET-VERSION': '13'})
+        if protocols:
+            headers['SEC-WEBSOCKET-PROTOCOL'] = 'chat, superchat'
+
+
+        return make_mocked_request(method, path, headers,
+                                   app=app)
+
+    return maker
 
 
 def test_nonstarted_ping():
@@ -69,6 +100,124 @@ def test_nonstarted_receive_json():
         yield from ws.receive_json()
 
 
+@pytest.mark.run_loop
+def test_receive_str_nonstring(make_request):
+
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    yield from ws.prepare(req)
+
+    @asyncio.coroutine
+    def receive():
+        return websocket.Message(websocket.MSG_BINARY, b'data', b'')
+
+    ws.receive = receive
+
+    with pytest.raises(TypeError):
+        yield from ws.receive_str()
+
+
+@pytest.mark.run_loop
+def test_receive_bytes_nonsbytes(make_request):
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    yield from ws.prepare(req)
+
+    @asyncio.coroutine
+    def receive():
+        return websocket.Message(websocket.MSG_TEXT, 'data', b'')
+
+    ws.receive = receive
+
+    with pytest.raises(TypeError):
+        yield from ws.receive_bytes()
+
+
+@pytest.mark.run_loop
+def test_send_str_nonstring(make_request):
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    yield from ws.prepare(req)
+    with pytest.raises(TypeError):
+        ws.send_str(b'bytes')
+
+
+@pytest.mark.run_loop
+def test_send_bytes_nonbytes(make_request):
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    yield from ws.prepare(req)
+    with pytest.raises(TypeError):
+        ws.send_bytes('string')
+
+
+@pytest.mark.run_loop
+def test_send_json_nonjson(make_request):
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    yield from ws.prepare(req)
+    with pytest.raises(TypeError):
+        ws.send_json(set())
+
+
+def test_write_non_prepared():
+    ws = WebSocketResponse()
+    with pytest.raises(RuntimeError):
+        ws.write(b'data')
+
+
+def test_can_prepare_ok(make_request):
+    req = make_request('GET', '/', protocols=True)
+    ws = WebSocketResponse(protocols=('chat',))
+    assert(True, 'chat') == ws.can_prepare(req)
+
+
+def test_can_prepare_unknown_protocol(make_request):
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    assert (True, None) == ws.can_prepare(req)
+
+
+def test_can_prepare_invalid_method(make_request):
+    req = make_request('POST', '/')
+    ws = WebSocketResponse()
+    assert (False, None) == ws.can_prepare(req)
+
+
+def test_can_prepare_without_upgrade(make_request):
+    req = make_request('GET', '/',
+                       headers=CIMultiDict({}))
+    ws = WebSocketResponse()
+    assert (False, None) == ws.can_prepare(req)
+
+
+@pytest.mark.run_loop
+def test_can_prepare_started(make_request):
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    yield from ws.prepare(req)
+    with pytest.raises(RuntimeError) as ctx:
+        ws.can_prepare(req)
+
+    assert 'Already started' in str(ctx.value)
+
+
+def test_closed_after_ctor():
+    ws = WebSocketResponse()
+    assert not ws.closed
+    assert ws.close_code is None
+
+
+@pytest.mark.run_loop
+def test_send_str_closed(make_request):
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    yield from ws.prepare(req)
+    yield from ws.close()
+    with pytest.raises(RuntimeError):
+        ws.send_str('string')
+
+
 class TestWebWebSocket(unittest.TestCase):
 
     def setUp(self):
@@ -105,111 +254,6 @@ class TestWebWebSocket(unittest.TestCase):
         req = Request(self.app, message, self.payload,
                       self.transport, self.reader, self.writer)
         return req
-
-    def test_receive_str_nonstring(self):
-
-        @asyncio.coroutine
-        def go():
-            req = self.make_request('GET', '/')
-            ws = WebSocketResponse()
-            yield from ws.prepare(req)
-
-            @asyncio.coroutine
-            def receive():
-                return websocket.Message(websocket.MSG_BINARY, b'data', b'')
-
-            ws.receive = receive
-
-            with self.assertRaises(TypeError):
-                yield from ws.receive_str()
-
-        self.loop.run_until_complete(go())
-
-    def test_receive_bytes_nonsbytes(self):
-
-        @asyncio.coroutine
-        def go():
-            req = self.make_request('GET', '/')
-            ws = WebSocketResponse()
-            yield from ws.prepare(req)
-
-            @asyncio.coroutine
-            def receive():
-                return websocket.Message(websocket.MSG_TEXT, 'data', b'')
-
-            ws.receive = receive
-
-            with self.assertRaises(TypeError):
-                yield from ws.receive_bytes()
-
-        self.loop.run_until_complete(go())
-
-    def test_send_str_nonstring(self):
-        req = self.make_request('GET', '/')
-        ws = WebSocketResponse()
-        self.loop.run_until_complete(ws.prepare(req))
-        with self.assertRaises(TypeError):
-            ws.send_str(b'bytes')
-
-    def test_send_bytes_nonbytes(self):
-        req = self.make_request('GET', '/')
-        ws = WebSocketResponse()
-        self.loop.run_until_complete(ws.prepare(req))
-        with self.assertRaises(TypeError):
-            ws.send_bytes('string')
-
-    def test_send_json_nonjson(self):
-        req = self.make_request('GET', '/')
-        ws = WebSocketResponse()
-        self.loop.run_until_complete(ws.prepare(req))
-        with self.assertRaises(TypeError):
-            ws.send_json(set())
-
-    def test_write(self):
-        ws = WebSocketResponse()
-        with self.assertRaises(RuntimeError):
-            ws.write(b'data')
-
-    def test_can_prepare_ok(self):
-        req = self.make_request('GET', '/', protocols=True)
-        ws = WebSocketResponse(protocols=('chat',))
-        self.assertEqual((True, 'chat'), ws.can_prepare(req))
-
-    def test_can_prepare_unknown_protocol(self):
-        req = self.make_request('GET', '/')
-        ws = WebSocketResponse()
-        self.assertEqual((True, None), ws.can_prepare(req))
-
-    def test_can_prepare_invalid_method(self):
-        req = self.make_request('POST', '/')
-        ws = WebSocketResponse()
-        self.assertEqual((False, None), ws.can_prepare(req))
-
-    def test_can_prepare_without_upgrade(self):
-        req = self.make_request('GET', '/',
-                                headers=CIMultiDict({}))
-        ws = WebSocketResponse()
-        self.assertEqual((False, None), ws.can_prepare(req))
-
-    def test_can_prepare_started(self):
-        req = self.make_request('GET', '/')
-        ws = WebSocketResponse()
-        self.loop.run_until_complete(ws.prepare(req))
-        with self.assertRaisesRegex(RuntimeError, 'Already started'):
-            ws.can_prepare(req)
-
-    def test_closed_after_ctor(self):
-        ws = WebSocketResponse()
-        self.assertFalse(ws.closed)
-        self.assertIsNone(ws.close_code)
-
-    def test_send_str_closed(self):
-        req = self.make_request('GET', '/')
-        ws = WebSocketResponse()
-        self.loop.run_until_complete(ws.prepare(req))
-        self.loop.run_until_complete(ws.close())
-        with self.assertRaises(RuntimeError):
-            ws.send_str('string')
 
     def test_send_bytes_closed(self):
         req = self.make_request('GET', '/')
