@@ -115,7 +115,7 @@ class HttpParser:
 
             bvalue = bvalue.strip()
 
-            name = bname.decode('utf-8', 'surrogateescape')
+            name = istr(bname.decode('utf-8', 'surrogateescape'))
             value = bvalue.decode('utf-8', 'surrogateescape')
 
             # keep-alive and encoding
