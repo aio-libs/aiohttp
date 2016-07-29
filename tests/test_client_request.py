@@ -458,7 +458,7 @@ class TestClientRequest(unittest.TestCase):
 
     def test_content_type_skip_auto_header_bytes(self):
         req = ClientRequest('post', 'http://python.org', data=b'hey you',
-                            skip_auto_headers={'CONTENT-TYPE'},
+                            skip_auto_headers={'Content-Type'},
                             loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertNotIn('CONTENT-TYPE', req.headers)
@@ -466,7 +466,7 @@ class TestClientRequest(unittest.TestCase):
 
     def test_content_type_skip_auto_header_form(self):
         req = ClientRequest('post', 'http://python.org', data={'hey': 'you'},
-                            loop=self.loop, skip_auto_headers={'CONTENT-TYPE'})
+                            loop=self.loop, skip_auto_headers={'Content-Type'})
         resp = req.send(self.transport, self.protocol)
         self.assertNotIn('CONTENT-TYPE', req.headers)
         resp.close()
@@ -474,7 +474,7 @@ class TestClientRequest(unittest.TestCase):
     def test_content_type_auto_header_content_length_no_skip(self):
         req = ClientRequest('get', 'http://python.org',
                             data=io.BytesIO(b'hey'),
-                            skip_auto_headers={'CONTENT-LENGTH'},
+                            skip_auto_headers={'Content-Length'},
                             loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertEqual(req.headers.get('CONTENT-LENGTH'), '3')
