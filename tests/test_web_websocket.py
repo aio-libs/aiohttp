@@ -1,11 +1,9 @@
 import asyncio
-import unittest
 from unittest import mock
 import pytest
 from aiohttp import CIMultiDict, helpers
 from aiohttp.web import (
-    MsgType, Request, WebSocketResponse, HTTPMethodNotAllowed, HTTPBadRequest)
-from aiohttp.protocol import RawRequestMessage, HttpVersion11
+    MsgType, WebSocketResponse, HTTPMethodNotAllowed, HTTPBadRequest)
 from aiohttp import errors, signals, websocket
 from aiohttp.test_utils import make_mocked_request, make_mocked_coro
 
@@ -386,114 +384,88 @@ def test_receive_client_disconnected(make_request, loop, reader):
     assert ws.exception() is None
 
 
-class TestWebWebSocket(unittest.TestCase):
+@pytest.mark.run_loop
+def test_multiple_receive_on_close_connection(make_request):
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    yield from ws.prepare(req)
+    yield from ws.close()
 
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
+    yield from ws.receive()
+    yield from ws.receive()
+    yield from ws.receive()
+    yield from ws.receive()
 
-    def tearDown(self):
-        self.loop.close()
+    with pytest.raises(RuntimeError):
+        yield from ws.receive()
 
-    def make_request(self, method, path, headers=None, protocols=False):
-        self.app = mock.Mock()
-        self.app._debug = False
-        if headers is None:
-            headers = CIMultiDict(
-                {'HOST': 'server.example.com',
-                 'UPGRADE': 'websocket',
-                 'CONNECTION': 'Upgrade',
-                 'SEC-WEBSOCKET-KEY': 'dGhlIHNhbXBsZSBub25jZQ==',
-                 'ORIGIN': 'http://example.com',
-                 'SEC-WEBSOCKET-VERSION': '13'})
-            if protocols:
-                headers['SEC-WEBSOCKET-PROTOCOL'] = 'chat, superchat'
 
-        message = RawRequestMessage(method, path, HttpVersion11, headers,
-                                    [(k.encode('utf-8'), v.encode('utf-8'))
-                                     for k, v in headers.items()],
-                                    False, False)
-        self.payload = mock.Mock()
-        self.transport = mock.Mock()
-        self.reader = mock.Mock()
-        self.writer = mock.Mock()
-        self.app.loop = self.loop
-        self.app.on_response_prepare = signals.Signal(self.app)
-        req = Request(self.app, message, self.payload,
-                      self.transport, self.reader, self.writer)
-        return req
+@pytest.mark.run_loop
+def test_concurrent_receive(make_request):
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    yield from ws.prepare(req)
+    ws._waiting = True
 
-    def test_multiple_receive_on_close_connection(self):
-        req = self.make_request('GET', '/')
-        ws = WebSocketResponse()
-        self.loop.run_until_complete(ws.prepare(req))
-        self.loop.run_until_complete(ws.close())
-        self.loop.run_until_complete(ws.receive())
-        self.loop.run_until_complete(ws.receive())
-        self.loop.run_until_complete(ws.receive())
-        self.loop.run_until_complete(ws.receive())
-        self.assertRaises(
-            RuntimeError, self.loop.run_until_complete, ws.receive())
+    with pytest.raises(RuntimeError):
+        yield from ws.receive()
 
-    def test_concurrent_receive(self):
-        req = self.make_request('GET', '/')
-        ws = WebSocketResponse()
-        self.loop.run_until_complete(ws.prepare(req))
-        ws._waiting = True
 
-        self.assertRaises(
-            RuntimeError, self.loop.run_until_complete, ws.receive())
+@pytest.mark.run_loop
+def test_close_exc(make_request, reader, loop):
+    req = make_request('GET', '/')
 
-    def test_close_exc(self):
-        req = self.make_request('GET', '/')
-        reader = self.reader.set_parser.return_value = mock.Mock()
+    ws = WebSocketResponse()
+    yield from ws.prepare(req)
 
-        ws = WebSocketResponse()
-        self.loop.run_until_complete(ws.prepare(req))
+    exc = ValueError()
+    reader.read.return_value = helpers.create_future(loop)
+    reader.read.return_value.set_exception(exc)
 
-        exc = ValueError()
-        reader.read.return_value = helpers.create_future(self.loop)
-        reader.read.return_value.set_exception(exc)
+    yield from ws.close()
+    assert ws.closed
+    assert ws.exception() is exc
 
-        self.loop.run_until_complete(ws.close())
-        self.assertTrue(ws.closed)
-        self.assertIs(ws.exception(), exc)
+    ws._closed = False
+    reader.read.return_value = helpers.create_future(loop)
+    reader.read.return_value.set_exception(asyncio.CancelledError())
+    with pytest.raises(asyncio.CancelledError):
+        yield from ws.close()
+    assert ws.close_code == 1006
 
-        ws._closed = False
-        reader.read.return_value = helpers.create_future(self.loop)
-        reader.read.return_value.set_exception(asyncio.CancelledError())
-        self.assertRaises(asyncio.CancelledError,
-                          self.loop.run_until_complete, ws.close())
-        self.assertEqual(ws.close_code, 1006)
 
-    def test_close_exc2(self):
-        req = self.make_request('GET', '/')
-        ws = WebSocketResponse()
-        self.loop.run_until_complete(ws.prepare(req))
+@pytest.mark.run_loop
+def test_close_exc2(make_request):
 
-        exc = ValueError()
-        self.writer.close.side_effect = exc
-        ws._writer = self.writer
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    yield from ws.prepare(req)
 
-        self.loop.run_until_complete(ws.close())
-        self.assertTrue(ws.closed)
-        self.assertIs(ws.exception(), exc)
+    exc = ValueError()
+    ws._writer = mock.Mock()
+    ws._writer.close.side_effect = exc
 
-        ws._closed = False
-        self.writer.close.side_effect = asyncio.CancelledError()
-        self.assertRaises(asyncio.CancelledError,
-                          self.loop.run_until_complete, ws.close())
+    yield from ws.close()
+    assert ws.closed
+    assert ws.exception() is exc
 
-    def test_start_twice_idempotent(self):
-        req = self.make_request('GET', '/')
-        ws = WebSocketResponse()
-        with self.assertWarns(DeprecationWarning):
-            impl1 = ws.start(req)
-            impl2 = ws.start(req)
-            self.assertIs(impl1, impl2)
+    ws._closed = False
+    ws._writer.close.side_effect = asyncio.CancelledError()
+    with pytest.raises(asyncio.CancelledError):
+        yield from ws.close()
 
-    def test_can_start_ok(self):
-        req = self.make_request('GET', '/', protocols=True)
-        ws = WebSocketResponse(protocols=('chat',))
-        with self.assertWarns(DeprecationWarning):
-            self.assertEqual((True, 'chat'), ws.can_start(req))
+
+def test_start_twice_idempotent(make_request):
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    with pytest.warns(DeprecationWarning):
+        impl1 = ws.start(req)
+        impl2 = ws.start(req)
+        assert impl1 is impl2
+
+
+def test_can_start_ok(make_request):
+    req = make_request('GET', '/', protocols=True)
+    ws = WebSocketResponse(protocols=('chat',))
+    with pytest.warns(DeprecationWarning):
+        assert (True, 'chat') == ws.can_start(req)
