@@ -46,7 +46,7 @@ def test_ctor(make_request, warning):
     assert req._reader is reader
     assert req._writer is writer
     assert req.headers == headers
-    assert req.raw_headers == ((b'FOO', b'bar'),)
+    assert req.raw_headers == ((b'Foo', b'bar'),)
 
 
 def test_doubleslashes(make_request):
@@ -232,4 +232,4 @@ def test_https_scheme_by_secure_proxy_ssl_header_false_test(make_request):
 def test_raw_headers(make_request):
     req = make_request('GET', '/',
                        headers=CIMultiDict({'X-HEADER': 'aaa'}))
-    assert req.raw_headers == ((b'X-HEADER', b'aaa'),)
+    assert req.raw_headers == ((b'X-Header', b'aaa'),)
