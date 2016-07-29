@@ -89,6 +89,11 @@ class WebSocketError(Exception):
         super().__init__(message)
 
 
+class WebSocketTerminate(Exception):
+    """Server-side websocket termination request"""
+    pass
+
+
 def WebSocketParser(out, buf):
     while True:
         fin, opcode, payload = yield from parse_frame(buf)

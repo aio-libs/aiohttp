@@ -436,8 +436,28 @@ class TestWebWebSocket(unittest.TestCase):
             impl2 = ws.start(req)
             self.assertIs(impl1, impl2)
 
+    def test_prepare_twice_idempotent(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        impl1 = self.loop.run_until_complete(ws.prepare(req))
+        impl2 = self.loop.run_until_complete(ws.prepare(req))
+        self.assertIs(impl1, impl2)
+
     def test_can_start_ok(self):
         req = self.make_request('GET', '/', protocols=True)
         ws = WebSocketResponse(protocols=('chat',))
         with self.assertWarns(DeprecationWarning):
             self.assertEqual((True, 'chat'), ws.can_start(req))
+
+    @asyncio.coroutine
+    def _prepare_and_read(self, request, ws):
+        yield from ws.prepare(request)
+        while True:
+            yield from ws.receive()
+
+    def test_terminate_raises_exception_outside_reading(self):
+        req = self.make_request('GET', '/')
+        ws = WebSocketResponse()
+        ws.terminate()
+        with self.assertRaises(websocket.WebSocketTerminate):
+            self.loop.run_until_complete(self._prepare_and_read(req, ws))

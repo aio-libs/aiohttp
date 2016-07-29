@@ -2,10 +2,12 @@ import sys
 import asyncio
 import json
 import warnings
+import weakref
 
 from . import hdrs, Timeout
 from .errors import HttpProcessingError, ClientDisconnectedError
-from .websocket import do_handshake, Message, WebSocketError
+from .websocket import (
+    do_handshake, Message, WebSocketError, WebSocketTerminate)
 from .websocket_client import MsgType, closedMessage
 from .web_exceptions import (
     HTTPBadRequest, HTTPMethodNotAllowed, HTTPInternalServerError)
@@ -37,6 +39,9 @@ class WebSocketResponse(StreamResponse):
         self._timeout = timeout
         self._autoclose = autoclose
         self._autoping = autoping
+        self._reader_task = None
+        self._terminating = False
+        self._reading = False
 
     @asyncio.coroutine
     def prepare(self, request):
@@ -76,6 +81,9 @@ class WebSocketResponse(StreamResponse):
         self._writer = writer
         self._protocol = protocol
         self._loop = request.app.loop
+        current_task = asyncio.Task.current_task(loop=self._loop)
+        if current_task is not None:
+            self._reader_task = weakref.proxy(current_task)
 
     def start(self, request):
         warnings.warn('use .prepare(request) instead', DeprecationWarning)
@@ -167,6 +175,33 @@ class WebSocketResponse(StreamResponse):
         yield from self.close()
         self._eof_sent = True
 
+    def _cancel_reader_task(self):
+        if self._reader_task is not None and self._reading:
+            self._reader_task.cancel()
+
+    @property
+    def terminated(self):
+        return self._terminating
+
+    def terminate(self):
+        self._terminating = True
+        self._cancel_reader_task()
+
+    @asyncio.coroutine
+    def _read_with_termination(self):
+        if self._terminating:
+            raise WebSocketTerminate
+        self._reading = True
+        try:
+            with Timeout(timeout=self._timeout, loop=self._loop):
+                return (yield from self._reader.read())
+        except asyncio.CancelledError:
+            if self._terminating:
+                raise WebSocketTerminate
+            raise
+        finally:
+            self._reading = False
+
     @asyncio.coroutine
     def close(self, *, code=1000, message=b''):
         if self._writer is None:
@@ -189,8 +224,7 @@ class WebSocketResponse(StreamResponse):
 
             while True:
                 try:
-                    with Timeout(timeout=self._timeout,
-                                 loop=self._loop):
+                    with Timeout(timeout=self._timeout, loop=self._loop):
                         msg = yield from self._reader.read()
                 except asyncio.CancelledError:
                     self._close_code = 1006
@@ -199,7 +233,6 @@ class WebSocketResponse(StreamResponse):
                     self._close_code = 1006
                     self._exception = exc
                     return True
-
                 if msg.tp == MsgType.close:
                     self._close_code = msg.data
                     return True
@@ -223,8 +256,9 @@ class WebSocketResponse(StreamResponse):
                     return closedMessage
 
                 try:
-                    msg = yield from self._reader.read()
-                except (asyncio.CancelledError, asyncio.TimeoutError):
+                    msg = yield from self._read_with_termination()
+                except (asyncio.CancelledError, asyncio.TimeoutError,
+                        WebSocketTerminate):
                     raise
                 except WebSocketError as exc:
                     self._close_code = exc.code

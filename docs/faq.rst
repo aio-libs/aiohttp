@@ -129,3 +129,60 @@ peer::
                 ws.send_str(answer)
         finally:
             await redis.unsubscribe('channel:1')
+
+
+.. _aiohttp_faq_terminating_websockets:
+
+How to programmatically close websocket server-side?
+----------------------------------------------------
+
+
+For example we have an application with two endpoints:
+
+
+   1. ``/echo`` a websocket echo server that authenticates the user somehow
+   2. ``/logout_user`` that when invoked needs to close all open websockets for that user.
+
+Keep in mind that you can only all ``.close()`` on a websocket from the handler task, while you can
+safely call ``.terminate()`` from different tasks.
+
+The simplest way to perform it is keeping a shared registry of open websocket responses for a user
+in the :class:`aiohttp.web.Application`, then in ``/logout_user`` handler cycle through all the websockets for
+the user and ``terminate()`` them::
+
+    async def echo_handler(request):
+
+        ws = web.WebSocketResponse()
+        user_id = authenticate_user(request)
+        await ws.prepare(request)
+        request.app['websockets'][user_id].add(ws)
+
+        try:
+            async for msg in ws:
+                # handle incoming messages
+                ...
+
+        except asyncio.websocket.WebSocketTerminate:
+            print('websocket terminated')
+        finally:
+            request.app['websockets'][user_id].remove(ws)
+        await ws.close()
+        return ws
+
+    async def logout_handler(request):
+
+        user_id = authenticate_user(request)
+
+        for ws in request.app['websockets'][user_id]:
+            ws.terminate()
+
+        # return response
+        ...
+
+    def main():
+        loop = asyncio.get_event_loop()
+        app = aiohttp.web.Application(loop=loop)
+        app.router.add_route('GET', '/echo', echo_handler)
+        app.router.add_route('POST', '/logout', logout_handler)
+        app['websockets'] = defaultdict(set)
+        aiohttp.web.run_app(app, host='localhost', port=8080)
