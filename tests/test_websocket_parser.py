@@ -4,14 +4,11 @@ import random
 import struct
 from unittest import mock
 from aiohttp import Message, WebSocketError
-from aiohttp import _ws_impl
+from aiohttp import _ws_impl, MsgType
 from aiohttp._ws_impl import (PACK_LEN1, PACK_LEN2, PACK_LEN3,
                               PACK_CLOSE_CODE,
                               CLOSE_PROTOCOL_ERROR,
                               CLOSE_INVALID_TEXT,
-                              OPCODE_CLOSE, OPCODE_PING, OPCODE_PONG,
-                              OPCODE_BINARY, OPCODE_CONTINUATION,
-                              OPCODE_TEXT,
                               _websocket_mask,
                               WebSocketParser, parse_frame)
 
@@ -55,7 +52,7 @@ def build_close_frame(code=1000, message=b'', noheader=False):
         message = message.encode('utf-8')
     return build_frame(
         PACK_CLOSE_CODE(code) + message,
-        opcode=OPCODE_CLOSE, noheader=noheader)
+        opcode=MsgType.close, noheader=noheader)
 
 
 @pytest.fixture()
@@ -173,33 +170,33 @@ def test_parse_frame_header_payload_size(buf):
 def test_ping_frame(out, parser):
     def parse_frame(buf):
         yield
-        return (1, OPCODE_PING, b'data')
+        return (1, MsgType.ping, b'data')
 
     with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
         next(parser)
         parser.send(b'')
     res = out._buffer[0]
-    assert res == ((OPCODE_PING, b'data', ''), 4)
+    assert res == ((MsgType.ping, b'data', ''), 4)
 
 
 def test_pong_frame(out, parser):
     def parse_frame(buf):
         yield
-        return (1, OPCODE_PONG, b'data')
+        return (1, MsgType.pong, b'data')
 
     with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
         next(parser)
         parser.send(b'')
     res = out._buffer[0]
-    assert res == ((OPCODE_PONG, b'data', ''), 4)
+    assert res == ((MsgType.pong, b'data', ''), 4)
 
 
 def test_close_frame(out, parser):
     def parse_frame(buf):
         yield
-        return (1, OPCODE_CLOSE, b'')
+        return (1, MsgType.close, b'')
 
     with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
@@ -207,26 +204,26 @@ def test_close_frame(out, parser):
         parser.send(b'')
 
     res = out._buffer[0]
-    assert res == ((OPCODE_CLOSE, 0, ''), 0)
+    assert res == ((MsgType.close, 0, ''), 0)
 
 
 def test_close_frame_info(out, parser):
     def parse_frame(buf):
         yield
-        return (1, OPCODE_CLOSE, b'0112345')
+        return (1, MsgType.close, b'0112345')
 
     with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
         next(parser)
         parser.send(b'')
     res = out._buffer[0]
-    assert res == (Message(OPCODE_CLOSE, 12337, '12345'), 0)
+    assert res == (Message(MsgType.close, 12337, '12345'), 0)
 
 
 def test_close_frame_invalid(out, parser):
     def parse_frame(buf):
         yield
-        return (1, OPCODE_CLOSE, b'1')
+        return (1, MsgType.close, b'1')
 
     with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
@@ -257,7 +254,7 @@ def test_close_frame_unicode_err(buf, parser):
 def test_unknown_frame(out, parser):
     def parse_frame(buf):
         yield
-        return (1, OPCODE_CONTINUATION, b'')
+        return (1, MsgType.continuation, b'')
 
     with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
@@ -268,16 +265,16 @@ def test_unknown_frame(out, parser):
 
 
 def test_simple_text(buf, out, parser):
-    buf.extend(build_frame(b'text', OPCODE_TEXT))
+    buf.extend(build_frame(b'text', MsgType.text))
     next(parser)
     parser.send(b'')
     res = out._buffer[0]
-    assert res == ((OPCODE_TEXT, 'text', ''), 4)
+    assert res == ((MsgType.text, 'text', ''), 4)
 
 
 def test_simple_text_unicode_err(buf, parser):
     buf.extend(
-        build_frame(b'\xf4\x90\x80\x80', OPCODE_TEXT))
+        build_frame(b'\xf4\x90\x80\x80', MsgType.text))
     with pytest.raises(WebSocketError) as ctx:
         next(parser)
 
@@ -287,13 +284,13 @@ def test_simple_text_unicode_err(buf, parser):
 def test_simple_binary(out, parser):
     def parse_frame(buf):
         yield
-        return (1, OPCODE_BINARY, b'binary')
+        return (1, MsgType.binary, b'binary')
     with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
         next(parser)
         parser.send(b'')
     res = out._buffer[0]
-    assert res == ((OPCODE_BINARY, b'binary', ''), 6)
+    assert res == ((MsgType.binary, b'binary', ''), 6)
 
 
 def test_continuation(out, parser):
@@ -304,9 +301,9 @@ def test_continuation(out, parser):
         yield
         if cur == 0:
             cur = 1
-            return (0, OPCODE_TEXT, b'line1')
+            return (0, MsgType.text, b'line1')
         else:
-            return (1, OPCODE_CONTINUATION, b'line2')
+            return (1, MsgType.continuation, b'line2')
 
     with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
@@ -314,14 +311,14 @@ def test_continuation(out, parser):
         parser.send(b'')
         parser.send(b'')
     res = out._buffer[0]
-    assert res == (Message(OPCODE_TEXT, 'line1line2', ''), 10)
+    assert res == (Message(MsgType.text, 'line1line2', ''), 10)
 
 
 def test_continuation_with_ping(out, parser):
     frames = [
-        (0, OPCODE_TEXT, b'line1'),
-        (0, OPCODE_PING, b''),
-        (1, OPCODE_CONTINUATION, b'line2'),
+        (0, MsgType.text, b'line1'),
+        (0, MsgType.ping, b''),
+        (1, MsgType.continuation, b'line2'),
     ]
 
     def parse_frame(buf, cont=False):
@@ -335,9 +332,9 @@ def test_continuation_with_ping(out, parser):
         parser.send(b'')
         parser.send(b'')
     res = out._buffer[0]
-    assert res == (Message(OPCODE_PING, b'', ''), 0)
+    assert res == (Message(MsgType.ping, b'', ''), 0)
     res = out._buffer[1]
-    assert res == (Message(OPCODE_TEXT, 'line1line2', ''), 10)
+    assert res == (Message(MsgType.text, 'line1line2', ''), 10)
 
 
 def test_continuation_err(out, parser):
@@ -348,9 +345,9 @@ def test_continuation_err(out, parser):
         yield
         if cur == 0:
             cur = 1
-            return (0, OPCODE_TEXT, b'line1')
+            return (0, MsgType.text, b'line1')
         else:
-            return (1, OPCODE_TEXT, b'line2')
+            return (1, MsgType.text, b'line2')
 
     with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
@@ -362,10 +359,10 @@ def test_continuation_err(out, parser):
 
 def test_continuation_with_close(out, parser):
     frames = [
-        (0, OPCODE_TEXT, b'line1'),
-        (0, OPCODE_CLOSE,
+        (0, MsgType.text, b'line1'),
+        (0, MsgType.close,
          build_close_frame(1002, b'test', noheader=True)),
-        (1, OPCODE_CONTINUATION, b'line2'),
+        (1, MsgType.continuation, b'line2'),
     ]
 
     def parse_frame(buf, cont=False):
@@ -379,17 +376,17 @@ def test_continuation_with_close(out, parser):
         parser.send(b'')
         parser.send(b'')
         res = out._buffer[0]
-    assert res, (Message(OPCODE_CLOSE, 1002, 'test'), 0)
+    assert res, (Message(MsgType.close, 1002, 'test'), 0)
     res = out._buffer[1]
-    assert res == (Message(OPCODE_TEXT, 'line1line2', ''), 10)
+    assert res == (Message(MsgType.text, 'line1line2', ''), 10)
 
 
 def test_continuation_with_close_unicode_err(out, parser):
     frames = [
-        (0, OPCODE_TEXT, b'line1'),
-        (0, OPCODE_CLOSE,
+        (0, MsgType.text, b'line1'),
+        (0, MsgType.close,
          build_close_frame(1000, b'\xf4\x90\x80\x80', noheader=True)),
-        (1, OPCODE_CONTINUATION, b'line2')]
+        (1, MsgType.continuation, b'line2')]
 
     def parse_frame(buf, cont=False):
         yield
@@ -407,10 +404,10 @@ def test_continuation_with_close_unicode_err(out, parser):
 
 def test_continuation_with_close_bad_code(out, parser):
     frames = [
-        (0, OPCODE_TEXT, b'line1'),
-        (0, OPCODE_CLOSE,
+        (0, MsgType.text, b'line1'),
+        (0, MsgType.close,
          build_close_frame(1, b'test', noheader=True)),
-        (1, OPCODE_CONTINUATION, b'line2')]
+        (1, MsgType.continuation, b'line2')]
 
     def parse_frame(buf, cont=False):
         yield
@@ -428,9 +425,9 @@ def test_continuation_with_close_bad_code(out, parser):
 
 def test_continuation_with_close_bad_payload(out, parser):
     frames = [
-        (0, OPCODE_TEXT, b'line1'),
-        (0, OPCODE_CLOSE, b'1'),
-        (1, OPCODE_CONTINUATION, b'line2')]
+        (0, MsgType.text, b'line1'),
+        (0, MsgType.close, b'1'),
+        (1, MsgType.continuation, b'line2')]
 
     def parse_frame(buf, cont=False):
         yield
@@ -448,9 +445,9 @@ def test_continuation_with_close_bad_payload(out, parser):
 
 def test_continuation_with_close_empty(out, parser):
     frames = [
-        (0, OPCODE_TEXT, b'line1'),
-        (0, OPCODE_CLOSE, b''),
-        (1, OPCODE_CONTINUATION, b'line2'),
+        (0, MsgType.text, b'line1'),
+        (0, MsgType.close, b''),
+        (1, MsgType.continuation, b'line2'),
     ]
 
     def parse_frame(buf, cont=False):
@@ -465,9 +462,9 @@ def test_continuation_with_close_empty(out, parser):
         parser.send(b'')
 
     res = out._buffer[0]
-    assert res, (Message(OPCODE_CLOSE, 0, ''), 0)
+    assert res, (Message(MsgType.close, 0, ''), 0)
     res = out._buffer[1]
-    assert res == (Message(OPCODE_TEXT, 'line1line2', ''), 10)
+    assert res == (Message(MsgType.text, 'line1line2', ''), 10)
 
 
 websocket_mask_data = bytearray(

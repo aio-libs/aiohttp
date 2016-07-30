@@ -7,7 +7,7 @@ from unittest import mock
 
 import aiohttp
 from aiohttp import errors, hdrs, helpers, ClientWebSocketResponse
-from aiohttp._ws_impl import WS_KEY, MSG_CLOSE
+from aiohttp._ws_impl import WS_KEY
 
 
 class TestWebSocketClient(unittest.TestCase):
@@ -231,7 +231,7 @@ class TestWebSocketClient(unittest.TestCase):
             aiohttp.ws_connect('http://test.org', loop=self.loop))
         self.assertFalse(resp.closed)
 
-        msg = aiohttp.Message(MSG_CLOSE, b'', b'')
+        msg = aiohttp.Message(aiohttp.MsgType.close, b'', b'')
         reader.read.return_value = helpers.create_future(self.loop)
         reader.read.return_value.set_result(msg)
 
