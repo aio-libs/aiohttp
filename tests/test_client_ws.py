@@ -6,7 +6,7 @@ import unittest
 from unittest import mock
 
 import aiohttp
-from aiohttp import errors, hdrs, helpers, websocket_client
+from aiohttp import errors, hdrs, helpers, ClientWebSocketResponse
 from aiohttp._ws_impl import WS_KEY, MSG_CLOSE
 
 
@@ -45,7 +45,7 @@ class TestWebSocketClient(unittest.TestCase):
                 protocols=('t1', 't2', 'chat'),
                 loop=self.loop))
 
-        self.assertIsInstance(res, websocket_client.ClientWebSocketResponse)
+        self.assertIsInstance(res, ClientWebSocketResponse)
         self.assertEqual(res.protocol, 'chat')
         self.assertNotIn(hdrs.ORIGIN, m_req.call_args[1]["headers"])
 
@@ -73,7 +73,7 @@ class TestWebSocketClient(unittest.TestCase):
     @mock.patch('aiohttp.client.ClientSession.get')
     def test_ws_connect_custom_response(self, m_req, m_os):
 
-        class CustomResponse(websocket_client.ClientWebSocketResponse):
+        class CustomResponse(ClientWebSocketResponse):
             def read(self, decode=False):
                 return 'customized!'
 
@@ -391,7 +391,7 @@ class TestWebSocketClient(unittest.TestCase):
         self.assertIs(resp.exception(), exc)
 
     def test_receive_runtime_err(self):
-        resp = websocket_client.ClientWebSocketResponse(
+        resp = ClientWebSocketResponse(
             mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock(), 10.0,
             True, True, self.loop)
         resp._waiting = True

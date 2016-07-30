@@ -16,7 +16,7 @@ from .client_reqrep import ClientRequest, ClientResponse
 from .errors import WSServerHandshakeError
 from .helpers import CookieJar
 from ._ws_impl import WS_KEY, WebSocketParser, WebSocketWriter
-from .websocket_client import ClientWebSocketResponse
+from .client_ws import ClientWebSocketResponse
 from . import hdrs, helpers
 
 
