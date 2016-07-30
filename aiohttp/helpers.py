@@ -27,7 +27,7 @@ except ImportError:
 
 
 __all__ = ('BasicAuth', 'create_future', 'FormData', 'parse_mimetype',
-           'Timeout', 'CookieJar')
+           'Timeout', 'CookieJar', 'ensure_future')
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
