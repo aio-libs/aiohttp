@@ -39,6 +39,8 @@ CHANGES
 
 - `{FOO}e` logger format is case-sensetive now
 
+- Fix logger report for unix socket 8e8469b
+
 0.22.3 (07-26-2016)
 -------------------
 
