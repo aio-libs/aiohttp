@@ -38,6 +38,8 @@ class WebSocketResponse(StreamResponse):
         self._timeout = timeout
         self._autoclose = autoclose
         self._autoping = autoping
+        self._web_socket_ready = namedtuple('web_socket_ready',
+                                            'ok protocol')
 
     @asyncio.coroutine
     def prepare(self, request):
@@ -91,7 +93,6 @@ class WebSocketResponse(StreamResponse):
         return resp_impl
 
     def can_prepare(self, request):
-        web_socket_ready = namedtuple('web_socket_ready', 'allowed protocol')
         if self._writer is not None:
             raise RuntimeError('Already started')
         try:
@@ -99,9 +100,9 @@ class WebSocketResponse(StreamResponse):
                 request.method, request.headers, request.transport,
                 self._protocols)
         except HttpProcessingError:
-            return web_socket_ready(False, None)
+            return self._web_socket_ready(False, None)
         else:
-            return web_socket_ready(True, protocol)
+            return self._web_socket_ready(True, protocol)
 
     def can_start(self, request):
         warnings.warn('use .can_prepare(request) instead', DeprecationWarning)
