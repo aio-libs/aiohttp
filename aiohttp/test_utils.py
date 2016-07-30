@@ -652,3 +652,11 @@ def make_mocked_request(method, path, headers=None, *,
     assert req.transport is transport
 
     return req
+
+
+def make_mocked_coro(return_value):
+    @asyncio.coroutine
+    def mock_coro(*args, **kwargs):
+        return return_value
+
+    return mock.Mock(wraps=mock_coro)

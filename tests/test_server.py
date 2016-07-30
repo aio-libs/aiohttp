@@ -206,7 +206,7 @@ def test_srv_keep_alive(srv):
     assert not srv._keep_alive
 
 
-@pytest.mark.timeout(0)
+@pytest.mark.timeout(2)
 def test_srv_slow_request(make_srv, loop):
     transport = mock.Mock()
     srv = make_srv(timeout=0.01)

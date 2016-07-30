@@ -27,7 +27,7 @@ except ImportError:
 
 
 __all__ = ('BasicAuth', 'create_future', 'FormData', 'parse_mimetype',
-           'Timeout', 'CookieJar')
+           'Timeout', 'CookieJar', 'ensure_future')
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
@@ -345,8 +345,13 @@ class AccessLogger:
 
     @staticmethod
     def _format_a(args):
-        return args[3].get_extra_info('peername')[0] if args[3] is not None \
-            else '-'
+        if args[3] is None:
+            return '-'
+        peername = args[3].get_extra_info('peername')
+        if isinstance(peername, (list, tuple)):
+            return peername[0]
+        else:
+            return peername
 
     @staticmethod
     def _format_t(args):
