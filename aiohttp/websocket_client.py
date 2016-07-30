@@ -167,7 +167,7 @@ class ClientWebSocketResponse:
                     return msg
                 elif not self._closed:
                     if msg.tp == MsgType.ping and self._autoping:
-                        self._writer.pong(msg.data)
+                        self.pong(msg.data)
                     elif msg.tp == MsgType.pong and self._autoping:
                         continue
                     else:
