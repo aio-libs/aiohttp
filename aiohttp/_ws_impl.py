@@ -67,11 +67,6 @@ class MsgType(IntEnum):
 
 
 WS_KEY = b'258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
-WS_HDRS = (hdrs.UPGRADE,
-           hdrs.CONNECTION,
-           hdrs.SEC_WEBSOCKET_VERSION,
-           hdrs.SEC_WEBSOCKET_KEY,
-           hdrs.SEC_WEBSOCKET_PROTOCOL)
 
 
 UNPACK_LEN2 = Struct('!H').unpack_from
