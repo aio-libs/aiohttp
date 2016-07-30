@@ -176,6 +176,21 @@ def test_access_logger_dicts():
     mock_logger.info.assert_called_with(expected)
 
 
+def test_access_logger_unix_socket():
+    log_format = '|%a|'
+    mock_logger = mock.Mock()
+    access_logger = helpers.AccessLogger(mock_logger, log_format)
+    message = mock.Mock(headers={"User-Agent": "Mock/1.0"}, version=(1, 1))
+    environ = {}
+    response = mock.Mock()
+    transport = mock.Mock()
+    transport.get_extra_info.return_value = ""
+    access_logger.log(message, environ, response, transport, 0.0)
+    assert not mock_logger.error.called
+    expected = '||'
+    mock_logger.info.assert_called_with(expected)
+
+
 def test_logger_no_message_and_environ():
     mock_logger = mock.Mock()
     mock_transport = mock.Mock()
