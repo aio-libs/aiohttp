@@ -15,7 +15,7 @@ import aiohttp
 from .client_reqrep import ClientRequest, ClientResponse
 from .errors import WSServerHandshakeError
 from .helpers import CookieJar
-from .websocket import WS_KEY, WebSocketParser, WebSocketWriter
+from ._ws_impl import WS_KEY, WebSocketParser, WebSocketWriter
 from .websocket_client import ClientWebSocketResponse
 from . import hdrs, helpers
 

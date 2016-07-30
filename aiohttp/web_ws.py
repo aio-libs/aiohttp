@@ -5,13 +5,13 @@ import warnings
 
 from . import hdrs, Timeout
 from .errors import HttpProcessingError, ClientDisconnectedError
-from .websocket import do_handshake, Message, WebSocketError
-from .websocket_client import MsgType, closedMessage
+from ._ws_impl import (do_handshake, Message, WebSocketError,
+                       MsgType, closed_message)
 from .web_exceptions import (
     HTTPBadRequest, HTTPMethodNotAllowed, HTTPInternalServerError)
 from .web_reqrep import StreamResponse
 
-__all__ = ('WebSocketResponse', 'MsgType')
+__all__ = ('WebSocketResponse',)
 
 PY_35 = sys.version_info >= (3, 5)
 
@@ -220,7 +220,7 @@ class WebSocketResponse(StreamResponse):
                     self._conn_lost += 1
                     if self._conn_lost >= THRESHOLD_CONNLOST_ACCESS:
                         raise RuntimeError('WebSocket connection is closed.')
-                    return closedMessage
+                    return closed_message
 
                 try:
                     msg = yield from self._reader.read()

@@ -4,29 +4,10 @@ import asyncio
 
 import sys
 import json
-from enum import IntEnum
 
-from .websocket import Message
-from .websocket import WebSocketError
-from .websocket import MSG_BINARY, MSG_TEXT, MSG_CLOSE, MSG_PING, MSG_PONG
-
-__all__ = ('MsgType',)
+from ._ws_impl import Message, WebSocketError, MsgType, closed_message
 
 PY_35 = sys.version_info >= (3, 5)
-
-
-class MsgType(IntEnum):
-
-    text = MSG_TEXT
-    binary = MSG_BINARY
-    ping = MSG_PING
-    pong = MSG_PONG
-    close = MSG_CLOSE
-    closed = 20
-    error = 21
-
-
-closedMessage = Message(MsgType.closed, None, None)
 
 
 class ClientWebSocketResponse:
@@ -142,7 +123,7 @@ class ClientWebSocketResponse:
         try:
             while True:
                 if self._closed:
-                    return closedMessage
+                    return closed_message
 
                 try:
                     msg = yield from self._reader.read()

@@ -6,7 +6,8 @@ import unittest
 from unittest import mock
 
 import aiohttp
-from aiohttp import errors, hdrs, helpers, websocket, websocket_client
+from aiohttp import errors, hdrs, helpers, websocket_client
+from aiohttp._ws_impl import WS_KEY, MSG_CLOSE
 
 
 class TestWebSocketClient(unittest.TestCase):
@@ -18,7 +19,7 @@ class TestWebSocketClient(unittest.TestCase):
         self.key_data = os.urandom(16)
         self.key = base64.b64encode(self.key_data)
         self.ws_key = base64.b64encode(
-            hashlib.sha1(self.key + websocket.WS_KEY).digest()).decode()
+            hashlib.sha1(self.key + WS_KEY).digest()).decode()
 
     def tearDown(self):
         self.loop.close()
@@ -230,7 +231,7 @@ class TestWebSocketClient(unittest.TestCase):
             aiohttp.ws_connect('http://test.org', loop=self.loop))
         self.assertFalse(resp.closed)
 
-        msg = websocket.Message(websocket.MSG_CLOSE, b'', b'')
+        msg = aiohttp.Message(MSG_CLOSE, b'', b'')
         reader.read.return_value = helpers.create_future(self.loop)
         reader.read.return_value.set_result(msg)
 
