@@ -771,7 +771,7 @@ WebSocketResponse
 
       Read-only property, ``True`` if connection has been closed or in process
       of closing.
-      :const:`~aiohttp.websocket.MSG_CLOSE` message has been received from peer.
+      :const:`~aiohttp.WSMsgType.close` message has been received from peer.
 
    .. attribute:: close_code
 
@@ -791,7 +791,7 @@ WebSocketResponse
 
    .. method:: ping(message=b'')
 
-      Send :const:`~aiohttp.websocket.MSG_PING` to peer.
+      Send :const:`~aiohttp.WSMsgType.ping` to peer.
 
       :param message: optional payload of *ping* message,
                       :class:`str` (converted to *UTF-8* encoded bytes)
@@ -801,7 +801,7 @@ WebSocketResponse
 
    .. method:: pong(message=b'')
 
-      Send *unsolicited* :const:`~aiohttp.websocket.MSG_PONG` to peer.
+      Send *unsolicited* :const:`~aiohttp.WSMsgType.pong` to peer.
 
       :param message: optional payload of *pong* message,
                       :class:`str` (converted to *UTF-8* encoded bytes)
@@ -811,7 +811,7 @@ WebSocketResponse
 
    .. method:: send_str(data)
 
-      Send *data* to peer as :const:`~aiohttp.websocket.MSG_TEXT` message.
+      Send *data* to peer as :const:`~aiohttp.WSMsgType.text` message.
 
       :param str data: data to send.
 
@@ -821,7 +821,7 @@ WebSocketResponse
 
    .. method:: send_bytes(data)
 
-      Send *data* to peer as :const:`~aiohttp.websocket.MSG_BINARY` message.
+      Send *data* to peer as :const:`~aiohttp.WSMsgType.binary` message.
 
       :param data: data to send.
 
@@ -849,7 +849,7 @@ WebSocketResponse
    .. coroutinemethod:: close(*, code=1000, message=b'')
 
       A :ref:`coroutine<coroutine>` that initiates closing
-      handshake by sending :const:`~aiohttp.websocket.MSG_CLOSE` message.
+      handshake by sending :const:`~aiohttp.WSMsgType.close` message.
 
       :param int code: closing code
 
@@ -865,9 +865,9 @@ WebSocketResponse
       message from peer and returns it.
 
       The coroutine implicitly handles
-      :const:`~aiohttp.websocket.MSG_PING`,
-      :const:`~aiohttp.websocket.MSG_PONG` and
-      :const:`~aiohttp.websocket.MSG_CLOSE` without returning the
+      :const:`~aiohttp.WSMsgType.ping`,
+      :const:`~aiohttp.WSMsgType.pong` and
+      :const:`~aiohttp.WSMsgType.close` without returning the
       message.
 
       It process *ping-pong game* and performs *closing handshake* internally.
@@ -876,7 +876,7 @@ WebSocketResponse
       :exc:`~aiohttp.errors.WSClientDisconnectedError` with
       connection closing data.
 
-      :return: :class:`~aiohttp.websocket.Message`
+      :return: :class:`~aiohttp.WSMessage`
 
       :raise RuntimeError: if connection is not started
 
@@ -886,21 +886,21 @@ WebSocketResponse
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
-      :const:`~aiohttp.websocket.MSG_TEXT`.
+      :const:`~aiohttp.WSMsgType.text`.
 
       :return str: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_BINARY`.
+      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.binary`.
 
    .. coroutinemethod:: receive_bytes()
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
-      :const:`~aiohttp.websocket.MSG_BINARY`.
+      :const:`~aiohttp.WSMsgType.binary`.
 
       :return bytes: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_TEXT`.
+      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.text`.
 
    .. coroutinemethod:: receive_json(*, loads=json.loads)
 
@@ -914,7 +914,7 @@ WebSocketResponse
 
       :return dict: loaded JSON content
 
-      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_BINARY`.
+      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.binary`.
       :raise ValueError: if message is not valid JSON.
 
       .. versionadded:: 0.22

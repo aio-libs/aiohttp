@@ -523,12 +523,12 @@ with the peer::
         await ws.prepare(request)
 
         async for msg in ws:
-            if msg.tp == aiohttp.MsgType.text:
+            if msg.tp == aiohttp.WSMsgType.text:
                 if msg.data == 'close':
                     await ws.close()
                 else:
                     ws.send_str(msg.data + '/answer')
-            elif msg.tp == aiohttp.MsgType.error:
+            elif msg.tp == aiohttp.WSMsgType.error:
                 print('ws connection closed with exception %s' %
                       ws.exception())
 
