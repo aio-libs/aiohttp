@@ -17,7 +17,7 @@ from enum import IntEnum
 
 
 __all__ = ('WebSocketParser', 'WebSocketWriter', 'do_handshake',
-           'Message', 'WebSocketError', 'WSMsgType', 'WSCloseCode')
+           'WSMessage', 'WebSocketError', 'WSMsgType', 'WSCloseCode')
 
 
 class WSCloseCode(IntEnum):
@@ -61,10 +61,11 @@ PACK_CLOSE_CODE = Struct('!H').pack
 MSG_SIZE = 2 ** 14
 
 
-_MessageBase = collections.namedtuple('Message', ['tp', 'data', 'extra'])
+_WSMessageBase = collections.namedtuple('_WSMessageBase',
+                                        ['tp', 'data', 'extra'])
 
 
-class Message(_MessageBase):
+class WSMessage(_WSMessageBase):
     def json(self, *, loads=json.loads):
         """Return parsed JSON data.
 
@@ -73,7 +74,7 @@ class Message(_MessageBase):
         return loads(self.data)
 
 
-CLOSED_MESSAGE = Message(WSMsgType.closed, None, None)
+CLOSED_MESSAGE = WSMessage(WSMsgType.closed, None, None)
 
 
 class WebSocketError(Exception):
@@ -101,22 +102,22 @@ def WebSocketParser(out, buf):
                     raise WebSocketError(
                         WSCloseCode.invalid_text,
                         'Invalid UTF-8 text message') from exc
-                msg = Message(WSMsgType.close, close_code, close_message)
+                msg = WSMessage(WSMsgType.close, close_code, close_message)
             elif payload:
                 raise WebSocketError(
                     WSCloseCode.protocol_error,
                     'Invalid close frame: {} {} {!r}'.format(
                         fin, opcode, payload))
             else:
-                msg = Message(WSMsgType.close, 0, '')
+                msg = WSMessage(WSMsgType.close, 0, '')
 
             out.feed_data(msg, 0)
 
         elif opcode == WSMsgType.ping:
-            out.feed_data(Message(WSMsgType.ping, payload, ''), len(payload))
+            out.feed_data(WSMessage(WSMsgType.ping, payload, ''), len(payload))
 
         elif opcode == WSMsgType.pong:
-            out.feed_data(Message(WSMsgType.pong, payload, ''), len(payload))
+            out.feed_data(WSMessage(WSMsgType.pong, payload, ''), len(payload))
 
         elif opcode not in (WSMsgType.text, WSMsgType.binary):
             raise WebSocketError(
@@ -133,7 +134,7 @@ def WebSocketParser(out, buf):
                 # text message, Case 5.*
                 if _opcode == WSMsgType.ping:
                     out.feed_data(
-                        Message(WSMsgType.ping, payload, ''), len(payload))
+                        WSMessage(WSMsgType.ping, payload, ''), len(payload))
                     fin, _opcode, payload = yield from parse_frame(buf, True)
                 elif _opcode == WSMsgType.close:
                     if len(payload) >= 2:
@@ -149,15 +150,15 @@ def WebSocketParser(out, buf):
                             raise WebSocketError(
                                 WSCloseCode.invalid_text,
                                 'Invalid UTF-8 text message') from exc
-                        msg = Message(WSMsgType.close, close_code,
-                                      close_message)
+                        msg = WSMessage(WSMsgType.close, close_code,
+                                        close_message)
                     elif payload:
                         raise WebSocketError(
                             WSCloseCode.protocol_error,
                             'Invalid close frame: {} {} {!r}'.format(
                                 fin, opcode, payload))
                     else:
-                        msg = Message(WSMsgType.close, 0, '')
+                        msg = WSMessage(WSMsgType.close, 0, '')
 
                     out.feed_data(msg, 0)
                     fin, _opcode, payload = yield from parse_frame(buf, True)
@@ -173,9 +174,8 @@ def WebSocketParser(out, buf):
             if opcode == WSMsgType.text:
                 try:
                     text = b''.join(data).decode('utf-8')
-                    out.feed_data(
-                        Message(
-                            WSMsgType.text, text, ''), len(text))
+                    out.feed_data(WSMessage(WSMsgType.text, text, ''),
+                                  len(text))
                 except UnicodeDecodeError as exc:
                     raise WebSocketError(
                         WSCloseCode.invalid_text,
@@ -183,7 +183,7 @@ def WebSocketParser(out, buf):
             else:
                 data = b''.join(data)
                 out.feed_data(
-                    Message(WSMsgType.binary, data, ''), len(data))
+                    WSMessage(WSMsgType.binary, data, ''), len(data))
 
 
 native_byteorder = sys.byteorder

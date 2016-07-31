@@ -47,6 +47,8 @@ CHANGES
 
 - Introduce aiohttp.WSMessage officially
 
+- Rename Message -> WSMessage
+
 0.22.3 (07-26-2016)
 -------------------
 
