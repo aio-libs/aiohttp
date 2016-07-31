@@ -1291,7 +1291,8 @@ manually.
 
       :raise ValueError: if data is not serializable object
 
-      :raise TypeError: if value returned by :term:`dumps` is not :class:`str`
+      :raise TypeError: if value returned by ``dumps(data)`` is not
+                        :class:`str`
 
    .. comethod:: close(*, code=1000, message=b'')
 
