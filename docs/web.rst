@@ -536,9 +536,13 @@ with the peer::
 
         return ws
 
-Reading from the *WebSocket* (``await ws.receive()``) **must only** be
-done inside the request handler *task*; however, writing
-(``ws.send_str(...)``) to the *WebSocket* may be delegated to other tasks.
+.. _aiohttp-web-websocket-read-same-task:
+
+Reading from the *WebSocket* (``await ws.receive()``) and closing it (``await ws.close()``)
+**must only** be done inside the request handler *task*; however, writing
+(``ws.send_str(...)``) to the *WebSocket* and cancelling the handler task
+may be delegated to other tasks. See also :ref:`FAQ section <aiohttp_faq_terminating_websockets>`.
+
 *aiohttp.web* creates an implicit :class:`asyncio.Task` for handling every
 incoming request.
 
@@ -556,6 +560,7 @@ incoming request.
 
    Parallel reads from websocket are forbidden, there is no
    possibility to call :meth:`aiohttp.web.WebSocketResponse.receive`
+   or :meth:`aiohttp.web.WebSocketResponse.close`
    from two tasks.
 
    See :ref:`FAQ section <aiohttp_faq_parallel_event_sources>` for
