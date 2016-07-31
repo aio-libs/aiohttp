@@ -73,7 +73,7 @@ class Message(_MessageBase):
         return loads(self.data)
 
 
-closed_message = Message(WSMsgType.closed, None, None)
+CLOSED_MESSAGE = Message(WSMsgType.closed, None, None)
 
 
 class WebSocketError(Exception):

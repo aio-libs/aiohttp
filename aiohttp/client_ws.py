@@ -5,7 +5,7 @@ import asyncio
 import sys
 import json
 
-from ._ws_impl import Message, WebSocketError, WSMsgType, closed_message
+from ._ws_impl import Message, WebSocketError, WSMsgType, CLOSED_MESSAGE
 
 PY_35 = sys.version_info >= (3, 5)
 
@@ -123,7 +123,7 @@ class ClientWebSocketResponse:
         try:
             while True:
                 if self._closed:
-                    return closed_message
+                    return CLOSED_MESSAGE
 
                 try:
                     msg = yield from self._reader.read()
