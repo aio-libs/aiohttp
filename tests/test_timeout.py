@@ -3,7 +3,8 @@ import os
 import time
 
 import pytest
-from aiohttp.helpers import create_future, ensure_future, Timeout
+
+from aiohttp.helpers import Timeout, create_future, ensure_future
 
 
 @pytest.mark.run_loop

@@ -2,19 +2,17 @@
 
 import asyncio
 import gc
+import os.path
+import shutil
 import socket
-import unittest
 import ssl
 import tempfile
-import shutil
-import os.path
+import unittest
 from unittest import mock
 
 import aiohttp
-from aiohttp import web
-from aiohttp import client
-from aiohttp import helpers
-from aiohttp.client import ClientResponse, ClientRequest
+from aiohttp import client, helpers, web
+from aiohttp.client import ClientRequest, ClientResponse
 from aiohttp.connector import Connection
 from aiohttp.test_utils import unused_port
 

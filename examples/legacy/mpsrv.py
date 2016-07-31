@@ -2,11 +2,11 @@
 """Simple multiprocess HTTP server written using an event loop."""
 
 import argparse
-import os
-import socket
-import signal
-import time
 import asyncio
+import os
+import signal
+import socket
+import time
 
 import aiohttp
 import aiohttp.server

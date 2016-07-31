@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Protocol parser example."""
 import argparse
-import aiohttp
-import collections
 import asyncio
+import collections
+
+import aiohttp
+
 try:
     import signal
 except ImportError:

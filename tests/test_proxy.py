@@ -1,9 +1,10 @@
-import unittest
 import asyncio
 import gc
+import unittest
+from unittest import mock
+
 import aiohttp
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
-from unittest import mock
 
 
 def _create_mocked_loop():

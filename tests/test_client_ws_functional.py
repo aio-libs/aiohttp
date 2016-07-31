@@ -1,7 +1,9 @@
-import aiohttp
 import asyncio
+
 import pytest
-from aiohttp import helpers, hdrs, web
+
+import aiohttp
+from aiohttp import hdrs, helpers, web
 
 
 @pytest.mark.run_loop

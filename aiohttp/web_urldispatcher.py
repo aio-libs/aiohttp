@@ -1,27 +1,24 @@
 import abc
 import asyncio
-
-import keyword
 import collections
-import re
-import os
-import sys
 import inspect
+import keyword
+import os
+import re
+import sys
 import warnings
-
-from collections.abc import Sized, Iterable, Container
+from collections.abc import Container, Iterable, Sized
 from pathlib import Path
-from urllib.parse import urlencode, unquote
 from types import MappingProxyType
+from urllib.parse import unquote, urlencode
 
 from . import hdrs
-from .abc import AbstractRouter, AbstractMatchInfo, AbstractView
+from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
 from .file_sender import FileSender
 from .protocol import HttpVersion11
-from .web_exceptions import (HTTPMethodNotAllowed, HTTPNotFound,
-                             HTTPExpectationFailed)
+from .web_exceptions import (HTTPExpectationFailed, HTTPMethodNotAllowed,
+                             HTTPNotFound)
 from .web_reqrep import StreamResponse
-
 
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',

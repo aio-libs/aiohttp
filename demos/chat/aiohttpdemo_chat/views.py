@@ -3,9 +3,9 @@ import logging
 import random
 import string
 
-from aiohttp import web
 import aiohttp_jinja2
 
+from aiohttp import web
 
 log = logging.getLogger(__name__)
 

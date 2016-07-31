@@ -1,14 +1,13 @@
-import aiohttp
-import pytest
 import random
 import struct
 from unittest import mock
-from aiohttp import WSMessage, WebSocketError
-from aiohttp import _ws_impl, WSMsgType, WSCloseCode
-from aiohttp._ws_impl import (PACK_LEN1, PACK_LEN2, PACK_LEN3,
-                              PACK_CLOSE_CODE,
-                              _websocket_mask,
-                              WebSocketParser, parse_frame)
+
+import pytest
+
+import aiohttp
+from aiohttp import WebSocketError, WSCloseCode, WSMessage, WSMsgType, _ws_impl
+from aiohttp._ws_impl import (PACK_CLOSE_CODE, PACK_LEN1, PACK_LEN2, PACK_LEN3,
+                              WebSocketParser, _websocket_mask, parse_frame)
 
 
 def build_frame(message, opcode, use_mask=False, noheader=False):

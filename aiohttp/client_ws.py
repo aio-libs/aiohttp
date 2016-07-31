@@ -1,11 +1,10 @@
 """WebSocket client for asyncio."""
 
 import asyncio
-
-import sys
 import json
+import sys
 
-from ._ws_impl import WSMessage, WebSocketError, WSMsgType, CLOSED_MESSAGE
+from ._ws_impl import CLOSED_MESSAGE, WebSocketError, WSMessage, WSMsgType
 
 PY_35 = sys.version_info >= (3, 5)
 

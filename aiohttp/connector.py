@@ -1,27 +1,25 @@
 import asyncio
-import aiohttp
 import functools
 import http.cookies
 import ssl
 import sys
 import traceback
 import warnings
-
 from collections import defaultdict
 from hashlib import md5, sha1, sha256
 from itertools import chain
 from math import ceil
 from types import MappingProxyType
 
+import aiohttp
+
 from . import hdrs, helpers
 from .client import ClientRequest
-from .errors import ServerDisconnectedError
-from .errors import HttpProxyError, ProxyConnectionError
-from .errors import ClientOSError, ClientTimeoutError
-from .errors import FingerprintMismatch
+from .errors import (ClientOSError, ClientTimeoutError, FingerprintMismatch,
+                     HttpProxyError, ProxyConnectionError,
+                     ServerDisconnectedError)
 from .helpers import is_ip_address
 from .resolver import DefaultResolver
-
 
 __all__ = ('BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector')
 

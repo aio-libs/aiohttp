@@ -2,16 +2,15 @@
 
 import asyncio
 import http.server
-import traceback
 import socket
-
+import traceback
 from html import escape as html_escape
 from math import ceil
 
 import aiohttp
-from aiohttp import errors, streams, hdrs, helpers
-from aiohttp.log import access_logger, server_logger
+from aiohttp import errors, hdrs, helpers, streams
 from aiohttp.helpers import ensure_future
+from aiohttp.log import access_logger, server_logger
 
 __all__ = ('ServerHttpProtocol',)
 

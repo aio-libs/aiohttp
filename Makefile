@@ -4,11 +4,19 @@
 	pip install -U -r requirements-dev.txt
 	touch .install-deps
 
-flake: .install-deps
+isort:
+	isort -rc aiohttp
+	isort -rc tests
+	isort -rc benchmark
+	isort -rc examples
+	isort -rc demos
+
+
+flake: .install-deps isort
 #	python setup.py check -rms
 	flake8 aiohttp
 	if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then \
-	    flake8 examples tests; \
+	    flake8 examples tests demos benchmark; \
 	fi
 
 

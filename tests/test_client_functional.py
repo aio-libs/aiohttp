@@ -1,14 +1,15 @@
 """HTTP client functional tests against aiohttp.web server"""
 
-import aiohttp
 import asyncio
 import io
 import os
 import os.path
-import pytest
 import ssl
 from unittest import mock
 
+import pytest
+
+import aiohttp
 from aiohttp import hdrs, web
 from aiohttp.errors import FingerprintMismatch
 

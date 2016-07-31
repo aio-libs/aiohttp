@@ -5,14 +5,15 @@ import os
 import os.path
 import unittest
 import zlib
+from unittest import mock
+
 from multidict import MultiDict
-from aiohttp import log, web, request, FormData, ClientSession, TCPConnector
+
+from aiohttp import ClientSession, FormData, TCPConnector, log, request, web
 from aiohttp.file_sender import FileSender
 from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
 from aiohttp.streams import EOF_MARKER
 from aiohttp.test_utils import unused_port
-
-from unittest import mock
 
 try:
     import ssl

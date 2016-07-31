@@ -3,29 +3,24 @@ import binascii
 import cgi
 import collections
 import datetime
+import enum
 import http.cookies
 import io
 import json
 import math
 import time
 import warnings
-
-import enum
-
 from email.utils import parsedate
 from types import MappingProxyType
-from urllib.parse import urlsplit, parse_qsl, unquote
+from urllib.parse import parse_qsl, unquote, urlsplit
 
-from multidict import (CIMultiDictProxy,
-                       CIMultiDict,
-                       MultiDictProxy,
-                       MultiDict)
+from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 
 from . import hdrs
 from .helpers import reify
-from .protocol import Response as ResponseImpl, HttpVersion10, HttpVersion11
+from .protocol import Response as ResponseImpl
+from .protocol import HttpVersion10, HttpVersion11
 from .streams import EOF_MARKER
-
 
 __all__ = (
     'ContentCoding', 'Request', 'StreamResponse', 'Response',

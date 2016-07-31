@@ -8,13 +8,11 @@ import json
 import os
 import random
 import sys
-
+from enum import IntEnum
 from struct import Struct
+
 from aiohttp import errors, hdrs
 from aiohttp.log import ws_logger
-
-from enum import IntEnum
-
 
 __all__ = ('WebSocketParser', 'WebSocketWriter', 'do_handshake',
            'WSMessage', 'WebSocketError', 'WSMsgType', 'WSCloseCode')

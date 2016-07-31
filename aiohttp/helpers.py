@@ -8,9 +8,8 @@ import functools
 import io
 import os
 import re
-
 from collections import namedtuple
-from http.cookies import SimpleCookie, Morsel
+from http.cookies import Morsel, SimpleCookie
 from math import ceil
 from pathlib import Path
 from urllib.parse import quote, urlencode, urlsplit
@@ -20,6 +19,7 @@ from multidict import MultiDict, MultiDictProxy
 from . import hdrs
 from .abc import AbstractCookieJar
 from .errors import InvalidURL
+
 try:
     from asyncio import ensure_future
 except ImportError:

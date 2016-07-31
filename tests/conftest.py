@@ -1,15 +1,15 @@
 import asyncio
-import aiohttp
 import collections
 import logging
-import pytest
 import re
 import sys
 import warnings
+
+import pytest
+
+import aiohttp
 from aiohttp import web
-from aiohttp.test_utils import (
-    loop_context, unused_port
-)
+from aiohttp.test_utils import loop_context, unused_port
 
 
 class _AssertWarnsContext:

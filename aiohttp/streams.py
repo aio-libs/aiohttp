@@ -1,11 +1,11 @@
-import sys
 import asyncio
 import collections
 import functools
+import sys
 import traceback
 
-from .log import internal_logger
 from . import helpers
+from .log import internal_logger
 
 __all__ = (
     'EofStream', 'StreamReader', 'DataQueue', 'ChunksQueue',

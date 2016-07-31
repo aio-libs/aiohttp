@@ -1,15 +1,15 @@
 import asyncio
 import contextlib
 import gc
+import http.cookies
 import re
 import types
-import http.cookies
 from unittest import mock
 
+import pytest
 from multidict import CIMultiDict, MultiDict
 
 import aiohttp
-import pytest
 from aiohttp import web
 from aiohttp.client import ClientSession
 from aiohttp.connector import BaseConnector, TCPConnector

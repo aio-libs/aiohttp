@@ -1,12 +1,13 @@
 import collections
-import pytest
 import re
-from multidict import CIMultiDict
 from unittest import mock
-from aiohttp.web import Request
-from aiohttp.protocol import RawRequestMessage, HttpVersion11
+
+import pytest
+from multidict import CIMultiDict
 
 from aiohttp import signals, web
+from aiohttp.protocol import HttpVersion11, RawRequestMessage
+from aiohttp.web import Request
 
 
 @pytest.fixture

@@ -1,12 +1,11 @@
 """Tests for aiohttp/worker.py"""
 import asyncio
-import pytest
 import sys
-
 from unittest import mock
 
-from aiohttp import helpers
+import pytest
 
+from aiohttp import helpers
 
 base_worker = pytest.importorskip('aiohttp.worker')
 pytest.importorskip('uvloop')

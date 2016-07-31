@@ -3,12 +3,13 @@
 import base64
 import hashlib
 import os
-import pytest
+from unittest import mock
 
 import multidict
-from aiohttp import protocol, errors
-from unittest import mock
-from aiohttp._ws_impl import do_handshake, WS_KEY
+import pytest
+
+from aiohttp import errors, protocol
+from aiohttp._ws_impl import WS_KEY, do_handshake
 
 
 @pytest.fixture()

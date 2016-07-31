@@ -1,13 +1,12 @@
 import asyncio
 from unittest import mock
-from multidict import CIMultiDict
-from aiohttp.signals import Signal
-from aiohttp.web import Application
-from aiohttp.web import Request, Response
-from aiohttp.protocol import HttpVersion11
-from aiohttp.protocol import RawRequestMessage
 
 import pytest
+from multidict import CIMultiDict
+
+from aiohttp.protocol import HttpVersion11, RawRequestMessage
+from aiohttp.signals import Signal
+from aiohttp.web import Application, Request, Response
 
 
 @pytest.fixture

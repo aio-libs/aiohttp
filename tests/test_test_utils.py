@@ -1,12 +1,12 @@
 import asyncio
+
+import pytest
+
 import aiohttp
 from aiohttp import web
-from aiohttp.test_utils import (
-    TestClient, loop_context,
-    AioHTTPTestCase, unittest_run_loop,
-    setup_test_loop, teardown_test_loop
-)
-import pytest
+from aiohttp.test_utils import (AioHTTPTestCase, TestClient, loop_context,
+                                setup_test_loop, teardown_test_loop,
+                                unittest_run_loop)
 
 
 def _create_example_app(loop):

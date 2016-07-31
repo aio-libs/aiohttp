@@ -4,9 +4,7 @@ import asyncio
 import unittest
 from unittest import mock
 
-from aiohttp import streams
-from aiohttp import test_utils
-from aiohttp import helpers
+from aiohttp import helpers, streams, test_utils
 
 
 class TestStreamReader(unittest.TestCase):
