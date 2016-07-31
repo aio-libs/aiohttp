@@ -720,7 +720,7 @@ class ClientResponse:
         yield from self.release()
 
     @asyncio.coroutine
-    def read(self, decode=False):
+    def read(self):
         """Read response payload."""
         if self._content is None:
             try:
@@ -731,15 +731,7 @@ class ClientResponse:
             else:
                 yield from self.release()
 
-        data = self._content
-
-        if decode:
-            warnings.warn(
-                '.read(True) is deprecated. use .json() instead',
-                DeprecationWarning)
-            return (yield from self.json())
-
-        return data
+        return self._content
 
     def _get_encoding(self):
         ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()

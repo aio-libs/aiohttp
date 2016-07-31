@@ -116,17 +116,6 @@ class TestClientResponse(unittest.TestCase):
         self.loop.run_until_complete(self.response.release())
         self.assertIsNone(self.response._connection)
 
-    def test_read_decode_deprecated(self):
-        self.response._content = b'data'
-        self.response.json = mock.Mock()
-        self.response.json.return_value = helpers.create_future(self.loop)
-        self.response.json.return_value.set_result('json')
-
-        with self.assertWarns(DeprecationWarning):
-            res = self.loop.run_until_complete(self.response.read(decode=True))
-        self.assertEqual(res, 'json')
-        self.assertTrue(self.response.json.called)
-
     def test_text(self):
         def side_effect(*args, **kwargs):
             fut = helpers.create_future(self.loop)

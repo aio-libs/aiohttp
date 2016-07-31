@@ -49,6 +49,8 @@ CHANGES
 
 - Rename Message -> WSMessage
 
+- Remove deprecated decode param from resp.read(decode=True)
+
 0.22.3 (07-26-2016)
 -------------------
 
