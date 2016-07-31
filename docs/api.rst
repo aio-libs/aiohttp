@@ -90,6 +90,44 @@ WebSocket utilities
        target) or reconnect to the same IP upon user action.
 
 
+.. class:: WSMsgType
+
+   An :class:`~enum.IntEnum` for describing :class:`WSMessage` type.
+
+   .. attribute:: continuation
+
+      A mark for continuation frame, user will never get the message
+      with this type.
+
+   .. attribute:: text
+
+      Text messsage, the value has :class:`str` type.
+
+   .. attribute:: binary
+
+      Binary messsage, the value has :class:`bytes` type.
+
+   .. attribute:: ping
+
+      Ping frame (sent by client peer).
+
+   .. attribute:: pong
+
+      Pong frame, answer on ping. Sent by server peer.
+
+   .. attribute:: close
+
+      Close frame.
+
+   .. attribute:: closed frame
+
+      Actually not frame but a flag indicating that websocket was
+      closed.
+
+   .. attribute:: error
+
+      Actually not frame but a flag indicating that websocket was
+      received an error.
 
 
 aiohttp.errors module
