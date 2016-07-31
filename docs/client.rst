@@ -642,15 +642,15 @@ methods::
    async with session.ws_connect('http://example.org/websocket') as ws:
 
        async for msg in ws:
-           if msg.tp == aiohttp.MsgType.text:
+           if msg.tp == aiohttp.WSMsgType.text:
                if msg.data == 'close cmd':
                    await ws.close()
                    break
                else:
                    ws.send_str(msg.data + '/answer')
-           elif msg.tp == aiohttp.MsgType.closed:
+           elif msg.tp == aiohttp.WSMsgType.closed:
                break
-           elif msg.tp == aiohttp.MsgType.error:
+           elif msg.tp == aiohttp.WSMsgType.error:
                break
 
 
