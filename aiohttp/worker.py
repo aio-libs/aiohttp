@@ -109,7 +109,7 @@ class GunicornWebWorker(base.Worker):
                     if connections > self.cfg.max_requests:
                         self.alive = False
                         self.log.info("Max requests, shutting down: %s", self)
-        except (Exception, BaseException, GeneratorExit, KeyboardInterrupt):
+        except BaseException:
             pass
 
         yield from self.close()
