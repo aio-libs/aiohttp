@@ -4,29 +4,10 @@ import asyncio
 
 import sys
 import json
-from enum import IntEnum
 
-from .websocket import Message
-from .websocket import WebSocketError
-from .websocket import MSG_BINARY, MSG_TEXT, MSG_CLOSE, MSG_PING, MSG_PONG
-
-__all__ = ('MsgType',)
+from ._ws_impl import Message, WebSocketError, WSMsgType, CLOSED_MESSAGE
 
 PY_35 = sys.version_info >= (3, 5)
-
-
-class MsgType(IntEnum):
-
-    text = MSG_TEXT
-    binary = MSG_BINARY
-    ping = MSG_PING
-    pong = MSG_PONG
-    close = MSG_CLOSE
-    closed = 20
-    error = 21
-
-
-closedMessage = Message(MsgType.closed, None, None)
 
 
 class ClientWebSocketResponse:
@@ -126,7 +107,7 @@ class ClientWebSocketResponse:
                     self._response.close()
                     return True
 
-                if msg.tp == MsgType.close:
+                if msg.tp == WSMsgType.close:
                     self._close_code = msg.data
                     self._response.close()
                     return True
@@ -142,7 +123,7 @@ class ClientWebSocketResponse:
         try:
             while True:
                 if self._closed:
-                    return closedMessage
+                    return CLOSED_MESSAGE
 
                 try:
                     msg = yield from self._reader.read()
@@ -151,24 +132,24 @@ class ClientWebSocketResponse:
                 except WebSocketError as exc:
                     self._close_code = exc.code
                     yield from self.close(code=exc.code)
-                    return Message(MsgType.error, exc, None)
+                    return Message(WSMsgType.error, exc, None)
                 except Exception as exc:
                     self._exception = exc
                     self._closing = True
                     self._close_code = 1006
                     yield from self.close()
-                    return Message(MsgType.error, exc, None)
+                    return Message(WSMsgType.error, exc, None)
 
-                if msg.tp == MsgType.close:
+                if msg.tp == WSMsgType.close:
                     self._closing = True
                     self._close_code = msg.data
                     if not self._closed and self._autoclose:
                         yield from self.close()
                     return msg
                 elif not self._closed:
-                    if msg.tp == MsgType.ping and self._autoping:
+                    if msg.tp == WSMsgType.ping and self._autoping:
                         self.pong(msg.data)
-                    elif msg.tp == MsgType.pong and self._autoping:
+                    elif msg.tp == WSMsgType.pong and self._autoping:
                         continue
                     else:
                         return msg
@@ -178,7 +159,7 @@ class ClientWebSocketResponse:
     @asyncio.coroutine
     def receive_str(self):
         msg = yield from self.receive()
-        if msg.tp != MsgType.text:
+        if msg.tp != WSMsgType.text:
             raise TypeError(
                 "Received message {}:{!r} is not str".format(msg.tp, msg.data))
         return msg.data
@@ -186,7 +167,7 @@ class ClientWebSocketResponse:
     @asyncio.coroutine
     def receive_bytes(self):
         msg = yield from self.receive()
-        if msg.tp != MsgType.binary:
+        if msg.tp != WSMsgType.binary:
             raise TypeError(
                 "Received message {}:{!r} is not bytes".format(msg.tp,
                                                                msg.data))
@@ -205,6 +186,6 @@ class ClientWebSocketResponse:
         @asyncio.coroutine
         def __anext__(self):
             msg = yield from self.receive()
-            if msg.tp == MsgType.close:
+            if msg.tp == WSMsgType.close:
                 raise StopAsyncIteration  # NOQA
             return msg
