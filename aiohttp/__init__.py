@@ -17,8 +17,11 @@ from .parsers import *  # noqa
 from .streams import *  # noqa
 from .multipart import *  # noqa
 from .client_ws import ClientWebSocketResponse  # noqa
-from ._ws_impl import MsgType, Message, WebSocketError  # noqa
+from ._ws_impl import WSMsgType, WSCloseCode, Message, WebSocketError  # noqa
 from .file_sender import FileSender  # noqa
+
+
+MsgType = WSMsgType  # backward compatibility
 
 
 __all__ = (client.__all__ +  # noqa
@@ -31,4 +34,6 @@ __all__ = (client.__all__ +  # noqa
            streams.__all__ +  # noqa
            multidict.__all__ +  # noqa
            multipart.__all__ +  # noqa
-           ('hdrs', 'FileSender', 'MsgType', 'ClientWebSocketResponse'))
+           ('hdrs', 'FileSender', 'WSMsgType', 'MsgType', 'WSCloseCode',
+            'WebSocketError', 'Message',
+            'ClientWebSocketResponse'))

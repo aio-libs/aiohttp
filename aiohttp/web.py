@@ -17,7 +17,6 @@ from .web_reqrep import *  # noqa
 from .web_exceptions import *  # noqa
 from .web_urldispatcher import *  # noqa
 from .web_ws import *  # noqa
-from ._ws_impl import MsgType  # noqa
 from argparse import ArgumentParser
 from importlib import import_module
 
@@ -26,7 +25,7 @@ __all__ = (web_reqrep.__all__ +
            web_exceptions.__all__ +
            web_urldispatcher.__all__ +
            web_ws.__all__ +
-           ('Application', 'RequestHandler', 'MsgType',
+           ('Application', 'RequestHandler',
             'RequestHandlerFactory', 'HttpVersion'))
 
 

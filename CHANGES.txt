@@ -43,7 +43,7 @@ CHANGES
 
 - Rename aiohttp.websocket to aiohttp._ws_impl
 
-- 
+- Rename aiohttp.MsgType tp aiohttp.WSMsgType
 
 0.22.3 (07-26-2016)
 -------------------
