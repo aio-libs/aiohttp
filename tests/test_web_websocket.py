@@ -2,9 +2,9 @@ import asyncio
 from unittest import mock
 import pytest
 from aiohttp import CIMultiDict, helpers
-from aiohttp.web import (
-    MsgType, WebSocketResponse, HTTPMethodNotAllowed, HTTPBadRequest)
-from aiohttp import errors, signals, websocket
+from aiohttp.web import (WebSocketResponse, HTTPMethodNotAllowed,
+                         HTTPBadRequest)
+from aiohttp import errors, signals, Message, MsgType
 from aiohttp.test_utils import make_mocked_request, make_mocked_coro
 
 
@@ -118,7 +118,7 @@ def test_receive_str_nonstring(make_request):
 
     @asyncio.coroutine
     def receive():
-        return websocket.Message(websocket.MSG_BINARY, b'data', b'')
+        return Message(MsgType.binary, b'data', b'')
 
     ws.receive = receive
 
@@ -134,7 +134,7 @@ def test_receive_bytes_nonsbytes(make_request):
 
     @asyncio.coroutine
     def receive():
-        return websocket.Message(websocket.MSG_TEXT, 'data', b'')
+        return Message(MsgType.text, 'data', b'')
 
     ws.receive = receive
 
