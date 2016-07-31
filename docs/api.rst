@@ -130,6 +130,44 @@ WebSocket utilities
       received an error.
 
 
+.. class:: WSMessage
+
+   Websocket message, returned by ``.receive()`` calls.
+
+   .. attribute:: tp
+
+      Message type, :class:`WSMsgType` instance.
+
+   .. attribute:: data
+
+      Message payload.
+
+      1. :class:`str` for :attr:`WSMsgType.text` messages.
+
+      2. :class:`bytes` for :attr:`WSMsgType.text` messages.
+
+      3. :class:`WSCloseCode` for :attr:`WSMsgType.close` messages.
+
+      4. :class:`bytes` for :attr:`WSMsgType.ping` messages.
+
+      5. :class:`bytes` for :attr:`WSMsgType.pong` messages.
+
+   .. attribute:: extra
+
+      Additional info, :class:`str`.
+
+      Makes sense only for :attr:`WSMsgType.close` messages, contains
+      optional message description.
+
+   .. method:: json(*, loads=json.loads)
+
+      Returns parsed JSON data.
+
+      .. versionadded:: 0.22
+
+      :param loads: optional JSON decoder function.
+
+
 aiohttp.errors module
 ---------------------
 
