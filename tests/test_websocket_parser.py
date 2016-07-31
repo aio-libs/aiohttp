@@ -3,7 +3,7 @@ import pytest
 import random
 import struct
 from unittest import mock
-from aiohttp import Message, WebSocketError
+from aiohttp import WSMessage, WebSocketError
 from aiohttp import _ws_impl, WSMsgType, WSCloseCode
 from aiohttp._ws_impl import (PACK_LEN1, PACK_LEN2, PACK_LEN3,
                               PACK_CLOSE_CODE,
@@ -215,7 +215,7 @@ def test_close_frame_info(out, parser):
         next(parser)
         parser.send(b'')
     res = out._buffer[0]
-    assert res == (Message(WSMsgType.close, 12337, '12345'), 0)
+    assert res == (WSMessage(WSMsgType.close, 12337, '12345'), 0)
 
 
 def test_close_frame_invalid(out, parser):
@@ -309,7 +309,7 @@ def test_continuation(out, parser):
         parser.send(b'')
         parser.send(b'')
     res = out._buffer[0]
-    assert res == (Message(WSMsgType.text, 'line1line2', ''), 10)
+    assert res == (WSMessage(WSMsgType.text, 'line1line2', ''), 10)
 
 
 def test_continuation_with_ping(out, parser):
@@ -330,9 +330,9 @@ def test_continuation_with_ping(out, parser):
         parser.send(b'')
         parser.send(b'')
     res = out._buffer[0]
-    assert res == (Message(WSMsgType.ping, b'', ''), 0)
+    assert res == (WSMessage(WSMsgType.ping, b'', ''), 0)
     res = out._buffer[1]
-    assert res == (Message(WSMsgType.text, 'line1line2', ''), 10)
+    assert res == (WSMessage(WSMsgType.text, 'line1line2', ''), 10)
 
 
 def test_continuation_err(out, parser):
@@ -374,9 +374,9 @@ def test_continuation_with_close(out, parser):
         parser.send(b'')
         parser.send(b'')
         res = out._buffer[0]
-    assert res, (Message(WSMsgType.close, 1002, 'test'), 0)
+    assert res, (WSMessage(WSMsgType.close, 1002, 'test'), 0)
     res = out._buffer[1]
-    assert res == (Message(WSMsgType.text, 'line1line2', ''), 10)
+    assert res == (WSMessage(WSMsgType.text, 'line1line2', ''), 10)
 
 
 def test_continuation_with_close_unicode_err(out, parser):
@@ -460,9 +460,9 @@ def test_continuation_with_close_empty(out, parser):
         parser.send(b'')
 
     res = out._buffer[0]
-    assert res, (Message(WSMsgType.close, 0, ''), 0)
+    assert res, (WSMessage(WSMsgType.close, 0, ''), 0)
     res = out._buffer[1]
-    assert res == (Message(WSMsgType.text, 'line1line2', ''), 10)
+    assert res == (WSMessage(WSMsgType.text, 'line1line2', ''), 10)
 
 
 websocket_mask_data = bytearray(

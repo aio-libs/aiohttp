@@ -4,7 +4,7 @@ import pytest
 from aiohttp import CIMultiDict, helpers
 from aiohttp.web import (WebSocketResponse, HTTPMethodNotAllowed,
                          HTTPBadRequest)
-from aiohttp import errors, signals, Message, MsgType
+from aiohttp import errors, signals, WSMessage, WSMsgType
 from aiohttp.test_utils import make_mocked_request, make_mocked_coro
 
 
@@ -118,7 +118,7 @@ def test_receive_str_nonstring(make_request):
 
     @asyncio.coroutine
     def receive():
-        return Message(MsgType.binary, b'data', b'')
+        return WSMessage(WSMsgType.binary, b'data', b'')
 
     ws.receive = receive
 
@@ -134,7 +134,7 @@ def test_receive_bytes_nonsbytes(make_request):
 
     @asyncio.coroutine
     def receive():
-        return Message(MsgType.text, 'data', b'')
+        return WSMessage(WSMsgType.text, 'data', b'')
 
     ws.receive = receive
 
@@ -333,7 +333,7 @@ def test_receive_exc_in_reader(make_request, loop, reader):
     reader.read = make_mocked_coro(res)
 
     msg = yield from ws.receive()
-    assert msg.tp == MsgType.error
+    assert msg.tp == WSMsgType.error
     assert msg.data is exc
     assert ws.exception() is exc
 
@@ -379,7 +379,7 @@ def test_receive_client_disconnected(make_request, loop, reader):
 
     msg = yield from ws.receive()
     assert ws.closed
-    assert msg.tp == MsgType.close
+    assert msg.tp == WSMsgType.close
     assert msg.data is None
     assert ws.exception() is None
 
