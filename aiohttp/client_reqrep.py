@@ -15,6 +15,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 import aiohttp
 
 from . import hdrs, helpers, streams
+from .helpers import Timeout
 from .log import client_logger
 from .multipart import MultipartWriter
 from .protocol import HttpMessage
@@ -68,7 +69,8 @@ class ClientRequest:
                  version=aiohttp.HttpVersion11, compress=None,
                  chunked=None, expect100=False,
                  loop=None, response_class=None,
-                 proxy=None, proxy_auth=None):
+                 proxy=None, proxy_auth=None,
+                 timeout=5*60):
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -80,6 +82,7 @@ class ClientRequest:
         self.compress = compress
         self.loop = loop
         self.response_class = response_class or ClientResponse
+        self._timeout = timeout
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
@@ -502,7 +505,8 @@ class ClientRequest:
 
         self.response = self.response_class(
             self.method, self.url, self.host,
-            writer=self._writer, continue100=self._continue)
+            writer=self._writer, continue100=self._continue,
+            timeout=self._timeout)
         self.response._post_init(self.loop)
         return self.response
 
@@ -546,7 +550,8 @@ class ClientResponse:
     _loop = None
     _closed = True  # to allow __del__ for non-initialized properly response
 
-    def __init__(self, method, url, host='', *, writer=None, continue100=None):
+    def __init__(self, method, url, host='', *, writer=None, continue100=None,
+                 timeout=5*60):
         super().__init__()
 
         self.method = method
@@ -558,6 +563,7 @@ class ClientResponse:
         self._closed = False
         self._should_close = True  # override by message.should_close later
         self._history = ()
+        self._timeout = timeout
 
     def _post_init(self, loop):
         self._loop = loop
@@ -609,7 +615,7 @@ class ClientResponse:
         self._reader = connection.reader
         self._connection = connection
         self.content = self.flow_control_class(
-            connection.reader, loop=connection.loop)
+            connection.reader, loop=connection.loop, timeout=self._timeout)
 
     def _need_parse_response_body(self):
         return (self.method.lower() != 'head' and
@@ -624,7 +630,8 @@ class ClientResponse:
             httpstream = self._reader.set_parser(self._response_parser)
 
             # read response
-            message = yield from httpstream.read()
+            with Timeout(self._timeout, loop=self._loop):
+                message = yield from httpstream.read()
             if message.code != 100:
                 break
 
@@ -643,11 +650,11 @@ class ClientResponse:
         self.raw_headers = tuple(message.raw_headers)
 
         # payload
-        response_with_body = self._need_parse_response_body()
+        rwb = self._need_parse_response_body()
         self._reader.set_parser(
             aiohttp.HttpPayloadParser(message,
                                       readall=read_until_eof,
-                                      response_with_body=response_with_body),
+                                      response_with_body=rwb),
             self.content)
 
         # cookies

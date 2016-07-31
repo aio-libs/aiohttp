@@ -474,3 +474,37 @@ def test_204_with_gzipped_content_encoding(create_app_and_client):
     resp = yield from client.delete('/')
     assert resp.status == 204
     yield from resp.release()
+
+
+@pytest.mark.run_loop
+def test_timeout_on_reading_headers(create_app_and_client, loop):
+
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.StreamResponse()
+        yield from asyncio.sleep(0.1, loop=loop)
+        yield from resp.prepare(request)
+        return resp
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    with pytest.raises(asyncio.TimeoutError):
+        yield from client.get('/', timeout=0.01)
+
+
+@pytest.mark.run_loop
+def test_timeout_on_reading_data(create_app_and_client, loop):
+
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.StreamResponse()
+        yield from resp.prepare(request)
+        yield from asyncio.sleep(0.1, loop=loop)
+        return resp
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.get('/', timeout=0.05)
+
+    with pytest.raises(asyncio.TimeoutError):
+        yield from resp.read()
