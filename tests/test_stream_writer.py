@@ -54,6 +54,7 @@ def test_set_nodelay_enable_and_disable(loop):
     assert not s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
 
 
+@pytest.mark.skipif(not socket.has_ipv6, reason="IPv6 is not available")
 def test_set_nodelay_enable_ipv6(loop):
     transport = mock.Mock()
     s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
@@ -144,6 +145,7 @@ def test_set_cork_enable_and_disable(loop):
     assert not s.getsockopt(socket.IPPROTO_TCP, CORK)
 
 
+@pytest.mark.skipif(not socket.has_ipv6, reason="IPv6 is not available")
 @pytest.mark.skipif(CORK is None, reason="TCP_CORK or TCP_NOPUSH required")
 def test_set_cork_enable_ipv6(loop):
     transport = mock.Mock()
