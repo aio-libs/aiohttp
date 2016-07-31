@@ -31,19 +31,22 @@ CLOSE_INTERNAL_ERROR = 1011
 CLOSE_SERVICE_RESTART = 1012
 CLOSE_TRY_AGAIN_LATER = 1013
 
-ALLOWED_CLOSE_CODES = (
-    CLOSE_OK,
-    CLOSE_GOING_AWAY,
-    CLOSE_PROTOCOL_ERROR,
-    CLOSE_UNSUPPORTED_DATA,
-    CLOSE_INVALID_TEXT,
-    CLOSE_POLICY_VIOLATION,
-    CLOSE_MESSAGE_TOO_BIG,
-    CLOSE_MANDATORY_EXTENSION,
-    CLOSE_INTERNAL_ERROR,
-    CLOSE_SERVICE_RESTART,
-    CLOSE_TRY_AGAIN_LATER,
-)
+
+class WSCloseCode(IntEnum):
+    ok = 1000
+    going_away = 1001
+    protocol_error = 1002
+    unsupported_data = 1003
+    invalid_text = 1007
+    policy_violation = 1008
+    message_too_big = 1009
+    mandatory_extension = 1010
+    internal_error = 1011
+    service_restart = 1012
+    try_again_later = 1013
+
+
+ALLOWED_CLOSE_CODES = {int(i) for i in WSCloseCode}
 
 
 class MsgType(IntEnum):
@@ -100,7 +103,7 @@ def WebSocketParser(out, buf):
         if opcode == MsgType.close:
             if len(payload) >= 2:
                 close_code = UNPACK_CLOSE_CODE(payload[:2])[0]
-                if close_code not in ALLOWED_CLOSE_CODES and close_code < 3000:
+                if close_code < 3000 and close_code not in ALLOWED_CLOSE_CODES:
                     raise WebSocketError(
                         CLOSE_PROTOCOL_ERROR,
                         'Invalid close code: {}'.format(close_code))
