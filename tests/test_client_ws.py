@@ -6,7 +6,7 @@ import unittest
 from unittest import mock
 
 import aiohttp
-from aiohttp import errors, hdrs, helpers, ClientWebSocketResponse
+from aiohttp import ClientWebSocketResponse, errors, hdrs, helpers
 from aiohttp._ws_impl import WS_KEY
 
 

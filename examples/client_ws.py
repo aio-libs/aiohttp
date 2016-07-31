@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """websocket cmd client for wssrv.py example."""
 import argparse
+import asyncio
 import signal
 import sys
 
-import asyncio
+import aiohttp
+
 try:
     import selectors
 except ImportError:
     from asyncio import selectors
-
-import aiohttp
 
 
 def start_client(loop, url):

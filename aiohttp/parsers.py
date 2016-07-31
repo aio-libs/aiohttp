@@ -60,8 +60,9 @@ import asyncio
 import asyncio.streams
 import inspect
 import socket
+
 from . import errors
-from .streams import FlowControlDataQueue, EofStream
+from .streams import EofStream, FlowControlDataQueue
 
 __all__ = ('EofStream', 'StreamParser', 'StreamProtocol',
            'ParserBuffer', 'LinesParser', 'ChunksParser')

@@ -1,15 +1,13 @@
 """Tests for aiohttp/server.py"""
 
 import asyncio
-import pytest
 import socket
-
 from html import escape
 from unittest import mock
 
-from aiohttp import server
-from aiohttp import errors
-from aiohttp import helpers
+import pytest
+
+from aiohttp import errors, helpers, server
 
 
 @pytest.yield_fixture

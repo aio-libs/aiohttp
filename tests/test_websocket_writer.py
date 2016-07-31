@@ -1,7 +1,9 @@
-import pytest
 import random
-from aiohttp._ws_impl import WebSocketWriter
 from unittest import mock
+
+import pytest
+
+from aiohttp._ws_impl import WebSocketWriter
 
 
 @pytest.fixture

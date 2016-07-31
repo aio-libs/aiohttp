@@ -1,10 +1,11 @@
 """HTTP websocket server functional tests"""
 
 import asyncio
+
 import pytest
+
 import aiohttp
-from aiohttp import web
-from aiohttp import helpers
+from aiohttp import helpers, web
 
 
 @pytest.mark.run_loop

@@ -3,22 +3,16 @@ import functools
 import io
 import os
 import unittest
-from unittest import mock
 import zlib
+from unittest import mock
 
 import aiohttp.multipart
 from aiohttp import helpers
+from aiohttp.hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING,
+                          CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
 from aiohttp.helpers import parse_mimetype
-from aiohttp.hdrs import (
-    CONTENT_DISPOSITION,
-    CONTENT_ENCODING,
-    CONTENT_TRANSFER_ENCODING,
-    CONTENT_TYPE
-)
-from aiohttp.multipart import (
-    parse_content_disposition,
-    content_disposition_filename
-)
+from aiohttp.multipart import (content_disposition_filename,
+                               parse_content_disposition)
 
 
 def run_in_loop(f):

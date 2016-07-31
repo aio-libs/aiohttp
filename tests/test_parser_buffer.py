@@ -1,6 +1,8 @@
-import pytest
-from aiohttp import errors, parsers
 from unittest import mock
+
+import pytest
+
+from aiohttp import errors, parsers
 
 
 @pytest.fixture

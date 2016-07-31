@@ -1,20 +1,19 @@
 """HTTP client functional tests."""
 
+import asyncio
 import binascii
 import gc
-import io
-import os.path
-import json
 import http.cookies
-import asyncio
+import io
+import json
+import os.path
 import unittest
 from unittest import mock
 
 from multidict import MultiDict
 
 import aiohttp
-from aiohttp import client, helpers
-from aiohttp import test_utils
+from aiohttp import client, helpers, test_utils
 from aiohttp.multipart import MultipartWriter
 from aiohttp.test_utils import unused_port
 

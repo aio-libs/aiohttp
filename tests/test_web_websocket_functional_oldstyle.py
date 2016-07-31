@@ -3,12 +3,11 @@ import base64
 import hashlib
 import os
 import unittest
-from aiohttp.test_utils import unused_port
 
 import aiohttp
-from aiohttp import helpers, web, WSMsgType
-from aiohttp._ws_impl import (WebSocketParser, WebSocketWriter)
-
+from aiohttp import WSMsgType, helpers, web
+from aiohttp._ws_impl import WebSocketParser, WebSocketWriter
+from aiohttp.test_utils import unused_port
 
 WS_KEY = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 

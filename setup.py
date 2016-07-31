@@ -2,12 +2,12 @@ import codecs
 import os
 import re
 import sys
-from setuptools import setup, Extension
+from distutils.command.build_ext import build_ext
 from distutils.errors import (CCompilerError, DistutilsExecError,
                               DistutilsPlatformError)
-from distutils.command.build_ext import build_ext
-from setuptools.command.test import test as TestCommand
 
+from setuptools import Extension, setup
+from setuptools.command.test import test as TestCommand
 
 try:
     from Cython.Build import cythonize

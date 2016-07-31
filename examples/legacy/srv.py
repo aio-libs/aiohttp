@@ -2,17 +2,18 @@
 """Simple server written using an event loop."""
 
 import argparse
+import asyncio
 import logging
 import os
 import sys
+
+import aiohttp
+import aiohttp.server
+
 try:
     import ssl
 except ImportError:  # pragma: no cover
     ssl = None
-
-import asyncio
-import aiohttp
-import aiohttp.server
 
 
 class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):

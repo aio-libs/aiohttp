@@ -1,7 +1,8 @@
-import pytest
 from unittest import mock
 
-from multidict import MultiDict, CIMultiDict
+import pytest
+from multidict import CIMultiDict, MultiDict
+
 from aiohttp.protocol import HttpVersion
 from aiohttp.test_utils import make_mocked_request
 

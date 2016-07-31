@@ -5,3 +5,4 @@ ipython
 pyenchant
 sphinxcontrib-spelling
 sphinxcontrib-asyncio
+isort

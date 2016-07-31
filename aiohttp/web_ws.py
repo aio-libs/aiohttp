@@ -1,14 +1,14 @@
-import sys
 import asyncio
 import json
+import sys
 import warnings
 
-from . import hdrs, Timeout
-from .errors import HttpProcessingError, ClientDisconnectedError
-from ._ws_impl import (do_handshake, WSMessage, WebSocketError,
-                       WSMsgType, CLOSED_MESSAGE)
-from .web_exceptions import (
-    HTTPBadRequest, HTTPMethodNotAllowed, HTTPInternalServerError)
+from . import Timeout, hdrs
+from ._ws_impl import (CLOSED_MESSAGE, WebSocketError, WSMessage, WSMsgType,
+                       do_handshake)
+from .errors import ClientDisconnectedError, HttpProcessingError
+from .web_exceptions import (HTTPBadRequest, HTTPInternalServerError,
+                             HTTPMethodNotAllowed)
 from .web_reqrep import StreamResponse
 
 __all__ = ('WebSocketResponse',)

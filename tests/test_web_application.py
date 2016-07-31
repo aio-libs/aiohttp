@@ -1,8 +1,9 @@
 import asyncio
+from unittest import mock
+
 import pytest
 
-from aiohttp import web, log, helpers
-from unittest import mock
+from aiohttp import helpers, log, web
 
 
 def test_app_ctor(loop):

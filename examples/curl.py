@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-import aiohttp
-import sys
 import asyncio
+import sys
+
+import aiohttp
 
 
 def curl(url):

@@ -1,8 +1,10 @@
-import aiohttp
-import aiohttp.hdrs as h
 import io
 import json
+
 import pytest
+
+import aiohttp
+import aiohttp.hdrs as h
 
 
 class Stream(object):

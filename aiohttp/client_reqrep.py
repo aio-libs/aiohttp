@@ -10,20 +10,20 @@ import traceback
 import urllib.parse
 import warnings
 
+from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
+
+import aiohttp
+
+from . import hdrs, helpers, streams
+from .log import client_logger
+from .multipart import MultipartWriter
+from .protocol import HttpMessage
+from .streams import EOF_MARKER, FlowControlStreamReader
+
 try:
     import cchardet as chardet
 except ImportError:
     import chardet
-
-from multidict import (CIMultiDictProxy, MultiDictProxy, MultiDict,
-                       CIMultiDict)
-
-import aiohttp
-from . import hdrs, helpers, streams
-from .log import client_logger
-from .streams import EOF_MARKER, FlowControlStreamReader
-from .multipart import MultipartWriter
-from .protocol import HttpMessage
 
 
 __all__ = ('ClientRequest', 'ClientResponse')

@@ -4,8 +4,8 @@
 
 import asyncio
 import textwrap
-from aiohttp.web import Application, Response, StreamResponse, run_app
 
+from aiohttp.web import Application, Response, StreamResponse, run_app
 
 async def intro(request):
     txt = textwrap.dedent("""\

@@ -3,7 +3,6 @@ import sys
 from abc import ABC, abstractmethod
 from http.cookies import SimpleCookie
 
-
 PY_35 = sys.version_info >= (3, 5)
 
 

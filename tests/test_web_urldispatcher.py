@@ -1,15 +1,15 @@
-import pytest
+import asyncio
+import functools
 import os
 import shutil
 import tempfile
-import functools
-import asyncio
+
+import pytest
+
 import aiohttp.web
 from aiohttp.test_utils import make_mocked_request
-
-from aiohttp.web_urldispatcher import (SystemRoute, PlainRoute,
-                                       UrlDispatcher)
 from aiohttp.web import HTTPCreated, Response
+from aiohttp.web_urldispatcher import PlainRoute, SystemRoute, UrlDispatcher
 
 
 @pytest.fixture(scope='function')

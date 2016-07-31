@@ -1,7 +1,8 @@
+from unittest import mock
+
 import pytest
 
 from aiohttp import web
-from unittest import mock
 
 
 def test_repr(loop):

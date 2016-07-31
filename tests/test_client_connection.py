@@ -1,6 +1,8 @@
 import gc
-import pytest
 from unittest import mock
+
+import pytest
+
 from aiohttp.connector import Connection
 
 

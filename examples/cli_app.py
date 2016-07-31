@@ -12,8 +12,9 @@ needs (i.e. ``-H``, ``-P`` & ``entry-func``) and passes on any additional
 arguments to the `cli_app:init` function for processing.
 """
 
-from aiohttp.web import Application, Response
 from argparse import ArgumentParser
+
+from aiohttp.web import Application, Response
 
 
 def display_message(req):

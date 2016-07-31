@@ -5,10 +5,10 @@ import cProfile
 import gc
 import random
 import socket
-from statistics import stdev, mean, median
 import string
 import sys
-from multiprocessing import Process, set_start_method, Barrier
+from multiprocessing import Barrier, Process, set_start_method
+from statistics import mean, median, stdev
 
 import aiohttp
 

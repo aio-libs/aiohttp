@@ -1,11 +1,11 @@
 import asyncio
 from unittest import mock
+
 import pytest
-from aiohttp import CIMultiDict, helpers
-from aiohttp.web import (WebSocketResponse, HTTPMethodNotAllowed,
-                         HTTPBadRequest)
-from aiohttp import errors, signals, WSMessage, WSMsgType
-from aiohttp.test_utils import make_mocked_request, make_mocked_coro
+
+from aiohttp import CIMultiDict, WSMessage, WSMsgType, errors, helpers, signals
+from aiohttp.test_utils import make_mocked_coro, make_mocked_request
+from aiohttp.web import HTTPBadRequest, HTTPMethodNotAllowed, WebSocketResponse
 
 
 @pytest.fixture

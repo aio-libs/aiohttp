@@ -4,8 +4,9 @@
 
 import asyncio
 import os
-from aiohttp.web import (Application, Response, MsgType,
-                         WebSocketResponse, run_app)
+
+from aiohttp.web import (Application, MsgType, Response, WebSocketResponse,
+                         run_app)
 
 WS_FILE = os.path.join(os.path.dirname(__file__), 'websocket.html')
 

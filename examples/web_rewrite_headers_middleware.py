@@ -4,7 +4,8 @@ Example for rewriting response headers by middleware.
 """
 
 import asyncio
-from aiohttp.web import Application, Response, HTTPException
+
+from aiohttp.web import Application, HTTPException, Response
 
 
 @asyncio.coroutine

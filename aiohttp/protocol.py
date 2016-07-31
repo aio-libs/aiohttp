@@ -7,14 +7,16 @@ import re
 import string
 import sys
 import zlib
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 from wsgiref.handlers import format_date_time
+
 from multidict import CIMultiDict, istr
 
 import aiohttp
+
 from . import errors, hdrs
-from .log import internal_logger
 from .helpers import reify
+from .log import internal_logger
 
 __all__ = ('HttpMessage', 'Request', 'Response',
            'HttpVersion', 'HttpVersion10', 'HttpVersion11',

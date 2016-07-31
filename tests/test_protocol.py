@@ -1,8 +1,9 @@
 """Tests for aiohttp/protocol.py"""
 
-import pytest
-from unittest import mock
 import zlib
+from unittest import mock
+
+import pytest
 
 from aiohttp import hdrs, protocol
 

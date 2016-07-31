@@ -1,15 +1,16 @@
 import datetime
 import json
-import pytest
 import re
 from unittest import mock
+
+import pytest
 from multidict import CIMultiDict
+
 from aiohttp import hdrs, signals
-from aiohttp.web import (
-    ContentCoding, Request, StreamResponse, Response, json_response
-)
-from aiohttp.protocol import HttpVersion, HttpVersion11, HttpVersion10
-from aiohttp.protocol import RawRequestMessage
+from aiohttp.protocol import (HttpVersion, HttpVersion10, HttpVersion11,
+                              RawRequestMessage)
+from aiohttp.web import (ContentCoding, Request, Response, StreamResponse,
+                         json_response)
 
 
 def make_request(method, path, headers=CIMultiDict(),

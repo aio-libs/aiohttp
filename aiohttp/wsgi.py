@@ -15,7 +15,7 @@ import sys
 from urllib.parse import urlsplit
 
 import aiohttp
-from aiohttp import server, hdrs
+from aiohttp import hdrs, server
 
 __all__ = ('WSGIServerHttpProtocol',)
 

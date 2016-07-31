@@ -1,10 +1,11 @@
 import asyncio
+from collections.abc import Coroutine
+
 import pytest
 
 import aiohttp
 from aiohttp import web
 from aiohttp.client import _RequestContextManager
-from collections.abc import Coroutine
 
 
 @pytest.mark.run_loop

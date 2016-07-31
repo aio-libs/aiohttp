@@ -1,6 +1,5 @@
 import timeit
 
-
 setitem = """\
 dct[key] = 'new value'
 """

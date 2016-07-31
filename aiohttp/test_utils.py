@@ -1,14 +1,15 @@
 """Utilities shared by tests."""
 
+import asyncio
 import cgi
 import contextlib
-import gc
 import email.parser
 import functools
+import gc
 import http.server
+import io
 import json
 import logging
-import io
 import os
 import re
 import socket
@@ -16,20 +17,16 @@ import ssl
 import sys
 import threading
 import traceback
-import urllib.parse
 import unittest
+import urllib.parse
 from unittest import mock
 
-import asyncio
-import aiohttp
 from multidict import CIMultiDict
 
-from . import server
-from . import helpers
-from . import ClientSession
-from . import hdrs
-from .protocol import HttpVersion
-from .protocol import RawRequestMessage
+import aiohttp
+
+from . import ClientSession, hdrs, helpers, server
+from .protocol import HttpVersion, RawRequestMessage
 from .signals import Signal
 
 

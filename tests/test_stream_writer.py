@@ -1,8 +1,9 @@
-import pytest
 import socket
-from aiohttp.parsers import StreamWriter, CORK
 from unittest import mock
 
+import pytest
+
+from aiohttp.parsers import CORK, StreamWriter
 
 has_ipv6 = socket.has_ipv6
 if has_ipv6:

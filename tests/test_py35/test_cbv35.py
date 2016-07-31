@@ -1,8 +1,9 @@
+from unittest import mock
+
 import pytest
 
 from aiohttp import web
 from aiohttp.web_urldispatcher import View
-from unittest import mock
 
 
 @pytest.mark.run_loop

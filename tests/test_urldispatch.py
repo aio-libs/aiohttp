@@ -3,20 +3,17 @@ import os
 import pathlib
 import re
 import unittest
-from collections.abc import Sized, Container, Iterable, Mapping, MutableMapping
+from collections.abc import Container, Iterable, Mapping, MutableMapping, Sized
 from urllib.parse import unquote
+
 import aiohttp.web
 from aiohttp import hdrs
-from aiohttp.web import (UrlDispatcher, Response,
-                         HTTPMethodNotAllowed, HTTPNotFound)
-from aiohttp.web_urldispatcher import (_defaultExpectHandler,
-                                       DynamicRoute,
-                                       PlainRoute,
-                                       SystemRoute,
-                                       ResourceRoute,
-                                       AbstractResource,
-                                       View)
 from aiohttp.test_utils import make_mocked_request
+from aiohttp.web import (HTTPMethodNotAllowed, HTTPNotFound, Response,
+                         UrlDispatcher)
+from aiohttp.web_urldispatcher import (AbstractResource, DynamicRoute,
+                                       PlainRoute, ResourceRoute, SystemRoute,
+                                       View, _defaultExpectHandler)
 
 
 class TestUrlDispatcher(unittest.TestCase):

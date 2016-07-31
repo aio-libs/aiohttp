@@ -1,5 +1,6 @@
-import socket
 import asyncio
+import socket
+
 from .abc import AbstractResolver
 
 try:

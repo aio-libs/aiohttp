@@ -1,30 +1,24 @@
 import asyncio
-import binascii
 import base64
-import json
+import binascii
 import io
+import json
 import mimetypes
 import os
 import re
 import uuid
 import warnings
 import zlib
-from urllib.parse import quote, unquote, urlencode, parse_qsl
-from collections import deque, Mapping, Sequence
+from collections import Mapping, Sequence, deque
 from pathlib import Path
+from urllib.parse import parse_qsl, quote, unquote, urlencode
 
 from multidict import CIMultiDict
 
+from .hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING, CONTENT_LENGTH,
+                   CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
 from .helpers import parse_mimetype
 from .protocol import HttpParser
-from .hdrs import (
-    CONTENT_DISPOSITION,
-    CONTENT_ENCODING,
-    CONTENT_LENGTH,
-    CONTENT_TRANSFER_ENCODING,
-    CONTENT_TYPE
-)
-
 
 __all__ = ('MultipartReader', 'MultipartWriter',
            'BodyPartReader', 'BodyPartWriter',

@@ -1,16 +1,13 @@
 """Tests for http/wsgi.py"""
 
-import io
 import asyncio
+import io
 import socket
 import unittest
 from unittest import mock
 
 import aiohttp
-from aiohttp import multidict
-from aiohttp import wsgi
-from aiohttp import protocol
-from aiohttp import helpers
+from aiohttp import helpers, multidict, protocol, wsgi
 
 
 class TestHttpWsgiServerProtocol(unittest.TestCase):
