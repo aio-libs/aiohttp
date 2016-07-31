@@ -53,8 +53,8 @@ class MsgType(IntEnum):
     ping = 0x9
     pong = 0xa
     close = 0x8
-    closed = 20
-    error = 21
+    closed = 0x101
+    error = 0x102
 
 
 WS_KEY = b'258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
