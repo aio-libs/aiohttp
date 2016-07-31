@@ -231,7 +231,7 @@ class TestWebSocketClient(unittest.TestCase):
             aiohttp.ws_connect('http://test.org', loop=self.loop))
         self.assertFalse(resp.closed)
 
-        msg = aiohttp.Message(aiohttp.MsgType.close, b'', b'')
+        msg = aiohttp.WSMessage(aiohttp.MsgType.close, b'', b'')
         reader.read.return_value = helpers.create_future(self.loop)
         reader.read.return_value.set_result(msg)
 

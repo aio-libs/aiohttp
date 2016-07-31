@@ -5,7 +5,7 @@ import warnings
 
 from . import hdrs, Timeout
 from .errors import HttpProcessingError, ClientDisconnectedError
-from ._ws_impl import (do_handshake, Message, WebSocketError,
+from ._ws_impl import (do_handshake, WSMessage, WebSocketError,
                        WSMsgType, CLOSED_MESSAGE)
 from .web_exceptions import (
     HTTPBadRequest, HTTPMethodNotAllowed, HTTPInternalServerError)
@@ -229,17 +229,17 @@ class WebSocketResponse(StreamResponse):
                 except WebSocketError as exc:
                     self._close_code = exc.code
                     yield from self.close(code=exc.code)
-                    return Message(WSMsgType.error, exc, None)
+                    return WSMessage(WSMsgType.error, exc, None)
                 except ClientDisconnectedError:
                     self._closed = True
                     self._close_code = 1006
-                    return Message(WSMsgType.close, None, None)
+                    return WSMessage(WSMsgType.close, None, None)
                 except Exception as exc:
                     self._exception = exc
                     self._closing = True
                     self._close_code = 1006
                     yield from self.close()
-                    return Message(WSMsgType.error, exc, None)
+                    return WSMessage(WSMsgType.error, exc, None)
 
                 if msg.tp == WSMsgType.close:
                     self._closing = True

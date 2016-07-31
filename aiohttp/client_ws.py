@@ -5,7 +5,7 @@ import asyncio
 import sys
 import json
 
-from ._ws_impl import Message, WebSocketError, WSMsgType, CLOSED_MESSAGE
+from ._ws_impl import WSMessage, WebSocketError, WSMsgType, CLOSED_MESSAGE
 
 PY_35 = sys.version_info >= (3, 5)
 
@@ -132,13 +132,13 @@ class ClientWebSocketResponse:
                 except WebSocketError as exc:
                     self._close_code = exc.code
                     yield from self.close(code=exc.code)
-                    return Message(WSMsgType.error, exc, None)
+                    return WSMessage(WSMsgType.error, exc, None)
                 except Exception as exc:
                     self._exception = exc
                     self._closing = True
                     self._close_code = 1006
                     yield from self.close()
-                    return Message(WSMsgType.error, exc, None)
+                    return WSMessage(WSMsgType.error, exc, None)
 
                 if msg.tp == WSMsgType.close:
                     self._closing = True
