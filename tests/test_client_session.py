@@ -363,7 +363,9 @@ def test_reraise_os_error(create_session):
     assert e.strerror == err.strerror
 
 
+@pytest.mark.run_loop
 def test_request_ctx_manager_props(loop):
+    yield from asyncio.sleep(0, loop=loop)  # to make it a task
     with aiohttp.ClientSession(loop=loop) as client:
         ctx_mgr = client.get('http://example.com')
 
