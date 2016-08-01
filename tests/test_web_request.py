@@ -4,8 +4,8 @@ import pytest
 from multidict import CIMultiDict, MultiDict
 
 from aiohttp.protocol import HttpVersion
-from aiohttp.web import Application
 from aiohttp.test_utils import make_mocked_request
+from aiohttp.web import Application
 
 
 @pytest.fixture
@@ -100,9 +100,9 @@ def test_urlencoded_querystring(make_request):
     assert {'text': 'текст'} == req.GET
 
 
-def test_named_url_plain(make_request):
+def test_named_url_plain(make_request, loop):
     from aiohttp.web import Application
-    app = Application()
+    app = Application(loop=loop)
     app.router.add_get('/hello', lambda r: 'hello', name='hello')
     req = make_request('GET', '/', app=app)
 
@@ -111,8 +111,8 @@ def test_named_url_plain(make_request):
         req.named_url('incorrect')
 
 
-def test_named_url_dynamic(make_request):
-    app = Application()
+def test_named_url_dynamic(make_request, loop):
+    app = Application(loop=loop)
     app.router.add_get('/hello/{user}', lambda r: 'hello', name='hello')
     req = make_request('GET', '/', app=app)
 
