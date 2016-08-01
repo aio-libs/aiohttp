@@ -1,3 +1,3 @@
-.. include:: ../CHANGES.txt
+.. include:: ../CHANGES.rst
 
 .. include:: ../HISTORY.rst
