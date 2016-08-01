@@ -278,6 +278,14 @@ class Application(dict):
     def copy(self):
         raise NotImplementedError
 
+    def named_url(self, name, **kwargs):
+        try:
+            route = self.router[name]
+        except KeyError:
+            raise ValueError("There is no route named '{}'.".format(name))
+        else:
+            return route.url(**kwargs)
+
     def __call__(self):
         """gunicorn compatibility"""
         return self

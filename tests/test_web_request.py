@@ -4,6 +4,7 @@ import pytest
 from multidict import CIMultiDict, MultiDict
 
 from aiohttp.protocol import HttpVersion
+from aiohttp.web import Application
 from aiohttp.test_utils import make_mocked_request
 
 
@@ -97,6 +98,25 @@ def test_urlencoded_querystring(make_request):
     req = make_request('GET',
                        '/yandsearch?text=%D1%82%D0%B5%D0%BA%D1%81%D1%82')
     assert {'text': 'текст'} == req.GET
+
+
+def test_named_url_plain(make_request):
+    from aiohttp.web import Application
+    app = Application()
+    app.router.add_get('/hello', lambda r: 'hello', name='hello')
+    req = make_request('GET', '/', app=app)
+
+    assert req.named_url('hello') == '/hello'
+    with pytest.raises(ValueError):
+        req.named_url('incorrect')
+
+
+def test_named_url_dynamic(make_request):
+    app = Application()
+    app.router.add_get('/hello/{user}', lambda r: 'hello', name='hello')
+    req = make_request('GET', '/', app=app)
+
+    assert req.named_url('hello', parts={'user': 'Joe'}) == '/hello/Joe'
 
 
 def test_non_ascii_path(make_request):
