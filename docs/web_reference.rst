@@ -844,7 +844,7 @@ WebSocketResponse
 
       :raise ValueError: if data is not serializable object
 
-      :raise TypeError: if value returned by :term:`dumps` is not :class:`str`
+      :raise TypeError: if value returned by `dumps` param is not :class:`str`
 
    .. coroutinemethod:: close(*, code=1000, message=b'')
 
@@ -932,7 +932,7 @@ json_response
                             dumps=json.dumps)
 
 Return :class:`Response` with predefined ``'application/json'``
-content type and *data* encoded by *dumps* parameter
+content type and *data* encoded by `dumps` parameter
 (:func:`json.dumps` by default).
 
 
