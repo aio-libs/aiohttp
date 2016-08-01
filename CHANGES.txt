@@ -51,6 +51,8 @@ CHANGES
 
 - Remove deprecated decode param from resp.read(decode=True)
 
+- Use 5min default client timeout #1028
+
 0.22.3 (07-26-2016)
 -------------------
 
