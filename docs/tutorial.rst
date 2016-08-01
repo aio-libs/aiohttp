@@ -231,7 +231,7 @@ Any web site has static files: images, JavaScript sources, CSS files etc.
 The best way to handle static in production is setting up reverse
 proxy like NGINX or using CDN services.
 
-But for development handling static files by aiohttp server is very convinient.
+But for development handling static files by aiohttp server is very convenient.
 
 Fortunatelly it can be done easy by single call::
 
