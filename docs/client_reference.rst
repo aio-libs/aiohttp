@@ -144,7 +144,8 @@ The client session supports the context manager protocol for self closing.
                          version=HttpVersion(major=1, minor=1),\
                          compress=None, chunked=None, expect100=False,\
                          read_until_eof=True,\
-                         proxy=None, proxy_auth=None)
+                         proxy=None, proxy_auth=None,\
+                         timeout=5*60)
       :async-with:
       :coroutine:
 
@@ -215,12 +216,18 @@ The client session supports the context manager protocol for self closing.
       :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
                                            Basic Authorization (optional)
 
+      :param int timeout: a timeout for IO operations, 5min by default.
+
+                          Use ``None`` or ``0`` to disable timeout checks.
+
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
       .. versionadded:: 1.0
 
-         Added :attr:`proxy` and :attr:`proxy_auth` parameters.
+         Added ``proxy`` and ``proxy_auth`` parameters.
+
+         Added ``timeout`` parameter.
 
    .. comethod:: get(url, *, allow_redirects=True, **kwargs)
       :async-with:

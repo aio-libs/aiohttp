@@ -663,12 +663,21 @@ multiple writer tasks which can only send data asynchronously (by
 Timeouts
 --------
 
+By default all IO operations have 5min timeout. The timeout may be
+overridden by passing ``timeout`` parameter into
+:class:`ClientSession.get` and family::
+
+    aync with session.get(.get('https://github.com', timeout=60) as r:
+        ...
+
+``None`` or ``0`` disables timeout check.
+
 The example wraps a client call in :class:`Timeout` context
 manager, adding timeout for both connecting and response body
 reading procedures::
 
     with aiohttp.Timeout(0.001):
-        async with aiohttp.get('https://github.com') as r:
+        async with session.get('https://github.com') as r:
             await r.text()
 
 
