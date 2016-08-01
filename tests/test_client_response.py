@@ -244,11 +244,11 @@ class TestClientResponse(unittest.TestCase):
 
     def test_override_flow_control(self):
         class MyResponse(ClientResponse):
-            flow_control_class = aiohttp.FlowControlDataQueue
+            flow_control_class = aiohttp.StreamReader
         response = MyResponse('get', 'http://my-cl-resp.org')
         response._post_init(self.loop)
         response._setup_connection(self.connection)
-        self.assertIsInstance(response.content, aiohttp.FlowControlDataQueue)
+        self.assertIsInstance(response.content, aiohttp.StreamReader)
         response.close()
 
     @mock.patch('aiohttp.client_reqrep.chardet')
