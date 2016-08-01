@@ -851,6 +851,11 @@ WebSocketResponse
       A :ref:`coroutine<coroutine>` that initiates closing
       handshake by sending :const:`~aiohttp.WSMsgType.close` message.
 
+      .. note::
+
+         Can only be called by the request handling task. To programmatically
+         close websocket server side see the :ref:`FAQ section <aiohttp_faq_terminating_websockets>`.
+
       :param int code: closing code
 
       :param message: optional payload of *pong* message,
@@ -876,6 +881,10 @@ WebSocketResponse
       :exc:`~aiohttp.errors.WSClientDisconnectedError` with
       connection closing data.
 
+      .. note::
+
+         Can only be called by the request handling task.
+
       :return: :class:`~aiohttp.WSMessage`
 
       :raise RuntimeError: if connection is not started
@@ -888,6 +897,10 @@ WebSocketResponse
       also asserts the message type is
       :const:`~aiohttp.WSMsgType.text`.
 
+      .. note::
+
+         Can only be called by the request handling task.
+
       :return str: peer's message content.
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.binary`.
@@ -898,6 +911,10 @@ WebSocketResponse
       also asserts the message type is
       :const:`~aiohttp.WSMsgType.binary`.
 
+      .. note::
+
+         Can only be called by the request handling task.
+
       :return bytes: peer's message content.
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.text`.
@@ -906,6 +923,10 @@ WebSocketResponse
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive_str` and loads the
       JSON string to a Python dict.
+
+      .. note::
+
+         Can only be called by the request handling task.
 
       :param callable loads: any :term:`callable` that accepts
                               :class:`str` and returns :class:`dict`
