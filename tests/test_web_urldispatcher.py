@@ -50,7 +50,6 @@ def test_access_root_of_static_handler(tmp_dir_path, create_app_and_client,
     app.router.add_static('/', tmp_dir_path, show_index=show_index)
 
     # Request the root of the static directory.
-    # Expect an 403 error page.
     r = yield from client.get('/')
     assert r.status == status
     # data = (yield from r.read())
