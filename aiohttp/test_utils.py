@@ -472,14 +472,28 @@ class AioHTTPTestCase(unittest.TestCase):
         """
         pass
 
-    def setUp(self):
-        self.loop = setup_test_loop()
-        self.app = self.get_app(self.loop)
-        self.client = TestClient(self.app)
+    @classmethod
+    def setUpClass(cls):
+        super(AioHTTPTestCase, cls).setUpClass()
 
-    def tearDown(self):
-        del self.client
-        teardown_test_loop(self.loop)
+        def setup_decorator(method):
+            def decorated(self, *args, **kwargs):
+                self.loop = setup_test_loop()
+                self.app = self.get_app(self.loop)
+                self.client = TestClient(self.app)
+                return method(self, *args, **kwargs)
+            return decorated
+
+        def teardown_decorator(method):
+            def decorated(self, *args, **kwargs):
+                result = method(self, *args, **kwargs)
+                del self.client
+                teardown_test_loop(self.loop)
+                return result
+            return decorated
+
+        cls.setUp = setup_decorator(cls.setUp)
+        cls.tearDown = teardown_decorator(cls.tearDown)
 
 
 def unittest_run_loop(func):
