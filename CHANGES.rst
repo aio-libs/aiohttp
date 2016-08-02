@@ -53,6 +53,8 @@ CHANGES
 
 - Use 5min default client timeout #1028
 
+- Relax HTTP method validation in UrlDispatcher #1037
+
 0.22.3 (07-26-2016)
 -------------------
 
