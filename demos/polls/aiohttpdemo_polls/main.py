@@ -2,9 +2,9 @@ import asyncio
 import logging
 import pathlib
 
-import aiohttp_jinja2
 import jinja2
 
+import aiohttp_jinja2
 from aiohttp import web
 from aiohttpdemo_polls.db import init_postgres
 from aiohttpdemo_polls.middlewares import setup_middlewares
