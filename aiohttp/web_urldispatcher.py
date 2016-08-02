@@ -78,7 +78,7 @@ class AbstractRoute(abc.ABC):
             'Coroutine is expected, got {!r}'.format(expect_handler)
 
         method = method.upper()
-        if not self.validate_method(method):
+        if not HTTP_METHOD_RE.match(method):
             raise ValueError("{} is not allowed HTTP method".format(method))
 
         assert callable(handler), handler
@@ -104,9 +104,6 @@ class AbstractRoute(abc.ABC):
         self._handler = handler
         self._expect_handler = expect_handler
         self._resource = resource
-
-    def validate_method(self, method):
-        return HTTP_METHOD_RE.match(method)
 
     @property
     def method(self):
