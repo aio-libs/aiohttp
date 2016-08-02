@@ -30,6 +30,9 @@ __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
 PY_35 = sys.version_info >= (3, 5)
 
 
+HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
+
+
 class AbstractResource(Sized, Iterable):
 
     def __init__(self, *, name=None):
@@ -63,7 +66,6 @@ class AbstractResource(Sized, Iterable):
 
 
 class AbstractRoute(abc.ABC):
-    METHODS = hdrs.METH_ALL | {hdrs.METH_ANY}
 
     def __init__(self, method, handler, *,
                  expect_handler=None,
@@ -76,7 +78,7 @@ class AbstractRoute(abc.ABC):
             'Coroutine is expected, got {!r}'.format(expect_handler)
 
         method = method.upper()
-        if method not in self.METHODS:
+        if not self.validate_method(method):
             raise ValueError("{} is not allowed HTTP method".format(method))
 
         assert callable(handler), handler
@@ -102,6 +104,9 @@ class AbstractRoute(abc.ABC):
         self._handler = handler
         self._expect_handler = expect_handler
         self._resource = resource
+
+    def validate_method(self, method):
+        return HTTP_METHOD_RE.match(method)
 
     @property
     def method(self):
