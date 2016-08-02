@@ -55,6 +55,11 @@ CHANGES
 
 - Relax HTTP method validation in UrlDispatcher #1037
 
+0.22.5 (08-02-2016)
+-------------------
+
+- Pin miltidict version to >=1.2.2
+
 0.22.3 (07-26-2016)
 -------------------
 
