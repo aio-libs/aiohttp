@@ -80,6 +80,35 @@ def test_test_client_close_is_idempotent():
     client.close()
 
 
+def test_setup_and_teardown_for_aiohttp_test_case():
+    class TestSetupAndTearDown(AioHTTPTestCase):
+        setup_run = False
+        teardown_run = False
+
+        def get_app(self, loop):
+            return _create_example_app(loop)
+
+        def setUp(self):
+            self.setup_run = True
+
+        def tearDown(self):
+            self.teardown_run = True
+    TestSetupAndTearDown.setUpClass()
+    testcase = TestSetupAndTearDown()
+    assert not testcase.setup_run
+    assert not testcase.teardown_run
+    assert not hasattr(testcase, 'client')
+    testcase.setUp()
+    print(dir(testcase))
+    assert hasattr(testcase, 'client')
+    assert testcase.setup_run
+    assert not testcase.teardown_run
+    testcase.tearDown()
+    assert not hasattr(testcase, 'client')
+    assert testcase.setup_run
+    assert testcase.teardown_run
+
+
 class TestAioHTTPTestCase(AioHTTPTestCase):
 
     def get_app(self, loop):
