@@ -687,14 +687,20 @@ class StreamResponse(HeadersMixin):
                     self._do_start_compression(coding)
                     return
 
+    def _assign_current_task(self):
+        self._task = asyncio.Task.current_task()
+
+        def cleanup_task(f, self=self):
+            self._task = None
+
+        self._task.add_done_callback(cleanup_task)
+
     def start(self, request):
         warnings.warn('use .prepare(request) instead', DeprecationWarning)
         resp_impl = self._start_pre_check(request)
         if resp_impl is not None:
             return resp_impl
-
-        self._task = asyncio.Task.current_task()
-
+        self._assign_current_task()
         return self._start(request)
 
     @asyncio.coroutine
@@ -703,7 +709,7 @@ class StreamResponse(HeadersMixin):
         if resp_impl is not None:
             return resp_impl
 
-        self._task = asyncio.Task.current_task()
+        self._assign_current_task()
         yield from request.app.on_response_prepare.send(request, self)
 
         return self._start(request)
