@@ -24,12 +24,14 @@ Features
 Library Installation
 --------------------
 
-::
+.. code-block:: bash
 
    $ pip install aiohttp
 
 You may want to install *optional* :term:`cchardet` library as faster
-replacement for :term:`chardet`::
+replacement for :term:`chardet`:
+
+.. code-block:: bash
 
    $ pip install cchardet
 
@@ -114,7 +116,9 @@ Dependencies
 - *Optional* :term:`cchardet` library as faster replacement for
   :term:`chardet`.
 
-  Install it explicitly via::
+  Install it explicitly via:
+
+  .. code-block:: bash
 
      $ pip install cchardet
 

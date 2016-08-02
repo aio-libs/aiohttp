@@ -56,6 +56,24 @@ class TestUrlDispatcher(unittest.TestCase):
                            '/handler/to/path')
         self.router.register_route(route)
 
+    def test_register_uncommon_http_methods(self):
+        handler = self.make_handler()
+
+        uncommon_http_methods = {
+            'PROPFIND',
+            'PROPPATCH',
+            'COPY',
+            'LOCK',
+            'UNLOCK'
+            'MOVE',
+            'SUBSCRIBE',
+            'UNSUBSCRIBE',
+            'NOTIFY'
+        }
+
+        for method in uncommon_http_methods:
+            PlainRoute(method, handler, 'url', '/handler/to/path')
+
     def test_add_route_root(self):
         handler = self.make_handler()
         self.router.add_route('GET', '/', handler)
@@ -585,9 +603,20 @@ class TestUrlDispatcher(unittest.TestCase):
             self.router.add_route('GET', 'invalid_path', handler)
 
     def test_add_route_invalid_method(self):
-        with self.assertRaises(ValueError):
-            handler = self.make_handler()
-            self.router.add_route('INVALID_METHOD', '/path', handler)
+
+        sample_bad_methods = {
+            'BAD METHOD',
+            'B@D_METHOD',
+            '[BAD_METHOD]',
+            '{BAD_METHOD}',
+            '(BAD_METHOD)',
+            'B?D_METHOD',
+        }
+
+        for bad_method in sample_bad_methods:
+            with self.assertRaises(ValueError):
+                handler = self.make_handler()
+                self.router.add_route(bad_method, '/path', handler)
 
     def fill_routes(self):
         route1 = self.router.add_route('GET', '/plain', self.make_handler())
