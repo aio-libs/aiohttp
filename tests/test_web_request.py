@@ -3,9 +3,9 @@ from unittest import mock
 import pytest
 from multidict import CIMultiDict, MultiDict
 
+from aiohttp import web
 from aiohttp.protocol import HttpVersion
 from aiohttp.test_utils import make_mocked_request
-from aiohttp.web import Application
 
 
 @pytest.fixture
@@ -101,22 +101,21 @@ def test_urlencoded_querystring(make_request):
 
 
 def test_named_url_plain(make_request, loop):
-    from aiohttp.web import Application
-    app = Application(loop=loop)
+    app = web.Application(loop=loop)
     app.router.add_get('/hello', lambda r: 'hello', name='hello')
     req = make_request('GET', '/', app=app)
 
-    assert req.named_url('hello') == '/hello'
+    assert web.named_url(req, 'hello') == '/hello'
     with pytest.raises(ValueError):
-        req.named_url('incorrect')
+        web.named_url(req, 'incorrect')
 
 
 def test_named_url_dynamic(make_request, loop):
-    app = Application(loop=loop)
+    app = web.Application(loop=loop)
     app.router.add_get('/hello/{user}', lambda r: 'hello', name='hello')
     req = make_request('GET', '/', app=app)
 
-    assert req.named_url('hello', parts={'user': 'Joe'}) == '/hello/Joe'
+    assert web.named_url(req, 'hello', parts={'user': 'Joe'}) == '/hello/Joe'
 
 
 def test_non_ascii_path(make_request):

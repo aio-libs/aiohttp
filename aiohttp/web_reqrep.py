@@ -387,9 +387,6 @@ class Request(dict, HeadersMixin):
     def copy(self):
         raise NotImplementedError
 
-    def named_url(self, name, **kwargs):
-        return self.app.named_url(name, **kwargs)
-
     def __repr__(self):
         ascii_encodable_path = self.path.encode('ascii', 'backslashreplace') \
             .decode('ascii')

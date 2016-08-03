@@ -278,14 +278,6 @@ class Application(dict):
     def copy(self):
         raise NotImplementedError
 
-    def named_url(self, name, **kwargs):
-        try:
-            route = self.router[name]
-        except KeyError:
-            raise ValueError("There is no route named '{}'.".format(name))
-        else:
-            return route.url(**kwargs)
-
     def __call__(self):
         """gunicorn compatibility"""
         return self
@@ -328,6 +320,24 @@ def run_app(app, *, host='0.0.0.0', port=None,
         loop.run_until_complete(app.cleanup())
     loop.close()
 
+
+############################################################
+# Helper functions
+############################################################
+
+def named_url(app_or_request, name, **kwargs):
+    app = getattr(app_or_request, 'app', app_or_request)
+    try:
+        route = app.router[name]
+    except KeyError:
+        raise ValueError("There is no route named '{}'.".format(name))
+    else:
+        return route.url(**kwargs)
+
+
+############################################################
+# Main runner function
+############################################################
 
 def main(argv):
     arg_parser = ArgumentParser(

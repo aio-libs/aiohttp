@@ -89,16 +89,16 @@ def test_named_url_plain(loop):
     app = web.Application(loop=loop)
     app.router.add_get('/hello', lambda r: 'hello', name='hello')
 
-    assert app.named_url('hello') == '/hello'
+    assert web.named_url(app, 'hello') == '/hello'
     with pytest.raises(ValueError):
-        app.named_url('incorrect')
+        web.named_url(app, 'incorrect')
 
 
 def test_named_url_dynamic(loop):
     app = web.Application(loop=loop)
     app.router.add_get('/hello/{user}', lambda r: 'hello', name='hello')
 
-    assert app.named_url('hello', parts={'user': 'Joe'}) == '/hello/Joe'
+    assert web.named_url(app, 'hello', parts={'user': 'Joe'}) == '/hello/Joe'
 
 
 @pytest.mark.run_loop
