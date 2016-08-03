@@ -286,6 +286,24 @@ class Application(dict):
         return "<Application>"
 
 
+############################################################
+# Helper functions
+############################################################
+
+def named_url(app_or_request, name, **kwargs):
+    app = getattr(app_or_request, 'app', app_or_request)
+    try:
+        route = app.router[name]
+    except KeyError:
+        raise ValueError("There is no route named '{}'.".format(name))
+    else:
+        return route.url(**kwargs)
+
+
+############################################################
+# Main runner functions
+############################################################
+
 def run_app(app, *, host='0.0.0.0', port=None,
             shutdown_timeout=60.0, ssl_context=None,
             print=print, backlog=128):
@@ -320,24 +338,6 @@ def run_app(app, *, host='0.0.0.0', port=None,
         loop.run_until_complete(app.cleanup())
     loop.close()
 
-
-############################################################
-# Helper functions
-############################################################
-
-def named_url(app_or_request, name, **kwargs):
-    app = getattr(app_or_request, 'app', app_or_request)
-    try:
-        route = app.router[name]
-    except KeyError:
-        raise ValueError("There is no route named '{}'.".format(name))
-    else:
-        return route.url(**kwargs)
-
-
-############################################################
-# Main runner function
-############################################################
 
 def main(argv):
     arg_parser = ArgumentParser(
