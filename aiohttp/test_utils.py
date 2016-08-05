@@ -47,13 +47,9 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
     class HttpRequestHandler:
 
         def __init__(self, addr):
-            if isinstance(addr, tuple):
-                host, port = addr
-                self.host = host
-                self.port = port
-            else:
-                self.host = host = 'localhost'
-                self.port = port = 0
+            host, port = addr
+            self.host = host
+            self.port = port
             self.address = addr
             self._url = '{}://{}:{}'.format(
                 'https' if use_ssl else 'http', host, port)
@@ -84,22 +80,11 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
                     self.transport.write(b'HTTP/1.0 100 Continue\r\n\r\n')
                     break
 
-            if router is not None:
-                body = yield from payload.read()
+            body = yield from payload.read()
 
-                rob = router(
-                    self, properties, self.transport, message, body)
-                rob.dispatch()
-
-            else:
-                response = aiohttp.Response(self.writer, 200, message.version)
-
-                text = b'Test message'
-                response.add_header('Content-type', 'text/plain')
-                response.add_header('Content-length', str(len(text)))
-                response.send_headers()
-                response.write(text)
-                response.write_eof()
+            rob = router(
+                self, properties, self.transport, message, body)
+            rob.dispatch()
 
     if use_ssl:
         here = os.path.join(os.path.dirname(__file__), '..', 'tests')
@@ -114,19 +99,10 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
         thread_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(thread_loop)
 
-        if isinstance(listen_addr, tuple):
-            host, port = listen_addr
-            server_coroutine = thread_loop.create_server(
-                lambda: TestHttpServer(keep_alive=0.5),
-                host, port, ssl=sslcontext)
-        else:
-            try:
-                os.unlink(listen_addr)
-            except FileNotFoundError:
-                pass
-            server_coroutine = thread_loop.create_unix_server(
-                lambda: TestHttpServer(keep_alive=0.5, timeout=15),
-                listen_addr, ssl=sslcontext)
+        host, port = listen_addr
+        server_coroutine = thread_loop.create_server(
+            lambda: TestHttpServer(keep_alive=0.5),
+            host, port, ssl=sslcontext)
         server = thread_loop.run_until_complete(server_coroutine)
 
         waiter = helpers.create_future(thread_loop)
@@ -470,7 +446,7 @@ class AioHTTPTestCase(unittest.TestCase):
         :param loop: the event_loop to use
         :type loop: asyncio.BaseEventLoop
         """
-        pass
+        pass  # pragma: no cover
 
     def setUp(self):
         self.loop = setup_test_loop()
