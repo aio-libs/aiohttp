@@ -403,7 +403,7 @@ def test_additional_headers(create_app_and_client, loop):
 
 
 @pytest.mark.run_loop
-def test_send_recv_protocol_error(create_app_and_client):
+def test_recv_protocol_error(create_app_and_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -425,4 +425,31 @@ def test_send_recv_protocol_error(create_app_and_client):
     assert type(msg.data) is aiohttp.WebSocketError
     assert msg.data.args[0] == 'Received frame with non-zero reserved bits'
     assert msg.extra is None
+    yield from resp.close()
+
+
+@pytest.mark.run_loop
+def test_recv_timeout(create_app_and_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        yield from ws.receive_str()
+
+        yield from asyncio.sleep(0.1, loop=request.app.loop)
+
+        yield from ws.close()
+        return ws
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/')
+    resp.send_str('ask')
+
+    with pytest.raises(asyncio.TimeoutError):
+        with aiohttp.Timeout(0.01, loop=app.loop):
+            yield from resp.receive()
+
     yield from resp.close()
