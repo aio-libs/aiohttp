@@ -498,11 +498,7 @@ def teardown_test_loop(loop):
     :param loop: the loop to teardown
     :type loop: asyncio.BaseEventLoop
     """
-    is_closed = getattr(loop, 'is_closed')
-    if is_closed is not None:
-        closed = is_closed()
-    else:
-        closed = loop._closed
+    closed = loop.is_closed()
     if not closed:
         loop.call_soon(loop.stop)
         loop.run_forever()
