@@ -40,20 +40,21 @@ Getting Started
 
 Client example::
 
-    import asyncio
     import aiohttp
+    import asyncio
 
-    async def fetch_page(session, url):
+    async def fetch(session, url):
         with aiohttp.Timeout(10):
             async with session.get(url) as response:
-                assert response.status == 200
-                return await response.read()
+                return await response.text()
+
+    async def main(loop):
+        async with aiohttp.ClientSession(loop=loop) as session:
+            html = await fetch(session, 'http://python.org')
+            print(html)
 
     loop = asyncio.get_event_loop()
-    with aiohttp.ClientSession(loop=loop) as session:
-        content = loop.run_until_complete(
-            fetch_page(session, 'http://python.org'))
-        print(content)
+    loop.run_until_complete(main(loop))
 
 Server example::
 

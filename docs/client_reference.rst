@@ -29,9 +29,14 @@ Usage example::
              assert resp.status == 200
              return await resp.text()
 
-     with aiohttp.ClientSession() as client:
-         html = asyncio.get_event_loop().run_until_complete(fetch(client))
-         print(html)
+     async def main(loop):
+         async with aiohttp.ClientSession(loop=loop) as client:
+             html = await fetch(client)
+             print(html)
+
+     loop = asyncio.get_event_loop()
+     loop.run_until_complete(main(loop))
+
 
 .. versionadded:: 0.17
 
