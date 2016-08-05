@@ -44,6 +44,7 @@ def test_async_resolver_positive_lookup(loop):
         resolver = AsyncResolver(loop=loop)
         real = yield from resolver.resolve('www.python.org')
         ipaddress.ip_address(real[0]['host'])
+        mock_query.assert_called_with('www.python.org', 'A')
 
 
 @pytest.mark.skipif(aiodns is None, reason="aiodns required")
@@ -93,3 +94,47 @@ def test_default_negative_lookup(loop):
     resolver = DefaultResolver(loop=loop)
     with pytest.raises(socket.gaierror):
         yield from resolver.resolve('doesnotexist.bla')
+
+
+@pytest.mark.run_loop
+def test_close_for_default_resolver(loop):
+    resolver = DefaultResolver(loop=loop)
+    yield from resolver.close()
+
+
+@pytest.mark.skipif(aiodns is None, reason="aiodns required")
+@pytest.mark.run_loop
+def test_close_for_async_resolver(loop):
+    resolver = AsyncResolver(loop=loop)
+    yield from resolver.close()
+
+
+def test_default_loop_for_default_resolver(loop):
+    asyncio.set_event_loop(loop)
+    resolver = DefaultResolver()
+    assert resolver._loop is loop
+
+
+@pytest.mark.skipif(aiodns is None, reason="aiodns required")
+def test_default_loop_for_async_resolver(loop):
+    asyncio.set_event_loop(loop)
+    resolver = AsyncResolver()
+    assert resolver._loop is loop
+
+
+@pytest.mark.skipif(aiodns is None, reason="aiodns required")
+@pytest.mark.run_loop
+def test_async_resolver_ipv6_positive_lookup(loop):
+    with patch('aiodns.DNSResolver.query') as mock_query:
+        mock_query.return_value = fake_result(['::1'])
+        resolver = AsyncResolver(loop=loop)
+        real = yield from resolver.resolve('www.python.org',
+                                           family=socket.AF_INET6)
+        ipaddress.ip_address(real[0]['host'])
+        mock_query.assert_called_with('www.python.org', 'AAAA')
+
+
+def test_async_resolver_aiodns_not_present(loop, monkeypatch):
+    monkeypatch.setattr("aiohttp.resolver.aiodns", None)
+    with pytest.raises(RuntimeError):
+        AsyncResolver(loop=loop)
