@@ -552,8 +552,8 @@ if not PY_35:
     try:
         from asyncio import coroutines
         coroutines._COROUTINE_TYPES += (_BaseRequestContextManager,)
-    except:
-        pass
+    except:  # pragma: no cover
+        pass  # Python 3.4.2 and 3.4.3 has no coroutines._COROUTINE_TYPES
 
 
 class _RequestContextManager(_BaseRequestContextManager):
