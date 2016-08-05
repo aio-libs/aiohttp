@@ -196,8 +196,6 @@ class Application(dict):
         self._loop = loop
         self.logger = logger
 
-        for factory in middlewares:
-            assert asyncio.iscoroutinefunction(factory), factory
         self._middlewares = list(middlewares)
 
         self._on_pre_signal = PreSignal()
