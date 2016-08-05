@@ -36,7 +36,14 @@ script:
   - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
         flake8 examples tests;
     fi
-  - py.test --cov=aiohttp tests
+
+  # PYTHONASYNCIODEBUG and AIOHTTP_NO_EXTENSIONS environment variables
+  # are considered as enabled if they are any non empty strings.
+  - PYTHONASYNCIODEBUG=X AIOHTTP_NO_EXTENSIONS=X py.test --cov=aiohttp tests 
+  - PYTHONASYNCIODEBUG=X py.test --cov=aiohttp tests --cov-append 
+  - AIOHTTP_NO_EXTENSIONS=X py.test --cov=aiohttp tests --cov-append 
+  - py.test --cov=aiohttp tests --cov-append 
+
   - python setup.py check -rm
   - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
         python setup.py check -s;
@@ -46,15 +53,6 @@ after_success:
   - codecov
   - coveralls
   - ./run_docker.sh
-
-env:
-  matrix:
-    # PYTHONASYNCIODEBUG and AIOHTTP_NO_EXTENSIONS environment variables
-    # are considered as enabled if they are any non empty strings.
-    - PYTHONASYNCIODEBUG=X AIOHTTP_NO_EXTENSIONS=
-    - PYTHONASYNCIODEBUG=  AIOHTTP_NO_EXTENSIONS=
-    - PYTHONASYNCIODEBUG=X AIOHTTP_NO_EXTENSIONS=X
-    - PYTHONASYNCIODEBUG=  AIOHTTP_NO_EXTENSIONS=X
 
 deploy:
   provider: pypi
