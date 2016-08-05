@@ -586,7 +586,7 @@ class _DetachedRequestContextManager(_RequestContextManager):
         try:
             return (yield from self._coro)
         except:
-            self._session.close()
+            yield from self._session.close()
             raise
 
     if PY_35:
@@ -594,7 +594,7 @@ class _DetachedRequestContextManager(_RequestContextManager):
             try:
                 return (yield from self._coro)
             except:
-                self._session.close()
+                yield from self._session.close()
                 raise
 
     def __del__(self):
