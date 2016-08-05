@@ -94,6 +94,21 @@ def test_get_value(cli):
     assert resp.status == 200
     text = yield from resp.text()
     assert text == 'value: bar'
+
+
+def test_noncoro():
+    assert True
+
+
+@asyncio.coroutine
+def test_client_failed_to_create(test_client):
+
+    def make_app(loop):
+        raise RuntimeError()
+
+    with pytest.raises(RuntimeError):
+        yield from test_client(make_app)
+
 """)
     result = testdir.runpytest('-p', 'no:sugar')
-    result.assert_outcomes(passed=5, failed=1)
+    result.assert_outcomes(passed=7, failed=1)
