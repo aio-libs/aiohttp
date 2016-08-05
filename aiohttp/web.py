@@ -308,7 +308,7 @@ def run_app(app, *, host='0.0.0.0', port=None,
 
     try:
         loop.run_forever()
-    except KeyboardInterrupt:  # pragma: no branch
+    except KeyboardInterrupt:  # pragma: no cover
         pass
     finally:
         srv.close()
