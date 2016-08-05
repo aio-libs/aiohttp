@@ -269,24 +269,6 @@ class BaseConnector(object):
         """
         return self._closed
 
-    def update_cookies(self, cookies):
-        """Update shared cookies.
-
-        Deprecated, use ClientSession instead.
-        """
-        if isinstance(cookies, dict):
-            cookies = cookies.items()
-
-        for name, value in cookies:
-            if PY_343:
-                self.cookies[name] = value
-            else:
-                if isinstance(value, http.cookies.Morsel):
-                    # use dict method because SimpleCookie class modifies value
-                    dict.__setitem__(self.cookies, name, value)
-                else:
-                    self.cookies[name] = value
-
     @asyncio.coroutine
     def connect(self, req):
         """Get from pool or create new connection."""
