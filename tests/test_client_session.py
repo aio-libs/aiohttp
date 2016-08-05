@@ -413,3 +413,8 @@ def test_cookie_jar_usage(create_app_and_client):
     assert isinstance(resp_cookies, http.cookies.SimpleCookie)
     assert "response" in resp_cookies
     assert resp_cookies["response"].value == "resp_value"
+
+
+def test_session_default_version(loop):
+    session = aiohttp.ClientSession(loop=loop)
+    assert session.version == aiohttp.HttpVersion11
