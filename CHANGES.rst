@@ -55,6 +55,9 @@ CHANGES
 
 - Relax HTTP method validation in UrlDispatcher #1037
 
+- Pin minimal supported asyncio version to 3.4.2+ (`loop.is_close()`
+  should be present)
+
 0.22.5 (08-02-2016)
 -------------------
 

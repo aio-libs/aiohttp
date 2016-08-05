@@ -520,10 +520,7 @@ class ClientRequest:
 
     def terminate(self):
         if self._writer is not None:
-            if hasattr(self.loop, 'is_closed'):
-                if not self.loop.is_closed():
-                    self._writer.cancel()
-            else:
+            if not self.loop.is_closed():
                 self._writer.cancel()
             self._writer = None
 
@@ -571,6 +568,8 @@ class ClientResponse:
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
     def __del__(self, _warnings=warnings):
+        if self._loop is None:
+            return  # not started
         if self._closed:
             return
         self.close()
@@ -674,9 +673,8 @@ class ClientResponse:
 
         self._closed = True
 
-        if hasattr(self._loop, 'is_closed'):
-            if self._loop.is_closed():
-                return
+        if self._loop is None or self._loop.is_closed():
+            return
 
         if self._connection is not None:
             self._connection.close()

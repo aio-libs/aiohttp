@@ -57,9 +57,8 @@ class Connection(object):
         if self._transport is not None:
             _warnings.warn('Unclosed connection {!r}'.format(self),
                            ResourceWarning)
-            if hasattr(self._loop, 'is_closed'):
-                if self._loop.is_closed():
-                    return
+            if self._loop.is_closed():
+                return
 
             self._connector._release(
                 self._key, self._request, self._transport, self._protocol,
@@ -243,9 +242,8 @@ class BaseConnector(object):
         self._closed = True
 
         try:
-            if hasattr(self._loop, 'is_closed'):
-                if self._loop.is_closed():
-                    return ret
+            if self._loop.is_closed():
+                return ret
 
             for key, data in self._conns.items():
                 for transport, proto, t0 in data:
