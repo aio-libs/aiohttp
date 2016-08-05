@@ -1,7 +1,6 @@
 """Async gunicorn worker for aiohttp.web"""
 
 import asyncio
-import logging
 import os
 import signal
 import ssl
