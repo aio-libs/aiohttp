@@ -30,6 +30,29 @@ def test_send_recv_text(create_app_and_client):
 
 
 @pytest.mark.run_loop
+def test_send_recv_bytes_bad_type(create_app_and_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        msg = yield from ws.receive_str()
+        ws.send_str(msg+'/answer')
+        yield from ws.close()
+        return ws
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/')
+    resp.send_str('ask')
+
+    with pytest.raises(TypeError):
+        yield from resp.receive_bytes()
+    yield from resp.close()
+
+
+@pytest.mark.run_loop
 def test_send_recv_bytes(create_app_and_client):
 
     @asyncio.coroutine
@@ -50,6 +73,31 @@ def test_send_recv_bytes(create_app_and_client):
 
     data = yield from resp.receive_bytes()
     assert data == b'ask/answer'
+
+    yield from resp.close()
+
+
+@pytest.mark.run_loop
+def test_send_recv_text_bad_type(create_app_and_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        msg = yield from ws.receive_bytes()
+        ws.send_bytes(msg+b'/answer')
+        yield from ws.close()
+        return ws
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/')
+
+    resp.send_bytes(b'ask')
+
+    with pytest.raises(TypeError):
+        yield from resp.receive_str()
 
     yield from resp.close()
 
@@ -351,4 +399,30 @@ def test_additional_headers(create_app_and_client, loop):
     resp = yield from client.ws_connect('/', headers={'x-hdr': 'xtra'})
     msg = yield from resp.receive()
     assert msg.data == 'answer'
+    yield from resp.close()
+
+
+@pytest.mark.run_loop
+def test_send_recv_protocol_error(create_app_and_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        yield from ws.receive_str()
+        ws._writer.writer.write(b'01234' * 100)
+        yield from ws.close()
+        return ws
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/')
+    resp.send_str('ask')
+
+    msg = yield from resp.receive()
+    assert msg.tp == aiohttp.WSMsgType.error
+    assert type(msg.data) is aiohttp.WebSocketError
+    assert msg.data.args[0] == 'Received frame with non-zero reserved bits'
+    assert msg.extra is None
     yield from resp.close()
