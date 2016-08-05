@@ -364,5 +364,5 @@ def main(argv):
     run_app(app, host=args.hostname, port=args.port)
     arg_parser.exit(message="Stopped\n")
 
-if __name__ == "__main__":
-    main(sys.argv[1:])
+if __name__ == "__main__":  # pragma: no branch
+    main(sys.argv[1:])  # pragme: no cover
