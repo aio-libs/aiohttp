@@ -218,8 +218,10 @@ conditions that hard to reproduce on real server::
 aiohttp.test_utils
 ------------------
 
-.. _pytest: http://pytest.org/latest/
 .. automodule:: aiohttp.test_utils
    :members: TestClient, AioHTTPTestCase, run_loop, loop_context, setup_test_loop, teardown_test_loop make_mocked_request
    :undoc-members:
    :show-inheritance:
+
+
+.. _pytest: http://pytest.org/latest/

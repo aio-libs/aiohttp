@@ -33,20 +33,20 @@ def start_client(loop, url):
         while True:
             msg = yield from ws.receive()
 
-            if msg.tp == aiohttp.MsgType.text:
+            if msg.tp == aiohttp.WSMsgType.TEXT:
                 print('Text: ', msg.data.strip())
-            elif msg.tp == aiohttp.MsgType.binary:
+            elif msg.tp == aiohttp.WSMsgType.BINARY:
                 print('Binary: ', msg.data)
-            elif msg.tp == aiohttp.MsgType.ping:
+            elif msg.tp == aiohttp.WSMsgType.PING:
                 ws.pong()
-            elif msg.tp == aiohttp.MsgType.pong:
+            elif msg.tp == aiohttp.WSMsgType.PONG:
                 print('Pong received')
             else:
-                if msg.tp == aiohttp.MsgType.close:
+                if msg.tp == aiohttp.WSMsgType.CLOSE:
                     yield from ws.close()
-                elif msg.tp == aiohttp.MsgType.error:
+                elif msg.tp == aiohttp.WSMsgType.ERROR:
                     print('Error during receive %s' % ws.exception())
-                elif msg.tp == aiohttp.MsgType.closed:
+                elif msg.tp == aiohttp.WSMsgType.CLOSED:
                     pass
 
                 break
