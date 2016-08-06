@@ -61,6 +61,9 @@ CHANGES
 - Remove aiohttp.websocket module (BACKWARD IMCOMPATIBLE)
   Please use high-level client and server approaches
 
+- Link header for 451 status code is mandatory
+
+
 0.22.5 (08-02-2016)
 -------------------
 
