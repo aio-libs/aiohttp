@@ -228,7 +228,7 @@ def test_close_frame_invalid(out, parser):
         with pytest.raises(WebSocketError) as ctx:
             next(parser)
 
-        assert ctx.value.code == WSCloseCode.protocol_error
+        assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
 
 def test_close_frame_invalid_2(buf, parser):
@@ -236,7 +236,7 @@ def test_close_frame_invalid_2(buf, parser):
     with pytest.raises(WebSocketError) as ctx:
         next(parser)
 
-    assert ctx.value.code == WSCloseCode.protocol_error
+    assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
 
 def test_close_frame_unicode_err(buf, parser):
@@ -245,7 +245,7 @@ def test_close_frame_unicode_err(buf, parser):
     with pytest.raises(WebSocketError) as ctx:
         next(parser)
 
-    assert ctx.value.code == WSCloseCode.invalid_text
+    assert ctx.value.code == WSCloseCode.INVALID_TEXT
 
 
 def test_unknown_frame(out, parser):
@@ -275,7 +275,7 @@ def test_simple_text_unicode_err(buf, parser):
     with pytest.raises(WebSocketError) as ctx:
         next(parser)
 
-    assert ctx.value.code == WSCloseCode.invalid_text
+    assert ctx.value.code == WSCloseCode.INVALID_TEXT
 
 
 def test_simple_binary(out, parser):
@@ -396,7 +396,7 @@ def test_continuation_with_close_unicode_err(out, parser):
         with pytest.raises(WebSocketError) as ctx:
             parser.send(b'')
 
-    assert ctx.value.code == WSCloseCode.invalid_text
+    assert ctx.value.code == WSCloseCode.INVALID_TEXT
 
 
 def test_continuation_with_close_bad_code(out, parser):
@@ -417,7 +417,7 @@ def test_continuation_with_close_bad_code(out, parser):
         with pytest.raises(WebSocketError) as ctx:
             parser.send(b'')
 
-        assert ctx.value.code == WSCloseCode.protocol_error
+        assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
 
 def test_continuation_with_close_bad_payload(out, parser):
@@ -437,7 +437,7 @@ def test_continuation_with_close_bad_payload(out, parser):
         with pytest.raises(WebSocketError) as ctx:
             parser.send(b'')
 
-        assert ctx.value.code, WSCloseCode.protocolError
+        assert ctx.value.code, WSCloseCode.PROTOCOL_ERROR
 
 
 def test_continuation_with_close_empty(out, parser):
