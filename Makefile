@@ -12,7 +12,7 @@ isort:
 	isort -rc demos
 
 
-flake: .install-deps isort
+flake: .install-deps
 #	python setup.py check -rms
 	flake8 aiohttp
 	if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then \
@@ -25,16 +25,16 @@ flake: .install-deps isort
 	touch .develop
 
 test: flake .develop
-	py.test -q ./tests/
+	py.test -q aiohttp tests --isort
 
 vtest: flake .develop
-	py.test -s -v ./tests/
+	py.test -s -v aiohttp tests  --isort
 
 cov cover coverage:
 	tox
 
 cov-dev: .develop
-	py.test --cov=aiohttp --cov-report=term --cov-report=html tests
+	py.test --cov=aiohttp --cov-report=term --cov-report=html aiohttp tests --isort
 	@echo "open file://`pwd`/coverage/index.html"
 
 cov-dev-full: .develop
