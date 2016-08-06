@@ -17,36 +17,36 @@ WebSocket utilities
 
     An :class:`~enum.IntEnum` for keeping close message code.
 
-    .. attribute:: ok
+    .. attribute:: OK
 
        A normal closure, meaning that the purpose for
        which the connection was established has been fulfilled.
 
-    .. attribute:: going_away
+    .. attribute:: GOING_AWAY
 
        An endpoint is "going away", such as a server
        going down or a browser having navigated away from a page.
 
-    .. attribute:: protocol_error
+    .. attribute:: PROTOCOL_ERROR
 
        An endpoint is terminating the connection due
        to a protocol error.
 
-    .. attribute:: unsupported_data
+    .. attribute:: UNSUPPORTED_DATA
 
        An endpoint is terminating the connection
        because it has received a type of data it cannot accept (e.g., an
        endpoint that understands only text data MAY send this if it
        receives a binary message).
 
-    .. attribute:: invalid_text
+    .. attribute:: INVALID_TEXT
 
        An endpoint is terminating the connection
        because it has received data within a message that was not
        consistent with the type of the message (e.g., non-UTF-8 :rfc:`3629`
        data within a text message).
 
-    .. attribute:: policy_violation
+    .. attribute:: POLICY_VIOLATION
 
        An endpoint is terminating the connection because it has
        received a message that violates its policy.  This is a generic
@@ -56,13 +56,13 @@ WebSocket utilities
        :attr:`~WSCloseCode.message_too_big`) or if there is a need to
        hide specific details about the policy.
 
-    .. attribute:: message_too_big
+    .. attribute:: MESSAGE_TOO_BIG
 
        An endpoint is terminating the connection
        because it has received a message that is too big for it to
        process.
 
-    .. attribute:: mandatory_extension
+    .. attribute:: MANDATORY_EXTENSION
 
        An endpoint (client) is terminating the
        connection because it has expected the server to negotiate one or
@@ -72,18 +72,18 @@ WebSocket utilities
        Note that this status code is not used by the server, because it
        can fail the WebSocket handshake instead.
 
-    .. attribute:: internal_error
+    .. attribute:: INTERNAL_ERROR
 
        A server is terminating the connection because
        it encountered an unexpected condition that prevented it from
        fulfilling the request.
 
-    .. attribute:: service_restart
+    .. attribute:: SERVICE_RESTART
 
        The service is restarted. a client may reconnect, and if it
        choses to do, should reconnect using a randomized delay of 5-30s.
 
-    .. attribute:: try_again_later
+    .. attribute:: TRY_AGAIN_LATER
 
        The service is experiencing overload. A client should only
        connect to a different IP (when there are multiple for the
@@ -94,37 +94,37 @@ WebSocket utilities
 
    An :class:`~enum.IntEnum` for describing :class:`WSMessage` type.
 
-   .. attribute:: continuation
+   .. attribute:: CONTINUATION
 
       A mark for continuation frame, user will never get the message
       with this type.
 
-   .. attribute:: text
+   .. attribute:: TEXT
 
       Text messsage, the value has :class:`str` type.
 
-   .. attribute:: binary
+   .. attribute:: BINARY
 
       Binary messsage, the value has :class:`bytes` type.
 
-   .. attribute:: ping
+   .. attribute:: PING
 
       Ping frame (sent by client peer).
 
-   .. attribute:: pong
+   .. attribute:: PONG
 
       Pong frame, answer on ping. Sent by server peer.
 
-   .. attribute:: close
+   .. attribute:: CLOSE
 
       Close frame.
 
-   .. attribute:: closed frame
+   .. attribute:: CLOSED FRAME
 
       Actually not frame but a flag indicating that websocket was
       closed.
 
-   .. attribute:: error
+   .. attribute:: ERROR
 
       Actually not frame but a flag indicating that websocket was
       received an error.
@@ -142,21 +142,21 @@ WebSocket utilities
 
       Message payload.
 
-      1. :class:`str` for :attr:`WSMsgType.text` messages.
+      1. :class:`str` for :attr:`WSMsgType.TEXT` messages.
 
-      2. :class:`bytes` for :attr:`WSMsgType.text` messages.
+      2. :class:`bytes` for :attr:`WSMsgType.TEXT` messages.
 
-      3. :class:`WSCloseCode` for :attr:`WSMsgType.close` messages.
+      3. :class:`WSCloseCode` for :attr:`WSMsgType.CLOSE` messages.
 
-      4. :class:`bytes` for :attr:`WSMsgType.ping` messages.
+      4. :class:`bytes` for :attr:`WSMsgType.PING` messages.
 
-      5. :class:`bytes` for :attr:`WSMsgType.pong` messages.
+      5. :class:`bytes` for :attr:`WSMsgType.PONG` messages.
 
    .. attribute:: extra
 
       Additional info, :class:`str`.
 
-      Makes sense only for :attr:`WSMsgType.close` messages, contains
+      Makes sense only for :attr:`WSMsgType.CLOSE` messages, contains
       optional message description.
 
    .. method:: json(*, loads=json.loads)

@@ -1251,7 +1251,7 @@ manually.
    .. attribute:: closed
 
       Read-only property, ``True`` if :meth:`close` has been called of
-      :const:`~aiohttp.WSMsgType.close` message has been received from peer.
+      :const:`~aiohttp.WSMsgType.CLOSE` message has been received from peer.
 
    .. attribute:: protocol
 
@@ -1266,7 +1266,7 @@ manually.
 
    .. method:: ping(message=b'')
 
-      Send :const:`~aiohttp.WSMsgType.ping` to peer.
+      Send :const:`~aiohttp.WSMsgType.PING` to peer.
 
       :param message: optional payload of *ping* message,
                       :class:`str` (converted to *UTF-8* encoded bytes)
@@ -1274,7 +1274,7 @@ manually.
 
    .. method:: send_str(data)
 
-      Send *data* to peer as :const:`~aiohttp.WSMsgType.text` message.
+      Send *data* to peer as :const:`~aiohttp.WSMsgType.TEXT` message.
 
       :param str data: data to send.
 
@@ -1282,7 +1282,7 @@ manually.
 
    .. method:: send_bytes(data)
 
-      Send *data* to peer as :const:`~aiohttp.WSMsgType.binary` message.
+      Send *data* to peer as :const:`~aiohttp.WSMsgType.BINARY` message.
 
       :param data: data to send.
 
@@ -1309,7 +1309,7 @@ manually.
    .. comethod:: close(*, code=1000, message=b'')
 
       A :ref:`coroutine<coroutine>` that initiates closing handshake by sending
-      :const:`~aiohttp.WSMsgType.close` message. It waits for
+      :const:`~aiohttp.WSMsgType.CLOSE` message. It waits for
       close response from server. It add timeout to `close()` call just wrap
       call with `asyncio.wait()` or `asyncio.wait_for()`.
 
@@ -1325,9 +1325,9 @@ manually.
       message from peer and returns it.
 
       The coroutine implicitly handles
-      :const:`~aiohttp.WSMsgType.ping`,
-      :const:`~aiohttp.WSMsgType.pong` and
-      :const:`~aiohttp.WSMsgType.close` without returning the
+      :const:`~aiohttp.WSMsgType.PING`,
+      :const:`~aiohttp.WSMsgType.PONG` and
+      :const:`~aiohttp.WSMsgType.CLOSE` without returning the
       message.
 
       It process *ping-pong game* and performs *closing handshake* internally.
@@ -1339,21 +1339,21 @@ manually.
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
-      :const:`~aiohttp.WSMsgType.text`.
+      :const:`~aiohttp.WSMsgType.TEXT`.
 
       :return str: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.binary`.
+      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
 
    .. coroutinemethod:: receive_bytes()
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
-      :const:`~aiohttp.WSMsgType.binary`.
+      :const:`~aiohttp.WSMsgType.BINARY`.
 
       :return bytes: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.text`.
+      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.TEXT`.
 
    .. coroutinemethod:: receive_json(*, loads=json.loads)
 
@@ -1367,7 +1367,7 @@ manually.
 
       :return dict: loaded JSON content
 
-      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.binary`.
+      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
       :raise ValueError: if message is not valid JSON.
 
 Utilities

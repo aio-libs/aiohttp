@@ -771,7 +771,7 @@ WebSocketResponse
 
       Read-only property, ``True`` if connection has been closed or in process
       of closing.
-      :const:`~aiohttp.WSMsgType.close` message has been received from peer.
+      :const:`~aiohttp.WSMsgType.CLOSE` message has been received from peer.
 
    .. attribute:: close_code
 
@@ -791,7 +791,7 @@ WebSocketResponse
 
    .. method:: ping(message=b'')
 
-      Send :const:`~aiohttp.WSMsgType.ping` to peer.
+      Send :const:`~aiohttp.WSMsgType.PING` to peer.
 
       :param message: optional payload of *ping* message,
                       :class:`str` (converted to *UTF-8* encoded bytes)
@@ -801,7 +801,7 @@ WebSocketResponse
 
    .. method:: pong(message=b'')
 
-      Send *unsolicited* :const:`~aiohttp.WSMsgType.pong` to peer.
+      Send *unsolicited* :const:`~aiohttp.WSMsgType.PONG` to peer.
 
       :param message: optional payload of *pong* message,
                       :class:`str` (converted to *UTF-8* encoded bytes)
@@ -811,7 +811,7 @@ WebSocketResponse
 
    .. method:: send_str(data)
 
-      Send *data* to peer as :const:`~aiohttp.WSMsgType.text` message.
+      Send *data* to peer as :const:`~aiohttp.WSMsgType.TEXT` message.
 
       :param str data: data to send.
 
@@ -821,7 +821,7 @@ WebSocketResponse
 
    .. method:: send_bytes(data)
 
-      Send *data* to peer as :const:`~aiohttp.WSMsgType.binary` message.
+      Send *data* to peer as :const:`~aiohttp.WSMsgType.BINARY` message.
 
       :param data: data to send.
 
@@ -849,12 +849,13 @@ WebSocketResponse
    .. coroutinemethod:: close(*, code=1000, message=b'')
 
       A :ref:`coroutine<coroutine>` that initiates closing
-      handshake by sending :const:`~aiohttp.WSMsgType.close` message.
+      handshake by sending :const:`~aiohttp.WSMsgType.CLOSE` message.
 
       .. note::
 
-         Can only be called by the request handling task. To programmatically
-         close websocket server side see the :ref:`FAQ section <aiohttp_faq_terminating_websockets>`.
+         Can only be called by the request handling task. To
+         programmatically close websocket server side see the
+         :ref:`FAQ section <aiohttp_faq_terminating_websockets>`.
 
       :param int code: closing code
 
@@ -870,9 +871,9 @@ WebSocketResponse
       message from peer and returns it.
 
       The coroutine implicitly handles
-      :const:`~aiohttp.WSMsgType.ping`,
-      :const:`~aiohttp.WSMsgType.pong` and
-      :const:`~aiohttp.WSMsgType.close` without returning the
+      :const:`~aiohttp.WSMsgType.PING`,
+      :const:`~aiohttp.WSMsgType.PONG` and
+      :const:`~aiohttp.WSMsgType.CLOSE` without returning the
       message.
 
       It process *ping-pong game* and performs *closing handshake* internally.
@@ -895,7 +896,7 @@ WebSocketResponse
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
-      :const:`~aiohttp.WSMsgType.text`.
+      :const:`~aiohttp.WSMsgType.TEXT`.
 
       .. note::
 
@@ -903,13 +904,13 @@ WebSocketResponse
 
       :return str: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.binary`.
+      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
 
    .. coroutinemethod:: receive_bytes()
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
-      :const:`~aiohttp.WSMsgType.binary`.
+      :const:`~aiohttp.WSMsgType.BINARY`.
 
       .. note::
 
@@ -917,7 +918,7 @@ WebSocketResponse
 
       :return bytes: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.text`.
+      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.TEXT`.
 
    .. coroutinemethod:: receive_json(*, loads=json.loads)
 
@@ -935,7 +936,7 @@ WebSocketResponse
 
       :return dict: loaded JSON content
 
-      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.binary`.
+      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
       :raise ValueError: if message is not valid JSON.
 
       .. versionadded:: 0.22
