@@ -70,6 +70,7 @@ Marco Paolini
 Mariano Anaya
 Martin Richard
 Mathias Fröjdman
+Mathieu Sornay
 Matthieu Hauglustaine
 Michael Ihnatenko
 Mikhail Lukyanchenko

@@ -63,6 +63,8 @@ CHANGES
 
 - Link header for 451 status code is mandatory
 
+- Implement lingering on server-side trasport closing #1050
+
 
 0.22.5 (08-02-2016)
 -------------------
