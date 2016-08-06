@@ -17,7 +17,7 @@ from urllib.parse import parse_qsl, unquote, urlsplit
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 
 from . import hdrs
-from .helpers import reify
+from .helpers import _sentinel, reify
 from .protocol import Response as ResponseImpl
 from .protocol import HttpVersion10, HttpVersion11
 from .streams import EOF_MARKER
@@ -28,14 +28,11 @@ __all__ = (
 )
 
 
-sentinel = object()
-
-
 class HeadersMixin:
 
     _content_type = None
     _content_dict = None
-    _stored_content_type = sentinel
+    _stored_content_type = _sentinel
 
     def _parse_content_type(self, raw):
         self._stored_content_type = raw
@@ -864,10 +861,10 @@ class Response(StreamResponse):
         yield from super().write_eof()
 
 
-def json_response(data=sentinel, *, text=None, body=None, status=200,
+def json_response(data=_sentinel, *, text=None, body=None, status=200,
                   reason=None, headers=None, content_type='application/json',
                   dumps=json.dumps):
-    if data is not sentinel:
+    if data is not _sentinel:
         if text or body:
             raise ValueError(
                 'only one of data, text, or body should be specified'
