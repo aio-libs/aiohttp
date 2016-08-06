@@ -103,7 +103,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             loop=loop,
             disconnect_error=errors.ClientDisconnectedError, **kwargs)
 
-        self._keep_alive_on = keep_alive_on
+        self._keep_alive_on = keep_alive_on  # TCP keepalive, not HTTP one
         self._keep_alive_period = keep_alive  # number of seconds to keep alive
         self._timeout = timeout  # slow request timeout
         self._loop = loop if loop is not None else asyncio.get_event_loop()
