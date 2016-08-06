@@ -14,6 +14,9 @@ http client/server for asyncio
   :target:  https://coveralls.io/github/KeepSafe/aiohttp?branch=master
   :align: right
 
+.. image:: https://codecov.io/gh/KeepSafe/aiohttp/branch/master/graph/badge.svg
+  :target: https://codecov.io/gh/KeepSafe/aiohttp
+
 .. image:: https://badge.fury.io/py/aiohttp.svg
     :target: https://badge.fury.io/py/aiohttp
 
