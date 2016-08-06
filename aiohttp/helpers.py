@@ -695,6 +695,8 @@ class CookieJar(AbstractCookieJar):
         """Returns this jar's cookies filtered by their attributes."""
         url_parsed = urlsplit(request_url)
         filtered = SimpleCookie()
+        hostname = url_parsed.hostname or ""
+        is_not_secure = url_parsed.scheme not in ("https", "wss")
 
         for name, cookie in self._cookies.items():
             cookie_domain = cookie["domain"]
@@ -703,8 +705,6 @@ class CookieJar(AbstractCookieJar):
             if not cookie_domain:
                 dict.__setitem__(filtered, name, cookie)
                 continue
-
-            hostname = url_parsed.hostname or ""
 
             if not self._unsafe and is_ip_address(hostname):
                 continue
@@ -718,9 +718,7 @@ class CookieJar(AbstractCookieJar):
             if not self._is_path_match(url_parsed.path, cookie["path"]):
                 continue
 
-            is_secure = url_parsed.scheme in ("https", "wss")
-
-            if cookie["secure"] and not is_secure:
+            if is_not_secure and cookie["secure"]:
                 continue
 
             dict.__setitem__(filtered, name, cookie)
