@@ -365,4 +365,4 @@ def main(argv):
     arg_parser.exit(message="Stopped\n")
 
 if __name__ == "__main__":  # pragma: no branch
-    main(sys.argv[1:])  # pragme: no cover
+    main(sys.argv[1:])  # pragma: no cover
