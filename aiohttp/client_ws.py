@@ -106,7 +106,7 @@ class ClientWebSocketResponse:
                     self._response.close()
                     return True
 
-                if msg.tp == WSMsgType.close:
+                if msg.tp == WSMsgType.CLOSE:
                     self._close_code = msg.data
                     self._response.close()
                     return True
@@ -131,24 +131,24 @@ class ClientWebSocketResponse:
                 except WebSocketError as exc:
                     self._close_code = exc.code
                     yield from self.close(code=exc.code)
-                    return WSMessage(WSMsgType.error, exc, None)
+                    return WSMessage(WSMsgType.ERROR, exc, None)
                 except Exception as exc:
                     self._exception = exc
                     self._closing = True
                     self._close_code = 1006
                     yield from self.close()
-                    return WSMessage(WSMsgType.error, exc, None)
+                    return WSMessage(WSMsgType.ERROR, exc, None)
 
-                if msg.tp == WSMsgType.close:
+                if msg.tp == WSMsgType.CLOSE:
                     self._closing = True
                     self._close_code = msg.data
                     if not self._closed and self._autoclose:
                         yield from self.close()
                     return msg
                 elif not self._closed:
-                    if msg.tp == WSMsgType.ping and self._autoping:
+                    if msg.tp == WSMsgType.PING and self._autoping:
                         self.pong(msg.data)
-                    elif msg.tp == WSMsgType.pong and self._autoping:
+                    elif msg.tp == WSMsgType.PONG and self._autoping:
                         continue
                     else:
                         return msg
@@ -158,7 +158,7 @@ class ClientWebSocketResponse:
     @asyncio.coroutine
     def receive_str(self):
         msg = yield from self.receive()
-        if msg.tp != WSMsgType.text:
+        if msg.tp != WSMsgType.TEXT:
             raise TypeError(
                 "Received message {}:{!r} is not str".format(msg.tp, msg.data))
         return msg.data
@@ -166,7 +166,7 @@ class ClientWebSocketResponse:
     @asyncio.coroutine
     def receive_bytes(self):
         msg = yield from self.receive()
-        if msg.tp != WSMsgType.binary:
+        if msg.tp != WSMsgType.BINARY:
             raise TypeError(
                 "Received message {}:{!r} is not bytes".format(msg.tp,
                                                                msg.data))
@@ -185,6 +185,6 @@ class ClientWebSocketResponse:
         @asyncio.coroutine
         def __anext__(self):
             msg = yield from self.receive()
-            if msg.tp == WSMsgType.close:
+            if msg.tp == WSMsgType.CLOSE:
                 raise StopAsyncIteration  # NOQA
             return msg

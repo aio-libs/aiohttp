@@ -118,7 +118,7 @@ def test_receive_str_nonstring(make_request):
 
     @asyncio.coroutine
     def receive():
-        return WSMessage(WSMsgType.binary, b'data', b'')
+        return WSMessage(WSMsgType.BINARY, b'data', b'')
 
     ws.receive = receive
 
@@ -134,7 +134,7 @@ def test_receive_bytes_nonsbytes(make_request):
 
     @asyncio.coroutine
     def receive():
-        return WSMessage(WSMsgType.text, 'data', b'')
+        return WSMessage(WSMsgType.TEXT, 'data', b'')
 
     ws.receive = receive
 
@@ -333,7 +333,7 @@ def test_receive_exc_in_reader(make_request, loop, reader):
     reader.read = make_mocked_coro(res)
 
     msg = yield from ws.receive()
-    assert msg.tp == WSMsgType.error
+    assert msg.tp == WSMsgType.ERROR
     assert msg.data is exc
     assert ws.exception() is exc
 
@@ -379,7 +379,7 @@ def test_receive_client_disconnected(make_request, loop, reader):
 
     msg = yield from ws.receive()
     assert ws.closed
-    assert msg.tp == WSMsgType.close
+    assert msg.tp == WSMsgType.CLOSE
     assert msg.data is None
     assert ws.exception() is None
 

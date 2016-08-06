@@ -231,7 +231,7 @@ class TestWebSocketClient(unittest.TestCase):
             aiohttp.ws_connect('http://test.org', loop=self.loop))
         self.assertFalse(resp.closed)
 
-        msg = aiohttp.WSMessage(aiohttp.MsgType.close, b'', b'')
+        msg = aiohttp.WSMessage(aiohttp.MsgType.CLOSE, b'', b'')
         reader.read.return_value = helpers.create_future(self.loop)
         reader.read.return_value.set_result(msg)
 
@@ -387,7 +387,7 @@ class TestWebSocketClient(unittest.TestCase):
         reader.read.return_value.set_exception(exc)
 
         msg = self.loop.run_until_complete(resp.receive())
-        self.assertEqual(msg.tp, aiohttp.MsgType.error)
+        self.assertEqual(msg.tp, aiohttp.MsgType.ERROR)
         self.assertIs(resp.exception(), exc)
 
     def test_receive_runtime_err(self):

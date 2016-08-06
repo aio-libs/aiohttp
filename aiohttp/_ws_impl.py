@@ -80,7 +80,7 @@ class WSMessage(_WSMessageBase):
         return loads(self.data)
 
 
-CLOSED_MESSAGE = WSMessage(WSMsgType.closed, None, None)
+CLOSED_MESSAGE = WSMessage(WSMsgType.CLOSED, None, None)
 
 
 class WebSocketError(Exception):
@@ -95,7 +95,7 @@ def WebSocketParser(out, buf):
     while True:
         fin, opcode, payload = yield from parse_frame(buf)
 
-        if opcode == WSMsgType.close:
+        if opcode == WSMsgType.CLOSE:
             if len(payload) >= 2:
                 close_code = UNPACK_CLOSE_CODE(payload[:2])[0]
                 if close_code < 3000 and close_code not in ALLOWED_CLOSE_CODES:
@@ -108,24 +108,24 @@ def WebSocketParser(out, buf):
                     raise WebSocketError(
                         WSCloseCode.INVALID_TEXT,
                         'Invalid UTF-8 text message') from exc
-                msg = WSMessage(WSMsgType.close, close_code, close_message)
+                msg = WSMessage(WSMsgType.CLOSE, close_code, close_message)
             elif payload:
                 raise WebSocketError(
                     WSCloseCode.PROTOCOL_ERROR,
                     'Invalid close frame: {} {} {!r}'.format(
                         fin, opcode, payload))
             else:
-                msg = WSMessage(WSMsgType.close, 0, '')
+                msg = WSMessage(WSMsgType.CLOSE, 0, '')
 
             out.feed_data(msg, 0)
 
-        elif opcode == WSMsgType.ping:
-            out.feed_data(WSMessage(WSMsgType.ping, payload, ''), len(payload))
+        elif opcode == WSMsgType.PING:
+            out.feed_data(WSMessage(WSMsgType.PING, payload, ''), len(payload))
 
-        elif opcode == WSMsgType.pong:
-            out.feed_data(WSMessage(WSMsgType.pong, payload, ''), len(payload))
+        elif opcode == WSMsgType.PONG:
+            out.feed_data(WSMessage(WSMsgType.PONG, payload, ''), len(payload))
 
-        elif opcode not in (WSMsgType.text, WSMsgType.binary):
+        elif opcode not in (WSMsgType.TEXT, WSMsgType.BINARY):
             raise WebSocketError(
                 WSCloseCode.PROTOCOL_ERROR,
                 "Unexpected opcode={!r}".format(opcode))
@@ -138,11 +138,11 @@ def WebSocketParser(out, buf):
 
                 # We can receive ping/close in the middle of
                 # text message, Case 5.*
-                if _opcode == WSMsgType.ping:
+                if _opcode == WSMsgType.PING:
                     out.feed_data(
-                        WSMessage(WSMsgType.ping, payload, ''), len(payload))
+                        WSMessage(WSMsgType.PING, payload, ''), len(payload))
                     fin, _opcode, payload = yield from parse_frame(buf, True)
-                elif _opcode == WSMsgType.close:
+                elif _opcode == WSMsgType.CLOSE:
                     if len(payload) >= 2:
                         close_code = UNPACK_CLOSE_CODE(payload[:2])[0]
                         if (close_code not in ALLOWED_CLOSE_CODES and
@@ -156,7 +156,7 @@ def WebSocketParser(out, buf):
                             raise WebSocketError(
                                 WSCloseCode.INVALID_TEXT,
                                 'Invalid UTF-8 text message') from exc
-                        msg = WSMessage(WSMsgType.close, close_code,
+                        msg = WSMessage(WSMsgType.CLOSE, close_code,
                                         close_message)
                     elif payload:
                         raise WebSocketError(
@@ -164,7 +164,7 @@ def WebSocketParser(out, buf):
                             'Invalid close frame: {} {} {!r}'.format(
                                 fin, opcode, payload))
                     else:
-                        msg = WSMessage(WSMsgType.close, 0, '')
+                        msg = WSMessage(WSMsgType.CLOSE, 0, '')
 
                     out.feed_data(msg, 0)
                     fin, _opcode, payload = yield from parse_frame(buf, True)
@@ -177,10 +177,10 @@ def WebSocketParser(out, buf):
                 else:
                     data.append(payload)
 
-            if opcode == WSMsgType.text:
+            if opcode == WSMsgType.TEXT:
                 try:
                     text = b''.join(data).decode('utf-8')
-                    out.feed_data(WSMessage(WSMsgType.text, text, ''),
+                    out.feed_data(WSMessage(WSMsgType.TEXT, text, ''),
                                   len(text))
                 except UnicodeDecodeError as exc:
                     raise WebSocketError(
@@ -189,7 +189,7 @@ def WebSocketParser(out, buf):
             else:
                 data = b''.join(data)
                 out.feed_data(
-                    WSMessage(WSMsgType.binary, data, ''), len(data))
+                    WSMessage(WSMsgType.BINARY, data, ''), len(data))
 
 
 native_byteorder = sys.byteorder
@@ -332,29 +332,29 @@ class WebSocketWriter:
         """Send pong message."""
         if isinstance(message, str):
             message = message.encode('utf-8')
-        self._send_frame(message, WSMsgType.pong)
+        self._send_frame(message, WSMsgType.PONG)
 
     def ping(self, message=b''):
         """Send ping message."""
         if isinstance(message, str):
             message = message.encode('utf-8')
-        self._send_frame(message, WSMsgType.ping)
+        self._send_frame(message, WSMsgType.PING)
 
     def send(self, message, binary=False):
         """Send a frame over the websocket with message as its payload."""
         if isinstance(message, str):
             message = message.encode('utf-8')
         if binary:
-            self._send_frame(message, WSMsgType.binary)
+            self._send_frame(message, WSMsgType.BINARY)
         else:
-            self._send_frame(message, WSMsgType.text)
+            self._send_frame(message, WSMsgType.TEXT)
 
     def close(self, code=1000, message=b''):
         """Close the websocket, sending the specified code and message."""
         if isinstance(message, str):
             message = message.encode('utf-8')
         self._send_frame(
-            PACK_CLOSE_CODE(code) + message, opcode=WSMsgType.close)
+            PACK_CLOSE_CODE(code) + message, opcode=WSMsgType.CLOSE)
 
 
 def do_handshake(method, headers, transport, protocols=()):
