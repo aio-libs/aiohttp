@@ -30,6 +30,9 @@ __all__ = ('BasicAuth', 'create_future', 'FormData', 'parse_mimetype',
            'Timeout', 'CookieJar', 'ensure_future')
 
 
+_sentinel = object()
+
+
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
     """Http basic authentication helper.
 
@@ -412,9 +415,6 @@ class AccessLogger:
             self.logger.exception("Error in logging")
 
 
-_marker = object()
-
-
 class reify:
     """Use as a class method decorator.  It operates almost exactly like
     the Python `@property` decorator, but it puts the result of the
@@ -432,11 +432,11 @@ class reify:
             self.__doc__ = ""
         self.name = wrapped.__name__
 
-    def __get__(self, inst, owner, _marker=_marker):
+    def __get__(self, inst, owner, _sentinel=_sentinel):
         if inst is None:
             return self
-        val = inst.__dict__.get(self.name, _marker)
-        if val is not _marker:
+        val = inst.__dict__.get(self.name, _sentinel)
+        if val is not _sentinel:
             return val
         val = self.wrapped(inst)
         inst.__dict__[self.name] = val
