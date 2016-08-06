@@ -86,7 +86,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             yield from ws.receive()
 
             msg = yield from ws.receive()
-            self.assertEqual(msg.tp, WSMsgType.close)
+            self.assertEqual(msg.tp, WSMsgType.CLOSE)
             self.assertEqual(msg.data, 1000)
             self.assertEqual(msg.extra, 'exit message')
             closed.set_result(None)
@@ -100,7 +100,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             writer.send('ask')
 
             msg = yield from reader.read()
-            self.assertEqual(msg.tp, WSMsgType.pong)
+            self.assertEqual(msg.tp, WSMsgType.PONG)
             writer.close(1000, 'exit message')
             yield from closed
             resp.close()
@@ -126,7 +126,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             _, _, url = yield from self.create_server('GET', '/', handler)
             resp, reader, writer = yield from self.connect_ws(url)
             msg = yield from reader.read()
-            self.assertEqual(msg.tp, WSMsgType.ping)
+            self.assertEqual(msg.tp, WSMsgType.PING)
             self.assertEqual(msg.data, b'data')
             writer.pong()
             writer.close(2, 'exit message')
@@ -154,7 +154,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             resp, reader, writer = yield from self.connect_ws(url)
             writer.ping('data')
             msg = yield from reader.read()
-            self.assertEqual(msg.tp, WSMsgType.pong)
+            self.assertEqual(msg.tp, WSMsgType.PONG)
             self.assertEqual(msg.data, b'data')
             writer.pong()
             writer.close()
@@ -173,11 +173,11 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             yield from ws.prepare(request)
 
             msg = yield from ws.receive()
-            self.assertEqual(msg.tp, WSMsgType.ping)
+            self.assertEqual(msg.tp, WSMsgType.PING)
             ws.pong('data')
 
             msg = yield from ws.receive()
-            self.assertEqual(msg.tp, WSMsgType.close)
+            self.assertEqual(msg.tp, WSMsgType.CLOSE)
             self.assertEqual(msg.data, 1000)
             self.assertEqual(msg.extra, 'exit message')
             closed.set_result(None)
@@ -189,7 +189,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             resp, reader, writer = yield from self.connect_ws(url)
             writer.ping('data')
             msg = yield from reader.read()
-            self.assertEqual(msg.tp, WSMsgType.pong)
+            self.assertEqual(msg.tp, WSMsgType.PONG)
             self.assertEqual(msg.data, b'data')
             writer.close(1000, 'exit message')
 
@@ -265,7 +265,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             resp, reader, writer = yield from self.connect_ws(url, 'eggs, bar')
 
             msg = yield from reader.read()
-            self.assertEqual(msg.tp, WSMsgType.close)
+            self.assertEqual(msg.tp, WSMsgType.CLOSE)
             writer.close()
             yield from closed
             resp.close()
@@ -283,14 +283,14 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             yield from ws.prepare(request)
 
             msg = yield from ws.receive()
-            self.assertEqual(msg.tp, WSMsgType.close)
+            self.assertEqual(msg.tp, WSMsgType.CLOSE)
             self.assertFalse(ws.closed)
             yield from ws.close()
             self.assertTrue(ws.closed)
             self.assertEqual(ws.close_code, 1007)
 
             msg = yield from ws.receive()
-            self.assertEqual(msg.tp, WSMsgType.closed)
+            self.assertEqual(msg.tp, WSMsgType.CLOSED)
 
             closed.set_result(None)
             return ws
@@ -302,7 +302,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
 
             writer.close(code=1007)
             msg = yield from reader.read()
-            self.assertEqual(msg.tp, WSMsgType.close)
+            self.assertEqual(msg.tp, WSMsgType.CLOSE)
             yield from closed
             resp.close()
 
@@ -327,7 +327,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
                 url, 'eggs, bar')
 
             msg = yield from reader.read()
-            self.assertEqual(msg.tp, WSMsgType.close)
+            self.assertEqual(msg.tp, WSMsgType.CLOSE)
 
             writer.send('text')
             writer.send(b'bytes', binary=True)

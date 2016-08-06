@@ -58,6 +58,9 @@ CHANGES
 - Pin minimal supported asyncio version to 3.4.2+ (`loop.is_close()`
   should be present)
 
+- Remove aiohttp.websocket module (BACKWARD IMCOMPATIBLE)
+  Please use high-level client and server approaches
+
 0.22.5 (08-02-2016)
 -------------------
 

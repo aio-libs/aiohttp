@@ -12,7 +12,7 @@ async def test_server_ws_async_for(loop, create_server):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         async for msg in ws:
-            assert msg.tp == aiohttp.MsgType.text
+            assert msg.tp == aiohttp.MsgType.TEXT
             s = msg.data
             ws.send_str(s + '/answer')
         await ws.close()
@@ -27,7 +27,7 @@ async def test_server_ws_async_for(loop, create_server):
     for item in items:
         resp.send_str(item)
         msg = await resp.receive()
-        assert msg.tp == aiohttp.MsgType.text
+        assert msg.tp == aiohttp.MsgType.TEXT
         assert item + '/answer' == msg.data
 
     await resp.close()
