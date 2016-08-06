@@ -36,14 +36,22 @@ ALLOWED_CLOSE_CODES = {int(i) for i in WSCloseCode}
 
 
 class WSMsgType(IntEnum):
-    continuation = 0x0
-    text = 0x1
-    binary = 0x2
-    ping = 0x9
-    pong = 0xa
-    close = 0x8
-    closed = 0x101
-    error = 0x102
+    CONTINUATION = 0x0
+    TEXT = 0x1
+    BINARY = 0x2
+    PING = 0x9
+    PONG = 0xa
+    CLOSE = 0x8
+    CLOSED = 0x101
+    ERROR = 0x102
+
+    text = TEXT
+    binary = BINARY
+    ping = PING
+    pong = PONG
+    close = CLOSE
+    closed = CLOSED
+    error = ERROR
 
 
 WS_KEY = b'258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
@@ -161,7 +169,7 @@ def WebSocketParser(out, buf):
                     out.feed_data(msg, 0)
                     fin, _opcode, payload = yield from parse_frame(buf, True)
 
-                if _opcode != WSMsgType.continuation:
+                if _opcode != WSMsgType.CONTINUATION:
                     raise WebSocketError(
                         WSCloseCode.PROTOCOL_ERROR,
                         'The opcode in non-fin frame is expected '
@@ -248,7 +256,7 @@ def parse_frame(buf, continuation=False):
             WSCloseCode.PROTOCOL_ERROR,
             'Received fragmented control frame')
 
-    if fin == 0 and opcode == WSMsgType.continuation and not continuation:
+    if fin == 0 and opcode == WSMsgType.CONTINUATION and not continuation:
         raise WebSocketError(
             WSCloseCode.PROTOCOL_ERROR,
             'Received new fragment frame with non-zero '

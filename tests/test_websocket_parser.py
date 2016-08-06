@@ -251,7 +251,7 @@ def test_close_frame_unicode_err(buf, parser):
 def test_unknown_frame(out, parser):
     def parse_frame(buf):
         yield
-        return (1, WSMsgType.continuation, b'')
+        return (1, WSMsgType.CONTINUATION, b'')
 
     with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
@@ -300,7 +300,7 @@ def test_continuation(out, parser):
             cur = 1
             return (0, WSMsgType.text, b'line1')
         else:
-            return (1, WSMsgType.continuation, b'line2')
+            return (1, WSMsgType.CONTINUATION, b'line2')
 
     with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
         m_parse_frame.side_effect = parse_frame
@@ -315,7 +315,7 @@ def test_continuation_with_ping(out, parser):
     frames = [
         (0, WSMsgType.text, b'line1'),
         (0, WSMsgType.ping, b''),
-        (1, WSMsgType.continuation, b'line2'),
+        (1, WSMsgType.CONTINUATION, b'line2'),
     ]
 
     def parse_frame(buf, cont=False):
@@ -359,7 +359,7 @@ def test_continuation_with_close(out, parser):
         (0, WSMsgType.text, b'line1'),
         (0, WSMsgType.close,
          build_close_frame(1002, b'test', noheader=True)),
-        (1, WSMsgType.continuation, b'line2'),
+        (1, WSMsgType.CONTINUATION, b'line2'),
     ]
 
     def parse_frame(buf, cont=False):
@@ -383,7 +383,7 @@ def test_continuation_with_close_unicode_err(out, parser):
         (0, WSMsgType.text, b'line1'),
         (0, WSMsgType.close,
          build_close_frame(1000, b'\xf4\x90\x80\x80', noheader=True)),
-        (1, WSMsgType.continuation, b'line2')]
+        (1, WSMsgType.CONTINUATION, b'line2')]
 
     def parse_frame(buf, cont=False):
         yield
@@ -404,7 +404,7 @@ def test_continuation_with_close_bad_code(out, parser):
         (0, WSMsgType.text, b'line1'),
         (0, WSMsgType.close,
          build_close_frame(1, b'test', noheader=True)),
-        (1, WSMsgType.continuation, b'line2')]
+        (1, WSMsgType.CONTINUATION, b'line2')]
 
     def parse_frame(buf, cont=False):
         yield
@@ -424,7 +424,7 @@ def test_continuation_with_close_bad_payload(out, parser):
     frames = [
         (0, WSMsgType.text, b'line1'),
         (0, WSMsgType.close, b'1'),
-        (1, WSMsgType.continuation, b'line2')]
+        (1, WSMsgType.CONTINUATION, b'line2')]
 
     def parse_frame(buf, cont=False):
         yield
@@ -444,7 +444,7 @@ def test_continuation_with_close_empty(out, parser):
     frames = [
         (0, WSMsgType.text, b'line1'),
         (0, WSMsgType.close, b''),
-        (1, WSMsgType.continuation, b'line2'),
+        (1, WSMsgType.CONTINUATION, b'line2'),
     ]
 
     def parse_frame(buf, cont=False):
