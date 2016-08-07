@@ -8,6 +8,7 @@ import functools
 import io
 import os
 import re
+import warnings
 from collections import namedtuple
 from http.cookies import Morsel, SimpleCookie
 from math import ceil
@@ -825,3 +826,14 @@ class CookieJar(AbstractCookieJar):
             ), "%b %d %H:%M:%S %Y")
 
         return dt.replace(tzinfo=datetime.timezone.utc)
+
+
+def _get_kwarg(kwargs, old, new, value):
+    val = kwargs.pop(old, _sentinel)
+    if val is not _sentinel:
+        warnings.warn("{} is deprecated, use {} instead".format(old, new),
+                      DeprecationWarning,
+                      stacklevel=3)
+        return val
+    else:
+        return value

@@ -539,12 +539,21 @@ def test_srv_process_request_without_timeout(make_srv, loop):
 
 
 def test_keep_alive_timeout_default(srv):
-    assert 75 == srv.keep_alive_timeout
+    assert 75 == srv.keepalive_timeout
 
 
 def test_keep_alive_timeout_nondefault(make_srv):
-    srv = make_srv(keep_alive=10)
-    assert 10 == srv.keep_alive_timeout
+    srv = make_srv(keepalive_timeout=10)
+    assert 10 == srv.keepalive_timeout
+
+
+def test_keep_alive_timeout_deprecated(make_srv, warning):
+    with warning(DeprecationWarning,
+                 "keep_alive is deprecated, use keepalive_timeout instead"):
+        srv = make_srv(keep_alive=10)
+
+    with warning(DeprecationWarning, "Use keepalive_timeout property instead"):
+        assert 10 == srv.keep_alive_timeout
 
 
 def test_supports_connect_method(srv, loop):
