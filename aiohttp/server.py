@@ -4,12 +4,13 @@ import asyncio
 import http.server
 import socket
 import traceback
+import warnings
 from html import escape as html_escape
 from math import ceil
 
 import aiohttp
 from aiohttp import errors, hdrs, helpers, streams
-from aiohttp.helpers import ensure_future
+from aiohttp.helpers import _get_kwarg, _sentinel, ensure_future
 from aiohttp.log import access_logger, server_logger
 
 __all__ = ('ServerHttpProtocol',)
@@ -50,10 +51,11 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     status line, bad headers or incomplete payload. If any error occurs,
     connection gets closed.
 
-    :param keep_alive: number of seconds before closing keep-alive connection
-    :type keep_alive: int or None
+    :param keepalive_timeout: number of seconds before closing
+                              keep-alive connection
+    :type keepalive: int or None
 
-    :param bool keep_alive_on: keep-alive is o, default is on
+    :param bool tcp_keepalive: TCP keep-alive is on, default is on
 
     :param int timeout: slow request timeout
 
@@ -78,6 +80,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     :param int max_field_size: Optional maximum header field size
 
     :param int max_headers: Optional maximum header size
+
     """
     _request_count = 0
     _request_handler = None
@@ -87,24 +90,33 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     _timeout_handle = None  # slow request timer handle
 
     def __init__(self, *, loop=None,
-                 keep_alive=75,  # NGINX default value is 75 secs
-                 keep_alive_on=True,
+                 keepalive_timeout=75,  # NGINX default value is 75 secs
+                 tcp_keepalive=True,
                  timeout=0,
                  logger=server_logger,
                  access_log=access_logger,
                  access_log_format=helpers.AccessLogger.LOG_FORMAT,
                  debug=False,
-                 log=None,
                  max_line_size=8190,
                  max_headers=32768,
                  max_field_size=8190,
                  **kwargs):
+
+        # process deprecated params
+        logger = _get_kwarg(kwargs, 'log', 'logger', logger)
+
+        tcp_keepalive = _get_kwarg(kwargs, 'keep_alive_on',
+                                   'tcp_keepalive', tcp_keepalive)
+
+        keepalive_timeout = _get_kwarg(kwargs, 'keep_alive',
+                                       'keepalive_timeout', keepalive_timeout)
+
         super().__init__(
             loop=loop,
             disconnect_error=errors.ClientDisconnectedError, **kwargs)
 
-        self._keep_alive_on = keep_alive_on  # TCP keepalive, not HTTP one
-        self._keep_alive_period = keep_alive  # number of seconds to keep alive
+        self._tcp_keepalive = tcp_keepalive
+        self._keepalive_timeout = keepalive_timeout
         self._timeout = timeout  # slow request timeout
         self._loop = loop if loop is not None else asyncio.get_event_loop()
 
@@ -114,7 +126,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             max_field_size=max_field_size,
             max_headers=max_headers)
 
-        self.logger = log or logger
+        self.logger = logger
         self.debug = debug
         self.access_log = access_log
         if access_log:
@@ -125,15 +137,22 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
     @property
     def keep_alive_timeout(self):
-        return self._keep_alive_period
+        warnings.warn("Use keepalive_timeout property instead",
+                      DeprecationWarning,
+                      stacklevel=2)
+        return self._keepalive_timeout
+
+    @property
+    def keepalive_timeout(self):
+        return self._keepalive_timeout
 
     def closing(self, timeout=15.0):
         """Worker process is about to exit, we need cleanup everything and
         stop accepting requests. It is especially important for keep-alive
         connections."""
         self._keep_alive = False
-        self._keep_alive_on = False
-        self._keep_alive_period = None
+        self._tcp_keep_alive = False
+        self._keepalive_timeout = None
 
         if (not self._reading_request and self.transport is not None):
             if self._request_handler:
@@ -163,7 +182,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             self._timeout_handle = self._loop.call_at(
                 ceil(now+self._timeout), self.cancel_slow_request)
 
-        if self._keep_alive_on:
+        if self._tcp_keepalive:
             tcp_keepalive(self, transport)
 
     def connection_lost(self, exc):
@@ -313,13 +332,13 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                     reader.unset_parser()
 
                 if self._request_handler:
-                    if self._keep_alive and self._keep_alive_period:
+                    if self._keep_alive and self._keepalive_timeout:
                         self.log_debug(
                             'Start keep-alive timer for %s sec.',
-                            self._keep_alive_period)
+                            self._keepalive_timeout)
                         now = self._loop.time()
                         self._keep_alive_handle = self._loop.call_at(
-                            ceil(now+self._keep_alive_period),
+                            ceil(now+self._keepalive_timeout),
                             self.transport.close)
                     elif self._keep_alive and self._keep_alive_on:
                         # do nothing, rely on kernel or upstream server
