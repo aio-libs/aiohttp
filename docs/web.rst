@@ -371,6 +371,20 @@ If you prefer the `Mako`_ template engine, please take a look at the
 .. _aiohttp_mako: https://github.com/aio-libs/aiohttp_mako
 
 
+JSON Response
+-------------
+
+It is a common case to return JSON data in response, :mod:`aiohttp.web`
+provides a shortcut for returning JSON -- :func:`aiohttp.web.json_response`::
+
+   def handler(request):
+       data = {'some': 'data'}
+       return web.json_response(data)
+
+The shortcut method returns :class:`aiohttp.web.Response` instance
+so you can for example set cookies before returning it from handler.
+
+
 User Sessions
 -------------
 
