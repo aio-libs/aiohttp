@@ -81,7 +81,7 @@ def test_closing_during_reading(srv):
     srv._keep_alive = True
     srv._keep_alive_on = True
     srv._reading_request = True
-    srv._timeout_handle = timeout_handle = mock.Mock()
+    srv._slow_request_timeout_handle = timeout_handle = mock.Mock()
     transport = srv.transport = mock.Mock()
 
     srv.closing()
@@ -89,9 +89,9 @@ def test_closing_during_reading(srv):
     assert srv.transport is not None
 
     # cancel existing slow request handler
-    assert srv._timeout_handle is not None
+    assert srv._slow_request_timeout_handle is not None
     assert timeout_handle.cancel.called
-    assert timeout_handle is not srv._timeout_handle
+    assert timeout_handle is not srv._slow_request_timeout_handle
 
 
 def test_double_closing(srv):
@@ -125,12 +125,12 @@ def test_connection_made(srv):
 
     srv.connection_made(mock.Mock())
     assert srv._request_handler is not None
-    assert srv._timeout_handle is None
+    assert srv._slow_request_timeout_handle is None
 
 
 def test_connection_made_without_timeout(srv):
     srv.connection_made(mock.Mock())
-    assert srv._timeout_handle is None
+    assert srv._slow_request_timeout_handle is None
 
 
 def test_connection_made_with_keepaplive(srv):
@@ -173,7 +173,7 @@ def test_connection_lost(srv, loop):
     srv.connection_made(mock.Mock())
     srv.data_received(b'123')
 
-    timeout_handle = srv._timeout_handle = mock.Mock()
+    timeout_handle = srv._slow_request_timeout_handle = mock.Mock()
     keep_alive_handle = srv._keep_alive_handle = mock.Mock()
 
     handle = srv._request_handler
@@ -186,7 +186,7 @@ def test_connection_lost(srv, loop):
     assert srv._keep_alive_handle is None
     assert keep_alive_handle.cancel.called
 
-    assert srv._timeout_handle is None
+    assert srv._slow_request_timeout_handle is None
     assert timeout_handle.cancel.called
 
     srv.connection_lost(None)
@@ -216,7 +216,7 @@ def test_srv_slow_request(make_srv, loop):
     loop.run_until_complete(srv._request_handler)
     assert transport.close.called
     srv.connection_lost(None)
-    assert srv._timeout_handle is None
+    assert srv._slow_request_timeout_handle is None
 
 
 def test_bad_method(srv, loop):
@@ -527,7 +527,7 @@ def test_srv_process_request_without_timeout(make_srv, loop):
     transport = mock.Mock()
     srv = make_srv(timeout=0)
     srv.connection_made(transport)
-    assert srv._timeout_handle is None
+    assert srv._slow_request_timeout_handle is None
 
     srv.reader.feed_data(
         b'GET / HTTP/1.0\r\n'
@@ -535,7 +535,7 @@ def test_srv_process_request_without_timeout(make_srv, loop):
 
     loop.run_until_complete(srv._request_handler)
     assert transport.close.called
-    assert srv._timeout_handle is None
+    assert srv._slow_request_timeout_handle is None
 
 
 def test_keep_alive_timeout_default(srv):
