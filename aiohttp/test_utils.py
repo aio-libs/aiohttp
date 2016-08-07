@@ -329,6 +329,7 @@ class TestClient:
                                          loop=self._loop))
         self._root = '{}://{}:{}'.format(protocol, self._address, self.port)
         self._closed = False
+        self._responses = []
 
     @asyncio.coroutine
     def start_server(self):
@@ -345,15 +346,19 @@ class TestClient:
         """
         return self._session
 
+    @asyncio.coroutine
     def request(self, method, path, *args, **kwargs):
         """ routes a request to the http server.
         the interface is identical to asyncio.request,
         except the loop kwarg is overriden
         by the instance used by the application.
         """
-        return self._session.request(
+        resp = yield from self._session.request(
             method, self._root + path, *args, **kwargs
         )
+        # save it to close later
+        self._responses.append(resp)
+        return resp
 
     def get(self, path, *args, **kwargs):
         """Perform an HTTP GET request. """
@@ -404,6 +409,8 @@ class TestClient:
         """
         if not self._closed:
             loop = self._loop
+            for resp in self._responses:
+                resp.close()
             loop.run_until_complete(self._session.close())
             self._server.close()
             loop.run_until_complete(self._server.wait_closed())
