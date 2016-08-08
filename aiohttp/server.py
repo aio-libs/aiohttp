@@ -52,15 +52,11 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
     :param keepalive_timeout: number of seconds before closing
                               keep-alive connection
-    :type keepalive: int or None
+    :type keepalive_timeout: int or None
 
     :param bool tcp_keepalive: TCP keep-alive is on, default is on
 
-    :param int timeout: slow request timeout
-
-    :param allowed_methods: (optional) List of allowed request methods.
-                            Set to empty list to allow all methods.
-    :type allowed_methods: tuple
+    :param int slow_request_timeout: slow request timeout
 
     :param bool debug: enable debug mode
 
