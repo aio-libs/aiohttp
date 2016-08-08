@@ -54,15 +54,12 @@ def test_handle_request(srv):
 
 @pytest.mark.run_loop
 def test_closing(srv, loop):
-    keep_alive_handle = mock.Mock()
-    srv._keep_alive_handle = keep_alive_handle
-    timeout_handle = mock.Mock()
-    srv._timeout_handle = timeout_handle
     transport = mock.Mock()
-    transport.drain.result_value = asyncio.Future(loop=loop)
-    transport.drain.set_result(None)
+    transport.drain.side_effect = []
     srv.connection_made(transport)
     assert transport is srv.transport
+
+    yield from asyncio.sleep(0, loop=loop)
 
     srv.reader.feed_data(
         b'GET / HTTP/1.1\r\n'
@@ -70,25 +67,17 @@ def test_closing(srv, loop):
         b'Content-Length: 0\r\n\r\n')
 
     srv._keep_alive = True
-    yield from asyncio.sleep(0.01, loop=loop)
 
     request_handler = srv._request_handler
 
     srv.closing()
-    return
 
     yield from asyncio.sleep(0.01, loop=loop)
     assert transport.close.called
     assert srv.transport is None
 
-    assert srv._keep_alive_handle is not None
-    assert not keep_alive_handle.cancel.called
-
-    assert srv._timeout_handle is not None
-    assert not timeout_handle.cancel.called
-
     assert srv._request_handler is None
-    assert request_handler.cancel()
+    assert request_handler.done()
 
 
 def test_closing_during_reading(srv):
@@ -108,10 +97,6 @@ def test_closing_during_reading(srv):
 def test_double_closing(srv):
     srv._keep_alive = True
 
-    keep_alive_handle = mock.Mock()
-    srv._keep_alive_handle = keep_alive_handle
-    timeout_handle = mock.Mock()
-    srv._timeout_handle = timeout_handle
     transport = srv.transport = mock.Mock()
     srv.writer = mock.Mock()
 
@@ -123,12 +108,6 @@ def test_double_closing(srv):
     srv.closing()
     assert not transport.close.called
     assert srv.transport is None
-
-    assert srv._keep_alive_handle is not None
-    assert not keep_alive_handle.cancel.called
-
-    assert srv._timeout_handle is not None
-    assert not timeout_handle.cancel.called
 
 
 def test_connection_made(srv):
@@ -179,8 +158,6 @@ def test_connection_lost(srv, loop):
     srv.connection_made(mock.Mock())
     srv.data_received(b'123')
 
-    keep_alive_handle = srv._keep_alive_handle = mock.Mock()
-
     handle = srv._request_handler
     srv.connection_lost(None)
     yield from asyncio.sleep(0, loop=loop)
@@ -188,12 +165,8 @@ def test_connection_lost(srv, loop):
     assert srv._request_handler is None
     assert handle.cancelled()
 
-    assert srv._keep_alive_handle is None
-    assert keep_alive_handle.cancel.called
-
     srv.connection_lost(None)
     assert srv._request_handler is None
-    assert srv._keep_alive_handle is None
 
 
 def test_srv_keep_alive(srv):
@@ -206,9 +179,9 @@ def test_srv_keep_alive(srv):
     assert not srv._keep_alive
 
 
-def test_srv_slow_request(make_srv, loop):
+def test_slow_request(make_srv, loop):
     transport = mock.Mock()
-    srv = make_srv(timeout=0.01)
+    srv = make_srv(slow_request_timeout=0.01, keepalive_timeout=0)
     srv.connection_made(transport)
 
     srv.reader.feed_data(
@@ -237,6 +210,20 @@ def test_line_too_long(srv, loop):
     srv.connection_made(transport)
 
     srv.reader.feed_data(b''.join([b'a' for _ in range(10000)]))
+
+    loop.run_until_complete(srv._request_handler)
+    assert transport.write.mock_calls[0][1][0].startswith(
+        b'HTTP/1.1 400 Bad Request\r\n')
+
+
+def test_invalid_content_length(srv, loop):
+    transport = mock.Mock()
+    srv.connection_made(transport)
+
+    srv.reader.feed_data(
+        b'GET / HTTP/1.0\r\n'
+        b'Host: example.com\r\n'
+        b'Content-Length: sdgg\r\n\r\n')
 
     loop.run_until_complete(srv._request_handler)
     assert transport.write.mock_calls[0][1][0].startswith(
@@ -317,9 +304,10 @@ def test_handle_error_debug(srv):
     assert b'Traceback (most recent call last):' in content
 
 
-def test_handle_error_500(make_srv):
+def test_handle_error_500(make_srv, loop):
     log = mock.Mock()
     transport = mock.Mock()
+    transport.drain.return_value = ()
 
     srv = make_srv(logger=log)
     srv.connection_made(transport)
@@ -405,7 +393,7 @@ def test_handle_cancel(make_srv, loop):
         srv._request_handler.cancel()
 
     loop.run_until_complete(
-        asyncio.wait([srv._request_handler, cancel()], loop=loop))
+        asyncio.gather(srv._request_handler, cancel(), loop=loop))
     assert log.debug.called
 
 
@@ -432,32 +420,29 @@ def test_handle_cancelled(make_srv, loop):
 
 def test_handle_400(srv, loop):
     transport = mock.Mock()
+    transport.drain.side_effect = []
     srv.connection_made(transport)
-    srv.handle_error = mock.Mock()
-    srv.keep_alive(True)
     srv.reader.feed_data(b'GET / HT/asd\r\n\r\n')
 
     loop.run_until_complete(srv._request_handler)
-    assert srv.handle_error.called
-    assert 400 == srv.handle_error.call_args[0][0]
-    assert transport.close.called
+
+    assert b'400 Bad Request' in srv.transport.write.call_args[0][0]
 
 
 def test_handle_500(srv, loop):
     transport = mock.Mock()
+    transport.drain.side_effect = []
     srv.connection_made(transport)
 
     handle = srv.handle_request = mock.Mock()
     handle.side_effect = ValueError
-    srv.handle_error = mock.Mock()
 
     srv.reader.feed_data(
         b'GET / HTTP/1.0\r\n'
         b'Host: example.com\r\n\r\n')
     loop.run_until_complete(srv._request_handler)
 
-    assert srv.handle_error.called
-    assert 500 == srv.handle_error.call_args[0][0]
+    assert b'500 Internal Server Error' in srv.transport.write.call_args[0][0]
 
 
 def test_handle_error_no_handle_task(srv):
@@ -501,10 +486,8 @@ def test_keep_alive_close_existing(make_srv, loop):
     transport = mock.Mock()
     srv = make_srv(keep_alive=0)
     srv.connection_made(transport)
-    assert srv._keep_alive_handle is None
 
     srv._keep_alive_period = 15
-    keep_alive_handle = srv._keep_alive_handle = mock.Mock()
     srv.handle_request = mock.Mock()
     srv.handle_request.return_value = helpers.create_future(loop)
     srv.handle_request.return_value.set_result(1)
@@ -514,8 +497,6 @@ def test_keep_alive_close_existing(make_srv, loop):
         b'HOST: example.com\r\n\r\n')
 
     loop.run_until_complete(srv._request_handler)
-    assert keep_alive_handle.cancel.called
-    assert srv._keep_alive_handle is None
     assert transport.close.called
 
 
