@@ -19,7 +19,9 @@ the `demo source`_.
 Setup your environment
 ----------------------
 
-First of all check you python version::
+First of all check you python version:
+
+.. code-block:: shell
 
  $ python -V
  Python 3.5.0
@@ -28,12 +30,16 @@ Tutorial requires Python 3.5.0 or newer.
 
 We’ll assume that you have already installed *aiohttp* library. You can check
 aiohttp is installed and which version by running the following
-command::
+command:
+
+.. code-block:: shell
 
  $ python -c 'import aiohttp; print(aiohttp.__version__)'
  0.22.0
 
-Project structure looks very similar to other python based web projects::
+Project structure looks very similar to other python based web projects:
+
+.. code-block:: none
 
     .
     ├── README.rst
@@ -213,7 +219,9 @@ to ``polls/aiohttpdemo_polls/routes.py``::
     def setup_routes(app, project_root):
         app.router.add_get('/', index)
 
-Now if we open browser we can see::
+Now if we open browser we can see:
+
+.. code-block:: shell
 
     $ curl -X GET localhost:8080
     Hello Aiohttp!
@@ -245,7 +253,9 @@ dict with page content, ``aiohttp_jinja2.template`` decorator
 processes it by jinja2 template renderer.
 
 For setting up template engine we need to install ``aiohttp_jinja2``
-library first::
+library first:
+
+.. code-block:: shell
 
    $ pip install aiohttp_jinja2
 

@@ -46,7 +46,9 @@ That's it. Now, head over to ``http://localhost:8080/`` to see the results.
 Command Line Interface (CLI)
 ----------------------------
 :mod:`aiohttp.web` implements a basic CLI for quickly serving an
-:class:`Application` in *development* over TCP/IP::
+:class:`Application` in *development* over TCP/IP:
+
+.. code-block:: shell
 
     $ python -m aiohttp.web -H localhost -P 8080 package.module:init_func
 
@@ -994,7 +996,9 @@ Debug Toolbar
 aiohttp_debugtoolbar_ is a very useful library that provides a debugging toolbar
 while you're developing an :mod:`aiohttp.web` application.
 
-Install it via ``pip``::
+Install it via ``pip``:
+
+.. code-block:: shell
 
     $ pip install aiohttp_debugtoolbar
 

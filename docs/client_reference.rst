@@ -512,9 +512,9 @@ Usage::
              assert resp.status == 200
              print(await resp.text())
 
-   .. deprecated:: 0.21
+.. deprecated:: 0.21
 
-      Use :meth:`ClientSession.request`.
+   Use :meth:`ClientSession.request`.
 
 
 .. coroutinefunction:: get(url, **kwargs)
