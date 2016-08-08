@@ -283,13 +283,11 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                 'Ignored premature client disconnection #1.')
             return
         except errors.HttpProcessingError as exc:
-            if self.transport is not None:
-                yield from self.handle_error(exc.code, message,
-                                             None, exc, exc.headers,
-                                             exc.message)
+            yield from self.handle_error(exc.code, message,
+                                         None, exc, exc.headers,
+                                         exc.message)
         except Exception as exc:
-            if self.transport is not None:
-                yield from self.handle_error(500, message, None, exc)
+            yield from self.handle_error(500, message, None, exc)
         finally:
             self._request_handler = None
             if self.transport is None:
