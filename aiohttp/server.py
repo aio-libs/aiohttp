@@ -304,7 +304,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         information. It always closes current connection."""
         now = self._loop.time()
         try:
-            if self._request_handler is None:
+            if self.transport is None:
                 # client has been disconnected during writing.
                 return ()
 
