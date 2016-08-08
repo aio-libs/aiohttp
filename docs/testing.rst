@@ -13,6 +13,20 @@ server tests extremely easy, it also provides
 :ref:`test framework agnostic utilities <framework-agnostic-utilities>` for
 testing with other frameworks such as :ref:`unittest <unittest-example>`.
 
+
+
+For using pytest plugin please install pytest-aiohttp_ library:
+
+.. code-block:: shell
+
+   $ pip install pytest-aiohttp
+
+If you don't want to install *pytest-aiohttp* for some reason you may
+insert ``pytest_plugins = 'aiohttp.pytest_plugin'`` line into
+``conftest.py`` instead for the same functionality.
+
+
+
 Pytest example
 ~~~~~~~~~~~~~~
 
@@ -22,7 +36,6 @@ allows you to create a client to make requests to test your app.
 A simple would be::
 
     from aiohttp import web
-    pytest_plugins = 'aiohttp.pytest_plugin'
 
     async def hello(request):
         return web.Response(body=b'Hello, world')
@@ -225,3 +238,4 @@ aiohttp.test_utils
 
 
 .. _pytest: http://pytest.org/latest/
+.. _pytest-aiohttp: https://pypi.python.org/pypi/pytest-aiohttp
