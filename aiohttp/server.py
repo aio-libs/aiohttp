@@ -322,7 +322,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                         self._keep_alive_handle = self._loop.call_at(
                             ceil(now+self._keepalive_timeout),
                             self.transport.close)
-                    elif self._keep_alive and self._keep_alive_on:
+                    elif self._keep_alive:
                         # do nothing, rely on kernel or upstream server
                         pass
                     else:
