@@ -10,7 +10,7 @@ from math import ceil
 
 import aiohttp
 from aiohttp import errors, hdrs, helpers, streams
-from aiohttp.helpers import _get_kwarg, ensure_future
+from aiohttp.helpers import Timeout, _get_kwarg, ensure_future
 from aiohttp.log import access_logger, server_logger
 
 __all__ = ('ServerHttpProtocol',)
@@ -87,7 +87,6 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     _reading_request = False
     _keep_alive = False  # keep transport open
     _keep_alive_handle = None  # keep alive timer handle
-    _slow_request_timeout_handle = None  # slow request timer handle
 
     def __init__(self, *, loop=None,
                  keepalive_timeout=75,  # NGINX default value is 75 secs
@@ -138,6 +137,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                                                       access_log_format)
         else:
             self.access_logger = None
+        self._closing = False
 
     @property
     def keep_alive_timeout(self):
@@ -157,6 +157,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         self._keep_alive = False
         self._tcp_keep_alive = False
         self._keepalive_timeout = None
+        self._closing = True
 
         if (not self._reading_request and self.transport is not None):
             if self._request_handler:
@@ -165,26 +166,11 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
             self.transport.close()
             self.transport = None
-        elif self.transport is not None and timeout:
-            if self._slow_request_timeout_handle is not None:
-                self._slow_request_timeout_handle.cancel()
-
-            # use slow request timeout for closing
-            # connection_lost cleans timeout handler
-            now = self._loop.time()
-            self._slow_request_timeout_handle = self._loop.call_at(
-                ceil(now+timeout), self.cancel_slow_request)
 
     def connection_made(self, transport):
         super().connection_made(transport)
 
         self._request_handler = ensure_future(self.start(), loop=self._loop)
-
-        # start slow request timer
-        if self._slow_request_timeout:
-            now = self._loop.time()
-            self._slow_request_timeout_handle = self._loop.call_at(
-                ceil(now+self._slow_request_timeout), self.cancel_slow_request)
 
         if self._tcp_keepalive:
             tcp_keepalive(self, transport)
@@ -198,9 +184,6 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         if self._keep_alive_handle is not None:
             self._keep_alive_handle.cancel()
             self._keep_alive_handle = None
-        if self._slow_request_timeout_handle is not None:
-            self._slow_request_timeout_handle.cancel()
-            self._slow_request_timeout_handle = None
 
     def data_received(self, data):
         super().data_received(data)
@@ -255,7 +238,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         """
         reader = self.reader
 
-        while True:
+        while not self._closing:
             message = None
             self._keep_alive = False
             self._request_count += 1
@@ -271,21 +254,10 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                 self._reading_request = True
 
                 # start slow request timer
-                if (self._slow_request_timeout and
-                        self._slow_request_timeout_handle is None):
-                    now = self._loop.time()
-                    self._slow_request_timeout_handle = self._loop.call_at(
-                        ceil(now+self._slow_request_timeout),
-                        self.cancel_slow_request)
-
-                # read request headers
-                httpstream = reader.set_parser(self._request_parser)
-                message = yield from httpstream.read()
-
-                # cancel slow request timer
-                if self._slow_request_timeout_handle is not None:
-                    self._slow_request_timeout_handle.cancel()
-                    self._slow_request_timeout_handle = None
+                with Timeout(self._slow_request_timeout, loop=self._loop):
+                    # read request headers
+                    httpstream = reader.set_parser(self._request_parser)
+                    message = yield from httpstream.read()
 
                 # request may not have payload
                 try:
@@ -327,6 +299,10 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                 if self.transport is None:
                     self.log_debug(
                         'Ignored premature client disconnection #2.')
+                    return
+                elif self._closing:
+                    self._request_handler = None
+                    self.transport.close()
                     return
 
                 if payload and not payload.is_eof():
