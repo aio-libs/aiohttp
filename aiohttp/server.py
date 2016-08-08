@@ -216,16 +216,6 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     def log_exception(self, *args, **kw):
         self.logger.exception(*args, **kw)
 
-    def cancel_slow_request(self):
-        if self._request_handler is not None:
-            self._request_handler.cancel()
-            self._request_handler = None
-
-        if self.transport is not None:
-            self.transport.close()
-
-        self.log_debug('Close slow request.')
-
     @asyncio.coroutine
     def start(self):
         """Start processing of incoming requests.

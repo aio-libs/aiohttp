@@ -519,10 +519,6 @@ def test_keep_alive_close_existing(make_srv, loop):
     assert transport.close.called
 
 
-def test_cancel_not_connected_handler(srv):
-    srv.cancel_slow_request()
-
-
 def test_srv_process_request_without_timeout(make_srv, loop):
     transport = mock.Mock()
     srv = make_srv(timeout=0)
