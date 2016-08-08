@@ -66,7 +66,7 @@ def test_closing(srv, loop):
         b'Host: example.com\r\n'
         b'Content-Length: 0\r\n\r\n')
 
-    srv._keep_alive = True
+    srv._keepalive = True
 
     request_handler = srv._request_handler
 
@@ -81,8 +81,8 @@ def test_closing(srv, loop):
 
 
 def test_closing_during_reading(srv):
-    srv._keep_alive = True
-    srv._keep_alive_on = True
+    srv._keepalive = True
+    srv._tcp_keepalive = True
     srv._reading_request = True
     transport = srv.transport = mock.Mock()
 
@@ -95,7 +95,7 @@ def test_closing_during_reading(srv):
 
 
 def test_double_closing(srv):
-    srv._keep_alive = True
+    srv._keepalive = True
 
     transport = srv.transport = mock.Mock()
     srv.writer = mock.Mock()
@@ -170,13 +170,13 @@ def test_connection_lost(srv, loop):
 
 
 def test_srv_keep_alive(srv):
-    assert not srv._keep_alive
+    assert not srv._keepalive
 
     srv.keep_alive(True)
-    assert srv._keep_alive
+    assert srv._keepalive
 
     srv.keep_alive(False)
-    assert not srv._keep_alive
+    assert not srv._keepalive
 
 
 def test_slow_request(make_srv, loop):
@@ -241,7 +241,7 @@ def test_handle_error(srv):
         [c[1][0] for c in list(srv.writer.write.mock_calls)])
     assert b'HTTP/1.1 404 Not Found' in content
     assert b'X-Server: asyncio' in content
-    assert not srv._keep_alive
+    assert not srv._keepalive
 
 
 def test_handle_error__utf(make_srv):
@@ -262,7 +262,7 @@ def test_handle_error__utf(make_srv):
     assert b'Content-Type: text/html; charset=utf-8' in content
     pattern = escape("raise RuntimeError('что-то пошло не так')")
     assert pattern.encode('utf-8') in content
-    assert not srv._keep_alive
+    assert not srv._keepalive
 
     srv.logger.exception.assert_called_with("Error handling request")
 
@@ -452,7 +452,7 @@ def test_handle_error_no_handle_task(srv):
     srv.connection_lost(None)
 
     srv.handle_error(300)
-    assert not srv._keep_alive
+    assert not srv._keepalive
 
 
 def test_keep_alive(make_srv, loop):
@@ -484,10 +484,9 @@ def test_keep_alive(make_srv, loop):
 
 def test_keep_alive_close_existing(make_srv, loop):
     transport = mock.Mock()
-    srv = make_srv(keep_alive=0)
+    srv = make_srv(keepalive_timeout=15)
     srv.connection_made(transport)
 
-    srv._keep_alive_period = 15
     srv.handle_request = mock.Mock()
     srv.handle_request.return_value = helpers.create_future(loop)
     srv.handle_request.return_value.set_result(1)

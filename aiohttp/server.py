@@ -80,7 +80,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     _request_count = 0
     _request_handler = None
     _reading_request = False
-    _keep_alive = False  # keep transport open
+    _keepalive = False  # keep transport open
 
     def __init__(self, *, loop=None,
                  keepalive_timeout=75,  # NGINX default value is 75 secs
@@ -148,8 +148,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         """Worker process is about to exit, we need cleanup everything and
         stop accepting requests. It is especially important for keep-alive
         connections."""
-        self._keep_alive = False
-        self._tcp_keep_alive = False
+        self._keepalive = False
+        self._tcp_keepalive = False
         self._keepalive_timeout = None
         self._closing = True
 
@@ -188,7 +188,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
         :param bool val: new state.
         """
-        self._keep_alive = val
+        self._keepalive = val
 
     def log_access(self, message, environ, response, time):
         if self.access_logger:
@@ -217,7 +217,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         try:
             while not self._closing:
                 message = None
-                self._keep_alive = False
+                self._keepalive = False
                 self._request_count += 1
                 self._reading_request = False
 
@@ -263,7 +263,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                     self._closing = True
                 else:
                     reader.unset_parser()
-                    if not self._keep_alive or not self._keepalive_timeout:
+                    if not self._keepalive or not self._keepalive_timeout:
                         self._closing = True
 
         except asyncio.CancelledError:
