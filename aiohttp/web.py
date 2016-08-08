@@ -136,35 +136,9 @@ class RequestHandlerFactory:
             del self._connections[handler]
 
     @asyncio.coroutine
-    def _connections_cleanup(self):
-        sleep = 0.05
-        while self._connections:
-            yield from asyncio.sleep(sleep, loop=self._loop)
-            if sleep < 5:
-                sleep = sleep * 2
-
-    @asyncio.coroutine
     def finish_connections(self, timeout=None):
-        # try to close connections in 90% of graceful timeout
-        timeout90 = None
-        if timeout:
-            timeout90 = timeout / 100 * 90
-
-        for handler in self._connections.keys():
-            handler.closing(timeout=timeout90)
-
-        if timeout:
-            try:
-                yield from asyncio.wait_for(
-                    self._connections_cleanup(), timeout, loop=self._loop)
-            except asyncio.TimeoutError:
-                self._app.logger.warning(
-                    "Not all connections are closed (pending: %d)",
-                    len(self._connections))
-
-        for transport in self._connections.values():
-            transport.close()
-
+        coros = [conn.shutdown(timeout) for conn in self._connections]
+        yield from asyncio.gather(*coros, loop=self._loop)
         self._connections.clear()
 
     def __call__(self):

@@ -2,6 +2,7 @@
 
 import asyncio
 import socket
+from functools import partial
 from html import escape
 from unittest import mock
 
@@ -53,8 +54,9 @@ def test_handle_request(srv):
 
 
 @pytest.mark.run_loop
-def test_closing(srv, loop):
+def test_shutdown(srv, loop):
     transport = mock.Mock()
+    transport.close.side_effect = partial(srv.connection_lost, None)
     transport.drain.side_effect = []
     srv.connection_made(transport)
     assert transport is srv.transport
@@ -70,9 +72,12 @@ def test_closing(srv, loop):
 
     request_handler = srv._request_handler
 
-    srv.closing()
+    t0 = loop.time()
+    yield from srv.shutdown()
+    t1 = loop.time()
 
-    yield from asyncio.sleep(0.01, loop=loop)
+    assert t1 - t0 < 0.05, t1-t0
+
     assert transport.close.called
     assert srv.transport is None
 
@@ -80,32 +85,19 @@ def test_closing(srv, loop):
     assert request_handler.done()
 
 
-def test_closing_during_reading(srv):
-    srv._keepalive = True
-    srv._tcp_keepalive = True
-    srv._reading_request = True
+@pytest.mark.run_loop
+def test_double_shutdown(srv):
     transport = srv.transport = mock.Mock()
-
-    assert not srv._closing
-
-    srv.closing()
-    assert not transport.close.called
-    assert srv.transport is not None
-    assert srv._closing
-
-
-def test_double_closing(srv):
-    srv._keepalive = True
-
-    transport = srv.transport = mock.Mock()
+    transport.close.side_effect = partial(srv.connection_lost, None)
+    srv.connection_made(transport)
     srv.writer = mock.Mock()
 
-    srv.closing()
+    yield from srv.shutdown()
     assert transport.close.called
     assert srv.transport is None
 
     transport.reset_mock()
-    srv.closing()
+    yield from srv.shutdown()
     assert not transport.close.called
     assert srv.transport is None
 
@@ -156,16 +148,15 @@ def test_eof_received(srv):
 @pytest.mark.run_loop
 def test_connection_lost(srv, loop):
     srv.connection_made(mock.Mock())
-    srv.data_received(b'123')
 
     handle = srv._request_handler
+    yield from asyncio.sleep(0, loop=loop)  # wait for .start() starting
     srv.connection_lost(None)
-    yield from asyncio.sleep(0, loop=loop)
 
-    assert srv._request_handler is None
-    assert handle.cancelled()
+    assert srv._closing
 
-    srv.connection_lost(None)
+    yield from handle
+
     assert srv._request_handler is None
 
 

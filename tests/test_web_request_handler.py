@@ -3,6 +3,7 @@ from unittest import mock
 import pytest
 
 from aiohttp import web
+from aiohttp.test_utils import make_mocked_coro
 
 
 def test_repr(loop):
@@ -38,6 +39,7 @@ def test_finish_connection_no_timeout(loop):
     manager = app.make_handler()
 
     handler = mock.Mock()
+    handler.shutdown = make_mocked_coro(mock.Mock())
     transport = mock.Mock()
     manager.connection_made(handler, transport)
 
@@ -45,8 +47,7 @@ def test_finish_connection_no_timeout(loop):
 
     manager.connection_lost(handler, None)
     assert manager.connections == []
-    handler.closing.assert_called_with(timeout=None)
-    transport.close.assert_called_with()
+    handler.shutdown.assert_called_with(None)
 
 
 @pytest.mark.run_loop
@@ -55,6 +56,7 @@ def test_finish_connection_timeout(loop):
     manager = app.make_handler()
 
     handler = mock.Mock()
+    handler.shutdown = make_mocked_coro(mock.Mock())
     transport = mock.Mock()
     manager.connection_made(handler, transport)
 
@@ -62,8 +64,7 @@ def test_finish_connection_timeout(loop):
 
     manager.connection_lost(handler, None)
     assert manager.connections == []
-    handler.closing.assert_called_with(timeout=0.09)
-    transport.close.assert_called_with()
+    handler.shutdown.assert_called_with(0.1)
 
 
 def test_secure_proxy_ssl_header_default(loop):

@@ -5,6 +5,7 @@ import http.server
 import socket
 import traceback
 import warnings
+from contextlib import suppress
 from html import escape as html_escape
 
 import aiohttp
@@ -144,22 +145,23 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     def keepalive_timeout(self):
         return self._keepalive_timeout
 
-    def closing(self, timeout=15.0):
+    @asyncio.coroutine
+    def shutdown(self, timeout=15.0):
         """Worker process is about to exit, we need cleanup everything and
         stop accepting requests. It is especially important for keep-alive
         connections."""
-        self._keepalive = False
-        self._tcp_keepalive = False
-        self._keepalive_timeout = None
+        if self._request_handler is None:
+            return
         self._closing = True
 
-        if (not self._reading_request and self.transport is not None):
-            if self._request_handler:
-                self._request_handler.cancel()
-                self._request_handler = None
-
-            self.transport.close()
-            self.transport = None
+        if timeout:
+            canceller = self._loop.call_later(timeout,
+                                              self._request_handler.cancel)
+            with suppress(asyncio.CancelledError):
+                yield from self._request_handler
+            canceller.cancel()
+        else:
+            self._request_handler.cancel()
 
     def connection_made(self, transport):
         super().connection_made(transport)
@@ -172,9 +174,9 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     def connection_lost(self, exc):
         super().connection_lost(exc)
 
+        self._closing = True
         if self._request_handler is not None:
             self._request_handler.cancel()
-            self._request_handler = None
 
     def data_received(self, data):
         super().data_received(data)
