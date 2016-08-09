@@ -29,6 +29,7 @@ from . import ClientSession, hdrs, helpers, server
 from .helpers import _sentinel
 from .protocol import HttpVersion, RawRequestMessage
 from .signals import Signal
+from .web import Request
 
 
 def run_briefly(loop):
@@ -630,7 +631,6 @@ def make_mocked_request(method, path, headers=None, *,
     if payload is _sentinel:
         payload = mock.Mock()
 
-    from .web import Request
     req = Request(app, message, payload,
                   transport, reader, writer,
                   secure_proxy_ssl_header=secure_proxy_ssl_header)
