@@ -522,6 +522,39 @@ def test_HTTP_200_OK_METHOD(create_app_and_client):
 
     for meth in ('get', 'post', 'put', 'delete', 'head'):
         resp = yield from client.request(meth, '/')
+        assert resp.status == 200
+        assert len(resp.history) == 0
+
+        content1 = yield from resp.read()
+        content2 = yield from resp.read()
+        assert content1 == content2
+        content = yield from resp.text()
+
+        if meth == 'head':
+            assert b'' == content1
+        else:
+            assert meth.upper() == content
+
+        yield from resp.release()
+
+
+@pytest.mark.run_loop
+def test_HTTP_200_OK_METHOD_connector(create_app_and_client, loop):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(text=request.method)
+
+    conn = aiohttp.TCPConnector(
+        conn_timeout=0.2, resolve=True, loop=loop)
+    conn.clear_resolved_hosts()
+
+    app, client = yield from create_app_and_client(
+        client_params={'connector': conn})
+    for meth in ('get', 'post', 'put', 'delete', 'head'):
+        app.router.add_route(meth.upper(), '/', handler)
+
+    for meth in ('get', 'post', 'put', 'delete', 'head'):
+        resp = yield from client.request(meth, '/')
 
         content1 = yield from resp.read()
         content2 = yield from resp.read()
@@ -534,4 +567,24 @@ def test_HTTP_200_OK_METHOD(create_app_and_client):
         else:
             assert meth.upper() == content
 
-        resp.close()
+        yield from resp.release()
+
+
+@pytest.mark.run_loop
+def test_HTTP_302_REDIRECT_GET(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(text=request.method)
+
+    @asyncio.coroutine
+    def redirect(request):
+        return web.HTTPFound(location='/')
+
+    app, client = yield from create_app_and_client()
+    app.router.add_get('/', handler)
+    app.router.add_get('/redirect', redirect)
+
+    resp = yield from client.get('/redirect')
+    assert 200 == resp.status
+    assert 1 == len(resp.history)
+    resp.close()
