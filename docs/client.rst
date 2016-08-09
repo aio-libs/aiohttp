@@ -40,6 +40,14 @@ Other HTTP methods are available as well::
     session.options('http://httpbin.org/get')
     session.patch('http://httpbin.org/patch', data=b'data')
 
+.. note::
+
+   Don't create a session per request. Most likely you need a session
+   per application which perfoms all requests altogether.
+
+   A session contains a connection pool inside, connection reusage and
+   keep-alives (both are on by default) may speed up total performance.
+
 
 Passing Parameters In URLs
 --------------------------
