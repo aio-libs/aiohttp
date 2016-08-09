@@ -9,11 +9,11 @@ import ssl
 from unittest import mock
 
 import pytest
+from multidict import MultiDict
 
 import aiohttp
 from aiohttp import hdrs, web
 from aiohttp.errors import FingerprintMismatch
-from multidict import MultiDict
 
 
 @pytest.fixture
