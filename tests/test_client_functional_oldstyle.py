@@ -31,113 +31,6 @@ class TestHttpClientFunctional(unittest.TestCase):
         self.loop.close()
         gc.collect()
 
-    def test_HTTP_302_REDIRECT_NON_HTTP(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            @asyncio.coroutine
-            def go():
-                with self.assertRaises(ValueError):
-                    yield from client.request('get',
-                                              httpd.url('redirect_err'),
-                                              loop=self.loop)
-
-            self.loop.run_until_complete(go())
-
-    def test_HTTP_302_REDIRECT_POST(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            r = self.loop.run_until_complete(
-                client.request('post', httpd.url('redirect', 2),
-                               data={'some': 'data'}, loop=self.loop))
-            content = self.loop.run_until_complete(r.content.read())
-            content = content.decode()
-
-            self.assertEqual(r.status, 200)
-            self.assertIn('"method": "GET"', content)
-            self.assertEqual(2, httpd['redirects'])
-            r.close()
-
-    def test_HTTP_302_REDIRECT_POST_with_content_length_header(self):
-        data = json.dumps({'some': 'data'})
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            r = self.loop.run_until_complete(
-                client.request('post', httpd.url('redirect', 2),
-                               data=data,
-                               headers={'Content-Length': str(len(data))},
-                               loop=self.loop))
-            content = self.loop.run_until_complete(r.content.read())
-            content = content.decode()
-
-            self.assertEqual(r.status, 200)
-            self.assertIn('"method": "GET"', content)
-            self.assertEqual(2, httpd['redirects'])
-            r.close()
-
-    def test_HTTP_307_REDIRECT_POST(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            r = self.loop.run_until_complete(
-                client.request('post', httpd.url('redirect_307', 2),
-                               data={'some': 'data'}, loop=self.loop))
-            content = self.loop.run_until_complete(r.content.read())
-            content = content.decode()
-
-            self.assertEqual(r.status, 200)
-            self.assertIn('"method": "POST"', content)
-            self.assertEqual(2, httpd['redirects'])
-            r.close()
-
-    def test_HTTP_302_max_redirects(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            r = self.loop.run_until_complete(
-                client.request('get', httpd.url('redirect', 5),
-                               max_redirects=2, loop=self.loop))
-
-            self.assertEqual(r.status, 302)
-            self.assertEqual(2, httpd['redirects'])
-            r.close()
-
-    def test_HTTP_200_GET_WITH_PARAMS(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            r = self.loop.run_until_complete(
-                client.request('get', httpd.url('method', 'get'),
-                               params={'q': 'test'}, loop=self.loop))
-            content = self.loop.run_until_complete(r.content.read())
-            content = content.decode()
-
-            self.assertIn('"query": "q=test"', content)
-            self.assertEqual(r.status, 200)
-            r.close()
-
-    def test_HTTP_200_GET_MultiDict_PARAMS(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            r = self.loop.run_until_complete(
-                client.request('get', httpd.url('method', 'get'),
-                               params=MultiDict(
-                                   [('q', 'test1'), ('q', 'test2')]),
-                               loop=self.loop))
-            content = self.loop.run_until_complete(r.content.read())
-            content = content.decode()
-
-            self.assertIn('"query": "q=test1&q=test2"', content)
-            self.assertEqual(r.status, 200)
-            r.close()
-
-    def test_HTTP_200_GET_WITH_MIXED_PARAMS(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            @asyncio.coroutine
-            def go():
-                r = yield from client.request(
-                    'get', httpd.url('method', 'get') + '?test=true',
-                    params={'q': 'test'}, loop=self.loop)
-                content = yield from r.content.read()
-                content = content.decode()
-
-                self.assertIn('"query": "test=true&q=test"', content)
-                self.assertEqual(r.status, 200)
-                r.close()
-                # let loop to make one iteration to call connection_lost
-                # and close socket
-                yield from asyncio.sleep(0, loop=self.loop)
-            self.loop.run_until_complete(go())
-
     def test_POST_DATA(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
@@ -1079,12 +972,6 @@ class Functional(test_utils.Router):
     def method(self, match):
         self._response(self._start_response(200))
 
-    @test_utils.Router.define('/redirect_err$')
-    def redirect_err(self, match):
-        self._response(
-            self._start_response(302),
-            headers={'Location': 'ftp://127.0.0.1/test/'})
-
     @test_utils.Router.define('/redirect/([0-9]+)$')
     def redirect(self, match):
         no = int(match.group(1).upper())
@@ -1097,20 +984,6 @@ class Functional(test_utils.Router):
         else:
             self._response(
                 self._start_response(302),
-                headers={'Location': self._path})
-
-    @test_utils.Router.define('/redirect_307/([0-9]+)$')
-    def redirect_307(self, match):
-        no = int(match.group(1).upper())
-        rno = self._props['redirects'] = self._props.get('redirects', 0) + 1
-
-        if rno >= no:
-            self._response(
-                self._start_response(307),
-                headers={'Location': '/method/%s' % self._method.lower()})
-        else:
-            self._response(
-                self._start_response(307),
                 headers={'Location': self._path})
 
     @test_utils.Router.define('/encoding/(gzip|deflate)$')

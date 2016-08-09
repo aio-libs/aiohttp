@@ -2,6 +2,7 @@
 
 import asyncio
 import io
+import json
 import os
 import os.path
 import ssl
@@ -12,6 +13,7 @@ import pytest
 import aiohttp
 from aiohttp import hdrs, web
 from aiohttp.errors import FingerprintMismatch
+from multidict import MultiDict
 
 
 @pytest.fixture
@@ -587,4 +589,163 @@ def test_HTTP_302_REDIRECT_GET(create_app_and_client):
     resp = yield from client.get('/redirect')
     assert 200 == resp.status
     assert 1 == len(resp.history)
+    resp.close()
+
+
+@pytest.mark.run_loop
+def test_HTTP_302_REDIRECT_NON_HTTP(create_app_and_client):
+
+    @asyncio.coroutine
+    def redirect(request):
+        return web.HTTPFound(location='ftp://127.0.0.1/test/')
+
+    app, client = yield from create_app_and_client()
+    app.router.add_get('/redirect', redirect)
+
+    with pytest.raises(ValueError):
+        yield from client.get('/redirect')
+
+
+@pytest.mark.run_loop
+def test_HTTP_302_REDIRECT_POST(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(text=request.method)
+
+    @asyncio.coroutine
+    def redirect(request):
+        return web.HTTPFound(location='/')
+
+    app, client = yield from create_app_and_client()
+    app.router.add_get('/', handler)
+    app.router.add_post('/redirect', redirect)
+
+    resp = yield from client.post('/redirect')
+    assert 200 == resp.status
+    assert 1 == len(resp.history)
+    txt = yield from resp.text()
+    assert txt == 'GET'
+    resp.close()
+
+
+@pytest.mark.run_loop
+def test_HTTP_302_REDIRECT_POST_with_content_length_header(
+        create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(text=request.method)
+
+    @asyncio.coroutine
+    def redirect(request):
+        return web.HTTPFound(location='/')
+
+    data = json.dumps({'some': 'data'})
+    app, client = yield from create_app_and_client()
+    app.router.add_get('/', handler)
+    app.router.add_post('/redirect', redirect)
+
+    resp = yield from client.post('/redirect', data=data,
+                                  headers={'Content-Length': str(len(data))})
+    assert 200 == resp.status
+    assert 1 == len(resp.history)
+    txt = yield from resp.text()
+    assert txt == 'GET'
+    resp.close()
+
+
+@pytest.mark.run_loop
+def test_HTTP_307_REDIRECT_POST(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(text=request.method)
+
+    @asyncio.coroutine
+    def redirect(request):
+        return web.HTTPTemporaryRedirect(location='/')
+
+    app, client = yield from create_app_and_client()
+    app.router.add_post('/', handler)
+    app.router.add_post('/redirect', redirect)
+
+    resp = yield from client.post('/redirect', data={'some': 'data'})
+    assert 200 == resp.status
+    assert 1 == len(resp.history)
+    txt = yield from resp.text()
+    assert txt == 'POST'
+    resp.close()
+
+
+@pytest.mark.run_loop
+def test_HTTP_302_max_redirects(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(text=request.method)
+
+    @asyncio.coroutine
+    def redirect(request):
+        count = int(request.match_info['count'])
+        if count:
+            return web.HTTPFound(location='/redirect/{}'.format(count-1))
+        else:
+            return web.HTTPFound(location='/')
+
+    app, client = yield from create_app_and_client()
+    app.router.add_get('/', handler)
+    app.router.add_get(r'/redirect/{count:\d+}', redirect)
+
+    resp = yield from client.get('/redirect/5', max_redirects=2)
+    assert 302 == resp.status
+    assert 2 == len(resp.history)
+    resp.close()
+
+
+@pytest.mark.run_loop
+def test_HTTP_200_GET_WITH_PARAMS(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(text='&'.join(
+            k+'='+v for k, v in request.GET.items()))
+
+    app, client = yield from create_app_and_client()
+    app.router.add_get('/', handler)
+
+    resp = yield from client.get('/', params={'q': 'test'})
+    assert 200 == resp.status
+    txt = yield from resp.text()
+    assert txt == 'q=test'
+    resp.close()
+
+
+@pytest.mark.run_loop
+def test_HTTP_200_GET_WITH_MultiDict_PARAMS(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(text='&'.join(
+            k+'='+v for k, v in request.GET.items()))
+
+    app, client = yield from create_app_and_client()
+    app.router.add_get('/', handler)
+
+    resp = yield from client.get('/', params=MultiDict([('q', 'test'),
+                                                        ('q', 'test2')]))
+    assert 200 == resp.status
+    txt = yield from resp.text()
+    assert txt == 'q=test&q=test2'
+    resp.close()
+
+
+@pytest.mark.run_loop
+def test_HTTP_200_GET_WITH_MIXED_PARAMS(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(text='&'.join(
+            k+'='+v for k, v in request.GET.items()))
+
+    app, client = yield from create_app_and_client()
+    app.router.add_get('/', handler)
+
+    resp = yield from client.get('/?test=true', params={'q': 'test'})
+    assert 200 == resp.status
+    txt = yield from resp.text()
+    assert txt == 'test=true&q=test'
     resp.close()
