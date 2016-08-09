@@ -13,6 +13,7 @@ from multidict import MultiDict
 import aiohttp
 from aiohttp import hdrs, web
 from aiohttp.errors import FingerprintMismatch
+from aiohttp.multipart import MultipartWriter
 
 
 @pytest.fixture
@@ -1050,5 +1051,33 @@ def test_POST_FILES_IO(create_app_and_client):
 
     data = io.BytesIO(b'data')
     resp = yield from client.post('/', data=[data])
+    assert 200 == resp.status
+    resp.close()
+
+
+@pytest.mark.xfail
+@pytest.mark.run_loop
+def test_POST_MULTIPART(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.post()
+        lst = list(data.values())
+        assert 3 == len(lst)
+        assert lst[0] == 'foo'
+        assert lst[1] == {'bar': 'баз'}
+        assert b'data' == data['unknown'].file.read()
+        assert data['unknown'].content_type == 'application/octet-stream'
+        assert data['unknown'].filename == 'unknown'
+        return web.HTTPOk()
+
+    app, client = yield from create_app_and_client()
+    app.router.add_post('/', handler)
+
+    with MultipartWriter('form-data') as writer:
+        writer.append('foo')
+        writer.append_json({'bar': 'баз'})
+        writer.append_form([('тест', '4'), ('сетс', '2')])
+
+    resp = yield from client.post('/', data=writer)
     assert 200 == resp.status
     resp.close()
