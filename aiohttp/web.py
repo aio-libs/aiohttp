@@ -169,14 +169,10 @@ class RequestHandlerFactory:
 
     def __call__(self):
         self.num_connections += 1
-        try:
-            return self._handler(
-                self, self._app, self._router, loop=self._loop,
-                secure_proxy_ssl_header=self._secure_proxy_ssl_header,
-                **self._kwargs)
-        except:
-            web_logger.exception(
-                'Can not create request handler: {!r}'.format(self._handler))
+        return self._handler(
+            self, self._app, self._router, loop=self._loop,
+            secure_proxy_ssl_header=self._secure_proxy_ssl_header,
+            **self._kwargs)
 
 
 class Application(dict):
