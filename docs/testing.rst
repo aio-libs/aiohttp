@@ -66,7 +66,8 @@ app test client::
         if request.method == 'POST':
             request.app['value'] = (await request.post())['value']
             return web.Response(body=b'thanks for the data')
-        return web.Response(body='value: {}'.format(request.app['value']).encode())
+        return web.Response(
+            body='value: {}'.format(request.app['value']).encode())
 
     def create_app(loop):
         app = web.Application(loop=loop)
@@ -167,9 +168,7 @@ functionality, the AioHTTPTestCase is provided::
     class MyAppTestCase(AioHTTPTestCase):
 
         def get_app(self, loop):
-            """
-            override the get_app method to return
-            your application.
+            """Override the get_app method to return your application.
             """
             # it's important to use the loop passed here.
             return web.Application(loop=loop)
