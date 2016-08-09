@@ -749,3 +749,117 @@ def test_HTTP_200_GET_WITH_MIXED_PARAMS(create_app_and_client):
     txt = yield from resp.text()
     assert txt == 'test=true&q=test'
     resp.close()
+
+
+@pytest.mark.run_loop
+def test_POST_DATA(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.post()
+        return web.json_response(dict(data))
+
+    app, client = yield from create_app_and_client()
+    app.router.add_post('/', handler)
+
+    resp = yield from client.post('/', data={'some': 'data'})
+    assert 200 == resp.status
+    content = yield from resp.json()
+    assert content == {'some': 'data'}
+    resp.close()
+
+
+@pytest.mark.run_loop
+def test_POST_DATA_with_explicit_formdata(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.post()
+        return web.json_response(dict(data))
+
+    app, client = yield from create_app_and_client()
+    app.router.add_post('/', handler)
+
+    form = aiohttp.FormData()
+    form.add_field('name', 'text')
+
+    resp = yield from client.post('/', data=form)
+    assert 200 == resp.status
+    content = yield from resp.json()
+    assert content == {'name': 'text'}
+    resp.close()
+
+
+@pytest.mark.xfail
+@pytest.mark.run_loop
+def test_POST_DATA_with_charset(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.post()
+        return web.Response(text=data['name'])
+
+    app, client = yield from create_app_and_client()
+    app.router.add_post('/', handler)
+
+    form = aiohttp.FormData()
+    form.add_field('name', 'текст', content_type='text/plain; charset=koi8-r')
+
+    resp = yield from client.post('/', data=form)
+    assert 200 == resp.status
+    content = yield from resp.text()
+    assert content == 'текст'
+    resp.close()
+
+
+@pytest.mark.xfail
+@pytest.mark.run_loop
+def test_POST_DATA_with_context_transfer_encoding(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.post()
+        assert data['name'] == b'text'  # should it be str?
+        return web.Response(text=data['name'])
+
+    app, client = yield from create_app_and_client()
+    app.router.add_post('/', handler)
+
+    form = aiohttp.FormData()
+    form.add_field('name', 'text', content_transfer_encoding='base64')
+
+    resp = yield from client.post('/', data=form)
+    assert 200 == resp.status
+    content = yield from resp.text()
+    assert content == 'text'
+    resp.close()
+
+
+@pytest.mark.run_loop
+def test_POST_MultiDict(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.post()
+        assert data == MultiDict([('q', 'test1'), ('q', 'test2')])
+        return web.Response()
+
+    app, client = yield from create_app_and_client()
+    app.router.add_post('/', handler)
+
+    resp = yield from client.post('/', data=MultiDict(
+        [('q', 'test1'), ('q', 'test2')]))
+    assert 200 == resp.status
+    resp.close()
+
+
+@pytest.mark.run_loop
+def test_POST_DATA_DEFLATE(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.post()
+        return web.json_response(dict(data))
+
+    app, client = yield from create_app_and_client()
+    app.router.add_post('/', handler)
+
+    resp = yield from client.post('/', data={'some': 'data'}, compress=True)
+    assert 200 == resp.status
+    content = yield from resp.json()
+    assert content == {'some': 'data'}
+    resp.close()

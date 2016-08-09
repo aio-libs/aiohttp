@@ -31,35 +31,6 @@ class TestHttpClientFunctional(unittest.TestCase):
         self.loop.close()
         gc.collect()
 
-    def test_POST_DATA(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            url = httpd.url('method', 'post')
-            r = self.loop.run_until_complete(
-                client.request('post', url, data={'some': 'data'},
-                               loop=self.loop))
-            self.assertEqual(r.status, 200)
-
-            content = self.loop.run_until_complete(r.json())
-            self.assertEqual({'some': ['data']}, content['form'])
-            self.assertEqual(r.status, 200)
-            r.close()
-
-    def test_POST_DATA_with_explicit_formdata(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            url = httpd.url('method', 'post')
-            form = aiohttp.FormData()
-            form.add_field('name', 'text')
-            r = self.loop.run_until_complete(
-                client.request('post', url,
-                               data=form,
-                               loop=self.loop))
-            self.assertEqual(r.status, 200)
-
-            content = self.loop.run_until_complete(r.json())
-            self.assertEqual({'name': ['text']}, content['form'])
-            self.assertEqual(r.status, 200)
-            r.close()
-
     def test_POST_DATA_with_charset(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
@@ -100,35 +71,6 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertEqual(b'123', binascii.a2b_base64(field['data']))
             # self.assertEqual('base64', field['content-transfer-encoding'])
             self.assertEqual(r.status, 200)
-
-    def test_POST_MultiDict(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            url = httpd.url('method', 'post')
-            r = self.loop.run_until_complete(
-                client.request('post', url, data=MultiDict(
-                    [('q', 'test1'), ('q', 'test2')]),
-                    loop=self.loop))
-            self.assertEqual(r.status, 200)
-
-            content = self.loop.run_until_complete(r.json())
-            self.assertEqual({'q': ['test1', 'test2']}, content['form'])
-            self.assertEqual(r.status, 200)
-            r.close()
-
-    def test_POST_DATA_DEFLATE(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            url = httpd.url('method', 'post')
-            r = self.loop.run_until_complete(
-                client.request('post', url,
-                               data={'some': 'data'}, compress=True,
-                               loop=self.loop))
-            self.assertEqual(r.status, 200)
-
-            content = self.loop.run_until_complete(r.json())
-            self.assertEqual('deflate', content['compression'])
-            self.assertEqual({'some': ['data']}, content['form'])
-            self.assertEqual(r.status, 200)
-            r.close()
 
     def test_POST_FILES(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
