@@ -3,8 +3,7 @@
 import asyncio
 import io
 import json
-import os
-import os.path
+import pathlib
 import ssl
 from unittest import mock
 
@@ -17,13 +16,22 @@ from aiohttp.errors import FingerprintMismatch
 
 
 @pytest.fixture
-def ssl_ctx():
-    here = os.path.dirname(__file__)
+def here():
+    return pathlib.Path(__file__).parent
+
+
+@pytest.fixture
+def ssl_ctx(here):
     ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
     ssl_ctx.load_cert_chain(
-        os.path.join(here, 'sample.crt'),
-        os.path.join(here, 'sample.key'))
+        str(here / 'sample.crt'),
+        str(here / 'sample.key'))
     return ssl_ctx
+
+
+@pytest.fixture
+def fname(here):
+    return here / 'sample.key'
 
 
 @pytest.mark.run_loop
@@ -816,7 +824,7 @@ def test_POST_DATA_with_context_transfer_encoding(create_app_and_client):
     def handler(request):
         data = yield from request.post()
         assert data['name'] == b'text'  # should it be str?
-        return web.Response(text=data['name'])
+        return web.Response()
 
     app, client = yield from create_app_and_client()
     app.router.add_post('/', handler)
@@ -863,3 +871,89 @@ def test_POST_DATA_DEFLATE(create_app_and_client):
     content = yield from resp.json()
     assert content == {'some': 'data'}
     resp.close()
+
+
+@pytest.mark.run_loop
+def test_POST_FILES(create_app_and_client, fname):
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.post()
+        assert data['some'].filename == fname.name
+        with fname.open('rb') as f:
+            content1 = f.read()
+        content2 = data['some'].file.read()
+        assert content1 == content2
+        assert data['test'].file.read() == b'data'
+        return web.HTTPOk()
+
+    app, client = yield from create_app_and_client()
+    app.router.add_post('/', handler)
+
+    with fname.open() as f:
+        resp = yield from client.post('/', data={'some': f, 'test': b'data'},
+                                      chunked=1024,
+                                      headers={'Transfer-Encoding': 'chunked'})
+        assert 200 == resp.status
+        resp.close()
+
+
+@pytest.mark.run_loop
+def test_POST_FILES_DEFLATE(create_app_and_client, fname):
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.post()
+        assert data['some'].filename == fname.name
+        with fname.open('rb') as f:
+            content1 = f.read()
+        content2 = data['some'].file.read()
+        assert content1 == content2
+        return web.HTTPOk()
+
+    app, client = yield from create_app_and_client()
+    app.router.add_post('/', handler)
+
+    with fname.open() as f:
+        resp = yield from client.post('/', data={'some': f},
+                                      chunked=1024,
+                                      compress='deflate')
+        assert 200 == resp.status
+        resp.close()
+
+
+@pytest.mark.run_loop
+def test_POST_FILES_STR(create_app_and_client, fname):
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.post()
+        with fname.open() as f:
+            content1 = f.read()
+        content2 = data['some']
+        assert content1 == content2
+        return web.HTTPOk()
+
+    app, client = yield from create_app_and_client()
+    app.router.add_post('/', handler)
+
+    with fname.open() as f:
+        resp = yield from client.post('/', data={'some': f.read()})
+        assert 200 == resp.status
+        resp.close()
+
+
+@pytest.mark.run_loop
+def test_POST_FILES_STR_SIMPLE(create_app_and_client, fname):
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.read()
+        with fname.open('rb') as f:
+            content = f.read()
+        assert content == data
+        return web.HTTPOk()
+
+    app, client = yield from create_app_and_client()
+    app.router.add_post('/', handler)
+
+    with fname.open() as f:
+        resp = yield from client.post('/', data=f.read())
+        assert 200 == resp.status
+        resp.close()
