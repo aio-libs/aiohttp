@@ -957,3 +957,98 @@ def test_POST_FILES_STR_SIMPLE(create_app_and_client, fname):
         resp = yield from client.post('/', data=f.read())
         assert 200 == resp.status
         resp.close()
+
+
+@pytest.mark.run_loop
+def test_POST_FILES_LIST(create_app_and_client, fname):
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.post()
+        assert fname.name == data['some'].filename
+        with fname.open('rb') as f:
+            content = f.read()
+        assert content == data['some'].file.read()
+        return web.HTTPOk()
+
+    app, client = yield from create_app_and_client()
+    app.router.add_post('/', handler)
+
+    with fname.open() as f:
+        resp = yield from client.post('/', data=[('some', f)])
+        assert 200 == resp.status
+        resp.close()
+
+
+@pytest.mark.run_loop
+def test_POST_FILES_CT(create_app_and_client, fname):
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.post()
+        assert fname.name == data['some'].filename
+        assert 'text/plain' == data['some'].content_type
+        with fname.open('rb') as f:
+            content = f.read()
+        assert content == data['some'].file.read()
+        return web.HTTPOk()
+
+    app, client = yield from create_app_and_client()
+    app.router.add_post('/', handler)
+
+    with fname.open() as f:
+        form = aiohttp.FormData()
+        form.add_field('some', f, content_type='text/plain')
+        resp = yield from client.post('/', data=form)
+        assert 200 == resp.status
+        resp.close()
+
+
+@pytest.mark.run_loop
+def test_POST_FILES_SINGLE(create_app_and_client, fname):
+
+    app, client = yield from create_app_and_client()
+
+    with fname.open() as f:
+        with pytest.raises(ValueError):
+            yield from client.post('/', data=f)
+
+
+@pytest.mark.run_loop
+def test_POST_FILES_SINGLE_BINARY(create_app_and_client, fname):
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.read()
+        with fname.open('rb') as f:
+            content = f.read()
+        assert content == data
+        # if system cannot determine 'application/pgp-keys' MIME type
+        # then use 'application/octet-stream' default
+        assert request.content_type in ['application/pgp-keys',
+                                        'application/octet-stream']
+        return web.HTTPOk()
+
+    app, client = yield from create_app_and_client()
+    app.router.add_post('/', handler)
+
+    with fname.open('rb') as f:
+        resp = yield from client.post('/', data=f)
+        assert 200 == resp.status
+        resp.close()
+
+
+@pytest.mark.run_loop
+def test_POST_FILES_IO(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.post()
+        assert b'data' == data['unknown'].file.read()
+        assert data['unknown'].content_type == 'application/octet-stream'
+        assert data['unknown'].filename == 'unknown'
+        return web.HTTPOk()
+
+    app, client = yield from create_app_and_client()
+    app.router.add_post('/', handler)
+
+    data = io.BytesIO(b'data')
+    resp = yield from client.post('/', data=[data])
+    assert 200 == resp.status
+    resp.close()
