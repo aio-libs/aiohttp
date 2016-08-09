@@ -25,7 +25,6 @@ install:
   - pip install --upgrade setuptools
   - pip install -r requirements-ci.txt
   - pip install aiodns
-  - pip install coveralls
   - pip install codecov
   - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
         pip install uvloop;
@@ -51,7 +50,6 @@ script:
 
 after_success:
   - codecov
-  - coveralls
   - ./run_docker.sh
 
 deploy:
