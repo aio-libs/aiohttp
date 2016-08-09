@@ -508,3 +508,30 @@ def test_timeout_on_reading_data(create_app_and_client, loop):
 
     with pytest.raises(asyncio.TimeoutError):
         yield from resp.read()
+
+
+@pytest.mark.run_loop
+def test_HTTP_200_OK_METHOD(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(text=request.method)
+
+    app, client = yield from create_app_and_client()
+    for meth in ('get', 'post', 'put', 'delete', 'head'):
+        app.router.add_route(meth.upper(), '/', handler)
+
+    for meth in ('get', 'post', 'put', 'delete', 'head'):
+        resp = yield from client.request(meth, '/')
+
+        content1 = yield from resp.read()
+        content2 = yield from resp.read()
+        assert content1 == content2
+        content = yield from resp.text()
+
+        assert resp.status == 200
+        if meth == 'head':
+            assert b'' == content1
+        else:
+            assert meth.upper() == content
+
+        resp.close()

@@ -196,6 +196,12 @@ class Client:
     def close(self):
         self._session.close()
 
+    def request(self, method, path, **kwargs):
+        while path.startswith('/'):
+            path = path[1:]
+        url = self._url + path
+        return self._session.request(method, url, **kwargs)
+
     def get(self, path, **kwargs):
         while path.startswith('/'):
             path = path[1:]
