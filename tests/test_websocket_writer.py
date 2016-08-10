@@ -1,7 +1,9 @@
-import pytest
 import random
-from aiohttp import websocket
 from unittest import mock
+
+import pytest
+
+from aiohttp._ws_impl import WebSocketWriter
 
 
 @pytest.fixture
@@ -11,7 +13,7 @@ def transport():
 
 @pytest.fixture
 def writer(transport):
-    return websocket.WebSocketWriter(transport, use_mask=False)
+    return WebSocketWriter(transport, use_mask=False)
 
 
 def test_pong(transport, writer):
@@ -59,8 +61,8 @@ def test_close(transport, writer):
 
 
 def test_send_text_masked(transport, writer):
-    writer = websocket.WebSocketWriter(transport,
-                                       use_mask=True,
-                                       random=random.Random(123))
+    writer = WebSocketWriter(transport,
+                             use_mask=True,
+                             random=random.Random(123))
     writer.send(b'text')
     transport.write.assert_called_with(b'\x81\x84\rg\xb3fy\x02\xcb\x12')

@@ -4,22 +4,20 @@ import asyncio
 import gc
 import inspect
 import io
+import os.path
 import re
 import unittest
-from unittest import mock
 import urllib.parse
 import zlib
 from http.cookies import SimpleCookie
-
-from multidict import CIMultiDict, CIMultiDictProxy, upstr
+from unittest import mock
 
 import pytest
-import aiohttp
-from aiohttp import BaseConnector
-from aiohttp import helpers
-from aiohttp.client_reqrep import ClientRequest, ClientResponse
+from multidict import CIMultiDict, CIMultiDictProxy, upstr
 
-import os.path
+import aiohttp
+from aiohttp import BaseConnector, helpers
+from aiohttp.client_reqrep import ClientRequest, ClientResponse
 
 
 @pytest.yield_fixture
@@ -881,8 +879,6 @@ class TestClientRequest(unittest.TestCase):
         resp.close()
 
     def test_terminate_with_closed_loop(self):
-        if not hasattr(self.loop, 'is_closed'):
-            self.skipTest("Required asyncio 3.4.2+")
         req = ClientRequest('get', 'http://python.org', loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertIsNotNone(req._writer)

@@ -1,11 +1,11 @@
 """Async gunicorn worker for aiohttp.web"""
 
 import asyncio
-import logging
 import os
 import signal
 import ssl
 import sys
+
 import gunicorn.workers.base as base
 
 from aiohttp.helpers import ensure_future
@@ -41,14 +41,9 @@ class GunicornWebWorker(base.Worker):
         sys.exit(self.exit_code)
 
     def make_handler(self, app):
-        if hasattr(self.cfg, 'debug'):
-            is_debug = self.cfg.debug
-        else:
-            is_debug = self.log.loglevel == logging.DEBUG
-
         return app.make_handler(
             logger=self.log,
-            debug=is_debug,
+            debug=self.cfg.debug,
             timeout=self.cfg.timeout,
             keep_alive=self.cfg.keepalive,
             access_log=self.log.access_log,
@@ -109,7 +104,7 @@ class GunicornWebWorker(base.Worker):
                     if connections > self.cfg.max_requests:
                         self.alive = False
                         self.log.info("Max requests, shutting down: %s", self)
-        except (Exception, BaseException, GeneratorExit, KeyboardInterrupt):
+        except BaseException:
             pass
 
         yield from self.close()

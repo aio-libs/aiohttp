@@ -75,7 +75,6 @@ class TestClientResponse(unittest.TestCase):
         self.assertIn(
             "<ClientResponse(http://fake-host.org/\\u03bb) [None None]>",
             repr(response))
-        response.close()
 
     def test_repr_non_ascii_reason(self):
         response = ClientResponse('get', 'http://fake-host.org/path')
@@ -83,7 +82,6 @@ class TestClientResponse(unittest.TestCase):
         self.assertIn(
             "<ClientResponse(http://fake-host.org/path) [None \\u03bb]>",
             repr(response))
-        response.close()
 
     def test_read_and_release_connection(self):
         def side_effect(*args, **kwargs):
@@ -115,17 +113,6 @@ class TestClientResponse(unittest.TestCase):
 
         self.loop.run_until_complete(self.response.release())
         self.assertIsNone(self.response._connection)
-
-    def test_read_decode_deprecated(self):
-        self.response._content = b'data'
-        self.response.json = mock.Mock()
-        self.response.json.return_value = helpers.create_future(self.loop)
-        self.response.json.return_value.set_result('json')
-
-        with self.assertWarns(DeprecationWarning):
-            res = self.loop.run_until_complete(self.response.read(decode=True))
-        self.assertEqual(res, 'json')
-        self.assertTrue(self.response.json.called)
 
     def test_text(self):
         def side_effect(*args, **kwargs):
@@ -255,11 +242,11 @@ class TestClientResponse(unittest.TestCase):
 
     def test_override_flow_control(self):
         class MyResponse(ClientResponse):
-            flow_control_class = aiohttp.FlowControlDataQueue
+            flow_control_class = aiohttp.StreamReader
         response = MyResponse('get', 'http://my-cl-resp.org')
         response._post_init(self.loop)
         response._setup_connection(self.connection)
-        self.assertIsInstance(response.content, aiohttp.FlowControlDataQueue)
+        self.assertIsInstance(response.content, aiohttp.StreamReader)
         response.close()
 
     @mock.patch('aiohttp.client_reqrep.chardet')

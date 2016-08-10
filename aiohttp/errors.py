@@ -2,7 +2,6 @@
 
 from asyncio import TimeoutError
 
-
 __all__ = (
     'DisconnectedError', 'ClientDisconnectedError', 'ServerDisconnectedError',
 

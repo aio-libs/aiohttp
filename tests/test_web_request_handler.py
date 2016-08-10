@@ -1,7 +1,8 @@
+from unittest import mock
+
 import pytest
 
 from aiohttp import web
-from unittest import mock
 
 
 def test_repr(loop):
@@ -63,3 +64,9 @@ def test_finish_connection_timeout(loop):
     assert manager.connections == []
     handler.closing.assert_called_with(timeout=0.09)
     transport.close.assert_called_with()
+
+
+def test_secure_proxy_ssl_header_default(loop):
+    app = web.Application(loop=loop)
+    manager = app.make_handler()
+    assert manager.secure_proxy_ssl_header is None

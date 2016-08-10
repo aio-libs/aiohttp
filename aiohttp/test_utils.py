@@ -1,14 +1,15 @@
 """Utilities shared by tests."""
 
+import asyncio
 import cgi
 import contextlib
-import gc
 import email.parser
 import functools
+import gc
 import http.server
+import io
 import json
 import logging
-import io
 import os
 import re
 import socket
@@ -16,21 +17,19 @@ import ssl
 import sys
 import threading
 import traceback
-import urllib.parse
 import unittest
+import urllib.parse
 from unittest import mock
 
-import asyncio
-import aiohttp
 from multidict import CIMultiDict
 
-from . import server
-from . import helpers
-from . import ClientSession
-from . import hdrs
-from .protocol import HttpVersion
-from .protocol import RawRequestMessage
+import aiohttp
+
+from . import ClientSession, hdrs, helpers, server
+from .helpers import _sentinel
+from .protocol import HttpVersion, RawRequestMessage
 from .signals import Signal
+from .web import Request
 
 
 def run_briefly(loop):
@@ -50,13 +49,9 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
     class HttpRequestHandler:
 
         def __init__(self, addr):
-            if isinstance(addr, tuple):
-                host, port = addr
-                self.host = host
-                self.port = port
-            else:
-                self.host = host = 'localhost'
-                self.port = port = 0
+            host, port = addr
+            self.host = host
+            self.port = port
             self.address = addr
             self._url = '{}://{}:{}'.format(
                 'https' if use_ssl else 'http', host, port)
@@ -87,22 +82,11 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
                     self.transport.write(b'HTTP/1.0 100 Continue\r\n\r\n')
                     break
 
-            if router is not None:
-                body = yield from payload.read()
+            body = yield from payload.read()
 
-                rob = router(
-                    self, properties, self.transport, message, body)
-                rob.dispatch()
-
-            else:
-                response = aiohttp.Response(self.writer, 200, message.version)
-
-                text = b'Test message'
-                response.add_header('Content-type', 'text/plain')
-                response.add_header('Content-length', str(len(text)))
-                response.send_headers()
-                response.write(text)
-                response.write_eof()
+            rob = router(
+                self, properties, self.transport, message, body)
+            rob.dispatch()
 
     if use_ssl:
         here = os.path.join(os.path.dirname(__file__), '..', 'tests')
@@ -117,19 +101,10 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
         thread_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(thread_loop)
 
-        if isinstance(listen_addr, tuple):
-            host, port = listen_addr
-            server_coroutine = thread_loop.create_server(
-                lambda: TestHttpServer(keep_alive=0.5),
-                host, port, ssl=sslcontext)
-        else:
-            try:
-                os.unlink(listen_addr)
-            except FileNotFoundError:
-                pass
-            server_coroutine = thread_loop.create_unix_server(
-                lambda: TestHttpServer(keep_alive=0.5, timeout=15),
-                listen_addr, ssl=sslcontext)
+        host, port = listen_addr
+        server_coroutine = thread_loop.create_server(
+            lambda: TestHttpServer(keep_alive=0.5),
+            host, port, ssl=sslcontext)
         server = thread_loop.run_until_complete(server_coroutine)
 
         waiter = helpers.create_future(thread_loop)
@@ -318,7 +293,7 @@ class Router:
 
 
 def unused_port():
-    """ return a port that is unused on the current host. """
+    """Return a port that is unused on the current host."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(('127.0.0.1', 0))
         return s.getsockname()[1]
@@ -355,6 +330,7 @@ class TestClient:
                                          loop=self._loop))
         self._root = '{}://{}:{}'.format(protocol, self._address, self.port)
         self._closed = False
+        self._responses = []
 
     @asyncio.coroutine
     def start_server(self):
@@ -364,37 +340,45 @@ class TestClient:
 
     @property
     def session(self):
-        """a raw handler to the aiohttp.ClientSession.  unlike the methods on
-        the TestClient, client session requests do not automatically
-        include the host in the url queried, and will require an
-        absolute path to the resource.
+        """A raw handler to the aiohttp.ClientSession.
+
+        Unlike the methods on the TestClient, client session requests
+        do not automatically include the host in the url queried, and
+        will require an absolute path to the resource.
+
         """
         return self._session
 
+    @asyncio.coroutine
     def request(self, method, path, *args, **kwargs):
-        """ routes a request to the http server.
-        the interface is identical to asyncio.request,
-        except the loop kwarg is overriden
-        by the instance used by the application.
+        """Routes a request to the http server.
+
+        The interface is identical to asyncio.ClientSession.request,
+        except the loop kwarg is overriden by the instance used by the
+        application.
+
         """
-        return self._session.request(
+        resp = yield from self._session.request(
             method, self._root + path, *args, **kwargs
         )
+        # save it to close later
+        self._responses.append(resp)
+        return resp
 
     def get(self, path, *args, **kwargs):
-        """Perform an HTTP GET request. """
+        """Perform an HTTP GET request."""
         return self.request(hdrs.METH_GET, path, *args, **kwargs)
 
     def post(self, path, *args, **kwargs):
-        """Perform an HTTP POST request. """
+        """Perform an HTTP POST request."""
         return self.request(hdrs.METH_POST, path, *args, **kwargs)
 
     def options(self, path, *args, **kwargs):
-        """Perform an HTTP OPTIONS request. """
+        """Perform an HTTP OPTIONS request."""
         return self.request(hdrs.METH_OPTIONS, path, *args, **kwargs)
 
     def head(self, path, *args, **kwargs):
-        """Perform an HTTP HEAD request. """
+        """Perform an HTTP HEAD request."""
         return self.request(hdrs.METH_HEAD, path, *args, **kwargs)
 
     def put(self, path, *args, **kwargs):
@@ -410,26 +394,31 @@ class TestClient:
         return self.request(hdrs.METH_DELETE, path, *args, **kwargs)
 
     def ws_connect(self, path, *args, **kwargs):
-        """Initiate websocket connection. the api is identical to
-        aiohttp.ClientSession.ws_connect.
+        """Initiate websocket connection.
+
+        The api is identical to aiohttp.ClientSession.ws_connect.
+
         """
         return self._session.ws_connect(
             self._root + path, *args, **kwargs
         )
 
     def close(self):
-        """ close all fixtures created by the test client.
-        After that point, the TestClient is no longer
-        usable.
+        """Close all fixtures created by the test client.
 
-        This is an idempotent function: running close
-        multiple times will not have any additional effects.
+        After that point, the TestClient is no longer usable.
 
-        close is also run when the object is garbage collected,
-        and on exit when used as a context manager.
+        This is an idempotent function: running close multiple times
+        will not have any additional effects.
+
+        close is also run when the object is garbage collected, and on
+        exit when used as a context manager.
+
         """
         if not self._closed:
             loop = self._loop
+            for resp in self._responses:
+                resp.close()
             loop.run_until_complete(self._session.close())
             self._server.close()
             loop.run_until_complete(self._server.wait_closed())
@@ -452,7 +441,7 @@ class AioHTTPTestCase(unittest.TestCase):
     """A base class to allow for unittest web applications using
     aiohttp.
 
-    provides the following:
+    Provides the following:
 
     * self.client (aiohttp.test_utils.TestClient): an aiohttp test client.
     * self.loop (asyncio.BaseEventLoop): the event loop in which the
@@ -460,20 +449,20 @@ class AioHTTPTestCase(unittest.TestCase):
     * self.app (aiohttp.web.Application): the application returned by
         self.get_app()
 
-    note that the TestClient's methods are asynchronous: you will have to
+    Note that the TestClient's methods are asynchronous: you have to
     execute function on the test client using asynchronous methods.
     """
 
     def get_app(self, loop):
         """
-        this method should be overriden
+        This method should be overriden
         to return the aiohttp.web.Application
         object to test.
 
         :param loop: the event_loop to use
         :type loop: asyncio.BaseEventLoop
         """
-        pass
+        pass  # pragma: no cover
 
     def setUp(self):
         self.loop = setup_test_loop()
@@ -486,8 +475,10 @@ class AioHTTPTestCase(unittest.TestCase):
 
 
 def unittest_run_loop(func):
-    """a decorator that should be used with asynchronous methods of an
-    AioHTTPTestCase. Handles executing an asynchronous function, using
+    """A decorator dedicated to use with asynchronous methods of an
+    AioHTTPTestCase.
+
+    Handles executing an asynchronous function, using
     the self.loop of the AioHTTPTestCase.
     """
 
@@ -500,8 +491,9 @@ def unittest_run_loop(func):
 
 @contextlib.contextmanager
 def loop_context():
-    """a contextmanager that creates an event_loop, for test purposes.
-    handles the creation and cleanup of a test loop.
+    """A contextmanager that creates an event_loop, for test purposes.
+
+    Handles the creation and cleanup of a test loop.
     """
     loop = setup_test_loop()
     yield loop
@@ -509,8 +501,10 @@ def loop_context():
 
 
 def setup_test_loop():
-    """create and return an asyncio.BaseEventLoop
-    instance. The caller should also call teardown_test_loop,
+    """Create and return an asyncio.BaseEventLoop
+    instance.
+
+    The caller should also call teardown_test_loop,
     once they are done with the loop.
     """
     loop = asyncio.new_event_loop()
@@ -519,17 +513,13 @@ def setup_test_loop():
 
 
 def teardown_test_loop(loop):
-    """teardown and cleanup an event_loop created
+    """Teardown and cleanup an event_loop created
     by setup_test_loop.
 
     :param loop: the loop to teardown
     :type loop: asyncio.BaseEventLoop
     """
-    is_closed = getattr(loop, 'is_closed')
-    if is_closed is not None:
-        closed = is_closed()
-    else:
-        closed = loop._closed
+    closed = loop.is_closed()
     if not closed:
         loop.call_soon(loop.stop)
         loop.run_forever()
@@ -558,21 +548,19 @@ def _create_transport(sslcontext=None):
     return transport
 
 
-_not_set = object()
-
-
 def make_mocked_request(method, path, headers=None, *,
                         version=HttpVersion(1, 1), closing=False,
                         app=None,
-                        reader=_not_set,
-                        writer=_not_set,
-                        transport=_not_set,
-                        payload=_not_set,
+                        reader=_sentinel,
+                        writer=_sentinel,
+                        transport=_sentinel,
+                        payload=_sentinel,
                         sslcontext=None,
                         secure_proxy_ssl_header=None):
-    """Creates mocked web.Request testing purposes. Useful in unit tests,
-    when spinning full web server is overkill or specific conditions and
-    errors is hard to trigger.
+    """Creates mocked web.Request testing purposes.
+
+    Useful in unit tests, when spinning full web server is overkill or
+    specific conditions and errors are hard to trigger.
 
     :param method: str, that represents HTTP method, like; GET, POST.
     :type method: str
@@ -612,6 +600,7 @@ def make_mocked_request(method, path, headers=None, *,
     :param secure_proxy_ssl_header: A tuple representing a HTTP header/value
         combination that signifies a request is secure.
     :type secure_proxy_ssl_header: tuple
+
     """
 
     if version < HttpVersion(1, 1):
@@ -630,19 +619,18 @@ def make_mocked_request(method, path, headers=None, *,
     if app is None:
         app = _create_app_mock()
 
-    if reader is _not_set:
+    if reader is _sentinel:
         reader = mock.Mock()
 
-    if writer is _not_set:
+    if writer is _sentinel:
         writer = mock.Mock()
 
-    if transport is _not_set:
+    if transport is _sentinel:
         transport = _create_transport(sslcontext)
 
-    if payload is _not_set:
+    if payload is _sentinel:
         payload = mock.Mock()
 
-    from .web import Request
     req = Request(app, message, payload,
                   transport, reader, writer,
                   secure_proxy_ssl_header=secure_proxy_ssl_header)
@@ -655,6 +643,16 @@ def make_mocked_request(method, path, headers=None, *,
 
 
 def make_mocked_coro(return_value):
+    """A coroutine mock.
+
+    Behavees like a coroutine which returns return_value.
+
+    But it is also a mock object, you might test it as usual Mock:
+
+    mocked = mocke_mocked_coro(1)
+    assert 1 == await mocked(1, 2)
+    mocked.assert_called_with(1, 2)
+    """
     @asyncio.coroutine
     def mock_coro(*args, **kwargs):
         return return_value

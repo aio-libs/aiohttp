@@ -4,12 +4,12 @@ import pathlib
 
 import aiohttp_jinja2
 import jinja2
-from aiohttp import web
 
+from aiohttp import web
+from aiohttpdemo_polls.db import init_postgres
 from aiohttpdemo_polls.middlewares import setup_middlewares
 from aiohttpdemo_polls.routes import setup_routes
 from aiohttpdemo_polls.utils import load_config
-from aiohttpdemo_polls.db import init_postgres
 
 PROJ_ROOT = pathlib.Path(__file__).parent
 

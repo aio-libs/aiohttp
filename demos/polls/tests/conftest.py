@@ -1,8 +1,9 @@
 import pathlib
 import subprocess
 
-import aiohttp
 import pytest
+
+import aiohttp
 
 
 @pytest.yield_fixture

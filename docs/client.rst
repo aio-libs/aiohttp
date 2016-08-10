@@ -40,6 +40,14 @@ Other HTTP methods are available as well::
     session.options('http://httpbin.org/get')
     session.patch('http://httpbin.org/patch', data=b'data')
 
+.. note::
+
+   Don't create a session per request. Most likely you need a session
+   per application which perfoms all requests altogether.
+
+   A session contains a connection pool inside, connection reusage and
+   keep-alives (both are on by default) may speed up total performance.
+
 
 Passing Parameters In URLs
 --------------------------
@@ -642,15 +650,15 @@ methods::
    async with session.ws_connect('http://example.org/websocket') as ws:
 
        async for msg in ws:
-           if msg.tp == aiohttp.MsgType.text:
+           if msg.tp == aiohttp.WSMsgType.TEXT:
                if msg.data == 'close cmd':
                    await ws.close()
                    break
                else:
                    ws.send_str(msg.data + '/answer')
-           elif msg.tp == aiohttp.MsgType.closed:
+           elif msg.tp == aiohttp.WSMsgType.CLOSED:
                break
-           elif msg.tp == aiohttp.MsgType.error:
+           elif msg.tp == aiohttp.WSMsgType.ERROR:
                break
 
 
@@ -663,12 +671,21 @@ multiple writer tasks which can only send data asynchronously (by
 Timeouts
 --------
 
+By default all IO operations have 5min timeout. The timeout may be
+overridden by passing ``timeout`` parameter into
+:class:`ClientSession.get` and family::
+
+    aync with session.get(.get('https://github.com', timeout=60) as r:
+        ...
+
+``None`` or ``0`` disables timeout check.
+
 The example wraps a client call in :class:`Timeout` context
 manager, adding timeout for both connecting and response body
 reading procedures::
 
     with aiohttp.Timeout(0.001):
-        async with aiohttp.get('https://github.com') as r:
+        async with session.get('https://github.com') as r:
             await r.text()
 
 

@@ -41,6 +41,34 @@ CHANGES
 
 - Fix logger report for unix socket 8e8469b
 
+- Rename aiohttp.websocket to aiohttp._ws_impl
+
+- Rename aiohttp.MsgType tp aiohttp.WSMsgType
+
+- Introduce aiohttp.WSMessage officially
+
+- Rename Message -> WSMessage
+
+- Remove deprecated decode param from resp.read(decode=True)
+
+- Use 5min default client timeout #1028
+
+- Relax HTTP method validation in UrlDispatcher #1037
+
+- Pin minimal supported asyncio version to 3.4.2+ (`loop.is_close()`
+  should be present)
+
+- Remove aiohttp.websocket module (BACKWARD IMCOMPATIBLE)
+  Please use high-level client and server approaches
+
+- Link header for 451 status code is mandatory
+
+
+0.22.5 (08-02-2016)
+-------------------
+
+- Pin miltidict version to >=1.2.2
+
 0.22.3 (07-26-2016)
 -------------------
 

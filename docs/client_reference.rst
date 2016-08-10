@@ -29,9 +29,14 @@ Usage example::
              assert resp.status == 200
              return await resp.text()
 
-     with aiohttp.ClientSession() as client:
-         html = asyncio.get_event_loop().run_until_complete(fetch(client))
-         print(html)
+     async def main(loop):
+         async with aiohttp.ClientSession(loop=loop) as client:
+             html = await fetch(client)
+             print(html)
+
+     loop = asyncio.get_event_loop()
+     loop.run_until_complete(main(loop))
+
 
 .. versionadded:: 0.17
 
@@ -144,7 +149,8 @@ The client session supports the context manager protocol for self closing.
                          version=HttpVersion(major=1, minor=1),\
                          compress=None, chunked=None, expect100=False,\
                          read_until_eof=True,\
-                         proxy=None, proxy_auth=None)
+                         proxy=None, proxy_auth=None,\
+                         timeout=5*60)
       :async-with:
       :coroutine:
 
@@ -215,12 +221,18 @@ The client session supports the context manager protocol for self closing.
       :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
                                            Basic Authorization (optional)
 
+      :param int timeout: a timeout for IO operations, 5min by default.
+
+                          Use ``None`` or ``0`` to disable timeout checks.
+
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
       .. versionadded:: 1.0
 
-         Added :attr:`proxy` and :attr:`proxy_auth` parameters.
+         Added ``proxy`` and ``proxy_auth`` parameters.
+
+         Added ``timeout`` parameter.
 
    .. comethod:: get(url, *, allow_redirects=True, **kwargs)
       :async-with:
@@ -500,9 +512,9 @@ Usage::
              assert resp.status == 200
              print(await resp.text())
 
-   .. deprecated:: 0.21
+.. deprecated:: 0.21
 
-      Use :meth:`ClientSession.request`.
+   Use :meth:`ClientSession.request`.
 
 
 .. coroutinefunction:: get(url, **kwargs)
@@ -1239,7 +1251,7 @@ manually.
    .. attribute:: closed
 
       Read-only property, ``True`` if :meth:`close` has been called of
-      :const:`~aiohttp.websocket.MSG_CLOSE` message has been received from peer.
+      :const:`~aiohttp.WSMsgType.CLOSE` message has been received from peer.
 
    .. attribute:: protocol
 
@@ -1254,7 +1266,7 @@ manually.
 
    .. method:: ping(message=b'')
 
-      Send :const:`~aiohttp.websocket.MSG_PING` to peer.
+      Send :const:`~aiohttp.WSMsgType.PING` to peer.
 
       :param message: optional payload of *ping* message,
                       :class:`str` (converted to *UTF-8* encoded bytes)
@@ -1262,7 +1274,7 @@ manually.
 
    .. method:: send_str(data)
 
-      Send *data* to peer as :const:`~aiohttp.websocket.MSG_TEXT` message.
+      Send *data* to peer as :const:`~aiohttp.WSMsgType.TEXT` message.
 
       :param str data: data to send.
 
@@ -1270,7 +1282,7 @@ manually.
 
    .. method:: send_bytes(data)
 
-      Send *data* to peer as :const:`~aiohttp.websocket.MSG_BINARY` message.
+      Send *data* to peer as :const:`~aiohttp.WSMsgType.BINARY` message.
 
       :param data: data to send.
 
@@ -1291,12 +1303,13 @@ manually.
 
       :raise ValueError: if data is not serializable object
 
-      :raise TypeError: if value returned by :term:`dumps` is not :class:`str`
+      :raise TypeError: if value returned by ``dumps(data)`` is not
+                        :class:`str`
 
    .. comethod:: close(*, code=1000, message=b'')
 
       A :ref:`coroutine<coroutine>` that initiates closing handshake by sending
-      :const:`~aiohttp.websocket.MSG_CLOSE` message. It waits for
+      :const:`~aiohttp.WSMsgType.CLOSE` message. It waits for
       close response from server. It add timeout to `close()` call just wrap
       call with `asyncio.wait()` or `asyncio.wait_for()`.
 
@@ -1312,35 +1325,35 @@ manually.
       message from peer and returns it.
 
       The coroutine implicitly handles
-      :const:`~aiohttp.websocket.MSG_PING`,
-      :const:`~aiohttp.websocket.MSG_PONG` and
-      :const:`~aiohttp.websocket.MSG_CLOSE` without returning the
+      :const:`~aiohttp.WSMsgType.PING`,
+      :const:`~aiohttp.WSMsgType.PONG` and
+      :const:`~aiohttp.WSMsgType.CLOSE` without returning the
       message.
 
       It process *ping-pong game* and performs *closing handshake* internally.
 
-      :return: :class:`~aiohttp.websocket.Message`, `tp` is types of
-         `~aiohttp.MsgType`
+      :return: :class:`~aiohttp.WSMessage`, `tp` is a type from
+         `~aiohttp.WSMsgType` enumeration.
 
    .. coroutinemethod:: receive_str()
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
-      :const:`~aiohttp.websocket.MSG_TEXT`.
+      :const:`~aiohttp.WSMsgType.TEXT`.
 
       :return str: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_BINARY`.
+      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
 
    .. coroutinemethod:: receive_bytes()
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
-      :const:`~aiohttp.websocket.MSG_BINARY`.
+      :const:`~aiohttp.WSMsgType.BINARY`.
 
       :return bytes: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_TEXT`.
+      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.TEXT`.
 
    .. coroutinemethod:: receive_json(*, loads=json.loads)
 
@@ -1354,7 +1367,7 @@ manually.
 
       :return dict: loaded JSON content
 
-      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_BINARY`.
+      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
       :raise ValueError: if message is not valid JSON.
 
 Utilities

@@ -4,8 +4,9 @@
 
 import asyncio
 import os
-from aiohttp.web import (Application, Response, MsgType,
-                         WebSocketResponse, run_app)
+
+from aiohttp.web import (Application, Response, WebSocketResponse, WSMsgType,
+                         run_app)
 
 WS_FILE = os.path.join(os.path.dirname(__file__), 'websocket.html')
 
@@ -26,7 +27,7 @@ async def wshandler(request):
         request.app['sockets'].append(resp)
 
         async for msg in resp:
-            if msg.tp == MsgType.text:
+            if msg.tp == WSMsgType.TEXT:
                 for ws in request.app['sockets']:
                     if ws is not resp:
                         ws.send_str(msg.data)

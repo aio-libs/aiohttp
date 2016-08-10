@@ -1,27 +1,24 @@
 import abc
 import asyncio
-
-import keyword
 import collections
-import re
-import os
-import sys
 import inspect
+import keyword
+import os
+import re
+import sys
 import warnings
-
-from collections.abc import Sized, Iterable, Container
+from collections.abc import Container, Iterable, Sized
 from pathlib import Path
-from urllib.parse import urlencode, unquote
 from types import MappingProxyType
+from urllib.parse import unquote, urlencode
 
 from . import hdrs
-from .abc import AbstractRouter, AbstractMatchInfo, AbstractView
+from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
 from .file_sender import FileSender
 from .protocol import HttpVersion11
-from .web_exceptions import (HTTPMethodNotAllowed, HTTPNotFound,
-                             HTTPExpectationFailed)
+from .web_exceptions import (HTTPExpectationFailed, HTTPMethodNotAllowed,
+                             HTTPNotFound)
 from .web_reqrep import StreamResponse
-
 
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',
@@ -31,6 +28,9 @@ __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
 
 
 PY_35 = sys.version_info >= (3, 5)
+
+
+HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
 
 
 class AbstractResource(Sized, Iterable):
@@ -66,7 +66,6 @@ class AbstractResource(Sized, Iterable):
 
 
 class AbstractRoute(abc.ABC):
-    METHODS = hdrs.METH_ALL | {hdrs.METH_ANY}
 
     def __init__(self, method, handler, *,
                  expect_handler=None,
@@ -79,7 +78,7 @@ class AbstractRoute(abc.ABC):
             'Coroutine is expected, got {!r}'.format(expect_handler)
 
         method = method.upper()
-        if method not in self.METHODS:
+        if not HTTP_METHOD_RE.match(method):
             raise ValueError("{} is not allowed HTTP method".format(method))
 
         assert callable(handler), handler

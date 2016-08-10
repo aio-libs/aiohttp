@@ -3,11 +3,11 @@ import base64
 import hashlib
 import os
 import unittest
-from aiohttp.test_utils import unused_port
 
 import aiohttp
-from aiohttp import helpers, web, websocket
-
+from aiohttp import WSMsgType, helpers, web
+from aiohttp._ws_impl import WebSocketParser, WebSocketWriter
+from aiohttp.test_utils import unused_port
 
 WS_KEY = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
@@ -70,8 +70,8 @@ class TestWebWebSocketFunctional(unittest.TestCase):
 
         # switch to websocket protocol
         connection = response.connection
-        reader = connection.reader.set_parser(websocket.WebSocketParser)
-        writer = websocket.WebSocketWriter(connection.writer)
+        reader = connection.reader.set_parser(WebSocketParser)
+        writer = WebSocketWriter(connection.writer)
 
         return response, reader, writer
 
@@ -86,7 +86,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             yield from ws.receive()
 
             msg = yield from ws.receive()
-            self.assertEqual(msg.tp, web.MsgType.close)
+            self.assertEqual(msg.tp, WSMsgType.CLOSE)
             self.assertEqual(msg.data, 1000)
             self.assertEqual(msg.extra, 'exit message')
             closed.set_result(None)
@@ -100,7 +100,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             writer.send('ask')
 
             msg = yield from reader.read()
-            self.assertEqual(msg.tp, websocket.MSG_PONG)
+            self.assertEqual(msg.tp, WSMsgType.PONG)
             writer.close(1000, 'exit message')
             yield from closed
             resp.close()
@@ -126,7 +126,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             _, _, url = yield from self.create_server('GET', '/', handler)
             resp, reader, writer = yield from self.connect_ws(url)
             msg = yield from reader.read()
-            self.assertEqual(msg.tp, websocket.MSG_PING)
+            self.assertEqual(msg.tp, WSMsgType.PING)
             self.assertEqual(msg.data, b'data')
             writer.pong()
             writer.close(2, 'exit message')
@@ -154,7 +154,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             resp, reader, writer = yield from self.connect_ws(url)
             writer.ping('data')
             msg = yield from reader.read()
-            self.assertEqual(msg.tp, websocket.MSG_PONG)
+            self.assertEqual(msg.tp, WSMsgType.PONG)
             self.assertEqual(msg.data, b'data')
             writer.pong()
             writer.close()
@@ -173,11 +173,11 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             yield from ws.prepare(request)
 
             msg = yield from ws.receive()
-            self.assertEqual(msg.tp, web.MsgType.ping)
+            self.assertEqual(msg.tp, WSMsgType.PING)
             ws.pong('data')
 
             msg = yield from ws.receive()
-            self.assertEqual(msg.tp, web.MsgType.close)
+            self.assertEqual(msg.tp, WSMsgType.CLOSE)
             self.assertEqual(msg.data, 1000)
             self.assertEqual(msg.extra, 'exit message')
             closed.set_result(None)
@@ -189,7 +189,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             resp, reader, writer = yield from self.connect_ws(url)
             writer.ping('data')
             msg = yield from reader.read()
-            self.assertEqual(msg.tp, websocket.MSG_PONG)
+            self.assertEqual(msg.tp, WSMsgType.PONG)
             self.assertEqual(msg.data, b'data')
             writer.close(1000, 'exit message')
 
@@ -265,7 +265,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             resp, reader, writer = yield from self.connect_ws(url, 'eggs, bar')
 
             msg = yield from reader.read()
-            self.assertEqual(msg.tp, websocket.MSG_CLOSE)
+            self.assertEqual(msg.tp, WSMsgType.CLOSE)
             writer.close()
             yield from closed
             resp.close()
@@ -283,14 +283,14 @@ class TestWebWebSocketFunctional(unittest.TestCase):
             yield from ws.prepare(request)
 
             msg = yield from ws.receive()
-            self.assertEqual(msg.tp, web.MsgType.close)
+            self.assertEqual(msg.tp, WSMsgType.CLOSE)
             self.assertFalse(ws.closed)
             yield from ws.close()
             self.assertTrue(ws.closed)
             self.assertEqual(ws.close_code, 1007)
 
             msg = yield from ws.receive()
-            self.assertEqual(msg.tp, web.MsgType.closed)
+            self.assertEqual(msg.tp, WSMsgType.CLOSED)
 
             closed.set_result(None)
             return ws
@@ -302,7 +302,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
 
             writer.close(code=1007)
             msg = yield from reader.read()
-            self.assertEqual(msg.tp, websocket.MSG_CLOSE)
+            self.assertEqual(msg.tp, WSMsgType.CLOSE)
             yield from closed
             resp.close()
 
@@ -327,7 +327,7 @@ class TestWebWebSocketFunctional(unittest.TestCase):
                 url, 'eggs, bar')
 
             msg = yield from reader.read()
-            self.assertEqual(msg.tp, websocket.MSG_CLOSE)
+            self.assertEqual(msg.tp, WSMsgType.CLOSE)
 
             writer.send('text')
             writer.send(b'bytes', binary=True)

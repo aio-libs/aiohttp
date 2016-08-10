@@ -13,6 +13,20 @@ server tests extremely easy, it also provides
 :ref:`test framework agnostic utilities <framework-agnostic-utilities>` for
 testing with other frameworks such as :ref:`unittest <unittest-example>`.
 
+
+
+For using pytest plugin please install pytest-aiohttp_ library:
+
+.. code-block:: shell
+
+   $ pip install pytest-aiohttp
+
+If you don't want to install *pytest-aiohttp* for some reason you may
+insert ``pytest_plugins = 'aiohttp.pytest_plugin'`` line into
+``conftest.py`` instead for the same functionality.
+
+
+
 Pytest example
 ~~~~~~~~~~~~~~
 
@@ -22,7 +36,6 @@ allows you to create a client to make requests to test your app.
 A simple would be::
 
     from aiohttp import web
-    pytest_plugins = 'aiohttp.pytest_plugin'
 
     async def hello(request):
         return web.Response(body=b'Hello, world')
@@ -53,7 +66,8 @@ app test client::
         if request.method == 'POST':
             request.app['value'] = (await request.post())['value']
             return web.Response(body=b'thanks for the data')
-        return web.Response(body='value: {}'.format(request.app['value']).encode())
+        return web.Response(
+            body='value: {}'.format(request.app['value']).encode())
 
     def create_app(loop):
         app = web.Application(loop=loop)
@@ -154,9 +168,7 @@ functionality, the AioHTTPTestCase is provided::
     class MyAppTestCase(AioHTTPTestCase):
 
         def get_app(self, loop):
-            """
-            override the get_app method to return
-            your application.
+            """Override the get_app method to return your application.
             """
             # it's important to use the loop passed here.
             return web.Application(loop=loop)
@@ -218,8 +230,11 @@ conditions that hard to reproduce on real server::
 aiohttp.test_utils
 ------------------
 
-.. _pytest: http://pytest.org/latest/
 .. automodule:: aiohttp.test_utils
    :members: TestClient, AioHTTPTestCase, run_loop, loop_context, setup_test_loop, teardown_test_loop make_mocked_request
    :undoc-members:
    :show-inheritance:
+
+
+.. _pytest: http://pytest.org/latest/
+.. _pytest-aiohttp: https://pypi.python.org/pypi/pytest-aiohttp

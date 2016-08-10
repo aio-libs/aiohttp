@@ -3,20 +3,17 @@ import os
 import pathlib
 import re
 import unittest
-from collections.abc import Sized, Container, Iterable, Mapping, MutableMapping
+from collections.abc import Container, Iterable, Mapping, MutableMapping, Sized
 from urllib.parse import unquote
+
 import aiohttp.web
 from aiohttp import hdrs
-from aiohttp.web import (UrlDispatcher, Response,
-                         HTTPMethodNotAllowed, HTTPNotFound)
-from aiohttp.web_urldispatcher import (_defaultExpectHandler,
-                                       DynamicRoute,
-                                       PlainRoute,
-                                       SystemRoute,
-                                       ResourceRoute,
-                                       AbstractResource,
-                                       View)
 from aiohttp.test_utils import make_mocked_request
+from aiohttp.web import (HTTPMethodNotAllowed, HTTPNotFound, Response,
+                         UrlDispatcher)
+from aiohttp.web_urldispatcher import (AbstractResource, DynamicRoute,
+                                       PlainRoute, ResourceRoute, SystemRoute,
+                                       View, _defaultExpectHandler)
 
 
 class TestUrlDispatcher(unittest.TestCase):
@@ -58,6 +55,24 @@ class TestUrlDispatcher(unittest.TestCase):
         route = PlainRoute('GET', handler, 'test.test:test-test',
                            '/handler/to/path')
         self.router.register_route(route)
+
+    def test_register_uncommon_http_methods(self):
+        handler = self.make_handler()
+
+        uncommon_http_methods = {
+            'PROPFIND',
+            'PROPPATCH',
+            'COPY',
+            'LOCK',
+            'UNLOCK'
+            'MOVE',
+            'SUBSCRIBE',
+            'UNSUBSCRIBE',
+            'NOTIFY'
+        }
+
+        for method in uncommon_http_methods:
+            PlainRoute(method, handler, 'url', '/handler/to/path')
 
     def test_add_route_root(self):
         handler = self.make_handler()
@@ -588,9 +603,20 @@ class TestUrlDispatcher(unittest.TestCase):
             self.router.add_route('GET', 'invalid_path', handler)
 
     def test_add_route_invalid_method(self):
-        with self.assertRaises(ValueError):
-            handler = self.make_handler()
-            self.router.add_route('INVALID_METHOD', '/path', handler)
+
+        sample_bad_methods = {
+            'BAD METHOD',
+            'B@D_METHOD',
+            '[BAD_METHOD]',
+            '{BAD_METHOD}',
+            '(BAD_METHOD)',
+            'B?D_METHOD',
+        }
+
+        for bad_method in sample_bad_methods:
+            with self.assertRaises(ValueError):
+                handler = self.make_handler()
+                self.router.add_route(bad_method, '/path', handler)
 
     def fill_routes(self):
         route1 = self.router.add_route('GET', '/plain', self.make_handler())

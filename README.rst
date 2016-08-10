@@ -10,9 +10,8 @@ http client/server for asyncio
   :target:  https://travis-ci.org/KeepSafe/aiohttp
   :align: right
 
-.. image:: https://coveralls.io/repos/KeepSafe/aiohttp/badge.svg?branch=master&service=github
-  :target:  https://coveralls.io/github/KeepSafe/aiohttp?branch=master
-  :align: right
+.. image:: https://codecov.io/gh/KeepSafe/aiohttp/branch/master/graph/badge.svg
+  :target: https://codecov.io/gh/KeepSafe/aiohttp
 
 .. image:: https://badge.fury.io/py/aiohttp.svg
     :target: https://badge.fury.io/py/aiohttp
@@ -38,17 +37,19 @@ To retrieve something from the web:
   import aiohttp
   import asyncio
 
-  async def fetch(session, url):
-      with aiohttp.Timeout(10):
+  async def fetch(session, url, *, loop):
+      with aiohttp.Timeout(10, loop=loop):
           async with session.get(url) as response:
               return await response.text()
 
+  async def main(loop):
+      async with aiohttp.ClientSession(loop=loop) as session:
+          html = await fetch(session, 'http://python.org', loop=loop)
+          print(html)
+
   if __name__ == '__main__':
       loop = asyncio.get_event_loop()
-      with aiohttp.ClientSession(loop=loop) as session:
-          html = loop.run_until_complete(
-              fetch(session, 'http://python.org'))
-          print(html)
+      loop.run_until_complete(main(loop))
 
 
 Server

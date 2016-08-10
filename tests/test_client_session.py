@@ -1,15 +1,15 @@
 import asyncio
 import contextlib
 import gc
+import http.cookies
 import re
 import types
-import http.cookies
 from unittest import mock
 
+import pytest
 from multidict import CIMultiDict, MultiDict
 
 import aiohttp
-import pytest
 from aiohttp import web
 from aiohttp.client import ClientSession
 from aiohttp.connector import BaseConnector, TCPConnector
@@ -363,7 +363,9 @@ def test_reraise_os_error(create_session):
     assert e.strerror == err.strerror
 
 
+@pytest.mark.run_loop
 def test_request_ctx_manager_props(loop):
+    yield from asyncio.sleep(0, loop=loop)  # to make it a task
     with aiohttp.ClientSession(loop=loop) as client:
         ctx_mgr = client.get('http://example.com')
 
@@ -411,3 +413,8 @@ def test_cookie_jar_usage(create_app_and_client):
     assert isinstance(resp_cookies, http.cookies.SimpleCookie)
     assert "response" in resp_cookies
     assert resp_cookies["response"].value == "resp_value"
+
+
+def test_session_default_version(loop):
+    session = aiohttp.ClientSession(loop=loop)
+    assert session.version == aiohttp.HttpVersion11

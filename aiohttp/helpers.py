@@ -8,9 +8,9 @@ import functools
 import io
 import os
 import re
-
+import warnings
 from collections import namedtuple
-from http.cookies import SimpleCookie, Morsel
+from http.cookies import Morsel, SimpleCookie
 from math import ceil
 from pathlib import Path
 from urllib.parse import quote, urlencode, urlsplit
@@ -20,6 +20,7 @@ from multidict import MultiDict, MultiDictProxy
 from . import hdrs
 from .abc import AbstractCookieJar
 from .errors import InvalidURL
+
 try:
     from asyncio import ensure_future
 except ImportError:
@@ -28,6 +29,9 @@ except ImportError:
 
 __all__ = ('BasicAuth', 'create_future', 'FormData', 'parse_mimetype',
            'Timeout', 'CookieJar', 'ensure_future')
+
+
+_sentinel = object()
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
@@ -412,9 +416,6 @@ class AccessLogger:
             self.logger.exception("Error in logging")
 
 
-_marker = object()
-
-
 class reify:
     """Use as a class method decorator.  It operates almost exactly like
     the Python `@property` decorator, but it puts the result of the
@@ -432,11 +433,11 @@ class reify:
             self.__doc__ = ""
         self.name = wrapped.__name__
 
-    def __get__(self, inst, owner, _marker=_marker):
+    def __get__(self, inst, owner, _sentinel=_sentinel):
         if inst is None:
             return self
-        val = inst.__dict__.get(self.name, _marker)
-        if val is not _marker:
+        val = inst.__dict__.get(self.name, _sentinel)
+        if val is not _sentinel:
             return val
         val = self.wrapped(inst)
         inst.__dict__[self.name] = val
@@ -695,6 +696,8 @@ class CookieJar(AbstractCookieJar):
         """Returns this jar's cookies filtered by their attributes."""
         url_parsed = urlsplit(request_url)
         filtered = SimpleCookie()
+        hostname = url_parsed.hostname or ""
+        is_not_secure = url_parsed.scheme not in ("https", "wss")
 
         for name, cookie in self._cookies.items():
             cookie_domain = cookie["domain"]
@@ -703,8 +706,6 @@ class CookieJar(AbstractCookieJar):
             if not cookie_domain:
                 dict.__setitem__(filtered, name, cookie)
                 continue
-
-            hostname = url_parsed.hostname or ""
 
             if not self._unsafe and is_ip_address(hostname):
                 continue
@@ -718,9 +719,7 @@ class CookieJar(AbstractCookieJar):
             if not self._is_path_match(url_parsed.path, cookie["path"]):
                 continue
 
-            is_secure = url_parsed.scheme in ("https", "wss")
-
-            if cookie["secure"] and not is_secure:
+            if is_not_secure and cookie["secure"]:
                 continue
 
             dict.__setitem__(filtered, name, cookie)
@@ -827,3 +826,14 @@ class CookieJar(AbstractCookieJar):
             ), "%b %d %H:%M:%S %Y")
 
         return dt.replace(tzinfo=datetime.timezone.utc)
+
+
+def _get_kwarg(kwargs, old, new, value):
+    val = kwargs.pop(old, _sentinel)
+    if val is not _sentinel:
+        warnings.warn("{} is deprecated, use {} instead".format(old, new),
+                      DeprecationWarning,
+                      stacklevel=3)
+        return val
+    else:
+        return value

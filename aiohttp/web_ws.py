@@ -1,18 +1,18 @@
-import sys
 import asyncio
 import json
+import sys
 import warnings
 
 from collections import namedtuple
-from . import hdrs, Timeout
-from .errors import HttpProcessingError, ClientDisconnectedError
-from .websocket import do_handshake, Message, WebSocketError
-from .websocket_client import MsgType, closedMessage
-from .web_exceptions import (
-    HTTPBadRequest, HTTPMethodNotAllowed, HTTPInternalServerError)
+from . import Timeout, hdrs
+from ._ws_impl import (CLOSED_MESSAGE, WebSocketError, WSMessage, WSMsgType,
+                       do_handshake)
+from .errors import ClientDisconnectedError, HttpProcessingError
+from .web_exceptions import (HTTPBadRequest, HTTPInternalServerError,
+                             HTTPMethodNotAllowed)
 from .web_reqrep import StreamResponse
 
-__all__ = ('WebSocketResponse', 'MsgType')
+__all__ = ('WebSocketResponse',)
 
 PY_35 = sys.version_info >= (3, 5)
 
@@ -203,7 +203,7 @@ class WebSocketResponse(StreamResponse):
                     self._exception = exc
                     return True
 
-                if msg.tp == MsgType.close:
+                if msg.tp == WSMsgType.CLOSE:
                     self._close_code = msg.data
                     return True
         else:
@@ -223,7 +223,7 @@ class WebSocketResponse(StreamResponse):
                     self._conn_lost += 1
                     if self._conn_lost >= THRESHOLD_CONNLOST_ACCESS:
                         raise RuntimeError('WebSocket connection is closed.')
-                    return closedMessage
+                    return CLOSED_MESSAGE
 
                 try:
                     msg = yield from self._reader.read()
@@ -232,28 +232,28 @@ class WebSocketResponse(StreamResponse):
                 except WebSocketError as exc:
                     self._close_code = exc.code
                     yield from self.close(code=exc.code)
-                    return Message(MsgType.error, exc, None)
+                    return WSMessage(WSMsgType.ERROR, exc, None)
                 except ClientDisconnectedError:
                     self._closed = True
                     self._close_code = 1006
-                    return Message(MsgType.close, None, None)
+                    return WSMessage(WSMsgType.CLOSE, None, None)
                 except Exception as exc:
                     self._exception = exc
                     self._closing = True
                     self._close_code = 1006
                     yield from self.close()
-                    return Message(MsgType.error, exc, None)
+                    return WSMessage(WSMsgType.ERROR, exc, None)
 
-                if msg.tp == MsgType.close:
+                if msg.tp == WSMsgType.CLOSE:
                     self._closing = True
                     self._close_code = msg.data
                     if not self._closed and self._autoclose:
                         yield from self.close()
                     return msg
                 elif not self._closed:
-                    if msg.tp == MsgType.ping and self._autoping:
+                    if msg.tp == WSMsgType.PING and self._autoping:
                         self.pong(msg.data)
-                    elif msg.tp == MsgType.pong and self._autoping:
+                    elif msg.tp == WSMsgType.PONG and self._autoping:
                         continue
                     else:
                         return msg
@@ -270,7 +270,7 @@ class WebSocketResponse(StreamResponse):
     @asyncio.coroutine
     def receive_str(self):
         msg = yield from self.receive()
-        if msg.tp != MsgType.text:
+        if msg.tp != WSMsgType.TEXT:
             raise TypeError(
                 "Received message {}:{!r} is not str".format(msg.tp, msg.data))
         return msg.data
@@ -278,7 +278,7 @@ class WebSocketResponse(StreamResponse):
     @asyncio.coroutine
     def receive_bytes(self):
         msg = yield from self.receive()
-        if msg.tp != MsgType.binary:
+        if msg.tp != WSMsgType.BINARY:
             raise TypeError(
                 "Received message {}:{!r} is not bytes".format(msg.tp,
                                                                msg.data))
@@ -300,6 +300,6 @@ class WebSocketResponse(StreamResponse):
         @asyncio.coroutine
         def __anext__(self):
             msg = yield from self.receive()
-            if msg.tp == MsgType.close:
+            if msg.tp == WSMsgType.CLOSE:
                 raise StopAsyncIteration  # NOQA
             return msg

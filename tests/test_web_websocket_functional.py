@@ -1,10 +1,11 @@
 """HTTP websocket server functional tests"""
 
 import asyncio
+
 import pytest
+
 import aiohttp
-from aiohttp import web
-from aiohttp import helpers
+from aiohttp import helpers, web
 
 
 @pytest.mark.run_loop
@@ -132,11 +133,11 @@ def test_send_recv_text(create_app_and_client, loop):
     ws = yield from client.ws_connect('/')
     ws.send_str('ask')
     msg = yield from ws.receive()
-    assert msg.tp == aiohttp.MsgType.text
+    assert msg.tp == aiohttp.WSMsgType.TEXT
     assert 'ask/answer' == msg.data
 
     msg = yield from ws.receive()
-    assert msg.tp == aiohttp.MsgType.close
+    assert msg.tp == aiohttp.WSMsgType.CLOSE
     assert msg.data == 1000
     assert msg.extra == ''
 
@@ -168,11 +169,11 @@ def test_send_recv_bytes(create_app_and_client, loop):
     ws = yield from client.ws_connect('/')
     ws.send_bytes(b'ask')
     msg = yield from ws.receive()
-    assert msg.tp == aiohttp.MsgType.binary
+    assert msg.tp == aiohttp.WSMsgType.BINARY
     assert b'ask/answer' == msg.data
 
     msg = yield from ws.receive()
-    assert msg.tp == aiohttp.MsgType.close
+    assert msg.tp == aiohttp.WSMsgType.CLOSE
     assert msg.data == 1000
     assert msg.extra == ''
 
@@ -204,11 +205,11 @@ def test_send_recv_json(create_app_and_client, loop):
     ws.send_str('{"request": "test"}')
     msg = yield from ws.receive()
     data = msg.json()
-    assert msg.tp == aiohttp.MsgType.text
+    assert msg.tp == aiohttp.WSMsgType.TEXT
     assert data['response'] == 'test'
 
     msg = yield from ws.receive()
-    assert msg.tp == aiohttp.MsgType.close
+    assert msg.tp == aiohttp.WSMsgType.CLOSE
     assert msg.data == 1000
     assert msg.extra == ''
 

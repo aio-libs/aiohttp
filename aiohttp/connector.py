@@ -1,27 +1,25 @@
 import asyncio
-import aiohttp
 import functools
 import http.cookies
 import ssl
 import sys
 import traceback
 import warnings
-
 from collections import defaultdict
 from hashlib import md5, sha1, sha256
 from itertools import chain
 from math import ceil
 from types import MappingProxyType
 
+import aiohttp
+
 from . import hdrs, helpers
 from .client import ClientRequest
-from .errors import ServerDisconnectedError
-from .errors import HttpProxyError, ProxyConnectionError
-from .errors import ClientOSError, ClientTimeoutError
-from .errors import FingerprintMismatch
-from .helpers import is_ip_address
+from .errors import (ClientOSError, ClientTimeoutError, FingerprintMismatch,
+                     HttpProxyError, ProxyConnectionError,
+                     ServerDisconnectedError)
+from .helpers import _sentinel, is_ip_address
 from .resolver import DefaultResolver
-
 
 __all__ = ('BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector')
 
@@ -34,7 +32,7 @@ HASHFUNC_BY_DIGESTLEN = {
 }
 
 
-class Connection(object):
+class Connection:
 
     _source_traceback = None
     _transport = None
@@ -59,9 +57,8 @@ class Connection(object):
         if self._transport is not None:
             _warnings.warn('Unclosed connection {!r}'.format(self),
                            ResourceWarning)
-            if hasattr(self._loop, 'is_closed'):
-                if self._loop.is_closed():
-                    return
+            if self._loop.is_closed():
+                return
 
             self._connector._release(
                 self._key, self._request, self._transport, self._protocol,
@@ -99,9 +96,6 @@ class Connection(object):
         return self._transport is None
 
 
-_default = object()
-
-
 class BaseConnector(object):
     """Base connector class.
 
@@ -116,17 +110,17 @@ class BaseConnector(object):
     _closed = True  # prevent AttributeError in __del__ if ctor was failed
     _source_traceback = None
 
-    def __init__(self, *, conn_timeout=None, keepalive_timeout=_default,
+    def __init__(self, *, conn_timeout=None, keepalive_timeout=_sentinel,
                  force_close=False, limit=20,
                  loop=None):
 
         if force_close:
             if keepalive_timeout is not None and \
-               keepalive_timeout is not _default:
+               keepalive_timeout is not _sentinel:
                 raise ValueError('keepalive_timeout cannot '
                                  'be set if force_close is True')
         else:
-            if keepalive_timeout is _default:
+            if keepalive_timeout is _sentinel:
                 keepalive_timeout = 30
 
         if loop is None:
@@ -245,9 +239,8 @@ class BaseConnector(object):
         self._closed = True
 
         try:
-            if hasattr(self._loop, 'is_closed'):
-                if self._loop.is_closed():
-                    return ret
+            if self._loop.is_closed():
+                return ret
 
             for key, data in self._conns.items():
                 for transport, proto, t0 in data:
@@ -272,24 +265,6 @@ class BaseConnector(object):
         A readonly property.
         """
         return self._closed
-
-    def update_cookies(self, cookies):
-        """Update shared cookies.
-
-        Deprecated, use ClientSession instead.
-        """
-        if isinstance(cookies, dict):
-            cookies = cookies.items()
-
-        for name, value in cookies:
-            if PY_343:
-                self.cookies[name] = value
-            else:
-                if isinstance(value, http.cookies.Morsel):
-                    # use dict method because SimpleCookie class modifies value
-                    dict.__setitem__(self.cookies, name, value)
-                else:
-                    self.cookies[name] = value
 
     @asyncio.coroutine
     def connect(self, req):
@@ -417,8 +392,6 @@ class BaseConnector(object):
 
 _SSL_OP_NO_COMPRESSION = getattr(ssl, "OP_NO_COMPRESSION", 0)
 
-_marker = object()
-
 
 class TCPConnector(BaseConnector):
     """TCP connector.
@@ -440,7 +413,7 @@ class TCPConnector(BaseConnector):
     """
 
     def __init__(self, *, verify_ssl=True, fingerprint=None,
-                 resolve=_marker, use_dns_cache=_marker,
+                 resolve=_sentinel, use_dns_cache=_sentinel,
                  family=0, ssl_context=None, local_addr=None, resolver=None,
                  **kwargs):
         super().__init__(**kwargs)
@@ -460,18 +433,18 @@ class TCPConnector(BaseConnector):
             self._hashfunc = hashfunc
         self._fingerprint = fingerprint
 
-        if resolve is not _marker:
+        if resolve is not _sentinel:
             warnings.warn(("resolve parameter is deprecated, "
                            "use use_dns_cache instead"),
                           DeprecationWarning, stacklevel=2)
 
-        if use_dns_cache is not _marker and resolve is not _marker:
+        if use_dns_cache is not _sentinel and resolve is not _sentinel:
             if use_dns_cache != resolve:
                 raise ValueError("use_dns_cache must agree with resolve")
             _use_dns_cache = use_dns_cache
-        elif use_dns_cache is not _marker:
+        elif use_dns_cache is not _sentinel:
             _use_dns_cache = use_dns_cache
-        elif resolve is not _marker:
+        elif resolve is not _sentinel:
             _use_dns_cache = resolve
         else:
             _use_dns_cache = False

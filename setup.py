@@ -2,12 +2,12 @@ import codecs
 import os
 import re
 import sys
-from setuptools import setup, Extension
+from distutils.command.build_ext import build_ext
 from distutils.errors import (CCompilerError, DistutilsExecError,
                               DistutilsPlatformError)
-from distutils.command.build_ext import build_ext
-from setuptools.command.test import test as TestCommand
 
+from setuptools import Extension, setup
+from setuptools.command.test import test as TestCommand
 
 try:
     from Cython.Build import cythonize
@@ -56,8 +56,8 @@ with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
 
 install_requires = ['chardet', 'multidict>=2.0']
 
-if sys.version_info < (3, 4, 1):
-    raise RuntimeError("aiohttp requires Python 3.4.1+")
+if sys.version_info < (3, 4, 2):
+    raise RuntimeError("aiohttp requires Python 3.4.2+")
 
 
 def read(f):
@@ -81,7 +81,7 @@ args = dict(
     name='aiohttp',
     version=version,
     description=('http client/server for asyncio'),
-    long_description='\n\n'.join((read('README.rst'), read('CHANGES.txt'))),
+    long_description='\n\n'.join((read('README.rst'), read('CHANGES.rst'))),
     classifiers=[
         'License :: OSI Approved :: Apache Software License',
         'Intended Audience :: Developers',

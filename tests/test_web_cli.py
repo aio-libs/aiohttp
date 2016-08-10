@@ -1,8 +1,8 @@
+from unittest import mock
+
 import pytest
 
-
 from aiohttp import web
-from unittest import mock
 
 
 @mock.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)

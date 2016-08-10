@@ -6,7 +6,8 @@ import unittest
 from unittest import mock
 
 import aiohttp
-from aiohttp import errors, hdrs, helpers, websocket, websocket_client
+from aiohttp import ClientWebSocketResponse, errors, hdrs, helpers
+from aiohttp._ws_impl import WS_KEY
 
 
 class TestWebSocketClient(unittest.TestCase):
@@ -18,7 +19,7 @@ class TestWebSocketClient(unittest.TestCase):
         self.key_data = os.urandom(16)
         self.key = base64.b64encode(self.key_data)
         self.ws_key = base64.b64encode(
-            hashlib.sha1(self.key + websocket.WS_KEY).digest()).decode()
+            hashlib.sha1(self.key + WS_KEY).digest()).decode()
 
     def tearDown(self):
         self.loop.close()
@@ -44,7 +45,7 @@ class TestWebSocketClient(unittest.TestCase):
                 protocols=('t1', 't2', 'chat'),
                 loop=self.loop))
 
-        self.assertIsInstance(res, websocket_client.ClientWebSocketResponse)
+        self.assertIsInstance(res, ClientWebSocketResponse)
         self.assertEqual(res.protocol, 'chat')
         self.assertNotIn(hdrs.ORIGIN, m_req.call_args[1]["headers"])
 
@@ -72,7 +73,7 @@ class TestWebSocketClient(unittest.TestCase):
     @mock.patch('aiohttp.client.ClientSession.get')
     def test_ws_connect_custom_response(self, m_req, m_os):
 
-        class CustomResponse(websocket_client.ClientWebSocketResponse):
+        class CustomResponse(ClientWebSocketResponse):
             def read(self, decode=False):
                 return 'customized!'
 
@@ -230,7 +231,7 @@ class TestWebSocketClient(unittest.TestCase):
             aiohttp.ws_connect('http://test.org', loop=self.loop))
         self.assertFalse(resp.closed)
 
-        msg = websocket.Message(websocket.MSG_CLOSE, b'', b'')
+        msg = aiohttp.WSMessage(aiohttp.MsgType.CLOSE, b'', b'')
         reader.read.return_value = helpers.create_future(self.loop)
         reader.read.return_value.set_result(msg)
 
@@ -386,11 +387,11 @@ class TestWebSocketClient(unittest.TestCase):
         reader.read.return_value.set_exception(exc)
 
         msg = self.loop.run_until_complete(resp.receive())
-        self.assertEqual(msg.tp, aiohttp.MsgType.error)
+        self.assertEqual(msg.tp, aiohttp.MsgType.ERROR)
         self.assertIs(resp.exception(), exc)
 
     def test_receive_runtime_err(self):
-        resp = websocket_client.ClientWebSocketResponse(
+        resp = ClientWebSocketResponse(
             mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock(), 10.0,
             True, True, self.loop)
         resp._waiting = True

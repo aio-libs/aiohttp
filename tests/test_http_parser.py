@@ -1,14 +1,12 @@
 """Tests for aiohttp/protocol.py"""
 
 import asyncio
-import zlib
 import unittest
+import zlib
 from unittest import mock
 
 import aiohttp
-from aiohttp import errors
-from aiohttp import protocol
-from aiohttp import CIMultiDict
+from aiohttp import CIMultiDict, errors, protocol
 
 
 class TestParseHeaders(unittest.TestCase):

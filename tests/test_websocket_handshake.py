@@ -3,10 +3,13 @@
 import base64
 import hashlib
 import os
+from unittest import mock
+
+import multidict
 import pytest
 
-from aiohttp import websocket, multidict, protocol, errors
-from unittest import mock
+from aiohttp import errors, protocol
+from aiohttp._ws_impl import WS_KEY, do_handshake
 
 
 @pytest.fixture()
@@ -34,33 +37,33 @@ def gen_ws_headers(protocols=''):
 
 def test_not_get(message, transport):
     with pytest.raises(errors.HttpProcessingError):
-        websocket.do_handshake('POST', message.headers, transport)
+        do_handshake('POST', message.headers, transport)
 
 
 def test_no_upgrade(message, transport):
     with pytest.raises(errors.HttpBadRequest):
-        websocket.do_handshake(message.method, message.headers, transport)
+        do_handshake(message.method, message.headers, transport)
 
 
 def test_no_connection(message, transport):
     message.headers.extend([('Upgrade', 'websocket'),
                             ('Connection', 'keep-alive')])
     with pytest.raises(errors.HttpBadRequest):
-        websocket.do_handshake(message.method, message.headers, transport)
+        do_handshake(message.method, message.headers, transport)
 
 
 def test_protocol_version(message, transport):
     message.headers.extend([('Upgrade', 'websocket'),
                             ('Connection', 'upgrade')])
     with pytest.raises(errors.HttpBadRequest):
-        websocket.do_handshake(message.method, message.headers, transport)
+        do_handshake(message.method, message.headers, transport)
 
     message.headers.extend([('Upgrade', 'websocket'),
                             ('Connection', 'upgrade'),
                             ('Sec-Websocket-Version', '1')])
 
     with pytest.raises(errors.HttpBadRequest):
-        websocket.do_handshake(message.method, message.headers, transport)
+        do_handshake(message.method, message.headers, transport)
 
 
 def test_protocol_key(message, transport):
@@ -68,14 +71,14 @@ def test_protocol_key(message, transport):
                             ('Connection', 'upgrade'),
                             ('Sec-Websocket-Version', '13')])
     with pytest.raises(errors.HttpBadRequest):
-        websocket.do_handshake(message.method, message.headers, transport)
+        do_handshake(message.method, message.headers, transport)
 
     message.headers.extend([('Upgrade', 'websocket'),
                             ('Connection', 'upgrade'),
                             ('Sec-Websocket-Version', '13'),
                             ('Sec-Websocket-Key', '123')])
     with pytest.raises(errors.HttpBadRequest):
-        websocket.do_handshake(message.method, message.headers, transport)
+        do_handshake(message.method, message.headers, transport)
 
     sec_key = base64.b64encode(os.urandom(2))
     message.headers.extend([('Upgrade', 'websocket'),
@@ -83,20 +86,20 @@ def test_protocol_key(message, transport):
                             ('Sec-Websocket-Version', '13'),
                             ('Sec-Websocket-Key', sec_key.decode())])
     with pytest.raises(errors.HttpBadRequest):
-        websocket.do_handshake(message.method, message.headers, transport)
+        do_handshake(message.method, message.headers, transport)
 
 
 def test_handshake(message, transport):
     hdrs, sec_key = gen_ws_headers()
 
     message.headers.extend(hdrs)
-    status, headers, parser, writer, protocol = websocket.do_handshake(
+    status, headers, parser, writer, protocol = do_handshake(
         message.method, message.headers, transport)
     assert status == 101
     assert protocol is None
 
     key = base64.b64encode(
-        hashlib.sha1(sec_key.encode() + websocket.WS_KEY).digest())
+        hashlib.sha1(sec_key.encode() + WS_KEY).digest())
     headers = dict(headers)
     assert headers['Sec-Websocket-Accept'] == key.decode()
 
@@ -106,7 +109,7 @@ def test_handshake_protocol(message, transport):
     proto = 'chat'
 
     message.headers.extend(gen_ws_headers(proto)[0])
-    _, resp_headers, _, _, protocol = websocket.do_handshake(
+    _, resp_headers, _, _, protocol = do_handshake(
         message.method, message.headers, transport,
         protocols=[proto])
 
@@ -124,7 +127,7 @@ def test_handshake_protocol_agreement(message, transport):
     server_protos = 'worse_proto,chat'
 
     message.headers.extend(gen_ws_headers(server_protos)[0])
-    _, resp_headers, _, _, protocol = websocket.do_handshake(
+    _, resp_headers, _, _, protocol = do_handshake(
         message.method, message.headers, transport,
         protocols=wanted_protos)
 
@@ -137,7 +140,7 @@ def test_handshake_protocol_unsupported(log, message, transport):
     message.headers.extend(gen_ws_headers('test')[0])
 
     with log('aiohttp.websocket') as ctx:
-        _, _, _, _, protocol = websocket.do_handshake(
+        _, _, _, _, protocol = do_handshake(
             message.method, message.headers, transport,
             protocols=[proto])
 

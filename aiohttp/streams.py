@@ -1,11 +1,11 @@
-import sys
 import asyncio
 import collections
 import functools
+import sys
 import traceback
 
-from .log import internal_logger
 from . import helpers
+from .log import internal_logger
 
 __all__ = (
     'EofStream', 'StreamReader', 'DataQueue', 'ChunksQueue',
@@ -83,7 +83,7 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
 
     total_bytes = 0
 
-    def __init__(self, limit=DEFAULT_LIMIT, loop=None):
+    def __init__(self, limit=DEFAULT_LIMIT, timeout=None, loop=None):
         self._limit = limit
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -93,8 +93,10 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
         self._buffer_offset = 0
         self._eof = False
         self._waiter = None
+        self._canceller = None
         self._eof_waiter = None
         self._exception = None
+        self._timeout = timeout
 
     def __repr__(self):
         info = ['StreamReader']
@@ -122,6 +124,11 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
             if not waiter.cancelled():
                 waiter.set_exception(exc)
 
+        canceller = self._canceller
+        if canceller is not None:
+            self._canceller = None
+            canceller.cancel()
+
     def feed_eof(self):
         self._eof = True
 
@@ -130,6 +137,11 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
             self._waiter = None
             if not waiter.cancelled():
                 waiter.set_result(True)
+
+        canceller = self._canceller
+        if canceller is not None:
+            self._canceller = None
+            canceller.cancel()
 
         waiter = self._eof_waiter
         if waiter is not None:
@@ -185,7 +197,13 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
             if not waiter.cancelled():
                 waiter.set_result(False)
 
-    def _create_waiter(self, func_name):
+        canceller = self._canceller
+        if canceller is not None:
+            self._canceller = None
+            canceller.cancel()
+
+    @asyncio.coroutine
+    def _wait(self, func_name):
         # StreamReader uses a future to link the protocol feed_data() method
         # to a read coroutine. Running two read coroutines at the same time
         # would have an unexpected behaviour. It would not possible to know
@@ -193,7 +211,18 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
         if self._waiter is not None:
             raise RuntimeError('%s() called while another coroutine is '
                                'already waiting for incoming data' % func_name)
-        return helpers.create_future(self._loop)
+        waiter = self._waiter = helpers.create_future(self._loop)
+        if self._timeout:
+            self._canceller = self._loop.call_later(self._timeout,
+                                                    self.set_exception,
+                                                    asyncio.TimeoutError())
+        try:
+            yield from waiter
+        finally:
+            self._waiter = None
+            if self._canceller is not None:
+                self._canceller.cancel()
+                self._canceller = None
 
     @asyncio.coroutine
     def readline(self):
@@ -222,11 +251,7 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
                 break
 
             if not_enough:
-                self._waiter = self._create_waiter('readline')
-                try:
-                    yield from self._waiter
-                finally:
-                    self._waiter = None
+                yield from self._wait('readline')
 
         return b''.join(line)
 
@@ -265,11 +290,7 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
             return b''.join(blocks)
 
         if not self._buffer and not self._eof:
-            self._waiter = self._create_waiter('read')
-            try:
-                yield from self._waiter
-            finally:
-                self._waiter = None
+            yield from self._wait('read')
 
         return self._read_nowait(n)
 
@@ -279,11 +300,7 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
             raise self._exception
 
         if not self._buffer and not self._eof:
-            self._waiter = self._create_waiter('readany')
-            try:
-                yield from self._waiter
-            finally:
-                self._waiter = None
+            yield from self._wait('readany')
 
         return self._read_nowait()
 

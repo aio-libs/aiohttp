@@ -1,10 +1,10 @@
 """Tests for parsers.py"""
 
-import pytest
 from unittest import mock
 
-from aiohttp import parsers
+import pytest
 
+from aiohttp import parsers
 
 DATA = b'line1\nline2\nline3\n'
 

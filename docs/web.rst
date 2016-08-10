@@ -46,7 +46,9 @@ That's it. Now, head over to ``http://localhost:8080/`` to see the results.
 Command Line Interface (CLI)
 ----------------------------
 :mod:`aiohttp.web` implements a basic CLI for quickly serving an
-:class:`Application` in *development* over TCP/IP::
+:class:`Application` in *development* over TCP/IP:
+
+.. code-block:: shell
 
     $ python -m aiohttp.web -H localhost -P 8080 package.module:init_func
 
@@ -371,6 +373,20 @@ If you prefer the `Mako`_ template engine, please take a look at the
 .. _aiohttp_mako: https://github.com/aio-libs/aiohttp_mako
 
 
+JSON Response
+-------------
+
+It is a common case to return JSON data in response, :mod:`aiohttp.web`
+provides a shortcut for returning JSON -- :func:`aiohttp.web.json_response`::
+
+   def handler(request):
+       data = {'some': 'data'}
+       return web.json_response(data)
+
+The shortcut method returns :class:`aiohttp.web.Response` instance
+so you can for example set cookies before returning it from handler.
+
+
 User Sessions
 -------------
 
@@ -382,29 +398,28 @@ third-party library, :mod:`aiohttp_session`, that adds *session* support::
 
     import asyncio
     import time
+    import base64
+    from cryptography import fernet
     from aiohttp import web
-    from aiohttp_session import get_session, session_middleware
+    from aiohttp_session import setup, get_session, session_middleware
     from aiohttp_session.cookie_storage import EncryptedCookieStorage
 
     async def handler(request):
         session = await get_session(request)
-        session['last_visit'] = time.time()
-        return web.Response(body=b'OK')
+        last_visit = session['last_visit'] if 'last_visit' in session else None
+        text = 'Last visited: {}'.format(last_visit)
+        return web.Response(body=text.encode('utf-8'))
 
-    async def init(loop):
-        app = web.Application(middlewares=[session_middleware(
-            EncryptedCookieStorage(b'Sixteen byte key'))])
-        app.router.add_get('/', handler)
-        srv = await loop.create_server(
-            app.make_handler(), '0.0.0.0', 8080)
-        return srv
+    def make_app():
+        app = web.Application()
+        # secret_key must be 32 url-safe base64-encoded bytes
+        fernet_key = fernet.Fernet.generate_key()
+        secret_key = base64.urlsafe_b64decode(fernet_key)
+        setup(app, EncryptedCookieStorage(secret_key))
+        app.router.add_route('GET', '/', handler)
+        return app
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(init(loop))
-    try:
-        loop.run_forever()
-    except KeyboardInterrupt:
-        pass
+    web.run_app(make_app())
 
 
 .. _aiohttp-web-expect-header:
@@ -523,12 +538,12 @@ with the peer::
         await ws.prepare(request)
 
         async for msg in ws:
-            if msg.tp == aiohttp.MsgType.text:
+            if msg.tp == aiohttp.WSMsgType.TEXT:
                 if msg.data == 'close':
                     await ws.close()
                 else:
                     ws.send_str(msg.data + '/answer')
-            elif msg.tp == aiohttp.MsgType.error:
+            elif msg.tp == aiohttp.WSMsgType.ERROR:
                 print('ws connection closed with exception %s' %
                       ws.exception())
 
@@ -536,9 +551,13 @@ with the peer::
 
         return ws
 
-Reading from the *WebSocket* (``await ws.receive()``) **must only** be
-done inside the request handler *task*; however, writing
-(``ws.send_str(...)``) to the *WebSocket* may be delegated to other tasks.
+.. _aiohttp-web-websocket-read-same-task:
+
+Reading from the *WebSocket* (``await ws.receive()``) and closing it (``await ws.close()``)
+**must only** be done inside the request handler *task*; however, writing
+(``ws.send_str(...)``) to the *WebSocket* and cancelling the handler task
+may be delegated to other tasks. See also :ref:`FAQ section <aiohttp_faq_terminating_websockets>`.
+
 *aiohttp.web* creates an implicit :class:`asyncio.Task` for handling every
 incoming request.
 
@@ -556,6 +575,7 @@ incoming request.
 
    Parallel reads from websocket are forbidden, there is no
    possibility to call :meth:`aiohttp.web.WebSocketResponse.receive`
+   or :meth:`aiohttp.web.WebSocketResponse.close`
    from two tasks.
 
    See :ref:`FAQ section <aiohttp_faq_parallel_event_sources>` for
@@ -976,7 +996,9 @@ Debug Toolbar
 aiohttp_debugtoolbar_ is a very useful library that provides a debugging toolbar
 while you're developing an :mod:`aiohttp.web` application.
 
-Install it via ``pip``::
+Install it via ``pip``:
+
+.. code-block:: shell
 
     $ pip install aiohttp_debugtoolbar
 

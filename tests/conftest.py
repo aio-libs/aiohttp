@@ -1,15 +1,15 @@
 import asyncio
-import aiohttp
 import collections
 import logging
-import pytest
 import re
 import sys
 import warnings
+
+import pytest
+
+import aiohttp
 from aiohttp import web
-from aiohttp.test_utils import (
-    loop_context, unused_port
-)
+from aiohttp.test_utils import loop_context, unused_port
 
 
 class _AssertWarnsContext:
@@ -195,6 +195,12 @@ class Client:
 
     def close(self):
         self._session.close()
+
+    def request(self, method, path, **kwargs):
+        while path.startswith('/'):
+            path = path[1:]
+        url = self._url + path
+        return self._session.request(method, url, **kwargs)
 
     def get(self, path, **kwargs):
         while path.startswith('/'):

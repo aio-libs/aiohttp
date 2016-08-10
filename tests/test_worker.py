@@ -1,12 +1,11 @@
 """Tests for aiohttp/worker.py"""
 import asyncio
-import pytest
 import sys
-
 from unittest import mock
 
-from aiohttp import helpers
+import pytest
 
+from aiohttp import helpers
 
 base_worker = pytest.importorskip('aiohttp.worker')
 pytest.importorskip('uvloop')
@@ -60,12 +59,7 @@ def test_run(worker, loop):
         worker.run()
 
     assert worker._run.called
-    is_closed = getattr(loop, 'is_closed')
-    if is_closed is not None:
-        closed = is_closed()
-    else:
-        closed = loop._closed
-    assert closed
+    assert loop.is_closed()
 
 
 def test_handle_quit(worker):

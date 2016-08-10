@@ -6,19 +6,19 @@ import hashlib
 import os
 import sys
 import traceback
-import warnings
 import urllib.parse
+import warnings
 
-from multidict import MultiDictProxy, MultiDict, CIMultiDict, istr
+from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 
 import aiohttp
-from .client_reqrep import ClientRequest, ClientResponse
-from .errors import WSServerHandshakeError
-from .helpers import CookieJar
-from .websocket import WS_KEY, WebSocketParser, WebSocketWriter
-from .websocket_client import ClientWebSocketResponse
-from . import hdrs, helpers
 
+from . import hdrs, helpers
+from ._ws_impl import WS_KEY, WebSocketParser, WebSocketWriter
+from .client_reqrep import ClientRequest, ClientResponse
+from .client_ws import ClientWebSocketResponse
+from .errors import WSServerHandshakeError
+from .helpers import CookieJar, Timeout
 
 __all__ = ('ClientSession', 'request', 'get', 'options', 'head',
            'delete', 'post', 'put', 'patch', 'ws_connect')
@@ -106,7 +106,8 @@ class ClientSession:
                 expect100=False,
                 read_until_eof=True,
                 proxy=None,
-                proxy_auth=None):
+                proxy_auth=None,
+                timeout=5*60):
         """Perform HTTP request."""
 
         return _RequestContextManager(
@@ -127,7 +128,8 @@ class ClientSession:
                 expect100=expect100,
                 read_until_eof=read_until_eof,
                 proxy=proxy,
-                proxy_auth=proxy_auth,))
+                proxy_auth=proxy_auth,
+                timeout=timeout))
 
     @asyncio.coroutine
     def _request(self, method, url, *,
@@ -145,7 +147,8 @@ class ClientSession:
                  expect100=False,
                  read_until_eof=True,
                  proxy=None,
-                 proxy_auth=None):
+                 proxy_auth=None,
+                 timeout=5*60):
 
         if version is not None:
             warnings.warn("HTTP version should be specified "
@@ -187,9 +190,10 @@ class ClientSession:
                 auth=auth, version=version, compress=compress, chunked=chunked,
                 expect100=expect100,
                 loop=self._loop, response_class=self._response_class,
-                proxy=proxy, proxy_auth=proxy_auth,)
+                proxy=proxy, proxy_auth=proxy_auth, timeout=timeout)
 
-            conn = yield from self._connector.connect(req)
+            with Timeout(timeout, loop=self._loop):
+                conn = yield from self._connector.connect(req)
             try:
                 resp = req.send(conn.writer, conn.reader)
                 try:
@@ -548,8 +552,8 @@ if not PY_35:
     try:
         from asyncio import coroutines
         coroutines._COROUTINE_TYPES += (_BaseRequestContextManager,)
-    except:
-        pass
+    except:  # pragma: no cover
+        pass  # Python 3.4.2 and 3.4.3 has no coroutines._COROUTINE_TYPES
 
 
 class _RequestContextManager(_BaseRequestContextManager):
@@ -582,7 +586,7 @@ class _DetachedRequestContextManager(_RequestContextManager):
         try:
             return (yield from self._coro)
         except:
-            self._session.close()
+            yield from self._session.close()
             raise
 
     if PY_35:
@@ -590,7 +594,7 @@ class _DetachedRequestContextManager(_RequestContextManager):
             try:
                 return (yield from self._coro)
             except:
-                self._session.close()
+                yield from self._session.close()
                 raise
 
     def __del__(self):
