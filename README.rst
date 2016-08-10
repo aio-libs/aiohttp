@@ -10,10 +10,6 @@ http client/server for asyncio
   :target:  https://travis-ci.org/KeepSafe/aiohttp
   :align: right
 
-.. image:: https://coveralls.io/repos/KeepSafe/aiohttp/badge.svg?branch=master&service=github
-  :target:  https://coveralls.io/github/KeepSafe/aiohttp?branch=master
-  :align: right
-
 .. image:: https://codecov.io/gh/KeepSafe/aiohttp/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/KeepSafe/aiohttp
 
