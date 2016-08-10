@@ -37,14 +37,14 @@ To retrieve something from the web:
   import aiohttp
   import asyncio
 
-  async def fetch(session, url):
-      with aiohttp.Timeout(10):
+  async def fetch(session, url, *, loop):
+      with aiohttp.Timeout(10, loop=loop):
           async with session.get(url) as response:
               return await response.text()
 
   async def main(loop):
       async with aiohttp.ClientSession(loop=loop) as session:
-          html = await fetch(session, 'http://python.org')
+          html = await fetch(session, 'http://python.org', loop=loop)
           print(html)
 
   if __name__ == '__main__':
