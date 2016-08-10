@@ -178,18 +178,21 @@ def test_write_non_prepared():
 def test_can_prepare_ok(make_request):
     req = make_request('GET', '/', protocols=True)
     ws = WebSocketResponse(protocols=('chat',))
+    assert bool(ws.can_prepare(request=req)) is True
     assert(True, 'chat') == ws.can_prepare(req)
 
 
 def test_can_prepare_unknown_protocol(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
+    assert bool(ws.can_prepare(request=req)) is True
     assert (True, None) == ws.can_prepare(req)
 
 
 def test_can_prepare_invalid_method(make_request):
     req = make_request('POST', '/')
     ws = WebSocketResponse()
+    assert bool(ws.can_prepare(request=req)) is False
     assert (False, None) == ws.can_prepare(req)
 
 
@@ -197,6 +200,7 @@ def test_can_prepare_without_upgrade(make_request):
     req = make_request('GET', '/',
                        headers=CIMultiDict({}))
     ws = WebSocketResponse()
+    assert bool(ws.can_prepare(request=req)) is False
     assert (False, None) == ws.can_prepare(req)
 
 
