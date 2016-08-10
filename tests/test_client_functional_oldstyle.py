@@ -4,7 +4,6 @@ import asyncio
 import binascii
 import gc
 import http.cookies
-import io
 import json
 import os.path
 import unittest
