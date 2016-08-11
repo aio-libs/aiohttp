@@ -1024,6 +1024,7 @@ def test_POST_FILES_SINGLE_BINARY(create_app_and_client, fname):
         # if system cannot determine 'application/pgp-keys' MIME type
         # then use 'application/octet-stream' default
         assert request.content_type in ['application/pgp-keys',
+                                        'text/plain',
                                         'application/octet-stream']
         return web.HTTPOk()
 
@@ -1115,6 +1116,7 @@ def test_POST_FILES_WITH_DATA(create_app_and_client, fname):
         data = yield from request.post()
         assert data['test'] == 'true'
         assert data['some'].content_type in ['application/pgp-keys',
+                                             'text/plain',
                                              'application/octet-stream']
         assert data['some'].filename == fname.name
         with fname.open('rb') as f:
