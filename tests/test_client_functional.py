@@ -13,6 +13,7 @@ from multidict import MultiDict
 import aiohttp
 from aiohttp import hdrs, web
 from aiohttp.errors import FingerprintMismatch
+from aiohttp.helpers import create_future
 from aiohttp.multipart import MultipartWriter
 
 
@@ -1131,3 +1132,96 @@ def test_POST_FILES_WITH_DATA(create_app_and_client, fname):
         resp = yield from client.post('/', data={'test': 'true', 'some': f})
         assert 200 == resp.status
         resp.close()
+
+
+@pytest.mark.xfail
+@pytest.mark.run_loop
+def test_POST_STREAM_DATA(create_app_and_client, fname, loop):
+    @asyncio.coroutine
+    def handler(request):
+        assert request.content_type == 'application/octet-stream'
+        content = yield from request.read()
+        with fname.open('rb') as f:
+            expected = f.read()
+        assert request.content_length == str(len(expected))
+        assert content == expected
+
+        return web.HTTPOk()
+
+    app, client = yield from create_app_and_client()
+    app.router.add_post('/', handler)
+
+    with fname.open() as f:
+        data = f.read()
+        fut = create_future(loop)
+
+        @asyncio.coroutine
+        def stream():
+            yield from fut
+            yield data
+
+        loop.call_later(0.01, fut.set_result, None)
+
+        resp = yield from client.post(
+            '/', data=stream(),
+            headers={'Content-Length': str(len(data))})
+        assert 200 == resp.status
+        resp.close()
+
+
+@pytest.mark.xfail
+@pytest.mark.run_loop
+def test_POST_StreamReader(create_app_and_client, fname, loop):
+    @asyncio.coroutine
+    def handler(request):
+        assert request.content_type == 'application/octet-stream'
+        content = yield from request.read()
+        with fname.open('rb') as f:
+            expected = f.read()
+        assert request.content_length == str(len(expected))
+        assert content == expected
+
+        return web.HTTPOk()
+
+    app, client = yield from create_app_and_client()
+    app.router.add_post('/', handler)
+
+    with fname.open() as f:
+        data = f.read()
+
+    stream = aiohttp.StreamReader(loop=loop)
+    stream.feed_data(data)
+    stream.feed_eof()
+
+    resp = yield from client.post(
+        '/', data=stream,
+        headers={'Content-Length': str(len(data))})
+    assert 200 == resp.status
+    resp.close()
+
+
+@pytest.mark.run_loop
+def test_expect_continue(create_app_and_client):
+    expect_called = False
+
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.post()
+        assert data == {'some': 'data'}
+        return web.HTTPOk()
+
+    @asyncio.coroutine
+    def expect_handler(request):
+        nonlocal expect_called
+        expect = request.headers.get(hdrs.EXPECT)
+        if expect.lower() == "100-continue":
+            request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+            expect_called = True
+
+    app, client = yield from create_app_and_client()
+    app.router.add_post('/', handler, expect_handler=expect_handler)
+
+    resp = yield from client.post('/', data={'some': 'data'}, expect100=True)
+    assert 200 == resp.status
+    resp.close()
+    assert expect_called

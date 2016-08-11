@@ -210,19 +210,6 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertEqual(str(len(data)),
                              content['headers']['Content-Length'])
 
-    def test_expect_continue(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            url = httpd.url('method', 'post')
-            r = self.loop.run_until_complete(
-                client.request('post', url, data={'some': 'data'},
-                               expect100=True, loop=self.loop))
-            self.assertEqual(r.status, 200)
-
-            content = self.loop.run_until_complete(r.json())
-            self.assertEqual('100-continue', content['headers']['Expect'])
-            self.assertEqual(r.status, 200)
-            r.close()
-
     def test_encoding(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
