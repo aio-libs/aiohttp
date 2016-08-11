@@ -210,35 +210,6 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertEqual(str(len(data)),
                              content['headers']['Content-Length'])
 
-    def test_expect_continue(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            url = httpd.url('method', 'post')
-            r = self.loop.run_until_complete(
-                client.request('post', url, data={'some': 'data'},
-                               expect100=True, loop=self.loop))
-            self.assertEqual(r.status, 200)
-
-            content = self.loop.run_until_complete(r.json())
-            self.assertEqual('100-continue', content['headers']['Expect'])
-            self.assertEqual(r.status, 200)
-            r.close()
-
-    def test_encoding(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            r = self.loop.run_until_complete(
-                client.request('get', httpd.url('encoding', 'deflate'),
-                               loop=self.loop))
-            self.assertEqual(r.status, 200)
-            r.close()
-
-    def test_encoding2(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            r = self.loop.run_until_complete(
-                client.request('get', httpd.url('encoding', 'gzip'),
-                               loop=self.loop))
-            self.assertEqual(r.status, 200)
-            r.close()
-
     def test_cookies(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
             c = http.cookies.Morsel()
@@ -292,16 +263,6 @@ class TestHttpClientFunctional(unittest.TestCase):
 
         m_log.warning.assert_called_with('Can not load response cookies: %s',
                                          mock.ANY)
-
-    def test_chunked(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
-            r = self.loop.run_until_complete(
-                client.request('get', httpd.url('chunked'), loop=self.loop))
-            self.assertEqual(r.status, 200)
-            self.assertEqual(r.headers.getone('TRANSFER-ENCODING'), 'chunked')
-            content = self.loop.run_until_complete(r.json())
-            self.assertEqual(content['path'], '/chunked')
-            r.close()
 
     def test_broken_connection(self):
         with test_utils.run_server(self.loop, router=Functional) as httpd:
@@ -632,35 +593,6 @@ class Functional(test_utils.Router):
     @test_utils.Router.define('/method/([A-Za-z]+)$')
     def method(self, match):
         self._response(self._start_response(200))
-
-    @test_utils.Router.define('/redirect/([0-9]+)$')
-    def redirect(self, match):
-        no = int(match.group(1).upper())
-        rno = self._props['redirects'] = self._props.get('redirects', 0) + 1
-
-        if rno >= no:
-            self._response(
-                self._start_response(302),
-                headers={'Location': '/method/%s' % self._method.lower()})
-        else:
-            self._response(
-                self._start_response(302),
-                headers={'Location': self._path})
-
-    @test_utils.Router.define('/encoding/(gzip|deflate)$')
-    def encoding(self, match):
-        mode = match.group(1)
-
-        resp = self._start_response(200)
-        resp.add_compression_filter(mode)
-        resp.add_chunking_filter(100)
-        self._response(resp, headers={'Content-encoding': mode}, chunked=True)
-
-    @test_utils.Router.define('/chunked$')
-    def chunked(self, match):
-        resp = self._start_response(200)
-        resp.add_chunking_filter(100)
-        self._response(resp, chunked=True)
 
     @test_utils.Router.define('/keepalive$')
     def keepalive(self, match):
