@@ -566,11 +566,10 @@ def make_mocked_request(method, path, headers=None, *,
     :type method: str
 
     :param path: str, The URL including *PATH INFO* without the host or scheme
-    :type path: multidict.CIMultiDict
+    :type path: str
 
-    :param headers: str, The URL including *PATH INFO* without the host
-        or scheme
-    :type headers: str
+    :param headers: CIMultiDict with all request headers
+    :type headers: multidict.CIMultiDict
 
     :param version: namedtuple with encoded HTTP version
     :type version: aiohttp.protocol.HttpVersion
