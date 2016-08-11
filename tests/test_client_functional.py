@@ -1225,3 +1225,60 @@ def test_expect_continue(create_app_and_client):
     assert 200 == resp.status
     resp.close()
     assert expect_called
+
+
+@pytest.mark.run_loop
+def test_encoding_deflate(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.Response(text='text')
+        resp.enable_chunked_encoding()
+        resp.enable_compression(web.ContentCoding.deflate)
+        return resp
+
+    app, client = yield from create_app_and_client()
+    app.router.add_get('/', handler)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    txt = yield from resp.text()
+    assert txt == 'text'
+    resp.close()
+
+
+@pytest.mark.run_loop
+def test_encoding_gzip(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.Response(text='text')
+        resp.enable_chunked_encoding()
+        resp.enable_compression(web.ContentCoding.gzip)
+        return resp
+
+    app, client = yield from create_app_and_client()
+    app.router.add_get('/', handler)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    txt = yield from resp.text()
+    assert txt == 'text'
+    resp.close()
+
+
+@pytest.mark.run_loop
+def test_chunked(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.Response(text='text')
+        resp.enable_chunked_encoding()
+        return resp
+
+    app, client = yield from create_app_and_client()
+    app.router.add_get('/', handler)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    assert resp.headers['Transfer-Encoding'] == 'chunked'
+    txt = yield from resp.text()
+    assert txt == 'text'
+    resp.close()
