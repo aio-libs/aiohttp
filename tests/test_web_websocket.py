@@ -6,6 +6,7 @@ import pytest
 from aiohttp import CIMultiDict, WSMessage, WSMsgType, errors, helpers, signals
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import HTTPBadRequest, HTTPMethodNotAllowed, WebSocketResponse
+from aiohttp.web_ws import WebSocketReady
 
 
 @pytest.fixture
@@ -175,24 +176,39 @@ def test_write_non_prepared():
         ws.write(b'data')
 
 
+def test_websocket_ready():
+    websocket_ready = WebSocketReady(True, 'chat')
+    assert websocket_ready.ok is True
+    assert websocket_ready.protocol == 'chat'
+
+
+def test_websocket_not_ready():
+    websocket_ready = WebSocketReady(False, None)
+    assert websocket_ready.ok is False
+    assert websocket_ready.protocol is None
+
+
+def test_websocket_ready_unknown_protocol():
+    websocket_ready = WebSocketReady(True, None)
+    assert websocket_ready.ok is True
+    assert websocket_ready.protocol is None
+
+
 def test_can_prepare_ok(make_request):
     req = make_request('GET', '/', protocols=True)
     ws = WebSocketResponse(protocols=('chat',))
-    assert bool(ws.can_prepare(request=req)) is True
     assert(True, 'chat') == ws.can_prepare(req)
 
 
 def test_can_prepare_unknown_protocol(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
-    assert bool(ws.can_prepare(request=req)) is True
     assert (True, None) == ws.can_prepare(req)
 
 
 def test_can_prepare_invalid_method(make_request):
     req = make_request('POST', '/')
     ws = WebSocketResponse()
-    assert bool(ws.can_prepare(request=req)) is False
     assert (False, None) == ws.can_prepare(req)
 
 
@@ -200,7 +216,6 @@ def test_can_prepare_without_upgrade(make_request):
     req = make_request('GET', '/',
                        headers=CIMultiDict({}))
     ws = WebSocketResponse()
-    assert bool(ws.can_prepare(request=req)) is False
     assert (False, None) == ws.can_prepare(req)
 
 

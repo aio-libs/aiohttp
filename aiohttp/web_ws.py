@@ -18,8 +18,10 @@ PY_35 = sys.version_info >= (3, 5)
 
 THRESHOLD_CONNLOST_ACCESS = 5
 
-WebSocketReady = namedtuple('WebSocketReady', 'ok protocol')
-WebSocketReady.__bool__ = lambda self: self.ok
+
+class WebSocketReady(namedtuple('WebSocketReady', 'ok protocol')):
+    def __bool__(self):
+        return self.ok
 
 
 class WebSocketResponse(StreamResponse):
