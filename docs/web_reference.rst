@@ -1083,7 +1083,7 @@ duplicated like one using :meth:`Application.copy`.
                      constructor.
 
       You should pass result of the method as *protocol_factory* to
-      :meth:`~BaseEventLoop.create_server`, e.g.::
+      :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::
 
          loop = asyncio.get_event_loop()
 
