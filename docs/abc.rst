@@ -56,7 +56,7 @@ Not Allowed*. :meth:`AbstractMatchInfo.handler` raises
 
 .. class:: AbstractMatchInfo
 
-   Abstract *match info*, returned by :meth:`AbstractRouter` call.
+   Abstract *match info*, returned by :meth:`AbstractRouter.resolve` call.
 
    .. attribute:: http_exception
 
@@ -119,7 +119,7 @@ Abstract Cookie Jar
 
    .. method:: update_cookies(cookies, response_url=None)
 
-       Update cookies.
+      Update cookies.
 
    .. method:: filter_cookies(request_url)
 
