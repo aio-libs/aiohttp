@@ -769,7 +769,7 @@ the :ref:`request handler <aiohttp-web-handler>` selected by the router itself
 
 *Middleware factories* should return a new handler that has the same signature
 as a :ref:`request handler <aiohttp-web-handler>`. That is, it should accept a
-single :class:`Response` instance and return a :class:`Response`, or raise an
+single :class:`Request` instance and return a :class:`Response`, or raise an
 exception.
 
 Internally, a single :ref:`request handler <aiohttp-web-handler>` is constructed

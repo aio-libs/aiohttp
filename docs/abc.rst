@@ -22,7 +22,7 @@ aiohttp.web is built on top of few concepts: *application*, *router*,
 from scratch, all other parts should work with new router seamlessly.
 
 :class:`AbstractRouter` has the only mandatory method:
-:meth:`AbstractRouter.resolve` coroutine. It should return an
+:meth:`AbstractRouter.resolve` coroutine. It must return an
 :class:`AbstractMatchInfo` instance.
 
 If the requested URL handler is found
@@ -56,7 +56,7 @@ Not Allowed*. :meth:`AbstractMatchInfo.handler` raises
 
 .. class:: AbstractMatchInfo
 
-   Abstract *match info*, returned by :meth:`AbstractRouter` call.
+   Abstract *match info*, returned by :meth:`AbstractRouter.resolve` call.
 
    .. attribute:: http_exception
 
@@ -119,7 +119,7 @@ Abstract Cookie Jar
 
    .. method:: update_cookies(cookies, response_url=None)
 
-       Update cookies.
+      Update cookies.
 
    .. method:: filter_cookies(request_url)
 
