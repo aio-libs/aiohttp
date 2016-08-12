@@ -43,6 +43,8 @@ like one using :meth:`Request.copy`.
 
       Read-only :class:`str` property.
 
+      .. seealso:: :meth:`Application.make_handler`
+
    .. attribute:: method
 
       *HTTP method*, read-only property.
@@ -1094,6 +1096,13 @@ duplicated like one using :meth:`Application.copy`.
 
          await loop.create_server(app.make_handler(),
                                   '0.0.0.0', 8080)
+
+      ``secure_proxy_ssl_header`` keyword parameter
+      can be used to detect request scheme::
+
+         await loop.create_server(app.make_handler(
+            secure_proxy_ssl_header='X-Forwarded-Proto'),
+            '0.0.0.0', 8080)
 
    .. coroutinemethod:: shutdown()
 

@@ -452,7 +452,7 @@ Resolving using custom nameservers
 ----------------------------------
 
 In order to specify the nameservers to when resolving the hostnames,
-aiodns is required::
+:term:`aiodns` is required::
 
     from aiohttp.resolver import AsyncResolver
 
