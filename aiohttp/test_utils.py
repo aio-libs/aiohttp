@@ -568,8 +568,8 @@ def make_mocked_request(method, path, headers=None, *,
     :param path: str, The URL including *PATH INFO* without the host or scheme
     :type path: str
 
-    :param headers: CIMultiDict with all request headers
-    :type headers: multidict.CIMultiDict
+    :param headers: dict with all request headers
+    :type headers: dict
 
     :param version: namedtuple with encoded HTTP version
     :type version: aiohttp.protocol.HttpVersion
@@ -606,7 +606,7 @@ def make_mocked_request(method, path, headers=None, *,
         closing = True
 
     if headers:
-        hdrs = headers
+        hdrs = CIMultiDict(headers)
         raw_hdrs = [
             (k.encode('utf-8'), v.encode('utf-8')) for k, v in headers.items()]
     else:
