@@ -16,6 +16,8 @@ from aiohttp.errors import FingerprintMismatch
 from aiohttp.helpers import create_future
 from aiohttp.multipart import MultipartWriter
 
+pytest_plugins = 'aiohttp.pytest_plugin'
+
 
 @pytest.fixture
 def here():
@@ -529,10 +531,10 @@ def test_HTTP_200_OK_METHOD(create_app_and_client):
         return web.Response(text=request.method)
 
     app, client = yield from create_app_and_client()
-    for meth in ('get', 'post', 'put', 'delete', 'head'):
+    for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         app.router.add_route(meth.upper(), '/', handler)
 
-    for meth in ('get', 'post', 'put', 'delete', 'head'):
+    for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         resp = yield from client.request(meth, '/')
         assert resp.status == 200
         assert len(resp.history) == 0
@@ -1282,3 +1284,66 @@ def test_chunked(create_app_and_client):
     txt = yield from resp.text()
     assert txt == 'text'
     resp.close()
+
+
+@asyncio.coroutine
+def test_shortcuts(test_client, loop):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(text=request.method)
+
+    app = web.Application(loop=loop)
+    client = yield from test_client(lambda loop: app)
+    for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
+        app.router.add_route(meth.upper(), '/', handler)
+
+    for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
+        coro = getattr(client.session, meth)
+        resp = yield from coro(client.make_url('/'))
+
+        assert resp.status == 200
+        assert len(resp.history) == 0
+
+        content1 = yield from resp.read()
+        content2 = yield from resp.read()
+        assert content1 == content2
+        content = yield from resp.text()
+
+        if meth == 'head':
+            assert b'' == content1
+        else:
+            assert meth.upper() == content
+
+        yield from resp.release()
+
+
+@asyncio.coroutine
+def test_module_shortcuts(test_client, loop, warning):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(text=request.method)
+
+    app = web.Application(loop=loop)
+    client = yield from test_client(lambda loop: app)
+    for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
+        app.router.add_route(meth.upper(), '/', handler)
+
+    for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
+        coro = getattr(aiohttp, meth)
+        with warning(DeprecationWarning):
+            resp = yield from coro(client.make_url('/'), loop=loop)
+
+        assert resp.status == 200
+        assert len(resp.history) == 0
+
+        content1 = yield from resp.read()
+        content2 = yield from resp.read()
+        assert content1 == content2
+        content = yield from resp.text()
+
+        if meth == 'head':
+            assert b'' == content1
+        else:
+            assert meth.upper() == content
+
+        yield from resp.release()
