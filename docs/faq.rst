@@ -23,7 +23,7 @@ Try something like::
 
 Where first argument, star, means catch any possible method
 (*GET, POST, OPTIONS*, etc), second matching ``url`` with desired prefix,
-third - handler.
+third -- handler.
 
 
 Where to put my database connection so handlers can access it?
