@@ -2,20 +2,32 @@
 
 import asyncio
 import binascii
+import cgi
 import contextlib
+import email.parser
 import gc
 import http.cookies
+import http.server
+import io
 import json
+import logging
+import os
 import os.path
+import re
+import ssl
+import sys
+import threading
+import traceback
 import unittest
+import urllib.parse
 from unittest import mock
 
 from multidict import MultiDict
 
 import aiohttp
-from aiohttp import client, helpers, test_utils
+from aiohttp import client, helpers, server, test_utils
 from aiohttp.multipart import MultipartWriter
-from aiohttp.test_utils import unused_port
+from aiohttp.test_utils import run_briefly, unused_port
 
 
 @contextlib.contextmanager
@@ -284,7 +296,7 @@ class TestHttpClientFunctional(unittest.TestCase):
         gc.collect()
 
     def test_POST_DATA_with_charset(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
             form = aiohttp.FormData()
@@ -304,7 +316,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertEqual(r.status, 200)
 
     def test_POST_DATA_with_content_transfer_encoding(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
             form = aiohttp.FormData()
@@ -325,7 +337,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertEqual(r.status, 200)
 
     def test_POST_MULTIPART(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
             with MultipartWriter('form-data') as writer:
@@ -353,7 +365,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             r.close()
 
     def test_POST_STREAM_DATA(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
             here = os.path.dirname(__file__)
@@ -385,7 +397,7 @@ class TestHttpClientFunctional(unittest.TestCase):
                              content['headers']['Content-Type'])
 
     def test_POST_StreamReader(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
             here = os.path.dirname(__file__)
@@ -410,7 +422,7 @@ class TestHttpClientFunctional(unittest.TestCase):
                              content['headers']['Content-Length'])
 
     def test_POST_DataQueue(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
             here = os.path.dirname(__file__)
@@ -436,7 +448,7 @@ class TestHttpClientFunctional(unittest.TestCase):
                              content['headers']['Content-Length'])
 
     def test_POST_ChunksQueue(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
             here = os.path.dirname(__file__)
@@ -464,7 +476,7 @@ class TestHttpClientFunctional(unittest.TestCase):
                              content['headers']['Content-Length'])
 
     def test_cookies(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             c = http.cookies.Morsel()
             c.set('test3', '456', '456')
 
@@ -479,7 +491,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             r.close()
 
     def test_morsel_with_attributes(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             c = http.cookies.Morsel()
             c.set('test3', '456', '456')
             c['httponly'] = True
@@ -504,7 +516,7 @@ class TestHttpClientFunctional(unittest.TestCase):
 
     @mock.patch('aiohttp.client_reqrep.client_logger')
     def test_set_cookies(self, m_log):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             resp = self.loop.run_until_complete(
                 client.request('get', httpd.url('cookies'), loop=self.loop))
             self.assertEqual(resp.status, 200)
@@ -518,7 +530,7 @@ class TestHttpClientFunctional(unittest.TestCase):
                                          mock.ANY)
 
     def test_broken_connection(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
                 client.request('get', httpd.url('broken'), loop=self.loop))
             self.assertEqual(r.status, 200)
@@ -533,7 +545,7 @@ class TestHttpClientFunctional(unittest.TestCase):
                 client.request('get', 'http://0.0.0.0:1', loop=self.loop))
 
     def test_request_conn_closed(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             httpd['close'] = True
             with self.assertRaises(aiohttp.ClientHttpProcessingError):
                 self.loop.run_until_complete(
@@ -543,7 +555,7 @@ class TestHttpClientFunctional(unittest.TestCase):
     def test_session_close(self):
         conn = aiohttp.TCPConnector(loop=self.loop)
 
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             r = self.loop.run_until_complete(
                 client.request(
                     'get', httpd.url('keepalive') + '?close=1',
@@ -564,7 +576,7 @@ class TestHttpClientFunctional(unittest.TestCase):
         conn.close()
 
     def test_multidict_headers(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
 
             data = b'sample data'
@@ -594,7 +606,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             yield from r.read()
             self.assertEqual(0, len(connector._conns))
 
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('keepalive')
             self.loop.run_until_complete(go(url))
 
@@ -611,7 +623,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertEqual(1, len(connector._conns))
             connector.close()
 
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('keepalive')
             self.loop.run_until_complete(go(url))
 
@@ -711,7 +723,7 @@ class TestHttpClientFunctional(unittest.TestCase):
 
     @mock.patch('aiohttp.client_reqrep.client_logger')
     def test_session_cookies(self, m_log):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             session = client.ClientSession(loop=self.loop)
 
             resp = self.loop.run_until_complete(
@@ -735,7 +747,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             session.close()
 
     def test_session_headers(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             session = client.ClientSession(
                 loop=self.loop, headers={
                     "X-Real-IP": "192.168.0.1"
@@ -753,7 +765,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             session.close()
 
     def test_session_headers_merge(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             session = client.ClientSession(
                 loop=self.loop, headers=[
                     ("X-Real-IP", "192.168.0.1"),
@@ -776,7 +788,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             session.close()
 
     def test_session_auth(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             session = client.ClientSession(
                 loop=self.loop, auth=helpers.BasicAuth("login", "pass"))
 
@@ -792,7 +804,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             session.close()
 
     def test_session_auth_override(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             session = client.ClientSession(
                 loop=self.loop, auth=helpers.BasicAuth("login", "pass"))
 
@@ -810,7 +822,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             session.close()
 
     def test_session_auth_header_conflict(self):
-        with test_utils.run_server(self.loop, router=Functional) as httpd:
+        with run_server(self.loop, router=Functional) as httpd:
             session = client.ClientSession(
                 loop=self.loop, auth=helpers.BasicAuth("login", "pass"))
 
@@ -824,11 +836,11 @@ class TestHttpClientFunctional(unittest.TestCase):
 
 class Functional(Router):
 
-    @test_utils.Router.define('/method/([A-Za-z]+)$')
+    @Router.define('/method/([A-Za-z]+)$')
     def method(self, match):
         self._response(self._start_response(200))
 
-    @test_utils.Router.define('/keepalive$')
+    @Router.define('/keepalive$')
     def keepalive(self, match):
         self._transport._requests = getattr(
             self._transport, '_requests', 0) + 1
@@ -841,7 +853,7 @@ class Functional(Router):
                 resp, 'requests={}'.format(self._transport._requests),
                 headers={'CONNECTION': 'keep-alive'})
 
-    @test_utils.Router.define('/cookies$')
+    @Router.define('/cookies$')
     def cookies(self, match):
         cookies = http.cookies.SimpleCookie()
         cookies['c1'] = 'cookie1'
@@ -857,7 +869,7 @@ class Functional(Router):
             '{925EC0B8-CB17-4BEB-8A35-1033813B0523}; HttpOnly; Path=/')
         self._response(resp)
 
-    @test_utils.Router.define('/cookies_partial$')
+    @Router.define('/cookies_partial$')
     def cookies_partial(self, match):
         cookies = http.cookies.SimpleCookie()
         cookies['c1'] = 'other_cookie1'
@@ -868,7 +880,7 @@ class Functional(Router):
 
         self._response(resp)
 
-    @test_utils.Router.define('/broken$')
+    @Router.define('/broken$')
     def broken(self, match):
         resp = self._start_response(200)
 
