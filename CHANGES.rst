@@ -114,7 +114,7 @@ CHANGES
 
 - Streams documentation added #1150
 
--
+- Add `multipart` coroutine method for web Request object #1067
 
 -
 

@@ -261,6 +261,28 @@ like one using :meth:`Request.copy`.
          The method **does** store read data internally, subsequent
          :meth:`~Request.json` call will return the same value.
 
+
+   .. coroutinemethod:: multipart(*, reader=aiohttp.multipart.MultipartReader)
+
+      Returns :class:`aiohttp.multipart.MultipartReader` which processes
+      incoming *multipart* request.
+
+      The method is just a boilerplate :ref:`coroutine <coroutine>`
+      implemented as::
+
+         async def multipart(self, *, reader=aiohttp.multipart.MultipartReader):
+             return reader(self.headers, self._payload)
+
+      This method is a coroutine for consistency with the else reader methods.
+
+      .. warning::
+
+         The method **does not** store read data internally. That means once
+         you exhausts multipart reader, you cannot get the request payload one
+         more time.
+
+      .. seealso:: :ref:`aiohttp-multipart`
+
    .. coroutinemethod:: post()
 
       A :ref:`coroutine <coroutine>` that reads POST parameters from

@@ -16,7 +16,7 @@ from urllib.parse import parse_qsl, unquote, urlsplit
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 
-from . import hdrs
+from . import hdrs, multipart
 from .helpers import reify, sentinel
 from .protocol import Response as ResponseImpl
 from .protocol import HttpVersion10, HttpVersion11
@@ -321,6 +321,11 @@ class Request(dict, HeadersMixin):
         return loads(body)
 
     @asyncio.coroutine
+    def multipart(self, *, reader=multipart.MultipartReader):
+        """Return async iterator to process BODY as multipart."""
+        return reader(self.headers, self.content)
+
+    @asyncio.coroutine
     def post(self):
         """Return POST parameters."""
         if self._post is not None:
@@ -335,6 +340,10 @@ class Request(dict, HeadersMixin):
                                  'multipart/form-data')):
             self._post = MultiDictProxy(MultiDict())
             return self._post
+
+        if self.content_type.startswith('multipart/'):
+            warnings.warn('To process multipart requests use .multipart'
+                          ' coroutine instead.', DeprecationWarning)
 
         body = yield from self.read()
         content_charset = self.charset or 'utf-8'
