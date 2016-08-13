@@ -8,6 +8,13 @@
 .. if you add new entries, keep the alphabetical sorting!
 
 .. glossary::
+   :sorted:
+
+   aiodns
+
+      DNS resolver for asyncio.
+
+      https://pypi.python.org/pypi/aiodns
 
    asyncio
 

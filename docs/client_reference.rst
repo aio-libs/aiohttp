@@ -46,8 +46,8 @@ The client session supports the context manager protocol for self closing.
                          headers=None, skip_auto_headers=None, \
                          auth=None, request_class=ClientRequest, \
                          response_class=ClientResponse, \
-                         ws_response_class=ClientWebSocketResponse,
-                         version=aiohttp.HttpVersion11,
+                         ws_response_class=ClientWebSocketResponse, \
+                         version=aiohttp.HttpVersion11, \
                          cookie_jar=None)
 
    The class for creating client sessions and making requests.
@@ -1333,7 +1333,7 @@ manually.
       It process *ping-pong game* and performs *closing handshake* internally.
 
       :return: :class:`~aiohttp.WSMessage`, `tp` is a type from
-         `~aiohttp.WSMsgType` enumeration.
+         :class:`~aiohttp.WSMsgType` enumeration.
 
    .. coroutinemethod:: receive_str()
 
