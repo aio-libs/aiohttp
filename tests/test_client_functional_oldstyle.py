@@ -545,11 +545,6 @@ class TestHttpClientFunctional(unittest.TestCase):
                 self.loop.run_until_complete, r.json())
             r.close()
 
-    def test_request_conn_error(self):
-        with self.assertRaises(aiohttp.ClientConnectionError):
-            self.loop.run_until_complete(
-                client.request('get', 'http://0.0.0.0:1', loop=self.loop))
-
     def test_request_conn_closed(self):
         with run_server(self.loop, router=Functional) as httpd:
             httpd['close'] = True

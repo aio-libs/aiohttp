@@ -1432,3 +1432,11 @@ def test_set_cookies(test_client, loop):
 
         m_log.warning.assert_called_with('Can not load response cookies: %s',
                                          mock.ANY)
+
+
+@asyncio.coroutine
+def test_request_conn_error(loop):
+    client = aiohttp.ClientSession(loop=loop)
+    with pytest.raises(aiohttp.ClientConnectionError):
+        yield from client.get('http://0.0.0.0:1')
+    yield from client.close()
