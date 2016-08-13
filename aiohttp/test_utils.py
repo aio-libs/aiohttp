@@ -349,6 +349,9 @@ class TestClient:
         """
         return self._session
 
+    def make_url(self, path):
+        return self._root + path
+
     @asyncio.coroutine
     def request(self, method, path, *args, **kwargs):
         """Routes a request to the http server.
@@ -359,7 +362,7 @@ class TestClient:
 
         """
         resp = yield from self._session.request(
-            method, self._root + path, *args, **kwargs
+            method, self.make_url(path), *args, **kwargs
         )
         # save it to close later
         self._responses.append(resp)
@@ -400,7 +403,7 @@ class TestClient:
 
         """
         return self._session.ws_connect(
-            self._root + path, *args, **kwargs
+            self.make_url(path), *args, **kwargs
         )
 
     def close(self):
