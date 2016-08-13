@@ -282,6 +282,66 @@ class Router:
             self._srv.keep_alive(True)
 
 
+class Functional(Router):
+
+    @Router.define('/method/([A-Za-z]+)$')
+    def method(self, match):
+        self._response(self._start_response(200))
+
+    @Router.define('/keepalive$')
+    def keepalive(self, match):
+        self._transport._requests = getattr(
+            self._transport, '_requests', 0) + 1
+        resp = self._start_response(200)
+        if 'close=' in self._query:
+            self._response(
+                resp, 'requests={}'.format(self._transport._requests))
+        else:
+            self._response(
+                resp, 'requests={}'.format(self._transport._requests),
+                headers={'CONNECTION': 'keep-alive'})
+
+    @Router.define('/cookies$')
+    def cookies(self, match):
+        cookies = http.cookies.SimpleCookie()
+        cookies['c1'] = 'cookie1'
+        cookies['c2'] = 'cookie2'
+
+        resp = self._start_response(200)
+        for cookie in cookies.output(header='').split('\n'):
+            resp.add_header('Set-Cookie', cookie.strip())
+
+        resp.add_header(
+            'Set-Cookie',
+            'ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}='
+            '{925EC0B8-CB17-4BEB-8A35-1033813B0523}; HttpOnly; Path=/')
+        self._response(resp)
+
+    @Router.define('/cookies_partial$')
+    def cookies_partial(self, match):
+        cookies = http.cookies.SimpleCookie()
+        cookies['c1'] = 'other_cookie1'
+
+        resp = self._start_response(200)
+        for cookie in cookies.output(header='').split('\n'):
+            resp.add_header('Set-Cookie', cookie.strip())
+
+        self._response(resp)
+
+    @Router.define('/broken$')
+    def broken(self, match):
+        resp = self._start_response(200)
+
+        def write_body(resp, body):
+            self._transport.close()
+            raise ValueError()
+
+        self._response(
+            resp,
+            body=json.dumps({'t': (b'0' * 1024).decode('utf-8')}),
+            write_body=write_body)
+
+
 class TestHttpClientFunctional(unittest.TestCase):
 
     def setUp(self):
@@ -474,60 +534,6 @@ class TestHttpClientFunctional(unittest.TestCase):
 
             self.assertEqual(str(len(data)),
                              content['headers']['Content-Length'])
-
-    def test_cookies(self):
-        with run_server(self.loop, router=Functional) as httpd:
-            c = http.cookies.Morsel()
-            c.set('test3', '456', '456')
-
-            r = self.loop.run_until_complete(
-                client.request(
-                    'get', httpd.url('method', 'get'), loop=self.loop,
-                    cookies={'test1': '123', 'test2': c}))
-            self.assertEqual(r.status, 200)
-
-            content = self.loop.run_until_complete(r.content.read())
-            self.assertIn(b'"Cookie": "test1=123; test3=456"', bytes(content))
-            r.close()
-
-    def test_morsel_with_attributes(self):
-        with run_server(self.loop, router=Functional) as httpd:
-            c = http.cookies.Morsel()
-            c.set('test3', '456', '456')
-            c['httponly'] = True
-            c['secure'] = True
-            c['max-age'] = 1000
-
-            r = self.loop.run_until_complete(
-                client.request(
-                    'get', httpd.url('method', 'get'), loop=self.loop,
-                    cookies={'test2': c}))
-            self.assertEqual(r.status, 200)
-
-            content = self.loop.run_until_complete(r.content.read())
-            # No cookie attribute should pass here
-            # they are only used as filters
-            # whether to send particular cookie or not.
-            # E.g. if cookie expires it just becomes thrown away.
-            # Server who sent the cookie with some attributes
-            # already knows them, no need to send this back again and again
-            self.assertIn(b'"Cookie": "test3=456"', bytes(content))
-            r.close()
-
-    @mock.patch('aiohttp.client_reqrep.client_logger')
-    def test_set_cookies(self, m_log):
-        with run_server(self.loop, router=Functional) as httpd:
-            resp = self.loop.run_until_complete(
-                client.request('get', httpd.url('cookies'), loop=self.loop))
-            self.assertEqual(resp.status, 200)
-
-            self.assertEqual(list(sorted(resp.cookies.keys())), ['c1', 'c2'])
-            self.assertEqual(resp.cookies['c1'].value, 'cookie1')
-            self.assertEqual(resp.cookies['c2'].value, 'cookie2')
-            resp.close()
-
-        m_log.warning.assert_called_with('Can not load response cookies: %s',
-                                         mock.ANY)
 
     def test_broken_connection(self):
         with run_server(self.loop, router=Functional) as httpd:
@@ -832,63 +838,3 @@ class TestHttpClientFunctional(unittest.TestCase):
                     session.request('get', httpd.url('method', 'get'),
                                     headers=headers))
             session.close()
-
-
-class Functional(Router):
-
-    @Router.define('/method/([A-Za-z]+)$')
-    def method(self, match):
-        self._response(self._start_response(200))
-
-    @Router.define('/keepalive$')
-    def keepalive(self, match):
-        self._transport._requests = getattr(
-            self._transport, '_requests', 0) + 1
-        resp = self._start_response(200)
-        if 'close=' in self._query:
-            self._response(
-                resp, 'requests={}'.format(self._transport._requests))
-        else:
-            self._response(
-                resp, 'requests={}'.format(self._transport._requests),
-                headers={'CONNECTION': 'keep-alive'})
-
-    @Router.define('/cookies$')
-    def cookies(self, match):
-        cookies = http.cookies.SimpleCookie()
-        cookies['c1'] = 'cookie1'
-        cookies['c2'] = 'cookie2'
-
-        resp = self._start_response(200)
-        for cookie in cookies.output(header='').split('\n'):
-            resp.add_header('Set-Cookie', cookie.strip())
-
-        resp.add_header(
-            'Set-Cookie',
-            'ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}='
-            '{925EC0B8-CB17-4BEB-8A35-1033813B0523}; HttpOnly; Path=/')
-        self._response(resp)
-
-    @Router.define('/cookies_partial$')
-    def cookies_partial(self, match):
-        cookies = http.cookies.SimpleCookie()
-        cookies['c1'] = 'other_cookie1'
-
-        resp = self._start_response(200)
-        for cookie in cookies.output(header='').split('\n'):
-            resp.add_header('Set-Cookie', cookie.strip())
-
-        self._response(resp)
-
-    @Router.define('/broken$')
-    def broken(self, match):
-        resp = self._start_response(200)
-
-        def write_body(resp, body):
-            self._transport.close()
-            raise ValueError()
-
-        self._response(
-            resp,
-            body=json.dumps({'t': (b'0' * 1024).decode('utf-8')}),
-            write_body=write_body)
