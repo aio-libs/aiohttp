@@ -194,6 +194,16 @@ def test_websocket_ready_unknown_protocol():
     assert websocket_ready.protocol is None
 
 
+def test_bool_websocket_ready():
+    websocket_ready = WebSocketReady(True, None)
+    assert bool(websocket_ready) is True
+
+
+def test_bool_websocket_not_ready():
+    websocket_ready = WebSocketReady(False, None)
+    assert bool(websocket_ready) is False
+
+
 def test_can_prepare_ok(make_request):
     req = make_request('GET', '/', protocols=True)
     ws = WebSocketResponse(protocols=('chat',))
