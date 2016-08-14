@@ -112,6 +112,30 @@ def test_static_file_with_content_type(loop, test_client, sender):
     resp.close()
 
 
+@asyncio.coroutine
+def test_static_file_with_content_encoding(loop, test_client, sender):
+    filepath = pathlib.Path(__file__).parent / 'hello.txt.gz'
+
+    @asyncio.coroutine
+    def handler(request):
+        resp = yield from sender().send(request, filepath)
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    body = yield from resp.read()
+    assert b'hello aiohttp\n' == body
+    ct = resp.headers['CONTENT-TYPE']
+    assert 'text/plain' == ct
+    encoding = resp.headers['CONTENT-ENCODING']
+    assert 'gzip' == encoding
+    resp.close()
+
+
 class StaticFileMixin(unittest.TestCase):
 
     def setUp(self):
@@ -182,29 +206,6 @@ class StaticFileMixin(unittest.TestCase):
 
         here = os.path.dirname(__file__)
         filename = 'data.unknown_mime_type'
-        self.loop.run_until_complete(go(here, filename))
-
-    def test_static_file_with_content_encoding(self):
-
-        @asyncio.coroutine
-        def go(dirname, filename):
-            app, _, url = yield from self.create_server(
-                'GET', '/static/' + filename
-            )
-            app.router.add_static('/static', dirname)
-
-            resp = yield from request('GET', url, loop=self.loop)
-            self.assertEqual(200, resp.status)
-            body = yield from resp.read()
-            self.assertEqual(b'hello aiohttp\n', body)
-            ct = resp.headers['CONTENT-TYPE']
-            self.assertEqual('text/plain', ct)
-            encoding = resp.headers['CONTENT-ENCODING']
-            self.assertEqual('gzip', encoding)
-            resp.close()
-
-        here = os.path.dirname(__file__)
-        filename = 'hello.txt.gz'
         self.loop.run_until_complete(go(here, filename))
 
     def test_static_file_directory_traversal_attack(self):
