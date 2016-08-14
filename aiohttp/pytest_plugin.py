@@ -51,17 +51,17 @@ def loop():
 
 @pytest.yield_fixture
 def test_client(loop):
-    client = None
+    clients = []
 
     @asyncio.coroutine
     def _create_from_app_factory(app_factory, *args, **kwargs):
-        nonlocal client
         app = app_factory(loop, *args, **kwargs)
         client = TestClient(app)
         yield from client.start_server()
+        clients.append(client)
         return client
 
     yield _create_from_app_factory
 
-    if client:
-        client.close()
+    while clients:
+        clients.pop().close()

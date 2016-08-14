@@ -1,6 +1,7 @@
 """HTTP client functional tests against aiohttp.web server"""
 
 import asyncio
+import http.cookies
 import io
 import json
 import pathlib
@@ -15,6 +16,8 @@ from aiohttp import hdrs, web
 from aiohttp.errors import FingerprintMismatch
 from aiohttp.helpers import create_future
 from aiohttp.multipart import MultipartWriter
+
+pytest_plugins = 'aiohttp.pytest_plugin'
 
 
 @pytest.fixture
@@ -529,10 +532,10 @@ def test_HTTP_200_OK_METHOD(create_app_and_client):
         return web.Response(text=request.method)
 
     app, client = yield from create_app_and_client()
-    for meth in ('get', 'post', 'put', 'delete', 'head'):
+    for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         app.router.add_route(meth.upper(), '/', handler)
 
-    for meth in ('get', 'post', 'put', 'delete', 'head'):
+    for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         resp = yield from client.request(meth, '/')
         assert resp.status == 200
         assert len(resp.history) == 0
@@ -1281,4 +1284,194 @@ def test_chunked(create_app_and_client):
     assert resp.headers['Transfer-Encoding'] == 'chunked'
     txt = yield from resp.text()
     assert txt == 'text'
+    resp.close()
+
+
+@asyncio.coroutine
+def test_shortcuts(test_client, loop):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(text=request.method)
+
+    app = web.Application(loop=loop)
+    client = yield from test_client(lambda loop: app)
+    for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
+        app.router.add_route(meth.upper(), '/', handler)
+
+    for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
+        coro = getattr(client.session, meth)
+        resp = yield from coro(client.make_url('/'))
+
+        assert resp.status == 200
+        assert len(resp.history) == 0
+
+        content1 = yield from resp.read()
+        content2 = yield from resp.read()
+        assert content1 == content2
+        content = yield from resp.text()
+
+        if meth == 'head':
+            assert b'' == content1
+        else:
+            assert meth.upper() == content
+
+        yield from resp.release()
+
+
+@asyncio.coroutine
+def test_module_shortcuts(test_client, loop, warning):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(text=request.method)
+
+    app = web.Application(loop=loop)
+    client = yield from test_client(lambda loop: app)
+    for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
+        app.router.add_route(meth.upper(), '/', handler)
+
+    for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
+        coro = getattr(aiohttp, meth)
+        with warning(DeprecationWarning):
+            resp = yield from coro(client.make_url('/'), loop=loop)
+
+        assert resp.status == 200
+        assert len(resp.history) == 0
+
+        content1 = yield from resp.read()
+        content2 = yield from resp.read()
+        assert content1 == content2
+        content = yield from resp.text()
+
+        if meth == 'head':
+            assert b'' == content1
+        else:
+            assert meth.upper() == content
+
+        yield from resp.release()
+
+
+@asyncio.coroutine
+def test_cookies(test_client, loop):
+    @asyncio.coroutine
+    def handler(request):
+        assert request.cookies.keys() == {'test1', 'test3'}
+        assert request.cookies['test1'] == '123'
+        assert request.cookies['test3'] == '456'
+        return web.Response()
+
+    c = http.cookies.Morsel()
+    c.set('test3', '456', '456')
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    resp = yield from aiohttp.get(client.make_url('/'),
+                                  cookies={'test1': '123', 'test2': c},
+                                  loop=loop)
+    assert 200 == resp.status
+    resp.close()
+
+
+@asyncio.coroutine
+def test_morsel_with_attributes(test_client, loop):
+    # A comment from original test:
+    #
+    # No cookie attribute should pass here
+    # they are only used as filters
+    # whether to send particular cookie or not.
+    # E.g. if cookie expires it just becomes thrown away.
+    # Server who sent the cookie with some attributes
+    # already knows them, no need to send this back again and again
+
+    @asyncio.coroutine
+    def handler(request):
+        assert request.cookies.keys() == {'test3'}
+        assert request.cookies['test3'] == '456'
+        return web.Response()
+
+    c = http.cookies.Morsel()
+    c.set('test3', '456', '456')
+    c['httponly'] = True
+    c['secure'] = True
+    c['max-age'] = 1000
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    resp = yield from aiohttp.get(client.make_url('/'),
+                                  cookies={'test2': c},
+                                  loop=loop)
+    assert 200 == resp.status
+    resp.close()
+
+
+@asyncio.coroutine
+def test_set_cookies(test_client, loop):
+    @asyncio.coroutine
+    def handler(request):
+        ret = web.Response()
+        ret.set_cookie('c1', 'cookie1')
+        ret.set_cookie('c2', 'cookie2')
+        ret.headers.add('Set-Cookie',
+                        'ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}='
+                        '{925EC0B8-CB17-4BEB-8A35-1033813B0523}; '
+                        'HttpOnly; Path=/')
+        return ret
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    with mock.patch('aiohttp.client_reqrep.client_logger') as m_log:
+        resp = yield from client.get('/')
+        assert 200 == resp.status
+        assert client.session.cookies.keys() == {'c1', 'c2'}
+        resp.close()
+
+        m_log.warning.assert_called_with('Can not load response cookies: %s',
+                                         mock.ANY)
+
+
+@asyncio.coroutine
+def test_request_conn_error(loop):
+    client = aiohttp.ClientSession(loop=loop)
+    with pytest.raises(aiohttp.ClientConnectionError):
+        yield from client.get('http://0.0.0.0:1')
+    yield from client.close()
+
+
+@asyncio.coroutine
+def test_broken_connection(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        request.transport.close()
+        return web.Response(text='answer'*1000)
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    with pytest.raises(aiohttp.ClientResponseError):
+        yield from client.get('/')
+
+
+@asyncio.coroutine
+def test_broken_connection_2(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.StreamResponse()
+        yield from resp.prepare(request)
+        request.transport.close()
+        resp.write(b'answer'*1000)
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    resp = yield from client.get('/')
+    with pytest.raises(aiohttp.ServerDisconnectedError):
+        yield from resp.read()
     resp.close()
