@@ -1,7 +1,10 @@
 import asyncio
 import gc
 import os
+import pathlib
 import unittest
+
+import pytest
 
 import aiohttp
 
@@ -13,6 +16,100 @@ try:
     import ssl
 except:
     ssl = False
+
+
+pytest_plugins = 'aiohttp.pytest_plugin'
+
+
+@pytest.fixture
+def sender():
+    def maker(*args, **kwargs):
+        return FileSender(*args, **kwargs)
+    return maker
+
+
+@pytest.fixture
+def filepath():
+    return pathlib.Path(__file__).parent / 'data.unknown_mime_type'
+
+
+@asyncio.coroutine
+def test_static_file_ok(loop, test_client, sender, filepath):
+
+    @asyncio.coroutine
+    def handler(request):
+        resp = yield from sender().send(request, filepath)
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    resp = yield from client.get('/')
+    assert resp.status == 200
+    txt = yield from resp.text()
+    assert 'file content' == txt.rstrip()
+    assert 'application/octet-stream' == resp.headers['Content-Type']
+    assert resp.headers.get('Content-Encoding') is None
+    yield from resp.release()
+
+
+@asyncio.coroutine
+def test_static_file_not_exists(loop, test_client):
+
+    app = web.Application(loop=loop)
+    client = yield from test_client(lambda loop: app)
+
+    resp = yield from client.get('/fake')
+    assert resp.status == 404
+    yield from resp.release()
+
+
+@asyncio.coroutine
+def test_static_file_name_too_long(loop, test_client):
+
+    app = web.Application(loop=loop)
+    client = yield from test_client(lambda loop: app)
+
+    resp = yield from client.get('/x*500')
+    assert resp.status == 404
+    yield from resp.release()
+
+
+@asyncio.coroutine
+def test_static_file_upper_directory(loop, test_client):
+
+    app = web.Application(loop=loop)
+    client = yield from test_client(lambda loop: app)
+
+    resp = yield from client.get('/../../')
+    assert resp.status == 404
+    yield from resp.release()
+
+
+@asyncio.coroutine
+def test_static_file_with_content_type(loop, test_client, sender):
+    filepath = (pathlib.Path(__file__).parent /
+                'software_development_in_picture.jpg')
+
+    @asyncio.coroutine
+    def handler(request):
+        resp = yield from sender(chunk_size=16).send(request, filepath)
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    resp = yield from client.get('/')
+    assert resp.status == 200
+    body = yield from resp.read()
+    with filepath.open('rb') as f:
+        content = f.read()
+        assert content == body
+    assert resp.headers['Content-Type'] == 'image/jpeg'
+    assert resp.headers.get('Content-Encoding') is None
+    resp.close()
 
 
 class StaticFileMixin(unittest.TestCase):
@@ -55,40 +152,6 @@ class StaticFileMixin(unittest.TestCase):
 
         return app, srv, url
 
-    def test_static_file(self):
-
-        @asyncio.coroutine
-        def go(dirname, filename):
-            app, _, url = yield from self.create_server(
-                'GET', '/static/' + filename
-            )
-            app.router.add_static('/static', dirname)
-
-            resp = yield from request('GET', url, loop=self.loop)
-            self.assertEqual(200, resp.status)
-            txt = yield from resp.text()
-            self.assertEqual('file content', txt.rstrip())
-            ct = resp.headers['CONTENT-TYPE']
-            self.assertEqual('application/octet-stream', ct)
-            self.assertEqual(resp.headers.get('CONTENT-ENCODING'), None)
-            resp.close()
-
-            resp = yield from request('GET', url + 'fake', loop=self.loop)
-            self.assertEqual(404, resp.status)
-            resp.close()
-
-            resp = yield from request('GET', url + 'x' * 500, loop=self.loop)
-            self.assertEqual(404, resp.status)
-            resp.close()
-
-            resp = yield from request('GET', url + '/../../', loop=self.loop)
-            self.assertEqual(404, resp.status)
-            resp.close()
-
-        here = os.path.dirname(__file__)
-        filename = 'data.unknown_mime_type'
-        self.loop.run_until_complete(go(here, filename))
-
     @unittest.skipUnless(ssl, "ssl not supported")
     def test_static_file_ssl(self):
 
@@ -119,30 +182,6 @@ class StaticFileMixin(unittest.TestCase):
 
         here = os.path.dirname(__file__)
         filename = 'data.unknown_mime_type'
-        self.loop.run_until_complete(go(here, filename))
-
-    def test_static_file_with_content_type(self):
-
-        @asyncio.coroutine
-        def go(dirname, filename):
-            app, _, url = yield from self.create_server(
-                'GET', '/static/' + filename
-            )
-            app.router.add_static('/static', dirname, chunk_size=16)
-
-            resp = yield from request('GET', url, loop=self.loop)
-            self.assertEqual(200, resp.status)
-            body = yield from resp.read()
-            with open(os.path.join(dirname, filename), 'rb') as f:
-                content = f.read()
-                self.assertEqual(content, body)
-            ct = resp.headers['CONTENT-TYPE']
-            self.assertEqual('image/jpeg', ct)
-            self.assertEqual(resp.headers.get('CONTENT-ENCODING'), None)
-            resp.close()
-
-        here = os.path.dirname(__file__)
-        filename = 'software_development_in_picture.jpg'
         self.loop.run_until_complete(go(here, filename))
 
     def test_static_file_with_content_encoding(self):
