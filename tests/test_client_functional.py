@@ -1440,3 +1440,38 @@ def test_request_conn_error(loop):
     with pytest.raises(aiohttp.ClientConnectionError):
         yield from client.get('http://0.0.0.0:1')
     yield from client.close()
+
+
+@asyncio.coroutine
+def test_broken_connection(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        request.transport.close()
+        return web.Response(text='answer'*1000)
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    with pytest.raises(aiohttp.ClientResponseError):
+        yield from client.get('/')
+
+
+@asyncio.coroutine
+def test_broken_connection_2(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.StreamResponse()
+        yield from resp.prepare(request)
+        request.transport.close()
+        resp.write(b'answer'*1000)
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    resp = yield from client.get('/')
+    with pytest.raises(aiohttp.ServerDisconnectedError):
+        yield from resp.read()
+    resp.close()
