@@ -29,10 +29,17 @@ def tmp_dir_path(request):
     return tmp_dir
 
 
-@pytest.mark.parametrize("show_index,status", [(False, 403), (True, 200)])
+@pytest.mark.parametrize("show_index,status,data",
+                         [(False, 403, None),
+                          (True, 200,
+                           b'<html>\n<head>\n<title>Index of /</title>\n'
+                           b'</head>\n<body>\n<h1>Index of /</h1>\n<ul>\n'
+                           b'<li><a href="/my_dir">my_dir/</a></li>\n'
+                           b'<li><a href="/my_file">my_file</a></li>\n'
+                           b'</ul>\n</body>\n</html>')])
 @pytest.mark.run_loop
 def test_access_root_of_static_handler(tmp_dir_path, create_app_and_client,
-                                       show_index, status):
+                                       show_index, status, data):
     """
     Tests the operation of static file server.
     Try to access the root of static file server, and make
@@ -44,6 +51,13 @@ def test_access_root_of_static_handler(tmp_dir_path, create_app_and_client,
     with open(my_file_path, 'w') as fw:
         fw.write('hello')
 
+    my_dir_path = os.path.join(tmp_dir_path, 'my_dir')
+    os.mkdir(my_dir_path)
+
+    my_file_path = os.path.join(my_dir_path, 'my_file_in_dir')
+    with open(my_file_path, 'w') as fw:
+        fw.write('world')
+
     app, client = yield from create_app_and_client()
 
     # Register global static route:
@@ -52,7 +66,10 @@ def test_access_root_of_static_handler(tmp_dir_path, create_app_and_client,
     # Request the root of the static directory.
     r = yield from client.get('/')
     assert r.status == status
-    # data = (yield from r.read())
+
+    if data:
+        read_ = (yield from r.read())
+        assert read_ == data
     yield from r.release()
 
 
