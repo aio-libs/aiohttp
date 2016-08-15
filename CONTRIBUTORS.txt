@@ -36,6 +36,7 @@ Daniel Nelson
 David Michael Brown
 Dima Veselov
 Dimitar Dimitrov
+Dmitry Trofimov
 Dmytro Kuznetsov
 Dustin J. Mitchell
 Elizabeth Leddy
