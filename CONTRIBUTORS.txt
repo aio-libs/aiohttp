@@ -69,6 +69,7 @@ Louis-Philippe Huberdeau
 Lubomir Gelo
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
+Manuel Miranda
 Marco Paolini
 Mariano Anaya
 Martin Richard
