@@ -7,6 +7,7 @@ import sys
 from ._ws_impl import CLOSED_MESSAGE, WebSocketError, WSMessage, WSMsgType
 
 PY_35 = sys.version_info >= (3, 5)
+PY_352 = sys.version_info >= (3, 5, 2)
 
 
 class ClientWebSocketResponse:
@@ -179,9 +180,13 @@ class ClientWebSocketResponse:
         return loads(data)
 
     if PY_35:
-        @asyncio.coroutine
-        def __aiter__(self):
-            return self
+        if PY_352:
+            def __aiter__(self):
+                return self
+        else:
+            @asyncio.coroutine
+            def __aiter__(self):
+                return self
 
         @asyncio.coroutine
         def __anext__(self):
