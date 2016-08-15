@@ -65,6 +65,8 @@ CHANGES
 
 - Fix test_client fixture to allow multiple clients per test #1072
 
+- make_mocked_request now accepts dict as headers #1073
+
 
 0.22.5 (08-02-2016)
 -------------------
