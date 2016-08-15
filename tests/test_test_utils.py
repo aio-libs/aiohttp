@@ -1,12 +1,13 @@
 import asyncio
 
 import pytest
+from multidict import CIMultiDict, CIMultiDictProxy
 
 import aiohttp
-from aiohttp import web
+from aiohttp import web, web_reqrep
 from aiohttp.test_utils import (AioHTTPTestCase, TestClient, loop_context,
-                                setup_test_loop, teardown_test_loop,
-                                unittest_run_loop)
+                                make_mocked_request, setup_test_loop,
+                                teardown_test_loop, unittest_run_loop)
 
 
 def _create_example_app(loop):
@@ -180,3 +181,13 @@ def test_test_client_methods(method, loop, test_client):
 def test_test_client_head(loop, test_client):
     resp = yield from test_client.head("/")
     assert resp.status == 200
+
+
+@pytest.mark.parametrize(
+    "headers", [{'token': 'x'}, CIMultiDict({'token': 'x'}), {}])
+def test_make_mocked_request(headers):
+    req = make_mocked_request('GET', '/', headers=headers)
+    assert req.method == "GET"
+    assert req.path == "/"
+    assert isinstance(req, web_reqrep.Request)
+    assert isinstance(req.headers, CIMultiDictProxy)

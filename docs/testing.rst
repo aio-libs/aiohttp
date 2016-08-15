@@ -205,14 +205,13 @@ conditions that hard to reproduce on real server::
 
     from aiohttp import web
     from aiohttp.test_utils import make_mocked_request
-    from multidict import CIMultiDict
 
     def handler(request):
         assert request.headers.get('token') == 'x'
         return web.Response(body=b'data')
 
     def test_handler():
-        req = make_mocked_request('GET', '/', headers=CIMultiDict({'token': 'x'}))
+        req = make_mocked_request('GET', '/', headers={'token': 'x'})
         resp = handler(req)
         assert resp.body == b'data'
 
