@@ -398,7 +398,7 @@ def test_gen_netloc_all(make_request):
     req = make_request('get', 'https://aiohttp:pwpwpw@12345678901234567890123456789012345678901234567890:8080')
     assert req.netloc == '12345678901234567890123456789012345678901234567890:8080'
 
-def test_gen_netloc_noport(make_request):
+def test_gen_netloc_no_port(make_request):
     req = make_request('get', 'https://aiohttp:pwpwpw@12345678901234567890123456789012345678901234567890/')
     assert req.netloc == "12345678901234567890123456789012345678901234567890"
 
