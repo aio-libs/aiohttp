@@ -136,6 +136,94 @@ def test_static_file_with_content_encoding(loop, test_client, sender):
     resp.close()
 
 
+@asyncio.coroutine
+def test_static_file_if_modified_since(loop, test_client, sender):
+    filename = 'data.unknown_mime_type'
+    filepath = pathlib.Path(__file__).parent / filename
+
+    @asyncio.coroutine
+    def handler(request):
+        resp = yield from sender().send(request, filepath)
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    lastmod = resp.headers.get('Last-Modified')
+    assert lastmod is not None
+    resp.close()
+
+    resp = yield from client.get('/', headers={'If-Modified-Since': lastmod})
+    assert 304 == resp.status
+    resp.close()
+
+
+@asyncio.coroutine
+def test_static_file_if_modified_since_past_date(loop, test_client, sender):
+    filename = 'data.unknown_mime_type'
+    filepath = pathlib.Path(__file__).parent / filename
+
+    @asyncio.coroutine
+    def handler(request):
+        resp = yield from sender().send(request, filepath)
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    lastmod = 'Mon, 1 Jan 1990 01:01:01 GMT'
+
+    resp = yield from client.get('/', headers={'If-Modified-Since': lastmod})
+    assert 200 == resp.status
+    resp.close()
+
+
+@asyncio.coroutine
+def test_static_file_if_modified_since_invalid_date(loop, test_client, sender):
+    filename = 'data.unknown_mime_type'
+    filepath = pathlib.Path(__file__).parent / filename
+
+    @asyncio.coroutine
+    def handler(request):
+        resp = yield from sender().send(request, filepath)
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    lastmod = 'not a valid HTTP-date'
+
+    resp = yield from client.get('/', headers={'If-Modified-Since': lastmod})
+    assert 200 == resp.status
+    resp.close()
+
+
+@asyncio.coroutine
+def test_static_file_if_modified_since_future_date(loop, test_client, sender):
+    filename = 'data.unknown_mime_type'
+    filepath = pathlib.Path(__file__).parent / filename
+
+    @asyncio.coroutine
+    def handler(request):
+        resp = yield from sender().send(request, filepath)
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    lastmod = 'Fri, 31 Dec 9999 23:59:59 GMT'
+
+    resp = yield from client.get('/', headers={'If-Modified-Since': lastmod})
+    assert 304 == resp.status
+    resp.close()
+
+
 class StaticFileMixin(unittest.TestCase):
 
     def setUp(self):
@@ -235,87 +323,6 @@ class StaticFileMixin(unittest.TestCase):
 
         here = os.path.dirname(__file__)
         filename = '../README.rst'
-        self.loop.run_until_complete(go(here, filename))
-
-    def test_static_file_if_modified_since(self):
-
-        @asyncio.coroutine
-        def go(dirname, filename):
-            app, _, url = yield from self.create_server(
-                'GET', '/static/' + filename
-            )
-            app.router.add_static('/static', dirname)
-
-            resp = yield from request('GET', url, loop=self.loop)
-            self.assertEqual(200, resp.status)
-            lastmod = resp.headers.get('Last-Modified')
-            self.assertIsNotNone(lastmod)
-            resp.close()
-
-            resp = yield from request('GET', url, loop=self.loop,
-                                      headers={'If-Modified-Since': lastmod})
-            self.assertEqual(304, resp.status)
-            resp.close()
-
-        here = os.path.dirname(__file__)
-        filename = 'data.unknown_mime_type'
-        self.loop.run_until_complete(go(here, filename))
-
-    def test_static_file_if_modified_since_past_date(self):
-
-        @asyncio.coroutine
-        def go(dirname, filename):
-            app, _, url = yield from self.create_server(
-                'GET', '/static/' + filename
-            )
-            app.router.add_static('/static', dirname)
-
-            lastmod = 'Mon, 1 Jan 1990 01:01:01 GMT'
-            resp = yield from request('GET', url, loop=self.loop,
-                                      headers={'If-Modified-Since': lastmod})
-            self.assertEqual(200, resp.status)
-            resp.close()
-
-        here = os.path.dirname(__file__)
-        filename = 'data.unknown_mime_type'
-        self.loop.run_until_complete(go(here, filename))
-
-    def test_static_file_if_modified_since_future_date(self):
-
-        @asyncio.coroutine
-        def go(dirname, filename):
-            app, _, url = yield from self.create_server(
-                'GET', '/static/' + filename
-            )
-            app.router.add_static('/static', dirname)
-
-            lastmod = 'Fri, 31 Dec 9999 23:59:59 GMT'
-            resp = yield from request('GET', url, loop=self.loop,
-                                      headers={'If-Modified-Since': lastmod})
-            self.assertEqual(304, resp.status)
-            resp.close()
-
-        here = os.path.dirname(__file__)
-        filename = 'data.unknown_mime_type'
-        self.loop.run_until_complete(go(here, filename))
-
-    def test_static_file_if_modified_since_invalid_date(self):
-
-        @asyncio.coroutine
-        def go(dirname, filename):
-            app, _, url = yield from self.create_server(
-                'GET', '/static/' + filename
-            )
-            app.router.add_static('/static', dirname)
-
-            lastmod = 'not a valid HTTP-date'
-            resp = yield from request('GET', url, loop=self.loop,
-                                      headers={'If-Modified-Since': lastmod})
-            self.assertEqual(200, resp.status)
-            resp.close()
-
-        here = os.path.dirname(__file__)
-        filename = 'data.unknown_mime_type'
         self.loop.run_until_complete(go(here, filename))
 
     def test_static_route_path_existence_check(self):
