@@ -625,6 +625,7 @@ class TestCookieJarSafe(TestCookieJarBase):
         test_func = helpers.CookieJar._is_path_match
 
         self.assertTrue(test_func("/", ""))
+        self.assertTrue(test_func("", "/"))
         self.assertTrue(test_func("/file", ""))
         self.assertTrue(test_func("/folder/file", ""))
         self.assertTrue(test_func("/", "/"))
