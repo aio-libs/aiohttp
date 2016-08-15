@@ -5,6 +5,8 @@ def test_myplugin(testdir):
     testdir.makepyfile("""\
 import asyncio
 import pytest
+from unittest import mock
+
 from aiohttp import web
 
 pytest_plugins = 'aiohttp.pytest_plugin'
@@ -57,6 +59,13 @@ def test_hello_fails(test_client):
     assert resp.status == 200
     text = yield from resp.text()
     assert 'Hello, wield' in text
+
+
+@asyncio.coroutine
+def test_hello_from_app_fails(test_client):
+    with pytest.raises(AssertionError):
+        fake_loop = mock.Mock()
+        test_client(web.Application(loop=fake_loop))
 
 
 @asyncio.coroutine
@@ -122,4 +131,4 @@ def test_client_failed_to_create(test_client):
 
 """)
     result = testdir.runpytest('-p', 'no:sugar')
-    result.assert_outcomes(passed=8, failed=1)
+    result.assert_outcomes(passed=8, failed=2)
