@@ -3,7 +3,8 @@ import os
 import time
 
 import pytest
-from aiohttp.helpers import create_future, ensure_future, Timeout
+
+from aiohttp.helpers import Timeout, create_future, ensure_future
 
 
 @pytest.mark.run_loop
@@ -62,7 +63,7 @@ def test_timeout_disable(loop):
         resp = yield from long_running_task()
     assert resp == 'done'
     dt = loop.time() - t0
-    assert 0.09 < dt < 0.12, dt
+    assert 0.09 < dt < 0.13, dt
 
 
 @pytest.mark.run_loop

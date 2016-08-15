@@ -1,12 +1,11 @@
 """Tests for aiohttp/worker.py"""
 import asyncio
-import pytest
 import sys
-
 from unittest import mock
 
-from aiohttp import helpers
+import pytest
 
+from aiohttp import helpers
 
 base_worker = pytest.importorskip('aiohttp.worker')
 pytest.importorskip('uvloop')
@@ -60,12 +59,7 @@ def test_run(worker, loop):
         worker.run()
 
     assert worker._run.called
-    is_closed = getattr(loop, 'is_closed')
-    if is_closed is not None:
-        closed = is_closed()
-    else:
-        closed = loop._closed
-    assert closed
+    assert loop.is_closed()
 
 
 def test_handle_quit(worker):
@@ -116,14 +110,22 @@ def test__run_ok(worker, loop):
     ret.set_result(sock)
     worker.wsgi.make_handler.return_value.num_connections = 1
     worker.cfg.max_requests = 100
+    worker.cfg.is_ssl = True
 
-    with mock.patch('aiohttp.worker.asyncio') as m_asyncio:
-        m_asyncio.sleep = mock.Mock(
-            wraps=asyncio.coroutine(lambda *a, **kw: None))
-        loop.run_until_complete(worker._run())
+    ssl_context = mock.Mock()
+    with mock.patch('ssl.SSLContext', return_value=ssl_context):
+        with mock.patch('aiohttp.worker.asyncio') as m_asyncio:
+            m_asyncio.sleep = mock.Mock(
+                wraps=asyncio.coroutine(lambda *a, **kw: None))
+            loop.run_until_complete(worker._run())
 
     assert worker.notify.called
     assert worker.log.info.called
+
+    args, kwargs = loop.create_server.call_args
+    assert 'ssl' in kwargs
+    ctx = kwargs['ssl']
+    assert ctx is ssl_context
 
 
 def test__run_exc(worker, loop):
@@ -138,6 +140,7 @@ def test__run_exc(worker, loop):
         worker.log = mock.Mock()
         worker.loop = mock.Mock()
         worker.notify = mock.Mock()
+        worker.cfg.is_ssl = False
 
         with mock.patch('aiohttp.worker.asyncio.sleep') as m_sleep:
             slp = helpers.create_future(loop)

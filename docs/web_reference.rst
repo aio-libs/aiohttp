@@ -43,6 +43,8 @@ like one using :meth:`Request.copy`.
 
       Read-only :class:`str` property.
 
+      .. seealso:: :meth:`Application.make_handler`
+
    .. attribute:: method
 
       *HTTP method*, read-only property.
@@ -504,6 +506,11 @@ StreamResponse
 
       :param str path: optional cookie path, ``'/'`` by default
 
+      .. versionchanged:: 1.0
+
+         Fixed cookie expiration support for
+         Internet Explorer (version less than 11).
+
    .. attribute:: content_length
 
       *Content-Length* for outgoing response.
@@ -766,7 +773,7 @@ WebSocketResponse
 
       Read-only property, ``True`` if connection has been closed or in process
       of closing.
-      :const:`~aiohttp.websocket.MSG_CLOSE` message has been received from peer.
+      :const:`~aiohttp.WSMsgType.CLOSE` message has been received from peer.
 
    .. attribute:: close_code
 
@@ -786,7 +793,7 @@ WebSocketResponse
 
    .. method:: ping(message=b'')
 
-      Send :const:`~aiohttp.websocket.MSG_PING` to peer.
+      Send :const:`~aiohttp.WSMsgType.PING` to peer.
 
       :param message: optional payload of *ping* message,
                       :class:`str` (converted to *UTF-8* encoded bytes)
@@ -796,7 +803,7 @@ WebSocketResponse
 
    .. method:: pong(message=b'')
 
-      Send *unsolicited* :const:`~aiohttp.websocket.MSG_PONG` to peer.
+      Send *unsolicited* :const:`~aiohttp.WSMsgType.PONG` to peer.
 
       :param message: optional payload of *pong* message,
                       :class:`str` (converted to *UTF-8* encoded bytes)
@@ -806,7 +813,7 @@ WebSocketResponse
 
    .. method:: send_str(data)
 
-      Send *data* to peer as :const:`~aiohttp.websocket.MSG_TEXT` message.
+      Send *data* to peer as :const:`~aiohttp.WSMsgType.TEXT` message.
 
       :param str data: data to send.
 
@@ -816,7 +823,7 @@ WebSocketResponse
 
    .. method:: send_bytes(data)
 
-      Send *data* to peer as :const:`~aiohttp.websocket.MSG_BINARY` message.
+      Send *data* to peer as :const:`~aiohttp.WSMsgType.BINARY` message.
 
       :param data: data to send.
 
@@ -825,10 +832,32 @@ WebSocketResponse
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
 
+   .. method:: send_json(data, *, dumps=json.loads)
+
+      Send *data* to peer as JSON string.
+
+      :param data: data to send.
+
+      :param callable dumps: any :term:`callable` that accepts an object and
+                             returns a JSON string
+                             (:func:`json.dumps` by default).
+
+      :raise RuntimeError: if connection is not started or closing
+
+      :raise ValueError: if data is not serializable object
+
+      :raise TypeError: if value returned by ``dumps`` param is not :class:`str`
+
    .. coroutinemethod:: close(*, code=1000, message=b'')
 
       A :ref:`coroutine<coroutine>` that initiates closing
-      handshake by sending :const:`~aiohttp.websocket.MSG_CLOSE` message.
+      handshake by sending :const:`~aiohttp.WSMsgType.CLOSE` message.
+
+      .. note::
+
+         Can only be called by the request handling task. To
+         programmatically close websocket server side see the
+         :ref:`FAQ section <aiohttp_faq_terminating_websockets>`.
 
       :param int code: closing code
 
@@ -844,9 +873,9 @@ WebSocketResponse
       message from peer and returns it.
 
       The coroutine implicitly handles
-      :const:`~aiohttp.websocket.MSG_PING`,
-      :const:`~aiohttp.websocket.MSG_PONG` and
-      :const:`~aiohttp.websocket.MSG_CLOSE` without returning the
+      :const:`~aiohttp.WSMsgType.PING`,
+      :const:`~aiohttp.WSMsgType.PONG` and
+      :const:`~aiohttp.WSMsgType.CLOSE` without returning the
       message.
 
       It process *ping-pong game* and performs *closing handshake* internally.
@@ -855,7 +884,11 @@ WebSocketResponse
       :exc:`~aiohttp.errors.WSClientDisconnectedError` with
       connection closing data.
 
-      :return: :class:`~aiohttp.websocket.Message`
+      .. note::
+
+         Can only be called by the request handling task.
+
+      :return: :class:`~aiohttp.WSMessage`
 
       :raise RuntimeError: if connection is not started
 
@@ -865,27 +898,38 @@ WebSocketResponse
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
-      :const:`~aiohttp.websocket.MSG_TEXT`.
+      :const:`~aiohttp.WSMsgType.TEXT`.
+
+      .. note::
+
+         Can only be called by the request handling task.
 
       :return str: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_BINARY`.
+      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
 
    .. coroutinemethod:: receive_bytes()
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
-      :const:`~aiohttp.websocket.MSG_BINARY`.
+      :const:`~aiohttp.WSMsgType.BINARY`.
+
+      .. note::
+
+         Can only be called by the request handling task.
 
       :return bytes: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_TEXT`.
+      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.TEXT`.
 
    .. coroutinemethod:: receive_json(*, loads=json.loads)
 
-      A :ref:`coroutine<coroutine>` that calls :meth:`receive`, asserts the
-      message type is :const:`~aiohttp.websocket.MSG_TEXT`, and loads the JSON
-      string to a Python dict.
+      A :ref:`coroutine<coroutine>` that calls :meth:`receive_str` and loads the
+      JSON string to a Python dict.
+
+      .. note::
+
+         Can only be called by the request handling task.
 
       :param callable loads: any :term:`callable` that accepts
                               :class:`str` and returns :class:`dict`
@@ -894,7 +938,7 @@ WebSocketResponse
 
       :return dict: loaded JSON content
 
-      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_BINARY`.
+      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
       :raise ValueError: if message is not valid JSON.
 
       .. versionadded:: 0.22
@@ -912,7 +956,7 @@ json_response
                             dumps=json.dumps)
 
 Return :class:`Response` with predefined ``'application/json'``
-content type and *data* encoded by *dumps* parameter
+content type and *data* encoded by ``dumps`` parameter
 (:func:`json.dumps` by default).
 
 
@@ -1041,7 +1085,7 @@ duplicated like one using :meth:`Application.copy`.
                      constructor.
 
       You should pass result of the method as *protocol_factory* to
-      :meth:`~BaseEventLoop.create_server`, e.g.::
+      :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::
 
          loop = asyncio.get_event_loop()
 
@@ -1052,6 +1096,13 @@ duplicated like one using :meth:`Application.copy`.
 
          await loop.create_server(app.make_handler(),
                                   '0.0.0.0', 8080)
+
+      ``secure_proxy_ssl_header`` keyword parameter
+      can be used to detect request scheme::
+
+         await loop.create_server(app.make_handler(
+            secure_proxy_ssl_header='X-Forwarded-Proto'),
+            '0.0.0.0', 8080)
 
    .. coroutinemethod:: shutdown()
 
@@ -1201,6 +1252,41 @@ Router is any object that implements :class:`AbstractRouter` interface.
       :param coroutine expect_handler: optional *expect* header handler.
 
       :returns: new :class:`PlainRoute` or :class:`DynamicRoute` instance.
+
+   .. method:: add_get(path, *args, **kwargs)
+
+      Shortcut for adding a GET handler. Calls the :meth:`add_route` with \
+      ``method`` equals to ``'GET'``.
+
+      .. versionadded:: 1.0
+
+   .. method:: add_post(path, *args, **kwargs)
+
+      Shortcut for adding a POST handler. Calls the :meth:`add_route` with \
+      ``method`` equals to ``'POST'``.
+
+      .. versionadded:: 1.0
+
+   .. method:: add_put(path, *args, **kwargs)
+
+      Shortcut for adding a PUT handler. Calls the :meth:`add_route` with \
+      ``method`` equals to ``'PUT'``.
+
+      .. versionadded:: 1.0
+
+   .. method:: add_patch(path, *args, **kwargs)
+
+      Shortcut for adding a PATCH handler. Calls the :meth:`add_route` with \
+      ``method`` equals to ``'PATCH'``.
+
+      .. versionadded:: 1.0
+
+   .. method:: add_delete(path, *args, **kwargs)
+
+      Shortcut for adding a DELETE handler. Calls the :meth:`add_route` with \
+      ``method`` equals to ``'DELETE'``.
+
+      .. versionadded:: 1.0
 
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
                           chunk_size=256*1024, response_factory=StreamResponse \

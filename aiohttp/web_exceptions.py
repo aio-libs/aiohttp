@@ -1,6 +1,5 @@
 from .web_reqrep import Response
 
-
 __all__ = (
     'HTTPException',
     'HTTPError',
@@ -290,13 +289,12 @@ class HTTPRequestHeaderFieldsTooLarge(HTTPClientError):
 class HTTPUnavailableForLegalReasons(HTTPClientError):
     status_code = 451
 
-    def __init__(self, link=None, *, headers=None, reason=None,
+    def __init__(self, link, *, headers=None, reason=None,
                  body=None, text=None, content_type=None):
         super().__init__(headers=headers, reason=reason,
                          body=body, text=text, content_type=content_type)
-        if link:
-            self.headers['Link'] = '<%s>; rel="blocked-by"' % link
-            self.link = link
+        self.headers['Link'] = '<%s>; rel="blocked-by"' % link
+        self.link = link
 
 
 ############################################################

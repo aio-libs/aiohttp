@@ -1,25 +1,19 @@
 import asyncio
-import warnings
 import sys
-
-
-from . import hdrs
-from . import web_reqrep
-from . import web_exceptions
-from . import web_urldispatcher
-from . import web_ws
-from .abc import AbstractRouter, AbstractMatchInfo
-from .log import web_logger
-from .protocol import HttpVersion  # noqa
-from .server import ServerHttpProtocol
-from .signals import Signal, PreSignal, PostSignal
-from .web_reqrep import *  # noqa
-from .web_exceptions import *  # noqa
-from .web_urldispatcher import *  # noqa
-from .web_ws import *  # noqa
+import warnings
 from argparse import ArgumentParser
 from importlib import import_module
 
+from . import hdrs, web_exceptions, web_reqrep, web_urldispatcher, web_ws
+from .abc import AbstractMatchInfo, AbstractRouter
+from .log import web_logger
+from .protocol import HttpVersion  # noqa
+from .server import ServerHttpProtocol
+from .signals import PostSignal, PreSignal, Signal
+from .web_exceptions import *  # noqa
+from .web_reqrep import *  # noqa
+from .web_urldispatcher import *  # noqa
+from .web_ws import *  # noqa
 
 __all__ = (web_reqrep.__all__ +
            web_exceptions.__all__ +
@@ -175,14 +169,10 @@ class RequestHandlerFactory:
 
     def __call__(self):
         self.num_connections += 1
-        try:
-            return self._handler(
-                self, self._app, self._router, loop=self._loop,
-                secure_proxy_ssl_header=self._secure_proxy_ssl_header,
-                **self._kwargs)
-        except:
-            web_logger.exception(
-                'Can not create request handler: {!r}'.format(self._handler))
+        return self._handler(
+            self, self._app, self._router, loop=self._loop,
+            secure_proxy_ssl_header=self._secure_proxy_ssl_header,
+            **self._kwargs)
 
 
 class Application(dict):
@@ -202,8 +192,6 @@ class Application(dict):
         self._loop = loop
         self.logger = logger
 
-        for factory in middlewares:
-            assert asyncio.iscoroutinefunction(factory), factory
         self._middlewares = list(middlewares)
 
         self._on_pre_signal = PreSignal()
@@ -316,7 +304,7 @@ def run_app(app, *, host='0.0.0.0', port=None,
 
     try:
         loop.run_forever()
-    except KeyboardInterrupt:  # pragma: no branch
+    except KeyboardInterrupt:  # pragma: no cover
         pass
     finally:
         srv.close()
@@ -372,5 +360,5 @@ def main(argv):
     run_app(app, host=args.hostname, port=args.port)
     arg_parser.exit(message="Stopped\n")
 
-if __name__ == "__main__":
-    main(sys.argv[1:])
+if __name__ == "__main__":  # pragma: no branch
+    main(sys.argv[1:])  # pragma: no cover

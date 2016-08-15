@@ -60,8 +60,9 @@ import asyncio
 import asyncio.streams
 import inspect
 import socket
+
 from . import errors
-from .streams import FlowControlDataQueue, EofStream
+from .streams import EofStream, FlowControlDataQueue
 
 __all__ = ('EofStream', 'StreamParser', 'StreamProtocol',
            'ParserBuffer', 'LinesParser', 'ChunksParser')
@@ -207,10 +208,9 @@ class StreamParser:
             return
 
         # TODO: write test
-        if hasattr(self._loop, 'is_closed'):
-            if self._loop.is_closed():
-                # TODO: log something
-                return
+        if self._loop.is_closed():
+            # TODO: log something
+            return
 
         try:
             self._parser.throw(EofStream())

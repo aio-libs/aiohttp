@@ -1,27 +1,25 @@
 import asyncio
-import aiohttp
 import functools
 import http.cookies
 import ssl
 import sys
 import traceback
 import warnings
-
 from collections import defaultdict
 from hashlib import md5, sha1, sha256
 from itertools import chain
 from math import ceil
 from types import MappingProxyType
 
+import aiohttp
+
 from . import hdrs, helpers
 from .client import ClientRequest
-from .errors import ServerDisconnectedError
-from .errors import HttpProxyError, ProxyConnectionError
-from .errors import ClientOSError, ClientTimeoutError
-from .errors import FingerprintMismatch
-from .helpers import BasicAuth, is_ip_address
+from .errors import (ClientOSError, ClientTimeoutError, FingerprintMismatch,
+                     HttpProxyError, ProxyConnectionError,
+                     ServerDisconnectedError)
+from .helpers import _sentinel, is_ip_address
 from .resolver import DefaultResolver
-
 
 __all__ = ('BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector')
 
@@ -34,7 +32,7 @@ HASHFUNC_BY_DIGESTLEN = {
 }
 
 
-class Connection(object):
+class Connection:
 
     _source_traceback = None
     _transport = None
@@ -59,9 +57,8 @@ class Connection(object):
         if self._transport is not None:
             _warnings.warn('Unclosed connection {!r}'.format(self),
                            ResourceWarning)
-            if hasattr(self._loop, 'is_closed'):
-                if self._loop.is_closed():
-                    return
+            if self._loop.is_closed():
+                return
 
             self._connector._release(
                 self._key, self._request, self._transport, self._protocol,
@@ -99,9 +96,6 @@ class Connection(object):
         return self._transport is None
 
 
-_default = object()
-
-
 class BaseConnector(object):
     """Base connector class.
 
@@ -109,23 +103,24 @@ class BaseConnector(object):
     :param keepalive_timeout: (optional) Keep-alive timeout.
     :param bool force_close: Set to True to force close and do reconnect
         after each request (and between redirects).
+    :param limit: The limit of simultaneous connections to the same endpoint.
     :param loop: Optional event loop.
     """
 
     _closed = True  # prevent AttributeError in __del__ if ctor was failed
     _source_traceback = None
 
-    def __init__(self, *, conn_timeout=None, keepalive_timeout=_default,
-                 force_close=False, limit=None,
+    def __init__(self, *, conn_timeout=None, keepalive_timeout=_sentinel,
+                 force_close=False, limit=20,
                  loop=None):
 
         if force_close:
             if keepalive_timeout is not None and \
-               keepalive_timeout is not _default:
+               keepalive_timeout is not _sentinel:
                 raise ValueError('keepalive_timeout cannot '
                                  'be set if force_close is True')
         else:
-            if keepalive_timeout is _default:
+            if keepalive_timeout is _sentinel:
                 keepalive_timeout = 30
 
         if loop is None:
@@ -170,6 +165,12 @@ class BaseConnector(object):
             context['source_traceback'] = self._source_traceback
         self._loop.call_exception_handler(context)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
     @property
     def force_close(self):
         """Ultimately close connection on releasing if True."""
@@ -182,7 +183,8 @@ class BaseConnector(object):
         Endpoints are the same if they are have equal
         (host, port, is_ssl) triple.
 
-        If limit is None the connector has no limit (default).
+        If limit is None the connector has no limit.
+        The default limit size is 20.
         """
         return self._limit
 
@@ -237,9 +239,8 @@ class BaseConnector(object):
         self._closed = True
 
         try:
-            if hasattr(self._loop, 'is_closed'):
-                if self._loop.is_closed():
-                    return ret
+            if self._loop.is_closed():
+                return ret
 
             for key, data in self._conns.items():
                 for transport, proto, t0 in data:
@@ -264,24 +265,6 @@ class BaseConnector(object):
         A readonly property.
         """
         return self._closed
-
-    def update_cookies(self, cookies):
-        """Update shared cookies.
-
-        Deprecated, use ClientSession instead.
-        """
-        if isinstance(cookies, dict):
-            cookies = cookies.items()
-
-        for name, value in cookies:
-            if PY_343:
-                self.cookies[name] = value
-            else:
-                if isinstance(value, http.cookies.Morsel):
-                    # use dict method because SimpleCookie class modifies value
-                    dict.__setitem__(self.cookies, name, value)
-                else:
-                    self.cookies[name] = value
 
     @asyncio.coroutine
     def connect(self, req):
@@ -409,8 +392,6 @@ class BaseConnector(object):
 
 _SSL_OP_NO_COMPRESSION = getattr(ssl, "OP_NO_COMPRESSION", 0)
 
-_marker = object()
-
 
 class TCPConnector(BaseConnector):
     """TCP connector.
@@ -432,7 +413,7 @@ class TCPConnector(BaseConnector):
     """
 
     def __init__(self, *, verify_ssl=True, fingerprint=None,
-                 resolve=_marker, use_dns_cache=_marker,
+                 resolve=_sentinel, use_dns_cache=_sentinel,
                  family=0, ssl_context=None, local_addr=None, resolver=None,
                  **kwargs):
         super().__init__(**kwargs)
@@ -452,18 +433,18 @@ class TCPConnector(BaseConnector):
             self._hashfunc = hashfunc
         self._fingerprint = fingerprint
 
-        if resolve is not _marker:
+        if resolve is not _sentinel:
             warnings.warn(("resolve parameter is deprecated, "
                            "use use_dns_cache instead"),
                           DeprecationWarning, stacklevel=2)
 
-        if use_dns_cache is not _marker and resolve is not _marker:
+        if use_dns_cache is not _sentinel and resolve is not _sentinel:
             if use_dns_cache != resolve:
                 raise ValueError("use_dns_cache must agree with resolve")
             _use_dns_cache = use_dns_cache
-        elif use_dns_cache is not _marker:
+        elif use_dns_cache is not _sentinel:
             _use_dns_cache = use_dns_cache
-        elif resolve is not _marker:
+        elif resolve is not _sentinel:
             _use_dns_cache = resolve
         else:
             _use_dns_cache = False
@@ -587,6 +568,15 @@ class TCPConnector(BaseConnector):
 
         Has same keyword arguments as BaseEventLoop.create_connection.
         """
+        if req.proxy:
+            transport, proto = yield from self._create_proxy_connection(req)
+        else:
+            transport, proto = yield from self._create_direct_connection(req)
+
+        return transport, proto
+
+    @asyncio.coroutine
+    def _create_direct_connection(self, req):
         if req.ssl:
             sslcontext = self.ssl_context
         else:
@@ -629,56 +619,17 @@ class TCPConnector(BaseConnector):
                                 'Can not connect to %s:%s [%s]' %
                                 (req.host, req.port, exc.strerror)) from exc
 
-
-class ProxyConnector(TCPConnector):
-    """Http Proxy connector.
-
-    :param str proxy: Proxy URL address. Only HTTP proxy supported.
-    :param proxy_auth: (optional) Proxy HTTP Basic Auth
-    :type proxy_auth: aiohttp.helpers.BasicAuth
-    :param args: see :class:`TCPConnector`
-    :param kwargs: see :class:`TCPConnector`
-
-    Usage:
-
-    >>> conn = ProxyConnector(proxy="http://some.proxy.com")
-    >>> session = ClientSession(connector=conn)
-    >>> resp = yield from session.get('http://python.org')
-
-    """
-
-    def __init__(self, proxy, *, proxy_auth=None, force_close=True,
-                 **kwargs):
-        super().__init__(force_close=force_close, **kwargs)
-        self._proxy = proxy
-        self._proxy_auth = proxy_auth
-        assert proxy.startswith('http://'), (
-            "Only http proxy supported", proxy)
-        assert proxy_auth is None or isinstance(proxy_auth, BasicAuth), (
-            "proxy_auth must be None or BasicAuth() tuple", proxy_auth)
-
-    @property
-    def proxy(self):
-        """Proxy URL."""
-        return self._proxy
-
-    @property
-    def proxy_auth(self):
-        """Proxy auth info.
-
-        Should be BasicAuth instance.
-        """
-        return self._proxy_auth
-
     @asyncio.coroutine
-    def _create_connection(self, req):
+    def _create_proxy_connection(self, req):
         proxy_req = ClientRequest(
-            hdrs.METH_GET, self._proxy,
+            hdrs.METH_GET, req.proxy,
             headers={hdrs.HOST: req.host},
-            auth=self._proxy_auth,
+            auth=req.proxy_auth,
             loop=self._loop)
         try:
-            transport, proto = yield from super()._create_connection(proxy_req)
+            # create connection to proxy server
+            transport, proto = yield from self._create_direct_connection(
+                proxy_req)
         except OSError as exc:
             raise ProxyConnectionError(*exc.args) from exc
 
@@ -731,6 +682,53 @@ class ProxyConnector(TCPConnector):
                     server_hostname=req.host)
             finally:
                 proxy_resp.close()
+
+        return transport, proto
+
+
+class ProxyConnector(TCPConnector):
+    """Http Proxy connector.
+    Deprecated, use ClientSession.request with proxy parameters.
+    Is still here for backward compatibility.
+
+    :param str proxy: Proxy URL address. Only HTTP proxy supported.
+    :param proxy_auth: (optional) Proxy HTTP Basic Auth
+    :type proxy_auth: aiohttp.helpers.BasicAuth
+    :param args: see :class:`TCPConnector`
+    :param kwargs: see :class:`TCPConnector`
+
+    Usage:
+
+    >>> conn = ProxyConnector(proxy="http://some.proxy.com")
+    >>> session = ClientSession(connector=conn)
+    >>> resp = yield from session.get('http://python.org')
+
+    """
+
+    def __init__(self, proxy, *, proxy_auth=None, force_close=True,
+                 **kwargs):
+        warnings.warn("ProxyConnector is deprecated, use "
+                      "client.get(url, proxy=proxy_url) instead",
+                      DeprecationWarning)
+        super().__init__(force_close=force_close, **kwargs)
+        self._proxy = proxy
+        self._proxy_auth = proxy_auth
+
+    @property
+    def proxy(self):
+        return self._proxy
+
+    @property
+    def proxy_auth(self):
+        return self._proxy_auth
+
+    @asyncio.coroutine
+    def _create_connection(self, req):
+        """
+        Use TCPConnector _create_connection, to emulate old ProxyConnector.
+        """
+        req.update_proxy(self._proxy, self._proxy_auth)
+        transport, proto = yield from super()._create_connection(req)
 
         return transport, proto
 

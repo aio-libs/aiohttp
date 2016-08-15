@@ -3,29 +3,24 @@ import binascii
 import cgi
 import collections
 import datetime
+import enum
 import http.cookies
 import io
 import json
 import math
 import time
 import warnings
-
-import enum
-
 from email.utils import parsedate
 from types import MappingProxyType
-from urllib.parse import urlsplit, parse_qsl, unquote
+from urllib.parse import parse_qsl, unquote, urlsplit
 
-from multidict import (CIMultiDictProxy,
-                       CIMultiDict,
-                       MultiDictProxy,
-                       MultiDict)
+from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 
 from . import hdrs
-from .helpers import reify
-from .protocol import Response as ResponseImpl, HttpVersion10, HttpVersion11
+from .helpers import _sentinel, reify
+from .protocol import Response as ResponseImpl
+from .protocol import HttpVersion10, HttpVersion11
 from .streams import EOF_MARKER
-
 
 __all__ = (
     'ContentCoding', 'Request', 'StreamResponse', 'Response',
@@ -33,14 +28,11 @@ __all__ = (
 )
 
 
-sentinel = object()
-
-
 class HeadersMixin:
 
     _content_type = None
     _content_dict = None
-    _stored_content_type = sentinel
+    _stored_content_type = _sentinel
 
     def _parse_content_type(self, raw):
         self._stored_content_type = raw
@@ -511,8 +503,12 @@ class StreamResponse(HeadersMixin):
 
         self._cookies[name] = value
         c = self._cookies[name]
+
         if expires is not None:
             c['expires'] = expires
+        elif c.get('expires') == 'Thu, 01 Jan 1970 00:00:00 GMT':
+            del c['expires']
+
         if domain is not None:
             c['domain'] = domain
 
@@ -537,7 +533,9 @@ class StreamResponse(HeadersMixin):
         """
         # TODO: do we need domain/path here?
         self._cookies.pop(name, None)
-        self.set_cookie(name, '', max_age=0, domain=domain, path=path)
+        self.set_cookie(name, '', max_age=0,
+                        expires="Thu, 01 Jan 1970 00:00:00 GMT",
+                        domain=domain, path=path)
 
     @property
     def content_length(self):
@@ -863,10 +861,10 @@ class Response(StreamResponse):
         yield from super().write_eof()
 
 
-def json_response(data=sentinel, *, text=None, body=None, status=200,
+def json_response(data=_sentinel, *, text=None, body=None, status=200,
                   reason=None, headers=None, content_type='application/json',
                   dumps=json.dumps):
-    if data is not sentinel:
+    if data is not _sentinel:
         if text or body:
             raise ValueError(
                 'only one of data, text, or body should be specified'

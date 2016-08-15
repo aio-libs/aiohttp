@@ -1,12 +1,12 @@
 import asyncio
+
+import pytest
+
 import aiohttp
 from aiohttp import web
-from aiohttp.test_utils import (
-    TestClient, loop_context,
-    AioHTTPTestCase, unittest_run_loop,
-    setup_test_loop, teardown_test_loop
-)
-import pytest
+from aiohttp.test_utils import (AioHTTPTestCase, TestClient, loop_context,
+                                setup_test_loop, teardown_test_loop,
+                                unittest_run_loop)
 
 
 def _create_example_app(loop):
@@ -21,7 +21,7 @@ def _create_example_app(loop):
         ws = web.WebSocketResponse()
         yield from ws.prepare(request)
         msg = yield from ws.receive()
-        if msg.tp == aiohttp.MsgType.text:
+        if msg.tp == aiohttp.WSMsgType.TEXT:
             if msg.data == 'close':
                 yield from ws.close()
             else:
@@ -29,9 +29,16 @@ def _create_example_app(loop):
 
         return ws
 
+    @asyncio.coroutine
+    def cookie_handler(request):
+        resp = web.Response(body=b"Hello, world")
+        resp.set_cookie('cookie', 'val')
+        return resp
+
     app = web.Application(loop=loop)
     app.router.add_route('*', '/', hello)
     app.router.add_route('*', '/websocket', websocket_handler)
+    app.router.add_route('*', '/cookie', cookie_handler)
     return app
 
 
@@ -141,11 +148,19 @@ def test_client_websocket(loop, test_client):
     resp = yield from test_client.ws_connect("/websocket")
     resp.send_str("foo")
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.MsgType.text
+    assert msg.tp == aiohttp.WSMsgType.TEXT
     assert "foo" in msg.data
     resp.send_str("close")
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.MsgType.close
+    assert msg.tp == aiohttp.WSMsgType.CLOSE
+
+
+@pytest.mark.run_loop
+@asyncio.coroutine
+def test_client_cookie(loop, test_client):
+    assert not test_client.session.cookies
+    yield from test_client.get("/cookie")
+    assert test_client.session.cookies['cookie'].value == 'val'
 
 
 @pytest.mark.run_loop

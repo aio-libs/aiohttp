@@ -4,22 +4,20 @@ import asyncio
 import gc
 import inspect
 import io
+import os.path
 import re
 import unittest
-from unittest import mock
 import urllib.parse
 import zlib
 from http.cookies import SimpleCookie
-
-from multidict import CIMultiDict, CIMultiDictProxy, upstr
+from unittest import mock
 
 import pytest
-import aiohttp
-from aiohttp import BaseConnector
-from aiohttp import helpers
-from aiohttp.client_reqrep import ClientRequest, ClientResponse
+from multidict import CIMultiDict, CIMultiDictProxy, upstr
 
-import os.path
+import aiohttp
+from aiohttp import BaseConnector, helpers
+from aiohttp.client_reqrep import ClientRequest, ClientResponse
 
 
 @pytest.yield_fixture
@@ -458,7 +456,7 @@ class TestClientRequest(unittest.TestCase):
 
     def test_content_type_skip_auto_header_bytes(self):
         req = ClientRequest('post', 'http://python.org', data=b'hey you',
-                            skip_auto_headers={'CONTENT-TYPE'},
+                            skip_auto_headers={'Content-Type'},
                             loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertNotIn('CONTENT-TYPE', req.headers)
@@ -466,7 +464,7 @@ class TestClientRequest(unittest.TestCase):
 
     def test_content_type_skip_auto_header_form(self):
         req = ClientRequest('post', 'http://python.org', data={'hey': 'you'},
-                            loop=self.loop, skip_auto_headers={'CONTENT-TYPE'})
+                            loop=self.loop, skip_auto_headers={'Content-Type'})
         resp = req.send(self.transport, self.protocol)
         self.assertNotIn('CONTENT-TYPE', req.headers)
         resp.close()
@@ -474,7 +472,7 @@ class TestClientRequest(unittest.TestCase):
     def test_content_type_auto_header_content_length_no_skip(self):
         req = ClientRequest('get', 'http://python.org',
                             data=io.BytesIO(b'hey'),
-                            skip_auto_headers={'CONTENT-LENGTH'},
+                            skip_auto_headers={'Content-Length'},
                             loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertEqual(req.headers.get('CONTENT-LENGTH'), '3')
@@ -881,8 +879,6 @@ class TestClientRequest(unittest.TestCase):
         resp.close()
 
     def test_terminate_with_closed_loop(self):
-        if not hasattr(self.loop, 'is_closed'):
-            self.skipTest("Required asyncio 3.4.2+")
         req = ClientRequest('get', 'http://python.org', loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertIsNotNone(req._writer)

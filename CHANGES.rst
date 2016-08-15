@@ -1,12 +1,95 @@
 CHANGES
 =======
 
-0.22.2 (XX-XX-XXXX)
+1.0.0 (XX-XX-XXXX)
+-------------------
+
+- Change default size for client session's connection pool from
+  unlimited to 20 #977
+
+- Add IE support for cookie deletion. #994
+
+- Remove deprecated `WebSocketResponse.wait_closed` method (BACKWARD
+  INCOMPATIBLE)
+
+- Remove deprecated `force` parameter for `ClientResponse.close`
+  method (BACKWARD INCOMPATIBLE)
+
+- Avoid using of mutable CIMultiDict kw param in make_mocked_request
+  #997
+
+- Make WebSocketResponse.close a little bit faster by avoiding new
+  task creating just for timeout measurement
+
+- Add `proxy` and `proxy_auth` params to `client.get()` and family,
+  deprecate `ProxyConnector` #998
+
+- Add support for websocket send_json and receive_json, synchronize
+  server and client API for websockets #984
+
+- Implement router shourtcuts for most useful HTTP methods, use
+  `app.router.add_get()`, `app.router.add_post()` etc. instead of
+  `app.router.add_route()` #986
+
+- Support SSL connections for gunicorn worker #1003
+
+- Move obsolete examples to legacy folder
+
+- Switch to multidict 2.0 and title-cased strings #1015
+
+- `{FOO}e` logger format is case-sensetive now
+
+- Fix logger report for unix socket 8e8469b
+
+- Rename aiohttp.websocket to aiohttp._ws_impl
+
+- Rename aiohttp.MsgType tp aiohttp.WSMsgType
+
+- Introduce aiohttp.WSMessage officially
+
+- Rename Message -> WSMessage
+
+- Remove deprecated decode param from resp.read(decode=True)
+
+- Use 5min default client timeout #1028
+
+- Relax HTTP method validation in UrlDispatcher #1037
+
+- Pin minimal supported asyncio version to 3.4.2+ (`loop.is_close()`
+  should be present)
+
+- Remove aiohttp.websocket module (BACKWARD IMCOMPATIBLE)
+  Please use high-level client and server approaches
+
+- Link header for 451 status code is mandatory
+
+- Fix test_client fixture to allow multiple clients per test #1072
+
+
+0.22.5 (08-02-2016)
+-------------------
+
+- Pin miltidict version to >=1.2.2
+
+0.22.3 (07-26-2016)
+-------------------
+
+- Do not filter cookies if unsafe flag provided #1005
+
+
+0.22.2 (07-23-2016)
 -------------------
 
 - Suppress CancelledError when Timeout raises TimeoutError #970
 
 - Don't expose `aiohttp.__version__`
+
+- Add unsafe parameter to CookieJar #968
+
+- Use unsafe cookie jar in test client tools
+
+- Expose aiohttp.CookieJar name
+
 
 0.22.1 (07-16-2016)
 -------------------

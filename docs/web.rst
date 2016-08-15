@@ -26,7 +26,7 @@ request handler with the application's :class:`router <UrlDispatcher>` on a
 particular *HTTP method* and *path*::
 
    app = web.Application()
-   app.router.add_route('GET', '/', hello)
+   app.router.add_get('/', hello)
 
 After that, run the application by :func:`run_app` call::
 
@@ -46,7 +46,9 @@ That's it. Now, head over to ``http://localhost:8080/`` to see the results.
 Command Line Interface (CLI)
 ----------------------------
 :mod:`aiohttp.web` implements a basic CLI for quickly serving an
-:class:`Application` in *development* over TCP/IP::
+:class:`Application` in *development* over TCP/IP:
+
+.. code-block:: shell
 
     $ python -m aiohttp.web -H localhost -P 8080 package.module:init_func
 
@@ -56,7 +58,7 @@ accepts a list of any non-parsed command-line arguments and returns an
 
     def init_function(argv):
         app = web.Application()
-        app.router.add_route("GET", "/", index_handler)
+        app.router.add_get("/", index_handler)
         return app
 
 
@@ -79,12 +81,13 @@ A handler **may** also be a :ref:`coroutine<coroutine>`, in which case
        return web.Response()
 
 Handlers are setup to handle requests by registering them with the
-:attr:`Application.router` on a particular route (*HTTP method* and *path*
-pair)::
+:attr:`Application.router` on a particular route (*HTTP method* and
+*path* pair) using methods like :class:`UrlDispatcher.add_get` and
+:class:`UrlDispatcher.add_post`::
 
-   app.router.add_route('GET', '/', handler)
-   app.router.add_route('POST', '/post', post_handler)
-   app.router.add_route('PUT', '/put', put_handler)
+   app.router.add_get('/', handler)
+   app.router.add_post('/post', post_handler)
+   app.router.add_put('/put', put_handler)
 
 :meth:`~UrlDispatcher.add_route` also supports the wildcard *HTTP method*,
 allowing a handler to serve incoming requests on a *path* having **any**
@@ -109,7 +112,10 @@ Resource in turn has at least one *route*.
 
 Route corresponds to handling *HTTP method* by calling *web handler*.
 
-:meth:`UrlDispatcher.add_route` is just a shortcut for pair of
+:meth:`UrlDispatcher.add_get` / :meth:`UrlDispatcher.add_post` and
+family are plain shortcuts for :meth:`UrlDispatcher.add_route`.
+
+:meth:`UrlDispatcher.add_route` in turn is just a shortcut for pair of
 :meth:`UrlDispatcher.add_resource` and :meth:`Resource.add_route`::
 
    resource = app.router.add_resource(path, name=name)
@@ -192,7 +198,7 @@ functions or coroutines::
    async def hello(request):
        return web.Response(body=b"Hello, world")
 
-   app.router.add_route('GET', '/', hello)
+   app.router.add_get('/', hello)
 
 But sometimes it's convenient to group logically similar handlers into a Python
 *class*.
@@ -214,8 +220,8 @@ application developers can organize handlers in classes if they so wish::
            return web.Response(text=txt)
 
    handler = Handler()
-   app.router.add_route('GET', '/intro', handler.handle_intro)
-   app.router.add_route('GET', '/greet/{name}', handler.handle_greeting)
+   app.router.add_get('/intro', handler.handle_intro)
+   app.router.add_get('/greet/{name}', handler.handle_greeting)
 
 
 .. _aiohttp-web-class-based-views:
@@ -311,7 +317,7 @@ The following example shows custom routing based on the *HTTP Accept* header::
        # do xml handling
 
    chooser = AcceptChooser()
-   app.router.add_route('GET', '/', chooser.do_route)
+   app.router.add_get('/', chooser.do_route)
 
    chooser.reg_acceptor('application/json', handle_json)
    chooser.reg_acceptor('application/xml', handle_xml)
@@ -367,6 +373,20 @@ If you prefer the `Mako`_ template engine, please take a look at the
 .. _aiohttp_mako: https://github.com/aio-libs/aiohttp_mako
 
 
+JSON Response
+-------------
+
+It is a common case to return JSON data in response, :mod:`aiohttp.web`
+provides a shortcut for returning JSON -- :func:`aiohttp.web.json_response`::
+
+   def handler(request):
+       data = {'some': 'data'}
+       return web.json_response(data)
+
+The shortcut method returns :class:`aiohttp.web.Response` instance
+so you can for example set cookies before returning it from handler.
+
+
 User Sessions
 -------------
 
@@ -378,29 +398,28 @@ third-party library, :mod:`aiohttp_session`, that adds *session* support::
 
     import asyncio
     import time
+    import base64
+    from cryptography import fernet
     from aiohttp import web
-    from aiohttp_session import get_session, session_middleware
+    from aiohttp_session import setup, get_session, session_middleware
     from aiohttp_session.cookie_storage import EncryptedCookieStorage
 
     async def handler(request):
         session = await get_session(request)
-        session['last_visit'] = time.time()
-        return web.Response(body=b'OK')
+        last_visit = session['last_visit'] if 'last_visit' in session else None
+        text = 'Last visited: {}'.format(last_visit)
+        return web.Response(body=text.encode('utf-8'))
 
-    async def init(loop):
-        app = web.Application(middlewares=[session_middleware(
-            EncryptedCookieStorage(b'Sixteen byte key'))])
+    def make_app():
+        app = web.Application()
+        # secret_key must be 32 url-safe base64-encoded bytes
+        fernet_key = fernet.Fernet.generate_key()
+        secret_key = base64.urlsafe_b64decode(fernet_key)
+        setup(app, EncryptedCookieStorage(secret_key))
         app.router.add_route('GET', '/', handler)
-        srv = await loop.create_server(
-            app.make_handler(), '0.0.0.0', 8080)
-        return srv
+        return app
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(init(loop))
-    try:
-        loop.run_forever()
-    except KeyboardInterrupt:
-        pass
+    web.run_app(make_app())
 
 
 .. _aiohttp-web-expect-header:
@@ -453,7 +472,7 @@ header::
        return web.Response(body=b"Hello, world")
 
    app = web.Application()
-   app.router.add_route('GET', '/', hello, expect_handler=check_auth)
+   app.router.add_get('/', hello, expect_handler=check_auth)
 
 
 .. _aiohttp-web-file-upload:
@@ -519,12 +538,12 @@ with the peer::
         await ws.prepare(request)
 
         async for msg in ws:
-            if msg.tp == aiohttp.MsgType.text:
+            if msg.tp == aiohttp.WSMsgType.TEXT:
                 if msg.data == 'close':
                     await ws.close()
                 else:
                     ws.send_str(msg.data + '/answer')
-            elif msg.tp == aiohttp.MsgType.error:
+            elif msg.tp == aiohttp.WSMsgType.ERROR:
                 print('ws connection closed with exception %s' %
                       ws.exception())
 
@@ -532,9 +551,13 @@ with the peer::
 
         return ws
 
-Reading from the *WebSocket* (``await ws.receive()``) **must only** be
-done inside the request handler *task*; however, writing
-(``ws.send_str(...)``) to the *WebSocket* may be delegated to other tasks.
+.. _aiohttp-web-websocket-read-same-task:
+
+Reading from the *WebSocket* (``await ws.receive()``) and closing it (``await ws.close()``)
+**must only** be done inside the request handler *task*; however, writing
+(``ws.send_str(...)``) to the *WebSocket* and cancelling the handler task
+may be delegated to other tasks. See also :ref:`FAQ section <aiohttp_faq_terminating_websockets>`.
+
 *aiohttp.web* creates an implicit :class:`asyncio.Task` for handling every
 incoming request.
 
@@ -546,6 +569,17 @@ incoming request.
    code.
 
 .. _SockJS: https://github.com/aio-libs/sockjs
+
+
+.. warning::
+
+   Parallel reads from websocket are forbidden, there is no
+   possibility to call :meth:`aiohttp.web.WebSocketResponse.receive`
+   or :meth:`aiohttp.web.WebSocketResponse.close`
+   from two tasks.
+
+   See :ref:`FAQ section <aiohttp_faq_parallel_event_sources>` for
+   instructions how to solve the problem.
 
 
 .. _aiohttp-web-exceptions:
@@ -735,7 +769,7 @@ the :ref:`request handler <aiohttp-web-handler>` selected by the router itself
 
 *Middleware factories* should return a new handler that has the same signature
 as a :ref:`request handler <aiohttp-web-handler>`. That is, it should accept a
-single :class:`Response` instance and return a :class:`Response`, or raise an
+single :class:`Request` instance and return a :class:`Response`, or raise an
 exception.
 
 Internally, a single :ref:`request handler <aiohttp-web-handler>` is constructed
@@ -962,7 +996,9 @@ Debug Toolbar
 aiohttp_debugtoolbar_ is a very useful library that provides a debugging toolbar
 while you're developing an :mod:`aiohttp.web` application.
 
-Install it via ``pip``::
+Install it via ``pip``:
+
+.. code-block:: shell
 
     $ pip install aiohttp_debugtoolbar
 

@@ -24,12 +24,14 @@ Features
 Library Installation
 --------------------
 
-::
+.. code-block:: bash
 
    $ pip install aiohttp
 
 You may want to install *optional* :term:`cchardet` library as faster
-replacement for :term:`chardet`::
+replacement for :term:`chardet`:
+
+.. code-block:: bash
 
    $ pip install cchardet
 
@@ -38,20 +40,21 @@ Getting Started
 
 Client example::
 
-    import asyncio
     import aiohttp
+    import asyncio
 
-    async def fetch_page(session, url):
+    async def fetch(session, url):
         with aiohttp.Timeout(10):
             async with session.get(url) as response:
-                assert response.status == 200
-                return await response.read()
+                return await response.text()
+
+    async def main(loop):
+        async with aiohttp.ClientSession(loop=loop) as session:
+            html = await fetch(session, 'http://python.org')
+            print(html)
 
     loop = asyncio.get_event_loop()
-    with aiohttp.ClientSession(loop=loop) as session:
-        content = loop.run_until_complete(
-            fetch_page(session, 'http://python.org'))
-        print(content)
+    loop.run_until_complete(main(loop))
 
 Server example::
 
@@ -63,7 +66,7 @@ Server example::
         return web.Response(body=text.encode('utf-8'))
 
     app = web.Application()
-    app.router.add_route('GET', '/{name}', handle)
+    app.router.add_get('/{name}', handle)
 
     web.run_app(app)
 
@@ -110,10 +113,13 @@ Dependencies
 
 - Python Python 3.4.1+
 - *chardet* library
+- *multidict* library
 - *Optional* :term:`cchardet` library as faster replacement for
   :term:`chardet`.
 
-  Install it explicitly via::
+  Install it explicitly via:
+
+  .. code-block:: bash
 
      $ pip install cchardet
 

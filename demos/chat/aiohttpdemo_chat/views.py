@@ -3,9 +3,9 @@ import logging
 import random
 import string
 
-from aiohttp import web
 import aiohttp_jinja2
 
+from aiohttp import web
 
 log = logging.getLogger(__name__)
 
@@ -47,6 +47,5 @@ async def index(request):
     return resp
 
 
-
 def setup(app):
-    app.router.add_route('GET', '/', index)
+    app.router.add_get('/', index)

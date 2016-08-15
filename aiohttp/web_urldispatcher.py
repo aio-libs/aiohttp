@@ -1,27 +1,23 @@
 import abc
 import asyncio
-
-import keyword
 import collections
-import re
-import os
-import sys
 import inspect
+import keyword
+import os
+import re
+import sys
 import warnings
-
-from collections.abc import Sized, Iterable, Container
+from collections.abc import Container, Iterable, Sized
 from pathlib import Path
-from urllib.parse import urlencode, unquote
 from types import MappingProxyType
-
-from multidict import upstr
+from urllib.parse import unquote, urlencode
 
 from . import hdrs
-from .abc import AbstractRouter, AbstractMatchInfo, AbstractView
+from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
 from .file_sender import FileSender
 from .protocol import HttpVersion11
-from .web_exceptions import (HTTPMethodNotAllowed, HTTPNotFound,
-                             HTTPExpectationFailed, HTTPForbidden)
+from .web_exceptions import (HTTPExpectationFailed, HTTPForbidden,
+                             HTTPMethodNotAllowed, HTTPNotFound)
 from .web_reqrep import Response, StreamResponse
 
 
@@ -33,6 +29,9 @@ __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
 
 
 PY_35 = sys.version_info >= (3, 5)
+
+
+HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
 
 
 class AbstractResource(Sized, Iterable):
@@ -68,7 +67,6 @@ class AbstractResource(Sized, Iterable):
 
 
 class AbstractRoute(abc.ABC):
-    METHODS = hdrs.METH_ALL | {hdrs.METH_ANY}
 
     def __init__(self, method, handler, *,
                  expect_handler=None,
@@ -80,8 +78,8 @@ class AbstractRoute(abc.ABC):
         assert asyncio.iscoroutinefunction(expect_handler), \
             'Coroutine is expected, got {!r}'.format(expect_handler)
 
-        method = upstr(method)
-        if method not in self.METHODS:
+        method = method.upper()
+        if not HTTP_METHOD_RE.match(method):
             raise ValueError("{} is not allowed HTTP method".format(method))
 
         assert callable(handler), handler
@@ -785,3 +783,33 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                             show_index=show_index)
         self.register_route(route)
         return route
+
+    def add_get(self, *args, **kwargs):
+        """
+        Shortcut for add_route with method GET
+        """
+        return self.add_route(hdrs.METH_GET, *args, **kwargs)
+
+    def add_post(self, *args, **kwargs):
+        """
+        Shortcut for add_route with method POST
+        """
+        return self.add_route(hdrs.METH_POST, *args, **kwargs)
+
+    def add_put(self, *args, **kwargs):
+        """
+        Shortcut for add_route with method PUT
+        """
+        return self.add_route(hdrs.METH_PUT, *args, **kwargs)
+
+    def add_patch(self, *args, **kwargs):
+        """
+        Shortcut for add_route with method PATCH
+        """
+        return self.add_route(hdrs.METH_PATCH, *args, **kwargs)
+
+    def add_delete(self, *args, **kwargs):
+        """
+        Shortcut for add_route with method DELETE
+        """
+        return self.add_route(hdrs.METH_DELETE, *args, **kwargs)

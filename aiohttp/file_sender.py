@@ -1,6 +1,7 @@
 import asyncio
 import mimetypes
 import os
+
 from . import hdrs
 from .helpers import create_future
 from .web_reqrep import StreamResponse
@@ -37,12 +38,12 @@ class FileSender:
             fut.set_result(None)
 
     @asyncio.coroutine
-    def _sendfile_system(self, req, resp, fobj, count):
+    def _sendfile_system(self, request, resp, fobj, count):
         """
         Write `count` bytes of `fobj` to `resp` using
         the ``sendfile`` system call.
 
-        `req` should be a :obj:`aiohttp.web.Request` instance.
+        `request` should be a :obj:`aiohttp.web.Request` instance.
 
         `resp` should be a :obj:`aiohttp.web.StreamResponse` instance.
 
@@ -50,15 +51,15 @@ class FileSender:
 
         `count` should be an integer > 0.
         """
-        transport = req.transport
+        transport = request.transport
 
         if transport.get_extra_info("sslcontext"):
-            yield from self._sendfile_fallback(req, resp, fobj, count)
+            yield from self._sendfile_fallback(request, resp, fobj, count)
             return
 
         yield from resp.drain()
 
-        loop = req.app.loop
+        loop = request.app.loop
         # See https://github.com/KeepSafe/aiohttp/issues/958 for details
         out_socket = transport.get_extra_info("socket").dup()
         out_fd = out_socket.fileno()
@@ -73,7 +74,7 @@ class FileSender:
             out_socket.close()
 
     @asyncio.coroutine
-    def _sendfile_fallback(self, req, resp, fobj, count):
+    def _sendfile_fallback(self, request, resp, fobj, count):
         """
         Mimic the :meth:`_sendfile_system` method, but without using the
         ``sendfile`` system call. This should be used on systems that don't
@@ -102,10 +103,10 @@ class FileSender:
         _sendfile = _sendfile_fallback
 
     @asyncio.coroutine
-    def send(self, req, filepath):
+    def send(self, request, filepath):
         st = filepath.stat()
 
-        modsince = req.if_modified_since
+        modsince = request.if_modified_since
         if modsince is not None and st.st_mtime <= modsince.timestamp():
             from .web_exceptions import HTTPNotModified
             raise HTTPNotModified()
@@ -125,10 +126,10 @@ class FileSender:
         resp.content_length = file_size
         resp.set_tcp_cork(True)
         try:
-            yield from resp.prepare(req)
+            yield from resp.prepare(request)
 
             with filepath.open('rb') as f:
-                yield from self._sendfile(req, resp, f, file_size)
+                yield from self._sendfile(request, resp, f, file_size)
 
         finally:
             resp.set_tcp_nodelay(True)

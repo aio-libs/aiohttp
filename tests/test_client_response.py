@@ -75,7 +75,6 @@ class TestClientResponse(unittest.TestCase):
         self.assertIn(
             "<ClientResponse(http://fake-host.org/\\u03bb) [None None]>",
             repr(response))
-        response.close()
 
     def test_repr_non_ascii_reason(self):
         response = ClientResponse('get', 'http://fake-host.org/path')
@@ -83,7 +82,6 @@ class TestClientResponse(unittest.TestCase):
         self.assertIn(
             "<ClientResponse(http://fake-host.org/path) [None \\u03bb]>",
             repr(response))
-        response.close()
 
     def test_read_and_release_connection(self):
         def side_effect(*args, **kwargs):
@@ -116,24 +114,13 @@ class TestClientResponse(unittest.TestCase):
         self.loop.run_until_complete(self.response.release())
         self.assertIsNone(self.response._connection)
 
-    def test_read_decode_deprecated(self):
-        self.response._content = b'data'
-        self.response.json = mock.Mock()
-        self.response.json.return_value = helpers.create_future(self.loop)
-        self.response.json.return_value.set_result('json')
-
-        with self.assertWarns(DeprecationWarning):
-            res = self.loop.run_until_complete(self.response.read(decode=True))
-        self.assertEqual(res, 'json')
-        self.assertTrue(self.response.json.called)
-
     def test_text(self):
         def side_effect(*args, **kwargs):
             fut = helpers.create_future(self.loop)
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
         self.response.headers = {
-            'CONTENT-TYPE': 'application/json;charset=cp1251'}
+            'Content-Type': 'application/json;charset=cp1251'}
         content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
 
@@ -147,7 +134,7 @@ class TestClientResponse(unittest.TestCase):
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
         self.response.headers = {
-            'CONTENT-TYPE': 'application/json'}
+            'Content-Type': 'application/json'}
         content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
         self.response._get_encoding = mock.Mock()
@@ -163,7 +150,7 @@ class TestClientResponse(unittest.TestCase):
             fut = helpers.create_future(self.loop)
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
-        self.response.headers = {'CONTENT-TYPE': 'application/json'}
+        self.response.headers = {'Content-Type': 'application/json'}
         content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
 
@@ -178,7 +165,7 @@ class TestClientResponse(unittest.TestCase):
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
         self.response.headers = {
-            'CONTENT-TYPE': 'application/json;charset=cp1251'}
+            'Content-Type': 'application/json;charset=cp1251'}
         content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
 
@@ -192,7 +179,7 @@ class TestClientResponse(unittest.TestCase):
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
         self.response.headers = {
-            'CONTENT-TYPE': 'application/json;charset=cp1251'}
+            'Content-Type': 'application/json;charset=cp1251'}
         content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
 
@@ -202,7 +189,7 @@ class TestClientResponse(unittest.TestCase):
 
     def test_json_custom_loader(self):
         self.response.headers = {
-            'CONTENT-TYPE': 'application/json;charset=cp1251'}
+            'Content-Type': 'application/json;charset=cp1251'}
         self.response._content = b'data'
 
         def custom(content):
@@ -214,7 +201,7 @@ class TestClientResponse(unittest.TestCase):
     @mock.patch('aiohttp.client_reqrep.client_logger')
     def test_json_no_content(self, m_log):
         self.response.headers = {
-            'CONTENT-TYPE': 'data/octet-stream'}
+            'Content-Type': 'data/octet-stream'}
         self.response._content = b''
 
         res = self.loop.run_until_complete(self.response.json())
@@ -229,7 +216,7 @@ class TestClientResponse(unittest.TestCase):
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
         self.response.headers = {
-            'CONTENT-TYPE': 'application/json;charset=utf8'}
+            'Content-Type': 'application/json;charset=utf8'}
         content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
         self.response._get_encoding = mock.Mock()
@@ -245,7 +232,7 @@ class TestClientResponse(unittest.TestCase):
             fut = helpers.create_future(self.loop)
             fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
             return fut
-        self.response.headers = {'CONTENT-TYPE': 'application/json'}
+        self.response.headers = {'Content-Type': 'application/json'}
         content = self.response.content = mock.Mock()
         content.read.side_effect = side_effect
 
@@ -255,25 +242,19 @@ class TestClientResponse(unittest.TestCase):
 
     def test_override_flow_control(self):
         class MyResponse(ClientResponse):
-            flow_control_class = aiohttp.FlowControlDataQueue
+            flow_control_class = aiohttp.StreamReader
         response = MyResponse('get', 'http://my-cl-resp.org')
         response._post_init(self.loop)
         response._setup_connection(self.connection)
-        self.assertIsInstance(response.content, aiohttp.FlowControlDataQueue)
+        self.assertIsInstance(response.content, aiohttp.StreamReader)
         response.close()
 
     @mock.patch('aiohttp.client_reqrep.chardet')
     def test_get_encoding_unknown(self, m_chardet):
         m_chardet.detect.return_value = {'encoding': None}
 
-        self.response.headers = {'CONTENT-TYPE': 'application/json'}
+        self.response.headers = {'Content-Type': 'application/json'}
         self.assertEqual(self.response._get_encoding(), 'utf-8')
-
-    def test_close_deprecated(self):
-        self.response._connection = self.connection
-        with self.assertWarns(DeprecationWarning):
-            self.response.close(force=False)
-        self.assertIsNone(self.response._connection)
 
     def test_raise_for_status_2xx(self):
         self.response.status = 200

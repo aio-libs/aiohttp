@@ -1,7 +1,9 @@
-import aiohttp
 import asyncio
+
 import pytest
-from aiohttp import helpers, hdrs, web
+
+import aiohttp
+from aiohttp import hdrs, helpers, web
 
 
 @pytest.mark.run_loop
@@ -22,8 +24,31 @@ def test_send_recv_text(create_app_and_client):
     resp = yield from client.ws_connect('/')
     resp.send_str('ask')
 
-    msg = yield from resp.receive()
-    assert msg.data == 'ask/answer'
+    data = yield from resp.receive_str()
+    assert data == 'ask/answer'
+    yield from resp.close()
+
+
+@pytest.mark.run_loop
+def test_send_recv_bytes_bad_type(create_app_and_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        msg = yield from ws.receive_str()
+        ws.send_str(msg+'/answer')
+        yield from ws.close()
+        return ws
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/')
+    resp.send_str('ask')
+
+    with pytest.raises(TypeError):
+        yield from resp.receive_bytes()
     yield from resp.close()
 
 
@@ -46,9 +71,58 @@ def test_send_recv_bytes(create_app_and_client):
 
     resp.send_bytes(b'ask')
 
-    msg = yield from resp.receive()
-    assert msg.data == b'ask/answer'
+    data = yield from resp.receive_bytes()
+    assert data == b'ask/answer'
 
+    yield from resp.close()
+
+
+@pytest.mark.run_loop
+def test_send_recv_text_bad_type(create_app_and_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        msg = yield from ws.receive_bytes()
+        ws.send_bytes(msg+b'/answer')
+        yield from ws.close()
+        return ws
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/')
+
+    resp.send_bytes(b'ask')
+
+    with pytest.raises(TypeError):
+        yield from resp.receive_str()
+
+    yield from resp.close()
+
+
+@pytest.mark.run_loop
+def test_send_recv_json(create_app_and_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        data = yield from ws.receive_json()
+        ws.send_json({'response': data['request']})
+        yield from ws.close()
+        return ws
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/')
+    payload = {'request': 'test'}
+    resp.send_json(payload)
+
+    data = yield from resp.receive_json()
+    assert data['response'] == payload['request']
     yield from resp.close()
 
 
@@ -79,11 +153,11 @@ def test_ping_pong(create_app_and_client, loop):
     resp.send_bytes(b'ask')
 
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.MsgType.binary
+    assert msg.tp == aiohttp.WSMsgType.BINARY
     assert msg.data == b'ask/answer'
 
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.MsgType.close
+    assert msg.tp == aiohttp.WSMsgType.CLOSE
 
     yield from resp.close()
     yield from closed
@@ -116,17 +190,17 @@ def test_ping_pong_manual(create_app_and_client, loop):
     resp.send_bytes(b'ask')
 
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.MsgType.pong
+    assert msg.tp == aiohttp.WSMsgType.PONG
 
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.MsgType.ping
+    assert msg.tp == aiohttp.WSMsgType.PING
     resp.pong()
 
     msg = yield from resp.receive()
     assert msg.data == b'ask/answer'
 
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.MsgType.close
+    assert msg.tp == aiohttp.WSMsgType.CLOSE
 
     yield from closed
 
@@ -157,7 +231,7 @@ def test_close(create_app_and_client):
     assert resp.close_code == 1000
 
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.MsgType.closed
+    assert msg.tp == aiohttp.WSMsgType.CLOSED
 
 
 @pytest.mark.run_loop
@@ -184,11 +258,11 @@ def test_close_from_server(create_app_and_client, loop):
     resp.send_bytes(b'ask')
 
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.MsgType.close
+    assert msg.tp == aiohttp.WSMsgType.CLOSE
     assert resp.closed
 
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.MsgType.closed
+    assert msg.tp == aiohttp.WSMsgType.CLOSED
 
     yield from closed
 
@@ -221,7 +295,7 @@ def test_close_manual(create_app_and_client, loop):
     assert msg.data == 'test'
 
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.MsgType.close
+    assert msg.tp == aiohttp.WSMsgType.CLOSE
     assert msg.data == 1000
     assert msg.extra == ''
     assert not resp.closed
@@ -250,7 +324,7 @@ def test_close_timeout(create_app_and_client, loop):
 
     msg = yield from resp.receive()
     assert msg.data == 'test'
-    assert msg.tp == aiohttp.MsgType.text
+    assert msg.tp == aiohttp.WSMsgType.TEXT
 
     msg = yield from resp.close()
     assert resp.closed
@@ -325,4 +399,57 @@ def test_additional_headers(create_app_and_client, loop):
     resp = yield from client.ws_connect('/', headers={'x-hdr': 'xtra'})
     msg = yield from resp.receive()
     assert msg.data == 'answer'
+    yield from resp.close()
+
+
+@pytest.mark.run_loop
+def test_recv_protocol_error(create_app_and_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        yield from ws.receive_str()
+        ws._writer.writer.write(b'01234' * 100)
+        yield from ws.close()
+        return ws
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/')
+    resp.send_str('ask')
+
+    msg = yield from resp.receive()
+    assert msg.tp == aiohttp.WSMsgType.ERROR
+    assert type(msg.data) is aiohttp.WebSocketError
+    assert msg.data.args[0] == 'Received frame with non-zero reserved bits'
+    assert msg.extra is None
+    yield from resp.close()
+
+
+@pytest.mark.run_loop
+def test_recv_timeout(create_app_and_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        yield from ws.receive_str()
+
+        yield from asyncio.sleep(0.1, loop=request.app.loop)
+
+        yield from ws.close()
+        return ws
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+    resp = yield from client.ws_connect('/')
+    resp.send_str('ask')
+
+    with pytest.raises(asyncio.TimeoutError):
+        with aiohttp.Timeout(0.01, loop=app.loop):
+            yield from resp.receive()
+
     yield from resp.close()

@@ -13,6 +13,20 @@ server tests extremely easy, it also provides
 :ref:`test framework agnostic utilities <framework-agnostic-utilities>` for
 testing with other frameworks such as :ref:`unittest <unittest-example>`.
 
+
+
+For using pytest plugin please install pytest-aiohttp_ library:
+
+.. code-block:: shell
+
+   $ pip install pytest-aiohttp
+
+If you don't want to install *pytest-aiohttp* for some reason you may
+insert ``pytest_plugins = 'aiohttp.pytest_plugin'`` line into
+``conftest.py`` instead for the same functionality.
+
+
+
 Pytest example
 ~~~~~~~~~~~~~~
 
@@ -22,14 +36,13 @@ allows you to create a client to make requests to test your app.
 A simple would be::
 
     from aiohttp import web
-    pytest_plugins = 'aiohttp.pytest_plugin'
 
     async def hello(request):
         return web.Response(body=b'Hello, world')
 
     def create_app(loop):
         app = web.Application(loop=loop)
-        app.router.add_route('GET', '/', hello)
+        app.router.add_get('/', hello)
         return app
 
     async def test_hello(test_client):
@@ -53,7 +66,8 @@ app test client::
         if request.method == 'POST':
             request.app['value'] = (await request.post())['value']
             return web.Response(body=b'thanks for the data')
-        return web.Response(body='value: {}'.format(request.app['value']).encode())
+        return web.Response(
+            body='value: {}'.format(request.app['value']).encode())
 
     def create_app(loop):
         app = web.Application(loop=loop)
@@ -154,9 +168,7 @@ functionality, the AioHTTPTestCase is provided::
     class MyAppTestCase(AioHTTPTestCase):
 
         def get_app(self, loop):
-            """
-            override the get_app method to return
-            your application.
+            """Override the get_app method to return your application.
             """
             # it's important to use the loop passed here.
             return web.Application(loop=loop)
@@ -185,28 +197,46 @@ functionality, the AioHTTPTestCase is provided::
 Faking request object
 ---------------------
 
-aiohttp provides test utility for creating fake `web.Request` objects:
-:data:`aiohttp.test_utils.make_mocked_request`, it could be useful in case of
-simple unit tests, like handler tests, or simulate error conditions that
-hard to reproduce on real server. ::
+aiohttp provides test utility for creating fake
+:class:`aiohttp.web.Request` objects:
+:func:`aiohttp.test_utils.make_mocked_request`, it could be useful in
+case of simple unit tests, like handler tests, or simulate error
+conditions that hard to reproduce on real server::
 
     from aiohttp import web
+    from aiohttp.test_utils import make_mocked_request
+    from multidict import CIMultiDict
 
     def handler(request):
         assert request.headers.get('token') == 'x'
         return web.Response(body=b'data')
 
-    def test_handler()
-        req = make_request('get', 'http://python.org/', headers={'token': 'x')
-        resp = header(req)
+    def test_handler():
+        req = make_mocked_request('GET', '/', headers=CIMultiDict({'token': 'x'}))
+        resp = handler(req)
         assert resp.body == b'data'
+
+.. warning::
+
+   We don't recommed to apply
+   :func:`~aiohttp.test_utils.make_mocked_request` everywhere for
+   testing web-handler's business object -- please use test client and
+   real networking via 'localhost' as shown in examples before.
+
+   :func:`~aiohttp.test_utils.make_mocked_request` exists only for
+   testing complex cases (e.g. emulating network errors) which
+   are extremely hard or even impossible to test by conventional
+   way.
 
 
 aiohttp.test_utils
 ------------------
 
-.. _pytest: http://pytest.org/latest/
 .. automodule:: aiohttp.test_utils
-   :members: TestClient, AioHTTPTestCase, run_loop, loop_context, setup_test_loop, teardown_test_loop make_mocked_request
+   :members: TestClient, AioHTTPTestCase, unittest_run_loop, loop_context, setup_test_loop, teardown_test_loop, make_mocked_request
    :undoc-members:
    :show-inheritance:
+
+
+.. _pytest: http://pytest.org/latest/
+.. _pytest-aiohttp: https://pypi.python.org/pypi/pytest-aiohttp

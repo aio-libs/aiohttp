@@ -35,17 +35,23 @@ We expect you to use a python virtual environment to run our tests.
 
 There are several ways to make a virtual environment.
 
-If you like to use *virtualenv* please run::
+If you like to use *virtualenv* please run:
+
+.. code-block:: shell
 
    $ cd aiohttp
    $ virtualenv --python=`which python3` venv
 
-For standard python *venv*::
+For standard python *venv*:
+
+.. code-block:: shell
 
    $ cd aiohttp
    $ python3 -m venv venv
 
-For *virtualenvwrapper* (my choice)::
+For *virtualenvwrapper* (my choice):
+
+.. code-block:: shell
 
    $ cd aiohttp
    $ mkvirtualenv --python=`which python3` aiohttp
@@ -53,13 +59,26 @@ For *virtualenvwrapper* (my choice)::
 There are other tools like *pyvenv* but you know the rule of thumb
 now: create a python3 virtual environment and activate it.
 
-After that please install libraries required for development::
+After that please install libraries required for development:
+
+.. code-block:: shell
 
    $ pip install -r requirements-dev.txt
 
 We also recommend to install *ipdb* but it's on your own::
 
+.. code-block:: shell
+
    $ pip install ipdb
+
+.. note::
+  If you plan to use ``ipdb`` within the test suite, use:
+
+.. code-block:: shell
+
+    $ py.test tests -s -p no:timeout
+
+  to run the tests with disabled timeout guard and output capturing.
 
 Congratulations, you are ready to run the test suite
 
@@ -68,7 +87,9 @@ Run aiohttp test suite
 ----------------------
 
 After all the preconditions are met you can run tests typing the next
-command::
+command:
+
+.. code-block:: shell
 
    $ make test
 
@@ -87,7 +108,9 @@ Tests coverage
 
 We are trying hard to have good test coverage; please don't make it worse.
 
-Use::
+Use:
+
+.. code-block:: shell
 
    $ make cov
 
@@ -104,12 +127,14 @@ Documentation
 
 We encourage documentation improvements.
 
-Please before making a Pull Request about documentation changes run::
+Please before making a Pull Request about documentation changes run:
+
+.. code-block:: shell
 
    $ make doc
 
 Once it finishes it will output the index html page
-``open file:///.../aiohttp/docs/_build/html/index.html``..
+``open file:///.../aiohttp/docs/_build/html/index.html``.
 
 Go to the link and make sure your doc changes looks good.
 

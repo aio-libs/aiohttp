@@ -1,15 +1,16 @@
 import datetime
 import json
-import pytest
 import re
 from unittest import mock
+
+import pytest
 from multidict import CIMultiDict
+
 from aiohttp import hdrs, signals
-from aiohttp.web import (
-    ContentCoding, Request, StreamResponse, Response, json_response
-)
-from aiohttp.protocol import HttpVersion, HttpVersion11, HttpVersion10
-from aiohttp.protocol import RawRequestMessage
+from aiohttp.protocol import (HttpVersion, HttpVersion10, HttpVersion11,
+                              RawRequestMessage)
+from aiohttp.web import (ContentCoding, Request, Response, StreamResponse,
+                         json_response)
 
 
 def make_request(method, path, headers=CIMultiDict(),
@@ -453,7 +454,8 @@ def test_response_cookies():
             'Set-Cookie: name=another_other_value; Max-Age=10; Path=/')
 
     resp.del_cookie('name')
-    expected = 'Set-Cookie: name=("")?; Max-Age=0; Path=/'
+    expected = ('Set-Cookie: name=("")?; '
+                'expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; Path=/')
     assert re.match(expected, str(resp.cookies))
 
     resp.set_cookie('name', 'value', domain='local.host')
@@ -491,7 +493,8 @@ def test_response_cookie__issue_del_cookie():
     assert str(resp.cookies) == ''
 
     resp.del_cookie('name')
-    expected = 'Set-Cookie: name=("")?; Max-Age=0; Path=/'
+    expected = ('Set-Cookie: name=("")?; '
+                'expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; Path=/')
     assert re.match(expected, str(resp.cookies))
 
 
@@ -812,8 +815,8 @@ def test_send_headers_for_empty_body():
     yield from resp.prepare(req)
     yield from resp.write_eof()
     txt = buf.decode('utf8')
-    assert re.match('HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 0\r\n'
-                    'DATE: .+\r\nSERVER: .+\r\n\r\n', txt)
+    assert re.match('HTTP/1.1 200 OK\r\nContent-Length: 0\r\n'
+                    'Date: .+\r\nServer: .+\r\n\r\n', txt)
 
 
 @pytest.mark.run_loop
@@ -834,8 +837,8 @@ def test_render_with_body():
     yield from resp.prepare(req)
     yield from resp.write_eof()
     txt = buf.decode('utf8')
-    assert re.match('HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 4\r\n'
-                    'DATE: .+\r\nSERVER: .+\r\n\r\ndata', txt)
+    assert re.match('HTTP/1.1 200 OK\r\nContent-Length: 4\r\n'
+                    'Date: .+\r\nServer: .+\r\n\r\ndata', txt)
 
 
 @pytest.mark.run_loop
@@ -857,9 +860,9 @@ def test_send_set_cookie_header():
     yield from resp.prepare(req)
     yield from resp.write_eof()
     txt = buf.decode('utf8')
-    assert re.match('HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 0\r\n'
-                    'SET-COOKIE: name=value\r\n'
-                    'DATE: .+\r\nSERVER: .+\r\n\r\n', txt)
+    assert re.match('HTTP/1.1 200 OK\r\nContent-Length: 0\r\n'
+                    'Set-Cookie: name=value\r\n'
+                    'Date: .+\r\nServer: .+\r\n\r\n', txt)
 
 
 def test_set_text_with_content_type():
