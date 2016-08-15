@@ -205,6 +205,10 @@ class WebSocketResponse(StreamResponse):
                 if msg.type == WSMsgType.CLOSE:
                     self._close_code = msg.data
                     return True
+
+            self._close_code = 1006
+            self._exception = asyncio.TimeoutError()
+            return True
         else:
             return False
 
