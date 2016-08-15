@@ -71,11 +71,11 @@ This is simple usage example:
         await ws.prepare(request)
 
         async for msg in ws:
-            if msg.tp == web.MsgType.text:
+            if msg.type == web.MsgType.text:
                 ws.send_str("Hello, {}".format(msg.data))
-            elif msg.tp == web.MsgType.binary:
+            elif msg.type == web.MsgType.binary:
                 ws.send_bytes(msg.data)
-            elif msg.tp == web.MsgType.close:
+            elif msg.type == web.MsgType.close:
                 break
 
         return ws
