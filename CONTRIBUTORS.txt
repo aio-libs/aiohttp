@@ -55,6 +55,7 @@ Jaesung Lee
 Jashandeep Sohi
 Jeroen van der Heijden
 Jesus Cea
+Jinkyu Yi
 Joel Watts
 Julien Duponchelle
 Junjie Tao
