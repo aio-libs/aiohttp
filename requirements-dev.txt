@@ -2,8 +2,6 @@
 ipdb
 pytest-sugar
 ipython
-pyenchant
-sphinxcontrib-spelling
 sphinxcontrib-asyncio
 isort
 aiodns
