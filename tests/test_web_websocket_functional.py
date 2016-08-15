@@ -231,7 +231,9 @@ def test_close_timeout(create_app_and_client, loop):
         begin = ws._loop.time()
         yield from ws.close()
         elapsed = ws._loop.time() - begin
-        assert elapsed < 0.201, 'close() should have returned before at most 2x timeout.'
+        assert elapsed < 0.201, \
+            'close() should have returned before ' \
+            'at most 2x timeout.'
         closed.set_result(1)
         return ws
 
@@ -242,10 +244,9 @@ def test_close_timeout(create_app_and_client, loop):
     ws.send_str('request')
     assert 'reply' == (yield from ws.receive_str())
 
-    # The server closes here.
-    # The client send bogus messages with an internval
-    # shorter than server-side close timeout, to make
-    # the server hanging indefinitely.
+    # The server closes here.  Then the client sends bogus messages with an
+    # internval shorter than server-side close timeout, to make the server
+    # hanging indefinitely.
     yield from asyncio.sleep(0.04, loop=loop)
     ws.send_str('hang')
     yield from asyncio.sleep(0.04, loop=loop)
