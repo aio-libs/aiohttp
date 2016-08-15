@@ -74,6 +74,24 @@ def test_access_root_of_static_handler(tmp_dir_path, create_app_and_client,
 
 
 @pytest.mark.run_loop
+def test_access_non_existing_resource(tmp_dir_path, create_app_and_client):
+    """
+    Tests accessing non-existing resource
+    Try to access a non-exiting resource and make sure that 404 HTTP status
+    returned.
+    """
+    app, client = yield from create_app_and_client()
+
+    # Register global static route:
+    app.router.add_static('/', tmp_dir_path, show_index=True)
+
+    # Request the root of the static directory.
+    r = yield from client.get('/non_existing_resource')
+    assert r.status == 404
+    yield from r.release()
+
+
+@pytest.mark.run_loop
 def test_partialy_applied_handler(create_app_and_client):
     app, client = yield from create_app_and_client()
 
