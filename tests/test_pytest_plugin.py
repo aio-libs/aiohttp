@@ -31,7 +31,7 @@ def test_hello(test_client):
 
 
 @asyncio.coroutine
-def test_hello_with_loop(test_client, loop):
+def test_hello_from_app(test_client, loop):
     app = web.Application(loop=loop)
     app.router.add_get('/', hello)
     client = yield from test_client(app)
@@ -42,10 +42,17 @@ def test_hello_with_loop(test_client, loop):
 
 
 @asyncio.coroutine
+def test_hello_with_loop(test_client, loop):
+    client = yield from test_client(create_app)
+    resp = yield from client.get('/')
+    assert resp.status == 200
+    text = yield from resp.text()
+    assert 'Hello, world' in text
+
+
+@asyncio.coroutine
 def test_hello_fails(test_client):
-    app = web.Application(loop=loop)
-    app.router.add_get('/', hello)
-    client = yield from test_client(app)
+    client = yield from test_client(create_app)
     resp = yield from client.get('/')
     assert resp.status == 200
     text = yield from resp.text()
@@ -115,4 +122,4 @@ def test_client_failed_to_create(test_client):
 
 """)
     result = testdir.runpytest('-p', 'no:sugar')
-    result.assert_outcomes(passed=7, failed=1)
+    result.assert_outcomes(passed=8, failed=1)

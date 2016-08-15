@@ -60,6 +60,10 @@ def test_client(loop):
             app = app_factory(loop, *args, **kwargs)
         else:
             app = app_factory
+
+        assert app.loop is loop, \
+            "Application is attached to other event loop"
+
         client = TestClient(app)
         yield from client.start_server()
         clients.append(client)
