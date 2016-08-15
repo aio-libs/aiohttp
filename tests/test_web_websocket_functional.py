@@ -216,3 +216,46 @@ def test_send_recv_json(create_app_and_client, loop):
     yield from ws.close()
 
     yield from closed
+
+
+@pytest.mark.run_loop
+def test_close_timeout(create_app_and_client, loop):
+    closed = helpers.create_future(loop)
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse(timeout=0.1)
+        yield from ws.prepare(request)
+        assert 'request' == (yield from ws.receive_str())
+        ws.send_str('reply')
+        begin = ws._loop.time()
+        yield from ws.close()
+        elapsed = ws._loop.time() - begin
+        assert elapsed < 0.201, \
+            'close() should have returned before ' \
+            'at most 2x timeout.'
+        closed.set_result(1)
+        return ws
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/', handler)
+
+    ws = yield from client.ws_connect('/')
+    ws.send_str('request')
+    assert 'reply' == (yield from ws.receive_str())
+
+    # The server closes here.  Then the client sends bogus messages with an
+    # internval shorter than server-side close timeout, to make the server
+    # hanging indefinitely.
+    yield from asyncio.sleep(0.04, loop=loop)
+    ws.send_str('hang')
+    yield from asyncio.sleep(0.04, loop=loop)
+    ws.send_str('hang')
+    yield from asyncio.sleep(0.04, loop=loop)
+    ws.send_str('hang')
+    yield from asyncio.sleep(0.04, loop=loop)
+    ws.send_str('hang')
+    yield from asyncio.sleep(0.04, loop=loop)
+    # The server should have been closed now.
+    assert 1 == (yield from closed)
+    yield from ws.close()

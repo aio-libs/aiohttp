@@ -187,7 +187,8 @@ class WebSocketResponse(StreamResponse):
             if self._closing:
                 return True
 
-            while True:
+            begin = self._loop.time()
+            while self._loop.time() - begin < self._timeout:
                 try:
                     with Timeout(timeout=self._timeout,
                                  loop=self._loop):
