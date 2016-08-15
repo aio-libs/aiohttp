@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 
 import pytest
+from aiohttp.web import Application
 
 from .test_utils import (TestClient, loop_context, setup_test_loop,
                          teardown_test_loop)
@@ -55,7 +56,10 @@ def test_client(loop):
 
     @asyncio.coroutine
     def _create_from_app_factory(app_factory, *args, **kwargs):
-        app = app_factory(loop, *args, **kwargs)
+        if not isinstance(app_factory, Application):
+            app = app_factory(loop, *args, **kwargs)
+        else:
+            app = app_factory
         client = TestClient(app)
         yield from client.start_server()
         clients.append(client)

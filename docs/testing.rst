@@ -40,13 +40,10 @@ A simple would be::
     async def hello(request):
         return web.Response(body=b'Hello, world')
 
-    def create_app(loop):
+    async def test_hello(test_client, loop):
         app = web.Application(loop=loop)
         app.router.add_get('/', hello)
-        return app
-
-    async def test_hello(test_client):
-        client = await test_client(create_app)
+        client = await test_client(lambda loop: app)
         resp = await client.get('/')
         assert resp.status == 200
         text = await resp.text()
@@ -69,14 +66,11 @@ app test client::
         return web.Response(
             body='value: {}'.format(request.app['value']).encode())
 
-    def create_app(loop):
-        app = web.Application(loop=loop)
-        app.router.add_route('*', '/', previous)
-        return app
-
     @pytest.fixture
     def cli(loop, test_client):
-        return loop.run_until_complete(test_client(create_app))
+        app = web.Application(loop=loop)
+        app.router.add_get('/', hello)
+        return loop.run_until_complete(test_client(lambda loop: app))
 
     async def test_set_value(cli):
         resp = await cli.post('/', data={'value': 'foo'})

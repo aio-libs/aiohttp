@@ -15,15 +15,11 @@ def hello(request):
     return web.Response(body=b'Hello, world')
 
 
-def create_app(loop):
-    app = web.Application(loop=loop)
-    app.router.add_route('GET', '/', hello)
-    return app
-
-
 @asyncio.coroutine
-def test_hello(test_client):
-    client = yield from test_client(create_app)
+def test_hello(test_client, loop):
+    app = web.Application(loop=loop)
+    app.router.add_get('/', hello)
+    client = yield from test_client(lambda loop: app)
     resp = yield from client.get('/')
     assert resp.status == 200
     text = yield from resp.text()
@@ -32,7 +28,9 @@ def test_hello(test_client):
 
 @asyncio.coroutine
 def test_hello_with_loop(test_client, loop):
-    client = yield from test_client(create_app)
+    app = web.Application(loop=loop)
+    app.router.add_get('/', hello)
+    client = yield from test_client(lambda loop: app)
     resp = yield from client.get('/')
     assert resp.status == 200
     text = yield from resp.text()
@@ -41,7 +39,9 @@ def test_hello_with_loop(test_client, loop):
 
 @asyncio.coroutine
 def test_hello_fails(test_client):
-    client = yield from test_client(create_app)
+    app = web.Application(loop=loop)
+    app.router.add_get('/', hello)
+    client = yield from test_client(lambda loop: app)
     resp = yield from client.get('/')
     assert resp.status == 200
     text = yield from resp.text()
