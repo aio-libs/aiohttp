@@ -57,6 +57,7 @@ Jeroen van der Heijden
 Jesus Cea
 Jinkyu Yi
 Joel Watts
+Joongi Kim
 Julien Duponchelle
 Junjie Tao
 Kay Zheng
@@ -113,6 +114,7 @@ Vladimir Zakharov
 W. Trevor King
 Willem de Groot
 Yannick Koechlin
+Young-Ho Cha
 Yury Selivanov
 Yusuke Tsutsumi
 Марк Коренберг
