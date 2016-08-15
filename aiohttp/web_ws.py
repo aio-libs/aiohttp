@@ -14,6 +14,7 @@ from .web_reqrep import StreamResponse
 __all__ = ('WebSocketResponse',)
 
 PY_35 = sys.version_info >= (3, 5)
+PY_352 = sys.version_info >= (3, 5, 2)
 
 THRESHOLD_CONNLOST_ACCESS = 5
 
@@ -291,9 +292,13 @@ class WebSocketResponse(StreamResponse):
         raise RuntimeError("Cannot call .write() for websocket")
 
     if PY_35:
-        @asyncio.coroutine
-        def __aiter__(self):
-            return self
+        if PY_352:
+            def __aiter__(self):
+                return self
+        else:
+            @asyncio.coroutine
+            def __aiter__(self):
+                return self
 
         @asyncio.coroutine
         def __anext__(self):
