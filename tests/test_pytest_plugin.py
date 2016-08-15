@@ -34,7 +34,7 @@ def test_hello(test_client):
 def test_hello_with_loop(test_client, loop):
     app = web.Application(loop=loop)
     app.router.add_get('/', hello)
-    client = yield from test_client(lambda loop: app)
+    client = yield from test_client(app)
     resp = yield from client.get('/')
     assert resp.status == 200
     text = yield from resp.text()
@@ -45,7 +45,7 @@ def test_hello_with_loop(test_client, loop):
 def test_hello_fails(test_client):
     app = web.Application(loop=loop)
     app.router.add_get('/', hello)
-    client = yield from test_client(lambda loop: app)
+    client = yield from test_client(app)
     resp = yield from client.get('/')
     assert resp.status == 200
     text = yield from resp.text()

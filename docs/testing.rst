@@ -43,7 +43,7 @@ A simple would be::
     async def test_hello(test_client, loop):
         app = web.Application(loop=loop)
         app.router.add_get('/', hello)
-        client = await test_client(lambda loop: app)
+        client = await test_client(app)
         resp = await client.get('/')
         assert resp.status == 200
         text = await resp.text()
@@ -70,7 +70,7 @@ app test client::
     def cli(loop, test_client):
         app = web.Application(loop=loop)
         app.router.add_get('/', hello)
-        return loop.run_until_complete(test_client(lambda loop: app))
+        return loop.run_until_complete(test_client(app))
 
     async def test_set_value(cli):
         resp = await cli.post('/', data={'value': 'foo'})
