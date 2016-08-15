@@ -123,8 +123,13 @@ class ClientRequest:
 
         # check domain idna encoding
         try:
-            netloc = netloc.encode('idna').decode('utf-8')
             host = host.encode('idna').decode('utf-8')
+            #To show more compact to implement codes, I used 'make_netloc' function.
+            #I think it would be nicer... than implement all contents.
+            netloc = self.make_netloc(url_parsed.username,
+                                      url_parsed.password,
+                                      host,
+                                      url_parsed.port)
         except UnicodeError:
             raise ValueError('URL has an invalid label.')
 
@@ -148,6 +153,19 @@ class ClientRequest:
                 port = HTTP_PORT
 
         self.host, self.port, self.scheme = host, port, scheme
+
+    #Already Coded from yarl project.. I just copied it!
+    def make_netloc(self, user, password, host, port):
+        ret = host
+        if port:
+            ret = ret + ':' + str(port)
+        if password:
+            if not user:
+                raise ValueError("Non-empty password requires non-empty user")
+            user = user + ':' + password
+        if user:
+            ret = user + '@' + ret
+        return ret
 
     def update_version(self, version):
         """Convert request version to two elements tuple.
