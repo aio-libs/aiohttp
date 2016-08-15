@@ -30,7 +30,7 @@ async def index(request):
     while True:
         msg = await resp.receive()
 
-        if msg.tp == web.MsgType.text:
+        if msg.type == web.MsgType.text:
             for ws in request.app['sockets'].values():
                 if ws is not resp:
                     ws.send_str(json.dumps({'action': 'sent',

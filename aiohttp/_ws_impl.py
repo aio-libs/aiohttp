@@ -68,7 +68,7 @@ MSG_SIZE = 2 ** 14
 
 
 _WSMessageBase = collections.namedtuple('_WSMessageBase',
-                                        ['tp', 'data', 'extra'])
+                                        ['type', 'data', 'extra'])
 
 
 class WSMessage(_WSMessageBase):
@@ -78,6 +78,10 @@ class WSMessage(_WSMessageBase):
         .. versionadded:: 0.22
         """
         return loads(self.data)
+
+    @property
+    def tp(self):
+        return self.type
 
 
 CLOSED_MESSAGE = WSMessage(WSMsgType.CLOSED, None, None)

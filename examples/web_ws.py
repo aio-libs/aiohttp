@@ -27,7 +27,7 @@ async def wshandler(request):
         request.app['sockets'].append(resp)
 
         async for msg in resp:
-            if msg.tp == WSMsgType.TEXT:
+            if msg.type == WSMsgType.TEXT:
                 for ws in request.app['sockets']:
                     if ws is not resp:
                         ws.send_str(msg.data)

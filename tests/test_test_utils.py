@@ -21,7 +21,7 @@ def _create_example_app(loop):
         ws = web.WebSocketResponse()
         yield from ws.prepare(request)
         msg = yield from ws.receive()
-        if msg.tp == aiohttp.WSMsgType.TEXT:
+        if msg.type == aiohttp.WSMsgType.TEXT:
             if msg.data == 'close':
                 yield from ws.close()
             else:
@@ -148,11 +148,11 @@ def test_client_websocket(loop, test_client):
     resp = yield from test_client.ws_connect("/websocket")
     resp.send_str("foo")
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.WSMsgType.TEXT
+    assert msg.type == aiohttp.WSMsgType.TEXT
     assert "foo" in msg.data
     resp.send_str("close")
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.WSMsgType.CLOSE
+    assert msg.type == aiohttp.WSMsgType.CLOSE
 
 
 @pytest.mark.run_loop

@@ -387,7 +387,8 @@ class TestWebSocketClient(unittest.TestCase):
         reader.read.return_value.set_exception(exc)
 
         msg = self.loop.run_until_complete(resp.receive())
-        self.assertEqual(msg.tp, aiohttp.MsgType.ERROR)
+        self.assertEqual(msg.type, aiohttp.MsgType.ERROR)
+        self.assertIs(msg.type, msg.tp)
         self.assertIs(resp.exception(), exc)
 
     def test_receive_runtime_err(self):

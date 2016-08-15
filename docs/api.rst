@@ -134,7 +134,7 @@ WebSocket utilities
 
    Websocket message, returned by ``.receive()`` calls.
 
-   .. attribute:: tp
+   .. attribute:: type
 
       Message type, :class:`WSMsgType` instance.
 
@@ -166,6 +166,12 @@ WebSocket utilities
       .. versionadded:: 0.22
 
       :param loads: optional JSON decoder function.
+
+   .. attribute:: tp
+
+      Deprecated alias for :attr:`type`.
+
+      .. deprecated:: 1.0
 
 
 aiohttp.errors module

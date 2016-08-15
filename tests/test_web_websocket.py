@@ -333,7 +333,8 @@ def test_receive_exc_in_reader(make_request, loop, reader):
     reader.read = make_mocked_coro(res)
 
     msg = yield from ws.receive()
-    assert msg.tp == WSMsgType.ERROR
+    assert msg.type == WSMsgType.ERROR
+    assert msg.type is msg.tp
     assert msg.data is exc
     assert ws.exception() is exc
 
@@ -379,7 +380,8 @@ def test_receive_client_disconnected(make_request, loop, reader):
 
     msg = yield from ws.receive()
     assert ws.closed
-    assert msg.tp == WSMsgType.CLOSE
+    assert msg.type == WSMsgType.CLOSE
+    assert msg.type is msg.tp
     assert msg.data is None
     assert ws.exception() is None
 
