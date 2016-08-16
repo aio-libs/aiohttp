@@ -62,10 +62,24 @@ def test_hello_fails(test_client):
 
 
 @asyncio.coroutine
-def test_hello_from_app_fails(test_client):
+def test_hello_with_fake_loop(test_client):
     with pytest.raises(AssertionError):
         fake_loop = mock.Mock()
         yield from test_client(web.Application(loop=fake_loop))
+
+
+@asyncio.coroutine
+def test_set_args(test_client, loop):
+    with pytest.raises(AssertionError):
+        app = web.Application(loop=loop)
+        yield from test_client(app, 1, 2, 3)
+
+
+@asyncio.coroutine
+def test_set_keyword_args(test_client, loop):
+    with pytest.raises(AssertionError):
+        app = web.Application(loop=loop)
+        yield from test_client(app, param=1)
 
 
 @asyncio.coroutine
@@ -131,4 +145,4 @@ def test_client_failed_to_create(test_client):
 
 """)
     result = testdir.runpytest('-p', 'no:sugar')
-    result.assert_outcomes(passed=9, failed=1)
+    result.assert_outcomes(passed=11, failed=1)

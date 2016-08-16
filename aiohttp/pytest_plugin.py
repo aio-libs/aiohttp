@@ -59,6 +59,8 @@ def test_client(loop):
         if not isinstance(app_factory, Application):
             app = app_factory(loop, *args, **kwargs)
         else:
+            assert not args, "args should be empty"
+            assert not kwargs, "kwargs should be empty"
             app = app_factory
 
         assert app.loop is loop, \
