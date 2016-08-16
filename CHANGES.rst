@@ -70,6 +70,8 @@ CHANGES
 - Add Python 3.5.2/3.6+ compatibility patch for async generator
   protocol change #1082
 
+- Improvement test_client can accept instance object #1083
+
 
 0.22.5 (08-02-2016)
 -------------------

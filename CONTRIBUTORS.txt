@@ -93,6 +93,7 @@ Robert Lu
 Samuel Colvin
 Sebastian Hanula
 Sebastian Hüther
+SeongSoo Cho
 Sergey Ninua
 Sergey Skripnick
 Simon Kennedy
