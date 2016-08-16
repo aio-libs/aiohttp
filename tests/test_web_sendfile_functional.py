@@ -21,20 +21,19 @@ except:
 pytest_plugins = 'aiohttp.pytest_plugin'
 
 
-@pytest.fixture
-def sender():
+@pytest.fixture(params=['sendfile', 'fallback'], ids=['sendfile', 'fallback'])
+def sender(request):
     def maker(*args, **kwargs):
-        return FileSender(*args, **kwargs)
+        ret = FileSender(*args, **kwargs)
+        if request.param == 'fallback':
+            ret._sendfile = ret._sendfile_fallback
+        return ret
     return maker
 
 
-@pytest.fixture
-def filepath():
-    return pathlib.Path(__file__).parent / 'data.unknown_mime_type'
-
-
 @asyncio.coroutine
-def test_static_file_ok(loop, test_client, sender, filepath):
+def test_static_file_ok(loop, test_client, sender):
+    filepath = pathlib.Path(__file__).parent / 'data.unknown_mime_type'
 
     @asyncio.coroutine
     def handler(request):
