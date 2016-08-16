@@ -394,17 +394,31 @@ def test_params_update_path_and_url(make_request):
     assert req.path == '/?test=foo&test=baz'
     assert req.url == 'http://python.org/?test=foo&test=baz'
 
+
 def test_gen_netloc_all(make_request):
-    req = make_request('get', 'https://aiohttp:pwpwpw@12345678901234567890123456789012345678901234567890:8080')
-    assert req.netloc == '12345678901234567890123456789012345678901234567890:8080'
+    req = make_request('get',
+                       'https://aiohttp:pwpwpw@' +
+                       '12345678901234567890123456789' +
+                       '012345678901234567890:8080')
+    assert req.netloc == '12345678901234567890123456789' +\
+                         '012345678901234567890:8080'
+
 
 def test_gen_netloc_no_port(make_request):
-    req = make_request('get', 'https://aiohttp:pwpwpw@12345678901234567890123456789012345678901234567890/')
-    assert req.netloc == "12345678901234567890123456789012345678901234567890"
+    req = make_request('get',
+                       'https://aiohttp:pwpwpw@' +
+                       '12345678901234567890123456789' +
+                       '012345678901234567890/')
+    assert req.netloc == '12345678901234567890123456789' +\
+                         '012345678901234567890'
+
 
 def test_gen_notloc_failed(make_request):
     with pytest.raises(ValueError) as excinfo:
-        make_request('get', 'https://aiohttp:pwpwpw@12345678901234567890123456789012345678901234567890123456789012345/')
+        make_request('get',
+                     'https://aiohttp:pwpwpw@' +
+                     '123456789012345678901234567890123456789' +
+                     '01234567890123456789012345/')
         assert excinfo.value.message == "URL has an invalid label."
 
 
