@@ -87,10 +87,13 @@ class FileSender:
         chunk_size = self._chunk_size
 
         chunk = fobj.read(chunk_size)
-        while chunk:
+        while True:
             resp.write(chunk)
             yield from resp.drain()
-            chunk = fobj.read(chunk_size)
+            count = count - chunk_size
+            if count <= 0:
+                break
+            chunk = fobj.read(count)
 
     if hasattr(os, "sendfile"):  # pragma: no cover
         _sendfile = _sendfile_system
