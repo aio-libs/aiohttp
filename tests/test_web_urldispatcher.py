@@ -124,6 +124,26 @@ def test_unauthorized_folder_access(tmp_dir_path, create_app_and_client):
 
 
 @pytest.mark.run_loop
+def test_access_symlink_loop(tmp_dir_path, create_app_and_client):
+    """
+    Tests the access to a looped symlink, which could not be resolved.
+    """
+    my_dir_path = os.path.join(tmp_dir_path, 'my_symlink')
+    os.symlink(my_dir_path, my_dir_path)
+
+    app, client = yield from create_app_and_client()
+
+    # Register global static route:
+    app.router.add_static('/', tmp_dir_path, show_index=True)
+
+    # Request the root of the static directory.
+    r = yield from client.get('/my_symlink')
+    assert r.status == 404
+
+    yield from r.release()
+
+
+@pytest.mark.run_loop
 def test_partialy_applied_handler(create_app_and_client):
     app, client = yield from create_app_and_client()
 
