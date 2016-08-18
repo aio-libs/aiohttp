@@ -33,9 +33,11 @@ Chris Laws
 Chris Moore
 Daniel García
 Daniel Nelson
+Danny Song
 David Michael Brown
 Dima Veselov
 Dimitar Dimitrov
+Dmitry Trofimov
 Dmytro Kuznetsov
 Dustin J. Mitchell
 Elizabeth Leddy
@@ -54,7 +56,9 @@ Jaesung Lee
 Jashandeep Sohi
 Jeroen van der Heijden
 Jesus Cea
+Jinkyu Yi
 Joel Watts
+Joongi Kim
 Julien Duponchelle
 Junjie Tao
 Kay Zheng
@@ -66,6 +70,7 @@ Louis-Philippe Huberdeau
 Lubomir Gelo
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
+Manuel Miranda
 Marco Paolini
 Mariano Anaya
 Martin Richard
@@ -88,6 +93,7 @@ Robert Lu
 Samuel Colvin
 Sebastian Hanula
 Sebastian Hüther
+SeongSoo Cho
 Sergey Ninua
 Sergey Skripnick
 Simon Kennedy
@@ -111,6 +117,7 @@ Vladimir Zakharov
 W. Trevor King
 Willem de Groot
 Yannick Koechlin
+Young-Ho Cha
 Yury Selivanov
 Yusuke Tsutsumi
 Марк Коренберг

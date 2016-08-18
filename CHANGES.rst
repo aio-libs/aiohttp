@@ -63,6 +63,15 @@ CHANGES
 
 - Link header for 451 status code is mandatory
 
+- Fix test_client fixture to allow multiple clients per test #1072
+
+- make_mocked_request now accepts dict as headers #1073
+
+- Add Python 3.5.2/3.6+ compatibility patch for async generator
+  protocol change #1082
+
+- Improvement test_client can accept instance object #1083
+
 
 0.22.5 (08-02-2016)
 -------------------

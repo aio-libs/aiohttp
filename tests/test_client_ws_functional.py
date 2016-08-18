@@ -153,11 +153,11 @@ def test_ping_pong(create_app_and_client, loop):
     resp.send_bytes(b'ask')
 
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.WSMsgType.BINARY
+    assert msg.type == aiohttp.WSMsgType.BINARY
     assert msg.data == b'ask/answer'
 
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.WSMsgType.CLOSE
+    assert msg.type == aiohttp.WSMsgType.CLOSE
 
     yield from resp.close()
     yield from closed
@@ -190,17 +190,17 @@ def test_ping_pong_manual(create_app_and_client, loop):
     resp.send_bytes(b'ask')
 
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.WSMsgType.PONG
+    assert msg.type == aiohttp.WSMsgType.PONG
 
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.WSMsgType.PING
+    assert msg.type == aiohttp.WSMsgType.PING
     resp.pong()
 
     msg = yield from resp.receive()
     assert msg.data == b'ask/answer'
 
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.WSMsgType.CLOSE
+    assert msg.type == aiohttp.WSMsgType.CLOSE
 
     yield from closed
 
@@ -231,7 +231,7 @@ def test_close(create_app_and_client):
     assert resp.close_code == 1000
 
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.WSMsgType.CLOSED
+    assert msg.type == aiohttp.WSMsgType.CLOSED
 
 
 @pytest.mark.run_loop
@@ -258,11 +258,11 @@ def test_close_from_server(create_app_and_client, loop):
     resp.send_bytes(b'ask')
 
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.WSMsgType.CLOSE
+    assert msg.type == aiohttp.WSMsgType.CLOSE
     assert resp.closed
 
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.WSMsgType.CLOSED
+    assert msg.type == aiohttp.WSMsgType.CLOSED
 
     yield from closed
 
@@ -295,7 +295,7 @@ def test_close_manual(create_app_and_client, loop):
     assert msg.data == 'test'
 
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.WSMsgType.CLOSE
+    assert msg.type == aiohttp.WSMsgType.CLOSE
     assert msg.data == 1000
     assert msg.extra == ''
     assert not resp.closed
@@ -324,7 +324,7 @@ def test_close_timeout(create_app_and_client, loop):
 
     msg = yield from resp.receive()
     assert msg.data == 'test'
-    assert msg.tp == aiohttp.WSMsgType.TEXT
+    assert msg.type == aiohttp.WSMsgType.TEXT
 
     msg = yield from resp.close()
     assert resp.closed
@@ -421,7 +421,7 @@ def test_recv_protocol_error(create_app_and_client):
     resp.send_str('ask')
 
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.WSMsgType.ERROR
+    assert msg.type == aiohttp.WSMsgType.ERROR
     assert type(msg.data) is aiohttp.WebSocketError
     assert msg.data.args[0] == 'Received frame with non-zero reserved bits'
     assert msg.extra is None

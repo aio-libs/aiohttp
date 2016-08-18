@@ -538,12 +538,12 @@ with the peer::
         await ws.prepare(request)
 
         async for msg in ws:
-            if msg.tp == aiohttp.WSMsgType.TEXT:
+            if msg.type == aiohttp.WSMsgType.TEXT:
                 if msg.data == 'close':
                     await ws.close()
                 else:
                     ws.send_str(msg.data + '/answer')
-            elif msg.tp == aiohttp.WSMsgType.ERROR:
+            elif msg.type == aiohttp.WSMsgType.ERROR:
                 print('ws connection closed with exception %s' %
                       ws.exception())
 
@@ -769,7 +769,7 @@ the :ref:`request handler <aiohttp-web-handler>` selected by the router itself
 
 *Middleware factories* should return a new handler that has the same signature
 as a :ref:`request handler <aiohttp-web-handler>`. That is, it should accept a
-single :class:`Response` instance and return a :class:`Response`, or raise an
+single :class:`Request` instance and return a :class:`Response`, or raise an
 exception.
 
 Internally, a single :ref:`request handler <aiohttp-web-handler>` is constructed

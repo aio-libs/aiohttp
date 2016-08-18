@@ -40,13 +40,10 @@ A simple would be::
     async def hello(request):
         return web.Response(body=b'Hello, world')
 
-    def create_app(loop):
+    async def test_hello(test_client, loop):
         app = web.Application(loop=loop)
         app.router.add_get('/', hello)
-        return app
-
-    async def test_hello(test_client):
-        client = await test_client(create_app)
+        client = await test_client(app)
         resp = await client.get('/')
         assert resp.status == 200
         text = await resp.text()
@@ -66,16 +63,14 @@ app test client::
         if request.method == 'POST':
             request.app['value'] = (await request.post())['value']
             return web.Response(body=b'thanks for the data')
-        return web.Response(body='value: {}'.format(request.app['value']).encode())
-
-    def create_app(loop):
-        app = web.Application(loop=loop)
-        app.router.add_route('*', '/', previous)
-        return app
+        return web.Response(
+            body='value: {}'.format(request.app['value']).encode())
 
     @pytest.fixture
     def cli(loop, test_client):
-        return loop.run_until_complete(test_client(create_app))
+        app = web.Application(loop=loop)
+        app.router.add_get('/', hello)
+        return loop.run_until_complete(test_client(app))
 
     async def test_set_value(cli):
         resp = await cli.post('/', data={'value': 'foo'})
@@ -167,9 +162,7 @@ functionality, the AioHTTPTestCase is provided::
     class MyAppTestCase(AioHTTPTestCase):
 
         def get_app(self, loop):
-            """
-            override the get_app method to return
-            your application.
+            """Override the get_app method to return your application.
             """
             # it's important to use the loop passed here.
             return web.Application(loop=loop)
@@ -205,14 +198,15 @@ case of simple unit tests, like handler tests, or simulate error
 conditions that hard to reproduce on real server::
 
     from aiohttp import web
+    from aiohttp.test_utils import make_mocked_request
 
     def handler(request):
         assert request.headers.get('token') == 'x'
         return web.Response(body=b'data')
 
-    def test_handler()
-        req = make_request('get', 'http://python.org/', headers={'token': 'x')
-        resp = header(req)
+    def test_handler():
+        req = make_mocked_request('GET', '/', headers={'token': 'x'})
+        resp = handler(req)
         assert resp.body == b'data'
 
 .. warning::
@@ -232,7 +226,7 @@ aiohttp.test_utils
 ------------------
 
 .. automodule:: aiohttp.test_utils
-   :members: TestClient, AioHTTPTestCase, run_loop, loop_context, setup_test_loop, teardown_test_loop make_mocked_request
+   :members: TestClient, AioHTTPTestCase, unittest_run_loop, loop_context, setup_test_loop, teardown_test_loop, make_mocked_request
    :undoc-members:
    :show-inheritance:
 

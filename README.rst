@@ -10,10 +10,6 @@ http client/server for asyncio
   :target:  https://travis-ci.org/KeepSafe/aiohttp
   :align: right
 
-.. image:: https://coveralls.io/repos/KeepSafe/aiohttp/badge.svg?branch=master&service=github
-  :target:  https://coveralls.io/github/KeepSafe/aiohttp?branch=master
-  :align: right
-
 .. image:: https://codecov.io/gh/KeepSafe/aiohttp/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/KeepSafe/aiohttp
 
@@ -41,14 +37,14 @@ To retrieve something from the web:
   import aiohttp
   import asyncio
 
-  async def fetch(session, url):
-      with aiohttp.Timeout(10):
+  async def fetch(session, url, *, loop):
+      with aiohttp.Timeout(10, loop=loop):
           async with session.get(url) as response:
               return await response.text()
 
   async def main(loop):
       async with aiohttp.ClientSession(loop=loop) as session:
-          html = await fetch(session, 'http://python.org')
+          html = await fetch(session, 'http://python.org', loop=loop)
           print(html)
 
   if __name__ == '__main__':
@@ -75,11 +71,11 @@ This is simple usage example:
         await ws.prepare(request)
 
         async for msg in ws:
-            if msg.tp == web.MsgType.text:
+            if msg.type == web.MsgType.text:
                 ws.send_str("Hello, {}".format(msg.data))
-            elif msg.tp == web.MsgType.binary:
+            elif msg.type == web.MsgType.binary:
                 ws.send_bytes(msg.data)
-            elif msg.tp == web.MsgType.close:
+            elif msg.type == web.MsgType.close:
                 break
 
         return ws

@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 
 import pytest
+from aiohttp.web import Application
 
 from .test_utils import (TestClient, loop_context, setup_test_loop,
                          teardown_test_loop)
@@ -51,17 +52,26 @@ def loop():
 
 @pytest.yield_fixture
 def test_client(loop):
-    client = None
+    clients = []
 
     @asyncio.coroutine
-    def _create_from_app_factory(app_factory, *args, **kwargs):
-        nonlocal client
-        app = app_factory(loop, *args, **kwargs)
+    def _create_from_app_factory(app_or_factory, *args, **kwargs):
+        if not isinstance(app_or_factory, Application):
+            app = app_or_factory(loop, *args, **kwargs)
+        else:
+            assert not args, "args should be empty"
+            assert not kwargs, "kwargs should be empty"
+            app = app_or_factory
+
+        assert app.loop is loop, \
+            "Application is attached to other event loop"
+
         client = TestClient(app)
         yield from client.start_server()
+        clients.append(client)
         return client
 
     yield _create_from_app_factory
 
-    if client:
-        client.close()
+    while clients:
+        clients.pop().close()
