@@ -4,15 +4,15 @@ import os
 import shutil
 import tempfile
 
+from unittest import mock
+from unittest.mock import MagicMock
+
 import pytest
 
 import aiohttp.web
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPCreated, Response
 from aiohttp.web_urldispatcher import PlainRoute, SystemRoute, UrlDispatcher
-
-from unittest import mock
-from unittest.mock import MagicMock
 
 
 @pytest.fixture(scope='function')
