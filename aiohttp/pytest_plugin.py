@@ -55,13 +55,13 @@ def test_client(loop):
     clients = []
 
     @asyncio.coroutine
-    def _create_from_app_factory(app_factory, *args, **kwargs):
-        if not isinstance(app_factory, Application):
-            app = app_factory(loop, *args, **kwargs)
+    def _create_from_app_factory(app_or_factory, *args, **kwargs):
+        if not isinstance(app_or_factory, Application):
+            app = app_or_factory(loop, *args, **kwargs)
         else:
             assert not args, "args should be empty"
             assert not kwargs, "kwargs should be empty"
-            app = app_factory
+            app = app_or_factory
 
         assert app.loop is loop, \
             "Application is attached to other event loop"
