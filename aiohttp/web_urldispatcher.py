@@ -524,7 +524,7 @@ class StaticRoute(Route):
 
         index_list = []
         dir_index = filepath.iterdir()
-        for _file in dir_index:
+        for _file in sorted(dir_index):
             # show file url as relative to static path
             file_url = _file.as_posix()[posix_dir_len:]
 
