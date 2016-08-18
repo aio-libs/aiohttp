@@ -495,7 +495,10 @@ class StaticRoute(Route):
         # on opening a dir, load it's contents if allowed
         if filepath.is_dir():
             if self._show_index:
-                ret = Response(text=self._directory_as_html(filepath))
+                try:
+                    ret = Response(text=self._directory_as_html(filepath))
+                except PermissionError:
+                    raise HTTPForbidden()
             else:
                 raise HTTPForbidden()
         elif filepath.is_file():

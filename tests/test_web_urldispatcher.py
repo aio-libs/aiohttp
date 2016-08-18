@@ -11,6 +11,9 @@ from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPCreated, Response
 from aiohttp.web_urldispatcher import PlainRoute, SystemRoute, UrlDispatcher
 
+from unittest import mock
+from unittest.mock import MagicMock
+
 
 @pytest.fixture(scope='function')
 def tmp_dir_path(request):
@@ -88,6 +91,35 @@ def test_access_non_existing_resource(tmp_dir_path, create_app_and_client):
     # Request the root of the static directory.
     r = yield from client.get('/non_existing_resource')
     assert r.status == 404
+    yield from r.release()
+
+
+@pytest.mark.run_loop
+def test_unauthorized_folder_access(tmp_dir_path, create_app_and_client):
+    """
+    Tests the unauthorized access to a folder of static file server.
+    Try to list a folder content of static file server when server does not
+    have permissions to do so for the folder.
+    """
+    my_dir_path = os.path.join(tmp_dir_path, 'my_dir')
+    os.mkdir(my_dir_path)
+
+    app, client = yield from create_app_and_client()
+
+    with mock.patch('pathlib.Path.__new__') as path_constructor:
+        path = MagicMock()
+        path.joinpath.return_value = path
+        path.resolve.return_value = path
+        path.iterdir.return_value.__iter__.side_effect = PermissionError()
+        path_constructor.return_value = path
+
+        # Register global static route:
+        app.router.add_static('/', tmp_dir_path, show_index=True)
+
+        # Request the root of the static directory.
+        r = yield from client.get('/my_dir')
+        assert r.status == 403
+
     yield from r.release()
 
 
