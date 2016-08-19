@@ -235,12 +235,6 @@ def parse_mimetype(mimetype):
     return mtype, stype, suffix, params
 
 
-def str_to_bytes(s, encoding='utf-8'):
-    if isinstance(s, str):
-        return s.encode(encoding)
-    return s
-
-
 def guess_filename(obj, default=None):
     name = getattr(obj, 'name', None)
     if name and name[0] != '<' and name[-1] != '>':

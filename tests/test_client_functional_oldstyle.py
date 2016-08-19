@@ -273,7 +273,7 @@ class Router:
             except:
                 return
         else:
-            response.write(helpers.str_to_bytes(body))
+            response.write(body.encode('utf8'))
 
         response.write_eof()
 
