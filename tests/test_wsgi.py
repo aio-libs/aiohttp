@@ -191,7 +191,7 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
             [c[1][0] for c in self.writer.write.mock_calls])
         self.assertTrue(content.startswith(b'HTTP/1.1 200 OK'))
         self.assertTrue(content.endswith(b'data\r\n0\r\n\r\n'))
-        self.assertFalse(srv._keep_alive)
+        self.assertFalse(srv._keepalive)
 
     def test_handle_request_io(self):
 
@@ -232,7 +232,7 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
             [c[1][0] for c in self.writer.write.mock_calls])
         self.assertTrue(content.startswith(b'HTTP/1.1 200 OK'))
         self.assertTrue(content.endswith(b'data\r\n0\r\n\r\n'))
-        self.assertTrue(srv._keep_alive)
+        self.assertTrue(srv._keepalive)
 
     def test_handle_request_readpayload(self):
 
