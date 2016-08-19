@@ -144,6 +144,38 @@ def test_access_symlink_loop(tmp_dir_path, create_app_and_client):
 
 
 @pytest.mark.run_loop
+def test_access_special_resource(tmp_dir_path, create_app_and_client):
+    """
+    Tests the access to a resource that is neither a file nor a directory.
+    Checks that if a special resource is accessed (f.e. named pipe or UNIX
+    domain socket) then 404 HTTP status returned.
+    """
+    app, client = yield from create_app_and_client()
+
+    with mock.patch('pathlib.Path.__new__') as path_constructor:
+        special = MagicMock()
+        special.is_dir.return_value = False
+        special.is_file.return_value = False
+
+        path = MagicMock()
+        path.joinpath.side_effect = lambda p: (special if p == 'special'
+                                               else path)
+        path.resolve.return_value = path
+        special.resolve.return_value = special
+
+        path_constructor.return_value = path
+
+        # Register global static route:
+        app.router.add_static('/', tmp_dir_path, show_index=True)
+
+        # Request the root of the static directory.
+        r = yield from client.get('/special')
+        assert r.status == 404
+
+    yield from r.release()
+
+
+@pytest.mark.run_loop
 def test_partialy_applied_handler(create_app_and_client):
     app, client = yield from create_app_and_client()
 
