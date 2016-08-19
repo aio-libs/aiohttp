@@ -290,6 +290,32 @@ def test_is_ip_address():
     assert not helpers.is_ip_address("1200::AB00:1234::2552:7777:1313")
 
 
+def test_is_ip_address_bytes():
+    assert helpers.is_ip_address(b"127.0.0.1")
+    assert helpers.is_ip_address(b"::1")
+    assert helpers.is_ip_address(b"FE80:0000:0000:0000:0202:B3FF:FE1E:8329")
+
+    # Hostnames
+    assert not helpers.is_ip_address(b"localhost")
+    assert not helpers.is_ip_address(b"www.example.com")
+
+    # Out of range
+    assert not helpers.is_ip_address(b"999.999.999.999")
+    # Contain a port
+    assert not helpers.is_ip_address(b"127.0.0.1:80")
+    assert not helpers.is_ip_address(b"[2001:db8:0:1]:80")
+    # Too many "::"
+    assert not helpers.is_ip_address(b"1200::AB00:1234::2552:7777:1313")
+
+
+def test_is_ip_address_invalid_type():
+    with pytest.raises(TypeError):
+        helpers.is_ip_address(123)
+
+    with pytest.raises(TypeError):
+        helpers.is_ip_address(object())
+
+
 class TestCookieJarBase(unittest.TestCase):
 
     def setUp(self):
