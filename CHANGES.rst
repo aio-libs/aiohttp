@@ -72,6 +72,8 @@ CHANGES
 
 - Improvement test_client can accept instance object #1083
 
+- Simplify ServerHttpProtocol implementation #1060
+
 
 0.22.5 (08-02-2016)
 -------------------
