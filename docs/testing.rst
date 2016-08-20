@@ -398,9 +398,9 @@ elasticsearch running)::
       return web.Response(text="{}".format(cluster_info))
 
 
-  def create_app():
+  def create_app(loop=None):
 
-      app = web.Application()
+      app = web.Application(loop=loop)
       app.router.add_route('GET', '/', hello_aioes)
       return app
 
@@ -412,8 +412,6 @@ elasticsearch running)::
 And the full tests file::
 
 
-  import pytest
-
   from unittest.mock import patch, MagicMock
 
   from main import AioESService, create_app
@@ -422,19 +420,22 @@ And the full tests file::
   class TestAioESService:
 
       async def test_get_info(self, loop):
-          cluster_info = await AioESService(loop=loop).get_info()
+          cluster_info = await AioESService("random_arg", loop=loop).get_info()
           assert isinstance(cluster_info, dict)
 
 
   class TestAcceptance:
 
       async def test_get(self, test_client, loop):
-          with patch("main.AioESService", MagicMock(return_value=AioESService(loop=loop))):
+          with patch("main.AioESService", MagicMock(
+                  side_effect=lambda *args, **kwargs: AioESService(*args, **kwargs, loop=loop))):
               client = await test_client(create_app)
               resp = await client.get("/")
               assert resp.status == 200
 
-
+Note how we are using the ``side_effect`` feature for injecting the loop to the
+``AioESService.__init__`` call. The use of ``**args, **kwargs`` is mandatory
+in order to propagate the arguments being used by the caller.
 
 
 aiohttp.test_utils
