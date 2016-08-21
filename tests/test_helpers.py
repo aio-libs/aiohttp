@@ -141,9 +141,9 @@ def test_access_logger_format():
     assert expected == access_logger._log_format
 
 
-@mock.patch("aiohttp.helpers.datetime")
-@mock.patch("os.getpid")
-def test_access_logger_atoms(mock_getpid, mock_datetime):
+def test_access_logger_atoms(mocker):
+    mock_datetime = mocker.patch("aiohttp.helpers.datetime")
+    mock_getpid = mocker.patch("os.getpid")
     utcnow = datetime.datetime(1843, 1, 1, 0, 0)
     mock_datetime.datetime.utcnow.return_value = utcnow
     mock_getpid.return_value = 42
@@ -257,8 +257,8 @@ def test_create_future_with_new_loop():
     assert expected == helpers.create_future(mock_loop)
 
 
-@mock.patch('asyncio.Future')
-def test_create_future_with_old_loop(MockFuture):
+def test_create_future_with_old_loop(mocker):
+    MockFuture = mocker.patch('asyncio.Future')
     # The old loop (without create_future()) should just have a Future object
     # wrapped around it.
     mock_loop = mock.Mock()
