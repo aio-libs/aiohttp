@@ -214,7 +214,7 @@ conditions that hard to reproduce on real server::
 
 .. warning::
 
-   We don't recommed to apply
+   We don't recommend to apply
    :func:`~aiohttp.test_utils.make_mocked_request` everywhere for
    testing web-handler's business object -- please use test client and
    real networking via 'localhost' as shown in examples before.

@@ -59,7 +59,7 @@
       A concept reflects the HTTP **path**, every resource corresponds
       to *URI*.
 
-      May have an unique name.
+      May have a unique name.
 
       Contains :term:`route`\'s for different HTTP methods.
 

@@ -534,7 +534,7 @@ Usage::
 
 .. coroutinefunction:: options(url, **kwargs)
 
-   Perform a OPTIONS request.
+   Perform an OPTIONS request.
 
    :param str url: Requested URL.
 

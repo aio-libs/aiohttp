@@ -101,11 +101,11 @@ WebSocket utilities
 
    .. attribute:: TEXT
 
-      Text messsage, the value has :class:`str` type.
+      Text message, the value has :class:`str` type.
 
    .. attribute:: BINARY
 
-      Binary messsage, the value has :class:`bytes` type.
+      Binary message, the value has :class:`bytes` type.
 
    .. attribute:: PING
 

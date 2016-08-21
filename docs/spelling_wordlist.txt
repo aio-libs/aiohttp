@@ -9,7 +9,6 @@ cchardet
 cChardet
 charset
 charsetdetect
-criterias
 css
 ctor
 Ctrl

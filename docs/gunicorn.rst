@@ -94,7 +94,7 @@ worker processes.
 More information
 ----------------
 
-The Gunicorn documentation recommends deploying Gunicorn behind a
+The Gunicorn documentation recommends deploying Gunicorn behind an
 Nginx proxy server. See the `official documentation
 <http://docs.gunicorn.org/en/latest/deploy.html>`_ for more
 information about suggested nginx configuration.
