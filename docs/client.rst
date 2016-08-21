@@ -43,7 +43,7 @@ Other HTTP methods are available as well::
 .. note::
 
    Don't create a session per request. Most likely you need a session
-   per application which perfoms all requests altogether.
+   per application which performs all requests altogether.
 
    A session contains a connection pool inside, connection reusage and
    keep-alives (both are on by default) may speed up total performance.
@@ -179,7 +179,7 @@ But explicit :meth:`~ClientResponse.release` call also may be used::
 
     await resp.release()
 
-Hovewer it's not necessary if you use :meth:`~ClientResponse.read`,
+However it's not necessary if you use :meth:`~ClientResponse.read`,
 :meth:`~ClientResponse.json` and :meth:`~ClientResponse.text` methods.
 They do release connection internally but better don't rely on that
 behavior.
@@ -314,7 +314,7 @@ Or you can provide an :ref:`coroutine<coroutine>` that yields bytes objects::
 .. note::
 
    It is not a standard :ref:`coroutine<coroutine>` as it yields values so it
-   can not be used like ``yield from my_coroutine()``.
+   cannot be used like ``yield from my_coroutine()``.
    :mod:`aiohttp` internally handles such coroutines.
 
 Also it is possible to use a :class:`~aiohttp.streams.StreamReader`
@@ -406,7 +406,7 @@ accepting from URLs with IP address instead of DNS name
 (e.g. `http://127.0.0.1:80/cookie`).
 
 It's good but sometimes for testing we need to enable support for such
-cookies. It should be done by passing `usafe=True` to
+cookies. It should be done by passing `unsafe=True` to
 :class:`aiohttp.CookieJar` constructor::
 
 
@@ -662,7 +662,7 @@ methods::
                break
 
 
-You **must** use the only websocket task for both reading (e.g ``await
+You **must** use the only websocket task for both reading (e.g. ``await
 ws.receive()`` or ``async for msg in ws:``) and writing but may have
 multiple writer tasks which can only send data asynchronously (by
 ``ws.send_str('data')`` for example).

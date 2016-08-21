@@ -111,7 +111,7 @@ Continuous Integration.
 Dependencies
 ------------
 
-- Python Python 3.4.1+
+- Python 3.4.1+
 - *chardet* library
 - *multidict* library
 - *Optional* :term:`cchardet` library as faster replacement for

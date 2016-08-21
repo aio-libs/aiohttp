@@ -485,7 +485,7 @@ browser.
 
 First, make sure that the HTML ``<form>`` element has its *enctype* attribute
 set to ``enctype="multipart/form-data"``. As an example, here is a form that
-accepts a MP3 file:
+accepts an MP3 file:
 
 .. code-block:: html
 
@@ -700,7 +700,7 @@ Data Sharing
 ------------
 
 :mod:`aiohttp.web` discourages the use of *global variables*, aka *singletons*.
-Every variable should have it's own context that is *not global*.
+Every variable should have its own context that is *not global*.
 
 So, :class:`aiohttp.web.Application` and :class:`aiohttp.web.Request`
 support a :class:`collections.abc.MutableMapping` interface (i.e. they are
@@ -732,7 +732,7 @@ choose a unique key name for storing data.
 
 If your code is published on PyPI, then the project name is most likely unique
 and safe to use as the key.
-Otherwise, something based on your company name/url would be satisfactory (i.e
+Otherwise, something based on your company name/url would be satisfactory (i.e.
 ``org.company.app``).
 
 
@@ -986,7 +986,7 @@ CORS support
 
 :mod:`aiohttp.web` itself does not support `Cross-Origin Resource
 Sharing <https://en.wikipedia.org/wiki/Cross-origin_resource_sharing>`_, but
-there is a aiohttp plugin for it:
+there is an aiohttp plugin for it:
 `aiohttp_cors <https://github.com/aio-libs/aiohttp_cors>`_.
 
 

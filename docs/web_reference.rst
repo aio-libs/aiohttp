@@ -66,7 +66,7 @@ like one using :meth:`Request.copy`.
 
    .. attribute:: path_qs
 
-      The URL including PATH_INFO and the query string. e.g, ``/app/blog?id=10``
+      The URL including PATH_INFO and the query string. e.g., ``/app/blog?id=10``
 
       Read-only :class:`str` property.
 
@@ -1214,7 +1214,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       *path* may be either *constant* string like ``'/a/b/c'`` or
       *variable rule* like ``'/a/{var}'`` (see
-      :ref:`handling variable pathes<aiohttp-web-variable-handler>`)
+      :ref:`handling variable paths <aiohttp-web-variable-handler>`)
 
       :param str path: resource path spec.
 
@@ -1230,7 +1230,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       *path* may be either *constant* string like ``'/a/b/c'`` or
        *variable rule* like ``'/a/{var}'`` (see
-       :ref:`handling variable pathes<aiohttp-web-variable-handler>`)
+       :ref:`handling variable paths <aiohttp-web-variable-handler>`)
 
       Pay attention please: *handler* is converted to coroutine internally when
       it is a regular function.
@@ -1343,7 +1343,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
    :returns: new :class:`StaticRoute` instance.
 
-   .. coroutinemethod:: resolve(requst)
+   .. coroutinemethod:: resolve(request)
 
       A :ref:`coroutine<coroutine>` that returns
       :class:`AbstractMatchInfo` for *request*.
@@ -1397,7 +1397,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
       Returns a :obj:`dict`-like :class:`types.MappingProxyType` *view* over
       *all* named **resources**.
 
-      The view maps every named resources's **name** to the
+      The view maps every named resource's **name** to the
       :class:`BaseResource` instance. It supports the usual
       :obj:`dict`-like operations, except for any mutable operations
       (i.e. it's **read-only**)::
@@ -1792,7 +1792,7 @@ Utilities
                       shutdown_timeout=60.0, ssl_context=None, \
                       print=print, backlog=128)
 
-   An utility function for running an application, serving it until
+   A utility function for running an application, serving it until
    keyboard interrupt and performing a
    :ref:`aiohttp-web-graceful-shutdown`.
 
@@ -1844,10 +1844,10 @@ Constants
 
    .. attribute:: gzip
 
-      *GZIP comression*
+      *GZIP compression*
 
    .. attribute:: identity
 
-      *no comression*
+      *no compression*
 
 .. disqus::

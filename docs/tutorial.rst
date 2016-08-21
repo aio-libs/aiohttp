@@ -104,7 +104,7 @@ Thus we **suggest** to use the following approach:
    1. Pushing configs as ``yaml`` files (``json`` or ``ini`` is also
       good but ``yaml`` is the best).
 
-   2. Loading ``yaml`` config from a list of predifined locations,
+   2. Loading ``yaml`` config from a list of predefined locations,
       e.g. ``./config/app_cfg.yaml``, ``/etc/app_cfg.yaml``.
 
    3. Keeping ability to override config file by command line
@@ -248,7 +248,7 @@ Let's add more useful views::
                'choices': choices
            }
 
-Templates are very convinient way forweb page writing. We return a
+Templates are very convenient way for web page writing. We return a
 dict with page content, ``aiohttp_jinja2.template`` decorator
 processes it by jinja2 template renderer.
 
@@ -282,9 +282,9 @@ Any web site has static files: images, JavaScript sources, CSS files etc.
 The best way to handle static in production is setting up reverse
 proxy like NGINX or using CDN services.
 
-But for development handling static files by aiohttp server is very convinient.
+But for development handling static files by aiohttp server is very convenient.
 
-Fortunatelly it can be done easy by single call::
+Fortunately it can be done easy by single call::
 
     app.router.add_static('/static/',
                           path=str(project_root / 'static'),
