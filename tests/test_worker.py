@@ -1,6 +1,5 @@
 """Tests for aiohttp/worker.py"""
 import asyncio
-import sys
 from unittest import mock
 
 import pytest
