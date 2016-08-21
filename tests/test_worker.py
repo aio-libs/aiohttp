@@ -8,7 +8,11 @@ import pytest
 from aiohttp import helpers
 
 base_worker = pytest.importorskip('aiohttp.worker')
-pytest.importorskip('uvloop')
+
+try:
+    import uvloop
+except ImportError:
+    uvloop = None
 
 
 class BaseTestWorker:
@@ -24,17 +28,15 @@ class AsyncioWorker(BaseTestWorker, base_worker.GunicornWebWorker):
     pass
 
 
-class UvloopWorker(BaseTestWorker, base_worker.GunicornUVLoopWebWorker):
+PARAMS = [AsyncioWorker]
+if uvloop is not None:
+    class UvloopWorker(BaseTestWorker, base_worker.GunicornUVLoopWebWorker):
+        pass
 
-    def __init__(self):
-        if sys.version_info < (3, 5) \
-                or sys.platform in ('win32', 'cygwin', 'cli'):
-            raise pytest.skip("uvloop requires Python 3.5 and *nix.")
-
-        super().__init__()
+    PARAMS.append(UvloopWorker)
 
 
-@pytest.fixture(params=[AsyncioWorker, UvloopWorker])
+@pytest.fixture(params=PARAMS)
 def worker(request):
     return request.param()
 
