@@ -1,4 +1,3 @@
-import asyncio
 import ssl
 from unittest import mock
 
