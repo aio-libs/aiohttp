@@ -36,10 +36,15 @@ def _create_example_app(loop):
         resp.set_cookie('cookie', 'val')
         return resp
 
+    @asyncio.coroutine
+    def parts(request):
+        return web.Response(body=b'parts')
+
     app = web.Application(loop=loop)
-    app.router.add_route('*', '/', hello)
+    app.router.add_route('*', '/', hello, name='root')
     app.router.add_route('*', '/websocket', websocket_handler)
     app.router.add_route('*', '/cookie', cookie_handler)
+    app.router.add_route('*', '/part/{a}', parts, name='parts')
     return app
 
 
@@ -191,3 +196,21 @@ def test_make_mocked_request(headers):
     assert req.path == "/"
     assert isinstance(req, web_reqrep.Request)
     assert isinstance(req.headers, CIMultiDictProxy)
+
+
+@pytest.mark.run_loop
+@asyncio.coroutine
+def test_named_resource(test_client):
+    resp = yield from test_client.get('root')
+    assert resp.status == 200
+    text = yield from resp.text()
+    assert "Hello, world" in text
+
+
+@pytest.mark.run_loop
+@asyncio.coroutine
+def test_dyn_named_resource(test_client):
+    resp = yield from test_client.get('parts', parts={'a': 1})
+    assert resp.status == 200
+    text = yield from resp.text()
+    assert "parts" in text

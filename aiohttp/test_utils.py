@@ -84,11 +84,19 @@ class TestClient:
         """
         return self._session
 
-    def make_url(self, path):
+    def make_url(self, path_or_name, parts=None):
+        if not path_or_name.startswith('/'):
+            name = path_or_name
+            url_kwargs = {}
+            if parts is not None:
+                url_kwargs['parts'] = parts
+            path = self.app.router[name].url(**url_kwargs)
+        else:
+            path = path_or_name
         return self._root + path
 
     @asyncio.coroutine
-    def request(self, method, path, *args, **kwargs):
+    def request(self, method, path_or_name, *args, **kwargs):
         """Routes a request to the http server.
 
         The interface is identical to asyncio.ClientSession.request,
@@ -96,50 +104,50 @@ class TestClient:
         application.
 
         """
+        url = self.make_url(path_or_name, kwargs.pop('parts', None))
         resp = yield from self._session.request(
-            method, self.make_url(path), *args, **kwargs
+            method, url, *args, **kwargs
         )
         # save it to close later
         self._responses.append(resp)
         return resp
 
-    def get(self, path, *args, **kwargs):
+    def get(self, path_or_name, *args, **kwargs):
         """Perform an HTTP GET request."""
-        return self.request(hdrs.METH_GET, path, *args, **kwargs)
+        return self.request(hdrs.METH_GET, path_or_name, *args, **kwargs)
 
-    def post(self, path, *args, **kwargs):
+    def post(self, path_or_name, *args, **kwargs):
         """Perform an HTTP POST request."""
-        return self.request(hdrs.METH_POST, path, *args, **kwargs)
+        return self.request(hdrs.METH_POST, path_or_name, *args, **kwargs)
 
-    def options(self, path, *args, **kwargs):
+    def options(self, path_or_name, *args, **kwargs):
         """Perform an HTTP OPTIONS request."""
-        return self.request(hdrs.METH_OPTIONS, path, *args, **kwargs)
+        return self.request(hdrs.METH_OPTIONS, path_or_name, *args, **kwargs)
 
-    def head(self, path, *args, **kwargs):
+    def head(self, path_or_name, *args, **kwargs):
         """Perform an HTTP HEAD request."""
-        return self.request(hdrs.METH_HEAD, path, *args, **kwargs)
+        return self.request(hdrs.METH_HEAD, path_or_name, *args, **kwargs)
 
-    def put(self, path, *args, **kwargs):
+    def put(self, path_or_name, *args, **kwargs):
         """Perform an HTTP PUT request."""
-        return self.request(hdrs.METH_PUT, path, *args, **kwargs)
+        return self.request(hdrs.METH_PUT, path_or_name, *args, **kwargs)
 
-    def patch(self, path, *args, **kwargs):
+    def patch(self, path_or_name, *args, **kwargs):
         """Perform an HTTP PATCH request."""
-        return self.request(hdrs.METH_PATCH, path, *args, **kwargs)
+        return self.request(hdrs.METH_PATCH, path_or_name, *args, **kwargs)
 
-    def delete(self, path, *args, **kwargs):
-        """Perform an HTTP PATCH request."""
-        return self.request(hdrs.METH_DELETE, path, *args, **kwargs)
+    def delete(self, path_or_name, *args, **kwargs):
+        """Perform an HTTP DELETE request."""
+        return self.request(hdrs.METH_DELETE, path_or_name, *args, **kwargs)
 
-    def ws_connect(self, path, *args, **kwargs):
+    def ws_connect(self, path_or_name, *args, **kwargs):
         """Initiate websocket connection.
 
         The api is identical to aiohttp.ClientSession.ws_connect.
 
         """
-        return self._session.ws_connect(
-            self.make_url(path), *args, **kwargs
-        )
+        url = self.make_url(path_or_name, kwargs.pop('parts', None))
+        return self._session.ws_connect(url, *args, **kwargs)
 
     def close(self):
         """Close all fixtures created by the test client.

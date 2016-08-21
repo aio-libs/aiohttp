@@ -52,6 +52,20 @@ A simple would be::
         text = await resp.text()
         assert 'Hello, world' in text
 
+    async def personal(request):
+        name = request.match_info['name']
+        return web.Response(text='Hello, {}'.format(name))
+
+    async def test_personal_hello(test_client, loop):
+        app = web.Application(loop=loop)
+        app.router.add_get('/', hello, name='root')
+        app.router.add_get('/hello/{name}', personal, name='personal')
+        client = await test_client(app)
+        resp = await client.get('personal', parts={'name': 'kitty'})
+        assert resp.status == 200
+        text = await resp.text()
+        assert 'Hello, kitty' in text
+
 
 It also provides access to the app instance allowing tests to check the state
 of the app. Tests can be made even more succinct with a fixture to create an
