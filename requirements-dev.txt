@@ -2,6 +2,5 @@
 ipdb
 pytest-sugar
 ipython
-sphinxcontrib-asyncio
 isort
 aiodns
