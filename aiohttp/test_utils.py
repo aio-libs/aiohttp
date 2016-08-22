@@ -92,7 +92,7 @@ class TestClient:
         """Routes a request to the http server.
 
         The interface is identical to asyncio.ClientSession.request,
-        except the loop kwarg is overriden by the instance used by the
+        except the loop kwarg is overridden by the instance used by the
         application.
 
         """
@@ -193,7 +193,7 @@ class AioHTTPTestCase(unittest.TestCase):
 
     def get_app(self, loop):
         """
-        This method should be overriden
+        This method should be overridden
         to return the aiohttp.web.Application
         object to test.
 
@@ -313,7 +313,7 @@ def make_mocked_request(method, path, headers=None, *,
     :param version: namedtuple with encoded HTTP version
     :type version: aiohttp.protocol.HttpVersion
 
-    :param closing: flag idicates that connection should be closed after
+    :param closing: flag indicates that connection should be closed after
         response.
     :type closing: bool
 

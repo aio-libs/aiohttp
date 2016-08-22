@@ -746,7 +746,7 @@ BaseConnector
 
       ``limit`` changed from unlimited (``None``) to 20.
       Expect a max of up to 20 connections to the same endpoint,
-      if it is not especified.
+      if it is not specified.
       For limitless connections, pass `None` explicitly.
 
    .. attribute:: closed

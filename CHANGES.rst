@@ -37,7 +37,7 @@ CHANGES
 
 - Switch to multidict 2.0 and title-cased strings #1015
 
-- `{FOO}e` logger format is case-sensetive now
+- `{FOO}e` logger format is case-sensitive now
 
 - Fix logger report for unix socket 8e8469b
 
@@ -135,7 +135,7 @@ CHANGES
 
 - Allow to pass None as a timeout value to disable timeout logic #834
 
-- Fix leak of connection slot during connection erro #835
+- Fix leak of connection slot during connection error #835
 
 - Gunicorn worker with uvloop support `aiohttp.worker.GunicornUVLoopWebWorker` #878
 
@@ -191,13 +191,13 @@ CHANGES
 
 - Drop deprecated share_cookies connector option (BACKWARD INCOMPATIBLE)
 
-- Drop deprecated support for tuple as auth paramter.
+- Drop deprecated support for tuple as auth parameter.
   Use aiohttp.BasicAuth instead (BACKWARD INCOMPATIBLE)
 
 - Remove deprecated `request.payload` property, use `content` instead.
   (BACKWARD INCOMPATIBLE)
 
-- Drop all mentions about api changes in documentaion for versions
+- Drop all mentions about api changes in documentation for versions
   older than 0.16
 
 - Allow to override default cookie jar #963

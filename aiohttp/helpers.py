@@ -79,7 +79,7 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
 
 
 def create_future(loop):
-    """Compatiblity wrapper for the loop.create_future() call introduced in
+    """Compatibility wrapper for the loop.create_future() call introduced in
     3.5.2."""
     if hasattr(loop, 'create_future'):
         return loop.create_future()
