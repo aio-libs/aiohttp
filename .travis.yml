@@ -21,6 +21,7 @@ before_cache:
   - rm -f $HOME/.cache/pip/log/debug.log
 
 install:
+  - sudo apt-get install enchant
   - pip install --upgrade pip wheel
   - pip install --upgrade setuptools
   - pip install -r requirements-ci.txt
@@ -29,6 +30,7 @@ install:
   - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
         pip install uvloop;
     fi
+  - pip install sphinxcontrib-spelling
 
 script:
   - flake8 aiohttp
@@ -47,6 +49,9 @@ script:
   - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
         python setup.py check -s;
     fi
+
+  - make doc
+  - make doc-spelling
 
 after_success:
   - codecov
