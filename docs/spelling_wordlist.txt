@@ -2,8 +2,8 @@ aiohttp
 async
 autocalculated
 autodetection
-autogeneration
 autogenerates
+autogeneration
 basename
 cchardet
 cChardet
@@ -12,8 +12,8 @@ charsetdetect
 css
 ctor
 Ctrl
-Dict
 dict
+Dict
 eof
 fallback
 github
