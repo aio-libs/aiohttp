@@ -138,6 +138,25 @@ Once it finishes it will output the index html page
 
 Go to the link and make sure your doc changes looks good.
 
+Spell checking
+--------------
+
+We use ``pyenchant`` and ``sphinxcontrib-spelling`` for running spell
+checker for documentation:
+
+.. code-block:: shell
+
+   $ make doc-spelling
+
+Unfortunately there are problems with running spell checker on MacOS X.
+
+To run spell checker on Linux box you should install it first:
+
+.. code-block:: shell
+
+   $ sudo apt-get install enchant
+   $ pip install sphinxcontrib-spelling
+
 The End
 -------
 
