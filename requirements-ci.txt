@@ -7,6 +7,7 @@ alabaster>=0.6.2
 cython
 chardet
 tox
+sphinxcontrib-asyncio
 sphinxcontrib-newsfeed
 pytest>=2.9.2
 py>=1.4.31
