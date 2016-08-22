@@ -5,6 +5,7 @@ aiohttpdemo
 aiopg
 alives
 api
+app
 arg
 async
 asyncio
@@ -13,6 +14,7 @@ autocalculated
 autodetection
 autogenerates
 autogeneration
+awaitable
 BaseEventLoop
 basename
 BasicAuth
@@ -71,6 +73,7 @@ https
 impl
 Indices
 infos
+inline
 io
 ip
 IP
@@ -121,9 +124,12 @@ param
 params
 parsers
 pathlib
+ping
 pipelining
 pluggable
+plugin
 poller
+pong
 pre
 programmatically
 proxied
@@ -140,6 +146,7 @@ Refactor
 refactored
 refactoring
 regex
+regexps
 regexs
 renderer
 repo
