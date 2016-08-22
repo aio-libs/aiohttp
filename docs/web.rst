@@ -702,8 +702,8 @@ unsupported method and list of allowed methods::
 
 .. _aiohttp-web-data-sharing:
 
-Data Sharing
-------------
+Data Sharing aka No Singletons Please
+-------------------------------------
 
 :mod:`aiohttp.web` discourages the use of *global variables*, aka *singletons*.
 Every variable should have its own context that is *not global*.
