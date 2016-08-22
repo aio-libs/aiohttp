@@ -34,7 +34,9 @@ class GunicornWebWorker(base.Worker):
         self._runner = ensure_future(self._run(), loop=self.loop)
 
         try:
-            self.loop.run_until_complete(self._runner)
+            self.loop.run_until_complete(asyncio.gather(self._runner,
+                                                        self.wsgi.startup(),
+                                                        loop=self.loop))
         finally:
             self.loop.close()
 
