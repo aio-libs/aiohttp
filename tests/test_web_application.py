@@ -100,3 +100,48 @@ def test_on_shutdown(loop):
 
     yield from app.shutdown()
     assert called
+
+
+@pytest.mark.run_loop
+def test_on_startup(loop):
+    app = web.Application(loop=loop)
+
+    blocking_called = False
+    long_running1_called = False
+    long_running2_called = False
+    all_long_running_called = False
+
+    def on_startup_blocking(app_param):
+        nonlocal blocking_called
+        assert app is app_param
+        blocking_called = True
+
+    @asyncio.coroutine
+    def long_running1(app_param):
+        nonlocal long_running1_called
+        assert app is app_param
+        long_running1_called = True
+
+    @asyncio.coroutine
+    def long_running2(app_param):
+        nonlocal long_running2_called
+        assert app is app_param
+        long_running2_called = True
+
+    @asyncio.coroutine
+    def on_startup_all_long_running(app_param):
+        nonlocal all_long_running_called
+        assert app is app_param
+        all_long_running_called = True
+        return (yield from asyncio.gather(long_running1(app_param),
+                                          long_running2(app_param),
+                                          loop=app_param.loop))
+
+    app.on_startup.append(on_startup_blocking)
+    app.on_startup.append(on_startup_all_long_running)
+
+    yield from app.startup()
+    assert blocking_called
+    assert long_running1_called
+    assert long_running2_called
+    assert all_long_running_called

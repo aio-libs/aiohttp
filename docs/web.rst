@@ -944,7 +944,7 @@ handler::
 
         return ws
 
-Signal handler may looks like::
+Signal handler may look like::
 
     async def on_shutdown(app):
         for ws in app['websockets']:
@@ -985,6 +985,63 @@ finalizing.  It's pretty close to :func:`run_app` utility function::
        loop.run_until_complete(handler.finish_connections(60.0))
        loop.run_until_complete(app.cleanup())
    loop.close()
+
+.. _aiohttp-web-background-tasks:
+
+Background tasks
+-----------------
+
+Sometimes there's a need to perform some asynchronous operations just
+after application start-up.
+
+Even more, in some sophisticated systems there could be a need to run some
+background tasks in the event loop along with the application's request
+handler. Such as listening to message queue or other network message/event
+sources (e.g. ZeroMQ, Redis Pub/Sub, AMQP, etc.) to react to received messages
+within the application.
+
+For example the background task could listen to ZeroMQ on :data:`zmq.SUB` socket,
+process and forward retrieved messages to clients connected via WebSocket
+that are stored somewhere in the application
+(e.g. in the :obj:`application['websockets']` list).
+
+To run such short and long running background tasks aiohttp provides an
+ability to register :attr:`Application.on_startup` signal handler(s) that
+will run along with the application's request handler.
+
+For example there's a need to run one quick task and two long running
+tasks that will live till the application is alive. The appropriate
+background tasks could be registered as an :attr:`Application.on_startup`
+signal handlers as shown in the example below::
+
+  app = web.Application()
+
+  async def quickly_notify_monitoring(app):
+  """Send notification to monitoring service about the app process start-up"""
+      pass
+
+  async def listen_to_zeromq(app):
+      """Listen to messages on zmq.SUB socket"""
+      pass
+
+  async def listen_to_redis(app):
+      """Listen to messages from Redis Pub/Sub"""
+      pass
+
+  async def run_all_long_running_tasks(app):
+      return await asyncio.gather(listen_to_zeromq(app),
+                                  listen_to_redis(app),
+                                  loop=app.loop)
+  app.on_startup.append(quickly_notify_monitoring)
+  app.on_startup.append(run_all_long_running_tasks)
+  web.run_app(app)
+
+
+The :func:`quickly_notify_monitoring` from the example above will complete
+and exit but :func:`listen_to_zeromq` and :func:`listen_to_redis` will take
+forever.
+An :attr:`Application.on_cleanup` signal handler may be used to send a
+cancellation to all registered long-running tasks.
 
 
 CORS support
