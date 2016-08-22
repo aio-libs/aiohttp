@@ -44,6 +44,7 @@ Dustin J. Mitchell
 Elizabeth Leddy
 Erich Healy
 Eugene Chernyshov
+Eugene Naydenov
 Frederik Gladhorn
 Gabriel Tremblay
 Gennady Andreyev
