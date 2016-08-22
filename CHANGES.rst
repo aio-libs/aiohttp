@@ -74,6 +74,9 @@ CHANGES
 
 - Simplify ServerHttpProtocol implementation #1060
 
+- Add a flag for optional showing directory index for static file
+  handling #921
+
 
 0.22.5 (08-02-2016)
 -------------------
