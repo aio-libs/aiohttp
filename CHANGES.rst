@@ -77,6 +77,8 @@ CHANGES
 - Add a flag for optional showing directory index for static file
   handling #921
 
+- Define `web.Application.on_startup()` signal handler #1103
+
 
 0.22.5 (08-02-2016)
 -------------------
