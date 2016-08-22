@@ -1018,22 +1018,42 @@ signal handlers as shown in the example below::
 
   async def quickly_notify_monitoring(app):
   """Send notification to monitoring service about the app process start-up"""
-      pass
+      print('Going to notify monitoring...')
+      await asyncio.sleep(1)
 
-  async def listen_to_zeromq(app):
-      """Listen to messages on zmq.SUB socket"""
-      pass
 
-  async def listen_to_redis(app):
-      """Listen to messages from Redis Pub/Sub"""
-      pass
+  async def listen_to_redis():
+    try:
+        while True:
+            print('Listening to Redis...')
+            await asyncio.sleep(0.5)
+    except asyncio.CancelledError:
+        print('Cancel Redis listener: close connections...')
 
-  async def run_all_long_running_tasks(app):
-      return await asyncio.gather(listen_to_zeromq(app),
-                                  listen_to_redis(app),
-                                  loop=app.loop)
+
+  async def listen_to_zeromq():
+      try:
+          while True:
+              print('Listening to ZeroMQ...')
+              await asyncio.sleep(0.5)
+      except asyncio.CancelledError:
+          print('Cancel ZeroMQ listener: close connections...')
+
+
+  async def start_background_tasks(app):
+      app['redis_listener'] = app.loop.create_task(listen_to_redis())
+      app['zeromq_listener'] = app.loop.create_task(listen_to_zeromq())
+
+
+  async def cleanup_background_tasks(app):
+      print('cleanup background tasks...')
+      app['redis_listener'].cancel()
+      app['zeromq_listener'].cancel()
+
+
   app.on_startup.append(quickly_notify_monitoring)
-  app.on_startup.append(run_all_long_running_tasks)
+  app.on_startup.append(start_background_tasks)
+  app.on_cleanup.append(cleanup_background_tasks)
   web.run_app(app)
 
 
