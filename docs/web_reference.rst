@@ -1042,6 +1042,21 @@ duplicated like one using :meth:`Application.copy`.
           async def on_prepare(request, response):
               pass
 
+   .. attribute:: on_startup
+
+      A :class:`~aiohttp.signals.Signal` that is fired on application start-up.
+
+      Subscribers may use the signal to run background tasks in the event
+      loop along with the application's request handler just after the
+      application start-up.
+
+      Signal handlers should have the following signature::
+
+          async def on_startup(app):
+              pass
+
+      .. seealso:: :ref:`aiohttp-web-background-tasks`.
+
    .. attribute:: on_shutdown
 
       A :class:`~aiohttp.signals.Signal` that is fired on application shutdown.
@@ -1076,7 +1091,6 @@ duplicated like one using :meth:`Application.copy`.
 
       .. seealso:: :ref:`aiohttp-web-graceful-shutdown` and :attr:`on_shutdown`.
 
-
    .. method:: make_handler(**kwargs)
 
       Creates HTTP protocol factory for handling requests.
@@ -1103,6 +1117,14 @@ duplicated like one using :meth:`Application.copy`.
          await loop.create_server(app.make_handler(
             secure_proxy_ssl_header='X-Forwarded-Proto'),
             '0.0.0.0', 8080)
+
+   .. coroutinemethod:: startup()
+
+      A :ref:`coroutine<coroutine>` that will be called along with the
+      application's request handler.
+
+      The purpose of the method is calling :attr:`on_startup` signal
+      handlers.
 
    .. coroutinemethod:: shutdown()
 

@@ -171,6 +171,7 @@ class Application(dict):
         self._on_pre_signal = PreSignal()
         self._on_post_signal = PostSignal()
         self._on_response_prepare = Signal(self)
+        self._on_startup = Signal(self)
         self._on_shutdown = Signal(self)
         self._on_cleanup = Signal(self)
 
@@ -189,6 +190,10 @@ class Application(dict):
     @property
     def on_post_signal(self):
         return self._on_post_signal
+
+    @property
+    def on_startup(self):
+        return self._on_startup
 
     @property
     def on_shutdown(self):
@@ -213,6 +218,14 @@ class Application(dict):
     def make_handler(self, **kwargs):
         return self._handler_factory(
             self, self.router, loop=self.loop, **kwargs)
+
+    @asyncio.coroutine
+    def startup(self):
+        """Causes on_startup signal
+
+        Should be called in the event loop along with the request handler.
+        """
+        yield from self.on_startup.send(self)
 
     @asyncio.coroutine
     def shutdown(self):
@@ -267,9 +280,11 @@ def run_app(app, *, host='0.0.0.0', port=None,
     loop = app.loop
 
     handler = app.make_handler()
-    srv = loop.run_until_complete(loop.create_server(handler, host, port,
-                                                     ssl=ssl_context,
-                                                     backlog=backlog))
+    server = loop.create_server(handler, host, port, ssl=ssl_context,
+                                backlog=backlog)
+    srv, startup_res = loop.run_until_complete(asyncio.gather(server,
+                                                              app.startup(),
+                                                              loop=loop))
 
     scheme = 'https' if ssl_context else 'http'
     print("======== Running on {scheme}://{host}:{port}/ ========\n"
