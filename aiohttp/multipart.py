@@ -376,7 +376,7 @@ class BodyPartReader(object):
 
     @asyncio.coroutine
     def release(self):
-        """Lke :meth:`read`, but reads all the data to the void.
+        """Like :meth:`read`, but reads all the data to the void.
 
         :rtype: None
         """
@@ -391,7 +391,7 @@ class BodyPartReader(object):
 
     @asyncio.coroutine
     def text(self, *, encoding=None):
-        """Lke :meth:`read`, but assumes that body part contains text data.
+        """Like :meth:`read`, but assumes that body part contains text data.
 
         :param str encoding: Custom text encoding. Overrides specified
                              in charset param of `Content-Type` header
@@ -404,7 +404,7 @@ class BodyPartReader(object):
 
     @asyncio.coroutine
     def json(self, *, encoding=None):
-        """Lke :meth:`read`, but assumes that body parts contains JSON data.
+        """Like :meth:`read`, but assumes that body parts contains JSON data.
 
         :param str encoding: Custom JSON encoding. Overrides specified
                              in charset param of `Content-Type` header
@@ -417,7 +417,7 @@ class BodyPartReader(object):
 
     @asyncio.coroutine
     def form(self, *, encoding=None):
-        """Lke :meth:`read`, but assumes that body parts contains form
+        """Like :meth:`read`, but assumes that body parts contains form
         urlencoded data.
 
         :param str encoding: Custom form encoding. Overrides specified

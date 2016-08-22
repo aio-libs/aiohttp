@@ -95,7 +95,7 @@ async/await.  If you are using Python 3.4 please replace ``await`` with
     async def coro(...):
         ret = await f()
 
-shoud be replaced by::
+should be replaced by::
 
     @asyncio.coroutine
     def coro(...):
