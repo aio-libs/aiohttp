@@ -555,7 +555,7 @@ with the peer::
 
 Reading from the *WebSocket* (``await ws.receive()``) and closing it (``await ws.close()``)
 **must only** be done inside the request handler *task*; however, writing
-(``ws.send_str(...)``) to the *WebSocket* and cancelling the handler task
+(``ws.send_str(...)``) to the *WebSocket* and canceling the handler task
 may be delegated to other tasks. See also :ref:`FAQ section <aiohttp_faq_terminating_websockets>`.
 
 *aiohttp.web* creates an implicit :class:`asyncio.Task` for handling every
