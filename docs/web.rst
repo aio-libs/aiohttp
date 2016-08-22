@@ -341,6 +341,12 @@ To do it just register a new static route by
 
    app.router.add_static('/prefix', path_to_static_folder)
 
+When a directory is accessed within a static route then the server responses
+to client with ``HTTP/403 Forbidden`` by default. Displaying folder index
+instead could be enabled with ``show_index`` parameter set to ``True``::
+
+   app.router.add_static('/prefix', path_to_static_folder, show_index=True)
+
 
 Template Rendering
 ------------------

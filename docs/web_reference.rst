@@ -1289,7 +1289,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
       .. versionadded:: 1.0
 
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
-                          chunk_size=256*1024, response_factory=StreamResponse)
+                          chunk_size=256*1024, response_factory=StreamResponse \
+                          show_index=False)
 
       Adds a router and a handler for returning static files.
 
@@ -1340,6 +1341,10 @@ Router is any object that implements :class:`AbstractRouter` interface.
                                         expose a compatible API.
 
                                         .. versionadded:: 0.17
+
+      :param bool show_index: flag for allowing to show indexes of a directory,
+                              by default it's not allowed and HTTP/403 will
+                              be returned on directory access.
 
    :returns: new :class:`StaticRoute` instance.
 
