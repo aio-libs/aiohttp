@@ -81,7 +81,7 @@ WebSocket utilities
     .. attribute:: SERVICE_RESTART
 
        The service is restarted. a client may reconnect, and if it
-       choses to do, should reconnect using a randomized delay of 5-30s.
+       chooses to do, should reconnect using a randomized delay of 5-30s.
 
     .. attribute:: TRY_AGAIN_LATER
 
