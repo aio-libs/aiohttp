@@ -1,8 +1,6 @@
 Contributing
 ============
 
-.. _GitHub: https://github.com/KeepSafe/aiohttp
-
 Instructions for contributors
 -----------------------------
 
@@ -65,20 +63,21 @@ After that please install libraries required for development:
 
    $ pip install -r requirements-dev.txt
 
-We also recommend to install *ipdb* but it's on your own::
-
+We also recommend to install ipdb_ but it's on your own:
+:
 .. code-block:: shell
 
    $ pip install ipdb
 
 .. note::
-  If you plan to use ``ipdb`` within the test suite, use:
+  If you plan to use ``ipdb`` within the test suite, execute:
 
 .. code-block:: shell
 
     $ py.test tests -s -p no:timeout
 
-  to run the tests with disabled timeout guard and output capturing.
+  command to run the tests with disabled timeout guard and output
+  capturing.
 
 Congratulations, you are ready to run the test suite
 
@@ -161,3 +160,8 @@ The End
 -------
 
 After finishing all steps make a GitHub_ Pull Request, thanks.
+
+
+.. _GitHub: https://github.com/KeepSafe/aiohttp
+
+.. _ipdb: https://pypi.python.org/pypi/ipdb
