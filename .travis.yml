@@ -50,8 +50,10 @@ script:
         python setup.py check -s;
     fi
 
-  - make doc
-  - make doc-spelling
+  - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
+        make doc
+        make doc-spelling
+    fi
 
 after_success:
   - codecov
