@@ -33,22 +33,7 @@ install:
   - pip install sphinxcontrib-spelling
 
 script:
-  - flake8 aiohttp
-  - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
-        flake8 examples tests;
-    fi
-
-  # PYTHONASYNCIODEBUG and AIOHTTP_NO_EXTENSIONS environment variables
-  # are considered as enabled if they are any non empty strings.
-  - PYTHONASYNCIODEBUG=X AIOHTTP_NO_EXTENSIONS=X py.test --cov=aiohttp tests 
-  - PYTHONASYNCIODEBUG=X py.test --cov=aiohttp tests --cov-append 
-  - AIOHTTP_NO_EXTENSIONS=X py.test --cov=aiohttp tests --cov-append 
-  - py.test --cov=aiohttp tests --cov-append 
-
-  - python setup.py check -rm
-  - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
-        python setup.py check -s;
-    fi
+  - make cov-dev-full
 
   - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
         make doc;
