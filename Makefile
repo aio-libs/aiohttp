@@ -23,9 +23,9 @@ flake: .flake
 	    flake8 examples tests demos benchmark; \
             python setup.py check -rms; \
 	fi
-	if ! isort -c -rc aiohttp tests benchmark examples demos; then \
+	if ! isort -c -rc aiohttp tests benchmark examples; then \
             echo "Import sort errors, run 'make isort' to fix them!!!"; \
-            isort --diff -rc aiohttp tests benchmark examples demos; \
+            isort --diff -rc aiohttp tests benchmark examples; \
             false; \
         fi
 	touch .flake
