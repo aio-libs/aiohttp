@@ -18,6 +18,11 @@ flake: .install-deps
 	if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then \
 	    flake8 examples tests demos benchmark; \
 	fi
+	isort -c -rc aiohttp
+	isort -c -rc tests
+	isort -c -rc benchmark
+	isort -c -rc examples
+	isort -c -rc demos
 
 
 .develop: .install-deps $(shell find aiohttp -type f)
@@ -25,16 +30,16 @@ flake: .install-deps
 	touch .develop
 
 test: flake .develop
-	py.test -q --isort ./tests
+	py.test -q ./tests
 
 vtest: flake .develop
-	py.test -s -v --isort ./tests
+	py.test -s -v ./tests
 
 cov cover coverage:
 	tox
 
 cov-dev: .develop
-	py.test --cov=aiohttp --cov-report=term --cov-report=html tests --isort
+	py.test --cov=aiohttp --cov-report=term --cov-report=html tests
 	@echo "open file://`pwd`/coverage/index.html"
 
 cov-dev-full: .develop
