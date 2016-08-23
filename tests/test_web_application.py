@@ -29,7 +29,7 @@ def test_app_default_loop(loop):
     assert loop is app.loop
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_app_register_on_finish(loop):
     app = web.Application(loop=loop)
     cb1 = mock.Mock()
@@ -41,7 +41,7 @@ def test_app_register_on_finish(loop):
     cb2.assert_called_once_with(app)
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_app_register_coro(loop):
     app = web.Application(loop=loop)
 
@@ -58,7 +58,7 @@ def test_app_register_coro(loop):
     assert 123 == fut.result()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_app_register_and_finish_are_deprecated(loop, warning):
     app = web.Application(loop=loop)
     cb1 = mock.Mock()
@@ -85,7 +85,7 @@ def test_non_default_router(loop):
         self.assertIs(app.logger, logger)
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_on_shutdown(loop):
     app = web.Application(loop=loop)
     called = False
@@ -102,7 +102,7 @@ def test_on_shutdown(loop):
     assert called
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_on_startup(loop):
     app = web.Application(loop=loop)
 

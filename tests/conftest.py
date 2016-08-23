@@ -9,7 +9,9 @@ import pytest
 
 import aiohttp
 from aiohttp import web
-from aiohttp.test_utils import loop_context, unused_port
+
+
+pytest_plugins = 'aiohttp.pytest_plugin'
 
 
 class _AssertWarnsContext:
@@ -147,18 +149,8 @@ def log():
     yield _AssertLogsContext
 
 
-# add the unused_port and loop fixtures
-pytest.fixture(unused_port)
-
-
 @pytest.yield_fixture
-def loop():
-    with loop_context() as loop:
-        yield loop
-
-
-@pytest.yield_fixture
-def create_server(loop):
+def create_server(loop, unused_port):
     app = handler = srv = None
 
     @asyncio.coroutine
@@ -245,38 +237,8 @@ def create_app_and_client(create_server, loop):
         return app, client
 
     yield maker
-    client.close()
-
-
-@pytest.mark.tryfirst
-def pytest_pycollect_makeitem(collector, name, obj):
-    if collector.funcnamefilter(name):
-        if not callable(obj):
-            return
-        item = pytest.Function(name, parent=collector)
-        if 'run_loop' in item.keywords:
-            return list(collector._genfunctions(name, obj))
-
-
-@pytest.mark.tryfirst
-def pytest_pyfunc_call(pyfuncitem):
-    """
-    Run asyncio marked test functions in an event loop instead of a normal
-    function call.
-    """
-    if 'run_loop' in pyfuncitem.keywords:
-        funcargs = pyfuncitem.funcargs
-        loop = funcargs['loop']
-        testargs = {arg: funcargs[arg]
-                    for arg in pyfuncitem._fixtureinfo.argnames}
-        loop.run_until_complete(pyfuncitem.obj(**testargs))
-        return True
-
-
-def pytest_runtest_setup(item):
-    if 'run_loop' in item.keywords and 'loop' not in item.fixturenames:
-        # inject an event loop fixture for all async tests
-        item.fixturenames.append('loop')
+    if client is not None:
+        client.close()
 
 
 def pytest_ignore_collect(path, config):

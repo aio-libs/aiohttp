@@ -5,7 +5,7 @@ import pytest
 from aiohttp import web
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_middleware_modifies_response(create_app_and_client):
 
     @asyncio.coroutine
@@ -33,7 +33,7 @@ def test_middleware_modifies_response(create_app_and_client):
     assert 'OK[MIDDLEWARE]' == txt
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_middleware_handles_exception(create_app_and_client):
 
     @asyncio.coroutine
@@ -61,7 +61,7 @@ def test_middleware_handles_exception(create_app_and_client):
     assert 'Error text[MIDDLEWARE]' == txt
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_middleware_chain(create_app_and_client):
 
     @asyncio.coroutine

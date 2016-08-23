@@ -53,7 +53,7 @@ def test_handle_request(srv):
     assert content.startswith(b'HTTP/1.1 404 Not Found\r\n')
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_shutdown(srv, loop):
     transport = mock.Mock()
     transport.close.side_effect = partial(srv.connection_lost, None)
@@ -85,7 +85,7 @@ def test_shutdown(srv, loop):
     assert request_handler.done()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_double_shutdown(srv):
     transport = srv.transport = mock.Mock()
     transport.close.side_effect = partial(srv.connection_lost, None)
@@ -145,7 +145,7 @@ def test_eof_received(srv):
     assert srv.reader._eof
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_connection_lost(srv, loop):
     srv.connection_made(mock.Mock())
 

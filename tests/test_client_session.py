@@ -293,7 +293,7 @@ def test_detach(session):
         conn.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_request_closed_session(session):
     session.close()
     with pytest.raises(RuntimeError):
@@ -342,7 +342,7 @@ def test_borrow_connector_loop(connector, create_session, loop):
         session.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_reraise_os_error(create_session):
     err = OSError(1, "permission error")
     req = mock.Mock()
@@ -363,7 +363,7 @@ def test_reraise_os_error(create_session):
     assert e.strerror == err.strerror
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_request_ctx_manager_props(loop):
     yield from asyncio.sleep(0, loop=loop)  # to make it a task
     with aiohttp.ClientSession(loop=loop) as client:
@@ -375,7 +375,7 @@ def test_request_ctx_manager_props(loop):
         assert isinstance(ctx_mgr.gi_code, types.CodeType)
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_cookie_jar_usage(create_app_and_client):
     req_url = None
 

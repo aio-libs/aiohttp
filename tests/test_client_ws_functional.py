@@ -6,7 +6,7 @@ import aiohttp
 from aiohttp import hdrs, helpers, web
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_send_recv_text(create_app_and_client):
 
     @asyncio.coroutine
@@ -29,7 +29,7 @@ def test_send_recv_text(create_app_and_client):
     yield from resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_send_recv_bytes_bad_type(create_app_and_client):
 
     @asyncio.coroutine
@@ -52,7 +52,7 @@ def test_send_recv_bytes_bad_type(create_app_and_client):
     yield from resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_send_recv_bytes(create_app_and_client):
 
     @asyncio.coroutine
@@ -77,7 +77,7 @@ def test_send_recv_bytes(create_app_and_client):
     yield from resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_send_recv_text_bad_type(create_app_and_client):
 
     @asyncio.coroutine
@@ -102,7 +102,7 @@ def test_send_recv_text_bad_type(create_app_and_client):
     yield from resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_send_recv_json(create_app_and_client):
 
     @asyncio.coroutine
@@ -126,7 +126,7 @@ def test_send_recv_json(create_app_and_client):
     yield from resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_ping_pong(create_app_and_client, loop):
 
     closed = helpers.create_future(loop)
@@ -163,7 +163,7 @@ def test_ping_pong(create_app_and_client, loop):
     yield from closed
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_ping_pong_manual(create_app_and_client, loop):
 
     closed = helpers.create_future(loop)
@@ -205,7 +205,7 @@ def test_ping_pong_manual(create_app_and_client, loop):
     yield from closed
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_close(create_app_and_client):
 
     @asyncio.coroutine
@@ -234,7 +234,7 @@ def test_close(create_app_and_client):
     assert msg.type == aiohttp.WSMsgType.CLOSED
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_close_from_server(create_app_and_client, loop):
 
     closed = helpers.create_future(loop)
@@ -267,7 +267,7 @@ def test_close_from_server(create_app_and_client, loop):
     yield from closed
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_close_manual(create_app_and_client, loop):
 
     closed = helpers.create_future(loop)
@@ -305,7 +305,7 @@ def test_close_manual(create_app_and_client, loop):
     assert resp.closed
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_close_timeout(create_app_and_client, loop):
 
     @asyncio.coroutine
@@ -331,7 +331,7 @@ def test_close_timeout(create_app_and_client, loop):
     assert isinstance(resp.exception(), asyncio.TimeoutError)
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_close_cancel(create_app_and_client, loop):
 
     @asyncio.coroutine
@@ -359,7 +359,7 @@ def test_close_cancel(create_app_and_client, loop):
     assert resp.exception() is None
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_override_default_headers(create_app_and_client, loop):
 
     @asyncio.coroutine
@@ -381,7 +381,7 @@ def test_override_default_headers(create_app_and_client, loop):
     yield from resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_additional_headers(create_app_and_client, loop):
 
     @asyncio.coroutine
@@ -402,7 +402,7 @@ def test_additional_headers(create_app_and_client, loop):
     yield from resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_recv_protocol_error(create_app_and_client):
 
     @asyncio.coroutine
@@ -428,7 +428,7 @@ def test_recv_protocol_error(create_app_and_client):
     yield from resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_recv_timeout(create_app_and_client):
 
     @asyncio.coroutine

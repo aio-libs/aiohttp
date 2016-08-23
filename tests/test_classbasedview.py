@@ -13,7 +13,7 @@ def test_ctor():
     assert view.request is request
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_render_ok():
     resp = web.Response(text='OK')
 
@@ -28,7 +28,7 @@ def test_render_ok():
     assert resp is resp2
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_render_unknown_method():
 
     class MyView(View):
@@ -45,7 +45,7 @@ def test_render_unknown_method():
     assert ctx.value.status == 405
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_render_unsupported_method():
 
     class MyView(View):

@@ -144,7 +144,6 @@ def test_get_route(loop, test_client):
     loop.run_until_complete(test_get_route())
 
 
-@pytest.mark.run_loop
 @asyncio.coroutine
 def test_client_websocket(loop, test_client):
     resp = yield from test_client.ws_connect("/websocket")
@@ -157,7 +156,6 @@ def test_client_websocket(loop, test_client):
     assert msg.type == aiohttp.WSMsgType.CLOSE
 
 
-@pytest.mark.run_loop
 @asyncio.coroutine
 def test_client_cookie(loop, test_client):
     assert not test_client.session.cookies
@@ -165,7 +163,7 @@ def test_client_cookie(loop, test_client):
     assert test_client.session.cookies['cookie'].value == 'val'
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 @pytest.mark.parametrize("method", [
     "get", "post", "options", "post", "put", "patch", "delete"
 ])
@@ -177,7 +175,6 @@ def test_test_client_methods(method, loop, test_client):
     assert "Hello, world" in text
 
 
-@pytest.mark.run_loop
 @asyncio.coroutine
 def test_test_client_head(loop, test_client):
     resp = yield from test_client.head("/")

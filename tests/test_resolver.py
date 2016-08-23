@@ -37,7 +37,7 @@ def fake_addrinfo(hosts):
 
 
 @pytest.mark.skipif(aiodns is None, reason="aiodns required")
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_async_resolver_positive_lookup(loop):
     with patch('aiodns.DNSResolver.query') as mock_query:
         mock_query.return_value = fake_result(['127.0.0.1'])
@@ -48,7 +48,7 @@ def test_async_resolver_positive_lookup(loop):
 
 
 @pytest.mark.skipif(aiodns is None, reason="aiodns required")
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_async_resolver_multiple_replies(loop):
     with patch('aiodns.DNSResolver.query') as mock_query:
         ips = ['127.0.0.1', '127.0.0.2', '127.0.0.3', '127.0.0.4']
@@ -60,7 +60,7 @@ def test_async_resolver_multiple_replies(loop):
 
 
 @pytest.mark.skipif(aiodns is None, reason="aiodns required")
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_async_negative_lookup(loop):
     with patch('aiodns.DNSResolver.query') as mock_query:
         mock_query.side_effect = aiodns.error.DNSError()
@@ -69,7 +69,7 @@ def test_async_negative_lookup(loop):
             yield from resolver.resolve('doesnotexist.bla')
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_default_resolver_positive_lookup(loop):
     loop.getaddrinfo = fake_addrinfo(["127.0.0.1"])
     resolver = DefaultResolver(loop=loop)
@@ -77,7 +77,7 @@ def test_default_resolver_positive_lookup(loop):
     ipaddress.ip_address(real[0]['host'])
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_default_resolver_multiple_replies(loop):
     ips = ['127.0.0.1', '127.0.0.2', '127.0.0.3', '127.0.0.4']
     loop.getaddrinfo = fake_addrinfo(ips)
@@ -87,7 +87,7 @@ def test_default_resolver_multiple_replies(loop):
     assert len(ips) > 3, "Expecting multiple addresses"
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_default_negative_lookup(loop):
     ips = []
     loop.getaddrinfo = fake_addrinfo(ips)
@@ -96,14 +96,14 @@ def test_default_negative_lookup(loop):
         yield from resolver.resolve('doesnotexist.bla')
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_close_for_default_resolver(loop):
     resolver = DefaultResolver(loop=loop)
     yield from resolver.close()
 
 
 @pytest.mark.skipif(aiodns is None, reason="aiodns required")
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_close_for_async_resolver(loop):
     resolver = AsyncResolver(loop=loop)
     yield from resolver.close()
@@ -123,7 +123,7 @@ def test_default_loop_for_async_resolver(loop):
 
 
 @pytest.mark.skipif(aiodns is None, reason="aiodns required")
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_async_resolver_ipv6_positive_lookup(loop):
     with patch('aiodns.DNSResolver.query') as mock_query:
         mock_query.return_value = fake_result(['::1'])

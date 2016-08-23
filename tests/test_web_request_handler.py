@@ -1,6 +1,5 @@
+import asyncio
 from unittest import mock
-
-import pytest
 
 from aiohttp import web
 from aiohttp.test_utils import make_mocked_coro
@@ -33,7 +32,7 @@ def test_connections(loop):
     assert manager.connections == []
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_finish_connection_no_timeout(loop):
     app = web.Application(loop=loop)
     manager = app.make_handler()
@@ -50,7 +49,7 @@ def test_finish_connection_no_timeout(loop):
     handler.shutdown.assert_called_with(None)
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_finish_connection_timeout(loop):
     app = web.Application(loop=loop)
     manager = app.make_handler()
