@@ -356,7 +356,8 @@ in its signature. An example would be the following::
   class TestAcceptance:
 
       async def test_get(self, test_client, loop):
-          with patch("main.AioESService", MagicMock(return_value=AioESService(loop=loop))):
+          with patch("main.AioESService", MagicMock(
+                  side_effect=lambda *args, **kwargs: AioESService(*args, **kwargs, loop=loop))):
               client = await test_client(create_app)
               resp = await client.get("/")
               assert resp.status == 200
