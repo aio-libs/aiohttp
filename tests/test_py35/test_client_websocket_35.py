@@ -4,7 +4,6 @@ import aiohttp
 from aiohttp import web
 
 
-@pytest.mark.run_loop
 async def test_client_ws_async_for(loop, create_server):
     items = ['q1', 'q2', 'q3']
 
@@ -29,7 +28,6 @@ async def test_client_ws_async_for(loop, create_server):
     assert resp.closed
 
 
-@pytest.mark.run_loop
 async def test_client_ws_async_with(loop, create_app_and_client):
 
     async def handler(request):
@@ -52,7 +50,6 @@ async def test_client_ws_async_with(loop, create_app_and_client):
     assert ws.closed
 
 
-@pytest.mark.run_loop
 async def test_client_ws_async_with_shortcut(loop, create_server):
 
     async def handler(request):
