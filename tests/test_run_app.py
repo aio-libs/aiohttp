@@ -6,7 +6,7 @@ from aiohttp import web
 
 def test_run_app_http(loop, mocker):
     mocker.spy(loop, 'create_server')
-    loop.call_later(0.02, loop.stop)
+    loop.call_later(0.05, loop.stop)
 
     app = web.Application(loop=loop)
     mocker.spy(app, 'startup')
@@ -21,7 +21,7 @@ def test_run_app_http(loop, mocker):
 
 def test_run_app_https(loop, mocker):
     mocker.spy(loop, 'create_server')
-    loop.call_later(0.02, loop.stop)
+    loop.call_later(0.05, loop.stop)
 
     app = web.Application(loop=loop)
     mocker.spy(app, 'startup')
@@ -41,7 +41,7 @@ def test_run_app_nondefault_host_port(loop, unused_port, mocker):
     host = 'localhost'
 
     mocker.spy(loop, 'create_server')
-    loop.call_later(0.02, loop.stop)
+    loop.call_later(0.05, loop.stop)
 
     app = web.Application(loop=loop)
     mocker.spy(app, 'startup')
@@ -56,7 +56,7 @@ def test_run_app_nondefault_host_port(loop, unused_port, mocker):
 
 def test_run_app_custom_backlog(loop, mocker):
     mocker.spy(loop, 'create_server')
-    loop.call_later(0.02, loop.stop)
+    loop.call_later(0.05, loop.stop)
 
     app = web.Application(loop=loop)
     mocker.spy(app, 'startup')
