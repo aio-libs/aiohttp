@@ -12,7 +12,6 @@ sphinxcontrib-newsfeed
 pytest>=2.9.2
 py>=1.4.31
 pytest-cov
-pytest-isort
 pytest-mock
 pytest-timeout
 gunicorn
