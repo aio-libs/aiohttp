@@ -1,7 +1,6 @@
 import aiohttp
 from aiohttp import helpers, web
 
-
 async def test_server_ws_async_for(loop, create_server):
     closed = helpers.create_future(loop)
 
