@@ -1,77 +1,62 @@
 #!/usr/bin/env python3
-"""Example for aiohttp.web.Application.on_startup signal handler
-"""
-
+"""Example of aiohttp.web.Application.on_startup signal handler"""
+import aioredis
 import asyncio
-from aiohttp import ClientSession
-from aiohttp.web import Application, run_app, Response
+from aiohttp.web import Application, run_app, WebSocketResponse
 
-
-async def fake_redis_msg(request):
-    return Response(text='fake Redis message...')
-
-
-async def fake_zmq_msg(request):
-    return Response(text='fake ZeroMQ message...')
-
-
-async def get_fake_message(where):
-    async with ClientSession(loop=app.loop) as session:
-        res = await session.get('http://127.0.0.1:8080/{}'.format(where))
-        return await res.text()
-
-
-async def quick_1(app):
-    for x in range(5):
-        print('quck_1')
-
-
-async def quick_2(app):
-    for x in range(5):
-        print('quck_2')
-        await asyncio.sleep(0.15)
-
-
-async def listen_to_redis():
+async def websocket_handler(request):
+    ws = WebSocketResponse()
+    await ws.prepare(request)
+    request.app['websockets'].append(ws)
     try:
-        await asyncio.sleep(0.01)
-        while True:
-            print('Listening to Redis...')
-            print('Received', await get_fake_message('redis'))
-            await asyncio.sleep(0.5)
-    except asyncio.CancelledError:
-        print('Cancel Redis listener: close connections...')
+        async for msg in ws:
+            print(msg)
+            await asyncio.sleep(1)
+    finally:
+        request.app['websockets'].remove(ws)
+    return ws
 
 
-async def listen_to_zeromq():
+async def on_shutdown(app):
+    for ws in app['websockets']:
+        await ws.close(code=999, message='Server shutdown')
+
+
+async def listen_to_redis(app):
     try:
-        await asyncio.sleep(0.01)
-        while True:
-            print('Listening to ZeroMQ...')
-            print('Received', await get_fake_message('zeromq'))
-            await asyncio.sleep(0.5)
+        sub = await aioredis.create_redis(('localhost', 6379), loop=app.loop)
+        ch, *_ = await sub.subscribe('news')
+        async for msg in ch.iter(encoding='utf-8'):
+            # Forward message to all connected websockets:
+            for ws in app['websockets']:
+                ws.send_str('{}: {}'.format(ch.name, msg))
+            print("message in {}: {}".format(ch.name, msg))
     except asyncio.CancelledError:
-        print('Cancel ZeroMQ listener: close connections...')
+        pass
+    finally:
+        print('Cancel Redis listener: close connection...')
+        await sub.unsubscribe(ch.name)
+        await sub.quit()
+        print('Redis connection closed.')
+
 
 async def start_background_tasks(app):
-    app['redis_listener'] = app.loop.create_task(listen_to_redis())
-    app['zeromq_listener'] = app.loop.create_task(listen_to_zeromq())
+    app['redis_listener'] = app.loop.create_task(listen_to_redis(app))
 
 
 async def cleanup_background_tasks(app):
     print('cleanup background tasks...')
     app['redis_listener'].cancel()
-    app['zeromq_listener'].cancel()
+    await app['redis_listener']
 
 
 async def init(loop):
     app = Application(loop=loop)
-    app.router.add_get('/redis', fake_redis_msg)
-    app.router.add_get('/zeromq', fake_zmq_msg)
-    app.on_startup.append(quick_1)
+    app['websockets'] = []
+    app.router.add_get('/news', websocket_handler)
     app.on_startup.append(start_background_tasks)
     app.on_cleanup.append(cleanup_background_tasks)
-    app.on_startup.append(quick_2)
+    app.on_shutdown.append(on_shutdown)
     return app
 
 loop = asyncio.get_event_loop()
