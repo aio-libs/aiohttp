@@ -5,7 +5,8 @@ from multidict import CIMultiDict, CIMultiDictProxy
 
 import aiohttp
 from aiohttp import web, web_reqrep
-from aiohttp.test_utils import (AioHTTPTestCase, TestClient, loop_context,
+from aiohttp.test_utils import TestClient as _TestClient
+from aiohttp.test_utils import (AioHTTPTestCase, loop_context,
                                 make_mocked_request, setup_test_loop,
                                 teardown_test_loop, unittest_run_loop)
 
@@ -46,7 +47,7 @@ def _create_example_app(loop):
 def test_full_server_scenario():
     with loop_context() as loop:
         app = _create_example_app(loop)
-        with TestClient(app) as client:
+        with _TestClient(app) as client:
 
             @asyncio.coroutine
             def test_get_route():
@@ -62,7 +63,7 @@ def test_full_server_scenario():
 def test_server_with_create_test_teardown():
     with loop_context() as loop:
         app = _create_example_app(loop)
-        client = TestClient(app)
+        client = _TestClient(app)
 
         @asyncio.coroutine
         def test_get_route():
@@ -82,7 +83,7 @@ def test_test_client_close_is_idempotent():
     """
     loop = setup_test_loop()
     app = _create_example_app(loop)
-    client = TestClient(app)
+    client = _TestClient(app)
     client.close()
     teardown_test_loop(loop)
     client.close()
@@ -126,7 +127,7 @@ def app(loop):
 
 @pytest.yield_fixture
 def test_client(loop, app):
-    client = TestClient(app)
+    client = _TestClient(app)
     yield client
     client.close()
 
