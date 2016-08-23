@@ -37,7 +37,7 @@ def test_run_app_https(loop, mocker):
 
 
 def test_run_app_nondefault_host_port(loop, unused_port, mocker):
-    port = unused_port
+    port = unused_port()
     host = 'localhost'
 
     mocker.spy(loop, 'create_server')
