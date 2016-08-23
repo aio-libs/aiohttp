@@ -39,7 +39,7 @@ def tmp_dir_path(request):
                            b'<li><a href="/my_dir">my_dir/</a></li>\n'
                            b'<li><a href="/my_file">my_file</a></li>\n'
                            b'</ul>\n</body>\n</html>')])
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_access_root_of_static_handler(tmp_dir_path, create_app_and_client,
                                        show_index, status, data):
     """
@@ -75,7 +75,7 @@ def test_access_root_of_static_handler(tmp_dir_path, create_app_and_client,
     yield from r.release()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_access_non_existing_resource(tmp_dir_path, create_app_and_client):
     """
     Tests accessing non-existing resource
@@ -93,7 +93,7 @@ def test_access_non_existing_resource(tmp_dir_path, create_app_and_client):
     yield from r.release()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_unauthorized_folder_access(tmp_dir_path, create_app_and_client):
     """
     Tests the unauthorized access to a folder of static file server.
@@ -122,7 +122,7 @@ def test_unauthorized_folder_access(tmp_dir_path, create_app_and_client):
     yield from r.release()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_access_symlink_loop(tmp_dir_path, create_app_and_client):
     """
     Tests the access to a looped symlink, which could not be resolved.
@@ -142,7 +142,7 @@ def test_access_symlink_loop(tmp_dir_path, create_app_and_client):
     yield from r.release()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_access_special_resource(tmp_dir_path, create_app_and_client):
     """
     Tests the access to a resource that is neither a file nor a directory.
@@ -174,7 +174,7 @@ def test_access_special_resource(tmp_dir_path, create_app_and_client):
     yield from r.release()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_partialy_applied_handler(create_app_and_client):
     app, client = yield from create_app_and_client()
 
@@ -200,7 +200,7 @@ def test_system_route():
     assert 'test' == route.reason
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_register_route():
     @asyncio.coroutine
     def handler(request):

@@ -17,8 +17,6 @@ from aiohttp.errors import FingerprintMismatch
 from aiohttp.helpers import create_future
 from aiohttp.multipart import MultipartWriter
 
-pytest_plugins = 'aiohttp.pytest_plugin'
-
 
 @pytest.fixture
 def here():
@@ -39,7 +37,7 @@ def fname(here):
     return here / 'sample.key'
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_keepalive_two_requests_success(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -57,7 +55,7 @@ def test_keepalive_two_requests_success(create_app_and_client):
     assert 1 == len(client._session.connector._conns)
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_keepalive_response_released(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -76,7 +74,7 @@ def test_keepalive_response_released(create_app_and_client):
     assert 1 == len(client._session.connector._conns)
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_keepalive_server_force_close_connection(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -97,7 +95,7 @@ def test_keepalive_server_force_close_connection(create_app_and_client):
     assert 0 == len(client._session.connector._conns)
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_HTTP_304(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -114,7 +112,7 @@ def test_HTTP_304(create_app_and_client):
     assert content == b''
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_HTTP_304_WITH_BODY(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -131,7 +129,7 @@ def test_HTTP_304_WITH_BODY(create_app_and_client):
     assert content == b''
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_auto_header_user_agent(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -148,7 +146,7 @@ def test_auto_header_user_agent(create_app_and_client):
         yield from resp.release()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_skip_auto_headers_user_agent(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -166,7 +164,7 @@ def test_skip_auto_headers_user_agent(create_app_and_client):
         yield from resp.release()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_skip_default_auto_headers_user_agent(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -184,7 +182,7 @@ def test_skip_default_auto_headers_user_agent(create_app_and_client):
         yield from resp.release()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_skip_auto_headers_content_type(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -202,7 +200,7 @@ def test_skip_auto_headers_content_type(create_app_and_client):
         yield from resp.release()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_post_data_bytesio(create_app_and_client):
     data = b'some buffer'
 
@@ -223,7 +221,7 @@ def test_post_data_bytesio(create_app_and_client):
         yield from resp.release()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_post_data_with_bytesio_file(create_app_and_client):
     data = b'some buffer'
 
@@ -244,7 +242,7 @@ def test_post_data_with_bytesio_file(create_app_and_client):
         yield from resp.release()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_client_ssl(create_app_and_client, loop, ssl_ctx):
     connector = aiohttp.TCPConnector(verify_ssl=False, loop=loop)
 
@@ -272,7 +270,7 @@ def test_client_ssl(create_app_and_client, loop, ssl_ctx):
     b'0\x9a\xc9D\x83\xdc\x91\'\x88\x91\x11\xa1d\x97\xfd\xcb~7U\x14D@L'
     b'\x11\xab\x99\xa8\xae\xb7\x14\xee\x8b'],
     ids=['md5', 'sha1', 'sha256'])
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_tcp_connector_fingerprint_ok(create_app_and_client,
                                       loop, ssl_ctx, fingerprint):
     @asyncio.coroutine
@@ -297,7 +295,7 @@ def test_tcp_connector_fingerprint_ok(create_app_and_client,
     b'0\x9a\xc9D\x83\xdc\x91\'\x88\x91\x11\xa1d\x97\xfd\xcb~7U\x14D@L'
     b'\x11\xab\x99\xa8\xae\xb7\x14\xee\x8b'],
     ids=['md5', 'sha1', 'sha256'])
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_tcp_connector_fingerprint_fail(create_app_and_client,
                                         loop, ssl_ctx, fingerprint):
     @asyncio.coroutine
@@ -320,7 +318,7 @@ def test_tcp_connector_fingerprint_fail(create_app_and_client,
     assert exc.got == fingerprint
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_format_task_get(create_server, loop):
 
     @asyncio.coroutine
@@ -337,7 +335,7 @@ def test_format_task_get(create_server, loop):
     client.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_str_params(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -354,7 +352,7 @@ def test_str_params(create_app_and_client):
         yield from resp.release()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_drop_params_on_redirect(create_app_and_client):
     @asyncio.coroutine
     def handler_redirect(request):
@@ -376,7 +374,7 @@ def test_drop_params_on_redirect(create_app_and_client):
         yield from resp.release()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_history(create_app_and_client):
     @asyncio.coroutine
     def handler_redirect(request):
@@ -406,7 +404,7 @@ def test_history(create_app_and_client):
         yield from resp_redirect.release()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_keepalive_closed_by_server(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -428,7 +426,7 @@ def test_keepalive_closed_by_server(create_app_and_client):
     assert 0 == len(client._session.connector._conns)
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_wait_for(create_app_and_client, loop):
     @asyncio.coroutine
     def handler(request):
@@ -442,7 +440,7 @@ def test_wait_for(create_app_and_client, loop):
     assert txt == 'OK'
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_raw_headers(create_app_and_client, loop):
     @asyncio.coroutine
     def handler(request):
@@ -458,7 +456,7 @@ def test_raw_headers(create_app_and_client, loop):
     resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_http_request_with_version(create_app_and_client, loop, warning):
     @asyncio.coroutine
     def handler(request):
@@ -472,7 +470,7 @@ def test_http_request_with_version(create_app_and_client, loop, warning):
         resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_204_with_gzipped_content_encoding(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -491,7 +489,7 @@ def test_204_with_gzipped_content_encoding(create_app_and_client):
     yield from resp.release()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_timeout_on_reading_headers(create_app_and_client, loop):
 
     @asyncio.coroutine
@@ -507,7 +505,7 @@ def test_timeout_on_reading_headers(create_app_and_client, loop):
         yield from client.get('/', timeout=0.01)
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_timeout_on_reading_data(create_app_and_client, loop):
 
     @asyncio.coroutine
@@ -525,7 +523,7 @@ def test_timeout_on_reading_data(create_app_and_client, loop):
         yield from resp.read()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_HTTP_200_OK_METHOD(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -553,7 +551,7 @@ def test_HTTP_200_OK_METHOD(create_app_and_client):
         yield from resp.release()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_HTTP_200_OK_METHOD_connector(create_app_and_client, loop):
     @asyncio.coroutine
     def handler(request):
@@ -585,7 +583,7 @@ def test_HTTP_200_OK_METHOD_connector(create_app_and_client, loop):
         yield from resp.release()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_HTTP_302_REDIRECT_GET(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -605,7 +603,7 @@ def test_HTTP_302_REDIRECT_GET(create_app_and_client):
     resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_HTTP_302_REDIRECT_NON_HTTP(create_app_and_client):
 
     @asyncio.coroutine
@@ -619,7 +617,7 @@ def test_HTTP_302_REDIRECT_NON_HTTP(create_app_and_client):
         yield from client.get('/redirect')
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_HTTP_302_REDIRECT_POST(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -641,7 +639,7 @@ def test_HTTP_302_REDIRECT_POST(create_app_and_client):
     resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_HTTP_302_REDIRECT_POST_with_content_length_header(
         create_app_and_client):
     @asyncio.coroutine
@@ -666,7 +664,7 @@ def test_HTTP_302_REDIRECT_POST_with_content_length_header(
     resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_HTTP_307_REDIRECT_POST(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -688,7 +686,7 @@ def test_HTTP_307_REDIRECT_POST(create_app_and_client):
     resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_HTTP_302_max_redirects(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -712,7 +710,7 @@ def test_HTTP_302_max_redirects(create_app_and_client):
     resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_HTTP_200_GET_WITH_PARAMS(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -729,7 +727,7 @@ def test_HTTP_200_GET_WITH_PARAMS(create_app_and_client):
     resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_HTTP_200_GET_WITH_MultiDict_PARAMS(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -747,7 +745,7 @@ def test_HTTP_200_GET_WITH_MultiDict_PARAMS(create_app_and_client):
     resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_HTTP_200_GET_WITH_MIXED_PARAMS(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -764,7 +762,7 @@ def test_HTTP_200_GET_WITH_MIXED_PARAMS(create_app_and_client):
     resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_POST_DATA(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -781,7 +779,7 @@ def test_POST_DATA(create_app_and_client):
     resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_POST_DATA_with_explicit_formdata(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -802,7 +800,7 @@ def test_POST_DATA_with_explicit_formdata(create_app_and_client):
 
 
 @pytest.mark.xfail
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_POST_DATA_with_charset(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -823,7 +821,7 @@ def test_POST_DATA_with_charset(create_app_and_client):
 
 
 @pytest.mark.xfail
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_POST_DATA_with_context_transfer_encoding(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -844,7 +842,7 @@ def test_POST_DATA_with_context_transfer_encoding(create_app_and_client):
     resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_POST_MultiDict(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -861,7 +859,7 @@ def test_POST_MultiDict(create_app_and_client):
     resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_POST_DATA_DEFLATE(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -878,7 +876,7 @@ def test_POST_DATA_DEFLATE(create_app_and_client):
     resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_POST_FILES(create_app_and_client, fname):
     @asyncio.coroutine
     def handler(request):
@@ -902,7 +900,7 @@ def test_POST_FILES(create_app_and_client, fname):
         resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_POST_FILES_DEFLATE(create_app_and_client, fname):
     @asyncio.coroutine
     def handler(request):
@@ -925,7 +923,7 @@ def test_POST_FILES_DEFLATE(create_app_and_client, fname):
         resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_POST_FILES_STR(create_app_and_client, fname):
     @asyncio.coroutine
     def handler(request):
@@ -945,7 +943,7 @@ def test_POST_FILES_STR(create_app_and_client, fname):
         resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_POST_FILES_STR_SIMPLE(create_app_and_client, fname):
     @asyncio.coroutine
     def handler(request):
@@ -964,7 +962,7 @@ def test_POST_FILES_STR_SIMPLE(create_app_and_client, fname):
         resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_POST_FILES_LIST(create_app_and_client, fname):
     @asyncio.coroutine
     def handler(request):
@@ -984,7 +982,7 @@ def test_POST_FILES_LIST(create_app_and_client, fname):
         resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_POST_FILES_CT(create_app_and_client, fname):
     @asyncio.coroutine
     def handler(request):
@@ -1007,7 +1005,7 @@ def test_POST_FILES_CT(create_app_and_client, fname):
         resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_POST_FILES_SINGLE(create_app_and_client, fname):
 
     app, client = yield from create_app_and_client()
@@ -1017,7 +1015,7 @@ def test_POST_FILES_SINGLE(create_app_and_client, fname):
             yield from client.post('/', data=f)
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_POST_FILES_SINGLE_BINARY(create_app_and_client, fname):
     @asyncio.coroutine
     def handler(request):
@@ -1041,7 +1039,7 @@ def test_POST_FILES_SINGLE_BINARY(create_app_and_client, fname):
         resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_POST_FILES_IO(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -1061,7 +1059,7 @@ def test_POST_FILES_IO(create_app_and_client):
 
 
 @pytest.mark.xfail
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_POST_MULTIPART(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -1088,7 +1086,7 @@ def test_POST_MULTIPART(create_app_and_client):
     resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_POST_FILES_IO_WITH_PARAMS(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -1113,7 +1111,7 @@ def test_POST_FILES_IO_WITH_PARAMS(create_app_and_client):
     resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_POST_FILES_WITH_DATA(create_app_and_client, fname):
     @asyncio.coroutine
     def handler(request):
@@ -1138,7 +1136,7 @@ def test_POST_FILES_WITH_DATA(create_app_and_client, fname):
 
 
 @pytest.mark.xfail
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_POST_STREAM_DATA(create_app_and_client, fname, loop):
     @asyncio.coroutine
     def handler(request):
@@ -1173,7 +1171,7 @@ def test_POST_STREAM_DATA(create_app_and_client, fname, loop):
 
 
 @pytest.mark.xfail
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_POST_StreamReader(create_app_and_client, fname, loop):
     @asyncio.coroutine
     def handler(request):
@@ -1203,7 +1201,7 @@ def test_POST_StreamReader(create_app_and_client, fname, loop):
     resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_expect_continue(create_app_and_client):
     expect_called = False
 
@@ -1230,7 +1228,7 @@ def test_expect_continue(create_app_and_client):
     assert expect_called
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_encoding_deflate(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -1249,7 +1247,7 @@ def test_encoding_deflate(create_app_and_client):
     resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_encoding_gzip(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -1268,7 +1266,7 @@ def test_encoding_gzip(create_app_and_client):
     resp.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_chunked(create_app_and_client):
     @asyncio.coroutine
     def handler(request):

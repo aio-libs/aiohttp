@@ -1,3 +1,4 @@
+import asyncio
 from unittest import mock
 
 import pytest
@@ -121,7 +122,7 @@ def test_non_keepalive_on_closing(make_request):
     assert not req.keep_alive
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_call_POST_on_GET_request(make_request):
     req = make_request('GET', '/')
 
@@ -129,7 +130,7 @@ def test_call_POST_on_GET_request(make_request):
     assert CIMultiDict() == ret
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_call_POST_on_weird_content_type(make_request):
     req = make_request(
         'POST', '/',
@@ -139,7 +140,7 @@ def test_call_POST_on_weird_content_type(make_request):
     assert CIMultiDict() == ret
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_call_POST_twice(make_request):
     req = make_request('GET', '/')
 

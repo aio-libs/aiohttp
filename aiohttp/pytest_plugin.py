@@ -6,7 +6,7 @@ import pytest
 from aiohttp.web import Application
 
 from .test_utils import (TestClient, loop_context, setup_test_loop,
-                         teardown_test_loop)
+                         teardown_test_loop, unused_port as _unused_port)
 
 
 @contextlib.contextmanager
@@ -49,6 +49,11 @@ def pytest_pyfunc_call(pyfuncitem):
 def loop():
     with loop_context() as _loop:
         yield _loop
+
+
+@pytest.fixture
+def unused_port():
+    return _unused_port
 
 
 @pytest.yield_fixture

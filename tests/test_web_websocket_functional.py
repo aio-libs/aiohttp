@@ -2,13 +2,11 @@
 
 import asyncio
 
-import pytest
-
 import aiohttp
 from aiohttp import helpers, web
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_websocket_json(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -35,7 +33,7 @@ def test_websocket_json(create_app_and_client):
     assert resp.data == expected_value
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_websocket_json_invalid_message(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -62,7 +60,7 @@ def test_websocket_json_invalid_message(create_app_and_client):
     assert 'ValueError was raised' in data
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_websocket_send_json(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -86,7 +84,7 @@ def test_websocket_send_json(create_app_and_client):
     assert data['test'] == expected_value
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_websocket_receive_json(create_app_and_client):
     @asyncio.coroutine
     def handler(request):
@@ -112,7 +110,7 @@ def test_websocket_receive_json(create_app_and_client):
     assert resp.data == expected_value
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_send_recv_text(create_app_and_client, loop):
 
     closed = helpers.create_future(loop)
@@ -147,7 +145,7 @@ def test_send_recv_text(create_app_and_client, loop):
     yield from closed
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_send_recv_bytes(create_app_and_client, loop):
 
     closed = helpers.create_future(loop)
@@ -183,7 +181,7 @@ def test_send_recv_bytes(create_app_and_client, loop):
     yield from closed
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_send_recv_json(create_app_and_client, loop):
     closed = helpers.create_future(loop)
 
@@ -218,7 +216,7 @@ def test_send_recv_json(create_app_and_client, loop):
     yield from closed
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_close_timeout(create_app_and_client, loop):
     closed = helpers.create_future(loop)
 

@@ -17,9 +17,6 @@ except:
     ssl = False
 
 
-pytest_plugins = 'aiohttp.pytest_plugin'
-
-
 @pytest.fixture(params=['sendfile', 'fallback'], ids=['sendfile', 'fallback'])
 def sender(request):
     def maker(*args, **kwargs):

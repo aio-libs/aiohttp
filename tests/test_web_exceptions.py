@@ -1,3 +1,4 @@
+import asyncio
 import collections
 import re
 from unittest import mock
@@ -49,7 +50,7 @@ def test_all_http_exceptions_exported():
             assert name in web.__all__
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_HTTPOk(buf, request):
     resp = web.HTTPOk()
     yield from resp.prepare(request)
@@ -83,7 +84,7 @@ def test_terminal_classes_has_status_code():
     assert 1 == codes.most_common(1)[0][1]
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_HTTPFound(buf, request):
     resp = web.HTTPFound(location='/redirect')
     assert '/redirect' == resp.location
@@ -108,7 +109,7 @@ def test_HTTPFound_empty_location():
         web.HTTPFound(location=None)
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_HTTPMethodNotAllowed(buf, request):
     resp = web.HTTPMethodNotAllowed('get', ['POST', 'PUT'])
     assert 'GET' == resp.method

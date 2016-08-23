@@ -79,14 +79,14 @@ def test_nonstarted_send_json():
         ws.send_json({'type': 'json'})
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_nonstarted_close():
     ws = WebSocketResponse()
     with pytest.raises(RuntimeError):
         yield from ws.close()
 
 
-@pytest.mark.run_Loop
+@asyncio.coroutine
 def test_nonstarted_receive_str():
 
     ws = WebSocketResponse()
@@ -94,7 +94,7 @@ def test_nonstarted_receive_str():
         yield from ws.receive_str()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_nonstarted_receive_bytes():
 
     ws = WebSocketResponse()
@@ -102,14 +102,14 @@ def test_nonstarted_receive_bytes():
         yield from ws.receive_bytes()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_nonstarted_receive_json():
     ws = WebSocketResponse()
     with pytest.raises(RuntimeError):
         yield from ws.receive_json()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_receive_str_nonstring(make_request):
 
     req = make_request('GET', '/')
@@ -126,7 +126,7 @@ def test_receive_str_nonstring(make_request):
         yield from ws.receive_str()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_receive_bytes_nonsbytes(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -142,7 +142,7 @@ def test_receive_bytes_nonsbytes(make_request):
         yield from ws.receive_bytes()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_send_str_nonstring(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -151,7 +151,7 @@ def test_send_str_nonstring(make_request):
         ws.send_str(b'bytes')
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_send_bytes_nonbytes(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -160,7 +160,7 @@ def test_send_bytes_nonbytes(make_request):
         ws.send_bytes('string')
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_send_json_nonjson(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -200,7 +200,7 @@ def test_can_prepare_without_upgrade(make_request):
     assert (False, None) == ws.can_prepare(req)
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_can_prepare_started(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -217,7 +217,7 @@ def test_closed_after_ctor():
     assert ws.close_code is None
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_send_str_closed(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -227,7 +227,7 @@ def test_send_str_closed(make_request):
         ws.send_str('string')
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_send_bytes_closed(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -237,7 +237,7 @@ def test_send_bytes_closed(make_request):
         ws.send_bytes(b'bytes')
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_send_json_closed(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -247,7 +247,7 @@ def test_send_json_closed(make_request):
         ws.send_json({'type': 'json'})
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_ping_closed(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -257,7 +257,7 @@ def test_ping_closed(make_request):
         ws.ping()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_pong_closed(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -267,7 +267,7 @@ def test_pong_closed(make_request):
         ws.pong()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_close_idempotent(make_request, writer):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -277,7 +277,7 @@ def test_close_idempotent(make_request, writer):
     assert not (yield from ws.close(code=2, message='message2'))
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_start_invalid_method(make_request):
     req = make_request('POST', '/')
     ws = WebSocketResponse()
@@ -285,7 +285,7 @@ def test_start_invalid_method(make_request):
         yield from ws.prepare(req)
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_start_without_upgrade(make_request):
     req = make_request('GET', '/',
                        headers=CIMultiDict({}))
@@ -294,14 +294,14 @@ def test_start_without_upgrade(make_request):
         yield from ws.prepare(req)
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_wait_closed_before_start():
     ws = WebSocketResponse()
     with pytest.raises(RuntimeError):
         yield from ws.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_write_eof_not_started():
 
     ws = WebSocketResponse()
@@ -309,7 +309,7 @@ def test_write_eof_not_started():
         yield from ws.write_eof()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_write_eof_idempotent(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -321,7 +321,7 @@ def test_write_eof_idempotent(make_request):
     yield from ws.write_eof()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_receive_exc_in_reader(make_request, loop, reader):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -339,7 +339,7 @@ def test_receive_exc_in_reader(make_request, loop, reader):
     assert ws.exception() is exc
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_receive_cancelled(make_request, loop, reader):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -353,7 +353,7 @@ def test_receive_cancelled(make_request, loop, reader):
         yield from ws.receive()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_receive_timeouterror(make_request, loop, reader):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -367,7 +367,7 @@ def test_receive_timeouterror(make_request, loop, reader):
         yield from ws.receive()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_receive_client_disconnected(make_request, loop, reader):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -386,7 +386,7 @@ def test_receive_client_disconnected(make_request, loop, reader):
     assert ws.exception() is None
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_multiple_receive_on_close_connection(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -402,7 +402,7 @@ def test_multiple_receive_on_close_connection(make_request):
         yield from ws.receive()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_concurrent_receive(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -413,7 +413,7 @@ def test_concurrent_receive(make_request):
         yield from ws.receive()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_close_exc(make_request, reader, loop):
     req = make_request('GET', '/')
 
@@ -436,7 +436,7 @@ def test_close_exc(make_request, reader, loop):
     assert ws.close_code == 1006
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_close_exc2(make_request):
 
     req = make_request('GET', '/')
