@@ -6,7 +6,7 @@ sphinx
 alabaster>=0.6.2
 cython
 chardet
-isort
+isort==4.2.5
 tox
 sphinxcontrib-asyncio
 sphinxcontrib-newsfeed
