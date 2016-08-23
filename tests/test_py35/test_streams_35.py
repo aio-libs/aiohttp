@@ -17,7 +17,6 @@ def create_stream(loop):
     return stream
 
 
-@pytest.mark.run_loop
 async def test_stream_reader_lines(loop):
     line_iter = iter(DATA.splitlines(keepends=True))
     async for line in create_stream(loop):
@@ -25,7 +24,6 @@ async def test_stream_reader_lines(loop):
     pytest.raises(StopIteration, next, line_iter)
 
 
-@pytest.mark.run_loop
 async def test_stream_reader_chunks_complete(loop):
     """Tests if chunked iteration works if the chunking works out
     (i.e. the data is divisible by the chunk size)
@@ -36,7 +34,6 @@ async def test_stream_reader_chunks_complete(loop):
     pytest.raises(StopIteration, next, chunk_iter)
 
 
-@pytest.mark.run_loop
 async def test_stream_reader_chunks_incomplete(loop):
     """Tests if chunked iteration works if the last chunk is incomplete"""
     chunk_iter = chunkify(DATA, 8)
@@ -45,7 +42,6 @@ async def test_stream_reader_chunks_incomplete(loop):
     pytest.raises(StopIteration, next, chunk_iter)
 
 
-@pytest.mark.run_loop
 async def test_data_queue_empty(loop):
     """Tests that async looping yields nothing if nothing is there"""
     buffer = streams.DataQueue(loop=loop)
@@ -55,7 +51,6 @@ async def test_data_queue_empty(loop):
         assert False
 
 
-@pytest.mark.run_loop
 async def test_data_queue_items(loop):
     """Tests that async looping yields objects identically"""
     buffer = streams.DataQueue(loop=loop)
@@ -71,7 +66,6 @@ async def test_data_queue_items(loop):
     pytest.raises(StopIteration, next, item_iter)
 
 
-@pytest.mark.run_loop
 async def test_stream_reader_iter_any(loop):
     it = iter([b'line1\nline2\nline3\n'])
     async for raw in create_stream(loop).iter_any():
