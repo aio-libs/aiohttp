@@ -5,8 +5,9 @@ import pytest
 
 from aiohttp.web import Application
 
+from .test_utils import unused_port as _unused_port
 from .test_utils import (TestClient, loop_context, setup_test_loop,
-                         teardown_test_loop, unused_port as _unused_port)
+                         teardown_test_loop)
 
 
 @contextlib.contextmanager

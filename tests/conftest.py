@@ -10,7 +10,6 @@ import pytest
 import aiohttp
 from aiohttp import web
 
-
 pytest_plugins = 'aiohttp.pytest_plugin'
 
 
