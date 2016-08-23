@@ -3,7 +3,6 @@ import functools
 import os
 import shutil
 import tempfile
-
 from unittest import mock
 from unittest.mock import MagicMock
 

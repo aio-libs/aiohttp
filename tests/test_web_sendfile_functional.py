@@ -7,7 +7,6 @@ import unittest
 import pytest
 
 import aiohttp
-
 from aiohttp import log, request, web
 from aiohttp.file_sender import FileSender
 from aiohttp.test_utils import unused_port

@@ -25,22 +25,22 @@ flake: .install-deps
 	touch .develop
 
 test: flake .develop
-	py.test -q aiohttp tests --isort
+	py.test -q --isort ./tests
 
 vtest: flake .develop
-	py.test -s -v aiohttp tests  --isort
+	py.test -s -v --isort ./tests
 
 cov cover coverage:
 	tox
 
 cov-dev: .develop
-	py.test --cov=aiohttp --cov-report=term --cov-report=html aiohttp tests --isort
+	py.test --cov=aiohttp --cov-report=term --cov-report=html tests --isort
 	@echo "open file://`pwd`/coverage/index.html"
 
 cov-dev-full: .develop
-	AIOHTTP_NO_EXTENSIONS=1 py.test --cov=aiohttp --cov-append tests
+	AIOHTTP_NO_EXTENSIONS=1 py.test --cov=aiohttp tests
 	PYTHONASYNCIODEBUG=1 py.test --cov=aiohttp --cov-append tests
-	py.test --cov=aiohttp --cov-report=term --cov-report=html tests
+	py.test --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
 	@echo "open file://`pwd`/coverage/index.html"
 
 clean:
