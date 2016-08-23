@@ -44,3 +44,4 @@ aiohttp/_websocket.html
 .install-deps
 .develop
 .gitconfig
+.flake

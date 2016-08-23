@@ -11,28 +11,30 @@ isort:
 	isort -rc examples
 	isort -rc demos
 
+flake: .flake
 
-flake: .install-deps
-#	python setup.py check -rms
+.flake: .install-deps $(shell find aiohttp -type f) \
+                      $(shell find tests -type f) \
+                      $(shell find benchmark -type f) \
+                      $(shell find examples -type f) \
+                      $(shell find demos -type f)
 	flake8 aiohttp
 	if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then \
 	    flake8 examples tests demos benchmark; \
+            python setup.py check -rms; \
 	fi
-	isort -c -rc aiohttp
-	isort -c -rc tests
-	isort -c -rc benchmark
-	isort -c -rc examples
-	isort -c -rc demos
+	isort -c -rc aiohttp tests benchmark examples demos
+	touch .flake
 
 
-.develop: .install-deps $(shell find aiohttp -type f)
+.develop: .install-deps $(shell find aiohttp -type f) .flake
 	pip install -e .
 	touch .develop
 
-test: flake .develop
+test: .develop
 	py.test -q ./tests
 
-vtest: flake .develop
+vtest: .develop
 	py.test -s -v ./tests
 
 cov cover coverage:
@@ -84,4 +86,4 @@ install:
 	pip install -U pip
 	pip install -Ur requirements-dev.txt
 
-.PHONY: all build venv flake test vtest testloop cov clean doc
+.PHONY: all build flake test vtest cov clean doc
