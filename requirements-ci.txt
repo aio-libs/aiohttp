@@ -9,7 +9,7 @@ chardet
 tox
 sphinxcontrib-asyncio
 sphinxcontrib-newsfeed
-pytest>=2.9.2
+pytest==2.9.2  # 3.0 has a bug with pytest.importskip, should wait for 3.0.1
 py>=1.4.31
 pytest-cov
 pytest-mock
