@@ -2,18 +2,23 @@
 
 import asyncio
 import os
+import re
 import signal
 import ssl
 import sys
 
 import gunicorn.workers.base as base
 
-from aiohttp.helpers import ensure_future
+from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
+from aiohttp.helpers import AccessLogger, ensure_future
 
 __all__ = ('GunicornWebWorker', 'GunicornUVLoopWebWorker')
 
 
 class GunicornWebWorker(base.Worker):
+
+    DEFAULT_AIOHTTP_LOG_FORMAT = AccessLogger.LOG_FORMAT
+    DEFAULT_GUNICORN_LOG_FORMAT = GunicornAccessLogFormat.default
 
     def __init__(self, *args, **kw):  # pragma: no cover
         super().__init__(*args, **kw)
@@ -48,7 +53,8 @@ class GunicornWebWorker(base.Worker):
             timeout=self.cfg.timeout,
             keep_alive=self.cfg.keepalive,
             access_log=self.log.access_log,
-            access_log_format=self.cfg.access_log_format)
+            access_log_format=self._get_valid_log_format(
+                self.cfg.access_log_format))
 
     @asyncio.coroutine
     def close(self):
@@ -157,6 +163,20 @@ class GunicornWebWorker(base.Worker):
         if cfg.ciphers:
             ctx.set_ciphers(cfg.ciphers)
         return ctx
+
+    def _get_valid_log_format(self, source_format):
+        if source_format == self.DEFAULT_GUNICORN_LOG_FORMAT:
+            return self.DEFAULT_AIOHTTP_LOG_FORMAT
+        elif re.search(r'%\([^\)]+\)', source_format):
+            raise ValueError(
+                "Gunicorn's style options in form of `%(name)s` are not "
+                "supported for the log formatting. Please use aiohttp's "
+                "format specification to configure access log formatting: "
+                "http://aiohttp.readthedocs.io/en/stable/logging.html"
+                "#format-specification"
+            )
+        else:
+            return source_format
 
 
 class GunicornUVLoopWebWorker(GunicornWebWorker):
