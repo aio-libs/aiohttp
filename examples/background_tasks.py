@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Example of aiohttp.web.Application.on_startup signal handler"""
-import aioredis
 import asyncio
-from aiohttp.web import Application, run_app, WebSocketResponse
+
+import aioredis
+from aiohttp.web import Application, WebSocketResponse, run_app
 
 async def websocket_handler(request):
     ws = WebSocketResponse()
