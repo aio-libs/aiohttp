@@ -81,6 +81,8 @@ CHANGES
 
 - Drop ChunkedParser and LinesParser #1111
 
+- Call `Application.startup` in GunicornWebWorker #1105
+
 
 0.22.5 (08-02-2016)
 -------------------
