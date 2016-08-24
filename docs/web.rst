@@ -1014,34 +1014,40 @@ tasks that will live till the application is alive. The appropriate
 background tasks could be registered as an :attr:`Application.on_startup`
 signal handlers as shown in the example below::
 
-  app = web.Application()
-
-  async def quickly_notify_monitoring(app):
-  """Send notification to monitoring service about the app process start-up"""
-      pass
-
-  async def listen_to_zeromq(app):
-      """Listen to messages on zmq.SUB socket"""
-      pass
 
   async def listen_to_redis(app):
-      """Listen to messages from Redis Pub/Sub"""
-      pass
+      try:
+          sub = await aioredis.create_redis(('localhost', 6379), loop=app.loop)
+          ch, *_ = await sub.subscribe('news')
+          async for msg in ch.iter(encoding='utf-8'):
+              # Forward message to all connected websockets:
+              for ws in app['websockets']:
+                  ws.send_str('{}: {}'.format(ch.name, msg))
+      except asyncio.CancelledError:
+          pass
+      finally:
+          await sub.unsubscribe(ch.name)
+          await sub.quit()
 
-  async def run_all_long_running_tasks(app):
-      return await asyncio.gather(listen_to_zeromq(app),
-                                  listen_to_redis(app),
-                                  loop=app.loop)
-  app.on_startup.append(quickly_notify_monitoring)
-  app.on_startup.append(run_all_long_running_tasks)
+
+  async def start_background_tasks(app):
+      app['redis_listener'] = app.loop.create_task(listen_to_redis(app))
+
+
+  async def cleanup_background_tasks(app):
+      app['redis_listener'].cancel()
+      await app['redis_listener']
+
+
+  app = web.Application()
+  app.on_startup.append(start_background_tasks)
+  app.on_cleanup.append(cleanup_background_tasks)
   web.run_app(app)
 
 
-The :func:`quickly_notify_monitoring` from the example above will complete
-and exit but :func:`listen_to_zeromq` and :func:`listen_to_redis` will take
-forever.
-An :attr:`Application.on_cleanup` signal handler may be used to send a
-cancellation to all registered long-running tasks.
+The task :func:`listen_to_redis` will run forever.
+To shut it down correctly :attr:`Application.on_cleanup` signal handler
+may be used to send a cancellation to it.
 
 
 CORS support
