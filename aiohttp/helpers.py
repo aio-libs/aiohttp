@@ -8,6 +8,7 @@ import functools
 import io
 import os
 import re
+import sys
 import warnings
 from collections import namedtuple
 from http.cookies import Morsel, SimpleCookie
@@ -30,6 +31,8 @@ except ImportError:
 __all__ = ('BasicAuth', 'create_future', 'FormData', 'parse_mimetype',
            'Timeout', 'CookieJar', 'ensure_future')
 
+
+PY_352 = sys.version_info >= (3, 5, 2)
 
 _sentinel = object()
 
@@ -831,3 +834,10 @@ def _get_kwarg(kwargs, old, new, value):
         return val
     else:
         return value
+
+
+def _decorate_aiter(coro):
+    if PY_352:
+        return coro
+    else:
+        return asyncio.coroutine(coro)

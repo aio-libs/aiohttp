@@ -9,7 +9,6 @@ from aiohttp import parsers
 DATA = b'line1\nline2\nline3\n'
 
 
-
 class LinesParser:
     """Lines parser.
     Lines parser splits a bytes stream into a chunks of data, each chunk ends
