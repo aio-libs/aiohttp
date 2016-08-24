@@ -59,8 +59,7 @@ def test_run(worker, loop):
     worker.loop = loop
     worker._run = mock.Mock(
         wraps=asyncio.coroutine(lambda: None))
-    worker.wsgi.startup = mock.Mock(
-        wraps=asyncio.coroutine(lambda: None))
+    worker.wsgi.startup = make_mocked_coro(None)
     with pytest.raises(SystemExit):
         worker.run()
     assert worker._run.called
