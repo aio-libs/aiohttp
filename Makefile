@@ -20,7 +20,7 @@ flake: .flake
                       $(shell find demos -type f)
 	flake8 aiohttp
 	if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then \
-	    flake8 examples tests demos benchmark; \
+	    flake8 examples tests demos benchmark && \
             python setup.py check -rms; \
 	fi
 	if ! isort -c -rc aiohttp tests benchmark examples; then \
