@@ -31,6 +31,7 @@ class GunicornWebWorker(base.Worker):
         super().init_process()
 
     def run(self):
+        self.loop.run_until_complete(self.wsgi.startup())
         self._runner = ensure_future(self._run(), loop=self.loop)
 
         try:
