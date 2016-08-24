@@ -5,7 +5,7 @@
 Working with Multipart
 ======================
 
-`aiohttp` supports a full featured multipart reader and writer. Both
+``aiohttp`` supports a full featured multipart reader and writer. Both
 are designed with steaming processing in mind to avoid unwanted
 footprint which may be significant if you're dealing with large
 payloads, but this also means that most I/O operation are only
