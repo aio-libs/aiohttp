@@ -9,9 +9,27 @@ from aiohttp import parsers
 DATA = b'line1\nline2\nline3\n'
 
 
+
+class LinesParser:
+    """Lines parser.
+    Lines parser splits a bytes stream into a chunks of data, each chunk ends
+    with \\n symbol."""
+
+    def __init__(self):
+        pass
+
+    def __call__(self, out, buf):
+        try:
+            while True:
+                chunk = yield from buf.readuntil(b'\n', 0xffff)
+                out.feed_data(chunk, len(chunk))
+        except parsers.EofStream:
+            pass
+
+
 @pytest.fixture
 def lines_parser():
-    return parsers.LinesParser()
+    return LinesParser()
 
 
 def test_at_eof(loop):
@@ -44,6 +62,7 @@ def test_exception_connection_error(loop):
 
 
 def test_exception_waiter(loop, lines_parser):
+
     stream = parsers.StreamParser(loop=loop)
 
     stream._parser = lines_parser
