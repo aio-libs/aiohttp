@@ -381,8 +381,17 @@ class Request(dict, HeadersMixin):
         self._post = MultiDictProxy(out)
         return self._post
 
-    def copy(self):
-        raise NotImplementedError
+    def copy(self, *, app=None, message=None, payload=None, transport=None,
+             reader=None, writer=None, secure_proxy_ssl_header=None):
+        return Request(
+            app or self._app,
+            message or self._message,
+            payload or self._payload,
+            transport or self._transport,
+            reader or self._reader,
+            writer or self._writer,
+            secure_proxy_ssl_header=secure_proxy_ssl_header or
+            self._secure_proxy_ssl_header)
 
     def __repr__(self):
         ascii_encodable_path = self.path.encode('ascii', 'backslashreplace') \
