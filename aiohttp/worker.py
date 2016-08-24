@@ -60,6 +60,7 @@ class GunicornWebWorker(base.Worker):
                 self.log.info("Stopping server: %s, connections: %s",
                               self.pid, len(handler.connections))
                 server.close()
+                yield from server.wait_closed()
 
             # send on_shutdown event
             yield from self.wsgi.shutdown()
@@ -69,10 +70,10 @@ class GunicornWebWorker(base.Worker):
                 handler.finish_connections(
                     timeout=self.cfg.graceful_timeout / 100 * 95)
                 for handler in servers.values()]
-            yield from asyncio.wait(tasks, loop=self.loop)
+            yield from asyncio.gather(*tasks, loop=self.loop)
 
-            # stop application
-            yield from self.wsgi.finish()
+            # cleanup application
+            yield from self.wsgi.cleanup()
 
     @asyncio.coroutine
     def _run(self):
