@@ -54,13 +54,16 @@ def test_init_process(worker):
 
 
 def test_run(worker, loop):
+    worker.wsgi = mock.Mock()
+
     worker.loop = loop
     worker._run = mock.Mock(
         wraps=asyncio.coroutine(lambda: None))
+    worker.wsgi.startup = make_mocked_coro(None)
     with pytest.raises(SystemExit):
         worker.run()
-
     assert worker._run.called
+    worker.wsgi.startup.assert_called_once_with()
     assert loop.is_closed()
 
 
