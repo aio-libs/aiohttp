@@ -381,16 +381,7 @@ def make_mocked_request(method, path, headers=None, *,
 
 
 def make_mocked_coro(return_value):
-    """A coroutine mock.
-
-    Behavees like a coroutine which returns return_value.
-
-    But it is also a mock object, you might test it as usual Mock:
-
-    mocked = mocke_mocked_coro(1)
-    assert 1 == await mocked(1, 2)
-    mocked.assert_called_with(1, 2)
-    """
+    """Creates a coroutine mock."""
     @asyncio.coroutine
     def mock_coro(*args, **kwargs):
         return return_value
