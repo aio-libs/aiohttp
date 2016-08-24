@@ -836,7 +836,7 @@ def _get_kwarg(kwargs, old, new, value):
         return value
 
 
-def _decorate_aiter(coro):
+def _decorate_aiter(coro):  # pragma: no cover
     if PY_352:
         return coro
     else:
