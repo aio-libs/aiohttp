@@ -65,7 +65,7 @@ from . import errors
 from .streams import EofStream, FlowControlDataQueue
 
 __all__ = ('EofStream', 'StreamParser', 'StreamProtocol',
-           'ParserBuffer', 'LinesParser', 'ChunksParser')
+           'ParserBuffer', 'StreamWriter')
 
 DEFAULT_LIMIT = 2 ** 16
 
@@ -493,39 +493,3 @@ class ParserBuffer:
 
     def __bytes__(self):
         return bytes(self._data)
-
-
-class LinesParser:
-    """Lines parser.
-
-    Lines parser splits a bytes stream into a chunks of data, each chunk ends
-    with \\n symbol."""
-
-    def __init__(self, limit=DEFAULT_LIMIT):
-        self._limit = limit
-
-    def __call__(self, out, buf):
-        try:
-            while True:
-                chunk = yield from buf.readuntil(b'\n', self._limit)
-                out.feed_data(chunk, len(chunk))
-        except EofStream:
-            pass
-
-
-class ChunksParser:
-    """Chunks parser.
-
-    Chunks parser splits a bytes stream into a specified
-    size chunks of data."""
-
-    def __init__(self, size=8192):
-        self._size = size
-
-    def __call__(self, out, buf):
-        try:
-            while True:
-                chunk = yield from buf.read(self._size)
-                out.feed_data(chunk, len(chunk))
-        except EofStream:
-            pass
