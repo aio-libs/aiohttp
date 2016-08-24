@@ -5,6 +5,7 @@ from unittest import mock
 import pytest
 
 from aiohttp import helpers
+from aiohttp.test_utils import make_mocked_coro
 
 base_worker = pytest.importorskip('aiohttp.worker')
 
@@ -160,13 +161,13 @@ def test__run_exc(worker, loop):
 
 def test_close(worker, loop):
     srv = mock.Mock()
+    srv.wait_closed = make_mocked_coro(None)
     handler = mock.Mock()
     worker.servers = {srv: handler}
     worker.log = mock.Mock()
     worker.loop = loop
     app = worker.wsgi = mock.Mock()
-    app.finish.return_value = helpers.create_future(loop)
-    app.finish.return_value.set_result(1)
+    app.cleanup = make_mocked_coro(None)
     handler.connections = [object()]
     handler.finish_connections.return_value = helpers.create_future(loop)
     handler.finish_connections.return_value.set_result(1)
@@ -176,7 +177,7 @@ def test_close(worker, loop):
 
     loop.run_until_complete(worker.close())
     app.shutdown.assert_called_with()
-    app.finish.assert_called_with()
+    app.cleanup.assert_called_with()
     handler.finish_connections.assert_called_with(timeout=95.0)
     srv.close.assert_called_with()
     assert worker.servers is None
