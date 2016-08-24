@@ -79,6 +79,8 @@ CHANGES
 
 - Define `web.Application.on_startup()` signal handler #1103
 
+- Drop ChunkedParser and LinesParser #1111
+
 
 0.22.5 (08-02-2016)
 -------------------
