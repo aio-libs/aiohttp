@@ -4,6 +4,7 @@ import asyncio
 
 import aiohttp
 from aiohttp import helpers, web
+from aiohttp._ws_impl import WSMsgType
 
 
 @asyncio.coroutine
@@ -218,7 +219,7 @@ def test_send_recv_json(create_app_and_client, loop):
 
 @asyncio.coroutine
 def test_close_timeout(create_app_and_client, loop):
-    closed = helpers.create_future(loop)
+    aborted = helpers.create_future(loop)
 
     @asyncio.coroutine
     def handler(request):
@@ -227,12 +228,14 @@ def test_close_timeout(create_app_and_client, loop):
         assert 'request' == (yield from ws.receive_str())
         ws.send_str('reply')
         begin = ws._loop.time()
-        yield from ws.close()
+        assert (yield from ws.close())
         elapsed = ws._loop.time() - begin
         assert elapsed < 0.201, \
             'close() should have returned before ' \
             'at most 2x timeout.'
-        closed.set_result(1)
+        assert ws.close_code == 1006
+        assert isinstance(ws.exception(), asyncio.TimeoutError)
+        aborted.set_result(1)
         return ws
 
     app, client = yield from create_app_and_client()
@@ -245,15 +248,17 @@ def test_close_timeout(create_app_and_client, loop):
     # The server closes here.  Then the client sends bogus messages with an
     # internval shorter than server-side close timeout, to make the server
     # hanging indefinitely.
-    yield from asyncio.sleep(0.04, loop=loop)
+    yield from asyncio.sleep(0.08, loop=loop)
+    msg = yield from ws._reader.read()
+    assert msg.type == WSMsgType.CLOSE
     ws.send_str('hang')
-    yield from asyncio.sleep(0.04, loop=loop)
+    yield from asyncio.sleep(0.08, loop=loop)
     ws.send_str('hang')
-    yield from asyncio.sleep(0.04, loop=loop)
+    yield from asyncio.sleep(0.08, loop=loop)
     ws.send_str('hang')
-    yield from asyncio.sleep(0.04, loop=loop)
+    yield from asyncio.sleep(0.08, loop=loop)
     ws.send_str('hang')
-    yield from asyncio.sleep(0.04, loop=loop)
-    # The server should have been closed now.
-    assert 1 == (yield from closed)
+    yield from asyncio.sleep(0.08, loop=loop)
+    assert (yield from aborted)
+
     yield from ws.close()
