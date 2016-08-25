@@ -887,6 +887,16 @@ def test_set_text_with_charset():
     assert "koi8-r" == resp.charset
 
 
+def test_content_type_with_set_text():
+    resp = Response(text='text')
+    assert resp.content_type == 'text/plain'
+
+
+def test_content_type_with_set_body():
+    resp = Response(body=b'body')
+    assert resp.content_type == 'application/octet-stream'
+
+
 def test_started_when_not_started():
     resp = StreamResponse()
     assert not resp.prepared
