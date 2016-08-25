@@ -102,4 +102,16 @@ Nginx proxy server. See the `official documentation
 information about suggested nginx configuration.
 
 
+Logging configuration
+---------------------
+
+``aiohttp`` and ``gunicorn`` use different format for specifying access log.
+
+By default aiohttp uses own defaults::
+
+   '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
+
+For more unformation please read :ref:`Format Specification for Accees
+Log <aiohttp-logging-access-log-format-spec>`.
+
 .. disqus::

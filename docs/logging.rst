@@ -44,6 +44,9 @@ instance to override default logger.
 Other parameter called *access_log_format* may be used for specifying log
 format (see below).
 
+
+.. _aiohttp-logging-access-log-format-spec:
+
 Format specification
 ^^^^^^^^^^^^^^^^^^^^
 
