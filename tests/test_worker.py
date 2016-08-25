@@ -17,6 +17,10 @@ except ImportError:
     uvloop = None
 
 
+WRONG_LOG_FORMAT = '%a "%{Referrer}i" %(h)s %(l)s %s'
+ACCEPTABLE_LOG_FORMAT = '%a "%{Referrer}i" %s'
+
+
 class BaseTestWorker:
 
     def __init__(self):
@@ -89,14 +93,32 @@ def test_init_signals(worker):
     assert worker.loop.add_signal_handler.called
 
 
-def test_make_handler(worker):
+def test_make_handler(worker, mocker):
     worker.wsgi = mock.Mock()
     worker.loop = mock.Mock()
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
+    worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
+    mocker.spy(worker, '_get_valid_log_format')
 
     f = worker.make_handler(worker.wsgi)
     assert f is worker.wsgi.make_handler.return_value
+    assert worker._get_valid_log_format.called
+
+
+@pytest.mark.parametrize('source,result', [
+    (ACCEPTABLE_LOG_FORMAT, ACCEPTABLE_LOG_FORMAT),
+    (AsyncioWorker.DEFAULT_GUNICORN_LOG_FORMAT,
+     AsyncioWorker.DEFAULT_AIOHTTP_LOG_FORMAT),
+])
+def test__get_valid_log_format_ok(worker, source, result):
+    assert result == worker._get_valid_log_format(source)
+
+
+def test__get_valid_log_format_exc(worker):
+    with pytest.raises(ValueError) as exc:
+        worker._get_valid_log_format(WRONG_LOG_FORMAT)
+    assert '%(name)s' in str(exc)
 
 
 @asyncio.coroutine
@@ -115,6 +137,7 @@ def test__run_ok(worker, loop):
     worker.wsgi.make_handler.return_value.requests_count = 1
     worker.cfg.max_requests = 100
     worker.cfg.is_ssl = True
+    worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
 
     ssl_context = mock.Mock()
     with mock.patch('ssl.SSLContext', return_value=ssl_context):
@@ -205,6 +228,7 @@ def test__run_ok_no_max_requests(worker, loop):
     worker.loop = loop
     loop.create_server = make_mocked_coro(sock)
     worker.wsgi.make_handler.return_value.requests_count = 1
+    worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
     worker.cfg.max_requests = 0
     worker.cfg.is_ssl = True
 
@@ -239,6 +263,7 @@ def test__run_ok_max_requests_exceeded(worker, loop):
     worker.loop = loop
     loop.create_server = make_mocked_coro(sock)
     worker.wsgi.make_handler.return_value.requests_count = 15
+    worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
     worker.cfg.max_requests = 10
     worker.cfg.is_ssl = True
 
