@@ -124,8 +124,6 @@ class ClientRequest:
         # check domain idna encoding
         try:
             host = host.encode('idna').decode('utf-8')
-        # To show more compact to implement codes, I used 'make_netloc()'.
-        # I think it would be nicer... than implement all contents.
             netloc = self.make_netloc(host, url_parsed.port)
         except UnicodeError:
             raise ValueError('URL has an invalid label.')
