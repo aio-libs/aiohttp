@@ -90,6 +90,8 @@ CHANGES
 
 - Return named tuple from WebSocketResponse.can_prepare #1016
 
+- Fix access_log_format in `GunicornWebWorker` #1117
+
 
 0.22.5 (08-02-2016)
 -------------------
