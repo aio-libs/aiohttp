@@ -83,6 +83,12 @@ CHANGES
 
 - Call `Application.startup` in GunicornWebWorker #1105
 
+- Fix client handling hostnames with 63 bytes when a port is given in
+  the url #1044
+
+- Implement proxy support for ClientSession.ws_connect #1025
+
+
 
 0.22.5 (08-02-2016)
 -------------------
