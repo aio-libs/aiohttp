@@ -576,11 +576,11 @@ def test_keep_alive_http09():
     assert not resp.keep_alive
 
 
-def test_start_twice(warning):
+def test_start_twice():
     req = make_request('GET', '/')
     resp = StreamResponse()
 
-    with warning(DeprecationWarning):
+    with pytest.warns(DeprecationWarning):
         impl1 = resp.start(req)
         impl2 = resp.start(req)
         assert impl1 is impl2

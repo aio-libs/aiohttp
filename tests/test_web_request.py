@@ -13,7 +13,7 @@ def make_request():
     return make_mocked_request
 
 
-def test_ctor(make_request, warning):
+def test_ctor(make_request):
     req = make_request('GET', '/path/to?a=1&b=2')
 
     assert 'GET' == req.method

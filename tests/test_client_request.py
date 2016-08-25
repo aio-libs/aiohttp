@@ -265,7 +265,7 @@ def test_basic_auth_utf8(make_request):
     assert 'Basic bmtpbTrRgdC10LrRgNC10YI=' == req.headers['AUTHORIZATION']
 
 
-def test_basic_auth_tuple_forbidden(make_request, warning):
+def test_basic_auth_tuple_forbidden(make_request):
     with pytest.raises(TypeError):
         make_request('get', 'http://python.org',
                      auth=('nkim', '1234'))
