@@ -412,7 +412,7 @@ To tweak or change *transport* layer of requests you can pass a custom
 *connector* to :class:`~aiohttp.ClientSession` and family. For example::
 
     conn = aiohttp.TCPConnector()
-    session = aiohttp.ClientSession(connector=aiohttp.TCPConnector())
+    session = aiohttp.ClientSession(connector=conn)
 
 
 .. seealso:: :ref:`aiohttp-client-reference-connectors` section for
