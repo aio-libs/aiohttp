@@ -141,13 +141,16 @@ For example we have an application with two endpoints:
 
 
    1. ``/echo`` a websocket echo server that authenticates the user somehow
-   2. ``/logout_user`` that when invoked needs to close all open websockets for that user.
+   2. ``/logout_user`` that when invoked needs to close all open
+      websockets for that user.
 
-Keep in mind that you can only ``.close()`` a websocket from inside the handler task, and since the handler task
-is busy reading from the websocket, it can't react to other events.
+Keep in mind that you can only ``.close()`` a websocket from inside
+the handler task, and since the handler task is busy reading from the
+websocket, it can't react to other events.
 
-One simple solution is keeping a shared registry of websocket handler tasks for a user
-in the :class:`aiohttp.web.Application` instance and ``cancel()`` them in ``/logout_user`` handler::
+One simple solution is keeping a shared registry of websocket handler
+tasks for a user in the :class:`aiohttp.web.Application` instance and
+``cancel()`` them in ``/logout_user`` handler::
 
     async def echo_handler(request):
 
@@ -185,3 +188,16 @@ in the :class:`aiohttp.web.Application` instance and ``cancel()`` them in ``/log
         app.router.add_route('POST', '/logout', logout_handler)
         app['websockets'] = defaultdict(set)
         aiohttp.web.run_app(app, host='localhost', port=8080)
+
+
+How to make request from a specific IP address?
+-----------------------------------------------
+
+If your system has several IP interfaces you may choose one which will
+be used used to bind socket locally::
+
+    conn = aiohttp.TCPConnector(local_addr=('127.0.0.1, 0), loop=loop)
+    with aiohttp.ClientSession(connector=conn) as session:
+        ...
+
+.. seealso:: :class:`aiohttp.TCPConnector` and ``local_addr`` parameter.
