@@ -123,8 +123,10 @@ class ClientRequest:
 
         # check domain idna encoding
         try:
-            netloc = netloc.encode('idna').decode('utf-8')
             host = host.encode('idna').decode('utf-8')
+        # To show more compact to implement codes, I used 'make_netloc()'.
+        # I think it would be nicer... than implement all contents.
+            netloc = self.make_netloc(host, url_parsed.port)
         except UnicodeError:
             raise ValueError('URL has an invalid label.')
 
@@ -132,7 +134,6 @@ class ClientRequest:
         username, password = url_parsed.username, url_parsed.password
         if username:
             self.auth = helpers.BasicAuth(username, password or '')
-            netloc = netloc.split('@', 1)[1]
 
         # Record entire netloc for usage in host header
         self.netloc = netloc
@@ -148,6 +149,12 @@ class ClientRequest:
                 port = HTTP_PORT
 
         self.host, self.port, self.scheme = host, port, scheme
+
+    def make_netloc(self, host, port):
+        ret = host
+        if port:
+            ret = ret + ':' + str(port)
+        return ret
 
     def update_version(self, version):
         """Convert request version to two elements tuple.
