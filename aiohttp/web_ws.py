@@ -3,6 +3,7 @@ import json
 import sys
 import warnings
 
+from collections import namedtuple
 from . import Timeout, hdrs
 from ._ws_impl import (CLOSED_MESSAGE, WebSocketError, WSMessage, WSMsgType,
                        do_handshake)
@@ -17,6 +18,11 @@ __all__ = ('WebSocketResponse',)
 PY_35 = sys.version_info >= (3, 5)
 
 THRESHOLD_CONNLOST_ACCESS = 5
+
+
+class WebSocketReady(namedtuple('WebSocketReady', 'ok protocol')):
+    def __bool__(self):
+        return self.ok
 
 
 class WebSocketResponse(StreamResponse):
@@ -98,9 +104,9 @@ class WebSocketResponse(StreamResponse):
                 request.method, request.headers, request.transport,
                 self._protocols)
         except HttpProcessingError:
-            return False, None
+            return WebSocketReady(False, None)
         else:
-            return True, protocol
+            return WebSocketReady(True, protocol)
 
     def can_start(self, request):
         warnings.warn('use .can_prepare(request) instead', DeprecationWarning)

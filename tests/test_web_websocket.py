@@ -6,6 +6,7 @@ import pytest
 from aiohttp import CIMultiDict, WSMessage, WSMsgType, errors, helpers, signals
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import HTTPBadRequest, HTTPMethodNotAllowed, WebSocketResponse
+from aiohttp.web_ws import WebSocketReady
 
 
 @pytest.fixture
@@ -173,6 +174,34 @@ def test_write_non_prepared():
     ws = WebSocketResponse()
     with pytest.raises(RuntimeError):
         ws.write(b'data')
+
+
+def test_websocket_ready():
+    websocket_ready = WebSocketReady(True, 'chat')
+    assert websocket_ready.ok is True
+    assert websocket_ready.protocol == 'chat'
+
+
+def test_websocket_not_ready():
+    websocket_ready = WebSocketReady(False, None)
+    assert websocket_ready.ok is False
+    assert websocket_ready.protocol is None
+
+
+def test_websocket_ready_unknown_protocol():
+    websocket_ready = WebSocketReady(True, None)
+    assert websocket_ready.ok is True
+    assert websocket_ready.protocol is None
+
+
+def test_bool_websocket_ready():
+    websocket_ready = WebSocketReady(True, None)
+    assert bool(websocket_ready) is True
+
+
+def test_bool_websocket_not_ready():
+    websocket_ready = WebSocketReady(False, None)
+    assert bool(websocket_ready) is False
 
 
 def test_can_prepare_ok(make_request):
