@@ -774,7 +774,7 @@ class Response(StreamResponse):
         self.set_tcp_cork(True)
 
         if body is not None and text is not None:
-            raise ValueError("body and text are not allowed together.")
+            raise ValueError('body and text are not allowed together')
 
         if text is not None:
             if hdrs.CONTENT_TYPE not in self.headers:
@@ -794,25 +794,23 @@ class Response(StreamResponse):
                 self._content_dict = {'charset': charset}
                 self.body = text.encode(charset)
             else:
-                self.text = text
                 if content_type or charset:
-                    raise ValueError("Passing both Content-Type header and "
-                                     "content_type or charset params "
-                                     "is forbidden")
+                    raise ValueError('passing both Content-Type header and '
+                                     'content_type or charset params '
+                                     'is forbidden')
+                self.text = text
         else:
             if hdrs.CONTENT_TYPE in self.headers:
                 if content_type or charset:
-                    raise ValueError("Passing both Content-Type header and "
-                                     "content_type or charset params "
-                                     "is forbidden")
-            if content_type:
-                self.content_type = content_type
+                    raise ValueError('passing both Content-Type header and '
+                                     'content_type or charset params '
+                                     'is forbidden')
+            if content_type is None:
+                content_type = 'application/octet-stream'
+            self.content_type = content_type
             if charset:
                 self.charset = charset
-            if body is not None:
-                self.body = body
-            else:
-                self.body = None
+            self.body = body
 
     @property
     def body(self):
