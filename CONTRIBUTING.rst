@@ -101,6 +101,20 @@ Please take a look on the produced output.
 
 Any extra texts (print statements and so on) should be removed.
 
+.. tip::
+  You can also run a single test module or a single test case
+  by passing a ``TESTS`` argument as shown below.
+
+  .. code-block:: shell
+
+      $ make test TESTS=test_worker.py
+      $ make test TESTS=test_worker.py::test_run
+
+  .. seealso::
+    `Pytest's reference about Specifying/selecting tests
+    <http://doc.pytest.org/en/latest/usage.html
+    #specifying-tests-selecting-tests>`_
+
 
 Tests coverage
 --------------

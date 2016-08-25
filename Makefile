@@ -36,10 +36,10 @@ flake: .flake
 	touch .develop
 
 test: .develop
-	py.test -q ./tests
+	py.test -q ./tests/${TESTS}
 
 vtest: .develop
-	py.test -s -v ./tests
+	py.test -s -v ./tests/${TESTS}
 
 cov cover coverage:
 	tox
