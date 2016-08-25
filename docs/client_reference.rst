@@ -345,7 +345,8 @@ The client session supports the context manager protocol for self closing.
                             auth=None,\
                             autoclose=True,\
                             autoping=True,\
-                            origin=None)
+                            origin=None, \
+                            proxy=None, proxy_auth=None)
       :async-with:
       :coroutine:
 
@@ -370,6 +371,11 @@ The client session supports the context manager protocol for self closing.
 
       :param str origin: Origin header to send to server
 
+      :param str proxy: Proxy URL (optional)
+
+      :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
+                                           Basic Authorization (optional)
+
       .. versionadded:: 0.16
 
          Add :meth:`ws_connect`.
@@ -381,6 +387,10 @@ The client session supports the context manager protocol for self closing.
       .. versionadded:: 0.19
 
          Add *origin* parameter.
+
+      .. versionadded:: 1.0
+
+         Added ``proxy`` and ``proxy_auth`` parameters.
 
    .. comethod:: close()
 
