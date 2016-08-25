@@ -88,6 +88,7 @@ CHANGES
 
 - Implement proxy support for ClientSession.ws_connect #1025
 
+- Return named tuple from WebSocketResponse.can_prepare #1016
 
 
 0.22.5 (08-02-2016)
