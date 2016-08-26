@@ -453,10 +453,6 @@ def make_mocked_request(method, path, headers=None, *,
                   transport, reader, writer,
                   secure_proxy_ssl_header=secure_proxy_ssl_header)
 
-    assert req.app is app
-    assert req.content is payload
-    assert req.transport is transport
-
     return req
 
 
