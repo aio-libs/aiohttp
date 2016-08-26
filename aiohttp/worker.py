@@ -8,8 +8,8 @@ import ssl
 import sys
 
 import gunicorn.workers.base as base
-
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
+
 from aiohttp.helpers import AccessLogger, ensure_future
 
 __all__ = ('GunicornWebWorker', 'GunicornUVLoopWebWorker')

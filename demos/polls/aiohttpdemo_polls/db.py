@@ -1,6 +1,5 @@
-import sqlalchemy as sa
-
 import aiopg.sa
+import sqlalchemy as sa
 
 __all__ = ['question', 'choice']
 
