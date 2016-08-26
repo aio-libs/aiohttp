@@ -38,7 +38,7 @@ class TestServer:
     def __init__(self, app, *, protocol="http", host='127.0.0.1'):
         self.app = app
         self._loop = app.loop
-        self.port = unused_port()
+        self.port = None
         self._server = None
         self._handler = None
         self.host = host
@@ -49,6 +49,7 @@ class TestServer:
     def start_server(self, **kwargs):
         if self._server:
             return
+        self.port = unused_port()
         self._handler = self.app.make_handler(**kwargs)
         self._server = yield from self._loop.create_server(self._handler,
                                                            self.host,
