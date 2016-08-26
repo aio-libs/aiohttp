@@ -6,6 +6,7 @@ from importlib import import_module
 
 from . import hdrs, web_exceptions, web_reqrep, web_urldispatcher, web_ws
 from .abc import AbstractMatchInfo, AbstractRouter
+from .helpers import _sentinel
 from .log import web_logger
 from .protocol import HttpVersion  # noqa
 from .server import ServerHttpProtocol
@@ -221,8 +222,23 @@ class Application(dict):
         return self._middlewares
 
     def make_handler(self, **kwargs):
-        return self._handler_factory(
-            self, self.router, loop=self.loop, **kwargs)
+        debug = kwargs.pop('debug', _sentinel)
+        if debug is not _sentinel:
+            warnings.warn(
+                "`debug` parameter is deprecated. "
+                "Use Application's debug mode instead", DeprecationWarning)
+            if debug != self.debug:
+                raise ValueError(
+                    "The value of `debug` parameter conflicts with the debug "
+                    "settings of the `Application` instance. The "
+                    "application's debug mode setting should be used instead "
+                    "as a single point to setup a debug mode. For more "
+                    "information please check "
+                    "http://aiohttp.readthedocs.io/en/stable/"
+                    "web_reference.html#aiohttp.web.Application"
+                )
+        return self._handler_factory(self, self.router, debug=self.debug,
+                                     loop=self.loop, **kwargs)
 
     @asyncio.coroutine
     def startup(self):
