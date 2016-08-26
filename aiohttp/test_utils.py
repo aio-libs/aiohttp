@@ -116,15 +116,15 @@ class TestClient:
     the instance of itself instantiated.
     """
 
-    def __init__(self, app_or_server, *, scheme=_sentinel, host=_sentinel):
+    def __init__(self, app_or_server, *, scheme=sentinel, host=sentinel):
         if isinstance(app_or_server, TestServer):
-            if scheme is not _sentinel or host is not _sentinel:
+            if scheme is not sentinel or host is not sentinel:
                 raise ValueError("scheme and host are mutable exclusive "
                                  "with TestServer parameter")
             self._server = app_or_server
         elif isinstance(app_or_server, Application):
-            scheme = "http" if scheme is _sentinel else scheme
-            host = '127.0.0.1' if host is _sentinel else host
+            scheme = "http" if scheme is sentinel else scheme
+            host = '127.0.0.1' if host is sentinel else host
             self._server = TestServer(app_or_server,
                                       scheme=scheme, host=host)
         else:
