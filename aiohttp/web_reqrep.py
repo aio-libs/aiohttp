@@ -17,7 +17,7 @@ from urllib.parse import parse_qsl, unquote, urlsplit
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 
 from . import hdrs
-from .helpers import _sentinel, reify
+from .helpers import reify, sentinel
 from .protocol import Response as ResponseImpl
 from .protocol import HttpVersion10, HttpVersion11
 from .streams import EOF_MARKER
@@ -32,7 +32,7 @@ class HeadersMixin:
 
     _content_type = None
     _content_dict = None
-    _stored_content_type = _sentinel
+    _stored_content_type = sentinel
 
     def _parse_content_type(self, raw):
         self._stored_content_type = raw
@@ -417,6 +417,8 @@ class StreamResponse(HeadersMixin):
 
         if headers is not None:
             self._headers.extend(headers)
+        self._parse_content_type(self._headers.get(hdrs.CONTENT_TYPE))
+        self._generate_content_type_header()
 
     def _copy_cookies(self):
         for cookie in self._cookies.values():
@@ -649,7 +651,7 @@ class StreamResponse(HeadersMixin):
         if self._resp_impl is not None:
             if self._req is not request:
                 raise RuntimeError(
-                    'Response has been started with different request.')
+                    "Response has been started with different request.")
             else:
                 return self._resp_impl
         else:
@@ -728,7 +730,7 @@ class StreamResponse(HeadersMixin):
 
     def write(self, data):
         assert isinstance(data, (bytes, bytearray, memoryview)), \
-            'data argument must be byte-ish (%r)' % type(data)
+            "data argument must be byte-ish (%r)" % type(data)
 
         if self._eof_sent:
             raise RuntimeError("Cannot call write() after write_eof()")
@@ -770,49 +772,55 @@ class Response(StreamResponse):
     def __init__(self, *, body=None, status=200,
                  reason=None, text=None, headers=None, content_type=None,
                  charset=None):
-        super().__init__(status=status, reason=reason, headers=headers)
-        self.set_tcp_cork(True)
-
         if body is not None and text is not None:
-            raise ValueError("body and text are not allowed together.")
+            raise ValueError("body and text are not allowed together")
+
+        if headers is None:
+            headers = CIMultiDict()
+        elif not isinstance(headers, (CIMultiDict, CIMultiDictProxy)):
+            headers = CIMultiDict(headers)
+
+        if content_type is not None and ";" in content_type:
+            raise ValueError("charset must not be in content_type "
+                             "argument")
 
         if text is not None:
-            if hdrs.CONTENT_TYPE not in self.headers:
+            if hdrs.CONTENT_TYPE in headers:
+                if content_type or charset:
+                    raise ValueError("passing both Content-Type header and "
+                                     "content_type or charset params "
+                                     "is forbidden")
+            else:
                 # fast path for filling headers
                 if not isinstance(text, str):
-                    raise TypeError('text argument must be str (%r)' %
+                    raise TypeError("text argument must be str (%r)" %
                                     type(text))
                 if content_type is None:
                     content_type = 'text/plain'
-                elif ";" in content_type:
-                    raise ValueError('charset must not be in content_type '
-                                     'argument')
-                charset = charset or 'utf-8'
-                self.headers[hdrs.CONTENT_TYPE] = (
-                    content_type + '; charset=%s' % charset)
-                self._content_type = content_type
-                self._content_dict = {'charset': charset}
-                self.body = text.encode(charset)
-            else:
-                self.text = text
-                if content_type or charset:
-                    raise ValueError("Passing both Content-Type header and "
-                                     "content_type or charset params "
-                                     "is forbidden")
+                if charset is None:
+                    charset = 'utf-8'
+                headers[hdrs.CONTENT_TYPE] = (
+                    content_type + '; charset=' + charset)
+                body = text.encode(charset)
+                text = None
         else:
-            if hdrs.CONTENT_TYPE in self.headers:
-                if content_type or charset:
-                    raise ValueError("Passing both Content-Type header and "
+            if hdrs.CONTENT_TYPE in headers:
+                if content_type is not None or charset is not None:
+                    raise ValueError("passing both Content-Type header and "
                                      "content_type or charset params "
                                      "is forbidden")
-            if content_type:
-                self.content_type = content_type
-            if charset:
-                self.charset = charset
-            if body is not None:
-                self.body = body
             else:
-                self.body = None
+                if content_type is not None:
+                    if charset is not None:
+                        content_type += '; charset=' + charset
+                    headers[hdrs.CONTENT_TYPE] = content_type
+
+        super().__init__(status=status, reason=reason, headers=headers)
+        self.set_tcp_cork(True)
+        if text is not None:
+            self.text = text
+        else:
+            self.body = body
 
     @property
     def body(self):
@@ -821,7 +829,7 @@ class Response(StreamResponse):
     @body.setter
     def body(self, body):
         if body is not None and not isinstance(body, bytes):
-            raise TypeError('body argument must be bytes (%r)' % type(body))
+            raise TypeError("body argument must be bytes (%r)" % type(body))
         self._body = body
         if body is not None:
             self.content_length = len(body)
@@ -837,7 +845,7 @@ class Response(StreamResponse):
     @text.setter
     def text(self, text):
         if text is not None and not isinstance(text, str):
-            raise TypeError('text argument must be str (%r)' % type(text))
+            raise TypeError("text argument must be str (%r)" % type(text))
 
         if self.content_type == 'application/octet-stream':
             self.content_type = 'text/plain'
@@ -859,13 +867,13 @@ class Response(StreamResponse):
         yield from super().write_eof()
 
 
-def json_response(data=_sentinel, *, text=None, body=None, status=200,
+def json_response(data=sentinel, *, text=None, body=None, status=200,
                   reason=None, headers=None, content_type='application/json',
                   dumps=json.dumps):
-    if data is not _sentinel:
+    if data is not sentinel:
         if text or body:
             raise ValueError(
-                'only one of data, text, or body should be specified'
+                "only one of data, text, or body should be specified"
             )
         else:
             text = dumps(data)

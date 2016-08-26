@@ -680,14 +680,14 @@ Response
 
    .. attribute:: text
 
-      Read-write attribute for storing response's content, represented as str,
-      :class:`str`.
+      Read-write attribute for storing response's content, represented as
+      string, :class:`str`.
 
-      Setting :attr:`str` also recalculates
+      Setting :attr:`text` also recalculates
       :attr:`~StreamResponse.content_length` value and
       :attr:`~StreamResponse.body` value
 
-      Resetting :attr:`body` (assigning ``None``) sets
+      Resetting :attr:`text` (assigning ``None``) sets
       :attr:`~StreamResponse.content_length` to ``None`` too, dropping
       *Content-Length* HTTP header.
 
@@ -1003,9 +1003,9 @@ Application is a synonym for web-server.
 
 To get fully working example, you have to make *application*, register
 supported urls in *router* and create a *server socket* with
-:class:`aiohttp.RequestHandlerFactory` as a *protocol
+:class:`~aiohttp.web.RequestHandlerFactory` as a *protocol
 factory*. *RequestHandlerFactory* could be constructed with
-:meth:`make_handler`.
+:meth:`Application.make_handler`.
 
 *Application* contains a *router* instance and a list of callbacks that
 will be called during application finishing.
@@ -1026,16 +1026,16 @@ Although :class:`Application` is a :obj:`dict`-like object, it can't be
 duplicated like one using :meth:`Application.copy`.
 
 .. class:: Application(*, loop=None, router=None, logger=<default>, \
-                       middlewares=(), **kwargs)
+                       middlewares=(), debug=False, **kwargs)
 
    The class inherits :class:`dict`.
 
    :param loop: :ref:`event loop<asyncio-event-loop>` used
-                for processing HTTP requests.
+    for processing HTTP requests.
 
-                If param is ``None`` :func:`asyncio.get_event_loop`
-                used for getting default event loop, but we strongly
-                recommend to use explicit loops everywhere.
+    If param is ``None`` :func:`asyncio.get_event_loop`
+    used for getting default event loop, but we strongly
+    recommend to use explicit loops everywhere.
 
    :param router: :class:`aiohttp.abc.AbstractRouter` instance, the system
                   creates :class:`UrlDispatcher` by default if
@@ -1048,6 +1048,8 @@ duplicated like one using :meth:`Application.copy`.
    :param middlewares: :class:`list` of middleware factories, see
                        :ref:`aiohttp-web-middlewares` for details.
 
+   :param debug: Switches debug mode.
+
    .. attribute:: router
 
       Read-only property that returns *router instance*.
@@ -1059,6 +1061,11 @@ duplicated like one using :meth:`Application.copy`.
    .. attribute:: loop
 
       :ref:`event loop<asyncio-event-loop>` used for processing HTTP requests.
+
+
+   .. attribute:: debug
+
+      Boolean value indicating whether the debug mode is turned on or off.
 
    .. attribute:: on_response_prepare
 
@@ -1125,8 +1132,16 @@ duplicated like one using :meth:`Application.copy`.
 
       Creates HTTP protocol factory for handling requests.
 
-      :param kwargs: additional parameters for :class:`RequestHandlerFactory`
+      :param kwargs: additional parameters for
+                     :class:`~aiohttp.web.RequestHandlerFactory`
                      constructor.
+
+        .. deprecated:: 1.0
+          You should not pass ``debug`` parameter within ``kwargs`` since
+          its usage in :meth:`Application.make_handler` is deprecated in favor
+          of :attr:`Application.debug`.
+          The :class:`Application`'s debug mode setting should be used
+          as a single point to setup a debug mode.
 
       You should pass result of the method as *protocol_factory* to
       :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::
@@ -1215,17 +1230,28 @@ duplicated like one using :meth:`Application.copy`.
 RequestHandlerFactory
 ^^^^^^^^^^^^^^^^^^^^^
 
-RequestHandlerFactory is responsible for creating HTTP protocol objects that
-can handle HTTP connections.
+   A protocol factory compatible with
+   :meth:`~asyncio.AbstreactEventLoop.create_server`.
 
-   .. attribute:: RequestHandlerFactory.connections
+   .. class:: RequestHandlerFactory
 
-      List of all currently opened connections.
+      RequestHandlerFactory is responsible for creating HTTP protocol
+      objects that can handle HTTP connections.
 
-   .. coroutinemethod:: RequestHandlerFactory.finish_connections(timeout)
+      .. attribute:: RequestHandlerFactory.connections
 
-      A :ref:`coroutine<coroutine>` that should be called to close all opened
-      connections.
+         List of all currently opened connections.
+
+      .. attribute:: requests_count
+
+         Amount of processed requests.
+
+         .. versionadded:: 1.0
+
+      .. coroutinemethod:: RequestHandlerFactory.finish_connections(timeout)
+
+         A :ref:`coroutine<coroutine>` that should be called to close all opened
+         connections.
 
 
 Router

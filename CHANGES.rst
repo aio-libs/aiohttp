@@ -92,6 +92,11 @@ CHANGES
 
 - Fix access_log_format in `GunicornWebWorker` #1117
 
+- Setup Content-Type to application/octet-stream by default #1124
+
+- Deprecate debug parameter from app.make_handler(), use
+  `Application(debug=True)` instead #1121
+
 
 0.22.5 (08-02-2016)
 -------------------
