@@ -1003,9 +1003,9 @@ Application is a synonym for web-server.
 
 To get fully working example, you have to make *application*, register
 supported urls in *router* and create a *server socket* with
-:class:`aiohttp.RequestHandlerFactory` as a *protocol
+:class:`~aiohttp.web.RequestHandlerFactory` as a *protocol
 factory*. *RequestHandlerFactory* could be constructed with
-:meth:`make_handler`.
+:meth:`Application.make_handler`.
 
 *Application* contains a *router* instance and a list of callbacks that
 will be called during application finishing.
@@ -1125,7 +1125,8 @@ duplicated like one using :meth:`Application.copy`.
 
       Creates HTTP protocol factory for handling requests.
 
-      :param kwargs: additional parameters for :class:`RequestHandlerFactory`
+      :param kwargs: additional parameters for
+                     :class:`~aiohttp.web.RequestHandlerFactory`
                      constructor.
 
       You should pass result of the method as *protocol_factory* to
@@ -1215,17 +1216,28 @@ duplicated like one using :meth:`Application.copy`.
 RequestHandlerFactory
 ^^^^^^^^^^^^^^^^^^^^^
 
-RequestHandlerFactory is responsible for creating HTTP protocol objects that
-can handle HTTP connections.
+   A protocol factory compatible with
+   :meth:`~asyncio.AbstreactEventLoop.create_server`.
 
-   .. attribute:: RequestHandlerFactory.connections
+   .. class:: RequestHandlerFactory
 
-      List of all currently opened connections.
+      RequestHandlerFactory is responsible for creating HTTP protocol
+      objects that can handle HTTP connections.
 
-   .. coroutinemethod:: RequestHandlerFactory.finish_connections(timeout)
+      .. attribute:: RequestHandlerFactory.connections
 
-      A :ref:`coroutine<coroutine>` that should be called to close all opened
-      connections.
+         List of all currently opened connections.
+
+      .. attribute:: requests_count
+
+         Amount of processed requests.
+
+         .. versionadded:: 1.0
+
+      .. coroutinemethod:: RequestHandlerFactory.finish_connections(timeout)
+
+         A :ref:`coroutine<coroutine>` that should be called to close all opened
+         connections.
 
 
 Router
