@@ -2,8 +2,8 @@ import asyncio
 import json
 import sys
 import warnings
-
 from collections import namedtuple
+
 from . import Timeout, hdrs
 from ._ws_impl import (CLOSED_MESSAGE, WebSocketError, WSMessage, WSMsgType,
                        do_handshake)

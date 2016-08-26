@@ -6,7 +6,7 @@ from importlib import import_module
 
 from . import hdrs, web_exceptions, web_reqrep, web_urldispatcher, web_ws
 from .abc import AbstractMatchInfo, AbstractRouter
-from .helpers import _sentinel
+from .helpers import sentinel
 from .log import web_logger
 from .protocol import HttpVersion  # noqa
 from .server import ServerHttpProtocol
@@ -222,8 +222,8 @@ class Application(dict):
         return self._middlewares
 
     def make_handler(self, **kwargs):
-        debug = kwargs.pop('debug', _sentinel)
-        if debug is not _sentinel:
+        debug = kwargs.pop('debug', sentinel)
+        if debug is not sentinel:
             warnings.warn(
                 "`debug` parameter is deprecated. "
                 "Use Application's debug mode instead", DeprecationWarning)
