@@ -680,14 +680,14 @@ Response
 
    .. attribute:: text
 
-      Read-write attribute for storing response's content, represented as str,
-      :class:`str`.
+      Read-write attribute for storing response's content, represented as
+      string, :class:`str`.
 
-      Setting :attr:`str` also recalculates
+      Setting :attr:`text` also recalculates
       :attr:`~StreamResponse.content_length` value and
       :attr:`~StreamResponse.body` value
 
-      Resetting :attr:`body` (assigning ``None``) sets
+      Resetting :attr:`text` (assigning ``None``) sets
       :attr:`~StreamResponse.content_length` to ``None`` too, dropping
       *Content-Length* HTTP header.
 
