@@ -488,18 +488,18 @@ certification chaining.
 
    :return ClientResponse: a :class:`client response <ClientResponse>` object.
 
-Usage::
+   Usage::
 
-     import aiohttp
+      import aiohttp
 
-     async def fetch():
-         async with aiohttp.request('GET', 'http://python.org/') as resp:
-             assert resp.status == 200
-             print(await resp.text())
+      async def fetch():
+          async with aiohttp.request('GET', 'http://python.org/') as resp:
+              assert resp.status == 200
+              print(await resp.text())
 
-.. deprecated:: 0.21
+   .. deprecated:: 0.21
 
-   Use :meth:`ClientSession.request`.
+      Use :meth:`ClientSession.request`.
 
 
 .. coroutinefunction:: get(url, **kwargs)
