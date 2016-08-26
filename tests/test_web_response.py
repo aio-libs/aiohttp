@@ -702,8 +702,8 @@ def test_ctor_with_headers_and_status():
     assert 201 == resp.status
     assert b'body' == resp.body
     assert 4 == resp.content_length
-    assert (CIMultiDict([('CONTENT-TYPE', 'application/octet-stream'),
-                         ('AGE', '12'),
+    assert (CIMultiDict([('AGE', '12'),
+                         ('CONTENT-TYPE', 'application/octet-stream'),
                          ('CONTENT-LENGTH', '4')]) ==
             resp.headers)
 
