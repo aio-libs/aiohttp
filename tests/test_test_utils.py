@@ -220,13 +220,15 @@ def test_make_mocked_request_transport():
     assert req.transport is transport
 
 
-@asyncio.coroutine
 def test_test_client_props(loop):
     app = _create_example_app(loop)
     client = _TestClient(app, host='localhost')
     assert client.app == app
     assert client.host == 'localhost'
-    assert isinstance(client.port, int)
+    assert client.port is None
+    with client:
+        assert isinstance(client.port, int)
+    assert client.port is None
 
 
 def test_test_server_context_manager(loop):
@@ -243,11 +245,11 @@ def test_test_server_context_manager(loop):
         loop.run_until_complete(go())
 
 
-def test_client_protocol_mutually_exclusive_with_server(loop):
+def test_client_scheme_mutually_exclusive_with_server(loop):
     app = _create_example_app(loop)
     server = _TestServer(app)
     with pytest.raises(ValueError):
-        _TestClient(server, protocol='http')
+        _TestClient(server, scheme='http')
 
 
 def test_client_host_mutually_exclusive_with_server(loop):

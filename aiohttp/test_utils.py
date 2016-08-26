@@ -35,14 +35,15 @@ def unused_port():
 
 
 class TestServer:
-    def __init__(self, app, *, protocol="http", host='127.0.0.1'):
+    def __init__(self, app, *, scheme="http", host='127.0.0.1'):
         self.app = app
         self._loop = app.loop
         self.port = None
         self._server = None
         self._handler = None
+        self._root = None
         self.host = host
-        self._root = '{}://{}:{}'.format(protocol, host, self.port)
+        self.scheme = scheme
         self._closed = False
 
     @asyncio.coroutine
@@ -50,6 +51,7 @@ class TestServer:
         if self._server:
             return
         self.port = unused_port()
+        self._root = '{}://{}:{}'.format(self.scheme, self.host, self.port)
         self._handler = self.app.make_handler(**kwargs)
         self._server = yield from self._loop.create_server(self._handler,
                                                            self.host,
@@ -77,6 +79,8 @@ class TestServer:
             yield from self.app.shutdown()
             yield from self._handler.finish_connections()
             yield from self.app.cleanup()
+            self._root = None
+            self.port = None
             self._closed = True
 
     def __enter__(self):
@@ -112,17 +116,17 @@ class TestClient:
     the instance of itself instantiated.
     """
 
-    def __init__(self, app_or_server, *, protocol=_sentinel, host=_sentinel):
+    def __init__(self, app_or_server, *, scheme=_sentinel, host=_sentinel):
         if isinstance(app_or_server, TestServer):
-            if protocol is not _sentinel or host is not _sentinel:
-                raise ValueError("protocol and host are mutable exclusive "
+            if scheme is not _sentinel or host is not _sentinel:
+                raise ValueError("scheme and host are mutable exclusive "
                                  "with TestServer parameter")
             self._server = app_or_server
         elif isinstance(app_or_server, Application):
-            protocol = "http" if protocol is _sentinel else protocol
+            scheme = "http" if scheme is _sentinel else scheme
             host = '127.0.0.1' if host is _sentinel else host
             self._server = TestServer(app_or_server,
-                                      protocol=protocol, host=host)
+                                      scheme=scheme, host=host)
         else:
             raise TypeError("app_or_server should be either web.Application "
                             "or TestServer instance")
