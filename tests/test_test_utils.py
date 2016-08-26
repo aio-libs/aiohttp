@@ -1,4 +1,5 @@
 import asyncio
+from unittest import mock
 
 import pytest
 from multidict import CIMultiDict, CIMultiDictProxy
@@ -6,6 +7,7 @@ from multidict import CIMultiDict, CIMultiDictProxy
 import aiohttp
 from aiohttp import web, web_reqrep
 from aiohttp.test_utils import TestClient as _TestClient
+from aiohttp.test_utils import TestServer as _TestServer
 from aiohttp.test_utils import (AioHTTPTestCase, loop_context,
                                 make_mocked_request, setup_test_loop,
                                 teardown_test_loop, unittest_run_loop)
@@ -188,3 +190,73 @@ def test_make_mocked_request(headers):
     assert req.path == "/"
     assert isinstance(req, web_reqrep.Request)
     assert isinstance(req.headers, CIMultiDictProxy)
+
+
+def test_make_mocked_request_sslcontext():
+    req = make_mocked_request('GET', '/')
+    assert req.transport.get_extra_info('sslcontext') is None
+
+
+def test_make_mocked_request_unknown_extra_info():
+    req = make_mocked_request('GET', '/')
+    assert req.transport.get_extra_info('unknown_extra_info') is None
+
+
+def test_make_mocked_request_app():
+    app = mock.Mock()
+    req = make_mocked_request('GET', '/', app=app)
+    assert req.app is app
+
+
+def test_make_mocked_request_content():
+    payload = mock.Mock()
+    req = make_mocked_request('GET', '/', payload=payload)
+    assert req.content is payload
+
+
+def test_make_mocked_request_transport():
+    transport = mock.Mock()
+    req = make_mocked_request('GET', '/', transport=transport)
+    assert req.transport is transport
+
+
+@asyncio.coroutine
+def test_test_client_props(loop):
+    app = _create_example_app(loop)
+    client = _TestClient(app, host='localhost')
+    assert client.app == app
+    assert client.host == 'localhost'
+    assert isinstance(client.port, int)
+
+
+def test_test_server_context_manager(loop):
+    app = _create_example_app(loop)
+    with _TestServer(app) as server:
+        @asyncio.coroutine
+        def go():
+            client = aiohttp.ClientSession(loop=loop)
+            resp = yield from client.head(server.make_url('/'))
+            assert resp.status == 200
+            resp.close()
+            yield from client.close()
+
+        loop.run_until_complete(go())
+
+
+def test_client_protocol_mutually_exclusive_with_server(loop):
+    app = _create_example_app(loop)
+    server = _TestServer(app)
+    with pytest.raises(ValueError):
+        _TestClient(server, protocol='http')
+
+
+def test_client_host_mutually_exclusive_with_server(loop):
+    app = _create_example_app(loop)
+    server = _TestServer(app)
+    with pytest.raises(ValueError):
+        _TestClient(server, host='127.0.0.1')
+
+
+def test_client_unsupported_arg():
+    with pytest.raises(TypeError):
+        _TestClient('string')

@@ -123,8 +123,8 @@ class TestClient:
             self._server = TestServer(app_or_server,
                                       protocol=protocol, host=host)
         else:
-            raise ValueError("app_or_server should be either web.Application "
-                             "or TestServer instance")
+            raise TypeError("app_or_server should be either web.Application "
+                            "or TestServer instance")
         self._loop = self._server.app.loop
         self._session = ClientSession(
             loop=self._loop,
@@ -226,8 +226,8 @@ class TestClient:
         This is an idempotent function: running close multiple times
         will not have any additional effects.
 
-        close is also run when the object is garbage collected, and on
-        exit when used as a context manager.
+        close is also run on exit when used as a(n) (asynchronous)
+        context manager.
 
         """
         if not self._closed:
