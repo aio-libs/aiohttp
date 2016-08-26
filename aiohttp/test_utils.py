@@ -16,7 +16,7 @@ from . import ClientSession, hdrs
 from .helpers import _sentinel
 from .protocol import HttpVersion, RawRequestMessage
 from .signals import Signal
-from .web import Request
+from .web import Application, Request
 
 
 def run_briefly(loop):
@@ -34,6 +34,67 @@ def unused_port():
         return s.getsockname()[1]
 
 
+class TestServer:
+    def __init__(self, app, *, protocol="http", host='127.0.0.1'):
+        self.app = app
+        self._loop = app.loop
+        self.port = unused_port()
+        self._server = None
+        self._handler = None
+        self.host = host
+        self._root = '{}://{}:{}'.format(protocol, host, self.port)
+        self._closed = False
+
+    @asyncio.coroutine
+    def start_server(self, **kwargs):
+        if self._server:
+            return
+        self._handler = self.app.make_handler(**kwargs)
+        self._server = yield from self._loop.create_server(self._handler,
+                                                           self.host,
+                                                           self.port)
+
+    def make_url(self, path):
+        return self._root + path
+
+    @asyncio.coroutine
+    def close(self):
+        """Close all fixtures created by the test client.
+
+        After that point, the TestClient is no longer usable.
+
+        This is an idempotent function: running close multiple times
+        will not have any additional effects.
+
+        close is also run when the object is garbage collected, and on
+        exit when used as a context manager.
+
+        """
+        if self._server is not None and not self._closed:
+            self._server.close()
+            yield from self._server.wait_closed()
+            yield from self.app.shutdown()
+            yield from self._handler.finish_connections()
+            yield from self.app.cleanup()
+            self._closed = True
+
+    def __enter__(self):
+        self._loop.run_until_complete(self.start_server())
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._loop.run_until_complete(self.close())
+
+    @asyncio.coroutine
+    def __aenter__(self):
+        yield from self.start_server()
+        return self
+
+    @asyncio.coroutine
+    def __aexit__(self, exc_type, exc_value, traceback):
+        yield from self.close()
+
+
 class TestClient:
     """
     A test client implementation, for a aiohttp.web.Application.
@@ -49,29 +110,44 @@ class TestClient:
     TestClient can also be used as a contextmanager, returning
     the instance of itself instantiated.
     """
-    _address = '127.0.0.1'
 
-    def __init__(self, app, protocol="http"):
-        self.app = app
-        self._loop = loop = app.loop
-        self.port = unused_port()
-        self._handler = app.make_handler()
-        self._server = None
-        if not loop.is_running():
-            loop.run_until_complete(self.start_server())
+    def __init__(self, app_or_server, *, protocol=_sentinel, host=_sentinel):
+        if isinstance(app_or_server, TestServer):
+            if protocol is not _sentinel or host is not _sentinel:
+                raise ValueError("protocol and host are mutable exclusive "
+                                 "with TestServer parameter")
+            self._server = app_or_server
+        elif isinstance(app_or_server, Application):
+            protocol = "http" if protocol is _sentinel else protocol
+            host = '127.0.0.1' if host is _sentinel else host
+            self._server = TestServer(app_or_server,
+                                      protocol=protocol, host=host)
+        else:
+            raise ValueError("app_or_server should be either web.Application "
+                             "or TestServer instance")
+        self._loop = self._server.app.loop
         self._session = ClientSession(
             loop=self._loop,
             cookie_jar=aiohttp.CookieJar(unsafe=True,
                                          loop=self._loop))
-        self._root = '{}://{}:{}'.format(protocol, self._address, self.port)
         self._closed = False
         self._responses = []
 
     @asyncio.coroutine
     def start_server(self):
-        self._server = yield from self._loop.create_server(
-            self._handler, self._address, self.port
-        )
+        yield from self._server.start_server()
+
+    @property
+    def app(self):
+        return self._server.app
+
+    @property
+    def host(self):
+        return self._server.host
+
+    @property
+    def port(self):
+        return self._server.port
 
     @property
     def session(self):
@@ -85,7 +161,7 @@ class TestClient:
         return self._session
 
     def make_url(self, path):
-        return self._root + path
+        return self._server.make_url(path)
 
     @asyncio.coroutine
     def request(self, method, path, *args, **kwargs):
@@ -141,6 +217,7 @@ class TestClient:
             self.make_url(path), *args, **kwargs
         )
 
+    @asyncio.coroutine
     def close(self):
         """Close all fixtures created by the test client.
 
@@ -154,25 +231,27 @@ class TestClient:
 
         """
         if not self._closed:
-            loop = self._loop
             for resp in self._responses:
                 resp.close()
-            loop.run_until_complete(self._session.close())
-            self._server.close()
-            loop.run_until_complete(self._server.wait_closed())
-            loop.run_until_complete(self.app.shutdown())
-            loop.run_until_complete(self._handler.finish_connections())
-            loop.run_until_complete(self.app.cleanup())
+            yield from self._session.close()
+            yield from self._server.close()
             self._closed = True
 
-    def __del__(self):
-        self.close()
-
     def __enter__(self):
+        self._loop.run_until_complete(self.start_server())
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
+        self._loop.run_until_complete(self.close())
+
+    @asyncio.coroutine
+    def __aenter__(self):
+        yield from self.start_server()
+        return self
+
+    @asyncio.coroutine
+    def __aexit__(self, exc_type, exc_value, traceback):
+        yield from self.close()
 
 
 class AioHTTPTestCase(unittest.TestCase):
@@ -206,9 +285,10 @@ class AioHTTPTestCase(unittest.TestCase):
         self.loop = setup_test_loop()
         self.app = self.get_app(self.loop)
         self.client = TestClient(self.app)
+        self.loop.run_until_complete(self.client.start_server())
 
     def tearDown(self):
-        del self.client
+        self.loop.run_until_complete(self.client.close())
         teardown_test_loop(self.loop)
 
 

@@ -63,30 +63,29 @@ def test_full_server_scenario():
 def test_server_with_create_test_teardown():
     with loop_context() as loop:
         app = _create_example_app(loop)
-        client = _TestClient(app)
+        with _TestClient(app) as client:
 
-        @asyncio.coroutine
-        def test_get_route():
-            resp = yield from client.request("GET", "/")
-            assert resp.status == 200
-            text = yield from resp.text()
-            assert "Hello, world" in text
+            @asyncio.coroutine
+            def test_get_route():
+                resp = yield from client.request("GET", "/")
+                assert resp.status == 200
+                text = yield from resp.text()
+                assert "Hello, world" in text
 
-        loop.run_until_complete(test_get_route())
-        client.close()
+            loop.run_until_complete(test_get_route())
 
 
 def test_test_client_close_is_idempotent():
     """
     a test client, called multiple times, should
-    not attempt to close the loop again.
+    not attempt to close the server again.
     """
     loop = setup_test_loop()
     app = _create_example_app(loop)
     client = _TestClient(app)
-    client.close()
+    loop.run_until_complete(client.close())
+    loop.run_until_complete(client.close())
     teardown_test_loop(loop)
-    client.close()
 
 
 class TestAioHTTPTestCase(AioHTTPTestCase):
@@ -128,14 +127,14 @@ def app(loop):
 @pytest.yield_fixture
 def test_client(loop, app):
     client = _TestClient(app)
+    loop.run_until_complete(client.start_server())
     yield client
-    client.close()
+    loop.run_until_complete(client.close())
 
 
 def test_get_route(loop, test_client):
     @asyncio.coroutine
     def test_get_route():
-        nonlocal test_client
         resp = yield from test_client.request("GET", "/")
         assert resp.status == 200
         text = yield from resp.text()
