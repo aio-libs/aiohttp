@@ -417,6 +417,8 @@ class StreamResponse(HeadersMixin):
 
         if headers is not None:
             self._headers.extend(headers)
+        self._parse_content_type(self._headers.get(hdrs.CONTENT_TYPE))
+        self._generate_content_type_header()
 
     def _copy_cookies(self):
         for cookie in self._cookies.values():
@@ -728,7 +730,7 @@ class StreamResponse(HeadersMixin):
 
     def write(self, data):
         assert isinstance(data, (bytes, bytearray, memoryview)), \
-            'data argument must be byte-ish (%r)' % type(data)
+            "data argument must be byte-ish (%r)" % type(data)
 
         if self._eof_sent:
             raise RuntimeError("Cannot call write() after write_eof()")
@@ -805,9 +807,8 @@ class Response(StreamResponse):
                     raise ValueError("passing both Content-Type header and "
                                      "content_type or charset params "
                                      "is forbidden")
-            if content_type is None:
-                content_type = 'application/octet-stream'
-            self.content_type = content_type
+            if content_type:
+                self.content_type = content_type
             if charset:
                 self.charset = charset
             self.body = body
