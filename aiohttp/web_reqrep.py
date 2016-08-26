@@ -778,8 +778,14 @@ class Response(StreamResponse):
         if body is not None and text is not None:
             raise ValueError("body and text are not allowed together")
 
+        content_type_header = False
+        if headers is not None:
+            search_key = hdrs.CONTENT_TYPE.lower()
+            content_type_header = any(search_key == key.lower()
+                                      for key in headers)
+
         if text is not None:
-            if hdrs.CONTENT_TYPE not in self.headers:
+            if not content_type_header:
                 # fast path for filling headers
                 if not isinstance(text, str):
                     raise TypeError("text argument must be str (%r)" %
@@ -802,7 +808,7 @@ class Response(StreamResponse):
                                      "is forbidden")
                 self.text = text
         else:
-            if hdrs.CONTENT_TYPE in self.headers:
+            if content_type_header:
                 if content_type or charset:
                     raise ValueError("passing both Content-Type header and "
                                      "content_type or charset params "
