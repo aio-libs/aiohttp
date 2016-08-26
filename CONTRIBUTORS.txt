@@ -113,6 +113,7 @@ Taras Voinarovskyi
 Tolga Tezel
 Thomas Grainger
 Vaibhav Sagar
+Vamsi Krishna Avula
 Vasyl Baran
 Vitalik Verhovodov
 Vitaly Haritonsky

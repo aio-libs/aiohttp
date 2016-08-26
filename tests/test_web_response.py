@@ -959,6 +959,24 @@ def test_text_in_ctor_with_content_type_header():
     assert 'koi8-r' == resp.charset
 
 
+def test_text_in_ctor_with_content_type_header_multidict():
+    headers = CIMultiDict({'Content-Type': 'text/html; charset=koi8-r'})
+    resp = Response(text='текст',
+                    headers=headers)
+    assert 'текст'.encode('koi8-r') == resp.body
+    assert 'text/html' == resp.content_type
+    assert 'koi8-r' == resp.charset
+
+
+def test_body_in_ctor_with_content_type_header_multidict():
+    headers = CIMultiDict({'Content-Type': 'text/html; charset=koi8-r'})
+    resp = Response(body='текст'.encode('koi8-r'),
+                    headers=headers)
+    assert 'текст'.encode('koi8-r') == resp.body
+    assert 'text/html' == resp.content_type
+    assert 'koi8-r' == resp.charset
+
+
 def test_text_with_empty_payload():
     resp = Response(status=200)
     assert resp.body is None
