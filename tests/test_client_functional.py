@@ -450,7 +450,8 @@ def test_raw_headers(create_app_and_client, loop):
     app.router.add_route('GET', '/', handler)
     resp = yield from client.get('/')
     assert resp.status == 200
-    assert resp.raw_headers == ((b'CONTENT-LENGTH', b'0'),
+    assert resp.raw_headers == ((b'CONTENT-TYPE', b'application/octet-stream'),
+                                (b'CONTENT-LENGTH', b'0'),
                                 (b'DATE', mock.ANY),
                                 (b'SERVER', mock.ANY))
     resp.close()

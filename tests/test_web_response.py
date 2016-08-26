@@ -691,7 +691,9 @@ def test_response_ctor():
     assert 'OK' == resp.reason
     assert resp.body is None
     assert 0 == resp.content_length
-    assert CIMultiDict([('CONTENT-LENGTH', '0')]) == resp.headers
+    assert (CIMultiDict([('CONTENT-TYPE', 'application/octet-stream'),
+                         ('CONTENT-LENGTH', '0')]) ==
+            resp.headers)
 
 
 def test_ctor_with_headers_and_status():
@@ -700,7 +702,9 @@ def test_ctor_with_headers_and_status():
     assert 201 == resp.status
     assert b'body' == resp.body
     assert 4 == resp.content_length
-    assert (CIMultiDict([('AGE', '12'), ('CONTENT-LENGTH', '4')]) ==
+    assert (CIMultiDict([('AGE', '12'),
+                         ('CONTENT-TYPE', 'application/octet-stream'),
+                         ('CONTENT-LENGTH', '4')]) ==
             resp.headers)
 
 
@@ -816,8 +820,11 @@ def test_send_headers_for_empty_body():
     yield from resp.prepare(req)
     yield from resp.write_eof()
     txt = buf.decode('utf8')
-    assert re.match('HTTP/1.1 200 OK\r\nContent-Length: 0\r\n'
-                    'Date: .+\r\nServer: .+\r\n\r\n', txt)
+    assert re.match('HTTP/1.1 200 OK\r\n'
+                    'Content-Type: application/octet-stream\r\n'
+                    'Content-Length: 0\r\n'
+                    'Date: .+\r\n'
+                    'Server: .+\r\n\r\n', txt)
 
 
 @asyncio.coroutine
@@ -838,8 +845,12 @@ def test_render_with_body():
     yield from resp.prepare(req)
     yield from resp.write_eof()
     txt = buf.decode('utf8')
-    assert re.match('HTTP/1.1 200 OK\r\nContent-Length: 4\r\n'
-                    'Date: .+\r\nServer: .+\r\n\r\ndata', txt)
+    assert re.match('HTTP/1.1 200 OK\r\n'
+                    'Content-Type: application/octet-stream\r\n'
+                    'Content-Length: 4\r\n'
+                    'Date: .+\r\n'
+                    'Server: .+\r\n\r\n'
+                    'data', txt)
 
 
 @asyncio.coroutine
@@ -861,9 +872,12 @@ def test_send_set_cookie_header():
     yield from resp.prepare(req)
     yield from resp.write_eof()
     txt = buf.decode('utf8')
-    assert re.match('HTTP/1.1 200 OK\r\nContent-Length: 0\r\n'
+    assert re.match('HTTP/1.1 200 OK\r\n'
+                    'Content-Type: application/octet-stream\r\n'
+                    'Content-Length: 0\r\n'
                     'Set-Cookie: name=value\r\n'
-                    'Date: .+\r\nServer: .+\r\n\r\n', txt)
+                    'Date: .+\r\n'
+                    'Server: .+\r\n\r\n', txt)
 
 
 def test_set_text_with_content_type():
@@ -885,6 +899,26 @@ def test_set_text_with_charset():
     assert "текст" == resp.text
     assert "текст".encode('koi8-r') == resp.body
     assert "koi8-r" == resp.charset
+
+
+def test_default_content_type_in_stream_response():
+    resp = StreamResponse()
+    assert resp.content_type == 'application/octet-stream'
+
+
+def test_default_content_type_in_response():
+    resp = Response()
+    assert resp.content_type == 'application/octet-stream'
+
+
+def test_content_type_with_set_text():
+    resp = Response(text='text')
+    assert resp.content_type == 'text/plain'
+
+
+def test_content_type_with_set_body():
+    resp = Response(body=b'body')
+    assert resp.content_type == 'application/octet-stream'
 
 
 def test_started_when_not_started():

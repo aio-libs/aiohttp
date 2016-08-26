@@ -417,6 +417,8 @@ class StreamResponse(HeadersMixin):
 
         if headers is not None:
             self._headers.extend(headers)
+        self._parse_content_type(self._headers.get(hdrs.CONTENT_TYPE))
+        self._generate_content_type_header()
 
     def _copy_cookies(self):
         for cookie in self._cookies.values():
@@ -649,7 +651,7 @@ class StreamResponse(HeadersMixin):
         if self._resp_impl is not None:
             if self._req is not request:
                 raise RuntimeError(
-                    'Response has been started with different request.')
+                    "Response has been started with different request.")
             else:
                 return self._resp_impl
         else:
@@ -728,7 +730,7 @@ class StreamResponse(HeadersMixin):
 
     def write(self, data):
         assert isinstance(data, (bytes, bytearray, memoryview)), \
-            'data argument must be byte-ish (%r)' % type(data)
+            "data argument must be byte-ish (%r)" % type(data)
 
         if self._eof_sent:
             raise RuntimeError("Cannot call write() after write_eof()")
@@ -774,19 +776,25 @@ class Response(StreamResponse):
         self.set_tcp_cork(True)
 
         if body is not None and text is not None:
-            raise ValueError("body and text are not allowed together.")
+            raise ValueError("body and text are not allowed together")
+
+        content_type_header = False
+        if headers is not None:
+            search_key = hdrs.CONTENT_TYPE.lower()
+            content_type_header = any(search_key == key.lower()
+                                      for key in headers)
 
         if text is not None:
-            if hdrs.CONTENT_TYPE not in self.headers:
+            if not content_type_header:
                 # fast path for filling headers
                 if not isinstance(text, str):
-                    raise TypeError('text argument must be str (%r)' %
+                    raise TypeError("text argument must be str (%r)" %
                                     type(text))
                 if content_type is None:
                     content_type = 'text/plain'
                 elif ";" in content_type:
-                    raise ValueError('charset must not be in content_type '
-                                     'argument')
+                    raise ValueError("charset must not be in content_type "
+                                     "argument")
                 charset = charset or 'utf-8'
                 self.headers[hdrs.CONTENT_TYPE] = (
                     content_type + '; charset=%s' % charset)
@@ -794,25 +802,22 @@ class Response(StreamResponse):
                 self._content_dict = {'charset': charset}
                 self.body = text.encode(charset)
             else:
-                self.text = text
                 if content_type or charset:
-                    raise ValueError("Passing both Content-Type header and "
+                    raise ValueError("passing both Content-Type header and "
                                      "content_type or charset params "
                                      "is forbidden")
+                self.text = text
         else:
-            if hdrs.CONTENT_TYPE in self.headers:
+            if content_type_header:
                 if content_type or charset:
-                    raise ValueError("Passing both Content-Type header and "
+                    raise ValueError("passing both Content-Type header and "
                                      "content_type or charset params "
                                      "is forbidden")
             if content_type:
                 self.content_type = content_type
             if charset:
                 self.charset = charset
-            if body is not None:
-                self.body = body
-            else:
-                self.body = None
+            self.body = body
 
     @property
     def body(self):
@@ -821,7 +826,7 @@ class Response(StreamResponse):
     @body.setter
     def body(self, body):
         if body is not None and not isinstance(body, bytes):
-            raise TypeError('body argument must be bytes (%r)' % type(body))
+            raise TypeError("body argument must be bytes (%r)" % type(body))
         self._body = body
         if body is not None:
             self.content_length = len(body)
@@ -837,7 +842,7 @@ class Response(StreamResponse):
     @text.setter
     def text(self, text):
         if text is not None and not isinstance(text, str):
-            raise TypeError('text argument must be str (%r)' % type(text))
+            raise TypeError("text argument must be str (%r)" % type(text))
 
         if self.content_type == 'application/octet-stream':
             self.content_type = 'text/plain'
@@ -865,7 +870,7 @@ def json_response(data=_sentinel, *, text=None, body=None, status=200,
     if data is not _sentinel:
         if text or body:
             raise ValueError(
-                'only one of data, text, or body should be specified'
+                "only one of data, text, or body should be specified"
             )
         else:
             text = dumps(data)
