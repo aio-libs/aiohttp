@@ -649,7 +649,7 @@ class StreamResponse(HeadersMixin):
         if self._resp_impl is not None:
             if self._req is not request:
                 raise RuntimeError(
-                    'Response has been started with different request.')
+                    "Response has been started with different request.")
             else:
                 return self._resp_impl
         else:
@@ -774,19 +774,19 @@ class Response(StreamResponse):
         self.set_tcp_cork(True)
 
         if body is not None and text is not None:
-            raise ValueError('body and text are not allowed together')
+            raise ValueError("body and text are not allowed together")
 
         if text is not None:
             if hdrs.CONTENT_TYPE not in self.headers:
                 # fast path for filling headers
                 if not isinstance(text, str):
-                    raise TypeError('text argument must be str (%r)' %
+                    raise TypeError("text argument must be str (%r)" %
                                     type(text))
                 if content_type is None:
                     content_type = 'text/plain'
                 elif ";" in content_type:
-                    raise ValueError('charset must not be in content_type '
-                                     'argument')
+                    raise ValueError("charset must not be in content_type "
+                                     "argument")
                 charset = charset or 'utf-8'
                 self.headers[hdrs.CONTENT_TYPE] = (
                     content_type + '; charset=%s' % charset)
@@ -795,16 +795,16 @@ class Response(StreamResponse):
                 self.body = text.encode(charset)
             else:
                 if content_type or charset:
-                    raise ValueError('passing both Content-Type header and '
-                                     'content_type or charset params '
-                                     'is forbidden')
+                    raise ValueError("passing both Content-Type header and "
+                                     "content_type or charset params "
+                                     "is forbidden")
                 self.text = text
         else:
             if hdrs.CONTENT_TYPE in self.headers:
                 if content_type or charset:
-                    raise ValueError('passing both Content-Type header and '
-                                     'content_type or charset params '
-                                     'is forbidden')
+                    raise ValueError("passing both Content-Type header and "
+                                     "content_type or charset params "
+                                     "is forbidden")
             if content_type is None:
                 content_type = 'application/octet-stream'
             self.content_type = content_type
@@ -819,7 +819,7 @@ class Response(StreamResponse):
     @body.setter
     def body(self, body):
         if body is not None and not isinstance(body, bytes):
-            raise TypeError('body argument must be bytes (%r)' % type(body))
+            raise TypeError("body argument must be bytes (%r)" % type(body))
         self._body = body
         if body is not None:
             self.content_length = len(body)
@@ -835,7 +835,7 @@ class Response(StreamResponse):
     @text.setter
     def text(self, text):
         if text is not None and not isinstance(text, str):
-            raise TypeError('text argument must be str (%r)' % type(text))
+            raise TypeError("text argument must be str (%r)" % type(text))
 
         if self.content_type == 'application/octet-stream':
             self.content_type = 'text/plain'
@@ -863,7 +863,7 @@ def json_response(data=_sentinel, *, text=None, body=None, status=200,
     if data is not _sentinel:
         if text or body:
             raise ValueError(
-                'only one of data, text, or body should be specified'
+                "only one of data, text, or body should be specified"
             )
         else:
             text = dumps(data)
