@@ -5,6 +5,7 @@ import contextlib
 import functools
 import gc
 import socket
+import sys
 import unittest
 from unittest import mock
 
@@ -17,6 +18,9 @@ from .helpers import sentinel
 from .protocol import HttpVersion, RawRequestMessage
 from .signals import Signal
 from .web import Application, Request
+
+
+PY_35 = sys.version_info >= (3, 5)
 
 
 def run_briefly(loop):
@@ -90,14 +94,15 @@ class TestServer:
     def __exit__(self, exc_type, exc_value, traceback):
         self._loop.run_until_complete(self.close())
 
-    @asyncio.coroutine
-    def __aenter__(self):
-        yield from self.start_server()
-        return self
+    if PY_35:
+        @asyncio.coroutine
+        def __aenter__(self):
+            yield from self.start_server()
+            return self
 
-    @asyncio.coroutine
-    def __aexit__(self, exc_type, exc_value, traceback):
-        yield from self.close()
+        @asyncio.coroutine
+        def __aexit__(self, exc_type, exc_value, traceback):
+            yield from self.close()
 
 
 class TestClient:
@@ -249,14 +254,15 @@ class TestClient:
     def __exit__(self, exc_type, exc_value, traceback):
         self._loop.run_until_complete(self.close())
 
-    @asyncio.coroutine
-    def __aenter__(self):
-        yield from self.start_server()
-        return self
+    if PY_35:
+        @asyncio.coroutine
+        def __aenter__(self):
+            yield from self.start_server()
+            return self
 
-    @asyncio.coroutine
-    def __aexit__(self, exc_type, exc_value, traceback):
-        yield from self.close()
+        @asyncio.coroutine
+        def __aexit__(self, exc_type, exc_value, traceback):
+            yield from self.close()
 
 
 class AioHTTPTestCase(unittest.TestCase):
