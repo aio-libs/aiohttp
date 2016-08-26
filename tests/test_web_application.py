@@ -29,6 +29,26 @@ def test_app_default_loop(loop):
     assert loop is app.loop
 
 
+@pytest.mark.parametrize('debug', [True, False])
+def test_app_make_handler_debug_exc(loop, mocker, debug):
+    app = web.Application(loop=loop, debug=debug)
+
+    mocker.spy(app, '_handler_factory')
+
+    app.make_handler()
+    with pytest.warns(DeprecationWarning) as exc:
+        app.make_handler(debug=debug)
+
+    assert 'parameter is deprecated' in exc[0].message.args[0]
+    assert app._handler_factory.call_count == 2
+    app._handler_factory.assert_called_with(app, app.router, loop=loop,
+                                            debug=debug)
+
+    with pytest.raises(ValueError) as exc:
+        app.make_handler(debug=not debug)
+    assert 'The value of `debug` parameter conflicts with the' in str(exc)
+
+
 @asyncio.coroutine
 def test_app_register_on_finish(loop):
     app = web.Application(loop=loop)

@@ -1026,16 +1026,16 @@ Although :class:`Application` is a :obj:`dict`-like object, it can't be
 duplicated like one using :meth:`Application.copy`.
 
 .. class:: Application(*, loop=None, router=None, logger=<default>, \
-                       middlewares=(), **kwargs)
+                       middlewares=(), debug=False, **kwargs)
 
    The class inherits :class:`dict`.
 
    :param loop: :ref:`event loop<asyncio-event-loop>` used
-                for processing HTTP requests.
+    for processing HTTP requests.
 
-                If param is ``None`` :func:`asyncio.get_event_loop`
-                used for getting default event loop, but we strongly
-                recommend to use explicit loops everywhere.
+    If param is ``None`` :func:`asyncio.get_event_loop`
+    used for getting default event loop, but we strongly
+    recommend to use explicit loops everywhere.
 
    :param router: :class:`aiohttp.abc.AbstractRouter` instance, the system
                   creates :class:`UrlDispatcher` by default if
@@ -1048,6 +1048,8 @@ duplicated like one using :meth:`Application.copy`.
    :param middlewares: :class:`list` of middleware factories, see
                        :ref:`aiohttp-web-middlewares` for details.
 
+   :param debug: Switches debug mode.
+
    .. attribute:: router
 
       Read-only property that returns *router instance*.
@@ -1059,6 +1061,11 @@ duplicated like one using :meth:`Application.copy`.
    .. attribute:: loop
 
       :ref:`event loop<asyncio-event-loop>` used for processing HTTP requests.
+
+
+   .. attribute:: debug
+
+      Boolean value indicating whether the debug mode is turned on or off.
 
    .. attribute:: on_response_prepare
 
@@ -1128,6 +1135,13 @@ duplicated like one using :meth:`Application.copy`.
       :param kwargs: additional parameters for
                      :class:`~aiohttp.web.RequestHandlerFactory`
                      constructor.
+
+        .. deprecated:: 1.0
+          You should not pass ``debug`` parameter within ``kwargs`` since
+          its usage in :meth:`Application.make_handler` is deprecated in favor
+          of :attr:`Application.debug`.
+          The :class:`Application`'s debug mode setting should be used
+          as a single point to setup a debug mode.
 
       You should pass result of the method as *protocol_factory* to
       :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::
