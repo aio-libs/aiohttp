@@ -13,7 +13,7 @@ from multidict import CIMultiDict
 import aiohttp
 
 from . import ClientSession, hdrs
-from .helpers import _sentinel
+from .helpers import sentinel
 from .protocol import HttpVersion, RawRequestMessage
 from .signals import Signal
 from .web import Request
@@ -289,10 +289,10 @@ def _create_transport(sslcontext=None):
 def make_mocked_request(method, path, headers=None, *,
                         version=HttpVersion(1, 1), closing=False,
                         app=None,
-                        reader=_sentinel,
-                        writer=_sentinel,
-                        transport=_sentinel,
-                        payload=_sentinel,
+                        reader=sentinel,
+                        writer=sentinel,
+                        transport=sentinel,
+                        payload=sentinel,
                         sslcontext=None,
                         secure_proxy_ssl_header=None):
     """Creates mocked web.Request testing purposes.
@@ -357,16 +357,16 @@ def make_mocked_request(method, path, headers=None, *,
     if app is None:
         app = _create_app_mock()
 
-    if reader is _sentinel:
+    if reader is sentinel:
         reader = mock.Mock()
 
-    if writer is _sentinel:
+    if writer is sentinel:
         writer = mock.Mock()
 
-    if transport is _sentinel:
+    if transport is sentinel:
         transport = _create_transport(sslcontext)
 
-    if payload is _sentinel:
+    if payload is sentinel:
         payload = mock.Mock()
 
     req = Request(app, message, payload,

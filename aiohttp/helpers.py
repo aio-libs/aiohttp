@@ -34,7 +34,7 @@ __all__ = ('BasicAuth', 'create_future', 'FormData', 'parse_mimetype',
 
 PY_352 = sys.version_info >= (3, 5, 2)
 
-_sentinel = object()
+sentinel = object()
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
@@ -430,7 +430,7 @@ class reify:
             self.__doc__ = ""
         self.name = wrapped.__name__
 
-    def __get__(self, inst, owner, _sentinel=_sentinel):
+    def __get__(self, inst, owner, _sentinel=sentinel):
         if inst is None:
             return self
         val = inst.__dict__.get(self.name, _sentinel)
@@ -829,8 +829,8 @@ class CookieJar(AbstractCookieJar):
 
 
 def _get_kwarg(kwargs, old, new, value):
-    val = kwargs.pop(old, _sentinel)
-    if val is not _sentinel:
+    val = kwargs.pop(old, sentinel)
+    if val is not sentinel:
         warnings.warn("{} is deprecated, use {} instead".format(old, new),
                       DeprecationWarning,
                       stacklevel=3)
