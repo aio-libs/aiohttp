@@ -92,6 +92,8 @@ CHANGES
 
 - Fix access_log_format in `GunicornWebWorker` #1117
 
+- Setup Content-Type to application/octet-stream by default #1124
+
 
 0.22.5 (08-02-2016)
 -------------------
