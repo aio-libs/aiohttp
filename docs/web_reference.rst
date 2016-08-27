@@ -1136,38 +1136,48 @@ duplicated like one using :meth:`Application.copy`.
 
    .. method:: make_handler(**kwargs)
 
-      Creates HTTP protocol factory for handling requests.
+    Creates HTTP protocol factory for handling requests.
 
-      :param kwargs: additional parameters for
-                     :class:`~aiohttp.web.RequestHandlerFactory`
-                     constructor.
+    :param tuple secure_proxy_ssl_header: Secure proxy SSL header. Can be used
+      to detect request scheme. Default: ``None``.
+    :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
+    :param int keepalive_timeout: Number of seconds before closing Keep-Alive
+      connection. Default: ``75`` seconds (NGINX's default value).
+    :param slow_request_timeout: Slow request timeout. Default: ``0``.
+    :param logger: Custom logger object. Default:
+      :data:`aiohttp.log.server_logger`.
+    :param access_log: Custom logging object. Default:
+      :data:`aiohttp.log.access_logger`.
+    :param str access_log_format: Access log format string. Default:
+      :attr:`helpers.AccessLogger.LOG_FORMAT`.
+    :param bool debug: Switches debug mode. Default: ``False``.
 
-        .. deprecated:: 1.0
-          You should not pass ``debug`` parameter within ``kwargs`` since
-          its usage in :meth:`Application.make_handler` is deprecated in favor
-          of :attr:`Application.debug`.
-          The :class:`Application`'s debug mode setting should be used
-          as a single point to setup a debug mode.
+      .. deprecated:: 1.0
 
-      You should pass result of the method as *protocol_factory* to
-      :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::
+        The usage of ``debug`` parameter in :meth:`Application.make_handler`
+        is deprecated in favor of :attr:`Application.debug`.
+        The :class:`Application`'s debug mode setting should be used
+        as a single point to setup a debug mode.
 
-         loop = asyncio.get_event_loop()
+    :param int max_line_size: Optional maximum header line size. Default:
+      ``8190``.
+    :param int max_headers: Optional maximum header size. Default: ``32768``.
+    :param int max_field_size: Optional maximum header field size. Default:
+      ``8190``.
 
-         app = Application(loop=loop)
 
-         # setup route table
-         # app.router.add_route(...)
+    You should pass result of the method as *protocol_factory* to
+    :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::
 
-         await loop.create_server(app.make_handler(),
-                                  '0.0.0.0', 8080)
+       loop = asyncio.get_event_loop()
 
-      ``secure_proxy_ssl_header`` keyword parameter
-      can be used to detect request scheme::
+       app = Application(loop=loop)
 
-         await loop.create_server(app.make_handler(
-            secure_proxy_ssl_header='X-Forwarded-Proto'),
-            '0.0.0.0', 8080)
+       # setup route table
+       # app.router.add_route(...)
+
+       await loop.create_server(app.make_handler(),
+                                '0.0.0.0', 8080)
 
    .. coroutinemethod:: startup()
 
