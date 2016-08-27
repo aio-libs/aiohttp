@@ -598,8 +598,7 @@ class StreamResponse(HeadersMixin):
     @last_modified.setter
     def last_modified(self, value):
         if value is None:
-            if hdrs.LAST_MODIFIED in self.headers:
-                del self.headers[hdrs.LAST_MODIFIED]
+            self.headers.pop(hdrs.LAST_MODIFIED, None)
         elif isinstance(value, (int, float)):
             self.headers[hdrs.LAST_MODIFIED] = time.strftime(
                 "%a, %d %b %Y %H:%M:%S GMT", time.gmtime(math.ceil(value)))
