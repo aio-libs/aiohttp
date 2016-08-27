@@ -70,7 +70,7 @@ As of aiohttp **v1.0.0** we dropped support for Python 3.4.1 up to
 3.4.2+ also. The reason is: `loop.is_closed` appears in 3.4.2+
 
 Again, it should be not an issue at 2016 Summer because all major
-distributions are switched to Python 3.5 nowdays.
+distributions are switched to Python 3.5 now.
 
 
 How a middleware may store a data for using by web-handler later?
