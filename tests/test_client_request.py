@@ -309,13 +309,23 @@ def test_path_safe_chars_preserved(make_request):
 def test_params_are_added_before_fragment1(make_request):
     req = make_request('GET', "http://example.com/path#fragment",
                        params={"a": "b"})
-    assert req.path == "/path?a=b#fragment"
+    assert req.url == "http://example.com/path?a=b#fragment"
 
 
 def test_params_are_added_before_fragment2(make_request):
     req = make_request('GET', "http://example.com/path?key=value#fragment",
                        params={"a": "b"})
-    assert req.path == "/path?key=value&a=b#fragment"
+    assert req.url == "http://example.com/path?key=value&a=b#fragment"
+
+
+def test_path_not_contain_fragment1(make_request):
+    req = make_request('GET', "http://example.com/path#fragment")
+    assert req.path == "/path"
+
+
+def test_path_not_contain_fragment2(make_request):
+    req = make_request('GET', "http://example.com/path?key=value#fragment")
+    assert req.path == "/path?key=value"
 
 
 def test_cookies(make_request):
