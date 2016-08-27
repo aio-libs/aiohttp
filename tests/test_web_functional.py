@@ -7,7 +7,7 @@ from unittest import mock
 import pytest
 from multidict import MultiDict
 
-from aiohttp import ClientSession, FormData, web
+from aiohttp import FormData, web
 from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
 from aiohttp.streams import EOF_MARKER
 
