@@ -114,7 +114,7 @@ Discussion list
 Requirements
 ------------
 
-- Python >= 3.4.1
+- Python >= 3.4.2
 - chardet_
 - multidict_
 
