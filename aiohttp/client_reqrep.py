@@ -188,9 +188,9 @@ class ClientRequest:
                 query = params
 
         self.path = urllib.parse.urlunsplit(('', '', helpers.requote_uri(path),
-                                             query, fragment))
+                                             query, ''))
         self.url = urllib.parse.urlunsplit(
-            (scheme, netloc, self.path, '', ''))
+            (scheme, netloc, self.path, '', fragment))
 
     def update_headers(self, headers):
         """Update request headers."""

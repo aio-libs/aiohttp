@@ -97,6 +97,8 @@ CHANGES
 - Deprecate debug parameter from app.make_handler(), use
   `Application(debug=True)` instead #1121
 
+- Remove fragment string in request path #846
+
 
 0.22.5 (08-02-2016)
 -------------------
