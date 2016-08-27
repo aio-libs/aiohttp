@@ -744,3 +744,28 @@ def test_start_without_routes(loop, test_client):
 
     resp = yield from client.get('/')
     assert 404 == resp.status
+
+
+@asyncio.coroutine
+def test_requests_count(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response()
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+    assert client.handler.requests_count == 0
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    assert client.handler.requests_count == 1
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    assert client.handler.requests_count == 2
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    assert client.handler.requests_count == 3

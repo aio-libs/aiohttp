@@ -43,8 +43,8 @@ class TestServer:
         self.app = app
         self._loop = app.loop
         self.port = None
-        self._server = None
-        self._handler = None
+        self.server = None
+        self.handler = None
         self._root = None
         self.host = host
         self.scheme = scheme
@@ -52,14 +52,14 @@ class TestServer:
 
     @asyncio.coroutine
     def start_server(self, **kwargs):
-        if self._server:
+        if self.server:
             return
         self.port = unused_port()
         self._root = '{}://{}:{}'.format(self.scheme, self.host, self.port)
-        self._handler = self.app.make_handler(**kwargs)
-        self._server = yield from self._loop.create_server(self._handler,
-                                                           self.host,
-                                                           self.port)
+        self.handler = self.app.make_handler(**kwargs)
+        self.server = yield from self._loop.create_server(self.handler,
+                                                          self.host,
+                                                          self.port)
 
     def make_url(self, path):
         return self._root + path
@@ -77,11 +77,11 @@ class TestServer:
         exit when used as a context manager.
 
         """
-        if self._server is not None and not self._closed:
-            self._server.close()
-            yield from self._server.wait_closed()
+        if self.server is not None and not self._closed:
+            self.server.close()
+            yield from self.server.wait_closed()
             yield from self.app.shutdown()
-            yield from self._handler.finish_connections()
+            yield from self.handler.finish_connections()
             yield from self.app.cleanup()
             self._root = None
             self.port = None
@@ -158,6 +158,14 @@ class TestClient:
     @property
     def port(self):
         return self._server.port
+
+    @property
+    def handler(self):
+        return self._server.handler
+
+    @property
+    def server(self):
+        return self._server.server
 
     @property
     def session(self):

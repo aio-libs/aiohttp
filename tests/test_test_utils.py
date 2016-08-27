@@ -228,6 +228,8 @@ def test_test_client_props(loop):
     assert client.port is None
     with client:
         assert isinstance(client.port, int)
+        assert client.handler is not None
+        assert client.server is not None
     assert client.port is None
 
 
