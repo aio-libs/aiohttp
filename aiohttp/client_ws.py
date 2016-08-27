@@ -146,13 +146,12 @@ class ClientWebSocketResponse:
                     if not self._closed and self._autoclose:
                         yield from self.close()
                     return msg
-                elif not self._closed:
-                    if msg.type == WSMsgType.PING and self._autoping:
-                        self.pong(msg.data)
-                    elif msg.type == WSMsgType.PONG and self._autoping:
-                        continue
-                    else:
-                        return msg
+                if msg.type == WSMsgType.PING and self._autoping:
+                    self.pong(msg.data)
+                elif msg.type == WSMsgType.PONG and self._autoping:
+                    continue
+                else:
+                    return msg
         finally:
             self._waiting = False
 
