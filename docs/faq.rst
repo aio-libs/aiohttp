@@ -50,7 +50,7 @@ following example::
         return app
 
 
-Why the minimal supported version is Python 3.4.1
+Why the minimal supported version is Python 3.4.2
 --------------------------------------------------
 
 As of aiohttp **v0.18.0** we dropped support for Python 3.3 up to
@@ -65,6 +65,12 @@ This should not be an issue for most aiohttp users (for example Ubuntu
 14.04.3 LTS provides python upgraded to 3.4.3), however libraries
 depending on aiohttp should consider this and either freeze aiohttp
 version or drop Python 3.3 support as well.
+
+As of aiohttp **v1.0.0** we dropped support for Python 3.4.1 up to
+3.4.2+ also. The reason is: `loop.is_closed` appears in 3.4.2+
+
+Again, it should be not an issue at 2016 Summer because all major
+distributions are switched to Python 3.5 nowdays.
 
 
 How a middleware may store a data for using by web-handler later?
