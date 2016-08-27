@@ -496,6 +496,12 @@ StreamResponse
                           specification the cookie
                           conforms. (Optional, *version=1* by default)
 
+      .. warning::
+
+         In HTTP version 1.1, ``expires`` was deprecated and replaced with
+         the easier-to-use ``max-age``, but Internet Explorer (IE6, IE7,
+         and IE8) **does not** support ``max-age``.
+
    .. method:: del_cookie(name, *, path='/', domain=None)
 
       Deletes cookie.
