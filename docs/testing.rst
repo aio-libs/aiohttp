@@ -33,7 +33,7 @@ insert ``pytest_plugins = 'aiohttp.pytest_plugin'`` line into
 Pytest example
 ~~~~~~~~~~~~~~
 
-The :data:`test_client` fixture available from :data:`aiohttp.pytest_plugin`
+The :data:`test_client` fixture available from pytest-aiohttp_ plugin
 allows you to create a client to make requests to test your app.
 
 A simple would be::
@@ -59,7 +59,6 @@ app test client::
 
     import pytest
     from aiohttp import web
-    pytest_plugins = 'aiohttp.pytest_plugin'
 
 
     async def previous(request):
@@ -122,6 +121,7 @@ basis, the TestClient object can be used directly::
     with loop_context() as loop:
         app = _create_example_app(loop)
         client = TestClient(app)
+        loop.run_until_complete(client.start_server())
         root = "http://127.0.0.1:{}".format(port)
 
         async def test_get_route():
@@ -131,9 +131,7 @@ basis, the TestClient object can be used directly::
             assert "Hello, world" in text
 
         loop.run_until_complete(test_get_route())
-        # the server is cleaned up implicitly, through
-        # the deletion of the TestServer.
-        del client
+        loop.run_until_complete(client.close())
 
 
 A full list of the utilities provided can be found at the
@@ -142,7 +140,7 @@ A full list of the utilities provided can be found at the
 The Test Client
 ~~~~~~~~~~~~~~~
 
-The :data:`aiohttp.test_utils.TestClient` creates an asyncio server
+The :class:`aiohttp.test_utils.TestClient` creates an asyncio server
 for the web.Application object, as well as a ClientSession to perform
 requests. In addition, TestClient provides proxy methods to the client for
 common operations such as ws_connect, get, post, etc.
@@ -285,159 +283,15 @@ try to do a test like::
 
 If you try to run the test, it will fail with a similar error::
 
-  main.py:9: in __init__
-      self.es = Elasticsearch(["127.0.0.1:9200"], loop=loop)
-  ../../.virtualenvs/aiohttp_test/lib/python3.5/site-packages/aioes/client/__init__.py:18: in __init__
-      self._transport = Transport(endpoints, loop=loop, **kwargs)
-  ../../.virtualenvs/aiohttp_test/lib/python3.5/site-packages/aioes/transport.py:52: in __init__
-      self._pool = ConnectionPool([], loop=loop)
-  ../../.virtualenvs/aiohttp_test/lib/python3.5/site-packages/aioes/pool.py:41: in __init__
-      self._dead = asyncio.PriorityQueue(len(connections), loop=loop)
-  /usr/local/Cellar/python3/3.5.1/Frameworks/Python.framework/Versions/3.5/lib/python3.5/asyncio/queues.py:43: in __init__
-      self._loop = events.get_event_loop()
-  /usr/local/Cellar/python3/3.5.1/Frameworks/Python.framework/Versions/3.5/lib/python3.5/asyncio/events.py:626: in get_event_loop
-      return get_event_loop_policy().get_event_loop()
-
-  def get_event_loop(self):
-      """Get the event loop.
-
-          This may be None or an instance of EventLoop.
-          """
-      if (self._local._loop is None and
-          not self._local._set_called and
-          isinstance(threading.current_thread(), threading._MainThread)):
-          self.set_event_loop(self.new_event_loop())
-      if self._local._loop is None:
-          raise RuntimeError('There is no current event loop in thread %r.'
-  >                              % threading.current_thread().name)
-  E           RuntimeError: There is no current event loop in thread 'MainThread'.
+  ...
+  RuntimeError: There is no current event loop in thread 'MainThread'.
 
 
 If you check the stack trace, you will see aioes is complaining that there is
-no current event loop in the main thread. We can solve this in two different
-ways:
+no current event loop in the main thread. Pass explicit loop to solve it.
 
-  - Passing the loop explicitly (``loop`` is a pytest fixture from the
-    ``pytest-aiohttp`` package::
-
-      class TestAioESService:
-
-          async def test_get_info(self, loop):
-              cluster_info = await AioESService(loop=loop).get_info()
-              assert isinstance(cluster_info, dict)
-
-  - Using the ``pytest.mark.asyncio`` decorator from ``pytest-asyncio``::
-
-      class TestAioESService:
-
-          @pytest.mark.asyncio
-          async def test_get_info(self):
-              cluster_info = await AioESService().get_info()
-              assert isinstance(cluster_info, dict)
-
-At some point, you may decide that using the decorator is easier but, in case
-you want to use let's say the ``test_client`` fixture provided by aiohttp, you
-will find problems because your test and the fixture will be using different
-event loops. To solve this issue, there is a
-`hack <https://github.com/KeepSafe/aiohttp/issues/1069>`_ but as a conclusion,
-you should pass the loop explicitly to your services.
-
-In case you have many nested services, this may sound horrible, but you can
-always patch your low level service that depends on aioes, to inject the loop
-at that level. This way, you just need your ``AioESService`` with the loop
-in its signature. An example would be the following::
-
-  import pytest
-
-  from unittest.mock import patch, MagicMock
-
-  from main import AioESService, create_app
-
-  class TestAcceptance:
-
-      async def test_get(self, test_client, loop):
-          with patch("main.AioESService", MagicMock(
-                  side_effect=lambda *args, **kwargs: AioESService(*args, **kwargs, loop=loop))):
-              client = await test_client(create_app)
-              resp = await client.get("/")
-              assert resp.status == 200
-
-Note how we are patching the ``AioESService`` with and instance of itself but
-adding the explicit loop as an extra (you need to load the loop fixture in your
-test signature).
-
-The final code to test all this (you will need a local instance of
-elasticsearch running)::
-
-  import asyncio
-
-  from aioes import Elasticsearch
-  from aiohttp import web
-
-
-  class AioESService:
-
-      def __init__(self, loop=None):
-          self.es = Elasticsearch(["127.0.0.1:9200"], loop=loop)
-
-      async def get_info(self):
-          return await self.es.info()
-
-
-  class MyService:
-
-      def __init__(self):
-          self.aioes_service = AioESService()
-
-      async def get_es_info(self):
-          return await self.aioes_service.get_info()
-
-
-  async def hello_aioes(request):
-      my_service = MyService()
-      cluster_info = await my_service.get_es_info()
-      return web.Response(text="{}".format(cluster_info))
-
-
-  def create_app(loop=None):
-
-      app = web.Application(loop=loop)
-      app.router.add_route('GET', '/', hello_aioes)
-      return app
-
-
-  if __name__ == "__main__":
-      web.run_app(create_app())
-
-
-And the full tests file::
-
-
-  from unittest.mock import patch, MagicMock
-
-  from main import AioESService, create_app
-
-
-  class TestAioESService:
-
-      async def test_get_info(self, loop):
-          cluster_info = await AioESService("random_arg", loop=loop).get_info()
-          assert isinstance(cluster_info, dict)
-
-
-  class TestAcceptance:
-
-      async def test_get(self, test_client, loop):
-          with patch("main.AioESService", MagicMock(
-                  side_effect=lambda *args, **kwargs: AioESService(*args, **kwargs, loop=loop))):
-              client = await test_client(create_app)
-              resp = await client.get("/")
-              assert resp.status == 200
-
-Note how we are using the ``side_effect`` feature for injecting the loop to the
-``AioESService.__init__`` call. The use of ``**args, **kwargs`` is mandatory
-in order to propagate the arguments being used by the caller.
-
+If you rely on code which works with *implicit* loops only you may try
+to use hackish approach from :ref:`FAQ <aiohttp_faq_tests_and_implicit_loop>`.
 
 aiohttp.test_utils
 ------------------

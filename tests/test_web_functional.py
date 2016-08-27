@@ -20,6 +20,44 @@ except:
     ssl = False
 
 
+@asyncio.coroutine
+def test_simple_get(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        body = yield from request.read()
+        assert b'' == body
+        return web.Response(body=b'OK')
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    txt = yield from resp.text()
+    assert 'OK' == txt
+
+
+@asyncio.coroutine
+def test_handler_returns_not_response(loop, test_server, test_client):
+    logger = mock.Mock()
+
+    @asyncio.coroutine
+    def handler(request):
+        return 'abc'
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    server = yield from test_server(app, logger=logger)
+    client = yield from test_client(server)
+
+    resp = yield from client.get('/')
+    assert 500 == resp.status
+
+    logger.exception.assert_called_with("Error handling request")
+
+
 class TestWebFunctional(unittest.TestCase):
 
     def setUp(self):
@@ -55,42 +93,6 @@ class TestWebFunctional(unittest.TestCase):
         url = "{}://127.0.0.1:{}".format(protocol, port) + path
         self.addCleanup(srv.close)
         return app, srv, url
-
-    def test_simple_get(self):
-
-        @asyncio.coroutine
-        def handler(request):
-            body = yield from request.read()
-            self.assertEqual(b'', body)
-            return web.Response(body=b'OK')
-
-        @asyncio.coroutine
-        def go():
-            _, srv, url = yield from self.create_server('GET', '/', handler)
-            resp = yield from request('GET', url, loop=self.loop)
-            self.assertEqual(200, resp.status)
-            txt = yield from resp.text()
-            self.assertEqual('OK', txt)
-
-        self.loop.run_until_complete(go())
-
-    def test_handler_returns_not_response(self):
-        logger = mock.Mock()
-
-        @asyncio.coroutine
-        def handler(request):
-            return 'abc'
-
-        @asyncio.coroutine
-        def go():
-            _, _, url = yield from self.create_server('GET', '/', handler,
-                                                      logger=logger)
-            resp = yield from request('GET', url, loop=self.loop)
-            self.assertEqual(500, resp.status)
-            resp.close()
-
-        self.loop.run_until_complete(go())
-        logger.exception.assert_called_with("Error handling request")
 
     def test_head_returns_empty_body(self):
 

@@ -201,3 +201,110 @@ be used used to bind socket locally::
         ...
 
 .. seealso:: :class:`aiohttp.TCPConnector` and ``local_addr`` parameter.
+
+
+.. _aiohttp_faq_tests_and_implicit_loop:
+
+
+How to use aiohttp test features with code which works with implicit loop?
+--------------------------------------------------------------------------
+
+Passing explicit loop everywhere is the recommended way.  But
+sometimes, in case you have many nested non well-written services,
+this is impossible.
+
+There is a technique based on monkey-patching your low level service
+that depends on aioes, to inject the loop at that level. This way, you
+just need your ``AioESService`` with the loop in its signature. An
+example would be the following::
+
+  import pytest
+
+  from unittest.mock import patch, MagicMock
+
+  from main import AioESService, create_app
+
+  class TestAcceptance:
+
+      async def test_get(self, test_client, loop):
+          with patch("main.AioESService", MagicMock(
+                  side_effect=lambda *args, **kwargs: AioESService(*args, **kwargs, loop=loop))):
+              client = await test_client(create_app)
+              resp = await client.get("/")
+              assert resp.status == 200
+
+Note how we are patching the ``AioESService`` with and instance of itself but
+adding the explicit loop as an extra (you need to load the loop fixture in your
+test signature).
+
+The final code to test all this (you will need a local instance of
+elasticsearch running)::
+
+  import asyncio
+
+  from aioes import Elasticsearch
+  from aiohttp import web
+
+
+  class AioESService:
+
+      def __init__(self, loop=None):
+          self.es = Elasticsearch(["127.0.0.1:9200"], loop=loop)
+
+      async def get_info(self):
+          return await self.es.info()
+
+
+  class MyService:
+
+      def __init__(self):
+          self.aioes_service = AioESService()
+
+      async def get_es_info(self):
+          return await self.aioes_service.get_info()
+
+
+  async def hello_aioes(request):
+      my_service = MyService()
+      cluster_info = await my_service.get_es_info()
+      return web.Response(text="{}".format(cluster_info))
+
+
+  def create_app(loop=None):
+
+      app = web.Application(loop=loop)
+      app.router.add_route('GET', '/', hello_aioes)
+      return app
+
+
+  if __name__ == "__main__":
+      web.run_app(create_app())
+
+
+And the full tests file::
+
+
+  from unittest.mock import patch, MagicMock
+
+  from main import AioESService, create_app
+
+
+  class TestAioESService:
+
+      async def test_get_info(self, loop):
+          cluster_info = await AioESService("random_arg", loop=loop).get_info()
+          assert isinstance(cluster_info, dict)
+
+
+  class TestAcceptance:
+
+      async def test_get(self, test_client, loop):
+          with patch("main.AioESService", MagicMock(
+                  side_effect=lambda *args, **kwargs: AioESService(*args, **kwargs, loop=loop))):
+              client = await test_client(create_app)
+              resp = await client.get("/")
+              assert resp.status == 200
+
+Note how we are using the ``side_effect`` feature for injecting the loop to the
+``AioESService.__init__`` call. The use of ``**args, **kwargs`` is mandatory
+in order to propagate the arguments being used by the caller.
