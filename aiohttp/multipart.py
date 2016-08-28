@@ -1,30 +1,24 @@
 import asyncio
-import binascii
 import base64
-import json
+import binascii
 import io
+import json
 import mimetypes
 import os
 import re
 import uuid
 import warnings
 import zlib
-from urllib.parse import quote, unquote, urlencode, parse_qsl
-from collections import deque, Mapping, Sequence
+from collections import Mapping, Sequence, deque
 from pathlib import Path
+from urllib.parse import parse_qsl, quote, unquote, urlencode
 
 from multidict import CIMultiDict
 
-from .helpers import parse_mimetype
+from .hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING, CONTENT_LENGTH,
+                   CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
+from .helpers import _decorate_aiter, parse_mimetype
 from .protocol import HttpParser
-from .hdrs import (
-    CONTENT_DISPOSITION,
-    CONTENT_ENCODING,
-    CONTENT_LENGTH,
-    CONTENT_TRANSFER_ENCODING,
-    CONTENT_TYPE
-)
-
 
 __all__ = ('MultipartReader', 'MultipartWriter',
            'BodyPartReader', 'BodyPartWriter',
@@ -167,7 +161,7 @@ class MultipartResponseWrapper(object):
         self.resp = resp
         self.stream = stream
 
-    @asyncio.coroutine
+    @_decorate_aiter
     def __aiter__(self):
         return self
 
@@ -217,7 +211,7 @@ class BodyPartReader(object):
         self._prev_chunk = None
         self._content_eof = 0
 
-    @asyncio.coroutine
+    @_decorate_aiter
     def __aiter__(self):
         return self
 
@@ -371,7 +365,7 @@ class BodyPartReader(object):
 
     @asyncio.coroutine
     def release(self):
-        """Lke :meth:`read`, but reads all the data to the void.
+        """Like :meth:`read`, but reads all the data to the void.
 
         :rtype: None
         """
@@ -386,7 +380,7 @@ class BodyPartReader(object):
 
     @asyncio.coroutine
     def text(self, *, encoding=None):
-        """Lke :meth:`read`, but assumes that body part contains text data.
+        """Like :meth:`read`, but assumes that body part contains text data.
 
         :param str encoding: Custom text encoding. Overrides specified
                              in charset param of `Content-Type` header
@@ -399,7 +393,7 @@ class BodyPartReader(object):
 
     @asyncio.coroutine
     def json(self, *, encoding=None):
-        """Lke :meth:`read`, but assumes that body parts contains JSON data.
+        """Like :meth:`read`, but assumes that body parts contains JSON data.
 
         :param str encoding: Custom JSON encoding. Overrides specified
                              in charset param of `Content-Type` header
@@ -412,7 +406,7 @@ class BodyPartReader(object):
 
     @asyncio.coroutine
     def form(self, *, encoding=None):
-        """Lke :meth:`read`, but assumes that body parts contains form
+        """Like :meth:`read`, but assumes that body parts contains form
         urlencoded data.
 
         :param str encoding: Custom form encoding. Overrides specified
@@ -513,7 +507,7 @@ class MultipartReader(object):
         self._at_bof = True
         self._unread = []
 
-    @asyncio.coroutine
+    @_decorate_aiter
     def __aiter__(self):
         return self
 

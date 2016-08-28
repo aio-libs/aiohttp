@@ -3,22 +3,16 @@ import functools
 import io
 import os
 import unittest
-from unittest import mock
 import zlib
+from unittest import mock
 
 import aiohttp.multipart
 from aiohttp import helpers
+from aiohttp.hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING,
+                          CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
 from aiohttp.helpers import parse_mimetype
-from aiohttp.hdrs import (
-    CONTENT_DISPOSITION,
-    CONTENT_ENCODING,
-    CONTENT_TRANSFER_ENCODING,
-    CONTENT_TYPE
-)
-from aiohttp.multipart import (
-    parse_content_disposition,
-    content_disposition_filename
-)
+from aiohttp.multipart import (content_disposition_filename,
+                               parse_content_disposition)
 
 
 def run_in_loop(f):
@@ -830,13 +824,13 @@ class BodyPartWriterTestCase(unittest.TestCase):
         multipart.append_json({'test': 'passed'})
         self.assertEqual(
             [b'--:\r\n',
-             b'CONTENT-TYPE: text/plain; charset=utf-8\r\n'
-             b'CONTENT-LENGTH: 11',
+             b'Content-Type: text/plain; charset=utf-8\r\n'
+             b'Content-Length: 11',
              b'\r\n\r\n',
              b'foo-bar-baz',
              b'\r\n',
              b'--:\r\n',
-             b'CONTENT-TYPE: application/json',
+             b'Content-Type: application/json',
              b'\r\n\r\n',
              b'{"test": "passed"}',
              b'\r\n',
@@ -856,8 +850,8 @@ class BodyPartWriterTestCase(unittest.TestCase):
         part = aiohttp.multipart.BodyPartWriter(
             'Time to Relax!', {CONTENT_ENCODING: 'gzip'})
         stream = part.serialize()
-        self.assertEqual(b'CONTENT-ENCODING: gzip\r\n'
-                         b'CONTENT-TYPE: text/plain; charset=utf-8',
+        self.assertEqual(b'Content-Encoding: gzip\r\n'
+                         b'Content-Type: text/plain; charset=utf-8',
                          next(stream))
         self.assertEqual(b'\r\n\r\n', next(stream))
 
@@ -872,8 +866,8 @@ class BodyPartWriterTestCase(unittest.TestCase):
         part = aiohttp.multipart.BodyPartWriter(
             'Time to Relax!', {CONTENT_ENCODING: 'deflate'})
         stream = part.serialize()
-        self.assertEqual(b'CONTENT-ENCODING: deflate\r\n'
-                         b'CONTENT-TYPE: text/plain; charset=utf-8',
+        self.assertEqual(b'Content-Encoding: deflate\r\n'
+                         b'Content-Type: text/plain; charset=utf-8',
                          next(stream))
         self.assertEqual(b'\r\n\r\n', next(stream))
 
@@ -886,9 +880,9 @@ class BodyPartWriterTestCase(unittest.TestCase):
         part = aiohttp.multipart.BodyPartWriter(
             thing, {CONTENT_ENCODING: 'identity'})
         stream = part.serialize()
-        self.assertEqual(b'CONTENT-ENCODING: identity\r\n'
-                         b'CONTENT-TYPE: application/octet-stream\r\n'
-                         b'CONTENT-LENGTH: 16',
+        self.assertEqual(b'Content-Encoding: identity\r\n'
+                         b'Content-Type: application/octet-stream\r\n'
+                         b'Content-Length: 16',
                          next(stream))
         self.assertEqual(b'\r\n\r\n', next(stream))
 
@@ -906,8 +900,8 @@ class BodyPartWriterTestCase(unittest.TestCase):
         part = aiohttp.multipart.BodyPartWriter(
             'Time to Relax!', {CONTENT_TRANSFER_ENCODING: 'base64'})
         stream = part.serialize()
-        self.assertEqual(b'CONTENT-TRANSFER-ENCODING: base64\r\n'
-                         b'CONTENT-TYPE: text/plain; charset=utf-8',
+        self.assertEqual(b'Content-Transfer-Encoding: base64\r\n'
+                         b'Content-Type: text/plain; charset=utf-8',
                          next(stream))
         self.assertEqual(b'\r\n\r\n', next(stream))
 
@@ -922,8 +916,8 @@ class BodyPartWriterTestCase(unittest.TestCase):
             {CONTENT_TRANSFER_ENCODING: 'base64'})
         part._chunk_size = 6
         stream = part.serialize()
-        self.assertEqual(b'CONTENT-TRANSFER-ENCODING: base64\r\n'
-                         b'CONTENT-TYPE: application/octet-stream',
+        self.assertEqual(b'Content-Transfer-Encoding: base64\r\n'
+                         b'Content-Type: application/octet-stream',
                          next(stream))
         self.assertEqual(b'\r\n\r\n', next(stream))
 
@@ -937,8 +931,8 @@ class BodyPartWriterTestCase(unittest.TestCase):
         part = aiohttp.multipart.BodyPartWriter(
             'Привет, мир!', {CONTENT_TRANSFER_ENCODING: 'quoted-printable'})
         stream = part.serialize()
-        self.assertEqual(b'CONTENT-TRANSFER-ENCODING: quoted-printable\r\n'
-                         b'CONTENT-TYPE: text/plain; charset=utf-8',
+        self.assertEqual(b'Content-Transfer-Encoding: quoted-printable\r\n'
+                         b'Content-Type: text/plain; charset=utf-8',
                          next(stream))
         self.assertEqual(b'\r\n\r\n', next(stream))
 

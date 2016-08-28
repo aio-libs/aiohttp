@@ -1,10 +1,11 @@
-import socket
 import asyncio
+import socket
+
 from .abc import AbstractResolver
 
 try:
     import aiodns
-except ImportError:
+except ImportError:  # pragma: no cover
     aiodns = None
 
 

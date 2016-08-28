@@ -1,13 +1,12 @@
 import asyncio
+from collections.abc import Coroutine
+
 import pytest
 
 import aiohttp
 from aiohttp import web
 from aiohttp.client import _RequestContextManager
-from collections.abc import Coroutine
 
-
-@pytest.mark.run_loop
 async def test_await(create_server, loop):
 
     async def handler(request):
@@ -22,7 +21,6 @@ async def test_await(create_server, loop):
     assert resp.connection is None
 
 
-@pytest.mark.run_loop
 async def test_response_context_manager(create_server, loop):
 
     async def handler(request):
@@ -37,7 +35,6 @@ async def test_response_context_manager(create_server, loop):
     assert resp.connection is None
 
 
-@pytest.mark.run_loop
 async def test_client_api_context_manager(create_server, loop):
 
     async def handler(request):
@@ -56,7 +53,6 @@ def test_ctx_manager_is_coroutine():
     assert issubclass(_RequestContextManager, Coroutine)
 
 
-@pytest.mark.run_loop
 async def test_context_manager_timeout_on_release(create_server, loop):
 
     async def handler(request):
@@ -78,7 +74,6 @@ async def test_context_manager_timeout_on_release(create_server, loop):
         assert resp.connection is None
 
 
-@pytest.mark.run_loop
 async def test_iter_any(create_server, loop):
 
     data = b'0123456789' * 1024

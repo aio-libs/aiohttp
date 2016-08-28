@@ -2,20 +2,19 @@
 
 import asyncio
 import gc
+import os.path
+import shutil
 import socket
-import unittest
 import ssl
 import tempfile
-import shutil
-import os.path
+import unittest
 from unittest import mock
 
 import aiohttp
-from aiohttp import web
-from aiohttp import client
-from aiohttp import helpers
-from aiohttp.client import ClientResponse
+from aiohttp import client, helpers, web
+from aiohttp.client import ClientRequest, ClientResponse
 from aiohttp.connector import Connection
+from aiohttp.test_utils import unused_port
 
 
 class TestBaseConnector(unittest.TestCase):
@@ -257,11 +256,9 @@ class TestBaseConnector(unittest.TestCase):
         tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
         proto.is_connected.return_value = True
 
-        class Req:
-            host = 'host'
-            port = 80
-            ssl = False
-            response = unittest.mock.Mock()
+        req = ClientRequest('GET', 'http://host:80',
+                            loop=self.loop,
+                            response_class=unittest.mock.Mock())
 
         conn = aiohttp.BaseConnector(loop=self.loop)
         key = ('host', 80, False)
@@ -270,7 +267,7 @@ class TestBaseConnector(unittest.TestCase):
         conn._create_connection.return_value = helpers.create_future(self.loop)
         conn._create_connection.return_value.set_result((tr, proto))
 
-        connection = self.loop.run_until_complete(conn.connect(Req()))
+        connection = self.loop.run_until_complete(conn.connect(req))
         self.assertFalse(conn._create_connection.called)
         self.assertEqual(connection._transport, tr)
         self.assertEqual(connection._protocol, proto)
@@ -483,11 +480,9 @@ class TestBaseConnector(unittest.TestCase):
             tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
             proto.is_connected.return_value = True
 
-            class Req:
-                host = 'host'
-                port = 80
-                ssl = False
-                response = unittest.mock.Mock()
+            req = ClientRequest('GET', 'http://host:80',
+                                loop=self.loop,
+                                response_class=unittest.mock.Mock())
 
             conn = aiohttp.BaseConnector(loop=self.loop, limit=1)
             key = ('host', 80, False)
@@ -497,7 +492,7 @@ class TestBaseConnector(unittest.TestCase):
                 self.loop)
             conn._create_connection.return_value.set_result((tr, proto))
 
-            connection1 = yield from conn.connect(Req())
+            connection1 = yield from conn.connect(req)
             self.assertEqual(connection1._transport, tr)
 
             self.assertEqual(1, len(conn._acquired[key]))
@@ -507,7 +502,7 @@ class TestBaseConnector(unittest.TestCase):
             @asyncio.coroutine
             def f():
                 nonlocal acquired
-                connection2 = yield from conn.connect(Req())
+                connection2 = yield from conn.connect(req)
                 acquired = True
                 self.assertEqual(1, len(conn._acquired[key]))
                 connection2.release()
@@ -531,11 +526,9 @@ class TestBaseConnector(unittest.TestCase):
             tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
             proto.is_connected.return_value = True
 
-            class Req:
-                host = 'host'
-                port = 80
-                ssl = False
-                response = unittest.mock.Mock()
+            req = ClientRequest('GET', 'http://host:80',
+                                loop=self.loop,
+                                response_class=unittest.mock.Mock())
 
             conn = aiohttp.BaseConnector(loop=self.loop, limit=1)
             key = ('host', 80, False)
@@ -545,14 +538,14 @@ class TestBaseConnector(unittest.TestCase):
                 self.loop)
             conn._create_connection.return_value.set_result((tr, proto))
 
-            connection = yield from conn.connect(Req())
+            connection = yield from conn.connect(req)
             self.assertEqual(connection._transport, tr)
 
             self.assertEqual(1, len(conn._acquired[key]))
 
             with self.assertRaises(asyncio.TimeoutError):
                 # limit exhausted
-                yield from asyncio.wait_for(conn.connect(Req), 0.01,
+                yield from asyncio.wait_for(conn.connect(req), 0.01,
                                             loop=self.loop)
             connection.close()
         self.loop.run_until_complete(go())
@@ -583,11 +576,10 @@ class TestBaseConnector(unittest.TestCase):
             proto = unittest.mock.Mock()
             proto.is_connected.return_value = True
 
-            class Req:
-                host = 'host'
-                port = 80
-                ssl = False
-                response = unittest.mock.Mock(_should_close=False)
+            req = ClientRequest('GET', 'http://host:80',
+                                loop=self.loop,
+                                response_class=unittest.mock.Mock(
+                                    _should_close=False))
 
             max_connections = 2
             num_connections = 0
@@ -629,7 +621,7 @@ class TestBaseConnector(unittest.TestCase):
                     return
                 num_requests += 1
                 if not start:
-                    connection = yield from conn.connect(Req())
+                    connection = yield from conn.connect(req)
                     yield from asyncio.sleep(0, loop=self.loop)
                     connection.release()
                 tasks = [
@@ -652,11 +644,9 @@ class TestBaseConnector(unittest.TestCase):
             tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
             proto.is_connected.return_value = True
 
-            class Req:
-                host = 'host'
-                port = 80
-                ssl = False
-                response = unittest.mock.Mock()
+            req = ClientRequest('GET', 'http://host:80',
+                                loop=self.loop,
+                                response_class=unittest.mock.Mock())
 
             conn = aiohttp.BaseConnector(loop=self.loop, limit=1)
             key = ('host', 80, False)
@@ -666,7 +656,7 @@ class TestBaseConnector(unittest.TestCase):
                 self.loop)
             conn._create_connection.return_value.set_result((tr, proto))
 
-            connection = yield from conn.connect(Req())
+            connection = yield from conn.connect(req)
 
             self.assertEqual(1, len(conn._acquired))
             conn.close()
@@ -691,8 +681,12 @@ class TestBaseConnector(unittest.TestCase):
 
     def test_limit_property_default(self):
         conn = aiohttp.BaseConnector(loop=self.loop)
-        self.assertIsNone(conn.limit)
+        self.assertEquals(conn.limit, 20)
         conn.close()
+
+    def test_limitless(self):
+        with aiohttp.BaseConnector(loop=self.loop, limit=None) as conn:
+            self.assertIsNone(conn.limit)
 
     def test_force_close_and_explicit_keep_alive(self):
         with self.assertRaises(ValueError):
@@ -723,19 +717,12 @@ class TestHttpClientConnector(unittest.TestCase):
         self.loop.close()
         gc.collect()
 
-    def find_unused_port(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(('127.0.0.1', 0))
-        port = s.getsockname()[1]
-        s.close()
-        return port
-
     @asyncio.coroutine
     def create_server(self, method, path, handler):
         app = web.Application(loop=self.loop)
         app.router.add_route(method, path, handler)
 
-        port = self.find_unused_port()
+        port = unused_port()
         self.handler = app.make_handler(keep_alive_on=False)
         srv = yield from self.loop.create_server(
             self.handler, '127.0.0.1', port)
@@ -785,7 +772,7 @@ class TestHttpClientConnector(unittest.TestCase):
             self.create_server('get', '/', handler)
         )
 
-        port = self.find_unused_port()
+        port = unused_port()
         conn = aiohttp.TCPConnector(loop=self.loop,
                                     local_addr=('127.0.0.1', port))
 
@@ -845,14 +832,12 @@ class TestHttpClientConnector(unittest.TestCase):
         resolver = unittest.mock.MagicMock()
         connector = aiohttp.TCPConnector(resolver=resolver, loop=self.loop)
 
-        class Req:
-            host = '127.0.0.1'
-            port = 80
-            ssl = False
-            response = unittest.mock.Mock()
+        req = ClientRequest('GET', 'http://127.0.0.1:{}'.format(unused_port()),
+                            loop=self.loop,
+                            response_class=unittest.mock.Mock())
 
         with self.assertRaises(OSError):
-            self.loop.run_until_complete(connector.connect(Req()))
+            self.loop.run_until_complete(connector.connect(req))
 
         resolver.resolve.assert_not_called()
 

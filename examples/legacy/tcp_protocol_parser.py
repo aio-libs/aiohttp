@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Protocol parser example."""
 import argparse
-import aiohttp
-import collections
 import asyncio
+import collections
+
+import aiohttp
+
 try:
     import signal
 except ImportError:
@@ -94,11 +96,11 @@ class EchoServer(asyncio.Protocol):
 
             print('Message received: {}'.format(msg))
 
-            if msg.tp == MSG_PING:
+            if msg.type == MSG_PING:
                 writer.pong()
-            elif msg.tp == MSG_TEXT:
+            elif msg.type == MSG_TEXT:
                 writer.send_text('Re: ' + msg.data)
-            elif msg.tp == MSG_STOP:
+            elif msg.type == MSG_STOP:
                 self.transport.close()
                 break
 
@@ -121,10 +123,10 @@ def start_client(loop, host, port):
             break
 
         print('Message received: {}'.format(msg))
-        if msg.tp == MSG_PONG:
+        if msg.type == MSG_PONG:
             writer.send_text(message)
             print('data sent:', message)
-        elif msg.tp == MSG_TEXT:
+        elif msg.type == MSG_TEXT:
             writer.stop()
             print('stop sent')
             break

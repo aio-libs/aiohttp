@@ -1,6 +1,8 @@
 import gc
-import pytest
 from unittest import mock
+
+import pytest
+
 from aiohttp.connector import Connection
 
 
@@ -29,13 +31,13 @@ def protocol():
     return mock.Mock()
 
 
-def test_del(connector, key, request, transport, protocol, loop, warning):
+def test_del(connector, key, request, transport, protocol, loop):
     conn = Connection(connector, key, request,
                       transport, protocol, loop)
     exc_handler = mock.Mock()
     loop.set_exception_handler(exc_handler)
 
-    with warning(ResourceWarning):
+    with pytest.warns(ResourceWarning):
         del conn
         gc.collect()
 

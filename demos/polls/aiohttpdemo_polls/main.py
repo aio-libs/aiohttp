@@ -2,17 +2,16 @@ import asyncio
 import logging
 import pathlib
 
-import aiohttp_jinja2
 import jinja2
-from aiohttp import web
 
+import aiohttp_jinja2
+from aiohttp import web
+from aiohttpdemo_polls.db import init_postgres
 from aiohttpdemo_polls.middlewares import setup_middlewares
 from aiohttpdemo_polls.routes import setup_routes
-from aiohttpdemo_polls.utils import init_postgres, load_config
-from aiohttpdemo_polls.views import SiteHandler
+from aiohttpdemo_polls.utils import load_config
 
-
-PROJ_ROOT = pathlib.Path(__file__).parent.parent
+PROJ_ROOT = pathlib.Path(__file__).parent
 
 
 async def close_pg(app):
@@ -21,22 +20,21 @@ async def close_pg(app):
 
 
 async def init(loop):
+    # load config from yaml file in current dir
+    conf = load_config(str(pathlib.Path('.') / 'config' / 'polls.yaml'))
+
     # setup application and extensions
     app = web.Application(loop=loop)
     aiohttp_jinja2.setup(
         app, loader=jinja2.PackageLoader('aiohttpdemo_polls', 'templates'))
-    # load config from yaml file
-    conf = load_config(str(PROJ_ROOT / 'config' / 'polls.yaml'))
 
     # create connection to the database
     db = await init_postgres(conf['postgres'], loop)
     app['db'] = db
 
     app.on_cleanup.append(close_pg)
-
     # setup views and routes
-    handler = SiteHandler(db)
-    setup_routes(app, handler, PROJ_ROOT)
+    setup_routes(app, PROJ_ROOT)
     setup_middlewares(app)
 
     host, port = conf['host'], conf['port']

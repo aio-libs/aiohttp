@@ -12,10 +12,10 @@
 0.21.4 (03-12-2016)
 -------------------
 
-- Fix ResourceAdapter: dont add method to allowed if resource is not
+- Fix ResourceAdapter: don't add method to allowed if resource is not
   match #826
 
-- Fix Resouce: append found method to returned allowed methods
+- Fix Resource: append found method to returned allowed methods
 
 0.21.2 (02-16-2016)
 -------------------
@@ -160,7 +160,7 @@
 - Avoid sending cookie attributes in Cookie header #613
 
 - Round server timeouts to seconds for grouping pending calls.  That
-  leads to less amount of poller syscalls e.g epoll.poll(). #702
+  leads to less amount of poller syscalls e.g. epoll.poll(). #702
 
 - Close connection on websocket handshake error #703
 
@@ -182,7 +182,7 @@
 
 - Memory leak in ParserBuffer #579
 
-- Suppport gunicorn's `max_requests` settings in gunicorn worker
+- Support gunicorn's `max_requests` settings in gunicorn worker
 
 - Fix wsgi environment building #573
 
@@ -320,7 +320,7 @@
 
 - Implement server signals #562
 
-- Drop an year-old deprecated *files* parameter from client API.
+- Drop a year-old deprecated *files* parameter from client API.
 
 - Added `async for` support for aiohttp stream #542
 
@@ -352,7 +352,7 @@
 0.17.1 (08-10-2015)
 ---------------------
 
-- Fix multidict comparsion to arbitrary abc.Mapping
+- Fix multidict comparison to arbitrary abc.Mapping
 
 0.17.0 (08-04-2015)
 ---------------------
@@ -400,7 +400,7 @@
 - Ensure multipart.BodyPartReader.read_chunk read all the necessary data
   to avoid false assertions about malformed multipart payload
 
-- Dont sent body for 204, 205 and 304 http exceptions #442
+- Don't send body for 204, 205 and 304 http exceptions #442
 
 - Correctly skip Cython compilation in MSVC not found #453
 
@@ -505,7 +505,7 @@
 
 - Flow control subsystem refactoring
 
-- HTTP server performace optimizations
+- HTTP server performance optimizations
 
 - Allow to match any request method with `*`
 
@@ -525,7 +525,7 @@
 0.15.1 (03-31-2015)
 -------------------
 
-- Pass Autobahn Testsuit tests
+- Pass Autobahn Testsuite tests
 
 - Fixed websocket fragmentation
 
@@ -608,7 +608,7 @@
 
 - multidict.getall() returns `list`, not `tuple`.
 
-- Backward imcompatible change: now there are two mutable multidicts
+- Backward incompatible change: now there are two mutable multidicts
   (`MultiDict`, `CIMultiDict`) and two immutable multidict proxies
   (`MultiDictProxy` and `CIMultiDictProxy`). Previous edition of
   multidicts was not a part of public API BTW.
@@ -639,7 +639,7 @@
 
 - Add `aiohttp.web.StreamResponse.started` property #213
 
-- Html escape traceback text in `ServerHttpProtocol.handle_error`
+- HTML escape traceback text in `ServerHttpProtocol.handle_error`
 
 - Mention handler and middlewares in `aiohttp.web.RequestHandler.handle_request`
   on error (#218)
@@ -677,7 +677,7 @@
 
 - Added POST attribute
 
-- Response processing refactoring: constructor does't accept Request
+- Response processing refactoring: constructor doesn't accept Request
   instance anymore.
 
 - Pass application instance to finish callback

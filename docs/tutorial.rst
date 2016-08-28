@@ -1,7 +1,7 @@
 .. _aiohttp-tutorial:
 
-Tutorial
-========
+HTTP Server Tutorial
+====================
 
 Are you going to learn *aiohttp* but don't where to start? We have
 example for you. Polls application is a great example for getting
@@ -19,7 +19,9 @@ the `demo source`_.
 Setup your environment
 ----------------------
 
-First of all check you python version::
+First of all check you python version:
+
+.. code-block:: shell
 
  $ python -V
  Python 3.5.0
@@ -28,12 +30,16 @@ Tutorial requires Python 3.5.0 or newer.
 
 We’ll assume that you have already installed *aiohttp* library. You can check
 aiohttp is installed and which version by running the following
-command::
+command:
+
+.. code-block:: shell
 
  $ python -c 'import aiohttp; print(aiohttp.__version__)'
  0.22.0
 
-Project structure looks very similar to other python based web projects::
+Project structure looks very similar to other python based web projects:
+
+.. code-block:: none
 
     .
     ├── README.rst
@@ -69,6 +75,47 @@ Getting started with aiohttp first app
 
 This tutorial based on Django polls tutorial.
 
+.. _aiohttp-tutorial-config:
+
+Configuration files
+-------------------
+
+aiohttp is configuration agnostic. It means the library doesn't
+require any configuration approach and doesn't have builtin support
+for any config schema.
+
+But please take into account these facts:
+
+   1. 99% of servers have configuration files.
+
+   2. Every product (except Python-based solutions like Django and
+      Flask) doesn't store config files as part as source code.
+
+      For example Nginx has own configuration files stored by default
+      under ``/etc/nginx`` folder.
+
+      Mongo pushes config as ``/etc/mongodb.conf``.
+
+   3. Config files validation is good idea, strong checks may prevent
+      silly errors during product deployment.
+
+Thus we **suggest** to use the following approach:
+
+   1. Pushing configs as ``yaml`` files (``json`` or ``ini`` is also
+      good but ``yaml`` is the best).
+
+   2. Loading ``yaml`` config from a list of predefined locations,
+      e.g. ``./config/app_cfg.yaml``, ``/etc/app_cfg.yaml``.
+
+   3. Keeping ability to override config file by command line
+      parameter, e.g. ``./run_app --config=/opt/config/app_cfg.yaml``.
+
+   4. Applying strict validation checks to loaded dict. `trafaret
+      <https://github.com/Deepwalker/trafaret>`_, `collander
+      <http://docs.pylonsproject.org/projects/colander/en/latest/>`_
+      or `JSON schema
+      <http://python-jsonschema.readthedocs.io/en/latest/>`_ are good
+      candidates for such job.
 
 .. _aiohttp-tutorial-database:
 
@@ -170,9 +217,11 @@ to ``polls/aiohttpdemo_polls/routes.py``::
 
 
     def setup_routes(app, project_root):
-        app.router.add_route('GET', '/', index)
+        app.router.add_get('/', index)
 
-Now if we open browser we can see::
+Now if we open browser we can see:
+
+.. code-block:: shell
 
     $ curl -X GET localhost:8080
     Hello Aiohttp!
@@ -199,12 +248,14 @@ Let's add more useful views::
                'choices': choices
            }
 
-Templates are very convinient way forweb page writing. We return a
+Templates are very convenient way for web page writing. We return a
 dict with page content, ``aiohttp_jinja2.template`` decorator
 processes it by jinja2 template renderer.
 
 For setting up template engine we need to install ``aiohttp_jinja2``
-library first::
+library first:
+
+.. code-block:: shell
 
    $ pip install aiohttp_jinja2
 
@@ -231,9 +282,9 @@ Any web site has static files: images, JavaScript sources, CSS files etc.
 The best way to handle static in production is setting up reverse
 proxy like NGINX or using CDN services.
 
-But for development handling static files by aiohttp server is very convinient.
+But for development handling static files by aiohttp server is very convenient.
 
-Fortunatelly it can be done easy by single call::
+Fortunately it can be done easy by single call::
 
     app.router.add_static('/static/',
                           path=str(project_root / 'static'),

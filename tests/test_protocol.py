@@ -1,8 +1,9 @@
 """Tests for aiohttp/protocol.py"""
 
-import pytest
-from unittest import mock
 import zlib
+from unittest import mock
+
+import pytest
 
 from aiohttp import hdrs, protocol
 
@@ -90,7 +91,7 @@ def test_add_header(transport):
     assert [] == list(msg.headers)
 
     msg.add_header('content-type', 'plain/html')
-    assert [('CONTENT-TYPE', 'plain/html')] == list(msg.headers.items())
+    assert [('Content-Type', 'plain/html')] == list(msg.headers.items())
 
 
 def test_add_header_with_spaces(transport):
@@ -98,7 +99,7 @@ def test_add_header_with_spaces(transport):
     assert [] == list(msg.headers)
 
     msg.add_header('content-type', '  plain/html  ')
-    assert [('CONTENT-TYPE', 'plain/html')] == list(msg.headers.items())
+    assert [('Content-Type', 'plain/html')] == list(msg.headers.items())
 
 
 def test_add_header_non_ascii(transport):
@@ -125,7 +126,7 @@ def test_add_headers(transport):
     assert [] == list(msg.headers)
 
     msg.add_headers(('content-type', 'plain/html'))
-    assert [('CONTENT-TYPE', 'plain/html')] == list(msg.headers.items())
+    assert [('Content-Type', 'plain/html')] == list(msg.headers.items())
 
 
 def test_add_headers_length(transport):
@@ -151,7 +152,7 @@ def test_add_headers_upgrade_websocket(transport):
     assert [] == list(msg.headers)
 
     msg.add_headers(('upgrade', 'websocket'))
-    assert [('UPGRADE', 'websocket')] == list(msg.headers.items())
+    assert [('Upgrade', 'websocket')] == list(msg.headers.items())
 
 
 def test_add_headers_connection_keepalive(transport):
@@ -201,15 +202,13 @@ def test_default_headers_chunked(transport):
     msg = protocol.Response(transport, 200)
     msg._add_default_headers()
 
-    headers = [r for r, _ in msg.headers.items()]
-    assert 'TRANSFER-ENCODING' not in headers
+    assert 'TRANSFER-ENCODING' not in msg.headers
 
     msg = protocol.Response(transport, 200)
     msg.enable_chunked_encoding()
     msg.send_headers()
 
-    headers = [r for r, _ in msg.headers.items()]
-    assert 'TRANSFER-ENCODING' in headers
+    assert 'TRANSFER-ENCODING' in msg.headers
 
 
 def test_default_headers_connection_upgrade(transport):
@@ -217,8 +216,7 @@ def test_default_headers_connection_upgrade(transport):
     msg.upgrade = True
     msg._add_default_headers()
 
-    headers = [r for r in msg.headers.items() if r[0] == 'CONNECTION']
-    assert [('CONNECTION', 'upgrade')] == headers
+    assert msg.headers['Connection'] == 'upgrade'
 
 
 def test_default_headers_connection_close(transport):
@@ -226,8 +224,7 @@ def test_default_headers_connection_close(transport):
     msg.force_close()
     msg._add_default_headers()
 
-    headers = [r for r in msg.headers.items() if r[0] == 'CONNECTION']
-    assert [('CONNECTION', 'close')] == headers
+    assert msg.headers['Connection'] == 'close'
 
 
 def test_default_headers_connection_keep_alive_http_10(transport):
@@ -236,8 +233,7 @@ def test_default_headers_connection_keep_alive_http_10(transport):
     msg.keepalive = True
     msg._add_default_headers()
 
-    headers = [r for r in msg.headers.items() if r[0] == 'CONNECTION']
-    assert [('CONNECTION', 'keep-alive')] == headers
+    assert msg.headers['Connection'] == 'keep-alive'
 
 
 def test_default_headers_connection_keep_alive_11(transport):
@@ -246,8 +242,7 @@ def test_default_headers_connection_keep_alive_11(transport):
     msg.keepalive = True
     msg._add_default_headers()
 
-    headers = [r for r in msg.headers.items() if r[0] == 'CONNECTION']
-    assert 'CONNECTION' not in headers
+    assert 'Connection' not in msg.headers
 
 
 def test_send_headers(transport):
@@ -262,7 +257,7 @@ def test_send_headers(transport):
     content = b''.join([arg[1][0] for arg in list(write.mock_calls)])
 
     assert content.startswith(b'HTTP/1.1 200 OK\r\n')
-    assert b'CONTENT-TYPE: plain/html' in content
+    assert b'Content-Type: plain/html' in content
     assert msg.headers_sent
     assert msg.is_headers_sent()
     # cleanup
@@ -281,7 +276,7 @@ def test_send_headers_non_ascii(transport):
     content = b''.join([arg[1][0] for arg in list(write.mock_calls)])
 
     assert content.startswith(b'HTTP/1.1 200 OK\r\n')
-    assert b'X-HEADER: \xd1\x82\xd0\xb5\xd0\xba\xd1\x81\xd1\x82' in content
+    assert b'X-Header: \xd1\x82\xd0\xb5\xd0\xba\xd1\x81\xd1\x82' in content
     assert msg.headers_sent
     assert msg.is_headers_sent()
     # cleanup

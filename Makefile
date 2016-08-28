@@ -4,23 +4,42 @@
 	pip install -U -r requirements-dev.txt
 	touch .install-deps
 
-flake: .install-deps
-#	python setup.py check -rms
+isort:
+	isort -rc aiohttp
+	isort -rc tests
+	isort -rc benchmark
+	isort -rc examples
+	isort -rc demos
+
+flake: .flake
+
+.flake: .install-deps $(shell find aiohttp -type f) \
+                      $(shell find tests -type f) \
+                      $(shell find benchmark -type f) \
+                      $(shell find examples -type f) \
+                      $(shell find demos -type f)
 	flake8 aiohttp
 	if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then \
-	    flake8 examples tests; \
+	    flake8 examples tests demos benchmark && \
+            python setup.py check -rms; \
 	fi
+	if ! isort -c -rc aiohttp tests benchmark examples; then \
+            echo "Import sort errors, run 'make isort' to fix them!!!"; \
+            isort --diff -rc aiohttp tests benchmark examples; \
+            false; \
+        fi
+	touch .flake
 
 
-.develop: .install-deps $(shell find aiohttp -type f)
+.develop: .install-deps $(shell find aiohttp -type f) .flake
 	pip install -e .
 	touch .develop
 
-test: flake .develop
-	py.test -q ./tests/
+test: .develop
+	py.test -q ./tests
 
-vtest: flake .develop
-	py.test -s -v ./tests/
+vtest: .develop
+	py.test -s -v ./tests
 
 cov cover coverage:
 	tox
@@ -30,9 +49,9 @@ cov-dev: .develop
 	@echo "open file://`pwd`/coverage/index.html"
 
 cov-dev-full: .develop
-	AIOHTTP_NO_EXTENSIONS=1 py.test --cov=aiohttp --cov-append tests
+	AIOHTTP_NO_EXTENSIONS=1 py.test --cov=aiohttp tests
 	PYTHONASYNCIODEBUG=1 py.test --cov=aiohttp --cov-append tests
-	py.test --cov=aiohttp --cov-report=term --cov-report=html tests
+	py.test --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
 	@echo "open file://`pwd`/coverage/index.html"
 
 clean:
@@ -71,4 +90,4 @@ install:
 	pip install -U pip
 	pip install -Ur requirements-dev.txt
 
-.PHONY: all build venv flake test vtest testloop cov clean doc
+.PHONY: all build flake test vtest cov clean doc

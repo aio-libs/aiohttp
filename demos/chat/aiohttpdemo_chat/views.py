@@ -3,9 +3,8 @@ import logging
 import random
 import string
 
-from aiohttp import web
 import aiohttp_jinja2
-
+from aiohttp import web
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +29,7 @@ async def index(request):
     while True:
         msg = await resp.receive()
 
-        if msg.tp == web.MsgType.text:
+        if msg.type == web.MsgType.text:
             for ws in request.app['sockets'].values():
                 if ws is not resp:
                     ws.send_str(json.dumps({'action': 'sent',
@@ -47,6 +46,5 @@ async def index(request):
     return resp
 
 
-
 def setup(app):
-    app.router.add_route('GET', '/', index)
+    app.router.add_get('/', index)

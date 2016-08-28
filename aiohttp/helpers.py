@@ -8,18 +8,20 @@ import functools
 import io
 import os
 import re
-
+import sys
+import warnings
 from collections import namedtuple
-from http.cookies import SimpleCookie, Morsel
+from http.cookies import Morsel, SimpleCookie
 from math import ceil
 from pathlib import Path
 from urllib.parse import quote, urlencode, urlsplit
 
-import multidict
+from multidict import MultiDict, MultiDictProxy
 
 from . import hdrs
 from .abc import AbstractCookieJar
 from .errors import InvalidURL
+
 try:
     from asyncio import ensure_future
 except ImportError:
@@ -27,7 +29,12 @@ except ImportError:
 
 
 __all__ = ('BasicAuth', 'create_future', 'FormData', 'parse_mimetype',
-           'Timeout')
+           'Timeout', 'CookieJar', 'ensure_future')
+
+
+PY_352 = sys.version_info >= (3, 5, 2)
+
+sentinel = object()
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
@@ -75,7 +82,7 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
 
 
 def create_future(loop):
-    """Compatiblity wrapper for the loop.create_future() call introduced in
+    """Compatibility wrapper for the loop.create_future() call introduced in
     3.5.2."""
     if hasattr(loop, 'create_future'):
         return loop.create_future()
@@ -119,7 +126,7 @@ class FormData:
             if filename is None and content_transfer_encoding is None:
                 filename = name
 
-        type_options = multidict.MultiDict({'name': name})
+        type_options = MultiDict({'name': name})
         if filename is not None and not isinstance(filename, str):
             raise TypeError('filename must be an instance of str. '
                             'Got: %s' % filename)
@@ -155,9 +162,7 @@ class FormData:
                 k = guess_filename(rec, 'unknown')
                 self.add_field(k, rec)
 
-            elif isinstance(rec,
-                            (multidict.MultiDictProxy,
-                             multidict.MultiDict)):
+            elif isinstance(rec, (MultiDictProxy, MultiDict)):
                 to_add.extend(rec.items())
 
             elif isinstance(rec, (list, tuple)) and len(rec) == 2:
@@ -231,12 +236,6 @@ def parse_mimetype(mimetype):
     stype, suffix = stype.split('+', 1) if '+' in stype else (stype, '')
 
     return mtype, stype, suffix, params
-
-
-def str_to_bytes(s, encoding='utf-8'):
-    if isinstance(s, str):
-        return s.encode(encoding)
-    return s
 
 
 def guess_filename(obj, default=None):
@@ -331,22 +330,29 @@ class AccessLogger:
 
     @staticmethod
     def _format_e(key, args):
-        return (args[1] or {}).get(multidict.upstr(key), '-')
+        return (args[1] or {}).get(key, '-')
 
     @staticmethod
     def _format_i(key, args):
         if not args[0]:
             return '(no headers)'
-        return args[0].headers.get(multidict.upstr(key), '-')
+        # suboptimal, make istr(key) once
+        return args[0].headers.get(key, '-')
 
     @staticmethod
     def _format_o(key, args):
-        return args[2].headers.get(multidict.upstr(key), '-')
+        # suboptimal, make istr(key) once
+        return args[2].headers.get(key, '-')
 
     @staticmethod
     def _format_a(args):
-        return args[3].get_extra_info('peername')[0] if args[3] is not None \
-            else '-'
+        if args[3] is None:
+            return '-'
+        peername = args[3].get_extra_info('peername')
+        if isinstance(peername, (list, tuple)):
+            return peername[0]
+        else:
+            return peername
 
     @staticmethod
     def _format_t(args):
@@ -407,9 +413,6 @@ class AccessLogger:
             self.logger.exception("Error in logging")
 
 
-_marker = object()
-
-
 class reify:
     """Use as a class method decorator.  It operates almost exactly like
     the Python `@property` decorator, but it puts the result of the
@@ -427,11 +430,11 @@ class reify:
             self.__doc__ = ""
         self.name = wrapped.__name__
 
-    def __get__(self, inst, owner, _marker=_marker):
+    def __get__(self, inst, owner, _sentinel=sentinel):
         if inst is None:
             return self
-        val = inst.__dict__.get(self.name, _marker)
-        if val is not _marker:
+        val = inst.__dict__.get(self.name, _sentinel)
+        if val is not _sentinel:
             return val
         val = self.wrapped(inst)
         inst.__dict__[self.name] = val
@@ -587,9 +590,10 @@ class CookieJar(AbstractCookieJar):
 
     DATE_YEAR_RE = re.compile("(\d{2,4})")
 
-    def __init__(self, *, loop=None):
+    def __init__(self, *, unsafe=False, loop=None):
         super().__init__(loop=loop)
         self._host_only_cookies = set()
+        self._unsafe = unsafe
 
     def _expire_cookie(self, when, name, DAY=24*3600):
         now = self._loop.time()
@@ -608,7 +612,7 @@ class CookieJar(AbstractCookieJar):
         url_parsed = urlsplit(response_url or "")
         hostname = url_parsed.hostname
 
-        if is_ip_address(hostname):
+        if not self._unsafe and is_ip_address(hostname):
             # Don't accept cookies from IPs
             return
 
@@ -689,6 +693,8 @@ class CookieJar(AbstractCookieJar):
         """Returns this jar's cookies filtered by their attributes."""
         url_parsed = urlsplit(request_url)
         filtered = SimpleCookie()
+        hostname = url_parsed.hostname or ""
+        is_not_secure = url_parsed.scheme not in ("https", "wss")
 
         for name, cookie in self._cookies.items():
             cookie_domain = cookie["domain"]
@@ -698,9 +704,7 @@ class CookieJar(AbstractCookieJar):
                 dict.__setitem__(filtered, name, cookie)
                 continue
 
-            hostname = url_parsed.hostname or ""
-
-            if is_ip_address(hostname):
+            if not self._unsafe and is_ip_address(hostname):
                 continue
 
             if name in self._host_only_cookies:
@@ -712,9 +716,7 @@ class CookieJar(AbstractCookieJar):
             if not self._is_path_match(url_parsed.path, cookie["path"]):
                 continue
 
-            is_secure = url_parsed.scheme in ("https", "wss")
-
-            if cookie["secure"] and not is_secure:
+            if is_not_secure and cookie["secure"]:
                 continue
 
             dict.__setitem__(filtered, name, cookie)
@@ -740,6 +742,9 @@ class CookieJar(AbstractCookieJar):
     @staticmethod
     def _is_path_match(req_path, cookie_path):
         """Implements path matching adhering to RFC 6265."""
+        if not req_path.startswith("/"):
+            req_path = "/"
+
         if req_path == cookie_path:
             return True
 
@@ -821,3 +826,21 @@ class CookieJar(AbstractCookieJar):
             ), "%b %d %H:%M:%S %Y")
 
         return dt.replace(tzinfo=datetime.timezone.utc)
+
+
+def _get_kwarg(kwargs, old, new, value):
+    val = kwargs.pop(old, sentinel)
+    if val is not sentinel:
+        warnings.warn("{} is deprecated, use {} instead".format(old, new),
+                      DeprecationWarning,
+                      stacklevel=3)
+        return val
+    else:
+        return value
+
+
+def _decorate_aiter(coro):  # pragma: no cover
+    if PY_352:
+        return coro
+    else:
+        return asyncio.coroutine(coro)

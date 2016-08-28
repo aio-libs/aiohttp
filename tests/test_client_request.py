@@ -4,22 +4,20 @@ import asyncio
 import gc
 import inspect
 import io
+import os.path
 import re
 import unittest
-from unittest import mock
 import urllib.parse
 import zlib
 from http.cookies import SimpleCookie
-
-from multidict import CIMultiDict, CIMultiDictProxy, upstr
+from unittest import mock
 
 import pytest
-import aiohttp
-from aiohttp import BaseConnector
-from aiohttp import helpers
-from aiohttp.client_reqrep import ClientRequest, ClientResponse
+from multidict import CIMultiDict, CIMultiDictProxy, upstr
 
-import os.path
+import aiohttp
+from aiohttp import BaseConnector, helpers
+from aiohttp.client_reqrep import ClientRequest, ClientResponse
 
 
 @pytest.yield_fixture
@@ -267,7 +265,7 @@ def test_basic_auth_utf8(make_request):
     assert 'Basic bmtpbTrRgdC10LrRgNC10YI=' == req.headers['AUTHORIZATION']
 
 
-def test_basic_auth_tuple_forbidden(make_request, warning):
+def test_basic_auth_tuple_forbidden(make_request):
     with pytest.raises(TypeError):
         make_request('get', 'http://python.org',
                      auth=('nkim', '1234'))
@@ -311,13 +309,23 @@ def test_path_safe_chars_preserved(make_request):
 def test_params_are_added_before_fragment1(make_request):
     req = make_request('GET', "http://example.com/path#fragment",
                        params={"a": "b"})
-    assert req.path == "/path?a=b#fragment"
+    assert req.url == "http://example.com/path?a=b#fragment"
 
 
 def test_params_are_added_before_fragment2(make_request):
     req = make_request('GET', "http://example.com/path?key=value#fragment",
                        params={"a": "b"})
-    assert req.path == "/path?key=value&a=b#fragment"
+    assert req.url == "http://example.com/path?key=value&a=b#fragment"
+
+
+def test_path_not_contain_fragment1(make_request):
+    req = make_request('GET', "http://example.com/path#fragment")
+    assert req.path == "/path"
+
+
+def test_path_not_contain_fragment2(make_request):
+    req = make_request('GET', "http://example.com/path?key=value#fragment")
+    assert req.path == "/path?key=value"
 
 
 def test_cookies(make_request):
@@ -397,6 +405,33 @@ def test_params_update_path_and_url(make_request):
     assert req.url == 'http://python.org/?test=foo&test=baz'
 
 
+def test_gen_netloc_all(make_request):
+    req = make_request('get',
+                       'https://aiohttp:pwpwpw@' +
+                       '12345678901234567890123456789' +
+                       '012345678901234567890:8080')
+    assert req.netloc == '12345678901234567890123456789' +\
+                         '012345678901234567890:8080'
+
+
+def test_gen_netloc_no_port(make_request):
+    req = make_request('get',
+                       'https://aiohttp:pwpwpw@' +
+                       '12345678901234567890123456789' +
+                       '012345678901234567890/')
+    assert req.netloc == '12345678901234567890123456789' +\
+                         '012345678901234567890'
+
+
+def test_gen_notloc_failed(make_request):
+    with pytest.raises(ValueError) as excinfo:
+        make_request('get',
+                     'https://aiohttp:pwpwpw@' +
+                     '123456789012345678901234567890123456789' +
+                     '01234567890123456789012345/')
+        assert excinfo.value.message == "URL has an invalid label."
+
+
 class TestClientRequest(unittest.TestCase):
 
     def setUp(self):
@@ -458,7 +493,7 @@ class TestClientRequest(unittest.TestCase):
 
     def test_content_type_skip_auto_header_bytes(self):
         req = ClientRequest('post', 'http://python.org', data=b'hey you',
-                            skip_auto_headers={'CONTENT-TYPE'},
+                            skip_auto_headers={'Content-Type'},
                             loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertNotIn('CONTENT-TYPE', req.headers)
@@ -466,7 +501,7 @@ class TestClientRequest(unittest.TestCase):
 
     def test_content_type_skip_auto_header_form(self):
         req = ClientRequest('post', 'http://python.org', data={'hey': 'you'},
-                            loop=self.loop, skip_auto_headers={'CONTENT-TYPE'})
+                            loop=self.loop, skip_auto_headers={'Content-Type'})
         resp = req.send(self.transport, self.protocol)
         self.assertNotIn('CONTENT-TYPE', req.headers)
         resp.close()
@@ -474,7 +509,7 @@ class TestClientRequest(unittest.TestCase):
     def test_content_type_auto_header_content_length_no_skip(self):
         req = ClientRequest('get', 'http://python.org',
                             data=io.BytesIO(b'hey'),
-                            skip_auto_headers={'CONTENT-LENGTH'},
+                            skip_auto_headers={'Content-Length'},
                             loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertEqual(req.headers.get('CONTENT-LENGTH'), '3')
@@ -881,8 +916,6 @@ class TestClientRequest(unittest.TestCase):
         resp.close()
 
     def test_terminate_with_closed_loop(self):
-        if not hasattr(self.loop, 'is_closed'):
-            self.skipTest("Required asyncio 3.4.2+")
         req = ClientRequest('get', 'http://python.org', loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertIsNotNone(req._writer)

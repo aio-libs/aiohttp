@@ -1,8 +1,8 @@
-import aiohttp
-import aiohttp.hdrs as h
 import io
 import json
-import pytest
+
+import aiohttp
+import aiohttp.hdrs as h
 
 
 class Stream(object):
@@ -17,7 +17,6 @@ class Stream(object):
         return self.content.readline()
 
 
-@pytest.mark.run_loop
 async def test_async_for_reader(loop):
     data = [{"test": "passed"}, 42, b'plain text', b'aiohttp\n']
     reader = aiohttp.MultipartReader(
@@ -58,7 +57,6 @@ async def test_async_for_reader(loop):
                 assert next(idata) == await subpart.read(decode=True)
 
 
-@pytest.mark.run_loop
 async def test_async_for_bodypart(loop):
     part = aiohttp.BodyPartReader(
         boundary=b'--:',

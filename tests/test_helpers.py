@@ -1,9 +1,11 @@
 import asyncio
-import pytest
-import unittest
 import datetime
 import http.cookies
+import unittest
 from unittest import mock
+
+import pytest
+
 from aiohttp import helpers, test_utils
 
 
@@ -139,9 +141,9 @@ def test_access_logger_format():
     assert expected == access_logger._log_format
 
 
-@mock.patch("aiohttp.helpers.datetime")
-@mock.patch("os.getpid")
-def test_access_logger_atoms(mock_getpid, mock_datetime):
+def test_access_logger_atoms(mocker):
+    mock_datetime = mocker.patch("aiohttp.helpers.datetime")
+    mock_getpid = mocker.patch("os.getpid")
     utcnow = datetime.datetime(1843, 1, 1, 0, 0)
     mock_datetime.datetime.utcnow.return_value = utcnow
     mock_getpid.return_value = 42
@@ -165,14 +167,29 @@ def test_access_logger_dicts():
     log_format = '%{User-Agent}i %{Content-Length}o %{SPAM}e %{None}i'
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, log_format)
-    message = mock.Mock(headers={"USER-AGENT": "Mock/1.0"}, version=(1, 1))
+    message = mock.Mock(headers={"User-Agent": "Mock/1.0"}, version=(1, 1))
     environ = {"SPAM": "EGGS"}
-    response = mock.Mock(headers={"CONTENT-LENGTH": 123})
+    response = mock.Mock(headers={"Content-Length": 123})
     transport = mock.Mock()
     transport.get_extra_info.return_value = ("127.0.0.2", 1234)
     access_logger.log(message, environ, response, transport, 0.0)
     assert not mock_logger.error.called
     expected = 'Mock/1.0 123 EGGS -'
+    mock_logger.info.assert_called_with(expected)
+
+
+def test_access_logger_unix_socket():
+    log_format = '|%a|'
+    mock_logger = mock.Mock()
+    access_logger = helpers.AccessLogger(mock_logger, log_format)
+    message = mock.Mock(headers={"User-Agent": "Mock/1.0"}, version=(1, 1))
+    environ = {}
+    response = mock.Mock()
+    transport = mock.Mock()
+    transport.get_extra_info.return_value = ""
+    access_logger.log(message, environ, response, transport, 0.0)
+    assert not mock_logger.error.called
+    expected = '||'
     mock_logger.info.assert_called_with(expected)
 
 
@@ -240,8 +257,8 @@ def test_create_future_with_new_loop():
     assert expected == helpers.create_future(mock_loop)
 
 
-@mock.patch('asyncio.Future')
-def test_create_future_with_old_loop(MockFuture):
+def test_create_future_with_old_loop(mocker):
+    MockFuture = mocker.patch('asyncio.Future')
     # The old loop (without create_future()) should just have a Future object
     # wrapped around it.
     mock_loop = mock.Mock()
@@ -273,10 +290,67 @@ def test_is_ip_address():
     assert not helpers.is_ip_address("1200::AB00:1234::2552:7777:1313")
 
 
-class TestCookieJar(unittest.TestCase):
+def test_is_ip_address_bytes():
+    assert helpers.is_ip_address(b"127.0.0.1")
+    assert helpers.is_ip_address(b"::1")
+    assert helpers.is_ip_address(b"FE80:0000:0000:0000:0202:B3FF:FE1E:8329")
+
+    # Hostnames
+    assert not helpers.is_ip_address(b"localhost")
+    assert not helpers.is_ip_address(b"www.example.com")
+
+    # Out of range
+    assert not helpers.is_ip_address(b"999.999.999.999")
+    # Contain a port
+    assert not helpers.is_ip_address(b"127.0.0.1:80")
+    assert not helpers.is_ip_address(b"[2001:db8:0:1]:80")
+    # Too many "::"
+    assert not helpers.is_ip_address(b"1200::AB00:1234::2552:7777:1313")
+
+
+def test_is_ip_address_invalid_type():
+    with pytest.raises(TypeError):
+        helpers.is_ip_address(123)
+
+    with pytest.raises(TypeError):
+        helpers.is_ip_address(object())
+
+
+class TestCookieJarBase(unittest.TestCase):
 
     def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+        # N.B. those need to be overriden in child test cases
+        self.jar = helpers.CookieJar(loop=self.loop)
         # Cookies to send from client to server as "Cookie" header
+        self.cookies_to_send = http.cookies.SimpleCookie()
+        # Cookies received from the server as "Set-Cookie" header
+        self.cookies_to_receive = http.cookies.SimpleCookie()
+
+    def tearDown(self):
+        self.loop.close()
+
+    def request_reply_with_same_url(self, url):
+        self.jar.update_cookies(self.cookies_to_send)
+        cookies_sent = self.jar.filter_cookies(url)
+
+        self.jar.cookies.clear()
+
+        self.jar.update_cookies(self.cookies_to_receive, url)
+        cookies_received = self.jar.cookies.copy()
+
+        self.jar.cookies.clear()
+
+        return cookies_sent, cookies_received
+
+
+class TestCookieJarSafe(TestCookieJarBase):
+
+    def setUp(self):
+        super().setUp()
+
         self.cookies_to_send = http.cookies.SimpleCookie(
             "shared-cookie=first; "
             "domain-cookie=second; Domain=example.com; "
@@ -300,7 +374,6 @@ class TestCookieJar(unittest.TestCase):
             " Expires=string;"
         )
 
-        # Cookies received from the server as "Set-Cookie" header
         self.cookies_to_receive = http.cookies.SimpleCookie(
             "unconstrained-cookie=first; Path=/; "
             "domain-cookie=second; Domain=example.com; Path=/; "
@@ -313,26 +386,7 @@ class TestCookieJar(unittest.TestCase):
             "wrong-path-cookie=nineth; Domain=pathtest.com; Path=somepath;"
         )
 
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-
         self.jar = helpers.CookieJar(loop=self.loop)
-
-    def tearDown(self):
-        self.loop.close()
-
-    def request_reply_with_same_url(self, url):
-        self.jar.update_cookies(self.cookies_to_send)
-        cookies_sent = self.jar.filter_cookies(url)
-
-        self.jar.cookies.clear()
-
-        self.jar.update_cookies(self.cookies_to_receive, url)
-        cookies_received = self.jar.cookies.copy()
-
-        self.jar.cookies.clear()
-
-        return cookies_sent, cookies_received
 
     def timed_request(
             self, url, update_time, send_time):
@@ -614,6 +668,7 @@ class TestCookieJar(unittest.TestCase):
         test_func = helpers.CookieJar._is_path_match
 
         self.assertTrue(test_func("/", ""))
+        self.assertTrue(test_func("", "/"))
         self.assertTrue(test_func("/file", ""))
         self.assertTrue(test_func("/folder/file", ""))
         self.assertTrue(test_func("/", "/"))
@@ -676,3 +731,34 @@ class TestCookieJar(unittest.TestCase):
 
         # Invalid time
         self.assertEqual(parse_func("Tue, 1 Jan 1970 77:88:99 GMT"), None)
+
+
+class TestCookieJarUnsafe(TestCookieJarBase):
+
+    def setUp(self):
+        super().setUp()
+        self.cookies_to_send = http.cookies.SimpleCookie(
+            "shared-cookie=first; "
+            "ip-cookie=second; Domain=127.0.0.1;"
+        )
+
+        self.cookies_to_receive = http.cookies.SimpleCookie(
+            "shared-cookie=first; "
+            "ip-cookie=second; Domain=127.0.0.1;"
+        )
+
+        self.jar = helpers.CookieJar(loop=self.loop, unsafe=True)
+
+    def test_preserving_ip_domain_cookies(self):
+        cookies_sent, cookies_received = (
+            self.request_reply_with_same_url("http://127.0.0.1/"))
+
+        self.assertEqual(set(cookies_sent.keys()), {
+            "shared-cookie",
+            "ip-cookie",
+        })
+
+        self.assertEqual(set(cookies_received.keys()), {
+            "shared-cookie",
+            "ip-cookie",
+        })

@@ -1,15 +1,15 @@
 import asyncio
 import contextlib
 import gc
+import http.cookies
 import re
 import types
-import http.cookies
 from unittest import mock
 
+import pytest
 from multidict import CIMultiDict, MultiDict
 
 import aiohttp
-import pytest
 from aiohttp import web
 from aiohttp.client import ClientSession
 from aiohttp.connector import BaseConnector, TCPConnector
@@ -293,7 +293,7 @@ def test_detach(session):
         conn.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_request_closed_session(session):
     session.close()
     with pytest.raises(RuntimeError):
@@ -317,12 +317,12 @@ def test_double_close(connector, create_session):
     assert connector.closed
 
 
-def test_del(connector, loop, warning):
+def test_del(connector, loop):
     # N.B. don't use session fixture, it stores extra reference internally
     session = ClientSession(connector=connector, loop=loop)
     loop.set_exception_handler(lambda loop, ctx: None)
 
-    with warning(ResourceWarning):
+    with pytest.warns(ResourceWarning):
         del session
         gc.collect()
 
@@ -342,7 +342,7 @@ def test_borrow_connector_loop(connector, create_session, loop):
         session.close()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_reraise_os_error(create_session):
     err = OSError(1, "permission error")
     req = mock.Mock()
@@ -363,7 +363,9 @@ def test_reraise_os_error(create_session):
     assert e.strerror == err.strerror
 
 
+@asyncio.coroutine
 def test_request_ctx_manager_props(loop):
+    yield from asyncio.sleep(0, loop=loop)  # to make it a task
     with aiohttp.ClientSession(loop=loop) as client:
         ctx_mgr = client.get('http://example.com')
 
@@ -373,7 +375,7 @@ def test_request_ctx_manager_props(loop):
         assert isinstance(ctx_mgr.gi_code, types.CodeType)
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_cookie_jar_usage(create_app_and_client):
     req_url = None
 
@@ -411,3 +413,8 @@ def test_cookie_jar_usage(create_app_and_client):
     assert isinstance(resp_cookies, http.cookies.SimpleCookie)
     assert "response" in resp_cookies
     assert resp_cookies["response"].value == "resp_value"
+
+
+def test_session_default_version(loop):
+    session = aiohttp.ClientSession(loop=loop)
+    assert session.version == aiohttp.HttpVersion11
