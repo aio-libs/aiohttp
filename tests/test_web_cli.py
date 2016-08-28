@@ -117,5 +117,9 @@ def test_running_application(exit, import_module, run_app):
     with pytest.raises(SystemExit):
         web.main(argv)
 
-    run_app.assert_called_with(app, host="testhost", port=6666)
+    run_app.assert_called_with(
+        app,
+        host="testhost",
+        autoreload=False,
+        port=6666)
     exit.assert_called_with(message="Stopped\n")

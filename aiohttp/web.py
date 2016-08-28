@@ -17,7 +17,7 @@ from .web_reqrep import *  # noqa
 from .web_exceptions import *  # noqa
 from .web_urldispatcher import *  # noqa
 from .web_ws import *  # noqa
-from .autoreload import *
+from .autoreload import *  # noqa
 from argparse import ArgumentParser
 from importlib import import_module
 
@@ -358,9 +358,9 @@ def main(argv):
     arg_parser.add_argument(
         "-r", "--autoreload",
         help="Autoreload on codechange (default: %(default)r)",
-        type=bool,
         dest="autoreload",
-        default="False"
+        action='store_true',
+        default=False
     )
     args, extra_argv = arg_parser.parse_known_args(argv)
 
@@ -382,7 +382,12 @@ def main(argv):
         arg_parser.error("module %r has no attribute %r" % (mod_str, func_str))
 
     app = func(extra_argv)
-    run_app(app, host=args.hostname, port=args.port, autoreload=args.autoreload)
+    run_app(
+        app,
+        host=args.hostname,
+        port=args.port,
+        autoreload=args.autoreload
+    )
     arg_parser.exit(message="Stopped\n")
 
 if __name__ == "__main__":

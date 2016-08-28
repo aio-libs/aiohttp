@@ -1,16 +1,16 @@
 """
-Autoreload aiohttp server. 
+Autoreload aiohttp server.
 Adopted from https://github.com/anti1869/aiohttp_autoreload
 
 Code is taken from tornado.autoreload module.
 
-call_periodic module is taken from akaIDIOT's gist https://gist.github.com/akaIDIOT/48c2474bd606cd2422ca
+call_periodic module is taken from akaIDIOT's gist
+ https://gist.github.com/akaIDIOT/48c2474bd606cd2422ca
 
 """
 
 import sys
 import os
-import logging
 import types
 import weakref
 import subprocess
@@ -23,7 +23,6 @@ except ImportError:
     signal = None
 
 from .log import web_logger
-
 
 
 _has_execv = sys.platform != 'win32'
@@ -45,7 +44,8 @@ def start(io_loop=None, check_time=0.5):
         return
     _io_loops[io_loop] = True
     if len(_io_loops) > 1:
-        web_logger.warning("aiohttp_autoreload started more than once in the same process")
+        web_logger.warning(
+            "aiohttp_autoreload started more than once in the same process")
     # if _has_execv:
     #     add_reload_hook(functools.partial(io_loop.close, all_fds=True))
     modify_times = {}
@@ -78,24 +78,35 @@ def call_periodic(interval, callback, *args, **kwargs):
     # web_logger.debug(loop.time())
 
     def run(handle):
-        # XXX: we could record before = loop.time() and warn when callback(*args) took longer than interval
+        # XXX: we could record before = loop.time() and warn when
+        # callback(*args) took longer than interval
         # call callback now (possibly blocks run)
         callback(*args)
         # reschedule run at the soonest time n * interval from start
         # re-assign delegate to the new handle
 
-        handle.delegate = loop.call_later(interval - ((loop.time() - started) % interval), run, handle)
+        handle.delegate = loop.call_later(
+            interval - ((loop.time() - started) % interval),
+            run,
+            handle
+        )
 
-    class PeriodicHandle:  # not extending Handle, needs a lot of arguments that make no sense here
+    # not extending Handle, needs a lot of
+    # arguments that make no sense here
+    class PeriodicHandle:
         def __init__(self):
             self.delegate = None
 
         def cancel(self):
-            assert isinstance(self.delegate, asyncio.Handle), 'no delegate handle to cancel'
+            assert isinstance(self.delegate, asyncio.Handle), (
+                'no delegate handle to cancel')
             self.delegate.cancel()
 
-    periodic = PeriodicHandle()  # can't pass result of loop.call_at here, it needs periodic as an arg to run
-    # set the delegate to be the Handle for call_at, causes periodic.cancel() to cancel the call to run
+    # can't pass result of loop.call_at here,
+    # it needs periodic as an arg to run
+    periodic = PeriodicHandle()
+    # set the delegate to be the Handle for call_at,
+    # causes periodic.cancel() to cancel the call to run
     periodic.delegate = loop.call_at(started + interval, run, periodic)
     # return the 'wrapper'
     return periodic

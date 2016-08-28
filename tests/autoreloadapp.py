@@ -1,7 +1,7 @@
 import sys
 import asyncio
 
-from aiohttp import helpers, hdrs, web
+from aiohttp import web
 
 
 @asyncio.coroutine
@@ -14,4 +14,4 @@ def handler(request):
 if __name__ == '__main__':
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    web.run_app(app, host=sys.argv[1], port=int(sys.argv[2]), autoreload=True)    
+    web.run_app(app, host=sys.argv[1], port=int(sys.argv[2]), autoreload=True) 
