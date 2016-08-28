@@ -1138,8 +1138,11 @@ duplicated like one using :meth:`Application.copy`.
 
     Creates HTTP protocol factory for handling requests.
 
-    :param tuple secure_proxy_ssl_header: Secure proxy SSL header. Can be used
-      to detect request scheme. Default: ``None``.
+    :param tuple secure_proxy_ssl_header: Secure proxy SSL header. Can
+      be used to detect request scheme,
+      e.g. ``secure_proxy_ssl_header=('X-Forwarded-Proto', 'https')``.
+
+      Default: ``None``.
     :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
     :param int keepalive_timeout: Number of seconds before closing Keep-Alive
       connection. Default: ``75`` seconds (NGINX's default value).
