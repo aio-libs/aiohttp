@@ -47,4 +47,4 @@ async def index(request):
 
 
 def setup(app):
-    app.router.add_get('/', index)
+    app.router.add_route('GET', '/', index)
