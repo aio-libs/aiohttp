@@ -39,23 +39,24 @@ class FileSender:
 
     @asyncio.coroutine
     def _sendfile_system(self, request, resp, fobj, count):
-        """
-        Write `count` bytes of `fobj` to `resp` using
-        the ``sendfile`` system call.
+        # Write count bytes of fobj to resp using
+        # the os.sendfile system call.
+        #
+        # request should be a aiohttp.web.Request instance.
+        #
+        # resp should be a aiohttp.web.StreamResponse instance.
+        #
+        # fobj should be an open file object.
+        #
+        # count should be an integer > 0.
 
-        `request` should be a :obj:`aiohttp.web.Request` instance.
-
-        `resp` should be a :obj:`aiohttp.web.StreamResponse` instance.
-
-        `fobj` should be an open file object.
-
-        `count` should be an integer > 0.
-        """
         transport = request.transport
 
         if transport.get_extra_info("sslcontext"):
             yield from self._sendfile_fallback(request, resp, fobj, count)
             return
+
+        yield from resp.prepare(request)
 
         yield from resp.drain()
 
@@ -75,15 +76,16 @@ class FileSender:
 
     @asyncio.coroutine
     def _sendfile_fallback(self, request, resp, fobj, count):
-        """
-        Mimic the :meth:`_sendfile_system` method, but without using the
-        ``sendfile`` system call. This should be used on systems that don't
-        support the ``sendfile`` system call.
+        # Mimic the _sendfile_system() method, but without using the
+        # os.sendfile() system call. This should be used on systems
+        # that don't support the os.sendfile().
 
-        To avoid blocking the event loop & to keep memory usage low, `fobj` is
-        transferred in chunks controlled by the `chunk_size` argument to
-        :class:`StaticRoute`.
-        """
+        # To avoid blocking the event loop & to keep memory usage low,
+        # fobj is transferred in chunks controlled by the
+        # constructor's chunk_size argument.
+
+        yield from resp.prepare(request)
+
         chunk_size = self._chunk_size
 
         chunk = fobj.read(chunk_size)
@@ -102,6 +104,7 @@ class FileSender:
 
     @asyncio.coroutine
     def send(self, request, filepath):
+        """Send filepath to client using request."""
         st = filepath.stat()
 
         modsince = request.if_modified_since
@@ -124,8 +127,6 @@ class FileSender:
         resp.content_length = file_size
         resp.set_tcp_cork(True)
         try:
-            yield from resp.prepare(request)
-
             with filepath.open('rb') as f:
                 yield from self._sendfile(request, resp, f, file_size)
 
