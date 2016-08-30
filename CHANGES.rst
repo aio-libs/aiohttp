@@ -99,6 +99,8 @@ CHANGES
 
 - Remove fragment string in request path #846
 
+- Use aiodns.DNSResolver.gethostbyname() if available #1136
+
 
 0.22.5 (08-02-2016)
 -------------------
