@@ -91,9 +91,13 @@ class RequestHandler(ServerHttpProtocol):
                      match_info.handler, type(resp), self._middlewares)
         except web_exceptions.HTTPException as exc:
             resp = exc
+        finally:
+            # to break circular reference in case of CancelledError etc.
+            resp._task = None
 
         resp_msg = yield from resp.prepare(request)
         yield from resp.write_eof()
+        resp._task = None
 
         # notify server about keep-alive
         self.keep_alive(resp_msg.keep_alive())
