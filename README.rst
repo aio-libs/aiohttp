@@ -82,8 +82,8 @@ This is simple usage example:
 
 
     app = web.Application()
-    app.router.add_get('/echo', wshandler)
-    app.router.add_get('/{name}', handle)
+    app.router.add_route('GET', '/echo', wshandler)
+    app.router.add_route('GET', '/{name}', handle)
 
     web.run_app(app)
 
