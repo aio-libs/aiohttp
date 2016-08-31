@@ -5,6 +5,7 @@ import contextlib
 import functools
 import gc
 import socket
+import sys
 import unittest
 from unittest import mock
 
@@ -13,10 +14,13 @@ from multidict import CIMultiDict
 import aiohttp
 
 from . import ClientSession, hdrs
-from .helpers import _sentinel
+from .helpers import sentinel
 from .protocol import HttpVersion, RawRequestMessage
 from .signals import Signal
-from .web import Request
+from .web import Application, Request
+
+
+PY_35 = sys.version_info >= (3, 5)
 
 
 def run_briefly(loop):
@@ -34,6 +38,73 @@ def unused_port():
         return s.getsockname()[1]
 
 
+class TestServer:
+    def __init__(self, app, *, scheme="http", host='127.0.0.1'):
+        self.app = app
+        self._loop = app.loop
+        self.port = None
+        self.server = None
+        self.handler = None
+        self._root = None
+        self.host = host
+        self.scheme = scheme
+        self._closed = False
+
+    @asyncio.coroutine
+    def start_server(self, **kwargs):
+        if self.server:
+            return
+        self.port = unused_port()
+        self._root = '{}://{}:{}'.format(self.scheme, self.host, self.port)
+        self.handler = self.app.make_handler(**kwargs)
+        self.server = yield from self._loop.create_server(self.handler,
+                                                          self.host,
+                                                          self.port)
+
+    def make_url(self, path):
+        return self._root + path
+
+    @asyncio.coroutine
+    def close(self):
+        """Close all fixtures created by the test client.
+
+        After that point, the TestClient is no longer usable.
+
+        This is an idempotent function: running close multiple times
+        will not have any additional effects.
+
+        close is also run when the object is garbage collected, and on
+        exit when used as a context manager.
+
+        """
+        if self.server is not None and not self._closed:
+            self.server.close()
+            yield from self.server.wait_closed()
+            yield from self.app.shutdown()
+            yield from self.handler.finish_connections()
+            yield from self.app.cleanup()
+            self._root = None
+            self.port = None
+            self._closed = True
+
+    def __enter__(self):
+        self._loop.run_until_complete(self.start_server())
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._loop.run_until_complete(self.close())
+
+    if PY_35:
+        @asyncio.coroutine
+        def __aenter__(self):
+            yield from self.start_server()
+            return self
+
+        @asyncio.coroutine
+        def __aexit__(self, exc_type, exc_value, traceback):
+            yield from self.close()
+
+
 class TestClient:
     """
     A test client implementation, for a aiohttp.web.Application.
@@ -49,29 +120,52 @@ class TestClient:
     TestClient can also be used as a contextmanager, returning
     the instance of itself instantiated.
     """
-    _address = '127.0.0.1'
 
-    def __init__(self, app, protocol="http"):
-        self.app = app
-        self._loop = loop = app.loop
-        self.port = unused_port()
-        self._handler = app.make_handler()
-        self._server = None
-        if not loop.is_running():
-            loop.run_until_complete(self.start_server())
+    def __init__(self, app_or_server, *, scheme=sentinel, host=sentinel):
+        if isinstance(app_or_server, TestServer):
+            if scheme is not sentinel or host is not sentinel:
+                raise ValueError("scheme and host are mutable exclusive "
+                                 "with TestServer parameter")
+            self._server = app_or_server
+        elif isinstance(app_or_server, Application):
+            scheme = "http" if scheme is sentinel else scheme
+            host = '127.0.0.1' if host is sentinel else host
+            self._server = TestServer(app_or_server,
+                                      scheme=scheme, host=host)
+        else:
+            raise TypeError("app_or_server should be either web.Application "
+                            "or TestServer instance")
+        self._loop = self._server.app.loop
         self._session = ClientSession(
             loop=self._loop,
             cookie_jar=aiohttp.CookieJar(unsafe=True,
                                          loop=self._loop))
-        self._root = '{}://{}:{}'.format(protocol, self._address, self.port)
         self._closed = False
         self._responses = []
 
     @asyncio.coroutine
     def start_server(self):
-        self._server = yield from self._loop.create_server(
-            self._handler, self._address, self.port
-        )
+        yield from self._server.start_server()
+
+    @property
+    def app(self):
+        return self._server.app
+
+    @property
+    def host(self):
+        return self._server.host
+
+    @property
+    def port(self):
+        return self._server.port
+
+    @property
+    def handler(self):
+        return self._server.handler
+
+    @property
+    def server(self):
+        return self._server.server
 
     @property
     def session(self):
@@ -85,7 +179,7 @@ class TestClient:
         return self._session
 
     def make_url(self, path):
-        return self._root + path
+        return self._server.make_url(path)
 
     @asyncio.coroutine
     def request(self, method, path, *args, **kwargs):
@@ -141,6 +235,7 @@ class TestClient:
             self.make_url(path), *args, **kwargs
         )
 
+    @asyncio.coroutine
     def close(self):
         """Close all fixtures created by the test client.
 
@@ -149,30 +244,33 @@ class TestClient:
         This is an idempotent function: running close multiple times
         will not have any additional effects.
 
-        close is also run when the object is garbage collected, and on
-        exit when used as a context manager.
+        close is also run on exit when used as a(n) (asynchronous)
+        context manager.
 
         """
         if not self._closed:
-            loop = self._loop
             for resp in self._responses:
                 resp.close()
-            loop.run_until_complete(self._session.close())
-            self._server.close()
-            loop.run_until_complete(self._server.wait_closed())
-            loop.run_until_complete(self.app.shutdown())
-            loop.run_until_complete(self._handler.finish_connections())
-            loop.run_until_complete(self.app.cleanup())
+            yield from self._session.close()
+            yield from self._server.close()
             self._closed = True
 
-    def __del__(self):
-        self.close()
-
     def __enter__(self):
+        self._loop.run_until_complete(self.start_server())
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
+        self._loop.run_until_complete(self.close())
+
+    if PY_35:
+        @asyncio.coroutine
+        def __aenter__(self):
+            yield from self.start_server()
+            return self
+
+        @asyncio.coroutine
+        def __aexit__(self, exc_type, exc_value, traceback):
+            yield from self.close()
 
 
 class AioHTTPTestCase(unittest.TestCase):
@@ -206,9 +304,10 @@ class AioHTTPTestCase(unittest.TestCase):
         self.loop = setup_test_loop()
         self.app = self.get_app(self.loop)
         self.client = TestClient(self.app)
+        self.loop.run_until_complete(self.client.start_server())
 
     def tearDown(self):
-        del self.client
+        self.loop.run_until_complete(self.client.close())
         teardown_test_loop(self.loop)
 
 
@@ -289,10 +388,10 @@ def _create_transport(sslcontext=None):
 def make_mocked_request(method, path, headers=None, *,
                         version=HttpVersion(1, 1), closing=False,
                         app=None,
-                        reader=_sentinel,
-                        writer=_sentinel,
-                        transport=_sentinel,
-                        payload=_sentinel,
+                        reader=sentinel,
+                        writer=sentinel,
+                        transport=sentinel,
+                        payload=sentinel,
                         sslcontext=None,
                         secure_proxy_ssl_header=None):
     """Creates mocked web.Request testing purposes.
@@ -357,40 +456,27 @@ def make_mocked_request(method, path, headers=None, *,
     if app is None:
         app = _create_app_mock()
 
-    if reader is _sentinel:
+    if reader is sentinel:
         reader = mock.Mock()
 
-    if writer is _sentinel:
+    if writer is sentinel:
         writer = mock.Mock()
 
-    if transport is _sentinel:
+    if transport is sentinel:
         transport = _create_transport(sslcontext)
 
-    if payload is _sentinel:
+    if payload is sentinel:
         payload = mock.Mock()
 
     req = Request(app, message, payload,
                   transport, reader, writer,
                   secure_proxy_ssl_header=secure_proxy_ssl_header)
 
-    assert req.app is app
-    assert req.content is payload
-    assert req.transport is transport
-
     return req
 
 
 def make_mocked_coro(return_value):
-    """A coroutine mock.
-
-    Behavees like a coroutine which returns return_value.
-
-    But it is also a mock object, you might test it as usual Mock:
-
-    mocked = mocke_mocked_coro(1)
-    assert 1 == await mocked(1, 2)
-    mocked.assert_called_with(1, 2)
-    """
+    """Creates a coroutine mock."""
     @asyncio.coroutine
     def mock_coro(*args, **kwargs):
         return return_value

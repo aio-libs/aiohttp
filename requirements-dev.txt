@@ -2,5 +2,4 @@
 ipdb
 pytest-sugar
 ipython
-isort
 aiodns

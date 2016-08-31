@@ -1,76 +1,14 @@
 import asyncio
 import collections
 import logging
-import re
 import sys
-import warnings
 
 import pytest
 
 import aiohttp
 from aiohttp import web
 
-
 pytest_plugins = 'aiohttp.pytest_plugin'
-
-
-class _AssertWarnsContext:
-    """A context manager used to implement TestCase.assertWarns* methods."""
-
-    def __init__(self, expected, expected_regex=None):
-        self.expected = expected
-        if expected_regex is not None:
-            expected_regex = re.compile(expected_regex)
-        self.expected_regex = expected_regex
-        self.obj_name = None
-
-    def __enter__(self):
-        # The __warningregistry__'s need to be in a pristine state for tests
-        # to work properly.
-        for v in sys.modules.values():
-            if getattr(v, '__warningregistry__', None):
-                v.__warningregistry__ = {}
-        self.warnings_manager = warnings.catch_warnings(record=True)
-        self.warnings = self.warnings_manager.__enter__()
-        warnings.simplefilter("always", self.expected)
-        return self
-
-    def __exit__(self, exc_type, exc_value, tb):
-        self.warnings_manager.__exit__(exc_type, exc_value, tb)
-        if exc_type is not None:
-            # let unexpected exceptions pass through
-            return
-        try:
-            exc_name = self.expected.__name__
-        except AttributeError:
-            exc_name = str(self.expected)
-        first_matching = None
-        for m in self.warnings:
-            w = m.message
-            if not isinstance(w, self.expected):
-                continue
-            if first_matching is None:
-                first_matching = w
-            if (self.expected_regex is not None and
-                    not self.expected_regex.search(str(w))):
-                continue
-            # store warning for later retrieval
-            self.warning = w
-            self.filename = m.filename
-            self.lineno = m.lineno
-            return
-        # Now we simply try to choose a helpful failure message
-        if first_matching is not None:
-            __tracebackhide__ = True
-            assert 0, '"{}" does not match "{}"'.format(
-                self.expected_regex.pattern, str(first_matching))
-        if self.obj_name:
-            __tracebackhide__ = True
-            assert 0, "{} not triggered by {}".format(exc_name,
-                                                      self.obj_name)
-        else:
-            __tracebackhide__ = True
-            assert 0, "{} not triggered".format(exc_name)
 
 
 _LoggingWatcher = collections.namedtuple("_LoggingWatcher",
@@ -140,11 +78,6 @@ class _AssertLogsContext:
 
 
 @pytest.yield_fixture
-def warning():
-    yield _AssertWarnsContext
-
-
-@pytest.yield_fixture
 def log():
     yield _AssertLogsContext
 
@@ -170,10 +103,15 @@ def create_server(loop, unused_port):
 
     @asyncio.coroutine
     def finish():
-        yield from handler.finish_connections()
-        yield from app.finish()
-        srv.close()
-        yield from srv.wait_closed()
+        if srv:
+            srv.close()
+            yield from srv.wait_closed()
+        if app:
+            yield from app.shutdown()
+        if handler:
+            yield from handler.finish_connections()
+        if app:
+            yield from app.cleanup()
 
     loop.run_until_complete(finish())
 

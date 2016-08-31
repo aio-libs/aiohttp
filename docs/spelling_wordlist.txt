@@ -1,4 +1,5 @@
 abc
+aiodns
 aioes
 aiohttp
 aiohttpdemo
@@ -48,6 +49,7 @@ dict
 Dict
 django
 Django
+DNSResolver
 dns
 Dup
 elasticsearch
@@ -60,11 +62,13 @@ fallback
 filename
 finalizers
 getall
+gethostbyname
 github
 google
 gunicorn
 Gunicorn
 gzipped
+hackish
 highlevel
 hostnames
 HTTPException

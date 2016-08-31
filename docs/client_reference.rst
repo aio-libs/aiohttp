@@ -44,9 +44,7 @@ The client session supports the context manager protocol for self closing.
 
 .. class:: ClientSession(*, connector=None, loop=None, cookies=None, \
                          headers=None, skip_auto_headers=None, \
-                         auth=None, request_class=ClientRequest, \
-                         response_class=ClientResponse, \
-                         ws_response_class=ClientWebSocketResponse, \
+                         auth=None, \
                          version=aiohttp.HttpVersion11, \
                          cookie_jar=None)
 
@@ -88,18 +86,6 @@ The client session supports the context manager protocol for self closing.
    :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
                                   Authorization (optional)
 
-   :param request_class: Request class implementation. ``ClientRequest`` by
-                         default.
-
-   :param response_class: Response class
-                          implementation. :class:`ClientResponse` by
-                          default.
-
-   :param ws_response_class: WebSocketResponse class implementation.
-                             ``ClientWebSocketResponse`` by default.
-
-                             .. versionadded:: 0.16
-
    :param version: supported HTTP version, ``HTTP 1.1`` by default.
 
       .. versionadded:: 0.21
@@ -114,12 +100,6 @@ The client session supports the context manager protocol for self closing.
       proxy mode.
 
       .. versionadded:: 0.22
-
-   .. versionchanged:: 0.16
-      *request_class* default changed from ``None`` to ``ClientRequest``
-
-   .. versionchanged:: 0.16
-      *response_class* default changed from ``None`` to :class:`ClientResponse`
 
    .. attribute:: closed
 
@@ -365,7 +345,8 @@ The client session supports the context manager protocol for self closing.
                             auth=None,\
                             autoclose=True,\
                             autoping=True,\
-                            origin=None)
+                            origin=None, \
+                            proxy=None, proxy_auth=None)
       :async-with:
       :coroutine:
 
@@ -390,6 +371,11 @@ The client session supports the context manager protocol for self closing.
 
       :param str origin: Origin header to send to server
 
+      :param str proxy: Proxy URL (optional)
+
+      :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
+                                           Basic Authorization (optional)
+
       .. versionadded:: 0.16
 
          Add :meth:`ws_connect`.
@@ -401,6 +387,10 @@ The client session supports the context manager protocol for self closing.
       .. versionadded:: 0.19
 
          Add *origin* parameter.
+
+      .. versionadded:: 1.0
+
+         Added ``proxy`` and ``proxy_auth`` parameters.
 
    .. comethod:: close()
 
@@ -440,8 +430,7 @@ certification chaining.
                        version=HttpVersion(major=1, minor=1), \
                        compress=None, chunked=None, expect100=False, \
                        connector=None, loop=None,\
-                       read_until_eof=True, request_class=None,\
-                       response_class=None)
+                       read_until_eof=True)
 
    Perform an asynchronous HTTP request. Return a response object
    (:class:`ClientResponse` or derived from).
@@ -489,10 +478,6 @@ certification chaining.
                                does not have Content-Length header.
                                ``True`` by default (optional).
 
-   :param request_class: Custom Request class implementation (optional)
-
-   :param response_class: Custom Response class implementation (optional)
-
    :param loop: :ref:`event loop<asyncio-event-loop>`
                 used for processing HTTP requests.
                 If param is ``None``, :func:`asyncio.get_event_loop`
@@ -503,18 +488,18 @@ certification chaining.
 
    :return ClientResponse: a :class:`client response <ClientResponse>` object.
 
-Usage::
+   Usage::
 
-     import aiohttp
+      import aiohttp
 
-     async def fetch():
-         async with aiohttp.request('GET', 'http://python.org/') as resp:
-             assert resp.status == 200
-             print(await resp.text())
+      async def fetch():
+          async with aiohttp.request('GET', 'http://python.org/') as resp:
+              assert resp.status == 200
+              print(await resp.text())
 
-.. deprecated:: 0.21
+   .. deprecated:: 0.21
 
-   Use :meth:`ClientSession.request`.
+      Use :meth:`ClientSession.request`.
 
 
 .. coroutinefunction:: get(url, **kwargs)
@@ -624,7 +609,6 @@ Usage::
 
 .. coroutinefunction:: ws_connect(url, *, protocols=(), \
                                   timeout=10.0, connector=None, auth=None,\
-                                  ws_response_class=ClientWebSocketResponse,\
                                   autoclose=True, autoping=True, loop=None,\
                                   origin=None, headers=None)
 
@@ -639,11 +623,6 @@ Usage::
    :param float timeout: Timeout for websocket read. 10 seconds by default
 
    :param obj connector: object :class:`TCPConnector`
-
-   :param ws_response_class: WebSocketResponse class implementation.
-                             ``ClientWebSocketResponse`` by default.
-
-                             .. versionadded:: 0.16
 
    :param bool autoclose: Automatically close websocket connection
                           on close message from server. If `autoclose` is

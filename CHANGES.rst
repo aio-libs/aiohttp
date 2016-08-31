@@ -79,6 +79,28 @@ CHANGES
 
 - Define `web.Application.on_startup()` signal handler #1103
 
+- Drop ChunkedParser and LinesParser #1111
+
+- Call `Application.startup` in GunicornWebWorker #1105
+
+- Fix client handling hostnames with 63 bytes when a port is given in
+  the url #1044
+
+- Implement proxy support for ClientSession.ws_connect #1025
+
+- Return named tuple from WebSocketResponse.can_prepare #1016
+
+- Fix access_log_format in `GunicornWebWorker` #1117
+
+- Setup Content-Type to application/octet-stream by default #1124
+
+- Deprecate debug parameter from app.make_handler(), use
+  `Application(debug=True)` instead #1121
+
+- Remove fragment string in request path #846
+
+- Use aiodns.DNSResolver.gethostbyname() if available #1136
+
 
 0.22.5 (08-02-2016)
 -------------------

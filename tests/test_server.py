@@ -512,13 +512,22 @@ def test_keep_alive_timeout_nondefault(make_srv):
     assert 10 == srv.keepalive_timeout
 
 
-def test_keep_alive_timeout_deprecated(make_srv, warning):
-    with warning(DeprecationWarning,
-                 "keep_alive is deprecated, use keepalive_timeout instead"):
-        srv = make_srv(keep_alive=10)
+def test_keep_alive_timeout_deprecated(make_srv):
+    with pytest.warns(DeprecationWarning) as ctx:
+        make_srv(keep_alive=10)
+    assert len(ctx) == 1
+    expected = "keep_alive is deprecated, use keepalive_timeout instead"
+    assert ctx[0].message.args == (expected,)
 
-    with warning(DeprecationWarning, "Use keepalive_timeout property instead"):
+
+def test_keep_alive_timeout_deprecated2(make_srv):
+    srv = make_srv(keepalive_timeout=10)
+
+    with pytest.warns(DeprecationWarning) as ctx:
         assert 10 == srv.keep_alive_timeout
+    assert len(ctx) == 1
+    expected = "Use keepalive_timeout property instead"
+    assert ctx[0].message.args == (expected,)
 
 
 def test_supports_connect_method(srv, loop):

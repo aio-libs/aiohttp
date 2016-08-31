@@ -260,7 +260,9 @@ class ClientSession:
                    autoping=True,
                    auth=None,
                    origin=None,
-                   headers=None):
+                   headers=None,
+                   proxy=None,
+                   proxy_auth=None):
         """Initiate websocket connection."""
         return _WSRequestContextManager(
             self._ws_connect(url,
@@ -270,7 +272,9 @@ class ClientSession:
                              autoping=autoping,
                              auth=auth,
                              origin=origin,
-                             headers=headers))
+                             headers=headers,
+                             proxy=proxy,
+                             proxy_auth=proxy_auth))
 
     @asyncio.coroutine
     def _ws_connect(self, url, *,
@@ -280,7 +284,9 @@ class ClientSession:
                     autoping=True,
                     auth=None,
                     origin=None,
-                    headers=None):
+                    headers=None,
+                    proxy=None,
+                    proxy_auth=None):
 
         sec_key = base64.b64encode(os.urandom(16))
 
@@ -306,7 +312,9 @@ class ClientSession:
         # send request
         resp = yield from self.get(url, headers=headers,
                                    read_until_eof=False,
-                                   auth=auth)
+                                   auth=auth,
+                                   proxy=proxy,
+                                   proxy_auth=proxy_auth)
 
         try:
             # check handshake

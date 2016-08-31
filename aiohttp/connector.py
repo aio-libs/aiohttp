@@ -18,7 +18,7 @@ from .client import ClientRequest
 from .errors import (ClientOSError, ClientTimeoutError, FingerprintMismatch,
                      HttpProxyError, ProxyConnectionError,
                      ServerDisconnectedError)
-from .helpers import _sentinel, is_ip_address
+from .helpers import is_ip_address, sentinel
 from .resolver import DefaultResolver
 
 __all__ = ('BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector')
@@ -110,17 +110,17 @@ class BaseConnector(object):
     _closed = True  # prevent AttributeError in __del__ if ctor was failed
     _source_traceback = None
 
-    def __init__(self, *, conn_timeout=None, keepalive_timeout=_sentinel,
+    def __init__(self, *, conn_timeout=None, keepalive_timeout=sentinel,
                  force_close=False, limit=20,
                  loop=None):
 
         if force_close:
             if keepalive_timeout is not None and \
-               keepalive_timeout is not _sentinel:
+               keepalive_timeout is not sentinel:
                 raise ValueError('keepalive_timeout cannot '
                                  'be set if force_close is True')
         else:
-            if keepalive_timeout is _sentinel:
+            if keepalive_timeout is sentinel:
                 keepalive_timeout = 30
 
         if loop is None:
@@ -413,7 +413,7 @@ class TCPConnector(BaseConnector):
     """
 
     def __init__(self, *, verify_ssl=True, fingerprint=None,
-                 resolve=_sentinel, use_dns_cache=_sentinel,
+                 resolve=sentinel, use_dns_cache=sentinel,
                  family=0, ssl_context=None, local_addr=None, resolver=None,
                  **kwargs):
         super().__init__(**kwargs)
@@ -433,18 +433,18 @@ class TCPConnector(BaseConnector):
             self._hashfunc = hashfunc
         self._fingerprint = fingerprint
 
-        if resolve is not _sentinel:
+        if resolve is not sentinel:
             warnings.warn(("resolve parameter is deprecated, "
                            "use use_dns_cache instead"),
                           DeprecationWarning, stacklevel=2)
 
-        if use_dns_cache is not _sentinel and resolve is not _sentinel:
+        if use_dns_cache is not sentinel and resolve is not sentinel:
             if use_dns_cache != resolve:
                 raise ValueError("use_dns_cache must agree with resolve")
             _use_dns_cache = use_dns_cache
-        elif use_dns_cache is not _sentinel:
+        elif use_dns_cache is not sentinel:
             _use_dns_cache = use_dns_cache
-        elif resolve is not _sentinel:
+        elif resolve is not sentinel:
             _use_dns_cache = resolve
         else:
             _use_dns_cache = False

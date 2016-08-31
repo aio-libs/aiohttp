@@ -3,7 +3,6 @@ import pytest
 import aiohttp
 from aiohttp import web
 
-
 async def test_client_ws_async_for(loop, create_server):
     items = ['q1', 'q2', 'q3']
 

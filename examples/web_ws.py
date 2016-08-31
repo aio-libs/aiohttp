@@ -13,7 +13,7 @@ WS_FILE = os.path.join(os.path.dirname(__file__), 'websocket.html')
 
 async def wshandler(request):
     resp = WebSocketResponse()
-    ok, protocol = resp.can_start(request)
+    ok, protocol = resp.can_prepare(request)
     if not ok:
         with open(WS_FILE, 'rb') as fp:
             return Response(body=fp.read(), content_type='text/html')
