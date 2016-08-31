@@ -18,6 +18,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 
 from . import hdrs
 from .helpers import _sentinel, reify
+from .protocol import RawRequestMessage
 from .protocol import Response as ResponseImpl
 from .protocol import HttpVersion10, HttpVersion11
 from .streams import EOF_MARKER
@@ -381,17 +382,35 @@ class Request(dict, HeadersMixin):
         self._post = MultiDictProxy(out)
         return self._post
 
-    def copy(self, *, app=None, message=None, payload=None, transport=None,
-             reader=None, writer=None, secure_proxy_ssl_header=None):
+    def clone(self, *, method=None, path=None, headers=None, raw_headers=None):
+        """
+        Creates and returns a new instance of Request object. If no parameters
+        are given, an exact copy is returned. If a parameter is not passed, it
+        will reuse the one from the current request object.
+
+        :param method: str http method
+        :param path: str url path to use
+        :param headers: CIMultidictProxy or compatible containing the headers.
+        :param raw_headers: tuple of two element tuples containing the headers
+            as bytearrays.
+        """
+
+        message = RawRequestMessage(
+            method or self.method, path or self.path, self.version,
+            headers or self.headers, raw_headers or self.raw_headers,
+            self.keep_alive, None)
+
         return Request(
-            app or self._app,
-            message or self._message,
-            payload or self._payload,
-            transport or self._transport,
-            reader or self._reader,
-            writer or self._writer,
-            secure_proxy_ssl_header=secure_proxy_ssl_header or
-            self._secure_proxy_ssl_header)
+            self._app,
+            message,
+            self._payload,
+            self._transport,
+            self._reader,
+            self._writer,
+            secure_proxy_ssl_header=self._secure_proxy_ssl_header)
+
+    def copy(self):
+        raise NotImplementedError
 
     def __repr__(self):
         ascii_encodable_path = self.path.encode('ascii', 'backslashreplace') \
