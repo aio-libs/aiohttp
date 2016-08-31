@@ -450,21 +450,22 @@ def test_raw_headers(create_app_and_client, loop):
     app.router.add_route('GET', '/', handler)
     resp = yield from client.get('/')
     assert resp.status == 200
-    assert resp.raw_headers == ((b'CONTENT-LENGTH', b'0'),
+    assert resp.raw_headers == ((b'CONTENT-TYPE', b'application/octet-stream'),
+                                (b'CONTENT-LENGTH', b'0'),
                                 (b'DATE', mock.ANY),
                                 (b'SERVER', mock.ANY))
     resp.close()
 
 
 @asyncio.coroutine
-def test_http_request_with_version(create_app_and_client, loop, warning):
+def test_http_request_with_version(create_app_and_client, loop):
     @asyncio.coroutine
     def handler(request):
         return web.Response()
 
     app, client = yield from create_app_and_client()
     app.router.add_route('GET', '/', handler)
-    with warning(DeprecationWarning):
+    with pytest.warns(DeprecationWarning):
         resp = yield from client.get('/', version=aiohttp.HttpVersion11)
         assert resp.status == 200
         resp.close()
@@ -1317,7 +1318,7 @@ def test_shortcuts(test_client, loop):
 
 
 @asyncio.coroutine
-def test_module_shortcuts(test_client, loop, warning):
+def test_module_shortcuts(test_client, loop):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text=request.method)
@@ -1329,7 +1330,7 @@ def test_module_shortcuts(test_client, loop, warning):
 
     for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         coro = getattr(aiohttp, meth)
-        with warning(DeprecationWarning):
+        with pytest.warns(DeprecationWarning):
             resp = yield from coro(client.make_url('/'), loop=loop)
 
         assert resp.status == 200

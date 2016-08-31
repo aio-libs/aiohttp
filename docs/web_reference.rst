@@ -496,6 +496,12 @@ StreamResponse
                           specification the cookie
                           conforms. (Optional, *version=1* by default)
 
+      .. warning::
+
+         In HTTP version 1.1, ``expires`` was deprecated and replaced with
+         the easier-to-use ``max-age``, but Internet Explorer (IE6, IE7,
+         and IE8) **does not** support ``max-age``.
+
    .. method:: del_cookie(name, *, path='/', domain=None)
 
       Deletes cookie.
@@ -680,14 +686,14 @@ Response
 
    .. attribute:: text
 
-      Read-write attribute for storing response's content, represented as str,
-      :class:`str`.
+      Read-write attribute for storing response's content, represented as
+      string, :class:`str`.
 
-      Setting :attr:`str` also recalculates
+      Setting :attr:`text` also recalculates
       :attr:`~StreamResponse.content_length` value and
       :attr:`~StreamResponse.body` value
 
-      Resetting :attr:`body` (assigning ``None``) sets
+      Resetting :attr:`text` (assigning ``None``) sets
       :attr:`~StreamResponse.content_length` to ``None`` too, dropping
       *Content-Length* HTTP header.
 
@@ -755,11 +761,15 @@ WebSocketResponse
       :param aiohttp.web.Request request: HTTP request object, that the
                                           response answers.
 
-      :return: ``(ok, protocol)`` pair, *ok* is ``True`` on success,
-               *protocol* is websocket subprotocol which is passed by
-               client and accepted by server (one of *protocols*
-               sequence from :class:`WebSocketResponse` ctor). *protocol* may be
-               ``None`` if client and server subprotocols are nit overlapping.
+      :return: :class:`WebSocketReady` instance.
+
+               :attr:`WebSocketReady.ok` is
+               ``True`` on success, :attr:`WebSocketReady.protocol` is
+               websocket subprotocol which is passed by client and
+               accepted by server (one of *protocols* sequence from
+               :class:`WebSocketResponse` ctor).
+               :attr:`WebSocketReady.protocol` may be ``None`` if
+               client and server subprotocols are not overlapping.
 
       .. note:: The method never raises exception.
 
@@ -947,6 +957,32 @@ WebSocketResponse
 .. seealso:: :ref:`WebSockets handling<aiohttp-web-websockets>`
 
 
+WebSocketReady
+^^^^^^^^^^^^^^
+
+.. class:: WebSocketReady
+
+   A named tuple for returning result from
+   :meth:`WebSocketResponse.can_prepare`.
+
+   Has :class:`bool` check implemented, e.g.::
+
+       if not await ws.can_prepare(...):
+           cannot_start_websocket()
+
+   .. attribute:: ok
+
+      ``True`` if websocket connection can be established, ``False``
+      otherwise.
+
+
+   .. attribute:: protocol
+
+      :class:`str` represented selected websocket sub-protocol.
+
+   .. seealso:: :meth:`WebSocketResponse.can_prepare`
+
+
 json_response
 -------------
 
@@ -973,9 +1009,9 @@ Application is a synonym for web-server.
 
 To get fully working example, you have to make *application*, register
 supported urls in *router* and create a *server socket* with
-:class:`aiohttp.RequestHandlerFactory` as a *protocol
+:class:`~aiohttp.web.RequestHandlerFactory` as a *protocol
 factory*. *RequestHandlerFactory* could be constructed with
-:meth:`make_handler`.
+:meth:`Application.make_handler`.
 
 *Application* contains a *router* instance and a list of callbacks that
 will be called during application finishing.
@@ -996,16 +1032,16 @@ Although :class:`Application` is a :obj:`dict`-like object, it can't be
 duplicated like one using :meth:`Application.copy`.
 
 .. class:: Application(*, loop=None, router=None, logger=<default>, \
-                       middlewares=(), **kwargs)
+                       middlewares=(), debug=False, **kwargs)
 
    The class inherits :class:`dict`.
 
    :param loop: :ref:`event loop<asyncio-event-loop>` used
-                for processing HTTP requests.
+    for processing HTTP requests.
 
-                If param is ``None`` :func:`asyncio.get_event_loop`
-                used for getting default event loop, but we strongly
-                recommend to use explicit loops everywhere.
+    If param is ``None`` :func:`asyncio.get_event_loop`
+    used for getting default event loop, but we strongly
+    recommend to use explicit loops everywhere.
 
    :param router: :class:`aiohttp.abc.AbstractRouter` instance, the system
                   creates :class:`UrlDispatcher` by default if
@@ -1018,6 +1054,8 @@ duplicated like one using :meth:`Application.copy`.
    :param middlewares: :class:`list` of middleware factories, see
                        :ref:`aiohttp-web-middlewares` for details.
 
+   :param debug: Switches debug mode.
+
    .. attribute:: router
 
       Read-only property that returns *router instance*.
@@ -1029,6 +1067,11 @@ duplicated like one using :meth:`Application.copy`.
    .. attribute:: loop
 
       :ref:`event loop<asyncio-event-loop>` used for processing HTTP requests.
+
+
+   .. attribute:: debug
+
+      Boolean value indicating whether the debug mode is turned on or off.
 
    .. attribute:: on_response_prepare
 
@@ -1093,30 +1136,51 @@ duplicated like one using :meth:`Application.copy`.
 
    .. method:: make_handler(**kwargs)
 
-      Creates HTTP protocol factory for handling requests.
+    Creates HTTP protocol factory for handling requests.
 
-      :param kwargs: additional parameters for :class:`RequestHandlerFactory`
-                     constructor.
+    :param tuple secure_proxy_ssl_header: Secure proxy SSL header. Can
+      be used to detect request scheme,
+      e.g. ``secure_proxy_ssl_header=('X-Forwarded-Proto', 'https')``.
 
-      You should pass result of the method as *protocol_factory* to
-      :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::
+      Default: ``None``.
+    :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
+    :param int keepalive_timeout: Number of seconds before closing Keep-Alive
+      connection. Default: ``75`` seconds (NGINX's default value).
+    :param slow_request_timeout: Slow request timeout. Default: ``0``.
+    :param logger: Custom logger object. Default:
+      :data:`aiohttp.log.server_logger`.
+    :param access_log: Custom logging object. Default:
+      :data:`aiohttp.log.access_logger`.
+    :param str access_log_format: Access log format string. Default:
+      :attr:`helpers.AccessLogger.LOG_FORMAT`.
+    :param bool debug: Switches debug mode. Default: ``False``.
 
-         loop = asyncio.get_event_loop()
+      .. deprecated:: 1.0
 
-         app = Application(loop=loop)
+        The usage of ``debug`` parameter in :meth:`Application.make_handler`
+        is deprecated in favor of :attr:`Application.debug`.
+        The :class:`Application`'s debug mode setting should be used
+        as a single point to setup a debug mode.
 
-         # setup route table
-         # app.router.add_route(...)
+    :param int max_line_size: Optional maximum header line size. Default:
+      ``8190``.
+    :param int max_headers: Optional maximum header size. Default: ``32768``.
+    :param int max_field_size: Optional maximum header field size. Default:
+      ``8190``.
 
-         await loop.create_server(app.make_handler(),
-                                  '0.0.0.0', 8080)
 
-      ``secure_proxy_ssl_header`` keyword parameter
-      can be used to detect request scheme::
+    You should pass result of the method as *protocol_factory* to
+    :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::
 
-         await loop.create_server(app.make_handler(
-            secure_proxy_ssl_header='X-Forwarded-Proto'),
-            '0.0.0.0', 8080)
+       loop = asyncio.get_event_loop()
+
+       app = Application(loop=loop)
+
+       # setup route table
+       # app.router.add_route(...)
+
+       await loop.create_server(app.make_handler(),
+                                '0.0.0.0', 8080)
 
    .. coroutinemethod:: startup()
 
@@ -1185,17 +1249,28 @@ duplicated like one using :meth:`Application.copy`.
 RequestHandlerFactory
 ^^^^^^^^^^^^^^^^^^^^^
 
-RequestHandlerFactory is responsible for creating HTTP protocol objects that
-can handle HTTP connections.
+   A protocol factory compatible with
+   :meth:`~asyncio.AbstreactEventLoop.create_server`.
 
-   .. attribute:: RequestHandlerFactory.connections
+   .. class:: RequestHandlerFactory
 
-      List of all currently opened connections.
+      RequestHandlerFactory is responsible for creating HTTP protocol
+      objects that can handle HTTP connections.
 
-   .. coroutinemethod:: RequestHandlerFactory.finish_connections(timeout)
+      .. attribute:: RequestHandlerFactory.connections
 
-      A :ref:`coroutine<coroutine>` that should be called to close all opened
-      connections.
+         List of all currently opened connections.
+
+      .. attribute:: requests_count
+
+         Amount of processed requests.
+
+         .. versionadded:: 1.0
+
+      .. coroutinemethod:: RequestHandlerFactory.finish_connections(timeout)
+
+         A :ref:`coroutine<coroutine>` that should be called to close all opened
+         connections.
 
 
 Router

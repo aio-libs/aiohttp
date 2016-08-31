@@ -1,6 +1,6 @@
 import asyncio
 
-from aiohttp import web, middlewares
+from aiohttp import middlewares, web
 
 
 class TestNormalizePathMiddleware:

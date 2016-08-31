@@ -5,8 +5,9 @@ import pytest
 
 from aiohttp.web import Application
 
-from .test_utils import (TestClient, loop_context, setup_test_loop,
-                         teardown_test_loop, unused_port as _unused_port)
+from .test_utils import unused_port as _unused_port
+from .test_utils import (TestClient, TestServer, loop_context, setup_test_loop,
+                         teardown_test_loop)
 
 
 @contextlib.contextmanager
@@ -57,27 +58,56 @@ def unused_port():
 
 
 @pytest.yield_fixture
+def test_server(loop):
+    servers = []
+
+    @asyncio.coroutine
+    def go(app, **kwargs):
+        assert app.loop is loop, \
+            "Application is attached to other event loop"
+
+        server = TestServer(app)
+        yield from server.start_server(**kwargs)
+        servers.append(server)
+        return server
+
+    yield go
+
+    @asyncio.coroutine
+    def finalize():
+        while servers:
+            yield from servers.pop().close()
+
+    loop.run_until_complete(finalize())
+
+
+@pytest.yield_fixture
 def test_client(loop):
     clients = []
 
     @asyncio.coroutine
-    def _create_from_app_factory(app_or_factory, *args, **kwargs):
-        if not isinstance(app_or_factory, Application):
-            app = app_or_factory(loop, *args, **kwargs)
-        else:
+    def go(__param, *args, **kwargs):
+        if isinstance(__param, Application):
             assert not args, "args should be empty"
             assert not kwargs, "kwargs should be empty"
-            app = app_or_factory
+            assert __param.loop is loop, \
+                "Application is attached to other event loop"
+        elif isinstance(__param, TestServer):
+            assert __param.app.loop is loop, \
+                "TestServer is attached to other event loop"
+        else:
+            __param = __param(loop, *args, **kwargs)
 
-        assert app.loop is loop, \
-            "Application is attached to other event loop"
-
-        client = TestClient(app)
+        client = TestClient(__param)
         yield from client.start_server()
         clients.append(client)
         return client
 
-    yield _create_from_app_factory
+    yield go
 
-    while clients:
-        clients.pop().close()
+    @asyncio.coroutine
+    def finalize():
+        while clients:
+            yield from clients.pop().close()
+
+    loop.run_until_complete(finalize())

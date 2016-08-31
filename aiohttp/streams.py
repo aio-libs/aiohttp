@@ -13,7 +13,6 @@ __all__ = (
     'FlowControlDataQueue', 'FlowControlChunksQueue')
 
 PY_35 = sys.version_info >= (3, 5)
-PY_352 = sys.version_info >= (3, 5, 2)
 
 EOF_MARKER = b''
 DEFAULT_LIMIT = 2 ** 16
@@ -28,13 +27,9 @@ class AsyncStreamIterator:
     def __init__(self, read_func):
         self.read_func = read_func
 
-    if PY_352:
-        def __aiter__(self):
-            return self
-    else:
-        @asyncio.coroutine
-        def __aiter__(self):
-            return self
+    @helpers._decorate_aiter
+    def __aiter__(self):
+        return self
 
     @asyncio.coroutine
     def __anext__(self):
@@ -50,13 +45,9 @@ class AsyncStreamIterator:
 class AsyncStreamReaderMixin:
 
     if PY_35:
-        if PY_352:
-            def __aiter__(self):
-                return AsyncStreamIterator(self.readline)
-        else:
-            @asyncio.coroutine
-            def __aiter__(self):
-                return AsyncStreamIterator(self.readline)
+        @helpers._decorate_aiter
+        def __aiter__(self):
+            return AsyncStreamIterator(self.readline)
 
         def iter_chunked(self, n):
             """Returns an asynchronous iterator that yields chunks of size n.
@@ -486,13 +477,9 @@ class DataQueue:
                 raise EofStream
 
     if PY_35:
-        if PY_352:
-            def __aiter__(self):
-                return AsyncStreamIterator(self.read)
-        else:
-            @asyncio.coroutine
-            def __aiter__(self):
-                return AsyncStreamIterator(self.read)
+        @helpers._decorate_aiter
+        def __aiter__(self):
+            return AsyncStreamIterator(self.read)
 
 
 class ChunksQueue(DataQueue):

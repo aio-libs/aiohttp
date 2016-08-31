@@ -2,18 +2,23 @@
 
 import asyncio
 import os
+import re
 import signal
 import ssl
 import sys
 
 import gunicorn.workers.base as base
+from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 
-from aiohttp.helpers import ensure_future
+from aiohttp.helpers import AccessLogger, ensure_future
 
 __all__ = ('GunicornWebWorker', 'GunicornUVLoopWebWorker')
 
 
 class GunicornWebWorker(base.Worker):
+
+    DEFAULT_AIOHTTP_LOG_FORMAT = AccessLogger.LOG_FORMAT
+    DEFAULT_GUNICORN_LOG_FORMAT = GunicornAccessLogFormat.default
 
     def __init__(self, *args, **kw):  # pragma: no cover
         super().__init__(*args, **kw)
@@ -31,6 +36,7 @@ class GunicornWebWorker(base.Worker):
         super().init_process()
 
     def run(self):
+        self.loop.run_until_complete(self.wsgi.startup())
         self._runner = ensure_future(self._run(), loop=self.loop)
 
         try:
@@ -47,7 +53,8 @@ class GunicornWebWorker(base.Worker):
             timeout=self.cfg.timeout,
             keep_alive=self.cfg.keepalive,
             access_log=self.log.access_log,
-            access_log_format=self.cfg.access_log_format)
+            access_log_format=self._get_valid_log_format(
+                self.cfg.access_log_format))
 
     @asyncio.coroutine
     def close(self):
@@ -60,6 +67,7 @@ class GunicornWebWorker(base.Worker):
                 self.log.info("Stopping server: %s, connections: %s",
                               self.pid, len(handler.connections))
                 server.close()
+                yield from server.wait_closed()
 
             # send on_shutdown event
             yield from self.wsgi.shutdown()
@@ -69,10 +77,10 @@ class GunicornWebWorker(base.Worker):
                 handler.finish_connections(
                     timeout=self.cfg.graceful_timeout / 100 * 95)
                 for handler in servers.values()]
-            yield from asyncio.wait(tasks, loop=self.loop)
+            yield from asyncio.gather(*tasks, loop=self.loop)
 
-            # stop application
-            yield from self.wsgi.finish()
+            # cleanup application
+            yield from self.wsgi.cleanup()
 
     @asyncio.coroutine
     def _run(self):
@@ -91,19 +99,18 @@ class GunicornWebWorker(base.Worker):
             while self.alive:
                 self.notify()
 
-                if pid == os.getpid() and self.ppid != os.getppid():
+                cnt = sum(handler.requests_count
+                          for handler in self.servers.values())
+                if self.cfg.max_requests and cnt > self.cfg.max_requests:
+                    self.alive = False
+                    self.log.info("Max requests, shutting down: %s", self)
+
+                elif pid == os.getpid() and self.ppid != os.getppid():
                     self.alive = False
                     self.log.info("Parent changed, shutting down: %s", self)
                 else:
                     yield from asyncio.sleep(1.0, loop=self.loop)
 
-                if self.cfg.max_requests and self.servers:
-                    connections = 0
-                    for _, handler in self.servers.items():
-                        connections += handler.num_connections
-                    if connections > self.cfg.max_requests:
-                        self.alive = False
-                        self.log.info("Max requests, shutting down: %s", self)
         except BaseException:
             pass
 
@@ -156,6 +163,20 @@ class GunicornWebWorker(base.Worker):
         if cfg.ciphers:
             ctx.set_ciphers(cfg.ciphers)
         return ctx
+
+    def _get_valid_log_format(self, source_format):
+        if source_format == self.DEFAULT_GUNICORN_LOG_FORMAT:
+            return self.DEFAULT_AIOHTTP_LOG_FORMAT
+        elif re.search(r'%\([^\)]+\)', source_format):
+            raise ValueError(
+                "Gunicorn's style options in form of `%(name)s` are not "
+                "supported for the log formatting. Please use aiohttp's "
+                "format specification to configure access log formatting: "
+                "http://aiohttp.readthedocs.io/en/stable/logging.html"
+                "#format-specification"
+            )
+        else:
+            return source_format
 
 
 class GunicornUVLoopWebWorker(GunicornWebWorker):

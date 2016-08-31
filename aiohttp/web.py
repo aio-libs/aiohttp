@@ -6,6 +6,7 @@ from importlib import import_module
 
 from . import hdrs, web_exceptions, web_reqrep, web_urldispatcher, web_ws
 from .abc import AbstractMatchInfo, AbstractRouter
+from .helpers import sentinel
 from .log import web_logger
 from .protocol import HttpVersion  # noqa
 from .server import ServerHttpProtocol
@@ -55,6 +56,7 @@ class RequestHandler(ServerHttpProtocol):
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
+        self._manager._requests_count += 1
         if self.access_log:
             now = self._loop.time()
 
@@ -118,7 +120,12 @@ class RequestHandlerFactory:
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
         self._kwargs = kwargs
         self._kwargs.setdefault('logger', app.logger)
-        self.num_connections = 0
+        self._requests_count = 0
+
+    @property
+    def requests_count(self):
+        """Number of processed requests."""
+        return self._requests_count
 
     @property
     def secure_proxy_ssl_header(self):
@@ -142,7 +149,6 @@ class RequestHandlerFactory:
         self._connections.clear()
 
     def __call__(self):
-        self.num_connections += 1
         return self._handler(
             self, self._app, self._router, loop=self._loop,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header,
@@ -216,8 +222,23 @@ class Application(dict):
         return self._middlewares
 
     def make_handler(self, **kwargs):
-        return self._handler_factory(
-            self, self.router, loop=self.loop, **kwargs)
+        debug = kwargs.pop('debug', sentinel)
+        if debug is not sentinel:
+            warnings.warn(
+                "`debug` parameter is deprecated. "
+                "Use Application's debug mode instead", DeprecationWarning)
+            if debug != self.debug:
+                raise ValueError(
+                    "The value of `debug` parameter conflicts with the debug "
+                    "settings of the `Application` instance. The "
+                    "application's debug mode setting should be used instead "
+                    "as a single point to setup a debug mode. For more "
+                    "information please check "
+                    "http://aiohttp.readthedocs.io/en/stable/"
+                    "web_reference.html#aiohttp.web.Application"
+                )
+        return self._handler_factory(self, self.router, debug=self.debug,
+                                     loop=self.loop, **kwargs)
 
     @asyncio.coroutine
     def startup(self):

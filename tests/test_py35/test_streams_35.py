@@ -70,3 +70,12 @@ async def test_stream_reader_iter_any(loop):
     it = iter([b'line1\nline2\nline3\n'])
     async for raw in create_stream(loop).iter_any():
         assert raw == next(it)
+    pytest.raises(StopIteration, next, it)
+
+async def test_stream_reader_iter(loop):
+    it = iter([b'line1\n',
+               b'line2\n',
+               b'line3\n'])
+    async for raw in create_stream(loop):
+        assert raw == next(it)
+    pytest.raises(StopIteration, next, it)

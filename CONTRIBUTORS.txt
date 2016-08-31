@@ -42,6 +42,7 @@ Dmitry Trofimov
 Dmytro Kuznetsov
 Dustin J. Mitchell
 Elizabeth Leddy
+Enrique Saez
 Erich Healy
 Eugene Chernyshov
 Eugene Naydenov
@@ -50,6 +51,7 @@ Gabriel Tremblay
 Gennady Andreyev
 Georges Dubus
 Greg Holt
+Gregory Haynes
 Hugo Herter
 Igor Pavlov
 Ingmar Steen
@@ -85,6 +87,7 @@ Mikhail Lukyanchenko
 Misha Behersky
 Morgan Delahaye-Prat
 Moss Collum
+Mun Gwan-gyeong
 Nicolas Braem
 Nikolay Novik
 Olaf Conradi
@@ -111,6 +114,7 @@ Taras Voinarovskyi
 Tolga Tezel
 Thomas Grainger
 Vaibhav Sagar
+Vamsi Krishna Avula
 Vasyl Baran
 Vitalik Verhovodov
 Vitaly Haritonsky

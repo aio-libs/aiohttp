@@ -5,9 +5,9 @@ import json
 import sys
 
 from ._ws_impl import CLOSED_MESSAGE, WebSocketError, WSMessage, WSMsgType
+from .helpers import _decorate_aiter
 
 PY_35 = sys.version_info >= (3, 5)
-PY_352 = sys.version_info >= (3, 5, 2)
 
 
 class ClientWebSocketResponse:
@@ -146,13 +146,12 @@ class ClientWebSocketResponse:
                     if not self._closed and self._autoclose:
                         yield from self.close()
                     return msg
-                elif not self._closed:
-                    if msg.type == WSMsgType.PING and self._autoping:
-                        self.pong(msg.data)
-                    elif msg.type == WSMsgType.PONG and self._autoping:
-                        continue
-                    else:
-                        return msg
+                if msg.type == WSMsgType.PING and self._autoping:
+                    self.pong(msg.data)
+                elif msg.type == WSMsgType.PONG and self._autoping:
+                    continue
+                else:
+                    return msg
         finally:
             self._waiting = False
 
@@ -180,13 +179,9 @@ class ClientWebSocketResponse:
         return loads(data)
 
     if PY_35:
-        if PY_352:
-            def __aiter__(self):
-                return self
-        else:
-            @asyncio.coroutine
-            def __aiter__(self):
-                return self
+        @_decorate_aiter
+        def __aiter__(self):
+            return self
 
         @asyncio.coroutine
         def __anext__(self):

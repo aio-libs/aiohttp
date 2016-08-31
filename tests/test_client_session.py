@@ -317,12 +317,12 @@ def test_double_close(connector, create_session):
     assert connector.closed
 
 
-def test_del(connector, loop, warning):
+def test_del(connector, loop):
     # N.B. don't use session fixture, it stores extra reference internally
     session = ClientSession(connector=connector, loop=loop)
     loop.set_exception_handler(lambda loop, ctx: None)
 
-    with warning(ResourceWarning):
+    with pytest.warns(ResourceWarning):
         del session
         gc.collect()
 
