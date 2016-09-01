@@ -389,15 +389,15 @@ class Request(dict, HeadersMixin):
 
         :param method: str http method
         :param path: str url path to use
-        :param headers: CIMultidictProxy or compatible containing the headers.
+        :param headers: CIMultidict or compatible containing the headers.
         :param raw_headers: tuple of two element tuples containing the headers
             as bytearrays.
         """
 
         message = RawRequestMessage(
             method or self.method, path or self.path, self.version,
-            headers or self.headers, raw_headers or self.raw_headers,
-            self.keep_alive, None)
+            headers or CIMultiDict(self.headers),
+            raw_headers or self.raw_headers, self.keep_alive, None)
 
         return Request(
             self._app,
