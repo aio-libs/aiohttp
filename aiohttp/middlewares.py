@@ -1,6 +1,7 @@
 import asyncio
 import re
 
+from aiohttp.web_exceptions import HTTPMovedPermanently
 from aiohttp.web_urldispatcher import SystemRoute
 
 
@@ -17,7 +18,9 @@ def _check_request_resolves(request, path):
     return False, request
 
 
-def normalize_path(*, append_slash=True, merge_slashes=True):
+def normalize_path(
+        *, append_slash=True, merge_slashes=True,
+        redirect_class=HTTPMovedPermanently):
     """
     Middleware that normalizes the path of a request. By normalizing
     it means:
@@ -27,7 +30,8 @@ def normalize_path(*, append_slash=True, merge_slashes=True):
 
     The middleware returns as soon as it finds a path that resolves
     correctly. The order if all enable is 1) merge_slashes, 2) append_slash
-    and 3) both merge_slashes and append_slash.
+    and 3) both merge_slashes and append_slash. If the path resolves with
+    at least one of those conditions, it will redirect to the new path.
 
     :param append_slash: If True append slash when needed. If a resource is
     defined with trailing slash and the request comes without it, it will
@@ -42,27 +46,21 @@ def normalize_path(*, append_slash=True, merge_slashes=True):
         @asyncio.coroutine
         def middleware(request):
 
-            if not isinstance(request.match_info.route, SystemRoute):
-                return (yield from handler(request))
-
-            else:
+            if isinstance(request.match_info.route, SystemRoute):
+                paths_to_check = []
                 if merge_slashes:
-                    resolves, request = yield from _check_request_resolves(
-                        request, re.sub('//+', '/', request.path))
-                    if resolves:
-                        return (yield from request.match_info.handler(request))
-
+                    paths_to_check.append(re.sub('//+', '/', request.path))
                 if append_slash:
-                    resolves, request = yield from _check_request_resolves(
-                        request, request.path + '/')
-                    if resolves:
-                        return (yield from request.match_info.handler(request))
-
+                    paths_to_check.append(request.path + '/')
                 if merge_slashes and append_slash:
+                    paths_to_check.append(
+                        re.sub('//+', '/', request.path + '/'))
+
+                for path in paths_to_check:
                     resolves, request = yield from _check_request_resolves(
-                        request, re.sub('//+', '/', request.path + '/'))
+                        request, path)
                     if resolves:
-                        return (yield from request.match_info.handler(request))
+                        return redirect_class(request.path)
 
             return (yield from handler(request))
 
