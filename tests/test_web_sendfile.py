@@ -60,3 +60,18 @@ def test_static_handle_exception(loop):
         assert exc is fut.exception()
         assert not fake_loop.add_writer.called
         assert not fake_loop.remove_writer.called
+
+
+def test__sendfile_cb_return_on_cancelling(loop):
+    fake_loop = mock.Mock()
+    with mock.patch('aiohttp.file_sender.os') as m_os:
+        out_fd = 30
+        in_fd = 31
+        fut = helpers.create_future(loop)
+        fut.cancel()
+        file_sender = FileSender()
+        file_sender._sendfile_cb(fut, out_fd, in_fd, 0, 100, fake_loop, False)
+        assert fut.done()
+        assert not fake_loop.add_writer.called
+        assert not fake_loop.remove_writer.called
+        assert not m_os.sendfile.called
