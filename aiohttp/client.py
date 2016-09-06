@@ -482,6 +482,7 @@ class ClientSession:
         self._connector = None
 
     def __enter__(self):
+        warnings.warn("Use async with instead", DeprecationWarning)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
