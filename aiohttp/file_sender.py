@@ -78,6 +78,7 @@ class FileSender:
         headers.append('\r\n')
 
         out_socket = transport.get_extra_info("socket").dup()
+        out_socket.setblocking(False)
         out_fd = out_socket.fileno()
         in_fd = fobj.fileno()
 
