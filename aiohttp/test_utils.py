@@ -19,7 +19,6 @@ from .protocol import HttpVersion, RawRequestMessage
 from .signals import Signal
 from .web import Application, Request
 
-
 PY_35 = sys.version_info >= (3, 5)
 
 
