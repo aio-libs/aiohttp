@@ -21,6 +21,8 @@ class FileSender:
                      count, loop, registered):
         if registered:
             loop.remove_writer(out_fd)
+        if fut.cancelled():
+            return
         try:
             n = os.sendfile(out_fd, in_fd, offset, count)
             if n == 0:  # EOF reached
@@ -56,18 +58,33 @@ class FileSender:
             yield from self._sendfile_fallback(request, resp, fobj, count)
             return
 
-        yield from resp.prepare(request)
+        def _send_headers(resp_impl):
+            # Durty hack required for
+            # https://github.com/KeepSafe/aiohttp/issues/1093
+            # don't send headers in sendfile mode
+            pass
 
-        yield from resp.drain()
+        resp._send_headers = _send_headers
+        yield from resp.prepare(request)
 
         loop = request.app.loop
         # See https://github.com/KeepSafe/aiohttp/issues/958 for details
+
+        # send headers
+        headers = ['HTTP/{0.major}.{0.minor} 200 OK\r\n'.format(
+            request.version)]
+        for hdr, val in resp.headers.items():
+            headers.append('{}: {}\r\n'.format(hdr, val))
+        headers.append('\r\n')
+
         out_socket = transport.get_extra_info("socket").dup()
         out_fd = out_socket.fileno()
         in_fd = fobj.fileno()
-        fut = create_future(loop)
 
         try:
+            yield from loop.sock_sendall(out_socket,
+                                         ''.join(headers).encode('utf-8'))
+            fut = create_future(loop)
             self._sendfile_cb(fut, out_fd, in_fd, 0, count, loop, False)
 
             yield from fut

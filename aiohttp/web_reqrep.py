@@ -723,8 +723,14 @@ class StreamResponse(HeadersMixin):
 
         resp_impl.transport.set_tcp_nodelay(self._tcp_nodelay)
         resp_impl.transport.set_tcp_cork(self._tcp_cork)
-        resp_impl.send_headers()
+        self._send_headers(resp_impl)
         return resp_impl
+
+    def _send_headers(self, resp_impl):
+        # Durty hack required for
+        # https://github.com/KeepSafe/aiohttp/issues/1093
+        # File sender may override it
+        resp_impl.send_headers()
 
     def write(self, data):
         assert isinstance(data, (bytes, bytearray, memoryview)), \

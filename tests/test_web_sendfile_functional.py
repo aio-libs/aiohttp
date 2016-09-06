@@ -9,7 +9,7 @@ import pytest
 import aiohttp
 from aiohttp import log, request, web
 from aiohttp.file_sender import FileSender
-from aiohttp.test_utils import unused_port, loop_context
+from aiohttp.test_utils import loop_context, unused_port
 
 try:
     import ssl
