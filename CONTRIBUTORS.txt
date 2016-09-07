@@ -83,6 +83,7 @@ Martin Richard
 Mathias Fröjdman
 Matthieu Hauglustaine
 Michael Ihnatenko
+Mikhail Kashkin
 Mikhail Lukyanchenko
 Misha Behersky
 Morgan Delahaye-Prat
