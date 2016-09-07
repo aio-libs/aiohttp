@@ -51,6 +51,42 @@ def test_date_parsing():
     assert parse_func("Tue, 1 Jan 1970 77:88:99 GMT") is None
 
 
+def test_domain_matching():
+    test_func = CookieJar._is_domain_match
+
+    assert test_func("test.com", "test.com")
+    assert test_func("test.com", "sub.test.com")
+
+    assert not test_func("test.com", "")
+    assert not test_func("test.com", "test.org")
+    assert not test_func("diff-test.com", "test.com")
+    assert not test_func("test.com", "diff-test.com")
+    assert not test_func("test.com", "127.0.0.1")
+
+
+def test_path_matching():
+    test_func = CookieJar._is_path_match
+
+    assert test_func("/", "")
+    assert test_func("", "/")
+    assert test_func("/file", "")
+    assert test_func("/folder/file", "")
+    assert test_func("/", "/")
+    assert test_func("/file", "/")
+    assert test_func("/file", "/file")
+    assert test_func("/folder/", "/folder/")
+    assert test_func("/folder/", "/")
+    assert test_func("/folder/file", "/")
+
+    assert not test_func("/", "/file")
+    assert not test_func("/", "/folder/")
+    assert not test_func("/file", "/folder/file")
+    assert not test_func("/folder/", "/folder/file")
+    assert not test_func("/different-file", "/file")
+    assert not test_func("/different-folder/", "/folder/")
+
+
+
 class TestCookieJarBase(unittest.TestCase):
 
     def setUp(self):
@@ -377,40 +413,6 @@ class TestCookieJarSafe(TestCookieJarBase):
 
         cookie = cookies_sent["invalid-expires-cookie"]
         self.assertEqual(cookie["expires"], "")
-
-    def test_domain_matching(self):
-        test_func = CookieJar._is_domain_match
-
-        self.assertTrue(test_func("test.com", "test.com"))
-        self.assertTrue(test_func("test.com", "sub.test.com"))
-
-        self.assertFalse(test_func("test.com", ""))
-        self.assertFalse(test_func("test.com", "test.org"))
-        self.assertFalse(test_func("diff-test.com", "test.com"))
-        self.assertFalse(test_func("test.com", "diff-test.com"))
-        self.assertFalse(test_func("test.com", "127.0.0.1"))
-
-    def test_path_matching(self):
-        test_func = CookieJar._is_path_match
-
-        self.assertTrue(test_func("/", ""))
-        self.assertTrue(test_func("", "/"))
-        self.assertTrue(test_func("/file", ""))
-        self.assertTrue(test_func("/folder/file", ""))
-        self.assertTrue(test_func("/", "/"))
-        self.assertTrue(test_func("/file", "/"))
-        self.assertTrue(test_func("/file", "/file"))
-        self.assertTrue(test_func("/folder/", "/folder/"))
-        self.assertTrue(test_func("/folder/", "/"))
-        self.assertTrue(test_func("/folder/file", "/"))
-
-        self.assertFalse(test_func("/", "/file"))
-        self.assertFalse(test_func("/", "/folder/"))
-        self.assertFalse(test_func("/file", "/folder/file"))
-        self.assertFalse(test_func("/folder/", "/folder/file"))
-        self.assertFalse(test_func("/different-file", "/file"))
-        self.assertFalse(test_func("/different-folder/", "/folder/"))
-
 
 
 class TestCookieJarUnsafe(TestCookieJarBase):
