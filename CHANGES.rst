@@ -103,6 +103,8 @@ CHANGES
 
 - Fix static file sending on uvloop when sendfile is available #1093
 
+- Make prettier urls if query is empty dict #1143
+
 
 0.22.5 (08-02-2016)
 -------------------
