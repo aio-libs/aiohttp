@@ -405,6 +405,15 @@ def test_params_update_path_and_url(make_request):
     assert req.url == 'http://python.org/?test=foo&test=baz'
 
 
+def test_params_empty_path_and_url(make_request):
+    req_empty = make_request('get', 'http://python.org', params={})
+    assert req_empty.path == '/'
+    assert req_empty.url == 'http://python.org/'
+    req_none = make_request('get', 'http://python.org')
+    assert req_none.path == '/'
+    assert req_none.url == 'http://python.org/'
+
+
 def test_gen_netloc_all(make_request):
     req = make_request('get',
                        'https://aiohttp:pwpwpw@' +
