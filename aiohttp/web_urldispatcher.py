@@ -59,7 +59,7 @@ class AbstractResource(Sized, Iterable):
 
     @staticmethod
     def _append_query(url, query):
-        if query is not None:
+        if query:
             return url + "?" + urlencode(query)
         else:
             return url
