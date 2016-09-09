@@ -107,7 +107,7 @@ CHANGES
 
 -
 
--
+- Default value for StreamReader.read_nowait is -1 from now
 
 -
 
