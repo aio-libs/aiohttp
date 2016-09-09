@@ -99,12 +99,12 @@ class Connection:
 class BaseConnector(object):
     """Base connector class.
 
-    :param conn_timeout: (optional) Connect timeout.
-    :param keepalive_timeout: (optional) Keep-alive timeout.
-    :param bool force_close: Set to True to force close and do reconnect
+    conn_timeout - (optional) Connect timeout.
+    keepalive_timeout - (optional) Keep-alive timeout.
+    force_close - Set to True to force close and do reconnect
         after each request (and between redirects).
-    :param limit: The limit of simultaneous connections to the same endpoint.
-    :param loop: Optional event loop.
+    limit - The limit of simultaneous connections to the same endpoint.
+    loop - Optional event loop.
     """
 
     _closed = True  # prevent AttributeError in __del__ if ctor was failed
@@ -396,27 +396,36 @@ _SSL_OP_NO_COMPRESSION = getattr(ssl, "OP_NO_COMPRESSION", 0)
 class TCPConnector(BaseConnector):
     """TCP connector.
 
-    :param bool verify_ssl: Set to True to check ssl certifications.
-    :param bytes fingerprint: Pass the binary md5, sha1, or sha256
+    verify_ssl - Set to True to check ssl certifications.
+    fingerprint - Pass the binary md5, sha1, or sha256
         digest of the expected certificate in DER format to verify
         that the certificate the server presents matches. See also
         https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning
-    :param bool resolve: (Deprecated) Set to True to do DNS lookup for
+    resolve - (Deprecated) Set to True to do DNS lookup for
         host name.
-    :param AbstractResolver resolver: Enable DNS lookups and use this
+    resolver - Enable DNS lookups and use this
         resolver
-    :param bool use_dns_cache: Use memory cache for DNS lookups.
-    :param family: socket address family
-    :param local_addr: local :class:`tuple` of (host, port) to bind socket to
-    :param args: see :class:`BaseConnector`
-    :param kwargs: see :class:`BaseConnector`
+    use_dns_cache - Use memory cache for DNS lookups.
+    family - socket address family
+    local_addr - local tuple of (host, port) to bind socket to
+
+    conn_timeout - (optional) Connect timeout.
+    keepalive_timeout - (optional) Keep-alive timeout.
+    force_close - Set to True to force close and do reconnect
+        after each request (and between redirects).
+    limit - The limit of simultaneous connections to the same endpoint.
+    loop - Optional event loop.
     """
 
     def __init__(self, *, verify_ssl=True, fingerprint=None,
                  resolve=sentinel, use_dns_cache=sentinel,
                  family=0, ssl_context=None, local_addr=None, resolver=None,
-                 **kwargs):
-        super().__init__(**kwargs)
+                 conn_timeout=None, keepalive_timeout=sentinel,
+                 force_close=False, limit=20,
+                 loop=None):
+        super().__init__(conn_timeout=conn_timeout,
+                         keepalive_timeout=keepalive_timeout,
+                         force_close=force_close, limit=limit, loop=loop)
 
         if not verify_ssl and ssl_context is not None:
             raise ValueError(
@@ -691,11 +700,15 @@ class ProxyConnector(TCPConnector):
     Deprecated, use ClientSession.request with proxy parameters.
     Is still here for backward compatibility.
 
-    :param str proxy: Proxy URL address. Only HTTP proxy supported.
-    :param proxy_auth: (optional) Proxy HTTP Basic Auth
-    :type proxy_auth: aiohttp.helpers.BasicAuth
-    :param args: see :class:`TCPConnector`
-    :param kwargs: see :class:`TCPConnector`
+    proxy - Proxy URL address. Only HTTP proxy supported.
+    proxy_auth - (optional) Proxy HTTP Basic Auth
+    proxy_auth - aiohttp.helpers.BasicAuth
+    conn_timeout - (optional) Connect timeout.
+    keepalive_timeout - (optional) Keep-alive timeout.
+    force_close - Set to True to force close and do reconnect
+        after each request (and between redirects).
+    limit - The limit of simultaneous connections to the same endpoint.
+    loop - Optional event loop.
 
     Usage:
 
@@ -706,11 +719,15 @@ class ProxyConnector(TCPConnector):
     """
 
     def __init__(self, proxy, *, proxy_auth=None, force_close=True,
-                 **kwargs):
+                 conn_timeout=None, keepalive_timeout=sentinel,
+                 limit=20, loop=None):
         warnings.warn("ProxyConnector is deprecated, use "
                       "client.get(url, proxy=proxy_url) instead",
                       DeprecationWarning)
-        super().__init__(force_close=force_close, **kwargs)
+        super().__init__(force_close=force_close,
+                         conn_timeout=conn_timeout,
+                         keepalive_timeout=keepalive_timeout,
+                         limit=limit, loop=loop)
         self._proxy = proxy
         self._proxy_auth = proxy_auth
 
@@ -736,9 +753,13 @@ class ProxyConnector(TCPConnector):
 class UnixConnector(BaseConnector):
     """Unix socket connector.
 
-    :param str path: Unix socket path.
-    :param args: see :class:`BaseConnector`
-    :param kwargs: see :class:`BaseConnector`
+    path - Unix socket path.
+    conn_timeout - (optional) Connect timeout.
+    keepalive_timeout - (optional) Keep-alive timeout.
+    force_close - Set to True to force close and do reconnect
+        after each request (and between redirects).
+    limit - The limit of simultaneous connections to the same endpoint.
+    loop - Optional event loop.
 
     Usage:
 
@@ -748,8 +769,12 @@ class UnixConnector(BaseConnector):
 
     """
 
-    def __init__(self, path, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, path, force_close=False, conn_timeout=None,
+                 keepalive_timeout=sentinel, limit=20, loop=None):
+        super().__init__(force_close=force_close,
+                         conn_timeout=conn_timeout,
+                         keepalive_timeout=keepalive_timeout,
+                         limit=limit, loop=loop)
         self._path = path
 
     @property
