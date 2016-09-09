@@ -168,7 +168,7 @@ like one using :meth:`Request.copy`.
 
    .. attribute:: content
 
-      A :class:`~aiohttp.streams.FlowControlStreamReader` instance,
+      A :class:`~aiohttp.StreamReader` instance,
       input stream for reading request's *BODY*.
 
       Read-only property.

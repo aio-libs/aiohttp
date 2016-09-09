@@ -66,7 +66,7 @@ class AsyncStreamReaderMixin:
 
 
 class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
-    """An enhancement of :class:`asyncio.StreamReader`.
+    """An enhancement of asyncio.StreamReader.
 
     Supports asynchronous iteration by line, chunk or as available::
 
@@ -77,8 +77,6 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
         async for slice in reader.iter_any():
             ...
 
-    .. automethod:: AsyncStreamReaderMixin.iter_chunked
-    .. automethod:: AsyncStreamReaderMixin.iter_any
     """
 
     total_bytes = 0
