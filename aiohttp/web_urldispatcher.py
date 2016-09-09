@@ -770,10 +770,11 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     def add_static(self, prefix, path, *, name=None, expect_handler=None,
                    chunk_size=256*1024, response_factory=StreamResponse,
                    show_index=False):
-        """
-        Adds static files view
-        :param prefix - url prefix
-        :param path - folder with files
+        """Add static files view.
+
+        prefix - url prefix
+        path - folder with files
+
         """
         assert prefix.startswith('/')
         if not prefix.endswith('/'):
