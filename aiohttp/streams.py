@@ -65,7 +65,7 @@ class AsyncStreamReaderMixin:
             return AsyncStreamIterator(self.readany)
 
 
-class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
+class StreamReader(AsyncStreamReaderMixin):
     """An enhancement of asyncio.StreamReader.
 
     Supports asynchronous iteration by line, chunk or as available::

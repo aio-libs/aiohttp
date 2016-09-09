@@ -284,7 +284,8 @@ class ClientRequest:
             if hdrs.CONTENT_LENGTH not in self.headers and not self.chunked:
                 self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
 
-        elif isinstance(data, (asyncio.StreamReader, streams.DataQueue)):
+        elif isinstance(data, (asyncio.StreamReader, streams.StreamReader,
+                               streams.DataQueue)):
             self.body = data
 
         elif asyncio.iscoroutine(data):
