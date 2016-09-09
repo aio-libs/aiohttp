@@ -25,3 +25,7 @@
 - [ ] I think the code is well written
 - [ ] Unit tests for the changes exist
 - [ ] Documentation reflects the changes
+- [ ] Add yourself to `CONTRIBUTORS.txt`
+- [ ] Add a new entry to `CHANGES.rst`
+  * Choose any open position to avoid merge conflicts with other PRs.
+  * Add a link to the issue you are fixing (if any) using `#isuue_number` format at the end of changelog message. Use Pull Request number if there are no issues for PR or PR covers the issue only partially.
