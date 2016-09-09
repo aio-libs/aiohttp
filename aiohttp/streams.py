@@ -309,13 +309,6 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
         if self._exception is not None:
             raise self._exception
 
-        # There used to be "optimized" code here.  It created its own
-        # Future and waited until self._buffer had at least the n
-        # bytes, then called read(n).  Unfortunately, this could pause
-        # the transport if the argument was larger than the pause
-        # limit (which is twice self._limit).  So now we just read()
-        # into a local buffer.
-
         blocks = []
         while n > 0:
             block = yield from self.read(n)
