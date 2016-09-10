@@ -199,12 +199,22 @@ def test_release_close(loop):
 
 
 @asyncio.coroutine
-def test_tcp_connector_resolve_host(loop):
-    conn = aiohttp.TCPConnector(loop=loop)
+def test_tcp_connector_resolve_host_use_dns_cache(loop):
+    conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=True)
 
     res = yield from conn._resolve_host('localhost', 8080)
-    assert res == [{'family': 0, 'flags': 0, 'host': 'localhost',
-                    'hostname': 'localhost', 'port': 8080, 'proto': 0}]
+    assert res == [{'family': socket.AF_INET, 'flags': 4, 'host': '127.0.0.1',
+                    'hostname': 'localhost', 'port': 8080, 'proto': 6}]
+
+
+@asyncio.coroutine
+def test_tcp_connector_resolve_host_twice_use_dns_cache(loop):
+    conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=True)
+
+    res = yield from conn._resolve_host('localhost', 8080)
+    res2 = yield from conn._resolve_host('localhost', 8080)
+
+    assert res is res2
 
 
 class TestBaseConnector(unittest.TestCase):
