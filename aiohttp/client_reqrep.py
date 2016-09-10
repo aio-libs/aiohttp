@@ -428,7 +428,8 @@ class ClientRequest:
                             'Bytes object is expected, got: %s.' %
                             type(result))
 
-            elif isinstance(self.body, asyncio.StreamReader):
+            elif isinstance(self.body, (asyncio.StreamReader,
+                                        streams.StreamReader)):
                 request.transport.set_tcp_nodelay(True)
                 chunk = yield from self.body.read(streams.DEFAULT_LIMIT)
                 while chunk:
