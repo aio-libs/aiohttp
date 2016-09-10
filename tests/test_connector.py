@@ -10,11 +10,192 @@ import tempfile
 import unittest
 from unittest import mock
 
+import pytest
+
 import aiohttp
 from aiohttp import client, helpers, web
 from aiohttp.client import ClientRequest, ClientResponse
 from aiohttp.connector import Connection
 from aiohttp.test_utils import unused_port
+
+
+@pytest.fixture
+def transport():
+    return unittest.mock.Mock()
+
+
+@pytest.fixture
+def stream():
+    return aiohttp.StreamParser()
+
+
+@pytest.fixture
+def response(loop):
+    resp = ClientResponse('get', 'http://base-conn.org')
+    resp._post_init(loop)
+    return resp
+
+
+def test_del(loop):
+    conn = aiohttp.BaseConnector(loop=loop)
+    transp = unittest.mock.Mock()
+    conn._conns['a'] = [(transp, 'proto', 123)]
+    conns_impl = conn._conns
+
+    exc_handler = unittest.mock.Mock()
+    loop.set_exception_handler(exc_handler)
+
+    with pytest.warns(ResourceWarning):
+        del conn
+        gc.collect()
+
+    assert not conns_impl
+    transp.close.assert_called_with()
+    msg = {'connector': unittest.mock.ANY,  # conn was deleted
+           'connections': unittest.mock.ANY,
+           'message': 'Unclosed connector'}
+    if loop.get_debug():
+        msg['source_traceback'] = unittest.mock.ANY
+    exc_handler.assert_called_with(loop, msg)
+
+
+@pytest.mark.xfail
+@asyncio.coroutine
+def test_del_with_scheduled_cleanup(loop):
+    conn = aiohttp.BaseConnector(loop=loop, keepalive_timeout=0.01)
+    transp = unittest.mock.Mock()
+    conn._conns['a'] = [(transp, 'proto', 123)]
+
+    conns_impl = conn._conns
+    conn._start_cleanup_task()
+    exc_handler = unittest.mock.Mock()
+    loop.set_exception_handler(exc_handler)
+
+    with pytest.warns(ResourceWarning):
+        # obviously doesn't deletion because loop has a strong
+        # reference to connector's instance method, isn't it?
+        del conn
+        yield from asyncio.sleep(0.01, loop=loop)
+        gc.collect()
+
+    assert not conns_impl
+    transp.close.assert_called_with()
+    msg = {'connector': unittest.mock.ANY,  # conn was deleted
+           'message': 'Unclosed connector'}
+    if loop.get_debug():
+        msg['source_traceback'] = unittest.mock.ANY
+    exc_handler.assert_called_with(loop, msg)
+
+
+def test_del_with_closed_loop(loop):
+    conn = aiohttp.BaseConnector(loop=loop)
+    transp = unittest.mock.Mock()
+    conn._conns['a'] = [(transp, 'proto', 123)]
+
+    conns_impl = conn._conns
+    conn._start_cleanup_task()
+    exc_handler = unittest.mock.Mock()
+    loop.set_exception_handler(exc_handler)
+    loop.close()
+
+    with pytest.warns(ResourceWarning):
+        del conn
+        gc.collect()
+
+    assert not conns_impl
+    assert not transp.close.called
+    assert exc_handler.called
+
+
+def test_del_empty_conector(loop):
+    conn = aiohttp.BaseConnector(loop=loop)
+
+    exc_handler = unittest.mock.Mock()
+    loop.set_exception_handler(exc_handler)
+
+    del conn
+
+    assert not exc_handler.called
+
+
+@asyncio.coroutine
+def test_create_conn(loop):
+    conn = aiohttp.BaseConnector(loop=loop)
+    with pytest.raises(NotImplementedError):
+        yield from conn._create_connection(object())
+
+
+def test_ctor_loop():
+    with unittest.mock.patch('aiohttp.connector.asyncio') as m_asyncio:
+        session = aiohttp.BaseConnector()
+    assert session._loop is m_asyncio.get_event_loop.return_value
+
+
+def test_close(loop):
+    tr = unittest.mock.Mock()
+
+    conn = aiohttp.BaseConnector(loop=loop)
+    assert not conn.closed
+    conn._conns[1] = [(tr, object(), object())]
+    conn.close()
+
+    assert not conn._conns
+    assert tr.close.called
+    assert conn.closed
+
+
+def test_get(loop):
+    conn = aiohttp.BaseConnector(loop=loop)
+    assert conn._get(1) == (None, None)
+
+    tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+    conn._conns[1] = [(tr, proto, loop.time())]
+    assert conn._get(1) == (tr, proto)
+    conn.close()
+
+
+def test_get_expired(loop):
+    conn = aiohttp.BaseConnector(loop=loop)
+    assert conn._get(1) == (None, None)
+
+    tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+    conn._conns[1] = [(tr, proto, loop.time() - 1000)]
+    assert conn._get(1) == (None, None)
+    assert not conn._conns
+    conn.close()
+
+
+def test_release(loop):
+    loop.time = mock.Mock(return_value=10)
+
+    conn = aiohttp.BaseConnector(loop=loop)
+    conn._start_cleanup_task = unittest.mock.Mock()
+    req = unittest.mock.Mock()
+    resp = req.response = unittest.mock.Mock()
+    resp._should_close = False
+
+    tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+    key = 1
+    conn._acquired[key].add(tr)
+    conn._release(key, req, tr, proto)
+    assert conn._conns[1][0] == (tr, proto, 10)
+    assert conn._start_cleanup_task.called
+    conn.close()
+
+
+def test_release_close(loop):
+    conn = aiohttp.BaseConnector(loop=loop)
+    req = unittest.mock.Mock()
+    resp = unittest.mock.Mock()
+    resp.message.should_close = True
+    req.response = resp
+
+    tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+    key = 1
+    conn._acquired[key].add(tr)
+    conn._release(key, req, tr, proto)
+    assert not conn._conns
+    assert tr.close.called
 
 
 class TestBaseConnector(unittest.TestCase):
@@ -32,156 +213,6 @@ class TestBaseConnector(unittest.TestCase):
         self.response.close()
         self.loop.close()
         gc.collect()
-
-    def test_del(self):
-        conn = aiohttp.BaseConnector(loop=self.loop)
-        transp = unittest.mock.Mock()
-        conn._conns['a'] = [(transp, 'proto', 123)]
-        conns_impl = conn._conns
-
-        exc_handler = unittest.mock.Mock()
-        self.loop.set_exception_handler(exc_handler)
-
-        with self.assertWarns(ResourceWarning):
-            del conn
-            gc.collect()
-
-        self.assertFalse(conns_impl)
-        transp.close.assert_called_with()
-        msg = {'connector': unittest.mock.ANY,  # conn was deleted
-               'connections': unittest.mock.ANY,
-               'message': 'Unclosed connector'}
-        if self.loop.get_debug():
-            msg['source_traceback'] = unittest.mock.ANY
-        exc_handler.assert_called_with(self.loop, msg)
-
-    def test_del_with_scheduled_cleanup(self):
-        conn = aiohttp.BaseConnector(loop=self.loop, keepalive_timeout=0.01)
-        transp = unittest.mock.Mock()
-        conn._conns['a'] = [(transp, 'proto', 123)]
-
-        conns_impl = conn._conns
-        conn._start_cleanup_task()
-        exc_handler = unittest.mock.Mock()
-        self.loop.set_exception_handler(exc_handler)
-
-        with self.assertWarns(ResourceWarning):
-            del conn
-            yield from asyncio.sleep(0.01)
-            gc.collect()
-
-        self.assertFalse(conns_impl)
-        transp.close.assert_called_with()
-        msg = {'connector': unittest.mock.ANY,  # conn was deleted
-               'message': 'Unclosed connector'}
-        if self.loop.get_debug():
-            msg['source_traceback'] = unittest.mock.ANY
-        exc_handler.assert_called_with(self.loop, msg)
-
-    def test_del_with_closed_loop(self):
-        conn = aiohttp.BaseConnector(loop=self.loop)
-        transp = unittest.mock.Mock()
-        conn._conns['a'] = [(transp, 'proto', 123)]
-
-        conns_impl = conn._conns
-        conn._start_cleanup_task()
-        exc_handler = unittest.mock.Mock()
-        self.loop.set_exception_handler(exc_handler)
-        self.loop.close()
-
-        with self.assertWarns(ResourceWarning):
-            del conn
-            gc.collect()
-
-        self.assertFalse(conns_impl)
-        self.assertFalse(transp.close.called)
-        self.assertTrue(exc_handler.called)
-
-    def test_del_empty_conector(self):
-        conn = aiohttp.BaseConnector(loop=self.loop)
-
-        exc_handler = unittest.mock.Mock()
-        self.loop.set_exception_handler(exc_handler)
-
-        del conn
-
-        self.assertFalse(exc_handler.called)
-
-    def test_create_conn(self):
-
-        def go():
-            conn = aiohttp.BaseConnector(loop=self.loop)
-            with self.assertRaises(NotImplementedError):
-                yield from conn._create_connection(object())
-
-        self.loop.run_until_complete(go())
-
-    @unittest.mock.patch('aiohttp.connector.asyncio')
-    def test_ctor_loop(self, asyncio):
-        session = aiohttp.BaseConnector()
-        self.assertIs(session._loop, asyncio.get_event_loop.return_value)
-
-    def test_close(self):
-        tr = unittest.mock.Mock()
-
-        conn = aiohttp.BaseConnector(loop=self.loop)
-        self.assertFalse(conn.closed)
-        conn._conns[1] = [(tr, object(), object())]
-        conn.close()
-
-        self.assertFalse(conn._conns)
-        self.assertTrue(tr.close.called)
-        self.assertTrue(conn.closed)
-
-    def test_get(self):
-        conn = aiohttp.BaseConnector(loop=self.loop)
-        self.assertEqual(conn._get(1), (None, None))
-
-        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        conn._conns[1] = [(tr, proto, self.loop.time())]
-        self.assertEqual(conn._get(1), (tr, proto))
-        conn.close()
-
-    def test_get_expired(self):
-        conn = aiohttp.BaseConnector(loop=self.loop)
-        self.assertEqual(conn._get(1), (None, None))
-
-        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        conn._conns[1] = [(tr, proto, self.loop.time() - 1000)]
-        self.assertEqual(conn._get(1), (None, None))
-        self.assertFalse(conn._conns)
-        conn.close()
-
-    def test_release(self):
-        self.loop.time = mock.Mock(return_value=10)
-
-        conn = aiohttp.BaseConnector(loop=self.loop)
-        conn._start_cleanup_task = unittest.mock.Mock()
-        req = unittest.mock.Mock()
-        resp = req.response = unittest.mock.Mock()
-        resp._should_close = False
-
-        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        key = 1
-        conn._acquired[key].add(tr)
-        conn._release(key, req, tr, proto)
-        self.assertEqual(conn._conns[1][0], (tr, proto, 10))
-        self.assertTrue(conn._start_cleanup_task.called)
-        conn.close()
-
-    def test_release_close(self):
-        conn = aiohttp.BaseConnector(loop=self.loop)
-        req = unittest.mock.Mock()
-        resp = unittest.mock.Mock()
-        resp.message.should_close = True
-        req.response = resp
-
-        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        key = 1
-        conn._acquired[key].add(tr)
-        conn._release(key, req, tr, proto)
-        self.assertFalse(conn._conns)
-        self.assertTrue(tr.close.called)
 
     def test_get_pop_empty_conns(self):
         # see issue #473
