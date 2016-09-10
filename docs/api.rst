@@ -215,15 +215,6 @@ aiohttp.signals module
     :undoc-members:
     :show-inheritance:
 
-aiohttp.streams module
-----------------------
-
-.. automodule:: aiohttp.streams
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 aiohttp.wsgi module
 -------------------
 

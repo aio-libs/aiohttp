@@ -107,7 +107,7 @@ CHANGES
 
 - Fix redirects for HEAD requests #1147
 
--
+- Default value for StreamReader.read_nowait is -1 from now
 
 -
 

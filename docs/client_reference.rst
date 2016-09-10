@@ -4,7 +4,6 @@ HTTP Client Reference
 =====================
 
 .. module:: aiohttp
-
 .. currentmodule:: aiohttp
 
 
@@ -1121,9 +1120,7 @@ Response object
 
    .. attribute:: content
 
-      Payload stream, contains response's BODY (:class:`StreamReader`
-      compatible instance, most likely
-      :class:`FlowControlStreamReader` one).
+      Payload stream, contains response's BODY (:class:`StreamReader`).
 
    .. attribute:: cookies
 

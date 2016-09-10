@@ -71,8 +71,8 @@ class AsyncStreamReaderMixin:
             return AsyncStreamIterator(self.readany)
 
 
-class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
-    """An enhancement of :class:`asyncio.StreamReader`.
+class StreamReader(AsyncStreamReaderMixin):
+    """An enhancement of asyncio.StreamReader.
 
     Supports asynchronous iteration by line, chunk or as available::
 
@@ -83,8 +83,6 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
         async for slice in reader.iter_any():
             ...
 
-    .. automethod:: AsyncStreamReaderMixin.iter_chunked
-    .. automethod:: AsyncStreamReaderMixin.iter_any
     """
 
     total_bytes = 0
@@ -244,7 +242,7 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
                 offset = self._buffer_offset
                 ichar = self._buffer[0].find(b'\n', offset) + 1
                 # Read from current offset to found b'\n' or to the end.
-                data = self._read_nowait(ichar - offset if ichar else 0)
+                data = self._read_nowait(ichar - offset if ichar else -1)
                 line.append(data)
                 line_size += len(data)
                 if ichar:
@@ -308,7 +306,7 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
         if not self._buffer and not self._eof:
             yield from self._wait('readany')
 
-        return self._read_nowait()
+        return self._read_nowait(-1)
 
     @asyncio.coroutine
     def readexactly(self, n):
@@ -327,7 +325,12 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
 
         return b''.join(blocks)
 
-    def read_nowait(self, n=None):
+    def read_nowait(self, n=-1):
+        # default was changed to be consistent with .read(-1)
+        #
+        # I believe the most users don't know about the method and
+        # they are not affected.
+        assert n is not None, "n should be -1"
         if self._exception is not None:
             raise self._exception
 
@@ -337,13 +340,13 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
 
         return self._read_nowait(n)
 
-    def _read_nowait(self, n=None):
+    def _read_nowait(self, n):
         if not self._buffer:
             return EOF_MARKER
 
         first_buffer = self._buffer[0]
         offset = self._buffer_offset
-        if n and len(first_buffer) - offset > n:
+        if n != -1 and len(first_buffer) - offset > n:
             data = first_buffer[offset:offset + n]
             self._buffer_offset += n
 
