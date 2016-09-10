@@ -305,7 +305,7 @@ class WebSocketResponse(StreamResponse):
         def __aiter__(self):
             return self
 
-        if not PY_352:
+        if not PY_352:  # pragma: no cover
             __aiter__ = asyncio.coroutine(__aiter__)
 
         @asyncio.coroutine

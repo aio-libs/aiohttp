@@ -169,7 +169,7 @@ class MultipartResponseWrapper(object):
         def __aiter__(self):
             return self
 
-        if not PY_352:
+        if not PY_352:  # pragma: no cover
             __aiter__ = asyncio.coroutine(__aiter__)
 
         @asyncio.coroutine
@@ -222,7 +222,7 @@ class BodyPartReader(object):
         def __aiter__(self):
             return self
 
-        if not PY_352:
+        if not PY_352:  # pragma: no cover
             __aiter__ = asyncio.coroutine(__aiter__)
 
         @asyncio.coroutine
@@ -521,7 +521,7 @@ class MultipartReader(object):
         def __aiter__(self):
             return self
 
-        if not PY_352:
+        if not PY_352:  # pragma: no cover
             __aiter__ = asyncio.coroutine(__aiter__)
 
         @asyncio.coroutine
