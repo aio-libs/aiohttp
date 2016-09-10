@@ -76,13 +76,32 @@ Reading Methods
 Asynchronous Iteration Support
 ------------------------------
 
-__aiter__
+
+Stream reader supports asynchronous iteration over BODY.
+
+By default it iterates over lines::
+
+   async for line in response.content:
+       print(line)
+
+Also there are methods for iterating over data chunks with maximum
+size limit and over any available data.
 
 .. comethod:: StreamReader.iter_chunked(n)
    :async-for:
 
+   Iterates over data chunks with maximum size limit::
+
+      async for data in response.content.iter_chunked(1024):
+          print(data)
+
 .. comethod:: StreamReader.iter_any(n)
    :async-for:
+
+   Iterates over data chunks in order of intaking them into the stream::
+
+      async for data in response.content.iter_any():
+          print(data)
 
 
 Helpers
