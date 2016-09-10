@@ -32,7 +32,7 @@ if PY_35:
         def __aiter__(self):
             return self
 
-        if not PY_352:
+        if not PY_352:  # pragma: no cover
             __aiter__ = asyncio.coroutine(__aiter__)
 
         @asyncio.coroutine
@@ -52,7 +52,7 @@ class AsyncStreamReaderMixin:
         def __aiter__(self):
             return AsyncStreamIterator(self.readline)
 
-        if not PY_352:
+        if not PY_352:  # pragma: no cover
             __aiter__ = asyncio.coroutine(__aiter__)
 
         def iter_chunked(self, n):
@@ -482,7 +482,7 @@ class DataQueue:
         def __aiter__(self):
             return AsyncStreamIterator(self.read)
 
-        if not PY_352:
+        if not PY_352:  # pragma: no cover
             __aiter__ = asyncio.coroutine(__aiter__)
 
 
