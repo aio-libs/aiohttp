@@ -7,7 +7,7 @@ language: python
 python:
   - 3.4
   - 3.5
-  - 3.5-dev   # for 3.5.2
+#  - 3.5-dev   # for 3.5.2
 #  - nightly
 
 os:
