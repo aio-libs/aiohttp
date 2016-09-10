@@ -227,7 +227,9 @@ class ClientSession:
 
                 # For 301 and 302, mimic IE behaviour, now changed in RFC.
                 # Details: https://github.com/kennethreitz/requests/pull/269
-                if resp.status != 307:
+                if (resp.status == 303 and resp.method != hdrs.METH_HEAD) \
+                   or (resp.status in (301, 302) and
+                       resp.method == hdrs.METH_POST):
                     method = hdrs.METH_GET
                     data = None
                     if headers.get(hdrs.CONTENT_LENGTH):

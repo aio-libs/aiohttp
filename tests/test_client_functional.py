@@ -605,6 +605,29 @@ def test_HTTP_302_REDIRECT_GET(create_app_and_client):
 
 
 @asyncio.coroutine
+def test_HTTP_302_REDIRECT_HEAD(create_app_and_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(text=request.method)
+
+    @asyncio.coroutine
+    def redirect(request):
+        return web.HTTPFound(location='/')
+
+    app, client = yield from create_app_and_client()
+    app.router.add_get('/', handler)
+    app.router.add_get('/redirect', redirect)
+    app.router.add_head('/', handler)
+    app.router.add_head('/redirect', redirect)
+
+    resp = yield from client.request('head', '/redirect')
+    assert 200 == resp.status
+    assert 1 == len(resp.history)
+    assert resp.method == 'HEAD'
+    resp.close()
+
+
+@asyncio.coroutine
 def test_HTTP_302_REDIRECT_NON_HTTP(create_app_and_client):
 
     @asyncio.coroutine
