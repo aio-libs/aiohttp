@@ -198,6 +198,15 @@ def test_release_close(loop):
     assert tr.close.called
 
 
+@asyncio.coroutine
+def test_tcp_connector_resolve_host(loop):
+    conn = aiohttp.TCPConnector(loop=loop)
+
+    res = yield from conn._resolve_host('localhost', 8080)
+    assert res == [{'family': 0, 'flags': 0, 'host': 'localhost',
+                    'hostname': 'localhost', 'port': 8080, 'proto': 0}]
+
+
 class TestBaseConnector(unittest.TestCase):
 
     def setUp(self):
