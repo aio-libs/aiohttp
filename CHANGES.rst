@@ -107,7 +107,16 @@ CHANGES
 
 - Fix redirects for HEAD requests #1147
 
-- Default value for StreamReader.read_nowait is -1 from now
+- Default value for StreamReader.read_nowait is -1 from now #1150
+
+- aiohttp.StreamReader is not inherited from asyncio.StreamReader from now
+  (BACKWARD INCOMPATIBLE CHANGE) #1150
+
+- Streams documentation added #1150
+
+-
+
+-
 
 -
 
