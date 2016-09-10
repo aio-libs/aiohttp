@@ -105,7 +105,7 @@ CHANGES
 
 - Make prettier urls if query is empty dict #1143
 
--
+- Fix redirects for HEAD requests #1147
 
 -
 
