@@ -30,6 +30,7 @@ Boris Feld
 Carl George
 Chien-Wei Huang
 Chih-Yuan Chen
+Chris AtLee
 Chris Laws
 Chris Moore
 Daniel García
