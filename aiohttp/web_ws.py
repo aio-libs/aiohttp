@@ -8,7 +8,6 @@ from . import Timeout, hdrs
 from ._ws_impl import (CLOSED_MESSAGE, WebSocketError, WSMessage, WSMsgType,
                        do_handshake)
 from .errors import ClientDisconnectedError, HttpProcessingError
-from .helpers import _decorate_aiter
 from .web_exceptions import (HTTPBadRequest, HTTPInternalServerError,
                              HTTPMethodNotAllowed)
 from .web_reqrep import StreamResponse
@@ -16,6 +15,7 @@ from .web_reqrep import StreamResponse
 __all__ = ('WebSocketResponse',)
 
 PY_35 = sys.version_info >= (3, 5)
+PY_352 = sys.version_info >= (3, 5, 2)
 
 THRESHOLD_CONNLOST_ACCESS = 5
 
@@ -302,9 +302,11 @@ class WebSocketResponse(StreamResponse):
         raise RuntimeError("Cannot call .write() for websocket")
 
     if PY_35:
-        @_decorate_aiter
         def __aiter__(self):
             return self
+
+        if not PY_352:
+            __aiter__ = asyncio.coroutine(__aiter__)
 
         @asyncio.coroutine
         def __anext__(self):

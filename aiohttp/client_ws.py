@@ -5,9 +5,9 @@ import json
 import sys
 
 from ._ws_impl import CLOSED_MESSAGE, WebSocketError, WSMessage, WSMsgType
-from .helpers import _decorate_aiter
 
 PY_35 = sys.version_info >= (3, 5)
+PY_352 = sys.version_info >= (3, 5, 2)
 
 
 class ClientWebSocketResponse:
@@ -179,9 +179,11 @@ class ClientWebSocketResponse:
         return loads(data)
 
     if PY_35:
-        @_decorate_aiter
         def __aiter__(self):
             return self
+
+        if not PY_352:
+            __aiter__ = asyncio.coroutine(__aiter__)
 
         @asyncio.coroutine
         def __anext__(self):
