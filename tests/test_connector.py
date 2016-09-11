@@ -744,6 +744,20 @@ def test_force_close_and_explicit_keep_alive(loop):
     assert conn
 
 
+@asyncio.coroutine
+def test_tcp_connector(test_client, loop):
+    @asyncio.coroutine
+    def handler(request):
+        return web.HTTPOk()
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    r = yield from client.get('/')
+    assert r.status == 200
+
+
 class TestHttpClientConnector(unittest.TestCase):
 
     def setUp(self):
@@ -786,24 +800,6 @@ class TestHttpClientConnector(unittest.TestCase):
         url = "http://127.0.0.1" + path
         self.addCleanup(srv.close)
         return app, srv, url, sock_path
-
-    def test_tcp_connector(self):
-        @asyncio.coroutine
-        def handler(request):
-            return web.HTTPOk()
-
-        app, srv, url = self.loop.run_until_complete(
-            self.create_server('get', '/', handler))
-        conn = aiohttp.TCPConnector(loop=self.loop)
-        r = self.loop.run_until_complete(
-            aiohttp.request(
-                'get', url,
-                connector=conn,
-                loop=self.loop))
-        self.loop.run_until_complete(r.release())
-        self.assertEqual(r.status, 200)
-        r.close()
-        conn.close()
 
     def test_tcp_connector_uses_provided_local_addr(self):
         @asyncio.coroutine
