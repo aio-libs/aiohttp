@@ -225,6 +225,204 @@ def test_tcp_connector_resolve_host_twice_use_dns_cache(loop):
     assert res is res2
 
 
+def test_get_pop_empty_conns(loop):
+    # see issue #473
+    conn = aiohttp.BaseConnector(loop=loop)
+    key = ('127.0.0.1', 80, False)
+    conn._conns[key] = []
+    tr, proto = conn._get(key)
+    assert (None, None) == (tr, proto)
+    assert not conn._conns
+
+
+def test_release_close_do_not_add_to_pool(loop):
+    # see issue #473
+    conn = aiohttp.BaseConnector(loop=loop)
+    req = unittest.mock.Mock()
+    resp = unittest.mock.Mock()
+    resp.message.should_close = True
+    req.response = resp
+
+    key = ('127.0.0.1', 80, False)
+
+    tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+    conn._acquired[key].add(tr)
+    conn._release(key, req, tr, proto)
+    assert not conn._conns
+
+
+def test_release_close_do_not_delete_existing_connections(loop):
+    key = ('127.0.0.1', 80, False)
+    tr1, proto1 = unittest.mock.Mock(), unittest.mock.Mock()
+
+    conn = aiohttp.BaseConnector(loop=loop)
+    conn._conns[key] = [(tr1, proto1, 1)]
+    req = unittest.mock.Mock()
+    resp = unittest.mock.Mock()
+    resp.message.should_close = True
+    req.response = resp
+
+    tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+    conn._acquired[key].add(tr1)
+    conn._release(key, req, tr, proto)
+    assert conn._conns[key] == [(tr1, proto1, 1)]
+    assert tr.close.called
+    conn.close()
+
+
+def test_release_not_started(loop):
+    loop.time = mock.Mock(return_value=10)
+
+    conn = aiohttp.BaseConnector(loop=loop)
+    req = unittest.mock.Mock()
+    req.response = None
+
+    tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+    key = 1
+    conn._acquired[key].add(tr)
+    conn._release(key, req, tr, proto)
+    assert conn._conns == {1: [(tr, proto, 10)]}
+    assert not tr.close.called
+    conn.close()
+
+
+def test_release_not_opened(loop):
+    conn = aiohttp.BaseConnector(loop=loop)
+    req = unittest.mock.Mock()
+    req.response = unittest.mock.Mock()
+    req.response.message = None
+
+    tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+    key = 1
+    conn._acquired[key].add(tr)
+    conn._release(key, req, tr, proto)
+    assert tr.close.called
+
+
+@asyncio.coroutine
+def test_connect(loop):
+    tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+    proto.is_connected.return_value = True
+
+    req = ClientRequest('GET', 'http://host:80',
+                        loop=loop,
+                        response_class=unittest.mock.Mock())
+
+    conn = aiohttp.BaseConnector(loop=loop)
+    key = ('host', 80, False)
+    conn._conns[key] = [(tr, proto, loop.time())]
+    conn._create_connection = unittest.mock.Mock()
+    conn._create_connection.return_value = helpers.create_future(loop)
+    conn._create_connection.return_value.set_result((tr, proto))
+
+    connection = yield from conn.connect(req)
+    assert not conn._create_connection.called
+    assert connection._transport is tr
+    assert connection._protocol is proto
+    assert isinstance(connection, Connection)
+    connection.close()
+
+
+@asyncio.coroutine
+def test_connect_timeout(loop):
+    conn = aiohttp.BaseConnector(loop=loop)
+    conn._create_connection = unittest.mock.Mock()
+    conn._create_connection.return_value = helpers.create_future(loop)
+    conn._create_connection.return_value.set_exception(
+        asyncio.TimeoutError())
+
+    with pytest.raises(aiohttp.ClientTimeoutError):
+        req = unittest.mock.Mock()
+        yield from conn.connect(req)
+
+
+@asyncio.coroutine
+def test_connect_oserr(loop):
+    conn = aiohttp.BaseConnector(loop=loop)
+    conn._create_connection = unittest.mock.Mock()
+    conn._create_connection.return_value = helpers.create_future(loop)
+    err = OSError(1, 'permission error')
+    conn._create_connection.return_value.set_exception(err)
+
+    with pytest.raises(aiohttp.ClientOSError) as ctx:
+        req = unittest.mock.Mock()
+        yield from conn.connect(req)
+    assert 1 == ctx.value.errno
+    assert ctx.value.strerror.startswith('Cannot connect to')
+    assert ctx.value.strerror.endswith('[permission error]')
+
+
+def test_start_cleanup_task():
+    loop = unittest.mock.Mock()
+    loop.time.return_value = 1.5
+    conn = aiohttp.BaseConnector(loop=loop, keepalive_timeout=10)
+    assert conn._cleanup_handle is None
+
+    conn._start_cleanup_task()
+    assert conn._cleanup_handle is not None
+    loop.call_at.assert_called_with(
+        12, conn._cleanup)
+
+
+def test_cleanup():
+    testset = {
+        1: [(unittest.mock.Mock(), unittest.mock.Mock(), 10),
+            (unittest.mock.Mock(), unittest.mock.Mock(), 300),
+            (None, unittest.mock.Mock(), 300)],
+    }
+    testset[1][0][1].is_connected.return_value = True
+    testset[1][1][1].is_connected.return_value = False
+
+    loop = unittest.mock.Mock()
+    loop.time.return_value = 300
+    conn = aiohttp.BaseConnector(loop=loop)
+    conn._conns = testset
+    existing_handle = conn._cleanup_handle = unittest.mock.Mock()
+
+    conn._cleanup()
+    assert existing_handle.cancel.called
+    assert conn._conns == {}
+    assert conn._cleanup_handle is None
+
+
+def test_cleanup2():
+    testset = {1: [(unittest.mock.Mock(), unittest.mock.Mock(), 300)]}
+    testset[1][0][1].is_connected.return_value = True
+
+    loop = unittest.mock.Mock()
+    loop.time.return_value = 300.1
+
+    conn = aiohttp.BaseConnector(loop=loop, keepalive_timeout=10)
+    conn._conns = testset
+    conn._cleanup()
+    assert conn._conns == testset
+
+    assert conn._cleanup_handle is not None
+    loop.call_at.assert_called_with(
+        310, conn._cleanup)
+    conn.close()
+
+
+def test_cleanup3():
+    testset = {1: [(unittest.mock.Mock(), unittest.mock.Mock(), 290.1),
+                   (unittest.mock.Mock(), unittest.mock.Mock(), 305.1)]}
+    testset[1][0][1].is_connected.return_value = True
+
+    loop = unittest.mock.Mock()
+    loop.time.return_value = 308.5
+
+    conn = aiohttp.BaseConnector(loop=loop, keepalive_timeout=10)
+    conn._conns = testset
+
+    conn._cleanup()
+    assert conn._conns == {1: [testset[1][1]]}
+
+    assert conn._cleanup_handle is not None
+    loop.call_at.assert_called_with(
+        316, conn._cleanup)
+    conn.close()
+
+
 class TestBaseConnector(unittest.TestCase):
 
     def setUp(self):
@@ -240,189 +438,6 @@ class TestBaseConnector(unittest.TestCase):
         self.response.close()
         self.loop.close()
         gc.collect()
-
-    def test_get_pop_empty_conns(self):
-        # see issue #473
-        conn = aiohttp.BaseConnector(loop=self.loop)
-        key = ('127.0.0.1', 80, False)
-        conn._conns[key] = []
-        tr, proto = conn._get(key)
-        self.assertEqual((None, None), (tr, proto))
-        self.assertFalse(conn._conns)
-
-    def test_release_close_do_not_add_to_pool(self):
-        # see issue #473
-        conn = aiohttp.BaseConnector(loop=self.loop)
-        req = unittest.mock.Mock()
-        resp = unittest.mock.Mock()
-        resp.message.should_close = True
-        req.response = resp
-
-        key = ('127.0.0.1', 80, False)
-
-        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        conn._acquired[key].add(tr)
-        conn._release(key, req, tr, proto)
-        self.assertFalse(conn._conns)
-
-    def test_release_close_do_not_delete_existing_connections(self):
-        key = ('127.0.0.1', 80, False)
-        tr1, proto1 = unittest.mock.Mock(), unittest.mock.Mock()
-
-        conn = aiohttp.BaseConnector(loop=self.loop)
-        conn._conns[key] = [(tr1, proto1, 1)]
-        req = unittest.mock.Mock()
-        resp = unittest.mock.Mock()
-        resp.message.should_close = True
-        req.response = resp
-
-        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        conn._acquired[key].add(tr1)
-        conn._release(key, req, tr, proto)
-        self.assertEqual(conn._conns[key], [(tr1, proto1, 1)])
-        self.assertTrue(tr.close.called)
-        conn.close()
-
-    def test_release_not_started(self):
-        self.loop.time = mock.Mock(return_value=10)
-
-        conn = aiohttp.BaseConnector(loop=self.loop)
-        req = unittest.mock.Mock()
-        req.response = None
-
-        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        key = 1
-        conn._acquired[key].add(tr)
-        conn._release(key, req, tr, proto)
-        self.assertEqual(conn._conns, {1: [(tr, proto, 10)]})
-        self.assertFalse(tr.close.called)
-        conn.close()
-
-    def test_release_not_opened(self):
-        conn = aiohttp.BaseConnector(loop=self.loop)
-        req = unittest.mock.Mock()
-        req.response = unittest.mock.Mock()
-        req.response.message = None
-
-        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        key = 1
-        conn._acquired[key].add(tr)
-        conn._release(key, req, tr, proto)
-        self.assertTrue(tr.close.called)
-
-    def test_connect(self):
-        tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-        proto.is_connected.return_value = True
-
-        req = ClientRequest('GET', 'http://host:80',
-                            loop=self.loop,
-                            response_class=unittest.mock.Mock())
-
-        conn = aiohttp.BaseConnector(loop=self.loop)
-        key = ('host', 80, False)
-        conn._conns[key] = [(tr, proto, self.loop.time())]
-        conn._create_connection = unittest.mock.Mock()
-        conn._create_connection.return_value = helpers.create_future(self.loop)
-        conn._create_connection.return_value.set_result((tr, proto))
-
-        connection = self.loop.run_until_complete(conn.connect(req))
-        self.assertFalse(conn._create_connection.called)
-        self.assertEqual(connection._transport, tr)
-        self.assertEqual(connection._protocol, proto)
-        self.assertIsInstance(connection, Connection)
-        connection.close()
-
-    def test_connect_timeout(self):
-        conn = aiohttp.BaseConnector(loop=self.loop)
-        conn._create_connection = unittest.mock.Mock()
-        conn._create_connection.return_value = helpers.create_future(self.loop)
-        conn._create_connection.return_value.set_exception(
-            asyncio.TimeoutError())
-
-        with self.assertRaises(aiohttp.ClientTimeoutError):
-            req = unittest.mock.Mock()
-            self.loop.run_until_complete(conn.connect(req))
-
-    def test_connect_oserr(self):
-        conn = aiohttp.BaseConnector(loop=self.loop)
-        conn._create_connection = unittest.mock.Mock()
-        conn._create_connection.return_value = helpers.create_future(self.loop)
-        err = OSError(1, 'permission error')
-        conn._create_connection.return_value.set_exception(err)
-
-        with self.assertRaises(aiohttp.ClientOSError) as ctx:
-            req = unittest.mock.Mock()
-            self.loop.run_until_complete(conn.connect(req))
-        self.assertEqual(1, ctx.exception.errno)
-        self.assertTrue(ctx.exception.strerror.startswith('Cannot connect to'))
-        self.assertTrue(ctx.exception.strerror.endswith('[permission error]'))
-
-    def test_start_cleanup_task(self):
-        loop = unittest.mock.Mock()
-        loop.time.return_value = 1.5
-        conn = aiohttp.BaseConnector(loop=loop, keepalive_timeout=10)
-        self.assertIsNone(conn._cleanup_handle)
-
-        conn._start_cleanup_task()
-        self.assertIsNotNone(conn._cleanup_handle)
-        loop.call_at.assert_called_with(
-            12, conn._cleanup)
-
-    def test_cleanup(self):
-        testset = {
-            1: [(unittest.mock.Mock(), unittest.mock.Mock(), 10),
-                (unittest.mock.Mock(), unittest.mock.Mock(), 300),
-                (None, unittest.mock.Mock(), 300)],
-        }
-        testset[1][0][1].is_connected.return_value = True
-        testset[1][1][1].is_connected.return_value = False
-
-        loop = unittest.mock.Mock()
-        loop.time.return_value = 300
-        conn = aiohttp.BaseConnector(loop=loop)
-        conn._conns = testset
-        existing_handle = conn._cleanup_handle = unittest.mock.Mock()
-
-        conn._cleanup()
-        self.assertTrue(existing_handle.cancel.called)
-        self.assertEqual(conn._conns, {})
-        self.assertIsNone(conn._cleanup_handle)
-
-    def test_cleanup2(self):
-        testset = {1: [(unittest.mock.Mock(), unittest.mock.Mock(), 300)]}
-        testset[1][0][1].is_connected.return_value = True
-
-        loop = unittest.mock.Mock()
-        loop.time.return_value = 300.1
-
-        conn = aiohttp.BaseConnector(loop=loop, keepalive_timeout=10)
-        conn._conns = testset
-        conn._cleanup()
-        self.assertEqual(conn._conns, testset)
-
-        self.assertIsNotNone(conn._cleanup_handle)
-        loop.call_at.assert_called_with(
-            310, conn._cleanup)
-        conn.close()
-
-    def test_cleanup3(self):
-        testset = {1: [(unittest.mock.Mock(), unittest.mock.Mock(), 290.1),
-                       (unittest.mock.Mock(), unittest.mock.Mock(), 305.1)]}
-        testset[1][0][1].is_connected.return_value = True
-
-        loop = unittest.mock.Mock()
-        loop.time.return_value = 308.5
-
-        conn = aiohttp.BaseConnector(loop=loop, keepalive_timeout=10)
-        conn._conns = testset
-
-        conn._cleanup()
-        self.assertEqual(conn._conns, {1: [testset[1][1]]})
-
-        self.assertIsNotNone(conn._cleanup_handle)
-        loop.call_at.assert_called_with(
-            316, conn._cleanup)
-        conn.close()
 
     def test_tcp_connector_ctor(self):
         conn = aiohttp.TCPConnector(loop=self.loop)
