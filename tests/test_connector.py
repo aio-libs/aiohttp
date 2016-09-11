@@ -609,172 +609,156 @@ def test_connect_with_limit_cancelled(loop):
     connection.close()
 
 
-class TestBaseConnector(unittest.TestCase):
+@asyncio.coroutine
+def test_connect_with_limit_release_waiters(loop):
 
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
+    def check_with_exc(err):
+        conn = aiohttp.BaseConnector(limit=1, loop=loop)
+        conn._create_connection = unittest.mock.Mock()
+        conn._create_connection.return_value = \
+            helpers.create_future(loop)
+        conn._create_connection.return_value.set_exception(err)
 
-        self.transport = unittest.mock.Mock()
-        self.stream = aiohttp.StreamParser()
-        self.response = ClientResponse('get', 'http://base-conn.org')
-        self.response._post_init(self.loop)
+        with pytest.raises(Exception):
+            req = unittest.mock.Mock()
+            yield from conn.connect(req)
+        key = (req.host, req.port, req.ssl)
+        assert not conn._waiters[key]
 
-    def tearDown(self):
-        self.response.close()
-        self.loop.close()
-        gc.collect()
+    check_with_exc(OSError(1, 'permission error'))
+    check_with_exc(RuntimeError())
+    check_with_exc(asyncio.TimeoutError())
 
-    def test_connect_with_limit_release_waiters(self):
 
-        def check_with_exc(err):
-            conn = aiohttp.BaseConnector(limit=1, loop=self.loop)
-            conn._create_connection = unittest.mock.Mock()
-            conn._create_connection.return_value = \
-                helpers.create_future(self.loop)
-            conn._create_connection.return_value.set_exception(err)
+@asyncio.coroutine
+def test_connect_with_limit_concurrent(loop):
+    proto = unittest.mock.Mock()
+    proto.is_connected.return_value = True
 
-            with self.assertRaises(Exception):
-                req = unittest.mock.Mock()
-                self.loop.run_until_complete(conn.connect(req))
-            key = (req.host, req.port, req.ssl)
-            self.assertFalse(conn._waiters[key])
+    req = ClientRequest('GET', 'http://host:80',
+                        loop=loop,
+                        response_class=unittest.mock.Mock(
+                            _should_close=False))
 
-        check_with_exc(OSError(1, 'permission error'))
-        check_with_exc(RuntimeError())
-        check_with_exc(asyncio.TimeoutError())
+    max_connections = 2
+    num_connections = 0
 
-    def test_connect_with_limit_concurrent(self):
+    conn = aiohttp.BaseConnector(limit=max_connections, loop=loop)
 
-        @asyncio.coroutine
-        def go():
-            proto = unittest.mock.Mock()
-            proto.is_connected.return_value = True
+    # Use a real coroutine for _create_connection; a mock would mask
+    # problems that only happen when the method yields.
 
-            req = ClientRequest('GET', 'http://host:80',
-                                loop=self.loop,
-                                response_class=unittest.mock.Mock(
-                                    _should_close=False))
+    @asyncio.coroutine
+    def create_connection(req):
+        nonlocal num_connections
+        num_connections += 1
+        yield from asyncio.sleep(0, loop=loop)
 
-            max_connections = 2
-            num_connections = 0
+        # Make a new transport mock each time because acquired
+        # transports are stored in a set. Reusing the same object
+        # messes with the count.
+        tr = unittest.mock.Mock()
 
-            conn = aiohttp.BaseConnector(limit=max_connections, loop=self.loop)
+        return tr, proto
 
-            # Use a real coroutine for _create_connection; a mock would mask
-            # problems that only happen when the method yields.
+    conn._create_connection = create_connection
 
-            @asyncio.coroutine
-            def create_connection(req):
-                nonlocal num_connections
-                num_connections += 1
-                yield from asyncio.sleep(0, loop=self.loop)
+    # Simulate something like a crawler. It opens a connection, does
+    # something with it, closes it, then creates tasks that make more
+    # connections and waits for them to finish. The crawler is started
+    # with multiple concurrent requests and stops when it hits a
+    # predefined maximum number of requests.
 
-                # Make a new transport mock each time because acquired
-                # transports are stored in a set. Reusing the same object
-                # messes with the count.
-                tr = unittest.mock.Mock()
+    max_requests = 10
+    num_requests = 0
+    start_requests = max_connections + 1
 
-                return tr, proto
-
-            conn._create_connection = create_connection
-
-            # Simulate something like a crawler. It opens a connection, does
-            # something with it, closes it, then creates tasks that make more
-            # connections and waits for them to finish. The crawler is started
-            # with multiple concurrent requests and stops when it hits a
-            # predefined maximum number of requests.
-
-            max_requests = 10
-            num_requests = 0
-            start_requests = max_connections + 1
-
-            @asyncio.coroutine
-            def f(start=True):
-                nonlocal num_requests
-                if num_requests == max_requests:
-                    return
-                num_requests += 1
-                if not start:
-                    connection = yield from conn.connect(req)
-                    yield from asyncio.sleep(0, loop=self.loop)
-                    connection.release()
-                tasks = [
-                    asyncio.async(f(start=False), loop=self.loop)
-                    for i in range(start_requests)
-                ]
-                yield from asyncio.wait(tasks, loop=self.loop)
-
-            yield from f()
-            conn.close()
-
-            self.assertEqual(max_connections, num_connections)
-
-        self.loop.run_until_complete(go())
-
-    def test_close_with_acquired_connection(self):
-
-        @asyncio.coroutine
-        def go():
-            tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-            proto.is_connected.return_value = True
-
-            req = ClientRequest('GET', 'http://host:80',
-                                loop=self.loop,
-                                response_class=unittest.mock.Mock())
-
-            conn = aiohttp.BaseConnector(loop=self.loop, limit=1)
-            key = ('host', 80, False)
-            conn._conns[key] = [(tr, proto, self.loop.time())]
-            conn._create_connection = unittest.mock.Mock()
-            conn._create_connection.return_value = helpers.create_future(
-                self.loop)
-            conn._create_connection.return_value.set_result((tr, proto))
-
+    @asyncio.coroutine
+    def f(start=True):
+        nonlocal num_requests
+        if num_requests == max_requests:
+            return
+        num_requests += 1
+        if not start:
             connection = yield from conn.connect(req)
+            yield from asyncio.sleep(0, loop=loop)
+            connection.release()
+        tasks = [
+            helpers.ensure_future(f(start=False), loop=loop)
+            for i in range(start_requests)
+        ]
+        yield from asyncio.wait(tasks, loop=loop)
 
-            self.assertEqual(1, len(conn._acquired))
-            conn.close()
-            self.assertEqual(0, len(conn._acquired))
-            self.assertTrue(conn.closed)
-            tr.close.assert_called_with()
+    yield from f()
+    conn.close()
 
-            self.assertFalse(connection.closed)
-            connection.close()
-            self.assertTrue(connection.closed)
+    assert max_connections == num_connections
 
-        self.loop.run_until_complete(go())
 
-    def test_default_force_close(self):
-        connector = aiohttp.BaseConnector(loop=self.loop)
-        self.assertFalse(connector.force_close)
+@asyncio.coroutine
+def test_close_with_acquired_connection(loop):
 
-    def test_limit_property(self):
-        conn = aiohttp.BaseConnector(loop=self.loop, limit=15)
-        self.assertEqual(15, conn.limit)
-        conn.close()
+    tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+    proto.is_connected.return_value = True
 
-    def test_limit_property_default(self):
-        conn = aiohttp.BaseConnector(loop=self.loop)
-        self.assertEquals(conn.limit, 20)
-        conn.close()
+    req = ClientRequest('GET', 'http://host:80',
+                        loop=loop,
+                        response_class=unittest.mock.Mock())
 
-    def test_limitless(self):
-        with aiohttp.BaseConnector(loop=self.loop, limit=None) as conn:
-            self.assertIsNone(conn.limit)
+    conn = aiohttp.BaseConnector(loop=loop, limit=1)
+    key = ('host', 80, False)
+    conn._conns[key] = [(tr, proto, loop.time())]
+    conn._create_connection = unittest.mock.Mock()
+    conn._create_connection.return_value = helpers.create_future(loop)
+    conn._create_connection.return_value.set_result((tr, proto))
 
-    def test_force_close_and_explicit_keep_alive(self):
-        with self.assertRaises(ValueError):
-            aiohttp.BaseConnector(loop=self.loop, keepalive_timeout=30,
-                                  force_close=True)
+    connection = yield from conn.connect(req)
 
-        conn = aiohttp.BaseConnector(loop=self.loop, force_close=True,
-                                     keepalive_timeout=None)
-        assert conn
+    assert 1 == len(conn._acquired)
+    conn.close()
+    assert 0 == len(conn._acquired)
+    assert conn.closed
+    tr.close.assert_called_with()
 
-        conn = aiohttp.BaseConnector(loop=self.loop, force_close=True)
+    assert not connection.closed
+    connection.close()
+    assert connection.closed
 
-        assert conn
+
+def test_default_force_close(loop):
+    connector = aiohttp.BaseConnector(loop=loop)
+    assert not connector.force_close
+
+
+def test_limit_property(loop):
+    conn = aiohttp.BaseConnector(loop=loop, limit=15)
+    assert 15 == conn.limit
+    conn.close()
+
+
+def test_limit_property_default(loop):
+    conn = aiohttp.BaseConnector(loop=loop)
+    assert conn.limit == 20
+    conn.close()
+
+
+def test_limitless(loop):
+    with aiohttp.BaseConnector(loop=loop, limit=None) as conn:
+        assert conn.limit is None
+
+
+def test_force_close_and_explicit_keep_alive(loop):
+    with pytest.raises(ValueError):
+        aiohttp.BaseConnector(loop=loop, keepalive_timeout=30,
+                              force_close=True)
+
+    conn = aiohttp.BaseConnector(loop=loop, force_close=True,
+                                 keepalive_timeout=None)
+    assert conn
+
+    conn = aiohttp.BaseConnector(loop=loop, force_close=True)
+
+    assert conn
 
 
 class TestHttpClientConnector(unittest.TestCase):
