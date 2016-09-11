@@ -203,8 +203,8 @@ def test_tcp_connector_resolve_host_use_dns_cache(loop):
     conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=True)
 
     res = yield from conn._resolve_host('localhost', 8080)
-    assert res == [{'family': socket.AF_INET, 'flags': 4, 'host': '127.0.0.1',
-                    'hostname': 'localhost', 'port': 8080, 'proto': 6}]
+    assert {'family': socket.AF_INET, 'flags': 4, 'host': '127.0.0.1',
+            'hostname': 'localhost', 'port': 8080, 'proto': 6} in res
 
 
 @asyncio.coroutine
