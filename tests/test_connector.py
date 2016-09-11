@@ -19,23 +19,6 @@ from aiohttp.connector import Connection
 from aiohttp.test_utils import unused_port
 
 
-@pytest.fixture
-def transport():
-    return unittest.mock.Mock()
-
-
-@pytest.fixture
-def stream():
-    return aiohttp.StreamParser()
-
-
-@pytest.fixture
-def response(loop):
-    resp = ClientResponse('get', 'http://base-conn.org')
-    resp._post_init(loop)
-    return resp
-
-
 def test_del(loop):
     conn = aiohttp.BaseConnector(loop=loop)
     transp = unittest.mock.Mock()
