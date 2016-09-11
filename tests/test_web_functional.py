@@ -7,7 +7,7 @@ from unittest import mock
 import pytest
 from multidict import MultiDict
 
-from aiohttp import FormData, web
+from aiohttp import FormData, multipart, web
 from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
 from aiohttp.streams import EOF_MARKER
 
@@ -143,6 +143,42 @@ def test_post_json(loop, test_client):
 
 
 @asyncio.coroutine
+def test_multipart(loop, test_client):
+    with multipart.MultipartWriter() as writer:
+        writer.append('test')
+        writer.append_json({'passed': True})
+
+    @asyncio.coroutine
+    def handler(request):
+        reader = yield from request.multipart()
+        assert isinstance(reader, multipart.MultipartReader)
+
+        part = yield from reader.next()
+        assert isinstance(part, multipart.BodyPartReader)
+        thing = yield from part.text()
+        assert thing == 'test'
+
+        part = yield from reader.next()
+        assert isinstance(part, multipart.BodyPartReader)
+        assert part.headers['Content-Type'] == 'application/json'
+        thing = yield from part.json()
+        assert thing == {'passed': True}
+
+        resp = web.Response()
+        resp.content_type = 'application/json'
+        resp.body = b''
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.post('/', data=writer, headers=writer.headers)
+    assert 200 == resp.status
+    yield from resp.release()
+
+
+@asyncio.coroutine
 def test_render_redirect(loop, test_client):
 
     @asyncio.coroutine
@@ -174,7 +210,8 @@ def test_post_single_file(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
-        data = yield from request.post()
+        with pytest.warns(DeprecationWarning):
+            data = yield from request.post()
         assert ['sample.crt'] == list(data.keys())
         for fs in data.values():
             check_file(fs)
