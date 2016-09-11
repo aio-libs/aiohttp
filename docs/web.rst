@@ -510,6 +510,7 @@ a container for the file as well as some of its metadata::
 
     async def store_mp3_handler(request):
 
+        # WARNING: don't do that if you plan to receive large files!
         data = await request.post()
 
         mp3 = data['mp3']
@@ -526,6 +527,35 @@ a container for the file as well as some of its metadata::
                             headers=MultiDict(
                                 {'CONTENT-DISPOSITION': mp3_file})
 
+
+You might be noticed a big warning in example above. The general issue is that
+:meth:`Request.post` reads whole payload in memory. That's may hurt with
+:abbr:`OOM (Out Of Memory)` error. To avoid this, for multipart uploads, you
+should use :meth:`Request.multipart` which returns :ref:`multipart reader
+<aiohttp-multipart>` back::
+
+    async def store_mp3_handler(request):
+
+        reader = await request.multipart()
+
+        # /!\ Don't forget to validate your inputs /!\
+
+        mp3 = await reader.next()
+
+        filename = mp3.filename
+
+        # You cannot relay on Content-Length if transfer is chunked.
+        size = 0
+        with open(os.path.join('/spool/yarrr-media/mp3/', filename), 'wb') as f:
+            while True:
+                chunk = await mp3.read_chunk()  # 8192 bytes by default.
+                if not chunk:
+                    break
+                size += len(chunk)
+                f.write(chunk)
+
+        return web.Response(body='{} sized of {} successfully stored'
+                                 ''.format(filename, size))
 
 .. _aiohttp-web-websockets:
 
