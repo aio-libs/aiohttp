@@ -14,7 +14,7 @@ import pytest
 
 import aiohttp
 from aiohttp import client, helpers, web
-from aiohttp.client import ClientRequest, ClientResponse
+from aiohttp.client import ClientRequest
 from aiohttp.connector import Connection
 from aiohttp.test_utils import unused_port
 
