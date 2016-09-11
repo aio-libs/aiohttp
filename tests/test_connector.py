@@ -423,6 +423,67 @@ def test_cleanup3():
     conn.close()
 
 
+def test_tcp_connector_ctor(loop):
+    conn = aiohttp.TCPConnector(loop=loop)
+    assert conn.verify_ssl
+    assert conn.fingerprint is None
+
+    with pytest.warns(DeprecationWarning):
+        assert not conn.resolve
+    assert not conn.use_dns_cache
+
+    assert conn.family == 0
+
+    with pytest.warns(DeprecationWarning):
+        assert conn.resolved_hosts == {}
+    assert conn.resolved_hosts == {}
+
+
+def test_tcp_connector_ctor_fingerprint_valid(loop):
+    valid = b'\xa2\x06G\xad\xaa\xf5\xd8\\J\x99^by;\x06='
+    conn = aiohttp.TCPConnector(loop=loop, fingerprint=valid)
+    assert conn.fingerprint == valid
+
+
+def test_tcp_connector_fingerprint_invalid(loop):
+    invalid = b'\x00'
+    with pytest.raises(ValueError):
+        aiohttp.TCPConnector(loop=loop, fingerprint=invalid)
+
+
+def test_tcp_connector_clear_resolved_hosts(loop):
+    conn = aiohttp.TCPConnector(loop=loop)
+    info = object()
+    conn._cached_hosts[('localhost', 123)] = info
+    conn._cached_hosts[('localhost', 124)] = info
+    conn.clear_resolved_hosts('localhost', 123)
+    assert conn.resolved_hosts == {('localhost', 124): info}
+    conn.clear_resolved_hosts('localhost', 123)
+    assert conn.resolved_hosts == {('localhost', 124): info}
+    with pytest.warns(DeprecationWarning):
+        conn.clear_resolved_hosts()
+    assert conn.resolved_hosts == {}
+
+
+def test_tcp_connector_clear_dns_cache(loop):
+    conn = aiohttp.TCPConnector(loop=loop)
+    info = object()
+    conn._cached_hosts[('localhost', 123)] = info
+    conn._cached_hosts[('localhost', 124)] = info
+    conn.clear_dns_cache('localhost', 123)
+    assert conn.cached_hosts == {('localhost', 124): info}
+    conn.clear_dns_cache('localhost', 123)
+    assert conn.cached_hosts == {('localhost', 124): info}
+    conn.clear_dns_cache()
+    assert conn.cached_hosts == {}
+
+
+def test_tcp_connector_clear_dns_cache_bad_args(loop):
+    conn = aiohttp.TCPConnector(loop=loop)
+    with pytest.raises(ValueError):
+        conn.clear_dns_cache('localhost')
+
+
 class TestBaseConnector(unittest.TestCase):
 
     def setUp(self):
@@ -438,65 +499,6 @@ class TestBaseConnector(unittest.TestCase):
         self.response.close()
         self.loop.close()
         gc.collect()
-
-    def test_tcp_connector_ctor(self):
-        conn = aiohttp.TCPConnector(loop=self.loop)
-        self.assertTrue(conn.verify_ssl)
-        self.assertIs(conn.fingerprint, None)
-
-        with self.assertWarns(DeprecationWarning):
-            self.assertFalse(conn.resolve)
-        self.assertFalse(conn.use_dns_cache)
-
-        self.assertEqual(conn.family, 0)
-
-        with self.assertWarns(DeprecationWarning):
-            self.assertEqual(conn.resolved_hosts, {})
-        self.assertEqual(conn.resolved_hosts, {})
-
-    def test_tcp_connector_ctor_fingerprint_valid(self):
-        valid = b'\xa2\x06G\xad\xaa\xf5\xd8\\J\x99^by;\x06='
-        conn = aiohttp.TCPConnector(loop=self.loop, fingerprint=valid)
-        self.assertEqual(conn.fingerprint, valid)
-
-    def test_tcp_connector_fingerprint_invalid(self):
-        invalid = b'\x00'
-        with self.assertRaises(ValueError):
-            aiohttp.TCPConnector(loop=self.loop, fingerprint=invalid)
-
-    def test_tcp_connector_clear_resolved_hosts(self):
-        conn = aiohttp.TCPConnector(loop=self.loop)
-        info = object()
-        conn._cached_hosts[('localhost', 123)] = info
-        conn._cached_hosts[('localhost', 124)] = info
-        conn.clear_resolved_hosts('localhost', 123)
-        self.assertEqual(
-            conn.resolved_hosts, {('localhost', 124): info})
-        conn.clear_resolved_hosts('localhost', 123)
-        self.assertEqual(
-            conn.resolved_hosts, {('localhost', 124): info})
-        with self.assertWarns(DeprecationWarning):
-            conn.clear_resolved_hosts()
-        self.assertEqual(conn.resolved_hosts, {})
-
-    def test_tcp_connector_clear_dns_cache(self):
-        conn = aiohttp.TCPConnector(loop=self.loop)
-        info = object()
-        conn._cached_hosts[('localhost', 123)] = info
-        conn._cached_hosts[('localhost', 124)] = info
-        conn.clear_dns_cache('localhost', 123)
-        self.assertEqual(
-            conn.cached_hosts, {('localhost', 124): info})
-        conn.clear_dns_cache('localhost', 123)
-        self.assertEqual(
-            conn.cached_hosts, {('localhost', 124): info})
-        conn.clear_dns_cache()
-        self.assertEqual(conn.cached_hosts, {})
-
-    def test_tcp_connector_clear_dns_cache_bad_args(self):
-        conn = aiohttp.TCPConnector(loop=self.loop)
-        with self.assertRaises(ValueError):
-            conn.clear_dns_cache('localhost')
 
     def test_ambigous_verify_ssl_and_ssl_context(self):
         with self.assertRaises(ValueError):
