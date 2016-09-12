@@ -758,6 +758,28 @@ def test_tcp_connector(test_client, loop):
     assert r.status == 200
 
 
+def test_ambiguous_ctor_params(loop):
+    with pytest.raises(ValueError):
+        aiohttp.TCPConnector(resolve=True, use_dns_cache=False,
+                             loop=loop)
+
+
+def test_both_resolve_and_use_dns_cache(loop):
+    conn = aiohttp.TCPConnector(resolve=True, use_dns_cache=True,
+                                loop=loop)
+    assert conn.use_dns_cache
+    with pytest.warns(DeprecationWarning):
+        assert conn.resolve
+
+
+def test_both_use_dns_cache_only(loop):
+    conn = aiohttp.TCPConnector(use_dns_cache=True,
+                                loop=loop)
+    assert conn.use_dns_cache
+    with pytest.warns(DeprecationWarning):
+        assert conn.resolve
+
+
 class TestHttpClientConnector(unittest.TestCase):
 
     def setUp(self):
@@ -847,25 +869,6 @@ class TestHttpClientConnector(unittest.TestCase):
         self.assertEqual(r.status, 200)
         r.close()
 
-    def test_ambiguous_ctor_params(self):
-        with self.assertRaises(ValueError):
-            aiohttp.TCPConnector(resolve=True, use_dns_cache=False,
-                                 loop=self.loop)
-
-    def test_both_resolve_and_use_dns_cache(self):
-        conn = aiohttp.TCPConnector(resolve=True, use_dns_cache=True,
-                                    loop=self.loop)
-        self.assertTrue(conn.use_dns_cache)
-        with self.assertWarns(DeprecationWarning):
-            self.assertTrue(conn.resolve)
-
-    def test_both_use_dns_cache_only(self):
-        conn = aiohttp.TCPConnector(use_dns_cache=True,
-                                    loop=self.loop)
-        self.assertTrue(conn.use_dns_cache)
-        with self.assertWarns(DeprecationWarning):
-            self.assertTrue(conn.resolve)
-
     def test_resolver_not_called_with_address_is_ip(self):
         resolver = unittest.mock.MagicMock()
         connector = aiohttp.TCPConnector(resolver=resolver, loop=self.loop)
@@ -878,30 +881,3 @@ class TestHttpClientConnector(unittest.TestCase):
             self.loop.run_until_complete(connector.connect(req))
 
         resolver.resolve.assert_not_called()
-
-    def test_ip_addresses(self):
-        ip_addresses = [
-            '0.0.0.0',
-            '127.0.0.1',
-            '255.255.255.255',
-            '0:0:0:0:0:0:0:0',
-            'FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF',
-            '00AB:0002:3008:8CFD:00AB:0002:3008:8CFD',
-            '00ab:0002:3008:8cfd:00ab:0002:3008:8cfd',
-            'AB:02:3008:8CFD:AB:02:3008:8CFD',
-            'AB:02:3008:8CFD::02:3008:8CFD',
-            '::',
-            '1::1',
-        ]
-        for address in ip_addresses:
-            assert helpers.is_ip_address(address) is True
-
-    def test_host_addresses(self):
-        hosts = [
-            'www.four.part.host'
-            'www.python.org',
-            'foo.bar',
-            'localhost',
-        ]
-        for host in hosts:
-            assert helpers.is_ip_address(host) is False
