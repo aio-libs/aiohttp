@@ -116,6 +116,8 @@ CHANGES
 
 - Add `multipart` coroutine method for web Request object #1067
 
+- Publish ClientSession.loop property #1149
+
 -
 
 -

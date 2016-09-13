@@ -418,3 +418,8 @@ def test_cookie_jar_usage(create_app_and_client):
 def test_session_default_version(loop):
     session = aiohttp.ClientSession(loop=loop)
     assert session.version == aiohttp.HttpVersion11
+
+
+def test_session_loop(loop):
+    session = aiohttp.ClientSession(loop=loop)
+    assert session.loop is loop
