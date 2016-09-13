@@ -86,7 +86,6 @@ def test_path_matching():
     assert not test_func("/different-folder/", "/folder/")
 
 
-
 class TestCookieJarBase(unittest.TestCase):
 
     def setUp(self):
@@ -365,7 +364,7 @@ class TestCookieJarSafe(TestCookieJarBase):
             1975, 1, 1, tzinfo=datetime.timezone.utc).timestamp()
 
         ts_after = datetime.datetime(
-            1985, 1, 1, tzinfo=datetime.timezone.utc).timestamp()
+            2115, 1, 1, tzinfo=datetime.timezone.utc).timestamp()
 
         cookies_sent = self.timed_request(
             "http://expirestest.com/", ts_before, ts_before)
