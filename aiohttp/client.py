@@ -476,6 +476,11 @@ class ClientSession:
         """The session HTTP protocol version."""
         return self._version
 
+    @property
+    def loop(self):
+        """Session's loop."""
+        return self._loop
+
     def detach(self):
         """Detach connector from session without closing the former.
 
