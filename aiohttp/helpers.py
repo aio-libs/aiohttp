@@ -8,7 +8,6 @@ import functools
 import io
 import os
 import re
-import sys
 import warnings
 from collections import namedtuple
 from pathlib import Path
@@ -28,8 +27,6 @@ except ImportError:
 __all__ = ('BasicAuth', 'create_future', 'FormData', 'parse_mimetype',
            'Timeout', 'ensure_future')
 
-
-PY_352 = sys.version_info >= (3, 5, 2)
 
 sentinel = object()
 
@@ -580,10 +577,3 @@ def _get_kwarg(kwargs, old, new, value):
         return val
     else:
         return value
-
-
-def _decorate_aiter(coro):  # pragma: no cover
-    if PY_352:
-        return coro
-    else:
-        return asyncio.coroutine(coro)

@@ -228,7 +228,9 @@ class ClientSession:
 
                 # For 301 and 302, mimic IE behaviour, now changed in RFC.
                 # Details: https://github.com/kennethreitz/requests/pull/269
-                if resp.status != 307:
+                if (resp.status == 303 and resp.method != hdrs.METH_HEAD) \
+                   or (resp.status in (301, 302) and
+                       resp.method == hdrs.METH_POST):
                     method = hdrs.METH_GET
                     data = None
                     if headers.get(hdrs.CONTENT_LENGTH):
@@ -475,6 +477,11 @@ class ClientSession:
         """The session HTTP protocol version."""
         return self._version
 
+    @property
+    def loop(self):
+        """Session's loop."""
+        return self._loop
+
     def detach(self):
         """Detach connector from session without closing the former.
 
@@ -646,34 +653,31 @@ def request(method, url, *,
             proxy_auth=None):
     """Constructs and sends a request. Returns response object.
 
-    :param str method: HTTP method
-    :param str url: request url
-    :param params: (optional) Dictionary or bytes to be sent in the query
+    method - HTTP method
+    url - request url
+    params - (optional) Dictionary or bytes to be sent in the query
       string of the new request
-    :param data: (optional) Dictionary, bytes, or file-like object to
+    data - (optional) Dictionary, bytes, or file-like object to
       send in the body of the request
-    :param dict headers: (optional) Dictionary of HTTP Headers to send with
+    headers - (optional) Dictionary of HTTP Headers to send with
       the request
-    :param dict cookies: (optional) Dict object to send with the request
-    :param auth: (optional) BasicAuth named tuple represent HTTP Basic Auth
-    :type auth: aiohttp.helpers.BasicAuth
-    :param bool allow_redirects: (optional) If set to False, do not follow
+    cookies - (optional) Dict object to send with the request
+    auth - (optional) BasicAuth named tuple represent HTTP Basic Auth
+    auth - aiohttp.helpers.BasicAuth
+    allow_redirects - (optional) If set to False, do not follow
       redirects
-    :param version: Request HTTP version.
-    :type version: aiohttp.protocol.HttpVersion
-    :param bool compress: Set to True if request has to be compressed
+    version - Request HTTP version.
+    compress - Set to True if request has to be compressed
        with deflate encoding.
-    :param chunked: Set to chunk size for chunked transfer encoding.
-    :type chunked: bool or int
-    :param bool expect100: Expect 100-continue response from server.
-    :param connector: BaseConnector sub-class instance to support
+    chunked - Set to chunk size for chunked transfer encoding.
+    expect100 - Expect 100-continue response from server.
+    connector - BaseConnector sub-class instance to support
        connection pooling.
-    :type connector: aiohttp.connector.BaseConnector
-    :param bool read_until_eof: Read response until eof if response
+    read_until_eof - Read response until eof if response
        does not have Content-Length header.
-    :param request_class: (optional) Custom Request class implementation.
-    :param response_class: (optional) Custom Response class implementation.
-    :param loop: Optional event loop.
+    request_class - (optional) Custom Request class implementation.
+    response_class - (optional) Custom Response class implementation.
+    loop - Optional event loop.
 
     Usage::
 

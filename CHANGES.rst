@@ -103,6 +103,28 @@ CHANGES
 
 - Fix static file sending on uvloop when sendfile is available #1093
 
+- Make prettier urls if query is empty dict #1143
+
+- Fix redirects for HEAD requests #1147
+
+- Default value for `StreamReader.read_nowait` is -1 from now #1150
+
+- `aiohttp.StreamReader` is not inherited from `asyncio.StreamReader` from now
+  (BACKWARD INCOMPATIBLE CHANGE) #1150
+
+- Streams documentation added #1150
+
+- Add `multipart` coroutine method for web Request object #1067
+
+- Publish ClientSession.loop property #1149
+
+-
+
+-
+
+-
+
+-
 
 0.22.5 (08-02-2016)
 -------------------

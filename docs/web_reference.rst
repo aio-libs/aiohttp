@@ -99,7 +99,7 @@ like one using :meth:`Request.copy`.
 
       A multidict with all the variables in the query string.
 
-      Read-only :class:`~aiohttp.MultiDictProxy` lazy property.
+      Read-only :class:`~multidict.MultiDictProxy` lazy property.
 
       .. versionchanged:: 0.17
          A multidict contains empty items for query string like ``?arg=``.
@@ -109,7 +109,7 @@ like one using :meth:`Request.copy`.
       A multidict with all the variables in the POST parameters.
       POST property available only after :meth:`Request.post` coroutine call.
 
-      Read-only :class:`~aiohttp.MultiDictProxy`.
+      Read-only :class:`~multidict.MultiDictProxy`.
 
       :raises RuntimeError: if :meth:`Request.post` was not called \
                             before accessing the property.
@@ -118,7 +118,7 @@ like one using :meth:`Request.copy`.
 
       A case-insensitive multidict proxy with all headers.
 
-      Read-only :class:`~aiohttp.CIMultiDictProxy` property.
+      Read-only :class:`~multidict.CIMultiDictProxy` property.
 
    .. attribute:: raw_headers
 
@@ -164,11 +164,11 @@ like one using :meth:`Request.copy`.
 
       A multidict of all request's cookies.
 
-      Read-only :class:`~aiohttp.MultiDictProxy` lazy property.
+      Read-only :class:`~multidict.MultiDictProxy` lazy property.
 
    .. attribute:: content
 
-      A :class:`~aiohttp.streams.FlowControlStreamReader` instance,
+      A :class:`~aiohttp.StreamReader` instance,
       input stream for reading request's *BODY*.
 
       Read-only property.
@@ -261,12 +261,34 @@ like one using :meth:`Request.copy`.
          The method **does** store read data internally, subsequent
          :meth:`~Request.json` call will return the same value.
 
+
+   .. coroutinemethod:: multipart(*, reader=aiohttp.multipart.MultipartReader)
+
+      Returns :class:`aiohttp.multipart.MultipartReader` which processes
+      incoming *multipart* request.
+
+      The method is just a boilerplate :ref:`coroutine <coroutine>`
+      implemented as::
+
+         async def multipart(self, *, reader=aiohttp.multipart.MultipartReader):
+             return reader(self.headers, self._payload)
+
+      This method is a coroutine for consistency with the else reader methods.
+
+      .. warning::
+
+         The method **does not** store read data internally. That means once
+         you exhausts multipart reader, you cannot get the request payload one
+         more time.
+
+      .. seealso:: :ref:`aiohttp-multipart`
+
    .. coroutinemethod:: post()
 
       A :ref:`coroutine <coroutine>` that reads POST parameters from
       request body.
 
-      Returns :class:`~aiohttp.MultiDictProxy` instance filled
+      Returns :class:`~multidict.MultiDictProxy` instance filled
       with parsed data.
 
       If :attr:`method` is not *POST*, *PUT* or *PATCH* or
@@ -433,7 +455,7 @@ StreamResponse
 
    .. attribute:: headers
 
-      :class:`~aiohttp.CIMultiDict` instance
+      :class:`~aiohttp.CIMultiiDct` instance
       for *outgoing* *HTTP headers*.
 
    .. attribute:: cookies

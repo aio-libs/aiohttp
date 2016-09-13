@@ -13,6 +13,7 @@ __all__ = (
     'FlowControlDataQueue', 'FlowControlChunksQueue')
 
 PY_35 = sys.version_info >= (3, 5)
+PY_352 = sys.version_info >= (3, 5, 2)
 
 EOF_MARKER = b''
 DEFAULT_LIMIT = 2 ** 16
@@ -22,32 +23,37 @@ class EofStream(Exception):
     """eof stream indication."""
 
 
-class AsyncStreamIterator:
+if PY_35:
+    class AsyncStreamIterator:
 
-    def __init__(self, read_func):
-        self.read_func = read_func
+        def __init__(self, read_func):
+            self.read_func = read_func
 
-    @helpers._decorate_aiter
-    def __aiter__(self):
-        return self
+        def __aiter__(self):
+            return self
 
-    @asyncio.coroutine
-    def __anext__(self):
-        try:
-            rv = yield from self.read_func()
-        except EofStream:
-            raise StopAsyncIteration  # NOQA
-        if rv == EOF_MARKER:
-            raise StopAsyncIteration  # NOQA
-        return rv
+        if not PY_352:  # pragma: no cover
+            __aiter__ = asyncio.coroutine(__aiter__)
+
+        @asyncio.coroutine
+        def __anext__(self):
+            try:
+                rv = yield from self.read_func()
+            except EofStream:
+                raise StopAsyncIteration  # NOQA
+            if rv == EOF_MARKER:
+                raise StopAsyncIteration  # NOQA
+            return rv
 
 
 class AsyncStreamReaderMixin:
 
     if PY_35:
-        @helpers._decorate_aiter
         def __aiter__(self):
             return AsyncStreamIterator(self.readline)
+
+        if not PY_352:  # pragma: no cover
+            __aiter__ = asyncio.coroutine(__aiter__)
 
         def iter_chunked(self, n):
             """Returns an asynchronous iterator that yields chunks of size n.
@@ -65,8 +71,8 @@ class AsyncStreamReaderMixin:
             return AsyncStreamIterator(self.readany)
 
 
-class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
-    """An enhancement of :class:`asyncio.StreamReader`.
+class StreamReader(AsyncStreamReaderMixin):
+    """An enhancement of asyncio.StreamReader.
 
     Supports asynchronous iteration by line, chunk or as available::
 
@@ -77,8 +83,6 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
         async for slice in reader.iter_any():
             ...
 
-    .. automethod:: AsyncStreamReaderMixin.iter_chunked
-    .. automethod:: AsyncStreamReaderMixin.iter_any
     """
 
     total_bytes = 0
@@ -238,7 +242,7 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
                 offset = self._buffer_offset
                 ichar = self._buffer[0].find(b'\n', offset) + 1
                 # Read from current offset to found b'\n' or to the end.
-                data = self._read_nowait(ichar - offset if ichar else 0)
+                data = self._read_nowait(ichar - offset if ichar else -1)
                 line.append(data)
                 line_size += len(data)
                 if ichar:
@@ -302,19 +306,12 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
         if not self._buffer and not self._eof:
             yield from self._wait('readany')
 
-        return self._read_nowait()
+        return self._read_nowait(-1)
 
     @asyncio.coroutine
     def readexactly(self, n):
         if self._exception is not None:
             raise self._exception
-
-        # There used to be "optimized" code here.  It created its own
-        # Future and waited until self._buffer had at least the n
-        # bytes, then called read(n).  Unfortunately, this could pause
-        # the transport if the argument was larger than the pause
-        # limit (which is twice self._limit).  So now we just read()
-        # into a local buffer.
 
         blocks = []
         while n > 0:
@@ -328,7 +325,12 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
 
         return b''.join(blocks)
 
-    def read_nowait(self, n=None):
+    def read_nowait(self, n=-1):
+        # default was changed to be consistent with .read(-1)
+        #
+        # I believe the most users don't know about the method and
+        # they are not affected.
+        assert n is not None, "n should be -1"
         if self._exception is not None:
             raise self._exception
 
@@ -338,13 +340,13 @@ class StreamReader(asyncio.StreamReader, AsyncStreamReaderMixin):
 
         return self._read_nowait(n)
 
-    def _read_nowait(self, n=None):
+    def _read_nowait(self, n):
         if not self._buffer:
             return EOF_MARKER
 
         first_buffer = self._buffer[0]
         offset = self._buffer_offset
-        if n and len(first_buffer) - offset > n:
+        if n != -1 and len(first_buffer) - offset > n:
             data = first_buffer[offset:offset + n]
             self._buffer_offset += n
 
@@ -477,9 +479,11 @@ class DataQueue:
                 raise EofStream
 
     if PY_35:
-        @helpers._decorate_aiter
         def __aiter__(self):
             return AsyncStreamIterator(self.read)
+
+        if not PY_352:  # pragma: no cover
+            __aiter__ = asyncio.coroutine(__aiter__)
 
 
 class ChunksQueue(DataQueue):

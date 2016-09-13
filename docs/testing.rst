@@ -8,13 +8,15 @@ Testing
 Testing aiohttp web servers
 ---------------------------
 
-aiohttp provides plugin for pytest_ making writing web
-server tests extremely easy, it also provides
-:ref:`test framework agnostic utilities <framework-agnostic-utilities>` for
-testing with other frameworks such as :ref:`unittest <unittest-example>`.
+aiohttp provides plugin for pytest_ making writing web server tests
+extremely easy, it also provides :ref:`test framework agnostic
+utilities <aiohttp-testing-framework-agnostic-utilities>` for testing
+with other frameworks such as :ref:`unittest
+<aiohttp-testing-unittest-example>`.
 
-Before starting to write your tests, you may also be interested on reading
-:ref:`how to write testable services<writing-testable-services>` that interact
+Before starting to write your tests, you may also be interested on
+reading :ref:`how to write testable
+services<aiohttp-testing-writing-testable-services>` that interact
 with the loop.
 
 
@@ -30,7 +32,21 @@ insert ``pytest_plugins = 'aiohttp.pytest_plugin'`` line into
 
 
 
-Pytest example
+Provisional Status
+~~~~~~~~~~~~~~~~~~
+
+The module is a **provisional**.
+
+*aiohttp* has a year and half period for removing deprecated API
+(:ref:`aiohttp-backward-compatibility-policy`).
+
+But for :mod:`aiohttp.test_tools` the deprecation period could be reduced.
+
+Moreover we may break *backward compatibility* without *deprecation
+peroid* for some very strong reason.
+
+
+Pytest Example
 ~~~~~~~~~~~~~~
 
 The :data:`test_client` fixture available from pytest-aiohttp_ plugin
@@ -87,9 +103,9 @@ app test client::
         assert await resp.text() == 'value: bar'
 
 
-.. _framework-agnostic-utilities:
+.. _aiohttp-testing-framework-agnostic-utilities:
 
-Framework agnostic utilities
+Framework Agnostic Utilities
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 High level test creation::
@@ -149,9 +165,9 @@ Please see the full api at the
 :class:`TestClass api reference <aiohttp.test_utils.TestClient>`
 
 
-.. _unittest-example:
+.. _aiohttp-testing-unittest-example:
 
-Unittest example
+Unittest Example
 ~~~~~~~~~~~~~~~~
 
 To test applications with the standard library's unittest or unittest-based
@@ -223,7 +239,7 @@ conditions that hard to reproduce on real server::
    way.
 
 
-.. _writing-testable-services:
+.. _aiohttp-testing-writing-testable-services:
 
 Writing testable services
 -------------------------
@@ -297,7 +313,9 @@ aiohttp.test_utils
 ------------------
 
 .. automodule:: aiohttp.test_utils
-   :members: TestClient, AioHTTPTestCase, unittest_run_loop, loop_context, setup_test_loop, teardown_test_loop, make_mocked_request
+   :members: TestClient, AioHTTPTestCase, unittest_run_loop,
+             loop_context, setup_test_loop, teardown_test_loop,
+             make_mocked_request
    :undoc-members:
    :show-inheritance:
 

@@ -30,6 +30,7 @@ Boris Feld
 Carl George
 Chien-Wei Huang
 Chih-Yuan Chen
+Chris AtLee
 Chris Laws
 Chris Moore
 Daniel García
@@ -83,6 +84,7 @@ Martin Richard
 Mathias Fröjdman
 Matthieu Hauglustaine
 Michael Ihnatenko
+Mikhail Kashkin
 Mikhail Lukyanchenko
 Misha Behersky
 Morgan Delahaye-Prat

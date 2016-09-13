@@ -4,7 +4,6 @@ HTTP Client Reference
 =====================
 
 .. module:: aiohttp
-
 .. currentmodule:: aiohttp
 
 
@@ -121,6 +120,11 @@ The client session supports the context manager protocol for self closing.
       A read-only property. Overriding `session.cookies = new_val` is
       forbidden, but you may modify the object in-place if needed.
 
+   .. attribute:: loop
+
+      A loop instance used for session creation.
+
+      A read-only property.
 
    .. comethod:: request(method, url, *, params=None, data=None,\
                          headers=None, skip_auto_headers=None, \
@@ -1121,9 +1125,7 @@ Response object
 
    .. attribute:: content
 
-      Payload stream, contains response's BODY (:class:`StreamReader`
-      compatible instance, most likely
-      :class:`FlowControlStreamReader` one).
+      Payload stream, contains response's BODY (:class:`StreamReader`).
 
    .. attribute:: cookies
 

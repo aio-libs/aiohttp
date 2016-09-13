@@ -305,6 +305,35 @@ def test_is_ip_address_bytes():
     assert not helpers.is_ip_address(b"1200::AB00:1234::2552:7777:1313")
 
 
+def test_ip_addresses():
+    ip_addresses = [
+        '0.0.0.0',
+        '127.0.0.1',
+        '255.255.255.255',
+        '0:0:0:0:0:0:0:0',
+        'FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF',
+        '00AB:0002:3008:8CFD:00AB:0002:3008:8CFD',
+        '00ab:0002:3008:8cfd:00ab:0002:3008:8cfd',
+        'AB:02:3008:8CFD:AB:02:3008:8CFD',
+        'AB:02:3008:8CFD::02:3008:8CFD',
+        '::',
+        '1::1',
+    ]
+    for address in ip_addresses:
+        assert helpers.is_ip_address(address)
+
+
+def test_host_addresses():
+    hosts = [
+        'www.four.part.host'
+        'www.python.org',
+        'foo.bar',
+        'localhost',
+    ]
+    for host in hosts:
+        assert not helpers.is_ip_address(host)
+
+
 def test_is_ip_address_invalid_type():
     with pytest.raises(TypeError):
         helpers.is_ip_address(123)
