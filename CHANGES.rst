@@ -118,7 +118,7 @@ CHANGES
 
 - Publish ClientSession.loop property #1149
 
--
+- Fix piling up asyncio loop by cookie expiration callbacks #1061
 
 -
 

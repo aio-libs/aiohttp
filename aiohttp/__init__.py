@@ -19,6 +19,7 @@ from .multipart import *  # noqa
 from .client_ws import ClientWebSocketResponse  # noqa
 from ._ws_impl import WSMsgType, WSCloseCode, WSMessage, WebSocketError  # noqa
 from .file_sender import FileSender  # noqa
+from .cookiejar import CookieJar  # noqa
 
 
 MsgType = WSMsgType  # backward compatibility
@@ -36,4 +37,4 @@ __all__ = (client.__all__ +  # noqa
            multipart.__all__ +  # noqa
            ('hdrs', 'FileSender', 'WSMsgType', 'MsgType', 'WSCloseCode',
             'WebSocketError', 'WSMessage',
-            'ClientWebSocketResponse'))
+            'ClientWebSocketResponse', 'CookieJar'))
