@@ -253,3 +253,5 @@ CHANGES
 - Add manylinux wheel builds
 
 - Dup a socket for sendfile usage #964
+
+- Improve speed of WebSocket frame parsing
