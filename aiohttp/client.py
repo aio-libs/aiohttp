@@ -17,8 +17,9 @@ from . import hdrs, helpers
 from ._ws_impl import WS_KEY, WebSocketParser, WebSocketWriter
 from .client_reqrep import ClientRequest, ClientResponse
 from .client_ws import ClientWebSocketResponse
+from .cookiejar import CookieJar
 from .errors import WSServerHandshakeError
-from .helpers import CookieJar, Timeout
+from .helpers import Timeout
 
 __all__ = ('ClientSession', 'request', 'get', 'options', 'head',
            'delete', 'post', 'put', 'patch', 'ws_connect')
