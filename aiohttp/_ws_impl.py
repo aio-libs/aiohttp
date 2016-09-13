@@ -249,7 +249,7 @@ def parse_frame(buf, continuation=False):
         raise WebSocketError(
             WSCloseCode.PROTOCOL_ERROR,
             'Received frame with non-zero reserved bits')
-            
+
     fin = first_byte & 128
     opcode = first_byte & 15
 
