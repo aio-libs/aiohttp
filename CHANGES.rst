@@ -118,7 +118,7 @@ CHANGES
 
 - Publish ClientSession.loop property #1149
 
--
+- Fix static file with spaces #1140
 
 -
 
