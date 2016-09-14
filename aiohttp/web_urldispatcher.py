@@ -479,7 +479,7 @@ class StaticRoute(Route):
 
     @asyncio.coroutine
     def handle(self, request):
-        filename = request.match_info['filename']
+        filename = unquote(request.match_info['filename'])
         try:
             filepath = self._directory.joinpath(filename).resolve()
             filepath.relative_to(self._directory)
