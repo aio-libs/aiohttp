@@ -319,7 +319,7 @@ class WebSocketWriter:
         else:
             header = PACK_LEN3(0x80 | opcode, 127 | mask_bit, msg_length)
         if use_mask:
-            mask = self.randrange(0, 0xFFFFFFFF)
+            mask = self.randrange(0, 0xffffffff)
             mask = mask.to_bytes(4, 'big')
             message = _websocket_mask(mask, bytearray(message))
             self.writer.write(header + mask + message)
