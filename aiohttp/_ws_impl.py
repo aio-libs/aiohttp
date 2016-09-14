@@ -218,7 +218,7 @@ def _websocket_mask_python(mask, data):
         # everything work without this, but may be changed later in Python.
         return bytearray()
     data = int.from_bytes(data, native_byteorder)
-    mask = int.from_bytes(mask * (datalen // 4) + mask[: datalen % 4],
+    mask = int.from_bytes(mask * (datalen >> 2) + mask[: datalen & 3],
                           native_byteorder)
     return (data ^ mask).to_bytes(datalen, native_byteorder)
 
@@ -236,24 +236,22 @@ else:
 def parse_frame(buf, continuation=False):
     """Return the next frame from the socket."""
     # read header
-    data = yield from buf.read(2)
-    first_byte, second_byte = data
+    first_byte, second_byte = yield from buf.read(2)
 
-    fin = (first_byte >> 7) & 1
-    rsv1 = (first_byte >> 6) & 1
-    rsv2 = (first_byte >> 5) & 1
-    rsv3 = (first_byte >> 4) & 1
-    opcode = first_byte & 0xf
+    reserved = first_byte & 0x70
 
     # frame-fin = %x0 ; more frames of this message follow
     #           / %x1 ; final frame of this message
     # frame-rsv1 = %x0 ; 1 bit, MUST be 0 unless negotiated otherwise
     # frame-rsv2 = %x0 ; 1 bit, MUST be 0 unless negotiated otherwise
     # frame-rsv3 = %x0 ; 1 bit, MUST be 0 unless negotiated otherwise
-    if rsv1 or rsv2 or rsv3:
+    if reserved:
         raise WebSocketError(
             WSCloseCode.PROTOCOL_ERROR,
             'Received frame with non-zero reserved bits')
+
+    fin = first_byte & 0x80
+    opcode = first_byte & 0xf
 
     if opcode > 0x7 and fin == 0:
         raise WebSocketError(
@@ -266,8 +264,8 @@ def parse_frame(buf, continuation=False):
             'Received new fragment frame with non-zero '
             'opcode {!r}'.format(opcode))
 
-    has_mask = (second_byte >> 7) & 1
-    length = (second_byte) & 0x7f
+    has_mask = second_byte & 0x80
+    length = second_byte & 0x7f
 
     # Control frames MUST have a payload length of 125 bytes or less
     if opcode > 0x7 and length > 125:
@@ -310,13 +308,13 @@ class WebSocketWriter:
 
         use_mask = self.use_mask
         if use_mask:
-            mask_bit = 0x80
+            mask_bit = 128
         else:
             mask_bit = 0
 
         if msg_length < 126:
             header = PACK_LEN1(0x80 | opcode, msg_length | mask_bit)
-        elif msg_length < (1 << 16):
+        elif msg_length < 65536:
             header = PACK_LEN2(0x80 | opcode, 126 | mask_bit, msg_length)
         else:
             header = PACK_LEN3(0x80 | opcode, 127 | mask_bit, msg_length)
