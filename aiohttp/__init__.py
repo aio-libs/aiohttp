@@ -20,6 +20,7 @@ from .client_ws import ClientWebSocketResponse  # noqa
 from ._ws_impl import WSMsgType, WSCloseCode, WSMessage, WebSocketError  # noqa
 from .file_sender import FileSender  # noqa
 from .cookiejar import CookieJar  # noqa
+from .resolver import *  # noqa
 
 
 MsgType = WSMsgType  # backward compatibility
