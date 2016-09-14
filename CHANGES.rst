@@ -131,6 +131,22 @@ CHANGES
 - `aiohttp.TCPConnector` uses asynchronous DNS resolver if available by
   default #1152
 
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
 0.22.5 (08-02-2016)
 -------------------
 
