@@ -1,6 +1,8 @@
 import asyncio
 import sys
 import warnings
+import ipaddress
+import re
 from argparse import ArgumentParser
 from importlib import import_module
 
@@ -290,7 +292,7 @@ class Application(dict):
 
 def run_app(app, *, host='0.0.0.0', port=None,
             shutdown_timeout=60.0, ssl_context=None,
-            print=print, backlog=128):
+            print=print, backlog=128, ipv6=False):
     """Run an app locally"""
     if port is None:
         if not ssl_context:
@@ -308,9 +310,14 @@ def run_app(app, *, host='0.0.0.0', port=None,
                                                               loop=loop))
 
     scheme = 'https' if ssl_context else 'http'
-    print("======== Running on {scheme}://{host}:{port}/ ========\n"
-          "(Press CTRL+C to quit)".format(
-              scheme=scheme, host=host, port=port))
+    if ipv6:
+        print("======== Running on {scheme}://[{host}]:{port}/ ========\n"
+              "(Press CTRL+C to quit)".format(
+            scheme=scheme, host=host, port=port))
+    else:
+        print("======== Running on {scheme}://{host}:{port}/ ========\n"
+              "(Press CTRL+C to quit)".format(
+                  scheme=scheme, host=host, port=port))
 
     try:
         loop.run_forever()
@@ -349,6 +356,14 @@ def main(argv):
     )
     args, extra_argv = arg_parser.parse_known_args(argv)
 
+    ipv6 = False
+    try:
+        ipv6 = ipaddress.ip_address(args.hostname).version == 6
+    except ValueError:
+        if not re.match(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?',
+                        args.hostname) or args.hostname.isdigit():
+            arg_parser.error("hostname must be valid hostname, ipv4 or ipv6 address")
+
     # Import logic
     mod_str, _, func_str = args.entry_func.partition(":")
     if not func_str or not mod_str:
@@ -367,7 +382,7 @@ def main(argv):
         arg_parser.error("module %r has no attribute %r" % (mod_str, func_str))
 
     app = func(extra_argv)
-    run_app(app, host=args.hostname, port=args.port)
+    run_app(app, host=args.hostname, port=args.port, ipv6=ipv6)
     arg_parser.exit(message="Stopped\n")
 
 if __name__ == "__main__":  # pragma: no branch
