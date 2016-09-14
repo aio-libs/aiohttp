@@ -831,6 +831,10 @@ TCPConnector
 
       .. versionadded:: 0.17
 
+      .. versionchanged:: 1.0
+
+         The default is changed to ``True``
+
    :param aiohttp.abc.AbstractResolver resolver: Custom resolver
       instance to use.  ``aiohttp.DefaultResolver`` by
       default (asynchronous if ``aiodns>=1.1`` is installed).
