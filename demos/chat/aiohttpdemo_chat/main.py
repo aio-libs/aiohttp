@@ -1,12 +1,11 @@
 import asyncio
-import jinja2
 import logging
 
-from aiohttp import web
+import jinja2
+
 import aiohttp_jinja2
-
+from aiohttp import web
 from aiohttpdemo_chat.views import setup as setup_routes
-
 
 async def init(loop):
     app = web.Application(loop=loop)

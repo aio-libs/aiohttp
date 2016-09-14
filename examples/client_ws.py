@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """websocket cmd client for wssrv.py example."""
 import argparse
+import asyncio
 import signal
 import sys
 
-import asyncio
+import aiohttp
+
 try:
     import selectors
 except ImportError:
     from asyncio import selectors
-
-import aiohttp
 
 
 def start_client(loop, url):
@@ -33,20 +33,20 @@ def start_client(loop, url):
         while True:
             msg = yield from ws.receive()
 
-            if msg.tp == aiohttp.MsgType.text:
+            if msg.type == aiohttp.WSMsgType.TEXT:
                 print('Text: ', msg.data.strip())
-            elif msg.tp == aiohttp.MsgType.binary:
+            elif msg.type == aiohttp.WSMsgType.BINARY:
                 print('Binary: ', msg.data)
-            elif msg.tp == aiohttp.MsgType.ping:
+            elif msg.type == aiohttp.WSMsgType.PING:
                 ws.pong()
-            elif msg.tp == aiohttp.MsgType.pong:
+            elif msg.type == aiohttp.WSMsgType.PONG:
                 print('Pong received')
             else:
-                if msg.tp == aiohttp.MsgType.close:
+                if msg.type == aiohttp.WSMsgType.CLOSE:
                     yield from ws.close()
-                elif msg.tp == aiohttp.MsgType.error:
+                elif msg.type == aiohttp.WSMsgType.ERROR:
                     print('Error during receive %s' % ws.exception())
-                elif msg.tp == aiohttp.MsgType.closed:
+                elif msg.type == aiohttp.WSMsgType.CLOSED:
                     pass
 
                 break

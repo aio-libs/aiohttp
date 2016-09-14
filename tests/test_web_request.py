@@ -1,7 +1,9 @@
-import pytest
+import asyncio
 from unittest import mock
 
-from multidict import MultiDict, CIMultiDict
+import pytest
+from multidict import CIMultiDict, MultiDict
+
 from aiohttp.protocol import HttpVersion
 from aiohttp.test_utils import make_mocked_request
 
@@ -11,7 +13,7 @@ def make_request():
     return make_mocked_request
 
 
-def test_ctor(make_request, warning):
+def test_ctor(make_request):
     req = make_request('GET', '/path/to?a=1&b=2')
 
     assert 'GET' == req.method
@@ -20,6 +22,8 @@ def test_ctor(make_request, warning):
     assert '/path/to?a=1&b=2' == req.path_qs
     assert '/path/to' == req.path
     assert 'a=1&b=2' == req.query_string
+    assert CIMultiDict() == req.headers
+    assert () == req.raw_headers
 
     get = req.GET
     assert MultiDict([('a', '1'), ('b', '2')]) == get
@@ -29,18 +33,22 @@ def test_ctor(make_request, warning):
     assert req.keep_alive
 
     # just make sure that all lines of make_mocked_request covered
+    headers = CIMultiDict(FOO='bar')
     reader = mock.Mock()
     writer = mock.Mock()
     payload = mock.Mock()
     transport = mock.Mock()
     app = mock.Mock()
-    req = make_request('GET', '/path/to?a=1&b=2', writer=writer, reader=reader,
-                       payload=payload, transport=transport, app=app)
+    req = make_request('GET', '/path/to?a=1&b=2', headers=headers,
+                       writer=writer, reader=reader, payload=payload,
+                       transport=transport, app=app)
     assert req.app is app
     assert req.content is payload
     assert req.transport is transport
     assert req._reader is reader
     assert req._writer is writer
+    assert req.headers == headers
+    assert req.raw_headers == ((b'Foo', b'bar'),)
 
 
 def test_doubleslashes(make_request):
@@ -114,7 +122,7 @@ def test_non_keepalive_on_closing(make_request):
     assert not req.keep_alive
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_call_POST_on_GET_request(make_request):
     req = make_request('GET', '/')
 
@@ -122,7 +130,7 @@ def test_call_POST_on_GET_request(make_request):
     assert CIMultiDict() == ret
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_call_POST_on_weird_content_type(make_request):
     req = make_request(
         'POST', '/',
@@ -132,7 +140,7 @@ def test_call_POST_on_weird_content_type(make_request):
     assert CIMultiDict() == ret
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_call_POST_twice(make_request):
     req = make_request('GET', '/')
 
@@ -226,4 +234,4 @@ def test_https_scheme_by_secure_proxy_ssl_header_false_test(make_request):
 def test_raw_headers(make_request):
     req = make_request('GET', '/',
                        headers=CIMultiDict({'X-HEADER': 'aaa'}))
-    assert req.raw_headers == ((b'X-HEADER', b'aaa'),)
+    assert req.raw_headers == ((b'X-Header', b'aaa'),)

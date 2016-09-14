@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
+import asyncio
 import logging
 import re
 import signal
 import sys
-import asyncio
 import urllib.parse
 
 import aiohttp

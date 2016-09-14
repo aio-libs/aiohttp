@@ -10,9 +10,8 @@ http client/server for asyncio
   :target:  https://travis-ci.org/KeepSafe/aiohttp
   :align: right
 
-.. image:: https://coveralls.io/repos/KeepSafe/aiohttp/badge.svg?branch=master&service=github
-  :target:  https://coveralls.io/github/KeepSafe/aiohttp?branch=master
-  :align: right
+.. image:: https://codecov.io/gh/KeepSafe/aiohttp/branch/master/graph/badge.svg
+  :target: https://codecov.io/gh/KeepSafe/aiohttp
 
 .. image:: https://badge.fury.io/py/aiohttp.svg
     :target: https://badge.fury.io/py/aiohttp
@@ -38,17 +37,19 @@ To retrieve something from the web:
   import aiohttp
   import asyncio
 
-  async def fetch(session, url):
-      with aiohttp.Timeout(10):
+  async def fetch(session, url, *, loop):
+      with aiohttp.Timeout(10, loop=loop):
           async with session.get(url) as response:
               return await response.text()
 
+  async def main(loop):
+      async with aiohttp.ClientSession(loop=loop) as session:
+          html = await fetch(session, 'http://python.org', loop=loop)
+          print(html)
+
   if __name__ == '__main__':
       loop = asyncio.get_event_loop()
-      with aiohttp.ClientSession(loop=loop) as session:
-          html = loop.run_until_complete(
-              fetch(session, 'http://python.org'))
-          print(html)
+      loop.run_until_complete(main(loop))
 
 
 Server
@@ -70,19 +71,19 @@ This is simple usage example:
         await ws.prepare(request)
 
         async for msg in ws:
-            if msg.tp == web.MsgType.text:
+            if msg.type == web.MsgType.text:
                 ws.send_str("Hello, {}".format(msg.data))
-            elif msg.tp == web.MsgType.binary:
+            elif msg.type == web.MsgType.binary:
                 ws.send_bytes(msg.data)
-            elif msg.tp == web.MsgType.close:
+            elif msg.type == web.MsgType.close:
                 break
 
         return ws
 
 
     app = web.Application()
-    app.router.add_route('GET', '/echo', wshandler)
-    app.router.add_route('GET', '/{name}', handle)
+    app.router.add_get('/echo', wshandler)
+    app.router.add_get('/{name}', handle)
 
     web.run_app(app)
 
@@ -94,7 +95,7 @@ async/await.  If you are using Python 3.4 please replace ``await`` with
     async def coro(...):
         ret = await f()
 
-shoud be replaced by::
+should be replaced by::
 
     @asyncio.coroutine
     def coro(...):
@@ -113,12 +114,15 @@ Discussion list
 Requirements
 ------------
 
-- Python >= 3.4.1
-- chardet https://pypi.python.org/pypi/chardet
+- Python >= 3.4.2
+- chardet_
+- multidict_
 
-Optionally you may install cChardet library:
-https://pypi.python.org/pypi/cchardet/1.0.0
+Optionally you may install the cChardet_ library.
 
+.. _chardet: https://pypi.python.org/pypi/chardet
+.. _multidict: https://pypi.python.org/pypi/multidict
+.. _cChardet: https://pypi.python.org/pypi/cchardet
 
 License
 -------

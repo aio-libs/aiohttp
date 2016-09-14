@@ -2,7 +2,6 @@
 
 from asyncio import TimeoutError
 
-
 __all__ = (
     'DisconnectedError', 'ClientDisconnectedError', 'ServerDisconnectedError',
 
@@ -160,11 +159,7 @@ class BadStatusLine(BadHttpMessage):
         self.line = line
 
 
-class ParserError(Exception):
-    """Base parser error."""
-
-
-class LineLimitExceededParserError(ParserError):
+class LineLimitExceededParserError(HttpBadRequest):
     """Line is too long."""
 
     def __init__(self, msg, limit):

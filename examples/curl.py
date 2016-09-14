@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-import aiohttp
-import sys
 import asyncio
+import sys
+
+import aiohttp
 
 
 def curl(url):
@@ -14,7 +15,7 @@ def curl(url):
     print('Downloaded: %s' % len(chunk))
 
     response.close()
-    session.close()
+    yield from session.close()
 
 
 if __name__ == '__main__':

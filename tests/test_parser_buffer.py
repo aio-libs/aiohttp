@@ -1,6 +1,8 @@
-import pytest
-from aiohttp import errors, parsers
 from unittest import mock
+
+import pytest
+
+from aiohttp import errors, parsers
 
 
 @pytest.fixture
@@ -248,39 +250,3 @@ def test_skipuntil_exc(buf):
     p = buf.skipuntil(b'\n')
     with pytest.raises(ValueError):
         next(p)
-
-
-def test_lines_parser(buf, stream, loop):
-    out = parsers.FlowControlDataQueue(stream, loop=loop)
-
-    p = parsers.LinesParser()(out, buf)
-    next(p)
-    for d in (b'line1', b'\r\n', b'lin', b'e2\r', b'\ndata'):
-        p.send(d)
-
-    assert ([(bytearray(b'line1\r\n'), 7), (bytearray(b'line2\r\n'), 7)] ==
-            list(out._buffer))
-    try:
-        p.throw(parsers.EofStream())
-    except StopIteration:
-        pass
-
-    assert bytes(buf) == b'data'
-
-
-def test_chunks_parser(stream, loop, buf):
-    out = parsers.FlowControlDataQueue(stream, loop=loop)
-
-    p = parsers.ChunksParser(5)(out, buf)
-    next(p)
-    for d in (b'line1', b'lin', b'e2d', b'ata'):
-        p.send(d)
-
-    assert ([(bytearray(b'line1'), 5), (bytearray(b'line2'), 5)] ==
-            list(out._buffer))
-    try:
-        p.throw(parsers.EofStream())
-    except StopIteration:
-        pass
-
-    assert bytes(buf) == b'data'

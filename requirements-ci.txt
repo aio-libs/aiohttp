@@ -6,11 +6,14 @@ sphinx
 alabaster>=0.6.2
 cython
 chardet
+isort==4.2.5
 tox
+sphinxcontrib-asyncio
 sphinxcontrib-newsfeed
-pytest>=2.9.2
-py>=1.4.31
+pytest
 pytest-cov
+pytest-mock
+pytest-timeout
 gunicorn
 pygments>=2.1
 #aiodns  # Enable from .travis.yml as required c-ares will not build on windows

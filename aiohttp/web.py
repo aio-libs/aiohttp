@@ -1,25 +1,22 @@
 import asyncio
-import warnings
 import sys
-
-
-from . import hdrs
-from . import web_reqrep
-from . import web_exceptions
-from . import web_urldispatcher
-from . import web_ws
-from .abc import AbstractRouter, AbstractMatchInfo
-from .log import web_logger
-from .protocol import HttpVersion  # noqa
-from .server import ServerHttpProtocol
-from .signals import Signal, PreSignal, PostSignal
-from .web_reqrep import *  # noqa
-from .web_exceptions import *  # noqa
-from .web_urldispatcher import *  # noqa
-from .web_ws import *  # noqa
+import warnings
+import ipaddress
+import re
 from argparse import ArgumentParser
 from importlib import import_module
 
+from . import hdrs, web_exceptions, web_reqrep, web_urldispatcher, web_ws
+from .abc import AbstractMatchInfo, AbstractRouter
+from .helpers import sentinel
+from .log import web_logger
+from .protocol import HttpVersion  # noqa
+from .server import ServerHttpProtocol
+from .signals import PostSignal, PreSignal, Signal
+from .web_exceptions import *  # noqa
+from .web_reqrep import *  # noqa
+from .web_urldispatcher import *  # noqa
+from .web_ws import *  # noqa
 
 __all__ = (web_reqrep.__all__ +
            web_exceptions.__all__ +
@@ -61,6 +58,7 @@ class RequestHandler(ServerHttpProtocol):
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
+        self._manager._requests_count += 1
         if self.access_log:
             now = self._loop.time()
 
@@ -124,7 +122,12 @@ class RequestHandlerFactory:
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
         self._kwargs = kwargs
         self._kwargs.setdefault('logger', app.logger)
-        self.num_connections = 0
+        self._requests_count = 0
+
+    @property
+    def requests_count(self):
+        """Number of processed requests."""
+        return self._requests_count
 
     @property
     def secure_proxy_ssl_header(self):
@@ -142,47 +145,16 @@ class RequestHandlerFactory:
             del self._connections[handler]
 
     @asyncio.coroutine
-    def _connections_cleanup(self):
-        sleep = 0.05
-        while self._connections:
-            yield from asyncio.sleep(sleep, loop=self._loop)
-            if sleep < 5:
-                sleep = sleep * 2
-
-    @asyncio.coroutine
     def finish_connections(self, timeout=None):
-        # try to close connections in 90% of graceful timeout
-        timeout90 = None
-        if timeout:
-            timeout90 = timeout / 100 * 90
-
-        for handler in self._connections.keys():
-            handler.closing(timeout=timeout90)
-
-        if timeout:
-            try:
-                yield from asyncio.wait_for(
-                    self._connections_cleanup(), timeout, loop=self._loop)
-            except asyncio.TimeoutError:
-                self._app.logger.warning(
-                    "Not all connections are closed (pending: %d)",
-                    len(self._connections))
-
-        for transport in self._connections.values():
-            transport.close()
-
+        coros = [conn.shutdown(timeout) for conn in self._connections]
+        yield from asyncio.gather(*coros, loop=self._loop)
         self._connections.clear()
 
     def __call__(self):
-        self.num_connections += 1
-        try:
-            return self._handler(
-                self, self._app, self._router, loop=self._loop,
-                secure_proxy_ssl_header=self._secure_proxy_ssl_header,
-                **self._kwargs)
-        except:
-            web_logger.exception(
-                'Can not create request handler: {!r}'.format(self._handler))
+        return self._handler(
+            self, self._app, self._router, loop=self._loop,
+            secure_proxy_ssl_header=self._secure_proxy_ssl_header,
+            **self._kwargs)
 
 
 class Application(dict):
@@ -202,13 +174,12 @@ class Application(dict):
         self._loop = loop
         self.logger = logger
 
-        for factory in middlewares:
-            assert asyncio.iscoroutinefunction(factory), factory
         self._middlewares = list(middlewares)
 
         self._on_pre_signal = PreSignal()
         self._on_post_signal = PostSignal()
         self._on_response_prepare = Signal(self)
+        self._on_startup = Signal(self)
         self._on_shutdown = Signal(self)
         self._on_cleanup = Signal(self)
 
@@ -227,6 +198,10 @@ class Application(dict):
     @property
     def on_post_signal(self):
         return self._on_post_signal
+
+    @property
+    def on_startup(self):
+        return self._on_startup
 
     @property
     def on_shutdown(self):
@@ -249,8 +224,31 @@ class Application(dict):
         return self._middlewares
 
     def make_handler(self, **kwargs):
-        return self._handler_factory(
-            self, self.router, loop=self.loop, **kwargs)
+        debug = kwargs.pop('debug', sentinel)
+        if debug is not sentinel:
+            warnings.warn(
+                "`debug` parameter is deprecated. "
+                "Use Application's debug mode instead", DeprecationWarning)
+            if debug != self.debug:
+                raise ValueError(
+                    "The value of `debug` parameter conflicts with the debug "
+                    "settings of the `Application` instance. The "
+                    "application's debug mode setting should be used instead "
+                    "as a single point to setup a debug mode. For more "
+                    "information please check "
+                    "http://aiohttp.readthedocs.io/en/stable/"
+                    "web_reference.html#aiohttp.web.Application"
+                )
+        return self._handler_factory(self, self.router, debug=self.debug,
+                                     loop=self.loop, **kwargs)
+
+    @asyncio.coroutine
+    def startup(self):
+        """Causes on_startup signal
+
+        Should be called in the event loop along with the request handler.
+        """
+        yield from self.on_startup.send(self)
 
     @asyncio.coroutine
     def shutdown(self):
@@ -294,7 +292,7 @@ class Application(dict):
 
 def run_app(app, *, host='0.0.0.0', port=None,
             shutdown_timeout=60.0, ssl_context=None,
-            print=print, backlog=128):
+            print=print, backlog=128, ipv6=False):
     """Run an app locally"""
     if port is None:
         if not ssl_context:
@@ -305,18 +303,25 @@ def run_app(app, *, host='0.0.0.0', port=None,
     loop = app.loop
 
     handler = app.make_handler()
-    srv = loop.run_until_complete(loop.create_server(handler, host, port,
-                                                     ssl=ssl_context,
-                                                     backlog=backlog))
+    server = loop.create_server(handler, host, port, ssl=ssl_context,
+                                backlog=backlog)
+    srv, startup_res = loop.run_until_complete(asyncio.gather(server,
+                                                              app.startup(),
+                                                              loop=loop))
 
     scheme = 'https' if ssl_context else 'http'
-    print("======== Running on {scheme}://{host}:{port}/ ========\n"
-          "(Press CTRL+C to quit)".format(
-              scheme=scheme, host=host, port=port))
+    if ipv6:
+        print("======== Running on {scheme}://[{host}]:{port}/ ========\n"
+              "(Press CTRL+C to quit)".format(
+            scheme=scheme, host=host, port=port))
+    else:
+        print("======== Running on {scheme}://{host}:{port}/ ========\n"
+              "(Press CTRL+C to quit)".format(
+                  scheme=scheme, host=host, port=port))
 
     try:
         loop.run_forever()
-    except KeyboardInterrupt:  # pragma: no branch
+    except KeyboardInterrupt:  # pragma: no cover
         pass
     finally:
         srv.close()
@@ -351,6 +356,14 @@ def main(argv):
     )
     args, extra_argv = arg_parser.parse_known_args(argv)
 
+    ipv6 = False
+    try:
+        ipv6 = ipaddress.ip_address(args.hostname).version == 6
+    except ValueError:
+        if not re.match(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?',
+                        args.hostname) or args.hostname.isdigit():
+            arg_parser.error("hostname must be valid hostname, ipv4 or ipv6 address")
+
     # Import logic
     mod_str, _, func_str = args.entry_func.partition(":")
     if not func_str or not mod_str:
@@ -369,8 +382,8 @@ def main(argv):
         arg_parser.error("module %r has no attribute %r" % (mod_str, func_str))
 
     app = func(extra_argv)
-    run_app(app, host=args.hostname, port=args.port)
+    run_app(app, host=args.hostname, port=args.port, ipv6=ipv6)
     arg_parser.exit(message="Stopped\n")
 
-if __name__ == "__main__":
-    main(sys.argv[1:])
+if __name__ == "__main__":  # pragma: no branch
+    main(sys.argv[1:])  # pragma: no cover

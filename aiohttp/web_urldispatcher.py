@@ -1,29 +1,24 @@
 import abc
 import asyncio
-
-import keyword
 import collections
-import re
-import os
-import sys
 import inspect
+import keyword
+import os
+import re
+import sys
 import warnings
-
-from collections.abc import Sized, Iterable, Container
+from collections.abc import Container, Iterable, Sized
 from pathlib import Path
-from urllib.parse import urlencode, unquote
 from types import MappingProxyType
-
-from multidict import upstr
+from urllib.parse import unquote, urlencode
 
 from . import hdrs
-from .abc import AbstractRouter, AbstractMatchInfo, AbstractView
+from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
 from .file_sender import FileSender
 from .protocol import HttpVersion11
-from .web_exceptions import (HTTPMethodNotAllowed, HTTPNotFound,
-                             HTTPExpectationFailed)
-from .web_reqrep import StreamResponse
-
+from .web_exceptions import (HTTPExpectationFailed, HTTPForbidden,
+                             HTTPMethodNotAllowed, HTTPNotFound)
+from .web_reqrep import Response, StreamResponse
 
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',
@@ -33,6 +28,9 @@ __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
 
 
 PY_35 = sys.version_info >= (3, 5)
+
+
+HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
 
 
 class AbstractResource(Sized, Iterable):
@@ -61,14 +59,13 @@ class AbstractResource(Sized, Iterable):
 
     @staticmethod
     def _append_query(url, query):
-        if query is not None:
+        if query:
             return url + "?" + urlencode(query)
         else:
             return url
 
 
 class AbstractRoute(abc.ABC):
-    METHODS = hdrs.METH_ALL | {hdrs.METH_ANY}
 
     def __init__(self, method, handler, *,
                  expect_handler=None,
@@ -80,8 +77,8 @@ class AbstractRoute(abc.ABC):
         assert asyncio.iscoroutinefunction(expect_handler), \
             'Coroutine is expected, got {!r}'.format(expect_handler)
 
-        method = upstr(method)
-        if method not in self.METHODS:
+        method = method.upper()
+        if not HTTP_METHOD_RE.match(method):
             raise ValueError("{} is not allowed HTTP method".format(method))
 
         assert callable(handler), handler
@@ -440,7 +437,8 @@ class StaticRoute(Route):
 
     def __init__(self, name, prefix, directory, *,
                  expect_handler=None, chunk_size=256*1024,
-                 response_factory=StreamResponse):
+                 response_factory=StreamResponse,
+                 show_index=False):
         assert prefix.startswith('/'), prefix
         assert prefix.endswith('/'), prefix
         super().__init__(
@@ -460,6 +458,7 @@ class StaticRoute(Route):
         self._directory = directory
         self._file_sender = FileSender(resp_factory=response_factory,
                                        chunk_size=chunk_size)
+        self._show_index = show_index
 
     def match(self, path):
         if not path.startswith(self._prefix):
@@ -492,12 +491,58 @@ class StaticRoute(Route):
             request.app.logger.exception(error)
             raise HTTPNotFound() from error
 
-        # Make sure that filepath is a file
-        if not filepath.is_file():
-            raise HTTPNotFound()
+        # on opening a dir, load it's contents if allowed
+        if filepath.is_dir():
+            if self._show_index:
+                try:
+                    ret = Response(text=self._directory_as_html(filepath))
+                except PermissionError:
+                    raise HTTPForbidden()
+            else:
+                raise HTTPForbidden()
+        elif filepath.is_file():
+            ret = yield from self._file_sender.send(request, filepath)
+        else:
+            raise HTTPNotFound
 
-        ret = yield from self._file_sender.send(request, filepath)
         return ret
+
+    def _directory_as_html(self, filepath):
+        "returns directory's index as html"
+        # sanity check
+        assert filepath.is_dir()
+
+        posix_dir_len = len(self._directory.as_posix())
+
+        # remove the beginning of posix path, so it would be relative
+        # to our added static path
+        relative_path_to_dir = filepath.as_posix()[posix_dir_len:]
+        index_of = "Index of /{}".format(relative_path_to_dir)
+        head = "<head>\n<title>{}</title>\n</head>".format(index_of)
+        h1 = "<h1>{}</h1>".format(index_of)
+
+        index_list = []
+        dir_index = filepath.iterdir()
+        for _file in sorted(dir_index):
+            # show file url as relative to static path
+            file_url = _file.as_posix()[posix_dir_len:]
+
+            # if file is a directory, add '/' to the end of the name
+            if _file.is_dir():
+                file_name = "{}/".format(_file.name)
+            else:
+                file_name = _file.name
+
+            index_list.append(
+                '<li><a href="{url}">{name}</a></li>'.format(url=file_url,
+                                                             name=file_name)
+            )
+        ul = "<ul>\n{}\n</ul>".format('\n'.join(index_list))
+        body = "<body>\n{}\n{}\n</body>".format(h1, ul)
+
+        html = "<html>\n{}\n{}\n</html>".format(head, body)
+
+        return html
 
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
@@ -723,11 +768,13 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                                   expect_handler=expect_handler)
 
     def add_static(self, prefix, path, *, name=None, expect_handler=None,
-                   chunk_size=256*1024, response_factory=StreamResponse):
-        """
-        Adds static files view
-        :param prefix - url prefix
-        :param path - folder with files
+                   chunk_size=256*1024, response_factory=StreamResponse,
+                   show_index=False):
+        """Add static files view.
+
+        prefix - url prefix
+        path - folder with files
+
         """
         assert prefix.startswith('/')
         if not prefix.endswith('/'):
@@ -735,6 +782,43 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         route = StaticRoute(name, prefix, path,
                             expect_handler=expect_handler,
                             chunk_size=chunk_size,
-                            response_factory=response_factory)
+                            response_factory=response_factory,
+                            show_index=show_index)
         self.register_route(route)
         return route
+
+    def add_head(self, *args, **kwargs):
+        """
+        Shortcut for add_route with method HEAD
+        """
+        return self.add_route(hdrs.METH_HEAD, *args, **kwargs)
+
+    def add_get(self, *args, **kwargs):
+        """
+        Shortcut for add_route with method GET
+        """
+        return self.add_route(hdrs.METH_GET, *args, **kwargs)
+
+    def add_post(self, *args, **kwargs):
+        """
+        Shortcut for add_route with method POST
+        """
+        return self.add_route(hdrs.METH_POST, *args, **kwargs)
+
+    def add_put(self, *args, **kwargs):
+        """
+        Shortcut for add_route with method PUT
+        """
+        return self.add_route(hdrs.METH_PUT, *args, **kwargs)
+
+    def add_patch(self, *args, **kwargs):
+        """
+        Shortcut for add_route with method PATCH
+        """
+        return self.add_route(hdrs.METH_PATCH, *args, **kwargs)
+
+    def add_delete(self, *args, **kwargs):
+        """
+        Shortcut for add_route with method DELETE
+        """
+        return self.add_route(hdrs.METH_DELETE, *args, **kwargs)

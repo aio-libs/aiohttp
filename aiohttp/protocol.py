@@ -7,14 +7,16 @@ import re
 import string
 import sys
 import zlib
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 from wsgiref.handlers import format_date_time
-from multidict import CIMultiDict, upstr
+
+from multidict import CIMultiDict, istr
 
 import aiohttp
+
 from . import errors, hdrs
-from .log import internal_logger
 from .helpers import reify
+from .log import internal_logger
 
 __all__ = ('HttpMessage', 'Request', 'Response',
            'HttpVersion', 'HttpVersion10', 'HttpVersion11',
@@ -115,7 +117,7 @@ class HttpParser:
 
             bvalue = bvalue.strip()
 
-            name = bname.decode('utf-8', 'surrogateescape')
+            name = istr(bname.decode('utf-8', 'surrogateescape'))
             value = bvalue.decode('utf-8', 'surrogateescape')
 
             # keep-alive and encoding
@@ -608,7 +610,7 @@ class HttpMessage(ABC):
             'Header {!r} should have string value, got {!r}'.format(
                 name, value)
 
-        name = upstr(name)
+        name = istr(name)
         value = value.strip()
 
         if name == hdrs.CONTENT_LENGTH:

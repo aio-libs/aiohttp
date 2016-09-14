@@ -6,19 +6,19 @@ import hashlib
 import os
 import sys
 import traceback
-import warnings
 import urllib.parse
+import warnings
 
-from multidict import MultiDictProxy, MultiDict, CIMultiDict, upstr
+from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 
 import aiohttp
-from .client_reqrep import ClientRequest, ClientResponse
-from .errors import WSServerHandshakeError
-from .helpers import CookieJar
-from .websocket import WS_KEY, WebSocketParser, WebSocketWriter
-from .websocket_client import ClientWebSocketResponse
-from . import hdrs, helpers
 
+from . import hdrs, helpers
+from ._ws_impl import WS_KEY, WebSocketParser, WebSocketWriter
+from .client_reqrep import ClientRequest, ClientResponse
+from .client_ws import ClientWebSocketResponse
+from .errors import WSServerHandshakeError
+from .helpers import CookieJar, Timeout
 
 __all__ = ('ClientSession', 'request', 'get', 'options', 'head',
            'delete', 'post', 'put', 'patch', 'ws_connect')
@@ -70,7 +70,7 @@ class ClientSession:
             headers = CIMultiDict()
         self._default_headers = headers
         if skip_auto_headers is not None:
-            self._skip_auto_headers = frozenset([upstr(i)
+            self._skip_auto_headers = frozenset([istr(i)
                                                  for i in skip_auto_headers])
         else:
             self._skip_auto_headers = frozenset()
@@ -104,7 +104,10 @@ class ClientSession:
                 compress=None,
                 chunked=None,
                 expect100=False,
-                read_until_eof=True):
+                read_until_eof=True,
+                proxy=None,
+                proxy_auth=None,
+                timeout=5*60):
         """Perform HTTP request."""
 
         return _RequestContextManager(
@@ -123,7 +126,10 @@ class ClientSession:
                 compress=compress,
                 chunked=chunked,
                 expect100=expect100,
-                read_until_eof=read_until_eof))
+                read_until_eof=read_until_eof,
+                proxy=proxy,
+                proxy_auth=proxy_auth,
+                timeout=timeout))
 
     @asyncio.coroutine
     def _request(self, method, url, *,
@@ -139,7 +145,10 @@ class ClientSession:
                  compress=None,
                  chunked=None,
                  expect100=False,
-                 read_until_eof=True):
+                 read_until_eof=True,
+                 proxy=None,
+                 proxy_auth=None,
+                 timeout=5*60):
 
         if version is not None:
             warnings.warn("HTTP version should be specified "
@@ -152,7 +161,6 @@ class ClientSession:
 
         redirects = 0
         history = []
-        method = upstr(method)
 
         # Merge with default headers and transform to CIMultiDict
         headers = self._prepare_headers(headers)
@@ -169,7 +177,7 @@ class ClientSession:
         skip_headers = set(self._skip_auto_headers)
         if skip_auto_headers is not None:
             for i in skip_auto_headers:
-                skip_headers.add(upstr(i))
+                skip_headers.add(istr(i))
 
         while True:
 
@@ -181,9 +189,11 @@ class ClientSession:
                 cookies=cookies, encoding=encoding,
                 auth=auth, version=version, compress=compress, chunked=chunked,
                 expect100=expect100,
-                loop=self._loop, response_class=self._response_class)
+                loop=self._loop, response_class=self._response_class,
+                proxy=proxy, proxy_auth=proxy_auth, timeout=timeout)
 
-            conn = yield from self._connector.connect(req)
+            with Timeout(timeout, loop=self._loop):
+                conn = yield from self._connector.connect(req)
             try:
                 resp = req.send(conn.writer, conn.reader)
                 try:
@@ -217,7 +227,9 @@ class ClientSession:
 
                 # For 301 and 302, mimic IE behaviour, now changed in RFC.
                 # Details: https://github.com/kennethreitz/requests/pull/269
-                if resp.status != 307:
+                if (resp.status == 303 and resp.method != hdrs.METH_HEAD) \
+                   or (resp.status in (301, 302) and
+                       resp.method == hdrs.METH_POST):
                     method = hdrs.METH_GET
                     data = None
                     if headers.get(hdrs.CONTENT_LENGTH):
@@ -250,7 +262,9 @@ class ClientSession:
                    autoping=True,
                    auth=None,
                    origin=None,
-                   headers=None):
+                   headers=None,
+                   proxy=None,
+                   proxy_auth=None):
         """Initiate websocket connection."""
         return _WSRequestContextManager(
             self._ws_connect(url,
@@ -260,7 +274,9 @@ class ClientSession:
                              autoping=autoping,
                              auth=auth,
                              origin=origin,
-                             headers=headers))
+                             headers=headers,
+                             proxy=proxy,
+                             proxy_auth=proxy_auth))
 
     @asyncio.coroutine
     def _ws_connect(self, url, *,
@@ -270,7 +286,9 @@ class ClientSession:
                     autoping=True,
                     auth=None,
                     origin=None,
-                    headers=None):
+                    headers=None,
+                    proxy=None,
+                    proxy_auth=None):
 
         sec_key = base64.b64encode(os.urandom(16))
 
@@ -296,7 +314,9 @@ class ClientSession:
         # send request
         resp = yield from self.get(url, headers=headers,
                                    read_until_eof=False,
-                                   auth=auth)
+                                   auth=auth,
+                                   proxy=proxy,
+                                   proxy_auth=proxy_auth)
 
         try:
             # check handshake
@@ -464,6 +484,7 @@ class ClientSession:
         self._connector = None
 
     def __enter__(self):
+        warnings.warn("Use async with instead", DeprecationWarning)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -542,8 +563,8 @@ if not PY_35:
     try:
         from asyncio import coroutines
         coroutines._COROUTINE_TYPES += (_BaseRequestContextManager,)
-    except:
-        pass
+    except:  # pragma: no cover
+        pass  # Python 3.4.2 and 3.4.3 has no coroutines._COROUTINE_TYPES
 
 
 class _RequestContextManager(_BaseRequestContextManager):
@@ -576,7 +597,7 @@ class _DetachedRequestContextManager(_RequestContextManager):
         try:
             return (yield from self._coro)
         except:
-            self._session.close()
+            yield from self._session.close()
             raise
 
     if PY_35:
@@ -584,7 +605,7 @@ class _DetachedRequestContextManager(_RequestContextManager):
             try:
                 return (yield from self._coro)
             except:
-                self._session.close()
+                yield from self._session.close()
                 raise
 
     def __del__(self):
@@ -621,37 +642,36 @@ def request(method, url, *,
             loop=None,
             read_until_eof=True,
             request_class=None,
-            response_class=None):
+            response_class=None,
+            proxy=None,
+            proxy_auth=None):
     """Constructs and sends a request. Returns response object.
 
-    :param str method: HTTP method
-    :param str url: request url
-    :param params: (optional) Dictionary or bytes to be sent in the query
+    method - HTTP method
+    url - request url
+    params - (optional) Dictionary or bytes to be sent in the query
       string of the new request
-    :param data: (optional) Dictionary, bytes, or file-like object to
+    data - (optional) Dictionary, bytes, or file-like object to
       send in the body of the request
-    :param dict headers: (optional) Dictionary of HTTP Headers to send with
+    headers - (optional) Dictionary of HTTP Headers to send with
       the request
-    :param dict cookies: (optional) Dict object to send with the request
-    :param auth: (optional) BasicAuth named tuple represent HTTP Basic Auth
-    :type auth: aiohttp.helpers.BasicAuth
-    :param bool allow_redirects: (optional) If set to False, do not follow
+    cookies - (optional) Dict object to send with the request
+    auth - (optional) BasicAuth named tuple represent HTTP Basic Auth
+    auth - aiohttp.helpers.BasicAuth
+    allow_redirects - (optional) If set to False, do not follow
       redirects
-    :param version: Request HTTP version.
-    :type version: aiohttp.protocol.HttpVersion
-    :param bool compress: Set to True if request has to be compressed
+    version - Request HTTP version.
+    compress - Set to True if request has to be compressed
        with deflate encoding.
-    :param chunked: Set to chunk size for chunked transfer encoding.
-    :type chunked: bool or int
-    :param bool expect100: Expect 100-continue response from server.
-    :param connector: BaseConnector sub-class instance to support
+    chunked - Set to chunk size for chunked transfer encoding.
+    expect100 - Expect 100-continue response from server.
+    connector - BaseConnector sub-class instance to support
        connection pooling.
-    :type connector: aiohttp.connector.BaseConnector
-    :param bool read_until_eof: Read response until eof if response
+    read_until_eof - Read response until eof if response
        does not have Content-Length header.
-    :param request_class: (optional) Custom Request class implementation.
-    :param response_class: (optional) Custom Response class implementation.
-    :param loop: Optional event loop.
+    request_class - (optional) Custom Request class implementation.
+    response_class - (optional) Custom Response class implementation.
+    loop - Optional event loop.
 
     Usage::
 
@@ -692,7 +712,9 @@ def request(method, url, *,
                          compress=compress,
                          chunked=chunked,
                          expect100=expect100,
-                         read_until_eof=read_until_eof),
+                         read_until_eof=read_until_eof,
+                         proxy=proxy,
+                         proxy_auth=proxy_auth,),
         session=session)
 
 

@@ -1,6 +1,7 @@
 import asyncio
 import mimetypes
 import os
+
 from . import hdrs
 from .helpers import create_future
 from .web_reqrep import StreamResponse
@@ -20,6 +21,8 @@ class FileSender:
                      count, loop, registered):
         if registered:
             loop.remove_writer(out_fd)
+        if fut.cancelled():
+            return
         try:
             n = os.sendfile(out_fd, in_fd, offset, count)
             if n == 0:  # EOF reached
@@ -37,35 +40,52 @@ class FileSender:
             fut.set_result(None)
 
     @asyncio.coroutine
-    def _sendfile_system(self, req, resp, fobj, count):
-        """
-        Write `count` bytes of `fobj` to `resp` using
-        the ``sendfile`` system call.
+    def _sendfile_system(self, request, resp, fobj, count):
+        # Write count bytes of fobj to resp using
+        # the os.sendfile system call.
+        #
+        # request should be a aiohttp.web.Request instance.
+        #
+        # resp should be a aiohttp.web.StreamResponse instance.
+        #
+        # fobj should be an open file object.
+        #
+        # count should be an integer > 0.
 
-        `req` should be a :obj:`aiohttp.web.Request` instance.
-
-        `resp` should be a :obj:`aiohttp.web.StreamResponse` instance.
-
-        `fobj` should be an open file object.
-
-        `count` should be an integer > 0.
-        """
-        transport = req.transport
+        transport = request.transport
 
         if transport.get_extra_info("sslcontext"):
-            yield from self._sendfile_fallback(req, resp, fobj, count)
+            yield from self._sendfile_fallback(request, resp, fobj, count)
             return
 
-        yield from resp.drain()
+        def _send_headers(resp_impl):
+            # Durty hack required for
+            # https://github.com/KeepSafe/aiohttp/issues/1093
+            # don't send headers in sendfile mode
+            pass
 
-        loop = req.app.loop
+        resp._send_headers = _send_headers
+        yield from resp.prepare(request)
+
+        loop = request.app.loop
         # See https://github.com/KeepSafe/aiohttp/issues/958 for details
+
+        # send headers
+        headers = ['HTTP/{0.major}.{0.minor} 200 OK\r\n'.format(
+            request.version)]
+        for hdr, val in resp.headers.items():
+            headers.append('{}: {}\r\n'.format(hdr, val))
+        headers.append('\r\n')
+
         out_socket = transport.get_extra_info("socket").dup()
+        out_socket.setblocking(False)
         out_fd = out_socket.fileno()
         in_fd = fobj.fileno()
-        fut = create_future(loop)
 
         try:
+            yield from loop.sock_sendall(out_socket,
+                                         ''.join(headers).encode('utf-8'))
+            fut = create_future(loop)
             self._sendfile_cb(fut, out_fd, in_fd, 0, count, loop, False)
 
             yield from fut
@@ -73,28 +93,27 @@ class FileSender:
             out_socket.close()
 
     @asyncio.coroutine
-    def _sendfile_fallback(self, req, resp, fobj, count):
-        """
-        Mimic the :meth:`_sendfile_system` method, but without using the
-        ``sendfile`` system call. This should be used on systems that don't
-        support the ``sendfile`` system call.
+    def _sendfile_fallback(self, request, resp, fobj, count):
+        # Mimic the _sendfile_system() method, but without using the
+        # os.sendfile() system call. This should be used on systems
+        # that don't support the os.sendfile().
 
-        To avoid blocking the event loop & to keep memory usage low, `fobj` is
-        transferred in chunks controlled by the `chunk_size` argument to
-        :class:`StaticRoute`.
-        """
+        # To avoid blocking the event loop & to keep memory usage low,
+        # fobj is transferred in chunks controlled by the
+        # constructor's chunk_size argument.
+
+        yield from resp.prepare(request)
+
         chunk_size = self._chunk_size
 
         chunk = fobj.read(chunk_size)
-        while chunk and count > chunk_size:
+        while True:
             resp.write(chunk)
             yield from resp.drain()
             count = count - chunk_size
-            chunk = fobj.read(chunk_size)
-
-        if chunk:
-            resp.write(chunk[:count])
-            yield from resp.drain()
+            if count <= 0:
+                break
+            chunk = fobj.read(count)
 
     if hasattr(os, "sendfile"):  # pragma: no cover
         _sendfile = _sendfile_system
@@ -102,10 +121,11 @@ class FileSender:
         _sendfile = _sendfile_fallback
 
     @asyncio.coroutine
-    def send(self, req, filepath):
+    def send(self, request, filepath):
+        """Send filepath to client using request."""
         st = filepath.stat()
 
-        modsince = req.if_modified_since
+        modsince = request.if_modified_since
         if modsince is not None and st.st_mtime <= modsince.timestamp():
             from .web_exceptions import HTTPNotModified
             raise HTTPNotModified()
@@ -125,10 +145,8 @@ class FileSender:
         resp.content_length = file_size
         resp.set_tcp_cork(True)
         try:
-            yield from resp.prepare(req)
-
             with filepath.open('rb') as f:
-                yield from self._sendfile(req, resp, f, file_size)
+                yield from self._sendfile(request, resp, f, file_size)
 
         finally:
             resp.set_tcp_nodelay(True)

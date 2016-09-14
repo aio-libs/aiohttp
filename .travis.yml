@@ -7,7 +7,8 @@ language: python
 python:
   - 3.4
   - 3.5
-  - nightly
+#  - 3.5-dev   # for 3.5.2
+#  - nightly
 
 os:
   - linux
@@ -21,38 +22,28 @@ before_cache:
   - rm -f $HOME/.cache/pip/log/debug.log
 
 install:
+  - sudo apt-get install enchant
   - pip install --upgrade pip wheel
   - pip install --upgrade setuptools
   - pip install -r requirements-ci.txt
   - pip install aiodns
-  - pip install coveralls
+  - pip install codecov
   - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
         pip install uvloop;
     fi
+  - pip install sphinxcontrib-spelling
 
 script:
-  - flake8 aiohttp
+  - make cov-dev-full
+
   - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
-        flake8 examples tests;
-    fi
-  - py.test --cov=aiohttp tests
-  - python setup.py check -rm
-  - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
-        python setup.py check -s;
+        make doc;
+        make doc-spelling;
     fi
 
 after_success:
-  - coveralls
+  - codecov
   - ./run_docker.sh
-
-env:
-  matrix:
-    # PYTHONASYNCIODEBUG and AIOHTTP_NO_EXTENSIONS environment variables
-    # are considered as enabled if they are any non empty strings.
-    - PYTHONASYNCIODEBUG=X AIOHTTP_NO_EXTENSIONS=
-    - PYTHONASYNCIODEBUG=  AIOHTTP_NO_EXTENSIONS=
-    - PYTHONASYNCIODEBUG=X AIOHTTP_NO_EXTENSIONS=X
-    - PYTHONASYNCIODEBUG=  AIOHTTP_NO_EXTENSIONS=X
 
 deploy:
   provider: pypi

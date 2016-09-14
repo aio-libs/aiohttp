@@ -3,10 +3,11 @@ import os
 import time
 
 import pytest
-from aiohttp.helpers import create_future, ensure_future, Timeout
+
+from aiohttp.helpers import Timeout, create_future, ensure_future
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_timeout(loop):
     canceled_raised = False
 
@@ -26,7 +27,7 @@ def test_timeout(loop):
     assert canceled_raised, 'CancelledError was not raised'
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_timeout_finish_in_time(loop):
     @asyncio.coroutine
     def long_running_task():
@@ -50,7 +51,7 @@ def test_timeout_global_loop(loop):
     loop.run_until_complete(run())
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_timeout_disable(loop):
     @asyncio.coroutine
     def long_running_task():
@@ -62,10 +63,10 @@ def test_timeout_disable(loop):
         resp = yield from long_running_task()
     assert resp == 'done'
     dt = loop.time() - t0
-    assert 0.09 < dt < 0.12, dt
+    assert 0.09 < dt < 0.13, dt
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_timeout_not_relevant_exception(loop):
     yield from asyncio.sleep(0, loop=loop)
     with pytest.raises(KeyError):
@@ -73,7 +74,7 @@ def test_timeout_not_relevant_exception(loop):
             raise KeyError
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_timeout_canceled_error_is_converted_to_timeout(loop):
     yield from asyncio.sleep(0, loop=loop)
     with pytest.raises(asyncio.CancelledError):
@@ -81,7 +82,7 @@ def test_timeout_canceled_error_is_converted_to_timeout(loop):
             raise asyncio.CancelledError
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_timeout_blocking_loop(loop):
     @asyncio.coroutine
     def long_running_task():
@@ -93,7 +94,7 @@ def test_timeout_blocking_loop(loop):
     assert result == 'done'
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_for_race_conditions(loop):
     fut = create_future(loop)
     loop.call_later(0.1, fut.set_result('done'))
@@ -102,7 +103,7 @@ def test_for_race_conditions(loop):
     assert resp == 'done'
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_timeout_time(loop):
     foo_running = None
 
@@ -128,7 +129,7 @@ def test_raise_runtimeerror_if_no_task(loop):
             pass
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_outer_coro_is_not_cancelled(loop):
 
     has_timeout = False
@@ -149,7 +150,7 @@ def test_outer_coro_is_not_cancelled(loop):
     assert task.done()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_cancel_outer_coro(loop):
     fut = create_future(loop)
 
@@ -167,7 +168,7 @@ def test_cancel_outer_coro(loop):
     assert task.done()
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_timeout_suppress_exception_chain(loop):
 
     with pytest.raises(asyncio.TimeoutError) as ctx:
