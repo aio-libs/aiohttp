@@ -793,11 +793,12 @@ TCPConnector
 ^^^^^^^^^^^^
 
 .. class:: TCPConnector(*, verify_ssl=True, fingerprint=None,\
-                        use_dns_cache=False, \
+                        use_dns_cache=True, \
                         family=0, \
                         ssl_context=None, conn_timeout=None, \
                         keepalive_timeout=30, limit=None, \
-                        force_close=False, loop=None, local_addr=None)
+                        force_close=False, loop=None, local_addr=None,
+                        resolver=None)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -821,7 +822,7 @@ TCPConnector
 
         .. versionadded:: 0.16
 
-   :param bool use_dns_cache: use internal cache for DNS lookups, ``False``
+   :param bool use_dns_cache: use internal cache for DNS lookups, ``True``
       by default.
 
       Enabling an option *may* speedup connection
@@ -830,14 +831,23 @@ TCPConnector
 
       .. versionadded:: 0.17
 
-   :param aiohttp.abc.AbstractResolver resolver: Custom resolver instance to use.
-      ``aiohttp.resolver.DefaultResolver`` by default.
+      .. versionchanged:: 1.0
 
-      Custom resolvers allow to resolve hostnames differently than the way the
-      host is configured. Alternate resolvers include aiodns, which does not rely
-      on a thread executor.
+         The default is changed to ``True``
+
+   :param aiohttp.abc.AbstractResolver resolver: Custom resolver
+      instance to use.  ``aiohttp.DefaultResolver`` by
+      default (asynchronous if ``aiodns>=1.1`` is installed).
+
+      Custom resolvers allow to resolve hostnames differently than the
+      way the host is configured.
 
       .. versionadded:: 0.22
+
+      .. versionchanged:: 1.0
+
+         The resolver is ``aiohttp.AsyncResolver`` now if
+         :term:`aiodns` is installed.
 
    :param bool resolve: alias for *use_dns_cache* parameter.
 

@@ -412,8 +412,8 @@ def test_tcp_connector_ctor(loop):
     assert conn.fingerprint is None
 
     with pytest.warns(DeprecationWarning):
-        assert not conn.resolve
-    assert not conn.use_dns_cache
+        assert conn.resolve
+    assert conn.use_dns_cache
 
     assert conn.family == 0
 
@@ -778,6 +778,11 @@ def test_both_use_dns_cache_only(loop):
     assert conn.use_dns_cache
     with pytest.warns(DeprecationWarning):
         assert conn.resolve
+
+
+def test_default_use_dns_cache(loop):
+    conn = aiohttp.TCPConnector(loop=loop)
+    assert conn.use_dns_cache
 
 
 class TestHttpClientConnector(unittest.TestCase):

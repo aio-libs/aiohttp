@@ -125,9 +125,11 @@ CHANGES
 - Drop `Timeout` class for sake of `async_timeout` external library.
   `aiohttp.Timeout` is an alias for `async_timeout.timeout`
 
--
+- `use_dns_cache` parameter of `aiohttp.TCPConnector` is `True` by
+  default #1152
 
--
+- `aiohttp.TCPConnector` uses asynchronous DNS resolver if available by
+  default #1152
 
 0.22.5 (08-02-2016)
 -------------------
