@@ -42,9 +42,10 @@ Client example::
 
     import aiohttp
     import asyncio
+    import async_timeout
 
     async def fetch(session, url):
-        with aiohttp.Timeout(10):
+        with async_timeout.timeout(10):
             async with session.get(url) as response:
                 return await response.text()
 
@@ -114,6 +115,7 @@ Dependencies
 - Python 3.4.2+
 - *chardet* library
 - *multidict* library
+- *async_timeout* library
 - *Optional* :term:`cchardet` library as faster replacement for
   :term:`chardet`.
 
