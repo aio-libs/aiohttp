@@ -120,7 +120,8 @@ CHANGES
 
 - Fix piling up asyncio loop by cookie expiration callbacks #1061
 
--
+- Drop `Timeout` class for sake of `async_timeout` external library.
+  `aiohttp.Timeout` is an alias for `async_timeout.timeout`
 
 -
 

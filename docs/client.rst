@@ -680,11 +680,13 @@ overridden by passing ``timeout`` parameter into
 
 ``None`` or ``0`` disables timeout check.
 
-The example wraps a client call in :class:`~aiohttp.helpers.Timeout` context
+The example wraps a client call in :func:`async_timeout.timeout` context
 manager, adding timeout for both connecting and response body
 reading procedures::
 
-    with aiohttp.Timeout(0.001):
+    import async_timeout
+
+    with async_timeout.timeout(0.001):
         async with session.get('https://github.com') as r:
             await r.text()
 
