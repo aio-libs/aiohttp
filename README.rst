@@ -118,9 +118,11 @@ Requirements
 - chardet_
 - multidict_
 
-Optionally you may install the cChardet_ library.
+Optionally you may install the cChardet_ and aiodns_ libraries (highly
+recommended for sake of speed).
 
 .. _chardet: https://pypi.python.org/pypi/chardet
+.. _aiodns: https://pypi.python.org/pypi/aiodns
 .. _multidict: https://pypi.python.org/pypi/multidict
 .. _cChardet: https://pypi.python.org/pypi/cchardet
 

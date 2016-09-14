@@ -474,10 +474,12 @@ def make_mocked_request(method, path, headers=None, *,
     return req
 
 
-def make_mocked_coro(return_value):
+def make_mocked_coro(return_value=sentinel, raise_exception=sentinel):
     """Creates a coroutine mock."""
     @asyncio.coroutine
     def mock_coro(*args, **kwargs):
+        if raise_exception is not sentinel:
+            raise raise_exception
         return return_value
 
     return mock.Mock(wraps=mock_coro)

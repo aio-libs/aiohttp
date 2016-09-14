@@ -456,14 +456,11 @@ class TCPConnector(BaseConnector):
         elif resolve is not sentinel:
             _use_dns_cache = resolve
         else:
-            _use_dns_cache = False
+            _use_dns_cache = True
 
-        self._resolver = resolver or DefaultResolver(loop=self._loop)
-
-        if _use_dns_cache or resolver:
-            self._use_resolver = True
-        else:
-            self._use_resolver = False
+        if resolver is None:
+            resolver = DefaultResolver(loop=self._loop)
+        self._resolver = resolver
 
         self._use_dns_cache = _use_dns_cache
         self._cached_hosts = {}
@@ -552,11 +549,9 @@ class TCPConnector(BaseConnector):
 
     @asyncio.coroutine
     def _resolve_host(self, host, port):
-        if not self._use_resolver or is_ip_address(host):
+        if is_ip_address(host):
             return [{'hostname': host, 'host': host, 'port': port,
                      'family': self._family, 'proto': 0, 'flags': 0}]
-
-        assert self._resolver
 
         if self._use_dns_cache:
             key = (host, port)

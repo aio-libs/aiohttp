@@ -123,6 +123,13 @@ Dependencies
 
      $ pip install cchardet
 
+- *Optional* :term:`aiodns` library for fast DNS resolving. The
+  library is highly recommended.
+
+  .. code-block:: bash
+
+     $ pip install aiodns
+
 
 Discussion list
 ---------------
