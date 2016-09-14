@@ -13,9 +13,8 @@ from collections import namedtuple
 from pathlib import Path
 from urllib.parse import quote, urlencode
 
-from multidict import MultiDict, MultiDictProxy
-
 from async_timeout import timeout
+from multidict import MultiDict, MultiDictProxy
 
 from . import hdrs
 from .errors import InvalidURL
