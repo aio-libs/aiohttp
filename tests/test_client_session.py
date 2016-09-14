@@ -94,18 +94,20 @@ def test_init_headers_list_of_tuples_with_duplicates(create_session):
 def test_init_cookies_with_simple_dict(create_session):
     session = create_session(cookies={"c1": "cookie1",
                                       "c2": "cookie2"})
-    assert set(session.cookies) == {'c1', 'c2'}
-    assert session.cookies['c1'].value == 'cookie1'
-    assert session.cookies['c2'].value == 'cookie2'
+    cookies = session.cookie_jar.filter_cookies('')
+    assert set(cookies) == {'c1', 'c2'}
+    assert cookies['c1'].value == 'cookie1'
+    assert cookies['c2'].value == 'cookie2'
 
 
 def test_init_cookies_with_list_of_tuples(create_session):
     session = create_session(cookies=[("c1", "cookie1"),
                                       ("c2", "cookie2")])
 
-    assert set(session.cookies) == {'c1', 'c2'}
-    assert session.cookies['c1'].value == 'cookie1'
-    assert session.cookies['c2'].value == 'cookie2'
+    cookies = session.cookie_jar.filter_cookies('')
+    assert set(cookies) == {'c1', 'c2'}
+    assert cookies['c1'].value == 'cookie1'
+    assert cookies['c2'].value == 'cookie2'
 
 
 def test_merge_headers(create_session):

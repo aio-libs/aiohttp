@@ -1449,7 +1449,8 @@ def test_set_cookies(test_client, loop):
     with mock.patch('aiohttp.client_reqrep.client_logger') as m_log:
         resp = yield from client.get('/')
         assert 200 == resp.status
-        assert client.session.cookies.keys() == {'c1', 'c2'}
+        cookie_names = {c.key for c in client.session.cookies}
+        assert cookie_names == {'c1', 'c2'}
         resp.close()
 
         m_log.warning.assert_called_with('Can not load response cookies: %s',

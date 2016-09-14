@@ -161,7 +161,9 @@ def test_client_websocket(loop, test_client):
 def test_client_cookie(loop, test_client):
     assert not test_client.session.cookies
     yield from test_client.get("/cookie")
-    assert test_client.session.cookies['cookie'].value == 'val'
+    cookies = list(test_client.session.cookies)
+    assert cookies[0].key == 'cookie'
+    assert cookies[0].value == 'val'
 
 
 @asyncio.coroutine

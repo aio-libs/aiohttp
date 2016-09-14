@@ -72,18 +72,17 @@ class AbstractResolver(ABC):
 
 
 class CookiesProxy:
-    def __init__(self, cookies):
-        self._cookies = cookies
+    def __init__(self, jar):
+        self._jar = jar
 
     def __iter__(self):
-        for val in self._cookies.values():
-            yield from val.values()
+        return iter(self._jar)
 
     def __len__(self):
-        return sum(1 for i in self)
+        return len(self._jar)
 
     def clear(self):
-        self._cookies.clear()
+        self._jar.clear()
 
 
 class AbstractCookieJar(ABC):
@@ -95,7 +94,10 @@ class AbstractCookieJar(ABC):
     @property
     def cookies(self):
         """The session cookies."""
-        return CookiesProxy(self._cookies)
+        return CookiesProxy(self)
+
+    def clear(self):
+        self._cookies.clear()
 
     @abstractmethod
     def update_cookies(self, cookies, response_url=None):
@@ -104,3 +106,10 @@ class AbstractCookieJar(ABC):
     @abstractmethod
     def filter_cookies(self, request_url):
         """Returns this jar's cookies filtered by their attributes."""
+
+    def __iter__(self):
+        for val in self._cookies.values():
+            yield from val.values()
+
+    def __len__(self):
+        return sum(1 for i in self)
