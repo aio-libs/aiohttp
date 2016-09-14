@@ -80,11 +80,11 @@ clean:
 	@rm -rf .tox
 
 doc:
-	@make -C docs html
+	@make -C docs html SPHINXOPTS="-W -E"
 	@echo "open file://`pwd`/docs/_build/html/index.html"
 
 doc-spelling:
-	@make -C docs spelling
+	@make -C docs spelling SPHINXOPTS="-W -E"
 
 install:
 	@pip install -U pip
