@@ -120,6 +120,8 @@ CHANGES
 
 - Fix static file with spaces #1140
 
+- Fix piling up asyncio loop by cookie expiration callbacks #1061
+
 -
 
 -
