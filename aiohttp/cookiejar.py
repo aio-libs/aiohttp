@@ -53,14 +53,11 @@ class CookieJar(AbstractCookieJar):
             if when < now:
                 cookies[domain].pop(name, None)
                 to_del.append((domain, name))
+                self._host_only_cookies.discard((domain, name))
             else:
                 next_expiration = min(next_expiration, when)
         for key in to_del:
             del expirations[key]
-
-        # Remove the host-only flags of nonexistent cookies
-        self._host_only_cookies -= (
-            self._host_only_cookies.difference(self._cookies.keys()))
 
         self._next_expiration = ceil(next_expiration)
 
@@ -164,7 +161,7 @@ class CookieJar(AbstractCookieJar):
             if not self._unsafe and is_ip_address(hostname):
                 continue
 
-            if name in self._host_only_cookies:
+            if (domain, name) in self._host_only_cookies:
                 if domain != hostname:
                     continue
             elif not self._is_domain_match(domain, hostname):
