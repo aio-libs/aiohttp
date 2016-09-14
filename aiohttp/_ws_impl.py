@@ -238,7 +238,7 @@ def parse_frame(buf, continuation=False):
     # read header
     first_byte, second_byte = yield from buf.read(2)
 
-    reserved = first_byte & 112
+    reserved = first_byte & 0x70
 
     # frame-fin = %x0 ; more frames of this message follow
     #           / %x1 ; final frame of this message
@@ -250,10 +250,10 @@ def parse_frame(buf, continuation=False):
             WSCloseCode.PROTOCOL_ERROR,
             'Received frame with non-zero reserved bits')
 
-    fin = first_byte & 128
-    opcode = first_byte & 15
+    fin = first_byte & 0x80
+    opcode = first_byte & 0xf
 
-    if opcode > 7 and fin == 0:
+    if opcode > 0x7 and fin == 0:
         raise WebSocketError(
             WSCloseCode.PROTOCOL_ERROR,
             'Received fragmented control frame')
@@ -264,11 +264,11 @@ def parse_frame(buf, continuation=False):
             'Received new fragment frame with non-zero '
             'opcode {!r}'.format(opcode))
 
-    has_mask = second_byte & 128
-    length = second_byte & 127
+    has_mask = second_byte & 0x80
+    length = second_byte & 0x7f
 
     # Control frames MUST have a payload length of 125 bytes or less
-    if opcode > 7 and length > 125:
+    if opcode > 0x7 and length > 125:
         raise WebSocketError(
             WSCloseCode.PROTOCOL_ERROR,
             "Control frame payload cannot be larger than 125 bytes")
@@ -313,13 +313,13 @@ class WebSocketWriter:
             mask_bit = 0
 
         if msg_length < 126:
-            header = PACK_LEN1(128 | opcode, msg_length | mask_bit)
+            header = PACK_LEN1(0x80 | opcode, msg_length | mask_bit)
         elif msg_length < 65536:
-            header = PACK_LEN2(128 | opcode, 126 | mask_bit, msg_length)
+            header = PACK_LEN2(0x80 | opcode, 126 | mask_bit, msg_length)
         else:
-            header = PACK_LEN3(128 | opcode, 127 | mask_bit, msg_length)
+            header = PACK_LEN3(0x80 | opcode, 127 | mask_bit, msg_length)
         if use_mask:
-            mask = self.randrange(0, 4294967295)
+            mask = self.randrange(0, 0xFFFFFFFF)
             mask = mask.to_bytes(4, 'big')
             message = _websocket_mask(mask, bytearray(message))
             self.writer.write(header + mask + message)
