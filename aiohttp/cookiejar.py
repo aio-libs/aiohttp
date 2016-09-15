@@ -155,7 +155,7 @@ class CookieJar(AbstractCookieJar):
 
             # Send shared cookies
             if not domain:
-                dict.__setitem__(filtered, name, cookie)
+                filtered[name] = cookie.value
                 continue
 
             if not self._unsafe and is_ip_address(hostname):
@@ -173,7 +173,7 @@ class CookieJar(AbstractCookieJar):
             if is_not_secure and cookie["secure"]:
                 continue
 
-            dict.__setitem__(filtered, name, cookie)
+            filtered[name] = cookie.value
 
         return filtered
 

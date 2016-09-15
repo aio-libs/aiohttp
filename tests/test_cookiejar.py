@@ -140,6 +140,66 @@ def test_constructor(loop, cookies_to_send, cookies_to_receive):
     assert jar._loop is loop
 
 
+def test_domain_filter_ip_cookie_send(loop):
+    jar = CookieJar(loop=loop)
+    cookies = SimpleCookie(
+        "shared-cookie=first; "
+        "domain-cookie=second; Domain=example.com; "
+        "subdomain1-cookie=third; Domain=test1.example.com; "
+        "subdomain2-cookie=fourth; Domain=test2.example.com; "
+        "dotted-domain-cookie=fifth; Domain=.example.com; "
+        "different-domain-cookie=sixth; Domain=different.org; "
+        "secure-cookie=seventh; Domain=secure.com; Secure; "
+        "no-path-cookie=eighth; Domain=pathtest.com; "
+        "path1-cookie=nineth; Domain=pathtest.com; Path=/; "
+        "path2-cookie=tenth; Domain=pathtest.com; Path=/one; "
+        "path3-cookie=eleventh; Domain=pathtest.com; Path=/one/two; "
+        "path4-cookie=twelfth; Domain=pathtest.com; Path=/one/two/; "
+        "expires-cookie=thirteenth; Domain=expirestest.com; Path=/;"
+        " Expires=Tue, 1 Jan 1980 12:00:00 GMT; "
+        "max-age-cookie=fourteenth; Domain=maxagetest.com; Path=/;"
+        " Max-Age=60; "
+        "invalid-max-age-cookie=fifteenth; Domain=invalid-values.com; "
+        " Max-Age=string; "
+        "invalid-expires-cookie=sixteenth; Domain=invalid-values.com; "
+        " Expires=string;"
+    )
+
+    jar.update_cookies(cookies)
+    cookies_sent = jar.filter_cookies("http://1.2.3.4/").output(
+        header='Cookie:')
+    assert cookies_sent == 'Cookie: shared-cookie=first'
+
+
+def test_domain_filter_ip_cookie_receive(loop, cookies_to_receive):
+    jar = CookieJar(loop=loop)
+
+    jar.update_cookies(cookies_to_receive, "http://1.2.3.4/")
+    assert len(jar) == 0
+
+
+def test_preserving_ip_domain_cookies(loop):
+    jar = CookieJar(loop=loop, unsafe=True)
+    jar.update_cookies(SimpleCookie(
+        "shared-cookie=first; "
+        "ip-cookie=second; Domain=127.0.0.1;"
+    ))
+    cookies_sent = jar.filter_cookies("http://127.0.0.1/").output(
+        header='Cookie:')
+    assert cookies_sent == ('Cookie: ip-cookie=second\r\n'
+                            'Cookie: shared-cookie=first')
+
+
+def test_ignore_domain_ending_with_dot(loop):
+    jar = CookieJar(loop=loop, unsafe=True)
+    jar.update_cookies(SimpleCookie("cookie=val; Domain=example.com.;"),
+                       "http://www.example.com")
+    cookies_sent = jar.filter_cookies("http://www.example.com/")
+    assert cookies_sent.output(header='Cookie:') == "Cookie: cookie=val"
+    cookies_sent = jar.filter_cookies("http://example.com/")
+    assert cookies_sent.output(header='Cookie:') == ""
+
+
 class TestCookieJarBase(unittest.TestCase):
 
     def setUp(self):
@@ -220,16 +280,6 @@ class TestCookieJarSafe(TestCookieJarBase):
         self.jar.cookies.clear()
 
         return cookies_sent
-
-    def test_domain_filter_ip(self):
-        cookies_sent, cookies_received = (
-            self.request_reply_with_same_url("http://1.2.3.4/"))
-
-        self.assertEqual(set(cookies_sent.keys()), {
-            "shared-cookie"
-        })
-
-        self.assertEqual(set(cookies_received.keys()), set())
 
     def test_domain_filter_same_host(self):
         cookies_sent, cookies_received = (
@@ -462,34 +512,3 @@ class TestCookieJarSafe(TestCookieJarBase):
 
         cookie = cookies_sent["invalid-expires-cookie"]
         self.assertEqual(cookie["expires"], "")
-
-
-class TestCookieJarUnsafe(TestCookieJarBase):
-
-    def setUp(self):
-        super().setUp()
-        self.cookies_to_send = SimpleCookie(
-            "shared-cookie=first; "
-            "ip-cookie=second; Domain=127.0.0.1;"
-        )
-
-        self.cookies_to_receive = SimpleCookie(
-            "shared-cookie=first; "
-            "ip-cookie=second; Domain=127.0.0.1;"
-        )
-
-        self.jar = CookieJar(loop=self.loop, unsafe=True)
-
-    def test_preserving_ip_domain_cookies(self):
-        cookies_sent, cookies_received = (
-            self.request_reply_with_same_url("http://127.0.0.1/"))
-
-        self.assertEqual(set(cookies_sent.keys()), {
-            "shared-cookie",
-            "ip-cookie",
-        })
-
-        self.assertEqual(set(cookies_received.keys()), {
-            "shared-cookie",
-            "ip-cookie",
-        })
