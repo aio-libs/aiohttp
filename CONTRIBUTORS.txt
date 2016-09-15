@@ -26,6 +26,7 @@ Ben Bader
 Benedikt Reinartz
 Brett Cannon
 Brian C. Lane
+Brian Muller
 Boris Feld
 Carl George
 Chien-Wei Huang
