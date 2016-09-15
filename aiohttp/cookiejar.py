@@ -2,6 +2,7 @@ import datetime
 import re
 import time
 from collections import defaultdict
+from collections.abc import Mapping
 from http.cookies import Morsel, SimpleCookie
 from math import ceil
 from urllib.parse import urlsplit
@@ -85,7 +86,7 @@ class CookieJar(AbstractCookieJar):
             # Don't accept cookies from IPs
             return
 
-        if isinstance(cookies, dict):
+        if isinstance(cookies, Mapping):
             cookies = cookies.items()
 
         for name, cookie in cookies:

@@ -122,7 +122,7 @@ The client session supports the context manager protocol for self closing.
 
       The session cookies, :class:`~aiohttp.AbstractCookieJar` instance.
 
-      Gives access to cookie jar content and modifiers.
+      Gives access to cookie jar's content and modifiers.
 
       A read-only property.
 

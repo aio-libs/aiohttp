@@ -131,11 +131,12 @@ CHANGES
 - `aiohttp.TCPConnector` uses asynchronous DNS resolver if available by
   default #1152
 
--
+- Drop `ClientSession.cookies` (BACKWARD INCOMPATIBLE CHANGE) #1173
 
--
+- Refactor `AbstractCookieJar` public API (BACKWARD INCOMPATIBLE) #1173
 
--
+- Fix clashing cookies with the some name but belongings to different
+  domains #1125
 
 -
 
