@@ -131,7 +131,7 @@ CHANGES
 - `aiohttp.TCPConnector` uses asynchronous DNS resolver if available by
   default #1152
 
--
+- Conform to RFC3986 - do not include url fragments in client requests #1174
 
 -
 
