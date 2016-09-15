@@ -468,12 +468,6 @@ class ClientSession:
         return self._connector
 
     @property
-    def cookies(self):
-        """The session cookies."""
-        warnings.warn("Use cookie_jar property instead", DeprecationWarning)
-        return self._cookie_jar.cookies
-
-    @property
     def cookie_jar(self):
         """The session cookies."""
         return self._cookie_jar

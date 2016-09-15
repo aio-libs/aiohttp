@@ -1,8 +1,7 @@
 import asyncio
 import sys
 from abc import ABC, abstractmethod
-from collections import defaultdict
-from http.cookies import SimpleCookie
+from collections.abc import Iterable, Sized
 
 PY_35 = sys.version_info >= (3, 5)
 
@@ -71,33 +70,14 @@ class AbstractResolver(ABC):
         """Release resolver"""
 
 
-class CookiesProxy:
-    def __init__(self, jar):
-        self._jar = jar
-
-    def __iter__(self):
-        return iter(self._jar)
-
-    def __len__(self):
-        return len(self._jar)
-
-    def clear(self):
-        self._jar.clear()
-
-
-class AbstractCookieJar(ABC):
+class AbstractCookieJar(Sized, Iterable):
 
     def __init__(self, *, loop=None):
-        self._cookies = defaultdict(SimpleCookie)
         self._loop = loop or asyncio.get_event_loop()
 
-    @property
-    def cookies(self):
-        """The session cookies."""
-        return CookiesProxy(self)
-
+    @abstractmethod
     def clear(self):
-        self._cookies.clear()
+        """Clear all cookies."""
 
     @abstractmethod
     def update_cookies(self, cookies, response_url=None):
@@ -105,11 +85,4 @@ class AbstractCookieJar(ABC):
 
     @abstractmethod
     def filter_cookies(self, request_url):
-        """Returns this jar's cookies filtered by their attributes."""
-
-    def __iter__(self):
-        for val in self._cookies.values():
-            yield from val.values()
-
-    def __len__(self):
-        return sum(1 for i in self)
+        """Return the jar's cookies filtered by their attributes."""

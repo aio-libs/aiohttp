@@ -133,7 +133,7 @@ def test_constructor(loop, cookies_to_send, cookies_to_receive):
     jar = CookieJar(loop=loop)
     jar.update_cookies(cookies_to_send)
     jar_cookies = SimpleCookie()
-    for cookie in jar.cookies:
+    for cookie in jar:
         dict.__setitem__(jar_cookies, cookie.key, cookie)
     expected_cookies = cookies_to_send
     assert jar_cookies == expected_cookies
@@ -216,14 +216,14 @@ class TestCookieJarBase(unittest.TestCase):
         self.jar.update_cookies(self.cookies_to_send)
         cookies_sent = self.jar.filter_cookies(url)
 
-        self.jar.cookies.clear()
+        self.jar.clear()
 
         self.jar.update_cookies(self.cookies_to_receive, url)
         cookies_received = SimpleCookie()
-        for cookie in self.jar.cookies:
+        for cookie in self.jar:
             dict.__setitem__(cookies_received, cookie.key, cookie)
 
-        self.jar.cookies.clear()
+        self.jar.clear()
 
         return cookies_sent, cookies_received
 
@@ -277,7 +277,7 @@ class TestCookieJarSafe(TestCookieJarBase):
         with mock.patch.object(self.loop, 'time', return_value=send_time):
             cookies_sent = self.jar.filter_cookies(url)
 
-        self.jar.cookies.clear()
+        self.jar.clear()
 
         return cookies_sent
 

@@ -278,11 +278,6 @@ def test_connector_loop(loop):
                         str(ctx.value))
 
 
-def test_cookies_are_readonly(session):
-    with pytest.raises(AttributeError):
-        session.cookies = 123
-
-
 def test_detach(session):
     conn = session.connector
     try:

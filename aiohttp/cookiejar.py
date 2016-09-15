@@ -1,6 +1,7 @@
 import datetime
 import re
 import time
+from collections import defaultdict
 from http.cookies import Morsel, SimpleCookie
 from math import ceil
 from urllib.parse import urlsplit
@@ -29,15 +30,25 @@ class CookieJar(AbstractCookieJar):
 
     def __init__(self, *, unsafe=False, loop=None):
         super().__init__(loop=loop)
+        self._cookies = defaultdict(SimpleCookie)
         self._host_only_cookies = set()
         self._unsafe = unsafe
         self._next_expiration = ceil(loop.time())
         self._expirations = {}
 
-    @property
-    def cookies(self):
+    def clear(self):
+        self._cookies.clear()
+        self._host_only_cookies.clear()
+        self._next_expiration = ceil(self._loop.time())
+        self._expirations.clear()
+
+    def __iter__(self):
         self._do_expiration()
-        return super().cookies
+        for val in self._cookies.values():
+            yield from val.values()
+
+    def __len__(self):
+        return sum(1 for i in self)
 
     def _do_expiration(self):
         now = self._loop.time()
@@ -149,7 +160,7 @@ class CookieJar(AbstractCookieJar):
         hostname = url_parsed.hostname or ""
         is_not_secure = url_parsed.scheme not in ("https", "wss")
 
-        for cookie in self.cookies:
+        for cookie in self:
             name = cookie.key
             domain = cookie["domain"]
 
