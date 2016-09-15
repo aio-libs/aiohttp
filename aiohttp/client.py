@@ -181,6 +181,7 @@ class ClientSession:
                 skip_headers.add(istr(i))
 
         while True:
+            url, _ = urllib.parse.urldefrag(url)
 
             cookies = self._cookie_jar.filter_cookies(url)
 

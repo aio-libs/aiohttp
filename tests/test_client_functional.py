@@ -375,6 +375,45 @@ def test_drop_params_on_redirect(create_app_and_client):
 
 
 @asyncio.coroutine
+def test_drop_fragment_on_redirect(create_app_and_client):
+    @asyncio.coroutine
+    def handler_redirect(request):
+        return web.Response(status=301, headers={'Location': '/ok#fragment'})
+
+    @asyncio.coroutine
+    def handler_ok(request):
+        return web.Response(status=200)
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/ok', handler_ok)
+    app.router.add_route('GET', '/redirect', handler_redirect)
+
+    resp = yield from client.get('/redirect')
+    try:
+        assert resp.status == 200
+        assert resp.url.endswith('/ok')
+    finally:
+        yield from resp.release()
+
+
+@asyncio.coroutine
+def test_drop_fragment(create_app_and_client):
+    @asyncio.coroutine
+    def handler_ok(request):
+        return web.Response(status=200)
+
+    app, client = yield from create_app_and_client()
+    app.router.add_route('GET', '/ok', handler_ok)
+
+    resp = yield from client.get('/ok#fragment')
+    try:
+        assert resp.status == 200
+        assert resp.url.endswith('/ok')
+    finally:
+        yield from resp.release()
+
+
+@asyncio.coroutine
 def test_history(create_app_and_client):
     @asyncio.coroutine
     def handler_redirect(request):
