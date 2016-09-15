@@ -133,6 +133,8 @@ CHANGES
 
 - Drop `ClientSession.cookies` (BACKWARD INCOMPATIBLE CHANGE) #1173
 
+- Conform to RFC3986 - do not include url fragments in client requests #1174
+
 - Refactor `AbstractCookieJar` public API (BACKWARD INCOMPATIBLE) #1173
 
 - Fix clashing cookies with the some name but belongings to different
