@@ -82,3 +82,7 @@ shortcut for::
 
 ``app.router.register_route(...)`` is still supported, it creates
 :class:`aiohttp.web.ResourceAdapter` for every call (but it's deprecated now).
+
+
+.. disqus::
+  :title: aiohttp router refactoring notes

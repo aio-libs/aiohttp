@@ -78,3 +78,4 @@
        by the IETF as :rfc:`6455`
 
 .. disqus::
+  :title: aiohttp glossary

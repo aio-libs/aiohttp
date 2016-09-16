@@ -151,3 +151,7 @@ Helpers
 .. comethod:: wait_eof()
 
    Wait for EOF. The given data may be accessible by upcoming read calls.
+
+
+.. disqus::
+  :title: aiohttp streaming api

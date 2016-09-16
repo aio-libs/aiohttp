@@ -4,3 +4,4 @@
 
 
 .. disqus::
+  :title: instructions for aiohttp contributors
