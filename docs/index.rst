@@ -35,6 +35,14 @@ replacement for :term:`chardet`:
 
    $ pip install cchardet
 
+For speeding up DNS resolving by client API you may install
+:term:`aiodns` as well.
+This options is highly recommended:
+
+.. code-block:: bash
+
+   $ pip install aiodns
+
 Getting Started
 ---------------
 
