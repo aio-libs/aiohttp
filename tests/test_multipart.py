@@ -339,6 +339,15 @@ class PartReaderTestCase(TestCase):
         self.assertEqual(b'\xd0\x9f\xd1\x80\xd0\xb8\xd0\xb2\xd0\xb5\xd1\x82,'
                          b' \xd0\xbc\xd0\xb8\xd1\x80!', result)
 
+    def test_read_with_content_transfer_encoding_binary(self):
+        obj = aiohttp.multipart.BodyPartReader(
+            self.boundary, {CONTENT_TRANSFER_ENCODING: 'binary'},
+            Stream(b'\xd0\x9f\xd1\x80\xd0\xb8\xd0\xb2\xd0\xb5\xd1\x82,'
+                   b' \xd0\xbc\xd0\xb8\xd1\x80!\r\n--:--'))
+        result = yield from obj.read(decode=True)
+        self.assertEqual(b'\xd0\x9f\xd1\x80\xd0\xb8\xd0\xb2\xd0\xb5\xd1\x82,'
+                         b' \xd0\xbc\xd0\xb8\xd1\x80!', result)
+
     def test_read_with_content_transfer_encoding_unknown(self):
         obj = aiohttp.multipart.BodyPartReader(
             self.boundary, {CONTENT_TRANSFER_ENCODING: 'unknown'},
@@ -938,6 +947,21 @@ class BodyPartWriterTestCase(unittest.TestCase):
 
         self.assertEqual(b'=D0=9F=D1=80=D0=B8=D0=B2=D0=B5=D1=82,'
                          b' =D0=BC=D0=B8=D1=80!', next(stream))
+        self.assertEqual(b'\r\n', next(stream))
+        self.assertIsNone(next(stream, None))
+
+    def test_serialize_with_content_transfer_encoding_binary(self):
+        part = aiohttp.multipart.BodyPartWriter(
+            'Привет, мир!'.encode('utf-8'),
+            {CONTENT_TRANSFER_ENCODING: 'binary'})
+        stream = part.serialize()
+        self.assertEqual(b'Content-Transfer-Encoding: binary\r\n'
+                         b'Content-Type: application/octet-stream',
+                         next(stream))
+        self.assertEqual(b'\r\n\r\n', next(stream))
+
+        self.assertEqual(b'\xd0\x9f\xd1\x80\xd0\xb8\xd0\xb2\xd0\xb5\xd1\x82,'
+                         b' \xd0\xbc\xd0\xb8\xd1\x80!', next(stream))
         self.assertEqual(b'\r\n', next(stream))
         self.assertIsNone(next(stream, None))
 
