@@ -1463,3 +1463,4 @@ CookieJar
          cookies for given URL.
 
 .. disqus::
+  :title: aiohttp client reference

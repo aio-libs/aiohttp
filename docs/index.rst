@@ -211,3 +211,4 @@ Indices and tables
 
 
 .. disqus::
+  :title: aiohttp documentation

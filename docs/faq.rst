@@ -314,3 +314,6 @@ And the full tests file::
 Note how we are using the ``side_effect`` feature for injecting the loop to the
 ``AioESService.__init__`` call. The use of ``**args, **kwargs`` is mandatory
 in order to propagate the arguments being used by the caller.
+
+.. disqus::
+  :title: aiohttp FAQ
