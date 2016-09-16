@@ -140,7 +140,7 @@ CHANGES
 - Fix clashing cookies with have the same name but belong to different
   domains #1125
 
-- Support binaryContent-Transfer-Encoding #1169
+- Support binary Content-Transfer-Encoding #1169
 
 -
 
