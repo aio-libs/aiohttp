@@ -110,7 +110,7 @@ CHANGES
 - Default value for `StreamReader.read_nowait` is -1 from now #1150
 
 - `aiohttp.StreamReader` is not inherited from `asyncio.StreamReader` from now
-  (BACKWARD INCOMPATIBLE CHANGE) #1150
+  (BACKWARD INCOMPATIBLE) #1150
 
 - Streams documentation added #1150
 
@@ -126,18 +126,18 @@ CHANGES
   `aiohttp.Timeout` is an alias for `async_timeout.timeout`
 
 - `use_dns_cache` parameter of `aiohttp.TCPConnector` is `True` by
-  default #1152
+  default (BACKWARD INCOMPATIBLE) #1152
 
 - `aiohttp.TCPConnector` uses asynchronous DNS resolver if available by
-  default #1152
+  default (BACKWARD INCOMPATIBLE) #1152
 
 - Conform to RFC3986 - do not include url fragments in client requests #1174
 
-- Drop `ClientSession.cookies` (BACKWARD INCOMPATIBLE CHANGE) #1173
+- Drop `ClientSession.cookies` (BACKWARD INCOMPATIBLE) #1173
 
 - Refactor `AbstractCookieJar` public API (BACKWARD INCOMPATIBLE) #1173
 
 - Fix clashing cookies with have the same name but belong to different
-  domains #1125
+  domains (BACKWARD INCOMPATIBLE) #1125
 
 - Support binary Content-Transfer-Encoding #1169
