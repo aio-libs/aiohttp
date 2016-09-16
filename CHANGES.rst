@@ -14,6 +14,8 @@ CHANGES
 
 - Fix `AssertionError` in static file handling #1177
 
+- Fix access log formats `%O` and `%b` for static file handling
+
 
 1.0.0 (2016-09-16)
 -------------------
