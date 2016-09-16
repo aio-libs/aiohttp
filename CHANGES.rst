@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-1.0.1 (XX-XX-XXXX)
+1.0.1 (2016-09-16)
 ------------------
 
 - Restore `aiohttp.web.MsgType` alias for `aiohttp.WSMsgType` for sake
@@ -15,7 +15,7 @@ CHANGES
 - Fix `AssertionError` in static file handling #1177
 
 
-1.0.0 (09-16-2016)
+1.0.0 (2016-09-16)
 -------------------
 
 - Change default size for client session's connection pool from
