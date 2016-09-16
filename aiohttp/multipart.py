@@ -443,7 +443,7 @@ class BodyPartReader(object):
         Supports ``gzip``, ``deflate`` and ``identity`` encodings for
         `Content-Encoding` header.
 
-        Supports ``base64``, ``quoted-printable`` encodings for
+        Supports ``base64``, ``quoted-printable``, ``binary`` encodings for
         `Content-Transfer-Encoding` header.
 
         :param bytearray data: Data to decode.
@@ -477,6 +477,8 @@ class BodyPartReader(object):
             return base64.b64decode(data)
         elif encoding == 'quoted-printable':
             return binascii.a2b_qp(data)
+        elif encoding == 'binary':
+            return data
         else:
             raise RuntimeError('unknown content transfer encoding: {}'
                                ''.format(encoding))
@@ -854,6 +856,8 @@ class BodyPartWriter(object):
         elif encoding == 'quoted-printable':
             for chunk in stream:
                 yield binascii.b2a_qp(chunk)
+        elif encoding == 'binary':
+            yield from stream
         else:
             raise RuntimeError('unknown content transfer encoding: {}'
                                ''.format(encoding))
