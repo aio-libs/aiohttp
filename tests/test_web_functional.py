@@ -179,6 +179,38 @@ def test_multipart(loop, test_client):
 
 
 @asyncio.coroutine
+def test_multipart_content_transfer_encoding(loop, test_client):
+    """For issue #1168"""
+    with multipart.MultipartWriter() as writer:
+        writer.append(b'\x00' * 10,
+                      headers={'Content-Transfer-Encoding': 'binary'})
+
+    @asyncio.coroutine
+    def handler(request):
+        reader = yield from request.multipart()
+        assert isinstance(reader, multipart.MultipartReader)
+
+        part = yield from reader.next()
+        assert isinstance(part, multipart.BodyPartReader)
+        assert part.headers['Content-Transfer-Encoding'] == 'binary'
+        thing = yield from part.read()
+        assert thing == b'\x00' * 10
+
+        resp = web.Response()
+        resp.content_type = 'application/json'
+        resp.body = b''
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.post('/', data=writer, headers=writer.headers)
+    assert 200 == resp.status
+    yield from resp.release()
+
+
+@asyncio.coroutine
 def test_render_redirect(loop, test_client):
 
     @asyncio.coroutine
