@@ -7,6 +7,8 @@ CHANGES
 - Restore `aiohttp.web.MsgType` alias for `aiohttp.WSMsgType` for sake
   of backward compatibility #1178
 
+- Tune alabaster schema.
+
 
 1.0.0 (09-16-2016)
 -------------------
