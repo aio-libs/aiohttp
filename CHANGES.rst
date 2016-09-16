@@ -9,6 +9,9 @@ CHANGES
 
 - Tune alabaster schema.
 
+- Use `text/html` content type for displaying index pages by static
+  file handler.
+
 
 1.0.0 (09-16-2016)
 -------------------
