@@ -70,6 +70,7 @@ def test_access_root_of_static_handler(tmp_dir_path, create_app_and_client,
     assert r.status == status
 
     if data:
+        assert r.headers['Content-Type'] == "text/html"
         read_ = (yield from r.read())
         assert read_ == data
     yield from r.release()
