@@ -220,7 +220,7 @@ parameter of :class:`ClientSession` constructor::
 .. note::
    ``httpbin.org/cookies`` endpoint returns request cookies
    in JSON-encoded body.
-   To access session cookies see :attr:`ClientSession.cookies`.
+   To access session cookies see :attr:`ClientSession.cookie_jar`.
 
 
 More complicated POST requests
@@ -378,7 +378,8 @@ between multiple requests::
     async with aiohttp.ClientSession() as session:
         await session.get(
             'http://httpbin.org/cookies/set?my_cookie=my_value')
-        assert session.cookies['my_cookie'].value == 'my_value'
+        filtered = session.cookies_jar.filter_cookies('http://httpbin.org')
+        assert filtered['my_cookie'].value == 'my_value'
         async with session.get('http://httpbin.org/cookies') as r:
             json_body = await r.json()
             assert json_body['cookies']['my_cookie'] == 'my_value'
@@ -613,7 +614,7 @@ If a response contains some Cookies, you can quickly access them::
 
    Response cookies contain only values, that were in ``Set-Cookie`` headers
    of the **last** request in redirection chain. To gather cookies between all
-   redirection requests you can use :ref:`aiohttp.ClientSession
+   redirection requests please use :ref:`aiohttp.ClientSession
    <aiohttp-client-session>` object.
 
 

@@ -100,6 +100,11 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 0.22
 
+   .. versionchanged:: 1.0
+
+      ``.cookies`` attribute was dropped. Use :attr:`cookie_jar`
+      instead.
+
    .. attribute:: closed
 
       ``True`` if the session has been closed, ``False`` otherwise.
@@ -113,12 +118,15 @@ The client session supports the context manager protocol for self closing.
 
       A read-only property.
 
-   .. attribute:: cookies
+   .. attribute:: cookie_jar
 
-      The session cookies, :class:`http.cookies.SimpleCookie` instance.
+      The session cookies, :class:`~aiohttp.AbstractCookieJar` instance.
 
-      A read-only property. Overriding `session.cookies = new_val` is
-      forbidden, but you may modify the object in-place if needed.
+      Gives access to cookie jar's content and modifiers.
+
+      A read-only property.
+
+      .. versionadded:: 1.0
 
    .. attribute:: loop
 
