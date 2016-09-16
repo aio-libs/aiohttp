@@ -1412,27 +1412,54 @@ CookieJar
 
 .. class:: CookieJar(unsafe=False, loop=None)
 
+   The cookie jar instance is available as :attr:`ClientSession.cookie_jar`.
+
+   The jar contains :class:`~http.cookies.Morsel` items for storing
+   internal cookie data.
+
+   API provides a count of saved cookies::
+
+       len(session.cookie_jar)
+
+   These cookies may be iterated over::
+
+       for cookie in session.cookie_jar:
+           print(cookie.key)
+           print(cookie["domain"])
+
+   The class implements :class:`collections.abc.Iterable`,
+   :class:`collections.abc.Sized` and
+   :class:`aiohttp.AbstractCookieJar` interfaces.
+
    Implements cookie storage adhering to RFC 6265.
 
    :param bool unsafe: (optional) Whether to accept cookies from IPs.
+
    :param bool loop: an :ref:`event loop<asyncio-event-loop>` instance.
       See :class:`aiohttp.abc.AbstractCookieJar`
 
    .. method:: update_cookies(cookies, response_url=None)
 
-      Update cookies.
+      Update cookies returned by server in ``Set-Cookie`` header.
 
-      :param cookies: cookies to update.
-         The parameter can be of :class:`str`, :class:`dict` or :class:`http.cookies.Morsel`
-         instance representing cookies to send.
+      :param cookies: a :class:`collections.abc.Mapping`
+         (e.g. :class:`dict`, :class:`~http.cookies.SimpleCookie`) or
+         *iterable* of *pairs* with cookies returned by server's
+         response.
 
-      :param str response_url: (optional) URL to store cookies for.
+      :param str response_url: URL of response, ``None`` for *shared
+         cookies*.  Regular cookies are coupled with server's URL and
+         are sent only to this server, shared ones are sent in every
+         client request.
 
    .. method:: filter_cookies(request_url)
 
-      Returns this jar's cookies filtered by their attributes.
+      Return jar's cookies acceptable for URL and available in
+      ``Cookie`` header for sending client requests for given URL.
 
-      :param str request_url: URL to fetch cookies for.
+      :param str response_url: request's URL for which cookies are asked.
 
+      :return: :class:`http.cookies.SimpleCookie` with filtered
+         cookies for given URL.
 
 .. disqus::
