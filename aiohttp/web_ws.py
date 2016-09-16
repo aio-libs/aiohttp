@@ -12,12 +12,16 @@ from .web_exceptions import (HTTPBadRequest, HTTPInternalServerError,
                              HTTPMethodNotAllowed)
 from .web_reqrep import StreamResponse
 
-__all__ = ('WebSocketResponse',)
+__all__ = ('WebSocketResponse', 'WebSocketReady', 'MsgType')
 
 PY_35 = sys.version_info >= (3, 5)
 PY_352 = sys.version_info >= (3, 5, 2)
 
 THRESHOLD_CONNLOST_ACCESS = 5
+
+
+# deprecated since 1.0
+MsgType = WSMsgType
 
 
 class WebSocketReady(namedtuple('WebSocketReady', 'ok protocol')):

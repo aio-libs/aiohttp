@@ -3,7 +3,8 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import CIMultiDict, WSMessage, WSMsgType, errors, helpers, signals
+from aiohttp import (CIMultiDict, WSMessage, WSMsgType, errors, helpers,
+                     signals, web)
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import HTTPBadRequest, HTTPMethodNotAllowed, WebSocketResponse
 from aiohttp.web_ws import WebSocketReady
@@ -500,3 +501,8 @@ def test_can_start_ok(make_request):
     ws = WebSocketResponse(protocols=('chat',))
     with pytest.warns(DeprecationWarning):
         assert (True, 'chat') == ws.can_start(req)
+
+
+def test_msgtype_alias():
+    # deprecated since 1.0
+    assert web.MsgType is WSMsgType
