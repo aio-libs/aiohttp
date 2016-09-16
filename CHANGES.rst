@@ -12,6 +12,8 @@ CHANGES
 - Use `text/html` content type for displaying index pages by static
   file handler.
 
+- Fix `AssertionError` in static file handling #1177
+
 
 1.0.0 (09-16-2016)
 -------------------
