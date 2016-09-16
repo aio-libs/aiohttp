@@ -1,6 +1,8 @@
 import datetime
 import re
 import time
+from collections import defaultdict
+from collections.abc import Mapping
 from http.cookies import Morsel, SimpleCookie
 from math import ceil
 from urllib.parse import urlsplit
@@ -29,15 +31,25 @@ class CookieJar(AbstractCookieJar):
 
     def __init__(self, *, unsafe=False, loop=None):
         super().__init__(loop=loop)
+        self._cookies = defaultdict(SimpleCookie)
         self._host_only_cookies = set()
         self._unsafe = unsafe
         self._next_expiration = ceil(loop.time())
         self._expirations = {}
 
-    @property
-    def cookies(self):
+    def clear(self):
+        self._cookies.clear()
+        self._host_only_cookies.clear()
+        self._next_expiration = ceil(self._loop.time())
+        self._expirations.clear()
+
+    def __iter__(self):
         self._do_expiration()
-        return super().cookies
+        for val in self._cookies.values():
+            yield from val.values()
+
+    def __len__(self):
+        return sum(1 for i in self)
 
     def _do_expiration(self):
         now = self._loop.time()
@@ -49,23 +61,24 @@ class CookieJar(AbstractCookieJar):
         to_del = []
         cookies = self._cookies
         expirations = self._expirations
-        for name, when in expirations.items():
+        for (domain, name), when in expirations.items():
             if when < now:
-                cookies.pop(name, None)
-                to_del.append(name)
+                cookies[domain].pop(name, None)
+                to_del.append((domain, name))
+                self._host_only_cookies.discard((domain, name))
             else:
                 next_expiration = min(next_expiration, when)
-        for name in to_del:
-            del expirations[name]
+        for key in to_del:
+            del expirations[key]
+
         self._next_expiration = ceil(next_expiration)
 
-    def _expire_cookie(self, when, name):
+    def _expire_cookie(self, when, domain, name):
         self._next_expiration = min(self._next_expiration, when)
-        self._expirations[name] = when
+        self._expirations[(domain, name)] = when
 
     def update_cookies(self, cookies, response_url=None):
         """Update cookies."""
-        self._do_expiration()
         url_parsed = urlsplit(response_url or "")
         hostname = url_parsed.hostname
 
@@ -73,27 +86,39 @@ class CookieJar(AbstractCookieJar):
             # Don't accept cookies from IPs
             return
 
-        if isinstance(cookies, dict):
+        if isinstance(cookies, Mapping):
             cookies = cookies.items()
 
-        for name, value in cookies:
-            if isinstance(value, Morsel):
+        for name, cookie in cookies:
+            if not isinstance(cookie, Morsel):
+                tmp = SimpleCookie()
+                tmp[name] = cookie
+                cookie = tmp[name]
 
-                if not self._add_morsel(name, value, hostname):
-                    continue
+            domain = cookie["domain"]
 
-            else:
-                self._cookies[name] = value
+            # ignore domains with trailing dots
+            if domain.endswith('.'):
+                domain = ""
+                del cookie["domain"]
 
-            cookie = self._cookies[name]
-
-            if not cookie["domain"] and hostname is not None:
+            if not domain and hostname is not None:
                 # Set the cookie's domain to the response hostname
                 # and set its host-only-flag
-                self._host_only_cookies.add(name)
-                cookie["domain"] = hostname
+                self._host_only_cookies.add((hostname, name))
+                domain = cookie["domain"] = hostname
 
-            if not cookie["path"] or not cookie["path"].startswith("/"):
+            if domain.startswith("."):
+                # Remove leading dot
+                domain = domain[1:]
+                cookie["domain"] = domain
+
+            if hostname and not self._is_domain_match(domain, hostname):
+                # Setting cookies for different domains is not allowed
+                continue
+
+            path = cookie["path"]
+            if not path or not path.startswith("/"):
                 # Set the cookie's path to the response path
                 path = url_parsed.path
                 if not path.startswith("/"):
@@ -108,45 +133,25 @@ class CookieJar(AbstractCookieJar):
                 try:
                     delta_seconds = int(max_age)
                     self._expire_cookie(self._loop.time() + delta_seconds,
-                                        name)
+                                        domain, name)
                 except ValueError:
                     cookie["max-age"] = ""
 
-            expires = cookie["expires"]
-            if not cookie["max-age"] and expires:
-                expire_time = self._parse_date(expires)
-                if expire_time:
-                    self._expire_cookie(expire_time.timestamp(),
-                                        name)
-                else:
-                    cookie["expires"] = ""
+            else:
+                expires = cookie["expires"]
+                if expires:
+                    expire_time = self._parse_date(expires)
+                    if expire_time:
+                        self._expire_cookie(expire_time.timestamp(),
+                                            domain, name)
+                    else:
+                        cookie["expires"] = ""
 
-        # Remove the host-only flags of nonexistent cookies
-        self._host_only_cookies -= (
-            self._host_only_cookies.difference(self._cookies.keys()))
-
-    def _add_morsel(self, name, value, hostname):
-        """Add a Morsel to the cookie jar."""
-        cookie_domain = value["domain"]
-        if cookie_domain.startswith("."):
-            # Remove leading dot
-            cookie_domain = cookie_domain[1:]
-            value["domain"] = cookie_domain
-
-        if not cookie_domain or not hostname:
             # use dict method because SimpleCookie class modifies value
             # before Python 3.4.3
-            dict.__setitem__(self._cookies, name, value)
-            return True
+            dict.__setitem__(self._cookies[domain], name, cookie)
 
-        if not self._is_domain_match(cookie_domain, hostname):
-            # Setting cookies for different domains is not allowed
-            return False
-
-        # use dict method because SimpleCookie class modifies value
-        # before Python 3.4.3
-        dict.__setitem__(self._cookies, name, value)
-        return True
+        self._do_expiration()
 
     def filter_cookies(self, request_url):
         """Returns this jar's cookies filtered by their attributes."""
@@ -156,21 +161,22 @@ class CookieJar(AbstractCookieJar):
         hostname = url_parsed.hostname or ""
         is_not_secure = url_parsed.scheme not in ("https", "wss")
 
-        for name, cookie in self._cookies.items():
-            cookie_domain = cookie["domain"]
+        for cookie in self:
+            name = cookie.key
+            domain = cookie["domain"]
 
             # Send shared cookies
-            if not cookie_domain:
-                dict.__setitem__(filtered, name, cookie)
+            if not domain:
+                filtered[name] = cookie.value
                 continue
 
             if not self._unsafe and is_ip_address(hostname):
                 continue
 
-            if name in self._host_only_cookies:
-                if cookie_domain != hostname:
+            if (domain, name) in self._host_only_cookies:
+                if domain != hostname:
                     continue
-            elif not self._is_domain_match(cookie_domain, hostname):
+            elif not self._is_domain_match(domain, hostname):
                 continue
 
             if not self._is_path_match(url_parsed.path, cookie["path"]):
@@ -179,7 +185,7 @@ class CookieJar(AbstractCookieJar):
             if is_not_secure and cookie["secure"]:
                 continue
 
-            dict.__setitem__(filtered, name, cookie)
+            filtered[name] = cookie.value
 
         return filtered
 

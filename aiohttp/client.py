@@ -469,9 +469,9 @@ class ClientSession:
         return self._connector
 
     @property
-    def cookies(self):
+    def cookie_jar(self):
         """The session cookies."""
-        return self._cookie_jar.cookies
+        return self._cookie_jar
 
     @property
     def version(self):
