@@ -75,10 +75,7 @@ class FileSender:
 
         resp.write_eof = write_eof
 
-        yield from resp.prepare(request)
-
-        # TODO: %O and %b (resp_impl.output_length and resp_impl.output)
-        # access log formats are broken
+        resp_impl = yield from resp.prepare(request)
 
         loop = request.app.loop
         # See https://github.com/KeepSafe/aiohttp/issues/958 for details
@@ -95,9 +92,13 @@ class FileSender:
         out_fd = out_socket.fileno()
         in_fd = fobj.fileno()
 
+        bheaders = ''.join(headers).encode('utf-8')
+        headers_length = len(bheaders)
+        resp_impl.headers_length = headers_length
+        resp_impl.output_length = headers_length + count
+
         try:
-            yield from loop.sock_sendall(out_socket,
-                                         ''.join(headers).encode('utf-8'))
+            yield from loop.sock_sendall(out_socket, bheaders)
             fut = create_future(loop)
             self._sendfile_cb(fut, out_fd, in_fd, 0, count, loop, False)
 
