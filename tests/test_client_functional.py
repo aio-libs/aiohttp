@@ -1537,3 +1537,20 @@ def test_broken_connection_2(loop, test_client):
     with pytest.raises(aiohttp.ServerDisconnectedError):
         yield from resp.read()
     resp.close()
+
+
+@asyncio.coroutine
+def test_custom_headers(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        assert request.headers["x-api-key"] == "foo"
+        return web.Response()
+
+    app = web.Application(loop=loop)
+    app.router.add_post('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    resp = yield from client.post('/', headers={
+        "Content-Type": "application/json",
+        "x-api-key": "foo"})
+    assert resp.status == 200
