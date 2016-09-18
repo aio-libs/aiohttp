@@ -231,12 +231,12 @@ class CookieJar(AbstractCookieJar):
             return
 
         found_time = False
-        found_day_of_month = False
+        found_day = False
         found_month = False
         found_year = False
 
         hour = minute = second = 0
-        day_of_month = 0
+        day = 0
         month = ""
         year = 0
 
@@ -252,11 +252,11 @@ class CookieJar(AbstractCookieJar):
                         int(s) for s in time_match.groups()]
                     continue
 
-            if not found_day_of_month:
-                day_of_month_match = cls.DATE_DAY_OF_MONTH_RE.match(token)
-                if day_of_month_match:
-                    found_day_of_month = True
-                    day_of_month = int(day_of_month_match.group())
+            if not found_day:
+                day_match = cls.DATE_DAY_OF_MONTH_RE.match(token)
+                if day_match:
+                    found_day = True
+                    day = int(day_match.group())
                     continue
 
             if not found_month:
@@ -277,10 +277,10 @@ class CookieJar(AbstractCookieJar):
         elif 0 <= year <= 69:
             year += 2000
 
-        if False in (found_day_of_month, found_month, found_year, found_time):
+        if False in (found_day, found_month, found_year, found_time):
             return
 
-        if not 1 <= day_of_month <= 31:
+        if not 1 <= day <= 31:
             return
 
         if year < 1601 or hour > 23 or minute > 59 or second > 59:
@@ -288,7 +288,7 @@ class CookieJar(AbstractCookieJar):
 
         dt = datetime.datetime.strptime(
             "%s %d %d:%d:%d %d" % (
-                month, day_of_month, hour, minute, second, year
+                month, day, hour, minute, second, year
             ), "%b %d %H:%M:%S %Y")
 
         return dt.replace(tzinfo=datetime.timezone.utc)
