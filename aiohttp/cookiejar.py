@@ -22,8 +22,8 @@ class CookieJar(AbstractCookieJar):
 
     DATE_DAY_OF_MONTH_RE = re.compile("(\d{1,2})")
 
-    DATE_MONTH_RE = re.compile(
-        "(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)", re.I)
+    DATE_MONTH_RE = re.compile("(jan)|(feb)|(mar)|(apr)|(may)|(jun)|(jul)|"
+                               "(aug)|(sep)|(oct)|(nov)|(dec)", re.I)
 
     DATE_YEAR_RE = re.compile("(\d{2,4})")
 
@@ -237,7 +237,7 @@ class CookieJar(AbstractCookieJar):
 
         hour = minute = second = 0
         day = 0
-        month = ""
+        month = 0
         year = 0
 
         for token_match in cls.DATE_TOKENS_RE.finditer(date_str):
@@ -263,7 +263,7 @@ class CookieJar(AbstractCookieJar):
                 month_match = cls.DATE_MONTH_RE.match(token)
                 if month_match:
                     found_month = True
-                    month = month_match.group()
+                    month = month_match.lastindex
                     continue
 
             if not found_year:
@@ -286,9 +286,6 @@ class CookieJar(AbstractCookieJar):
         if year < 1601 or hour > 23 or minute > 59 or second > 59:
             return
 
-        dt = datetime.datetime.strptime(
-            "%s %d %d:%d:%d %d" % (
-                month, day, hour, minute, second, year
-            ), "%b %d %H:%M:%S %Y")
-
-        return dt.replace(tzinfo=datetime.timezone.utc)
+        return datetime.datetime(year, month, day,
+                                 hour, minute, second,
+                                 tzinfo=datetime.timezone.utc)
