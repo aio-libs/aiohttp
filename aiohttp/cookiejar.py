@@ -26,7 +26,7 @@ class CookieJar(AbstractCookieJar):
 
     DATE_YEAR_RE = re.compile("(\d{2,4})")
 
-    MAX_TIME = 2208985261.0  # so far in future (1/1/2100)
+    MAX_TIME = 2051215261.0  # so far in future (2035-01-01)
 
     def __init__(self, *, unsafe=False, loop=None):
         super().__init__(loop=loop)

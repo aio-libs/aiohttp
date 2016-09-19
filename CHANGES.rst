@@ -23,7 +23,7 @@ CHANGES
 1.0.2 (XXXX-XX-XX)
 ------------------
 
--
+- Make CookieJar compatible with 32-bit systems #1188
 
 -
 
