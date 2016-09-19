@@ -56,7 +56,7 @@ Command Line Interface (CLI)
 accepts a list of any non-parsed command-line arguments and returns an
 :class:`Application` instance after setting it up::
 
-    def init_function(argv):
+    def init_func(argv):
         app = web.Application()
         app.router.add_get("/", index_handler)
         return app
