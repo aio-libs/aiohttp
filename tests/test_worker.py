@@ -108,62 +108,6 @@ def test_make_handler(worker, mocker):
     assert worker._get_valid_log_format.called
 
 
-def test_make_handler_debug_in_config(worker, mocker):
-    app = mock.Mock()
-    make_handler = app.make_handler = mock.Mock()
-    worker.cfg.debug = True
-    worker.cfg.access_log_format = worker.DEFAULT_GUNICORN_LOG_FORMAT
-    worker.cfg.keepalive = 10
-    worker.cfg.timeout = 15
-    worker.log = mock.Mock()
-    worker.make_handler(app)
-    make_handler.assert_called_with(
-        access_log=mock.ANY,
-        access_log_format=worker.DEFAULT_AIOHTTP_LOG_FORMAT,
-        debug=True,
-        keepalive_timeout=10,
-        logger=mock.ANY,
-        slow_request_timeout=15)
-
-
-def test_make_handler_no_debug_in_config(worker, mocker):
-    app = mock.Mock()
-    make_handler = app.make_handler = mock.Mock()
-    del worker.cfg.debug
-    worker.cfg.access_log_format = worker.DEFAULT_GUNICORN_LOG_FORMAT
-    worker.cfg.keepalive = 10
-    worker.cfg.timeout = 15
-    worker.log = mock.Mock()
-    worker.log.loglevel = logging.DEBUG
-    worker.make_handler(app)
-    make_handler.assert_called_with(
-        access_log=mock.ANY,
-        access_log_format=worker.DEFAULT_AIOHTTP_LOG_FORMAT,
-        debug=True,
-        keepalive_timeout=10,
-        logger=mock.ANY,
-        slow_request_timeout=15)
-
-
-def test_make_handler_no_debug_in_config_not_debug_logger(worker, mocker):
-    app = mock.Mock()
-    make_handler = app.make_handler = mock.Mock()
-    del worker.cfg.debug
-    worker.cfg.access_log_format = worker.DEFAULT_GUNICORN_LOG_FORMAT
-    worker.cfg.keepalive = 10
-    worker.cfg.timeout = 15
-    worker.log = mock.Mock()
-    worker.log.loglevel = logging.INFO
-    worker.make_handler(app)
-    make_handler.assert_called_with(
-        access_log=mock.ANY,
-        access_log_format=worker.DEFAULT_AIOHTTP_LOG_FORMAT,
-        debug=False,
-        keepalive_timeout=10,
-        logger=mock.ANY,
-        slow_request_timeout=15)
-
-
 @pytest.mark.parametrize('source,result', [
     (ACCEPTABLE_LOG_FORMAT, ACCEPTABLE_LOG_FORMAT),
     (AsyncioWorker.DEFAULT_GUNICORN_LOG_FORMAT,
