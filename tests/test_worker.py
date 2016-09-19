@@ -1,6 +1,5 @@
 """Tests for aiohttp/worker.py"""
 import asyncio
-import logging
 import pathlib
 import ssl
 from unittest import mock
