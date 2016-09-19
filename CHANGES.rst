@@ -110,7 +110,7 @@ CHANGES
 - Pin minimal supported asyncio version to 3.4.2+ (`loop.is_close()`
   should be present)
 
-- Remove aiohttp.websocket module (BACKWARD IMCOMPATIBLE)
+- Remove aiohttp.websocket module (BACKWARD INCOMPATIBLE)
   Please use high-level client and server approaches
 
 - Link header for 451 status code is mandatory
