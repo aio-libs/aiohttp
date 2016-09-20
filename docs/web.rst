@@ -19,7 +19,7 @@ accepts a :class:`Request` instance as its only parameter and returns a
    from aiohttp import web
 
    async def hello(request):
-       return web.Response(body=b"Hello, world")
+       return web.Response(text="Hello, world")
 
 Next, create an :class:`Application` instance and register the
 request handler with the application's :class:`router <UrlDispatcher>` on a

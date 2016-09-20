@@ -37,7 +37,7 @@ replacement for :term:`chardet`:
 
 For speeding up DNS resolving by client API you may install
 :term:`aiodns` as well.
-This options is highly recommended:
+This option is highly recommended:
 
 .. code-block:: bash
 
@@ -72,9 +72,10 @@ Server example::
     async def handle(request):
         name = request.match_info.get('name', "Anonymous")
         text = "Hello, " + name
-        return web.Response(body=text.encode('utf-8'))
+        return web.Response(text=text)
 
     app = web.Application()
+    app.router.add_get('/', handle)
     app.router.add_get('/{name}', handle)
 
     web.run_app(app)
