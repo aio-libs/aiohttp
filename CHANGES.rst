@@ -25,9 +25,7 @@ CHANGES
 
 - Make CookieJar compatible with 32-bit systems #1188
 
--
-
--
+- Add missing `WSMsgType` to `web_ws.__all__`, see #1200
 
 -
 
@@ -51,6 +49,9 @@ CHANGES
 - Fix `AssertionError` in static file handling #1177
 
 - Fix access log formats `%O` and `%b` for static file handling
+
+- Remove `debug` setting of GunicornWorker, use `app.debug`
+  to control its debug-mode instead
 
 
 1.0.0 (2016-09-16)
