@@ -532,6 +532,8 @@ class FlowControlStreamReader(StreamReader):
                 self._stream.transport.resume_reading()
             except (AttributeError, NotImplementedError):
                 pass
+            else:
+                self._stream.paused = False
 
     def _check_buffer_size(self):
         if self._stream.paused:
