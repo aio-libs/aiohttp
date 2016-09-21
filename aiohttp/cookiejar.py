@@ -33,7 +33,7 @@ class CookieJar(AbstractCookieJar):
         self._cookies = defaultdict(SimpleCookie)
         self._host_only_cookies = set()
         self._unsafe = unsafe
-        self._next_expiration = ceil(loop.time())
+        self._next_expiration = ceil(self._loop.time())
         self._expirations = {}
 
     def clear(self):

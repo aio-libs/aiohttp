@@ -27,7 +27,7 @@ CHANGES
 
 - Add missing `WSMsgType` to `web_ws.__all__`, see #1200
 
--
+- Fix `CookieJar` ctor when called with `loop=None` #1203
 
 -
 
