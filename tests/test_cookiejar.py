@@ -140,6 +140,12 @@ def test_constructor(loop, cookies_to_send, cookies_to_receive):
     assert jar._loop is loop
 
 
+def test_ctor_ith_default_loop(loop):
+    asyncio.set_event_loop(loop)
+    jar = CookieJar()
+    assert jar._loop is loop
+
+
 def test_domain_filter_ip_cookie_send(loop):
     jar = CookieJar(loop=loop)
     cookies = SimpleCookie(
