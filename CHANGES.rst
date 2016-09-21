@@ -6,9 +6,7 @@ CHANGES
 
 - Make CookieJar compatible with 32-bit systems #1188
 
--
-
--
+- Add missing `WSMsgType` to `web_ws.__all__`, see #1200
 
 -
 
