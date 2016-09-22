@@ -64,7 +64,7 @@ This is simple usage example:
     async def handle(request):
         name = request.match_info.get('name', "Anonymous")
         text = "Hello, " + name
-        return web.Response(body=text.encode('utf-8'))
+        return web.Response(text=text)
 
     async def wshandler(request):
         ws = web.WebSocketResponse()
@@ -83,6 +83,7 @@ This is simple usage example:
 
     app = web.Application()
     app.router.add_get('/echo', wshandler)
+    app.router.add_get('/', handle)
     app.router.add_get('/{name}', handle)
 
     web.run_app(app)
