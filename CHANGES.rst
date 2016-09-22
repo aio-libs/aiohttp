@@ -6,7 +6,8 @@ CHANGES
 
 - Make CookieJar compatible with 32-bit systems #1188
 
--
+- Fix FlowControlStreamReader.read_nowait so that it checks
+  whether the transport is paused
 
 -
 
