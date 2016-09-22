@@ -19,7 +19,7 @@ accepts a :class:`Request` instance as its only parameter and returns a
    from aiohttp import web
 
    async def hello(request):
-       return web.Response(body=b"Hello, world")
+       return web.Response(text="Hello, world")
 
 Next, create an :class:`Application` instance and register the
 request handler with the application's :class:`router <UrlDispatcher>` on a
@@ -196,7 +196,7 @@ As discussed above, :ref:`handlers <aiohttp-web-handler>` can be first-class
 functions or coroutines::
 
    async def hello(request):
-       return web.Response(body=b"Hello, world")
+       return web.Response(text="Hello, world")
 
    app.router.add_get('/', hello)
 
@@ -212,7 +212,7 @@ application developers can organize handlers in classes if they so wish::
            pass
 
        def handle_intro(self, request):
-           return web.Response(body=b"Hello, world")
+           return web.Response(text="Hello, world")
 
        async def handle_greeting(self, request):
            name = request.match_info.get('name', "Anonymous")
@@ -414,7 +414,7 @@ third-party library, :mod:`aiohttp_session`, that adds *session* support::
         session = await get_session(request)
         last_visit = session['last_visit'] if 'last_visit' in session else None
         text = 'Last visited: {}'.format(last_visit)
-        return web.Response(body=text.encode('utf-8'))
+        return web.Response(text=text)
 
     def make_app():
         app = web.Application()
@@ -554,7 +554,7 @@ should use :meth:`Request.multipart` which returns :ref:`multipart reader
                 size += len(chunk)
                 f.write(chunk)
 
-        return web.Response(body='{} sized of {} successfully stored'
+        return web.Response(text='{} sized of {} successfully stored'
                                  ''.format(filename, size))
 
 .. _aiohttp-web-websockets:

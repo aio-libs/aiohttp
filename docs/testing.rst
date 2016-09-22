@@ -57,7 +57,7 @@ A simple would be::
     from aiohttp import web
 
     async def hello(request):
-        return web.Response(body=b'Hello, world')
+        return web.Response(text='Hello, world')
 
     async def test_hello(test_client, loop):
         app = web.Application(loop=loop)
@@ -82,7 +82,7 @@ app test client::
             request.app['value'] = (await request.post())['value']
             return web.Response(body=b'thanks for the data')
         return web.Response(
-            body='value: {}'.format(request.app['value']).encode())
+            body='value: {}'.format(request.app['value']).encode('utf-8'))
 
     @pytest.fixture
     def cli(loop, test_client):

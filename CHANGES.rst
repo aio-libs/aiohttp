@@ -20,7 +20,7 @@ CHANGES
 
 -
 
-1.0.2 (XXXX-XX-XX)
+1.0.2 (2016-09-22)
 ------------------
 
 - Make CookieJar compatible with 32-bit systems #1188
@@ -29,11 +29,8 @@ CHANGES
 
 - Fix `CookieJar` ctor when called with `loop=None` #1203
 
--
+- Fix broken upper-casing in wsgi support #1197
 
--
-
--
 
 1.0.1 (2016-09-16)
 ------------------
