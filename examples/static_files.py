@@ -1,4 +1,5 @@
 import pathlib
+
 from aiohttp import web
 
 app = web.Application()
