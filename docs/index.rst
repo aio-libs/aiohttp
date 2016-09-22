@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-aiohttp
-=======
+aiohttp: Asynchronous HTTP Client/Server
+========================================
 
 HTTP client/server for :term:`asyncio` (:pep:`3156`).
 
