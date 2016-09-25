@@ -1,11 +1,12 @@
 pip
 flake8
-pyflakes==1.1.0
+pyflakes
 coverage
+cchardet
 sphinx
 cython
 chardet
-isort==4.2.5
+isort
 tox
 sphinxcontrib-asyncio
 sphinxcontrib-newsfeed
