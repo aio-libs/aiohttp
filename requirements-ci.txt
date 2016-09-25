@@ -8,6 +8,8 @@ cython
 chardet
 isort
 tox
+multidict
+async_timeout
 sphinxcontrib-asyncio
 sphinxcontrib-newsfeed
 pytest
