@@ -75,7 +75,7 @@ class ClientRequest:
         if loop is None:
             loop = asyncio.get_event_loop()
 
-        self.url = url
+        self.url = helpers.requote_uri(url)
         self.method = method.upper()
         self.encoding = encoding
         self.chunked = chunked
