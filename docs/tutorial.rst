@@ -111,7 +111,7 @@ Thus we **suggest** to use the following approach:
       parameter, e.g. ``./run_app --config=/opt/config/app_cfg.yaml``.
 
    4. Applying strict validation checks to loaded dict. `trafaret
-      <https://github.com/Deepwalker/trafaret>`_, `collander
+      <http://trafaret.readthedocs.io/en/latest/>`_, `colander
       <http://docs.pylonsproject.org/projects/colander/en/latest/>`_
       or `JSON schema
       <http://python-jsonschema.readthedocs.io/en/latest/>`_ are good
