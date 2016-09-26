@@ -29,10 +29,6 @@ class ServerDisconnectedError(DisconnectedError):
     """Server disconnected."""
 
 
-class WSClientDisconnectedError(ClientDisconnectedError):
-    """Deprecated."""
-
-
 class ClientError(Exception):
     """Base class for client connection errors."""
 

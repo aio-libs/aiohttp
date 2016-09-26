@@ -4,6 +4,8 @@ CHANGES
 1.1.0 (XXXX-XX-XX)
 ------------------
 
+- Drop deprecated `WSClientDisconnectedError` (BACKWARD INCOMPATIBLE)
+
 -
 
 -
