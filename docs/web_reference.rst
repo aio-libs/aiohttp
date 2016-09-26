@@ -912,10 +912,6 @@ WebSocketResponse
 
       It process *ping-pong game* and performs *closing handshake* internally.
 
-      After websocket closing raises
-      :exc:`~aiohttp.errors.WSClientDisconnectedError` with
-      connection closing data.
-
       .. note::
 
          Can only be called by the request handling task.

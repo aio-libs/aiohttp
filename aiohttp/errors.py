@@ -14,7 +14,7 @@ __all__ = (
     'ClientRequestError', 'ClientResponseError',
     'FingerprintMismatch',
 
-    'WSServerHandshakeError', 'WSClientDisconnectedError')
+    'WSServerHandshakeError')
 
 
 class DisconnectedError(Exception):
