@@ -233,19 +233,6 @@ def test_reify_assignment():
         a.prop = 123
 
 
-def test_requote_uri_with_unquoted_percents():
-    # Ensure we handle unquoted percent signs in redirects.
-    bad_uri = 'http://example.com/fiz?buz=%ppicture'
-    quoted = 'http://example.com/fiz?buz=%25ppicture'
-    assert quoted == helpers.requote_uri(bad_uri)
-
-
-def test_requote_uri_properly_requotes():
-    # Ensure requoting doesn't break expectations.
-    quoted = 'http://example.com/fiz?buz=%25ppicture'
-    assert quoted == helpers.requote_uri(quoted)
-
-
 def test_create_future_with_new_loop():
     # We should use the new create_future() if it's available.
     mock_loop = mock.Mock()
