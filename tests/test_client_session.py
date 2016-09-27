@@ -421,3 +421,16 @@ def test_session_default_version(loop):
 def test_session_loop(loop):
     session = aiohttp.ClientSession(loop=loop)
     assert session.loop is loop
+
+
+def test_proxy_str(session, params):
+    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+        session.get("http://test.example.com",
+                    proxy='http://proxy.com',
+                    **params)
+    assert patched.called, "`ClientSession._request` not called"
+    assert list(patched.call_args) == [("GET", "http://test.example.com",),
+                                       dict(
+                                           allow_redirects=True,
+                                           proxy='http://proxy.com',
+                                           **params)]
