@@ -6,6 +6,8 @@ import gc
 import unittest
 from unittest import mock
 
+from yarl import URL
+
 import aiohttp
 from aiohttp import helpers
 from aiohttp.client_reqrep import ClientResponse
@@ -19,7 +21,7 @@ class TestClientResponse(unittest.TestCase):
 
         self.connection = mock.Mock()
         self.stream = aiohttp.StreamParser(loop=self.loop)
-        self.response = ClientResponse('get', 'http://def-cl-resp.org')
+        self.response = ClientResponse('get', URL('http://def-cl-resp.org'))
         self.response._post_init(self.loop)
         self.response._setup_connection(self.connection)
 
@@ -29,7 +31,7 @@ class TestClientResponse(unittest.TestCase):
         gc.collect()
 
     def test_del(self):
-        response = ClientResponse('get', 'http://del-cl-resp.org')
+        response = ClientResponse('get', URL('http://del-cl-resp.org'))
         response._post_init(self.loop)
 
         connection = mock.Mock()
@@ -51,14 +53,14 @@ class TestClientResponse(unittest.TestCase):
 
     def test_wait_for_100_1(self):
         response = ClientResponse(
-            'get', 'http://python.org', continue100=object())
+            'get', URL('http://python.org'), continue100=object())
         response._post_init(self.loop)
         self.assertTrue(response.waiting_for_continue())
         response.close()
 
     def test_wait_for_100_2(self):
         response = ClientResponse(
-            'get', 'http://python.org')
+            'get', URL('http://python.org'))
         response._post_init(self.loop)
         self.assertFalse(response.waiting_for_continue())
         response.close()
@@ -71,13 +73,13 @@ class TestClientResponse(unittest.TestCase):
             repr(self.response))
 
     def test_repr_non_ascii_url(self):
-        response = ClientResponse('get', 'http://fake-host.org/\u03bb')
+        response = ClientResponse('get', URL('http://fake-host.org/\u03bb'))
         self.assertIn(
-            "<ClientResponse(http://fake-host.org/\\u03bb) [None None]>",
+            "<ClientResponse(http://fake-host.org/%CE%BB) [None None]>",
             repr(response))
 
     def test_repr_non_ascii_reason(self):
-        response = ClientResponse('get', 'http://fake-host.org/path')
+        response = ClientResponse('get', URL('http://fake-host.org/path'))
         response.reason = '\u03bb'
         self.assertIn(
             "<ClientResponse(http://fake-host.org/path) [None \\u03bb]>",
@@ -243,7 +245,7 @@ class TestClientResponse(unittest.TestCase):
     def test_override_flow_control(self):
         class MyResponse(ClientResponse):
             flow_control_class = aiohttp.StreamReader
-        response = MyResponse('get', 'http://my-cl-resp.org')
+        response = MyResponse('get', URL('http://my-cl-resp.org'))
         response._post_init(self.loop)
         response._setup_connection(self.connection)
         self.assertIsInstance(response.content, aiohttp.StreamReader)

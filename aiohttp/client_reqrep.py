@@ -1,5 +1,4 @@
 import asyncio
-import collections
 import http.cookies
 import io
 import json
@@ -7,10 +6,10 @@ import mimetypes
 import os
 import sys
 import traceback
-import urllib.parse
 import warnings
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
+from yarl import URL
 
 import aiohttp
 
@@ -30,9 +29,6 @@ except ImportError:
 __all__ = ('ClientRequest', 'ClientResponse')
 
 PY_35 = sys.version_info >= (3, 5)
-
-HTTP_PORT = 80
-HTTPS_PORT = 443
 
 
 class ClientRequest:
@@ -75,7 +71,15 @@ class ClientRequest:
         if loop is None:
             loop = asyncio.get_event_loop()
 
-        self.url = url
+        assert isinstance(url, URL), url
+        assert isinstance(proxy, (URL, type(None))), proxy
+
+        if params:
+            q = MultiDict(url.query)
+            url2 = url.with_query(params)
+            q.extend(url2.query)
+            url = url.with_query(q)
+        self.url = url.with_fragment(None)
         self.method = method.upper()
         self.encoding = encoding
         self.chunked = chunked
@@ -89,7 +93,6 @@ class ClientRequest:
 
         self.update_version(version)
         self.update_host(url)
-        self.update_path(params)
         self.update_headers(headers)
         self.update_auto_headers(skip_auto_headers)
         self.update_cookies(cookies)
@@ -101,58 +104,29 @@ class ClientRequest:
         self.update_transfer_encoding()
         self.update_expect_continue(expect100)
 
+    @property
+    def host(self):
+        return self.url.host
+
+    @property
+    def port(self):
+        return self.url.port
+
     def update_host(self, url):
         """Update destination host, port and connection type (ssl)."""
-        url_parsed = urllib.parse.urlsplit(url)
-
-        # check for network location part
-        netloc = url_parsed.netloc
-        if not netloc:
-            raise ValueError('Host could not be detected.')
-
         # get host/port
-        host = url_parsed.hostname
-        if not host:
+        if not url.host:
             raise ValueError('Host could not be detected.')
-
-        try:
-            port = url_parsed.port
-        except ValueError:
-            raise ValueError(
-                'Port number could not be converted.') from None
-
-        # check domain idna encoding
-        try:
-            host = host.encode('idna').decode('utf-8')
-            netloc = self.make_netloc(host, url_parsed.port)
-        except UnicodeError:
-            raise ValueError('URL has an invalid label.')
 
         # basic auth info
-        username, password = url_parsed.username, url_parsed.password
+        username, password = url.user, url.password
         if username:
             self.auth = helpers.BasicAuth(username, password or '')
 
         # Record entire netloc for usage in host header
-        self.netloc = netloc
 
-        scheme = url_parsed.scheme
+        scheme = url.scheme
         self.ssl = scheme in ('https', 'wss')
-
-        # set port number if it isn't already set
-        if not port:
-            if self.ssl:
-                port = HTTPS_PORT
-            else:
-                port = HTTP_PORT
-
-        self.host, self.port, self.scheme = host, port, scheme
-
-    def make_netloc(self, host, port):
-        ret = host
-        if port:
-            ret = ret + ':' + str(port)
-        return ret
 
     def update_version(self, version):
         """Convert request version to two elements tuple.
@@ -172,25 +146,8 @@ class ClientRequest:
     def update_path(self, params):
         """Build path."""
         # extract path
-        scheme, netloc, path, query, fragment = urllib.parse.urlsplit(self.url)
-        if not path:
-            path = '/'
 
-        if isinstance(params, collections.Mapping):
-            params = list(params.items())
-
-        if params:
-            if not isinstance(params, str):
-                params = urllib.parse.urlencode(params)
-            if query:
-                query = '%s&%s' % (query, params)
-            else:
-                query = params
-
-        self.path = urllib.parse.urlunsplit(('', '', helpers.requote_uri(path),
-                                             query, ''))
-        self.url = urllib.parse.urlunsplit(
-            (scheme, netloc, self.path, '', fragment))
+        self.url = self.url.with_query(params)
 
     def update_headers(self, headers):
         """Update request headers."""
@@ -214,7 +171,10 @@ class ClientRequest:
 
         # add host
         if hdrs.HOST not in used_headers:
-            self.headers[hdrs.HOST] = self.netloc
+            netloc = self.url.host
+            if not self.url.is_default_port():
+                netloc += ':' + str(self.url.port)
+            self.headers[hdrs.HOST] = netloc
 
         if hdrs.USER_AGENT not in used_headers:
             self.headers[hdrs.USER_AGENT] = self.SERVER_SOFTWARE
@@ -378,7 +338,7 @@ class ClientRequest:
             self._continue = helpers.create_future(self.loop)
 
     def update_proxy(self, proxy, proxy_auth):
-        if proxy and not proxy.startswith('http://'):
+        if proxy and not proxy.scheme == 'http':
             raise ValueError("Only http proxies are supported")
         if proxy_auth and not isinstance(proxy_auth, helpers.BasicAuth):
             raise ValueError("proxy_auth must be None or BasicAuth() tuple")
@@ -488,7 +448,11 @@ class ClientRequest:
 
     def send(self, writer, reader):
         writer.set_tcp_cork(True)
-        request = aiohttp.Request(writer, self.method, self.path, self.version)
+        path = self.url.raw_path
+        if self.url.raw_query_string:
+            path += '?' + self.url.raw_query_string
+        request = aiohttp.Request(writer, self.method, path,
+                                  self.version)
 
         if self.compress:
             request.add_compression_filter(self.compress)
@@ -511,7 +475,7 @@ class ClientRequest:
             self.write_bytes(request, reader), loop=self.loop)
 
         self.response = self.response_class(
-            self.method, self.url, self.host,
+            self.method, self.url, self.url.host,
             writer=self._writer, continue100=self._continue,
             timeout=self._timeout)
         self.response._post_init(self.loop)
@@ -556,7 +520,7 @@ class ClientResponse:
 
     def __init__(self, method, url, host='', *, writer=None, continue100=None,
                  timeout=5*60):
-        super().__init__()
+        assert isinstance(url, URL)
 
         self.method = method
         self.url = url
@@ -591,8 +555,7 @@ class ClientResponse:
 
     def __repr__(self):
         out = io.StringIO()
-        ascii_encodable_url = self.url.encode('ascii', 'backslashreplace') \
-            .decode('ascii')
+        ascii_encodable_url = str(self.url)
         if self.reason:
             ascii_encodable_reason = self.reason.encode('ascii',
                                                         'backslashreplace') \

@@ -6,7 +6,8 @@ CHANGES
 
 - Drop deprecated `WSClientDisconnectedError` (BACKWARD INCOMPATIBLE)
 
--
+- Use `yarl.URL` in client API. The change is 99% backward compatible
+  but `ClientResponse.url` is an `yarl.URL` instance now.
 
 -
 

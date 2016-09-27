@@ -1135,7 +1135,13 @@ Response object
 
    .. attribute:: url
 
-      URL of request (:class:`str`).
+      URL of request (:class:`~yarl.URL`).
+
+      .. versionchanged:: 1.1
+
+      The attribute is :class:`~yarl.URL` now instead of :class:`str`.
+
+      For giving a string use ``str(resp.url)``.
 
    .. attribute:: connection
 
