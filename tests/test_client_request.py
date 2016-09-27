@@ -5,7 +5,6 @@ import gc
 import inspect
 import io
 import os.path
-import re
 import unittest
 import urllib.parse
 import zlib
@@ -14,6 +13,7 @@ from unittest import mock
 
 import pytest
 from multidict import CIMultiDict, CIMultiDictProxy, upstr
+from yarl import URL
 
 import aiohttp
 from aiohttp import BaseConnector, helpers
@@ -24,9 +24,9 @@ from aiohttp.client_reqrep import ClientRequest, ClientResponse
 def make_request(loop):
     request = None
 
-    def maker(*args, **kwargs):
+    def maker(method, url, *args, **kwargs):
         nonlocal request
-        request = ClientRequest(*args, loop=loop, **kwargs)
+        request = ClientRequest(method, URL(url), *args, loop=loop, **kwargs)
         return request
 
     yield maker
@@ -137,7 +137,7 @@ def test_host_header_host_without_port(make_request):
 
 def test_host_header_host_with_default_port(make_request):
     req = make_request('get', 'http://python.org:80/')
-    assert req.headers['HOST'] == 'python.org:80'
+    assert req.headers['HOST'] == 'python.org'
 
 
 def test_host_header_host_with_nondefault_port(make_request):
@@ -159,7 +159,7 @@ def test_host_header_explicit_host_with_port(make_request):
 
 def test_default_loop(loop):
     asyncio.set_event_loop(loop)
-    req = ClientRequest('get', 'http://python.org/')
+    req = ClientRequest('get', URL('http://python.org/'))
     assert req.loop is loop
 
 
@@ -219,7 +219,7 @@ def test_invalid_idna(make_request):
 
 def test_no_path(make_request):
     req = make_request('get', 'http://python.org')
-    assert '/' == req.path
+    assert '/' == req.url.path
 
 
 def test_ipv6_default_http_port(make_request):
@@ -275,7 +275,7 @@ def test_basic_auth_from_url(make_request):
     req = make_request('get', 'http://nkim:1234@python.org')
     assert 'AUTHORIZATION' in req.headers
     assert 'Basic bmtpbToxMjM0' == req.headers['AUTHORIZATION']
-    assert 'python.org' == req.netloc
+    assert 'python.org' == req.host
 
 
 def test_basic_auth_from_url_overriden(make_request):
@@ -283,49 +283,49 @@ def test_basic_auth_from_url_overriden(make_request):
                        auth=aiohttp.BasicAuth('nkim', '1234'))
     assert 'AUTHORIZATION' in req.headers
     assert 'Basic bmtpbToxMjM0' == req.headers['AUTHORIZATION']
-    assert 'python.org' == req.netloc
+    assert 'python.org' == req.host
 
 
 def test_path_is_not_double_encoded1(make_request):
     req = make_request('get', "http://0.0.0.0/get/test case")
-    assert req.path == "/get/test%20case"
+    assert req.url.raw_path == "/get/test%20case"
 
 
 def test_path_is_not_double_encoded2(make_request):
     req = make_request('get', "http://0.0.0.0/get/test%2fcase")
-    assert req.path == "/get/test%2fcase"
+    assert req.url.raw_path == "/get/test%2Fcase"
 
 
 def test_path_is_not_double_encoded3(make_request):
     req = make_request('get', "http://0.0.0.0/get/test%20case")
-    assert req.path == "/get/test%20case"
+    assert req.url.raw_path == "/get/test%20case"
 
 
 def test_path_safe_chars_preserved(make_request):
-    req = make_request('get', "http://0.0.0.0/get/%:=")
-    assert req.path == "/get/%:="
+    req = make_request('get', "http://0.0.0.0/get/:=")
+    assert req.url.path == "/get/:="
 
 
 def test_params_are_added_before_fragment1(make_request):
     req = make_request('GET', "http://example.com/path#fragment",
                        params={"a": "b"})
-    assert req.url == "http://example.com/path?a=b#fragment"
+    assert str(req.url) == "http://example.com/path?a=b"
 
 
 def test_params_are_added_before_fragment2(make_request):
     req = make_request('GET', "http://example.com/path?key=value#fragment",
                        params={"a": "b"})
-    assert req.url == "http://example.com/path?key=value&a=b#fragment"
+    assert str(req.url) == "http://example.com/path?key=value&a=b"
 
 
 def test_path_not_contain_fragment1(make_request):
     req = make_request('GET', "http://example.com/path#fragment")
-    assert req.path == "/path"
+    assert req.url.path == "/path"
 
 
 def test_path_not_contain_fragment2(make_request):
     req = make_request('GET', "http://example.com/path?key=value#fragment")
-    assert req.path == "/path?key=value"
+    assert str(req.url) == "http://example.com/path?key=value"
 
 
 def test_cookies(make_request):
@@ -347,19 +347,19 @@ def test_cookies_merge_with_headers(make_request):
 def test_unicode_get1(make_request):
     req = make_request('get', 'http://python.org',
                        params={'foo': 'f\xf8\xf8'})
-    assert '/?foo=f%C3%B8%C3%B8' == req.path
+    assert 'http://python.org/?foo=f%C3%B8%C3%B8' == str(req.url)
 
 
 def test_unicode_get2(make_request):
     req = make_request('', 'http://python.org',
                        params={'f\xf8\xf8': 'f\xf8\xf8'})
 
-    assert '/?f%C3%B8%C3%B8=f%C3%B8%C3%B8' == req.path
+    assert 'http://python.org/?f%C3%B8%C3%B8=f%C3%B8%C3%B8' == str(req.url)
 
 
 def test_unicode_get3(make_request):
     req = make_request('', 'http://python.org', params={'foo': 'foo'})
-    assert '/?foo=foo' == req.path
+    assert 'http://python.org/?foo=foo' == str(req.url)
 
 
 def test_unicode_get4(make_request):
@@ -367,7 +367,7 @@ def test_unicode_get4(make_request):
         return urllib.parse.urljoin('http://python.org/', '/'.join(suffix))
 
     req = make_request('', join('\xf8'), params={'foo': 'foo'})
-    assert '/%C3%B8?foo=foo' == req.path
+    assert 'http://python.org/%C3%B8?foo=foo' == str(req.url)
 
 
 def test_query_multivalued_param(make_request):
@@ -376,42 +376,38 @@ def test_query_multivalued_param(make_request):
             meth, 'http://python.org',
             params=(('test', 'foo'), ('test', 'baz')))
 
-        assert req.path == '/?test=foo&test=baz'
+        assert str(req.url) == 'http://python.org/?test=foo&test=baz'
 
 
 def test_query_str_param(make_request):
     for meth in ClientRequest.ALL_METHODS:
         req = make_request(meth, 'http://python.org', params='test=foo')
-        assert req.path == '/?test=foo'
+        assert str(req.url) == 'http://python.org/?test=foo'
 
 
 def test_query_bytes_param_raises(make_request):
     for meth in ClientRequest.ALL_METHODS:
-        with pytest.raises(TypeError) as ctx:
+        with pytest.raises(TypeError):
             make_request(meth, 'http://python.org', params=b'test=foo')
-        assert re.match('not a valid non-string.*or mapping', str(ctx.value))
 
 
 def test_query_str_param_is_not_encoded(make_request):
     for meth in ClientRequest.ALL_METHODS:
         req = make_request(meth, 'http://python.org', params='test=f+oo')
-        assert req.path == '/?test=f+oo'
+        assert str(req.url) == 'http://python.org/?test=f+oo'
 
 
 def test_params_update_path_and_url(make_request):
     req = make_request('get', 'http://python.org',
                        params=(('test', 'foo'), ('test', 'baz')))
-    assert req.path == '/?test=foo&test=baz'
-    assert req.url == 'http://python.org/?test=foo&test=baz'
+    assert str(req.url) == 'http://python.org/?test=foo&test=baz'
 
 
 def test_params_empty_path_and_url(make_request):
     req_empty = make_request('get', 'http://python.org', params={})
-    assert req_empty.path == '/'
-    assert req_empty.url == 'http://python.org/'
+    assert str(req_empty.url) == 'http://python.org'
     req_none = make_request('get', 'http://python.org')
-    assert req_none.path == '/'
-    assert req_none.url == 'http://python.org/'
+    assert str(req_none.url) == 'http://python.org'
 
 
 def test_gen_netloc_all(make_request):
@@ -419,8 +415,8 @@ def test_gen_netloc_all(make_request):
                        'https://aiohttp:pwpwpw@' +
                        '12345678901234567890123456789' +
                        '012345678901234567890:8080')
-    assert req.netloc == '12345678901234567890123456789' +\
-                         '012345678901234567890:8080'
+    assert req.headers['HOST'] == '12345678901234567890123456789' +\
+        '012345678901234567890:8080'
 
 
 def test_gen_netloc_no_port(make_request):
@@ -428,17 +424,8 @@ def test_gen_netloc_no_port(make_request):
                        'https://aiohttp:pwpwpw@' +
                        '12345678901234567890123456789' +
                        '012345678901234567890/')
-    assert req.netloc == '12345678901234567890123456789' +\
-                         '012345678901234567890'
-
-
-def test_gen_notloc_failed(make_request):
-    with pytest.raises(ValueError) as excinfo:
-        make_request('get',
-                     'https://aiohttp:pwpwpw@' +
-                     '123456789012345678901234567890123456789' +
-                     '01234567890123456789012345/')
-        assert excinfo.value.message == "URL has an invalid label."
+    assert req.headers['HOST'] == '12345678901234567890123456789' +\
+        '012345678901234567890'
 
 
 class TestClientRequest(unittest.TestCase):
@@ -465,35 +452,35 @@ class TestClientRequest(unittest.TestCase):
         gc.collect()
 
     def test_no_content_length(self):
-        req = ClientRequest('get', 'http://python.org', loop=self.loop)
+        req = ClientRequest('get', URL('http://python.org'), loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertEqual('0', req.headers.get('CONTENT-LENGTH'))
         self.loop.run_until_complete(req.close())
         resp.close()
 
     def test_no_content_length2(self):
-        req = ClientRequest('head', 'http://python.org', loop=self.loop)
+        req = ClientRequest('head', URL('http://python.org'), loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertEqual('0', req.headers.get('CONTENT-LENGTH'))
         self.loop.run_until_complete(req.close())
         resp.close()
 
     def test_content_type_auto_header_get(self):
-        req = ClientRequest('get', 'http://python.org', loop=self.loop)
+        req = ClientRequest('get', URL('http://python.org'), loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertNotIn('CONTENT-TYPE', req.headers)
         resp.close()
 
     def test_content_type_auto_header_form(self):
-        req = ClientRequest('post', 'http://python.org', data={'hey': 'you'},
-                            loop=self.loop)
+        req = ClientRequest('post', URL('http://python.org'),
+                            data={'hey': 'you'}, loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertEqual('application/x-www-form-urlencoded',
                          req.headers.get('CONTENT-TYPE'))
         resp.close()
 
     def test_content_type_auto_header_bytes(self):
-        req = ClientRequest('post', 'http://python.org', data=b'hey you',
+        req = ClientRequest('post', URL('http://python.org'), data=b'hey you',
                             loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertEqual('application/octet-stream',
@@ -501,7 +488,7 @@ class TestClientRequest(unittest.TestCase):
         resp.close()
 
     def test_content_type_skip_auto_header_bytes(self):
-        req = ClientRequest('post', 'http://python.org', data=b'hey you',
+        req = ClientRequest('post', URL('http://python.org'), data=b'hey you',
                             skip_auto_headers={'Content-Type'},
                             loop=self.loop)
         resp = req.send(self.transport, self.protocol)
@@ -509,14 +496,15 @@ class TestClientRequest(unittest.TestCase):
         resp.close()
 
     def test_content_type_skip_auto_header_form(self):
-        req = ClientRequest('post', 'http://python.org', data={'hey': 'you'},
-                            loop=self.loop, skip_auto_headers={'Content-Type'})
+        req = ClientRequest('post', URL('http://python.org'),
+                            data={'hey': 'you'}, loop=self.loop,
+                            skip_auto_headers={'Content-Type'})
         resp = req.send(self.transport, self.protocol)
         self.assertNotIn('CONTENT-TYPE', req.headers)
         resp.close()
 
     def test_content_type_auto_header_content_length_no_skip(self):
-        req = ClientRequest('get', 'http://python.org',
+        req = ClientRequest('get', URL('http://python.org'),
                             data=io.BytesIO(b'hey'),
                             skip_auto_headers={'Content-Length'},
                             loop=self.loop)
@@ -527,10 +515,10 @@ class TestClientRequest(unittest.TestCase):
     def test_post_data(self):
         for meth in ClientRequest.POST_METHODS:
             req = ClientRequest(
-                meth, 'http://python.org/',
+                meth, URL('http://python.org/'),
                 data={'life': '42'}, loop=self.loop)
             resp = req.send(self.transport, self.protocol)
-            self.assertEqual('/', req.path)
+            self.assertEqual('/', req.url.path)
             self.assertEqual(b'life=42', req.body)
             self.assertEqual('application/x-www-form-urlencoded',
                              req.headers['CONTENT-TYPE'])
@@ -541,7 +529,7 @@ class TestClientRequest(unittest.TestCase):
         'aiohttp.client_reqrep.ClientRequest.update_body_from_data')
     def test_pass_falsy_data(self, _):
         req = ClientRequest(
-            'post', 'http://python.org/',
+            'post', URL('http://python.org/'),
             data={}, loop=self.loop)
         req.update_body_from_data.assert_called_once_with({}, frozenset())
         self.loop.run_until_complete(req.close())
@@ -549,19 +537,19 @@ class TestClientRequest(unittest.TestCase):
     def test_get_with_data(self):
         for meth in ClientRequest.GET_METHODS:
             req = ClientRequest(
-                meth, 'http://python.org/', data={'life': '42'},
+                meth, URL('http://python.org/'), data={'life': '42'},
                 loop=self.loop)
-            self.assertEqual('/', req.path)
+            self.assertEqual('/', req.url.path)
             self.assertEqual(b'life=42', req.body)
             self.loop.run_until_complete(req.close())
 
     def test_bytes_data(self):
         for meth in ClientRequest.POST_METHODS:
             req = ClientRequest(
-                meth, 'http://python.org/',
+                meth, URL('http://python.org/'),
                 data=b'binary data', loop=self.loop)
             resp = req.send(self.transport, self.protocol)
-            self.assertEqual('/', req.path)
+            self.assertEqual('/', req.url.path)
             self.assertEqual(b'binary data', req.body)
             self.assertEqual('application/octet-stream',
                              req.headers['CONTENT-TYPE'])
@@ -570,7 +558,7 @@ class TestClientRequest(unittest.TestCase):
 
     @mock.patch('aiohttp.client_reqrep.aiohttp')
     def test_content_encoding(self, m_http):
-        req = ClientRequest('get', 'http://python.org/', data='foo',
+        req = ClientRequest('get', URL('http://python.org/'), data='foo',
                             compress='deflate', loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertEqual(req.headers['TRANSFER-ENCODING'], 'chunked')
@@ -582,7 +570,7 @@ class TestClientRequest(unittest.TestCase):
 
     @mock.patch('aiohttp.client_reqrep.aiohttp')
     def test_content_encoding_dont_set_headers_if_no_body(self, m_http):
-        req = ClientRequest('get', 'http://python.org/',
+        req = ClientRequest('get', URL('http://python.org/'),
                             compress='deflate', loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertNotIn('TRANSFER-ENCODING', req.headers)
@@ -593,7 +581,7 @@ class TestClientRequest(unittest.TestCase):
     @mock.patch('aiohttp.client_reqrep.aiohttp')
     def test_content_encoding_header(self, m_http):
         req = ClientRequest(
-            'get', 'http://python.org/', data='foo',
+            'get', URL('http://python.org/'), data='foo',
             headers={'Content-Encoding': 'deflate'}, loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertEqual(req.headers['TRANSFER-ENCODING'], 'chunked')
@@ -608,7 +596,7 @@ class TestClientRequest(unittest.TestCase):
 
     def test_chunked(self):
         req = ClientRequest(
-            'get', 'http://python.org/',
+            'get', URL('http://python.org/'),
             headers={'TRANSFER-ENCODING': 'gzip'}, loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertEqual('gzip', req.headers['TRANSFER-ENCODING'])
@@ -616,7 +604,7 @@ class TestClientRequest(unittest.TestCase):
         resp.close()
 
         req = ClientRequest(
-            'get', 'http://python.org/',
+            'get', URL('http://python.org/'),
             headers={'Transfer-encoding': 'chunked'}, loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertEqual('chunked', req.headers['TRANSFER-ENCODING'])
@@ -626,7 +614,7 @@ class TestClientRequest(unittest.TestCase):
     @mock.patch('aiohttp.client_reqrep.aiohttp')
     def test_chunked_explicit(self, m_http):
         req = ClientRequest(
-            'get', 'http://python.org/', chunked=True, loop=self.loop)
+            'get', URL('http://python.org/'), chunked=True, loop=self.loop)
         resp = req.send(self.transport, self.protocol)
 
         self.assertEqual('chunked', req.headers['TRANSFER-ENCODING'])
@@ -638,7 +626,7 @@ class TestClientRequest(unittest.TestCase):
     @mock.patch('aiohttp.client_reqrep.aiohttp')
     def test_chunked_explicit_size(self, m_http):
         req = ClientRequest(
-            'get', 'http://python.org/', chunked=1024, loop=self.loop)
+            'get', URL('http://python.org/'), chunked=1024, loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertEqual('chunked', req.headers['TRANSFER-ENCODING'])
         m_http.Request.return_value\
@@ -648,7 +636,7 @@ class TestClientRequest(unittest.TestCase):
 
     def test_chunked_length(self):
         req = ClientRequest(
-            'get', 'http://python.org/',
+            'get', URL('http://python.org/'),
             headers={'CONTENT-LENGTH': '1000'}, chunked=1024, loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertEqual(req.headers['TRANSFER-ENCODING'], 'chunked')
@@ -661,7 +649,7 @@ class TestClientRequest(unittest.TestCase):
         fname = os.path.join(here, 'sample.key')
         with open(fname, 'rb') as f:
             req = ClientRequest(
-                'post', 'http://python.org/',
+                'post', URL('http://python.org/'),
                 data=f,
                 loop=self.loop)
             self.assertFalse(req.chunked)
@@ -672,7 +660,7 @@ class TestClientRequest(unittest.TestCase):
     def test_precompressed_data_stays_intact(self):
         data = zlib.compress(b'foobar')
         req = ClientRequest(
-            'post', 'http://python.org/',
+            'post', URL('http://python.org/'),
             data=data,
             headers={'CONTENT-ENCODING': 'deflate'},
             compress=False,
@@ -689,7 +677,7 @@ class TestClientRequest(unittest.TestCase):
         with open(fname, 'rb') as f:
             f.seek(100)
             req = ClientRequest(
-                'post', 'http://python.org/',
+                'post', URL('http://python.org/'),
                 data=f,
                 loop=self.loop)
             self.assertEqual(req.headers['CONTENT-LENGTH'],
@@ -701,7 +689,7 @@ class TestClientRequest(unittest.TestCase):
         fname = os.path.join(here, 'sample.key')
         with open(fname, 'rb') as f:
             req = ClientRequest(
-                'post', 'http://python.org/',
+                'post', URL('http://python.org/'),
                 data=f,
                 chunked=True,
                 loop=self.loop)
@@ -710,7 +698,7 @@ class TestClientRequest(unittest.TestCase):
             self.loop.run_until_complete(req.close())
 
     def test_expect100(self):
-        req = ClientRequest('get', 'http://python.org/',
+        req = ClientRequest('get', URL('http://python.org/'),
                             expect100=True, loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertEqual('100-continue', req.headers['EXPECT'])
@@ -719,7 +707,7 @@ class TestClientRequest(unittest.TestCase):
         resp.close()
 
     def test_expect_100_continue_header(self):
-        req = ClientRequest('get', 'http://python.org/',
+        req = ClientRequest('get', URL('http://python.org/'),
                             headers={'expect': '100-continue'}, loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertEqual('100-continue', req.headers['EXPECT'])
@@ -733,7 +721,7 @@ class TestClientRequest(unittest.TestCase):
             return b' result'
 
         req = ClientRequest(
-            'POST', 'http://python.org/', data=gen(), loop=self.loop)
+            'POST', URL('http://python.org/'), data=gen(), loop=self.loop)
         self.assertTrue(req.chunked)
         self.assertTrue(inspect.isgenerator(req.body))
         self.assertEqual(req.headers['TRANSFER-ENCODING'], 'chunked')
@@ -750,7 +738,7 @@ class TestClientRequest(unittest.TestCase):
 
     def test_data_file(self):
         req = ClientRequest(
-            'POST', 'http://python.org/',
+            'POST', URL('http://python.org/'),
             data=io.BufferedReader(io.BytesIO(b'*' * 2)),
             loop=self.loop)
         self.assertTrue(req.chunked)
@@ -775,7 +763,7 @@ class TestClientRequest(unittest.TestCase):
             yield from fut
 
         req = ClientRequest(
-            'POST', 'http://python.org/', data=gen(), loop=self.loop)
+            'POST', URL('http://python.org/'), data=gen(), loop=self.loop)
         self.assertTrue(req.chunked)
         self.assertTrue(inspect.isgenerator(req.body))
         self.assertEqual(req.headers['TRANSFER-ENCODING'], 'chunked')
@@ -800,7 +788,7 @@ class TestClientRequest(unittest.TestCase):
             yield object()
 
         req = ClientRequest(
-            'POST', 'http://python.org/', data=gen(), loop=self.loop)
+            'POST', URL('http://python.org/'), data=gen(), loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.loop.run_until_complete(req._writer)
         self.assertTrue(self.protocol.set_exception.called)
@@ -814,7 +802,7 @@ class TestClientRequest(unittest.TestCase):
             yield from fut
 
         req = ClientRequest(
-            'POST', 'http://python.org/', data=gen(), loop=self.loop)
+            'POST', URL('http://python.org/'), data=gen(), loop=self.loop)
 
         inner_exc = ValueError()
 
@@ -842,7 +830,7 @@ class TestClientRequest(unittest.TestCase):
             return b' result'
 
         req = ClientRequest(
-            'POST', 'http://python.org/', data=gen(),
+            'POST', URL('http://python.org/'), data=gen(),
             expect100=True, loop=self.loop)
         self.assertTrue(req.chunked)
         self.assertTrue(inspect.isgenerator(req.body))
@@ -864,7 +852,7 @@ class TestClientRequest(unittest.TestCase):
 
     def test_data_continue(self):
         req = ClientRequest(
-            'POST', 'http://python.org/', data=b'data',
+            'POST', URL('http://python.org/'), data=b'data',
             expect100=True, loop=self.loop)
 
         def coro():
@@ -890,7 +878,7 @@ class TestClientRequest(unittest.TestCase):
             return b'result'
 
         req = ClientRequest(
-            'POST', 'http://python.org/', data=gen(), loop=self.loop)
+            'POST', URL('http://python.org/'), data=gen(), loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.loop.run_until_complete(req.close())
         self.assertEqual(
@@ -906,7 +894,7 @@ class TestClientRequest(unittest.TestCase):
                 return 'customized!'
 
         req = ClientRequest(
-            'GET', 'http://python.org/', response_class=CustomResponse,
+            'GET', URL('http://python.org/'), response_class=CustomResponse,
             loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertEqual('customized!', resp.read())
@@ -914,7 +902,7 @@ class TestClientRequest(unittest.TestCase):
         resp.close()
 
     def test_terminate(self):
-        req = ClientRequest('get', 'http://python.org', loop=self.loop)
+        req = ClientRequest('get', URL('http://python.org'), loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertIsNotNone(req._writer)
         writer = req._writer = mock.Mock()
@@ -925,7 +913,7 @@ class TestClientRequest(unittest.TestCase):
         resp.close()
 
     def test_terminate_with_closed_loop(self):
-        req = ClientRequest('get', 'http://python.org', loop=self.loop)
+        req = ClientRequest('get', URL('http://python.org'), loop=self.loop)
         resp = req.send(self.transport, self.protocol)
         self.assertIsNotNone(req._writer)
         writer = req._writer = mock.Mock()
@@ -937,7 +925,7 @@ class TestClientRequest(unittest.TestCase):
         resp.close()
 
     def test_terminate_without_writer(self):
-        req = ClientRequest('get', 'http://python.org', loop=self.loop)
+        req = ClientRequest('get', URL('http://python.org'), loop=self.loop)
         self.assertIsNone(req._writer)
 
         req.terminate()
@@ -981,12 +969,13 @@ class TestClientRequest(unittest.TestCase):
                 return self.transport, self.protocol
             self.connector._create_connection = create_connection
 
-            resp = yield from aiohttp.request('get',
-                                              'http://example.com/path/to',
-                                              request_class=CustomRequest,
-                                              response_class=CustomResponse,
-                                              connector=self.connector,
-                                              loop=self.loop)
+            resp = yield from aiohttp.request(
+                'get',
+                URL('http://example.com/path/to'),
+                request_class=CustomRequest,
+                response_class=CustomResponse,
+                connector=self.connector,
+                loop=self.loop)
             self.assertIsInstance(resp, CustomResponse)
             self.assertTrue(called)
             resp.close()

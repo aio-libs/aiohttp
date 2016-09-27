@@ -7,6 +7,7 @@ import unittest
 from unittest import mock
 
 import multidict
+
 import aiohttp
 from aiohttp import helpers, protocol, wsgi
 

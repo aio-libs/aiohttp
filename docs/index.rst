@@ -122,10 +122,11 @@ Dependencies
 ------------
 
 - Python 3.4.2+
-- *chardet* library
-- *multidict* library
-- *async_timeout* library
-- *Optional* :term:`cchardet` library as faster replacement for
+- *chardet*
+- *multidict*
+- *async_timeout*
+- *yarl*
+- *Optional* :term:`cchardet` as faster replacement for
   :term:`chardet`.
 
   Install it explicitly via:
@@ -134,7 +135,7 @@ Dependencies
 
      $ pip install cchardet
 
-- *Optional* :term:`aiodns` library for fast DNS resolving. The
+- *Optional* :term:`aiodns` for fast DNS resolving. The
   library is highly recommended.
 
   .. code-block:: bash

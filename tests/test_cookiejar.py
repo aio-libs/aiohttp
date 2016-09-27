@@ -6,6 +6,8 @@ from unittest import mock
 
 import pytest
 
+from yarl import URL
+
 from aiohttp import CookieJar
 
 
@@ -172,7 +174,7 @@ def test_domain_filter_ip_cookie_send(loop):
     )
 
     jar.update_cookies(cookies)
-    cookies_sent = jar.filter_cookies("http://1.2.3.4/").output(
+    cookies_sent = jar.filter_cookies(URL("http://1.2.3.4/")).output(
         header='Cookie:')
     assert cookies_sent == 'Cookie: shared-cookie=first'
 
@@ -180,7 +182,7 @@ def test_domain_filter_ip_cookie_send(loop):
 def test_domain_filter_ip_cookie_receive(loop, cookies_to_receive):
     jar = CookieJar(loop=loop)
 
-    jar.update_cookies(cookies_to_receive, "http://1.2.3.4/")
+    jar.update_cookies(cookies_to_receive, URL("http://1.2.3.4/"))
     assert len(jar) == 0
 
 
@@ -190,7 +192,7 @@ def test_preserving_ip_domain_cookies(loop):
         "shared-cookie=first; "
         "ip-cookie=second; Domain=127.0.0.1;"
     ))
-    cookies_sent = jar.filter_cookies("http://127.0.0.1/").output(
+    cookies_sent = jar.filter_cookies(URL("http://127.0.0.1/")).output(
         header='Cookie:')
     assert cookies_sent == ('Cookie: ip-cookie=second\r\n'
                             'Cookie: shared-cookie=first')
@@ -199,10 +201,10 @@ def test_preserving_ip_domain_cookies(loop):
 def test_ignore_domain_ending_with_dot(loop):
     jar = CookieJar(loop=loop, unsafe=True)
     jar.update_cookies(SimpleCookie("cookie=val; Domain=example.com.;"),
-                       "http://www.example.com")
-    cookies_sent = jar.filter_cookies("http://www.example.com/")
+                       URL("http://www.example.com"))
+    cookies_sent = jar.filter_cookies(URL("http://www.example.com/"))
     assert cookies_sent.output(header='Cookie:') == "Cookie: cookie=val"
-    cookies_sent = jar.filter_cookies("http://example.com/")
+    cookies_sent = jar.filter_cookies(URL("http://example.com/"))
     assert cookies_sent.output(header='Cookie:') == ""
 
 
@@ -220,11 +222,11 @@ class TestCookieJarBase(unittest.TestCase):
 
     def request_reply_with_same_url(self, url):
         self.jar.update_cookies(self.cookies_to_send)
-        cookies_sent = self.jar.filter_cookies(url)
+        cookies_sent = self.jar.filter_cookies(URL(url))
 
         self.jar.clear()
 
-        self.jar.update_cookies(self.cookies_to_receive, url)
+        self.jar.update_cookies(self.cookies_to_receive, URL(url))
         cookies_received = SimpleCookie()
         for cookie in self.jar:
             dict.__setitem__(cookies_received, cookie.key, cookie)
@@ -281,7 +283,7 @@ class TestCookieJarSafe(TestCookieJarBase):
             self.jar.update_cookies(self.cookies_to_send)
 
         with mock.patch.object(self.loop, 'time', return_value=send_time):
-            cookies_sent = self.jar.filter_cookies(url)
+            cookies_sent = self.jar.filter_cookies(URL(url))
 
         self.jar.clear()
 
@@ -352,12 +354,13 @@ class TestCookieJarSafe(TestCookieJarBase):
         })
 
     def test_domain_filter_host_only(self):
-        self.jar.update_cookies(self.cookies_to_receive, "http://example.com/")
+        self.jar.update_cookies(self.cookies_to_receive,
+                                URL("http://example.com/"))
 
-        cookies_sent = self.jar.filter_cookies("http://example.com/")
+        cookies_sent = self.jar.filter_cookies(URL("http://example.com/"))
         self.assertIn("unconstrained-cookie", set(cookies_sent.keys()))
 
-        cookies_sent = self.jar.filter_cookies("http://different.org/")
+        cookies_sent = self.jar.filter_cookies(URL("http://different.org/"))
         self.assertNotIn("unconstrained-cookie", set(cookies_sent.keys()))
 
     def test_secure_filter(self):

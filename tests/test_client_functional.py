@@ -391,7 +391,7 @@ def test_drop_fragment_on_redirect(create_app_and_client):
     resp = yield from client.get('/redirect')
     try:
         assert resp.status == 200
-        assert resp.url.endswith('/ok')
+        assert resp.url.path == '/ok'
     finally:
         yield from resp.release()
 
@@ -408,7 +408,7 @@ def test_drop_fragment(create_app_and_client):
     resp = yield from client.get('/ok#fragment')
     try:
         assert resp.status == 200
-        assert resp.url.endswith('/ok')
+        assert resp.url.path == '/ok'
     finally:
         yield from resp.release()
 
