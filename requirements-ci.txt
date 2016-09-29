@@ -10,7 +10,7 @@ isort
 tox
 multidict
 async_timeout
-sphinxcontrib-asyncio
+sphinxcontrib-asyncio==0.2.0
 sphinxcontrib-newsfeed
 pytest
 pytest-cov
