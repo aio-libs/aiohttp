@@ -1,2 +1,2 @@
-twisted
+twisted==16.4.1
 tornado
