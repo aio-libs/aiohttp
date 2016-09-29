@@ -7,7 +7,7 @@ sphinx
 cython
 chardet
 isort
-tox
+tox==2.3.1
 multidict
 async_timeout
 sphinxcontrib-asyncio
