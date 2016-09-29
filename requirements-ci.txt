@@ -2,7 +2,7 @@ pip
 flake8
 pyflakes
 coverage
-cchardet
+cchardet==1.0.0
 sphinx
 cython
 chardet
