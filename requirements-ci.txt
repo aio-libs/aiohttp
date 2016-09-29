@@ -8,7 +8,7 @@ cython
 chardet
 isort
 tox
-multidict
+multidict==2.1.2
 async_timeout
 sphinxcontrib-asyncio
 sphinxcontrib-newsfeed
