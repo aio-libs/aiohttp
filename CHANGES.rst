@@ -9,7 +9,7 @@ CHANGES
 - Use `yarl.URL` in client API. The change is 99% backward compatible
   but `ClientResponse.url` is an `yarl.URL` instance now.
 
--
+- Close idle keep-alive connections on shutdown #1222
 
 -
 

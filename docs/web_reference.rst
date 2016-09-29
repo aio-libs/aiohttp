@@ -1404,7 +1404,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
       .. versionadded:: 1.0
 
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
-                          chunk_size=256*1024, response_factory=StreamResponse \
+                          chunk_size=256*1024, \
+                          response_factory=StreamResponse, \
                           show_index=False)
 
       Adds a router and a handler for returning static files.
