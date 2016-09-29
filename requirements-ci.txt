@@ -6,7 +6,7 @@ cchardet
 sphinx
 cython
 chardet
-isort
+isort==4.2.5
 tox
 multidict
 async_timeout
