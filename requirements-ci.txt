@@ -9,7 +9,7 @@ chardet
 isort
 tox
 multidict
-async_timeout
+async-timeout==1.0.0
 sphinxcontrib-asyncio
 sphinxcontrib-newsfeed
 pytest
