@@ -5,7 +5,7 @@ coverage
 cchardet
 sphinx
 cython
-chardet
+chardet==2.3.0
 isort
 tox
 multidict
