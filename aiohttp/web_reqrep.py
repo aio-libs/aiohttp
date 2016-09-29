@@ -12,9 +12,9 @@ import time
 import warnings
 from email.utils import parsedate
 from types import MappingProxyType
-from urllib.parse import parse_qsl, unquote, urlsplit
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
+from yarl import URL
 
 from . import hdrs, multipart
 from .helpers import reify, sentinel
@@ -152,17 +152,22 @@ class Request(dict, HeadersMixin):
         return self._message.headers.get(hdrs.HOST)
 
     @reify
+    def rel_url(self):
+        return URL(self._message.path)
+
+    @reify
     def path_qs(self):
         """The URL including PATH_INFO and the query string.
 
         E.g, /app/blog?id=10
         """
-        return self._message.path
+        return str(self.rel_url)
 
     @reify
-    def _splitted_path(self):
-        url = '{}://{}{}'.format(self.scheme, self.host, self.path_qs)
-        return urlsplit(url)
+    def url(self):
+        return URL('{}://{}{}'.format(self.scheme,
+                                      self.host,
+                                      str(self.rel_url)))
 
     @reify
     def raw_path(self):
@@ -171,7 +176,7 @@ class Request(dict, HeadersMixin):
 
         E.g., ``/my%2Fpath%7Cwith%21some%25strange%24characters``
         """
-        return self._splitted_path.path
+        return self.rel_url.raw_path
 
     @reify
     def path(self):
@@ -179,7 +184,7 @@ class Request(dict, HeadersMixin):
 
         E.g., ``/app/blog``
         """
-        return unquote(self.raw_path)
+        return self.rel_url.path
 
     @reify
     def query_string(self):
@@ -187,7 +192,7 @@ class Request(dict, HeadersMixin):
 
         E.g., id=10
         """
-        return self._splitted_path.query
+        return self.rel_url.query_string
 
     @reify
     def GET(self):
@@ -195,8 +200,7 @@ class Request(dict, HeadersMixin):
 
         Lazy property.
         """
-        return MultiDictProxy(MultiDict(parse_qsl(self.query_string,
-                                                  keep_blank_values=True)))
+        return self.rel_url.query
 
     @reify
     def POST(self):
