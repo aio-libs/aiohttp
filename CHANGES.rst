@@ -11,7 +11,7 @@ CHANGES
 
 - Close idle keep-alive connections on shutdown #1222
 
--
+- Modify regex in AccessLogger to accept underscore and numbers #1225
 
 -
 
@@ -26,7 +26,7 @@ CHANGES
 1.0.3 (XXXX-XX-XX)
 ------------------
 
-- Modify regex in AccessLogger to accept underscore #1225
+-
 
 -
 
