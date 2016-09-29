@@ -11,7 +11,7 @@ tox
 multidict
 async_timeout
 sphinxcontrib-asyncio
-sphinxcontrib-newsfeed
+sphinxcontrib-newsfeed==0.1.4
 pytest
 pytest-cov
 pytest-mock
