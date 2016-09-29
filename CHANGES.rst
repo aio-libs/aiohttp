@@ -26,7 +26,7 @@ CHANGES
 1.0.3 (XXXX-XX-XX)
 ------------------
 
--
+- Modify regex in AccessLogger to accept underscore #1225
 
 -
 
