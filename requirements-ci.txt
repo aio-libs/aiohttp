@@ -12,7 +12,7 @@ multidict
 async_timeout
 sphinxcontrib-asyncio
 sphinxcontrib-newsfeed
-pytest
+pytest==3.0.3
 pytest-cov
 pytest-mock
 pytest-timeout
