@@ -3,7 +3,7 @@ flake8
 pyflakes
 coverage
 cchardet
-sphinx
+sphinx==1.4.6
 cython
 chardet
 isort
