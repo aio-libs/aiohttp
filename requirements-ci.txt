@@ -15,7 +15,7 @@ sphinxcontrib-newsfeed
 pytest
 pytest-cov
 pytest-mock
-pytest-timeout
+pytest-timeout==1.0.0
 gunicorn
 pygments>=2.1
 #aiodns  # Enable from .travis.yml as required c-ares will not build on windows
