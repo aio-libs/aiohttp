@@ -19,6 +19,6 @@ pytest-timeout
 gunicorn
 pygments>=2.1
 #aiodns  # Enable from .travis.yml as required c-ares will not build on windows
-twine
+twine==1.8.1
 yarl==0.4.2
 -e .
