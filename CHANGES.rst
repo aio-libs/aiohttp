@@ -17,7 +17,7 @@ CHANGES
   `web.Request.url` are added. URLs and templates are percent-encoded
   now. #1224
 
-- Accept `yarl.URL` in server redirections
+- Accept `yarl.URL` in server redirections #1278
 
 -
 
