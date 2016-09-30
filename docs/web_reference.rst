@@ -32,6 +32,41 @@ like one using :meth:`Request.copy`.
 
 .. class:: Request
 
+   .. attribute:: version
+
+      *HTTP version* of request, Read-only property.
+
+      Returns :class:`aiohttp.protocol.HttpVersion` instance.
+
+   .. attribute:: method
+
+      *HTTP method*, read-only property.
+
+      The value is upper-cased :class:`str` like ``"GET"``,
+      ``"POST"``, ``"PUT"`` etc.
+
+   .. attribute:: url
+
+      A :class:`~yarl.URL` instance with absolute URL to resource
+      (*scheme*, *host* and *port* are included).
+
+      .. note::
+
+         In case of malformed request (e.g. without ``"HOST"`` HTTP
+         header) the absolute url may be unavailable.
+
+   .. attribute:: rel_url
+
+      A :class:`~yarl.URL` instance with relative URL to resource
+      (contains *path*, *query* and *fragment* parts only, *scheme*,
+      *host* and *port* are excluded).
+
+      The property is equal to ``.url.relative()`` but is always present.
+
+      .. seealso::
+
+         A note from :attr:`url`.
+
    .. attribute:: scheme
 
       A string representing the scheme of the request.
@@ -45,18 +80,9 @@ like one using :meth:`Request.copy`.
 
       .. seealso:: :meth:`Application.make_handler`
 
-   .. attribute:: method
+      .. deprecated:: 1.1
 
-      *HTTP method*, read-only property.
-
-      The value is upper-cased :class:`str` like ``"GET"``,
-      ``"POST"``, ``"PUT"`` etc.
-
-   .. attribute:: version
-
-      *HTTP version* of request, Read-only property.
-
-      Returns :class:`aiohttp.protocol.HttpVersion` instance.
+         Use :attr:`url` (``request.url.scheme``) instead.
 
    .. attribute:: host
 
@@ -64,11 +90,20 @@ like one using :meth:`Request.copy`.
 
       Returns :class:`str` or ``None`` if HTTP request has no *HOST* header.
 
+      .. deprecated:: 1.1
+
+         Use :attr:`url` (``request.url.host``) instead.
+
    .. attribute:: path_qs
 
-      The URL including PATH_INFO and the query string. e.g., ``/app/blog?id=10``
+      The URL including PATH_INFO and the query string. e.g.,
+      ``/app/blog?id=10``
 
       Read-only :class:`str` property.
+
+      .. deprecated:: 1.1
+
+         Use :attr:`url` (``str(request.rel_url)``) instead.
 
    .. attribute:: path
 
@@ -77,6 +112,10 @@ like one using :meth:`Request.copy`.
       :attr:`raw_path`.
 
       Read-only :class:`str` property.
+
+      .. deprecated:: 1.1
+
+         Use :attr:`url` (``request.rel_url.path``) instead.
 
    .. attribute:: raw_path
 
@@ -89,11 +128,19 @@ like one using :meth:`Request.copy`.
 
       Read-only :class:`str` property.
 
+      .. deprecated:: 1.1
+
+         Use :attr:`url` (``request.rel_url.raw_path``) instead.
+
    .. attribute:: query_string
 
       The query string in the URL, e.g., ``id=10``
 
       Read-only :class:`str` property.
+
+      .. deprecated:: 1.1
+
+         Use :attr:`url` (``request.rel_url.query_string``) instead.
 
    .. attribute:: GET
 
@@ -104,6 +151,10 @@ like one using :meth:`Request.copy`.
       .. versionchanged:: 0.17
          A multidict contains empty items for query string like ``?arg=``.
 
+      .. deprecated:: 1.1
+
+         Use :attr:`url` (``request.rel_url.query``) instead.
+
    .. attribute:: POST
 
       A multidict with all the variables in the POST parameters.
@@ -113,6 +164,13 @@ like one using :meth:`Request.copy`.
 
       :raises RuntimeError: if :meth:`Request.post` was not called \
                             before accessing the property.
+
+      .. deprecated:: 1.1
+
+         Since POST date preloaded is not implemented yet and probably
+         will never be done the :meth:`post` call is required and
+         recommended way for accessing to POST data. :meth:`multipart`
+         is useful for working with multipart encoded content.
 
    .. attribute:: headers
 

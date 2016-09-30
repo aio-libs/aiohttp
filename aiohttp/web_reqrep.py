@@ -12,9 +12,9 @@ import time
 import warnings
 from email.utils import parsedate
 from types import MappingProxyType
-from urllib.parse import parse_qsl, unquote, urlsplit
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
+from yarl import URL
 
 from . import hdrs, multipart
 from .helpers import reify, sentinel
@@ -118,6 +118,13 @@ class Request(dict, HeadersMixin):
 
         'http' or 'https'.
         """
+        warnings.warn("path_qs property is deprecated, "
+                      "use .url.sheme instead",
+                      DeprecationWarning)
+        return self.url.scheme
+
+    @reify
+    def _scheme(self):
         if self._transport.get_extra_info('sslcontext'):
             return 'https'
         secure_proxy_ssl_header = self._secure_proxy_ssl_header
@@ -149,7 +156,14 @@ class Request(dict, HeadersMixin):
 
         Returns str or None if HTTP request has no HOST header.
         """
+        warnings.warn("host property is deprecated, "
+                      "use .url.host instead",
+                      DeprecationWarning)
         return self._message.headers.get(hdrs.HOST)
+
+    @reify
+    def rel_url(self):
+        return URL(self._message.path)
 
     @reify
     def path_qs(self):
@@ -157,12 +171,16 @@ class Request(dict, HeadersMixin):
 
         E.g, /app/blog?id=10
         """
-        return self._message.path
+        warnings.warn("path_qs property is deprecated, "
+                      "use str(request.rel_url) instead",
+                      DeprecationWarning)
+        return str(self.rel_url)
 
     @reify
-    def _splitted_path(self):
-        url = '{}://{}{}'.format(self.scheme, self.host, self.path_qs)
-        return urlsplit(url)
+    def url(self):
+        return URL('{}://{}{}'.format(self._scheme,
+                                      self._message.headers.get(hdrs.HOST),
+                                      str(self.rel_url)))
 
     @reify
     def raw_path(self):
@@ -171,7 +189,10 @@ class Request(dict, HeadersMixin):
 
         E.g., ``/my%2Fpath%7Cwith%21some%25strange%24characters``
         """
-        return self._splitted_path.path
+        warnings.warn("raw_path property is deprecated, "
+                      "use .rel_url.raw_path instead",
+                      DeprecationWarning)
+        return self.rel_url.raw_path
 
     @reify
     def path(self):
@@ -179,7 +200,9 @@ class Request(dict, HeadersMixin):
 
         E.g., ``/app/blog``
         """
-        return unquote(self.raw_path)
+        warnings.warn("path property is deprecated, use .rel_url.path instead",
+                      DeprecationWarning)
+        return self.rel_url.path
 
     @reify
     def query_string(self):
@@ -187,7 +210,10 @@ class Request(dict, HeadersMixin):
 
         E.g., id=10
         """
-        return self._splitted_path.query
+        warnings.warn("query_string property is deprecated, "
+                      "use .rel_url.query_string instead",
+                      DeprecationWarning)
+        return self.rel_url.query_string
 
     @reify
     def GET(self):
@@ -195,8 +221,9 @@ class Request(dict, HeadersMixin):
 
         Lazy property.
         """
-        return MultiDictProxy(MultiDict(parse_qsl(self.query_string,
-                                                  keep_blank_values=True)))
+        warnings.warn("GET property is deprecated, use .rel_url.query instead",
+                      DeprecationWarning)
+        return self.rel_url.query
 
     @reify
     def POST(self):
@@ -204,6 +231,8 @@ class Request(dict, HeadersMixin):
 
         post() methods has to be called before using this attribute.
         """
+        warnings.warn("POST property is deprecated, use .post() instead",
+                      DeprecationWarning)
         if self._post is None:
             raise RuntimeError("POST is not available before post()")
         return self._post
