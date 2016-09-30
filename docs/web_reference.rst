@@ -53,7 +53,7 @@ like one using :meth:`Request.copy`.
       .. note::
 
          In case of malformed request (e.g. without ``"HOST"`` HTTP
-         header) the absolute url may be inavailable.
+         header) the absolute url may be unavailable.
 
    .. attribute:: rel_url
 
