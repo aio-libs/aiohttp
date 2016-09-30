@@ -1,5 +1,5 @@
 -r requirements-ci.txt
 ipdb
 pytest-sugar
-ipython
+ipython==5.1.0
 aiodns==1.1.1
