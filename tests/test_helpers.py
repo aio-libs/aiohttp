@@ -131,10 +131,10 @@ def test_invalid_formdata_content_transfer_encoding():
 
 
 def test_access_logger_format():
-    log_format = '%T {%{SPAM}e} "%{ETag}o" %X {X} %%P'
+    log_format = '%T {%{SPAM}e} "%{ETag}o" %X {X} %%P %{FOO_TEST}e %{FOO1}e'
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, log_format)
-    expected = '%s {%s} "%s" %%X {X} %%%s'
+    expected = '%s {%s} "%s" %%X {X} %%%s %s %s'
     assert expected == access_logger._log_format
 
 
