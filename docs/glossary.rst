@@ -77,5 +77,13 @@
        single TCP connection. The WebSocket protocol was standardized
        by the IETF as :rfc:`6455`
 
+   yarl
+
+      A library for operating with URL objects.
+
+      https://pypi.python.org/pypi/yarl
+
+
+
 .. disqus::
   :title: aiohttp glossary
