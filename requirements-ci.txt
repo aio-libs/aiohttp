@@ -4,7 +4,7 @@ pyflakes==1.3.0
 coverage
 cchardet
 sphinx
-cython
+cython==0.24.1
 chardet
 isort==4.2.5
 tox
