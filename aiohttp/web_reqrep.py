@@ -118,6 +118,13 @@ class Request(dict, HeadersMixin):
 
         'http' or 'https'.
         """
+        warnings.warn("path_qs property is deprecated, "
+                      "use .url.sheme instead",
+                      DeprecationWarning)
+        return self.url.scheme
+
+    @reify
+    def _scheme(self):
         if self._transport.get_extra_info('sslcontext'):
             return 'https'
         secure_proxy_ssl_header = self._secure_proxy_ssl_header
@@ -149,6 +156,9 @@ class Request(dict, HeadersMixin):
 
         Returns str or None if HTTP request has no HOST header.
         """
+        warnings.warn("host property is deprecated, "
+                      "use .url.host instead",
+                      DeprecationWarning)
         return self._message.headers.get(hdrs.HOST)
 
     @reify
@@ -161,12 +171,15 @@ class Request(dict, HeadersMixin):
 
         E.g, /app/blog?id=10
         """
+        warnings.warn("path_qs property is deprecated, "
+                      "use str(request.rel_url) instead",
+                      DeprecationWarning)
         return str(self.rel_url)
 
     @reify
     def url(self):
-        return URL('{}://{}{}'.format(self.scheme,
-                                      self.host,
+        return URL('{}://{}{}'.format(self._scheme,
+                                      self._message.headers.get(hdrs.HOST),
                                       str(self.rel_url)))
 
     @reify
@@ -176,6 +189,9 @@ class Request(dict, HeadersMixin):
 
         E.g., ``/my%2Fpath%7Cwith%21some%25strange%24characters``
         """
+        warnings.warn("raw_path property is deprecated, "
+                      "use .rel_url.raw_path instead",
+                      DeprecationWarning)
         return self.rel_url.raw_path
 
     @reify
@@ -184,6 +200,8 @@ class Request(dict, HeadersMixin):
 
         E.g., ``/app/blog``
         """
+        warnings.warn("path property is deprecated, use .rel_url.path instead",
+                      DeprecationWarning)
         return self.rel_url.path
 
     @reify
@@ -192,6 +210,9 @@ class Request(dict, HeadersMixin):
 
         E.g., id=10
         """
+        warnings.warn("query_string property is deprecated, "
+                      "use .rel_url.query_string instead",
+                      DeprecationWarning)
         return self.rel_url.query_string
 
     @reify
@@ -200,6 +221,8 @@ class Request(dict, HeadersMixin):
 
         Lazy property.
         """
+        warnings.warn("GET property is deprecated, use .rel_url.query instead",
+                      DeprecationWarning)
         return self.rel_url.query
 
     @reify
@@ -208,6 +231,8 @@ class Request(dict, HeadersMixin):
 
         post() methods has to be called before using this attribute.
         """
+        warnings.warn("POST property is deprecated, use .post() instead",
+                      DeprecationWarning)
         if self._post is None:
             raise RuntimeError("POST is not available before post()")
         return self._post

@@ -50,11 +50,22 @@ like one using :meth:`Request.copy`.
       A :class:`~yarl.URL` instance with absolute URL to resource
       (*scheme*, *host* and *port* are included).
 
+      .. note::
+
+         In case of malformed request (e.g. without ``"HOST"`` HTTP
+         header) the absolute url may be inavailable.
+
    .. attribute:: rel_url
 
       A :class:`~yarl.URL` instance with relative URL to resource
       (contains *path*, *query* and *fragment* parts only, *scheme*,
       *host* and *port* are excluded).
+
+      The property is equal to ``.url.relative()`` but is always present.
+
+      .. seealso::
+
+         A note from :attr:`url`.
 
    .. attribute:: scheme
 
@@ -92,7 +103,7 @@ like one using :meth:`Request.copy`.
 
       .. deprecated:: 1.1
 
-         Use :attr:`url` (``str(request.url.relative())``) instead.
+         Use :attr:`url` (``str(request.rel_url)``) instead.
 
    .. attribute:: path
 
@@ -104,7 +115,7 @@ like one using :meth:`Request.copy`.
 
       .. deprecated:: 1.1
 
-         Use :attr:`url` (``request.url.path``) instead.
+         Use :attr:`url` (``request.rel_url.path``) instead.
 
    .. attribute:: raw_path
 
@@ -119,7 +130,7 @@ like one using :meth:`Request.copy`.
 
       .. deprecated:: 1.1
 
-         Use :attr:`url` (``request.url.raw_path``) instead.
+         Use :attr:`url` (``request.rel_url.raw_path``) instead.
 
    .. attribute:: query_string
 
@@ -129,7 +140,7 @@ like one using :meth:`Request.copy`.
 
       .. deprecated:: 1.1
 
-         Use :attr:`url` (``request.url.query_string``) instead.
+         Use :attr:`url` (``request.rel_url.query_string``) instead.
 
    .. attribute:: GET
 
@@ -142,7 +153,7 @@ like one using :meth:`Request.copy`.
 
       .. deprecated:: 1.1
 
-         Use :attr:`url` (``request.url.query``) instead.
+         Use :attr:`url` (``request.rel_url.query``) instead.
 
    .. attribute:: POST
 
