@@ -16,7 +16,7 @@ pytest==3.0.3
 pytest-cov==2.3.1
 pytest-mock==1.2
 pytest-timeout
-gunicorn
+gunicorn==19.6.0
 pygments>=2.1
 #aiodns  # Enable from .travis.yml as required c-ares will not build on windows
 twine==1.8.1
