@@ -6,6 +6,7 @@ from unittest import mock
 
 import pytest
 from multidict import MultiDict
+from yarl import URL
 
 from aiohttp import FormData, multipart, web
 from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
@@ -838,3 +839,23 @@ def test_requests_count(loop, test_client):
     resp = yield from client.get('/')
     assert 200 == resp.status
     assert client.handler.requests_count == 3
+
+
+@asyncio.coroutine
+def test_redirect_url(loop, test_client):
+
+    @asyncio.coroutine
+    def redirector(request):
+        raise web.HTTPFound(location=URL('/redirected'))
+
+    @asyncio.coroutine
+    def redirected(request):
+        return web.Response()
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/redirector', redirector)
+    app.router.add_get('/redirected', redirected)
+
+    client = yield from test_client(app)
+    resp = yield from client.get('/redirector')
+    assert resp.status == 200
