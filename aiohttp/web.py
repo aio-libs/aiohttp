@@ -4,6 +4,8 @@ import warnings
 from argparse import ArgumentParser
 from importlib import import_module
 
+from yarl import URL
+
 from . import hdrs, web_exceptions, web_reqrep, web_urldispatcher, web_ws
 from .abc import AbstractMatchInfo, AbstractRouter
 from .helpers import sentinel
@@ -309,9 +311,10 @@ def run_app(app, *, host='0.0.0.0', port=None,
                                                               loop=loop))
 
     scheme = 'https' if ssl_context else 'http'
-    print("======== Running on {scheme}://{host}:{port}/ ========\n"
-          "(Press CTRL+C to quit)".format(
-              scheme=scheme, host=host, port=port))
+    url = URL('{}://localhost'.format(scheme))
+    url = url.with_host(host).with_port(port)
+    print("======== Running on {} ========\n"
+          "(Press CTRL+C to quit)".format(url))
 
     try:
         loop.run_forever()
