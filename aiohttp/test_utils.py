@@ -10,6 +10,7 @@ import unittest
 from unittest import mock
 
 from multidict import CIMultiDict
+from yarl import URL
 
 import aiohttp
 
@@ -54,14 +55,22 @@ class TestServer:
         if self.server:
             return
         self.port = unused_port()
-        self._root = '{}://{}:{}'.format(self.scheme, self.host, self.port)
+        self._root = URL('{}://{}:{}'.format(self.scheme,
+                                             self.host,
+                                             self.port))
         self.handler = self.app.make_handler(**kwargs)
         self.server = yield from self._loop.create_server(self.handler,
                                                           self.host,
                                                           self.port)
 
     def make_url(self, path):
-        return self._root + path
+        assert path.startswith('/')
+        path = path[1:]
+        if path.startswith('?'):
+            # add a query to root path
+            return self._root.with_query(path[1:])
+        else:
+            return self._root / path
 
     @asyncio.coroutine
     def close(self):
