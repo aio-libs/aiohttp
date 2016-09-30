@@ -21,7 +21,7 @@ CHANGES
 
 - Return `yarl.URL` by `.make_url()` testing utility #1279
 
-- Properlly format IPv6 addresses by `aiohttp.web.run_app` #1139
+- Properly format IPv6 addresses by `aiohttp.web.run_app` #1139
 
 -
 
