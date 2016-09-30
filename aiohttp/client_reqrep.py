@@ -143,12 +143,6 @@ class ClientRequest:
                     .format(version)) from None
         self.version = version
 
-    def update_path(self, params):
-        """Build path."""
-        # extract path
-
-        self.url = self.url.with_query(params)
-
     def update_headers(self, headers):
         """Update request headers."""
         self.headers = CIMultiDict()
