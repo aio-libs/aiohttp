@@ -19,7 +19,7 @@ CHANGES
 
 - Accept `yarl.URL` by server redirections #1278
 
--
+- Return `yarl.URL` by `.make_url()` testing utility #1279
 
 -
 
