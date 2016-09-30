@@ -10,7 +10,9 @@ import warnings
 from collections.abc import Container, Iterable, Sized
 from pathlib import Path
 from types import MappingProxyType
-from urllib.parse import unquote, urlencode
+from urllib.parse import urlencode
+
+from yarl import quote, unquote
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
@@ -728,7 +730,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         if not path.startswith('/'):
             raise ValueError("path should be started with /")
         if not ('{' in path or '}' in path or self.ROUTE_RE.search(path)):
-            resource = PlainResource(path, name=name)
+            resource = PlainResource(quote(path, safe='/'), name=name)
             self._reg_resource(resource)
             return resource
 
@@ -750,6 +752,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             if '{' in part or '}' in part:
                 raise ValueError("Invalid path '{}'['{}']".format(path, part))
 
+            part = quote(part, safe='/')
             formatter += part
             pattern += re.escape(part)
 
