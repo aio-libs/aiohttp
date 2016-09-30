@@ -10,7 +10,9 @@ import warnings
 from collections.abc import Container, Iterable, Sized
 from pathlib import Path
 from types import MappingProxyType
-from urllib.parse import unquote, urlencode
+from urllib.parse import urlencode
+
+from yarl import quote, unquote
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
@@ -463,14 +465,14 @@ class StaticRoute(Route):
     def match(self, path):
         if not path.startswith(self._prefix):
             return None
-        return {'filename': path[self._prefix_len:]}
+        return {'filename': unquote(path[self._prefix_len:])}
 
     def url(self, *, filename, query=None):
         if isinstance(filename, Path):
             filename = str(filename)
         while filename.startswith('/'):
             filename = filename[1:]
-        url = self._prefix + filename
+        url = self._prefix + quote(filename, safe='/')
         return self._append_query(url, query)
 
     def get_info(self):
@@ -728,7 +730,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         if not path.startswith('/'):
             raise ValueError("path should be started with /")
         if not ('{' in path or '}' in path or self.ROUTE_RE.search(path)):
-            resource = PlainResource(path, name=name)
+            resource = PlainResource(quote(path, safe='/'), name=name)
             self._reg_resource(resource)
             return resource
 
@@ -750,6 +752,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             if '{' in part or '}' in part:
                 raise ValueError("Invalid path '{}'['{}']".format(path, part))
 
+            part = quote(part, safe='/')
             formatter += part
             pattern += re.escape(part)
 
@@ -777,9 +780,11 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         path - folder with files
 
         """
+        # TODO: implement via PrefixedResource, not ResourceAdapter
         assert prefix.startswith('/')
         if not prefix.endswith('/'):
             prefix += '/'
+        prefix = quote(prefix, safe='/')
         route = StaticRoute(name, prefix, path,
                             expect_handler=expect_handler,
                             chunk_size=chunk_size,

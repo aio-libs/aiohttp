@@ -7,11 +7,25 @@ CHANGES
 - Drop deprecated `WSClientDisconnectedError` (BACKWARD INCOMPATIBLE)
 
 - Use `yarl.URL` in client API. The change is 99% backward compatible
-  but `ClientResponse.url` is an `yarl.URL` instance now.
+  but `ClientResponse.url` is an `yarl.URL` instance now. #1217
 
 - Close idle keep-alive connections on shutdown #1222
 
 - Modify regex in AccessLogger to accept underscore and numbers #1225
+
+- Use `yarl.URL` in web server API. `web.Request.rel_url` and
+  `web.Request.url` are added. URLs and templates are percent-encoded
+  now. #1224
+
+-
+
+-
+
+-
+
+-
+
+-
 
 -
 
