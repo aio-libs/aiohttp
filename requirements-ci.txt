@@ -14,7 +14,7 @@ sphinxcontrib-asyncio
 sphinxcontrib-newsfeed
 pytest
 pytest-cov
-pytest-mock
+pytest-mock==1.2
 pytest-timeout
 gunicorn
 pygments>=2.1
