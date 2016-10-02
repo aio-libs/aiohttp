@@ -157,9 +157,10 @@ The Test Client
 ~~~~~~~~~~~~~~~
 
 The :class:`aiohttp.test_utils.TestClient` creates an asyncio server
-for the web.Application object, as well as a ClientSession to perform
-requests. In addition, TestClient provides proxy methods to the client for
-common operations such as ws_connect, get, post, etc.
+for the web.Application object, as well as a
+:class:`aiohttp.ClientSession` to perform requests. In addition,
+*TestClient* provides proxy methods to the client for common
+operations such as *ws_connect*, *get*, *post*, etc.
 
 Please see the full api at the
 :class:`TestClass api reference <aiohttp.test_utils.TestClient>`
@@ -309,22 +310,87 @@ no current event loop in the main thread. Pass explicit loop to solve it.
 If you rely on code which works with *implicit* loops only you may try
 to use hackish approach from :ref:`FAQ <aiohttp_faq_tests_and_implicit_loop>`.
 
-aiohttp.test_utils
-------------------
+Testing API Reference
+---------------------
 
-.. automodule:: aiohttp.test_utils
-   :members: TestClient, AioHTTPTestCase, unittest_run_loop,
-             loop_context, setup_test_loop, teardown_test_loop,
-             make_mocked_request
-   :undoc-members:
-   :show-inheritance:
+Test server
+^^^^^^^^^^^
+
+Runs given :class:`aiohttp.web.Application` instance on random TCP port.
+
+After creation the server is not started yet, use
+:meth:`~aiohttp.test_utils.TestServer.start_server` for actual server
+starting and :meth:`~aiohttp.test_utils.TestServer.close` for
+stopping/cleanup.
+
+Test server usually works in conjunction with
+:class:`aiohttp.test_utils.TestClient` which provides handy client methods
+for accessing to the server.
+
+.. class:: TestServer(app, *, scheme="http", host='127.0.0.1')
+
+   Test server (not started yet after constructor call).
+
+   :param app: :class:`aiohttp.web.Application` instance to run.
+
+   :param str scheme: HTTP scheme, non-protected ``"http"`` by default.
+
+   :param str host: a host for TCP socket, IPv4 *local host*
+      (``'127.0.0.1'``) by default.
+
+
+   .. attribute:: app
+
+      :class:`aiohttp.web.Application` instance to run.
+
+   .. attribute:: scheme
+
+      A *scheme* for tested application, ``'http'`` for non-protected
+      run and ``'htttps'`` for TLS encrypted server.
+
+   .. attribute:: host
+
+      *host* used to start a test server.
+
+   .. attribute:: port
+
+      A random *port* used to start a server.
+
+   .. attribute:: handler
+
+      :class:`aiohttp.web.RequestHandlerFactory` returned by
+      ``self.app.make_handler()``.
+
+   .. attribute:: server
+
+      :class:`asyncio.AbstractServer` used for running :attr:`app`.
+
+   .. comethod:: start_server(**kwargs)
+
+      Start a test server.
+
+   .. comethod:: close()
+
+      Stop and finish executed test server.
+
+   .. method:: make_url(path)
+
+      Return :class:`~yarl.URL` for given *path*.
+
+
+Test Client
+^^^^^^^^^^^
+
+.. class:: TestClient
+
 
 .. function:: make_mocked_coro(return_value)
 
   Creates a coroutine mock.
 
-  Behaves like a coroutine which returns `return_value`.
-  But it is also a mock object, you might test it as usual Mock::
+  Behaves like a coroutine which returns *return_value*.  But it is
+  also a mock object, you might test it as usual
+  :class:`~unittest.mock.Mock`::
 
       mocked = make_mocked_coro(1)
       assert 1 == await mocked(1, 2)
@@ -334,7 +400,23 @@ aiohttp.test_utils
   :param return_value: A value that the the mock object will return when
       called.
   :returns: A mock object that behaves as a coroutine which returns
-      `return_value` when called.
+      *return_value* when called.
+
+
+.. function:: unused_port()
+
+   Return an unused port number for IPv4 TCP protocol.
+
+
+
+.. automodule:: aiohttp.test_utils
+   :members: TestClient, AioHTTPTestCase, unittest_run_loop,
+             loop_context, setup_test_loop, teardown_test_loop,
+             make_mocked_request
+   :undoc-members:
+   :show-inheritance:
+
+
 
 
 .. _pytest: http://pytest.org/latest/
