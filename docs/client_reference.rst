@@ -978,7 +978,7 @@ ProxyConnector
 
    Usage::
 
-      conn == ProxyConnector(proxy="http://some.proxy.com")
+      conn = ProxyConnector(proxy="http://some.proxy.com")
       session = ClientSession(connector=conn)
       async with session.get('http://python.org') as resp:
           assert resp.status == 200
