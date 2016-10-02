@@ -342,7 +342,7 @@ calculate the file SHA1 hash::
 
 Because the response content attribute is a
 :class:`~aiohttp.streams.StreamReader`, you can chain get and post
-requests together (aka HTTP pipelining)::
+requests together::
 
    r = await session.get('http://python.org')
    await session.post('http://httpbin.org/post',
