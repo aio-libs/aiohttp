@@ -314,7 +314,7 @@ Testing API Reference
 ---------------------
 
 Test server
-^^^^^^^^^^^
+~~~~~~~~~~~
 
 Runs given :class:`aiohttp.web.Application` instance on random TCP port.
 
@@ -379,7 +379,7 @@ for accessing to the server.
 
 
 Test Client
-^^^^^^^^^^^
+~~~~~~~~~~~
 
 .. class:: TestClient
 
