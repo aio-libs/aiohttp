@@ -29,7 +29,7 @@ Reverse URL processing for *router* has been changed.
 
 The main API is :class:`aiohttp.web.Request.url_for(name, **kwargs)`
 which returns a :class:`yarl.URL` instance for named resource. It
-doesn't support *query args* but addding *args* is trivial:
+doesn't support *query args* but adding *args* is trivial:
 ``request.url_for('named_resource', param='a').with_query(arg='val')``.
 
 The method returns a *relative* URL, absolute URL may be constructed by
@@ -39,12 +39,12 @@ The method returns a *relative* URL, absolute URL may be constructed by
 URL encoding
 ------------
 
-YARL encodes all non-ascii symbols on :class:`yarl.URL` creation.
+YARL encodes all non-ASCII symbols on :class:`yarl.URL` creation.
 
 Thus ``URL('https://www.python.org/путь')`` becomes
 ``'https://www.python.org/%D0%BF%D1%83%D1%82%D1%8C'``.
 
-On filling route table it's possible to use both non-ascii and percent
+On filling route table it's possible to use both non-ASCII and percent
 encoded paths::
 
    app.router.add_get('/путь', handler)
