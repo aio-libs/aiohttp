@@ -130,7 +130,6 @@ params
 parsers
 pathlib
 ping
-pipelining
 pluggable
 plugin
 poller
