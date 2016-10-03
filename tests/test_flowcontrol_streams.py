@@ -82,6 +82,31 @@ class TestFlowControlStreamReader(unittest.TestCase):
         self.assertTrue(self.transp.pause_reading.call_count == 1)
         self.assertTrue(self.transp.resume_reading.call_count == 1)
 
+    def test_rudimentary_transport(self):
+        self.transp.resume_reading.side_effect = NotImplementedError()
+        self.transp.pause_reading.side_effect = NotImplementedError()
+        self.stream.paused = True
+
+        r = self._make_one()
+        self.assertTrue(self.transp.pause_reading.call_count == 0)
+        self.assertTrue(self.transp.resume_reading.call_count == 1)
+        self.assertTrue(self.stream.paused)
+
+        r.feed_data(b'data', 4)
+        res = self.loop.run_until_complete(r.read(4))
+        self.assertTrue(self.transp.pause_reading.call_count == 0)
+        self.assertTrue(self.transp.resume_reading.call_count == 2)
+        self.assertTrue(self.stream.paused)
+        self.assertTrue(res == b'data')
+
+        self.stream.paused = False
+        r.feed_data(b'data', 4)
+        res = self.loop.run_until_complete(r.read(1))
+        self.assertTrue(self.transp.pause_reading.call_count == 2)
+        self.assertTrue(self.transp.resume_reading.call_count == 2)
+        self.assertTrue(not self.stream.paused)
+        self.assertTrue(res == b'd')
+
 
 class FlowControlMixin:
 
