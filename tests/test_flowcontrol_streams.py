@@ -63,24 +63,29 @@ class TestFlowControlStreamReader(unittest.TestCase):
         r._stream.paused = False
         r.feed_data(b'data1', 5)
         r.feed_data(b'data2', 5)
+        self.assertTrue(self.stream.paused)
 
+        r._stream.paused = False
         res = self.loop.run_until_complete(r.read(5))
         self.assertTrue(res == b'data1')
         # _buffer_size > _buffer_limit
-        self.assertTrue(self.transp.pause_reading.call_count == 1)
-        self.assertTrue(not self.transp.resume_reading.call_count)
+        self.assertTrue(self.transp.pause_reading.call_count == 2)
+        self.assertTrue(self.transp.resume_reading.call_count == 0)
+        self.assertTrue(self.stream.paused)
 
         res = r.read_nowait(5)
         self.assertTrue(res == b'data2')
         # _buffer_size < _buffer_limit
-        self.assertTrue(self.transp.pause_reading.call_count == 1)
+        self.assertTrue(self.transp.pause_reading.call_count == 2)
         self.assertTrue(self.transp.resume_reading.call_count == 1)
+        self.assertTrue(not self.stream.paused)
 
         res = r.read_nowait(5)
         self.assertTrue(res == b'')
         # _buffer_size < _buffer_limit
-        self.assertTrue(self.transp.pause_reading.call_count == 1)
+        self.assertTrue(self.transp.pause_reading.call_count == 2)
         self.assertTrue(self.transp.resume_reading.call_count == 1)
+        self.assertTrue(not self.stream.paused)
 
     def test_rudimentary_transport(self):
         self.transp.resume_reading.side_effect = NotImplementedError()
