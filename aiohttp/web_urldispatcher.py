@@ -265,7 +265,7 @@ class PlainResource(Resource):
 
     def url(self, *, query=None):
         super().url()
-        return self.url_for().with_query(query)
+        return str(self.url_for().with_query(query))
 
     def url_for(self):
         return URL(self._path)
@@ -301,7 +301,7 @@ class DynamicResource(Resource):
 
     def url(self, *, parts, query=None):
         super().url(**parts)
-        return self.url_for(**parts).with_query(query)
+        return str(self.url_for(**parts).with_query(query))
 
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
@@ -326,7 +326,7 @@ class PrefixResource(AbstractResource):
 
 class StaticResource(PrefixResource):
 
-    def __init__(self, name, prefix, directory, *,
+    def __init__(self, prefix, directory, *, name=None,
                  expect_handler=None, chunk_size=256*1024,
                  response_factory=StreamResponse,
                  show_index=False):
@@ -346,14 +346,14 @@ class StaticResource(PrefixResource):
                                        chunk_size=chunk_size)
         self._show_index = show_index
 
-        self._routes = {'GET': ResourceRoute('GET', self._handler, self,
+        self._routes = {'GET': ResourceRoute('GET', self._handle, self,
                                              expect_handler=expect_handler),
 
-                        'HEAD': ResourceRoute('HEAD', self._handler, self,
+                        'HEAD': ResourceRoute('HEAD', self._handle, self,
                                               expect_handler=expect_handler)}
 
     def url(self, *, filename, query=None):
-        return self.url_for(filename=filename).with_query(query)
+        return str(self.url_for(filename=filename).with_query(query))
 
     def url_for(self, *, filename):
         if isinstance(filename, Path):
@@ -371,7 +371,7 @@ class StaticResource(PrefixResource):
     def resolve(self, method, path):
         allowed_methods = {'GET', 'HEAD'}
         if not path.startswith(self._prefix):
-            return None, allowed_methods
+            return None, set()
 
         if method not in allowed_methods:
             return None, allowed_methods
@@ -456,10 +456,8 @@ class StaticResource(PrefixResource):
 
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
-        fmt = "<StaticResource {name}[{method}] {path} -> {directory!r}"
-        return fmt.format(
-            name=name, method=self.method, path=self._prefix,
-            directory=self._directory)
+        return "<StaticResource {name} {path} -> {directory!r}".format(
+            name=name, path=self._prefix, directory=self._directory)
 
 
 class ResourceRoute(AbstractRoute):
@@ -644,11 +642,6 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     def named_resources(self):
         return MappingProxyType(self._named_resources)
-
-    def named_routes(self):
-        # NB: it's ambiguous but it's really resources.
-        warnings.warn("Use .named_resources instead", DeprecationWarning)
-        return self.named_resources()
 
     def _reg_resource(self, resource):
         assert isinstance(resource, AbstractResource), \
