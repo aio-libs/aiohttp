@@ -37,7 +37,7 @@ CHANGES
 
 -
 
-1.0.3 (XXXX-XX-XX)
+1.0.4 (XXXX-XX-XX)
 ------------------
 
 -
@@ -55,6 +55,13 @@ CHANGES
 -
 
 -
+
+1.0.3 (2016-09-22)
+------------------
+
+- Fix FlowControlStreamReader.read_nowait so that it checks
+  whether the transport is paused #1206
+
 
 1.0.2 (2016-09-22)
 ------------------
