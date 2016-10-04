@@ -501,29 +501,19 @@ class ChunksQueue(DataQueue):
 
 def maybe_resume(func):
 
-    @asyncio.coroutine
-    @functools.wraps(func)
-    def wrapper(self, *args, **kw):
-        result = yield from func(self, *args, **kw)
-
-        if self._stream.paused:
-            if self._buffer_size < self._b_limit:
-                try:
-                    self._stream.transport.resume_reading()
-                except (AttributeError, NotImplementedError):
-                    pass
-                else:
-                    self._stream.paused = False
-        else:
-            if self._buffer_size > self._b_limit:
-                try:
-                    self._stream.transport.pause_reading()
-                except (AttributeError, NotImplementedError):
-                    pass
-                else:
-                    self._stream.paused = True
-
-        return result
+    if asyncio.iscoroutinefunction(func):
+        @asyncio.coroutine
+        @functools.wraps(func)
+        def wrapper(self, *args, **kw):
+            result = yield from func(self, *args, **kw)
+            self._check_buffer_size()
+            return result
+    else:
+        @functools.wraps(func)
+        def wrapper(self, *args, **kw):
+            result = func(self, *args, **kw)
+            self._check_buffer_size()
+            return result
 
     return wrapper
 
@@ -542,6 +532,26 @@ class FlowControlStreamReader(StreamReader):
                 self._stream.transport.resume_reading()
             except (AttributeError, NotImplementedError):
                 pass
+            else:
+                self._stream.paused = False
+
+    def _check_buffer_size(self):
+        if self._stream.paused:
+            if self._buffer_size < self._b_limit:
+                try:
+                    self._stream.transport.resume_reading()
+                except (AttributeError, NotImplementedError):
+                    pass
+                else:
+                    self._stream.paused = False
+        else:
+            if self._buffer_size > self._b_limit:
+                try:
+                    self._stream.transport.pause_reading()
+                except (AttributeError, NotImplementedError):
+                    pass
+                else:
+                    self._stream.paused = True
 
     def feed_data(self, data, size=0):
         has_waiter = self._waiter is not None and not self._waiter.cancelled()
@@ -558,20 +568,28 @@ class FlowControlStreamReader(StreamReader):
                 self._stream.paused = True
 
     @maybe_resume
+    @asyncio.coroutine
     def read(self, n=-1):
         return (yield from super().read(n))
 
     @maybe_resume
+    @asyncio.coroutine
     def readline(self):
         return (yield from super().readline())
 
     @maybe_resume
+    @asyncio.coroutine
     def readany(self):
         return (yield from super().readany())
 
     @maybe_resume
+    @asyncio.coroutine
     def readexactly(self, n):
         return (yield from super().readexactly(n))
+
+    @maybe_resume
+    def read_nowait(self, n=-1):
+        return super().read_nowait(n)
 
 
 class FlowControlDataQueue(DataQueue):
