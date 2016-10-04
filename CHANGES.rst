@@ -8,7 +8,8 @@ CHANGES
 
 -
 
--
+- Fix FlowControlStreamReader.read_nowait so that it checks
+  whether the transport is paused
 
 -
 

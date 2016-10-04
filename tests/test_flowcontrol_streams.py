@@ -8,7 +8,7 @@ from aiohttp import streams
 class TestFlowControlStreamReader(unittest.TestCase):
 
     def setUp(self):
-        self.stream = mock.Mock()
+        self.stream = mock.Mock(paused=False)
         self.transp = self.stream.transport
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
@@ -22,7 +22,7 @@ class TestFlowControlStreamReader(unittest.TestCase):
 
     def test_read(self):
         r = self._make_one()
-        r.paused = True
+        r._stream.paused = True
         r.feed_data(b'da', 2)
         res = self.loop.run_until_complete(r.read(1))
         self.assertEqual(res, b'd')
@@ -30,7 +30,7 @@ class TestFlowControlStreamReader(unittest.TestCase):
 
     def test_readline(self):
         r = self._make_one()
-        r.paused = True
+        r._stream.paused = True
         r.feed_data(b'data\n', 5)
         res = self.loop.run_until_complete(r.readline())
         self.assertEqual(res, b'data\n')
@@ -38,7 +38,7 @@ class TestFlowControlStreamReader(unittest.TestCase):
 
     def test_readany(self):
         r = self._make_one()
-        r.paused = True
+        r._stream.paused = True
         r.feed_data(b'data', 4)
         res = self.loop.run_until_complete(r.readany())
         self.assertEqual(res, b'data')
@@ -46,10 +46,10 @@ class TestFlowControlStreamReader(unittest.TestCase):
 
     def test_readexactly(self):
         r = self._make_one()
-        r.paused = True
-        r.feed_data(b'datadata', 8)
-        res = self.loop.run_until_complete(r.readexactly(2))
-        self.assertEqual(res, b'da')
+        r._stream.paused = True
+        r.feed_data(b'data', 4)
+        res = self.loop.run_until_complete(r.readexactly(3))
+        self.assertEqual(res, b'dat')
         self.assertTrue(self.transp.resume_reading.called)
 
     def test_feed_data(self):
@@ -57,6 +57,68 @@ class TestFlowControlStreamReader(unittest.TestCase):
         r._stream.paused = False
         r.feed_data(b'datadata', 8)
         self.assertTrue(self.transp.pause_reading.called)
+
+    def test_read_nowait(self):
+        r = self._make_one()
+        r._stream.paused = False
+        r.feed_data(b'data1', 5)
+        r.feed_data(b'data2', 5)
+        r.feed_data(b'data3', 5)
+        self.assertTrue(self.stream.paused)
+
+        res = self.loop.run_until_complete(r.read(5))
+        self.assertTrue(res == b'data1')
+        # _buffer_size > _buffer_limit
+        self.assertTrue(self.transp.pause_reading.call_count == 1)
+        self.assertTrue(self.transp.resume_reading.call_count == 0)
+        self.assertTrue(self.stream.paused)
+
+        r._stream.paused = False
+        res = r.read_nowait(5)
+        self.assertTrue(res == b'data2')
+        # _buffer_size > _buffer_limit
+        self.assertTrue(self.transp.pause_reading.call_count == 2)
+        self.assertTrue(self.transp.resume_reading.call_count == 0)
+        self.assertTrue(self.stream.paused)
+
+        res = r.read_nowait(5)
+        self.assertTrue(res == b'data3')
+        # _buffer_size < _buffer_limit
+        self.assertTrue(self.transp.pause_reading.call_count == 2)
+        self.assertTrue(self.transp.resume_reading.call_count == 1)
+        self.assertTrue(not self.stream.paused)
+
+        res = r.read_nowait(5)
+        self.assertTrue(res == b'')
+        # _buffer_size < _buffer_limit
+        self.assertTrue(self.transp.pause_reading.call_count == 2)
+        self.assertTrue(self.transp.resume_reading.call_count == 1)
+        self.assertTrue(not self.stream.paused)
+
+    def test_rudimentary_transport(self):
+        self.transp.resume_reading.side_effect = NotImplementedError()
+        self.transp.pause_reading.side_effect = NotImplementedError()
+        self.stream.paused = True
+
+        r = self._make_one()
+        self.assertTrue(self.transp.pause_reading.call_count == 0)
+        self.assertTrue(self.transp.resume_reading.call_count == 1)
+        self.assertTrue(self.stream.paused)
+
+        r.feed_data(b'data', 4)
+        res = self.loop.run_until_complete(r.read(4))
+        self.assertTrue(self.transp.pause_reading.call_count == 0)
+        self.assertTrue(self.transp.resume_reading.call_count == 2)
+        self.assertTrue(self.stream.paused)
+        self.assertTrue(res == b'data')
+
+        self.stream.paused = False
+        r.feed_data(b'data', 4)
+        res = self.loop.run_until_complete(r.read(1))
+        self.assertTrue(self.transp.pause_reading.call_count == 2)
+        self.assertTrue(self.transp.resume_reading.call_count == 2)
+        self.assertTrue(not self.stream.paused)
+        self.assertTrue(res == b'd')
 
 
 class FlowControlMixin:
