@@ -310,8 +310,9 @@ class TestUrlDispatcher(unittest.TestCase):
         self.router.add_static('/pre', os.path.dirname(aiohttp.__file__),
                                name='name')
         resource = self.router['name']
-        self.assertIsNone(self.loop.run_until_complete(
-            resource.resolve('/another/path')))
+        self.assertEqual((None, set()),
+                         self.loop.run_until_complete(
+                             resource.resolve('GET', '/another/path')))
 
     def test_dynamic_with_trailing_slash(self):
         handler = self.make_handler()
@@ -591,9 +592,9 @@ class TestUrlDispatcher(unittest.TestCase):
         route1 = self.router.add_route('GET', '/plain', self.make_handler())
         route2 = self.router.add_route('GET', '/variable/{name}',
                                        self.make_handler())
-        route3 = self.router.add_static('/static',
-                                        os.path.dirname(aiohttp.__file__))
-        return route1, route2, route3
+        resource = self.router.add_static('/static',
+                                          os.path.dirname(aiohttp.__file__))
+        return [route1, route2] + list(resource)
 
     def test_routes_view_len(self):
         self.fill_routes()
