@@ -282,7 +282,7 @@ class TestUrlDispatcher(unittest.TestCase):
         handler = self.make_handler()
         self.router.add_route('GET', '/get', handler, name='name')
 
-        url = self.router['name'].url(query=[('a', 'b'), ('c', 1)])
+        url = self.router['name'].url(query=[('a', 'b'), ('c', '1')])
         self.assertEqual('/get?a=b&c=1', url)
 
     def test_add_static(self):
