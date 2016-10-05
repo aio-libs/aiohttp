@@ -624,10 +624,6 @@ class TestUrlDispatcher(unittest.TestCase):
                                         name='route3')
         return route1.name, route2.name, route3.name
 
-    def test_named_routes_abc(self):
-        self.assertIsInstance(self.router.named_routes(), Mapping)
-        self.assertNotIsInstance(self.router.named_routes(), MutableMapping)
-
     def test_named_resources_abc(self):
         self.assertIsInstance(self.router.named_resources(), Mapping)
         self.assertNotIsInstance(self.router.named_resources(), MutableMapping)
