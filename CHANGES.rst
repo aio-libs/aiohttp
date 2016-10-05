@@ -43,6 +43,10 @@ CHANGES
 
 - Enhancement to AccessLogger (pass *extra* dict) #1303
 
+- Ensure TestClient HTTP methods return a context manager #1318
+
+-
+
 -
 
 -
