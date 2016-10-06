@@ -172,8 +172,9 @@ Routes can also be given a *name*::
 Which can then be used to access and build a *URL* for that resource later (e.g.
 in a :ref:`request handler <aiohttp-web-handler>`)::
 
-   >>> request.app.router.named_resources()['root'].url(query={"a": "b", "c": "d"})
-   '/root?a=b&c=d'
+   >>> request.app.router.named_resources()['root'].url_for()
+   ...                                      .with_query({"a": "b", "c": "d"})
+   URL('/root?a=b&c=d')
 
 A more interesting example is building *URLs* for :ref:`variable
 resources <aiohttp-web-variable-handler>`::
@@ -183,9 +184,8 @@ resources <aiohttp-web-variable-handler>`::
 
 In this case you can also pass in the *parts* of the route::
 
-   >>> request.app.router['user-info'].url(
-   ...     parts={'user': 'john_doe'},
-   ...     query="?a=b")
+   >>> request.app.router['user-info'].url_for(user='john_doe')\
+   ...                                         .with_query("a=b")
    '/john_doe/info?a=b'
 
 
@@ -322,6 +322,7 @@ The following example shows custom routing based on the *HTTP Accept* header::
    chooser.reg_acceptor('application/json', handle_json)
    chooser.reg_acceptor('application/xml', handle_xml)
 
+.. _aiohttp-web-static-file-handling:
 
 Static file handling
 --------------------
