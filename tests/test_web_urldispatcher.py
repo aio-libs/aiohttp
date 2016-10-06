@@ -225,9 +225,12 @@ def test_partialy_applied_handler(create_app_and_client):
 
 def test_system_route():
     route = SystemRoute(HTTPCreated(reason='test'))
-    assert route.match('any') is None
     with pytest.raises(RuntimeError):
         route.url()
+    with pytest.raises(RuntimeError):
+        route.url_for()
+    assert route.name is None
+    assert route.resource is None
     assert "<SystemRoute 201: test>" == repr(route)
     assert 201 == route.status
     assert 'test' == route.reason

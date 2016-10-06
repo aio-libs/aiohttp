@@ -24,7 +24,7 @@ from .web_reqrep import Response, StreamResponse
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',
            'AbstractRoute', 'ResourceRoute',
-           'Route', 'StaticResource', 'View')
+           'StaticResource', 'View')
 
 
 PY_35 = sys.version_info >= (3, 5)
@@ -131,8 +131,19 @@ class AbstractRoute(abc.ABC):
         """Return a dict with additional info useful for introspection"""
 
     @abc.abstractmethod  # pragma: no branch
-    def url(self, **kwargs):
+    def url_for(self, *args, **kwargs):
         """Construct url for route with additional params."""
+
+    @abc.abstractmethod  # pragma: no branch
+    def url(self, **kwargs):
+        """Construct url for resource with additional params.
+
+        Deprecated, use url_for() instead.
+
+        """
+        warnings.warn(".url(...) is deprecated, use .url_for instead",
+                      DeprecationWarning,
+                      stacklevel=3)
 
     @asyncio.coroutine
     def handle_expect_header(self, request):
@@ -477,6 +488,10 @@ class ResourceRoute(AbstractRoute):
     def name(self):
         return self._resource.name
 
+    def url_for(self, *args, **kwargs):
+        """Construct url for route with additional params."""
+        return self._resource.url_for(*args, **kwargs)
+
     def url(self, **kwargs):
         """Construct url for route with additional params."""
         super().url(**kwargs)
@@ -486,33 +501,20 @@ class ResourceRoute(AbstractRoute):
         return self._resource.get_info()
 
 
-class Route(AbstractRoute):
-    """Old fashion route"""
+class SystemRoute(AbstractRoute):
 
-    def __init__(self, method, handler, name, *, expect_handler=None):
-        super().__init__(method, handler, expect_handler=expect_handler)
-        self._name = name
+    def __init__(self, http_exception):
+        super().__init__(hdrs.METH_ANY, self._handler)
+        self._http_exception = http_exception
+
+    def url_for(self, *args, **kwargs):
+        raise RuntimeError(".url_for() is not allowed for SystemRoute")
+
+    def url(self, *args, **kwargs):
+        raise RuntimeError(".url() is not allowed for SystemRoute")
 
     @property
     def name(self):
-        return self._name
-
-    @abc.abstractmethod
-    def match(self, path):
-        """Return dict with info for given path or
-        None if route cannot process path."""
-
-
-class SystemRoute(Route):
-
-    def __init__(self, http_exception):
-        super().__init__(hdrs.METH_ANY, self._handler, None)
-        self._http_exception = http_exception
-
-    def url(self, **kwargs):
-        raise RuntimeError(".url() is not allowed for SystemRoute")
-
-    def match(self, path):
         return None
 
     def get_info(self):
