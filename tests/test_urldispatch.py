@@ -6,6 +6,7 @@ from collections.abc import Container, Iterable, Mapping, MutableMapping, Sized
 from urllib.parse import unquote
 
 import pytest
+from yarl import URL
 
 import aiohttp.web
 from aiohttp import hdrs
@@ -867,3 +868,22 @@ def test_check_allowed_method_for_found_resource(router):
     ret = yield from resource.resolve('GET', '/')
     assert ret[0] is not None
     assert {'GET'} == ret[1]
+
+
+def test_url_for_in_static_resource(router):
+    resource = router.add_static('/static',
+                                 os.path.dirname(aiohttp.__file__))
+    assert URL('/static/file.txt') == resource.url_for(filename='file.txt')
+
+
+def test_url_for_in_static_resource_pathlib(router):
+    resource = router.add_static('/static',
+                                 os.path.dirname(aiohttp.__file__))
+    assert URL('/static/file.txt') == resource.url_for(
+        filename=pathlib.Path('file.txt'))
+
+
+def test_url_for_in_resource_route(router):
+    route = router.add_route('GET', '/get/{name}', make_handler(),
+                             name='name')
+    assert URL('/get/John') == route.url_for(name='John')
