@@ -329,11 +329,6 @@ class PrefixResource(AbstractResource):
         self._prefix = quote(prefix, safe='/')
         self._prefix_len = len(self._prefix)
 
-    def __repr__(self):
-        name = "'" + self.name + "' " if self.name is not None else ""
-        return ("<PrefixResource {name} {prefix}"
-                .format(name=name, prefix=self._prefix))
-
 
 class StaticResource(PrefixResource):
 
