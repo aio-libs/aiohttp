@@ -23,7 +23,16 @@ CHANGES
 
 - Properly format IPv6 addresses by `aiohttp.web.run_app` #1139
 
--
+- Use `yarl.URL` by server API #1288
+
+  * Introduce `resource.url_for()`, deprecate `resource.url()`.
+
+  * Implement `StaticResource`.
+
+  * Inherit `SystemRoute` from `AbstractRoute`
+
+  * Drop old-style routes: `Route`, `PlainRoute`, `DynamicRoute`,
+    `StaticRoute`, `ResourceAdapter`.
 
 -
 
