@@ -151,7 +151,7 @@ The client session supports the context manager protocol for self closing.
 
       :param str method: HTTP method
 
-      :param str url: Request URL
+      :param url: Request URL, :class:`str` or :class:`~yarl.URL`.
 
       :param params: Mapping, iterable of tuple of *key*/*value* pairs or
                      string to be sent as parameters in the query
@@ -208,7 +208,7 @@ The client session supports the context manager protocol for self closing.
                                   does not have Content-Length header.
                                   ``True`` by default (optional).
 
-      :param str proxy: Proxy URL (optional)
+      :param proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
 
       :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
                                            Basic Authorization (optional)
@@ -226,6 +226,10 @@ The client session supports the context manager protocol for self closing.
 
          Added ``timeout`` parameter.
 
+      .. versionchanged:: 1.1
+
+         URLs may be either :class:`str` or :class:`~yarl.URL`
+
    .. comethod:: get(url, *, allow_redirects=True, **kwargs)
       :async-with:
       :coroutine:
@@ -236,13 +240,17 @@ The client session supports the context manager protocol for self closing.
       :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
-      :param str url: Request URL
+      :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
       :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                    ``True`` by default (optional).
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
+
+      .. versionchanged:: 1.1
+
+         URLs may be either :class:`str` or :class:`~yarl.URL`
 
    .. comethod:: post(url, *, data=None, **kwargs)
       :async-with:
@@ -255,13 +263,17 @@ The client session supports the context manager protocol for self closing.
       parameters, provide `kwargs`.
 
 
-      :param str url: Request URL
+      :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
       :param data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
+
+      .. versionchanged:: 1.1
+
+         URLs may be either :class:`str` or :class:`~yarl.URL`
 
    .. comethod:: put(url, *, data=None, **kwargs)
       :async-with:
@@ -274,13 +286,17 @@ The client session supports the context manager protocol for self closing.
       parameters, provide `kwargs`.
 
 
-      :param str url: Request URL
+      :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
       :param data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
+
+      .. versionchanged:: 1.1
+
+         URLs may be either :class:`str` or :class:`~yarl.URL`
 
    .. comethod:: delete(url, **kwargs)
       :async-with:
@@ -292,10 +308,14 @@ The client session supports the context manager protocol for self closing.
       :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
-      :param str url: Request URL
+      :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
+
+      .. versionchanged:: 1.1
+
+         URLs may be either :class:`str` or :class:`~yarl.URL`
 
    .. comethod:: head(url, *, allow_redirects=False, **kwargs)
       :async-with:
@@ -307,13 +327,17 @@ The client session supports the context manager protocol for self closing.
       :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
-      :param str url: Request URL
+      :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
       :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                    ``False`` by default (optional).
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
+
+      .. versionchanged:: 1.1
+
+         URLs may be either :class:`str` or :class:`~yarl.URL`
 
    .. comethod:: options(url, *, allow_redirects=True, **kwargs)
       :async-with:
@@ -326,13 +350,17 @@ The client session supports the context manager protocol for self closing.
       parameters, provide `kwargs`.
 
 
-      :param str url: Request URL
+      :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
       :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                    ``True`` by default (optional).
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
+
+      .. versionchanged:: 1.1
+
+         URLs may be either :class:`str` or :class:`~yarl.URL`
 
    .. comethod:: patch(url, *, data=None, **kwargs)
       :async-with:
@@ -344,7 +372,7 @@ The client session supports the context manager protocol for self closing.
       :meth:`request<aiohttp.client.ClientSession.request>`
       parameters, provide `kwargs`.
 
-      :param str url: Request URL
+      :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
       :param data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)
@@ -352,6 +380,10 @@ The client session supports the context manager protocol for self closing.
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
+
+      .. versionchanged:: 1.1
+
+         URLs may be either :class:`str` or :class:`~yarl.URL`
 
    .. comethod:: ws_connect(url, *, protocols=(), timeout=10.0,\
                             auth=None,\
@@ -365,7 +397,7 @@ The client session supports the context manager protocol for self closing.
       Create a websocket connection. Returns a
       :class:`ClientWebSocketResponse` object.
 
-      :param str url: Websocket server url
+      :param url: Websocket server url, :class:`str` or :class:`~yarl.URL`
 
       :param tuple protocols: Websocket protocols
 
@@ -383,7 +415,7 @@ The client session supports the context manager protocol for self closing.
 
       :param str origin: Origin header to send to server
 
-      :param str proxy: Proxy URL (optional)
+      :param str proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
 
       :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
                                            Basic Authorization (optional)
@@ -403,6 +435,10 @@ The client session supports the context manager protocol for self closing.
       .. versionadded:: 1.0
 
          Added ``proxy`` and ``proxy_auth`` parameters.
+
+      .. versionchanged:: 1.1
+
+         URLs may be either :class:`str` or :class:`~yarl.URL`
 
    .. comethod:: close()
 
@@ -449,7 +485,7 @@ certification chaining.
 
    :param str method: HTTP method
 
-   :param str url: Requested URL
+   :param url: Requested URL, :class:`str` or :class:`~yarl.URL`
 
    :param dict params: Parameters to be sent in the query
                        string of the new request (optional)
@@ -513,12 +549,16 @@ certification chaining.
 
       Use :meth:`ClientSession.request`.
 
+   .. versionchanged:: 1.1
+
+      URLs may be either :class:`str` or :class:`~yarl.URL`
+
 
 .. coroutinefunction:: get(url, **kwargs)
 
    Perform a GET request.
 
-   :param str url: Requested URL.
+   :param url: Requested URL, :class:`str` or :class:`~yarl.URL`.
 
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
@@ -528,12 +568,15 @@ certification chaining.
 
       Use :meth:`ClientSession.get`.
 
+   .. versionchanged:: 1.1
+
+      URLs may be either :class:`str` or :class:`~yarl.URL`
 
 .. coroutinefunction:: options(url, **kwargs)
 
    Perform an OPTIONS request.
 
-   :param str url: Requested URL.
+   :param url: Requested URL, :class:`str` or :class:`~yarl.URL`.
 
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
@@ -543,12 +586,15 @@ certification chaining.
 
       Use :meth:`ClientSession.options`.
 
+   .. versionchanged:: 1.1
+
+      URLs may be either :class:`str` or :class:`~yarl.URL`
 
 .. coroutinefunction:: head(url, **kwargs)
 
    Perform a HEAD request.
 
-   :param str url: Requested URL.
+   :param url: Requested URL, :class:`str` or :class:`~yarl.URL`.
 
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
@@ -558,12 +604,15 @@ certification chaining.
 
       Use :meth:`ClientSession.head`.
 
+   .. versionchanged:: 1.1
+
+      URLs may be either :class:`str` or :class:`~yarl.URL`
 
 .. coroutinefunction:: delete(url, **kwargs)
 
    Perform a DELETE request.
 
-   :param str url: Requested URL.
+   :param url: Requested URL, :class:`str` or :class:`~yarl.URL`.
 
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
@@ -573,12 +622,15 @@ certification chaining.
 
       Use :meth:`ClientSession.delete`.
 
+   .. versionchanged:: 1.1
+
+      URLs may be either :class:`str` or :class:`~yarl.URL`
 
 .. coroutinefunction:: post(url, *, data=None, **kwargs)
 
    Perform a POST request.
 
-   :param str url: Requested URL.
+   :param url: Requested URL, :class:`str` or :class:`~yarl.URL`.
 
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
@@ -588,12 +640,15 @@ certification chaining.
 
       Use :meth:`ClientSession.post`.
 
+   .. versionchanged:: 1.1
+
+      URLs may be either :class:`str` or :class:`~yarl.URL`
 
 .. coroutinefunction:: put(url, *, data=None, **kwargs)
 
    Perform a PUT request.
 
-   :param str url: Requested URL.
+   :param url: Requested URL, :class:`str` or :class:`~yarl.URL`.
 
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
@@ -603,12 +658,15 @@ certification chaining.
 
       Use :meth:`ClientSession.put`.
 
+   .. versionchanged:: 1.1
+
+      URLs may be either :class:`str` or :class:`~yarl.URL`
 
 .. coroutinefunction:: patch(url, *, data=None, **kwargs)
 
    Perform a PATCH request.
 
-   :param str url: Requested URL.
+   :param url: Requested URL, :class:`str` or :class:`~yarl.URL`.
 
    :param \*\*kwargs: Optional arguments that :func:`request` takes.
 
@@ -618,6 +676,9 @@ certification chaining.
 
       Use :meth:`ClientSession.patch`.
 
+   .. versionchanged:: 1.1
+
+      URLs may be either :class:`str` or :class:`~yarl.URL`
 
 .. coroutinefunction:: ws_connect(url, *, protocols=(), \
                                   timeout=10.0, connector=None, auth=None,\
@@ -628,7 +689,7 @@ certification chaining.
    returns a :class:`ClientWebSocketResponse` object. In case of failure
    it may raise a :exc:`~aiohttp.errors.WSServerHandshakeError` exception.
 
-   :param str url: Websocket server url
+   :param url: Websocket server url, :class:`str` or :class:`~yarl.URL`
 
    :param tuple protocols: Websocket protocols
 
@@ -675,6 +736,9 @@ certification chaining.
 
       Use :meth:`ClientSession.ws_connect`.
 
+   .. versionchanged:: 1.1
+
+      URLs may be either :class:`str` or :class:`~yarl.URL`
 
 .. _aiohttp-client-reference-connectors:
 
@@ -986,7 +1050,8 @@ ProxyConnector
    Constructor accepts all parameters suitable for
    :class:`TCPConnector` plus several proxy-specific ones:
 
-   :param str proxy: URL for proxy, e.g. ``"http://some.proxy.com"``.
+   :param str proxy: URL for proxy :class:`str` or :class:`~yarl.URL`,
+                     e.g. ``URL("http://some.proxy.com")``.
 
    :param aiohttp.BasicAuth proxy_auth: basic authentication info used
                                         for proxies with
@@ -1004,7 +1069,12 @@ ProxyConnector
 
    .. attribute:: proxy
 
-      Proxy *URL*, read-only :class:`str` property.
+      Proxy *URL*, read-only :class:`~yarl.URL` property.
+
+      .. versionchanged:: 1.1
+
+         The attribute type was changed from :class:`str` to
+         :class:`~yarl.URL`.
 
    .. attribute:: proxy_auth
 
