@@ -1195,23 +1195,19 @@ Response object
 
       HTTP status reason of response (:class:`str`), e.g. ``"OK"``.
 
-   .. attribute:: host
-
-      Host part of requested url (:class:`str`).
-
    .. attribute:: method
 
       Request's method (:class:`str`).
 
    .. attribute:: url
 
+      URL of request (:class:`str`).
+
+   .. attribute:: url_obj
+
       URL of request (:class:`~yarl.URL`).
 
-      .. versionchanged:: 1.1
-
-      The attribute is :class:`~yarl.URL` now instead of :class:`str`.
-
-      For giving a string use ``str(resp.url)``.
+      .. versionadded:: 1.1
 
    .. attribute:: connection
 

@@ -954,7 +954,6 @@ class TestClientRequest(unittest.TestCase):
                 def send(self, writer, reader):
                     resp = self.response_class(self.method,
                                                self.url,
-                                               self.host,
                                                writer=self._writer,
                                                continue100=self._continue)
                     resp._post_init(self.loop)
