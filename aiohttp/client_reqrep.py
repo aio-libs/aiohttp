@@ -535,7 +535,7 @@ class ClientResponse:
         return str(self._url_obj)
 
     @property
-    def xhost(self):
+    def host(self):
         warnings.warn("Deprecated, use .url_obj.host",
                       DeprecationWarning,
                       stacklevel=2)
