@@ -270,3 +270,8 @@ class TestClientResponse(unittest.TestCase):
             self.response.raise_for_status()
         self.assertEqual(str(cm.exception.code), '409')
         self.assertEqual(str(cm.exception.message), "CONFLICT")
+
+    def test_resp_host(self):
+        response = ClientResponse('get', URL('http://del-cl-resp.org'))
+        with self.assertWarns(DeprecationWarning):
+            self.assertEqual('del-cl-resp.org', response.host)

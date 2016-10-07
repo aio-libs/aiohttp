@@ -34,7 +34,7 @@ CHANGES
   * Drop old-style routes: `Route`, `PlainRoute`, `DynamicRoute`,
     `StaticRoute`, `ResourceAdapter`.
 
--
+- Revert `resp.url` back to `str`, introduce `resp.url_obj` #1292
 
 -
 

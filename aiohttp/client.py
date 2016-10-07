@@ -213,7 +213,7 @@ class ClientSession:
             except OSError as exc:
                 raise aiohttp.ClientOSError(*exc.args) from exc
 
-            self._cookie_jar.update_cookies(resp.cookies, resp.url)
+            self._cookie_jar.update_cookies(resp.cookies, resp.url_obj)
 
             # redirects
             if resp.status in (301, 302, 303, 307) and allow_redirects:
