@@ -1,11 +1,8 @@
-import asyncio
 import collections
 import logging
 import sys
 
 import pytest
-
-from aiohttp import web
 
 pytest_plugins = 'aiohttp.pytest_plugin'
 
@@ -79,40 +76,6 @@ class _AssertLogsContext:
 @pytest.yield_fixture
 def log():
     yield _AssertLogsContext
-
-
-@pytest.yield_fixture
-def create_server(loop, unused_port):
-    app = handler = srv = None
-
-    @asyncio.coroutine
-    def create(*, debug=False, ssl_ctx=None, proto='http'):
-        nonlocal app, handler, srv
-        app = web.Application(loop=loop)
-        port = unused_port()
-        handler = app.make_handler(debug=debug, keep_alive_on=False)
-        srv = yield from loop.create_server(handler, '127.0.0.1', port,
-                                            ssl=ssl_ctx)
-        if ssl_ctx:
-            proto += 's'
-        url = "{}://127.0.0.1:{}".format(proto, port)
-        return app, url
-
-    yield create
-
-    @asyncio.coroutine
-    def finish():
-        if srv:
-            srv.close()
-            yield from srv.wait_closed()
-        if app:
-            yield from app.shutdown()
-        if handler:
-            yield from handler.finish_connections()
-        if app:
-            yield from app.cleanup()
-
-    loop.run_until_complete(finish())
 
 
 def pytest_ignore_collect(path, config):

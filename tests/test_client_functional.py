@@ -309,20 +309,21 @@ def test_tcp_connector_fingerprint_fail(test_server, test_client,
 
 
 @asyncio.coroutine
-def test_format_task_get(create_server, loop):
+def test_format_task_get(test_server, loop):
 
     @asyncio.coroutine
     def handler(request):
         return web.Response(body=b'OK')
 
-    app, url = yield from create_server()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    server = yield from test_server(app)
     client = aiohttp.ClientSession(loop=loop)
-    task = loop.create_task(client.get(url))
+    task = loop.create_task(client.get(server.make_url('/')))
     assert "{}".format(task)[:18] == "<Task pending coro"
     resp = yield from task
     resp.close()
-    client.close()
+    yield from client.close()
 
 
 @asyncio.coroutine
