@@ -156,6 +156,7 @@ class TestClient:
                                       **kwargs)
         self._closed = False
         self._responses = []
+        self._websockets = []
 
     @asyncio.coroutine
     def start_server(self):
@@ -239,15 +240,17 @@ class TestClient:
         """Perform an HTTP PATCH request."""
         return self.request(hdrs.METH_DELETE, path, *args, **kwargs)
 
+    @asyncio.coroutine
     def ws_connect(self, path, *args, **kwargs):
         """Initiate websocket connection.
 
         The api is identical to aiohttp.ClientSession.ws_connect.
 
         """
-        return self._session.ws_connect(
-            self.make_url(path), *args, **kwargs
-        )
+        ws = yield from self._session.ws_connect(
+            self.make_url(path), *args, **kwargs)
+        self._websockets.append(ws)
+        return ws
 
     @asyncio.coroutine
     def close(self):
@@ -265,6 +268,8 @@ class TestClient:
         if not self._closed:
             for resp in self._responses:
                 resp.close()
+            for ws in self._websockets:
+                yield from ws.close()
             yield from self._session.close()
             yield from self._server.close()
             self._closed = True
