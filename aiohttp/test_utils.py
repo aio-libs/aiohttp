@@ -39,7 +39,7 @@ def unused_port():
 
 
 class TestServer:
-    def __init__(self, app, *, scheme="http", host='127.0.0.1'):
+    def __init__(self, app, *, scheme=sentinel, host='127.0.0.1'):
         self.app = app
         self._loop = app.loop
         self.port = None
@@ -47,21 +47,29 @@ class TestServer:
         self.handler = None
         self._root = None
         self.host = host
-        self.scheme = scheme
         self._closed = False
+        self.scheme = scheme
 
     @asyncio.coroutine
     def start_server(self, **kwargs):
         if self.server:
             return
         self.port = unused_port()
+        self._ssl = kwargs.pop('ssl', None)
+        if self.scheme is sentinel:
+            if self._ssl:
+                scheme = 'https'
+            else:
+                scheme = 'http'
+            self.scheme = scheme
         self._root = URL('{}://{}:{}'.format(self.scheme,
                                              self.host,
                                              self.port))
         self.handler = self.app.make_handler(**kwargs)
         self.server = yield from self._loop.create_server(self.handler,
                                                           self.host,
-                                                          self.port)
+                                                          self.port,
+                                                          ssl=self._ssl)
 
     def make_url(self, path):
         assert path.startswith('/')
