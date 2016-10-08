@@ -8,7 +8,7 @@ from aiohttp._ws_impl import WSMsgType
 
 
 @asyncio.coroutine
-def test_websocket_json(create_app_and_client):
+def test_websocket_json(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         ws = web.WebSocketResponse()
@@ -22,8 +22,9 @@ def test_websocket_json(create_app_and_client):
         yield from ws.close()
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     ws = yield from client.ws_connect('/')
     expected_value = 'value'
@@ -35,7 +36,7 @@ def test_websocket_json(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_websocket_json_invalid_message(create_app_and_client):
+def test_websocket_json_invalid_message(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         ws = web.WebSocketResponse()
@@ -50,8 +51,9 @@ def test_websocket_json_invalid_message(create_app_and_client):
             yield from ws.close()
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     ws = yield from client.ws_connect('/')
     payload = 'NOT A VALID JSON STRING'
@@ -62,7 +64,7 @@ def test_websocket_json_invalid_message(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_websocket_send_json(create_app_and_client):
+def test_websocket_send_json(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         ws = web.WebSocketResponse()
@@ -74,8 +76,9 @@ def test_websocket_send_json(create_app_and_client):
         yield from ws.close()
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     ws = yield from client.ws_connect('/')
     expected_value = 'value'
@@ -86,7 +89,7 @@ def test_websocket_send_json(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_websocket_receive_json(create_app_and_client):
+def test_websocket_receive_json(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         ws = web.WebSocketResponse()
@@ -99,8 +102,9 @@ def test_websocket_receive_json(create_app_and_client):
         yield from ws.close()
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     ws = yield from client.ws_connect('/')
     expected_value = 'value'
@@ -112,7 +116,7 @@ def test_websocket_receive_json(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_send_recv_text(create_app_and_client, loop):
+def test_send_recv_text(loop, test_client):
 
     closed = helpers.create_future(loop)
 
@@ -126,8 +130,9 @@ def test_send_recv_text(create_app_and_client, loop):
         closed.set_result(1)
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     ws = yield from client.ws_connect('/')
     ws.send_str('ask')
@@ -147,7 +152,7 @@ def test_send_recv_text(create_app_and_client, loop):
 
 
 @asyncio.coroutine
-def test_send_recv_bytes(create_app_and_client, loop):
+def test_send_recv_bytes(loop, test_client):
 
     closed = helpers.create_future(loop)
 
@@ -162,8 +167,9 @@ def test_send_recv_bytes(create_app_and_client, loop):
         closed.set_result(1)
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     ws = yield from client.ws_connect('/')
     ws.send_bytes(b'ask')
@@ -183,7 +189,7 @@ def test_send_recv_bytes(create_app_and_client, loop):
 
 
 @asyncio.coroutine
-def test_send_recv_json(create_app_and_client, loop):
+def test_send_recv_json(loop, test_client):
     closed = helpers.create_future(loop)
 
     @asyncio.coroutine
@@ -196,8 +202,9 @@ def test_send_recv_json(create_app_and_client, loop):
         closed.set_result(1)
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     ws = yield from client.ws_connect('/')
 
@@ -218,7 +225,7 @@ def test_send_recv_json(create_app_and_client, loop):
 
 
 @asyncio.coroutine
-def test_close_timeout(create_app_and_client, loop):
+def test_close_timeout(loop, test_client):
     aborted = helpers.create_future(loop)
 
     @asyncio.coroutine
@@ -238,8 +245,9 @@ def test_close_timeout(create_app_and_client, loop):
         aborted.set_result(1)
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     ws = yield from client.ws_connect('/')
     ws.send_str('request')

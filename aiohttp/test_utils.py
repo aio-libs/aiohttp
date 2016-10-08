@@ -129,7 +129,8 @@ class TestClient:
     the instance of itself instantiated.
     """
 
-    def __init__(self, app_or_server, *, scheme=sentinel, host=sentinel):
+    def __init__(self, app_or_server, *, scheme=sentinel, host=sentinel,
+                 cookie_jar=None, **kwargs):
         if isinstance(app_or_server, TestServer):
             if scheme is not sentinel or host is not sentinel:
                 raise ValueError("scheme and host are mutable exclusive "
@@ -144,10 +145,12 @@ class TestClient:
             raise TypeError("app_or_server should be either web.Application "
                             "or TestServer instance")
         self._loop = self._server.app.loop
-        self._session = ClientSession(
-            loop=self._loop,
-            cookie_jar=aiohttp.CookieJar(unsafe=True,
-                                         loop=self._loop))
+        if cookie_jar is None:
+            cookie_jar = aiohttp.CookieJar(unsafe=True,
+                                           loop=self._loop)
+        self._session = ClientSession(loop=self._loop,
+                                      cookie_jar=cookie_jar,
+                                      **kwargs)
         self._closed = False
         self._responses = []
 
