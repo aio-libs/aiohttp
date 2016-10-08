@@ -65,12 +65,7 @@ class TestServer:
 
     def make_url(self, path):
         assert path.startswith('/')
-        path = path[1:]
-        if path.startswith('?'):
-            # add a query to root path
-            return self._root.with_query(path[1:])
-        else:
-            return self._root / path
+        return URL(str(self._root) + path)
 
     @asyncio.coroutine
     def close(self):
