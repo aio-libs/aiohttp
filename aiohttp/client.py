@@ -180,7 +180,8 @@ class ClientSession:
             for i in skip_auto_headers:
                 skip_headers.add(istr(i))
 
-        proxy = URL(proxy)
+        if proxy is not None:
+            proxy = URL(proxy)
 
         while True:
             url = URL(url).with_fragment(None)
