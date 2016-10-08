@@ -1554,3 +1554,23 @@ def test_custom_headers(loop, test_client):
         "Content-Type": "application/json",
         "x-api-key": "foo"})
     assert resp.status == 200
+
+
+@asyncio.coroutine
+def test_redirect_to_absolute_url(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(text=request.method)
+
+    @asyncio.coroutine
+    def redirect(request):
+        return web.HTTPFound(location=client.make_url('/'))
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    app.router.add_get('/redirect', redirect)
+
+    client = yield from test_client(app)
+    resp = yield from client.get('/redirect')
+    assert 200 == resp.status
+    resp.close()
