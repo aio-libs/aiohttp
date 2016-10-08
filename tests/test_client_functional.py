@@ -146,10 +146,7 @@ def test_auto_header_user_agent(loop, test_client):
     client = yield from test_client(app)
 
     resp = yield from client.get('/')
-    try:
-        assert 200, resp.status
-    finally:
-        yield from resp.release()
+    assert 200, resp.status
 
 
 @asyncio.coroutine
@@ -165,28 +162,22 @@ def test_skip_auto_headers_user_agent(loop, test_client):
 
     resp = yield from client.get('/',
                                  skip_auto_headers=['user-agent'])
-    try:
-        assert 200 == resp.status
-    finally:
-        yield from resp.release()
+    assert 200 == resp.status
 
 
 @asyncio.coroutine
-def test_skip_default_auto_headers_user_agent(create_app_and_client):
+def test_skip_default_auto_headers_user_agent(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         assert hdrs.USER_AGENT not in request.headers
         return web.Response()
 
-    app, client = yield from create_app_and_client(client_params=dict(
-        skip_auto_headers=['user-agent']))
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app, skip_auto_headers=['user-agent'])
 
     resp = yield from client.get('/')
-    try:
-        assert 200 == resp.status
-    finally:
-        yield from resp.release()
+    assert 200 == resp.status
 
 
 @asyncio.coroutine
@@ -202,10 +193,7 @@ def test_skip_auto_headers_content_type(loop, test_client):
 
     resp = yield from client.get('/',
                                  skip_auto_headers=['content-type'])
-    try:
-        assert 200 == resp.status
-    finally:
-        yield from resp.release()
+    assert 200 == resp.status
 
 
 @asyncio.coroutine
@@ -224,10 +212,7 @@ def test_post_data_bytesio(loop, test_client):
     client = yield from test_client(app)
 
     resp = yield from client.post('/', data=io.BytesIO(data))
-    try:
-        assert 200 == resp.status
-    finally:
-        yield from resp.release()
+    assert 200 == resp.status
 
 
 @asyncio.coroutine
@@ -246,32 +231,26 @@ def test_post_data_with_bytesio_file(loop, test_client):
     client = yield from test_client(app)
 
     resp = yield from client.post('/', data={'file': io.BytesIO(data)})
-    try:
-        assert 200 == resp.status
-    finally:
-        yield from resp.release()
+    assert 200 == resp.status
 
 
 @asyncio.coroutine
-def test_client_ssl(create_app_and_client, loop, ssl_ctx):
+def test_client_ssl(loop, ssl_ctx, test_server, test_client):
     connector = aiohttp.TCPConnector(verify_ssl=False, loop=loop)
 
     @asyncio.coroutine
     def handler(request):
         return web.HTTPOk(text='Test message')
 
-    app, client = yield from create_app_and_client(
-        server_params=dict(ssl_ctx=ssl_ctx),
-        client_params=dict(connector=connector))
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    server = yield from test_server(app, ssl_ctx=ssl_ctx)
+    client = yield from test_client(server, connector=connector)
 
     resp = yield from client.get('/')
-    try:
-        assert 200 == resp.status
-        txt = yield from resp.text()
-        assert txt == 'Test message'
-    finally:
-        yield from resp.release()
+    assert 200 == resp.status
+    txt = yield from resp.text()
+    assert txt == 'Test message'
 
 
 @pytest.mark.parametrize('fingerprint', [
@@ -281,7 +260,7 @@ def test_client_ssl(create_app_and_client, loop, ssl_ctx):
     b'\x11\xab\x99\xa8\xae\xb7\x14\xee\x8b'],
     ids=['md5', 'sha1', 'sha256'])
 @asyncio.coroutine
-def test_tcp_connector_fingerprint_ok(create_app_and_client,
+def test_tcp_connector_fingerprint_ok(test_server, test_client,
                                       loop, ssl_ctx, fingerprint):
     @asyncio.coroutine
     def handler(request):
@@ -289,10 +268,10 @@ def test_tcp_connector_fingerprint_ok(create_app_and_client,
 
     connector = aiohttp.TCPConnector(loop=loop, verify_ssl=False,
                                      fingerprint=fingerprint)
-    app, client = yield from create_app_and_client(
-        server_params=dict(ssl_ctx=ssl_ctx),
-        client_params=dict(connector=connector))
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    server = yield from test_server(app, ssl_ctx=ssl_ctx)
+    client = yield from test_client(server, connector=connector)
 
     resp = yield from client.get('/')
     assert resp.status == 200
@@ -357,10 +336,7 @@ def test_str_params(loop, test_client):
     client = yield from test_client(app)
 
     resp = yield from client.get('/', params='q=t+est')
-    try:
-        assert 200 == resp.status
-    finally:
-        yield from resp.release()
+    assert 200 == resp.status
 
 
 @asyncio.coroutine
@@ -380,10 +356,7 @@ def test_drop_params_on_redirect(loop, test_client):
     client = yield from test_client(app)
 
     resp = yield from client.get('/redirect', params={'a': 'initial'})
-    try:
-        assert resp.status == 200
-    finally:
-        yield from resp.release()
+    assert resp.status == 200
 
 
 @asyncio.coroutine
@@ -402,11 +375,8 @@ def test_drop_fragment_on_redirect(loop, test_client):
     client = yield from test_client(app)
 
     resp = yield from client.get('/redirect')
-    try:
-        assert resp.status == 200
-        assert resp.url_obj.path == '/ok'
-    finally:
-        yield from resp.release()
+    assert resp.status == 200
+    assert resp.url_obj.path == '/ok'
 
 
 @asyncio.coroutine
@@ -420,11 +390,8 @@ def test_drop_fragment(loop, test_client):
     client = yield from test_client(app)
 
     resp = yield from client.get('/ok#fragment')
-    try:
-        assert resp.status == 200
-        assert resp.url_obj.path == '/ok'
-    finally:
-        yield from resp.release()
+    assert resp.status == 200
+    assert resp.url_obj.path == '/ok'
 
 
 @asyncio.coroutine
@@ -443,19 +410,13 @@ def test_history(loop, test_client):
     client = yield from test_client(app)
 
     resp = yield from client.get('/ok')
-    try:
-        assert len(resp.history) == 0
-        assert resp.status == 200
-    finally:
-        yield from resp.release()
+    assert len(resp.history) == 0
+    assert resp.status == 200
 
     resp_redirect = yield from client.get('/redirect')
-    try:
-        assert len(resp_redirect.history) == 1
-        assert resp_redirect.history[0].status == 301
-        assert resp_redirect.status == 200
-    finally:
-        yield from resp_redirect.release()
+    assert len(resp_redirect.history) == 1
+    assert resp_redirect.history[0].status == 301
+    assert resp_redirect.status == 200
 
 
 @asyncio.coroutine
