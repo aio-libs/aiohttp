@@ -2,7 +2,6 @@ import asyncio
 import base64
 import hashlib
 import os
-import unittest
 from unittest import mock
 
 import pytest
