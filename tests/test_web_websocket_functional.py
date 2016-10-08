@@ -270,3 +270,64 @@ def test_close_timeout(loop, test_client):
     assert (yield from aborted)
 
     yield from ws.close()
+
+
+@asyncio.coroutine
+def test_auto_pong_with_closing_by_peer(loop, test_client):
+
+    closed = helpers.create_future(loop)
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+        yield from ws.receive()
+
+        msg = yield from ws.receive()
+        assert msg.type == WSMsgType.CLOSE
+        assert msg.data == 1000
+        assert msg.extra == 'exit message'
+        closed.set_result(None)
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    ws = yield from client.ws_connect('/', autoclose=False, autoping=False)
+    ws.ping()
+    ws.send_str('ask')
+
+    msg = yield from ws.receive()
+    assert msg.type == WSMsgType.PONG
+    yield from ws.close(code=1000, message='exit message')
+    yield from closed
+
+
+@asyncio.coroutine
+def test_ping(loop, test_client):
+
+    closed = helpers.create_future(loop)
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        ws.ping('data')
+        yield from ws.receive()
+        closed.set_result(None)
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    ws = yield from client.ws_connect('/', autoping=False)
+
+    msg = yield from ws.receive()
+    assert msg.type == WSMsgType.PING
+    assert msg.data == b'data'
+    ws.pong()
+    yield from ws.close()
+    yield from closed
