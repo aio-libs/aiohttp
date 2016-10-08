@@ -244,7 +244,7 @@ def test_client_ssl(loop, ssl_ctx, test_server, test_client):
 
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
-    server = yield from test_server(app, ssl_ctx=ssl_ctx)
+    server = yield from test_server(app, ssl=ssl_ctx)
     client = yield from test_client(server, connector=connector)
 
     resp = yield from client.get('/')
@@ -270,7 +270,7 @@ def test_tcp_connector_fingerprint_ok(test_server, test_client,
                                      fingerprint=fingerprint)
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
-    server = yield from test_server(app, ssl_ctx=ssl_ctx)
+    server = yield from test_server(app, ssl=ssl_ctx)
     client = yield from test_client(server, connector=connector)
 
     resp = yield from client.get('/')
@@ -285,7 +285,7 @@ def test_tcp_connector_fingerprint_ok(test_server, test_client,
     b'\x11\xab\x99\xa8\xae\xb7\x14\xee\x8b'],
     ids=['md5', 'sha1', 'sha256'])
 @asyncio.coroutine
-def test_tcp_connector_fingerprint_fail(create_app_and_client,
+def test_tcp_connector_fingerprint_fail(test_server, test_client,
                                         loop, ssl_ctx, fingerprint):
     @asyncio.coroutine
     def handler(request):
@@ -295,10 +295,11 @@ def test_tcp_connector_fingerprint_fail(create_app_and_client,
 
     connector = aiohttp.TCPConnector(loop=loop, verify_ssl=False,
                                      fingerprint=bad_fingerprint)
-    app, client = yield from create_app_and_client(
-        server_params=dict(ssl_ctx=ssl_ctx),
-        client_params=dict(connector=connector))
+
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    server = yield from test_server(app, ssl=ssl_ctx)
+    client = yield from test_client(server, connector=connector)
 
     with pytest.raises(FingerprintMismatch) as cm:
         yield from client.get('/')
