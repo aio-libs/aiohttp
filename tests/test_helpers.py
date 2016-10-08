@@ -211,6 +211,13 @@ def test_logger_internal_error():
     mock_logger.exception.assert_called_with("Error in logging")
 
 
+def test_logger_no_transport():
+    mock_logger = mock.Mock()
+    access_logger = helpers.AccessLogger(mock_logger, "%a")
+    access_logger.log(None, None, None, None, 0)
+    mock_logger.info.assert_called_with("-")
+
+
 # ----------------------------------------------------------
 
 
