@@ -75,69 +75,6 @@ class TestWebWebSocketFunctional(unittest.TestCase):
 
         return response, reader, writer
 
-    def test_client_ping(self):
-
-        closed = helpers.create_future(self.loop)
-
-        @asyncio.coroutine
-        def handler(request):
-            ws = web.WebSocketResponse()
-            yield from ws.prepare(request)
-
-            yield from ws.receive()
-            closed.set_result(None)
-            return ws
-
-        @asyncio.coroutine
-        def go():
-            _, _, url = yield from self.create_server('GET', '/', handler)
-            resp, reader, writer = yield from self.connect_ws(url)
-            writer.ping('data')
-            msg = yield from reader.read()
-            self.assertEqual(msg.type, WSMsgType.PONG)
-            self.assertEqual(msg.data, b'data')
-            writer.pong()
-            writer.close()
-            yield from closed
-            resp.close()
-
-        self.loop.run_until_complete(go())
-
-    def test_pong(self):
-
-        closed = helpers.create_future(self.loop)
-
-        @asyncio.coroutine
-        def handler(request):
-            ws = web.WebSocketResponse(autoping=False)
-            yield from ws.prepare(request)
-
-            msg = yield from ws.receive()
-            self.assertEqual(msg.type, WSMsgType.PING)
-            ws.pong('data')
-
-            msg = yield from ws.receive()
-            self.assertEqual(msg.type, WSMsgType.CLOSE)
-            self.assertEqual(msg.data, 1000)
-            self.assertEqual(msg.extra, 'exit message')
-            closed.set_result(None)
-            return ws
-
-        @asyncio.coroutine
-        def go():
-            _, _, url = yield from self.create_server('GET', '/', handler)
-            resp, reader, writer = yield from self.connect_ws(url)
-            writer.ping('data')
-            msg = yield from reader.read()
-            self.assertEqual(msg.type, WSMsgType.PONG)
-            self.assertEqual(msg.data, b'data')
-            writer.close(1000, 'exit message')
-
-            yield from closed
-            resp.close()
-
-        self.loop.run_until_complete(go())
-
     def test_change_status(self):
 
         closed = helpers.create_future(self.loop)
