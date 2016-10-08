@@ -77,8 +77,8 @@ def test_set_args(test_client, loop):
 
 @asyncio.coroutine
 def test_set_keyword_args(test_client, loop):
-    with pytest.raises(AssertionError):
-        app = web.Application(loop=loop)
+    app = web.Application(loop=loop)
+    with pytest.raises(TypeError):
         yield from test_client(app, param=1)
 
 

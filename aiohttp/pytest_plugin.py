@@ -89,16 +89,18 @@ def test_client(loop):
     def go(__param, *args, **kwargs):
         if isinstance(__param, Application):
             assert not args, "args should be empty"
-            assert not kwargs, "kwargs should be empty"
             assert __param.loop is loop, \
                 "Application is attached to other event loop"
+            client = TestClient(__param, **kwargs)
         elif isinstance(__param, TestServer):
+            assert not args, "args should be empty"
             assert __param.app.loop is loop, \
                 "TestServer is attached to other event loop"
+            client = TestClient(__param, **kwargs)
         else:
             __param = __param(loop, *args, **kwargs)
+            client = TestClient(__param)
 
-        client = TestClient(__param)
         yield from client.start_server()
         clients.append(client)
         return client

@@ -8,8 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import aiohttp.web
-from aiohttp.web import HTTPCreated
+from aiohttp import web
 from aiohttp.web_urldispatcher import SystemRoute
 
 
@@ -39,7 +38,7 @@ def tmp_dir_path(request):
                            b'<li><a href="/my_file">my_file</a></li>\n'
                            b'</ul>\n</body>\n</html>')])
 @asyncio.coroutine
-def test_access_root_of_static_handler(tmp_dir_path, create_app_and_client,
+def test_access_root_of_static_handler(tmp_dir_path, loop, test_client,
                                        show_index, status, data):
     """
     Tests the operation of static file server.
@@ -59,10 +58,11 @@ def test_access_root_of_static_handler(tmp_dir_path, create_app_and_client,
     with open(my_file_path, 'w') as fw:
         fw.write('world')
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
 
     # Register global static route:
     app.router.add_static('/', tmp_dir_path, show_index=show_index)
+    client = yield from test_client(app)
 
     # Request the root of the static directory.
     r = yield from client.get('/')
@@ -80,7 +80,7 @@ def test_access_root_of_static_handler(tmp_dir_path, create_app_and_client,
     ('test dir name', 'test dir file .txt', 'test text file folder')
 ])
 @asyncio.coroutine
-def test_access_to_the_file_with_spaces(tmp_dir_path, create_app_and_client,
+def test_access_to_the_file_with_spaces(tmp_dir_path, loop, test_client,
                                         dir_name, filename, data):
     """
     Checks operation of static files with spaces
@@ -96,11 +96,12 @@ def test_access_to_the_file_with_spaces(tmp_dir_path, create_app_and_client,
     with open(my_file_path, 'w') as fw:
         fw.write(data)
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
 
     url = os.path.join('/', dir_name, filename)
 
     app.router.add_static('/', tmp_dir_path)
+    client = yield from test_client(app)
 
     r = yield from client.get(url)
     assert r.status == 200
@@ -109,16 +110,17 @@ def test_access_to_the_file_with_spaces(tmp_dir_path, create_app_and_client,
 
 
 @asyncio.coroutine
-def test_access_non_existing_resource(tmp_dir_path, create_app_and_client):
+def test_access_non_existing_resource(tmp_dir_path, loop, test_client):
     """
     Tests accessing non-existing resource
     Try to access a non-exiting resource and make sure that 404 HTTP status
     returned.
     """
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
 
     # Register global static route:
     app.router.add_static('/', tmp_dir_path, show_index=True)
+    client = yield from test_client(app)
 
     # Request the root of the static directory.
     r = yield from client.get('/non_existing_resource')
@@ -127,7 +129,7 @@ def test_access_non_existing_resource(tmp_dir_path, create_app_and_client):
 
 
 @asyncio.coroutine
-def test_unauthorized_folder_access(tmp_dir_path, create_app_and_client):
+def test_unauthorized_folder_access(tmp_dir_path, loop, test_client):
     """
     Tests the unauthorized access to a folder of static file server.
     Try to list a folder content of static file server when server does not
@@ -136,7 +138,7 @@ def test_unauthorized_folder_access(tmp_dir_path, create_app_and_client):
     my_dir_path = os.path.join(tmp_dir_path, 'my_dir')
     os.mkdir(my_dir_path)
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
 
     with mock.patch('pathlib.Path.__new__') as path_constructor:
         path = MagicMock()
@@ -147,6 +149,7 @@ def test_unauthorized_folder_access(tmp_dir_path, create_app_and_client):
 
         # Register global static route:
         app.router.add_static('/', tmp_dir_path, show_index=True)
+        client = yield from test_client(app)
 
         # Request the root of the static directory.
         r = yield from client.get('/my_dir')
@@ -156,17 +159,18 @@ def test_unauthorized_folder_access(tmp_dir_path, create_app_and_client):
 
 
 @asyncio.coroutine
-def test_access_symlink_loop(tmp_dir_path, create_app_and_client):
+def test_access_symlink_loop(tmp_dir_path, loop, test_client):
     """
     Tests the access to a looped symlink, which could not be resolved.
     """
     my_dir_path = os.path.join(tmp_dir_path, 'my_symlink')
     os.symlink(my_dir_path, my_dir_path)
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
 
     # Register global static route:
     app.router.add_static('/', tmp_dir_path, show_index=True)
+    client = yield from test_client(app)
 
     # Request the root of the static directory.
     r = yield from client.get('/my_symlink')
@@ -176,13 +180,13 @@ def test_access_symlink_loop(tmp_dir_path, create_app_and_client):
 
 
 @asyncio.coroutine
-def test_access_special_resource(tmp_dir_path, create_app_and_client):
+def test_access_special_resource(tmp_dir_path, loop, test_client):
     """
     Tests the access to a resource that is neither a file nor a directory.
     Checks that if a special resource is accessed (f.e. named pipe or UNIX
     domain socket) then 404 HTTP status returned.
     """
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
 
     with mock.patch('pathlib.Path.__new__') as path_constructor:
         special = MagicMock()
@@ -199,6 +203,7 @@ def test_access_special_resource(tmp_dir_path, create_app_and_client):
 
         # Register global static route:
         app.router.add_static('/', tmp_dir_path, show_index=True)
+        client = yield from test_client(app)
 
         # Request the root of the static directory.
         r = yield from client.get('/special')
@@ -208,14 +213,15 @@ def test_access_special_resource(tmp_dir_path, create_app_and_client):
 
 
 @asyncio.coroutine
-def test_partialy_applied_handler(create_app_and_client):
-    app, client = yield from create_app_and_client()
+def test_partialy_applied_handler(loop, test_client):
+    app = web.Application(loop=loop)
 
     @asyncio.coroutine
     def handler(data, request):
-        return aiohttp.web.Response(body=data)
+        return web.Response(body=data)
 
     app.router.add_route('GET', '/', functools.partial(handler, b'hello'))
+    client = yield from test_client(app)
 
     r = yield from client.get('/')
     data = (yield from r.read())
@@ -224,7 +230,7 @@ def test_partialy_applied_handler(create_app_and_client):
 
 
 def test_system_route():
-    route = SystemRoute(HTTPCreated(reason='test'))
+    route = SystemRoute(web.HTTPCreated(reason='test'))
     with pytest.raises(RuntimeError):
         route.url()
     with pytest.raises(RuntimeError):

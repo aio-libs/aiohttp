@@ -374,7 +374,7 @@ def test_request_ctx_manager_props(loop):
 
 
 @asyncio.coroutine
-def test_cookie_jar_usage(create_app_and_client):
+def test_cookie_jar_usage(loop, test_client):
     req_url = None
 
     jar = mock.Mock()
@@ -389,17 +389,18 @@ def test_cookie_jar_usage(create_app_and_client):
         resp.set_cookie("response", "resp_value")
         return resp
 
-    app, client = yield from create_app_and_client(
-        client_params={"cookies": {"request": "req_value"},
-                       "cookie_jar": jar}
-    )
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    session = yield from test_client(app,
+                                     cookies={"request": "req_value"},
+                                     cookie_jar=jar)
 
     # Updating the cookie jar with initial user defined cookies
     jar.update_cookies.assert_called_with({"request": "req_value"})
 
     jar.update_cookies.reset_mock()
-    yield from client.get("/")
+    resp = yield from session.get("/")
+    yield from resp.release()
 
     # Filtering the cookie jar before sending the request,
     # getting the request URL as only parameter

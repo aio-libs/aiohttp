@@ -6,7 +6,7 @@ from aiohttp import web
 
 
 @asyncio.coroutine
-def test_middleware_modifies_response(create_app_and_client):
+def test_middleware_modifies_response(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -24,9 +24,10 @@ def test_middleware_modifies_response(create_app_and_client):
             return resp
         return middleware
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.middlewares.append(middleware_factory)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.get('/')
     assert 201 == resp.status
     txt = yield from resp.text()
@@ -34,7 +35,7 @@ def test_middleware_modifies_response(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_middleware_handles_exception(create_app_and_client):
+def test_middleware_handles_exception(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -52,9 +53,10 @@ def test_middleware_handles_exception(create_app_and_client):
 
         return middleware
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.middlewares.append(middleware_factory)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.get('/')
     assert 501 == resp.status
     txt = yield from resp.text()
@@ -62,7 +64,7 @@ def test_middleware_handles_exception(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_middleware_chain(create_app_and_client):
+def test_middleware_chain(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -81,10 +83,11 @@ def test_middleware_chain(create_app_and_client):
             return middleware
         return factory
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.middlewares.append(make_factory(1))
     app.middlewares.append(make_factory(2))
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.get('/')
     assert 200 == resp.status
     txt = yield from resp.text()
