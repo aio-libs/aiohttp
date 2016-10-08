@@ -583,7 +583,7 @@ def test_HTTP_200_OK_METHOD(loop, test_client):
 
 
 @asyncio.coroutine
-def test_HTTP_200_OK_METHOD_connector(create_app_and_client, loop):
+def test_HTTP_200_OK_METHOD_connector(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text=request.method)
@@ -592,10 +592,10 @@ def test_HTTP_200_OK_METHOD_connector(create_app_and_client, loop):
         conn_timeout=0.2, resolve=True, loop=loop)
     conn.clear_resolved_hosts()
 
-    app, client = yield from create_app_and_client(
-        client_params={'connector': conn})
+    app = web.Application(loop=loop)
     for meth in ('get', 'post', 'put', 'delete', 'head'):
         app.router.add_route(meth.upper(), '/', handler)
+    client = yield from test_client(app, connector=conn)
 
     for meth in ('get', 'post', 'put', 'delete', 'head'):
         resp = yield from client.request(meth, '/')
