@@ -1,5 +1,6 @@
 import pytest
 
+import aiohttp
 from aiohttp import web
 
 async def test_client_ws_async_for(loop, test_client):
@@ -28,7 +29,7 @@ async def test_client_ws_async_for(loop, test_client):
     assert resp.closed
 
 
-async def test_client_ws_async_with(loop, test_client):
+async def test_client_ws_async_with(loop, test_server):
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -41,17 +42,18 @@ async def test_client_ws_async_with(loop, test_client):
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
 
-    client = await test_client(app)
+    server = await test_server(app)
 
-    async with client.ws_connect('/') as ws:
-        ws.send_str('request')
-        msg = await ws.receive()
-        assert msg.data == 'request/answer'
+    async with aiohttp.ClientSession(loop=loop) as client:
+        async with client.ws_connect(server.make_url('/')) as ws:
+            ws.send_str('request')
+            msg = await ws.receive()
+            assert msg.data == 'request/answer'
 
-    assert ws.closed
+        assert ws.closed
 
 
-async def test_client_ws_async_with_shortcut(loop, test_client):
+async def test_client_ws_async_with_shortcut(loop, test_server):
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -63,11 +65,12 @@ async def test_client_ws_async_with_shortcut(loop, test_client):
 
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
-    client = await test_client(app)
+    server = await test_server(app)
 
-    async with client.ws_connect('/') as ws:
-        ws.send_str('request')
-        msg = await ws.receive()
-        assert msg.data == 'request/answer'
+    async with aiohttp.ClientSession(loop=loop) as client:
+        async with client.ws_connect(server.make_url('/')) as ws:
+            ws.send_str('request')
+            msg = await ws.receive()
+            assert msg.data == 'request/answer'
 
-    assert ws.closed
+        assert ws.closed
