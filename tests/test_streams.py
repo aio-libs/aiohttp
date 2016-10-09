@@ -124,6 +124,28 @@ class TestStreamReader(unittest.TestCase):
         data = self.loop.run_until_complete(stream.read(5))
         self.assertEqual(b'line2', data)
 
+    def test_read_all(self):
+        # Read all avaliable buffered bytes
+        stream = self._make_one()
+        stream.feed_data(b'line1')
+        stream.feed_data(b'line2')
+        stream.feed_eof()
+
+        data = self.loop.run_until_complete(stream.read())
+        self.assertEqual(b'line1line2', data)
+
+    def test_read_up_to(self):
+        # Read available buffered bytes up to requested amount
+        stream = self._make_one()
+        stream.feed_data(b'line1')
+        stream.feed_data(b'line2')
+
+        data = self.loop.run_until_complete(stream.read(8))
+        self.assertEqual(b'line1lin', data)
+
+        data = self.loop.run_until_complete(stream.read(8))
+        self.assertEqual(b'e2', data)
+
     def test_read_eof(self):
         # Read bytes, stop at eof.
         stream = self._make_one()
