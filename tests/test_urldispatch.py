@@ -377,7 +377,8 @@ def test_static_not_match(router):
     router.add_static('/pre', os.path.dirname(aiohttp.__file__),
                       name='name')
     resource = router['name']
-    ret = yield from resource.resolve('GET', '/another/path')
+    ret = yield from resource.resolve(
+        make_mocked_request('GET', '/another/path'))
     assert (None, set()) == ret
 
 
@@ -848,7 +849,8 @@ def test_static_route_points_to_file(router):
 def test_404_for_static_resource(router):
     resource = router.add_static('/st',
                                  os.path.dirname(aiohttp.__file__))
-    ret = yield from resource.resolve('GET', '/unknown/path')
+    ret = yield from resource.resolve(
+        make_mocked_request('GET', '/unknown/path'))
     assert (None, set()) == ret
 
 
@@ -856,7 +858,8 @@ def test_404_for_static_resource(router):
 def test_405_for_resource_adapter(router):
     resource = router.add_static('/st',
                                  os.path.dirname(aiohttp.__file__))
-    ret = yield from resource.resolve('POST', '/st/abc.py')
+    ret = yield from resource.resolve(
+        make_mocked_request('POST', '/st/abc.py'))
     assert (None, {'HEAD', 'GET'}) == ret
 
 
@@ -865,7 +868,7 @@ def test_check_allowed_method_for_found_resource(router):
     handler = make_handler()
     resource = router.add_resource('/')
     resource.add_route('GET', handler)
-    ret = yield from resource.resolve('GET', '/')
+    ret = yield from resource.resolve(make_mocked_request('GET', '/'))
     assert ret[0] is not None
     assert {'GET'} == ret[1]
 

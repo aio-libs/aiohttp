@@ -59,7 +59,7 @@ class AbstractResource(Sized, Iterable):
 
     @asyncio.coroutine
     @abc.abstractmethod  # pragma: no branch
-    def resolve(self, method, path):
+    def resolve(self, request):
         """Resolve resource
 
         Return (UrlMappingMatchInfo, allowed_methods) pair."""
@@ -235,10 +235,10 @@ class Resource(AbstractResource):
         self._routes.append(route)
 
     @asyncio.coroutine
-    def resolve(self, method, path):
+    def resolve(self, request):
         allowed_methods = set()
 
-        match_dict = self._match(path)
+        match_dict = self._match(request.rel_url.raw_path)
         if match_dict is None:
             return None, allowed_methods
 
@@ -246,7 +246,7 @@ class Resource(AbstractResource):
             route_method = route.method
             allowed_methods.add(route_method)
 
-            if route_method == method or route_method == hdrs.METH_ANY:
+            if route_method == request.method or route_method == hdrs.METH_ANY:
                 return UrlMappingMatchInfo(match_dict, route), allowed_methods
         else:
             return None, allowed_methods
@@ -374,7 +374,9 @@ class StaticResource(PrefixResource):
                 'prefix': self._prefix}
 
     @asyncio.coroutine
-    def resolve(self, method, path):
+    def resolve(self, request):
+        path = request.rel_url.raw_path
+        method = request.method
         allowed_methods = {'GET', 'HEAD'}
         if not path.startswith(self._prefix):
             return None, set()
@@ -602,12 +604,11 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     @asyncio.coroutine
     def resolve(self, request):
-        path = request.raw_path
         method = request.method
         allowed_methods = set()
 
         for resource in self._resources:
-            match_dict, allowed = yield from resource.resolve(method, path)
+            match_dict, allowed = yield from resource.resolve(request)
             if match_dict is not None:
                 return match_dict
             else:
