@@ -1,18 +1,48 @@
 sudo: required
+language: python
 services:
   - docker
 
-language: python
-
-python:
-  - 3.4
-  - 3.5
-#  - 3.5-dev   # for 3.5.2
-#  - nightly
-
-os:
-  - linux
-#  - osx
+matrix:
+    include:
+        - python: 3.4 # these are just to make travis's UI a bit prettier
+          env: TOXENV=py34
+        - python: 3.4
+          env: TOXENV=docs
+          addons:
+           apt:
+            packages:
+            - libenchant-dev
+        - python: 3.5
+          env: TOXENV=py35
+        # - language: generic
+        #   os: osx
+        #   osx_image: xcode8
+        #   env: TOXENV=docs
+        - language: generic
+          os: osx
+          osx_image: xcode6.4
+          env: TOXENV=py34
+        - language: generic
+          os: osx
+          osx_image: xcode6.4
+          env: TOXENV=py35
+        - language: generic
+          os: osx
+          osx_image: xcode7.3
+          env: TOXENV=py34
+        - language: generic
+          os: osx
+          osx_image: xcode7.3
+          env: TOXENV=py35
+        - language: generic
+          os: osx
+          osx_image: xcode8
+          env: TOXENV=py34
+        - language: generic
+          os: osx
+          osx_image: xcode8
+          env: TOXENV=py35
 
 cache:
   directories:
@@ -22,24 +52,10 @@ before_cache:
   - rm -f $HOME/.cache/pip/log/debug.log
 
 install:
-  - sudo apt-get install enchant
-  - pip install --upgrade pip wheel
-  - pip install --upgrade setuptools
-  - pip install -r requirements-ci.txt
-  - pip install aiodns
-  - pip install codecov
-  - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
-        pip install uvloop;
-    fi
-  - pip install sphinxcontrib-spelling
+  - ./.travis/install.sh
 
 script:
-  - make cov-dev-full
-
-  - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
-        make doc;
-        make doc-spelling;
-    fi
+  - ./.travis/run.sh
 
 after_success:
   - codecov
