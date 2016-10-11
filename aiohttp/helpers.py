@@ -281,10 +281,12 @@ class AccessLogger:
 
         """
         self.logger = logger
+
         _compiled_format = AccessLogger._FORMAT_CACHE.get(log_format)
         if not _compiled_format:
             _compiled_format = self.compile_format(log_format)
             AccessLogger._FORMAT_CACHE[log_format] = _compiled_format
+
         self._log_format, self._methods = _compiled_format
 
     def compile_format(self, log_format):
@@ -311,14 +313,17 @@ class AccessLogger:
 
         log_format = log_format.replace("%l", "-")
         log_format = log_format.replace("%u", "-")
-        methods = []
+        methods = []  # list of tuples: (format_str, format_method)
 
         for atom in self.FORMAT_RE.findall(log_format):
             if atom[1] == '':
-                methods.append(getattr(AccessLogger, '_format_%s' % atom[0]))
+                m = getattr(AccessLogger, '_format_%s' % atom[0])
             else:
                 m = getattr(AccessLogger, '_format_%s' % atom[2])
-                methods.append(functools.partial(m, atom[1]))
+                m = functools.partial(m, atom[1])
+
+            methods.append(('%%%s' % atom[0], m))
+
         log_format = self.FORMAT_RE.sub(r'%s', log_format)
         log_format = self.CLEANUP_RE.sub(r'%\1', log_format)
         return log_format, methods
@@ -331,6 +336,7 @@ class AccessLogger:
     def _format_i(key, args):
         if not args[0]:
             return '(no headers)'
+
         # suboptimal, make istr(key) once
         return args[0].headers.get(key, '-')
 
@@ -390,7 +396,7 @@ class AccessLogger:
         return round(args[4] * 1000000)
 
     def _format_line(self, args):
-        return tuple(m(args) for m in self._methods)
+        return tuple((m[0], m[1](args)) for m in self._methods)
 
     def log(self, message, environ, response, transport, time):
         """Log access.
@@ -402,8 +408,12 @@ class AccessLogger:
         :param float time: Time taken to serve the request.
         """
         try:
-            self.logger.info(self._log_format % self._format_line(
-                [message, environ, response, transport, time]))
+            fmt_info = self._format_line(
+                [message, environ, response, transport, time])
+
+            extra = {name: value for name, value in fmt_info}
+            self.logger.info(self._log_format %
+                             tuple([value for _, value in fmt_info]), extra=extra)
         except Exception:
             self.logger.exception("Error in logging")
 
