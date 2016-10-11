@@ -46,24 +46,12 @@ CHANGES
 
 -
 
-1.0.5 (XXXX-XX-XX)
+1.0.5 (2016-10-11)
 ------------------
 
--
+- Fix StreamReader._read_nowait to return all available
+  data up to the requested amount #1297
 
--
-
--
-
--
-
--
-
--
-
--
-
--
 
 1.0.4 (2016-09-22)
 ------------------
