@@ -4,7 +4,8 @@ CHANGES
 1.0.5 (XXXX-XX-XX)
 ------------------
 
--
+- Fix StreamReader._read_nowait to return all available 
+  data up to the requested amount
 
 -
 
