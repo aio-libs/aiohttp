@@ -7,8 +7,8 @@ language: python
 python:
   - 3.4
   - 3.5
-#  - 3.5-dev   # for 3.5.2
-#  - nightly
+  - 3.6-dev   # for 3.6 beta
+  - nightly
 
 os:
   - linux
