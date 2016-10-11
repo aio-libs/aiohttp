@@ -242,7 +242,7 @@ class StreamReader(AsyncStreamReaderMixin):
                 offset = self._buffer_offset
                 ichar = self._buffer[0].find(b'\n', offset) + 1
                 # Read from current offset to found b'\n' or to the end.
-                data = self._read_nowait(ichar - offset if ichar else -1)
+                data = self._read_nowait_chunk(ichar - offset if ichar else -1)
                 line.append(data)
                 line_size += len(data)
                 if ichar:
@@ -340,10 +340,7 @@ class StreamReader(AsyncStreamReaderMixin):
 
         return self._read_nowait(n)
 
-    def _read_nowait(self, n):
-        if not self._buffer:
-            return EOF_MARKER
-
+    def _read_nowait_chunk(self, n):
         first_buffer = self._buffer[0]
         offset = self._buffer_offset
         if n != -1 and len(first_buffer) - offset > n:
@@ -360,6 +357,19 @@ class StreamReader(AsyncStreamReaderMixin):
 
         self._buffer_size -= len(data)
         return data
+
+    def _read_nowait(self, n):
+        chunks = []
+
+        while self._buffer:
+            chunk = self._read_nowait_chunk(n)
+            chunks.append(chunk)
+            if n != -1:
+                n -= len(chunk)
+                if n == 0:
+                    break
+
+        return b''.join(chunks) if chunks else EOF_MARKER
 
 
 class EmptyStreamReader(AsyncStreamReaderMixin):
