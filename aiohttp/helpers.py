@@ -413,7 +413,8 @@ class AccessLogger:
 
             extra = {name: value for name, value in fmt_info}
             self.logger.info(self._log_format %
-                             tuple([value for _, value in fmt_info]), extra=extra)
+                             tuple([value for _, value in fmt_info]),
+                             extra=extra)
         except Exception:
             self.logger.exception("Error in logging")
 
