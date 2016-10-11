@@ -782,8 +782,19 @@ def test_match_info_get_info_dynamic(router):
     req = make_request('GET', '/value')
     info = yield from router.resolve(req)
     assert info.get_info() == {
-        'pattern': re.compile('^\\/(?P<a>[^{}/]+)$'),
+        'pattern': re.compile('\\/(?P<a>[^{}/]+)'),
         'formatter': '/{a}'}
+
+
+@asyncio.coroutine
+def test_match_info_get_info_dynamic2(router):
+    handler = make_handler()
+    router.add_route('GET', '/{a}/{b}', handler)
+    req = make_request('GET', '/path/to')
+    info = yield from router.resolve(req)
+    assert info.get_info() == {
+        'pattern': re.compile('\\/(?P<a>[^{}/]+)\\/(?P<b>[^{}/]+)'),
+        'formatter': '/{a}/{b}'}
 
 
 def test_static_resource_get_info(router):

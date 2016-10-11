@@ -65,6 +65,14 @@ class AbstractResource(Sized, Iterable):
         Return (UrlMappingMatchInfo, allowed_methods) pair."""
 
     @abc.abstractmethod
+    def _add_prefix(self, prefix):
+        """Add a prefix to processed URLs.
+
+        Required for subapplications support.
+
+        """
+
+    @abc.abstractmethod
     def get_info(self):
         """Return a dict with additional info useful for introspection"""
 
@@ -262,7 +270,14 @@ class PlainResource(Resource):
 
     def __init__(self, path, *, name=None):
         super().__init__(name=name)
+        assert path.startswith('/')
         self._path = path
+
+    def _add_prefix(self, prefix):
+        assert prefix.startswith('/')
+        assert prefix.endsswith('/')
+        assert len(prefix) > 1
+        self._path = prefix + self._path[1:]
 
     def _match(self, path):
         # string comparison is about 10 times faster than regexp matching
@@ -291,11 +306,20 @@ class DynamicResource(Resource):
 
     def __init__(self, pattern, formatter, *, name=None):
         super().__init__(name=name)
+        assert pattern.pattern.startswith('\\/')
+        assert formatter.startswith('/')
         self._pattern = pattern
         self._formatter = formatter
 
+    def _add_prefix(self, prefix):
+        assert prefix.startswith('/')
+        assert prefix.endsswith('/')
+        assert len(prefix) > 1
+        self._pattern = re.compile(re.escape(prefix)+self._pattern.pattern[2:])
+        self._formatter = prefix + self._formatter[1:]
+
     def _match(self, path):
-        match = self._pattern.match(path)
+        match = self._pattern.fullmatch(path)
         if match is None:
             return None
         else:
@@ -328,6 +352,13 @@ class PrefixResource(AbstractResource):
         super().__init__(name=name)
         self._prefix = quote(prefix, safe='/')
         self._prefix_len = len(self._prefix)
+
+    def _add_prefix(self, prefix):
+        assert prefix.startswith('/')
+        assert prefix.endsswith('/')
+        assert len(prefix) > 1
+        self._prefix = prefix + self._prefix[1:]
+        self._prefix_len = len(self.prefix)
 
 
 class StaticResource(PrefixResource):
@@ -468,6 +499,47 @@ class StaticResource(PrefixResource):
             name=name, path=self._prefix, directory=self._directory)
 
 
+class PrefixedSubAppResource(PrefixResource):
+
+    def __init__(self, prefix, app, *, name=None):
+        assert name is None, "Named sub-applications are not suppported"
+        super().__init__(prefix, name=name)
+        self._app = app
+        for resource in app.router.resources():
+            resource._add_prefix(prefix)
+
+    def url_for(self, *args, **kwargs):
+        raise RuntimeError(".url_for() is not supported "
+                           "by sub-application root")
+
+    def url(self, **kwargs):
+        """Construct url for route with additional params."""
+        raise RuntimeError(".url() is not supported "
+                           "by sub-application root")
+
+    def get_info(self):
+        return {'app': self._app,
+                'prefix': self._prefix}
+
+    @asyncio.coroutine
+    def resolve(self, request):
+        if not request.url.raw_path.startswith(self._prefix):
+            return None, set()
+        match_info, methods = yield from self._app.router.resolve(request)
+        match_info._reg_app(self._app)
+        return (match_info, methods)
+
+    def __len__(self):
+        return len(self._app.router.routes())
+
+    def __iter__(self):
+        return iter(self._app.router.routes())
+
+    def __repr__(self):
+        return "<PrefixedSubAppResource {prefix} -> {app!r}".format(
+            prefix=self._prefix, app=self._app)
+
+
 class ResourceRoute(AbstractRoute):
     """A route with resource"""
 
@@ -590,9 +662,9 @@ class RoutesView(Sized, Iterable, Container):
 
 class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
-    DYN = re.compile(r'^\{(?P<var>[a-zA-Z][_a-zA-Z0-9]*)\}$')
+    DYN = re.compile(r'\{(?P<var>[a-zA-Z][_a-zA-Z0-9]*)\}')
     DYN_WITH_RE = re.compile(
-        r'^\{(?P<var>[a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}$')
+        r'\{(?P<var>[a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}')
     GOOD = r'[^{}/]+'
     ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
     NAME_SPLIT_RE = re.compile('[.:-]')
@@ -674,13 +746,13 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         pattern = ''
         formatter = ''
         for part in self.ROUTE_RE.split(path):
-            match = self.DYN.match(part)
+            match = self.DYN.fullmatch(part)
             if match:
                 pattern += '(?P<{}>{})'.format(match.group('var'), self.GOOD)
                 formatter += '{' + match.group('var') + '}'
                 continue
 
-            match = self.DYN_WITH_RE.match(part)
+            match = self.DYN_WITH_RE.fullmatch(part)
             if match:
                 pattern += '(?P<{var}>{re})'.format(**match.groupdict())
                 formatter += '{' + match.group('var') + '}'
@@ -694,7 +766,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             pattern += re.escape(part)
 
         try:
-            compiled = re.compile('^' + pattern + '$')
+            compiled = re.compile(pattern)
         except re.error as exc:
             raise ValueError(
                 "Bad pattern '{}': {}".format(pattern, exc)) from None
