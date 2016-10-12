@@ -260,7 +260,8 @@ def test_basic_auth_utf8(make_request):
                        auth=aiohttp.helpers.BasicAuth('nkim', 'секрет',
                                                       'utf-8'))
     assert 'AUTHORIZATION' in req.headers
-    assert 'Basic bmtpbTrRgdC10LrRgNC10YI=' == req.headers['AUTHORIZATION']
+    assert ('Basic bmtpbTolRDElODElRDAlQjUlRDAlQkElRDElODAlRDAlQjUlRDElODI=' ==
+            req.headers['AUTHORIZATION'])
 
 
 def test_basic_auth_tuple_forbidden(make_request):
