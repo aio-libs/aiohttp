@@ -76,7 +76,8 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
         """Encode credentials."""
         quoted_login = parse.quote(self.login, encoding=self.encoding)
         quoted_password = parse.quote(self.password, encoding=self.encoding)
-        creds = ('%s:%s' % (quoted_login, quoted_password)).encode(self.encoding)
+        creds = ('%s:%s' % (quoted_login, quoted_password)).encode(
+            self.encoding)
         return 'Basic %s' % base64.b64encode(creds).decode(self.encoding)
 
 
