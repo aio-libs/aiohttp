@@ -231,3 +231,5 @@ CHANGES
   domains (BACKWARD INCOMPATIBLE) #1125
 
 - Support binary Content-Transfer-Encoding #1169
+
+- Raise ValueError if BasicAuth login has a ":"  

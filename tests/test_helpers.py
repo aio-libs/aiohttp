@@ -60,6 +60,11 @@ def test_basic_auth2():
         helpers.BasicAuth('nkim', None)
 
 
+def test_basic_with_auth_colon_in_login():
+    with pytest.raises(ValueError):
+        helpers.BasicAuth('nkim:1', 'pwd')
+
+
 def test_basic_auth3():
     auth = helpers.BasicAuth('nkim')
     assert auth.login == 'nkim'
