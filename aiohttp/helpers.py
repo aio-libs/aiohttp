@@ -9,7 +9,7 @@ import io
 import os
 import re
 import warnings
-from collections import namedtuple, OrderedDict
+from collections import OrderedDict, namedtuple
 from pathlib import Path
 from urllib.parse import urlencode
 
