@@ -9,7 +9,7 @@ import io
 import os
 import re
 import warnings
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -267,7 +267,21 @@ class AccessLogger:
         %{FOO}e  os.environ['FOO']
 
     """
-
+    LOG_FORMAT_MAP = {
+        'a': 'remote_address',
+        't': 'request_time',
+        'P': 'process_id',
+        'r': 'first_request_line',
+        's': 'response_status',
+        'b': 'response_size',
+        'O': 'bytes_sent',
+        'T': 'request_time',
+        'Tf': 'request_time_frac',
+        'D': 'request_time_micro',
+        'i': 'request_header[%s]',
+        'o': 'response_header[%s]',
+        'e': 'environ[%s]'
+    }
     LOG_FORMAT = '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
     FORMAT_RE = re.compile(r'%(\{([A-Za-z0-9\-_]+)\}([ioe])|[atPrsbOD]|Tf?)')
     CLEANUP_RE = re.compile(r'(%[^s])')
@@ -313,16 +327,18 @@ class AccessLogger:
 
         log_format = log_format.replace("%l", "-")
         log_format = log_format.replace("%u", "-")
-        methods = []  # list of tuples: (format_str, format_method)
+        methods = OrderedDict()
 
         for atom in self.FORMAT_RE.findall(log_format):
             if atom[1] == '':
+                format_key = self.LOG_FORMAT_MAP[atom[0]]
                 m = getattr(AccessLogger, '_format_%s' % atom[0])
             else:
+                format_key = self.LOG_FORMAT_MAP[atom[2]] % atom[1]
                 m = getattr(AccessLogger, '_format_%s' % atom[2])
                 m = functools.partial(m, atom[1])
 
-            methods.append(('%%%s' % atom[0], m))
+            methods[format_key] = m
 
         log_format = self.FORMAT_RE.sub(r'%s', log_format)
         log_format = self.CLEANUP_RE.sub(r'%\1', log_format)
@@ -396,7 +412,7 @@ class AccessLogger:
         return round(args[4] * 1000000)
 
     def _format_line(self, args):
-        return tuple((m[0], m[1](args)) for m in self._methods)
+        return OrderedDict((key, m(args)) for key, m in self._methods.items())
 
     def log(self, message, environ, response, transport, time):
         """Log access.
@@ -411,10 +427,8 @@ class AccessLogger:
             fmt_info = self._format_line(
                 [message, environ, response, transport, time])
 
-            extra = {name: value for name, value in fmt_info}
-            self.logger.info(self._log_format %
-                             tuple([value for _, value in fmt_info]),
-                             extra=extra)
+            self.logger.info(self._log_format % tuple(fmt_info.values()),
+                             extra=dict(fmt_info))
         except Exception:
             self.logger.exception("Error in logging")
 
