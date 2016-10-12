@@ -11,7 +11,7 @@ import re
 import warnings
 from collections import namedtuple
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib import parse
 
 from async_timeout import timeout
 from multidict import MultiDict, MultiDictProxy
@@ -65,6 +65,8 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
             username, _, password = base64.b64decode(
                 to_decode.encode('ascii')
             ).decode(encoding).partition(':')
+            username = parse.unquote(username, encoding=encoding)
+            password = parse.unquote(password, encoding=encoding)
         except binascii.Error:
             raise ValueError('Invalid base64 encoding.')
 
@@ -72,7 +74,10 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
 
     def encode(self):
         """Encode credentials."""
-        creds = ('%s:%s' % (self.login, self.password)).encode(self.encoding)
+        quoted_login = parse.quote(self.login, encoding=self.encoding)
+        quoted_password = parse.quote(self.password, encoding=self.encoding)
+        creds = ('%s:%s' % (quoted_login, quoted_password)).encode(
+            self.encoding)
         return 'Basic %s' % base64.b64encode(creds).decode(self.encoding)
 
 
@@ -175,7 +180,7 @@ class FormData:
         for type_options, _, value in self._fields:
             data.append((type_options['name'], value))
 
-        data = urlencode(data, doseq=True)
+        data = parse.urlencode(data, doseq=True)
         return data.encode(encoding)
 
     def _gen_form_data(self, *args, **kwargs):

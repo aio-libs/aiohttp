@@ -79,6 +79,15 @@ def test_basic_auth_decode():
     assert auth.password == 'pwd'
 
 
+def test_basic_auth_with_colons_in_username():
+    auth = helpers.BasicAuth('nkim:1', 'pwd')
+    encoded = auth.encode()
+    auth_decoded = helpers.BasicAuth.decode(encoded)
+
+    assert auth_decoded.login == auth.login
+    assert auth_decoded.password == auth.password
+
+
 def test_basic_auth_invalid():
     with pytest.raises(ValueError):
         helpers.BasicAuth.decode('bmtpbTpwd2Q=')
