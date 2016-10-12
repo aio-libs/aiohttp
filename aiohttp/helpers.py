@@ -278,9 +278,9 @@ class AccessLogger:
         'T': 'request_time',
         'Tf': 'request_time_frac',
         'D': 'request_time_micro',
-        'i': 'request_header[%s]',
-        'o': 'response_header[%s]',
-        'e': 'environ[%s]'
+        'i': 'request_header',
+        'o': 'response_header',
+        'e': 'environ'
     }
     LOG_FORMAT = '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
     FORMAT_RE = re.compile(r'%(\{([A-Za-z0-9\-_]+)\}([ioe])|[atPrsbOD]|Tf?)')
@@ -334,7 +334,7 @@ class AccessLogger:
                 format_key = self.LOG_FORMAT_MAP[atom[0]]
                 m = getattr(AccessLogger, '_format_%s' % atom[0])
             else:
-                format_key = self.LOG_FORMAT_MAP[atom[2]] % atom[1]
+                format_key = (self.LOG_FORMAT_MAP[atom[2]], atom[1])
                 m = getattr(AccessLogger, '_format_%s' % atom[2])
                 m = functools.partial(m, atom[1])
 
@@ -427,8 +427,15 @@ class AccessLogger:
             fmt_info = self._format_line(
                 [message, environ, response, transport, time])
 
+            extra = dict()
+            for key, value in fmt_info.items():
+                if key.__class__ is str:
+                    extra[key] = value
+                else:
+                    extra[key[0]] = {key[1]: value}
+
             self.logger.info(self._log_format % tuple(fmt_info.values()),
-                             extra=dict(fmt_info))
+                             extra=extra)
         except Exception:
             self.logger.exception("Error in logging")
 
