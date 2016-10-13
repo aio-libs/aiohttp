@@ -29,10 +29,9 @@ def test_run_app_http_access_format(loop, mocker):
     web.run_app(app, print=lambda *args: None, access_log_format='%a')
 
     assert loop.is_closed()
-    loop.create_server.assert_called_with(mock.ANY, '0.0.0.0', 8080,
-                                          ssl=None, backlog=128)
-
-    assert loop.create_server.call_args[0][0]._kwargs['access_log_format'] == '%a'
+    cs = loop.create_server
+    cs.assert_called_with(mock.ANY, '0.0.0.0', 8080, ssl=None, backlog=128)
+    assert cs.call_args[0][0]._kwargs['access_log_format'] == '%a'
     app.startup.assert_called_once_with()
 
 
