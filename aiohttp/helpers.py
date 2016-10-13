@@ -331,8 +331,8 @@ class AccessLogger:
         log_format = log_format.replace("%l", "-")
         log_format = log_format.replace("%u", "-")
 
-        # list of (key, method) tuples, we don't use an OrderedDict as users can
-        # repeat the same key more than once
+        # list of (key, method) tuples, we don't use an OrderedDict as users
+        # can repeat the same key more than once
         methods = list()
 
         for atom in self.FORMAT_RE.findall(log_format):
