@@ -138,3 +138,4 @@ Yusuke Tsutsumi
 Семён Марьясин
 Pau Freixes
 Alexey Firsov
+Vikas Kawadia
