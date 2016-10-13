@@ -36,7 +36,7 @@ CHANGES
 
 - Revert `resp.url` back to `str`, introduce `resp.url_obj` #1292
 
--
+- Raise ValueError if BasicAuth login has a ":" character #1307
 
 -
 
@@ -231,5 +231,3 @@ CHANGES
   domains (BACKWARD INCOMPATIBLE) #1125
 
 - Support binary Content-Transfer-Encoding #1169
-
-- Raise ValueError if BasicAuth login has a ":"  
