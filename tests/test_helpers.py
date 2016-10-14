@@ -60,6 +60,11 @@ def test_basic_auth2():
         helpers.BasicAuth('nkim', None)
 
 
+def test_basic_with_auth_colon_in_login():
+    with pytest.raises(ValueError):
+        helpers.BasicAuth('nkim:1', 'pwd')
+
+
 def test_basic_auth3():
     auth = helpers.BasicAuth('nkim')
     assert auth.login == 'nkim'
@@ -128,6 +133,8 @@ def test_invalid_formdata_content_transfer_encoding():
             form.add_field('foo',
                            'bar',
                            content_transfer_encoding=invalid_val)
+
+# ------------- access logger -------------------------
 
 
 def test_access_logger_format():
@@ -200,6 +207,25 @@ def test_logger_no_message_and_environ():
     mock_logger.info.assert_called_with("- - (no headers)")
 
 
+def test_logger_internal_error():
+    mock_logger = mock.Mock()
+    mock_transport = mock.Mock()
+    mock_transport.get_extra_info.return_value = ("127.0.0.3", 0)
+    access_logger = helpers.AccessLogger(mock_logger, "%D")
+    access_logger.log(None, None, None, mock_transport, 'invalid')
+    mock_logger.exception.assert_called_with("Error in logging")
+
+
+def test_logger_no_transport():
+    mock_logger = mock.Mock()
+    access_logger = helpers.AccessLogger(mock_logger, "%a")
+    access_logger.log(None, None, None, None, 0)
+    mock_logger.info.assert_called_with("-")
+
+
+# ----------------------------------------------------------
+
+
 def test_reify():
     class A:
         @helpers.reify
@@ -254,6 +280,8 @@ def test_create_future_with_old_loop(mocker):
     future = helpers.create_future(mock_loop)
     MockFuture.assert_called_with(loop=mock_loop)
     assert expected == future
+
+# ----------------------------------- is_ip_address() ----------------------
 
 
 def test_is_ip_address():

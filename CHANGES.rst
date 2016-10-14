@@ -23,7 +23,20 @@ CHANGES
 
 - Properly format IPv6 addresses by `aiohttp.web.run_app` #1139
 
--
+- Use `yarl.URL` by server API #1288
+
+  * Introduce `resource.url_for()`, deprecate `resource.url()`.
+
+  * Implement `StaticResource`.
+
+  * Inherit `SystemRoute` from `AbstractRoute`
+
+  * Drop old-style routes: `Route`, `PlainRoute`, `DynamicRoute`,
+    `StaticRoute`, `ResourceAdapter`.
+
+- Revert `resp.url` back to `str`, introduce `resp.url_obj` #1292
+
+- Raise ValueError if BasicAuth login has a ":" character #1307
 
 -
 
@@ -33,28 +46,19 @@ CHANGES
 
 -
 
--
-
--
-
-1.0.3 (XXXX-XX-XX)
+1.0.5 (2016-10-11)
 ------------------
 
--
+- Fix StreamReader._read_nowait to return all available
+  data up to the requested amount #1297
 
--
 
--
+1.0.4 (2016-09-22)
+------------------
 
--
+- Fix FlowControlStreamReader.read_nowait so that it checks
+  whether the transport is paused #1206
 
--
-
--
-
--
-
--
 
 1.0.2 (2016-09-22)
 ------------------

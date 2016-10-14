@@ -180,7 +180,7 @@ class ClientSession:
             for i in skip_auto_headers:
                 skip_headers.add(istr(i))
 
-        if isinstance(proxy, str):
+        if proxy is not None:
             proxy = URL(proxy)
 
         while True:
@@ -213,7 +213,7 @@ class ClientSession:
             except OSError as exc:
                 raise aiohttp.ClientOSError(*exc.args) from exc
 
-            self._cookie_jar.update_cookies(resp.cookies, resp.url)
+            self._cookie_jar.update_cookies(resp.cookies, resp.url_obj)
 
             # redirects
             if resp.status in (301, 302, 303, 307) and allow_redirects:

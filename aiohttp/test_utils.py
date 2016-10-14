@@ -39,7 +39,7 @@ def unused_port():
 
 
 class TestServer:
-    def __init__(self, app, *, scheme="http", host='127.0.0.1'):
+    def __init__(self, app, *, scheme=sentinel, host='127.0.0.1'):
         self.app = app
         self._loop = app.loop
         self.port = None
@@ -47,30 +47,33 @@ class TestServer:
         self.handler = None
         self._root = None
         self.host = host
-        self.scheme = scheme
         self._closed = False
+        self.scheme = scheme
 
     @asyncio.coroutine
     def start_server(self, **kwargs):
         if self.server:
             return
         self.port = unused_port()
+        self._ssl = kwargs.pop('ssl', None)
+        if self.scheme is sentinel:
+            if self._ssl:
+                scheme = 'https'
+            else:
+                scheme = 'http'
+            self.scheme = scheme
         self._root = URL('{}://{}:{}'.format(self.scheme,
                                              self.host,
                                              self.port))
         self.handler = self.app.make_handler(**kwargs)
         self.server = yield from self._loop.create_server(self.handler,
                                                           self.host,
-                                                          self.port)
+                                                          self.port,
+                                                          ssl=self._ssl)
 
     def make_url(self, path):
         assert path.startswith('/')
-        path = path[1:]
-        if path.startswith('?'):
-            # add a query to root path
-            return self._root.with_query(path[1:])
-        else:
-            return self._root / path
+        return URL(str(self._root) + path)
 
     @asyncio.coroutine
     def close(self):
@@ -129,7 +132,8 @@ class TestClient:
     the instance of itself instantiated.
     """
 
-    def __init__(self, app_or_server, *, scheme=sentinel, host=sentinel):
+    def __init__(self, app_or_server, *, scheme=sentinel, host=sentinel,
+                 cookie_jar=None, **kwargs):
         if isinstance(app_or_server, TestServer):
             if scheme is not sentinel or host is not sentinel:
                 raise ValueError("scheme and host are mutable exclusive "
@@ -144,12 +148,15 @@ class TestClient:
             raise TypeError("app_or_server should be either web.Application "
                             "or TestServer instance")
         self._loop = self._server.app.loop
-        self._session = ClientSession(
-            loop=self._loop,
-            cookie_jar=aiohttp.CookieJar(unsafe=True,
-                                         loop=self._loop))
+        if cookie_jar is None:
+            cookie_jar = aiohttp.CookieJar(unsafe=True,
+                                           loop=self._loop)
+        self._session = ClientSession(loop=self._loop,
+                                      cookie_jar=cookie_jar,
+                                      **kwargs)
         self._closed = False
         self._responses = []
+        self._websockets = []
 
     @asyncio.coroutine
     def start_server(self):
@@ -233,15 +240,17 @@ class TestClient:
         """Perform an HTTP PATCH request."""
         return self.request(hdrs.METH_DELETE, path, *args, **kwargs)
 
+    @asyncio.coroutine
     def ws_connect(self, path, *args, **kwargs):
         """Initiate websocket connection.
 
         The api is identical to aiohttp.ClientSession.ws_connect.
 
         """
-        return self._session.ws_connect(
-            self.make_url(path), *args, **kwargs
-        )
+        ws = yield from self._session.ws_connect(
+            self.make_url(path), *args, **kwargs)
+        self._websockets.append(ws)
+        return ws
 
     @asyncio.coroutine
     def close(self):
@@ -259,6 +268,8 @@ class TestClient:
         if not self._closed:
             for resp in self._responses:
                 resp.close()
+            for ws in self._websockets:
+                yield from ws.close()
             yield from self._session.close()
             yield from self._server.close()
             self._closed = True

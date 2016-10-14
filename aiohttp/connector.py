@@ -723,7 +723,7 @@ class ProxyConnector(TCPConnector):
                          conn_timeout=conn_timeout,
                          keepalive_timeout=keepalive_timeout,
                          limit=limit, loop=loop)
-        assert isinstance(proxy, URL)
+        proxy = URL(proxy)
         self._proxy = proxy
         self._proxy_auth = proxy_auth
 

@@ -469,7 +469,7 @@ class ClientRequest:
             self.write_bytes(request, reader), loop=self.loop)
 
         self.response = self.response_class(
-            self.method, self.url, self.url.host,
+            self.method, self.url,
             writer=self._writer, continue100=self._continue,
             timeout=self._timeout)
         self.response._post_init(self.loop)
@@ -512,13 +512,12 @@ class ClientResponse:
     _loop = None
     _closed = True  # to allow __del__ for non-initialized properly response
 
-    def __init__(self, method, url, host='', *, writer=None, continue100=None,
+    def __init__(self, method, url, *, writer=None, continue100=None,
                  timeout=5*60):
         assert isinstance(url, URL)
 
         self.method = method
-        self.url = url
-        self.host = host
+        self._url_obj = url
         self._content = None
         self._writer = writer
         self._continue = continue100
@@ -526,6 +525,21 @@ class ClientResponse:
         self._should_close = True  # override by message.should_close later
         self._history = ()
         self._timeout = timeout
+
+    @property
+    def url_obj(self):
+        return self._url_obj
+
+    @property
+    def url(self):
+        return str(self._url_obj)
+
+    @property
+    def host(self):
+        warnings.warn("Deprecated, use .url_obj.host",
+                      DeprecationWarning,
+                      stacklevel=2)
+        return self._url_obj.host
 
     def _post_init(self, loop):
         self._loop = loop
