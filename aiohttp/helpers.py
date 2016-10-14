@@ -47,10 +47,6 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
         if password is None:
             raise ValueError('None is not allowed as password value')
 
-        if ':' in login:
-            raise ValueError(
-                'A ":" is not allowed in login (RFC 1945#section-11.1)')
-
         return super().__new__(cls, login, password, encoding)
 
     @classmethod
@@ -76,8 +72,9 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
 
     def encode(self):
         """Encode credentials."""
-        creds = ('%s:%s' % (self.login, self.password)).encode(self.encoding)
-        return 'Basic %s' % base64.b64encode(creds).decode(self.encoding)
+        creds = (self.login.encode(self.encoding) + ':' +
+                 self.password.encode(self.encoding))
+        return 'Basic %s' % base64.b64encode(creds)
 
 
 def create_future(loop):
