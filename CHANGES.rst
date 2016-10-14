@@ -38,7 +38,8 @@ CHANGES
 
 - Raise ValueError if BasicAuth login has a ":" character #1307
 
--
+- Fix bug when ClientRequest send payload file with opened as
+  open('filename', 'r+b') #1306
 
 -
 
