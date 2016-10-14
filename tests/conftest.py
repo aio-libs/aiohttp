@@ -1,6 +1,8 @@
 import collections
 import logging
+import os
 import sys
+from contextlib import contextmanager
 
 import pytest
 
@@ -82,3 +84,13 @@ def pytest_ignore_collect(path, config):
     if 'test_py35' in str(path):
         if sys.version_info < (3, 5, 0):
             return True
+
+@contextmanager
+def chdir_context(path): 
+    '''Context manager to change directory and restore it'''
+    old_dir = os.getcwd()
+    os.chdir(path) 
+    try: 
+        yield 
+    finally: 
+        os.chdir(old_dir)

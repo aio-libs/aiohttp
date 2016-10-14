@@ -17,6 +17,8 @@ from .web_exceptions import *  # noqa
 from .web_reqrep import *  # noqa
 from .web_urldispatcher import *  # noqa
 from .web_ws import *  # noqa
+from .autoreload import *  # noqa
+
 
 __all__ = (web_reqrep.__all__ +
            web_exceptions.__all__ +
@@ -291,9 +293,10 @@ class Application(dict):
         return "<Application>"
 
 
-def run_app(app, *, host='0.0.0.0', port=None,
-            shutdown_timeout=60.0, ssl_context=None,
-            print=print, backlog=128):
+def run_app(app, *, host='0.0.0.0',
+            port=None, shutdown_timeout=60.0,
+            ssl_context=None, print=print,
+            backlog=128, autoreload=False):
     """Run an app locally"""
     if port is None:
         if not ssl_context:
@@ -304,6 +307,10 @@ def run_app(app, *, host='0.0.0.0', port=None,
     loop = app.loop
 
     handler = app.make_handler()
+
+    if autoreload:
+        start()
+
     server = loop.create_server(handler, host, port, ssl=ssl_context,
                                 backlog=backlog)
     srv, startup_res = loop.run_until_complete(asyncio.gather(server,
@@ -351,6 +358,13 @@ def main(argv):
         type=int,
         default="8080"
     )
+    arg_parser.add_argument(
+        "-r", "--autoreload",
+        help="Autoreload on codechange (default: %(default)r)",
+        dest="autoreload",
+        action='store_true',
+        default=False
+    )
     args, extra_argv = arg_parser.parse_known_args(argv)
 
     # Import logic
@@ -371,7 +385,12 @@ def main(argv):
         arg_parser.error("module %r has no attribute %r" % (mod_str, func_str))
 
     app = func(extra_argv)
-    run_app(app, host=args.hostname, port=args.port)
+    run_app(
+        app,
+        host=args.hostname,
+        port=args.port,
+        autoreload=args.autoreload
+    )
     arg_parser.exit(message="Stopped\n")
 
 if __name__ == "__main__":  # pragma: no branch
