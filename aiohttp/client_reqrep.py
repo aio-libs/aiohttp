@@ -257,7 +257,9 @@ class ClientRequest:
                 size = len(data.getbuffer())
                 self.headers[hdrs.CONTENT_LENGTH] = str(size)
                 self.chunked = False
-            elif not self.chunked and isinstance(data, io.BufferedReader):
+            elif not self.chunked and \
+                (isinstance(data, io.BufferedReader) or
+                 isinstance(data, io.BufferedRandom)):
                 # Not chunking if content-length can be determined
                 try:
                     size = os.fstat(data.fileno()).st_size - data.tell()
