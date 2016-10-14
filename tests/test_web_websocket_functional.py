@@ -2,13 +2,15 @@
 
 import asyncio
 
+import pytest
+
 import aiohttp
 from aiohttp import helpers, web
 from aiohttp._ws_impl import WSMsgType
 
 
 @asyncio.coroutine
-def test_websocket_json(create_app_and_client):
+def test_websocket_json(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         ws = web.WebSocketResponse()
@@ -22,8 +24,9 @@ def test_websocket_json(create_app_and_client):
         yield from ws.close()
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     ws = yield from client.ws_connect('/')
     expected_value = 'value'
@@ -35,7 +38,7 @@ def test_websocket_json(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_websocket_json_invalid_message(create_app_and_client):
+def test_websocket_json_invalid_message(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         ws = web.WebSocketResponse()
@@ -50,8 +53,9 @@ def test_websocket_json_invalid_message(create_app_and_client):
             yield from ws.close()
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     ws = yield from client.ws_connect('/')
     payload = 'NOT A VALID JSON STRING'
@@ -62,7 +66,7 @@ def test_websocket_json_invalid_message(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_websocket_send_json(create_app_and_client):
+def test_websocket_send_json(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         ws = web.WebSocketResponse()
@@ -74,8 +78,9 @@ def test_websocket_send_json(create_app_and_client):
         yield from ws.close()
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     ws = yield from client.ws_connect('/')
     expected_value = 'value'
@@ -86,7 +91,7 @@ def test_websocket_send_json(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_websocket_receive_json(create_app_and_client):
+def test_websocket_receive_json(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         ws = web.WebSocketResponse()
@@ -99,8 +104,9 @@ def test_websocket_receive_json(create_app_and_client):
         yield from ws.close()
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     ws = yield from client.ws_connect('/')
     expected_value = 'value'
@@ -112,7 +118,7 @@ def test_websocket_receive_json(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_send_recv_text(create_app_and_client, loop):
+def test_send_recv_text(loop, test_client):
 
     closed = helpers.create_future(loop)
 
@@ -126,8 +132,9 @@ def test_send_recv_text(create_app_and_client, loop):
         closed.set_result(1)
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     ws = yield from client.ws_connect('/')
     ws.send_str('ask')
@@ -147,7 +154,7 @@ def test_send_recv_text(create_app_and_client, loop):
 
 
 @asyncio.coroutine
-def test_send_recv_bytes(create_app_and_client, loop):
+def test_send_recv_bytes(loop, test_client):
 
     closed = helpers.create_future(loop)
 
@@ -162,8 +169,9 @@ def test_send_recv_bytes(create_app_and_client, loop):
         closed.set_result(1)
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     ws = yield from client.ws_connect('/')
     ws.send_bytes(b'ask')
@@ -183,7 +191,7 @@ def test_send_recv_bytes(create_app_and_client, loop):
 
 
 @asyncio.coroutine
-def test_send_recv_json(create_app_and_client, loop):
+def test_send_recv_json(loop, test_client):
     closed = helpers.create_future(loop)
 
     @asyncio.coroutine
@@ -196,8 +204,9 @@ def test_send_recv_json(create_app_and_client, loop):
         closed.set_result(1)
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     ws = yield from client.ws_connect('/')
 
@@ -218,7 +227,7 @@ def test_send_recv_json(create_app_and_client, loop):
 
 
 @asyncio.coroutine
-def test_close_timeout(create_app_and_client, loop):
+def test_close_timeout(loop, test_client):
     aborted = helpers.create_future(loop)
 
     @asyncio.coroutine
@@ -238,8 +247,9 @@ def test_close_timeout(create_app_and_client, loop):
         aborted.set_result(1)
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     ws = yield from client.ws_connect('/')
     ws.send_str('request')
@@ -261,4 +271,297 @@ def test_close_timeout(create_app_and_client, loop):
     yield from asyncio.sleep(0.08, loop=loop)
     assert (yield from aborted)
 
+    yield from ws.close()
+
+
+@asyncio.coroutine
+def test_auto_pong_with_closing_by_peer(loop, test_client):
+
+    closed = helpers.create_future(loop)
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+        yield from ws.receive()
+
+        msg = yield from ws.receive()
+        assert msg.type == WSMsgType.CLOSE
+        assert msg.data == 1000
+        assert msg.extra == 'exit message'
+        closed.set_result(None)
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    ws = yield from client.ws_connect('/', autoclose=False, autoping=False)
+    ws.ping()
+    ws.send_str('ask')
+
+    msg = yield from ws.receive()
+    assert msg.type == WSMsgType.PONG
+    yield from ws.close(code=1000, message='exit message')
+    yield from closed
+
+
+@asyncio.coroutine
+def test_ping(loop, test_client):
+
+    closed = helpers.create_future(loop)
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        ws.ping('data')
+        yield from ws.receive()
+        closed.set_result(None)
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    ws = yield from client.ws_connect('/', autoping=False)
+
+    msg = yield from ws.receive()
+    assert msg.type == WSMsgType.PING
+    assert msg.data == b'data'
+    ws.pong()
+    yield from ws.close()
+    yield from closed
+
+
+@asyncio.coroutine
+def test_client_ping(loop, test_client):
+
+    closed = helpers.create_future(loop)
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        yield from ws.receive()
+        closed.set_result(None)
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    ws = yield from client.ws_connect('/', autoping=False)
+
+    ws.ping('data')
+    msg = yield from ws.receive()
+    assert msg.type == WSMsgType.PONG
+    assert msg.data == b'data'
+    ws.pong()
+    yield from ws.close()
+
+
+@asyncio.coroutine
+def test_pong(loop, test_client):
+
+    closed = helpers.create_future(loop)
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse(autoping=False)
+        yield from ws.prepare(request)
+
+        msg = yield from ws.receive()
+        assert msg.type == WSMsgType.PING
+        ws.pong('data')
+
+        msg = yield from ws.receive()
+        assert msg.type == WSMsgType.CLOSE
+        assert msg.data == 1000
+        assert msg.extra == 'exit message'
+        closed.set_result(None)
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    ws = yield from client.ws_connect('/', autoping=False)
+
+    ws.ping('data')
+    msg = yield from ws.receive()
+    assert msg.type == WSMsgType.PONG
+    assert msg.data == b'data'
+
+    yield from ws.close(code=1000, message='exit message')
+
+    yield from closed
+
+
+@asyncio.coroutine
+def test_change_status(loop, test_client):
+
+    closed = helpers.create_future(loop)
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        ws.set_status(200)
+        assert 200 == ws.status
+        yield from ws.prepare(request)
+        assert 101 == ws.status
+        yield from ws.close()
+        closed.set_result(None)
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    ws = yield from client.ws_connect('/', autoping=False)
+
+    yield from ws.close()
+    yield from closed
+    yield from ws.close()
+
+
+@asyncio.coroutine
+def test_handle_protocol(loop, test_client):
+
+    closed = helpers.create_future(loop)
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse(protocols=('foo', 'bar'))
+        yield from ws.prepare(request)
+        yield from ws.close()
+        assert 'bar' == ws.protocol
+        closed.set_result(None)
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    ws = yield from client.ws_connect('/', protocols=('eggs', 'bar'))
+
+    yield from ws.close()
+    yield from closed
+
+
+@asyncio.coroutine
+def test_server_close_handshake(loop, test_client):
+
+    closed = helpers.create_future(loop)
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse(protocols=('foo', 'bar'))
+        yield from ws.prepare(request)
+        yield from ws.close()
+        closed.set_result(None)
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    ws = yield from client.ws_connect('/', autoclose=False,
+                                      protocols=('eggs', 'bar'))
+
+    msg = yield from ws.receive()
+    assert msg.type == WSMsgType.CLOSE
+    yield from ws.close()
+    yield from closed
+
+
+@asyncio.coroutine
+def test_client_close_handshake(loop, test_client):
+
+    closed = helpers.create_future(loop)
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse(
+            autoclose=False, protocols=('foo', 'bar'))
+        yield from ws.prepare(request)
+
+        msg = yield from ws.receive()
+        assert msg.type == WSMsgType.CLOSE
+        assert not ws.closed
+        yield from ws.close()
+        assert ws.closed
+        assert ws.close_code == 1007
+
+        msg = yield from ws.receive()
+        assert msg.type == WSMsgType.CLOSED
+
+        closed.set_result(None)
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    ws = yield from client.ws_connect('/', autoclose=False,
+                                      protocols=('eggs', 'bar'))
+
+    yield from ws.close(code=1007)
+    msg = yield from ws.receive()
+    assert msg.type == WSMsgType.CLOSED
+    yield from closed
+
+
+@asyncio.coroutine
+def test_server_close_handshake_server_eats_client_messages(loop, test_client):
+
+    closed = helpers.create_future(loop)
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse(protocols=('foo', 'bar'))
+        yield from ws.prepare(request)
+        yield from ws.close()
+        closed.set_result(None)
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    ws = yield from client.ws_connect('/', autoclose=False, autoping=False,
+                                      protocols=('eggs', 'bar'))
+
+    msg = yield from ws.receive()
+    assert msg.type == WSMsgType.CLOSE
+
+    ws.send_str('text')
+    ws.send_bytes(b'bytes')
+    ws.ping()
+
+    yield from ws.close()
+    yield from closed
+
+
+@asyncio.coroutine
+def test_receive_msg(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        with pytest.warns(DeprecationWarning):
+            msg = yield from ws.receive_msg()
+            assert msg.data == b'data'
+        yield from ws.close()
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    ws = yield from client.ws_connect('/')
+    ws.send_bytes(b'data')
     yield from ws.close()

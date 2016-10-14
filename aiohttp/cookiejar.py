@@ -1,5 +1,6 @@
 import datetime
 import re
+import os
 import pickle
 from collections import defaultdict
 from collections.abc import Mapping
@@ -43,6 +44,9 @@ class CookieJar(AbstractCookieJar):
         self._cookies = pickle.load(f)
 
     def save(self, file_path):
+        file_dir = os.path.dirname(file_path)
+        if file_dir and not os.path.exists(file_dir):
+            os.makedirs(file_dir)
         f=open(file_path, 'wb')
         pickle.dump(self._cookies, f)
 

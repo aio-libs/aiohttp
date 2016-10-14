@@ -1650,7 +1650,7 @@ Resource with a *name* is called *named resource*.
 The main purpose of *named resource* is constructing URL by route name for
 passing it into *template engine* for example::
 
-   url = app.router['resource_name'].url(query={'a': 1, 'b': 2})
+   url = app.router['resource_name'].url_for().with_query({'a': 1, 'b': 2})
 
 Resource classes hierarchy::
 
@@ -1658,7 +1658,7 @@ Resource classes hierarchy::
      Resource
        PlainResource
        DynamicResource
-     ResourceAdapter
+       StaticResource
 
 
 .. class:: AbstractResource
@@ -1692,6 +1692,23 @@ Resource classes hierarchy::
                request is resolved or ``None`` if no :term:`route` is
                found.
 
+   .. method:: get_info()
+
+      A resource description, e.g. ``{'path': '/path/to'}`` or
+      ``{'formatter': '/path/{to}', 'pattern':
+      re.compile(r'^/path/(?P<to>[a-zA-Z][_a-zA-Z0-9]+)$``
+
+   .. method:: url_for(*args, **kwargs)
+
+      Construct an URL for route with additional params.
+
+      *args* and **kwargs** depend on a parameters list accepted by
+      inherited resource class.
+
+      :return: :class:`~yarl.URL` -- resulting URL instance.
+
+      .. versionadded:: 1.1
+
    .. method:: url(**kwargs)
 
       Construct an URL for route with additional params.
@@ -1699,7 +1716,11 @@ Resource classes hierarchy::
       **kwargs** depends on a list accepted by inherited resource
       class parameters.
 
-      :return: :class:`str` -- resulting URL.
+      :return: :class:`str` -- resulting URL string.
+
+      .. deprecated:: 1.1
+
+         Use :meth:`url_for` instead.
 
 
 .. class:: Resource
@@ -1730,28 +1751,59 @@ Resource classes hierarchy::
 
 .. class:: PlainResource
 
-   A new-style resource, inherited from :class:`Resource`.
+   A resource, inherited from :class:`Resource`.
 
    The class corresponds to resources with plain-text matching,
    ``'/path/to'`` for example.
 
 
+   .. method:: url_for()
+
+      Returns a :class:`~yarl.URL` for the resource.
+
+      .. versionadded:: 1.1
+
+
 .. class:: DynamicResource
 
-   A new-style resource, inherited from :class:`Resource`.
+   A resource, inherited from :class:`Resource`.
 
    The class corresponds to resources with
    :ref:`variable <aiohttp-web-variable-handler>` matching,
    e.g. ``'/path/{to}/{param}'`` etc.
 
 
-.. class:: ResourceAdapter
+   .. method:: url_for(**params)
 
-   An adapter for old-style routes.
+      Returns a :class:`~yarl.URL` for the resource.
 
-   The adapter is used by ``router.register_route()`` call, the method
-   is deprecated and will be removed eventually.
+      :param params: -- a variable substitutions for dynamic resource.
 
+         E.g. for ``'/path/{to}/{param}'`` pattern the method should
+         be called as ``resource.url_for(to='val1', param='val2')``
+
+
+      .. versionadded:: 1.1
+
+.. class:: StaticResource
+
+   A resource, inherited from :class:`Resource`.
+
+   The class corresponds to resources for :ref:`static file serving
+   <aiohttp-web-static-file-handling>`.
+
+   .. method:: url_for(filename)
+
+      Returns a :class:`~yarl.URL` for file path under resource prefix.
+
+      :param filename: -- a file name substitution for static file handler.
+
+         Accepts both :class:`str` and :class:`pathlib.Path`.
+
+         E.g. an URL for ``'/prefix/dir/file.txt'`` should
+         be generated as ``resource.url_for(filename='dir/file.txt')``
+
+      .. versionadded:: 1.1
 
 .. _aiohttp-web-route:
 
@@ -1767,22 +1819,11 @@ Route classes hierarchy::
 
    AbstractRoute
      ResourceRoute
-     Route
-       PlainRoute
-       DynamicRoute
-       StaticRoute
+     SystemRoute
 
-:class:`ResourceRoute` is the route used for new-style resources,
-:class:`PlainRoute` and :class:`DynamicRoute` serves old-style
-routes kept for backward compatibility only.
-
-:class:`StaticRoute` is used for static file serving
-(:meth:`UrlDispatcher.add_static`).  Don't rely on the route
-implementation too hard, static file handling most likely will be
-rewritten eventually.
-
-So the only non-deprecated and not internal route is
-:class:`ResourceRoute` only.
+:class:`ResourceRoute` is the route used for resources,
+:class:`SystemRoute` serves URL resolving errors like *404 Not Found*
+and *405 Method Not Allowed*.
 
 .. class:: AbstractRoute
 
@@ -1802,24 +1843,14 @@ So the only non-deprecated and not internal route is
 
    .. attribute:: resource
 
-      Resource instance which holds the route.
+      Resource instance which holds the route, ``None`` for
+      :class:`SystemRoute`.
 
-   .. method:: url(*, query=None, **kwargs)
+   .. method:: url_for(*args, **kwargs)
 
       Abstract method for constructing url handled by the route.
 
-      *query* is a mapping or list of *(name, value)* pairs for
-      specifying *query* part of url (parameter is processed by
-      :func:`~urllib.parse.urlencode`).
-
-      Other available parameters depends on concrete route class and
-      described in descendant classes.
-
-
-      .. note::
-
-         The method is kept for sake of backward compatibility, usually
-         you should use :meth:`Resource.url` instead.
+      Actually it's a shortcut for ``route.resource.url_for(...)``.
 
    .. coroutinemethod:: handle_expect_header(request)
 
@@ -1829,42 +1860,20 @@ So the only non-deprecated and not internal route is
 
    The route class for handling different HTTP methods for :class:`Resource`.
 
-.. class:: PlainRoute
 
-   The route class for handling plain *URL path*, e.g. ``"/a/b/c"``
+.. class:: SystemRoute
 
-   .. method:: url(*, parts, query=None)
+   The route class for handling URL resolution errors like like *404 Not Found*
+   and *405 Method Not Allowed*.
 
-       Construct url, doesn't accepts extra parameters::
+   .. attribute:: status
 
-          >>> route.url(query={'d': 1, 'e': 2})
-          '/a/b/c/?d=1&e=2'
+      HTTP status code
 
-.. class:: DynamicRoute
+   .. attribute:: reason
 
-   The route class for handling :ref:`variable
-   path<aiohttp-web-variable-handler>`, e.g. ``"/a/{name1}/{name2}"``
+      HTTP status reason
 
-   .. method:: url(*, parts, query=None)
-
-      Construct url with given *dynamic parts*::
-
-          >>> route.url(parts={'name1': 'b', 'name2': 'c'},
-                        query={'d': 1, 'e': 2})
-          '/a/b/c/?d=1&e=2'
-
-
-.. class:: StaticRoute
-
-   The route class for handling static files, created by
-   :meth:`UrlDispatcher.add_static` call.
-
-   .. method:: url(*, filename, query=None)
-
-      Construct url for given *filename*::
-
-         >>> route.url(filename='img/logo.png', query={'param': 1})
-         '/path/to/static/img/logo.png?param=1'
 
 
 MatchInfo

@@ -1,4 +1,4 @@
-__version__ = '1.0.2'
+__version__ = '1.0.5'
 
 # Deprecated, keep it here for a while for backward compatibility.
 import multidict  # noqa

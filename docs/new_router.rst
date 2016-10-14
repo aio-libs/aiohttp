@@ -6,7 +6,7 @@ Router refactoring in 0.21
 Rationale
 ---------
 
-First generation (v1) of router mapped ``(method, path)`` pair to
+First generation (v1) of router has mapped ``(method, path)`` pair to
 :term:`web-handler`.  Mapping is named **route**. Routes used to have
 unique names if any.
 

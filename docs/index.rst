@@ -207,7 +207,7 @@ Contents
    testing
    gunicorn
    faq
-   new_router
+   essays
    contributing
    changes
    glossary
