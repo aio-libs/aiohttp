@@ -13,9 +13,9 @@ from aiohttp import hdrs
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import (HTTPMethodNotAllowed, HTTPNotFound, Response,
                          UrlDispatcher)
-from aiohttp.web_urldispatcher import (AbstractResource,
-                                       ResourceRoute, SystemRoute,
-                                       View, _defaultExpectHandler)
+from aiohttp.web_urldispatcher import (AbstractResource, ResourceRoute,
+                                       SystemRoute, View,
+                                       _defaultExpectHandler)
 
 
 def make_request(method, path):
