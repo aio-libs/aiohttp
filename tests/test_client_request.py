@@ -4,18 +4,18 @@ import asyncio
 import inspect
 import io
 import os.path
+import tempfile
 import urllib.parse
 import zlib
 from http.cookies import SimpleCookie
 from unittest import mock
-import tempfile
 
 import pytest
 from multidict import CIMultiDict, CIMultiDictProxy, upstr
 from yarl import URL
 
 import aiohttp
-from aiohttp import BaseConnector, helpers, hdrs
+from aiohttp import BaseConnector, hdrs, helpers
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
 
 
