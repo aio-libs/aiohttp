@@ -406,7 +406,7 @@ class ClientRequest:
             elif isinstance(self.body, io.IOBase):
                 chunk = self.body.read(self.chunked)
                 while chunk:
-                    request.write(chunk)
+                    yield from request.write(chunk, drain=True)
                     chunk = self.body.read(self.chunked)
                 request.transport.set_tcp_nodelay(True)
 
