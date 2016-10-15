@@ -271,11 +271,28 @@ class AccessLogger:
         %{FOO}e  os.environ['FOO']
 
     """
+    LOG_FORMAT_MAP = {
+        'a': 'remote_address',
+        't': 'request_time',
+        'P': 'process_id',
+        'r': 'first_request_line',
+        's': 'response_status',
+        'b': 'response_size',
+        'O': 'bytes_sent',
+        'T': 'request_time',
+        'Tf': 'request_time_frac',
+        'D': 'request_time_micro',
+        'i': 'request_header',
+        'o': 'response_header',
+        'e': 'environ'
+    }
 
     LOG_FORMAT = '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
     FORMAT_RE = re.compile(r'%(\{([A-Za-z0-9\-_]+)\}([ioe])|[atPrsbOD]|Tf?)')
     CLEANUP_RE = re.compile(r'(%[^s])')
     _FORMAT_CACHE = {}
+
+    KeyMethod = namedtuple('KeyMethod', 'key method')
 
     def __init__(self, logger, log_format=LOG_FORMAT):
         """Initialise the logger.
@@ -285,10 +302,12 @@ class AccessLogger:
 
         """
         self.logger = logger
+
         _compiled_format = AccessLogger._FORMAT_CACHE.get(log_format)
         if not _compiled_format:
             _compiled_format = self.compile_format(log_format)
             AccessLogger._FORMAT_CACHE[log_format] = _compiled_format
+
         self._log_format, self._methods = _compiled_format
 
     def compile_format(self, log_format):
@@ -315,14 +334,22 @@ class AccessLogger:
 
         log_format = log_format.replace("%l", "-")
         log_format = log_format.replace("%u", "-")
-        methods = []
+
+        # list of (key, method) tuples, we don't use an OrderedDict as users
+        # can repeat the same key more than once
+        methods = list()
 
         for atom in self.FORMAT_RE.findall(log_format):
             if atom[1] == '':
-                methods.append(getattr(AccessLogger, '_format_%s' % atom[0]))
+                format_key = self.LOG_FORMAT_MAP[atom[0]]
+                m = getattr(AccessLogger, '_format_%s' % atom[0])
             else:
+                format_key = (self.LOG_FORMAT_MAP[atom[2]], atom[1])
                 m = getattr(AccessLogger, '_format_%s' % atom[2])
-                methods.append(functools.partial(m, atom[1]))
+                m = functools.partial(m, atom[1])
+
+            methods.append(self.KeyMethod(format_key, m))
+
         log_format = self.FORMAT_RE.sub(r'%s', log_format)
         log_format = self.CLEANUP_RE.sub(r'%\1', log_format)
         return log_format, methods
@@ -335,6 +362,7 @@ class AccessLogger:
     def _format_i(key, args):
         if not args[0]:
             return '(no headers)'
+
         # suboptimal, make istr(key) once
         return args[0].headers.get(key, '-')
 
@@ -394,7 +422,7 @@ class AccessLogger:
         return round(args[4] * 1000000)
 
     def _format_line(self, args):
-        return tuple(m(args) for m in self._methods)
+        return ((key, method(args)) for key, method in self._methods)
 
     def log(self, message, environ, response, transport, time):
         """Log access.
@@ -406,8 +434,20 @@ class AccessLogger:
         :param float time: Time taken to serve the request.
         """
         try:
-            self.logger.info(self._log_format % self._format_line(
-                [message, environ, response, transport, time]))
+            fmt_info = self._format_line(
+                [message, environ, response, transport, time])
+
+            values = list()
+            extra = dict()
+            for key, value in fmt_info:
+                values.append(value)
+
+                if key.__class__ is str:
+                    extra[key] = value
+                else:
+                    extra[key[0]] = {key[1]: value}
+
+            self.logger.info(self._log_format % tuple(values), extra=extra)
         except Exception:
             self.logger.exception("Error in logging")
 
