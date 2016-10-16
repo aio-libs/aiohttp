@@ -57,3 +57,25 @@ are the same. Internally ``'/путь'`` is converted into
 percent-encoding representation.
 
 Route matching also accepts both URL forms: raw and encoded.
+
+
+Subapplications
+---------------
+
+Add sub application to route
+
+subapp = web.Application()
+# setup subapp routes and middlewares
+
+app.add_subapp('/prefix/', subapp)
+
+Middlewares from app and subapp are chained.
+Signals are not (probably?)
+
+Application can be used eighter as main app (app.make_handler()) or as
+subapp -- not both cases at the same time.
+
+Url reversing for subapp should generate urls with subapp prefix.
+
+SubAppResource is a regular prefixed resource with single route for
+sinking every request into subapp.
