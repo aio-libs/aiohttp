@@ -4,6 +4,7 @@ import asyncio
 import inspect
 import io
 import os.path
+import tempfile
 import urllib.parse
 import zlib
 from http.cookies import SimpleCookie
@@ -14,7 +15,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, upstr
 from yarl import URL
 
 import aiohttp
-from aiohttp import BaseConnector, helpers
+from aiohttp import BaseConnector, hdrs, helpers
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
 
 
@@ -519,6 +520,21 @@ def test_pass_falsy_data(loop):
             'post', URL('http://python.org/'),
             data={}, loop=loop)
         req.update_body_from_data.assert_called_once_with({}, frozenset())
+    yield from req.close()
+
+
+@asyncio.coroutine
+def test_pass_falsy_data_file(loop):
+    with tempfile.TemporaryFile() as testfile:
+        testfile.write(b'data')
+        testfile.seek(0)
+        skip = frozenset([hdrs.CONTENT_TYPE])
+        req = ClientRequest(
+            'post', URL('http://python.org/'),
+            data=testfile,
+            skip_auto_headers=skip,
+            loop=loop)
+        assert req.headers.get('CONTENT-LENGTH', None) is not None
     yield from req.close()
 
 

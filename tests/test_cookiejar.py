@@ -5,7 +5,6 @@ from http.cookies import SimpleCookie
 from unittest import mock
 
 import pytest
-
 from yarl import URL
 
 from aiohttp import CookieJar
