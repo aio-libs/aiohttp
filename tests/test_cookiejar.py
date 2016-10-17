@@ -141,6 +141,18 @@ def test_constructor(loop, cookies_to_send, cookies_to_receive):
     assert jar_cookies == expected_cookies
     assert jar._loop is loop
 
+def test_save_load(loop, cookies_to_send):
+    import tempfile
+    cookie_file = tempfile.NamedTemporaryFile().name
+    jar_save = CookieJar(loop=loop)
+    jar_save.update_cookies(cookies_to_send)
+    jar_save.save(cookie_file);
+    jar_load = CookieJar(loop=loop)
+    jar_load.load(cookie_file);
+    jar_cookies = SimpleCookie()
+    for cookie in jar_load:
+        dict.__setitem__(jar_cookies, cookie.key, cookie)
+    assert jar_cookies == cookies_to_send
 
 def test_ctor_ith_default_loop(loop):
     asyncio.set_event_loop(loop)
