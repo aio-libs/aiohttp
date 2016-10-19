@@ -65,7 +65,7 @@ class AbstractResource(Sized, Iterable):
         Return (UrlMappingMatchInfo, allowed_methods) pair."""
 
     @abc.abstractmethod
-    def _add_prefix(self, prefix):
+    def add_prefix(self, prefix):
         """Add a prefix to processed URLs.
 
         Required for subapplications support.
@@ -273,9 +273,9 @@ class PlainResource(Resource):
         assert path.startswith('/')
         self._path = path
 
-    def _add_prefix(self, prefix):
+    def add_prefix(self, prefix):
         assert prefix.startswith('/')
-        assert prefix.endsswith('/')
+        assert prefix.endswith('/')
         assert len(prefix) > 1
         self._path = prefix + self._path[1:]
 
@@ -311,9 +311,9 @@ class DynamicResource(Resource):
         self._pattern = pattern
         self._formatter = formatter
 
-    def _add_prefix(self, prefix):
+    def add_prefix(self, prefix):
         assert prefix.startswith('/')
-        assert prefix.endsswith('/')
+        assert prefix.endswith('/')
         assert len(prefix) > 1
         self._pattern = re.compile(re.escape(prefix)+self._pattern.pattern[2:])
         self._formatter = prefix + self._formatter[1:]
@@ -353,9 +353,9 @@ class PrefixResource(AbstractResource):
         self._prefix = quote(prefix, safe='/')
         self._prefix_len = len(self._prefix)
 
-    def _add_prefix(self, prefix):
+    def add_prefix(self, prefix):
         assert prefix.startswith('/')
-        assert prefix.endsswith('/')
+        assert prefix.endswith('/')
         assert len(prefix) > 1
         self._prefix = prefix + self._prefix[1:]
         self._prefix_len = len(self.prefix)
@@ -501,12 +501,11 @@ class StaticResource(PrefixResource):
 
 class PrefixedSubAppResource(PrefixResource):
 
-    def __init__(self, prefix, app, *, name=None):
-        assert name is None, "Named sub-applications are not suppported"
-        super().__init__(prefix, name=name)
+    def __init__(self, prefix, app):
+        super().__init__(prefix)
         self._app = app
         for resource in app.router.resources():
-            resource._add_prefix(prefix)
+            resource.add_prefix(prefix)
 
     def url_for(self, *args, **kwargs):
         raise RuntimeError(".url_for() is not supported "
@@ -837,3 +836,11 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         Shortcut for add_route with method DELETE
         """
         return self.add_route(hdrs.METH_DELETE, *args, **kwargs)
+
+    def add_subapp(self, prefix, subapp):
+        assert prefix.startswith('/')
+        if not prefix.endswith('/'):
+            prefix += '/'
+        resource = PrefixedSubAppResource(prefix, subapp)
+        self._reg_resource(resource)
+        return resource
