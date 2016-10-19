@@ -4,7 +4,6 @@ import asyncio
 import inspect
 import io
 import os.path
-import tempfile
 import urllib.parse
 import zlib
 from http.cookies import SimpleCookie
@@ -524,17 +523,17 @@ def test_pass_falsy_data(loop):
 
 
 @asyncio.coroutine
-def test_pass_falsy_data_file(loop):
-    with tempfile.TemporaryFile() as testfile:
-        testfile.write(b'data')
-        testfile.seek(0)
-        skip = frozenset([hdrs.CONTENT_TYPE])
-        req = ClientRequest(
-            'post', URL('http://python.org/'),
-            data=testfile,
-            skip_auto_headers=skip,
-            loop=loop)
-        assert req.headers.get('CONTENT-LENGTH', None) is not None
+def test_pass_falsy_data_file(loop, tmpdir):
+    testfile = tmpdir.join('tmpfile').open('w+b')
+    testfile.write(b'data')
+    testfile.seek(0)
+    skip = frozenset([hdrs.CONTENT_TYPE])
+    req = ClientRequest(
+        'post', URL('http://python.org/'),
+        data=testfile,
+        skip_auto_headers=skip,
+        loop=loop)
+    assert req.headers.get('CONTENT-LENGTH', None) is not None
     yield from req.close()
 
 
