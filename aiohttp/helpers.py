@@ -171,7 +171,8 @@ class FormData:
             else:
                 raise TypeError('Only io.IOBase, multidict and (name, file) '
                                 'pairs allowed, use .add_field() for passing '
-                                'more complex parameters')
+                                'more complex parameters, got {!r}'
+                                .format(rec))
 
     def _gen_form_urlencoded(self, encoding):
         # form data (x-www-form-urlencoded)
