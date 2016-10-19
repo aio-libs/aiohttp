@@ -43,6 +43,24 @@ CHANGES
 
 - Enhancement to AccessLogger (pass *extra* dict) #1303
 
+- Show more verbose message on import errors #1319
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
 -
 
 -
