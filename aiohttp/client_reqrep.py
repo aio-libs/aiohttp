@@ -659,6 +659,7 @@ class ClientResponse:
             self._connection.close()
             self._connection = None
         self._cleanup_writer()
+        self._notify_content()
 
     @asyncio.coroutine
     def release(self):
@@ -682,6 +683,7 @@ class ClientResponse:
                     self._reader.unset_parser()
                 self._connection = None
             self._cleanup_writer()
+            self._notify_content()
 
     def raise_for_status(self):
         if 400 <= self.status:
@@ -693,6 +695,11 @@ class ClientResponse:
         if self._writer is not None and not self._writer.done():
             self._writer.cancel()
         self._writer = None
+
+    def _notify_content(self):
+        if self.content.exception() is None:
+            self.content.set_exception(
+                aiohttp.ClientDisconnectedError('Connection closed'))
 
     @asyncio.coroutine
     def wait_for_close(self):
