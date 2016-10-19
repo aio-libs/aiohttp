@@ -366,8 +366,8 @@ def main(argv):
         arg_parser.error("relative module names not supported")
     try:
         module = import_module(mod_str)
-    except ImportError:
-        arg_parser.error("module %r not found" % mod_str)
+    except ImportError as ex:
+        arg_parser.error("unable to import %s: %s" % (mod_str, ex))
     try:
         func = getattr(module, func_str)
     except AttributeError:
