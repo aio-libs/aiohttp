@@ -1,16 +1,12 @@
 """HTTP websocket server functional tests"""
 
 import asyncio
-import sys
 
 import pytest
 
 import aiohttp
 from aiohttp import helpers, web
 from aiohttp._ws_impl import WSMsgType
-
-
-PY_35 = sys.version_info >= (3, 5)
 
 
 @asyncio.coroutine
@@ -308,43 +304,6 @@ def test_auto_pong_with_closing_by_peer(loop, test_client):
     assert msg.type == WSMsgType.PONG
     yield from ws.close(code=1000, message='exit message')
     yield from closed
-
-
-@pytest.mark.skipif(not PY_35, reason="Requires Python 3.5")
-async def test_closed_async_for(loop, test_client):
-
-    closed = helpers.create_future(loop)
-
-    async def handler(request):
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
-
-        messages = []
-        async for msg in ws:
-            messages.append(msg)
-            if 'stop' == msg.data:
-                ws.send_str('stopping')
-                await ws.close()
-
-        assert 1 == len(messages)
-        assert messages[0].type == WSMsgType.TEXT
-        assert messages[0].data == 'stop'
-
-        closed.set_result(None)
-        return ws
-
-    app = web.Application(loop=loop)
-    app.router.add_get('/', handler)
-    client = await test_client(app)
-
-    ws = await client.ws_connect('/')
-    ws.send_str('stop')
-    msg = await ws.receive()
-    assert msg.type == WSMsgType.TEXT
-    assert msg.data == 'stopping'
-
-    await ws.close()
-    await closed
 
 
 @asyncio.coroutine
