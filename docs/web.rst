@@ -481,6 +481,47 @@ header::
    app = web.Application()
    app.router.add_get('/', hello, expect_handler=check_auth)
 
+.. _aiohttp-web-forms:
+
+HTTP Forms
+----------
+
+HTTP Forms are supported out of the box.
+
+If form's method is ``"GET"`` (``<form method="get">``) use
+:attr:`Request.rel_url.query` for getting form data.
+
+For accessing to form data with ``"POST"`` method use
+:meth:`Request.post` or :meth:`Request.multipart`.
+
+:meth:`Request.post` accepts both
+``'application/x-www-form-urlencoded'`` and ``'multipart/form-data'``
+form's data encoding (e.g. ``<form enctype="multipart/form-data">``)
+but :meth:`Request.multipart` is especially effective for uploading
+large files (:ref:`aiohttp-web-file-upload`).
+
+Values submitted by the following form:
+
+.. code-block:: html
+
+   <form action="/login" method="post" accept-charset="utf-8"
+         enctype="application/x-www-form-urlencoded">
+
+       <label for="login">Login</label>
+       <input id="login" name="login" type="text" value="" autofocus/>
+       <label for="password">Password</label>
+       <input id="password" name="password" type="password" value=""/>
+
+       <input type="submit" value="login"/>
+   </form>
+
+could be accessed as::
+
+    async def do_login(request):
+        data = await request.post()
+        login = data['login']
+        password = data['password']
+
 
 .. _aiohttp-web-file-upload:
 
@@ -500,9 +541,9 @@ accepts an MP3 file:
          enctype="multipart/form-data">
 
        <label for="mp3">Mp3</label>
-       <input id="mp3" name="mp3" type="file" value="" />
+       <input id="mp3" name="mp3" type="file" value=""/>
 
-       <input type="submit" value="submit" />
+       <input type="submit" value="submit"/>
    </form>
 
 Then, in the :ref:`request handler <aiohttp-web-handler>` you can access the

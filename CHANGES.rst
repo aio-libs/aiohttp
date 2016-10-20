@@ -36,7 +36,14 @@ CHANGES
 
 - Revert `resp.url` back to `str`, introduce `resp.url_obj` #1292
 
--
+- Raise ValueError if BasicAuth login has a ":" character #1307
+
+- Fix bug when ClientRequest send payload file with opened as
+  open('filename', 'r+b') #1306
+
+- Enhancement to AccessLogger (pass *extra* dict) #1303
+
+- Show more verbose message on import errors #1319
 
 -
 
@@ -46,24 +53,26 @@ CHANGES
 
 -
 
-1.0.5 (XXXX-XX-XX)
+-
+
+-
+
+-
+
+- Ensure TestClient HTTP methods return a context manager #1318
+
+-
+
+-
+
+-
+
+1.0.5 (2016-10-11)
 ------------------
 
--
+- Fix StreamReader._read_nowait to return all available
+  data up to the requested amount #1297
 
--
-
--
-
--
-
--
-
--
-
--
-
--
 
 1.0.4 (2016-09-22)
 ------------------

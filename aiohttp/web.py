@@ -293,7 +293,7 @@ class Application(dict):
 
 def run_app(app, *, host='0.0.0.0', port=None,
             shutdown_timeout=60.0, ssl_context=None,
-            print=print, backlog=128):
+            print=print, backlog=128, access_log_format=None):
     """Run an app locally"""
     if port is None:
         if not ssl_context:
@@ -303,7 +303,10 @@ def run_app(app, *, host='0.0.0.0', port=None,
 
     loop = app.loop
 
-    handler = app.make_handler()
+    make_handler_kwargs = dict()
+    if access_log_format is not None:
+        make_handler_kwargs['access_log_format'] = access_log_format
+    handler = app.make_handler(**make_handler_kwargs)
     server = loop.create_server(handler, host, port, ssl=ssl_context,
                                 backlog=backlog)
     srv, startup_res = loop.run_until_complete(asyncio.gather(server,
@@ -363,8 +366,8 @@ def main(argv):
         arg_parser.error("relative module names not supported")
     try:
         module = import_module(mod_str)
-    except ImportError:
-        arg_parser.error("module %r not found" % mod_str)
+    except ImportError as ex:
+        arg_parser.error("unable to import %s: %s" % (mod_str, ex))
     try:
         func = getattr(module, func_str)
     except AttributeError:
