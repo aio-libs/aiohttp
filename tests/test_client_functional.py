@@ -578,13 +578,12 @@ def test_iter_error_on_conn_close(loop, test_client):
         timer_started = False
         url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
         resp = yield from session.get(url, headers=headers)
-        with resp:
-            with pytest.raises(aiohttp.ClientDisconnectedError):
-                for data in resp.content:
-                    assert data.strip() == 'data'
-                    if not timer_started:
-                        loop.call_later(0.5, session.close)
-                        timer_started = True
+        with pytest.raises(aiohttp.ClientDisconnectedError):
+            for data in resp.content:
+                assert data.strip() == 'data'
+                if not timer_started:
+                    loop.call_later(0.5, session.close)
+                    timer_started = True
 
 
 @asyncio.coroutine
