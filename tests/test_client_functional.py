@@ -563,12 +563,14 @@ def test_iter_error_on_conn_close(loop, test_client):
         yield from resp_.prepare(request)
 
         # make sure connection is closed by client.
-        with pytest.raises(aiohttp.ServerDisconnectedError):
+        try:
             for _ in range(10):
                 resp_.write(b'data\n')
                 yield from resp_.drain()
                 yield from asyncio.sleep(0.5, loop=loop)
-            return resp_
+        except aiohttp.ServerDisconnectedError:
+            yield from asyncio.sleep(2, loop=loop)
+        return resp_
 
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
