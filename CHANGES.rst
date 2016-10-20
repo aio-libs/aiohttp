@@ -45,7 +45,8 @@ CHANGES
 
 - Ensure TestClient HTTP methods return a context manager #1318
 
--
+- Add a function to notify StreamReader when connection from
+  ClientSession is closed. #1323
 
 -
 
