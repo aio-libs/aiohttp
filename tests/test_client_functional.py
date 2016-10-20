@@ -584,7 +584,7 @@ def test_iter_error_on_conn_close(loop, test_client):
                 data = data.strip()
                 if not data:
                     break
-                assert data == 'data'
+                assert data == b'data'
                 if not timer_started:
                     loop.call_later(0.5, session.close)
                     timer_started = True
