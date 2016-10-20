@@ -41,7 +41,7 @@ CHANGES
 - Fix bug when ClientRequest send payload file with opened as
   open('filename', 'r+b') #1306
 
-- Support load/save cookieJar #1219
+- Support load/save CookieJar #1219
 
 -
 
