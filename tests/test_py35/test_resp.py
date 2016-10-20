@@ -96,3 +96,30 @@ async def test_iter_any(test_server, loop):
     with aiohttp.ClientSession(loop=loop) as session:
         async with await session.post(server.make_url('/'), data=data) as resp:
             assert resp.status == 200
+
+
+async def test_iter_error_on_conn_close(test_server, loop):
+
+    async def handler(request):
+        resp_ = web.StreamResponse()
+        await resp_.prepare(request)
+        for _ in range(3):
+            resp_.write(b'data\n')
+            await resp_.drain()
+            await asyncio.sleep(0.5, loop=loop)
+        return resp_
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+    server = await test_server(app)
+
+    with aiohttp.ClientSession(loop=loop) as session:
+            timer_started = False
+            async with await session.get(
+                    server.make_url('/'),
+                    headers={'Connection': 'Keep-alive'}) as resp:
+                with pytest.raises(aiohttp.ClientDisconnectedError):
+                    async for _ in resp.content:
+                        if not timer_started:
+                            loop.call_later(0.5, session.close)
+                            timer_started = True
