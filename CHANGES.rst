@@ -59,6 +59,8 @@ CHANGES
 
 -
 
+- Ensure TestClient HTTP methods return a context manager #1318
+
 -
 
 -

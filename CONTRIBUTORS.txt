@@ -5,6 +5,7 @@ A. Jesse Jiryu Davis
 Alejandro Gómez
 Aleksandr Danshyn
 Aleksey Kutepov
+Alex Hayes
 Alexander Bayandin
 Alexander Karpinsky
 Alexander Koshevoy
