@@ -40,14 +40,14 @@ class CookieJar(AbstractCookieJar):
         self._expirations = {}
 
     def load(self, file_path):
-        f=open(file_path, 'rb')
+        f = open(file_path, 'rb')
         self._cookies = pickle.load(f)
 
     def save(self, file_path):
         file_dir = os.path.dirname(file_path)
         if file_dir and not os.path.exists(file_dir):
             os.makedirs(file_dir)
-        f=open(file_path, 'wb')
+        f = open(file_path, 'wb')
         pickle.dump(self._cookies, f)
 
     def clear(self):
