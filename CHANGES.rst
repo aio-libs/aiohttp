@@ -45,8 +45,8 @@ CHANGES
 
 - Ensure TestClient HTTP methods return a context manager #1318
 
-- Raise aiohttp.ClientDisconnectedError to StreamReader if ClientSession
-  object is closed by client when reading data. #1323
+- Raise `ClientDisconnectedError` to `StreamReader` read function if
+  `ClientSession` object is closed by client when reading data. #1323
 
 -
 
