@@ -555,6 +555,39 @@ def test_timeout_on_reading_data(loop, test_client):
 
 
 @asyncio.coroutine
+def test_iter_error_on_conn_close(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        resp_ = web.StreamResponse()
+        yield from resp_.prepare(request)
+
+        # make sure connection is closed by client.
+        with pytest.raises(aiohttp.ServerDisconnectedError):
+            for _ in range(10):
+                resp_.write(b'data\n')
+                yield from resp_.drain()
+                yield from asyncio.sleep(0.5, loop=loop)
+            return resp_
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+    server = yield from test_client(app)
+
+    with aiohttp.ClientSession(loop=loop) as session:
+        timer_started = False
+        url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
+        resp = yield from session.get(url, headers=headers)
+        with resp:
+            with pytest.raises(aiohttp.ClientDisconnectedError):
+                for data in resp.content:
+                    assert data.strip() == 'data'
+                    if not timer_started:
+                        loop.call_later(0.5, session.close)
+                        timer_started = True
+
+
+@asyncio.coroutine
 def test_HTTP_200_OK_METHOD(loop, test_client):
     @asyncio.coroutine
     def handler(request):
