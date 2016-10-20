@@ -697,8 +697,9 @@ class ClientResponse:
         self._writer = None
 
     def _notify_content(self):
-        if self.content and self.content.exception() is None:
-            self.content.set_exception(
+        content = self.content
+        if content and content.exception() is None and not content.is_eof():
+            content.set_exception(
                 aiohttp.ClientDisconnectedError('Connection closed'))
 
     @asyncio.coroutine

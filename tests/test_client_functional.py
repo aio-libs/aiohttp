@@ -555,7 +555,7 @@ def test_timeout_on_reading_data(loop, test_client):
 
 
 @asyncio.coroutine
-def test_iter_error_on_conn_close(loop, test_client):
+def test_readline_error_on_conn_close(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -586,8 +586,61 @@ def test_iter_error_on_conn_close(loop, test_client):
                     break
                 assert data == b'data'
                 if not timer_started:
-                    loop.call_later(1.0, resp.close)
+                    def do_release():
+                        loop.create_task(resp.release())
+                    loop.call_later(1.0, do_release)
                     timer_started = True
+
+
+@asyncio.coroutine
+def test_no_error_on_conn_close_if_eof(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        resp_ = web.StreamResponse()
+        yield from resp_.prepare(request)
+        resp_.write(b'data\n')
+        yield from resp_.drain()
+        yield from asyncio.sleep(0.5, loop=loop)
+        return resp_
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+    server = yield from test_client(app)
+
+    with aiohttp.ClientSession(loop=loop) as session:
+        url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
+        resp = yield from session.get(url, headers=headers)
+        while True:
+            data = yield from resp.content.readline()
+            data = data.strip()
+            if not data:
+                break
+            assert data == b'data'
+        yield from resp.release()
+        assert resp.content.exception() is None
+
+
+@asyncio.coroutine
+def test_error_not_overwrote_on_conn_close(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        resp_ = web.StreamResponse()
+        yield from resp_.prepare(request)
+        return resp_
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+    server = yield from test_client(app)
+
+    with aiohttp.ClientSession(loop=loop) as session:
+        url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
+        resp = yield from session.get(url, headers=headers)
+        resp.content.set_exception(aiohttp.ClientRequestError())
+
+    yield from resp.release()
+    assert isinstance(resp.content.exception(), aiohttp.ClientRequestError)
 
 
 @asyncio.coroutine
