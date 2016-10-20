@@ -41,7 +41,13 @@ CHANGES
 - Fix bug when ClientRequest send payload file with opened as
   open('filename', 'r+b') #1306
 
+- Enhancement to AccessLogger (pass *extra* dict) #1303
+
+- Ensure TestClient HTTP methods return a context manager #1318
+
 - Support load/save CookieJar #1219
+
+-
 
 -
 

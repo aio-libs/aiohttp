@@ -13,6 +13,7 @@ from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp
+from aiohttp.client import _RequestContextManager
 
 from . import ClientSession, hdrs
 from .helpers import sentinel
@@ -214,31 +215,45 @@ class TestClient:
 
     def get(self, path, *args, **kwargs):
         """Perform an HTTP GET request."""
-        return self.request(hdrs.METH_GET, path, *args, **kwargs)
+        return _RequestContextManager(
+            self.request(hdrs.METH_GET, path, *args, **kwargs)
+        )
 
     def post(self, path, *args, **kwargs):
         """Perform an HTTP POST request."""
-        return self.request(hdrs.METH_POST, path, *args, **kwargs)
+        return _RequestContextManager(
+            self.request(hdrs.METH_POST, path, *args, **kwargs)
+        )
 
     def options(self, path, *args, **kwargs):
         """Perform an HTTP OPTIONS request."""
-        return self.request(hdrs.METH_OPTIONS, path, *args, **kwargs)
+        return _RequestContextManager(
+            self.request(hdrs.METH_OPTIONS, path, *args, **kwargs)
+        )
 
     def head(self, path, *args, **kwargs):
         """Perform an HTTP HEAD request."""
-        return self.request(hdrs.METH_HEAD, path, *args, **kwargs)
+        return _RequestContextManager(
+            self.request(hdrs.METH_HEAD, path, *args, **kwargs)
+        )
 
     def put(self, path, *args, **kwargs):
         """Perform an HTTP PUT request."""
-        return self.request(hdrs.METH_PUT, path, *args, **kwargs)
+        return _RequestContextManager(
+            self.request(hdrs.METH_PUT, path, *args, **kwargs)
+        )
 
     def patch(self, path, *args, **kwargs):
         """Perform an HTTP PATCH request."""
-        return self.request(hdrs.METH_PATCH, path, *args, **kwargs)
+        return _RequestContextManager(
+            self.request(hdrs.METH_PATCH, path, *args, **kwargs)
+        )
 
     def delete(self, path, *args, **kwargs):
         """Perform an HTTP PATCH request."""
-        return self.request(hdrs.METH_DELETE, path, *args, **kwargs)
+        return _RequestContextManager(
+            self.request(hdrs.METH_DELETE, path, *args, **kwargs)
+        )
 
     @asyncio.coroutine
     def ws_connect(self, path, *args, **kwargs):

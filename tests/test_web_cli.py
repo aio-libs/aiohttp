@@ -69,14 +69,15 @@ def test_entry_func_relative_module(mocker):
 def test_entry_func_non_existent_module(mocker):
     argv = ["alpha.beta:func"]
 
-    mocker.patch("aiohttp.web.import_module", side_effect=ImportError)
+    mocker.patch("aiohttp.web.import_module",
+                 side_effect=ImportError("Test Error"))
     error = mocker.patch("aiohttp.web.ArgumentParser.error",
                          side_effect=SystemExit)
 
     with pytest.raises(SystemExit):
         web.main(argv)
 
-    error.assert_called_with("module %r not found" % "alpha.beta")
+    error.assert_called_with('unable to import alpha.beta: Test Error')
 
 
 def test_entry_func_non_existent_attribute(mocker):
