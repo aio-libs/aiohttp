@@ -45,7 +45,6 @@ class AbstractMatchInfo(ABC):
         """
 
 
-
 class AbstractView(ABC):
 
     def __init__(self, request):
