@@ -35,6 +35,16 @@ class AbstractMatchInfo(ABC):
     def get_info(self):
         """Return a dict with additional info useful for introspection"""
 
+    @property  # pragma: no branch
+    @abstractmethod
+    def nested_apps(self):
+        """Stack of nested applications.
+
+        Top level application is not encounted.
+
+        """
+
+
 
 class AbstractView(ABC):
 

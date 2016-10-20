@@ -163,6 +163,7 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
     def __init__(self, match_dict, route):
         super().__init__(match_dict)
         self._route = route
+        self._nested_apps = []
 
     @property
     def handler(self):
@@ -182,6 +183,13 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
 
     def get_info(self):
         return self._route.get_info()
+
+    @property
+    def nested_apps(self):
+        return tuple(self._nested_apps)
+
+    def _reg_app(self, app):
+        self._nested_apps.append(app)
 
     def __repr__(self):
         return "<MatchInfo {}: {}>".format(super().__repr__(), self._route)
@@ -524,7 +532,11 @@ class PrefixedSubAppResource(PrefixResource):
     def resolve(self, request):
         if not request.url.raw_path.startswith(self._prefix):
             return None, set()
-        match_info, methods = yield from self._app.router.resolve(request)
+        match_info = yield from self._app.router.resolve(request)
+        if isinstance(match_info.http_exception, HTTPMethodNotAllowed):
+            methods = match_info.http_exception.allowed_methods
+        else:
+            methods = set()
         match_info._reg_app(self._app)
         return (match_info, methods)
 

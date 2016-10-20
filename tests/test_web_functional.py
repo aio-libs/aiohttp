@@ -862,7 +862,7 @@ def test_redirect_url(loop, test_client):
 
 
 @asyncio.coroutine
-def test_subapp(loop, test_client):
+def test_simple_subapp(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text="OK")
@@ -877,3 +877,28 @@ def test_subapp(loop, test_client):
     assert resp.status == 200
     txt = yield from resp.text()
     assert 'OK' == txt
+
+
+@asyncio.coroutine
+def test_subapp_reverse_url(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.HTTPMovedPermanently(
+            location=subapp.router['name'].url_for())
+
+    @asyncio.coroutine
+    def handler2(request):
+        return web.Response(text="OK")
+
+    app = web.Application(loop=loop)
+    subapp = web.Application(loop=loop)
+    subapp.router.add_get('/to', handler)
+    subapp.router.add_get('/final', handler2, name='name')
+    app.router.add_subapp('/path', subapp)
+
+    client = yield from test_client(app)
+    resp = yield from client.get('/path/to')
+    assert resp.status == 200
+    txt = yield from resp.text()
+    assert 'OK' == txt
+    assert resp.url_obj.path == '/path/final'
