@@ -579,8 +579,12 @@ def test_iter_error_on_conn_close(loop, test_client):
         url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
         resp = yield from session.get(url, headers=headers)
         with pytest.raises(aiohttp.ClientDisconnectedError):
-            for data in resp.content:
-                assert data.strip() == 'data'
+            while True:
+                data = yield from resp.content.readline()
+                data = data.strip()
+                if not data:
+                    break
+                assert data == 'data'
                 if not timer_started:
                     loop.call_later(0.5, session.close)
                     timer_started = True
