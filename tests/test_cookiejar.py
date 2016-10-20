@@ -143,7 +143,7 @@ def test_constructor(loop, cookies_to_send, cookies_to_receive):
 
 def test_save_load(loop, cookies_to_send):
     import tempfile
-    cookie_file = tempfile.NamedTemporaryFile().name
+    cookie_file = tempfile.mkdtemp() + '/aiohttp.test.cookie'
     jar_save = CookieJar(loop=loop)
     jar_save.update_cookies(cookies_to_send)
     jar_save.save(cookie_file)
