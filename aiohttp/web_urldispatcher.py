@@ -372,7 +372,7 @@ class PrefixResource(AbstractResource):
         assert prefix.endswith('/')
         assert len(prefix) > 1
         self._prefix = prefix + self._prefix[1:]
-        self._prefix_len = len(self.prefix)
+        self._prefix_len = len(self._prefix)
 
 
 class StaticResource(PrefixResource):

@@ -506,7 +506,7 @@ def make_mocked_request(method, path, headers=None, *,
                   transport, reader, writer,
                   secure_proxy_ssl_header=secure_proxy_ssl_header)
 
-    match_info = UrlMappingMatchInfo({}, lambda request: None)
+    match_info = UrlMappingMatchInfo({}, mock.Mock())
     match_info.add_app(app)
     req._match_info = match_info
 
