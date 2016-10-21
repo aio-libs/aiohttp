@@ -53,6 +53,7 @@ Erich Healy
 Eugene Chernyshov
 Eugene Naydenov
 Frederik Gladhorn
+Frederik Peter Aalund
 Gabriel Tremblay
 Gennady Andreyev
 Georges Dubus
