@@ -73,10 +73,6 @@ Reading Methods
 
    :return bytes: the given line
 
-   :raise aiohttp.ClientDisconnectedError: if :class:`ClientSession`
-      object is closed when reading data.
-
-
 
 Asynchronous Iteration Support
 ------------------------------
