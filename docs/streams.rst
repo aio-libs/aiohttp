@@ -71,10 +71,12 @@ Reading Methods
    If the EOF was received and the internal buffer is empty, return an
    empty bytes object.
 
-   Raise an :exc:`aiohttp.ClientDisconnectedError` if :class:`ClientSession`
-   object is closed when reading data.
-
    :return bytes: the given line
+
+   :raise aiohttp.ClientDisconnectedError: if :class:`ClientSession`
+      object is closed when reading data.
+
+
 
 Asynchronous Iteration Support
 ------------------------------
