@@ -45,7 +45,8 @@ CHANGES
 
 - Ensure TestClient HTTP methods return a context manager #1318
 
--
+- Raise `ClientDisconnectedError` to `FlowControlStreamReader` read function
+  if `ClientSession` object is closed by client when reading data. #1323
 
 -
 
