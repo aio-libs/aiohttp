@@ -163,7 +163,8 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
     def __init__(self, match_dict, route):
         super().__init__(match_dict)
         self._route = route
-        self._nested_apps = []
+        self._apps = []
+        self._frozen = False
 
     @property
     def handler(self):
@@ -185,11 +186,16 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
         return self._route.get_info()
 
     @property
-    def nested_apps(self):
-        return tuple(self._nested_apps)
+    def apps(self):
+        return tuple(self._apps)
 
-    def _reg_app(self, app):
-        self._nested_apps.append(app)
+    def add_app(self, app):
+        if self._frozen:
+            raise RuntimeError("Cannot change apps stack after .freeze() call")
+        self._apps.insert(0, app)
+
+    def freeze(self):
+        self._frozen = True
 
     def __repr__(self):
         return "<MatchInfo {}: {}>".format(super().__repr__(), self._route)
@@ -533,11 +539,11 @@ class PrefixedSubAppResource(PrefixResource):
         if not request.url.raw_path.startswith(self._prefix):
             return None, set()
         match_info = yield from self._app.router.resolve(request)
+        match_info.add_app(self._app)
         if isinstance(match_info.http_exception, HTTPMethodNotAllowed):
             methods = match_info.http_exception.allowed_methods
         else:
             methods = set()
-        match_info._reg_app(self._app)
         return (match_info, methods)
 
     def __len__(self):

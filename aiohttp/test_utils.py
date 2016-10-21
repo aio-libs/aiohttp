@@ -19,7 +19,7 @@ from . import ClientSession, hdrs
 from .helpers import sentinel
 from .protocol import HttpVersion, RawRequestMessage
 from .signals import Signal
-from .web import Application, Request
+from .web import Application, Request, UrlMappingMatchInfo
 
 PY_35 = sys.version_info >= (3, 5)
 
@@ -502,9 +502,13 @@ def make_mocked_request(method, path, headers=None, *,
     if payload is sentinel:
         payload = mock.Mock()
 
-    req = Request(app, message, payload,
+    req = Request(message, payload,
                   transport, reader, writer,
                   secure_proxy_ssl_header=secure_proxy_ssl_header)
+
+    match_info = UrlMappingMatchInfo({}, lambda request: None)
+    match_info.add_app(app)
+    req._match_info = match_info
 
     return req
 

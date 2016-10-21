@@ -902,3 +902,22 @@ def test_subapp_reverse_url(loop, test_client):
     txt = yield from resp.text()
     assert 'OK' == txt
     assert resp.url_obj.path == '/path/final'
+
+
+@asyncio.coroutine
+def test_subapp_app(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        assert request.app is subapp
+        return web.HTTPOk(text='OK')
+
+    app = web.Application(loop=loop)
+    subapp = web.Application(loop=loop)
+    subapp.router.add_get('/to', handler)
+    app.router.add_subapp('/path', subapp)
+
+    client = yield from test_client(app)
+    resp = yield from client.get('/path/to')
+    assert resp.status == 200
+    txt = yield from resp.text()
+    assert 'OK' == txt

@@ -4,9 +4,9 @@ from unittest import mock
 import pytest
 from multidict import CIMultiDict
 
-from aiohttp.protocol import HttpVersion11, RawRequestMessage
 from aiohttp.signals import Signal
-from aiohttp.web import Application, Request, Response
+from aiohttp.test_utils import make_mocked_request
+from aiohttp.web import Application, Response
 
 
 @pytest.fixture
@@ -20,21 +20,7 @@ def debug_app(loop):
 
 
 def make_request(app, method, path, headers=CIMultiDict()):
-    message = RawRequestMessage(method, path, HttpVersion11, headers,
-                                [(k.encode('utf-8'), v.encode('utf-8'))
-                                 for k, v in headers.items()],
-                                False, False)
-    return request_from_message(message, app)
-
-
-def request_from_message(message, app):
-    payload = mock.Mock()
-    transport = mock.Mock()
-    reader = mock.Mock()
-    writer = mock.Mock()
-    req = Request(app, message, payload,
-                  transport, reader, writer)
-    return req
+    return make_mocked_request(method, path, headers, app=app)
 
 
 def test_add_response_prepare_signal_handler(loop, app):

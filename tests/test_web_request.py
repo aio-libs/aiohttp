@@ -185,10 +185,7 @@ def test_request_cookie__set_item(make_request):
 
 def test_match_info(make_request):
     req = make_request('GET', '/')
-    assert req.match_info is None
-    match = {'a': 'b'}
-    req._match_info = match
-    assert match is req.match_info
+    assert req._match_info is req.match_info
 
 
 def test_request_is_dict(make_request):

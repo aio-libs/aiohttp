@@ -65,15 +65,16 @@ class RequestHandler(ServerHttpProtocol):
 
         app = self._app
         request = web_reqrep.Request(
-            app, message, payload,
+            message, payload,
             self.transport, self.reader, self.writer,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header)
         self._meth = request.method
         self._path = request.path
         try:
             match_info = yield from self._router.resolve(request)
-
             assert isinstance(match_info, AbstractMatchInfo), match_info
+            match_info.add_app(app)
+            match_info.freeze()
 
             resp = None
             request._match_info = match_info

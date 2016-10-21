@@ -91,9 +91,9 @@ class Request(dict, HeadersMixin):
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
-    def __init__(self, app, message, payload, transport, reader, writer, *,
+    def __init__(self, message, payload, transport, reader, writer, *,
                  secure_proxy_ssl_header=None):
-        self._app = app
+        self._app = None
         self._message = message
         self._transport = transport
         self._reader = reader
@@ -274,10 +274,10 @@ class Request(dict, HeadersMixin):
         """Result of route resolving."""
         return self._match_info
 
-    @property
+    @reify
     def app(self):
         """Application instance."""
-        return self._app
+        return self._match_info.apps[-1]
 
     @property
     def transport(self):
