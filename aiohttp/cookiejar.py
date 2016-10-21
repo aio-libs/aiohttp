@@ -1,5 +1,5 @@
 import datetime
-import os
+import pathlib
 import pickle
 import re
 from collections import defaultdict
@@ -40,15 +40,14 @@ class CookieJar(AbstractCookieJar):
         self._expirations = {}
 
     def save(self, file_path):
-        file_dir = os.path.dirname(file_path)
-        if file_dir and not os.path.exists(file_dir):
-            os.makedirs(file_dir)
-
-        with open(file_path, 'wb') as f:
+        file_path = pathlib.Path(file_path)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        with file_path.open(mode='wb') as f:
             pickle.dump(self._cookies, f, pickle.HIGHEST_PROTOCOL)
 
     def load(self, file_path):
-        with open(file_path, 'rb') as f:
+        file_path = pathlib.Path(file_path)
+        with file_path.open(mode='rb') as f:
             self._cookies = pickle.load(f)
 
     def clear(self):
