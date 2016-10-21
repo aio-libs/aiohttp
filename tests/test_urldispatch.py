@@ -9,8 +9,7 @@ import pytest
 from yarl import URL
 
 import aiohttp
-from aiohttp import web
-from aiohttp import hdrs
+from aiohttp import hdrs, web
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import (HTTPMethodNotAllowed, HTTPNotFound, Response,
                          UrlDispatcher)

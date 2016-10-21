@@ -971,3 +971,36 @@ def test_subapp_app(loop, test_client):
     assert resp.status == 200
     txt = yield from resp.text()
     assert 'OK' == txt
+
+
+@asyncio.coroutine
+def test_subapp_not_found(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.HTTPOk(text='OK')
+
+    app = web.Application(loop=loop)
+    subapp = web.Application(loop=loop)
+    subapp.router.add_get('/to', handler)
+    app.router.add_subapp('/path/', subapp)
+
+    client = yield from test_client(app)
+    resp = yield from client.get('/path/other')
+    assert resp.status == 404
+
+
+@asyncio.coroutine
+def test_subapp_not_allowed(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.HTTPOk(text='OK')
+
+    app = web.Application(loop=loop)
+    subapp = web.Application(loop=loop)
+    subapp.router.add_get('/to', handler)
+    app.router.add_subapp('/path/', subapp)
+
+    client = yield from test_client(app)
+    resp = yield from client.post('/path/to')
+    assert resp.status == 405
+    assert resp.headers['Allow'] == 'GET'
