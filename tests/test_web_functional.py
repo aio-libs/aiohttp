@@ -1020,3 +1020,20 @@ def test_subapp_not_allowed(loop, test_client):
     resp = yield from client.post('/path/to')
     assert resp.status == 405
     assert resp.headers['Allow'] == 'GET'
+
+
+@asyncio.coroutine
+def test_subapp_cannot_add_app_in_handler(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        request.match_info.add_app(app)
+        return web.HTTPOk(text='OK')
+
+    app = web.Application(loop=loop)
+    subapp = web.Application(loop=loop)
+    subapp.router.add_get('/to', handler)
+    app.router.add_subapp('/path/', subapp)
+
+    client = yield from test_client(app)
+    resp = yield from client.get('/path/to')
+    assert resp.status == 500
