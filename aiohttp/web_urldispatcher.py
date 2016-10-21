@@ -553,7 +553,7 @@ class PrefixedSubAppResource(PrefixResource):
         return iter(self._app.router.routes())
 
     def __repr__(self):
-        return "<PrefixedSubAppResource {prefix} -> {app!r}".format(
+        return "<PrefixedSubAppResource {prefix} -> {app!r}>".format(
             prefix=self._prefix, app=self._app)
 
 

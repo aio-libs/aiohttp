@@ -8,7 +8,8 @@ from urllib.parse import unquote
 import pytest
 from yarl import URL
 
-import aiohttp.web
+import aiohttp
+from aiohttp import web
 from aiohttp import hdrs
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import (HTTPMethodNotAllowed, HTTPNotFound, Response,
@@ -901,3 +902,45 @@ def test_url_for_in_resource_route(router):
     route = router.add_route('GET', '/get/{name}', make_handler(),
                              name='name')
     assert URL('/get/John') == route.url_for(name='John')
+
+
+def test_subapp_get_info(router, loop):
+    subapp = web.Application(loop=loop)
+    resource = router.add_subapp('/pre', subapp)
+    assert resource.get_info() == {'prefix': '/pre/', 'app': subapp}
+
+
+def test_subapp_url(router, loop):
+    subapp = web.Application(loop=loop)
+    resource = router.add_subapp('/pre', subapp)
+    with pytest.raises(RuntimeError):
+        resource.url()
+
+
+def test_subapp_url_for(router, loop):
+    subapp = web.Application(loop=loop)
+    resource = router.add_subapp('/pre', subapp)
+    with pytest.raises(RuntimeError):
+        resource.url_for()
+
+
+def test_subapp_repr(router, loop):
+    subapp = web.Application(loop=loop)
+    resource = router.add_subapp('/pre', subapp)
+    assert repr(resource) == '<PrefixedSubAppResource /pre/ -> <Application>>'
+
+
+def test_subapp_len(router, loop):
+    subapp = web.Application(loop=loop)
+    subapp.router.add_get('/', make_handler())
+    subapp.router.add_post('/', make_handler())
+    resource = router.add_subapp('/pre', subapp)
+    assert len(resource) == 2
+
+
+def test_subapp_iter(router, loop):
+    subapp = web.Application(loop=loop)
+    r1 = subapp.router.add_get('/', make_handler())
+    r2 = subapp.router.add_post('/', make_handler())
+    resource = router.add_subapp('/pre', subapp)
+    assert list(resource) == [r1, r2]
