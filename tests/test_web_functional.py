@@ -990,6 +990,22 @@ def test_subapp_not_found(loop, test_client):
 
 
 @asyncio.coroutine
+def test_subapp_not_found2(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.HTTPOk(text='OK')
+
+    app = web.Application(loop=loop)
+    subapp = web.Application(loop=loop)
+    subapp.router.add_get('/to', handler)
+    app.router.add_subapp('/path/', subapp)
+
+    client = yield from test_client(app)
+    resp = yield from client.get('/invalid/other')
+    assert resp.status == 404
+
+
+@asyncio.coroutine
 def test_subapp_not_allowed(loop, test_client):
     @asyncio.coroutine
     def handler(request):
