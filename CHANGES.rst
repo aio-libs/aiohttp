@@ -57,7 +57,7 @@ CHANGES
 
 -
 
--
+- Websockets: Stop `async for` iteration when connection is closed #1144
 
 - Ensure TestClient HTTP methods return a context manager #1318
 
