@@ -41,7 +41,6 @@ class CookieJar(AbstractCookieJar):
 
     def save(self, file_path):
         file_path = pathlib.Path(file_path)
-        file_path.parent.mkdir(parents=True, exist_ok=True)
         with file_path.open(mode='wb') as f:
             pickle.dump(self._cookies, f, pickle.HIGHEST_PROTOCOL)
 

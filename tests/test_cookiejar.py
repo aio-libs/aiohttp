@@ -144,7 +144,7 @@ def test_constructor(loop, cookies_to_send, cookies_to_receive):
 
 
 def test_save_load(loop, cookies_to_send, cookies_to_receive):
-    _, file_path = tempfile.mkstemp(prefix='aiohttp-', suffix='.pickle')
+    file_path = tempfile.mkdtemp() + '/aiohttp.test.cookie'
 
     # export cookie jar
     jar_save = CookieJar(loop=loop)
