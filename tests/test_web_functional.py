@@ -964,7 +964,7 @@ def test_subapp_app(loop, test_client):
     app = web.Application(loop=loop)
     subapp = web.Application(loop=loop)
     subapp.router.add_get('/to', handler)
-    app.router.add_subapp('/path', subapp)
+    app.router.add_subapp('/path/', subapp)
 
     client = yield from test_client(app)
     resp = yield from client.get('/path/to')
