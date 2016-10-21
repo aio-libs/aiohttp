@@ -1,3 +1,6 @@
+import os
+import tempfile
+
 import asyncio
 import datetime
 import unittest
@@ -139,6 +142,25 @@ def test_constructor(loop, cookies_to_send, cookies_to_receive):
     expected_cookies = cookies_to_send
     assert jar_cookies == expected_cookies
     assert jar._loop is loop
+
+
+def test_save_load(loop, cookies_to_send, cookies_to_receive):
+    _, file_path = tempfile.mkstemp(prefix='aiohttp-', suffix='.pickle')
+
+    # export cookie jar
+    jar_save = CookieJar(loop=loop)
+    jar_save.update_cookies(cookies_to_receive)
+    jar_save.save(file_path=file_path)
+
+    jar_load = CookieJar(loop=loop)
+    jar_load.load(file_path=file_path)
+
+    jar_test = SimpleCookie()
+    for cookie in jar_load:
+        jar_test[cookie.key] = cookie
+
+    os.unlink(file_path)
+    assert jar_test == cookies_to_receive
 
 
 def test_ctor_ith_default_loop(loop):
