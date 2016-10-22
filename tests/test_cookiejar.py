@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import pathlib
+import random
 import tempfile
 import unittest
 from http.cookies import SimpleCookie
@@ -144,7 +145,7 @@ def test_constructor(loop, cookies_to_send, cookies_to_receive):
 
 
 def test_save_load(loop, cookies_to_send):
-    cookie_file_str = tempfile.mkdtemp() + '/aiohttp.test.cookie'
+    cookie_file_str = tempfile.mkdtemp() + '/' + str(random.randint(1,9999)) + '/aiohttp.test.cookie'
     for cookie_file in [cookie_file_str, pathlib.Path(cookie_file_str)]:
         jar_save = CookieJar(loop=loop)
         jar_save.update_cookies(cookies_to_send)
