@@ -40,3 +40,21 @@ async def test_release_resp_on_normal_exit_from_cm(loop, test_server):
             await resp.read()
 
         assert len(session._connector._conns) == 1
+
+
+async def test_close_detached_session_on_error(loop, test_server):
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    server = await test_server(app)
+
+    cm = aiohttp.get(server.make_url('/'), loop=loop)
+    session = cm._session
+    assert not session.closed
+    with suppress(RuntimeError):
+        async with cm as resp:
+            resp.content.set_exception(RuntimeError())
+            await resp.read()
+    assert not session.closed
