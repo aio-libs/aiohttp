@@ -1,4 +1,4 @@
-from contextlib import suppress
+import pytest
 
 import aiohttp
 from aiohttp import web
@@ -19,7 +19,7 @@ async def test_close_resp_on_error_async_with_session(loop, test_server):
     server = await test_server(app)
 
     async with aiohttp.ClientSession(loop=loop) as session:
-        with suppress(RuntimeError):
+        with pytest.raises(RuntimeError):
             async with session.get(server.make_url('/')) as resp:
                 resp.content.set_exception(RuntimeError())
                 await resp.read()
@@ -53,7 +53,7 @@ async def test_non_close_detached_session_on_error_cm(loop, test_server):
     cm = aiohttp.get(server.make_url('/'), loop=loop)
     session = cm._session
     assert not session.closed
-    with suppress(RuntimeError):
+    with pytest.raises(RuntimeError):
         async with cm as resp:
             resp.content.set_exception(RuntimeError())
             await resp.read()
@@ -64,6 +64,6 @@ async def test_close_detached_session_on_non_existing_addr(loop):
     cm = aiohttp.get('http://non-existing.example.com', loop=loop)
     session = cm._session
     assert not session.closed
-    with suppress(Exception):
+    with pytest.raises(Exception):
         await cm
     assert session.closed
