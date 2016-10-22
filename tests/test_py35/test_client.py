@@ -42,7 +42,7 @@ async def test_release_resp_on_normal_exit_from_cm(loop, test_server):
         assert len(session._connector._conns) == 1
 
 
-async def test_close_detached_session_on_error(loop, test_server):
+async def test_non_close_detached_session_on_error_cm(loop, test_server):
     async def handler(request):
         return web.Response()
 
@@ -58,3 +58,12 @@ async def test_close_detached_session_on_error(loop, test_server):
             resp.content.set_exception(RuntimeError())
             await resp.read()
     assert not session.closed
+
+
+async def test_close_detached_session_on_non_existing_addr(loop):
+    cm = aiohttp.get('http://non-existing.example.com', loop=loop)
+    session = cm._session
+    assert not session.closed
+    with suppress(Exception):
+        await cm
+    assert session.closed
