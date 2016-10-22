@@ -1,5 +1,7 @@
 import asyncio
 import datetime
+import pathlib
+import tempfile
 import unittest
 from http.cookies import SimpleCookie
 from unittest import mock
@@ -142,17 +144,17 @@ def test_constructor(loop, cookies_to_send, cookies_to_receive):
 
 
 def test_save_load(loop, cookies_to_send):
-    import tempfile
-    cookie_file = tempfile.mkdtemp() + '/aiohttp.test.cookie'
-    jar_save = CookieJar(loop=loop)
-    jar_save.update_cookies(cookies_to_send)
-    jar_save.save(cookie_file)
-    jar_load = CookieJar(loop=loop)
-    jar_load.load(cookie_file)
-    jar_cookies = SimpleCookie()
-    for cookie in jar_load:
-        dict.__setitem__(jar_cookies, cookie.key, cookie)
-    assert jar_cookies == cookies_to_send
+    cookie_file_str = tempfile.mkdtemp() + '/aiohttp.test.cookie'
+    for cookie_file in [cookie_file_str, pathlib.Path(cookie_file_str)]:
+        jar_save = CookieJar(loop=loop)
+        jar_save.update_cookies(cookies_to_send)
+        jar_save.save(cookie_file)
+        jar_load = CookieJar(loop=loop)
+        jar_load.load(cookie_file)
+        jar_cookies = SimpleCookie()
+        for cookie in jar_load:
+            dict.__setitem__(jar_cookies, cookie.key, cookie)
+        assert jar_cookies == cookies_to_send
 
 
 def test_ctor_ith_default_loop(loop):

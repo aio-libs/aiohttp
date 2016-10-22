@@ -2,6 +2,7 @@ import datetime
 import os
 import pickle
 import re
+import pathlib
 from collections import defaultdict
 from collections.abc import Mapping
 from http.cookies import Morsel, SimpleCookie
@@ -40,15 +41,18 @@ class CookieJar(AbstractCookieJar):
         self._expirations = {}
 
     def load(self, file_path):
-        f = open(file_path, 'rb')
-        self._cookies = pickle.load(f)
+        #file_path = str(file_path) if isinstance(file_path, pathlib.Path) else file_path
+        file_path = str(file_path)
+        with open(file_path, 'rb') as f:
+            self._cookies = pickle.load(f)
 
     def save(self, file_path):
-        file_dir = os.path.dirname(file_path)
-        if file_dir and not os.path.exists(file_dir):
-            os.makedirs(file_dir)
-        f = open(file_path, 'wb')
-        pickle.dump(self._cookies, f)
+        file_path = pathlib.Path(file_path)
+        file_dir = file_path.parent
+        if not file_dir.is_dir():
+            file_dir.mkdir(parents=True)
+        with open(str(file_path), 'wb') as f:
+            pickle.dump(self._cookies, f)
 
     def clear(self):
         self._cookies.clear()
