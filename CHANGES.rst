@@ -45,7 +45,7 @@ CHANGES
 
 - Show more verbose message on import errors #1319
 
--
+- Added save and load functionality for `CookieJar` #1219
 
 -
 
