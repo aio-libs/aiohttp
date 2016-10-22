@@ -1,4 +1,6 @@
 import datetime
+import pathlib
+import pickle
 import re
 from collections import defaultdict
 from collections.abc import Mapping
@@ -36,6 +38,19 @@ class CookieJar(AbstractCookieJar):
         self._unsafe = unsafe
         self._next_expiration = ceil(self._loop.time())
         self._expirations = {}
+
+    def load(self, file_path):
+        file_path = str(file_path)
+        with open(file_path, 'rb') as f:
+            self._cookies = pickle.load(f)
+
+    def save(self, file_path):
+        file_path = pathlib.Path(file_path)
+        file_dir = file_path.parent
+        if not file_dir.is_dir():
+            file_dir.mkdir(parents=True)
+        with open(str(file_path), 'wb') as f:
+            pickle.dump(self._cookies, f)
 
     def clear(self):
         self._cookies.clear()

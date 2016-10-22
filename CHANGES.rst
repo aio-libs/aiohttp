@@ -51,7 +51,7 @@ CHANGES
 
 -
 
--
+- Support load/save CookieJar #1219
 
 -
 
