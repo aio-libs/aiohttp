@@ -1543,14 +1543,16 @@ CookieJar
       Write a pickled representation of cookies into the file
       at provided path.
 
-      :param str file_path: Path to file where cookies will be serialized.
+      :param file_path: Path to file where cookies will be serialized,
+          :class:`str` or :class:`pathlib.Path` instance.
 
    .. method:: load(file_path)
 
       Load a pickled representation of cookies from the file
       at provided path.
 
-      :param str file_path: Path to file from where cookies will be imported.
+      :param file_path: Path to file from where cookies will be
+           imported, :class:`str` or :class:`pathlib.Path` instance.
 
 .. disqus::
   :title: aiohttp client reference
