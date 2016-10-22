@@ -459,4 +459,4 @@ def test_ws_connect_non_overlapped_protocols(ws_key, loop, key_data):
                 protocols=('t1', 't2', 'chat'),
                 loop=loop)
 
-    assert res.protocol == None
+    assert res.protocol is None
