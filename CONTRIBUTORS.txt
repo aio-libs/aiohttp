@@ -54,6 +54,7 @@ Erich Healy
 Eugene Chernyshov
 Eugene Naydenov
 Frederik Gladhorn
+Frederik Peter Aalund
 Gabriel Tremblay
 Gennady Andreyev
 Georges Dubus
@@ -135,6 +136,7 @@ Vladimir Rutsky
 Vladimir Shulyak
 Vladimir Zakharov
 Willem de Groot
+Wilson Ong
 W. Trevor King
 Yannick Koechlin
 Young-Ho Cha

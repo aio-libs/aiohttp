@@ -1217,6 +1217,10 @@ Response object
 
       Payload stream, contains response's BODY (:class:`StreamReader`).
 
+      Reading from the stream raises
+      :exc:`aiohttp.ClientDisconnectedError` if the response object is
+      closed before read calls.
+
    .. attribute:: cookies
 
       HTTP cookies of response (*Set-Cookie* HTTP header,

@@ -43,9 +43,26 @@ CHANGES
 
 - Enhancement to AccessLogger (pass *extra* dict) #1303
 
-- Ensure TestClient HTTP methods return a context manager #1318
+- Show more verbose message on import errors #1319
+
+-
+
+-
+
+-
 
 - Support load/save CookieJar #1219
+
+-
+
+-
+
+- Websockets: Stop `async for` iteration when connection is closed #1144
+
+- Ensure TestClient HTTP methods return a context manager #1318
+
+- Raise `ClientDisconnectedError` to `FlowControlStreamReader` read function
+  if `ClientSession` object is closed by client when reading data. #1323
 
 -
 
