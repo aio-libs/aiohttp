@@ -436,3 +436,27 @@ def test_ws_connect_close_resp_on_err(loop, ws_key, key_data):
                                               protocols=('t1', 't2', 'chat'),
                                               loop=loop)
             resp.close.assert_called_with()
+
+
+@asyncio.coroutine
+def test_ws_connect_non_overlapped_protocols(ws_key, loop, key_data):
+    resp = mock.Mock()
+    resp.status = 101
+    resp.headers = {
+        hdrs.UPGRADE: hdrs.WEBSOCKET,
+        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
+        hdrs.SEC_WEBSOCKET_PROTOCOL: 'other,another'
+    }
+    with mock.patch('aiohttp.client.os') as m_os:
+        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+            m_os.urandom.return_value = key_data
+            m_req.return_value = helpers.create_future(loop)
+            m_req.return_value.set_result(resp)
+
+            res = yield from aiohttp.ws_connect(
+                'http://test.org',
+                protocols=('t1', 't2', 'chat'),
+                loop=loop)
+
+    assert res.protocol == None
