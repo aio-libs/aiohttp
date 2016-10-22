@@ -41,7 +41,6 @@ class CookieJar(AbstractCookieJar):
         self._expirations = {}
 
     def load(self, file_path):
-        # file_path = str(file_path) if isinstance(file_path, pathlib.Path) else file_path
         file_path = str(file_path)
         with open(file_path, 'rb') as f:
             self._cookies = pickle.load(f)
