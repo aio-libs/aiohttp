@@ -518,25 +518,14 @@ else:
 
 class _BaseRequestContextManager(base):
 
-    __slots__ = ('_coro', '_resp')
+    __slots__ = ('_coro', '_resp', 'send', 'throw', 'close')
 
     def __init__(self, coro):
         self._coro = coro
         self._resp = None
-
-    def send(self, value):
-        return self._coro.send(value)
-
-    def throw(self, typ, val=None, tb=None):
-        if val is None:
-            return self._coro.throw(typ)
-        elif tb is None:
-            return self._coro.throw(typ, val)
-        else:
-            return self._coro.throw(typ, val, tb)
-
-    def close(self):
-        return self._coro.close()
+        self.send = coro.send
+        self.throw = coro.throw
+        self.close = coro.close
 
     @property
     def gi_frame(self):
