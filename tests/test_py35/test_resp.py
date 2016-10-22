@@ -1,6 +1,5 @@
 import asyncio
 from collections.abc import Coroutine
-from contextlib import suppress
 
 import pytest
 
@@ -49,10 +48,11 @@ async def test_response_context_manager_error(test_server, loop):
     cm = aiohttp.get(server.make_url('/'), loop=loop)
     session = cm._session
     resp = await cm
-    with suppress(RuntimeError):
+    with pytest.raises(RuntimeError):
         async with resp:
             assert resp.status == 200
             resp.content.set_exception(RuntimeError())
+            await resp.read()
     assert len(session._connector._conns) == 0
 
 
