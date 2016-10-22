@@ -1,7 +1,7 @@
 import datetime
+import pathlib
 import pickle
 import re
-import pathlib
 from collections import defaultdict
 from collections.abc import Mapping
 from http.cookies import Morsel, SimpleCookie
