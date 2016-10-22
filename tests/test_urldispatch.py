@@ -943,3 +943,8 @@ def test_subapp_iter(router, loop):
     r2 = subapp.router.add_post('/', make_handler())
     resource = router.add_subapp('/pre', subapp)
     assert list(resource) == [r1, r2]
+
+
+def test_invalid_route_name(router):
+    with pytest.raises(ValueError):
+        router.add_get('/', make_handler(), name='invalid name')
