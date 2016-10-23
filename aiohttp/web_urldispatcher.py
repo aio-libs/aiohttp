@@ -335,7 +335,7 @@ class StaticResource(PrefixResource):
     def __init__(self, prefix, directory, *, name=None,
                  expect_handler=None, chunk_size=256*1024,
                  response_factory=StreamResponse,
-                 show_index=False):
+                 show_index=False, follow_symlinks=False):
         super().__init__(prefix, name=name)
         try:
             directory = Path(directory)
@@ -351,6 +351,7 @@ class StaticResource(PrefixResource):
         self._file_sender = FileSender(resp_factory=response_factory,
                                        chunk_size=chunk_size)
         self._show_index = show_index
+        self._follow_symlinks = follow_symlinks
 
         self._routes = {'GET': ResourceRoute('GET', self._handle, self,
                                              expect_handler=expect_handler),
@@ -397,7 +398,8 @@ class StaticResource(PrefixResource):
         filename = unquote(request.match_info['filename'])
         try:
             filepath = self._directory.joinpath(filename).resolve()
-            filepath.relative_to(self._directory)
+            if not self._follow_symlinks:
+                filepath.relative_to(self._directory)
         except (ValueError, FileNotFoundError) as error:
             # relatively safe
             raise HTTPNotFound() from error
@@ -709,7 +711,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     def add_static(self, prefix, path, *, name=None, expect_handler=None,
                    chunk_size=256*1024, response_factory=StreamResponse,
-                   show_index=False):
+                   show_index=False, follow_symlinks=False):
         """Add static files view.
 
         prefix - url prefix
@@ -725,7 +727,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                                   expect_handler=expect_handler,
                                   chunk_size=chunk_size,
                                   response_factory=response_factory,
-                                  show_index=show_index)
+                                  show_index=show_index,
+                                  follow_symlinks=follow_symlinks)
         self._reg_resource(resource)
         return resource
 
