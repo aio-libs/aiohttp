@@ -131,6 +131,7 @@ Vikas Kawadia
 Vitalik Verhovodov
 Vitaly Haritonsky
 Vitaly Magerya
+Vladimir Kozlovski
 Vladimir Rutsky
 Vladimir Shulyak
 Vladimir Zakharov
