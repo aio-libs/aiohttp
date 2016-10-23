@@ -75,6 +75,36 @@ def test_access_root_of_static_handler(tmp_dir_path, loop, test_client,
     yield from r.release()
 
 
+@pytest.mark.parametrize('data', ['hello world'])
+@asyncio.coroutine
+def test_follow_symlink(tmp_dir_path, loop, test_client, data):
+    """
+    Tests the access to a symlink, in static folder
+    """
+    my_dir_path = os.path.join(tmp_dir_path, 'my_dir')
+    os.mkdir(my_dir_path)
+
+    my_file_path = os.path.join(my_dir_path, 'my_file_in_dir')
+    with open(my_file_path, 'w') as fw:
+        fw.write(data)
+
+    my_symlink_path = os.path.join(tmp_dir_path, 'my_symlink')
+    os.symlink(my_dir_path, my_symlink_path)
+
+    app = web.Application(loop=loop)
+
+    # Register global static route:
+    app.router.add_static('/', tmp_dir_path, follow_symlinks=True)
+    client = yield from test_client(app)
+
+    # Request the root of the static directory.
+    r = yield from client.get('/my_symlink/my_file_in_dir')
+    assert r.status == 200
+    assert (yield from r.text()) == data
+
+    yield from r.release()
+
+
 @pytest.mark.parametrize('dir_name,filename,data', [
     ('', 'test file.txt', 'test text'),
     ('test dir name', 'test dir file .txt', 'test text file folder')

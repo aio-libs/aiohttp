@@ -1464,7 +1464,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
                           chunk_size=256*1024, \
                           response_factory=StreamResponse, \
-                          show_index=False)
+                          show_index=False, \
+                          follow_symlinks=False)
 
       Adds a router and a handler for returning static files.
 
@@ -1519,6 +1520,10 @@ Router is any object that implements :class:`AbstractRouter` interface.
       :param bool show_index: flag for allowing to show indexes of a directory,
                               by default it's not allowed and HTTP/403 will
                               be returned on directory access.
+
+      :param bool follow_symlinks: flag for allowing to follow symlinks from
+                              a directory, by default it's not allowed and
+                              HTTP/404 will be returned on access.
 
    :returns: new :class:`StaticRoute` instance.
 

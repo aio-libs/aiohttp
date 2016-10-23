@@ -47,7 +47,7 @@ CHANGES
 
 - Added save and load functionality for `CookieJar` #1219
 
--
+- Added option on `StaticRoute` to follow symlinks #1299
 
 -
 
