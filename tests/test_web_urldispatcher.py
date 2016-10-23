@@ -79,10 +79,8 @@ def test_access_root_of_static_handler(tmp_dir_path, loop, test_client,
 @asyncio.coroutine
 def test_follow_symlink(tmp_dir_path, loop, test_client, data):
     """
-    Tests the access to a looped symlink, which could not be resolved.
+    Tests the access to a symlink, in static folder
     """
-    print('aaaaa', tmp_dir_path)
-
     my_dir_path = os.path.join(tmp_dir_path, 'my_dir')
     os.mkdir(my_dir_path)
 
