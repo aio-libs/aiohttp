@@ -348,6 +348,11 @@ instead could be enabled with ``show_index`` parameter set to ``True``::
 
    app.router.add_static('/prefix', path_to_static_folder, show_index=True)
 
+When a symlink from the static directory is accessed, the server respondes to
+client with ``HTTP/404 Not Found`` by default. To allow the server to follow
+symlinks, parameter ``follow_symlinks`` should be set to ``True``::
+
+   app.router.add_static('/prefix', path_to_static_folder, follow_symlinks=True)
 
 Template Rendering
 ------------------
