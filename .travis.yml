@@ -45,13 +45,13 @@ after_success:
   - codecov
   - ./run_docker.sh
 
-deploy:
-  provider: pypi
-  user: andrew.svetlov
-  password:
-    secure: ZQKbdPT9BlNqP5CTbWRQyeyig7Bpf7wsnYVQIQPOZc9Ec74A+dsbagstR1sPkAO+d+5PN0pZMovvmU7OQhSVPAnJ74nsN90/fL4ux3kqYecMbevv0rJg20hMXSSkwMEIpjUsMdMjJvZAcaKytGWmKL0qAlOJHhixd1pBbWyuIUE=
-  distributions: "sdist"
-  on:
-    tags: true
-    all_branches: true
-    python: 3.5
+#deploy:
+#  provider: pypi
+#  user: andrew.svetlov
+#  password:
+#    secure: ZQKbdPT9BlNqP5CTbWRQyeyig7Bpf7wsnYVQIQPOZc9Ec74A+dsbagstR1sPkAO+d+5PN0pZMovvmU7OQhSVPAnJ74nsN90/fL4ux3kqYecMbevv0rJg20hMXSSkwMEIpjUsMdMjJvZAcaKytGWmKL0qAlOJHhixd1pBbWyuIUE=
+#  distributions: "sdist"
+#  on:
+#    tags: true
+#    all_branches: true
+#    python: 3.5
