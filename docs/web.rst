@@ -1126,6 +1126,10 @@ The task :func:`listen_to_redis` will run forever.
 To shut it down correctly :attr:`Application.on_cleanup` signal handler
 may be used to send a cancellation to it.
 
+Swagger support
+---------------
+
+`aiohttp-swagger <https://github.com/cr0hn/aiohttp-swagger>`_ is a library that allow to add Swagger documentation and embed the Swagger-UI into your :mod:`aiohttp.web` project.
 
 CORS support
 ------------
