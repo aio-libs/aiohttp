@@ -918,6 +918,9 @@ finalizing.  It's pretty close to :func:`run_app` utility function::
        loop.run_until_complete(app.cleanup())
    loop.close()
 
+Swagger support
+---------------
+`aiohttp-swagger <https://github.com/cr0hn/aiohttp-swagger>`_ is a library that allow to add Swagger documentation and embed the Swagger-UI into your :mod:`aiohttp.web` project.
 
 CORS support
 ------------
