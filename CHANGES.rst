@@ -49,7 +49,7 @@ CHANGES
 
 - Added option on `StaticRoute` to follow symlinks #1299
 
--
+- Fix invalid invocations of errors.LineTooLong #1335
 
 -
 
