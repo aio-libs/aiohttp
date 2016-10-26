@@ -886,10 +886,10 @@ TCPConnector
       *HTTPS* requests (enabled by default). May be disabled to
       skip validation for sites with invalid certificates.
 
-   :param bytes fingerprint: Pass the binary MD5, SHA1, or SHA256
-        digest of the expected certificate in DER format to verify
-        that the certificate the server presents matches. Useful
-        for `certificate pinning
+   :param bytes fingerprint: Pass the SHA256 digest of the expected
+        certificate in DER format to verify that the certificate the
+        server presents matches. Note: use of MD5 or SHA1 digests is
+        insecure and deprecated. Useful for `certificate pinning
         <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
 
         .. versionadded:: 0.16
