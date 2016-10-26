@@ -49,8 +49,8 @@ dict
 Dict
 django
 Django
-DNSResolver
 dns
+DNSResolver
 Dup
 elasticsearch
 encodings
@@ -80,8 +80,8 @@ infos
 inline
 io
 ip
-ipdb
 IP
+ipdb
 IPv
 ish
 iterable
@@ -189,6 +189,7 @@ toolbar
 toplevel
 tp
 tuples
+UI
 un
 unittest
 Unittest
