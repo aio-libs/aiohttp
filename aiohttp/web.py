@@ -58,6 +58,20 @@ class RequestHandler(ServerHttpProtocol):
         super().connection_lost(exc)
 
     @asyncio.coroutine
+    def get_handler(self):
+        try:
+            return self._handler
+        except AttributeError:
+            @asyncio.coroutine
+            def handler(request):
+                """Root handler that dispatches to the routed handler."""
+                return (yield from request.match_info.handler(request))
+            for factory in reversed(self._middlewares):
+                handler = yield from factory(self._app, handler)
+            self._handler = handler
+            return handler
+
+    @asyncio.coroutine
     def handle_request(self, message, payload):
         self._manager._requests_count += 1
         if self.access_log:
@@ -83,9 +97,7 @@ class RequestHandler(ServerHttpProtocol):
                     yield from match_info.expect_handler(request))
 
             if resp is None:
-                handler = match_info.handler
-                for factory in reversed(self._middlewares):
-                    handler = yield from factory(app, handler)
+                handler = yield from self.get_handler()
                 resp = yield from handler(request)
 
             assert isinstance(resp, web_reqrep.StreamResponse), \
