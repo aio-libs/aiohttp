@@ -66,7 +66,8 @@ CHANGES
 
 - Document deployment without `Gunicorn` #1120
 
--
+- Add deprecation warning for MD5 and SHA1 digests when used for fingerprint
+  of site certs in TCPConnector. #1186 
 
 1.0.5 (2016-10-11)
 ------------------

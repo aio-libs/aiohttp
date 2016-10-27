@@ -65,6 +65,7 @@ Igor Pavlov
 Ingmar Steen
 Jacob Champion
 Jaesung Lee
+Jake Davis
 Jakub Wilk
 Jashandeep Sohi
 Jeroen van der Heijden
