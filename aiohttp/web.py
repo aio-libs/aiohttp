@@ -2,6 +2,7 @@ import asyncio
 import sys
 import warnings
 from argparse import ArgumentParser
+from collections import MutableMapping
 from importlib import import_module
 
 from yarl import URL
@@ -158,7 +159,7 @@ class RequestHandlerFactory:
             **self._kwargs)
 
 
-class Application(dict):
+class Application(MutableMapping):
 
     def __init__(self, *, logger=web_logger, loop=None,
                  router=None, handler_factory=RequestHandlerFactory,
@@ -176,6 +177,7 @@ class Application(dict):
         self.logger = logger
 
         self._middlewares = list(middlewares)
+        self._state = {}
 
         self._on_pre_signal = PreSignal()
         self._on_post_signal = PostSignal()
@@ -183,6 +185,25 @@ class Application(dict):
         self._on_startup = Signal(self)
         self._on_shutdown = Signal(self)
         self._on_cleanup = Signal(self)
+
+    # MutableMapping API
+
+    def __getitem__(self, key):
+        return self._state[key]
+
+    def __setitem__(self, key, value):
+        self._state[key] = value
+
+    def __delitem__(self, key):
+        del self._state[key]
+
+    def __len__(self):
+        return len(self._state)
+
+    def __iter__(self):
+        return iter(self._state)
+
+    ########
 
     @property
     def debug(self):

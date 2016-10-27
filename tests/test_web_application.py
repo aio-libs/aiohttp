@@ -167,3 +167,11 @@ def test_on_startup(loop):
     assert long_running1_called
     assert long_running2_called
     assert all_long_running_called
+
+
+def test_app_delitem(loop):
+    app = web.Application(loop=loop)
+    app['key'] = 'value'
+    assert len(app) == 1
+    del app['key']
+    assert len(app) == 0
