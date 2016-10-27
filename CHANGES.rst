@@ -71,9 +71,10 @@ CHANGES
 
 - Implement sub-applications #1301
 
--
+- Don't inherit `web.Request` from `dict` but implement
+  `MutableMapping` protocol.
 
--
+- Implement frozen signals
 
 -
 

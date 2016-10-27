@@ -440,9 +440,6 @@ class Request(collections.MutableMapping, HeadersMixin):
         self._post = MultiDictProxy(out)
         return self._post
 
-    def copy(self):
-        raise NotImplementedError
-
     def __repr__(self):
         ascii_encodable_path = self.path.encode('ascii', 'backslashreplace') \
             .decode('ascii')
