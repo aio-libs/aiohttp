@@ -91,9 +91,9 @@ class Request(dict, HeadersMixin):
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
-    def __init__(self, app, message, payload, transport, reader, writer, *,
+    def __init__(self, message, payload, transport, reader, writer, *,
                  secure_proxy_ssl_header=None):
-        self._app = app
+        self._app = None
         self._message = message
         self._transport = transport
         self._reader = reader
@@ -274,10 +274,10 @@ class Request(dict, HeadersMixin):
         """Result of route resolving."""
         return self._match_info
 
-    @property
+    @reify
     def app(self):
         """Application instance."""
-        return self._app
+        return self._match_info.apps[-1]
 
     @property
     def transport(self):
@@ -724,7 +724,8 @@ class StreamResponse(HeadersMixin):
         resp_impl = self._start_pre_check(request)
         if resp_impl is not None:
             return resp_impl
-        yield from request.app.on_response_prepare.send(request, self)
+        for app in request.match_info.apps:
+            yield from app.on_response_prepare.send(request, self)
 
         return self._start(request)
 

@@ -664,7 +664,7 @@ StreamResponse
          Use :meth:`prepare` instead.
 
       .. warning:: The method doesn't call
-         :attr:`web.Application.on_response_prepare` signal, use
+         :attr:`~aiohttp.web.Application.on_response_prepare` signal, use
          :meth:`prepare` instead.
 
    .. coroutinemethod:: prepare(request)
@@ -675,7 +675,7 @@ StreamResponse
       Send *HTTP header*. You should not change any header data after
       calling this method.
 
-      The coroutine calls :attr:`web.Application.on_response_prepare`
+      The coroutine calls :attr:`~aiohttp.web.Application.on_response_prepare`
       signal handlers.
 
       .. versionadded:: 0.18

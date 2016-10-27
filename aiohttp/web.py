@@ -39,7 +39,6 @@ class RequestHandler(ServerHttpProtocol):
         self._manager = manager
         self._app = app
         self._router = router
-        self._middlewares = app.middlewares
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
 
     def __repr__(self):
@@ -65,15 +64,16 @@ class RequestHandler(ServerHttpProtocol):
 
         app = self._app
         request = web_reqrep.Request(
-            app, message, payload,
+            message, payload,
             self.transport, self.reader, self.writer,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header)
         self._meth = request.method
         self._path = request.path
         try:
             match_info = yield from self._router.resolve(request)
-
             assert isinstance(match_info, AbstractMatchInfo), match_info
+            match_info.add_app(app)
+            match_info.freeze()
 
             resp = None
             request._match_info = match_info
@@ -84,7 +84,7 @@ class RequestHandler(ServerHttpProtocol):
 
             if resp is None:
                 handler = match_info.handler
-                for factory in reversed(self._middlewares):
+                for factory in match_info.middlewares:
                     handler = yield from factory(app, handler)
                 resp = yield from handler(request)
 
@@ -166,7 +166,7 @@ class Application(dict):
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:
-            router = web_urldispatcher.UrlDispatcher()
+            router = web_urldispatcher.UrlDispatcher(self)
         assert isinstance(router, AbstractRouter), router
 
         self._debug = debug
@@ -187,6 +187,13 @@ class Application(dict):
     @property
     def debug(self):
         return self._debug
+
+    def _reg_subapp_signals(self, subapp):
+        self._on_pre_signal.extend(subapp.on_pre_signal)
+        self._on_post_signal.extend(subapp.on_post_signal)
+        self._on_startup.extend(subapp.on_startup)
+        self._on_shutdown.extend(subapp.on_shutdown)
+        self._on_cleanup.extend(subapp.on_cleanup)
 
     @property
     def on_response_prepare(self):
@@ -288,7 +295,7 @@ class Application(dict):
         return self
 
     def __repr__(self):
-        return "<Application>"
+        return "<Application 0x{:x}>".format(id(self))
 
 
 def run_app(app, *, host='0.0.0.0', port=None,
