@@ -349,7 +349,7 @@ like one using :meth:`Request.copy`.
       Returns :class:`~multidict.MultiDictProxy` instance filled
       with parsed data.
 
-      If :attr:`method` is not *POST*, *PUT* or *PATCH* or
+      If :attr:`method` is not *POST*, *PUT*, *PATCH*, *TRACE* or *DELETE* or
       :attr:`content_type` is not empty or
       *application/x-www-form-urlencoded* or *multipart/form-data*
       returns empty multidict.
