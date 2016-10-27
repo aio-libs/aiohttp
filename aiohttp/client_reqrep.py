@@ -22,7 +22,7 @@ from .streams import EOF_MARKER, FlowControlStreamReader
 
 try:
     import cchardet as chardet
-except ImportError:
+except ImportError:  # pragma: no cover
     import chardet
 
 
@@ -183,10 +183,7 @@ class ClientRequest:
             c.load(self.headers.get(hdrs.COOKIE, ''))
             del self.headers[hdrs.COOKIE]
 
-        if isinstance(cookies, dict):
-            cookies = cookies.items()
-
-        for name, value in cookies:
+        for name, value in cookies.items():
             if isinstance(value, http.cookies.Morsel):
                 c[value.key] = value.value
             else:
@@ -731,7 +728,11 @@ class ClientResponse:
 
         encoding = params.get('charset')
         if not encoding:
-            encoding = chardet.detect(self._content)['encoding']
+            if mtype == 'application' and stype == 'json':
+                # RFC 7159 states that the default encoding is UTF-8.
+                encoding = 'utf-8'
+            else:
+                encoding = chardet.detect(self._content)['encoding']
         if not encoding:
             encoding = 'utf-8'
 

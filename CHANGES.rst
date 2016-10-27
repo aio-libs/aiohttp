@@ -45,7 +45,11 @@ CHANGES
 
 - Show more verbose message on import errors #1319
 
--
+- Added save and load functionality for `CookieJar` #1219
+
+- Added option on `StaticRoute` to follow symlinks #1299
+
+- Force encoding of `application/json` content type to utf-8 #1339
 
 -
 
@@ -53,18 +57,14 @@ CHANGES
 
 -
 
--
-
--
-
--
+- Websockets: Stop `async for` iteration when connection is closed #1144
 
 - Ensure TestClient HTTP methods return a context manager #1318
 
 - Raise `ClientDisconnectedError` to `FlowControlStreamReader` read function
   if `ClientSession` object is closed by client when reading data. #1323
 
--
+- Document deployment without `Gunicorn` #1120
 
 -
 

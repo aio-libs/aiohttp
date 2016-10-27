@@ -1538,5 +1538,21 @@ CookieJar
       :return: :class:`http.cookies.SimpleCookie` with filtered
          cookies for given URL.
 
+   .. method:: save(file_path)
+
+      Write a pickled representation of cookies into the file
+      at provided path.
+
+      :param file_path: Path to file where cookies will be serialized,
+          :class:`str` or :class:`pathlib.Path` instance.
+
+   .. method:: load(file_path)
+
+      Load a pickled representation of cookies from the file
+      at provided path.
+
+      :param file_path: Path to file from where cookies will be
+           imported, :class:`str` or :class:`pathlib.Path` instance.
+
 .. disqus::
   :title: aiohttp client reference

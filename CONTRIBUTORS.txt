@@ -53,6 +53,7 @@ Erich Healy
 Eugene Chernyshov
 Eugene Naydenov
 Frederik Gladhorn
+Frederik Peter Aalund
 Gabriel Tremblay
 Gennady Andreyev
 Georges Dubus
@@ -75,6 +76,7 @@ Julien Duponchelle
 Junjie Tao
 Justas Trimailovas
 Kay Zheng
+Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
 Kyrylo Perevozchikov
@@ -130,6 +132,7 @@ Vikas Kawadia
 Vitalik Verhovodov
 Vitaly Haritonsky
 Vitaly Magerya
+Vladimir Kozlovski
 Vladimir Rutsky
 Vladimir Shulyak
 Vladimir Zakharov

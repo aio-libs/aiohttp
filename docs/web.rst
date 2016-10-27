@@ -348,6 +348,11 @@ instead could be enabled with ``show_index`` parameter set to ``True``::
 
    app.router.add_static('/prefix', path_to_static_folder, show_index=True)
 
+When a symlink from the static directory is accessed, the server responses to
+client with ``HTTP/404 Not Found`` by default. To allow the server to follow
+symlinks, parameter ``follow_symlinks`` should be set to ``True``::
+
+   app.router.add_static('/prefix', path_to_static_folder, follow_symlinks=True)
 
 Template Rendering
 ------------------
@@ -1121,6 +1126,12 @@ The task :func:`listen_to_redis` will run forever.
 To shut it down correctly :attr:`Application.on_cleanup` signal handler
 may be used to send a cancellation to it.
 
+Swagger support
+---------------
+
+`aiohttp-swagger <https://github.com/cr0hn/aiohttp-swagger>`_ is a
+library that allow to add Swagger documentation and embed the
+Swagger-UI into your :mod:`aiohttp.web` project.
 
 CORS support
 ------------
