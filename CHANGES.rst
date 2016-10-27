@@ -76,7 +76,8 @@ CHANGES
 
 - Implement frozen signals
 
--
+- Don't inherit `web.Application` from `dict` but implement
+  `MutableMapping` protocol.
 
 -
 
