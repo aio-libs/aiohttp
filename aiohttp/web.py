@@ -10,7 +10,7 @@ from yarl import URL
 from . import hdrs, web_exceptions, web_reqrep, web_urldispatcher, web_ws
 from .abc import AbstractMatchInfo, AbstractRouter
 from .helpers import FrozenList, sentinel
-from .log import web_logger
+from .log import access_logger, web_logger
 from .protocol import HttpVersion  # noqa
 from .server import ServerHttpProtocol
 from .signals import PostSignal, PreSignal, Signal
@@ -349,7 +349,8 @@ class Application(MutableMapping):
 
 def run_app(app, *, host='0.0.0.0', port=None,
             shutdown_timeout=60.0, ssl_context=None,
-            print=print, backlog=128, access_log_format=None):
+            print=print, backlog=128, access_log_format=None,
+            access_log=access_logger):
     """Run an app locally"""
     if port is None:
         if not ssl_context:
@@ -362,6 +363,7 @@ def run_app(app, *, host='0.0.0.0', port=None,
     make_handler_kwargs = dict()
     if access_log_format is not None:
         make_handler_kwargs['access_log_format'] = access_log_format
+        make_handler_kwargs['access_log'] = access_log
     handler = app.make_handler(**make_handler_kwargs)
     server = loop.create_server(handler, host, port, ssl=ssl_context,
                                 backlog=backlog)
