@@ -17,6 +17,8 @@ autogenerates
 autogeneration
 awaitable
 BaseEventLoop
+backend
+backends
 basename
 BasicAuth
 BodyPartReader
@@ -61,6 +63,7 @@ epoll
 fallback
 filename
 finalizers
+frontend
 getall
 gethostbyname
 github
@@ -173,6 +176,10 @@ subpackage
 subprotocol
 subprotocols
 subtype
+Supervisord
+supervisord
+Systemd
+Runit
 Svetlov
 symlink
 symlinks
