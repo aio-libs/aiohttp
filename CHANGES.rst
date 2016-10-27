@@ -79,7 +79,7 @@ CHANGES
 - Don't inherit `web.Applicationg` from `dict` but implement
   `MutableMapping` protocol.
 
--
+- Suppotr freezing for web applications
 
 -
 

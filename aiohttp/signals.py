@@ -1,46 +1,19 @@
 import asyncio
-from collections import MutableSequence
 from itertools import count
 
+from aiohttp.helpers import FrozenList
 
-class BaseSignal(MutableSequence):
 
-    __slots__ = ('_frozen', '_items')
+class BaseSignal(FrozenList):
 
-    def __init__(self):
-        self._frozen = False
-        self._items = []
+    __slots__ = ()
 
     @asyncio.coroutine
     def _send(self, *args, **kwargs):
-        for receiver in self._items:
+        for receiver in self:
             res = receiver(*args, **kwargs)
             if asyncio.iscoroutine(res) or isinstance(res, asyncio.Future):
                 yield from res
-
-    def freeze(self):
-        self._frozen = True
-
-    def __getitem__(self, index):
-        return self._items[index]
-
-    def __setitem__(self, index, value):
-        if self._frozen:
-            raise RuntimeError("Cannot modify frozen signal.")
-        self._items[index] = value
-
-    def __delitem__(self, index):
-        if self._frozen:
-            raise RuntimeError("Cannot modify frozen signal.")
-        del self._items[index]
-
-    def __len__(self):
-        return len(self._items)
-
-    def insert(self, pos, item):
-        if self._frozen:
-            raise RuntimeError("Cannot modify frozen signal.")
-        self._items.insert(pos, item)
 
 
 class Signal(BaseSignal):

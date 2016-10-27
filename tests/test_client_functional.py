@@ -515,9 +515,9 @@ def test_204_with_gzipped_content_encoding(loop, test_client):
         return resp
 
     app = web.Application(loop=loop)
+    app.router.add_route('DELETE', '/', handler)
     client = yield from test_client(app)
 
-    app.router.add_route('DELETE', '/', handler)
     resp = yield from client.delete('/')
     assert resp.status == 204
     yield from resp.release()
@@ -1477,9 +1477,9 @@ def test_shortcuts(test_client, loop):
         return web.Response(text=request.method)
 
     app = web.Application(loop=loop)
-    client = yield from test_client(lambda loop: app)
     for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         app.router.add_route(meth.upper(), '/', handler)
+    client = yield from test_client(lambda loop: app)
 
     for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         coro = getattr(client.session, meth)
@@ -1508,9 +1508,9 @@ def test_module_shortcuts(test_client, loop):
         return web.Response(text=request.method)
 
     app = web.Application(loop=loop)
-    client = yield from test_client(lambda loop: app)
     for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         app.router.add_route(meth.upper(), '/', handler)
+    client = yield from test_client(lambda loop: app)
 
     for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         coro = getattr(aiohttp, meth)
