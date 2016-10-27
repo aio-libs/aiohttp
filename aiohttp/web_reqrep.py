@@ -140,7 +140,7 @@ class Request(collections.MutableMapping, HeadersMixin):
         'http' or 'https'.
         """
         warnings.warn("path_qs property is deprecated, "
-                      "use .url.sheme instead",
+                      "use .url.scheme instead",
                       DeprecationWarning)
         return self.url.scheme
 
