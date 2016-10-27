@@ -1983,7 +1983,9 @@ Utilities
 
 .. function:: run_app(app, *, host='0.0.0.0', port=None, loop=None, \
                       shutdown_timeout=60.0, ssl_context=None, \
-                      print=print, backlog=128)
+                      print=print, backlog=128, \
+                      access_log_format=None, \
+                      access_log=aiohttp.log.access_logger)
 
    A utility function for running an application, serving it until
    keyboard interrupt and performing a
@@ -2022,6 +2024,14 @@ Utilities
    :param int backlog: the number of unaccepted connections that the
                        system will allow before refusing new
                        connections (``128`` by default).
+
+   :param access_log: :class:`logging.Logger` instance used for saving
+                      access logs. Use ``None`` for disabling logs for
+                      sake of speedup.
+
+   :param access_log_format: access log format, see
+                             :ref:`aiohttp-logging-access-log-format-spec`
+                             for details.
 
 
 Constants

@@ -79,9 +79,9 @@ CHANGES
 - Don't inherit `web.Applicationg` from `dict` but implement
   `MutableMapping` protocol.
 
-- Suppotr freezing for web applications
+- Support freezing for web applications
 
--
+- Accept access_log parameter in `web.run_app`, use `None` to disable logging
 
 -
 
