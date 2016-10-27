@@ -1071,3 +1071,118 @@ def test_subapp_middlewares(loop, test_client):
     assert resp.status == 200
     assert [(1, app), (1, subapp1), (1, subapp2),
             (2, subapp2), (2, subapp1), (2, app)] == order
+
+
+@asyncio.coroutine
+def test_subapp_on_response_prepare(loop, test_client):
+    order = []
+
+    @asyncio.coroutine
+    def handler(request):
+        return web.HTTPOk(text='OK')
+
+    def make_signal(app):
+
+        @asyncio.coroutine
+        def on_response(request, response):
+            order.append(app)
+
+        return on_response
+
+    app = web.Application(loop=loop)
+    app.on_response_prepare.append(make_signal(app))
+    subapp1 = web.Application(loop=loop)
+    subapp1.on_response_prepare.append(make_signal(subapp1))
+    subapp2 = web.Application(loop=loop)
+    subapp2.on_response_prepare.append(make_signal(subapp2))
+    subapp2.router.add_get('/to', handler)
+    subapp1.router.add_subapp('/b/', subapp2)
+    app.router.add_subapp('/a/', subapp1)
+
+    client = yield from test_client(app)
+    resp = yield from client.get('/a/b/to')
+    assert resp.status == 200
+    assert [app, subapp1, subapp2] == order
+
+
+@asyncio.coroutine
+def test_subapp_on_startup(loop, test_server):
+    order = []
+
+    def make_signal(cur_app):
+
+        @asyncio.coroutine
+        def on_signal(app2):
+            assert app2 is app
+            order.append(cur_app)
+
+        return on_signal
+
+    app = web.Application(loop=loop)
+    app.on_startup.append(make_signal(app))
+    subapp1 = web.Application(loop=loop)
+    subapp1.on_startup.append(make_signal(subapp1))
+    subapp2 = web.Application(loop=loop)
+    subapp2.on_startup.append(make_signal(subapp2))
+    subapp1.router.add_subapp('/b/', subapp2)
+    app.router.add_subapp('/a/', subapp1)
+
+    yield from test_server(app)
+
+    assert [app, subapp1, subapp2] == order
+
+
+@asyncio.coroutine
+def test_subapp_on_shutdown(loop, test_server):
+    order = []
+
+    def make_signal(cur_app):
+
+        @asyncio.coroutine
+        def on_signal(app2):
+            assert app2 is app
+            order.append(cur_app)
+
+        return on_signal
+
+    app = web.Application(loop=loop)
+    app.on_shutdown.append(make_signal(app))
+    subapp1 = web.Application(loop=loop)
+    subapp1.on_shutdown.append(make_signal(subapp1))
+    subapp2 = web.Application(loop=loop)
+    subapp2.on_shutdown.append(make_signal(subapp2))
+    subapp1.router.add_subapp('/b/', subapp2)
+    app.router.add_subapp('/a/', subapp1)
+
+    server = yield from test_server(app)
+    yield from server.close()
+
+    assert [app, subapp1, subapp2] == order
+
+
+@asyncio.coroutine
+def test_subapp_on_cleanup(loop, test_server):
+    order = []
+
+    def make_signal(cur_app):
+
+        @asyncio.coroutine
+        def on_signal(app2):
+            assert app2 is app
+            order.append(cur_app)
+
+        return on_signal
+
+    app = web.Application(loop=loop)
+    app.on_cleanup.append(make_signal(app))
+    subapp1 = web.Application(loop=loop)
+    subapp1.on_cleanup.append(make_signal(subapp1))
+    subapp2 = web.Application(loop=loop)
+    subapp2.on_cleanup.append(make_signal(subapp2))
+    subapp1.router.add_subapp('/b/', subapp2)
+    app.router.add_subapp('/a/', subapp1)
+
+    server = yield from test_server(app)
+    yield from server.close()
+
+    assert [app, subapp1, subapp2] == order

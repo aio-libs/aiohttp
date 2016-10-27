@@ -166,7 +166,7 @@ class Application(dict):
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:
-            router = web_urldispatcher.UrlDispatcher()
+            router = web_urldispatcher.UrlDispatcher(self)
         assert isinstance(router, AbstractRouter), router
 
         self._debug = debug
@@ -187,6 +187,13 @@ class Application(dict):
     @property
     def debug(self):
         return self._debug
+
+    def _reg_subapp_signals(self, subapp):
+        self._on_pre_signal.extend(subapp.on_pre_signal)
+        self._on_post_signal.extend(subapp.on_post_signal)
+        self._on_startup.extend(subapp.on_startup)
+        self._on_shutdown.extend(subapp.on_shutdown)
+        self._on_cleanup.extend(subapp.on_cleanup)
 
     @property
     def on_response_prepare(self):

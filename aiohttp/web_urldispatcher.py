@@ -700,10 +700,11 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
     NAME_SPLIT_RE = re.compile('[.:-]')
 
-    def __init__(self):
+    def __init__(self, app):
         super().__init__()
         self._resources = []
         self._named_resources = {}
+        self._app = app
 
     @asyncio.coroutine
     def resolve(self, request):
@@ -876,4 +877,5 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             prefix += '/'
         resource = PrefixedSubAppResource(prefix, subapp)
         self._reg_resource(resource)
+        self._app._reg_subapp_signals(subapp)
         return resource

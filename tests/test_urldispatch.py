@@ -11,8 +11,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import hdrs, web
 from aiohttp.test_utils import make_mocked_request
-from aiohttp.web import (HTTPMethodNotAllowed, HTTPNotFound, Response,
-                         UrlDispatcher)
+from aiohttp.web import HTTPMethodNotAllowed, HTTPNotFound, Response
 from aiohttp.web_urldispatcher import (AbstractResource, ResourceRoute,
                                        SystemRoute, View,
                                        _defaultExpectHandler)
@@ -32,8 +31,13 @@ def make_handler():
 
 
 @pytest.fixture
-def router():
-    return UrlDispatcher()
+def app(loop):
+    return web.Application(loop=loop)
+
+
+@pytest.fixture
+def router(app):
+    return app.router
 
 
 @pytest.fixture

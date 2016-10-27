@@ -66,6 +66,7 @@ class TestServer:
         self._root = URL('{}://{}:{}'.format(self.scheme,
                                              self.host,
                                              self.port))
+        yield from self.app.startup()
         self.handler = self.app.make_handler(**kwargs)
         self.server = yield from self._loop.create_server(self.handler,
                                                           self.host,
