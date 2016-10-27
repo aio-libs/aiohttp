@@ -8,32 +8,20 @@ import pytest
 from multidict import CIMultiDict
 
 from aiohttp import hdrs, signals
-from aiohttp.protocol import (HttpVersion, HttpVersion10, HttpVersion11,
-                              RawRequestMessage)
-from aiohttp.web import (ContentCoding, Request, Response, StreamResponse,
-                         json_response)
+from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
+from aiohttp.test_utils import make_mocked_request
+from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
 
 
 def make_request(method, path, headers=CIMultiDict(),
                  version=HttpVersion11, **kwargs):
-    message = RawRequestMessage(method, path, version, headers,
-                                [(k.encode('utf-8'), v.encode('utf-8'))
-                                 for k, v in headers.items()],
-                                False, False)
-    return request_from_message(message, **kwargs)
-
-
-def request_from_message(message, **kwargs):
-    app = kwargs.get('app') or mock.Mock()
+    app = kwargs.pop('app', None) or mock.Mock()
     app._debug = False
     app.on_response_prepare = signals.Signal(app)
-    payload = mock.Mock()
-    transport = mock.Mock()
-    reader = mock.Mock()
-    writer = kwargs.get('writer') or mock.Mock()
-    req = Request(app, message, payload,
-                  transport, reader, writer)
-    return req
+    writer = kwargs.pop('writer', None) or mock.Mock()
+    return make_mocked_request(method, path, headers,
+                               version=version, writer=writer,
+                               app=app, **kwargs)
 
 
 def test_stream_response_ctor():
@@ -544,9 +532,7 @@ def test___repr__not_started():
 
 @asyncio.coroutine
 def test_keep_alive_http10_default():
-    message = RawRequestMessage('GET', '/', HttpVersion10, CIMultiDict(),
-                                [], True, False)
-    req = request_from_message(message)
+    req = make_request('GET', '/', version=HttpVersion10)
     resp = StreamResponse()
     yield from resp.prepare(req)
     assert not resp.keep_alive
@@ -555,22 +541,17 @@ def test_keep_alive_http10_default():
 @asyncio.coroutine
 def test_keep_alive_http10_switched_on():
     headers = CIMultiDict(Connection='keep-alive')
-    message = RawRequestMessage('GET', '/', HttpVersion10, headers,
-                                [(b'Connection', b'keep-alive')],
-                                False, False)
-    req = request_from_message(message)
+    req = make_request('GET', '/', version=HttpVersion10, headers=headers)
+    req._message = req._message._replace(should_close=False)
     resp = StreamResponse()
     yield from resp.prepare(req)
-    assert resp.keep_alive is True
+    assert resp.keep_alive
 
 
 @asyncio.coroutine
 def test_keep_alive_http09():
     headers = CIMultiDict(Connection='keep-alive')
-    message = RawRequestMessage('GET', '/', HttpVersion(0, 9), headers,
-                                [(b'Connection', b'keep-alive')],
-                                False, False)
-    req = request_from_message(message)
+    req = make_request('GET', '/', version=HttpVersion(0, 9), headers=headers)
     resp = StreamResponse()
     yield from resp.prepare(req)
     assert not resp.keep_alive

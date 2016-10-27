@@ -35,6 +35,29 @@ class AbstractMatchInfo(ABC):
     def get_info(self):
         """Return a dict with additional info useful for introspection"""
 
+    @property  # pragma: no branch
+    @abstractmethod
+    def apps(self):
+        """Stack of nested applications.
+
+        Top level application is left-most element.
+
+        """
+
+    @abstractmethod
+    def add_app(self, app):
+        """Add application to the nested apps stack."""
+
+    @abstractmethod
+    def freeze(self):
+        """Freeze the match info.
+
+        The method is called after route resolution.
+
+        After the call .add_app() is forbidden.
+
+        """
+
 
 class AbstractView(ABC):
 
