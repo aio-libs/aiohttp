@@ -266,8 +266,15 @@ def test_tcp_connector_fingerprint_ok(test_server, test_client,
     def handler(request):
         return web.HTTPOk(text='Test message')
 
-    connector = aiohttp.TCPConnector(loop=loop, verify_ssl=False,
-                                     fingerprint=fingerprint)
+    # Test for deprecation warning on md5 and sha1 len digests.
+    if len(fingerprint) == 16 or len(fingerprint) == 20:
+        with pytest.warns(DeprecationWarning) as cm:
+            connector = aiohttp.TCPConnector(loop=loop, verify_ssl=False,
+                                             fingerprint=fingerprint)
+        assert 'Use sha256.' in str(cm[0].message)
+    else:
+        connector = aiohttp.TCPConnector(loop=loop, verify_ssl=False,
+                                         fingerprint=fingerprint)
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
     server = yield from test_server(app, ssl=ssl_ctx)
