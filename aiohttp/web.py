@@ -9,7 +9,7 @@ from yarl import URL
 
 from . import hdrs, web_exceptions, web_reqrep, web_urldispatcher, web_ws
 from .abc import AbstractMatchInfo, AbstractRouter
-from .helpers import sentinel
+from .helpers import FrozenList, sentinel
 from .log import web_logger
 from .protocol import HttpVersion  # noqa
 from .server import ServerHttpProtocol
@@ -176,8 +176,9 @@ class Application(MutableMapping):
         self._loop = loop
         self.logger = logger
 
-        self._middlewares = list(middlewares)
+        self._middlewares = FrozenList(middlewares)
         self._state = {}
+        self._frozen = False
 
         self._on_pre_signal = PreSignal()
         self._on_post_signal = PostSignal()
@@ -191,10 +192,19 @@ class Application(MutableMapping):
     def __getitem__(self, key):
         return self._state[key]
 
+    def _check_frozen(self):
+        if self._frozen:
+            warnings.warn("Changing state of started or joined "
+                          "application is deprecated",
+                          DeprecationWarning,
+                          stacklevel=3)
+
     def __setitem__(self, key, value):
+        self._check_frozen()
         self._state[key] = value
 
     def __delitem__(self, key):
+        self._check_frozen()
         del self._state[key]
 
     def __len__(self):
@@ -204,6 +214,23 @@ class Application(MutableMapping):
         return iter(self._state)
 
     ########
+
+    @property
+    def frozen(self):
+        return self._frozen
+
+    def freeze(self):
+        if self._frozen:
+            return
+        self._frozen = True
+        self._router.freeze()
+        self._middlewares.freeze()
+        self._on_pre_signal.freeze()
+        self._on_post_signal.freeze()
+        self._on_response_prepare.freeze()
+        self._on_startup.freeze()
+        self._on_shutdown.freeze()
+        self._on_cleanup.freeze()
 
     @property
     def debug(self):
@@ -268,6 +295,7 @@ class Application(MutableMapping):
                     "http://aiohttp.readthedocs.io/en/stable/"
                     "web_reference.html#aiohttp.web.Application"
                 )
+        self.freeze()
         return self._handler_factory(self, self.router, debug=self.debug,
                                      loop=self.loop, **kwargs)
 

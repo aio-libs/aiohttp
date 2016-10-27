@@ -953,3 +953,16 @@ def test_subapp_iter(router, loop):
 def test_invalid_route_name(router):
     with pytest.raises(ValueError):
         router.add_get('/', make_handler(), name='invalid name')
+
+
+def test_frozen_router(router):
+    router.freeze()
+    with pytest.raises(RuntimeError):
+        router.add_get('/', make_handler())
+
+
+def test_frozen_router_subapp(loop, router):
+    subapp = web.Application(loop=loop)
+    subapp.freeze()
+    with pytest.raises(RuntimeError):
+        router.add_subapp('/', subapp)

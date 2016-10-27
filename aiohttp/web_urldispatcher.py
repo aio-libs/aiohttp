@@ -749,6 +749,9 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         assert isinstance(resource, AbstractResource), \
             'Instance of AbstractResource class is required, got {!r}'.format(
                 resource)
+        if self.frozen:
+            raise RuntimeError("Cannot register a resource into "
+                               "frozen router.")
 
         name = resource.name
 
@@ -875,7 +878,10 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         assert prefix.startswith('/')
         if not prefix.endswith('/'):
             prefix += '/'
+        if subapp.frozen:
+            raise RuntimeError("Cannod add frozen application")
         resource = PrefixedSubAppResource(prefix, subapp)
         self._reg_resource(resource)
         self._app._reg_subapp_signals(subapp)
+        subapp.freeze()
         return resource

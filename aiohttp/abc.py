@@ -8,6 +8,17 @@ PY_35 = sys.version_info >= (3, 5)
 
 class AbstractRouter(ABC):
 
+    def __init__(self):
+        self._frozen = False
+
+    @property
+    def frozen(self):
+        return self._frozen
+
+    def freeze(self):
+        """Freeze router."""
+        self._frozen = True
+
     @asyncio.coroutine  # pragma: no branch
     @abstractmethod
     def resolve(self, request):

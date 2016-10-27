@@ -9,7 +9,7 @@ import io
 import os
 import re
 import warnings
-from collections import namedtuple
+from collections import MutableSequence, namedtuple
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -528,3 +528,46 @@ def _get_kwarg(kwargs, old, new, value):
         return val
     else:
         return value
+
+
+class FrozenList(MutableSequence):
+
+    __slots__ = ('_frozen', '_items')
+
+    def __init__(self, items=None):
+        self._frozen = False
+        if items is not None:
+            items = list(items)
+        else:
+            items = []
+        self._items = items
+
+    def freeze(self):
+        self._frozen = True
+
+    def __getitem__(self, index):
+        return self._items[index]
+
+    def __setitem__(self, index, value):
+        if self._frozen:
+            raise RuntimeError("Cannot modify frozen list.")
+        self._items[index] = value
+
+    def __delitem__(self, index):
+        if self._frozen:
+            raise RuntimeError("Cannot modify frozen list.")
+        del self._items[index]
+
+    def __len__(self):
+        return self._items.__len__()
+
+    def __iter__(self):
+        return self._items.__iter__()
+
+    def __reversed__(self):
+        return self._items.__reversed__()
+
+    def insert(self, pos, item):
+        if self._frozen:
+            raise RuntimeError("Cannot modify frozen list.")
+        self._items.insert(pos, item)
