@@ -473,11 +473,11 @@ class reify:
     def __get__(self, inst, owner, _sentinel=sentinel):
         if inst is None:
             return self
-        val = inst.__dict__.get(self.name, _sentinel)
+        val = inst._cache.get(self.name, _sentinel)
         if val is not _sentinel:
             return val
         val = self.wrapped(inst)
-        inst.__dict__[self.name] = val
+        inst._cache[self.name] = val
         return val
 
     def __set__(self, inst, value):

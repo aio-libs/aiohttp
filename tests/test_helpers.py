@@ -252,6 +252,9 @@ def test_logger_no_transport():
 
 def test_reify():
     class A:
+        def __init__(self):
+            self._cache = {}
+
         @helpers.reify
         def prop(self):
             return 1
@@ -262,6 +265,9 @@ def test_reify():
 
 def test_reify_class():
     class A:
+        def __init__(self):
+            self._cache = {}
+
         @helpers.reify
         def prop(self):
             """Docstring."""
@@ -273,6 +279,9 @@ def test_reify_class():
 
 def test_reify_assignment():
     class A:
+        def __init__(self):
+            self._cache = {}
+
         @helpers.reify
         def prop(self):
             return 1

@@ -1,4 +1,5 @@
 import asyncio
+from collections import MutableMapping
 from unittest import mock
 
 import pytest
@@ -188,11 +189,33 @@ def test_match_info(make_request):
     assert req._match_info is req.match_info
 
 
-def test_request_is_dict(make_request):
+def test_request_is_mutable_mapping(make_request):
     req = make_request('GET', '/')
-    assert isinstance(req, dict)
+    assert isinstance(req, MutableMapping)
     req['key'] = 'value'
     assert 'value' == req['key']
+
+
+def test_request_delitem(make_request):
+    req = make_request('GET', '/')
+    req['key'] = 'value'
+    assert 'value' == req['key']
+    del req['key']
+    assert 'key' not in req
+
+
+def test_request_len(make_request):
+    req = make_request('GET', '/')
+    assert len(req) == 0
+    req['key'] = 'value'
+    assert len(req) == 1
+
+
+def test_request_iter(make_request):
+    req = make_request('GET', '/')
+    req['key'] = 'value'
+    req['key2'] = 'value2'
+    assert set(req) == {'key', 'key2'}
 
 
 def test_copy(make_request):
