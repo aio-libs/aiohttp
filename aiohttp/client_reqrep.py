@@ -728,7 +728,11 @@ class ClientResponse:
 
         encoding = params.get('charset')
         if not encoding:
-            encoding = chardet.detect(self._content)['encoding']
+            if mtype == 'application' and stype == 'json':
+                # RFC 7159 states that the default encoding is UTF-8.
+                encoding = 'utf-8'
+            else:
+                encoding = chardet.detect(self._content)['encoding']
         if not encoding:
             encoding = 'utf-8'
 

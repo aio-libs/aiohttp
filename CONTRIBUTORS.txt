@@ -76,6 +76,7 @@ Julien Duponchelle
 Junjie Tao
 Justas Trimailovas
 Kay Zheng
+Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
 Kyrylo Perevozchikov

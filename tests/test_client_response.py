@@ -171,7 +171,7 @@ def test_text_detect_encoding(loop):
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
-    response.headers = {'Content-Type': 'application/json'}
+    response.headers = {'Content-Type': 'text/plain'}
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
 
@@ -273,25 +273,6 @@ def test_json_override_encoding(loop):
     assert res == {'тест': 'пройден'}
     assert response._connection is None
     assert not response._get_encoding.called
-
-
-@asyncio.coroutine
-def test_json_detect_encoding(loop):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop)
-
-    def side_effect(*args, **kwargs):
-        fut = helpers.create_future(loop)
-        fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
-        return fut
-
-    response.headers = {'Content-Type': 'application/json'}
-    content = response.content = mock.Mock()
-    content.read.side_effect = side_effect
-
-    res = yield from response.json()
-    assert res == {'тест': 'пройден'}
-    assert response._connection is None
 
 
 def test_override_flow_control(loop):
