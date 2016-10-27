@@ -555,6 +555,7 @@ class HttpMessage(ABC):
         self.output_length = 0
         self.headers_length = 0
         self._output_size = 0
+        self._cache = {}
 
     @property
     @abstractmethod

@@ -86,7 +86,7 @@ class ContentCoding(enum.Enum):
 ############################################################
 
 
-class Request(dict, HeadersMixin):
+class Request(collections.MutableMapping, HeadersMixin):
 
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
@@ -111,6 +111,27 @@ class Request(dict, HeadersMixin):
         self._has_body = not payload.at_eof()
 
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
+        self._state = {}
+        self._cache = {}
+
+    # MutableMapping API
+
+    def __getitem__(self, key):
+        return self._state[key]
+
+    def __setitem__(self, key, value):
+        self._state[key] = value
+
+    def __delitem__(self, key):
+        del self._state[key]
+
+    def __len__(self):
+        return len(self._state)
+
+    def __iter__(self):
+        return iter(self._state)
+
+    ########
 
     @reify
     def scheme(self):
