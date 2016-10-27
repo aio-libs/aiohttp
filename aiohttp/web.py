@@ -39,7 +39,6 @@ class RequestHandler(ServerHttpProtocol):
         self._manager = manager
         self._app = app
         self._router = router
-        self._middlewares = app.middlewares
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
 
     def __repr__(self):
@@ -85,7 +84,7 @@ class RequestHandler(ServerHttpProtocol):
 
             if resp is None:
                 handler = match_info.handler
-                for factory in reversed(self._middlewares):
+                for factory in match_info.middlewares:
                     handler = yield from factory(app, handler)
                 resp = yield from handler(request)
 
@@ -289,7 +288,7 @@ class Application(dict):
         return self
 
     def __repr__(self):
-        return "<Application>"
+        return "<Application 0x{:x}>".format(id(self))
 
 
 def run_app(app, *, host='0.0.0.0', port=None,

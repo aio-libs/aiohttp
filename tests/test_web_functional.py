@@ -385,7 +385,7 @@ def test_post_form_with_duplicate_keys(loop, test_client):
 
 def test_repr_for_application(loop):
     app = web.Application(loop=loop)
-    assert "<Application>" == repr(app)
+    assert "<Application 0x{:x}>".format(id(app)) == repr(app)
 
 
 @asyncio.coroutine
@@ -1037,3 +1037,37 @@ def test_subapp_cannot_add_app_in_handler(loop, test_client):
     client = yield from test_client(app)
     resp = yield from client.get('/path/to')
     assert resp.status == 500
+
+
+@asyncio.coroutine
+def test_subapp_middlewares(loop, test_client):
+    order = []
+
+    @asyncio.coroutine
+    def handler(request):
+        return web.HTTPOk(text='OK')
+
+    @asyncio.coroutine
+    def middleware_factory(app, handler):
+
+        @asyncio.coroutine
+        def middleware(request):
+            order.append((1, app))
+            resp = yield from handler(request)
+            assert 200 == resp.status
+            order.append((2, app))
+            return resp
+        return middleware
+
+    app = web.Application(loop=loop, middlewares=[middleware_factory])
+    subapp1 = web.Application(loop=loop, middlewares=[middleware_factory])
+    subapp2 = web.Application(loop=loop, middlewares=[middleware_factory])
+    subapp2.router.add_get('/to', handler)
+    subapp1.router.add_subapp('/b/', subapp2)
+    app.router.add_subapp('/a/', subapp1)
+
+    client = yield from test_client(app)
+    resp = yield from client.get('/a/b/to')
+    assert resp.status == 200
+    assert [(1, app), (1, subapp1), (1, subapp2),
+            (2, subapp2), (2, subapp1), (2, app)] == order

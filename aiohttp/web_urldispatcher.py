@@ -189,6 +189,13 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
     def apps(self):
         return tuple(self._apps)
 
+    @property
+    def middlewares(self):
+        middlewares = []
+        for app in self._apps:
+            middlewares.extend(reversed(app.middlewares))
+        return middlewares
+
     def add_app(self, app):
         if self._frozen:
             raise RuntimeError("Cannot change apps stack after .freeze() call")
@@ -521,6 +528,11 @@ class PrefixedSubAppResource(PrefixResource):
         super().__init__(prefix)
         self._app = app
         for resource in app.router.resources():
+            resource.add_prefix(prefix)
+
+    def add_prefix(self, prefix):
+        super().add_prefix(prefix)
+        for resource in self._app.router.resources():
             resource.add_prefix(prefix)
 
     def url_for(self, *args, **kwargs):

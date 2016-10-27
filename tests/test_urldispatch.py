@@ -926,7 +926,8 @@ def test_subapp_url_for(router, loop):
 def test_subapp_repr(router, loop):
     subapp = web.Application(loop=loop)
     resource = router.add_subapp('/pre', subapp)
-    assert repr(resource) == '<PrefixedSubAppResource /pre/ -> <Application>>'
+    assert repr(resource).startswith(
+        '<PrefixedSubAppResource /pre/ -> <Application')
 
 
 def test_subapp_len(router, loop):
