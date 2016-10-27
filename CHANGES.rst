@@ -49,7 +49,7 @@ CHANGES
 
 - Added option on `StaticRoute` to follow symlinks #1299
 
--
+- Force encoding of `application/json` content type to utf-8 #1339
 
 -
 
