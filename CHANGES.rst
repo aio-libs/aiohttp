@@ -64,7 +64,7 @@ CHANGES
 - Raise `ClientDisconnectedError` to `FlowControlStreamReader` read function
   if `ClientSession` object is closed by client when reading data. #1323
 
--
+- Document deployment without `Gunicorn` #1120
 
 -
 

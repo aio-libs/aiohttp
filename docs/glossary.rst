@@ -45,6 +45,13 @@
 
        https://pypi.python.org/pypi/cchardet/
 
+   gunicorn
+
+       Gunicorn 'Green Unicorn' is a Python WSGI HTTP Server for
+       UNIX.
+
+       http://gunicorn.org/
+
    keep-alive
 
        A technique for communicating between HTTP client and server
@@ -53,6 +60,13 @@
 
        It makes communication faster by getting rid of connection
        establishment for every request.
+
+   nginx
+
+      Nginx [engine x] is an HTTP and reverse proxy server, a mail
+      proxy server, and a generic TCP/UDP proxy server.
+
+      https://nginx.org/en/
 
    resource
 
