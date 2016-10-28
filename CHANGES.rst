@@ -78,7 +78,7 @@ CHANGES
 - Accept access_log parameter in `web.run_app`, use `None` to disable logging
 
 - Don't flap `tcp_cork` and `tcp_nodelay` in regular request handling.
-  Enable `tcp_nodelay` by default.
+  `tcp_nodelay` is still enabled by default.
 
 - Improve performance of web server by removing premature computing of
   Content-Type if the value was set by `web.Response` constructor.

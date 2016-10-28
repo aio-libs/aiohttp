@@ -102,6 +102,11 @@ class RequestHandler(ServerHttpProtocol):
         # notify server about keep-alive
         self.keep_alive(resp.keep_alive)
 
+        # Restore default state.
+        # Should be no-op if server code didn't touch these attributes.
+        self.writer.set_tcp_cork(False)
+        self.writer.set_tcp_nodelay(True)
+
         # log access
         if self.access_log:
             self.log_access(message, None, resp_msg, self._loop.time() - now)
