@@ -7,7 +7,6 @@
 isort:
 	isort -rc aiohttp
 	isort -rc tests
-	isort -rc benchmark
 	isort -rc examples
 	isort -rc demos
 
@@ -23,7 +22,7 @@ flake: .flake
 	    flake8 examples tests demos benchmark && \
             python setup.py check -rms; \
 	fi
-	@if ! isort -c -rc aiohttp tests benchmark examples; then \
+	@if ! isort -c -rc aiohttp tests examples; then \
             echo "Import sort errors, run 'make isort' to fix them!!!"; \
             isort --diff -rc aiohttp tests benchmark examples; \
             false; \
