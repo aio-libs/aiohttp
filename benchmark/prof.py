@@ -4,9 +4,9 @@ import asyncio
 import logging
 import sys
 
+import ujson as json
 import uvloop
 
-import ujson as json
 from aiohttp import web
 
 loop = uvloop.new_event_loop()
