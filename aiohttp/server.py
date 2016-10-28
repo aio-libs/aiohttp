@@ -218,6 +218,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         keep_alive(True) specified.
         """
         reader = self.reader
+        self.writer.set_tcp_nodelay(True)
 
         try:
             while not self._closing:

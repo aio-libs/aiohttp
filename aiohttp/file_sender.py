@@ -118,16 +118,20 @@ class FileSender:
 
         yield from resp.prepare(request)
 
-        chunk_size = self._chunk_size
+        resp.set_tcp_cork(True)
+        try:
+            chunk_size = self._chunk_size
 
-        chunk = fobj.read(chunk_size)
-        while True:
-            resp.write(chunk)
-            yield from resp.drain()
-            count = count - chunk_size
-            if count <= 0:
-                break
-            chunk = fobj.read(count)
+            chunk = fobj.read(chunk_size)
+            while True:
+                resp.write(chunk)
+                yield from resp.drain()
+                count = count - chunk_size
+                if count <= 0:
+                    break
+                chunk = fobj.read(count)
+        finally:
+            resp.set_tcp_nodelay(True)
 
     if hasattr(os, "sendfile"):  # pragma: no cover
         _sendfile = _sendfile_system
@@ -157,12 +161,7 @@ class FileSender:
         file_size = st.st_size
 
         resp.content_length = file_size
-        resp.set_tcp_cork(True)
-        try:
-            with filepath.open('rb') as f:
-                yield from self._sendfile(request, resp, f, file_size)
-
-        finally:
-            resp.set_tcp_nodelay(True)
+        with filepath.open('rb') as f:
+            yield from self._sendfile(request, resp, f, file_size)
 
         return resp
