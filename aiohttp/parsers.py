@@ -89,7 +89,7 @@ class StreamParser:
     """
 
     def __init__(self, *, loop=None, buf=None,
-                 limit=DEFAULT_LIMIT, eof_exc_class=RuntimeError, **kwargs):
+                 limit=DEFAULT_LIMIT, eof_exc_class=RuntimeError):
         self._loop = loop
         self._eof = False
         self._exception = None
