@@ -363,8 +363,8 @@ def run_app(app, *, host='0.0.0.0', port=None,
     make_handler_kwargs = dict()
     if access_log_format is not None:
         make_handler_kwargs['access_log_format'] = access_log_format
-    handler = app.make_handler(**make_handler_kwargs,
-                               access_log=access_log)
+    handler = app.make_handler(access_log=access_log,
+                               **make_handler_kwargs)
     server = loop.create_server(handler, host, port, ssl=ssl_context,
                                 backlog=backlog)
     srv, startup_res = loop.run_until_complete(asyncio.gather(server,
