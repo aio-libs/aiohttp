@@ -51,12 +51,6 @@ CHANGES
 
 - Force encoding of `application/json` content type to utf-8 #1339
 
--
-
--
-
--
-
 - Websockets: Stop `async for` iteration when connection is closed #1144
 
 - Ensure TestClient HTTP methods return a context manager #1318
@@ -67,7 +61,7 @@ CHANGES
 - Document deployment without `Gunicorn` #1120
 
 - Add deprecation warning for MD5 and SHA1 digests when used for fingerprint
-  of site certs in TCPConnector. #1186 
+  of site certs in TCPConnector. #1186
 
 - Implement sub-applications #1301
 
@@ -83,7 +77,29 @@ CHANGES
 
 - Accept access_log parameter in `web.run_app`, use `None` to disable logging
 
+- Don't flap `tcp_cork` and `tcp_nodelay` in regular request handling.
+  Enable `tcp_nodelay` by default.
+
+- 
+
 -
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
 
 1.0.5 (2016-10-11)
 ------------------

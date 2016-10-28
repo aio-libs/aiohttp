@@ -580,86 +580,70 @@ def test_prepare_calls_signal():
     sig.assert_called_with(req, resp)
 
 
-def test_default_nodelay():
+def test_get_nodelay_unprepared():
     resp = StreamResponse()
-    assert resp.tcp_nodelay
+    with pytest.raises(RuntimeError):
+        resp.tcp_nodelay
 
 
-def test_set_tcp_nodelay_before_start():
+def test_set_nodelay_unprepared():
     resp = StreamResponse()
-    resp.set_tcp_nodelay(False)
+    with pytest.raises(RuntimeError):
+        resp.set_tcp_nodelay(True)
+
+
+@asyncio.coroutine
+def test_get_nodelay_prepared():
+    resp = StreamResponse()
+    writer = mock.Mock()
+    writer.tcp_nodelay = False
+    req = make_request('GET', '/', writer=writer)
+
+    yield from resp.prepare(req)
     assert not resp.tcp_nodelay
+
+
+def test_set_nodelay_prepared():
+    resp = StreamResponse()
+    writer = mock.Mock()
+    req = make_request('GET', '/', writer=writer)
+
+    yield from resp.prepare(req)
     resp.set_tcp_nodelay(True)
-    assert resp.tcp_nodelay
+    writer.set_tcp_nodelay.assert_called_with(True)
+
+
+def test_get_cork_unprepared():
+    resp = StreamResponse()
+    with pytest.raises(RuntimeError):
+        resp.tcp_cork
+
+
+def test_set_cork_unprepared():
+    resp = StreamResponse()
+    with pytest.raises(RuntimeError):
+        resp.set_tcp_cork(True)
 
 
 @asyncio.coroutine
-def test_set_tcp_nodelay_on_start():
-    req = make_request('GET', '/')
+def test_get_cork_prepared():
     resp = StreamResponse()
+    writer = mock.Mock()
+    writer.tcp_cork = False
+    req = make_request('GET', '/', writer=writer)
 
-    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
-        resp_impl = yield from resp.prepare(req)
-    resp_impl.transport.set_tcp_nodelay.assert_called_with(True)
-    resp_impl.transport.set_tcp_cork.assert_called_with(False)
-
-
-@asyncio.coroutine
-def test_set_tcp_nodelay_after_start():
-    req = make_request('GET', '/')
-    resp = StreamResponse()
-
-    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
-        resp_impl = yield from resp.prepare(req)
-    resp_impl.transport.set_tcp_cork.assert_called_with(False)
-    resp_impl.transport.set_tcp_nodelay.assert_called_with(True)
-    resp.set_tcp_nodelay(False)
-    assert not resp.tcp_nodelay
-    resp_impl.transport.set_tcp_nodelay.assert_called_with(False)
-    resp.set_tcp_nodelay(True)
-    assert resp.tcp_nodelay
-    resp_impl.transport.set_tcp_nodelay.assert_called_with(True)
-
-
-def test_default_cork():
-    resp = StreamResponse()
+    yield from resp.prepare(req)
     assert not resp.tcp_cork
 
 
-def test_set_tcp_cork_before_start():
+def test_set_cork_prepared():
     resp = StreamResponse()
+    writer = mock.Mock()
+    req = make_request('GET', '/', writer=writer)
+
+    yield from resp.prepare(req)
     resp.set_tcp_cork(True)
-    assert resp.tcp_cork
-    resp.set_tcp_cork(False)
-    assert not resp.tcp_cork
-
-
-@asyncio.coroutine
-def test_set_tcp_cork_on_start():
-    req = make_request('GET', '/')
-    resp = StreamResponse()
-    resp.set_tcp_cork(True)
-
-    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
-        resp_impl = yield from resp.prepare(req)
-    resp_impl.transport.set_tcp_nodelay.assert_called_with(False)
-    resp_impl.transport.set_tcp_cork.assert_called_with(True)
-
-
-@asyncio.coroutine
-def test_set_tcp_cork_after_start():
-    req = make_request('GET', '/')
-    resp = StreamResponse()
-
-    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
-        resp_impl = yield from resp.prepare(req)
-    resp_impl.transport.set_tcp_cork.assert_called_with(False)
-    resp.set_tcp_cork(True)
-    assert resp.tcp_cork
-    resp_impl.transport.set_tcp_cork.assert_called_with(True)
-    resp.set_tcp_cork(False)
-    assert not resp.tcp_cork
-    resp_impl.transport.set_tcp_cork.assert_called_with(False)
+    writer.set_tcp_cork.assert_called_with(True)
 
 
 # Response class
