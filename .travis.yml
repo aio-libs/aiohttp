@@ -28,7 +28,6 @@ install:
   - pip install -r requirements-ci.txt
   - pip install aiodns
   - pip install codecov
-  - pip install ujson
   - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
         pip install uvloop;
     fi
