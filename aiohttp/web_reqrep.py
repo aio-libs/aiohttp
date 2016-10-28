@@ -471,8 +471,8 @@ class StreamResponse(HeadersMixin):
 
         if headers is not None:
             self._headers.extend(headers)
-        self._parse_content_type(self._headers.get(hdrs.CONTENT_TYPE))
-        self._generate_content_type_header()
+        if hdrs.CONTENT_TYPE not in self._headers:
+            self._headers[hdrs.CONTENT_TYPE] = 'application/octet-stream'
 
     def _copy_cookies(self):
         for cookie in self._cookies.values():
