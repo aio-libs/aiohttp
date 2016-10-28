@@ -80,7 +80,13 @@ CHANGES
 - Don't flap `tcp_cork` and `tcp_nodelay` in regular request handling.
   Enable `tcp_nodelay` by default.
 
-- 
+- Improve performance of web server by removing premature computing of
+  Content-Type if the value was set by `web.Response` constructor.
+
+  While the patch boosts speed of trivial `web.Response(text='OK',
+  content_type='text/plain)` very well please don't expect significant
+  boost of your application -- a couple DB requests and business logic
+  is still the main bottleneck.
 
 -
 
