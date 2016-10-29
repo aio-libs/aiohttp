@@ -1109,21 +1109,16 @@ def test_subapp_on_response_prepare(loop, test_client):
 def test_subapp_on_startup(loop, test_server):
     order = []
 
-    def make_signal(cur_app):
-
-        @asyncio.coroutine
-        def on_signal(app2):
-            assert app2 is app
-            order.append(cur_app)
-
-        return on_signal
+    @asyncio.coroutine
+    def on_signal(app):
+        order.append(app)
 
     app = web.Application(loop=loop)
-    app.on_startup.append(make_signal(app))
+    app.on_startup.append(on_signal)
     subapp1 = web.Application(loop=loop)
-    subapp1.on_startup.append(make_signal(subapp1))
+    subapp1.on_startup.append(on_signal)
     subapp2 = web.Application(loop=loop)
-    subapp2.on_startup.append(make_signal(subapp2))
+    subapp2.on_startup.append(on_signal)
     subapp1.router.add_subapp('/b/', subapp2)
     app.router.add_subapp('/a/', subapp1)
 
@@ -1136,21 +1131,15 @@ def test_subapp_on_startup(loop, test_server):
 def test_subapp_on_shutdown(loop, test_server):
     order = []
 
-    def make_signal(cur_app):
-
-        @asyncio.coroutine
-        def on_signal(app2):
-            assert app2 is app
-            order.append(cur_app)
-
-        return on_signal
+    def on_signal(app):
+        order.append(app)
 
     app = web.Application(loop=loop)
-    app.on_shutdown.append(make_signal(app))
+    app.on_shutdown.append(on_signal)
     subapp1 = web.Application(loop=loop)
-    subapp1.on_shutdown.append(make_signal(subapp1))
+    subapp1.on_shutdown.append(on_signal)
     subapp2 = web.Application(loop=loop)
-    subapp2.on_shutdown.append(make_signal(subapp2))
+    subapp2.on_shutdown.append(on_signal)
     subapp1.router.add_subapp('/b/', subapp2)
     app.router.add_subapp('/a/', subapp1)
 
@@ -1164,21 +1153,16 @@ def test_subapp_on_shutdown(loop, test_server):
 def test_subapp_on_cleanup(loop, test_server):
     order = []
 
-    def make_signal(cur_app):
-
-        @asyncio.coroutine
-        def on_signal(app2):
-            assert app2 is app
-            order.append(cur_app)
-
-        return on_signal
+    @asyncio.coroutine
+    def on_signal(app):
+        order.append(app)
 
     app = web.Application(loop=loop)
-    app.on_cleanup.append(make_signal(app))
+    app.on_cleanup.append(on_signal)
     subapp1 = web.Application(loop=loop)
-    subapp1.on_cleanup.append(make_signal(subapp1))
+    subapp1.on_cleanup.append(on_signal)
     subapp2 = web.Application(loop=loop)
-    subapp2.on_cleanup.append(make_signal(subapp2))
+    subapp2.on_cleanup.append(on_signal)
     subapp1.router.add_subapp('/b/', subapp2)
     app.router.add_subapp('/a/', subapp1)
 
