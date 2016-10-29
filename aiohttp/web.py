@@ -242,11 +242,21 @@ class Application(MutableMapping):
         return self._debug
 
     def _reg_subapp_signals(self, subapp):
-        self._on_pre_signal.extend(subapp.on_pre_signal)
-        self._on_post_signal.extend(subapp.on_post_signal)
-        self._on_startup.extend(subapp.on_startup)
-        self._on_shutdown.extend(subapp.on_shutdown)
-        self._on_cleanup.extend(subapp.on_cleanup)
+
+        def reg_handler(signame):
+            subsig = getattr(subapp, signame)
+
+            @asyncio.coroutine
+            def handler(app):
+                yield from subsig.send(subapp)
+            appsig = getattr(self, signame)
+            appsig.append(handler)
+
+        reg_handler('on_pre_signal')
+        reg_handler('on_post_signal')
+        reg_handler('on_startup')
+        reg_handler('on_shutdown')
+        reg_handler('on_cleanup')
 
     @property
     def on_response_prepare(self):
