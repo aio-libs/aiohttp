@@ -172,8 +172,9 @@ Routes can also be given a *name*::
 Which can then be used to access and build a *URL* for that resource later (e.g.
 in a :ref:`request handler <aiohttp-web-handler>`)::
 
-   >>> request.app.router.named_resources()['root'].url(query={"a": "b", "c": "d"})
-   '/root?a=b&c=d'
+   >>> request.app.router.named_resources()['root'].url_for()
+   ...                                      .with_query({"a": "b", "c": "d"})
+   URL('/root?a=b&c=d')
 
 A more interesting example is building *URLs* for :ref:`variable
 resources <aiohttp-web-variable-handler>`::
@@ -183,9 +184,8 @@ resources <aiohttp-web-variable-handler>`::
 
 In this case you can also pass in the *parts* of the route::
 
-   >>> request.app.router['user-info'].url(
-   ...     parts={'user': 'john_doe'},
-   ...     query="?a=b")
+   >>> request.app.router['user-info'].url_for(user='john_doe')\
+   ...                                         .with_query("a=b")
    '/john_doe/info?a=b'
 
 
@@ -322,6 +322,7 @@ The following example shows custom routing based on the *HTTP Accept* header::
    chooser.reg_acceptor('application/json', handle_json)
    chooser.reg_acceptor('application/xml', handle_xml)
 
+.. _aiohttp-web-static-file-handling:
 
 Static file handling
 --------------------
@@ -347,6 +348,11 @@ instead could be enabled with ``show_index`` parameter set to ``True``::
 
    app.router.add_static('/prefix', path_to_static_folder, show_index=True)
 
+When a symlink from the static directory is accessed, the server responses to
+client with ``HTTP/404 Not Found`` by default. To allow the server to follow
+symlinks, parameter ``follow_symlinks`` should be set to ``True``::
+
+   app.router.add_static('/prefix', path_to_static_folder, follow_symlinks=True)
 
 Template Rendering
 ------------------
@@ -480,6 +486,47 @@ header::
    app = web.Application()
    app.router.add_get('/', hello, expect_handler=check_auth)
 
+.. _aiohttp-web-forms:
+
+HTTP Forms
+----------
+
+HTTP Forms are supported out of the box.
+
+If form's method is ``"GET"`` (``<form method="get">``) use
+:attr:`Request.rel_url.query` for getting form data.
+
+For accessing to form data with ``"POST"`` method use
+:meth:`Request.post` or :meth:`Request.multipart`.
+
+:meth:`Request.post` accepts both
+``'application/x-www-form-urlencoded'`` and ``'multipart/form-data'``
+form's data encoding (e.g. ``<form enctype="multipart/form-data">``)
+but :meth:`Request.multipart` is especially effective for uploading
+large files (:ref:`aiohttp-web-file-upload`).
+
+Values submitted by the following form:
+
+.. code-block:: html
+
+   <form action="/login" method="post" accept-charset="utf-8"
+         enctype="application/x-www-form-urlencoded">
+
+       <label for="login">Login</label>
+       <input id="login" name="login" type="text" value="" autofocus/>
+       <label for="password">Password</label>
+       <input id="password" name="password" type="password" value=""/>
+
+       <input type="submit" value="login"/>
+   </form>
+
+could be accessed as::
+
+    async def do_login(request):
+        data = await request.post()
+        login = data['login']
+        password = data['password']
+
 
 .. _aiohttp-web-file-upload:
 
@@ -499,9 +546,9 @@ accepts an MP3 file:
          enctype="multipart/form-data">
 
        <label for="mp3">Mp3</label>
-       <input id="mp3" name="mp3" type="file" value="" />
+       <input id="mp3" name="mp3" type="file" value=""/>
 
-       <input type="submit" value="submit" />
+       <input type="submit" value="submit"/>
    </form>
 
 Then, in the :ref:`request handler <aiohttp-web-handler>` you can access the
@@ -1079,6 +1126,12 @@ The task :func:`listen_to_redis` will run forever.
 To shut it down correctly :attr:`Application.on_cleanup` signal handler
 may be used to send a cancellation to it.
 
+Swagger support
+---------------
+
+`aiohttp-swagger <https://github.com/cr0hn/aiohttp-swagger>`_ is a
+library that allow to add Swagger documentation and embed the
+Swagger-UI into your :mod:`aiohttp.web` project.
 
 CORS support
 ------------

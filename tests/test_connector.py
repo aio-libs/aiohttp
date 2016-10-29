@@ -11,6 +11,7 @@ import unittest
 from unittest import mock
 
 import pytest
+from yarl import URL
 
 import aiohttp
 from aiohttp import client, helpers, web
@@ -287,7 +288,7 @@ def test_connect(loop):
     tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
     proto.is_connected.return_value = True
 
-    req = ClientRequest('GET', 'http://host:80',
+    req = ClientRequest('GET', URL('http://host:80'),
                         loop=loop,
                         response_class=unittest.mock.Mock())
 
@@ -526,7 +527,7 @@ def test_connect_with_limit(loop):
     tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
     proto.is_connected.return_value = True
 
-    req = ClientRequest('GET', 'http://host:80',
+    req = ClientRequest('GET', URL('http://host:80'),
                         loop=loop,
                         response_class=unittest.mock.Mock())
 
@@ -569,7 +570,7 @@ def test_connect_with_limit_cancelled(loop):
     tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
     proto.is_connected.return_value = True
 
-    req = ClientRequest('GET', 'http://host:80',
+    req = ClientRequest('GET', URL('http://host:80'),
                         loop=loop,
                         response_class=unittest.mock.Mock())
 
@@ -618,7 +619,7 @@ def test_connect_with_limit_concurrent(loop):
     proto = unittest.mock.Mock()
     proto.is_connected.return_value = True
 
-    req = ClientRequest('GET', 'http://host:80',
+    req = ClientRequest('GET', URL('http://host:80'),
                         loop=loop,
                         response_class=unittest.mock.Mock(
                             _should_close=False))
@@ -684,7 +685,7 @@ def test_close_with_acquired_connection(loop):
     tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
     proto.is_connected.return_value = True
 
-    req = ClientRequest('GET', 'http://host:80',
+    req = ClientRequest('GET', URL('http://host:80'),
                         loop=loop,
                         response_class=unittest.mock.Mock())
 
@@ -878,7 +879,8 @@ class TestHttpClientConnector(unittest.TestCase):
         resolver = unittest.mock.MagicMock()
         connector = aiohttp.TCPConnector(resolver=resolver, loop=self.loop)
 
-        req = ClientRequest('GET', 'http://127.0.0.1:{}'.format(unused_port()),
+        req = ClientRequest('GET',
+                            URL('http://127.0.0.1:{}'.format(unused_port())),
                             loop=self.loop,
                             response_class=unittest.mock.Mock())
 

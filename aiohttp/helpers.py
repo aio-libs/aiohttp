@@ -9,15 +9,14 @@ import io
 import os
 import re
 import warnings
-from collections import namedtuple
+from collections import MutableSequence, namedtuple
 from pathlib import Path
-from urllib.parse import quote, urlencode
+from urllib.parse import urlencode
 
 from async_timeout import timeout
 from multidict import MultiDict, MultiDictProxy
 
 from . import hdrs
-from .errors import InvalidURL
 
 try:
     from asyncio import ensure_future
@@ -47,6 +46,10 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
 
         if password is None:
             raise ValueError('None is not allowed as password value')
+
+        if ':' in login:
+            raise ValueError(
+                'A ":" is not allowed in login (RFC 1945#section-11.1)')
 
         return super().__new__(cls, login, password, encoding)
 
@@ -168,7 +171,8 @@ class FormData:
             else:
                 raise TypeError('Only io.IOBase, multidict and (name, file) '
                                 'pairs allowed, use .add_field() for passing '
-                                'more complex parameters')
+                                'more complex parameters, got {!r}'
+                                .format(rec))
 
     def _gen_form_urlencoded(self, encoding):
         # form data (x-www-form-urlencoded)
@@ -268,11 +272,28 @@ class AccessLogger:
         %{FOO}e  os.environ['FOO']
 
     """
+    LOG_FORMAT_MAP = {
+        'a': 'remote_address',
+        't': 'request_time',
+        'P': 'process_id',
+        'r': 'first_request_line',
+        's': 'response_status',
+        'b': 'response_size',
+        'O': 'bytes_sent',
+        'T': 'request_time',
+        'Tf': 'request_time_frac',
+        'D': 'request_time_micro',
+        'i': 'request_header',
+        'o': 'response_header',
+        'e': 'environ'
+    }
 
     LOG_FORMAT = '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
-    FORMAT_RE = re.compile(r'%(\{([A-Za-z\-]+)\}([ioe])|[atPrsbOD]|Tf?)')
+    FORMAT_RE = re.compile(r'%(\{([A-Za-z0-9\-_]+)\}([ioe])|[atPrsbOD]|Tf?)')
     CLEANUP_RE = re.compile(r'(%[^s])')
     _FORMAT_CACHE = {}
+
+    KeyMethod = namedtuple('KeyMethod', 'key method')
 
     def __init__(self, logger, log_format=LOG_FORMAT):
         """Initialise the logger.
@@ -282,10 +303,12 @@ class AccessLogger:
 
         """
         self.logger = logger
+
         _compiled_format = AccessLogger._FORMAT_CACHE.get(log_format)
         if not _compiled_format:
             _compiled_format = self.compile_format(log_format)
             AccessLogger._FORMAT_CACHE[log_format] = _compiled_format
+
         self._log_format, self._methods = _compiled_format
 
     def compile_format(self, log_format):
@@ -312,14 +335,22 @@ class AccessLogger:
 
         log_format = log_format.replace("%l", "-")
         log_format = log_format.replace("%u", "-")
-        methods = []
+
+        # list of (key, method) tuples, we don't use an OrderedDict as users
+        # can repeat the same key more than once
+        methods = list()
 
         for atom in self.FORMAT_RE.findall(log_format):
             if atom[1] == '':
-                methods.append(getattr(AccessLogger, '_format_%s' % atom[0]))
+                format_key = self.LOG_FORMAT_MAP[atom[0]]
+                m = getattr(AccessLogger, '_format_%s' % atom[0])
             else:
+                format_key = (self.LOG_FORMAT_MAP[atom[2]], atom[1])
                 m = getattr(AccessLogger, '_format_%s' % atom[2])
-                methods.append(functools.partial(m, atom[1]))
+                m = functools.partial(m, atom[1])
+
+            methods.append(self.KeyMethod(format_key, m))
+
         log_format = self.FORMAT_RE.sub(r'%s', log_format)
         log_format = self.CLEANUP_RE.sub(r'%\1', log_format)
         return log_format, methods
@@ -332,6 +363,7 @@ class AccessLogger:
     def _format_i(key, args):
         if not args[0]:
             return '(no headers)'
+
         # suboptimal, make istr(key) once
         return args[0].headers.get(key, '-')
 
@@ -391,7 +423,7 @@ class AccessLogger:
         return round(args[4] * 1000000)
 
     def _format_line(self, args):
-        return tuple(m(args) for m in self._methods)
+        return ((key, method(args)) for key, method in self._methods)
 
     def log(self, message, environ, response, transport, time):
         """Log access.
@@ -403,8 +435,20 @@ class AccessLogger:
         :param float time: Time taken to serve the request.
         """
         try:
-            self.logger.info(self._log_format % self._format_line(
-                [message, environ, response, transport, time]))
+            fmt_info = self._format_line(
+                [message, environ, response, transport, time])
+
+            values = list()
+            extra = dict()
+            for key, value in fmt_info:
+                values.append(value)
+
+                if key.__class__ is str:
+                    extra[key] = value
+                else:
+                    extra[key[0]] = {key[1]: value}
+
+            self.logger.info(self._log_format % tuple(values), extra=extra)
         except Exception:
             self.logger.exception("Error in logging")
 
@@ -429,63 +473,15 @@ class reify:
     def __get__(self, inst, owner, _sentinel=sentinel):
         if inst is None:
             return self
-        val = inst.__dict__.get(self.name, _sentinel)
+        val = inst._cache.get(self.name, _sentinel)
         if val is not _sentinel:
             return val
         val = self.wrapped(inst)
-        inst.__dict__[self.name] = val
+        inst._cache[self.name] = val
         return val
 
     def __set__(self, inst, value):
         raise AttributeError("reified property is read-only")
-
-
-# The unreserved URI characters (RFC 3986)
-UNRESERVED_SET = frozenset(
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" +
-    "0123456789-._~")
-
-
-def unquote_unreserved(uri):
-    """Un-escape any percent-escape sequences in a URI that are unreserved
-    characters. This leaves all reserved, illegal and non-ASCII bytes encoded.
-    """
-    parts = uri.split('%')
-    for i in range(1, len(parts)):
-        h = parts[i][0:2]
-        if len(h) == 2 and h.isalnum():
-            try:
-                c = chr(int(h, 16))
-            except ValueError:
-                raise InvalidURL("Invalid percent-escape sequence: '%s'" % h)
-
-            if c in UNRESERVED_SET:
-                parts[i] = c + parts[i][2:]
-            else:
-                parts[i] = '%' + parts[i]
-        else:
-            parts[i] = '%' + parts[i]
-    return ''.join(parts)
-
-
-def requote_uri(uri):
-    """Re-quote the given URI.
-
-    This function passes the given URI through an unquote/quote cycle to
-    ensure that it is fully and consistently quoted.
-    """
-    safe_with_percent = "!#$%&'()*+,/:;=?@[]~"
-    safe_without_percent = "!#$&'()*+,/:;=?@[]~"
-    try:
-        # Unquote only the unreserved characters
-        # Then quote only illegal characters (do not quote reserved,
-        # unreserved, or '%')
-        return quote(unquote_unreserved(uri), safe=safe_with_percent)
-    except InvalidURL:
-        # We couldn't unquote the given URI, so let's try quoting it, but
-        # there may be unquoted '%'s in the URI. We need to make sure they're
-        # properly quoted so they do not cause issues elsewhere.
-        return quote(uri, safe=safe_without_percent)
 
 
 _ipv4_pattern = ('^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}'
@@ -532,3 +528,46 @@ def _get_kwarg(kwargs, old, new, value):
         return val
     else:
         return value
+
+
+class FrozenList(MutableSequence):
+
+    __slots__ = ('_frozen', '_items')
+
+    def __init__(self, items=None):
+        self._frozen = False
+        if items is not None:
+            items = list(items)
+        else:
+            items = []
+        self._items = items
+
+    def freeze(self):
+        self._frozen = True
+
+    def __getitem__(self, index):
+        return self._items[index]
+
+    def __setitem__(self, index, value):
+        if self._frozen:
+            raise RuntimeError("Cannot modify frozen list.")
+        self._items[index] = value
+
+    def __delitem__(self, index):
+        if self._frozen:
+            raise RuntimeError("Cannot modify frozen list.")
+        del self._items[index]
+
+    def __len__(self):
+        return self._items.__len__()
+
+    def __iter__(self):
+        return self._items.__iter__()
+
+    def __reversed__(self):
+        return self._items.__reversed__()
+
+    def insert(self, pos, item):
+        if self._frozen:
+            raise RuntimeError("Cannot modify frozen list.")
+        self._items.insert(pos, item)

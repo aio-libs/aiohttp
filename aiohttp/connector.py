@@ -11,6 +11,8 @@ from itertools import chain
 from math import ceil
 from types import MappingProxyType
 
+from yarl import URL
+
 import aiohttp
 
 from . import hdrs, helpers
@@ -439,6 +441,11 @@ class TCPConnector(BaseConnector):
             hashfunc = HASHFUNC_BY_DIGESTLEN.get(digestlen)
             if not hashfunc:
                 raise ValueError('fingerprint has invalid length')
+            elif hashfunc is md5 or hashfunc is sha1:
+                warnings.simplefilter('always')
+                warnings.warn('md5 and sha1 are insecure and deprecated. '
+                              'Use sha256.',
+                              DeprecationWarning, stacklevel=2)
             self._hashfunc = hashfunc
         self._fingerprint = fingerprint
 
@@ -638,9 +645,7 @@ class TCPConnector(BaseConnector):
             raise ProxyConnectionError(*exc.args) from exc
 
         if not req.ssl:
-            req.path = '{scheme}://{host}{path}'.format(scheme=req.scheme,
-                                                        host=req.netloc,
-                                                        path=req.path)
+            req.path = str(req.url)
         if hdrs.AUTHORIZATION in proxy_req.headers:
             auth = proxy_req.headers[hdrs.AUTHORIZATION]
             del proxy_req.headers[hdrs.AUTHORIZATION]
@@ -723,6 +728,7 @@ class ProxyConnector(TCPConnector):
                          conn_timeout=conn_timeout,
                          keepalive_timeout=keepalive_timeout,
                          limit=limit, loop=loop)
+        proxy = URL(proxy)
         self._proxy = proxy
         self._proxy_auth = proxy_auth
 

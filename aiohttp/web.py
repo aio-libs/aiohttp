@@ -2,12 +2,15 @@ import asyncio
 import sys
 import warnings
 from argparse import ArgumentParser
+from collections import MutableMapping
 from importlib import import_module
+
+from yarl import URL
 
 from . import hdrs, web_exceptions, web_reqrep, web_urldispatcher, web_ws
 from .abc import AbstractMatchInfo, AbstractRouter
-from .helpers import sentinel
-from .log import web_logger
+from .helpers import FrozenList, sentinel
+from .log import access_logger, web_logger
 from .protocol import HttpVersion  # noqa
 from .server import ServerHttpProtocol
 from .signals import PostSignal, PreSignal, Signal
@@ -15,7 +18,6 @@ from .web_exceptions import *  # noqa
 from .web_reqrep import *  # noqa
 from .web_urldispatcher import *  # noqa
 from .web_ws import *  # noqa
-
 
 __all__ = (web_reqrep.__all__ +
            web_exceptions.__all__ +
@@ -38,7 +40,6 @@ class RequestHandler(ServerHttpProtocol):
         self._manager = manager
         self._app = app
         self._router = router
-        self._middlewares = app.middlewares
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
 
     def __repr__(self):
@@ -64,15 +65,16 @@ class RequestHandler(ServerHttpProtocol):
 
         app = self._app
         request = web_reqrep.Request(
-            app, message, payload,
+            message, payload,
             self.transport, self.reader, self.writer,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header)
         self._meth = request.method
         self._path = request.path
         try:
             match_info = yield from self._router.resolve(request)
-
             assert isinstance(match_info, AbstractMatchInfo), match_info
+            match_info.add_app(app)
+            match_info.freeze()
 
             resp = None
             request._match_info = match_info
@@ -83,7 +85,7 @@ class RequestHandler(ServerHttpProtocol):
 
             if resp is None:
                 handler = match_info.handler
-                for factory in reversed(self._middlewares):
+                for factory in match_info.middlewares:
                     handler = yield from factory(app, handler)
                 resp = yield from handler(request)
 
@@ -99,6 +101,11 @@ class RequestHandler(ServerHttpProtocol):
 
         # notify server about keep-alive
         self.keep_alive(resp.keep_alive)
+
+        # Restore default state.
+        # Should be no-op if server code didn't touch these attributes.
+        self.writer.set_tcp_cork(False)
+        self.writer.set_tcp_nodelay(True)
 
         # log access
         if self.access_log:
@@ -157,7 +164,7 @@ class RequestHandlerFactory:
             **self._kwargs)
 
 
-class Application(dict):
+class Application(MutableMapping):
 
     def __init__(self, *, logger=web_logger, loop=None,
                  router=None, handler_factory=RequestHandlerFactory,
@@ -165,7 +172,7 @@ class Application(dict):
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:
-            router = web_urldispatcher.UrlDispatcher()
+            router = web_urldispatcher.UrlDispatcher(self)
         assert isinstance(router, AbstractRouter), router
 
         self._debug = debug
@@ -174,7 +181,9 @@ class Application(dict):
         self._loop = loop
         self.logger = logger
 
-        self._middlewares = list(middlewares)
+        self._middlewares = FrozenList(middlewares)
+        self._state = {}
+        self._frozen = False
 
         self._on_pre_signal = PreSignal()
         self._on_post_signal = PostSignal()
@@ -183,9 +192,61 @@ class Application(dict):
         self._on_shutdown = Signal(self)
         self._on_cleanup = Signal(self)
 
+    # MutableMapping API
+
+    def __getitem__(self, key):
+        return self._state[key]
+
+    def _check_frozen(self):
+        if self._frozen:
+            warnings.warn("Changing state of started or joined "
+                          "application is deprecated",
+                          DeprecationWarning,
+                          stacklevel=3)
+
+    def __setitem__(self, key, value):
+        self._check_frozen()
+        self._state[key] = value
+
+    def __delitem__(self, key):
+        self._check_frozen()
+        del self._state[key]
+
+    def __len__(self):
+        return len(self._state)
+
+    def __iter__(self):
+        return iter(self._state)
+
+    ########
+
+    @property
+    def frozen(self):
+        return self._frozen
+
+    def freeze(self):
+        if self._frozen:
+            return
+        self._frozen = True
+        self._router.freeze()
+        self._middlewares.freeze()
+        self._on_pre_signal.freeze()
+        self._on_post_signal.freeze()
+        self._on_response_prepare.freeze()
+        self._on_startup.freeze()
+        self._on_shutdown.freeze()
+        self._on_cleanup.freeze()
+
     @property
     def debug(self):
         return self._debug
+
+    def _reg_subapp_signals(self, subapp):
+        self._on_pre_signal.extend(subapp.on_pre_signal)
+        self._on_post_signal.extend(subapp.on_post_signal)
+        self._on_startup.extend(subapp.on_startup)
+        self._on_shutdown.extend(subapp.on_shutdown)
+        self._on_cleanup.extend(subapp.on_cleanup)
 
     @property
     def on_response_prepare(self):
@@ -239,6 +300,7 @@ class Application(dict):
                     "http://aiohttp.readthedocs.io/en/stable/"
                     "web_reference.html#aiohttp.web.Application"
                 )
+        self.freeze()
         return self._handler_factory(self, self.router, debug=self.debug,
                                      loop=self.loop, **kwargs)
 
@@ -287,12 +349,13 @@ class Application(dict):
         return self
 
     def __repr__(self):
-        return "<Application>"
+        return "<Application 0x{:x}>".format(id(self))
 
 
 def run_app(app, *, host='0.0.0.0', port=None,
             shutdown_timeout=60.0, ssl_context=None,
-            print=print, backlog=128):
+            print=print, backlog=128, access_log_format=None,
+            access_log=access_logger):
     """Run an app locally"""
     if port is None:
         if not ssl_context:
@@ -302,7 +365,11 @@ def run_app(app, *, host='0.0.0.0', port=None,
 
     loop = app.loop
 
-    handler = app.make_handler()
+    make_handler_kwargs = dict()
+    if access_log_format is not None:
+        make_handler_kwargs['access_log_format'] = access_log_format
+    handler = app.make_handler(access_log=access_log,
+                               **make_handler_kwargs)
     server = loop.create_server(handler, host, port, ssl=ssl_context,
                                 backlog=backlog)
     srv, startup_res = loop.run_until_complete(asyncio.gather(server,
@@ -310,9 +377,10 @@ def run_app(app, *, host='0.0.0.0', port=None,
                                                               loop=loop))
 
     scheme = 'https' if ssl_context else 'http'
-    print("======== Running on {scheme}://{host}:{port}/ ========\n"
-          "(Press CTRL+C to quit)".format(
-              scheme=scheme, host=host, port=port))
+    url = URL('{}://localhost'.format(scheme))
+    url = url.with_host(host).with_port(port)
+    print("======== Running on {} ========\n"
+          "(Press CTRL+C to quit)".format(url))
 
     try:
         loop.run_forever()
@@ -361,8 +429,8 @@ def main(argv):
         arg_parser.error("relative module names not supported")
     try:
         module = import_module(mod_str)
-    except ImportError:
-        arg_parser.error("module %r not found" % mod_str)
+    except ImportError as ex:
+        arg_parser.error("unable to import %s: %s" % (mod_str, ex))
     try:
         func = getattr(module, func_str)
     except AttributeError:

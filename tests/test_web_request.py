@@ -1,8 +1,10 @@
 import asyncio
+from collections import MutableMapping
 from unittest import mock
 
 import pytest
 from multidict import CIMultiDict, MultiDict
+from yarl import URL
 
 from aiohttp.protocol import HttpVersion
 from aiohttp.test_utils import make_mocked_request
@@ -52,8 +54,9 @@ def test_ctor(make_request):
 
 
 def test_doubleslashes(make_request):
-    req = make_request('GET', '//foo/')
-    assert '//foo/' == req.path
+    # NB: //foo/bar is an absolute URL with foo netloc and /bar path
+    req = make_request('GET', '/bar//foo/')
+    assert '/bar//foo/' == req.path
 
 
 def test_POST(make_request):
@@ -103,6 +106,11 @@ def test_urlencoded_querystring(make_request):
 def test_non_ascii_path(make_request):
     req = make_request('GET', '/путь')
     assert '/путь' == req.path
+
+
+def test_non_ascii_raw_path(make_request):
+    req = make_request('GET', '/путь')
+    assert '/%D0%BF%D1%83%D1%82%D1%8C' == req.raw_path
 
 
 def test_content_length(make_request):
@@ -178,23 +186,36 @@ def test_request_cookie__set_item(make_request):
 
 def test_match_info(make_request):
     req = make_request('GET', '/')
-    assert req.match_info is None
-    match = {'a': 'b'}
-    req._match_info = match
-    assert match is req.match_info
+    assert req._match_info is req.match_info
 
 
-def test_request_is_dict(make_request):
+def test_request_is_mutable_mapping(make_request):
     req = make_request('GET', '/')
-    assert isinstance(req, dict)
+    assert isinstance(req, MutableMapping)
     req['key'] = 'value'
     assert 'value' == req['key']
 
 
-def test_copy(make_request):
+def test_request_delitem(make_request):
     req = make_request('GET', '/')
-    with pytest.raises(NotImplementedError):
-        req.copy()
+    req['key'] = 'value'
+    assert 'value' == req['key']
+    del req['key']
+    assert 'key' not in req
+
+
+def test_request_len(make_request):
+    req = make_request('GET', '/')
+    assert len(req) == 0
+    req['key'] = 'value'
+    assert len(req) == 1
+
+
+def test_request_iter(make_request):
+    req = make_request('GET', '/')
+    req['key'] = 'value'
+    req['key2'] = 'value2'
+    assert set(req) == {'key', 'key2'}
 
 
 def test___repr__(make_request):
@@ -235,3 +256,13 @@ def test_raw_headers(make_request):
     req = make_request('GET', '/',
                        headers=CIMultiDict({'X-HEADER': 'aaa'}))
     assert req.raw_headers == ((b'X-Header', b'aaa'),)
+
+
+def test_rel_url(make_request):
+    req = make_request('GET', '/path')
+    assert URL('/path') == req.rel_url
+
+
+def test_url_url(make_request):
+    req = make_request('GET', '/path', headers={'HOST': 'example.com'})
+    assert URL('http://example.com/path') == req.url

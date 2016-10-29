@@ -32,6 +32,41 @@ like one using :meth:`Request.copy`.
 
 .. class:: Request
 
+   .. attribute:: version
+
+      *HTTP version* of request, Read-only property.
+
+      Returns :class:`aiohttp.protocol.HttpVersion` instance.
+
+   .. attribute:: method
+
+      *HTTP method*, read-only property.
+
+      The value is upper-cased :class:`str` like ``"GET"``,
+      ``"POST"``, ``"PUT"`` etc.
+
+   .. attribute:: url
+
+      A :class:`~yarl.URL` instance with absolute URL to resource
+      (*scheme*, *host* and *port* are included).
+
+      .. note::
+
+         In case of malformed request (e.g. without ``"HOST"`` HTTP
+         header) the absolute url may be unavailable.
+
+   .. attribute:: rel_url
+
+      A :class:`~yarl.URL` instance with relative URL to resource
+      (contains *path*, *query* and *fragment* parts only, *scheme*,
+      *host* and *port* are excluded).
+
+      The property is equal to ``.url.relative()`` but is always present.
+
+      .. seealso::
+
+         A note from :attr:`url`.
+
    .. attribute:: scheme
 
       A string representing the scheme of the request.
@@ -45,18 +80,9 @@ like one using :meth:`Request.copy`.
 
       .. seealso:: :meth:`Application.make_handler`
 
-   .. attribute:: method
+      .. deprecated:: 1.1
 
-      *HTTP method*, read-only property.
-
-      The value is upper-cased :class:`str` like ``"GET"``,
-      ``"POST"``, ``"PUT"`` etc.
-
-   .. attribute:: version
-
-      *HTTP version* of request, Read-only property.
-
-      Returns :class:`aiohttp.protocol.HttpVersion` instance.
+         Use :attr:`url` (``request.url.scheme``) instead.
 
    .. attribute:: host
 
@@ -64,11 +90,20 @@ like one using :meth:`Request.copy`.
 
       Returns :class:`str` or ``None`` if HTTP request has no *HOST* header.
 
+      .. deprecated:: 1.1
+
+         Use :attr:`url` (``request.url.host``) instead.
+
    .. attribute:: path_qs
 
-      The URL including PATH_INFO and the query string. e.g., ``/app/blog?id=10``
+      The URL including PATH_INFO and the query string. e.g.,
+      ``/app/blog?id=10``
 
       Read-only :class:`str` property.
+
+      .. deprecated:: 1.1
+
+         Use :attr:`url` (``str(request.rel_url)``) instead.
 
    .. attribute:: path
 
@@ -77,6 +112,10 @@ like one using :meth:`Request.copy`.
       :attr:`raw_path`.
 
       Read-only :class:`str` property.
+
+      .. deprecated:: 1.1
+
+         Use :attr:`url` (``request.rel_url.path``) instead.
 
    .. attribute:: raw_path
 
@@ -89,11 +128,19 @@ like one using :meth:`Request.copy`.
 
       Read-only :class:`str` property.
 
+      .. deprecated:: 1.1
+
+         Use :attr:`url` (``request.rel_url.raw_path``) instead.
+
    .. attribute:: query_string
 
       The query string in the URL, e.g., ``id=10``
 
       Read-only :class:`str` property.
+
+      .. deprecated:: 1.1
+
+         Use :attr:`url` (``request.rel_url.query_string``) instead.
 
    .. attribute:: GET
 
@@ -104,6 +151,10 @@ like one using :meth:`Request.copy`.
       .. versionchanged:: 0.17
          A multidict contains empty items for query string like ``?arg=``.
 
+      .. deprecated:: 1.1
+
+         Use :attr:`url` (``request.rel_url.query``) instead.
+
    .. attribute:: POST
 
       A multidict with all the variables in the POST parameters.
@@ -113,6 +164,13 @@ like one using :meth:`Request.copy`.
 
       :raises RuntimeError: if :meth:`Request.post` was not called \
                             before accessing the property.
+
+      .. deprecated:: 1.1
+
+         Since POST date preloaded is not implemented yet and probably
+         will never be done the :meth:`post` call is required and
+         recommended way for accessing to POST data. :meth:`multipart`
+         is useful for working with multipart encoded content.
 
    .. attribute:: headers
 
@@ -606,7 +664,7 @@ StreamResponse
          Use :meth:`prepare` instead.
 
       .. warning:: The method doesn't call
-         :attr:`web.Application.on_response_prepare` signal, use
+         :attr:`~aiohttp.web.Application.on_response_prepare` signal, use
          :meth:`prepare` instead.
 
    .. coroutinemethod:: prepare(request)
@@ -617,7 +675,7 @@ StreamResponse
       Send *HTTP header*. You should not change any header data after
       calling this method.
 
-      The coroutine calls :attr:`web.Application.on_response_prepare`
+      The coroutine calls :attr:`~aiohttp.web.Application.on_response_prepare`
       signal handlers.
 
       .. versionadded:: 0.18
@@ -911,10 +969,6 @@ WebSocketResponse
       message.
 
       It process *ping-pong game* and performs *closing handshake* internally.
-
-      After websocket closing raises
-      :exc:`~aiohttp.errors.WSClientDisconnectedError` with
-      connection closing data.
 
       .. note::
 
@@ -1408,8 +1462,10 @@ Router is any object that implements :class:`AbstractRouter` interface.
       .. versionadded:: 1.0
 
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
-                          chunk_size=256*1024, response_factory=StreamResponse \
-                          show_index=False)
+                          chunk_size=256*1024, \
+                          response_factory=StreamResponse, \
+                          show_index=False, \
+                          follow_symlinks=False)
 
       Adds a router and a handler for returning static files.
 
@@ -1464,6 +1520,10 @@ Router is any object that implements :class:`AbstractRouter` interface.
       :param bool show_index: flag for allowing to show indexes of a directory,
                               by default it's not allowed and HTTP/403 will
                               be returned on directory access.
+
+      :param bool follow_symlinks: flag for allowing to follow symlinks from
+                              a directory, by default it's not allowed and
+                              HTTP/404 will be returned on access.
 
    :returns: new :class:`StaticRoute` instance.
 
@@ -1595,7 +1655,7 @@ Resource with a *name* is called *named resource*.
 The main purpose of *named resource* is constructing URL by route name for
 passing it into *template engine* for example::
 
-   url = app.router['resource_name'].url(query={'a': 1, 'b': 2})
+   url = app.router['resource_name'].url_for().with_query({'a': 1, 'b': 2})
 
 Resource classes hierarchy::
 
@@ -1603,7 +1663,7 @@ Resource classes hierarchy::
      Resource
        PlainResource
        DynamicResource
-     ResourceAdapter
+       StaticResource
 
 
 .. class:: AbstractResource
@@ -1637,6 +1697,23 @@ Resource classes hierarchy::
                request is resolved or ``None`` if no :term:`route` is
                found.
 
+   .. method:: get_info()
+
+      A resource description, e.g. ``{'path': '/path/to'}`` or
+      ``{'formatter': '/path/{to}', 'pattern':
+      re.compile(r'^/path/(?P<to>[a-zA-Z][_a-zA-Z0-9]+)$``
+
+   .. method:: url_for(*args, **kwargs)
+
+      Construct an URL for route with additional params.
+
+      *args* and **kwargs** depend on a parameters list accepted by
+      inherited resource class.
+
+      :return: :class:`~yarl.URL` -- resulting URL instance.
+
+      .. versionadded:: 1.1
+
    .. method:: url(**kwargs)
 
       Construct an URL for route with additional params.
@@ -1644,7 +1721,11 @@ Resource classes hierarchy::
       **kwargs** depends on a list accepted by inherited resource
       class parameters.
 
-      :return: :class:`str` -- resulting URL.
+      :return: :class:`str` -- resulting URL string.
+
+      .. deprecated:: 1.1
+
+         Use :meth:`url_for` instead.
 
 
 .. class:: Resource
@@ -1675,28 +1756,59 @@ Resource classes hierarchy::
 
 .. class:: PlainResource
 
-   A new-style resource, inherited from :class:`Resource`.
+   A resource, inherited from :class:`Resource`.
 
    The class corresponds to resources with plain-text matching,
    ``'/path/to'`` for example.
 
 
+   .. method:: url_for()
+
+      Returns a :class:`~yarl.URL` for the resource.
+
+      .. versionadded:: 1.1
+
+
 .. class:: DynamicResource
 
-   A new-style resource, inherited from :class:`Resource`.
+   A resource, inherited from :class:`Resource`.
 
    The class corresponds to resources with
    :ref:`variable <aiohttp-web-variable-handler>` matching,
    e.g. ``'/path/{to}/{param}'`` etc.
 
 
-.. class:: ResourceAdapter
+   .. method:: url_for(**params)
 
-   An adapter for old-style routes.
+      Returns a :class:`~yarl.URL` for the resource.
 
-   The adapter is used by ``router.register_route()`` call, the method
-   is deprecated and will be removed eventually.
+      :param params: -- a variable substitutions for dynamic resource.
 
+         E.g. for ``'/path/{to}/{param}'`` pattern the method should
+         be called as ``resource.url_for(to='val1', param='val2')``
+
+
+      .. versionadded:: 1.1
+
+.. class:: StaticResource
+
+   A resource, inherited from :class:`Resource`.
+
+   The class corresponds to resources for :ref:`static file serving
+   <aiohttp-web-static-file-handling>`.
+
+   .. method:: url_for(filename)
+
+      Returns a :class:`~yarl.URL` for file path under resource prefix.
+
+      :param filename: -- a file name substitution for static file handler.
+
+         Accepts both :class:`str` and :class:`pathlib.Path`.
+
+         E.g. an URL for ``'/prefix/dir/file.txt'`` should
+         be generated as ``resource.url_for(filename='dir/file.txt')``
+
+      .. versionadded:: 1.1
 
 .. _aiohttp-web-route:
 
@@ -1712,22 +1824,11 @@ Route classes hierarchy::
 
    AbstractRoute
      ResourceRoute
-     Route
-       PlainRoute
-       DynamicRoute
-       StaticRoute
+     SystemRoute
 
-:class:`ResourceRoute` is the route used for new-style resources,
-:class:`PlainRoute` and :class:`DynamicRoute` serves old-style
-routes kept for backward compatibility only.
-
-:class:`StaticRoute` is used for static file serving
-(:meth:`UrlDispatcher.add_static`).  Don't rely on the route
-implementation too hard, static file handling most likely will be
-rewritten eventually.
-
-So the only non-deprecated and not internal route is
-:class:`ResourceRoute` only.
+:class:`ResourceRoute` is the route used for resources,
+:class:`SystemRoute` serves URL resolving errors like *404 Not Found*
+and *405 Method Not Allowed*.
 
 .. class:: AbstractRoute
 
@@ -1747,24 +1848,14 @@ So the only non-deprecated and not internal route is
 
    .. attribute:: resource
 
-      Resource instance which holds the route.
+      Resource instance which holds the route, ``None`` for
+      :class:`SystemRoute`.
 
-   .. method:: url(*, query=None, **kwargs)
+   .. method:: url_for(*args, **kwargs)
 
       Abstract method for constructing url handled by the route.
 
-      *query* is a mapping or list of *(name, value)* pairs for
-      specifying *query* part of url (parameter is processed by
-      :func:`~urllib.parse.urlencode`).
-
-      Other available parameters depends on concrete route class and
-      described in descendant classes.
-
-
-      .. note::
-
-         The method is kept for sake of backward compatibility, usually
-         you should use :meth:`Resource.url` instead.
+      Actually it's a shortcut for ``route.resource.url_for(...)``.
 
    .. coroutinemethod:: handle_expect_header(request)
 
@@ -1774,42 +1865,20 @@ So the only non-deprecated and not internal route is
 
    The route class for handling different HTTP methods for :class:`Resource`.
 
-.. class:: PlainRoute
 
-   The route class for handling plain *URL path*, e.g. ``"/a/b/c"``
+.. class:: SystemRoute
 
-   .. method:: url(*, parts, query=None)
+   The route class for handling URL resolution errors like like *404 Not Found*
+   and *405 Method Not Allowed*.
 
-       Construct url, doesn't accepts extra parameters::
+   .. attribute:: status
 
-          >>> route.url(query={'d': 1, 'e': 2})
-          '/a/b/c/?d=1&e=2'
+      HTTP status code
 
-.. class:: DynamicRoute
+   .. attribute:: reason
 
-   The route class for handling :ref:`variable
-   path<aiohttp-web-variable-handler>`, e.g. ``"/a/{name1}/{name2}"``
+      HTTP status reason
 
-   .. method:: url(*, parts, query=None)
-
-      Construct url with given *dynamic parts*::
-
-          >>> route.url(parts={'name1': 'b', 'name2': 'c'},
-                        query={'d': 1, 'e': 2})
-          '/a/b/c/?d=1&e=2'
-
-
-.. class:: StaticRoute
-
-   The route class for handling static files, created by
-   :meth:`UrlDispatcher.add_static` call.
-
-   .. method:: url(*, filename, query=None)
-
-      Construct url for given *filename*::
-
-         >>> route.url(filename='img/logo.png', query={'param': 1})
-         '/path/to/static/img/logo.png?param=1'
 
 
 MatchInfo
@@ -1914,7 +1983,9 @@ Utilities
 
 .. function:: run_app(app, *, host='0.0.0.0', port=None, loop=None, \
                       shutdown_timeout=60.0, ssl_context=None, \
-                      print=print, backlog=128)
+                      print=print, backlog=128, \
+                      access_log_format=None, \
+                      access_log=aiohttp.log.access_logger)
 
    A utility function for running an application, serving it until
    keyboard interrupt and performing a
@@ -1953,6 +2024,14 @@ Utilities
    :param int backlog: the number of unaccepted connections that the
                        system will allow before refusing new
                        connections (``128`` by default).
+
+   :param access_log: :class:`logging.Logger` instance used for saving
+                      access logs. Use ``None`` for disabling logs for
+                      sake of speedup.
+
+   :param access_log_format: access log format, see
+                             :ref:`aiohttp-logging-access-log-format-spec`
+                             for details.
 
 
 Constants

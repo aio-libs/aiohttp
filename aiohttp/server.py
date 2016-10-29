@@ -154,7 +154,10 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             return
         self._closing = True
 
-        if timeout:
+        if self._request_count > 1 and not self._reading_request:
+            # force-close idle keep-alive connections
+            self._request_handler.cancel()
+        elif timeout:
             canceller = self._loop.call_later(timeout,
                                               self._request_handler.cancel)
             with suppress(asyncio.CancelledError):
@@ -215,6 +218,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         keep_alive(True) specified.
         """
         reader = self.reader
+        self.writer.set_tcp_nodelay(True)
 
         try:
             while not self._closing:

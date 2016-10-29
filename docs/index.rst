@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-aiohttp
-=======
+aiohttp: Asynchronous HTTP Client/Server
+========================================
 
 HTTP client/server for :term:`asyncio` (:pep:`3156`).
 
@@ -122,10 +122,11 @@ Dependencies
 ------------
 
 - Python 3.4.2+
-- *chardet* library
-- *multidict* library
-- *async_timeout* library
-- *Optional* :term:`cchardet` library as faster replacement for
+- *chardet*
+- *multidict*
+- *async_timeout*
+- *yarl*
+- *Optional* :term:`cchardet` as faster replacement for
   :term:`chardet`.
 
   Install it explicitly via:
@@ -134,7 +135,7 @@ Dependencies
 
      $ pip install cchardet
 
-- *Optional* :term:`aiodns` library for fast DNS resolving. The
+- *Optional* :term:`aiodns` for fast DNS resolving. The
   library is highly recommended.
 
   .. code-block:: bash
@@ -204,9 +205,9 @@ Contents
    api
    logging
    testing
-   gunicorn
+   deployment
    faq
-   new_router
+   essays
    contributing
    changes
    glossary

@@ -1,10 +1,13 @@
 import datetime
+import pathlib
+import pickle
 import re
 from collections import defaultdict
 from collections.abc import Mapping
 from http.cookies import Morsel, SimpleCookie
 from math import ceil
-from urllib.parse import urlsplit
+
+from yarl import URL
 
 from .abc import AbstractCookieJar
 from .helpers import is_ip_address
@@ -35,6 +38,16 @@ class CookieJar(AbstractCookieJar):
         self._unsafe = unsafe
         self._next_expiration = ceil(self._loop.time())
         self._expirations = {}
+
+    def save(self, file_path):
+        file_path = pathlib.Path(file_path)
+        with file_path.open(mode='wb') as f:
+            pickle.dump(self._cookies, f, pickle.HIGHEST_PROTOCOL)
+
+    def load(self, file_path):
+        file_path = pathlib.Path(file_path)
+        with file_path.open(mode='rb') as f:
+            self._cookies = pickle.load(f)
 
     def clear(self):
         self._cookies.clear()
@@ -76,10 +89,9 @@ class CookieJar(AbstractCookieJar):
         self._next_expiration = min(self._next_expiration, when)
         self._expirations[(domain, name)] = when
 
-    def update_cookies(self, cookies, response_url=None):
+    def update_cookies(self, cookies, response_url=URL()):
         """Update cookies."""
-        url_parsed = urlsplit(response_url or "")
-        hostname = url_parsed.hostname
+        hostname = response_url.host
 
         if not self._unsafe and is_ip_address(hostname):
             # Don't accept cookies from IPs
@@ -119,7 +131,7 @@ class CookieJar(AbstractCookieJar):
             path = cookie["path"]
             if not path or not path.startswith("/"):
                 # Set the cookie's path to the response path
-                path = url_parsed.path
+                path = response_url.path
                 if not path.startswith("/"):
                     path = "/"
                 else:
@@ -152,13 +164,12 @@ class CookieJar(AbstractCookieJar):
 
         self._do_expiration()
 
-    def filter_cookies(self, request_url):
+    def filter_cookies(self, request_url=URL()):
         """Returns this jar's cookies filtered by their attributes."""
         self._do_expiration()
-        url_parsed = urlsplit(request_url)
         filtered = SimpleCookie()
-        hostname = url_parsed.hostname or ""
-        is_not_secure = url_parsed.scheme not in ("https", "wss")
+        hostname = request_url.host or ""
+        is_not_secure = request_url.scheme not in ("https", "wss")
 
         for cookie in self:
             name = cookie.key
@@ -178,7 +189,7 @@ class CookieJar(AbstractCookieJar):
             elif not self._is_domain_match(domain, hostname):
                 continue
 
-            if not self._is_path_match(url_parsed.path, cookie["path"]):
+            if not self._is_path_match(request_url.path, cookie["path"]):
                 continue
 
             if is_not_secure and cookie["secure"]:

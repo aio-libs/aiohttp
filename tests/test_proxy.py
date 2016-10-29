@@ -4,6 +4,8 @@ import socket
 import unittest
 from unittest import mock
 
+from yarl import URL
+
 import aiohttp
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
 from aiohttp.test_utils import make_mocked_coro
@@ -25,11 +27,11 @@ class TestProxy(unittest.TestCase):
     @mock.patch('aiohttp.connector.ClientRequest')
     def test_connect(self, ClientRequestMock):
         req = ClientRequest(
-            'GET', 'http://www.python.org',
-            proxy='http://proxy.example.com',
+            'GET', URL('http://www.python.org'),
+            proxy=URL('http://proxy.example.com'),
             loop=self.loop
         )
-        self.assertEqual(req.proxy, 'http://proxy.example.com')
+        self.assertEqual(str(req.proxy), 'http://proxy.example.com')
 
         # mock all the things!
         connector = aiohttp.TCPConnector(loop=self.loop)
@@ -38,12 +40,12 @@ class TestProxy(unittest.TestCase):
         tr, proto = mock.Mock(), mock.Mock()
         self.loop.create_connection = make_mocked_coro((tr, proto))
         conn = self.loop.run_until_complete(connector.connect(req))
-        self.assertEqual(req.path, 'http://www.python.org/')
+        self.assertEqual(req.path, 'http://www.python.org')
         self.assertIs(conn._transport, tr)
         self.assertIs(conn._protocol, proto)
 
         ClientRequestMock.assert_called_with(
-            'GET', 'http://proxy.example.com',
+            'GET', URL('http://proxy.example.com'),
             auth=None,
             headers={'Host': 'www.python.org'},
             loop=self.loop)
@@ -51,8 +53,8 @@ class TestProxy(unittest.TestCase):
     def test_proxy_auth(self):
         with self.assertRaises(ValueError) as ctx:
             ClientRequest(
-                'GET', 'http://python.org',
-                proxy='http://proxy.example.com',
+                'GET', URL('http://python.org'),
+                proxy=URL('http://proxy.example.com'),
                 proxy_auth=('user', 'pass'),
                 loop=mock.Mock())
         self.assertEqual(
@@ -66,20 +68,20 @@ class TestProxy(unittest.TestCase):
             raise_exception=OSError('dont take it serious'))
 
         req = ClientRequest(
-            'GET', 'http://www.python.org',
-            proxy='http://proxy.example.com',
+            'GET', URL('http://www.python.org'),
+            proxy=URL('http://proxy.example.com'),
             loop=self.loop,
         )
         expected_headers = dict(req.headers)
         with self.assertRaises(aiohttp.ProxyConnectionError):
             self.loop.run_until_complete(connector.connect(req))
-        self.assertEqual(req.path, '/')
+        self.assertEqual(req.url.path, '/')
         self.assertEqual(dict(req.headers), expected_headers)
 
     @mock.patch('aiohttp.connector.ClientRequest')
     def test_auth(self, ClientRequestMock):
         proxy_req = ClientRequest(
-            'GET', 'http://proxy.example.com',
+            'GET', URL('http://proxy.example.com'),
             auth=aiohttp.helpers.BasicAuth('user', 'pass'),
             loop=self.loop
         )
@@ -94,8 +96,8 @@ class TestProxy(unittest.TestCase):
         self.loop.create_connection = make_mocked_coro((tr, proto))
 
         req = ClientRequest(
-            'GET', 'http://www.python.org',
-            proxy='http://proxy.example.com',
+            'GET', URL('http://www.python.org'),
+            proxy=URL('http://proxy.example.com'),
             proxy_auth=aiohttp.helpers.BasicAuth('user', 'pass'),
             loop=self.loop,
         )
@@ -103,28 +105,29 @@ class TestProxy(unittest.TestCase):
         self.assertNotIn('PROXY-AUTHORIZATION', req.headers)
         conn = self.loop.run_until_complete(connector.connect(req))
 
-        self.assertEqual(req.path, 'http://www.python.org/')
+        self.assertEqual(req.path, 'http://www.python.org')
         self.assertNotIn('AUTHORIZATION', req.headers)
         self.assertIn('PROXY-AUTHORIZATION', req.headers)
         self.assertNotIn('AUTHORIZATION', proxy_req.headers)
         self.assertNotIn('PROXY-AUTHORIZATION', proxy_req.headers)
 
         ClientRequestMock.assert_called_with(
-            'GET', 'http://proxy.example.com',
+            'GET', URL('http://proxy.example.com'),
             auth=aiohttp.helpers.BasicAuth('user', 'pass'),
             loop=mock.ANY, headers=mock.ANY)
         conn.close()
 
     def test_auth_utf8(self):
         proxy_req = ClientRequest(
-            'GET', 'http://proxy.example.com',
+            'GET', URL('http://proxy.example.com'),
             auth=aiohttp.helpers.BasicAuth('юзер', 'пасс', 'utf-8'),
             loop=self.loop)
         self.assertIn('AUTHORIZATION', proxy_req.headers)
 
     @mock.patch('aiohttp.connector.ClientRequest')
     def test_auth_from_url(self, ClientRequestMock):
-        proxy_req = ClientRequest('GET', 'http://user:pass@proxy.example.com',
+        proxy_req = ClientRequest('GET',
+                                  URL('http://user:pass@proxy.example.com'),
                                   loop=self.loop)
         ClientRequestMock.return_value = proxy_req
         self.assertIn('AUTHORIZATION', proxy_req.headers)
@@ -137,28 +140,29 @@ class TestProxy(unittest.TestCase):
         self.loop.create_connection = make_mocked_coro((tr, proto))
 
         req = ClientRequest(
-            'GET', 'http://www.python.org',
-            proxy='http://user:pass@proxy.example.com',
+            'GET', URL('http://www.python.org'),
+            proxy=URL('http://user:pass@proxy.example.com'),
             loop=self.loop,
         )
         self.assertNotIn('AUTHORIZATION', req.headers)
         self.assertNotIn('PROXY-AUTHORIZATION', req.headers)
         conn = self.loop.run_until_complete(connector.connect(req))
 
-        self.assertEqual(req.path, 'http://www.python.org/')
+        self.assertEqual(req.path, 'http://www.python.org')
         self.assertNotIn('AUTHORIZATION', req.headers)
         self.assertIn('PROXY-AUTHORIZATION', req.headers)
         self.assertNotIn('AUTHORIZATION', proxy_req.headers)
         self.assertNotIn('PROXY-AUTHORIZATION', proxy_req.headers)
 
         ClientRequestMock.assert_called_with(
-            'GET', 'http://user:pass@proxy.example.com',
+            'GET', URL('http://user:pass@proxy.example.com'),
             auth=None, loop=mock.ANY, headers=mock.ANY)
         conn.close()
 
     @mock.patch('aiohttp.connector.ClientRequest')
     def test_auth__not_modifying_request(self, ClientRequestMock):
-        proxy_req = ClientRequest('GET', 'http://user:pass@proxy.example.com',
+        proxy_req = ClientRequest('GET',
+                                  URL('http://user:pass@proxy.example.com'),
                                   loop=self.loop)
         ClientRequestMock.return_value = proxy_req
         proxy_req_headers = dict(proxy_req.headers)
@@ -168,24 +172,24 @@ class TestProxy(unittest.TestCase):
             raise_exception=OSError('nothing personal'))
 
         req = ClientRequest(
-            'GET', 'http://www.python.org',
-            proxy='http://user:pass@proxy.example.com',
+            'GET', URL('http://www.python.org'),
+            proxy=URL('http://user:pass@proxy.example.com'),
             loop=self.loop,
         )
         req_headers = dict(req.headers)
         with self.assertRaises(aiohttp.ProxyConnectionError):
             self.loop.run_until_complete(connector.connect(req))
         self.assertEqual(req.headers, req_headers)
-        self.assertEqual(req.path, '/')
+        self.assertEqual(req.url.path, '/')
         self.assertEqual(proxy_req.headers, proxy_req_headers)
 
     @mock.patch('aiohttp.connector.ClientRequest')
     def test_https_connect(self, ClientRequestMock):
-        proxy_req = ClientRequest('GET', 'http://proxy.example.com',
+        proxy_req = ClientRequest('GET', URL('http://proxy.example.com'),
                                   loop=self.loop)
         ClientRequestMock.return_value = proxy_req
 
-        proxy_resp = ClientResponse('get', 'http://proxy.example.com')
+        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
         proxy_resp._loop = self.loop
         proxy_req.send = send_mock = mock.Mock()
         send_mock.return_value = proxy_resp
@@ -200,13 +204,13 @@ class TestProxy(unittest.TestCase):
         self.loop.create_connection = make_mocked_coro((tr, proto))
 
         req = ClientRequest(
-            'GET', 'https://www.python.org',
-            proxy='http://proxy.example.com',
+            'GET', URL('https://www.python.org'),
+            proxy=URL('http://proxy.example.com'),
             loop=self.loop,
         )
         self.loop.run_until_complete(connector._create_connection(req))
 
-        self.assertEqual(req.path, '/')
+        self.assertEqual(req.url.path, '/')
         self.assertEqual(proxy_req.method, 'CONNECT')
         self.assertEqual(proxy_req.path, 'www.python.org:443')
         tr.pause_reading.assert_called_once_with()
@@ -218,11 +222,11 @@ class TestProxy(unittest.TestCase):
 
     @mock.patch('aiohttp.connector.ClientRequest')
     def test_https_connect_runtime_error(self, ClientRequestMock):
-        proxy_req = ClientRequest('GET', 'http://proxy.example.com',
+        proxy_req = ClientRequest('GET', URL('http://proxy.example.com'),
                                   loop=self.loop)
         ClientRequestMock.return_value = proxy_req
 
-        proxy_resp = ClientResponse('get', 'http://proxy.example.com')
+        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
         proxy_resp._loop = self.loop
         proxy_req.send = send_mock = mock.Mock()
         send_mock.return_value = proxy_resp
@@ -238,8 +242,8 @@ class TestProxy(unittest.TestCase):
         self.loop.create_connection = make_mocked_coro((tr, proto))
 
         req = ClientRequest(
-            'GET', 'https://www.python.org',
-            proxy='http://proxy.example.com',
+            'GET', URL('https://www.python.org'),
+            proxy=URL('http://proxy.example.com'),
             loop=self.loop,
         )
         with self.assertRaisesRegex(
@@ -252,11 +256,11 @@ class TestProxy(unittest.TestCase):
 
     @mock.patch('aiohttp.connector.ClientRequest')
     def test_https_connect_http_proxy_error(self, ClientRequestMock):
-        proxy_req = ClientRequest('GET', 'http://proxy.example.com',
+        proxy_req = ClientRequest('GET', URL('http://proxy.example.com'),
                                   loop=self.loop)
         ClientRequestMock.return_value = proxy_req
 
-        proxy_resp = ClientResponse('get', 'http://proxy.example.com')
+        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
         proxy_resp._loop = self.loop
         proxy_req.send = send_mock = mock.Mock()
         send_mock.return_value = proxy_resp
@@ -274,8 +278,8 @@ class TestProxy(unittest.TestCase):
         self.loop.create_connection = make_mocked_coro((tr, proto))
 
         req = ClientRequest(
-            'GET', 'https://www.python.org',
-            proxy='http://proxy.example.com',
+            'GET', URL('https://www.python.org'),
+            proxy=URL('http://proxy.example.com'),
             loop=self.loop,
         )
         with self.assertRaisesRegex(
@@ -288,11 +292,11 @@ class TestProxy(unittest.TestCase):
 
     @mock.patch('aiohttp.connector.ClientRequest')
     def test_https_connect_resp_start_error(self, ClientRequestMock):
-        proxy_req = ClientRequest('GET', 'http://proxy.example.com',
+        proxy_req = ClientRequest('GET', URL('http://proxy.example.com'),
                                   loop=self.loop)
         ClientRequestMock.return_value = proxy_req
 
-        proxy_resp = ClientResponse('get', 'http://proxy.example.com')
+        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
         proxy_resp._loop = self.loop
         proxy_req.send = send_mock = mock.Mock()
         send_mock.return_value = proxy_resp
@@ -309,8 +313,8 @@ class TestProxy(unittest.TestCase):
         self.loop.create_connection = make_mocked_coro((tr, proto))
 
         req = ClientRequest(
-            'GET', 'https://www.python.org',
-            proxy='http://proxy.example.com',
+            'GET', URL('https://www.python.org'),
+            proxy=URL('http://proxy.example.com'),
             loop=self.loop,
         )
         with self.assertRaisesRegex(OSError, "error message"):
@@ -318,7 +322,7 @@ class TestProxy(unittest.TestCase):
 
     @mock.patch('aiohttp.connector.ClientRequest')
     def test_request_port(self, ClientRequestMock):
-        proxy_req = ClientRequest('GET', 'http://proxy.example.com',
+        proxy_req = ClientRequest('GET', URL('http://proxy.example.com'),
                                   loop=self.loop)
         ClientRequestMock.return_value = proxy_req
 
@@ -332,8 +336,8 @@ class TestProxy(unittest.TestCase):
         self.loop.create_connection = make_mocked_coro((tr, proto))
 
         req = ClientRequest(
-            'GET', 'http://localhost:1234/path',
-            proxy='http://proxy.example.com',
+            'GET', URL('http://localhost:1234/path'),
+            proxy=URL('http://proxy.example.com'),
             loop=self.loop,
         )
         self.loop.run_until_complete(connector._create_connection(req))
@@ -341,26 +345,26 @@ class TestProxy(unittest.TestCase):
 
     def test_proxy_auth_property(self):
         req = aiohttp.ClientRequest(
-            'GET', 'http://localhost:1234/path',
-            proxy='http://proxy.example.com',
+            'GET', URL('http://localhost:1234/path'),
+            proxy=URL('http://proxy.example.com'),
             proxy_auth=aiohttp.helpers.BasicAuth('user', 'pass'),
             loop=self.loop)
         self.assertEqual(('user', 'pass', 'latin1'), req.proxy_auth)
 
     def test_proxy_auth_property_default(self):
         req = aiohttp.ClientRequest(
-            'GET', 'http://localhost:1234/path',
-            proxy='http://proxy.example.com',
+            'GET', URL('http://localhost:1234/path'),
+            proxy=URL('http://proxy.example.com'),
             loop=self.loop)
         self.assertIsNone(req.proxy_auth)
 
     @mock.patch('aiohttp.connector.ClientRequest')
     def test_https_connect_pass_ssl_context(self, ClientRequestMock):
-        proxy_req = ClientRequest('GET', 'http://proxy.example.com',
+        proxy_req = ClientRequest('GET', URL('http://proxy.example.com'),
                                   loop=self.loop)
         ClientRequestMock.return_value = proxy_req
 
-        proxy_resp = ClientResponse('get', 'http://proxy.example.com')
+        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
         proxy_resp._loop = self.loop
         proxy_req.send = send_mock = mock.Mock()
         send_mock.return_value = proxy_resp
@@ -375,8 +379,8 @@ class TestProxy(unittest.TestCase):
         self.loop.create_connection = make_mocked_coro((tr, proto))
 
         req = ClientRequest(
-            'GET', 'https://www.python.org',
-            proxy='http://proxy.example.com',
+            'GET', URL('https://www.python.org'),
+            proxy=URL('http://proxy.example.com'),
             loop=self.loop,
         )
         self.loop.run_until_complete(connector._create_connection(req))
@@ -387,7 +391,7 @@ class TestProxy(unittest.TestCase):
             sock=mock.ANY,
             server_hostname='www.python.org')
 
-        self.assertEqual(req.path, '/')
+        self.assertEqual(req.url.path, '/')
         self.assertEqual(proxy_req.method, 'CONNECT')
         self.assertEqual(proxy_req.path, 'www.python.org:443')
         tr.pause_reading.assert_called_once_with()
@@ -399,13 +403,13 @@ class TestProxy(unittest.TestCase):
 
     @mock.patch('aiohttp.connector.ClientRequest')
     def test_https_auth(self, ClientRequestMock):
-        proxy_req = ClientRequest('GET', 'http://proxy.example.com',
+        proxy_req = ClientRequest('GET', URL('http://proxy.example.com'),
                                   auth=aiohttp.helpers.BasicAuth('user',
                                                                  'pass'),
                                   loop=self.loop)
         ClientRequestMock.return_value = proxy_req
 
-        proxy_resp = ClientResponse('get', 'http://proxy.example.com')
+        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
         proxy_resp._loop = self.loop
         proxy_req.send = send_mock = mock.Mock()
         send_mock.return_value = proxy_resp
@@ -423,15 +427,15 @@ class TestProxy(unittest.TestCase):
         self.assertNotIn('PROXY-AUTHORIZATION', proxy_req.headers)
 
         req = ClientRequest(
-            'GET', 'https://www.python.org',
-            proxy='http://proxy.example.com',
+            'GET', URL('https://www.python.org'),
+            proxy=URL('http://proxy.example.com'),
             loop=self.loop
         )
         self.assertNotIn('AUTHORIZATION', req.headers)
         self.assertNotIn('PROXY-AUTHORIZATION', req.headers)
         self.loop.run_until_complete(connector._create_connection(req))
 
-        self.assertEqual(req.path, '/')
+        self.assertEqual(req.url.path, '/')
         self.assertNotIn('AUTHORIZATION', req.headers)
         self.assertNotIn('PROXY-AUTHORIZATION', req.headers)
         self.assertNotIn('AUTHORIZATION', proxy_req.headers)
@@ -463,12 +467,12 @@ class TestProxyConnector(unittest.TestCase):
 
     def test_ctor(self):
         connector = aiohttp.ProxyConnector(
-            'http://localhost:8118',
+            URL('http://localhost:8118'),
             proxy_auth=aiohttp.helpers.BasicAuth('user', 'pass'),
             loop=self.loop,
         )
 
-        self.assertEqual('http://localhost:8118', connector.proxy)
+        self.assertEqual('http://localhost:8118', str(connector.proxy))
         self.assertEqual(
             aiohttp.helpers.BasicAuth('user', 'pass'),
             connector.proxy_auth
@@ -477,10 +481,11 @@ class TestProxyConnector(unittest.TestCase):
 
     @mock.patch('aiohttp.connector.ClientRequest')
     def test_connect(self, ClientRequestMock):
-        req = ClientRequest('GET', 'http://www.python.org', loop=self.loop)
-        self.assertEqual(req.path, '/')
+        req = ClientRequest('GET', URL('http://www.python.org'),
+                            loop=self.loop)
+        self.assertEqual(req.url.path, '/')
 
-        connector = aiohttp.ProxyConnector('http://proxy.example.com',
+        connector = aiohttp.ProxyConnector(URL('http://proxy.example.com'),
                                            loop=self.loop)
         self.assertIs(self.loop, connector._loop)
 
@@ -489,7 +494,7 @@ class TestProxyConnector(unittest.TestCase):
         tr, proto = mock.Mock(), mock.Mock()
         self.loop.create_connection = make_mocked_coro((tr, proto))
         conn = self.loop.run_until_complete(connector.connect(req))
-        self.assertEqual(req.path, 'http://www.python.org/')
+        self.assertEqual(req.path, 'http://www.python.org')
         self.assertIs(conn._transport, tr)
         self.assertIs(conn._protocol, proto)
 
@@ -497,7 +502,7 @@ class TestProxyConnector(unittest.TestCase):
         tr.get_extra_info.assert_called_once_with('sslcontext')
 
         ClientRequestMock.assert_called_with(
-            'GET', 'http://proxy.example.com',
+            'GET', URL('http://proxy.example.com'),
             auth=None,
             headers={'Host': 'www.python.org'},
             loop=self.loop)

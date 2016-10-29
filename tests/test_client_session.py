@@ -8,6 +8,7 @@ from unittest import mock
 
 import pytest
 from multidict import CIMultiDict, MultiDict
+from yarl import URL
 
 import aiohttp
 from aiohttp import web
@@ -94,7 +95,7 @@ def test_init_headers_list_of_tuples_with_duplicates(create_session):
 def test_init_cookies_with_simple_dict(create_session):
     session = create_session(cookies={"c1": "cookie1",
                                       "c2": "cookie2"})
-    cookies = session.cookie_jar.filter_cookies('')
+    cookies = session.cookie_jar.filter_cookies()
     assert set(cookies) == {'c1', 'c2'}
     assert cookies['c1'].value == 'cookie1'
     assert cookies['c2'].value == 'cookie2'
@@ -104,7 +105,7 @@ def test_init_cookies_with_list_of_tuples(create_session):
     session = create_session(cookies=[("c1", "cookie1"),
                                       ("c2", "cookie2")])
 
-    cookies = session.cookie_jar.filter_cookies('')
+    cookies = session.cookie_jar.filter_cookies()
     assert set(cookies) == {'c1', 'c2'}
     assert cookies['c1'].value == 'cookie1'
     assert cookies['c2'].value == 'cookie2'
@@ -373,7 +374,7 @@ def test_request_ctx_manager_props(loop):
 
 
 @asyncio.coroutine
-def test_cookie_jar_usage(create_app_and_client):
+def test_cookie_jar_usage(loop, test_client):
     req_url = None
 
     jar = mock.Mock()
@@ -388,21 +389,22 @@ def test_cookie_jar_usage(create_app_and_client):
         resp.set_cookie("response", "resp_value")
         return resp
 
-    app, client = yield from create_app_and_client(
-        client_params={"cookies": {"request": "req_value"},
-                       "cookie_jar": jar}
-    )
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    session = yield from test_client(app,
+                                     cookies={"request": "req_value"},
+                                     cookie_jar=jar)
 
     # Updating the cookie jar with initial user defined cookies
     jar.update_cookies.assert_called_with({"request": "req_value"})
 
     jar.update_cookies.reset_mock()
-    yield from client.get("/")
+    resp = yield from session.get("/")
+    yield from resp.release()
 
     # Filtering the cookie jar before sending the request,
     # getting the request URL as only parameter
-    jar.filter_cookies.assert_called_with(req_url)
+    jar.filter_cookies.assert_called_with(URL(req_url))
 
     # Updating the cookie jar with the response cookies
     assert jar.update_cookies.called
@@ -420,3 +422,16 @@ def test_session_default_version(loop):
 def test_session_loop(loop):
     session = aiohttp.ClientSession(loop=loop)
     assert session.loop is loop
+
+
+def test_proxy_str(session, params):
+    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+        session.get("http://test.example.com",
+                    proxy='http://proxy.com',
+                    **params)
+    assert patched.called, "`ClientSession._request` not called"
+    assert list(patched.call_args) == [("GET", "http://test.example.com",),
+                                       dict(
+                                           allow_redirects=True,
+                                           proxy='http://proxy.com',
+                                           **params)]

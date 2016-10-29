@@ -60,6 +60,11 @@ def test_basic_auth2():
         helpers.BasicAuth('nkim', None)
 
 
+def test_basic_with_auth_colon_in_login():
+    with pytest.raises(ValueError):
+        helpers.BasicAuth('nkim:1', 'pwd')
+
+
 def test_basic_auth3():
     auth = helpers.BasicAuth('nkim')
     assert auth.login == 'nkim'
@@ -129,12 +134,14 @@ def test_invalid_formdata_content_transfer_encoding():
                            'bar',
                            content_transfer_encoding=invalid_val)
 
+# ------------- access logger -------------------------
+
 
 def test_access_logger_format():
-    log_format = '%T {%{SPAM}e} "%{ETag}o" %X {X} %%P'
+    log_format = '%T {%{SPAM}e} "%{ETag}o" %X {X} %%P %{FOO_TEST}e %{FOO1}e'
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, log_format)
-    expected = '%s {%s} "%s" %%X {X} %%%s'
+    expected = '%s {%s} "%s" %%X {X} %%%s %s %s'
     assert expected == access_logger._log_format
 
 
@@ -157,7 +164,19 @@ def test_access_logger_atoms(mocker):
     assert not mock_logger.exception.called
     expected = ('127.0.0.2 [01/Jan/1843:00:00:00 +0000] <42> - - '
                 'GET /path HTTP/1.1 200 42 123 3 3.141593 3141593')
-    mock_logger.info.assert_called_with(expected)
+    extra = {
+        'bytes_sent': 123,
+        'first_request_line': 'GET /path HTTP/1.1',
+        'process_id': '<42>',
+        'remote_address': '127.0.0.2',
+        'request_time': 3,
+        'request_time_frac': '3.141593',
+        'request_time_micro': 3141593,
+        'response_size': 42,
+        'response_status': 200
+    }
+
+    mock_logger.info.assert_called_with(expected, extra=extra)
 
 
 def test_access_logger_dicts():
@@ -172,7 +191,13 @@ def test_access_logger_dicts():
     access_logger.log(message, environ, response, transport, 0.0)
     assert not mock_logger.error.called
     expected = 'Mock/1.0 123 EGGS -'
-    mock_logger.info.assert_called_with(expected)
+    extra = {
+        'environ': {'SPAM': 'EGGS'},
+        'request_header': {'None': '-'},
+        'response_header': {'Content-Length': 123}
+    }
+
+    mock_logger.info.assert_called_with(expected, extra=extra)
 
 
 def test_access_logger_unix_socket():
@@ -187,7 +212,7 @@ def test_access_logger_unix_socket():
     access_logger.log(message, environ, response, transport, 0.0)
     assert not mock_logger.error.called
     expected = '||'
-    mock_logger.info.assert_called_with(expected)
+    mock_logger.info.assert_called_with(expected, extra={'remote_address': ''})
 
 
 def test_logger_no_message_and_environ():
@@ -196,12 +221,40 @@ def test_logger_no_message_and_environ():
     mock_transport.get_extra_info.return_value = ("127.0.0.3", 0)
     access_logger = helpers.AccessLogger(mock_logger,
                                          "%r %{FOOBAR}e %{content-type}i")
+    extra_dict = {
+        'environ': {'FOOBAR': '-'},
+        'first_request_line': '-',
+        'request_header': {'content-type': '(no headers)'}
+    }
+
     access_logger.log(None, None, None, mock_transport, 0.0)
-    mock_logger.info.assert_called_with("- - (no headers)")
+    mock_logger.info.assert_called_with("- - (no headers)", extra=extra_dict)
+
+
+def test_logger_internal_error():
+    mock_logger = mock.Mock()
+    mock_transport = mock.Mock()
+    mock_transport.get_extra_info.return_value = ("127.0.0.3", 0)
+    access_logger = helpers.AccessLogger(mock_logger, "%D")
+    access_logger.log(None, None, None, mock_transport, 'invalid')
+    mock_logger.exception.assert_called_with("Error in logging")
+
+
+def test_logger_no_transport():
+    mock_logger = mock.Mock()
+    access_logger = helpers.AccessLogger(mock_logger, "%a")
+    access_logger.log(None, None, None, None, 0)
+    mock_logger.info.assert_called_with("-", extra={'remote_address': '-'})
+
+
+# ----------------------------------------------------------
 
 
 def test_reify():
     class A:
+        def __init__(self):
+            self._cache = {}
+
         @helpers.reify
         def prop(self):
             return 1
@@ -212,6 +265,9 @@ def test_reify():
 
 def test_reify_class():
     class A:
+        def __init__(self):
+            self._cache = {}
+
         @helpers.reify
         def prop(self):
             """Docstring."""
@@ -223,6 +279,9 @@ def test_reify_class():
 
 def test_reify_assignment():
     class A:
+        def __init__(self):
+            self._cache = {}
+
         @helpers.reify
         def prop(self):
             return 1
@@ -231,19 +290,6 @@ def test_reify_assignment():
 
     with pytest.raises(AttributeError):
         a.prop = 123
-
-
-def test_requote_uri_with_unquoted_percents():
-    # Ensure we handle unquoted percent signs in redirects.
-    bad_uri = 'http://example.com/fiz?buz=%ppicture'
-    quoted = 'http://example.com/fiz?buz=%25ppicture'
-    assert quoted == helpers.requote_uri(bad_uri)
-
-
-def test_requote_uri_properly_requotes():
-    # Ensure requoting doesn't break expectations.
-    quoted = 'http://example.com/fiz?buz=%25ppicture'
-    assert quoted == helpers.requote_uri(quoted)
 
 
 def test_create_future_with_new_loop():
@@ -267,6 +313,8 @@ def test_create_future_with_old_loop(mocker):
     future = helpers.create_future(mock_loop)
     MockFuture.assert_called_with(loop=mock_loop)
     assert expected == future
+
+# ----------------------------------- is_ip_address() ----------------------
 
 
 def test_is_ip_address():

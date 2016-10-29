@@ -118,6 +118,7 @@ Requirements
 - Python >= 3.4.2
 - chardet_
 - multidict_
+- yarl_
 
 Optionally you may install the cChardet_ and aiodns_ libraries (highly
 recommended for sake of speed).
@@ -125,6 +126,8 @@ recommended for sake of speed).
 .. _chardet: https://pypi.python.org/pypi/chardet
 .. _aiodns: https://pypi.python.org/pypi/aiodns
 .. _multidict: https://pypi.python.org/pypi/multidict
+.. _yarl: https://pypi.python.org/pypi/yarl
+.. _asyncio-timeout: https://pypi.python.org/pypi/asyncio_timeout
 .. _cChardet: https://pypi.python.org/pypi/cchardet
 
 License
