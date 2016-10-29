@@ -116,7 +116,7 @@ Requirements
 ------------
 
 - Python >= 3.4.2
-- asyncio-timeout_
+- async-timeout_
 - chardet_
 - multidict_
 - yarl_
@@ -128,7 +128,7 @@ recommended for sake of speed).
 .. _aiodns: https://pypi.python.org/pypi/aiodns
 .. _multidict: https://pypi.python.org/pypi/multidict
 .. _yarl: https://pypi.python.org/pypi/yarl
-.. _asyncio-timeout: https://pypi.python.org/pypi/asyncio_timeout
+.. _async-timeout: https://pypi.python.org/pypi/async_timeout
 .. _cChardet: https://pypi.python.org/pypi/cchardet
 
 License
