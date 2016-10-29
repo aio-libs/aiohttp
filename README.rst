@@ -116,7 +116,6 @@ Requirements
 ------------
 
 - Python >= 3.4.2
-- asyncio-timeout_
 - chardet_
 - multidict_
 - yarl_
