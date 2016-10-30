@@ -328,10 +328,6 @@ class Request(collections.MutableMapping, HeadersMixin):
         """Return True if request has HTTP BODY, False otherwise."""
         return self._has_body
 
-    def _strtime(self):
-        """Return current UTC time with 1 second accuracy."""
-        return self._time_service.strtime()
-
     @asyncio.coroutine
     def release(self):
         """Release request.
@@ -785,7 +781,7 @@ class StreamResponse(HeadersMixin):
             resp_impl.length = self.content_length
 
         if hdrs.DATE not in headers:
-            headers[hdrs.DATE] = request._strtime()
+            headers[hdrs.DATE] = request._time_service.strtime()
         headers.setdefault(hdrs.SERVER, resp_impl.SERVER_SOFTWARE)
         if hdrs.CONNECTION not in headers:
             if keep_alive:

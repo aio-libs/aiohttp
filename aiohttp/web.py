@@ -32,7 +32,7 @@ class RequestHandler(ServerHttpProtocol):
 
     _request = None
 
-    def __init__(self, manager, app, router, *,
+    def __init__(self, manager, app, router, time_service, *,
                  secure_proxy_ssl_header=None, **kwargs):
         super().__init__(**kwargs)
 
@@ -40,7 +40,7 @@ class RequestHandler(ServerHttpProtocol):
         self._app = app
         self._router = router
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
-        self._time_service = None
+        self._time_service = time_service
 
     def __repr__(self):
         if self._request is None:
@@ -57,14 +57,11 @@ class RequestHandler(ServerHttpProtocol):
         super().connection_made(transport)
 
         self._manager.connection_made(self, transport)
-        self._time_service = TimeService(self._loop)
 
     def connection_lost(self, exc):
         self._manager.connection_lost(self, exc)
 
         super().connection_lost(exc)
-        self._time_service.stop()
-        self._time_service = None
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
@@ -138,6 +135,7 @@ class RequestHandlerFactory:
         self._kwargs = kwargs
         self._kwargs.setdefault('logger', app.logger)
         self._requests_count = 0
+        self._time_service = TimeService(self._loop)
 
     @property
     def requests_count(self):
@@ -164,10 +162,11 @@ class RequestHandlerFactory:
         coros = [conn.shutdown(timeout) for conn in self._connections]
         yield from asyncio.gather(*coros, loop=self._loop)
         self._connections.clear()
+        self._time_service.stop()
 
     def __call__(self):
         return self._handler(
-            self, self._app, self._router, loop=self._loop,
+            self, self._app, self._router, self._time_service, loop=self._loop,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header,
             **self._kwargs)
 

@@ -247,49 +247,46 @@ def test_logger_no_transport():
     mock_logger.info.assert_called_with("-", extra={'remote_address': '-'})
 
 
-# ----------------------------------------------------------
+class TestReify:
 
+    def test_reify(self):
+        class A:
+            def __init__(self):
+                self._cache = {}
 
-def test_reify():
-    class A:
-        def __init__(self):
-            self._cache = {}
+            @helpers.reify
+            def prop(self):
+                return 1
 
-        @helpers.reify
-        def prop(self):
-            return 1
+        a = A()
+        assert 1 == a.prop
 
-    a = A()
-    assert 1 == a.prop
+    def test_reify_class(self):
+        class A:
+            def __init__(self):
+                self._cache = {}
 
+            @helpers.reify
+            def prop(self):
+                """Docstring."""
+                return 1
 
-def test_reify_class():
-    class A:
-        def __init__(self):
-            self._cache = {}
+        assert isinstance(A.prop, helpers.reify)
+        assert 'Docstring.' == A.prop.__doc__
 
-        @helpers.reify
-        def prop(self):
-            """Docstring."""
-            return 1
+    def test_reify_assignment(self):
+        class A:
+            def __init__(self):
+                self._cache = {}
 
-    assert isinstance(A.prop, helpers.reify)
-    assert 'Docstring.' == A.prop.__doc__
+            @helpers.reify
+            def prop(self):
+                return 1
 
+        a = A()
 
-def test_reify_assignment():
-    class A:
-        def __init__(self):
-            self._cache = {}
-
-        @helpers.reify
-        def prop(self):
-            return 1
-
-    a = A()
-
-    with pytest.raises(AttributeError):
-        a.prop = 123
+        with pytest.raises(AttributeError):
+            a.prop = 123
 
 
 def test_create_future_with_new_loop():
@@ -388,3 +385,40 @@ def test_is_ip_address_invalid_type():
 
     with pytest.raises(TypeError):
         helpers.is_ip_address(object())
+
+
+@pytest.fixture
+def time_service(loop):
+    return helpers.TimeService(loop)
+
+
+class TestTimeService:
+    def test_ctor(self, time_service):
+        assert time_service._cb is not None
+        assert time_service._time is not None
+        assert time_service._strtime is None
+        assert time_service._count == 0
+
+    def test_stop(self, time_service):
+        time_service.stop()
+        assert time_service._cb is None
+        assert time_service._loop is None
+
+    def test_time(self, time_service):
+        t = time_service._time
+        assert t == time_service.time()
+
+    def test_strtime(self, time_service):
+        time_service._time = 1477797232
+        assert time_service.strtime() == 'Sun, 30 Oct 2016 03:13:52 GMT'
+        # second call should use cached value
+        assert time_service.strtime() == 'Sun, 30 Oct 2016 03:13:52 GMT'
+
+    def test_recalc_time(self, time_service):
+        time_service._time = 123
+        time_service._strtime = 'asd'
+        time_service._count = 1000000
+        time_service._on_cb()
+        assert time_service._strtime is None
+        assert time_service._count == 0
+        assert time_service._time > 1234

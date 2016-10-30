@@ -11,7 +11,7 @@ import re
 import warnings
 from collections import MutableSequence, namedtuple
 from pathlib import Path
-from time import gmtime
+from time import gmtime, time
 from urllib.parse import urlencode
 
 from async_timeout import timeout
@@ -577,21 +577,22 @@ class FrozenList(MutableSequence):
 class TimeService:
     def __init__(self, loop):
         self._loop = loop
-        self._time = loop.time()
+        self._time = time()
         self._strtime = None
         self._count = 0
         self._cb = loop.call_later(1, self._on_cb)
 
     def stop(self):
         self._cb.cancel()
+        self._cb = None
         self._loop = None
 
     def _on_cb(self):
         self._count += 1
-        if self._count > 10*60:
+        if self._count >= 10*60:
             # reset timer every 10 minutes
             self._count = 0
-            self._time = self._loop.time()
+            self._time = time()
         else:
             self._time += 1
         self._strtime = None
