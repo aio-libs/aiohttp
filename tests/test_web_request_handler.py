@@ -2,7 +2,7 @@ import asyncio
 from unittest import mock
 
 from aiohttp import web
-from aiohttp.test_utils import make_mocked_coro
+from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 
 
 def test_repr(loop):
@@ -13,8 +13,8 @@ def test_repr(loop):
     assert '<RequestHandler none:none disconnected>' == repr(handler)
 
     handler.transport = object()
-    handler._meth = 'GET'
-    handler._path = '/index.html'
+    request = make_mocked_request('GET', '/index.html')
+    handler._request = request
     assert '<RequestHandler GET:/index.html connected>' == repr(handler)
 
 

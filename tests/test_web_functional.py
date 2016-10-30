@@ -1170,3 +1170,19 @@ def test_subapp_on_cleanup(loop, test_server):
     yield from server.close()
 
     assert [app, subapp1, subapp2] == order
+
+
+@asyncio.coroutine
+def test_custom_date_header(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(headers={'Date': 'Sun, 30 Oct 2016 03:13:52 GMT'})
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    assert resp.headers['Date'] == 'Sun, 30 Oct 2016 03:13:52 GMT'
