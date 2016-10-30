@@ -13,19 +13,9 @@ except ImportError:
     aiodns = None
 
 
-class FakeResult:
-    def __init__(self, addresses):
-        self.addresses = addresses
-
-
 class FakeQueryResult:
     def __init__(self, host):
         self.host = host
-
-
-@asyncio.coroutine
-def fake_result(addresses):
-    return FakeResult(addresses=tuple(addresses))
 
 
 @asyncio.coroutine
