@@ -88,7 +88,7 @@ CHANGES
   boost of your application -- a couple DB requests and business logic
   is still the main bottleneck.
 
--
+- Boost perfomance by adding a custom time service #1350
 
 -
 
