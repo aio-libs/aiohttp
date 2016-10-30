@@ -17,9 +17,9 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs, multipart
-from .helpers import reify, sentinel, HeadersMixin
-from .protocol import HttpVersion10, HttpVersion11
+from .helpers import HeadersMixin, reify, sentinel
 from .protocol import WebResponse as ResponseImpl
+from .protocol import HttpVersion10, HttpVersion11
 from .streams import EOF_MARKER
 
 __all__ = (
