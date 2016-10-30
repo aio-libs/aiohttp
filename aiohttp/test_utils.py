@@ -503,8 +503,13 @@ def make_mocked_request(method, path, headers=None, *,
     if payload is sentinel:
         payload = mock.Mock()
 
+    time_service = mock.Mock()
+    time_service.time.return_value = 12345
+    time_service.strtime.return_value = "Tue, 15 Nov 1994 08:12:31 GMT"
+
     req = Request(message, payload,
                   transport, reader, writer,
+                  time_service,
                   secure_proxy_ssl_header=secure_proxy_ssl_header)
 
     match_info = UrlMappingMatchInfo({}, mock.Mock())

@@ -882,6 +882,12 @@ class Response(HttpMessage):
         self.headers.setdefault(hdrs.SERVER, self.SERVER_SOFTWARE)
 
 
+class WebResponse(Response):
+    """For usage in aiohttp.web only"""
+    def _add_default_headers(self):
+        pass
+
+
 class Request(HttpMessage):
 
     HOP_HEADERS = ()

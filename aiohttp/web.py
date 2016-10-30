@@ -9,7 +9,7 @@ from yarl import URL
 
 from . import hdrs, web_exceptions, web_reqrep, web_urldispatcher, web_ws
 from .abc import AbstractMatchInfo, AbstractRouter
-from .helpers import FrozenList, sentinel
+from .helpers import FrozenList, TimeService, sentinel
 from .log import access_logger, web_logger
 from .protocol import HttpVersion  # noqa
 from .server import ServerHttpProtocol
@@ -30,8 +30,7 @@ __all__ = (web_reqrep.__all__ +
 
 class RequestHandler(ServerHttpProtocol):
 
-    _meth = 'none'
-    _path = 'none'
+    _request = None
 
     def __init__(self, manager, app, router, *,
                  secure_proxy_ssl_header=None, **kwargs):
@@ -41,21 +40,31 @@ class RequestHandler(ServerHttpProtocol):
         self._app = app
         self._router = router
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
+        self._time_service = None
 
     def __repr__(self):
+        if self._request is None:
+            meth = 'none'
+            path = 'none'
+        else:
+            meth = self._request.method
+            path = self._request.rel_url.raw_path
         return "<{} {}:{} {}>".format(
-            self.__class__.__name__, self._meth, self._path,
+            self.__class__.__name__, meth, path,
             'connected' if self.transport is not None else 'disconnected')
 
     def connection_made(self, transport):
         super().connection_made(transport)
 
         self._manager.connection_made(self, transport)
+        self._time_service = TimeService(self._loop)
 
     def connection_lost(self, exc):
         self._manager.connection_lost(self, exc)
 
         super().connection_lost(exc)
+        self._time_service.stop()
+        self._time_service = None
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
@@ -67,9 +76,9 @@ class RequestHandler(ServerHttpProtocol):
         request = web_reqrep.Request(
             message, payload,
             self.transport, self.reader, self.writer,
+            self._time_service,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header)
-        self._meth = request.method
-        self._path = request.path
+        self._request = request
         try:
             match_info = yield from self._router.resolve(request)
             assert isinstance(match_info, AbstractMatchInfo), match_info
@@ -112,8 +121,7 @@ class RequestHandler(ServerHttpProtocol):
             self.log_access(message, None, resp_msg, self._loop.time() - now)
 
         # for repr
-        self._meth = 'none'
-        self._path = 'none'
+        self._request = None
 
 
 class RequestHandlerFactory:
