@@ -7,10 +7,8 @@ __all__ = ('ThreadedResolver', 'AsyncResolver', 'DefaultResolver')
 
 try:
     import aiodns
-    aiodns_default = hasattr(aiodns.DNSResolver, 'gethostbyname')
 except ImportError:  # pragma: no cover
     aiodns = None
-    aiodns_default = False
 
 
 class ThreadedResolver(AbstractResolver):
@@ -56,22 +54,24 @@ class AsyncResolver(AbstractResolver):
         self._loop = loop
         self._resolver = aiodns.DNSResolver(*args, loop=loop, **kwargs)
 
-        if not hasattr(self._resolver, 'gethostbyname'):
-            # aiodns 1.1 is not available, fallback to DNSResolver.query
-            self.resolve = self.resolve_with_query
-
     @asyncio.coroutine
     def resolve(self, host, port=0, family=socket.AF_INET):
-        hosts = []
-        resp = yield from self._resolver.gethostbyname(host, family)
-
-        for address in resp.addresses:
-            hosts.append(
-                {'hostname': host,
-                 'host': address, 'port': port,
-                 'family': family, 'proto': 0,
-                 'flags': socket.AI_NUMERICHOST})
-        return hosts
+        hosts_v4 = hosts_v6 = None
+        if family in [socket.AF_INET, socket.AF_UNSPEC]:
+            try:
+                hosts_v4 = yield from \
+                    self.resolve_with_query(host, port, socket.AF_INET)
+            except aiodns.error.DNSError:
+                if family == socket.AF_INET:
+                    raise
+        if family in [socket.AF_INET6, socket.AF_UNSPEC]:
+            try:
+                hosts_v6 = yield from \
+                    self.resolve_with_query(host, port, socket.AF_INET6)
+            except aiodns.error.DNSError:
+                if family == socket.AF_INET6 or not hosts_v4:
+                    raise
+        return (hosts_v4 or []) + (hosts_v6 or [])
 
     @asyncio.coroutine
     def resolve_with_query(self, host, port=0, family=socket.AF_INET):
@@ -83,12 +83,13 @@ class AsyncResolver(AbstractResolver):
         hosts = []
         resp = yield from self._resolver.query(host, qtype)
 
-        for rr in resp:
-            hosts.append(
-                {'hostname': host,
-                 'host': rr.host, 'port': port,
-                 'family': family, 'proto': 0,
-                 'flags': socket.AI_NUMERICHOST})
+        if resp:
+            for rr in resp:
+                hosts.append(
+                    {'hostname': host,
+                     'host': rr.host, 'port': port,
+                     'family': family, 'proto': 0,
+                     'flags': socket.AI_NUMERICHOST})
 
         return hosts
 
@@ -97,4 +98,4 @@ class AsyncResolver(AbstractResolver):
         return self._resolver.cancel()
 
 
-DefaultResolver = AsyncResolver if aiodns_default else ThreadedResolver
+DefaultResolver = AsyncResolver if aiodns else ThreadedResolver
