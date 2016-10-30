@@ -11,6 +11,7 @@ import re
 import warnings
 from collections import MutableSequence, namedtuple
 from pathlib import Path
+from time import gmtime, time
 from urllib.parse import urlencode
 
 from async_timeout import timeout
@@ -571,3 +572,51 @@ class FrozenList(MutableSequence):
         if self._frozen:
             raise RuntimeError("Cannot modify frozen list.")
         self._items.insert(pos, item)
+
+
+class TimeService:
+    def __init__(self, loop):
+        self._loop = loop
+        self._time = time()
+        self._strtime = None
+        self._count = 0
+        self._cb = loop.call_later(1, self._on_cb)
+
+    def stop(self):
+        self._cb.cancel()
+        self._cb = None
+        self._loop = None
+
+    def _on_cb(self):
+        self._count += 1
+        if self._count >= 10*60:
+            # reset timer every 10 minutes
+            self._count = 0
+            self._time = time()
+        else:
+            self._time += 1
+        self._strtime = None
+        self._cb = self._loop.call_later(1, self._on_cb)
+
+    def _format_date_time(self):
+        # Weekday and month names for HTTP date/time formatting;
+        # always English!
+        # Tuples are contants stored in codeobject!
+        _weekdayname = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+        _monthname = (None,  # Dummy so we can use 1-based month numbers
+                      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+        year, month, day, hh, mm, ss, wd, y, z = gmtime(self._time)
+        return "%s, %02d %3s %4d %02d:%02d:%02d GMT" % (
+            _weekdayname[wd], day, _monthname[month], year, hh, mm, ss
+        )
+
+    def time(self):
+        return self._time
+
+    def strtime(self):
+        s = self._strtime
+        if s is None:
+            self._strtime = s = self._format_date_time()
+        return self._strtime

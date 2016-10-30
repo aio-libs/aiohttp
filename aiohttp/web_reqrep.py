@@ -18,7 +18,7 @@ from yarl import URL
 
 from . import hdrs, multipart
 from .helpers import reify, sentinel
-from .protocol import Response as ResponseImpl
+from .protocol import WebResponse as ResponseImpl
 from .protocol import HttpVersion10, HttpVersion11
 from .streams import EOF_MARKER
 
@@ -91,7 +91,8 @@ class Request(collections.MutableMapping, HeadersMixin):
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
-    def __init__(self, message, payload, transport, reader, writer, *,
+    def __init__(self, message, payload, transport, reader, writer,
+                 time_service, *,
                  secure_proxy_ssl_header=None):
         self._app = None
         self._message = message
@@ -111,6 +112,7 @@ class Request(collections.MutableMapping, HeadersMixin):
         self._has_body = not payload.at_eof()
 
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
+        self._time_service = time_service
         self._state = {}
         self._cache = {}
 
@@ -751,16 +753,18 @@ class StreamResponse(HeadersMixin):
         if keep_alive is None:
             keep_alive = request.keep_alive
         self._keep_alive = keep_alive
+        version = request.version
 
         resp_impl = self._resp_impl = ResponseImpl(
             request._writer,
             self._status,
-            request.version,
+            version,
             not keep_alive,
             self._reason)
 
         self._copy_cookies()
 
+        headers = self.headers
         if self._compression:
             self._start_compression(request)
 
@@ -772,10 +776,22 @@ class StreamResponse(HeadersMixin):
             resp_impl.enable_chunked_encoding()
             if self._chunk_size:
                 resp_impl.add_chunking_filter(self._chunk_size)
+            headers[hdrs.TRANSFER_ENCODING] = 'chunked'
+        else:
+            resp_impl.length = self.content_length
 
-        headers = self.headers.items()
-        for key, val in headers:
-            resp_impl.add_header(key, val)
+        if hdrs.DATE not in headers:
+            headers[hdrs.DATE] = request._time_service.strtime()
+        headers.setdefault(hdrs.SERVER, resp_impl.SERVER_SOFTWARE)
+        if hdrs.CONNECTION not in headers:
+            if keep_alive:
+                if version == HttpVersion10:
+                    headers[hdrs.CONNECTION] = 'keep-alive'
+            else:
+                if version == HttpVersion11:
+                    headers[hdrs.CONNECTION] = 'close'
+
+        resp_impl.headers = headers
 
         self._send_headers(resp_impl)
         return resp_impl
