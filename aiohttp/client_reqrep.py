@@ -580,8 +580,30 @@ class ClientResponse:
 
     @property
     def history(self):
-        """A sequence of of responses, if redirects occured."""
+        """A sequence of of responses, if redirects occurred."""
         return self._history
+
+    @property
+    def content_type(self):
+        """The value of content part for Content-Type HTTP header."""
+        ctype = self.headers.get(hdrs.CONTENT_TYPE, None)
+        if ctype is None:
+            # no Content-Type header
+            return None
+        mtype, stype, _, _ = helpers.parse_mimetype(ctype.lower())
+        _content_type = '{mtype}/{stype}'.format(mtype=mtype, stype=stype)
+        return _content_type
+
+    @property
+    def charset(self):
+        """The value of charset part for Content-Type HTTP header."""
+        ctype = self.headers.get(hdrs.CONTENT_TYPE, None)
+        if ctype is None:
+            # no Content-Type header
+            return None
+        _, _, _, params = helpers.parse_mimetype(ctype.lower())
+        _charset = params.get('charset')
+        return _charset
 
     def waiting_for_continue(self):
         return self._continue is not None
