@@ -148,6 +148,44 @@ def test_async_resolver_family_unspec_positive_lookup(loop):
         mock().query.assert_has_calls(calls, any_order=True)
 
 
+@pytest.mark.skipif(aiodns is None, reason="aiodns required")
+@asyncio.coroutine
+def test_async_resolver_ipv4_only_positive_lookup(loop):
+
+    def _side_effect(*args, **kwargs):
+        if args[1] == 'A':
+            return fake_query_result(['127.0.0.1'])
+        else:
+            raise aiodns.error.DNSError()
+
+    with patch('aiodns.DNSResolver') as mock:
+        mock().query.side_effect = _side_effect
+        resolver = AsyncResolver(loop=loop)
+        real = yield from resolver.resolve('localhost',
+                                           family=socket.AF_UNSPEC)
+        ipaddress.ip_address(real[0]['host'])
+        assert len(real) == 1, "Bad resolve, IPv4 and IPv6"
+
+
+@pytest.mark.skipif(aiodns is None, reason="aiodns required")
+@asyncio.coroutine
+def test_async_resolver_ipv6_only_positive_lookup(loop):
+
+    def _side_effect(*args, **kwargs):
+        if args[1] == 'A':
+            raise aiodns.error.DNSError()
+        else:
+            return fake_query_result(['::1'])
+
+    with patch('aiodns.DNSResolver.query') as mock:
+        mock.side_effect = _side_effect
+        resolver = AsyncResolver(loop=loop)
+        real = yield from resolver.resolve('localhost',
+                                           family=socket.AF_UNSPEC)
+        ipaddress.ip_address(real[0]['host'])
+        assert len(real) == 1, "Bad resolve, IPv4 and IPv6"
+
+
 def test_async_resolver_aiodns_not_present(loop, monkeypatch):
     monkeypatch.setattr("aiohttp.resolver.aiodns", None)
     with pytest.raises(RuntimeError):
