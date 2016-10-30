@@ -90,7 +90,7 @@ CHANGES
 
 - Boost performance by adding a custom time service #1350
 
--
+- Get rid of usage aiodns gethostbyname() #559
 
 -
 
