@@ -17,56 +17,15 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs, multipart
-from .helpers import reify, sentinel
-from .protocol import WebResponse as ResponseImpl
+from .helpers import reify, sentinel, HeadersMixin
 from .protocol import HttpVersion10, HttpVersion11
+from .protocol import WebResponse as ResponseImpl
 from .streams import EOF_MARKER
 
 __all__ = (
     'ContentCoding', 'Request', 'StreamResponse', 'Response',
     'json_response'
 )
-
-
-class HeadersMixin:
-
-    _content_type = None
-    _content_dict = None
-    _stored_content_type = sentinel
-
-    def _parse_content_type(self, raw):
-        self._stored_content_type = raw
-        if raw is None:
-            # default value according to RFC 2616
-            self._content_type = 'application/octet-stream'
-            self._content_dict = {}
-        else:
-            self._content_type, self._content_dict = cgi.parse_header(raw)
-
-    @property
-    def content_type(self, _CONTENT_TYPE=hdrs.CONTENT_TYPE):
-        """The value of content part for Content-Type HTTP header."""
-        raw = self.headers.get(_CONTENT_TYPE)
-        if self._stored_content_type != raw:
-            self._parse_content_type(raw)
-        return self._content_type
-
-    @property
-    def charset(self, _CONTENT_TYPE=hdrs.CONTENT_TYPE):
-        """The value of charset part for Content-Type HTTP header."""
-        raw = self.headers.get(_CONTENT_TYPE)
-        if self._stored_content_type != raw:
-            self._parse_content_type(raw)
-        return self._content_dict.get('charset')
-
-    @property
-    def content_length(self, _CONTENT_LENGTH=hdrs.CONTENT_LENGTH):
-        """The value of Content-Length HTTP header."""
-        l = self.headers.get(_CONTENT_LENGTH)
-        if l is None:
-            return None
-        else:
-            return int(l)
 
 FileField = collections.namedtuple('Field', 'name filename file content_type')
 
