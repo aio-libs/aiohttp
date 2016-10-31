@@ -316,3 +316,38 @@ def test_resp_host():
     response = ClientResponse('get', URL('http://del-cl-resp.org'))
     with pytest.warns(DeprecationWarning):
         assert 'del-cl-resp.org' == response.host
+
+
+def test_content_type():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {'Content-Type': 'application/json;charset=cp1251'}
+
+    assert 'application/json' == response.content_type
+
+
+def test_content_type_no_header():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {}
+
+    assert 'application/octet-stream' == response.content_type
+
+
+def test_charset():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {'Content-Type': 'application/json;charset=cp1251'}
+
+    assert 'cp1251' == response.charset
+
+
+def test_charset_no_header():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {}
+
+    assert response.charset is None
+
+
+def test_charset_no_charset():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {'Content-Type': 'application/json'}
+
+    assert response.charset is None
