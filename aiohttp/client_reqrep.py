@@ -14,7 +14,7 @@ from yarl import URL
 import aiohttp
 
 from . import hdrs, helpers, streams
-from .helpers import Timeout
+from .helpers import HeadersMixin, Timeout
 from .log import client_logger
 from .multipart import MultipartWriter
 from .protocol import HttpMessage
@@ -488,7 +488,7 @@ class ClientRequest:
             self._writer = None
 
 
-class ClientResponse:
+class ClientResponse(HeadersMixin):
 
     # from the Status-Line of the response
     version = None  # HTTP-Version
@@ -580,7 +580,7 @@ class ClientResponse:
 
     @property
     def history(self):
-        """A sequence of of responses, if redirects occured."""
+        """A sequence of of responses, if redirects occurred."""
         return self._history
 
     def waiting_for_continue(self):
