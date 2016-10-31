@@ -1081,7 +1081,8 @@ Signal handler may look like::
 
     async def on_shutdown(app):
         for ws in app['websockets']:
-            await ws.close(code=WSCloseCode.GOING_AWAY, message='Server shutdown')
+            await ws.close(code=WSCloseCode.GOING_AWAY,
+                           message='Server shutdown')
 
     app.on_shutdown.append(on_shutdown)
 
@@ -1181,6 +1182,14 @@ signal handlers as shown in the example below::
 The task :func:`listen_to_redis` will run forever.
 To shut it down correctly :attr:`Application.on_cleanup` signal handler
 may be used to send a cancellation to it.
+
+
+Handling error pages
+--------------------
+
+Pages like *404 Not Found* and *500 Internal Error* could be handled
+by custom middleware, see :ref:`aiohttp-tutorial-middlewares` for
+details.
 
 Swagger support
 ---------------

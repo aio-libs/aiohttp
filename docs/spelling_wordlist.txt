@@ -89,6 +89,7 @@ IPv
 ish
 iterable
 iterables
+Jinja
 javascript
 json
 keepalive
@@ -156,6 +157,7 @@ regex
 regexps
 regexs
 renderer
+renderers
 repo
 repr
 RequestContextManager
