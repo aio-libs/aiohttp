@@ -294,10 +294,72 @@ Fortunately it can be done easy by single call::
 where ``project_root`` is the path to root folder.
 
 
+.. _aiohttp-tutorial-middlewares:
+
 Middlewares
 -----------
 
-TBD
+Middlewares are stacked around every web-handler.  They are called
+*before* handler for pre-processing request and *after* getting
+response back for post-processing given response.
+
+Here we'll add a simple middleware for displaying pretty looking pages
+for *404 Not Found* and *500 Internal Error*.
+
+Middlewares could be registered in ``app`` by adding new middleware to
+``app.middlewares`` list::
+
+   def setup_middlewares(app):
+       error_middleware = error_pages({404: handle_404,
+                                       500: handle_500})
+       app.middlewares.append(error_middleware)
+
+Middleware itself is a factory which accepts *application* and *next
+handler* (the following middleware or *web-handler* in case of the
+latest middleware in the list).
+
+The factory returns *middleware handler* which has the same signature
+as regular *web-handler* -- it accepts *request* and returns
+*response*.
+
+Middleware for processing HTTP exceptions::
+
+   def error_pages(overrides):
+       async def middleware(app, handler):
+           async def middleware_handler(request):
+               try:
+                   response = await handler(request)
+                   override = overrides.get(response.status)
+                   if override is None:
+                       return response
+                   else:
+                       return await override(request, response)
+               except web.HTTPException as ex:
+                   override = overrides.get(ex.status)
+                   if override is None:
+                       raise
+                   else:
+                       return await override(request, ex)
+           return middleware_handler
+       return middleware
+
+Registered overrides are trivial Jinja2 template renderers::
+
+
+   async def handle_404(request, response):
+       response = aiohttp_jinja2.render_template('404.html',
+                                                 request,
+                                                 {})
+       return response
+
+
+   async def handle_500(request, response):
+       response = aiohttp_jinja2.render_template('500.html',
+                                                 request,
+                                                 {})
+       return response
+
+.. seealso:: :ref:`aiohttp-web-middlewares`
 
 .. disqus::
   :title: aiohttp server tutorial
