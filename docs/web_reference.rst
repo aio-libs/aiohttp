@@ -1436,6 +1436,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
    .. method:: add_post(path, *args, **kwargs)
 
       Shortcut for adding a POST handler. Calls the :meth:`add_route` with \
+
+
       ``method`` equals to ``'POST'``.
 
       .. versionadded:: 1.0
@@ -1525,7 +1527,22 @@ Router is any object that implements :class:`AbstractRouter` interface.
                               a directory, by default it's not allowed and
                               HTTP/404 will be returned on access.
 
-   :returns: new :class:`StaticRoute` instance.
+      :returns: new :class:`StaticRoute` instance.
+
+   .. method:: add_subapp(prefix, subapp)
+
+      Register nested sub-application under given path *prefix*.
+
+      In resolving process if request's path starts with *prefix* then
+      further resolving is passed to *subapp*.
+
+      :param str prefix: path's prefix for the resource.
+
+      :param Application subapp: nested application attached under *prefix*.
+
+      :returns: a :class:`PrefixedSubAppResource` instance.
+
+      .. versionadded:: 1.1
 
    .. coroutinemethod:: resolve(request)
 
@@ -1809,6 +1826,18 @@ Resource classes hierarchy::
          be generated as ``resource.url_for(filename='dir/file.txt')``
 
       .. versionadded:: 1.1
+
+.. class:: PrefixedSubAppResource
+
+   A resource for serving nested applications. The class instance is
+   returned by :class:`~aiohttp.web.UrlDispatcher.add_subapp` call.
+
+   .. versionadded:: 1.1
+
+   .. method:: url_for(**kwargs)
+
+      The call is not allowed, it raises :exc:`RuntimeError`.
+
 
 .. _aiohttp-web-route:
 
