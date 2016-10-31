@@ -69,7 +69,6 @@ class RequestHandler(ServerHttpProtocol):
         if self.access_log:
             now = self._loop.time()
 
-        app = self._app
         request = web_reqrep.Request(
             message, payload,
             self.transport, self.reader, self.writer,
@@ -79,7 +78,7 @@ class RequestHandler(ServerHttpProtocol):
         try:
             match_info = yield from self._router.resolve(request)
             assert isinstance(match_info, AbstractMatchInfo), match_info
-            match_info.add_app(app)
+            match_info.add_app(self._app)
             match_info.freeze()
 
             resp = None
@@ -91,8 +90,9 @@ class RequestHandler(ServerHttpProtocol):
 
             if resp is None:
                 handler = match_info.handler
-                for factory in match_info.middlewares:
-                    handler = yield from factory(app, handler)
+                for app in match_info.apps:
+                    for factory in reversed(app.middlewares):
+                        handler = yield from factory(app, handler)
                 resp = yield from handler(request)
 
             assert isinstance(resp, web_reqrep.StreamResponse), \
