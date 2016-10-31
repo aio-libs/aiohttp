@@ -1237,6 +1237,27 @@ Response object
       HTTP headers of response as unconverted bytes, a sequence of
       ``(key, value)`` pairs.
 
+   .. attribute:: content_type
+
+      Read-only property with *content* part of *Content-Type* header.
+
+      .. note::
+
+         Returns value is ``'application/octet-stream'`` if no
+         Content-Type header present in HTTP headers according to
+         :rfc:`2616`. To make sure Content-Type header is not present in
+         the server reply, use :attr:`headers` or :attr:`raw_headers`, e.g.
+         ``'CONTENT-TYPE' not in resp.headers``.
+
+   .. attribute:: charset
+
+      Read-only property that specifies the *encoding* for the request's BODY.
+
+      The value is parsed from the *Content-Type* HTTP header.
+
+      Returns :class:`str` like ``'utf-8'`` or ``None`` if no *Content-Type*
+      header present in HTTP headers or it has no charset information.
+
    .. attribute:: history
 
       A :class:`~collections.abc.Sequence` of :class:`ClientResponse`
