@@ -90,7 +90,8 @@ CHANGES
 
 - Boost performance by adding a custom time service #1350
 
--
+- Extend `ClientResponse` with `content_type` and `charset`
+  properties like in `web.Request`. #1349
 
 -
 
