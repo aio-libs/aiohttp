@@ -189,13 +189,6 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
     def apps(self):
         return tuple(self._apps)
 
-    @property
-    def middlewares(self):
-        middlewares = []
-        for app in self._apps:
-            middlewares.extend(reversed(app.middlewares))
-        return middlewares
-
     def add_app(self, app):
         if self._frozen:
             raise RuntimeError("Cannot change apps stack after .freeze() call")
