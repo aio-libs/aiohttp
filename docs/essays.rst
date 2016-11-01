@@ -5,4 +5,4 @@ Essays
 .. toctree::
 
    new_router
-   yarl_and_encoding
+   whats_new_1_1

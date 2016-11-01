@@ -1,11 +1,12 @@
 import asyncio
 import datetime
+import os
+import tempfile
 import unittest
 from http.cookies import SimpleCookie
 from unittest import mock
 
 import pytest
-
 from yarl import URL
 
 from aiohttp import CookieJar
@@ -140,6 +141,25 @@ def test_constructor(loop, cookies_to_send, cookies_to_receive):
     expected_cookies = cookies_to_send
     assert jar_cookies == expected_cookies
     assert jar._loop is loop
+
+
+def test_save_load(loop, cookies_to_send, cookies_to_receive):
+    file_path = tempfile.mkdtemp() + '/aiohttp.test.cookie'
+
+    # export cookie jar
+    jar_save = CookieJar(loop=loop)
+    jar_save.update_cookies(cookies_to_receive)
+    jar_save.save(file_path=file_path)
+
+    jar_load = CookieJar(loop=loop)
+    jar_load.load(file_path=file_path)
+
+    jar_test = SimpleCookie()
+    for cookie in jar_load:
+        jar_test[cookie.key] = cookie
+
+    os.unlink(file_path)
+    assert jar_test == cookies_to_receive
 
 
 def test_ctor_ith_default_loop(loop):

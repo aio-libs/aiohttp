@@ -4,6 +4,7 @@ from unittest import mock
 import pytest
 
 from aiohttp import helpers, log, web
+from aiohttp.abc import AbstractRouter
 
 
 def test_app_ctor(loop):
@@ -94,15 +95,16 @@ def test_app_register_and_finish_are_deprecated(loop):
 
 
 def test_non_default_router(loop):
-    router = web.UrlDispatcher()
+    router = mock.Mock(spec=AbstractRouter)
     app = web.Application(loop=loop, router=router)
     assert router is app.router
 
-    def test_logging(self):
-        logger = mock.Mock()
-        app = web.Application(loop=self.loop)
-        app.logger = logger
-        self.assertIs(app.logger, logger)
+
+def test_logging(loop):
+    logger = mock.Mock()
+    app = web.Application(loop=loop)
+    app.logger = logger
+    assert app.logger is logger
 
 
 @asyncio.coroutine
@@ -165,3 +167,11 @@ def test_on_startup(loop):
     assert long_running1_called
     assert long_running2_called
     assert all_long_running_called
+
+
+def test_app_delitem(loop):
+    app = web.Application(loop=loop)
+    app['key'] = 'value'
+    assert len(app) == 1
+    del app['key']
+    assert len(app) == 0

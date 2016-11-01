@@ -73,6 +73,7 @@ Reading Methods
 
    :return bytes: the given line
 
+
 Asynchronous Iteration Support
 ------------------------------
 

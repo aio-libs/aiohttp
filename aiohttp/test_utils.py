@@ -13,12 +13,13 @@ from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp
+from aiohttp.client import _RequestContextManager
 
 from . import ClientSession, hdrs
 from .helpers import sentinel
 from .protocol import HttpVersion, RawRequestMessage
 from .signals import Signal
-from .web import Application, Request
+from .web import Application, Request, UrlMappingMatchInfo
 
 PY_35 = sys.version_info >= (3, 5)
 
@@ -65,6 +66,7 @@ class TestServer:
         self._root = URL('{}://{}:{}'.format(self.scheme,
                                              self.host,
                                              self.port))
+        yield from self.app.startup()
         self.handler = self.app.make_handler(**kwargs)
         self.server = yield from self._loop.create_server(self.handler,
                                                           self.host,
@@ -214,31 +216,45 @@ class TestClient:
 
     def get(self, path, *args, **kwargs):
         """Perform an HTTP GET request."""
-        return self.request(hdrs.METH_GET, path, *args, **kwargs)
+        return _RequestContextManager(
+            self.request(hdrs.METH_GET, path, *args, **kwargs)
+        )
 
     def post(self, path, *args, **kwargs):
         """Perform an HTTP POST request."""
-        return self.request(hdrs.METH_POST, path, *args, **kwargs)
+        return _RequestContextManager(
+            self.request(hdrs.METH_POST, path, *args, **kwargs)
+        )
 
     def options(self, path, *args, **kwargs):
         """Perform an HTTP OPTIONS request."""
-        return self.request(hdrs.METH_OPTIONS, path, *args, **kwargs)
+        return _RequestContextManager(
+            self.request(hdrs.METH_OPTIONS, path, *args, **kwargs)
+        )
 
     def head(self, path, *args, **kwargs):
         """Perform an HTTP HEAD request."""
-        return self.request(hdrs.METH_HEAD, path, *args, **kwargs)
+        return _RequestContextManager(
+            self.request(hdrs.METH_HEAD, path, *args, **kwargs)
+        )
 
     def put(self, path, *args, **kwargs):
         """Perform an HTTP PUT request."""
-        return self.request(hdrs.METH_PUT, path, *args, **kwargs)
+        return _RequestContextManager(
+            self.request(hdrs.METH_PUT, path, *args, **kwargs)
+        )
 
     def patch(self, path, *args, **kwargs):
         """Perform an HTTP PATCH request."""
-        return self.request(hdrs.METH_PATCH, path, *args, **kwargs)
+        return _RequestContextManager(
+            self.request(hdrs.METH_PATCH, path, *args, **kwargs)
+        )
 
     def delete(self, path, *args, **kwargs):
         """Perform an HTTP PATCH request."""
-        return self.request(hdrs.METH_DELETE, path, *args, **kwargs)
+        return _RequestContextManager(
+            self.request(hdrs.METH_DELETE, path, *args, **kwargs)
+        )
 
     @asyncio.coroutine
     def ws_connect(self, path, *args, **kwargs):
@@ -487,9 +503,18 @@ def make_mocked_request(method, path, headers=None, *,
     if payload is sentinel:
         payload = mock.Mock()
 
-    req = Request(app, message, payload,
+    time_service = mock.Mock()
+    time_service.time.return_value = 12345
+    time_service.strtime.return_value = "Tue, 15 Nov 1994 08:12:31 GMT"
+
+    req = Request(message, payload,
                   transport, reader, writer,
+                  time_service,
                   secure_proxy_ssl_header=secure_proxy_ssl_header)
+
+    match_info = UrlMappingMatchInfo({}, mock.Mock())
+    match_info.add_app(app)
+    req._match_info = match_info
 
     return req
 

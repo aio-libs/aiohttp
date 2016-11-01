@@ -349,7 +349,7 @@ like one using :meth:`Request.copy`.
       Returns :class:`~multidict.MultiDictProxy` instance filled
       with parsed data.
 
-      If :attr:`method` is not *POST*, *PUT* or *PATCH* or
+      If :attr:`method` is not *POST*, *PUT*, *PATCH*, *TRACE* or *DELETE* or
       :attr:`content_type` is not empty or
       *application/x-www-form-urlencoded* or *multipart/form-data*
       returns empty multidict.
@@ -664,7 +664,7 @@ StreamResponse
          Use :meth:`prepare` instead.
 
       .. warning:: The method doesn't call
-         :attr:`web.Application.on_response_prepare` signal, use
+         :attr:`~aiohttp.web.Application.on_response_prepare` signal, use
          :meth:`prepare` instead.
 
    .. coroutinemethod:: prepare(request)
@@ -675,7 +675,7 @@ StreamResponse
       Send *HTTP header*. You should not change any header data after
       calling this method.
 
-      The coroutine calls :attr:`web.Application.on_response_prepare`
+      The coroutine calls :attr:`~aiohttp.web.Application.on_response_prepare`
       signal handlers.
 
       .. versionadded:: 0.18
@@ -1436,6 +1436,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
    .. method:: add_post(path, *args, **kwargs)
 
       Shortcut for adding a POST handler. Calls the :meth:`add_route` with \
+
+
       ``method`` equals to ``'POST'``.
 
       .. versionadded:: 1.0
@@ -1464,7 +1466,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
                           chunk_size=256*1024, \
                           response_factory=StreamResponse, \
-                          show_index=False)
+                          show_index=False, \
+                          follow_symlinks=False)
 
       Adds a router and a handler for returning static files.
 
@@ -1520,7 +1523,26 @@ Router is any object that implements :class:`AbstractRouter` interface.
                               by default it's not allowed and HTTP/403 will
                               be returned on directory access.
 
-   :returns: new :class:`StaticRoute` instance.
+      :param bool follow_symlinks: flag for allowing to follow symlinks from
+                              a directory, by default it's not allowed and
+                              HTTP/404 will be returned on access.
+
+      :returns: new :class:`StaticRoute` instance.
+
+   .. method:: add_subapp(prefix, subapp)
+
+      Register nested sub-application under given path *prefix*.
+
+      In resolving process if request's path starts with *prefix* then
+      further resolving is passed to *subapp*.
+
+      :param str prefix: path's prefix for the resource.
+
+      :param Application subapp: nested application attached under *prefix*.
+
+      :returns: a :class:`PrefixedSubAppResource` instance.
+
+      .. versionadded:: 1.1
 
    .. coroutinemethod:: resolve(request)
 
@@ -1805,6 +1827,18 @@ Resource classes hierarchy::
 
       .. versionadded:: 1.1
 
+.. class:: PrefixedSubAppResource
+
+   A resource for serving nested applications. The class instance is
+   returned by :class:`~aiohttp.web.UrlDispatcher.add_subapp` call.
+
+   .. versionadded:: 1.1
+
+   .. method:: url_for(**kwargs)
+
+      The call is not allowed, it raises :exc:`RuntimeError`.
+
+
 .. _aiohttp-web-route:
 
 Route
@@ -1978,7 +2012,9 @@ Utilities
 
 .. function:: run_app(app, *, host='0.0.0.0', port=None, loop=None, \
                       shutdown_timeout=60.0, ssl_context=None, \
-                      print=print, backlog=128)
+                      print=print, backlog=128, \
+                      access_log_format=None, \
+                      access_log=aiohttp.log.access_logger)
 
    A utility function for running an application, serving it until
    keyboard interrupt and performing a
@@ -2017,6 +2053,14 @@ Utilities
    :param int backlog: the number of unaccepted connections that the
                        system will allow before refusing new
                        connections (``128`` by default).
+
+   :param access_log: :class:`logging.Logger` instance used for saving
+                      access logs. Use ``None`` for disabling logs for
+                      sake of speedup.
+
+   :param access_log_format: access log format, see
+                             :ref:`aiohttp-logging-access-log-format-spec`
+                             for details.
 
 
 Constants

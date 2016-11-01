@@ -555,6 +555,7 @@ class HttpMessage(ABC):
         self.output_length = 0
         self.headers_length = 0
         self._output_size = 0
+        self._cache = {}
 
     @property
     @abstractmethod
@@ -879,6 +880,12 @@ class Response(HttpMessage):
             # format_date_time(None) is quite expensive
             self.headers.setdefault(hdrs.DATE, format_date_time(None))
         self.headers.setdefault(hdrs.SERVER, self.SERVER_SOFTWARE)
+
+
+class WebResponse(Response):
+    """For usage in aiohttp.web only"""
+    def _add_default_headers(self):
+        pass
 
 
 class Request(HttpMessage):

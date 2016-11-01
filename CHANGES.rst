@@ -38,6 +38,67 @@ CHANGES
 
 - Quote login and password for basic auth separately #1307
 
+- Fix bug when ClientRequest send payload file with opened as
+  open('filename', 'r+b') #1306
+
+- Enhancement to AccessLogger (pass *extra* dict) #1303
+
+- Show more verbose message on import errors #1319
+
+- Added save and load functionality for `CookieJar` #1219
+
+- Added option on `StaticRoute` to follow symlinks #1299
+
+- Force encoding of `application/json` content type to utf-8 #1339
+
+- Websockets: Stop `async for` iteration when connection is closed #1144
+
+- Ensure TestClient HTTP methods return a context manager #1318
+
+- Raise `ClientDisconnectedError` to `FlowControlStreamReader` read function
+  if `ClientSession` object is closed by client when reading data. #1323
+
+- Document deployment without `Gunicorn` #1120
+
+- Add deprecation warning for MD5 and SHA1 digests when used for fingerprint
+  of site certs in TCPConnector. #1186
+
+- Implement sub-applications #1301
+
+- Don't inherit `web.Request` from `dict` but implement
+  `MutableMapping` protocol.
+
+- Implement frozen signals
+
+- Don't inherit `web.Application` from `dict` but implement
+  `MutableMapping` protocol.
+
+- Support freezing for web applications
+
+- Accept access_log parameter in `web.run_app`, use `None` to disable logging
+
+- Don't flap `tcp_cork` and `tcp_nodelay` in regular request handling.
+  `tcp_nodelay` is still enabled by default.
+
+- Improve performance of web server by removing premature computing of
+  Content-Type if the value was set by `web.Response` constructor.
+
+  While the patch boosts speed of trivial `web.Response(text='OK',
+  content_type='text/plain)` very well please don't expect significant
+  boost of your application -- a couple DB requests and business logic
+  is still the main bottleneck.
+
+- Boost performance by adding a custom time service #1350
+
+- Extend `ClientResponse` with `content_type` and `charset`
+  properties like in `web.Request`. #1349
+
+- Disable aiodns by default #559
+
+-
+
+-
+
 -
 
 -
@@ -45,6 +106,7 @@ CHANGES
 -
 
 -
+
 
 1.0.5 (2016-10-11)
 ------------------

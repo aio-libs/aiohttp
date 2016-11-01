@@ -8,6 +8,17 @@ PY_35 = sys.version_info >= (3, 5)
 
 class AbstractRouter(ABC):
 
+    def __init__(self):
+        self._frozen = False
+
+    @property
+    def frozen(self):
+        return self._frozen
+
+    def freeze(self):
+        """Freeze router."""
+        self._frozen = True
+
     @asyncio.coroutine  # pragma: no branch
     @abstractmethod
     def resolve(self, request):
@@ -34,6 +45,29 @@ class AbstractMatchInfo(ABC):
     @abstractmethod  # pragma: no branch
     def get_info(self):
         """Return a dict with additional info useful for introspection"""
+
+    @property  # pragma: no branch
+    @abstractmethod
+    def apps(self):
+        """Stack of nested applications.
+
+        Top level application is left-most element.
+
+        """
+
+    @abstractmethod
+    def add_app(self, app):
+        """Add application to the nested apps stack."""
+
+    @abstractmethod
+    def freeze(self):
+        """Freeze the match info.
+
+        The method is called after route resolution.
+
+        After the call .add_app() is forbidden.
+
+        """
 
 
 class AbstractView(ABC):

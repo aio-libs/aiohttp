@@ -171,7 +171,7 @@ def test_text_detect_encoding(loop):
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
-    response.headers = {'Content-Type': 'application/json'}
+    response.headers = {'Content-Type': 'text/plain'}
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
 
@@ -275,25 +275,6 @@ def test_json_override_encoding(loop):
     assert not response._get_encoding.called
 
 
-@asyncio.coroutine
-def test_json_detect_encoding(loop):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop)
-
-    def side_effect(*args, **kwargs):
-        fut = helpers.create_future(loop)
-        fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
-        return fut
-
-    response.headers = {'Content-Type': 'application/json'}
-    content = response.content = mock.Mock()
-    content.read.side_effect = side_effect
-
-    res = yield from response.json()
-    assert res == {'тест': 'пройден'}
-    assert response._connection is None
-
-
 def test_override_flow_control(loop):
     class MyResponse(ClientResponse):
         flow_control_class = aiohttp.StreamReader
@@ -335,3 +316,38 @@ def test_resp_host():
     response = ClientResponse('get', URL('http://del-cl-resp.org'))
     with pytest.warns(DeprecationWarning):
         assert 'del-cl-resp.org' == response.host
+
+
+def test_content_type():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {'Content-Type': 'application/json;charset=cp1251'}
+
+    assert 'application/json' == response.content_type
+
+
+def test_content_type_no_header():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {}
+
+    assert 'application/octet-stream' == response.content_type
+
+
+def test_charset():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {'Content-Type': 'application/json;charset=cp1251'}
+
+    assert 'cp1251' == response.charset
+
+
+def test_charset_no_header():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {}
+
+    assert response.charset is None
+
+
+def test_charset_no_charset():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {'Content-Type': 'application/json'}
+
+    assert response.charset is None

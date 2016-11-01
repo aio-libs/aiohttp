@@ -14,7 +14,7 @@ from yarl import URL
 import aiohttp
 
 from . import hdrs, helpers, streams
-from .helpers import Timeout
+from .helpers import HeadersMixin, Timeout
 from .log import client_logger
 from .multipart import MultipartWriter
 from .protocol import HttpMessage
@@ -22,7 +22,7 @@ from .streams import EOF_MARKER, FlowControlStreamReader
 
 try:
     import cchardet as chardet
-except ImportError:
+except ImportError:  # pragma: no cover
     import chardet
 
 
@@ -183,10 +183,7 @@ class ClientRequest:
             c.load(self.headers.get(hdrs.COOKIE, ''))
             del self.headers[hdrs.COOKIE]
 
-        if isinstance(cookies, dict):
-            cookies = cookies.items()
-
-        for name, value in cookies:
+        for name, value in cookies.items():
             if isinstance(value, http.cookies.Morsel):
                 c[value.key] = value.value
             else:
@@ -257,7 +254,8 @@ class ClientRequest:
                 size = len(data.getbuffer())
                 self.headers[hdrs.CONTENT_LENGTH] = str(size)
                 self.chunked = False
-            elif not self.chunked and isinstance(data, io.BufferedReader):
+            elif (not self.chunked and
+                  isinstance(data, (io.BufferedReader, io.BufferedRandom))):
                 # Not chunking if content-length can be determined
                 try:
                     size = os.fstat(data.fileno()).st_size - data.tell()
@@ -490,7 +488,7 @@ class ClientRequest:
             self._writer = None
 
 
-class ClientResponse:
+class ClientResponse(HeadersMixin):
 
     # from the Status-Line of the response
     version = None  # HTTP-Version
@@ -582,7 +580,7 @@ class ClientResponse:
 
     @property
     def history(self):
-        """A sequence of of responses, if redirects occured."""
+        """A sequence of of responses, if redirects occurred."""
         return self._history
 
     def waiting_for_continue(self):
@@ -658,6 +656,7 @@ class ClientResponse:
             self._connection.close()
             self._connection = None
         self._cleanup_writer()
+        self._notify_content()
 
     @asyncio.coroutine
     def release(self):
@@ -681,6 +680,7 @@ class ClientResponse:
                     self._reader.unset_parser()
                 self._connection = None
             self._cleanup_writer()
+            self._notify_content()
 
     def raise_for_status(self):
         if 400 <= self.status:
@@ -692,6 +692,12 @@ class ClientResponse:
         if self._writer is not None and not self._writer.done():
             self._writer.cancel()
         self._writer = None
+
+    def _notify_content(self):
+        content = self.content
+        if content and content.exception() is None and not content.is_eof():
+            content.set_exception(
+                aiohttp.ClientDisconnectedError('Connection closed'))
 
     @asyncio.coroutine
     def wait_for_close(self):
@@ -722,7 +728,11 @@ class ClientResponse:
 
         encoding = params.get('charset')
         if not encoding:
-            encoding = chardet.detect(self._content)['encoding']
+            if mtype == 'application' and stype == 'json':
+                # RFC 7159 states that the default encoding is UTF-8.
+                encoding = 'utf-8'
+            else:
+                encoding = chardet.detect(self._content)['encoding']
         if not encoding:
             encoding = 'utf-8'
 

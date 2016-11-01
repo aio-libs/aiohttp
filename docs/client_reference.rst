@@ -886,11 +886,12 @@ TCPConnector
       *HTTPS* requests (enabled by default). May be disabled to
       skip validation for sites with invalid certificates.
 
-   :param bytes fingerprint: Pass the binary MD5, SHA1, or SHA256
-        digest of the expected certificate in DER format to verify
-        that the certificate the server presents matches. Useful
-        for `certificate pinning
+   :param bytes fingerprint: Pass the SHA256 digest of the expected
+        certificate in DER format to verify that the certificate the
+        server presents matches. Useful for `certificate pinning
         <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
+
+        Note: use of MD5 or SHA1 digests is insecure and deprecated. 
 
         .. versionadded:: 0.16
 
@@ -1217,6 +1218,10 @@ Response object
 
       Payload stream, contains response's BODY (:class:`StreamReader`).
 
+      Reading from the stream raises
+      :exc:`aiohttp.ClientDisconnectedError` if the response object is
+      closed before read calls.
+
    .. attribute:: cookies
 
       HTTP cookies of response (*Set-Cookie* HTTP header,
@@ -1231,6 +1236,27 @@ Response object
 
       HTTP headers of response as unconverted bytes, a sequence of
       ``(key, value)`` pairs.
+
+   .. attribute:: content_type
+
+      Read-only property with *content* part of *Content-Type* header.
+
+      .. note::
+
+         Returns value is ``'application/octet-stream'`` if no
+         Content-Type header present in HTTP headers according to
+         :rfc:`2616`. To make sure Content-Type header is not present in
+         the server reply, use :attr:`headers` or :attr:`raw_headers`, e.g.
+         ``'CONTENT-TYPE' not in resp.headers``.
+
+   .. attribute:: charset
+
+      Read-only property that specifies the *encoding* for the request's BODY.
+
+      The value is parsed from the *Content-Type* HTTP header.
+
+      Returns :class:`str` like ``'utf-8'`` or ``None`` if no *Content-Type*
+      header present in HTTP headers or it has no charset information.
 
    .. attribute:: history
 
@@ -1533,6 +1559,22 @@ CookieJar
 
       :return: :class:`http.cookies.SimpleCookie` with filtered
          cookies for given URL.
+
+   .. method:: save(file_path)
+
+      Write a pickled representation of cookies into the file
+      at provided path.
+
+      :param file_path: Path to file where cookies will be serialized,
+          :class:`str` or :class:`pathlib.Path` instance.
+
+   .. method:: load(file_path)
+
+      Load a pickled representation of cookies from the file
+      at provided path.
+
+      :param file_path: Path to file from where cookies will be
+           imported, :class:`str` or :class:`pathlib.Path` instance.
 
 .. disqus::
   :title: aiohttp client reference

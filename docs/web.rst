@@ -348,6 +348,11 @@ instead could be enabled with ``show_index`` parameter set to ``True``::
 
    app.router.add_static('/prefix', path_to_static_folder, show_index=True)
 
+When a symlink from the static directory is accessed, the server responses to
+client with ``HTTP/404 Not Found`` by default. To allow the server to follow
+symlinks, parameter ``follow_symlinks`` should be set to ``True``::
+
+   app.router.add_static('/prefix', path_to_static_folder, follow_symlinks=True)
 
 Template Rendering
 ------------------
@@ -932,6 +937,62 @@ parameters.
    signals, but simply reusing existing ones, you will not be affected.
 
 
+Nested applications
+-------------------
+
+Sub applications are designed for solving the problem of the big
+monolithic code base.
+Let's assume we have a project with own business logic and tools like
+administration panel and debug toolbar.
+
+Administration panel is a separate application by its own nature but all
+toolbar URLs are served by prefix like ``/admin``.
+
+Thus we'll create a totally separate application named ``admin`` and
+connect it to main app with prefix by
+:meth:`~aiohttp.web.UrlDispatcher.add_subapp`::
+
+   admin = web.Application()
+   # setup admin routes, signals and middlewares
+
+   app.add_subapp('/admin/', admin)
+
+Middlewares and signals from ``app`` and ``admin`` are chained.
+
+It means that if URL is ``'/admin/something'`` middlewares from
+``app`` are applied first and ``admin.middlewares`` are the next in
+the call chain.
+
+The same is going for
+:attr:`~aiohttp.web.Application.on_response_prepare` signal -- the
+signal is delivered to both top level ``app`` and ``admin`` if
+processing URL is routed to ``admin`` sub-application.
+
+Common signals like :attr:`~aiohttp.web.Application.on_startup`,
+:attr:`~aiohttp.web.Application.on_shutdown` and
+:attr:`~aiohttp.web.Application.on_cleanup` are delivered to all
+registered sub-applications. The passed parameter is sub-application
+instance, not top-level application.
+
+
+Third level sub-applications can be nested into second level ones --
+there are no limitation for nesting level.
+
+Url reversing for sub-applications should generate urls with proper prefix.
+
+But for getting URL sub-application's router should be used::
+
+   admin = web.Application()
+   admin.add_get('/resource', handler, name='name')
+
+   app.add_subapp('/admin/', admin)
+
+   url = admin.router['name'].url_for()
+
+The generated ``url`` from example will have a value
+``URL('/admin/resource')``.
+
+
 .. _aiohttp-web-flow-control:
 
 Flow control
@@ -968,10 +1029,10 @@ Web server response may have one of the following states:
    Data is buffered until there is a sufficient amount to send out.
    Avoid using this mode for sending HTTP data until you have no doubts.
 
-By default streaming data (:class:`StreamResponse`) and websockets
-(:class:`WebSocketResponse`) use **NODELAY** mode, regular responses
-(:class:`Response` and http exceptions derived from it) as well as
-static file handlers work in **CORK** mode.
+By default streaming data (:class:`StreamResponse`), regular responses
+(:class:`Response` and http exceptions derived from it) and websockets
+(:class:`WebSocketResponse`) use **NODELAY** mode, static file
+handlers work in **CORK** mode.
 
 To manual mode switch :meth:`~StreamResponse.set_tcp_cork` and
 :meth:`~StreamResponse.set_tcp_nodelay` methods can be used.  It may
@@ -1020,7 +1081,8 @@ Signal handler may look like::
 
     async def on_shutdown(app):
         for ws in app['websockets']:
-            await ws.close(code=WSCloseCode.GOING_AWAY, message='Server shutdown')
+            await ws.close(code=WSCloseCode.GOING_AWAY,
+                           message='Server shutdown')
 
     app.on_shutdown.append(on_shutdown)
 
@@ -1121,6 +1183,20 @@ The task :func:`listen_to_redis` will run forever.
 To shut it down correctly :attr:`Application.on_cleanup` signal handler
 may be used to send a cancellation to it.
 
+
+Handling error pages
+--------------------
+
+Pages like *404 Not Found* and *500 Internal Error* could be handled
+by custom middleware, see :ref:`aiohttp-tutorial-middlewares` for
+details.
+
+Swagger support
+---------------
+
+`aiohttp-swagger <https://github.com/cr0hn/aiohttp-swagger>`_ is a
+library that allow to add Swagger documentation and embed the
+Swagger-UI into your :mod:`aiohttp.web` project.
 
 CORS support
 ------------

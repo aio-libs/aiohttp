@@ -8,14 +8,13 @@ from urllib.parse import unquote
 import pytest
 from yarl import URL
 
-import aiohttp.web
-from aiohttp import hdrs
+import aiohttp
+from aiohttp import hdrs, web
 from aiohttp.test_utils import make_mocked_request
-from aiohttp.web import (HTTPMethodNotAllowed, HTTPNotFound, Response,
-                         UrlDispatcher)
-from aiohttp.web_urldispatcher import (AbstractResource,
-                                       ResourceRoute, SystemRoute,
-                                       View, _defaultExpectHandler)
+from aiohttp.web import HTTPMethodNotAllowed, HTTPNotFound, Response
+from aiohttp.web_urldispatcher import (AbstractResource, ResourceRoute,
+                                       SystemRoute, View,
+                                       _defaultExpectHandler)
 
 
 def make_request(method, path):
@@ -32,8 +31,13 @@ def make_handler():
 
 
 @pytest.fixture
-def router():
-    return UrlDispatcher()
+def app(loop):
+    return web.Application(loop=loop)
+
+
+@pytest.fixture
+def router(app):
+    return app.router
 
 
 @pytest.fixture
@@ -377,7 +381,8 @@ def test_static_not_match(router):
     router.add_static('/pre', os.path.dirname(aiohttp.__file__),
                       name='name')
     resource = router['name']
-    ret = yield from resource.resolve('GET', '/another/path')
+    ret = yield from resource.resolve(
+        make_mocked_request('GET', '/another/path'))
     assert (None, set()) == ret
 
 
@@ -781,8 +786,19 @@ def test_match_info_get_info_dynamic(router):
     req = make_request('GET', '/value')
     info = yield from router.resolve(req)
     assert info.get_info() == {
-        'pattern': re.compile('^\\/(?P<a>[^{}/]+)$'),
+        'pattern': re.compile('\\/(?P<a>[^{}/]+)'),
         'formatter': '/{a}'}
+
+
+@asyncio.coroutine
+def test_match_info_get_info_dynamic2(router):
+    handler = make_handler()
+    router.add_route('GET', '/{a}/{b}', handler)
+    req = make_request('GET', '/path/to')
+    info = yield from router.resolve(req)
+    assert info.get_info() == {
+        'pattern': re.compile('\\/(?P<a>[^{}/]+)\\/(?P<b>[^{}/]+)'),
+        'formatter': '/{a}/{b}'}
 
 
 def test_static_resource_get_info(router):
@@ -848,7 +864,8 @@ def test_static_route_points_to_file(router):
 def test_404_for_static_resource(router):
     resource = router.add_static('/st',
                                  os.path.dirname(aiohttp.__file__))
-    ret = yield from resource.resolve('GET', '/unknown/path')
+    ret = yield from resource.resolve(
+        make_mocked_request('GET', '/unknown/path'))
     assert (None, set()) == ret
 
 
@@ -856,7 +873,8 @@ def test_404_for_static_resource(router):
 def test_405_for_resource_adapter(router):
     resource = router.add_static('/st',
                                  os.path.dirname(aiohttp.__file__))
-    ret = yield from resource.resolve('POST', '/st/abc.py')
+    ret = yield from resource.resolve(
+        make_mocked_request('POST', '/st/abc.py'))
     assert (None, {'HEAD', 'GET'}) == ret
 
 
@@ -865,7 +883,7 @@ def test_check_allowed_method_for_found_resource(router):
     handler = make_handler()
     resource = router.add_resource('/')
     resource.add_route('GET', handler)
-    ret = yield from resource.resolve('GET', '/')
+    ret = yield from resource.resolve(make_mocked_request('GET', '/'))
     assert ret[0] is not None
     assert {'GET'} == ret[1]
 
@@ -887,3 +905,64 @@ def test_url_for_in_resource_route(router):
     route = router.add_route('GET', '/get/{name}', make_handler(),
                              name='name')
     assert URL('/get/John') == route.url_for(name='John')
+
+
+def test_subapp_get_info(router, loop):
+    subapp = web.Application(loop=loop)
+    resource = router.add_subapp('/pre', subapp)
+    assert resource.get_info() == {'prefix': '/pre/', 'app': subapp}
+
+
+def test_subapp_url(router, loop):
+    subapp = web.Application(loop=loop)
+    resource = router.add_subapp('/pre', subapp)
+    with pytest.raises(RuntimeError):
+        resource.url()
+
+
+def test_subapp_url_for(router, loop):
+    subapp = web.Application(loop=loop)
+    resource = router.add_subapp('/pre', subapp)
+    with pytest.raises(RuntimeError):
+        resource.url_for()
+
+
+def test_subapp_repr(router, loop):
+    subapp = web.Application(loop=loop)
+    resource = router.add_subapp('/pre', subapp)
+    assert repr(resource).startswith(
+        '<PrefixedSubAppResource /pre/ -> <Application')
+
+
+def test_subapp_len(router, loop):
+    subapp = web.Application(loop=loop)
+    subapp.router.add_get('/', make_handler())
+    subapp.router.add_post('/', make_handler())
+    resource = router.add_subapp('/pre', subapp)
+    assert len(resource) == 2
+
+
+def test_subapp_iter(router, loop):
+    subapp = web.Application(loop=loop)
+    r1 = subapp.router.add_get('/', make_handler())
+    r2 = subapp.router.add_post('/', make_handler())
+    resource = router.add_subapp('/pre', subapp)
+    assert list(resource) == [r1, r2]
+
+
+def test_invalid_route_name(router):
+    with pytest.raises(ValueError):
+        router.add_get('/', make_handler(), name='invalid name')
+
+
+def test_frozen_router(router):
+    router.freeze()
+    with pytest.raises(RuntimeError):
+        router.add_get('/', make_handler())
+
+
+def test_frozen_router_subapp(loop, router):
+    subapp = web.Application(loop=loop)
+    subapp.freeze()
+    with pytest.raises(RuntimeError):
+        router.add_subapp('/', subapp)

@@ -59,10 +59,18 @@ class AbstractResource(Sized, Iterable):
 
     @asyncio.coroutine
     @abc.abstractmethod  # pragma: no branch
-    def resolve(self, method, path):
+    def resolve(self, request):
         """Resolve resource
 
         Return (UrlMappingMatchInfo, allowed_methods) pair."""
+
+    @abc.abstractmethod
+    def add_prefix(self, prefix):
+        """Add a prefix to processed URLs.
+
+        Required for subapplications support.
+
+        """
 
     @abc.abstractmethod
     def get_info(self):
@@ -155,6 +163,8 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
     def __init__(self, match_dict, route):
         super().__init__(match_dict)
         self._route = route
+        self._apps = []
+        self._frozen = False
 
     @property
     def handler(self):
@@ -174,6 +184,18 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
 
     def get_info(self):
         return self._route.get_info()
+
+    @property
+    def apps(self):
+        return tuple(self._apps)
+
+    def add_app(self, app):
+        if self._frozen:
+            raise RuntimeError("Cannot change apps stack after .freeze() call")
+        self._apps.insert(0, app)
+
+    def freeze(self):
+        self._frozen = True
 
     def __repr__(self):
         return "<MatchInfo {}: {}>".format(super().__repr__(), self._route)
@@ -235,10 +257,10 @@ class Resource(AbstractResource):
         self._routes.append(route)
 
     @asyncio.coroutine
-    def resolve(self, method, path):
+    def resolve(self, request):
         allowed_methods = set()
 
-        match_dict = self._match(path)
+        match_dict = self._match(request.rel_url.raw_path)
         if match_dict is None:
             return None, allowed_methods
 
@@ -246,7 +268,7 @@ class Resource(AbstractResource):
             route_method = route.method
             allowed_methods.add(route_method)
 
-            if route_method == method or route_method == hdrs.METH_ANY:
+            if route_method == request.method or route_method == hdrs.METH_ANY:
                 return UrlMappingMatchInfo(match_dict, route), allowed_methods
         else:
             return None, allowed_methods
@@ -262,7 +284,14 @@ class PlainResource(Resource):
 
     def __init__(self, path, *, name=None):
         super().__init__(name=name)
+        assert path.startswith('/')
         self._path = path
+
+    def add_prefix(self, prefix):
+        assert prefix.startswith('/')
+        assert prefix.endswith('/')
+        assert len(prefix) > 1
+        self._path = prefix + self._path[1:]
 
     def _match(self, path):
         # string comparison is about 10 times faster than regexp matching
@@ -291,11 +320,20 @@ class DynamicResource(Resource):
 
     def __init__(self, pattern, formatter, *, name=None):
         super().__init__(name=name)
+        assert pattern.pattern.startswith('\\/')
+        assert formatter.startswith('/')
         self._pattern = pattern
         self._formatter = formatter
 
+    def add_prefix(self, prefix):
+        assert prefix.startswith('/')
+        assert prefix.endswith('/')
+        assert len(prefix) > 1
+        self._pattern = re.compile(re.escape(prefix)+self._pattern.pattern[2:])
+        self._formatter = prefix + self._formatter[1:]
+
     def _match(self, path):
-        match = self._pattern.match(path)
+        match = self._pattern.fullmatch(path)
         if match is None:
             return None
         else:
@@ -329,13 +367,20 @@ class PrefixResource(AbstractResource):
         self._prefix = quote(prefix, safe='/')
         self._prefix_len = len(self._prefix)
 
+    def add_prefix(self, prefix):
+        assert prefix.startswith('/')
+        assert prefix.endswith('/')
+        assert len(prefix) > 1
+        self._prefix = prefix + self._prefix[1:]
+        self._prefix_len = len(self._prefix)
+
 
 class StaticResource(PrefixResource):
 
     def __init__(self, prefix, directory, *, name=None,
                  expect_handler=None, chunk_size=256*1024,
                  response_factory=StreamResponse,
-                 show_index=False):
+                 show_index=False, follow_symlinks=False):
         super().__init__(prefix, name=name)
         try:
             directory = Path(directory)
@@ -351,6 +396,7 @@ class StaticResource(PrefixResource):
         self._file_sender = FileSender(resp_factory=response_factory,
                                        chunk_size=chunk_size)
         self._show_index = show_index
+        self._follow_symlinks = follow_symlinks
 
         self._routes = {'GET': ResourceRoute('GET', self._handle, self,
                                              expect_handler=expect_handler),
@@ -374,7 +420,9 @@ class StaticResource(PrefixResource):
                 'prefix': self._prefix}
 
     @asyncio.coroutine
-    def resolve(self, method, path):
+    def resolve(self, request):
+        path = request.rel_url.raw_path
+        method = request.method
         allowed_methods = {'GET', 'HEAD'}
         if not path.startswith(self._prefix):
             return None, set()
@@ -397,7 +445,8 @@ class StaticResource(PrefixResource):
         filename = unquote(request.match_info['filename'])
         try:
             filepath = self._directory.joinpath(filename).resolve()
-            filepath.relative_to(self._directory)
+            if not self._follow_symlinks:
+                filepath.relative_to(self._directory)
         except (ValueError, FileNotFoundError) as error:
             # relatively safe
             raise HTTPNotFound() from error
@@ -464,6 +513,55 @@ class StaticResource(PrefixResource):
         name = "'" + self.name + "'" if self.name is not None else ""
         return "<StaticResource {name} {path} -> {directory!r}".format(
             name=name, path=self._prefix, directory=self._directory)
+
+
+class PrefixedSubAppResource(PrefixResource):
+
+    def __init__(self, prefix, app):
+        super().__init__(prefix)
+        self._app = app
+        for resource in app.router.resources():
+            resource.add_prefix(prefix)
+
+    def add_prefix(self, prefix):
+        super().add_prefix(prefix)
+        for resource in self._app.router.resources():
+            resource.add_prefix(prefix)
+
+    def url_for(self, *args, **kwargs):
+        raise RuntimeError(".url_for() is not supported "
+                           "by sub-application root")
+
+    def url(self, **kwargs):
+        """Construct url for route with additional params."""
+        raise RuntimeError(".url() is not supported "
+                           "by sub-application root")
+
+    def get_info(self):
+        return {'app': self._app,
+                'prefix': self._prefix}
+
+    @asyncio.coroutine
+    def resolve(self, request):
+        if not request.url.raw_path.startswith(self._prefix):
+            return None, set()
+        match_info = yield from self._app.router.resolve(request)
+        match_info.add_app(self._app)
+        if isinstance(match_info.http_exception, HTTPMethodNotAllowed):
+            methods = match_info.http_exception.allowed_methods
+        else:
+            methods = set()
+        return (match_info, methods)
+
+    def __len__(self):
+        return len(self._app.router.routes())
+
+    def __iter__(self):
+        return iter(self._app.router.routes())
+
+    def __repr__(self):
+        return "<PrefixedSubAppResource {prefix} -> {app!r}>".format(
+            prefix=self._prefix, app=self._app)
 
 
 class ResourceRoute(AbstractRoute):
@@ -588,26 +686,26 @@ class RoutesView(Sized, Iterable, Container):
 
 class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
-    DYN = re.compile(r'^\{(?P<var>[a-zA-Z][_a-zA-Z0-9]*)\}$')
+    DYN = re.compile(r'\{(?P<var>[a-zA-Z][_a-zA-Z0-9]*)\}')
     DYN_WITH_RE = re.compile(
-        r'^\{(?P<var>[a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}$')
+        r'\{(?P<var>[a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}')
     GOOD = r'[^{}/]+'
     ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
     NAME_SPLIT_RE = re.compile('[.:-]')
 
-    def __init__(self):
+    def __init__(self, app):
         super().__init__()
         self._resources = []
         self._named_resources = {}
+        self._app = app
 
     @asyncio.coroutine
     def resolve(self, request):
-        path = request.raw_path
         method = request.method
         allowed_methods = set()
 
         for resource in self._resources:
-            match_dict, allowed = yield from resource.resolve(method, path)
+            match_dict, allowed = yield from resource.resolve(request)
             if match_dict is not None:
                 return match_dict
             else:
@@ -644,6 +742,9 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         assert isinstance(resource, AbstractResource), \
             'Instance of AbstractResource class is required, got {!r}'.format(
                 resource)
+        if self.frozen:
+            raise RuntimeError("Cannot register a resource into "
+                               "frozen router.")
 
         name = resource.name
 
@@ -673,13 +774,13 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         pattern = ''
         formatter = ''
         for part in self.ROUTE_RE.split(path):
-            match = self.DYN.match(part)
+            match = self.DYN.fullmatch(part)
             if match:
                 pattern += '(?P<{}>{})'.format(match.group('var'), self.GOOD)
                 formatter += '{' + match.group('var') + '}'
                 continue
 
-            match = self.DYN_WITH_RE.match(part)
+            match = self.DYN_WITH_RE.fullmatch(part)
             if match:
                 pattern += '(?P<{var}>{re})'.format(**match.groupdict())
                 formatter += '{' + match.group('var') + '}'
@@ -693,7 +794,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             pattern += re.escape(part)
 
         try:
-            compiled = re.compile('^' + pattern + '$')
+            compiled = re.compile(pattern)
         except re.error as exc:
             raise ValueError(
                 "Bad pattern '{}': {}".format(pattern, exc)) from None
@@ -709,7 +810,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     def add_static(self, prefix, path, *, name=None, expect_handler=None,
                    chunk_size=256*1024, response_factory=StreamResponse,
-                   show_index=False):
+                   show_index=False, follow_symlinks=False):
         """Add static files view.
 
         prefix - url prefix
@@ -725,7 +826,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                                   expect_handler=expect_handler,
                                   chunk_size=chunk_size,
                                   response_factory=response_factory,
-                                  show_index=show_index)
+                                  show_index=show_index,
+                                  follow_symlinks=follow_symlinks)
         self._reg_resource(resource)
         return resource
 
@@ -764,3 +866,15 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         Shortcut for add_route with method DELETE
         """
         return self.add_route(hdrs.METH_DELETE, *args, **kwargs)
+
+    def add_subapp(self, prefix, subapp):
+        assert prefix.startswith('/')
+        if not prefix.endswith('/'):
+            prefix += '/'
+        if subapp.frozen:
+            raise RuntimeError("Cannod add frozen application")
+        resource = PrefixedSubAppResource(prefix, subapp)
+        self._reg_resource(resource)
+        self._app._reg_subapp_signals(subapp)
+        subapp.freeze()
+        return resource

@@ -205,7 +205,7 @@ Contents
    api
    logging
    testing
-   gunicorn
+   deployment
    faq
    essays
    contributing
