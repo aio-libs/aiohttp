@@ -415,7 +415,6 @@ class ClientRequest:
             new_exc.__cause__ = exc
             reader.set_exception(new_exc)
         else:
-            assert request.transport.tcp_nodelay
             try:
                 ret = request.write_eof()
                 # NB: in asyncio 3.4.1+ StreamWriter.drain() is coroutine
@@ -575,9 +574,6 @@ class ClientResponse(HeadersMixin):
     def history(self):
         """A sequence of of responses, if redirects occurred."""
         return self._history
-
-    def waiting_for_continue(self):
-        return self._continue is not None
 
     def _setup_connection(self, connection):
         self._reader = connection.reader
