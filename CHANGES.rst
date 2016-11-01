@@ -93,7 +93,7 @@ CHANGES
 - Extend `ClientResponse` with `content_type` and `charset`
   properties like in `web.Request`. #1349
 
--
+- Disable aiodns by default #559
 
 -
 

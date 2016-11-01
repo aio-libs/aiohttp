@@ -203,7 +203,8 @@ def test_async_resolver_aiodns_not_present(loop, monkeypatch):
 
 
 def test_default_resolver():
-    if gethostbyname:
-        assert DefaultResolver is AsyncResolver
-    else:
-        assert DefaultResolver is ThreadedResolver
+    # if gethostbyname:
+    #     assert DefaultResolver is AsyncResolver
+    # else:
+    #     assert DefaultResolver is ThreadedResolver
+    assert DefaultResolver is ThreadedResolver
