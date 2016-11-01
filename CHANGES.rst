@@ -51,6 +51,8 @@ CHANGES
 
 - Force encoding of `application/json` content type to utf-8 #1339
 
+- Fix invalid invocations of errors.LineTooLong #1335
+
 - Websockets: Stop `async for` iteration when connection is closed #1144
 
 - Ensure TestClient HTTP methods return a context manager #1318
