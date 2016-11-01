@@ -18,7 +18,7 @@ from .helpers import HeadersMixin, Timeout
 from .log import client_logger
 from .multipart import MultipartWriter
 from .protocol import HttpMessage
-from .streams import EOF_MARKER, FlowControlStreamReader
+from .streams import FlowControlStreamReader
 
 try:
     import cchardet as chardet
@@ -390,7 +390,7 @@ class ClientRequest:
                 while True:
                     try:
                         chunk = yield from self.body.read()
-                        if chunk is EOF_MARKER:
+                        if not chunk:
                             break
                         yield from request.write(chunk, drain=True)
                     except streams.EofStream:
@@ -651,10 +651,9 @@ class ClientResponse(HeadersMixin):
             return
         try:
             content = self.content
-            if content is not None and not content.at_eof():
-                chunk = yield from content.readany()
-                while chunk is not EOF_MARKER or chunk:
-                    chunk = yield from content.readany()
+            if content is not None:
+                while not content.at_eof():
+                    yield from content.readany()
         except Exception:
             self._connection.close()
             self._connection = None

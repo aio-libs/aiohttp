@@ -10,7 +10,6 @@ from yarl import URL
 
 from aiohttp import FormData, multipart, web
 from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
-from aiohttp.streams import EOF_MARKER
 
 try:
     import ssl
@@ -335,7 +334,7 @@ def test_release_post_data(loop, test_client):
     def handler(request):
         yield from request.release()
         chunk = yield from request.content.readany()
-        assert chunk is EOF_MARKER
+        assert chunk == b''
         return web.Response()
 
     app = web.Application(loop=loop)
