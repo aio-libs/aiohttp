@@ -42,7 +42,7 @@ def test_wait_for_100_1(loop):
     response = ClientResponse(
         'get', URL('http://python.org'), continue100=object())
     response._post_init(loop)
-    assert response.waiting_for_continue()
+    assert response._continue is not None
     response.close()
 
 
@@ -50,7 +50,7 @@ def test_wait_for_100_2(loop):
     response = ClientResponse(
         'get', URL('http://python.org'))
     response._post_init(loop)
-    assert not response.waiting_for_continue()
+    assert response._continue is None
     response.close()
 
 
