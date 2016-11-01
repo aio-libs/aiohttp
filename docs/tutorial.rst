@@ -75,6 +75,22 @@ Getting started with aiohttp first app
 
 This tutorial based on Django polls tutorial.
 
+
+Application
+-----------
+
+All aiohttp server is built around :class:`aiohttp.web.Application` instance.
+It is used for registering *startup*/*cleanup* signals, connecting routes etc.
+
+The following code creates an application::
+
+   import asyncio
+   from aiohttp import web
+
+   loop = asyncio.get_event_loop()
+   app = web.Application(loop=loop)
+
+
 .. _aiohttp-tutorial-config:
 
 Configuration files
@@ -116,6 +132,13 @@ Thus we **suggest** to use the following approach:
       or `JSON schema
       <http://python-jsonschema.readthedocs.io/en/latest/>`_ are good
       candidates for such job.
+
+
+Load config and push into into application::
+
+    # load config from yaml file in current dir
+    conf = load_config(str(pathlib.Path('.') / 'config' / 'polls.yaml'))
+    app['config'] = conf
 
 .. _aiohttp-tutorial-database:
 
@@ -191,9 +214,45 @@ and second table is choice table:
 | question_id   |
 +---------------+
 
-TBD: aiopg.sa.create_engine and pushing it into app's storage
+Creating connection engine
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-TBD: graceful cleanup
+For making DB queries we need an engine instance. Assuming ``conf`` is
+a :class:`dict` with configuration info Postgres connection could be
+done by the following coroutine::
+
+   async def init_pg(app):
+       conf = app['config']
+       engine = await aiopg.sa.create_engine(
+           database=conf['database'],
+           user=conf['user'],
+           password=conf['password'],
+           host=conf['host'],
+           port=conf['port'],
+           minsize=conf['minsize'],
+           maxsize=conf['maxsize'],
+           loop=app.loop)
+       app['db'] = engine
+
+The best place for connecting to DB is
+:attr:`~aiohtp.web.Application.on_startup` signal::
+
+   app.on_startup.append(init_pg)
+
+
+Graceful shutdown
+^^^^^^^^^^^^^^^^^
+
+There is a good practice to close all resources on program exit.
+
+Let's close DB connection in :attr:`~aiohtp.web.Application.on_cleanup` signal::
+
+   async def close_pg(app):
+       app['db'].close()
+       await app['db'].wait_closed()
+
+
+   app.on_cleanup.append(close_pg)
 
 
 .. _aiohttp-tutorial-views:
