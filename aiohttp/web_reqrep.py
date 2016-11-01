@@ -20,7 +20,6 @@ from . import hdrs, multipart
 from .helpers import HeadersMixin, reify, sentinel
 from .protocol import WebResponse as ResponseImpl
 from .protocol import HttpVersion10, HttpVersion11
-from .streams import EOF_MARKER
 
 __all__ = (
     'ContentCoding', 'Request', 'StreamResponse', 'Response',
@@ -293,9 +292,8 @@ class Request(collections.MutableMapping, HeadersMixin):
 
         Eat unread part of HTTP BODY if present.
         """
-        chunk = yield from self._payload.readany()
-        while chunk is not EOF_MARKER or chunk:
-            chunk = yield from self._payload.readany()
+        while not self._payload.at_eof():
+            yield from self._payload.readany()
 
     @asyncio.coroutine
     def read(self):
@@ -308,7 +306,7 @@ class Request(collections.MutableMapping, HeadersMixin):
             while True:
                 chunk = yield from self._payload.readany()
                 body.extend(chunk)
-                if chunk is EOF_MARKER:
+                if not chunk:
                     break
             self._read_bytes = bytes(body)
         return self._read_bytes
