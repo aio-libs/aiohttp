@@ -346,7 +346,6 @@ class ClientRequest:
 
         try:
             if asyncio.iscoroutine(self.body):
-                request.transport.set_tcp_nodelay(True)
                 exc = None
                 value = None
                 stream = self.body
@@ -382,14 +381,12 @@ class ClientRequest:
 
             elif isinstance(self.body, (asyncio.StreamReader,
                                         streams.StreamReader)):
-                request.transport.set_tcp_nodelay(True)
                 chunk = yield from self.body.read(streams.DEFAULT_LIMIT)
                 while chunk:
                     yield from request.write(chunk, drain=True)
                     chunk = yield from self.body.read(streams.DEFAULT_LIMIT)
 
             elif isinstance(self.body, streams.DataQueue):
-                request.transport.set_tcp_nodelay(True)
                 while True:
                     try:
                         chunk = yield from self.body.read()
@@ -404,15 +401,12 @@ class ClientRequest:
                 while chunk:
                     request.write(chunk)
                     chunk = self.body.read(self.chunked)
-                request.transport.set_tcp_nodelay(True)
-
             else:
                 if isinstance(self.body, (bytes, bytearray)):
                     self.body = (self.body,)
 
                 for chunk in self.body:
                     request.write(chunk)
-                request.transport.set_tcp_nodelay(True)
 
         except Exception as exc:
             new_exc = aiohttp.ClientRequestError(
@@ -439,7 +433,6 @@ class ClientRequest:
         self._writer = None
 
     def send(self, writer, reader):
-        writer.set_tcp_cork(True)
         path = self.url.raw_path
         if self.url.raw_query_string:
             path += '?' + self.url.raw_query_string

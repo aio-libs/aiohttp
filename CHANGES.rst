@@ -97,7 +97,7 @@ CHANGES
 
 - Disable aiodns by default #559
 
--
+- Don't flap `tcp_cork` in client code, use TCP_NODELAY mode by default.
 
 -
 

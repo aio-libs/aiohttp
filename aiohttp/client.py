@@ -199,6 +199,7 @@ class ClientSession:
 
             with Timeout(timeout, loop=self._loop):
                 conn = yield from self._connector.connect(req)
+            conn.writer.set_tcp_nodelay(True)
             try:
                 resp = req.send(conn.writer, conn.reader)
                 try:
