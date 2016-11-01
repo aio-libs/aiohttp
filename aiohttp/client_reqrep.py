@@ -487,7 +487,6 @@ class ClientResponse(HeadersMixin):
     status = None   # Status-Code
     reason = None   # Reason-Phrase
 
-    cookies = None  # Response cookies (Set-Cookie)
     content = None  # Payload stream
     headers = None  # Response headers, CIMultiDictProxy
     raw_headers = None  # Response raw headers, a sequence of pairs
@@ -515,6 +514,7 @@ class ClientResponse(HeadersMixin):
         self._should_close = True  # override by message.should_close later
         self._history = ()
         self._timeout = timeout
+        self.cookies = http.cookies.SimpleCookie()
 
     @property
     def url_obj(self):
@@ -622,14 +622,12 @@ class ClientResponse(HeadersMixin):
             self.content)
 
         # cookies
-        self.cookies = http.cookies.SimpleCookie()
-        if hdrs.SET_COOKIE in self.headers:
-            for hdr in self.headers.getall(hdrs.SET_COOKIE):
-                try:
-                    self.cookies.load(hdr)
-                except http.cookies.CookieError as exc:
-                    client_logger.warning(
-                        'Can not load response cookies: %s', exc)
+        for hdr in self.headers.getall(hdrs.SET_COOKIE, ()):
+            try:
+                self.cookies.load(hdr)
+            except http.cookies.CookieError as exc:
+                client_logger.warning(
+                    'Can not load response cookies: %s', exc)
         return self
 
     def close(self):
