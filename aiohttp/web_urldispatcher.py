@@ -397,6 +397,7 @@ class StaticResource(PrefixResource):
                                        chunk_size=chunk_size)
         self._show_index = show_index
         self._follow_symlinks = follow_symlinks
+        self._expect_handler = expect_handler
 
         self._routes = {'GET': ResourceRoute('GET', self._handle, self,
                                              expect_handler=expect_handler),
@@ -419,11 +420,18 @@ class StaticResource(PrefixResource):
         return {'directory': self._directory,
                 'prefix': self._prefix}
 
+    def set_options_route(self, handler):
+        if 'OPTIONS' in self._routes:
+            raise RuntimeError('OPTIONS route was set already')
+        self._routes['OPTIONS'] = ResourceRoute(
+            'OPTIONS', handler, self,
+            expect_handler=self._expect_handler)
+
     @asyncio.coroutine
     def resolve(self, request):
         path = request.rel_url.raw_path
         method = request.method
-        allowed_methods = {'GET', 'HEAD'}
+        allowed_methods = set(self._routes)
         if not path.startswith(self._prefix):
             return None, set()
 
