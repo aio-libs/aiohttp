@@ -99,7 +99,7 @@ CHANGES
 
 - Don't flap `tcp_cork` in client code, use TCP_NODELAY mode by default.
 
--
+- Implement `web.Request.clone()` #1361
 
 -
 
