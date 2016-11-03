@@ -966,3 +966,21 @@ def test_frozen_router_subapp(loop, router):
     subapp.freeze()
     with pytest.raises(RuntimeError):
         router.add_subapp('/', subapp)
+
+
+def test_set_options_route(router):
+    resource = router.add_static('/static',
+                                 os.path.dirname(aiohttp.__file__))
+    options = None
+    for route in resource:
+        if route.method == 'OPTIONS':
+            options = route
+    assert options is None
+    resource.set_options_route(make_handler())
+    for route in resource:
+        if route.method == 'OPTIONS':
+            options = route
+    assert options is not None
+
+    with pytest.raises(RuntimeError):
+        resource.set_options_route(make_handler())
