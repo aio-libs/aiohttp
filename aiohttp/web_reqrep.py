@@ -52,7 +52,6 @@ class Request(collections.MutableMapping, HeadersMixin):
     def __init__(self, message, payload, transport, reader, writer,
                  time_service, *,
                  secure_proxy_ssl_header=None):
-        self._app = None
         self._message = message
         self._transport = transport
         self._reader = reader
@@ -73,6 +72,41 @@ class Request(collections.MutableMapping, HeadersMixin):
         self._time_service = time_service
         self._state = {}
         self._cache = {}
+
+    def clone(self, *, method=sentinel, rel_url=sentinel,
+              headers=sentinel):
+        """Clone itself with replacement some attributes.
+
+        Creates and returns a new instance of Request object. If no parameters
+        are given, an exact copy is returned. If a parameter is not passed, it
+        will reuse the one from the current request object.
+
+        """
+
+        if self._read_bytes:
+            raise RuntimeError("Cannot clone request "
+                               "after reading it's content")
+
+        dct = {}
+        if method is not sentinel:
+            dct['method'] = method
+        if rel_url is not sentinel:
+            dct['path'] = str(URL(rel_url))
+        if headers is not sentinel:
+            dct['headers'] = CIMultiDict(headers)
+            dct['raw_headers'] = [(k.encode('utf-8'), v.encode('utf-8'))
+                                  for k, v in headers.items()]
+
+        message = self._message._replace(**dct)
+
+        return Request(
+            message,
+            self._payload,
+            self._transport,
+            self._reader,
+            self._writer,
+            self._time_service,
+            secure_proxy_ssl_header=self._secure_proxy_ssl_header)
 
     # MutableMapping API
 

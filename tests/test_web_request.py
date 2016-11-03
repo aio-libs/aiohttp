@@ -7,6 +7,7 @@ from multidict import CIMultiDict, MultiDict
 from yarl import URL
 
 from aiohttp.protocol import HttpVersion
+from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
 
 
@@ -266,3 +267,54 @@ def test_rel_url(make_request):
 def test_url_url(make_request):
     req = make_request('GET', '/path', headers={'HOST': 'example.com'})
     assert URL('http://example.com/path') == req.url
+
+
+def test_clone():
+    req = make_mocked_request('GET', '/path')
+    req2 = req.clone()
+    assert req2.method == 'GET'
+    assert req2.rel_url == URL('/path')
+
+
+def test_clone_method():
+    req = make_mocked_request('GET', '/path')
+    req2 = req.clone(method='POST')
+    assert req2.method == 'POST'
+    assert req2.rel_url == URL('/path')
+
+
+def test_clone_rel_url():
+    req = make_mocked_request('GET', '/path')
+    req2 = req.clone(rel_url=URL('/path2'))
+    assert req2.rel_url == URL('/path2')
+
+
+def test_clone_rel_url_str():
+    req = make_mocked_request('GET', '/path')
+    req2 = req.clone(rel_url='/path2')
+    assert req2.rel_url == URL('/path2')
+
+
+def test_clone_headers():
+    req = make_mocked_request('GET', '/path', headers={'A': 'B'})
+    req2 = req.clone(headers=CIMultiDict({'B': 'C'}))
+    assert req2.headers == CIMultiDict({'B': 'C'})
+    assert req2.raw_headers == ((b'B', b'C'),)
+
+
+def test_clone_headers_dict():
+    req = make_mocked_request('GET', '/path', headers={'A': 'B'})
+    req2 = req.clone(headers={'B': 'C'})
+    assert req2.headers == CIMultiDict({'B': 'C'})
+    assert req2.raw_headers == ((b'B', b'C'),)
+
+
+@asyncio.coroutine
+def test_cannot_clone_after_read(loop):
+    payload = StreamReader(loop=loop)
+    payload.feed_data(b'data')
+    payload.feed_eof()
+    req = make_mocked_request('GET', '/path', payload=payload)
+    yield from req.read()
+    with pytest.raises(RuntimeError):
+        req.clone()
