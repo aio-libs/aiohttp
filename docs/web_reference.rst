@@ -277,6 +277,23 @@ like one using :meth:`Request.copy`.
       *If-Modified-Since* header is absent or is not a valid
       HTTP date.
 
+   .. method:: clone(*, method=..., rel_url=..., headers=...)
+
+      Clone itself with replacement some attributes.
+
+      Creates and returns a new instance of Request object. If no parameters
+      are given, an exact copy is returned. If a parameter is not passed, it
+      will reuse the one from the current request object.
+
+      :param str method: http method
+
+      :param rel_url: url to use, :class:`str` or :class:`~yarl.URL`
+
+      :param headers: :class:`~multidict.CIMultidict` or compatible
+                      headers container.
+
+      :return: a cloned :class:`Request` instance.
+
    .. coroutinemethod:: read()
 
       Read request body, returns :class:`bytes` object with body content.
