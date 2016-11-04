@@ -9,6 +9,9 @@ from .web_exceptions import HTTPException
 from .web_reqrep import BaseRequest
 
 
+__all__ = ('BaseRequestHandler', 'BaseRequestHandlerFactory')
+
+
 class BaseRequestHandler(ServerHttpProtocol, ABC):
     _request = None
 
@@ -44,10 +47,10 @@ class BaseRequestHandler(ServerHttpProtocol, ABC):
             self.transport, self.reader, self.writer,
             self._time_service)
 
+    @asyncio.coroutine    # pragma: no branch
     @abstractmethod
-    @asyncio.coroutine
     def handle(self, request):
-        pass
+        """Handle request, return response instance."""
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
