@@ -104,6 +104,8 @@ class ClientRequest:
         self.update_transfer_encoding()
         self.update_expect_continue(expect100)
 
+        self.path = None
+
     @property
     def host(self):
         return self.url.host
@@ -432,7 +434,7 @@ class ClientRequest:
         self._writer = None
 
     def send(self, writer, reader):
-        path = self.url.raw_path
+        path = self.path or self.url.raw_path
         if self.url.raw_query_string:
             path += '?' + self.url.raw_query_string
         request = aiohttp.Request(writer, self.method, path,
