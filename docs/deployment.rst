@@ -57,7 +57,9 @@ For full reference read `Nginx tutorial
 documentation
 <http://nginx.org/en/docs/http/ngx_http_proxy_module.html>`_.
 
-First configure HTTP server itself::
+First configure HTTP server itself:
+
+.. code-block:: nginx
 
    http {
      server {
@@ -88,7 +90,9 @@ and redirects everything to ``aiohttp`` backend group.
 Also it serves static files from ``/path/to/app/static`` path as
 ``example.com/static``.
 
-Next we need to configure *aiohttp upstream group*::
+Next we need to configure *aiohttp upstream group*:
+
+.. code-block:: nginx
 
    http {
      upstream aiohttp {
