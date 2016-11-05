@@ -527,4 +527,4 @@ def make_mocked_coro(return_value=sentinel, raise_exception=sentinel):
             raise raise_exception
         return return_value
 
-    return mock.Mock(wraps=mock_coro)
+    return mock.MagicMock(wraps=mock_coro)
