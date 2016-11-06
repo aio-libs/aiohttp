@@ -78,7 +78,7 @@ class RequestHandler(ServerHttpProtocol):
         self._request = None
 
 
-class RequestHandlerFactory:
+class Server:
 
     def __init__(self, handler, *, request_factory=None, loop=None, **kwargs):
         self._handler = handler
@@ -124,11 +124,13 @@ class RequestHandlerFactory:
             protocol.time_service)
 
     @asyncio.coroutine
-    def finish_connections(self, timeout=None):
+    def shutdown(self, timeout=None):
         coros = [conn.shutdown(timeout) for conn in self._connections]
         yield from asyncio.gather(*coros, loop=self._loop)
         self._connections.clear()
         self._time_service.stop()
+
+    finish_connections = shutdown
 
     def __call__(self):
         return RequestHandler(

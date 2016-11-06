@@ -73,7 +73,7 @@ class GunicornWebWorker(base.Worker):
 
             # stop alive connections
             tasks = [
-                handler.finish_connections(
+                handler.shutdown(
                     timeout=self.cfg.graceful_timeout / 100 * 95)
                 for handler in servers.values()]
             yield from asyncio.gather(*tasks, loop=self.loop)

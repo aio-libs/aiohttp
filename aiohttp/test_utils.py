@@ -94,7 +94,7 @@ class TestServer:
             self.server.close()
             yield from self.server.wait_closed()
             yield from self.app.shutdown()
-            yield from self.handler.finish_connections()
+            yield from self.handler.shutdown()
             yield from self.app.cleanup()
             self._root = None
             self.port = None
