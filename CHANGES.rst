@@ -1,6 +1,11 @@
 CHANGES
 =======
 
+1.1.1 (2016-11-04)
+------------------
+
+- Fix documentation generation #1120
+
 1.1.0 (2016-11-03)
 ------------------
 
@@ -100,4 +105,3 @@ CHANGES
 - Don't flap `tcp_cork` in client code, use TCP_NODELAY mode by default.
 
 - Implement `web.Request.clone()` #1361
-
