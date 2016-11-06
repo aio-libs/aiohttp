@@ -148,13 +148,13 @@ Database
 Setup
 ^^^^^
 
-In this tutorial we use latest PostgreSQL database.  You can install
+In this tutorial we will use the latest PostgreSQL database.  You can install
 PostgreSQL using this instruction http://www.postgresql.org/download/
 
 Database schema
 ^^^^^^^^^^^^^^^
 
-We use SQLAlchemy for describe database schema.
+We use SQLAlchemy to describe database schemas.
 For this tutorial we can use two simple models ``question`` and ``choice``::
 
     import sqlalchemy as sa
