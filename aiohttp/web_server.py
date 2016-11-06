@@ -1,24 +1,24 @@
 """Low level HTTP server."""
 
 import asyncio
-from abc import ABC, abstractmethod
 
 from .helpers import TimeService
 from .server import ServerHttpProtocol
 from .web_exceptions import HTTPException
 from .web_reqrep import BaseRequest
 
+__all__ = ('RequestHandler', 'RequestHandlerFactory')
 
-__all__ = ('BaseRequestHandler', 'BaseRequestHandlerFactory')
 
-
-class BaseRequestHandler(ServerHttpProtocol, ABC):
+class RequestHandler(ServerHttpProtocol):
     _request = None
 
     def __init__(self, manager, **kwargs):
         super().__init__(**kwargs)
         self._manager = manager
-        self._time_service = manager.time_service
+        self._request_factory = manager.request_factory
+        self._handler = manager.handler
+        self.time_service = manager.time_service
 
     def __repr__(self):
         if self._request is None:
@@ -40,17 +40,10 @@ class BaseRequestHandler(ServerHttpProtocol, ABC):
         self._manager.connection_lost(self, exc)
 
         super().connection_lost(exc)
-
-    def make_request(self, message, payload):
-        return BaseRequest(
-            message, payload,
-            self.transport, self.reader, self.writer,
-            self._time_service)
-
-    @asyncio.coroutine    # pragma: no branch
-    @abstractmethod
-    def handle(self, request):
-        """Handle request, return response instance."""
+        self._request_factory = None
+        self._manager = None
+        self.time_service = None
+        self._handler = None
 
     @asyncio.coroutine
     def handle_request(self, message, payload):
@@ -58,11 +51,11 @@ class BaseRequestHandler(ServerHttpProtocol, ABC):
         if self.access_log:
             now = self._loop.time()
 
-        request = self.make_request(message, payload)
+        request = self._request_factory(message, payload, self)
         self._request = request
 
         try:
-            resp = yield from self.handle(request)
+            resp = yield from self._handler(request)
         except HTTPException as exc:
             resp = exc
 
@@ -85,10 +78,11 @@ class BaseRequestHandler(ServerHttpProtocol, ABC):
         self._request = None
 
 
-class BaseRequestHandlerFactory:
+class RequestHandlerFactory:
 
-    def __init__(self, *, handler=BaseRequestHandler, loop=None, **kwargs):
+    def __init__(self, handler, *, request_factory=None, loop=None, **kwargs):
         self._handler = handler
+        self._request_factory = request_factory or self._make_request
         self._loop = loop
         self._connections = {}
         self._kwargs = kwargs
@@ -99,6 +93,14 @@ class BaseRequestHandlerFactory:
     def requests_count(self):
         """Number of processed requests."""
         return self._requests_count
+
+    @property
+    def handler(self):
+        return self._handler
+
+    @property
+    def request_factory(self):
+        return self._request_factory
 
     @property
     def time_service(self):
@@ -115,6 +117,12 @@ class BaseRequestHandlerFactory:
         if handler in self._connections:
             del self._connections[handler]
 
+    def _make_request(self, message, payload, protocol):
+        return BaseRequest(
+            message, payload,
+            protocol.transport, protocol.reader, protocol.writer,
+            protocol.time_service)
+
     @asyncio.coroutine
     def finish_connections(self, timeout=None):
         coros = [conn.shutdown(timeout) for conn in self._connections]
@@ -123,6 +131,6 @@ class BaseRequestHandlerFactory:
         self._time_service.stop()
 
     def __call__(self):
-        return self._handler(
+        return RequestHandler(
             self, loop=self._loop,
             **self._kwargs)

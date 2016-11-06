@@ -7,7 +7,8 @@ from importlib import import_module
 
 from yarl import URL
 
-from . import hdrs, web_exceptions, web_reqrep, web_urldispatcher, web_ws
+from . import (hdrs, web_exceptions, web_reqrep, web_server, web_urldispatcher,
+               web_ws)
 from .abc import AbstractMatchInfo, AbstractRouter
 from .helpers import FrozenList, sentinel
 from .log import access_logger, web_logger
@@ -15,7 +16,7 @@ from .protocol import HttpVersion  # noqa
 from .signals import PostSignal, PreSignal, Signal
 from .web_exceptions import *  # noqa
 from .web_reqrep import *  # noqa
-from .web_server import BaseRequestHandler, BaseRequestHandlerFactory
+from .web_server import RequestHandlerFactory
 from .web_urldispatcher import *  # noqa
 from .web_ws import *  # noqa
 
@@ -23,89 +24,27 @@ __all__ = (web_reqrep.__all__ +
            web_exceptions.__all__ +
            web_urldispatcher.__all__ +
            web_ws.__all__ +
-           ('Application', 'RequestHandler',
-            'RequestHandlerFactory', 'HttpVersion',
-            'MsgType'))
-
-
-class RequestHandler(BaseRequestHandler):
-
-    def __init__(self, manager, **kwargs):
-        super().__init__(manager, **kwargs)
-
-        self._manager = manager
-        self._app = manager.app
-        self._router = self._app.router
-        self._secure_proxy_ssl_header = manager.secure_proxy_ssl_header
-
-    def make_request(self, message, payload):
-        return web_reqrep.Request(
-            message, payload,
-            self.transport, self.reader, self.writer,
-            self._time_service,
-            secure_proxy_ssl_header=self._secure_proxy_ssl_header)
-
-    @asyncio.coroutine
-    def handle(self, request):
-        match_info = yield from self._router.resolve(request)
-        assert isinstance(match_info, AbstractMatchInfo), match_info
-        match_info.add_app(self._app)
-        match_info.freeze()
-
-        resp = None
-        request._match_info = match_info
-        expect = request.headers.get(hdrs.EXPECT)
-        if expect:
-            resp = (
-                yield from match_info.expect_handler(request))
-
-        if resp is None:
-            handler = match_info.handler
-            for app in match_info.apps:
-                for factory in reversed(app.middlewares):
-                    handler = yield from factory(app, handler)
-            resp = yield from handler(request)
-
-        assert isinstance(resp, web_reqrep.StreamResponse), \
-            ("Handler {!r} should return response instance, "
-             "got {!r} [middlewares {!r}]").format(
-                 match_info.handler, type(resp), self._middlewares)
-        return resp
-
-
-class RequestHandlerFactory(BaseRequestHandlerFactory):
-
-    def __init__(self, app, router, *,
-                 handler=RequestHandler, loop=None,
-                 secure_proxy_ssl_header=None, **kwargs):
-        kwargs.setdefault('logger', app.logger)
-        super().__init__(handler=handler, loop=loop, **kwargs)
-        self._app = app
-        self._secure_proxy_ssl_header = secure_proxy_ssl_header
-
-    @property
-    def secure_proxy_ssl_header(self):
-        return self._secure_proxy_ssl_header
-
-    @property
-    def app(self):
-        return self._app
+           web_server.__all__ +
+           ('Application', 'HttpVersion', 'MsgType'))
 
 
 class Application(MutableMapping):
 
     def __init__(self, *, logger=web_logger, loop=None,
-                 router=None, handler_factory=RequestHandlerFactory,
-                 middlewares=(), debug=False):
+                 router=None,
+                 middlewares=(), debug=...):
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:
             router = web_urldispatcher.UrlDispatcher(self)
         assert isinstance(router, AbstractRouter), router
 
+        if debug is ...:
+            debug = loop.get_debug()
+
         self._debug = debug
         self._router = router
-        self._handler_factory = handler_factory
+        self._handler_factory = RequestHandlerFactory
         self._loop = loop
         self.logger = logger
 
@@ -222,7 +161,7 @@ class Application(MutableMapping):
     def middlewares(self):
         return self._middlewares
 
-    def make_handler(self, **kwargs):
+    def make_handler(self, *, secure_proxy_ssl_header=None, **kwargs):
         debug = kwargs.pop('debug', sentinel)
         if debug is not sentinel:
             warnings.warn(
@@ -239,8 +178,11 @@ class Application(MutableMapping):
                     "web_reference.html#aiohttp.web.Application"
                 )
         self.freeze()
-        return self._handler_factory(self, self.router, debug=self.debug,
-                                     loop=self.loop, **kwargs)
+        self._secure_proxy_ssl_header = secure_proxy_ssl_header
+        return self._handler_factory(self._handle,
+                                     request_factory=self._make_request,
+                                     debug=self.debug, loop=self.loop,
+                                     **kwargs)
 
     @asyncio.coroutine
     def startup(self):
@@ -279,8 +221,41 @@ class Application(MutableMapping):
         warnings.warn("Use .on_cleanup.append() instead", DeprecationWarning)
         self.on_cleanup.append(lambda app: func(app, *args, **kwargs))
 
-    def copy(self):
-        raise NotImplementedError
+    def _make_request(self, message, payload, protocol):
+        return web_reqrep.Request(
+            message, payload,
+            protocol.transport, protocol.reader, protocol.writer,
+            protocol.time_service,
+            secure_proxy_ssl_header=self._secure_proxy_ssl_header)
+
+    @asyncio.coroutine
+    def _handle(self, request):
+        match_info = yield from self._router.resolve(request)
+        assert isinstance(match_info, AbstractMatchInfo), match_info
+        match_info.add_app(self)
+        match_info.freeze()
+
+        resp = None
+        request._match_info = match_info
+        expect = request.headers.get(hdrs.EXPECT)
+        if expect:
+            resp = (
+                yield from match_info.expect_handler(request))
+
+        if resp is None:
+            handler = match_info.handler
+            for app in match_info.apps:
+                for factory in reversed(app.middlewares):
+                    handler = yield from factory(app, handler)
+            resp = yield from handler(request)
+
+        assert isinstance(resp, web_reqrep.StreamResponse), \
+            ("Handler {!r} should return response instance, "
+             "got {!r} [middlewares {!r}]").format(
+                 match_info.handler, type(resp),
+                 [middleware for middleware in app.middlewares
+                  for app in match_info.apps])
+        return resp
 
     def __call__(self):
         """gunicorn compatibility"""
