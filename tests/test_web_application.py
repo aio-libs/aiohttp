@@ -36,7 +36,9 @@ def test_app_make_handler_debug_exc(loop, mocker, debug):
 
     assert 'parameter is deprecated' in exc[0].message.args[0]
     assert app._handler_factory.call_count == 2
-    app._handler_factory.assert_called_with(app, app.router, loop=loop,
+    app._handler_factory.assert_called_with(app._handle,
+                                            request_factory=app._make_request,
+                                            loop=loop,
                                             debug=debug)
 
     with pytest.raises(ValueError) as exc:
@@ -169,3 +171,16 @@ def test_app_delitem(loop):
     assert len(app) == 1
     del app['key']
     assert len(app) == 0
+
+
+def test_secure_proxy_ssl_header_default(loop):
+    app = web.Application(loop=loop)
+    assert app._secure_proxy_ssl_header is None
+
+
+@asyncio.coroutine
+def test_secure_proxy_ssl_header_non_default(loop):
+    app = web.Application(loop=loop)
+    hdr = ('X-Forwarded-Proto', 'https')
+    app.make_handler(secure_proxy_ssl_header=hdr)
+    assert app._secure_proxy_ssl_header is hdr

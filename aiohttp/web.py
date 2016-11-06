@@ -45,6 +45,7 @@ class Application(MutableMapping):
         self._debug = debug
         self._router = router
         self._handler_factory = RequestHandlerFactory
+        self._secure_proxy_ssl_header = None
         self._loop = loop
         self.logger = logger
 
