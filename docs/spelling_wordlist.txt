@@ -166,6 +166,7 @@ requote
 resolvers
 reusage
 sa
+schemas
 sendfile
 serializable
 shourtcuts
