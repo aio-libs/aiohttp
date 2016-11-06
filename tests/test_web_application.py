@@ -18,12 +18,6 @@ def test_app_call(loop):
     assert app is app()
 
 
-def test_app_copy(loop):
-    app = web.Application(loop=loop)
-    with pytest.raises(NotImplementedError):
-        app.copy()
-
-
 def test_app_default_loop(loop):
     asyncio.set_event_loop(loop)
     app = web.Application()
