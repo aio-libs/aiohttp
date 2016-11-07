@@ -11,6 +11,7 @@ import os
 import re
 import warnings
 from collections import MutableSequence, namedtuple
+from functools import total_ordering
 from pathlib import Path
 from time import gmtime, time
 from urllib.parse import urlencode
@@ -532,6 +533,7 @@ def _get_kwarg(kwargs, old, new, value):
         return value
 
 
+@total_ordering
 class FrozenList(MutableSequence):
 
     __slots__ = ('_frozen', '_items')
@@ -568,6 +570,12 @@ class FrozenList(MutableSequence):
 
     def __reversed__(self):
         return self._items.__reversed__()
+
+    def __eq__(self, other):
+        return list(self) == other
+
+    def __le__(self, other):
+        return list(self) <= other
 
     def insert(self, pos, item):
         if self._frozen:

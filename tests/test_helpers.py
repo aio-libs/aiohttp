@@ -422,3 +422,13 @@ class TestTimeService:
         assert time_service._strtime is None
         assert time_service._count == 0
         assert time_service._time > 1234
+
+
+class TestFrozenList:
+    def test_eq(self):
+        l = helpers.FrozenList([1])
+        assert l == [1]
+
+    def test_le(self):
+        l = helpers.FrozenList([1])
+        assert l < [2]
