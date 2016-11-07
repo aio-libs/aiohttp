@@ -1,6 +1,11 @@
 CHANGES
 =======
 
+1.1.2 (2016-11-07)
+------------------
+
+- Allow starting variables with an underscore #1379
+
 1.1.1 (2016-11-04)
 ------------------
 
