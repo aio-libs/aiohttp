@@ -199,8 +199,8 @@ def test_close(worker, loop):
     app = worker.wsgi = mock.Mock()
     app.cleanup = make_mocked_coro(None)
     handler.connections = [object()]
-    handler.finish_connections.return_value = helpers.create_future(loop)
-    handler.finish_connections.return_value.set_result(1)
+    handler.shutdown.return_value = helpers.create_future(loop)
+    handler.shutdown.return_value.set_result(1)
 
     app.shutdown.return_value = helpers.create_future(loop)
     app.shutdown.return_value.set_result(None)
@@ -208,7 +208,7 @@ def test_close(worker, loop):
     yield from worker.close()
     app.shutdown.assert_called_with()
     app.cleanup.assert_called_with()
-    handler.finish_connections.assert_called_with(timeout=95.0)
+    handler.shutdown.assert_called_with(timeout=95.0)
     srv.close.assert_called_with()
     assert worker.servers is None
 

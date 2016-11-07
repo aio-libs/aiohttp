@@ -7,7 +7,7 @@ from .server import ServerHttpProtocol
 from .web_exceptions import HTTPException
 from .web_reqrep import BaseRequest
 
-__all__ = ('RequestHandler', 'RequestHandlerFactory')
+__all__ = ('RequestHandler', 'WebServer')
 
 
 class RequestHandler(ServerHttpProtocol):
@@ -78,7 +78,7 @@ class RequestHandler(ServerHttpProtocol):
         self._request = None
 
 
-class Server:
+class WebServer:
 
     def __init__(self, handler, *, request_factory=None, loop=None, **kwargs):
         self._handler = handler

@@ -16,9 +16,10 @@ from .protocol import HttpVersion  # noqa
 from .signals import PostSignal, PreSignal, Signal
 from .web_exceptions import *  # noqa
 from .web_reqrep import *  # noqa
-from .web_server import RequestHandlerFactory
+from .web_server import WebServer
 from .web_urldispatcher import *  # noqa
 from .web_ws import *  # noqa
+
 
 __all__ = (web_reqrep.__all__ +
            web_exceptions.__all__ +
@@ -44,7 +45,6 @@ class Application(MutableMapping):
 
         self._debug = debug
         self._router = router
-        self._handler_factory = RequestHandlerFactory
         self._secure_proxy_ssl_header = None
         self._loop = loop
         self.logger = logger
@@ -180,10 +180,10 @@ class Application(MutableMapping):
                 )
         self.freeze()
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
-        return self._handler_factory(self._handle,
-                                     request_factory=self._make_request,
-                                     debug=self.debug, loop=self.loop,
-                                     **kwargs)
+        return WebServer(self._handle,
+                         request_factory=self._make_request,
+                         debug=self.debug, loop=self.loop,
+                         **kwargs)
 
     @asyncio.coroutine
     def startup(self):
