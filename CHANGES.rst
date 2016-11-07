@@ -6,6 +6,8 @@ CHANGES
 
 - Allow starting variables with an underscore #1379
 
+- Properly process UNIX sockets by gunicorn worker #1375
+
 1.1.1 (2016-11-04)
 ------------------
 
