@@ -674,7 +674,7 @@ def check_loop(loop):
 def parse_range_header(request, content_size):
     ret = namedtuple('range_request', ['status', 'start', 'end'])
 
-    status = 200
+    status = HTTPOk.status_code
     start = 0
     end = content_size - 1
 
