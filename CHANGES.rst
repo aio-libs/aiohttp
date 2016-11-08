@@ -8,7 +8,9 @@ CHANGES
 
 - Properly process UNIX sockets by gunicorn worker #1375
 
-- Fix oredering for `FrozenList`
+- Fix ordering for `FrozenList`
+
+- Don't propagate pre and post signals to subapplication #1377
 
 1.1.1 (2016-11-04)
 ------------------
