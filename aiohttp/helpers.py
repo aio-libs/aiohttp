@@ -19,6 +19,8 @@ from async_timeout import timeout
 from multidict import MultiDict, MultiDictProxy
 
 from . import hdrs
+from .web_exceptions import HTTPOk, HTTPPartialContent, \
+    HTTPRequestRangeNotSatisfiable
 
 try:
     from asyncio import ensure_future
@@ -667,3 +669,39 @@ class HeadersMixin:
 def check_loop(loop):
     if loop is None:
         loop = asyncio.get_event_loop()
+
+
+def parse_range_header(request, content_size):
+    ret = namedtuple('range_request', ['status', 'start', 'end'])
+
+    status = 200
+    start = 0
+    end = content_size - 1
+
+    # Handle 206 range response if requested
+    if 'range' in request.headers:
+        status = HTTPPartialContent.status_code
+
+        range_header = request.headers['range'].lower()
+        if not range_header.startswith('bytes='):
+            raise HTTPRequestRangeNotSatisfiable
+
+        try:
+            pattern = r'bytes=(\d*)-(\d*)'
+            range_start, range_end = re.findall(pattern, range_header)[0]
+        except IndexError:
+            raise HTTPRequestRangeNotSatisfiable
+        if range_start and range_end:
+            start = int(range_start)
+            end = int(range_end)
+        elif range_start and not range_end:
+            start = int(range_start)
+        elif range_end and not range_start:
+            start = content_size - int(range_end)
+        else:
+            raise HTTPRequestRangeNotSatisfiable
+
+        if start >= content_size or end >= content_size or start > end:
+            raise HTTPRequestRangeNotSatisfiable
+
+    return ret(status, start, end)
