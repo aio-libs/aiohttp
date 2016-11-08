@@ -259,8 +259,6 @@ class Application(MutableMapping):
             appsig = getattr(self, signame)
             appsig.append(handler)
 
-        reg_handler('on_pre_signal')
-        reg_handler('on_post_signal')
         reg_handler('on_startup')
         reg_handler('on_shutdown')
         reg_handler('on_cleanup')
