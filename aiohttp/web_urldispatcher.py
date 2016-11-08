@@ -273,6 +273,8 @@ class Resource(AbstractResource):
         else:
             return None, allowed_methods
 
+        yield  # pragma: no cover
+
     def __len__(self):
         return len(self._routes)
 
@@ -441,6 +443,7 @@ class StaticResource(PrefixResource):
         match_dict = {'filename': unquote(path[self._prefix_len:])}
         return (UrlMappingMatchInfo(match_dict, self._routes[method]),
                 allowed_methods)
+        yield  # pragma: no cover
 
     def __len__(self):
         return len(self._routes)
@@ -694,12 +697,12 @@ class RoutesView(Sized, Iterable, Container):
 
 class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
-    DYN = re.compile(r'\{(?P<var>[a-zA-Z][_a-zA-Z0-9]*)\}')
+    DYN = re.compile(r'\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*)\}')
     DYN_WITH_RE = re.compile(
-        r'\{(?P<var>[a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}')
+        r'\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}')
     GOOD = r'[^{}/]+'
     ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
-    NAME_SPLIT_RE = re.compile('[.:-]')
+    NAME_SPLIT_RE = re.compile(r'[.:-]')
 
     def __init__(self, app):
         super().__init__()

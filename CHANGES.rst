@@ -1,6 +1,48 @@
 CHANGES
 =======
 
+1.2.0 (XXXX-XX-XX)
+------------------
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+
+
+1.1.2 (2016-11-08)
+------------------
+
+- Allow starting variables with an underscore #1379
+
+- Properly process UNIX sockets by gunicorn worker #1375
+
+- Fix ordering for `FrozenList`
+
+- Don't propagate pre and post signals to sub-application #1377
+
 1.1.1 (2016-11-04)
 ------------------
 
