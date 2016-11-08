@@ -19,8 +19,6 @@ from async_timeout import timeout
 from multidict import MultiDict, MultiDictProxy
 
 from . import hdrs
-from .web_exceptions import HTTPOk, HTTPPartialContent, \
-    HTTPRequestRangeNotSatisfiable
 
 try:
     from asyncio import ensure_future
@@ -673,6 +671,9 @@ def check_loop(loop):
 
 def parse_range_header(request, content_size):
     ret = namedtuple('range_request', ['status', 'start', 'end'])
+    # Import here to avoid circular dependency on imports
+    from .web_exceptions import (HTTPOk, HTTPPartialContent,
+                                 HTTPRequestRangeNotSatisfiable)
 
     status = HTTPOk.status_code
     start = 0
