@@ -6,7 +6,8 @@ import re
 from . import hdrs
 from .helpers import create_future
 from .web_reqrep import StreamResponse
-
+from .web_exceptions import HTTPPartialContent, \
+    HTTPRequestRangeNotSatisfiable, HTTPNotModified
 
 class FileSender:
     """"A helper that can be used to send files.
@@ -146,7 +147,6 @@ class FileSender:
 
         modsince = request.if_modified_since
         if modsince is not None and st.st_mtime <= modsince.timestamp():
-            from .web_exceptions import HTTPNotModified
             raise HTTPNotModified()
 
         ct, encoding = mimetypes.guess_type(str(filepath))
@@ -161,7 +161,6 @@ class FileSender:
 
         # Handle 206 range response if requested
         if 'range' in request.headers:
-            from .web_exceptions import HTTPPartialContent, HTTPRequestRangeNotSatisfiable
             status = HTTPPartialContent.status_code
 
             range_header = request.headers['range'].lower()
@@ -169,7 +168,8 @@ class FileSender:
                 raise HTTPRequestRangeNotSatisfiable
 
             try:
-                range_start, range_end = re.findall(r'bytes=(\d*)-(\d*)', request.headers['range'].lower())[0]
+                pattern = r'bytes=(\d*)-(\d*)'
+                range_start, range_end = re.findall(pattern, range_header)[0]
             except IndexError:
                 raise HTTPRequestRangeNotSatisfiable
             if range_start and range_end:
