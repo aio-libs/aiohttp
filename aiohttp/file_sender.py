@@ -1,6 +1,7 @@
 import asyncio
 import mimetypes
 import os
+import re
 
 from . import hdrs
 from .helpers import create_future
@@ -152,16 +153,48 @@ class FileSender:
         if not ct:
             ct = 'application/octet-stream'
 
-        resp = self._response_factory()
+        file_size = st.st_size
+
+        status = 200
+        start = 0
+        end = file_size - 1
+
+        # Handle 206 range response if requested
+        if 'range' in request.headers:
+            from .web_exceptions import HTTPPartialContent, HTTPRequestRangeNotSatisfiable
+            status = HTTPPartialContent.status_code
+
+            range_header = request.headers['range'].lower()
+            if not range_header.startswith('bytes='):
+                raise HTTPRequestRangeNotSatisfiable
+
+            try:
+                range_start, range_end = re.findall(r'bytes=(\d*)-(\d*)', request.headers['range'].lower())[0]
+            except IndexError:
+                raise HTTPRequestRangeNotSatisfiable
+            if range_start and range_end:
+                start = int(range_start)
+                end = int(range_end)
+            elif range_start and not range_end:
+                start = int(range_start)
+            elif range_end and not range_start:
+                start = file_size - int(range_end)
+            else:
+                raise HTTPRequestRangeNotSatisfiable
+
+            if start >= file_size or end >= file_size or start > end:
+                raise HTTPRequestRangeNotSatisfiable
+
+        resp = self._response_factory(status=status)
         resp.content_type = ct
         if encoding:
             resp.headers[hdrs.CONTENT_ENCODING] = encoding
         resp.last_modified = st.st_mtime
 
-        file_size = st.st_size
-
-        resp.content_length = file_size
+        count = end - start + 1
+        resp.content_length = count
         with filepath.open('rb') as f:
-            yield from self._sendfile(request, resp, f, file_size)
+            f.seek(start)
+            yield from self._sendfile(request, resp, f, count)
 
         return resp
