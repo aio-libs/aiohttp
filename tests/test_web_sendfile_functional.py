@@ -340,7 +340,7 @@ def test_static_file_range(loop, test_client, sender):
 
     with filepath.open('rb') as f:
         content = f.read()
-    
+
     # Ensure the whole file requested in parts is correct
     resp = yield from client.get('/', headers={'Range': 'bytes=0-999'})
     assert resp.status == 206
@@ -375,7 +375,6 @@ def test_static_file_range(loop, test_client, sender):
     assert content[-500:] == body4
 
 
-
 @asyncio.coroutine
 def test_static_file_invalid_range(loop, test_client, sender):
     filepath = (pathlib.Path(__file__).parent /
@@ -390,7 +389,7 @@ def test_static_file_invalid_range(loop, test_client, sender):
     app.router.add_get('/', handler)
     client = yield from test_client(lambda loop: app)
 
-    file_len = filepath.stat().st_size
+    flen = filepath.stat().st_size
 
     # range must be in bytes
     resp = yield from client.get('/', headers={'Range': 'blocks=0-10'})
@@ -398,7 +397,7 @@ def test_static_file_invalid_range(loop, test_client, sender):
     resp.close()
 
     # Range end is inclusive
-    resp = yield from client.get('/', headers={'Range': 'bytes=0-%d' % file_len})
+    resp = yield from client.get('/', headers={'Range': 'bytes=0-%d' % flen})
     assert resp.status == 416, 'Range end must be inclusive'
     resp.close()
 
