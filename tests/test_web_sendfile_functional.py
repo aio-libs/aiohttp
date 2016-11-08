@@ -1,7 +1,6 @@
 import asyncio
 import os
 import pathlib
-
 import pytest
 
 import aiohttp
@@ -323,3 +322,92 @@ def test_static_file_huge(loop, test_client, tmpdir):
         off += len(chunk)
         cnt += 1
     f.close()
+
+
+@asyncio.coroutine
+def test_static_file_range(loop, test_client, sender):
+    filepath = (pathlib.Path(__file__).parent /
+                'software_development_in_picture.jpg')
+
+    @asyncio.coroutine
+    def handler(request):
+        resp = yield from sender(chunk_size=16).send(request, filepath)
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    with filepath.open('rb') as f:
+        content = f.read()
+    
+    # Ensure the whole file requested in parts is correct
+    resp = yield from client.get('/', headers={'Range': 'bytes=0-999'})
+    assert resp.status == 206
+    body1 = yield from resp.read()
+    assert len(body1) == 1000
+    resp.close()
+
+    resp = yield from client.get('/', headers={'Range': 'bytes=0-999'})
+    assert resp.status == 206
+    body1 = yield from resp.read()
+    assert len(body1) == 1000
+    resp.close()
+
+    resp = yield from client.get('/', headers={'Range': 'bytes=1000-1999'})
+    assert resp.status == 206
+    body2 = yield from resp.read()
+    assert len(body1) == 1000
+    resp.close()
+
+    resp = yield from client.get('/', headers={'Range': 'bytes=2000-'})
+    assert resp.status == 206
+    body3 = yield from resp.read()
+    resp.close()
+
+    assert content == (body1 + body2 + body3)
+
+    # Ensure the tail of the file is correct
+    resp = yield from client.get('/', headers={'Range': 'bytes=-500'})
+    assert resp.status == 206
+    body4 = yield from resp.read()
+    resp.close()
+    assert content[-500:] == body4
+
+
+
+@asyncio.coroutine
+def test_static_file_invalid_range(loop, test_client, sender):
+    filepath = (pathlib.Path(__file__).parent /
+                'software_development_in_picture.jpg')
+
+    @asyncio.coroutine
+    def handler(request):
+        resp = yield from sender(chunk_size=16).send(request, filepath)
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    file_len = filepath.stat().st_size
+
+    # range must be in bytes
+    resp = yield from client.get('/', headers={'Range': 'blocks=0-10'})
+    assert resp.status == 416, 'Range must be in bytes'
+    resp.close()
+
+    # Range end is inclusive
+    resp = yield from client.get('/', headers={'Range': 'bytes=0-%d' % file_len})
+    assert resp.status == 416, 'Range end must be inclusive'
+    resp.close()
+
+    # start > end
+    resp = yield from client.get('/', headers={'Range': 'bytes=10-5'})
+    assert resp.status == 416, "Range start can't be greater than end"
+    resp.close()
+
+    # non-number range
+    resp = yield from client.get('/', headers={'Range': 'bytes=a-f'})
+    assert resp.status == 416, 'Range must be integers'
+    resp.close()
