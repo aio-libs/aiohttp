@@ -343,25 +343,19 @@ def test_static_file_range(loop, test_client, sender):
 
     # Ensure the whole file requested in parts is correct
     resp = yield from client.get('/', headers={'Range': 'bytes=0-999'})
-    assert resp.status == 206
-    body1 = yield from resp.read()
-    assert len(body1) == 1000
-    resp.close()
-
-    resp = yield from client.get('/', headers={'Range': 'bytes=0-999'})
-    assert resp.status == 206
+    assert resp.status == 206, resp.reason
     body1 = yield from resp.read()
     assert len(body1) == 1000
     resp.close()
 
     resp = yield from client.get('/', headers={'Range': 'bytes=1000-1999'})
-    assert resp.status == 206
+    assert resp.status == 206, resp.reason
     body2 = yield from resp.read()
-    assert len(body1) == 1000
+    assert len(body2) == 1000
     resp.close()
 
     resp = yield from client.get('/', headers={'Range': 'bytes=2000-'})
-    assert resp.status == 206
+    assert resp.status == 206, resp.reason
     body3 = yield from resp.read()
     resp.close()
 
@@ -369,7 +363,7 @@ def test_static_file_range(loop, test_client, sender):
 
     # Ensure the tail of the file is correct
     resp = yield from client.get('/', headers={'Range': 'bytes=-500'})
-    assert resp.status == 206
+    assert resp.status == 206, resp.reason
     body4 = yield from resp.read()
     resp.close()
     assert content[-500:] == body4
