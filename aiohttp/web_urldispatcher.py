@@ -273,6 +273,8 @@ class Resource(AbstractResource):
         else:
             return None, allowed_methods
 
+        yield  # pragma: no cover
+
     def __len__(self):
         return len(self._routes)
 
@@ -441,6 +443,7 @@ class StaticResource(PrefixResource):
         match_dict = {'filename': unquote(path[self._prefix_len:])}
         return (UrlMappingMatchInfo(match_dict, self._routes[method]),
                 allowed_methods)
+        yield  # pragma: no cover
 
     def __len__(self):
         return len(self._routes)
