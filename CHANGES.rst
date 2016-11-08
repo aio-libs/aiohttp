@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+- Added support for HTTP Range Requests in static file handling
+
 1.1.1 (2016-11-04)
 ------------------
 
