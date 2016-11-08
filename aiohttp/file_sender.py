@@ -81,8 +81,8 @@ class FileSender:
         # See https://github.com/KeepSafe/aiohttp/issues/958 for details
 
         # send headers
-        headers = ['HTTP/{0.major}.{0.minor} 200 OK\r\n'.format(
-            request.version)]
+        headers = ['HTTP/{0.major}.{0.minor} {1} OK\r\n'.format(
+            request.version, resp.status)]
         for hdr, val in resp.headers.items():
             headers.append('{}: {}\r\n'.format(hdr, val))
         headers.append('\r\n')
@@ -91,6 +91,7 @@ class FileSender:
         out_socket.setblocking(False)
         out_fd = out_socket.fileno()
         in_fd = fobj.fileno()
+        offset = fobj.tell()
 
         bheaders = ''.join(headers).encode('utf-8')
         headers_length = len(bheaders)
@@ -100,7 +101,7 @@ class FileSender:
         try:
             yield from loop.sock_sendall(out_socket, bheaders)
             fut = create_future(loop)
-            self._sendfile_cb(fut, out_fd, in_fd, 0, count, loop, False)
+            self._sendfile_cb(fut, out_fd, in_fd, offset, count, loop, False)
 
             yield from fut
         finally:
