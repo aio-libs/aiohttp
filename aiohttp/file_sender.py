@@ -4,10 +4,8 @@ import os
 import re
 
 from . import hdrs
-from .helpers import create_future
+from .helpers import create_future, parse_range_header
 from .web_reqrep import StreamResponse
-from .web_exceptions import HTTPPartialContent, \
-    HTTPRequestRangeNotSatisfiable, HTTPNotModified
 
 class FileSender:
     """"A helper that can be used to send files.
@@ -147,6 +145,7 @@ class FileSender:
 
         modsince = request.if_modified_since
         if modsince is not None and st.st_mtime <= modsince.timestamp():
+            from .web_exceptions import HTTPNotModified
             raise HTTPNotModified()
 
         ct, encoding = mimetypes.guess_type(str(filepath))
@@ -154,36 +153,7 @@ class FileSender:
             ct = 'application/octet-stream'
 
         file_size = st.st_size
-
-        status = 200
-        start = 0
-        end = file_size - 1
-
-        # Handle 206 range response if requested
-        if 'range' in request.headers:
-            status = HTTPPartialContent.status_code
-
-            range_header = request.headers['range'].lower()
-            if not range_header.startswith('bytes='):
-                raise HTTPRequestRangeNotSatisfiable
-
-            try:
-                pattern = r'bytes=(\d*)-(\d*)'
-                range_start, range_end = re.findall(pattern, range_header)[0]
-            except IndexError:
-                raise HTTPRequestRangeNotSatisfiable
-            if range_start and range_end:
-                start = int(range_start)
-                end = int(range_end)
-            elif range_start and not range_end:
-                start = int(range_start)
-            elif range_end and not range_start:
-                start = file_size - int(range_end)
-            else:
-                raise HTTPRequestRangeNotSatisfiable
-
-            if start >= file_size or end >= file_size or start > end:
-                raise HTTPRequestRangeNotSatisfiable
+        status, start, end = parse_range_header(request, file_size)
 
         resp = self._response_factory(status=status)
         resp.content_type = ct
