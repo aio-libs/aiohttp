@@ -1,11 +1,11 @@
 import asyncio
 import mimetypes
 import os
-import re
 
 from . import hdrs
 from .helpers import create_future, parse_range_header
 from .web_reqrep import StreamResponse
+
 
 class FileSender:
     """"A helper that can be used to send files.
