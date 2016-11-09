@@ -7,15 +7,16 @@ from importlib import import_module
 
 from yarl import URL
 
-from . import hdrs, web_exceptions, web_reqrep, web_urldispatcher, web_ws
+from . import (hdrs, web_exceptions, web_reqrep, web_server, web_urldispatcher,
+               web_ws)
 from .abc import AbstractMatchInfo, AbstractRouter
-from .helpers import FrozenList, TimeService, sentinel
+from .helpers import FrozenList, sentinel
 from .log import access_logger, web_logger
 from .protocol import HttpVersion  # noqa
-from .server import ServerHttpProtocol
 from .signals import PostSignal, PreSignal, Signal
 from .web_exceptions import *  # noqa
 from .web_reqrep import *  # noqa
+from .web_server import WebServer
 from .web_urldispatcher import *  # noqa
 from .web_ws import *  # noqa
 
@@ -23,168 +24,27 @@ __all__ = (web_reqrep.__all__ +
            web_exceptions.__all__ +
            web_urldispatcher.__all__ +
            web_ws.__all__ +
-           ('Application', 'RequestHandler',
-            'RequestHandlerFactory', 'HttpVersion',
-            'MsgType'))
-
-
-class RequestHandler(ServerHttpProtocol):
-
-    _request = None
-
-    def __init__(self, manager, app, router, time_service, *,
-                 secure_proxy_ssl_header=None, **kwargs):
-        super().__init__(**kwargs)
-
-        self._manager = manager
-        self._app = app
-        self._router = router
-        self._secure_proxy_ssl_header = secure_proxy_ssl_header
-        self._time_service = time_service
-
-    def __repr__(self):
-        if self._request is None:
-            meth = 'none'
-            path = 'none'
-        else:
-            meth = self._request.method
-            path = self._request.rel_url.raw_path
-        return "<{} {}:{} {}>".format(
-            self.__class__.__name__, meth, path,
-            'connected' if self.transport is not None else 'disconnected')
-
-    def connection_made(self, transport):
-        super().connection_made(transport)
-
-        self._manager.connection_made(self, transport)
-
-    def connection_lost(self, exc):
-        self._manager.connection_lost(self, exc)
-
-        super().connection_lost(exc)
-
-    @asyncio.coroutine
-    def handle_request(self, message, payload):
-        self._manager._requests_count += 1
-        if self.access_log:
-            now = self._loop.time()
-
-        request = web_reqrep.Request(
-            message, payload,
-            self.transport, self.reader, self.writer,
-            self._time_service,
-            secure_proxy_ssl_header=self._secure_proxy_ssl_header)
-        self._request = request
-        try:
-            match_info = yield from self._router.resolve(request)
-            assert isinstance(match_info, AbstractMatchInfo), match_info
-            match_info.add_app(self._app)
-            match_info.freeze()
-
-            resp = None
-            request._match_info = match_info
-            expect = request.headers.get(hdrs.EXPECT)
-            if expect:
-                resp = (
-                    yield from match_info.expect_handler(request))
-
-            if resp is None:
-                handler = match_info.handler
-                for app in match_info.apps:
-                    for factory in reversed(app.middlewares):
-                        handler = yield from factory(app, handler)
-                resp = yield from handler(request)
-
-            assert isinstance(resp, web_reqrep.StreamResponse), \
-                ("Handler {!r} should return response instance, "
-                 "got {!r} [middlewares {!r}]").format(
-                     match_info.handler, type(resp), self._middlewares)
-        except web_exceptions.HTTPException as exc:
-            resp = exc
-
-        resp_msg = yield from resp.prepare(request)
-        yield from resp.write_eof()
-
-        # notify server about keep-alive
-        self.keep_alive(resp.keep_alive)
-
-        # Restore default state.
-        # Should be no-op if server code didn't touch these attributes.
-        self.writer.set_tcp_cork(False)
-        self.writer.set_tcp_nodelay(True)
-
-        # log access
-        if self.access_log:
-            self.log_access(message, None, resp_msg, self._loop.time() - now)
-
-        # for repr
-        self._request = None
-
-
-class RequestHandlerFactory:
-
-    def __init__(self, app, router, *,
-                 handler=RequestHandler, loop=None,
-                 secure_proxy_ssl_header=None, **kwargs):
-        self._app = app
-        self._router = router
-        self._handler = handler
-        self._loop = loop
-        self._connections = {}
-        self._secure_proxy_ssl_header = secure_proxy_ssl_header
-        self._kwargs = kwargs
-        self._kwargs.setdefault('logger', app.logger)
-        self._requests_count = 0
-        self._time_service = TimeService(self._loop)
-
-    @property
-    def requests_count(self):
-        """Number of processed requests."""
-        return self._requests_count
-
-    @property
-    def secure_proxy_ssl_header(self):
-        return self._secure_proxy_ssl_header
-
-    @property
-    def connections(self):
-        return list(self._connections.keys())
-
-    def connection_made(self, handler, transport):
-        self._connections[handler] = transport
-
-    def connection_lost(self, handler, exc=None):
-        if handler in self._connections:
-            del self._connections[handler]
-
-    @asyncio.coroutine
-    def finish_connections(self, timeout=None):
-        coros = [conn.shutdown(timeout) for conn in self._connections]
-        yield from asyncio.gather(*coros, loop=self._loop)
-        self._connections.clear()
-        self._time_service.stop()
-
-    def __call__(self):
-        return self._handler(
-            self, self._app, self._router, self._time_service, loop=self._loop,
-            secure_proxy_ssl_header=self._secure_proxy_ssl_header,
-            **self._kwargs)
+           web_server.__all__ +
+           ('Application', 'HttpVersion', 'MsgType'))
 
 
 class Application(MutableMapping):
 
     def __init__(self, *, logger=web_logger, loop=None,
-                 router=None, handler_factory=RequestHandlerFactory,
-                 middlewares=(), debug=False):
+                 router=None,
+                 middlewares=(), debug=...):
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:
             router = web_urldispatcher.UrlDispatcher(self)
         assert isinstance(router, AbstractRouter), router
 
+        if debug is ...:
+            debug = loop.get_debug()
+
         self._debug = debug
         self._router = router
-        self._handler_factory = handler_factory
+        self._secure_proxy_ssl_header = None
         self._loop = loop
         self.logger = logger
 
@@ -299,7 +159,7 @@ class Application(MutableMapping):
     def middlewares(self):
         return self._middlewares
 
-    def make_handler(self, **kwargs):
+    def make_handler(self, *, secure_proxy_ssl_header=None, **kwargs):
         debug = kwargs.pop('debug', sentinel)
         if debug is not sentinel:
             warnings.warn(
@@ -316,8 +176,11 @@ class Application(MutableMapping):
                     "web_reference.html#aiohttp.web.Application"
                 )
         self.freeze()
-        return self._handler_factory(self, self.router, debug=self.debug,
-                                     loop=self.loop, **kwargs)
+        self._secure_proxy_ssl_header = secure_proxy_ssl_header
+        return WebServer(self._handle,
+                         request_factory=self._make_request,
+                         debug=self.debug, loop=self.loop,
+                         **kwargs)
 
     @asyncio.coroutine
     def startup(self):
@@ -356,8 +219,41 @@ class Application(MutableMapping):
         warnings.warn("Use .on_cleanup.append() instead", DeprecationWarning)
         self.on_cleanup.append(lambda app: func(app, *args, **kwargs))
 
-    def copy(self):
-        raise NotImplementedError
+    def _make_request(self, message, payload, protocol):
+        return web_reqrep.Request(
+            message, payload,
+            protocol.transport, protocol.reader, protocol.writer,
+            protocol.time_service,
+            secure_proxy_ssl_header=self._secure_proxy_ssl_header)
+
+    @asyncio.coroutine
+    def _handle(self, request):
+        match_info = yield from self._router.resolve(request)
+        assert isinstance(match_info, AbstractMatchInfo), match_info
+        match_info.add_app(self)
+        match_info.freeze()
+
+        resp = None
+        request._match_info = match_info
+        expect = request.headers.get(hdrs.EXPECT)
+        if expect:
+            resp = (
+                yield from match_info.expect_handler(request))
+
+        if resp is None:
+            handler = match_info.handler
+            for app in match_info.apps:
+                for factory in reversed(app.middlewares):
+                    handler = yield from factory(app, handler)
+            resp = yield from handler(request)
+
+        assert isinstance(resp, web_reqrep.StreamResponse), \
+            ("Handler {!r} should return response instance, "
+             "got {!r} [middlewares {!r}]").format(
+                 match_info.handler, type(resp),
+                 [middleware for middleware in app.middlewares
+                  for app in match_info.apps])
+        return resp
 
     def __call__(self):
         """gunicorn compatibility"""
@@ -405,7 +301,7 @@ def run_app(app, *, host='0.0.0.0', port=None,
         srv.close()
         loop.run_until_complete(srv.wait_closed())
         loop.run_until_complete(app.shutdown())
-        loop.run_until_complete(handler.finish_connections(shutdown_timeout))
+        loop.run_until_complete(handler.shutdown(shutdown_timeout))
         loop.run_until_complete(app.cleanup())
     loop.close()
 

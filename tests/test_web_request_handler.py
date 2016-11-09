@@ -64,9 +64,3 @@ def test_finish_connection_timeout(loop):
     manager.connection_lost(handler, None)
     assert manager.connections == []
     handler.shutdown.assert_called_with(0.1)
-
-
-def test_secure_proxy_ssl_header_default(loop):
-    app = web.Application(loop=loop)
-    manager = app.make_handler()
-    assert manager.secure_proxy_ssl_header is None
