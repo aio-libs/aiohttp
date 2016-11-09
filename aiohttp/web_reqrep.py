@@ -12,64 +12,19 @@ import time
 import warnings
 from email.utils import parsedate
 from types import MappingProxyType
-from urllib.parse import parse_qsl, unquote, urlsplit
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
+from yarl import URL
 
-from . import hdrs
-from .helpers import reify
-from .protocol import Response as ResponseImpl
+from . import hdrs, multipart
+from .helpers import HeadersMixin, reify, sentinel
+from .protocol import WebResponse as ResponseImpl
 from .protocol import HttpVersion10, HttpVersion11
-from .streams import EOF_MARKER
 
 __all__ = (
-    'ContentCoding', 'Request', 'StreamResponse', 'Response',
+    'ContentCoding', 'BaseRequest', 'Request', 'StreamResponse', 'Response',
     'json_response'
 )
-
-
-sentinel = object()
-
-
-class HeadersMixin:
-
-    _content_type = None
-    _content_dict = None
-    _stored_content_type = sentinel
-
-    def _parse_content_type(self, raw):
-        self._stored_content_type = raw
-        if raw is None:
-            # default value according to RFC 2616
-            self._content_type = 'application/octet-stream'
-            self._content_dict = {}
-        else:
-            self._content_type, self._content_dict = cgi.parse_header(raw)
-
-    @property
-    def content_type(self, _CONTENT_TYPE=hdrs.CONTENT_TYPE):
-        """The value of content part for Content-Type HTTP header."""
-        raw = self.headers.get(_CONTENT_TYPE)
-        if self._stored_content_type != raw:
-            self._parse_content_type(raw)
-        return self._content_type
-
-    @property
-    def charset(self, _CONTENT_TYPE=hdrs.CONTENT_TYPE):
-        """The value of charset part for Content-Type HTTP header."""
-        raw = self.headers.get(_CONTENT_TYPE)
-        if self._stored_content_type != raw:
-            self._parse_content_type(raw)
-        return self._content_dict.get('charset')
-
-    @property
-    def content_length(self, _CONTENT_LENGTH=hdrs.CONTENT_LENGTH):
-        """The value of Content-Length HTTP header."""
-        l = self.headers.get(_CONTENT_LENGTH)
-        if l is None:
-            return None
-        else:
-            return int(l)
 
 FileField = collections.namedtuple('Field', 'name filename file content_type')
 
@@ -89,14 +44,14 @@ class ContentCoding(enum.Enum):
 ############################################################
 
 
-class Request(dict, HeadersMixin):
+class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
-    def __init__(self, app, message, payload, transport, reader, writer, *,
+    def __init__(self, message, payload, transport, reader, writer,
+                 time_service, *,
                  secure_proxy_ssl_header=None):
-        self._app = app
         self._message = message
         self._transport = transport
         self._reader = reader
@@ -104,16 +59,69 @@ class Request(dict, HeadersMixin):
         self._post = None
         self._post_files_cache = None
 
-        # matchdict, route_name, handler
-        # or information about traversal lookup
-        self._match_info = None  # initialized after route resolving
-
         self._payload = payload
 
         self._read_bytes = None
         self._has_body = not payload.at_eof()
 
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
+        self._time_service = time_service
+        self._state = {}
+        self._cache = {}
+
+    def clone(self, *, method=sentinel, rel_url=sentinel,
+              headers=sentinel):
+        """Clone itself with replacement some attributes.
+
+        Creates and returns a new instance of Request object. If no parameters
+        are given, an exact copy is returned. If a parameter is not passed, it
+        will reuse the one from the current request object.
+
+        """
+
+        if self._read_bytes:
+            raise RuntimeError("Cannot clone request "
+                               "after reading it's content")
+
+        dct = {}
+        if method is not sentinel:
+            dct['method'] = method
+        if rel_url is not sentinel:
+            dct['path'] = str(URL(rel_url))
+        if headers is not sentinel:
+            dct['headers'] = CIMultiDict(headers)
+            dct['raw_headers'] = [(k.encode('utf-8'), v.encode('utf-8'))
+                                  for k, v in headers.items()]
+
+        message = self._message._replace(**dct)
+
+        return self.__class__(
+            message,
+            self._payload,
+            self._transport,
+            self._reader,
+            self._writer,
+            self._time_service,
+            secure_proxy_ssl_header=self._secure_proxy_ssl_header)
+
+    # MutableMapping API
+
+    def __getitem__(self, key):
+        return self._state[key]
+
+    def __setitem__(self, key, value):
+        self._state[key] = value
+
+    def __delitem__(self, key):
+        del self._state[key]
+
+    def __len__(self):
+        return len(self._state)
+
+    def __iter__(self):
+        return iter(self._state)
+
+    ########
 
     @reify
     def scheme(self):
@@ -121,6 +129,13 @@ class Request(dict, HeadersMixin):
 
         'http' or 'https'.
         """
+        warnings.warn("path_qs property is deprecated, "
+                      "use .url.scheme instead",
+                      DeprecationWarning)
+        return self.url.scheme
+
+    @reify
+    def _scheme(self):
         if self._transport.get_extra_info('sslcontext'):
             return 'https'
         secure_proxy_ssl_header = self._secure_proxy_ssl_header
@@ -152,7 +167,14 @@ class Request(dict, HeadersMixin):
 
         Returns str or None if HTTP request has no HOST header.
         """
+        warnings.warn("host property is deprecated, "
+                      "use .url.host instead",
+                      DeprecationWarning)
         return self._message.headers.get(hdrs.HOST)
+
+    @reify
+    def rel_url(self):
+        return URL(self._message.path)
 
     @reify
     def path_qs(self):
@@ -160,12 +182,16 @@ class Request(dict, HeadersMixin):
 
         E.g, /app/blog?id=10
         """
-        return self._message.path
+        warnings.warn("path_qs property is deprecated, "
+                      "use str(request.rel_url) instead",
+                      DeprecationWarning)
+        return str(self.rel_url)
 
     @reify
-    def _splitted_path(self):
-        url = '{}://{}{}'.format(self.scheme, self.host, self.path_qs)
-        return urlsplit(url)
+    def url(self):
+        return URL('{}://{}{}'.format(self._scheme,
+                                      self._message.headers.get(hdrs.HOST),
+                                      str(self.rel_url)))
 
     @reify
     def raw_path(self):
@@ -174,7 +200,10 @@ class Request(dict, HeadersMixin):
 
         E.g., ``/my%2Fpath%7Cwith%21some%25strange%24characters``
         """
-        return self._splitted_path.path
+        warnings.warn("raw_path property is deprecated, "
+                      "use .rel_url.raw_path instead",
+                      DeprecationWarning)
+        return self.rel_url.raw_path
 
     @reify
     def path(self):
@@ -182,7 +211,9 @@ class Request(dict, HeadersMixin):
 
         E.g., ``/app/blog``
         """
-        return unquote(self.raw_path)
+        warnings.warn("path property is deprecated, use .rel_url.path instead",
+                      DeprecationWarning)
+        return self.rel_url.path
 
     @reify
     def query_string(self):
@@ -190,7 +221,10 @@ class Request(dict, HeadersMixin):
 
         E.g., id=10
         """
-        return self._splitted_path.query
+        warnings.warn("query_string property is deprecated, "
+                      "use .rel_url.query_string instead",
+                      DeprecationWarning)
+        return self.rel_url.query_string
 
     @reify
     def GET(self):
@@ -198,8 +232,9 @@ class Request(dict, HeadersMixin):
 
         Lazy property.
         """
-        return MultiDictProxy(MultiDict(parse_qsl(self.query_string,
-                                                  keep_blank_values=True)))
+        warnings.warn("GET property is deprecated, use .rel_url.query instead",
+                      DeprecationWarning)
+        return self.rel_url.query
 
     @reify
     def POST(self):
@@ -207,6 +242,8 @@ class Request(dict, HeadersMixin):
 
         post() methods has to be called before using this attribute.
         """
+        warnings.warn("POST property is deprecated, use .post() instead",
+                      DeprecationWarning)
         if self._post is None:
             raise RuntimeError("POST is not available before post()")
         return self._post
@@ -244,16 +281,6 @@ class Request(dict, HeadersMixin):
             return not self._message.should_close
 
     @property
-    def match_info(self):
-        """Result of route resolving."""
-        return self._match_info
-
-    @property
-    def app(self):
-        """Application instance."""
-        return self._app
-
-    @property
     def transport(self):
         """Transport used for request processing."""
         return self._transport
@@ -285,9 +312,8 @@ class Request(dict, HeadersMixin):
 
         Eat unread part of HTTP BODY if present.
         """
-        chunk = yield from self._payload.readany()
-        while chunk is not EOF_MARKER or chunk:
-            chunk = yield from self._payload.readany()
+        while not self._payload.at_eof():
+            yield from self._payload.readany()
 
     @asyncio.coroutine
     def read(self):
@@ -300,7 +326,7 @@ class Request(dict, HeadersMixin):
             while True:
                 chunk = yield from self._payload.readany()
                 body.extend(chunk)
-                if chunk is EOF_MARKER:
+                if not chunk:
                     break
             self._read_bytes = bytes(body)
         return self._read_bytes
@@ -324,6 +350,11 @@ class Request(dict, HeadersMixin):
         return loads(body)
 
     @asyncio.coroutine
+    def multipart(self, *, reader=multipart.MultipartReader):
+        """Return async iterator to process BODY as multipart."""
+        return reader(self.headers, self.content)
+
+    @asyncio.coroutine
     def post(self):
         """Return POST parameters."""
         if self._post is not None:
@@ -338,6 +369,10 @@ class Request(dict, HeadersMixin):
                                  'multipart/form-data')):
             self._post = MultiDictProxy(MultiDict())
             return self._post
+
+        if self.content_type.startswith('multipart/'):
+            warnings.warn('To process multipart requests use .multipart'
+                          ' coroutine instead.', DeprecationWarning)
 
         body = yield from self.read()
         content_charset = self.charset or 'utf-8'
@@ -384,14 +419,41 @@ class Request(dict, HeadersMixin):
         self._post = MultiDictProxy(out)
         return self._post
 
-    def copy(self):
-        raise NotImplementedError
-
     def __repr__(self):
         ascii_encodable_path = self.path.encode('ascii', 'backslashreplace') \
             .decode('ascii')
         return "<{} {} {} >".format(self.__class__.__name__,
                                     self.method, ascii_encodable_path)
+
+    @asyncio.coroutine
+    def _prepare_hook(self, response):
+        return
+        yield  # pragma: no cover
+
+
+class Request(BaseRequest):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # matchdict, route_name, handler
+        # or information about traversal lookup
+        self._match_info = None  # initialized after route resolving
+
+    @property
+    def match_info(self):
+        """Result of route resolving."""
+        return self._match_info
+
+    @reify
+    def app(self):
+        """Application instance."""
+        return self._match_info.apps[-1]
+
+    @asyncio.coroutine
+    def _prepare_hook(self, response):
+        for app in self.match_info.apps:
+            yield from app.on_response_prepare.send(self, response)
 
 
 ############################################################
@@ -415,11 +477,11 @@ class StreamResponse(HeadersMixin):
         self._req = None
         self._resp_impl = None
         self._eof_sent = False
-        self._tcp_nodelay = True
-        self._tcp_cork = False
 
         if headers is not None:
             self._headers.extend(headers)
+        if hdrs.CONTENT_TYPE not in self._headers:
+            self._headers[hdrs.CONTENT_TYPE] = 'application/octet-stream'
 
     def _copy_cookies(self):
         for cookie in self._cookies.values():
@@ -599,8 +661,7 @@ class StreamResponse(HeadersMixin):
     @last_modified.setter
     def last_modified(self, value):
         if value is None:
-            if hdrs.LAST_MODIFIED in self.headers:
-                del self.headers[hdrs.LAST_MODIFIED]
+            self.headers.pop(hdrs.LAST_MODIFIED, None)
         elif isinstance(value, (int, float)):
             self.headers[hdrs.LAST_MODIFIED] = time.strftime(
                 "%a, %d %b %Y %H:%M:%S GMT", time.gmtime(math.ceil(value)))
@@ -612,33 +673,33 @@ class StreamResponse(HeadersMixin):
 
     @property
     def tcp_nodelay(self):
-        return self._tcp_nodelay
+        resp_impl = self._resp_impl
+        if resp_impl is None:
+            raise RuntimeError("Cannot get tcp_nodelay for "
+                               "not prepared response")
+        return resp_impl.transport.tcp_nodelay
 
     def set_tcp_nodelay(self, value):
-        value = bool(value)
-        self._tcp_nodelay = value
-        if value:
-            self._tcp_cork = False
-        if self._resp_impl is None:
-            return
-        if value:
-            self._resp_impl.transport.set_tcp_cork(False)
-        self._resp_impl.transport.set_tcp_nodelay(value)
+        resp_impl = self._resp_impl
+        if resp_impl is None:
+            raise RuntimeError("Cannot set tcp_nodelay for "
+                               "not prepared response")
+        resp_impl.transport.set_tcp_nodelay(value)
 
     @property
     def tcp_cork(self):
-        return self._tcp_cork
+        resp_impl = self._resp_impl
+        if resp_impl is None:
+            raise RuntimeError("Cannot get tcp_cork for "
+                               "not prepared response")
+        return resp_impl.transport.tcp_cork
 
     def set_tcp_cork(self, value):
-        value = bool(value)
-        self._tcp_cork = value
-        if value:
-            self._tcp_nodelay = False
-        if self._resp_impl is None:
-            return
-        if value:
-            self._resp_impl.transport.set_tcp_nodelay(False)
-        self._resp_impl.transport.set_tcp_cork(value)
+        resp_impl = self._resp_impl
+        if resp_impl is None:
+            raise RuntimeError("Cannot set tcp_cork for "
+                               "not prepared response")
+        resp_impl.transport.set_tcp_cork(value)
 
     def _generate_content_type_header(self, CONTENT_TYPE=hdrs.CONTENT_TYPE):
         params = '; '.join("%s=%s" % i for i in self._content_dict.items())
@@ -652,7 +713,7 @@ class StreamResponse(HeadersMixin):
         if self._resp_impl is not None:
             if self._req is not request:
                 raise RuntimeError(
-                    'Response has been started with different request.')
+                    "Response has been started with different request.")
             else:
                 return self._resp_impl
         else:
@@ -688,7 +749,7 @@ class StreamResponse(HeadersMixin):
         resp_impl = self._start_pre_check(request)
         if resp_impl is not None:
             return resp_impl
-        yield from request.app.on_response_prepare.send(request, self)
+        yield from request._prepare_hook(self)
 
         return self._start(request)
 
@@ -698,16 +759,18 @@ class StreamResponse(HeadersMixin):
         if keep_alive is None:
             keep_alive = request.keep_alive
         self._keep_alive = keep_alive
+        version = request.version
 
         resp_impl = self._resp_impl = ResponseImpl(
             request._writer,
             self._status,
-            request.version,
+            version,
             not keep_alive,
             self._reason)
 
         self._copy_cookies()
 
+        headers = self.headers
         if self._compression:
             self._start_compression(request)
 
@@ -719,19 +782,35 @@ class StreamResponse(HeadersMixin):
             resp_impl.enable_chunked_encoding()
             if self._chunk_size:
                 resp_impl.add_chunking_filter(self._chunk_size)
+            headers[hdrs.TRANSFER_ENCODING] = 'chunked'
+        else:
+            resp_impl.length = self.content_length
 
-        headers = self.headers.items()
-        for key, val in headers:
-            resp_impl.add_header(key, val)
+        if hdrs.DATE not in headers:
+            headers[hdrs.DATE] = request._time_service.strtime()
+        headers.setdefault(hdrs.SERVER, resp_impl.SERVER_SOFTWARE)
+        if hdrs.CONNECTION not in headers:
+            if keep_alive:
+                if version == HttpVersion10:
+                    headers[hdrs.CONNECTION] = 'keep-alive'
+            else:
+                if version == HttpVersion11:
+                    headers[hdrs.CONNECTION] = 'close'
 
-        resp_impl.transport.set_tcp_nodelay(self._tcp_nodelay)
-        resp_impl.transport.set_tcp_cork(self._tcp_cork)
-        resp_impl.send_headers()
+        resp_impl.headers = headers
+
+        self._send_headers(resp_impl)
         return resp_impl
+
+    def _send_headers(self, resp_impl):
+        # Durty hack required for
+        # https://github.com/KeepSafe/aiohttp/issues/1093
+        # File sender may override it
+        resp_impl.send_headers()
 
     def write(self, data):
         assert isinstance(data, (bytes, bytearray, memoryview)), \
-            'data argument must be byte-ish (%r)' % type(data)
+            "data argument must be byte-ish (%r)" % type(data)
 
         if self._eof_sent:
             raise RuntimeError("Cannot call write() after write_eof()")
@@ -773,49 +852,54 @@ class Response(StreamResponse):
     def __init__(self, *, body=None, status=200,
                  reason=None, text=None, headers=None, content_type=None,
                  charset=None):
-        super().__init__(status=status, reason=reason, headers=headers)
-        self.set_tcp_cork(True)
-
         if body is not None and text is not None:
-            raise ValueError("body and text are not allowed together.")
+            raise ValueError("body and text are not allowed together")
+
+        if headers is None:
+            headers = CIMultiDict()
+        elif not isinstance(headers, (CIMultiDict, CIMultiDictProxy)):
+            headers = CIMultiDict(headers)
+
+        if content_type is not None and ";" in content_type:
+            raise ValueError("charset must not be in content_type "
+                             "argument")
 
         if text is not None:
-            if hdrs.CONTENT_TYPE not in self.headers:
+            if hdrs.CONTENT_TYPE in headers:
+                if content_type or charset:
+                    raise ValueError("passing both Content-Type header and "
+                                     "content_type or charset params "
+                                     "is forbidden")
+            else:
                 # fast path for filling headers
                 if not isinstance(text, str):
-                    raise TypeError('text argument must be str (%r)' %
+                    raise TypeError("text argument must be str (%r)" %
                                     type(text))
                 if content_type is None:
                     content_type = 'text/plain'
-                elif ";" in content_type:
-                    raise ValueError('charset must not be in content_type '
-                                     'argument')
-                charset = charset or 'utf-8'
-                self.headers[hdrs.CONTENT_TYPE] = (
-                    content_type + '; charset=%s' % charset)
-                self._content_type = content_type
-                self._content_dict = {'charset': charset}
-                self.body = text.encode(charset)
-            else:
-                self.text = text
-                if content_type or charset:
-                    raise ValueError("Passing both Content-Type header and "
-                                     "content_type or charset params "
-                                     "is forbidden")
+                if charset is None:
+                    charset = 'utf-8'
+                headers[hdrs.CONTENT_TYPE] = (
+                    content_type + '; charset=' + charset)
+                body = text.encode(charset)
+                text = None
         else:
-            if hdrs.CONTENT_TYPE in self.headers:
-                if content_type or charset:
-                    raise ValueError("Passing both Content-Type header and "
+            if hdrs.CONTENT_TYPE in headers:
+                if content_type is not None or charset is not None:
+                    raise ValueError("passing both Content-Type header and "
                                      "content_type or charset params "
                                      "is forbidden")
-            if content_type:
-                self.content_type = content_type
-            if charset:
-                self.charset = charset
-            if body is not None:
-                self.body = body
             else:
-                self.body = None
+                if content_type is not None:
+                    if charset is not None:
+                        content_type += '; charset=' + charset
+                    headers[hdrs.CONTENT_TYPE] = content_type
+
+        super().__init__(status=status, reason=reason, headers=headers)
+        if text is not None:
+            self.text = text
+        else:
+            self.body = body
 
     @property
     def body(self):
@@ -824,7 +908,7 @@ class Response(StreamResponse):
     @body.setter
     def body(self, body):
         if body is not None and not isinstance(body, bytes):
-            raise TypeError('body argument must be bytes (%r)' % type(body))
+            raise TypeError("body argument must be bytes (%r)" % type(body))
         self._body = body
         if body is not None:
             self.content_length = len(body)
@@ -840,7 +924,7 @@ class Response(StreamResponse):
     @text.setter
     def text(self, text):
         if text is not None and not isinstance(text, str):
-            raise TypeError('text argument must be str (%r)' % type(text))
+            raise TypeError("text argument must be str (%r)" % type(text))
 
         if self.content_type == 'application/octet-stream':
             self.content_type = 'text/plain'
@@ -849,18 +933,13 @@ class Response(StreamResponse):
 
         self.body = text.encode(self.charset)
 
-    def should_send_body(self):
-        return (self._req.method != hdrs.METH_HEAD and
-                self._status not in [204, 304])
-
     @asyncio.coroutine
     def write_eof(self):
-        try:
-            body = self._body
-            if body is not None and self.should_send_body():
-                self.write(body)
-        finally:
-            self.set_tcp_nodelay(True)
+        body = self._body
+        if (body is not None and
+                self._req.method != hdrs.METH_HEAD and
+                self._status not in [204, 304]):
+            self.write(body)
         yield from super().write_eof()
 
 
@@ -870,7 +949,7 @@ def json_response(data=sentinel, *, text=None, body=None, status=200,
     if data is not sentinel:
         if text or body:
             raise ValueError(
-                'only one of data, text, or body should be specified'
+                "only one of data, text, or body should be specified"
             )
         else:
             text = dumps(data)

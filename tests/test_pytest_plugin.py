@@ -5,6 +5,8 @@ def test_myplugin(testdir):
     testdir.makepyfile("""\
 import asyncio
 import pytest
+from unittest import mock
+
 from aiohttp import web
 
 pytest_plugins = 'aiohttp.pytest_plugin'
@@ -31,6 +33,17 @@ def test_hello(test_client):
 
 
 @asyncio.coroutine
+def test_hello_from_app(test_client, loop):
+    app = web.Application(loop=loop)
+    app.router.add_get('/', hello)
+    client = yield from test_client(app)
+    resp = yield from client.get('/')
+    assert resp.status == 200
+    text = yield from resp.text()
+    assert 'Hello, world' in text
+
+
+@asyncio.coroutine
 def test_hello_with_loop(test_client, loop):
     client = yield from test_client(create_app)
     resp = yield from client.get('/')
@@ -46,6 +59,27 @@ def test_hello_fails(test_client):
     assert resp.status == 200
     text = yield from resp.text()
     assert 'Hello, wield' in text
+
+
+@asyncio.coroutine
+def test_hello_with_fake_loop(test_client):
+    with pytest.raises(AssertionError):
+        fake_loop = mock.Mock()
+        yield from test_client(web.Application(loop=fake_loop))
+
+
+@asyncio.coroutine
+def test_set_args(test_client, loop):
+    with pytest.raises(AssertionError):
+        app = web.Application(loop=loop)
+        yield from test_client(app, 1, 2, 3)
+
+
+@asyncio.coroutine
+def test_set_keyword_args(test_client, loop):
+    app = web.Application(loop=loop)
+    with pytest.raises(TypeError):
+        yield from test_client(app, param=1)
 
 
 @asyncio.coroutine
@@ -94,6 +128,21 @@ def test_get_value(cli):
     assert resp.status == 200
     text = yield from resp.text()
     assert text == 'value: bar'
+
+
+def test_noncoro():
+    assert True
+
+
+@asyncio.coroutine
+def test_client_failed_to_create(test_client):
+
+    def make_app(loop):
+        raise RuntimeError()
+
+    with pytest.raises(RuntimeError):
+        yield from test_client(make_app)
+
 """)
     result = testdir.runpytest('-p', 'no:sugar')
-    result.assert_outcomes(passed=5, failed=1)
+    result.assert_outcomes(passed=11, failed=1)

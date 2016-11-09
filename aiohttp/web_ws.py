@@ -2,6 +2,7 @@ import asyncio
 import json
 import sys
 import warnings
+from collections import namedtuple
 
 from . import Timeout, hdrs
 from ._ws_impl import (CLOSED_MESSAGE, WebSocketError, WSMessage, WSMsgType,
@@ -11,11 +12,21 @@ from .web_exceptions import (HTTPBadRequest, HTTPInternalServerError,
                              HTTPMethodNotAllowed)
 from .web_reqrep import StreamResponse
 
-__all__ = ('WebSocketResponse',)
+__all__ = ('WebSocketResponse', 'WebSocketReady', 'MsgType', 'WSMsgType',)
 
 PY_35 = sys.version_info >= (3, 5)
+PY_352 = sys.version_info >= (3, 5, 2)
 
 THRESHOLD_CONNLOST_ACCESS = 5
+
+
+# deprecated since 1.0
+MsgType = WSMsgType
+
+
+class WebSocketReady(namedtuple('WebSocketReady', 'ok protocol')):
+    def __bool__(self):
+        return self.ok
 
 
 class WebSocketResponse(StreamResponse):
@@ -97,9 +108,9 @@ class WebSocketResponse(StreamResponse):
                 request.method, request.headers, request.transport,
                 self._protocols)
         except HttpProcessingError:
-            return False, None
+            return WebSocketReady(False, None)
         else:
-            return True, protocol
+            return WebSocketReady(True, protocol)
 
     def can_start(self, request):
         warnings.warn('use .can_prepare(request) instead', DeprecationWarning)
@@ -187,7 +198,8 @@ class WebSocketResponse(StreamResponse):
             if self._closing:
                 return True
 
-            while True:
+            begin = self._loop.time()
+            while self._loop.time() - begin < self._timeout:
                 try:
                     with Timeout(timeout=self._timeout,
                                  loop=self._loop):
@@ -200,9 +212,13 @@ class WebSocketResponse(StreamResponse):
                     self._exception = exc
                     return True
 
-                if msg.tp == WSMsgType.close:
+                if msg.type == WSMsgType.CLOSE:
                     self._close_code = msg.data
                     return True
+
+            self._close_code = 1006
+            self._exception = asyncio.TimeoutError()
+            return True
         else:
             return False
 
@@ -229,31 +245,30 @@ class WebSocketResponse(StreamResponse):
                 except WebSocketError as exc:
                     self._close_code = exc.code
                     yield from self.close(code=exc.code)
-                    return WSMessage(WSMsgType.error, exc, None)
+                    return WSMessage(WSMsgType.ERROR, exc, None)
                 except ClientDisconnectedError:
                     self._closed = True
                     self._close_code = 1006
-                    return WSMessage(WSMsgType.close, None, None)
+                    return WSMessage(WSMsgType.CLOSE, None, None)
                 except Exception as exc:
                     self._exception = exc
                     self._closing = True
                     self._close_code = 1006
                     yield from self.close()
-                    return WSMessage(WSMsgType.error, exc, None)
+                    return WSMessage(WSMsgType.ERROR, exc, None)
 
-                if msg.tp == WSMsgType.close:
+                if msg.type == WSMsgType.CLOSE:
                     self._closing = True
                     self._close_code = msg.data
                     if not self._closed and self._autoclose:
                         yield from self.close()
                     return msg
-                elif not self._closed:
-                    if msg.tp == WSMsgType.ping and self._autoping:
-                        self.pong(msg.data)
-                    elif msg.tp == WSMsgType.pong and self._autoping:
-                        continue
-                    else:
-                        return msg
+                if msg.type == WSMsgType.PING and self._autoping:
+                    self.pong(msg.data)
+                elif msg.type == WSMsgType.PONG and self._autoping:
+                    continue
+                else:
+                    return msg
         finally:
             self._waiting = False
 
@@ -267,17 +282,18 @@ class WebSocketResponse(StreamResponse):
     @asyncio.coroutine
     def receive_str(self):
         msg = yield from self.receive()
-        if msg.tp != WSMsgType.text:
+        if msg.type != WSMsgType.TEXT:
             raise TypeError(
-                "Received message {}:{!r} is not str".format(msg.tp, msg.data))
+                "Received message {}:{!r} is not str".format(msg.type,
+                                                             msg.data))
         return msg.data
 
     @asyncio.coroutine
     def receive_bytes(self):
         msg = yield from self.receive()
-        if msg.tp != WSMsgType.binary:
+        if msg.type != WSMsgType.BINARY:
             raise TypeError(
-                "Received message {}:{!r} is not bytes".format(msg.tp,
+                "Received message {}:{!r} is not bytes".format(msg.type,
                                                                msg.data))
         return msg.data
 
@@ -290,13 +306,15 @@ class WebSocketResponse(StreamResponse):
         raise RuntimeError("Cannot call .write() for websocket")
 
     if PY_35:
-        @asyncio.coroutine
         def __aiter__(self):
             return self
+
+        if not PY_352:  # pragma: no cover
+            __aiter__ = asyncio.coroutine(__aiter__)
 
         @asyncio.coroutine
         def __anext__(self):
             msg = yield from self.receive()
-            if msg.tp == WSMsgType.close:
+            if msg.type == WSMsgType.CLOSE or msg.type == WSMsgType.CLOSED:
                 raise StopAsyncIteration  # NOQA
             return msg

@@ -1,8 +1,8 @@
+import asyncio
 from unittest import mock
 
-import pytest
-
 from aiohttp import web
+from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 
 
 def test_repr(loop):
@@ -13,8 +13,8 @@ def test_repr(loop):
     assert '<RequestHandler none:none disconnected>' == repr(handler)
 
     handler.transport = object()
-    handler._meth = 'GET'
-    handler._path = '/index.html'
+    request = make_mocked_request('GET', '/index.html')
+    handler._request = request
     assert '<RequestHandler GET:/index.html connected>' == repr(handler)
 
 
@@ -32,12 +32,13 @@ def test_connections(loop):
     assert manager.connections == []
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_finish_connection_no_timeout(loop):
     app = web.Application(loop=loop)
     manager = app.make_handler()
 
     handler = mock.Mock()
+    handler.shutdown = make_mocked_coro(mock.Mock())
     transport = mock.Mock()
     manager.connection_made(handler, transport)
 
@@ -45,16 +46,16 @@ def test_finish_connection_no_timeout(loop):
 
     manager.connection_lost(handler, None)
     assert manager.connections == []
-    handler.closing.assert_called_with(timeout=None)
-    transport.close.assert_called_with()
+    handler.shutdown.assert_called_with(None)
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_finish_connection_timeout(loop):
     app = web.Application(loop=loop)
     manager = app.make_handler()
 
     handler = mock.Mock()
+    handler.shutdown = make_mocked_coro(mock.Mock())
     transport = mock.Mock()
     manager.connection_made(handler, transport)
 
@@ -62,5 +63,4 @@ def test_finish_connection_timeout(loop):
 
     manager.connection_lost(handler, None)
     assert manager.connections == []
-    handler.closing.assert_called_with(timeout=0.09)
-    transport.close.assert_called_with()
+    handler.shutdown.assert_called_with(0.1)

@@ -39,7 +39,7 @@ with codecs.open(_version_path, 'r', 'latin1') as fp:
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('.'))
 
-import alabaster
+# import alabaster
 
 # -- General configuration ------------------------------------------------
 
@@ -70,6 +70,8 @@ intersphinx_mapping = {
     'python': ('http://docs.python.org/3', None),
     'multidict':
         ('https://multidict.readthedocs.io/en/stable/', None),
+    'yarl':
+        ('https://yarl.readthedocs.io/en/stable/', None),
     'aiohttpjinja2':
         ('https://aiohttp-jinja2.readthedocs.io/en/stable/', None),
     'aiohttpsession':
@@ -157,8 +159,10 @@ html_theme_options = {
     'github_user': 'KeepSafe',
     'github_repo': 'aiohttp',
     'github_button': True,
+    'github_type': 'star',
     'github_banner': True,
     'travis_button': True,
+    'codecov_button': True,
     'pre_bg': '#FFF6E5',
     'note_bg': '#E5ECD1',
     'note_border': '#BFCF8C',
@@ -168,7 +172,7 @@ html_theme_options = {
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
-html_theme_path = [alabaster.get_path()]
+# html_theme_path = [alabaster.get_path()]
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".

@@ -6,6 +6,7 @@ import json
 import mimetypes
 import os
 import re
+import sys
 import uuid
 import warnings
 import zlib
@@ -31,6 +32,9 @@ CTL = set(chr(i) for i in range(0, 32)) | {chr(127), }
 SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
               '?', '=', '{', '}', ' ', chr(9)}
 TOKEN = CHAR ^ CTL ^ SEPARATORS
+
+PY_35 = sys.version_info >= (3, 5)
+PY_352 = sys.version_info >= (3, 5, 2)
 
 
 class BadContentDispositionHeader(RuntimeWarning):
@@ -161,16 +165,19 @@ class MultipartResponseWrapper(object):
         self.resp = resp
         self.stream = stream
 
-    @asyncio.coroutine
-    def __aiter__(self):
-        return self
+    if PY_35:
+        def __aiter__(self):
+            return self
 
-    @asyncio.coroutine
-    def __anext__(self):
-        part = yield from self.next()
-        if part is None:
-            raise StopAsyncIteration  # NOQA
-        return part
+        if not PY_352:  # pragma: no cover
+            __aiter__ = asyncio.coroutine(__aiter__)
+
+        @asyncio.coroutine
+        def __anext__(self):
+            part = yield from self.next()
+            if part is None:
+                raise StopAsyncIteration  # NOQA
+            return part
 
     def at_eof(self):
         """Returns ``True`` when all response data had been read.
@@ -211,16 +218,19 @@ class BodyPartReader(object):
         self._prev_chunk = None
         self._content_eof = 0
 
-    @asyncio.coroutine
-    def __aiter__(self):
-        return self
+    if PY_35:
+        def __aiter__(self):
+            return self
 
-    @asyncio.coroutine
-    def __anext__(self):
-        part = yield from self.next()
-        if part is None:
-            raise StopAsyncIteration  # NOQA
-        return part
+        if not PY_352:  # pragma: no cover
+            __aiter__ = asyncio.coroutine(__aiter__)
+
+        @asyncio.coroutine
+        def __anext__(self):
+            part = yield from self.next()
+            if part is None:
+                raise StopAsyncIteration  # NOQA
+            return part
 
     @asyncio.coroutine
     def next(self):
@@ -365,7 +375,7 @@ class BodyPartReader(object):
 
     @asyncio.coroutine
     def release(self):
-        """Lke :meth:`read`, but reads all the data to the void.
+        """Like :meth:`read`, but reads all the data to the void.
 
         :rtype: None
         """
@@ -380,7 +390,7 @@ class BodyPartReader(object):
 
     @asyncio.coroutine
     def text(self, *, encoding=None):
-        """Lke :meth:`read`, but assumes that body part contains text data.
+        """Like :meth:`read`, but assumes that body part contains text data.
 
         :param str encoding: Custom text encoding. Overrides specified
                              in charset param of `Content-Type` header
@@ -393,7 +403,7 @@ class BodyPartReader(object):
 
     @asyncio.coroutine
     def json(self, *, encoding=None):
-        """Lke :meth:`read`, but assumes that body parts contains JSON data.
+        """Like :meth:`read`, but assumes that body parts contains JSON data.
 
         :param str encoding: Custom JSON encoding. Overrides specified
                              in charset param of `Content-Type` header
@@ -406,7 +416,7 @@ class BodyPartReader(object):
 
     @asyncio.coroutine
     def form(self, *, encoding=None):
-        """Lke :meth:`read`, but assumes that body parts contains form
+        """Like :meth:`read`, but assumes that body parts contains form
         urlencoded data.
 
         :param str encoding: Custom form encoding. Overrides specified
@@ -433,7 +443,7 @@ class BodyPartReader(object):
         Supports ``gzip``, ``deflate`` and ``identity`` encodings for
         `Content-Encoding` header.
 
-        Supports ``base64``, ``quoted-printable`` encodings for
+        Supports ``base64``, ``quoted-printable``, ``binary`` encodings for
         `Content-Transfer-Encoding` header.
 
         :param bytearray data: Data to decode.
@@ -467,6 +477,8 @@ class BodyPartReader(object):
             return base64.b64decode(data)
         elif encoding == 'quoted-printable':
             return binascii.a2b_qp(data)
+        elif encoding == 'binary':
+            return data
         else:
             raise RuntimeError('unknown content transfer encoding: {}'
                                ''.format(encoding))
@@ -507,16 +519,19 @@ class MultipartReader(object):
         self._at_bof = True
         self._unread = []
 
-    @asyncio.coroutine
-    def __aiter__(self):
-        return self
+    if PY_35:
+        def __aiter__(self):
+            return self
 
-    @asyncio.coroutine
-    def __anext__(self):
-        part = yield from self.next()
-        if part is None:
-            raise StopAsyncIteration  # NOQA
-        return part
+        if not PY_352:  # pragma: no cover
+            __aiter__ = asyncio.coroutine(__aiter__)
+
+        @asyncio.coroutine
+        def __anext__(self):
+            part = yield from self.next()
+            if part is None:
+                raise StopAsyncIteration  # NOQA
+            return part
 
     @classmethod
     def from_response(cls, response):
@@ -841,6 +856,8 @@ class BodyPartWriter(object):
         elif encoding == 'quoted-printable':
             for chunk in stream:
                 yield binascii.b2a_qp(chunk)
+        elif encoding == 'binary':
+            yield from stream
         else:
             raise RuntimeError('unknown content transfer encoding: {}'
                                ''.format(encoding))

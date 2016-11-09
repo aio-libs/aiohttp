@@ -1,12 +1,8 @@
 from unittest import mock
 
-import pytest
-
 from aiohttp import web
 from aiohttp.web_urldispatcher import View
 
-
-@pytest.mark.run_loop
 async def test_render_ok():
     resp = web.Response(text='OK')
 

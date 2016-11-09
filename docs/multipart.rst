@@ -5,7 +5,7 @@
 Working with Multipart
 ======================
 
-`aiohttp` supports a full featured multipart reader and writer. Both
+``aiohttp`` supports a full featured multipart reader and writer. Both
 are designed with steaming processing in mind to avoid unwanted
 footprint which may be significant if you're dealing with large
 payloads, but this also means that most I/O operation are only
@@ -214,7 +214,9 @@ Sometimes the server response may not be well formed: it may or may not
 contains nested parts. For instance, we request a resource which returns
 JSON documents with the files attached to it. If the document has any
 attachments, they are returned as a nested multipart.
-If it has not it responds as plain body parts::
+If it has not it responds as plain body parts:
+
+.. code-block:: none
 
     CONTENT-TYPE: multipart/mixed; boundary=--:
 
@@ -330,3 +332,4 @@ And this gives us a more cleaner solution::
 
 
 .. disqus::
+  :title: aiohttp suppport for multipart encoding

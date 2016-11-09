@@ -123,7 +123,7 @@ SSL
 ---
 
 To use asyncio's SSL support, just pass an SSLContext object to the
-:meth:`asyncio.BaseEventLoop.create_server` method of the loop::
+:meth:`asyncio.AbstractEventLoop.create_server` method of the loop::
 
     import ssl
 
@@ -145,3 +145,4 @@ Reference
 
 
 .. disqus::
+  :title: aiohttp low-level server

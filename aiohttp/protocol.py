@@ -102,7 +102,9 @@ class HttpParser:
                     header_length += len(line)
                     if header_length > self.max_field_size:
                         raise errors.LineTooLong(
-                            'limit request headers fields size')
+                            'request header field {}'.format(
+                                bname.decode("utf8", "xmlcharrefreplace")),
+                            self.max_field_size)
                     bvalue.append(line)
 
                     # next line
@@ -113,7 +115,9 @@ class HttpParser:
             else:
                 if header_length > self.max_field_size:
                     raise errors.LineTooLong(
-                        'limit request headers fields size')
+                        'request header field {}'.format(
+                            bname.decode("utf8", "xmlcharrefreplace")),
+                        self.max_field_size)
 
             bvalue = bvalue.strip()
 
@@ -173,7 +177,7 @@ class HttpRequestParser(HttpParser):
             raw_data = yield from buf.readuntil(
                 b'\r\n\r\n', self.max_headers)
         except errors.LineLimitExceededParserError as exc:
-            raise errors.LineTooLong(exc.limit) from None
+            raise errors.LineTooLong('request header', exc.limit) from None
 
         lines = raw_data.split(b'\r\n')
 
@@ -227,7 +231,7 @@ class HttpResponseParser(HttpParser):
             raw_data = yield from buf.readuntil(
                 b'\r\n\r\n', self.max_line_size + self.max_headers)
         except errors.LineLimitExceededParserError as exc:
-            raise errors.LineTooLong(exc.limit) from None
+            raise errors.LineTooLong('response header', exc.limit) from None
 
         lines = raw_data.split(b'\r\n')
 
@@ -555,6 +559,7 @@ class HttpMessage(ABC):
         self.output_length = 0
         self.headers_length = 0
         self._output_size = 0
+        self._cache = {}
 
     @property
     @abstractmethod
@@ -879,6 +884,12 @@ class Response(HttpMessage):
             # format_date_time(None) is quite expensive
             self.headers.setdefault(hdrs.DATE, format_date_time(None))
         self.headers.setdefault(hdrs.SERVER, self.SERVER_SOFTWARE)
+
+
+class WebResponse(Response):
+    """For usage in aiohttp.web only"""
+    def _add_default_headers(self):
+        pass
 
 
 class Request(HttpMessage):

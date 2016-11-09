@@ -1,0 +1,56 @@
+from aiohttp import web, web2, web_reqrep2
+
+
+async def handle(request):
+    name = request.match_info.get('name', "Anonymous")
+    text = "Hello, " + name
+
+    # push promise
+    # add Link header in case of HTTP 1.1
+    # start sending response after push request
+    await request.push_promise('/path', headers)
+
+    return web.Response(body=text.encode('utf-8'))
+
+
+async def handle2(request):
+    return web.Response(body=b'afwefwefwe')
+
+
+app = web.Application(params={})
+app.router.add_route('GET', '/{name}', handle)
+app.router.add_route('GET', '/path', handle2)
+
+web.run_app(app)
+
+
+request.set_priority(3)
+
+
+async def t1(session):
+    async with session.get(url, pri=234) as response:
+        txt = await response.text()
+        for push in response.pushes():
+             data = await push.text()
+
+
+async with aiohttp.ClientSession() as session:
+    await session.set_pri(stream_id=14, 1234123)  # doesnt work, should have (schema, host, port) info
+    loop.create_task(t1(url))
+
+
+ping/pong sending
+
+HTTP proxy?
+connector API
+What protocol use by `session.get(url, pri=234)`, how to switch back to http1
+
+
+
+
+def handler(request):
+    resp = web.StreamResponse()
+    resp.enable_compression(ContentCoding.gzip, compression=False)
+    yield from resp.prepare(request)
+    resp.write(gzip.compress(b'data'))
+    return resp

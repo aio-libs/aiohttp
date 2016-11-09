@@ -14,7 +14,7 @@ __all__ = (
     'ClientRequestError', 'ClientResponseError',
     'FingerprintMismatch',
 
-    'WSServerHandshakeError', 'WSClientDisconnectedError')
+    'WSServerHandshakeError')
 
 
 class DisconnectedError(Exception):
@@ -27,10 +27,6 @@ class ClientDisconnectedError(DisconnectedError):
 
 class ServerDisconnectedError(DisconnectedError):
     """Server disconnected."""
-
-
-class WSClientDisconnectedError(ClientDisconnectedError):
-    """Deprecated."""
 
 
 class ClientError(Exception):
@@ -138,7 +134,7 @@ class LineTooLong(BadHttpMessage):
 
     def __init__(self, line, limit='Unknown'):
         super().__init__(
-            "got more than %s bytes when reading %s" % (limit, line))
+            "Got more than %s bytes when reading %s." % (limit, line))
 
 
 class InvalidHeader(BadHttpMessage):
@@ -159,11 +155,7 @@ class BadStatusLine(BadHttpMessage):
         self.line = line
 
 
-class ParserError(Exception):
-    """Base parser error."""
-
-
-class LineLimitExceededParserError(ParserError):
+class LineLimitExceededParserError(HttpBadRequest):
     """Line is too long."""
 
     def __init__(self, msg, limit):
@@ -184,7 +176,3 @@ class FingerprintMismatch(ClientConnectionError):
         return '<{} expected={} got={} host={} port={}>'.format(
             self.__class__.__name__, self.expected, self.got,
             self.host, self.port)
-
-
-class InvalidURL(Exception):
-    """Invalid URL."""

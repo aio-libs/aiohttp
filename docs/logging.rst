@@ -44,6 +44,9 @@ instance to override default logger.
 Other parameter called *access_log_format* may be used for specifying log
 format (see below).
 
+
+.. _aiohttp-logging-access-log-format-spec:
+
 Format specification
 ^^^^^^^^^^^^^^^^^^^^
 
@@ -89,6 +92,16 @@ Default access log format is::
    '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
 
 
+.. note::
+
+   When `Gunicorn <http://docs.gunicorn.org/en/latest/index.html>`_ is used for
+   :ref:`deployment <aiohttp-deployment-gunicorn>` its default access log format
+   will be automatically replaced with the default aiohttp's access log format.
+
+   If Gunicorn's option access_logformat_ is
+   specified explicitly it should use aiohttp's format specification.
+
+
 Error logs
 ----------
 
@@ -100,3 +113,11 @@ The log is enabled by default.
 To use different logger name please specify *logger* parameter
 (:class:`logging.Logger` instance) on performing
 :meth:`aiohttp.web.Application.make_handler` call.
+
+
+.. _access_logformat:
+    http://docs.gunicorn.org/en/stable/settings.html#access-log-format
+
+
+.. disqus::
+  :title: aiohttp logging

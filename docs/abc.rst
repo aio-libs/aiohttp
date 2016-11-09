@@ -3,9 +3,9 @@
 Abstract Base Classes
 =====================
 
-.. module:: aiohttp.abc
+.. module:: aiohttp
 
-.. currentmodule:: aiohttp.abc
+.. currentmodule:: aiohttp
 
 Abstract routing
 ----------------
@@ -22,7 +22,7 @@ aiohttp.web is built on top of few concepts: *application*, *router*,
 from scratch, all other parts should work with new router seamlessly.
 
 :class:`AbstractRouter` has the only mandatory method:
-:meth:`AbstractRouter.resolve` coroutine. It should return an
+:meth:`AbstractRouter.resolve` coroutine. It must return an
 :class:`AbstractMatchInfo` instance.
 
 If the requested URL handler is found
@@ -56,7 +56,7 @@ Not Allowed*. :meth:`AbstractMatchInfo.handler` raises
 
 .. class:: AbstractMatchInfo
 
-   Abstract *match info*, returned by :meth:`AbstractRouter` call.
+   Abstract *match info*, returned by :meth:`AbstractRouter.resolve` call.
 
    .. attribute:: http_exception
 
@@ -102,25 +102,51 @@ attribute.
 Abstract Cookie Jar
 -------------------
 
-.. class:: AbstractCookieJar(*, loop=None)
+.. class:: AbstractCookieJar
 
-   An abstract class for cookie storage.
+   The cookie jar instance is available as :attr:`ClientSession.cookie_jar`.
 
-   :param loop: an :ref:`event loop<asyncio-event-loop>` instance.
+   The jar contains :class:`~http.cookies.Morsel` items for storing
+   internal cookie data.
 
-                If param is ``None`` :func:`asyncio.get_event_loop`
-                used for getting default event loop, but we strongly
-                recommend to use explicit loops everywhere.
+   API provides a count of saved cookies::
 
+       len(session.cookie_jar)
 
-   .. attribute:: cookies
+   These cookies may be iterated over::
 
-      :class:`http.cookies.SimpleCookie` instance for storing cookies info.
+       for cookie in session.cookie_jar:
+           print(cookie.key)
+           print(cookie["domain"])
+
+   An abstract class for cookie storage. Implements
+   :class:`collections.abc.Iterable` and
+   :class:`collections.abc.Sized`.
 
    .. method:: update_cookies(cookies, response_url=None)
 
-       Update cookies.
+      Update cookies returned by server in ``Set-Cookie`` header.
+
+      :param cookies: a :class:`collections.abc.Mapping`
+         (e.g. :class:`dict`, :class:`~http.cookies.SimpleCookie`) or
+         *iterable* of *pairs* with cookies returned by server's
+         response.
+
+      :param str response_url: URL of response, ``None`` for *shared
+         cookies*.  Regular cookies are coupled with server's URL and
+         are sent only to this server, shared ones are sent in every
+         client request.
 
    .. method:: filter_cookies(request_url)
 
-      Returns this jar's cookies filtered by their attributes.
+      Return jar's cookies acceptable for URL and available in
+      ``Cookie`` header for sending client requests for given URL.
+
+      :param str response_url: request's URL for which cookies are asked.
+
+      :return: :class:`http.cookies.SimpleCookie` with filtered
+         cookies for given URL.
+
+
+.. disqus::
+  :title: aiohttp abstact base classes

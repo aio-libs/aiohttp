@@ -11,6 +11,8 @@ from itertools import chain
 from math import ceil
 from types import MappingProxyType
 
+from yarl import URL
+
 import aiohttp
 
 from . import hdrs, helpers
@@ -18,7 +20,7 @@ from .client import ClientRequest
 from .errors import (ClientOSError, ClientTimeoutError, FingerprintMismatch,
                      HttpProxyError, ProxyConnectionError,
                      ServerDisconnectedError)
-from .helpers import is_ip_address
+from .helpers import is_ip_address, sentinel
 from .resolver import DefaultResolver
 
 __all__ = ('BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector')
@@ -32,7 +34,7 @@ HASHFUNC_BY_DIGESTLEN = {
 }
 
 
-class Connection(object):
+class Connection:
 
     _source_traceback = None
     _transport = None
@@ -57,9 +59,8 @@ class Connection(object):
         if self._transport is not None:
             _warnings.warn('Unclosed connection {!r}'.format(self),
                            ResourceWarning)
-            if hasattr(self._loop, 'is_closed'):
-                if self._loop.is_closed():
-                    return
+            if self._loop.is_closed():
+                return
 
             self._connector._release(
                 self._key, self._request, self._transport, self._protocol,
@@ -97,34 +98,31 @@ class Connection(object):
         return self._transport is None
 
 
-_default = object()
-
-
 class BaseConnector(object):
     """Base connector class.
 
-    :param conn_timeout: (optional) Connect timeout.
-    :param keepalive_timeout: (optional) Keep-alive timeout.
-    :param bool force_close: Set to True to force close and do reconnect
+    conn_timeout - (optional) Connect timeout.
+    keepalive_timeout - (optional) Keep-alive timeout.
+    force_close - Set to True to force close and do reconnect
         after each request (and between redirects).
-    :param limit: The limit of simultaneous connections to the same endpoint.
-    :param loop: Optional event loop.
+    limit - The limit of simultaneous connections to the same endpoint.
+    loop - Optional event loop.
     """
 
     _closed = True  # prevent AttributeError in __del__ if ctor was failed
     _source_traceback = None
 
-    def __init__(self, *, conn_timeout=None, keepalive_timeout=_default,
+    def __init__(self, *, conn_timeout=None, keepalive_timeout=sentinel,
                  force_close=False, limit=20,
                  loop=None):
 
         if force_close:
             if keepalive_timeout is not None and \
-               keepalive_timeout is not _default:
+               keepalive_timeout is not sentinel:
                 raise ValueError('keepalive_timeout cannot '
                                  'be set if force_close is True')
         else:
-            if keepalive_timeout is _default:
+            if keepalive_timeout is sentinel:
                 keepalive_timeout = 30
 
         if loop is None:
@@ -243,9 +241,8 @@ class BaseConnector(object):
         self._closed = True
 
         try:
-            if hasattr(self._loop, 'is_closed'):
-                if self._loop.is_closed():
-                    return ret
+            if self._loop.is_closed():
+                return ret
 
             for key, data in self._conns.items():
                 for transport, proto, t0 in data:
@@ -270,24 +267,6 @@ class BaseConnector(object):
         A readonly property.
         """
         return self._closed
-
-    def update_cookies(self, cookies):
-        """Update shared cookies.
-
-        Deprecated, use ClientSession instead.
-        """
-        if isinstance(cookies, dict):
-            cookies = cookies.items()
-
-        for name, value in cookies:
-            if PY_343:
-                self.cookies[name] = value
-            else:
-                if isinstance(value, http.cookies.Morsel):
-                    # use dict method because SimpleCookie class modifies value
-                    dict.__setitem__(self.cookies, name, value)
-                else:
-                    self.cookies[name] = value
 
     @asyncio.coroutine
     def connect(self, req):
@@ -415,33 +394,40 @@ class BaseConnector(object):
 
 _SSL_OP_NO_COMPRESSION = getattr(ssl, "OP_NO_COMPRESSION", 0)
 
-_marker = object()
-
 
 class TCPConnector(BaseConnector):
     """TCP connector.
 
-    :param bool verify_ssl: Set to True to check ssl certifications.
-    :param bytes fingerprint: Pass the binary md5, sha1, or sha256
+    verify_ssl - Set to True to check ssl certifications.
+    fingerprint - Pass the binary md5, sha1, or sha256
         digest of the expected certificate in DER format to verify
         that the certificate the server presents matches. See also
         https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning
-    :param bool resolve: (Deprecated) Set to True to do DNS lookup for
+    resolve - (Deprecated) Set to True to do DNS lookup for
         host name.
-    :param AbstractResolver resolver: Enable DNS lookups and use this
+    resolver - Enable DNS lookups and use this
         resolver
-    :param bool use_dns_cache: Use memory cache for DNS lookups.
-    :param family: socket address family
-    :param local_addr: local :class:`tuple` of (host, port) to bind socket to
-    :param args: see :class:`BaseConnector`
-    :param kwargs: see :class:`BaseConnector`
+    use_dns_cache - Use memory cache for DNS lookups.
+    family - socket address family
+    local_addr - local tuple of (host, port) to bind socket to
+
+    conn_timeout - (optional) Connect timeout.
+    keepalive_timeout - (optional) Keep-alive timeout.
+    force_close - Set to True to force close and do reconnect
+        after each request (and between redirects).
+    limit - The limit of simultaneous connections to the same endpoint.
+    loop - Optional event loop.
     """
 
     def __init__(self, *, verify_ssl=True, fingerprint=None,
-                 resolve=_marker, use_dns_cache=_marker,
+                 resolve=sentinel, use_dns_cache=sentinel,
                  family=0, ssl_context=None, local_addr=None, resolver=None,
-                 **kwargs):
-        super().__init__(**kwargs)
+                 conn_timeout=None, keepalive_timeout=sentinel,
+                 force_close=False, limit=20,
+                 loop=None):
+        super().__init__(conn_timeout=conn_timeout,
+                         keepalive_timeout=keepalive_timeout,
+                         force_close=force_close, limit=limit, loop=loop)
 
         if not verify_ssl and ssl_context is not None:
             raise ValueError(
@@ -455,31 +441,33 @@ class TCPConnector(BaseConnector):
             hashfunc = HASHFUNC_BY_DIGESTLEN.get(digestlen)
             if not hashfunc:
                 raise ValueError('fingerprint has invalid length')
+            elif hashfunc is md5 or hashfunc is sha1:
+                warnings.simplefilter('always')
+                warnings.warn('md5 and sha1 are insecure and deprecated. '
+                              'Use sha256.',
+                              DeprecationWarning, stacklevel=2)
             self._hashfunc = hashfunc
         self._fingerprint = fingerprint
 
-        if resolve is not _marker:
+        if resolve is not sentinel:
             warnings.warn(("resolve parameter is deprecated, "
                            "use use_dns_cache instead"),
                           DeprecationWarning, stacklevel=2)
 
-        if use_dns_cache is not _marker and resolve is not _marker:
+        if use_dns_cache is not sentinel and resolve is not sentinel:
             if use_dns_cache != resolve:
                 raise ValueError("use_dns_cache must agree with resolve")
             _use_dns_cache = use_dns_cache
-        elif use_dns_cache is not _marker:
+        elif use_dns_cache is not sentinel:
             _use_dns_cache = use_dns_cache
-        elif resolve is not _marker:
+        elif resolve is not sentinel:
             _use_dns_cache = resolve
         else:
-            _use_dns_cache = False
+            _use_dns_cache = True
 
-        self._resolver = resolver or DefaultResolver(loop=self._loop)
-
-        if _use_dns_cache or resolver:
-            self._use_resolver = True
-        else:
-            self._use_resolver = False
+        if resolver is None:
+            resolver = DefaultResolver(loop=self._loop)
+        self._resolver = resolver
 
         self._use_dns_cache = _use_dns_cache
         self._cached_hosts = {}
@@ -568,11 +556,9 @@ class TCPConnector(BaseConnector):
 
     @asyncio.coroutine
     def _resolve_host(self, host, port):
-        if not self._use_resolver or is_ip_address(host):
+        if is_ip_address(host):
             return [{'hostname': host, 'host': host, 'port': port,
                      'family': self._family, 'proto': 0, 'flags': 0}]
-
-        assert self._resolver
 
         if self._use_dns_cache:
             key = (host, port)
@@ -659,9 +645,7 @@ class TCPConnector(BaseConnector):
             raise ProxyConnectionError(*exc.args) from exc
 
         if not req.ssl:
-            req.path = '{scheme}://{host}{path}'.format(scheme=req.scheme,
-                                                        host=req.netloc,
-                                                        path=req.path)
+            req.path = str(req.url)
         if hdrs.AUTHORIZATION in proxy_req.headers:
             auth = proxy_req.headers[hdrs.AUTHORIZATION]
             del proxy_req.headers[hdrs.AUTHORIZATION]
@@ -716,11 +700,15 @@ class ProxyConnector(TCPConnector):
     Deprecated, use ClientSession.request with proxy parameters.
     Is still here for backward compatibility.
 
-    :param str proxy: Proxy URL address. Only HTTP proxy supported.
-    :param proxy_auth: (optional) Proxy HTTP Basic Auth
-    :type proxy_auth: aiohttp.helpers.BasicAuth
-    :param args: see :class:`TCPConnector`
-    :param kwargs: see :class:`TCPConnector`
+    proxy - Proxy URL address. Only HTTP proxy supported.
+    proxy_auth - (optional) Proxy HTTP Basic Auth
+    proxy_auth - aiohttp.helpers.BasicAuth
+    conn_timeout - (optional) Connect timeout.
+    keepalive_timeout - (optional) Keep-alive timeout.
+    force_close - Set to True to force close and do reconnect
+        after each request (and between redirects).
+    limit - The limit of simultaneous connections to the same endpoint.
+    loop - Optional event loop.
 
     Usage:
 
@@ -731,11 +719,16 @@ class ProxyConnector(TCPConnector):
     """
 
     def __init__(self, proxy, *, proxy_auth=None, force_close=True,
-                 **kwargs):
+                 conn_timeout=None, keepalive_timeout=sentinel,
+                 limit=20, loop=None):
         warnings.warn("ProxyConnector is deprecated, use "
                       "client.get(url, proxy=proxy_url) instead",
                       DeprecationWarning)
-        super().__init__(force_close=force_close, **kwargs)
+        super().__init__(force_close=force_close,
+                         conn_timeout=conn_timeout,
+                         keepalive_timeout=keepalive_timeout,
+                         limit=limit, loop=loop)
+        proxy = URL(proxy)
         self._proxy = proxy
         self._proxy_auth = proxy_auth
 
@@ -761,9 +754,13 @@ class ProxyConnector(TCPConnector):
 class UnixConnector(BaseConnector):
     """Unix socket connector.
 
-    :param str path: Unix socket path.
-    :param args: see :class:`BaseConnector`
-    :param kwargs: see :class:`BaseConnector`
+    path - Unix socket path.
+    conn_timeout - (optional) Connect timeout.
+    keepalive_timeout - (optional) Keep-alive timeout.
+    force_close - Set to True to force close and do reconnect
+        after each request (and between redirects).
+    limit - The limit of simultaneous connections to the same endpoint.
+    loop - Optional event loop.
 
     Usage:
 
@@ -773,8 +770,12 @@ class UnixConnector(BaseConnector):
 
     """
 
-    def __init__(self, path, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, path, force_close=False, conn_timeout=None,
+                 keepalive_timeout=sentinel, limit=20, loop=None):
+        super().__init__(force_close=force_close,
+                         conn_timeout=conn_timeout,
+                         keepalive_timeout=keepalive_timeout,
+                         limit=limit, loop=loop)
         self._path = path
 
     @property
