@@ -113,7 +113,7 @@ class BaseTestServer(ABC):
     @abstractmethod
     @asyncio.coroutine
     def _close_hook(self):
-        pass
+        pass  # pragma: no cover
 
     def __enter__(self):
         self._loop.run_until_complete(self.start_server())
