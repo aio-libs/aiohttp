@@ -425,6 +425,11 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return "<{} {} {} >".format(self.__class__.__name__,
                                     self.method, ascii_encodable_path)
 
+    @asyncio.coroutine
+    def _prepare_hook(self, response):
+        return
+        yield  # pragma: no cover
+
 
 class Request(BaseRequest):
 
@@ -444,6 +449,11 @@ class Request(BaseRequest):
     def app(self):
         """Application instance."""
         return self._match_info.apps[-1]
+
+    @asyncio.coroutine
+    def _prepare_hook(self, response):
+        for app in self.match_info.apps:
+            yield from app.on_response_prepare.send(self, response)
 
 
 ############################################################
@@ -739,8 +749,7 @@ class StreamResponse(HeadersMixin):
         resp_impl = self._start_pre_check(request)
         if resp_impl is not None:
             return resp_impl
-        for app in request.match_info.apps:
-            yield from app.on_response_prepare.send(request, self)
+        yield from request._prepare_hook(self)
 
         return self._start(request)
 

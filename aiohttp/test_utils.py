@@ -7,6 +7,7 @@ import gc
 import socket
 import sys
 import unittest
+from abc import ABC, abstractmethod
 from unittest import mock
 
 from multidict import CIMultiDict
@@ -19,7 +20,7 @@ from . import ClientSession, hdrs
 from .helpers import sentinel
 from .protocol import HttpVersion, RawRequestMessage
 from .signals import Signal
-from .web import Application, Request, UrlMappingMatchInfo
+from .web import Application, Request, UrlMappingMatchInfo, WebServer
 
 PY_35 = sys.version_info >= (3, 5)
 
@@ -39,10 +40,8 @@ def unused_port():
         return s.getsockname()[1]
 
 
-class TestServer:
-    def __init__(self, app, *, scheme=sentinel, host='127.0.0.1'):
-        self.app = app
-        self._loop = app.loop
+class BaseTestServer(ABC):
+    def __init__(self, *, scheme=sentinel, host='127.0.0.1'):
         self.port = None
         self.server = None
         self.handler = None
@@ -66,16 +65,29 @@ class TestServer:
         self._root = URL('{}://{}:{}'.format(self.scheme,
                                              self.host,
                                              self.port))
-        yield from self.app.startup()
-        self.handler = self.app.make_handler(**kwargs)
-        self.server = yield from self._loop.create_server(self.handler,
+
+        handler = yield from self._make_factory(**kwargs)
+        self.server = yield from self._loop.create_server(handler,
                                                           self.host,
                                                           self.port,
                                                           ssl=self._ssl)
 
+    @abstractmethod  # pragma: no cover
+    @asyncio.coroutine
+    def _make_factory(self):
+        pass
+
     def make_url(self, path):
         assert path.startswith('/')
         return URL(str(self._root) + path)
+
+    @property
+    def started(self):
+        return self.server is not None
+
+    @property
+    def closed(self):
+        return self._closed
 
     @asyncio.coroutine
     def close(self):
@@ -90,15 +102,18 @@ class TestServer:
         exit when used as a context manager.
 
         """
-        if self.server is not None and not self._closed:
+        if self.started and not self.closed:
             self.server.close()
             yield from self.server.wait_closed()
-            yield from self.app.shutdown()
-            yield from self.handler.shutdown()
-            yield from self.app.cleanup()
             self._root = None
             self.port = None
+            yield from self._close_hook()
             self._closed = True
+
+    @abstractmethod
+    @asyncio.coroutine
+    def _close_hook(self):
+        pass
 
     def __enter__(self):
         self._loop.run_until_complete(self.start_server())
@@ -116,6 +131,43 @@ class TestServer:
         @asyncio.coroutine
         def __aexit__(self, exc_type, exc_value, traceback):
             yield from self.close()
+
+
+class TestServer(BaseTestServer):
+    def __init__(self, app, *, scheme=sentinel, host='127.0.0.1'):
+        self.app = app
+        self._loop = app.loop
+        super().__init__(scheme=scheme, host=host)
+
+    @asyncio.coroutine
+    def _make_factory(self, **kwargs):
+        yield from self.app.startup()
+        self.handler = self.app.make_handler(**kwargs)
+        return self.handler
+
+    @asyncio.coroutine
+    def _close_hook(self):
+        yield from self.app.shutdown()
+        yield from self.handler.shutdown()
+        yield from self.app.cleanup()
+
+
+class RawTestServer(BaseTestServer):
+    def __init__(self, handler,
+                 *, loop=None, scheme=sentinel, host='127.0.0.1'):
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        self._loop = loop
+        self._handler = handler
+        super().__init__(scheme=scheme, host=host)
+
+    @asyncio.coroutine
+    def _make_factory(self, **kwargs):
+        return WebServer(self._handler, loop=self._loop)
+
+    @asyncio.coroutine
+    def _close_hook(self):
+        return
 
 
 class TestClient:
@@ -136,7 +188,7 @@ class TestClient:
 
     def __init__(self, app_or_server, *, scheme=sentinel, host=sentinel,
                  cookie_jar=None, **kwargs):
-        if isinstance(app_or_server, TestServer):
+        if isinstance(app_or_server, BaseTestServer):
             if scheme is not sentinel or host is not sentinel:
                 raise ValueError("scheme and host are mutable exclusive "
                                  "with TestServer parameter")
@@ -149,7 +201,7 @@ class TestClient:
         else:
             raise TypeError("app_or_server should be either web.Application "
                             "or TestServer instance")
-        self._loop = self._server.app.loop
+        self._loop = self._server._loop
         if cookie_jar is None:
             cookie_jar = aiohttp.CookieJar(unsafe=True,
                                            loop=self._loop)

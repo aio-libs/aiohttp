@@ -20,7 +20,6 @@ from .web_server import WebServer
 from .web_urldispatcher import *  # noqa
 from .web_ws import *  # noqa
 
-
 __all__ = (web_reqrep.__all__ +
            web_exceptions.__all__ +
            web_urldispatcher.__all__ +
