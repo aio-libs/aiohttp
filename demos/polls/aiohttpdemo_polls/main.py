@@ -6,7 +6,7 @@ import jinja2
 
 import aiohttp_jinja2
 from aiohttp import web
-from aiohttpdemo_polls.db import init_pg, close_pg
+from aiohttpdemo_polls.db import close_pg, init_pg
 from aiohttpdemo_polls.middlewares import setup_middlewares
 from aiohttpdemo_polls.routes import setup_routes
 from aiohttpdemo_polls.utils import load_config

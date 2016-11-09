@@ -18,12 +18,6 @@ def test_app_call(loop):
     assert app is app()
 
 
-def test_app_copy(loop):
-    app = web.Application(loop=loop)
-    with pytest.raises(NotImplementedError):
-        app.copy()
-
-
 def test_app_default_loop(loop):
     asyncio.set_event_loop(loop)
     app = web.Application()
@@ -34,16 +28,18 @@ def test_app_default_loop(loop):
 def test_app_make_handler_debug_exc(loop, mocker, debug):
     app = web.Application(loop=loop, debug=debug)
 
-    mocker.spy(app, '_handler_factory')
+    srv = mocker.patch('aiohttp.web.WebServer')
 
     app.make_handler()
     with pytest.warns(DeprecationWarning) as exc:
         app.make_handler(debug=debug)
 
     assert 'parameter is deprecated' in exc[0].message.args[0]
-    assert app._handler_factory.call_count == 2
-    app._handler_factory.assert_called_with(app, app.router, loop=loop,
-                                            debug=debug)
+    assert srv.call_count == 2
+    srv.assert_called_with(app._handle,
+                           request_factory=app._make_request,
+                           loop=loop,
+                           debug=debug)
 
     with pytest.raises(ValueError) as exc:
         app.make_handler(debug=not debug)
@@ -175,3 +171,16 @@ def test_app_delitem(loop):
     assert len(app) == 1
     del app['key']
     assert len(app) == 0
+
+
+def test_secure_proxy_ssl_header_default(loop):
+    app = web.Application(loop=loop)
+    assert app._secure_proxy_ssl_header is None
+
+
+@asyncio.coroutine
+def test_secure_proxy_ssl_header_non_default(loop):
+    app = web.Application(loop=loop)
+    hdr = ('X-Forwarded-Proto', 'https')
+    app.make_handler(secure_proxy_ssl_header=hdr)
+    assert app._secure_proxy_ssl_header is hdr

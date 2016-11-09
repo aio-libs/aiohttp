@@ -48,8 +48,11 @@ cov-dev: .develop
 	@echo "open file://`pwd`/coverage/index.html"
 
 cov-dev-full: .develop
+	@echo "Run without extensions"
 	@AIOHTTP_NO_EXTENSIONS=1 py.test --cov=aiohttp tests
+	@echo "Run in debug mode"
 	@PYTHONASYNCIODEBUG=1 py.test --cov=aiohttp --cov-append tests
+	@echo "Regular run"
 	@py.test --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
 	@echo "open file://`pwd`/coverage/index.html"
 

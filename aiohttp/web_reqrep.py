@@ -22,7 +22,7 @@ from .protocol import WebResponse as ResponseImpl
 from .protocol import HttpVersion10, HttpVersion11
 
 __all__ = (
-    'ContentCoding', 'Request', 'StreamResponse', 'Response',
+    'ContentCoding', 'BaseRequest', 'Request', 'StreamResponse', 'Response',
     'json_response'
 )
 
@@ -44,7 +44,7 @@ class ContentCoding(enum.Enum):
 ############################################################
 
 
-class Request(collections.MutableMapping, HeadersMixin):
+class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
@@ -58,10 +58,6 @@ class Request(collections.MutableMapping, HeadersMixin):
         self._writer = writer
         self._post = None
         self._post_files_cache = None
-
-        # matchdict, route_name, handler
-        # or information about traversal lookup
-        self._match_info = None  # initialized after route resolving
 
         self._payload = payload
 
@@ -99,7 +95,7 @@ class Request(collections.MutableMapping, HeadersMixin):
 
         message = self._message._replace(**dct)
 
-        return Request(
+        return self.__class__(
             message,
             self._payload,
             self._transport,
@@ -285,16 +281,6 @@ class Request(collections.MutableMapping, HeadersMixin):
             return not self._message.should_close
 
     @property
-    def match_info(self):
-        """Result of route resolving."""
-        return self._match_info
-
-    @reify
-    def app(self):
-        """Application instance."""
-        return self._match_info.apps[-1]
-
-    @property
     def transport(self):
         """Transport used for request processing."""
         return self._transport
@@ -438,6 +424,36 @@ class Request(collections.MutableMapping, HeadersMixin):
             .decode('ascii')
         return "<{} {} {} >".format(self.__class__.__name__,
                                     self.method, ascii_encodable_path)
+
+    @asyncio.coroutine
+    def _prepare_hook(self, response):
+        return
+        yield  # pragma: no cover
+
+
+class Request(BaseRequest):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # matchdict, route_name, handler
+        # or information about traversal lookup
+        self._match_info = None  # initialized after route resolving
+
+    @property
+    def match_info(self):
+        """Result of route resolving."""
+        return self._match_info
+
+    @reify
+    def app(self):
+        """Application instance."""
+        return self._match_info.apps[-1]
+
+    @asyncio.coroutine
+    def _prepare_hook(self, response):
+        for app in self.match_info.apps:
+            yield from app.on_response_prepare.send(self, response)
 
 
 ############################################################
@@ -733,8 +749,7 @@ class StreamResponse(HeadersMixin):
         resp_impl = self._start_pre_check(request)
         if resp_impl is not None:
             return resp_impl
-        for app in request.match_info.apps:
-            yield from app.on_response_prepare.send(request, self)
+        yield from request._prepare_hook(self)
 
         return self._start(request)
 

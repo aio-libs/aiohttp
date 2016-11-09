@@ -8,7 +8,7 @@ import aiohttp
 from aiohttp import web, web_reqrep
 from aiohttp.test_utils import TestClient as _TestClient
 from aiohttp.test_utils import TestServer as _TestServer
-from aiohttp.test_utils import (AioHTTPTestCase, loop_context,
+from aiohttp.test_utils import (AioHTTPTestCase, RawTestServer, loop_context,
                                 make_mocked_request, setup_test_loop,
                                 teardown_test_loop, unittest_run_loop)
 
@@ -266,3 +266,12 @@ def test_client_host_mutually_exclusive_with_server(loop):
 def test_client_unsupported_arg():
     with pytest.raises(TypeError):
         _TestClient('string')
+
+
+def test_raw_server_implicit_loop(loop):
+    @asyncio.coroutine
+    def handler(request):
+        pass
+    asyncio.set_event_loop(loop)
+    srv = RawTestServer(handler)
+    assert srv._loop is loop

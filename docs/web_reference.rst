@@ -1360,10 +1360,16 @@ RequestHandlerFactory
 
          .. versionadded:: 1.0
 
-      .. coroutinemethod:: RequestHandlerFactory.finish_connections(timeout)
+      .. coroutinemethod:: RequestHandlerFactory.shutdown(timeout)
 
          A :ref:`coroutine<coroutine>` that should be called to close all opened
          connections.
+
+      .. coroutinemethod:: RequestHandlerFactory.finish_connections(timeout)
+
+         .. deprecated:: 1.2
+
+         A deprecated alias for :meth:`shutdown`.
 
 
 Router
