@@ -315,7 +315,8 @@ class Request(collections.MutableMapping, HeadersMixin):
     def http_range(self, *, _RANGE=hdrs.RANGE):
         """
         The content of Range HTTP header.
-        :returns tuple (start, end): values that can be used for slice eg. content[start:end]
+        :returns tuple (start, end): values that can be used for slice
+                                     eg. content[start:end]
        """
         rng = self.headers.get(_RANGE)
         start, end = None, None
@@ -329,12 +330,14 @@ class Request(collections.MutableMapping, HeadersMixin):
             if end is not None:
                 end = int(end)
                 if start is None:
-                    end = -end # end with no start is to return tail of content
+                    # end with no start is to return tail of content
+                    end = -end
 
             if start is not None:
                 start = int(start)
                 if end is not None:
-                    end += 1 # end is inclusive in range header, exclusive in slice
+                    # end is inclusive in range header, exclusive in slice
+                    end += 1
 
             if start is end is None:  # No valid range supplied
                 raise ValueError('No start or end of range specified')

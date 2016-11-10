@@ -8,6 +8,7 @@ from .web_reqrep import StreamResponse
 from .web_exceptions import (HTTPOk, HTTPPartialContent,
                              HTTPRequestRangeNotSatisfiable, HTTPNotModified)
 
+
 class FileSender:
     """"A helper that can be used to send files.
     """
@@ -164,7 +165,7 @@ class FileSender:
 
         # If a range request has been made, convert start, end slice notation
         # into file pointer offset and count
-        if start is not end is not None:
+        if start is not None or end is not None:
             status = HTTPPartialContent.status_code
             if start is None:  # return tail of file
                 if end < 0:
