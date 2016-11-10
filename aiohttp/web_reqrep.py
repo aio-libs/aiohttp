@@ -10,6 +10,7 @@ import json
 import math
 import time
 import warnings
+import re
 from email.utils import parsedate
 from types import MappingProxyType
 
@@ -309,6 +310,35 @@ class Request(collections.MutableMapping, HeadersMixin):
         parsed = http.cookies.SimpleCookie(raw)
         return MappingProxyType(
             {key: val.value for key, val in parsed.items()})
+
+    @property
+    def http_range(self, *, _RANGE=hdrs.RANGE):
+        """
+        The content of Range HTTP header.
+        :returns tuple (start, end): values that can be used for slice eg. content[start:end]
+       """
+        rng = self.headers.get(_RANGE)
+        start, end = None, None
+        if rng is not None:
+            try:
+                pattern = r'bytes=(\d*)-(\d*)'
+                start, end = re.findall(pattern, rng)[0]
+            except IndexError:  # pattern was not found in header
+                raise ValueError("range not in acceptible format")
+
+            if end is not None:
+                end = int(end)
+                if start is None:
+                    end = -end # end with no start is to return tail of content
+
+            if start is not None:
+                start = int(start)
+                if end is not None:
+                    end += 1 # end is inclusive in range header, exclusive in slice
+
+            if start is end is None:  # No valid range supplied
+                raise ValueError('No start or end of range specified')
+        return start, end
 
     @property
     def content(self):
