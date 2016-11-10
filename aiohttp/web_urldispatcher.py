@@ -76,6 +76,9 @@ class AbstractResource(Sized, Iterable):
     def get_info(self):
         """Return a dict with additional info useful for introspection"""
 
+    def freeze(self):
+        pass
+
 
 class AbstractRoute(abc.ABC):
 
@@ -288,6 +291,10 @@ class PlainResource(Resource):
         super().__init__(name=name)
         assert not path or path.startswith('/')
         self._path = path
+
+    def freeze(self):
+        if not self._path:
+            self._path = '/'
 
     def add_prefix(self, prefix):
         assert prefix.startswith('/')
@@ -878,15 +885,19 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         return self.add_route(hdrs.METH_DELETE, *args, **kwargs)
 
     def add_subapp(self, prefix, subapp):
-        assert prefix.startswith('/')
-        if prefix.endswith('/'):
-            prefix = prefix[:-1]
-        if prefix == '/':
-            raise ValueError("Prefix cannot be empty")
         if subapp.frozen:
             raise RuntimeError("Cannod add frozen application")
+        if prefix.endswith('/'):
+            prefix = prefix[:-1]
+        if prefix in ('', '/'):
+            raise ValueError("Prefix cannot be empty")
         resource = PrefixedSubAppResource(prefix, subapp)
         self._reg_resource(resource)
         self._app._reg_subapp_signals(subapp)
         subapp.freeze()
         return resource
+
+    def freeze(self):
+        super().freeze()
+        for resource in self._resources:
+            resource.freeze()

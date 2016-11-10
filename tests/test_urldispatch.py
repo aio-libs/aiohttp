@@ -989,3 +989,25 @@ def test_set_options_route(router):
 def test_dynamic_url_with_name_started_from_undescore(router):
     route = router.add_route('GET', '/get/{_name}', make_handler())
     assert URL('/get/John') == route.url_for(_name='John')
+
+
+def test_cannot_add_subapp_with_empty_prefix(router, loop):
+    subapp = web.Application(loop=loop)
+    with pytest.raises(ValueError):
+        router.add_subapp('', subapp)
+
+
+def test_cannot_add_subapp_with_slash_prefix(router, loop):
+    subapp = web.Application(loop=loop)
+    with pytest.raises(ValueError):
+        router.add_subapp('/', subapp)
+
+
+@asyncio.coroutine
+def test_convert_empty_path_to_slash_on_freezing(router):
+    handler = make_handler()
+    route = router.add_get('', handler)
+    resource = route.resource
+    assert resource.get_info() == {'path': ''}
+    router.freeze()
+    assert resource.get_info() == {'path': '/'}
