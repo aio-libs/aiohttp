@@ -327,17 +327,19 @@ class Request(collections.MutableMapping, HeadersMixin):
             except IndexError:  # pattern was not found in header
                 raise ValueError("range not in acceptible format")
 
-            if end is not None:
-                end = int(end)
-                if start is None:
-                    # end with no start is to return tail of content
-                    end = -end
+            end = int(end) if end else None
+            start = int(start) if start else None
 
-            if start is not None:
-                start = int(start)
-                if end is not None:
-                    # end is inclusive in range header, exclusive in slice
-                    end += 1
+            if start is None and end is not None:
+                # end with no start is to return tail of content
+                end = -end
+
+            if start is not None and end is not None:
+                # end is inclusive in range header, exclusive for slice
+                end += 1
+
+                if start > end:
+                    raise ValueError('start cannot be after end')
 
             if start is end is None:  # No valid range supplied
                 raise ValueError('No start or end of range specified')
