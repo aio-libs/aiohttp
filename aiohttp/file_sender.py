@@ -3,9 +3,10 @@ import mimetypes
 import os
 
 from . import hdrs
-from .helpers import create_future, parse_range_header
+from .helpers import create_future
 from .web_reqrep import StreamResponse
-
+from .web_exceptions import (HTTPOk, HTTPPartialContent,
+                             HTTPRequestRangeNotSatisfiable, HTTPNotModified)
 
 class FileSender:
     """"A helper that can be used to send files.
@@ -146,15 +147,36 @@ class FileSender:
 
         modsince = request.if_modified_since
         if modsince is not None and st.st_mtime <= modsince.timestamp():
-            from .web_exceptions import HTTPNotModified
             raise HTTPNotModified()
 
         ct, encoding = mimetypes.guess_type(str(filepath))
         if not ct:
             ct = 'application/octet-stream'
 
+        status = HTTPOk.status_code
         file_size = st.st_size
-        status, start, end = parse_range_header(request, file_size)
+        count = file_size
+
+        try:
+            start, end = request.http_range
+        except ValueError:
+            raise HTTPRequestRangeNotSatisfiable
+
+        # If a range request has been made, convert start, end slice notation
+        # into file pointer offset and count
+        if start is not end is not None:
+            status = HTTPPartialContent.status_code
+            if start is None:  # return tail of file
+                if end < 0:
+                    start = file_size + end
+                    count = -end
+                else:
+                    raise HTTPRequestRangeNotSatisfiable
+            else:
+                count = (end or file_size) - start
+
+            if start + count > file_size:
+                raise HTTPRequestRangeNotSatisfiable
 
         resp = self._response_factory(status=status)
         resp.content_type = ct
@@ -162,10 +184,10 @@ class FileSender:
             resp.headers[hdrs.CONTENT_ENCODING] = encoding
         resp.last_modified = st.st_mtime
 
-        count = end - start + 1
         resp.content_length = count
         with filepath.open('rb') as f:
-            f.seek(start)
+            if start:
+                f.seek(start)
             yield from self._sendfile(request, resp, f, count)
 
         return resp
