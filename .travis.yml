@@ -12,7 +12,7 @@ python:
 
 os:
   - linux
-  - osx
+#   - osx   # doesn't work on MacOSX -- the system has no Python installed
 
 matrix:
   allow_failures:
