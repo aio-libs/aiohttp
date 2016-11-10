@@ -418,19 +418,19 @@ def test_contains(router):
 def test_static_repr(router):
     router.add_static('/get', os.path.dirname(aiohttp.__file__),
                       name='name')
-    assert re.match(r"<StaticResource 'name' /get/", repr(router['name']))
+    assert re.match(r"<StaticResource 'name' /get", repr(router['name']))
 
 
 def test_static_adds_slash(router):
     route = router.add_static('/prefix',
                               os.path.dirname(aiohttp.__file__))
-    assert '/prefix/' == route._prefix
+    assert '/prefix' == route._prefix
 
 
-def test_static_dont_add_trailing_slash(router):
+def test_static_remove_trailing_slash(router):
     route = router.add_static('/prefix/',
                               os.path.dirname(aiohttp.__file__))
-    assert '/prefix/' == route._prefix
+    assert '/prefix' == route._prefix
 
 
 @asyncio.coroutine
@@ -805,7 +805,7 @@ def test_static_resource_get_info(router):
     directory = pathlib.Path(aiohttp.__file__).parent
     resource = router.add_static('/st', directory)
     assert resource.get_info() == {'directory': directory,
-                                   'prefix': '/st/'}
+                                   'prefix': '/st'}
 
 
 @asyncio.coroutine
@@ -910,7 +910,7 @@ def test_url_for_in_resource_route(router):
 def test_subapp_get_info(router, loop):
     subapp = web.Application(loop=loop)
     resource = router.add_subapp('/pre', subapp)
-    assert resource.get_info() == {'prefix': '/pre/', 'app': subapp}
+    assert resource.get_info() == {'prefix': '/pre', 'app': subapp}
 
 
 def test_subapp_url(router, loop):
@@ -931,7 +931,7 @@ def test_subapp_repr(router, loop):
     subapp = web.Application(loop=loop)
     resource = router.add_subapp('/pre', subapp)
     assert repr(resource).startswith(
-        '<PrefixedSubAppResource /pre/ -> <Application')
+        '<PrefixedSubAppResource /pre -> <Application')
 
 
 def test_subapp_len(router, loop):

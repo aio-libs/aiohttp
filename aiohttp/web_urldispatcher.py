@@ -286,14 +286,14 @@ class PlainResource(Resource):
 
     def __init__(self, path, *, name=None):
         super().__init__(name=name)
-        assert path.startswith('/')
+        assert not path or path.startswith('/')
         self._path = path
 
     def add_prefix(self, prefix):
         assert prefix.startswith('/')
-        assert prefix.endswith('/')
+        assert not prefix.endswith('/')
         assert len(prefix) > 1
-        self._path = prefix + self._path[1:]
+        self._path = prefix + self._path
 
     def _match(self, path):
         # string comparison is about 10 times faster than regexp matching
@@ -329,10 +329,10 @@ class DynamicResource(Resource):
 
     def add_prefix(self, prefix):
         assert prefix.startswith('/')
-        assert prefix.endswith('/')
+        assert not prefix.endswith('/')
         assert len(prefix) > 1
-        self._pattern = re.compile(re.escape(prefix)+self._pattern.pattern[2:])
-        self._formatter = prefix + self._formatter[1:]
+        self._pattern = re.compile(re.escape(prefix)+self._pattern.pattern)
+        self._formatter = prefix + self._formatter
 
     def _match(self, path):
         match = self._pattern.fullmatch(path)
@@ -363,18 +363,16 @@ class DynamicResource(Resource):
 class PrefixResource(AbstractResource):
 
     def __init__(self, prefix, *, name=None):
-        assert prefix.startswith('/'), prefix
-        assert prefix.endswith('/'), prefix
+        assert not prefix or prefix.startswith('/'), prefix
+        assert prefix in ('', '/') or not prefix.endswith('/'), prefix
         super().__init__(name=name)
         self._prefix = quote(prefix, safe='/')
-        self._prefix_len = len(self._prefix)
 
     def add_prefix(self, prefix):
         assert prefix.startswith('/')
-        assert prefix.endswith('/')
+        assert not prefix.endswith('/')
         assert len(prefix) > 1
-        self._prefix = prefix + self._prefix[1:]
-        self._prefix_len = len(self._prefix)
+        self._prefix = prefix + self._prefix
 
 
 class StaticResource(PrefixResource):
@@ -415,6 +413,7 @@ class StaticResource(PrefixResource):
             filename = str(filename)
         while filename.startswith('/'):
             filename = filename[1:]
+        filename = '/' + filename
         url = self._prefix + quote(filename, safe='/')
         return URL(url)
 
@@ -440,7 +439,7 @@ class StaticResource(PrefixResource):
         if method not in allowed_methods:
             return None, allowed_methods
 
-        match_dict = {'filename': unquote(path[self._prefix_len:])}
+        match_dict = {'filename': unquote(path[len(self._prefix)+1:])}
         return (UrlMappingMatchInfo(match_dict, self._routes[method]),
                 allowed_methods)
         yield  # pragma: no cover
@@ -775,8 +774,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         self._resources.append(resource)
 
     def add_resource(self, path, *, name=None):
-        if not path.startswith('/'):
-            raise ValueError("path should be started with /")
+        if path and not path.startswith('/'):
+            raise ValueError("path should be started with / or be empty")
         if not ('{' in path or '}' in path or self.ROUTE_RE.search(path)):
             resource = PlainResource(quote(path, safe='/'), name=name)
             self._reg_resource(resource)
@@ -830,8 +829,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         """
         # TODO: implement via PrefixedResource, not ResourceAdapter
         assert prefix.startswith('/')
-        if not prefix.endswith('/'):
-            prefix += '/'
+        if prefix.endswith('/'):
+            prefix = prefix[:-1]
         resource = StaticResource(prefix, path,
                                   name=name,
                                   expect_handler=expect_handler,
@@ -880,8 +879,10 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     def add_subapp(self, prefix, subapp):
         assert prefix.startswith('/')
-        if not prefix.endswith('/'):
-            prefix += '/'
+        if prefix.endswith('/'):
+            prefix = prefix[:-1]
+        if prefix == '/':
+            raise ValueError("Prefix cannot be empty")
         if subapp.frozen:
             raise RuntimeError("Cannod add frozen application")
         resource = PrefixedSubAppResource(prefix, subapp)
