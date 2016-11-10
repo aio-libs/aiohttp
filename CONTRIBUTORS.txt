@@ -37,6 +37,7 @@ Chih-Yuan Chen
 Chris AtLee
 Chris Laws
 Chris Moore
+Christopher Schmitt
 Daniel García
 Daniel Nelson
 Danny Song
