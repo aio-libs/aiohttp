@@ -32,6 +32,10 @@ CHANGES
 
 -
 
+1.1.3 (2016-11-10)
+------------------
+
+- Support *root* resources for sub-applications #1379
 
 
 1.1.2 (2016-11-08)

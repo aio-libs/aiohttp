@@ -955,7 +955,7 @@ connect it to main app with prefix by
    admin = web.Application()
    # setup admin routes, signals and middlewares
 
-   app.add_subapp('/admin/', admin)
+   app.router.add_subapp('/admin/', admin)
 
 Middlewares and signals from ``app`` and ``admin`` are chained.
 
@@ -983,9 +983,9 @@ Url reversing for sub-applications should generate urls with proper prefix.
 But for getting URL sub-application's router should be used::
 
    admin = web.Application()
-   admin.add_get('/resource', handler, name='name')
+   admin.router.add_get('/resource', handler, name='name')
 
-   app.add_subapp('/admin/', admin)
+   app.router.add_subapp('/admin/', admin)
 
    url = admin.router['name'].url_for()
 
