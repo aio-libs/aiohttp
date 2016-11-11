@@ -424,11 +424,21 @@ def test_static_file_invalid_range(loop, test_client, sender):
     resp.close()
 
     # start > end
-    resp = yield from client.get('/', headers={'Range': 'bytes=10-5'})
+    resp = yield from client.get('/', headers={'Range': 'bytes=100-0'})
+    assert resp.status == 416, "Range start can't be greater than end"
+    resp.close()
+
+    # start > end
+    resp = yield from client.get('/', headers={'Range': 'bytes=10-9'})
     assert resp.status == 416, "Range start can't be greater than end"
     resp.close()
 
     # non-number range
     resp = yield from client.get('/', headers={'Range': 'bytes=a-f'})
     assert resp.status == 416, 'Range must be integers'
+    resp.close()
+
+    # double dash range
+    resp = yield from client.get('/', headers={'Range': 'bytes=0--10'})
+    assert resp.status == 416, 'double dash in range'
     resp.close()

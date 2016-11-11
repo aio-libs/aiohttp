@@ -322,7 +322,7 @@ class Request(collections.MutableMapping, HeadersMixin):
         start, end = None, None
         if rng is not None:
             try:
-                pattern = r'bytes=(\d*)-(\d*)'
+                pattern = r'^bytes=(\d*)-(\d*)$'
                 start, end = re.findall(pattern, rng)[0]
             except IndexError:  # pattern was not found in header
                 raise ValueError("range not in acceptible format")
@@ -338,7 +338,7 @@ class Request(collections.MutableMapping, HeadersMixin):
                 # end is inclusive in range header, exclusive for slice
                 end += 1
 
-                if start > end:
+                if start >= end:
                     raise ValueError('start cannot be after end')
 
             if start is end is None:  # No valid range supplied
