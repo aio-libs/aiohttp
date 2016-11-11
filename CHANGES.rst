@@ -8,7 +8,7 @@ CHANGES
   (former `RequestHandlerFactory`), introduce new low-level web server
   which is not coupled with `web.Application` and routing #1362
 
--
+- Make `TestServer.make_url` compatible with yarl.URL #1389
 
 -
 
