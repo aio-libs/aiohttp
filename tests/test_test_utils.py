@@ -3,6 +3,7 @@ from unittest import mock
 
 import pytest
 from multidict import CIMultiDict, CIMultiDictProxy
+from yarl import URL
 
 import aiohttp
 from aiohttp import web, web_reqrep
@@ -266,3 +267,9 @@ def test_client_host_mutually_exclusive_with_server(loop):
 def test_client_unsupported_arg():
     with pytest.raises(TypeError):
         _TestClient('string')
+
+
+def test_server_make_url_yarl_compatibility(loop):
+    app = _create_example_app(loop)
+    make_url = _TestServer(app).make_url
+    assert make_url(URL('/')) == make_url('/')

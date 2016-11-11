@@ -74,6 +74,8 @@ class TestServer:
                                                           ssl=self._ssl)
 
     def make_url(self, path):
+        if isinstance(path, URL):
+            path = str(path)
         assert path.startswith('/')
         return URL(str(self._root) + path)
 
