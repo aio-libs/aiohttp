@@ -76,6 +76,9 @@ class AbstractResource(Sized, Iterable):
     def get_info(self):
         """Return a dict with additional info useful for introspection"""
 
+    def freeze(self):
+        pass
+
 
 class AbstractRoute(abc.ABC):
 
@@ -273,6 +276,8 @@ class Resource(AbstractResource):
         else:
             return None, allowed_methods
 
+        yield  # pragma: no cover
+
     def __len__(self):
         return len(self._routes)
 
@@ -284,14 +289,18 @@ class PlainResource(Resource):
 
     def __init__(self, path, *, name=None):
         super().__init__(name=name)
-        assert path.startswith('/')
+        assert not path or path.startswith('/')
         self._path = path
+
+    def freeze(self):
+        if not self._path:
+            self._path = '/'
 
     def add_prefix(self, prefix):
         assert prefix.startswith('/')
-        assert prefix.endswith('/')
+        assert not prefix.endswith('/')
         assert len(prefix) > 1
-        self._path = prefix + self._path[1:]
+        self._path = prefix + self._path
 
     def _match(self, path):
         # string comparison is about 10 times faster than regexp matching
@@ -327,10 +336,10 @@ class DynamicResource(Resource):
 
     def add_prefix(self, prefix):
         assert prefix.startswith('/')
-        assert prefix.endswith('/')
+        assert not prefix.endswith('/')
         assert len(prefix) > 1
-        self._pattern = re.compile(re.escape(prefix)+self._pattern.pattern[2:])
-        self._formatter = prefix + self._formatter[1:]
+        self._pattern = re.compile(re.escape(prefix)+self._pattern.pattern)
+        self._formatter = prefix + self._formatter
 
     def _match(self, path):
         match = self._pattern.fullmatch(path)
@@ -361,18 +370,16 @@ class DynamicResource(Resource):
 class PrefixResource(AbstractResource):
 
     def __init__(self, prefix, *, name=None):
-        assert prefix.startswith('/'), prefix
-        assert prefix.endswith('/'), prefix
+        assert not prefix or prefix.startswith('/'), prefix
+        assert prefix in ('', '/') or not prefix.endswith('/'), prefix
         super().__init__(name=name)
         self._prefix = quote(prefix, safe='/')
-        self._prefix_len = len(self._prefix)
 
     def add_prefix(self, prefix):
         assert prefix.startswith('/')
-        assert prefix.endswith('/')
+        assert not prefix.endswith('/')
         assert len(prefix) > 1
-        self._prefix = prefix + self._prefix[1:]
-        self._prefix_len = len(self._prefix)
+        self._prefix = prefix + self._prefix
 
 
 class StaticResource(PrefixResource):
@@ -413,6 +420,7 @@ class StaticResource(PrefixResource):
             filename = str(filename)
         while filename.startswith('/'):
             filename = filename[1:]
+        filename = '/' + filename
         url = self._prefix + quote(filename, safe='/')
         return URL(url)
 
@@ -438,9 +446,10 @@ class StaticResource(PrefixResource):
         if method not in allowed_methods:
             return None, allowed_methods
 
-        match_dict = {'filename': unquote(path[self._prefix_len:])}
+        match_dict = {'filename': unquote(path[len(self._prefix)+1:])}
         return (UrlMappingMatchInfo(match_dict, self._routes[method]),
                 allowed_methods)
+        yield  # pragma: no cover
 
     def __len__(self):
         return len(self._routes)
@@ -694,12 +703,12 @@ class RoutesView(Sized, Iterable, Container):
 
 class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
-    DYN = re.compile(r'\{(?P<var>[a-zA-Z][_a-zA-Z0-9]*)\}')
+    DYN = re.compile(r'\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*)\}')
     DYN_WITH_RE = re.compile(
-        r'\{(?P<var>[a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}')
+        r'\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}')
     GOOD = r'[^{}/]+'
     ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
-    NAME_SPLIT_RE = re.compile('[.:-]')
+    NAME_SPLIT_RE = re.compile(r'[.:-]')
 
     def __init__(self, app):
         super().__init__()
@@ -772,8 +781,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         self._resources.append(resource)
 
     def add_resource(self, path, *, name=None):
-        if not path.startswith('/'):
-            raise ValueError("path should be started with /")
+        if path and not path.startswith('/'):
+            raise ValueError("path should be started with / or be empty")
         if not ('{' in path or '}' in path or self.ROUTE_RE.search(path)):
             resource = PlainResource(quote(path, safe='/'), name=name)
             self._reg_resource(resource)
@@ -827,8 +836,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         """
         # TODO: implement via PrefixedResource, not ResourceAdapter
         assert prefix.startswith('/')
-        if not prefix.endswith('/'):
-            prefix += '/'
+        if prefix.endswith('/'):
+            prefix = prefix[:-1]
         resource = StaticResource(prefix, path,
                                   name=name,
                                   expect_handler=expect_handler,
@@ -876,13 +885,19 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         return self.add_route(hdrs.METH_DELETE, *args, **kwargs)
 
     def add_subapp(self, prefix, subapp):
-        assert prefix.startswith('/')
-        if not prefix.endswith('/'):
-            prefix += '/'
         if subapp.frozen:
             raise RuntimeError("Cannod add frozen application")
+        if prefix.endswith('/'):
+            prefix = prefix[:-1]
+        if prefix in ('', '/'):
+            raise ValueError("Prefix cannot be empty")
         resource = PrefixedSubAppResource(prefix, subapp)
         self._reg_resource(resource)
         self._app._reg_subapp_signals(subapp)
         subapp.freeze()
         return resource
+
+    def freeze(self):
+        super().freeze()
+        for resource in self._resources:
+            resource.freeze()

@@ -4,6 +4,7 @@ import asyncio
 import os
 import re
 import signal
+import socket
 import ssl
 import sys
 
@@ -73,7 +74,7 @@ class GunicornWebWorker(base.Worker):
 
             # stop alive connections
             tasks = [
-                handler.finish_connections(
+                handler.shutdown(
                     timeout=self.cfg.graceful_timeout / 100 * 95)
                 for handler in servers.values()]
             yield from asyncio.gather(*tasks, loop=self.loop)
@@ -88,8 +89,13 @@ class GunicornWebWorker(base.Worker):
 
         for sock in self.sockets:
             handler = self.make_handler(self.wsgi)
-            srv = yield from self.loop.create_server(handler, sock=sock.sock,
-                                                     ssl=ctx)
+
+            if hasattr(socket, 'AF_UNIX') and sock.family == socket.AF_UNIX:
+                srv = yield from self.loop.create_unix_server(
+                    handler, sock=sock.sock, ssl=ctx)
+            else:
+                srv = yield from self.loop.create_server(
+                    handler, sock=sock.sock, ssl=ctx)
             self.servers[srv] = handler
 
         # If our parent changed then we shut down.

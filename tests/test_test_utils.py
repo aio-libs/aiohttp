@@ -9,7 +9,7 @@ import aiohttp
 from aiohttp import web, web_reqrep
 from aiohttp.test_utils import TestClient as _TestClient
 from aiohttp.test_utils import TestServer as _TestServer
-from aiohttp.test_utils import (AioHTTPTestCase, loop_context,
+from aiohttp.test_utils import (AioHTTPTestCase, RawTestServer, loop_context,
                                 make_mocked_request, setup_test_loop,
                                 teardown_test_loop, unittest_run_loop)
 
@@ -273,3 +273,12 @@ def test_server_make_url_yarl_compatibility(loop):
     app = _create_example_app(loop)
     make_url = _TestServer(app).make_url
     assert make_url(URL('/')) == make_url('/')
+
+
+def test_raw_server_implicit_loop(loop):
+    @asyncio.coroutine
+    def handler(request):
+        pass
+    asyncio.set_event_loop(loop)
+    srv = RawTestServer(handler)
+    assert srv._loop is loop

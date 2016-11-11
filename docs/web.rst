@@ -955,7 +955,7 @@ connect it to main app with prefix by
    admin = web.Application()
    # setup admin routes, signals and middlewares
 
-   app.add_subapp('/admin/', admin)
+   app.router.add_subapp('/admin/', admin)
 
 Middlewares and signals from ``app`` and ``admin`` are chained.
 
@@ -983,9 +983,9 @@ Url reversing for sub-applications should generate urls with proper prefix.
 But for getting URL sub-application's router should be used::
 
    admin = web.Application()
-   admin.add_get('/resource', handler, name='name')
+   admin.router.add_get('/resource', handler, name='name')
 
-   app.add_subapp('/admin/', admin)
+   app.router.add_subapp('/admin/', admin)
 
    url = admin.router['name'].url_for()
 
@@ -1095,7 +1095,7 @@ Proper finalization procedure has three steps:
   2. Fire :meth:`Application.shutdown` event.
 
   3. Close accepted connections from clients by
-     :meth:`RequestHandlerFactory.finish_connections` call with
+     :meth:`RequestHandlerFactory.shutdown` call with
      reasonable small delay.
 
   4. Call registered application finalizers by :meth:`Application.cleanup`.
@@ -1116,7 +1116,7 @@ finalizing.  It's pretty close to :func:`run_app` utility function::
        srv.close()
        loop.run_until_complete(srv.wait_closed())
        loop.run_until_complete(app.shutdown())
-       loop.run_until_complete(handler.finish_connections(60.0))
+       loop.run_until_complete(handler.shutdown(60.0))
        loop.run_until_complete(app.cleanup())
    loop.close()
 

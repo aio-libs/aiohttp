@@ -1,6 +1,7 @@
 """Tests for aiohttp/worker.py"""
 import asyncio
 import pathlib
+import socket
 import ssl
 from unittest import mock
 
@@ -157,6 +158,44 @@ def test__run_ok(worker, loop):
     assert ctx is ssl_context
 
 
+@pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
+                    reason="UNIX sockets are not supported")
+@asyncio.coroutine
+def test__run_ok_unix_socket(worker, loop):
+    worker.ppid = 1
+    worker.alive = True
+    worker.servers = {}
+    sock = mock.Mock()
+    sock.cfg_addr = ('/path/to')
+    sock.family = socket.AF_UNIX
+    worker.sockets = [sock]
+    worker.wsgi = mock.Mock()
+    worker.close = make_mocked_coro(None)
+    worker.log = mock.Mock()
+    worker.loop = loop
+    loop.create_unix_server = make_mocked_coro(sock)
+    worker.wsgi.make_handler.return_value.requests_count = 1
+    worker.cfg.max_requests = 100
+    worker.cfg.is_ssl = True
+    worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
+
+    ssl_context = mock.Mock()
+    with mock.patch('ssl.SSLContext', return_value=ssl_context):
+        with mock.patch('aiohttp.worker.asyncio') as m_asyncio:
+            m_asyncio.sleep = mock.Mock(
+                wraps=asyncio.coroutine(lambda *a, **kw: None))
+            yield from worker._run()
+
+    worker.notify.assert_called_with()
+    worker.log.info.assert_called_with("Parent changed, shutting down: %s",
+                                       worker)
+
+    args, kwargs = loop.create_unix_server.call_args
+    assert 'ssl' in kwargs
+    ctx = kwargs['ssl']
+    assert ctx is ssl_context
+
+
 @asyncio.coroutine
 def test__run_exc(worker, loop):
     with mock.patch('aiohttp.worker.os') as m_os:
@@ -199,8 +238,8 @@ def test_close(worker, loop):
     app = worker.wsgi = mock.Mock()
     app.cleanup = make_mocked_coro(None)
     handler.connections = [object()]
-    handler.finish_connections.return_value = helpers.create_future(loop)
-    handler.finish_connections.return_value.set_result(1)
+    handler.shutdown.return_value = helpers.create_future(loop)
+    handler.shutdown.return_value.set_result(1)
 
     app.shutdown.return_value = helpers.create_future(loop)
     app.shutdown.return_value.set_result(None)
@@ -208,7 +247,7 @@ def test_close(worker, loop):
     yield from worker.close()
     app.shutdown.assert_called_with()
     app.cleanup.assert_called_with()
-    handler.finish_connections.assert_called_with(timeout=95.0)
+    handler.shutdown.assert_called_with(timeout=95.0)
     srv.close.assert_called_with()
     assert worker.servers is None
 
