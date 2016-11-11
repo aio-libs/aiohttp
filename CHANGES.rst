@@ -32,6 +32,12 @@ CHANGES
 
 -
 
+1.1.4 (2016-11-XX)
+------------------
+
+- Make `TestServer.make_url` compatible with `yarl.URL` #1389
+
+
 1.1.3 (2016-11-10)
 ------------------
 
