@@ -74,8 +74,9 @@ class TestServer:
                                                           ssl=self._ssl)
 
     def make_url(self, path):
-        assert path.startswith('/')
-        return URL(str(self._root) + path)
+        url = URL(path)
+        assert not url.is_absolute()
+        return self._root.join(url)
 
     @asyncio.coroutine
     def close(self):
