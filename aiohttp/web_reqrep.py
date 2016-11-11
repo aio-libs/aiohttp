@@ -8,9 +8,9 @@ import http.cookies
 import io
 import json
 import math
+import re
 import time
 import warnings
-import re
 from email.utils import parsedate
 from types import MappingProxyType
 

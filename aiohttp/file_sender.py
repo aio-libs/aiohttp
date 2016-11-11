@@ -4,9 +4,9 @@ import os
 
 from . import hdrs
 from .helpers import create_future
+from .web_exceptions import (HTTPNotModified, HTTPOk, HTTPPartialContent,
+                             HTTPRequestRangeNotSatisfiable)
 from .web_reqrep import StreamResponse
-from .web_exceptions import (HTTPOk, HTTPPartialContent,
-                             HTTPRequestRangeNotSatisfiable, HTTPNotModified)
 
 
 class FileSender:
