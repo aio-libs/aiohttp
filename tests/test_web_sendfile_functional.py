@@ -442,3 +442,8 @@ def test_static_file_invalid_range(loop, test_client, sender):
     resp = yield from client.get('/', headers={'Range': 'bytes=0--10'})
     assert resp.status == 416, 'double dash in range'
     resp.close()
+
+    # no range
+    resp = yield from client.get('/', headers={'Range': 'bytes=-'})
+    assert resp.status == 416, 'no range given'
+    resp.close()
