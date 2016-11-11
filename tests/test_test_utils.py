@@ -271,8 +271,13 @@ def test_client_unsupported_arg():
 
 def test_server_make_url_yarl_compatibility(loop):
     app = _create_example_app(loop)
-    make_url = _TestServer(app).make_url
-    assert make_url(URL('/')) == make_url('/')
+    with _TestServer(app) as server:
+        make_url = server.make_url
+        assert make_url(URL('/foo')) == make_url('/foo')
+        with pytest.raises(AssertionError):
+            make_url('http://foo.com')
+        with pytest.raises(AssertionError):
+            make_url(URL('http://foo.com'))
 
 
 def test_raw_server_implicit_loop(loop):
