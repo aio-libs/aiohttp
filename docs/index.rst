@@ -207,6 +207,7 @@ Contents
    testing
    deployment
    faq
+   third_party
    essays
    contributing
    changes
