@@ -342,24 +342,44 @@ def test_static_file_range(loop, test_client, sender):
         content = f.read()
 
     # Ensure the whole file requested in parts is correct
-    resp = yield from client.get('/', headers={'Range': 'bytes=0-999'})
-    assert resp.status == 206, resp.reason
-    body1 = yield from resp.read()
-    assert len(body1) == 1000
-    resp.close()
+    responses = yield from asyncio.gather(
+        client.get('/', headers={'Range': 'bytes=0-999'}),
+        client.get('/', headers={'Range': 'bytes=1000-1999'}),
+        client.get('/', headers={'Range': 'bytes=2000-'}),
+        loop=loop
+    )
+    assert len(responses) == 3
+    assert responses[0].status == 206, "failed 'bytes=0-999': %s" % responses[0].reason
+    assert responses[1].status == 206, "failed 'bytes=1000-1999': %s" % responses[1].reason
+    assert responses[2].status == 206, "failed 'bytes=2000-': %s" % responses[2].reason
 
-    resp = yield from client.get('/', headers={'Range': 'bytes=1000-1999'})
-    assert resp.status == 206, resp.reason
-    body2 = yield from resp.read()
-    assert len(body2) == 1000
-    resp.close()
+    body = yield from asyncio.gather(*(resp.read() for resp in responses), loop=loop)
 
-    resp = yield from client.get('/', headers={'Range': 'bytes=2000-'})
-    assert resp.status == 206, resp.reason
-    body3 = yield from resp.read()
-    resp.close()
+    assert len(body[0]) == 1000, "failed 'bytes=0-999', received length was %d" % len(body[0])
+    assert len(body[1]) == 1000, "failed 'bytes=1000-1999', received length was %d" % len(body[1])
+    responses[0].close()
+    responses[1].close()
+    responses[2].close()
 
-    assert content == (body1 + body2 + body3)
+    assert content == b"".join(body)
+
+
+@asyncio.coroutine
+def test_static_file_range_tail(loop, test_client, sender):
+    filepath = (pathlib.Path(__file__).parent /
+                'software_development_in_picture.jpg')
+
+    @asyncio.coroutine
+    def handler(request):
+        resp = yield from sender(chunk_size=16).send(request, filepath)
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    with filepath.open('rb') as f:
+        content = f.read()
 
     # Ensure the tail of the file is correct
     resp = yield from client.get('/', headers={'Range': 'bytes=-500'})
