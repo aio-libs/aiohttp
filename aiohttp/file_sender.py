@@ -167,12 +167,9 @@ class FileSender:
         # into file pointer offset and count
         if start is not None or end is not None:
             status = HTTPPartialContent.status_code
-            if start is None:  # return tail of file
-                if end < 0:
-                    start = file_size + end
-                    count = -end
-                else:
-                    raise HTTPRequestRangeNotSatisfiable
+            if start is None and end < 0:  # return tail of file
+                start = file_size + end
+                count = -end
             else:
                 count = (end or file_size) - start
 
