@@ -349,14 +349,22 @@ def test_static_file_range(loop, test_client, sender):
         loop=loop
     )
     assert len(responses) == 3
-    assert responses[0].status == 206, "failed 'bytes=0-999': %s" % responses[0].reason
-    assert responses[1].status == 206, "failed 'bytes=1000-1999': %s" % responses[1].reason
-    assert responses[2].status == 206, "failed 'bytes=2000-': %s" % responses[2].reason
+    assert responses[0].status == 206, \
+        "failed 'bytes=0-999': %s" % responses[0].reason
+    assert responses[1].status == 206, \
+        "failed 'bytes=1000-1999': %s" % responses[1].reason
+    assert responses[2].status == 206, \
+        "failed 'bytes=2000-': %s" % responses[2].reason
 
-    body = yield from asyncio.gather(*(resp.read() for resp in responses), loop=loop)
+    body = yield from asyncio.gather(
+        *(resp.read() for resp in responses),
+        loop=loop
+    )
 
-    assert len(body[0]) == 1000, "failed 'bytes=0-999', received length was %d" % len(body[0])
-    assert len(body[1]) == 1000, "failed 'bytes=1000-1999', received length was %d" % len(body[1])
+    assert len(body[0]) == 1000, \
+        "failed 'bytes=0-999', received %d bytes" % len(body[0])
+    assert len(body[1]) == 1000, \
+        "failed 'bytes=1000-1999', received %d bytes" % len(body[1])
     responses[0].close()
     responses[1].close()
     responses[2].close()
