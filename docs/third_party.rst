@@ -80,3 +80,5 @@ period ask to raise he status.
 
 - `aiohttp-cache <https://github.com/cr0hn/aiohttp-cache>`_ A cache
   system for aiohttp server.
+- `aiocache <https://github.com/argaen/aiocache>`_ Caching for asyncio
+  with multiple backends (framework agnostic)
