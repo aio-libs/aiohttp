@@ -205,8 +205,14 @@ class ClientSession:
                     if headers.get(hdrs.CONTENT_LENGTH):
                         headers.pop(hdrs.CONTENT_LENGTH)
 
-                r_url = URL(resp.headers.get(hdrs.LOCATION) or
-                            resp.headers.get(hdrs.URI))
+                r_url = (resp.headers.get(hdrs.LOCATION) or
+                         resp.headers.get(hdrs.URI))
+                if r_url is None:
+                    raise RuntimeError("{0.method} {0.url_obj} returns "
+                                       "a redirect [{0.status}] status "
+                                       "but response lacks a Location "
+                                       "or URI HTTP header".format(resp))
+                r_url = URL(r_url)
 
                 scheme = r_url.scheme
                 if scheme not in ('http', 'https', ''):

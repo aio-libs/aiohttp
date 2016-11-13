@@ -1696,3 +1696,21 @@ def test_redirect_to_absolute_url(loop, test_client):
     resp = yield from client.get('/redirect')
     assert 200 == resp.status
     resp.close()
+
+
+@asyncio.coroutine
+def test_redirect_without_location_header(loop, test_client):
+    @asyncio.coroutine
+    def handler_redirect(request):
+        return web.Response(status=301)
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/redirect', handler_redirect)
+    client = yield from test_client(app)
+
+    with pytest.raises(RuntimeError) as ctx:
+        yield from client.get('/redirect')
+    assert str(ctx.value) == ('GET http://127.0.0.1:{}/redirect returns '
+                              'a redirect [301] status but response lacks '
+                              'a Location or URI HTTP header'
+                              .format(client.port))
