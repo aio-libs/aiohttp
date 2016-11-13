@@ -92,45 +92,9 @@ class ClientSession:
                 context['source_traceback'] = self._source_traceback
             self._loop.call_exception_handler(context)
 
-    def request(self, method, url, *,
-                params=None,
-                data=None,
-                headers=None,
-                skip_auto_headers=None,
-                auth=None,
-                allow_redirects=True,
-                max_redirects=10,
-                encoding='utf-8',
-                version=None,
-                compress=None,
-                chunked=None,
-                expect100=False,
-                read_until_eof=True,
-                proxy=None,
-                proxy_auth=None,
-                timeout=5*60):
+    def request(self, method, url, **kwargs):
         """Perform HTTP request."""
-
-        return _RequestContextManager(
-            self._request(
-                method,
-                url,
-                params=params,
-                data=data,
-                headers=headers,
-                skip_auto_headers=skip_auto_headers,
-                auth=auth,
-                allow_redirects=allow_redirects,
-                max_redirects=max_redirects,
-                encoding=encoding,
-                version=version,
-                compress=compress,
-                chunked=chunked,
-                expect100=expect100,
-                read_until_eof=read_until_eof,
-                proxy=proxy,
-                proxy_auth=proxy_auth,
-                timeout=timeout))
+        return _RequestContextManager(self._request(method, url, **kwargs))
 
     @asyncio.coroutine
     def _request(self, method, url, *,
