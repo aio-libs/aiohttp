@@ -7,6 +7,9 @@ CHANGES
 
 - Make `TestServer.make_url` compatible with `yarl.URL` #1389
 
+- Generate informative exception on redirects from server which
+  doesn't provide redirection headers #1396
+
 
 1.1.3 (2016-11-10)
 ------------------
