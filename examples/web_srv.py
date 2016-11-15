@@ -7,6 +7,7 @@ import textwrap
 
 from aiohttp.web import Application, Response, StreamResponse, run_app
 
+
 async def intro(request):
     txt = textwrap.dedent("""\
         Type {url}/hello/John  {url}/simple or {url}/change_body

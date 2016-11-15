@@ -4,6 +4,7 @@ Integration tests. They need a running database.
 Beware, they destroy your db using sudo.
 """
 
+
 async def _test_index(create_app):
     app, url, client_session = await create_app()
     async with client_session.get('{}/'.format(url)) as response:

@@ -7,6 +7,7 @@ import aiohttp_jinja2
 from aiohttp import web
 from aiohttpdemo_chat.views import setup as setup_routes
 
+
 async def init(loop):
     app = web.Application(loop=loop)
     app['sockets'] = {}
