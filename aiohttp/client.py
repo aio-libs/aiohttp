@@ -480,6 +480,7 @@ class ClientSession:
         def __aexit__(self, exc_type, exc_val, exc_tb):
             yield from self.close()
 
+
 if PY_35:
     from collections.abc import Coroutine
     base = Coroutine

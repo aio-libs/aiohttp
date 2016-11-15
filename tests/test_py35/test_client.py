@@ -3,6 +3,7 @@ import pytest
 import aiohttp
 from aiohttp import web
 
+
 async def test_async_with_session(loop):
     async with aiohttp.ClientSession(loop=loop) as session:
         pass

@@ -298,6 +298,7 @@ def main(argv):
                       times_median))
     return 0
 
+
 ARGS = argparse.ArgumentParser(description="Run benchmark.")
 ARGS.add_argument(
     '-t', '--tries', action="store",
