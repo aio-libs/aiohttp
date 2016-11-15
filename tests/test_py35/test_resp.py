@@ -7,6 +7,7 @@ import aiohttp
 from aiohttp import web
 from aiohttp.client import _RequestContextManager
 
+
 async def test_await(test_server, loop):
 
     async def handler(request):

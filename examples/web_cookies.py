@@ -47,6 +47,7 @@ def init(loop):
     app.router.add_get('/logout', logout)
     return app
 
+
 loop = asyncio.get_event_loop()
 app = loop.run_until_complete(init(loop))
 web.run_app(app)

@@ -14,9 +14,11 @@ asyncio.set_event_loop(loop)
 
 logging.basicConfig(level=logging.DEBUG)
 
+
 async def handle(request):
     return web.Response(body=json.dumps({"test": True}).encode('utf-8'),
                         content_type='application/json')
+
 
 app = web.Application(loop=loop)
 app.router.add_route('GET', '/', handle)
