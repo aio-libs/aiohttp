@@ -3,6 +3,7 @@ from unittest import mock
 from aiohttp import web
 from aiohttp.web_urldispatcher import View
 
+
 async def test_render_ok():
     resp = web.Response(text='OK')
 

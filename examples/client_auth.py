@@ -2,6 +2,7 @@ import asyncio
 
 import aiohttp
 
+
 async def fetch(session):
     print('Query http://httpbin.org/basic-auth/andrew/password')
     async with session.get(
