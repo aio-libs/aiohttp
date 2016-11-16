@@ -129,7 +129,7 @@ class FileSender:
                 count = count - chunk_size
                 if count <= 0:
                     break
-                chunk = fobj.read(count)
+                chunk = fobj.read(min(chunk_size, count))
         finally:
             resp.set_tcp_nodelay(True)
 
