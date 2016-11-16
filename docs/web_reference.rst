@@ -808,6 +808,17 @@ WebSocketResponse
    cannot use :meth:`~StreamResponse.write` method but should to
    communicate with websocket client by :meth:`send_str`,
    :meth:`receive` and others.
+   
+   :param bool autoping: Automatically send 
+                         :const:`~aiohttp.WSMsgType.PONG` on
+                         :const:`~aiohttp.WSMsgType.PING`
+                         message from client, and handle
+                         :const:`~aiohttp.WSMsgType.PONG`
+                         responses from client.
+                         Note that server doesn't send
+                         :const:`~aiohttp.WSMsgType.PING`
+                         requests, you need to do this explicitly
+                         using :meth:`ping` method.
 
    .. versionadded:: 0.19
 
