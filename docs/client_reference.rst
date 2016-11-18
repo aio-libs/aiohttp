@@ -1204,6 +1204,8 @@ Response object
 
       URL of request (:class:`str`).
 
+      .. deprecated:: 1.1
+
    .. attribute:: url_obj
 
       URL of request (:class:`~yarl.URL`).
