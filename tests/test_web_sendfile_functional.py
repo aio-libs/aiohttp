@@ -1,7 +1,6 @@
 import asyncio
 import os
 import pathlib
-
 import pytest
 
 import aiohttp
@@ -323,3 +322,128 @@ def test_static_file_huge(loop, test_client, tmpdir):
         off += len(chunk)
         cnt += 1
     f.close()
+
+
+@asyncio.coroutine
+def test_static_file_range(loop, test_client, sender):
+    filepath = (pathlib.Path(__file__).parent /
+                'software_development_in_picture.jpg')
+
+    @asyncio.coroutine
+    def handler(request):
+        resp = yield from sender(chunk_size=16).send(request, filepath)
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    with filepath.open('rb') as f:
+        content = f.read()
+
+    # Ensure the whole file requested in parts is correct
+    responses = yield from asyncio.gather(
+        client.get('/', headers={'Range': 'bytes=0-999'}),
+        client.get('/', headers={'Range': 'bytes=1000-1999'}),
+        client.get('/', headers={'Range': 'bytes=2000-'}),
+        loop=loop
+    )
+    assert len(responses) == 3
+    assert responses[0].status == 206, \
+        "failed 'bytes=0-999': %s" % responses[0].reason
+    assert responses[1].status == 206, \
+        "failed 'bytes=1000-1999': %s" % responses[1].reason
+    assert responses[2].status == 206, \
+        "failed 'bytes=2000-': %s" % responses[2].reason
+
+    body = yield from asyncio.gather(
+        *(resp.read() for resp in responses),
+        loop=loop
+    )
+
+    assert len(body[0]) == 1000, \
+        "failed 'bytes=0-999', received %d bytes" % len(body[0])
+    assert len(body[1]) == 1000, \
+        "failed 'bytes=1000-1999', received %d bytes" % len(body[1])
+    responses[0].close()
+    responses[1].close()
+    responses[2].close()
+
+    assert content == b"".join(body)
+
+
+@asyncio.coroutine
+def test_static_file_range_tail(loop, test_client, sender):
+    filepath = (pathlib.Path(__file__).parent /
+                'software_development_in_picture.jpg')
+
+    @asyncio.coroutine
+    def handler(request):
+        resp = yield from sender(chunk_size=16).send(request, filepath)
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    with filepath.open('rb') as f:
+        content = f.read()
+
+    # Ensure the tail of the file is correct
+    resp = yield from client.get('/', headers={'Range': 'bytes=-500'})
+    assert resp.status == 206, resp.reason
+    body4 = yield from resp.read()
+    resp.close()
+    assert content[-500:] == body4
+
+
+@asyncio.coroutine
+def test_static_file_invalid_range(loop, test_client, sender):
+    filepath = (pathlib.Path(__file__).parent /
+                'software_development_in_picture.jpg')
+
+    @asyncio.coroutine
+    def handler(request):
+        resp = yield from sender(chunk_size=16).send(request, filepath)
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    flen = filepath.stat().st_size
+
+    # range must be in bytes
+    resp = yield from client.get('/', headers={'Range': 'blocks=0-10'})
+    assert resp.status == 416, 'Range must be in bytes'
+    resp.close()
+
+    # Range end is inclusive
+    resp = yield from client.get('/', headers={'Range': 'bytes=0-%d' % flen})
+    assert resp.status == 416, 'Range end must be inclusive'
+    resp.close()
+
+    # start > end
+    resp = yield from client.get('/', headers={'Range': 'bytes=100-0'})
+    assert resp.status == 416, "Range start can't be greater than end"
+    resp.close()
+
+    # start > end
+    resp = yield from client.get('/', headers={'Range': 'bytes=10-9'})
+    assert resp.status == 416, "Range start can't be greater than end"
+    resp.close()
+
+    # non-number range
+    resp = yield from client.get('/', headers={'Range': 'bytes=a-f'})
+    assert resp.status == 416, 'Range must be integers'
+    resp.close()
+
+    # double dash range
+    resp = yield from client.get('/', headers={'Range': 'bytes=0--10'})
+    assert resp.status == 416, 'double dash in range'
+    resp.close()
+
+    # no range
+    resp = yield from client.get('/', headers={'Range': 'bytes=-'})
+    assert resp.status == 416, 'no range given'
+    resp.close()
