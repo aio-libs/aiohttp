@@ -268,6 +268,31 @@ like one using :meth:`Request.copy`.
 
       Returns :class:`int` or ``None`` if *Content-Length* is absent.
 
+   .. attribute:: http_range
+
+      Read-only property that returns information about *Range* HTTP header.
+
+      Returns a :class:`slice` where ``.start`` is *left inclusive
+      bound*, ``.stop`` is *right exclusive bound* and ``.step`` is
+      ``1``.
+
+      The property might be used in two manners:
+
+      1. Attribute-access style (example assumes that both left and
+         right borders are set, the real logic for case of open bounds
+         is more complex)::
+
+            rng = request.http_rangea
+            with open(filename, 'rb') as f:
+                f.seek(rng.start)
+                return f.read(rng.stop-rng.start)
+
+      2. Slice-style::
+
+            return buffer[request.http_range]
+
+      .. versionadded:: 1.2
+
    .. attribute:: if_modified_since
 
       Read-only property that returns the date specified in the
@@ -808,8 +833,8 @@ WebSocketResponse
    cannot use :meth:`~StreamResponse.write` method but should to
    communicate with websocket client by :meth:`send_str`,
    :meth:`receive` and others.
-   
-   :param bool autoping: Automatically send 
+
+   :param bool autoping: Automatically send
                          :const:`~aiohttp.WSMsgType.PONG` on
                          :const:`~aiohttp.WSMsgType.PING`
                          message from client, and handle

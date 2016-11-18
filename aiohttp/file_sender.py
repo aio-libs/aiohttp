@@ -159,7 +159,9 @@ class FileSender:
         count = file_size
 
         try:
-            start, end = request.http_range
+            rng = request.http_range
+            start = rng.start
+            end = rng.stop
         except ValueError:
             raise HTTPRequestRangeNotSatisfiable
 

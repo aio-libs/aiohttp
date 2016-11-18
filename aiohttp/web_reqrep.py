@@ -299,11 +299,11 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     @property
     def http_range(self, *, _RANGE=hdrs.RANGE):
+        """The content of Range HTTP header.
+
+        Return a slice instance.
+
         """
-        The content of Range HTTP header.
-        :returns tuple (start, end): values that can be used for slice
-                                     eg. content[start:end]
-       """
         rng = self.headers.get(_RANGE)
         start, end = None, None
         if rng is not None:
@@ -329,7 +329,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
             if start is end is None:  # No valid range supplied
                 raise ValueError('No start or end of range specified')
-        return start, end
+        return slice(start, end, 1)
 
     @property
     def content(self):
