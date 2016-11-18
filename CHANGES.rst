@@ -10,7 +10,7 @@ CHANGES
 
 - Make `TestServer.make_url` compatible with `yarl.URL` #1389
 
--
+- Implement range requests for static files #1382
 
 -
 
