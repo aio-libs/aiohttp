@@ -223,7 +223,7 @@ class Application(MutableMapping):
         return web_reqrep.Request(
             message, payload,
             protocol.transport, protocol.reader, protocol.writer,
-            protocol.time_service,
+            protocol.time_service, protocol._request_handler,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header)
 
     @asyncio.coroutine
