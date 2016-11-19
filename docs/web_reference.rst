@@ -485,6 +485,15 @@ StreamResponse
 
       .. deprecated:: 0.18
 
+   .. attribute:: task
+
+      A task that serves HTTP request handling.
+
+      May be useful for graceful shutdown of long-running requests
+      (streaming, long polling or web-socket).
+
+      .. versionadded:: 1.2
+
    .. attribute:: status
 
       Read-only property for *HTTP response status code*, :class:`int`.

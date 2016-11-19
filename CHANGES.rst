@@ -12,7 +12,7 @@ CHANGES
 
 - Implement range requests for static files #1382
 
--
+- Support task attr for StreamResponse #1410
 
 -
 
