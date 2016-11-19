@@ -560,9 +560,11 @@ def make_mocked_request(method, path, headers=None, *,
     time_service.time.return_value = 12345
     time_service.strtime.return_value = "Tue, 15 Nov 1994 08:12:31 GMT"
 
+    task = mock.Mock()
+
     req = Request(message, payload,
                   transport, reader, writer,
-                  time_service,
+                  time_service, task,
                   secure_proxy_ssl_header=secure_proxy_ssl_header)
 
     match_info = UrlMappingMatchInfo({}, mock.Mock())
