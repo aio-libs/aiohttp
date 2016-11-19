@@ -51,7 +51,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
     def __init__(self, message, payload, transport, reader, writer,
-                 time_service, *,
+                 time_service, task, *,
                  secure_proxy_ssl_header=None):
         self._message = message
         self._transport = transport
@@ -69,6 +69,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._time_service = time_service
         self._state = {}
         self._cache = {}
+        self._task = task
 
     def clone(self, *, method=sentinel, rel_url=sentinel,
               headers=sentinel):
@@ -103,6 +104,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             self._reader,
             self._writer,
             self._time_service,
+            self._task,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header)
 
     # MutableMapping API
@@ -513,6 +515,8 @@ class StreamResponse(HeadersMixin):
         self._resp_impl = None
         self._eof_sent = False
 
+        self._task = None
+
         if headers is not None:
             self._headers.extend(headers)
         if hdrs.CONTENT_TYPE not in self._headers:
@@ -531,6 +535,10 @@ class StreamResponse(HeadersMixin):
     def started(self):
         warnings.warn('use Response.prepared instead', DeprecationWarning)
         return self.prepared
+
+    @property
+    def task(self):
+        return self._task
 
     @property
     def status(self):
@@ -835,6 +843,7 @@ class StreamResponse(HeadersMixin):
         resp_impl.headers = headers
 
         self._send_headers(resp_impl)
+        self._task = request._task
         return resp_impl
 
     def _send_headers(self, resp_impl):

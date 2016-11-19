@@ -55,12 +55,15 @@ class RequestHandler(ServerHttpProtocol):
         self._request = request
 
         try:
-            resp = yield from self._handler(request)
-        except HTTPException as exc:
-            resp = exc
+            try:
+                resp = yield from self._handler(request)
+            except HTTPException as exc:
+                resp = exc
 
-        resp_msg = yield from resp.prepare(request)
-        yield from resp.write_eof()
+            resp_msg = yield from resp.prepare(request)
+            yield from resp.write_eof()
+        finally:
+            resp._task = None
 
         # notify server about keep-alive
         self.keep_alive(resp.keep_alive)
@@ -121,7 +124,7 @@ class WebServer:
         return BaseRequest(
             message, payload,
             protocol.transport, protocol.reader, protocol.writer,
-            protocol.time_service)
+            protocol.time_service, protocol._request_handler)
 
     @asyncio.coroutine
     def shutdown(self, timeout=None):
