@@ -6,7 +6,7 @@ import pytest
 from multidict import CIMultiDict, MultiDict
 from yarl import URL
 
-from aiohttp import web_exceptions
+from aiohttp.errors import HttpRequestEntityTooLarge
 from aiohttp.protocol import HttpVersion
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
@@ -329,10 +329,9 @@ def test_make_too_big_request(loop):
     payload.feed_data(too_large_file)
     payload.feed_eof()
     req = make_mocked_request('POST', '/', payload=payload)
-    with pytest.raises(web_exceptions.HTTPRequestEntityTooLarge) as err:
+    with pytest.raises(HttpRequestEntityTooLarge) as err:
         yield from req.read()
-    assert err.value.status == 413
-    assert err.value.text == 'Request body too large'
+    assert err.value.code == 413
 
 
 @asyncio.coroutine
