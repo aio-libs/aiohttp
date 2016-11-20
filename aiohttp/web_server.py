@@ -2,6 +2,7 @@
 
 import asyncio
 
+from .errors import HttpProcessingError
 from .helpers import TimeService
 from .server import ServerHttpProtocol
 from .web_exceptions import HTTPException
@@ -53,17 +54,21 @@ class RequestHandler(ServerHttpProtocol):
 
         request = self._request_factory(message, payload, self)
         self._request = request
+        resp = None
 
         try:
             try:
                 resp = yield from self._handler(request)
             except HTTPException as exc:
                 resp = exc
+            except HttpProcessingError as exc:
+                raise exc
 
             resp_msg = yield from resp.prepare(request)
             yield from resp.write_eof()
         finally:
-            resp._task = None
+            if hasattr(resp, "_task"):
+                resp._task = None
 
         # notify server about keep-alive
         self.keep_alive(resp.keep_alive)

@@ -17,7 +17,8 @@ from types import MappingProxyType
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
-from . import hdrs, multipart, web_exceptions
+from . import hdrs, multipart
+from .errors import HttpRequestEntityTooLarge
 from .helpers import HeadersMixin, reify, sentinel
 from .protocol import WebResponse as ResponseImpl
 from .protocol import HttpVersion10, HttpVersion11
@@ -372,8 +373,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                 chunk = yield from self._payload.readany()
                 body.extend(chunk)
                 if len(body) >= self._client_max_size:
-                    msg = 'Request body too large'
-                    raise web_exceptions.HTTPRequestEntityTooLarge(text=msg)
+                    raise HttpRequestEntityTooLarge()
                 if not chunk:
                     break
             self._read_bytes = bytes(body)

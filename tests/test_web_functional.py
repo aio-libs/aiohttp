@@ -1226,7 +1226,7 @@ def test_app_max_client_size(loop, test_client):
     resp = yield from client.post('/', data=data)
     assert 413 == resp.status
     resp_text = yield from resp.text()
-    assert 'Request body too large' in resp_text
+    assert 'Request Entity Too Large' in resp_text
 
 
 @asyncio.coroutine
@@ -1251,4 +1251,4 @@ def test_app_max_client_size_adjusted(loop, test_client):
     resp = yield from client.post('/', data=too_large_data)
     assert 413 == resp.status
     resp_text = yield from resp.text()
-    assert 'Request body too large' in resp_text
+    assert 'Request Entity Too Large' in resp_text

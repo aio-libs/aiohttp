@@ -122,6 +122,11 @@ class HttpBadRequest(BadHttpMessage):
     message = 'Bad Request'
 
 
+class HttpRequestEntityTooLarge(HttpProcessingError):
+    code = 413
+    message = "Request entity too large."
+
+
 class ContentEncodingError(BadHttpMessage):
     """Content encoding error."""
 
