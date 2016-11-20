@@ -435,6 +435,11 @@ class ClientRequest:
         path = self.url.raw_path
         if self.url.raw_query_string:
             path += '?' + self.url.raw_query_string
+        if self.proxy:
+            # path attribute is set by:
+            # aiohttp.connector._create_proxy_connection and its meaning
+            # is different. It is actual request.url requested via proxy.
+            path = self.path
         request = aiohttp.Request(writer, self.method, path,
                                   self.version)
 
