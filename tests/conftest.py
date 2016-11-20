@@ -111,7 +111,7 @@ class FakeProxyProcess(object):
         self.port = get_ephemeral_port()
         script_file = pathlib.Path(__file__).parent / 'mitmdump_script.py'
         self.args = ['mitmdump', '-p', str(self.port), '-s',
-                     str(script_file), '--no-http2  ']
+                     str(script_file), '--no-http2']
 
     def __enter__(self):
         self.proc = Popen(self.args)
