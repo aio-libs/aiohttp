@@ -22,13 +22,12 @@ A :class:`Request` is a :obj:`dict`-like object, allowing it to be used for
 :ref:`sharing data<aiohttp-web-data-sharing>` among
 :ref:`aiohttp-web-middlewares` and :ref:`aiohttp-web-signals` handlers.
 
-Although :class:`Request` is :obj:`dict`-like object, it can't be duplicated
-like one using :meth:`Request.copy`.
-
 .. note::
 
    You should never create the :class:`Request` instance manually --
-   :mod:`aiohttp.web` does it for you.
+   :mod:`aiohttp.web` does it for you. But :meth:`Request.clone` may
+   be used for clonning *modified* request copy with changed *path*,
+   *method* etc.
 
 .. class:: Request
 
