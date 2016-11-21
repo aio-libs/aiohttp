@@ -26,7 +26,7 @@ A :class:`Request` is a :obj:`dict`-like object, allowing it to be used for
 
    You should never create the :class:`Request` instance manually --
    :mod:`aiohttp.web` does it for you. But :meth:`Request.clone` may
-   be used for clonning *modified* request copy with changed *path*,
+   be used for cloning *modified* request copy with changed *path*,
    *method* etc.
 
 .. class:: Request
