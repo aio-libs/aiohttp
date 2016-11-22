@@ -40,7 +40,7 @@ class TestProxy(unittest.TestCase):
         tr, proto = mock.Mock(), mock.Mock()
         self.loop.create_connection = make_mocked_coro((tr, proto))
         conn = self.loop.run_until_complete(connector.connect(req))
-        self.assertEqual(req.path, 'http://www.python.org')
+        self.assertEqual(req.url, URL('http://www.python.org'))
         self.assertIs(conn._transport, tr)
         self.assertIs(conn._protocol, proto)
 
@@ -105,7 +105,7 @@ class TestProxy(unittest.TestCase):
         self.assertNotIn('PROXY-AUTHORIZATION', req.headers)
         conn = self.loop.run_until_complete(connector.connect(req))
 
-        self.assertEqual(req.path, 'http://www.python.org')
+        self.assertEqual(req.url, URL('http://www.python.org'))
         self.assertNotIn('AUTHORIZATION', req.headers)
         self.assertIn('PROXY-AUTHORIZATION', req.headers)
         self.assertNotIn('AUTHORIZATION', proxy_req.headers)
@@ -148,7 +148,7 @@ class TestProxy(unittest.TestCase):
         self.assertNotIn('PROXY-AUTHORIZATION', req.headers)
         conn = self.loop.run_until_complete(connector.connect(req))
 
-        self.assertEqual(req.path, 'http://www.python.org')
+        self.assertEqual(req.url, URL('http://www.python.org'))
         self.assertNotIn('AUTHORIZATION', req.headers)
         self.assertIn('PROXY-AUTHORIZATION', req.headers)
         self.assertNotIn('AUTHORIZATION', proxy_req.headers)
@@ -212,7 +212,7 @@ class TestProxy(unittest.TestCase):
 
         self.assertEqual(req.url.path, '/')
         self.assertEqual(proxy_req.method, 'CONNECT')
-        self.assertEqual(proxy_req.path, 'www.python.org:443')
+        self.assertEqual(proxy_req.url, URL('https://www.python.org'))
         tr.pause_reading.assert_called_once_with()
         tr.get_extra_info.assert_called_with('socket', default=None)
 
@@ -341,7 +341,7 @@ class TestProxy(unittest.TestCase):
             loop=self.loop,
         )
         self.loop.run_until_complete(connector._create_connection(req))
-        self.assertEqual(req.path, 'http://localhost:1234/path')
+        self.assertEqual(req.url, URL('http://localhost:1234/path'))
 
     def test_proxy_auth_property(self):
         req = aiohttp.ClientRequest(
@@ -393,7 +393,7 @@ class TestProxy(unittest.TestCase):
 
         self.assertEqual(req.url.path, '/')
         self.assertEqual(proxy_req.method, 'CONNECT')
-        self.assertEqual(proxy_req.path, 'www.python.org:443')
+        self.assertEqual(proxy_req.url, URL('https://www.python.org'))
         tr.pause_reading.assert_called_once_with()
         tr.get_extra_info.assert_called_with('socket', default=None)
 
@@ -494,7 +494,7 @@ class TestProxyConnector(unittest.TestCase):
         tr, proto = mock.Mock(), mock.Mock()
         self.loop.create_connection = make_mocked_coro((tr, proto))
         conn = self.loop.run_until_complete(connector.connect(req))
-        self.assertEqual(req.path, 'http://www.python.org')
+        self.assertEqual(req.url, URL('http://www.python.org'))
         self.assertIs(conn._transport, tr)
         self.assertIs(conn._protocol, proto)
 
