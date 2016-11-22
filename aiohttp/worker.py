@@ -29,6 +29,7 @@ class GunicornWebWorker(base.Worker):
 
         self.servers = {}
         self.exit_code = 0
+        self._notify_waiter = None
 
     def init_process(self):
         # create new event_loop after fork
@@ -123,12 +124,27 @@ class GunicornWebWorker(base.Worker):
                     self.alive = False
                     self.log.info("Parent changed, shutting down: %s", self)
                 else:
-                    yield from asyncio.sleep(1.0, loop=self.loop)
+                    yield from self._wait_next_notify()
 
         except BaseException:
             pass
 
         yield from self.close()
+
+    def _wait_next_notify(self):
+        self._notify_waiter_done()
+
+        self._notify_waiter = waiter = asyncio.Future(loop=self.loop)
+        self.loop.call_later(1.0, self._notify_waiter_done)
+
+        return waiter
+
+    def _notify_waiter_done(self):
+        waiter = self._notify_waiter
+        if waiter is not None and not waiter.done():
+            waiter.set_result(True)
+
+        self._notify_waiter = None
 
     def init_signals(self):
         # Set up signals through the event loop API.
@@ -159,9 +175,20 @@ class GunicornWebWorker(base.Worker):
     def handle_quit(self, sig, frame):
         self.alive = False
 
+        # worker_int callback
+        self.cfg.worker_int(self)
+
+        # init closing process
+        self._closing = ensure_future(self.close(), loop=self.loop)
+
+        # close loop
+        self.loop.call_later(0.1, self._notify_waiter_done)
+
     def handle_abort(self, sig, frame):
         self.alive = False
         self.exit_code = 1
+        self.cfg.worker_abort(self)
+        sys.exit(1)
 
     @staticmethod
     def _create_ssl_context(cfg):
