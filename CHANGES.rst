@@ -14,9 +14,9 @@ CHANGES
 
 - Support task attribute for StreamResponse #1410
 
--
+- Follow gunicorn's signal semantics in `Gunicorn[UVLoop]WebWorker` #1201
 
--
+- Call worker_int and worker_abort callbacks in `Gunicorn[UVLoop]WebWorker` #1202
 
 -
 
