@@ -432,9 +432,19 @@ class ClientRequest:
         self._writer = None
 
     def send(self, writer, reader):
-        path = self.url.raw_path
-        if self.url.raw_query_string:
-            path += '?' + self.url.raw_query_string
+        # Specify request target:
+        # - CONNECT request must send authority form URI
+        # - not CONNECT proxy must send absolute form URI
+        # - most common is origin form URI
+        if self.method == hdrs.METH_CONNECT:
+            path = '{}:{}'.format(self.url.host, self.url.port)
+        elif self.proxy and not self.ssl:
+            path = str(self.url)
+        else:
+            path = self.url.raw_path
+            if self.url.raw_query_string:
+                path += '?' + self.url.raw_query_string
+
         request = aiohttp.Request(writer, self.method, path,
                                   self.version)
 
