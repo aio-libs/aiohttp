@@ -77,6 +77,18 @@ def test_run(worker, loop):
     assert loop.is_closed()
 
 
+def test_run_wsgi(worker, loop):
+    worker.wsgi = lambda env, start_resp: start_resp()
+
+    worker.loop = loop
+    worker._run = mock.Mock(
+        wraps=asyncio.coroutine(lambda: None))
+    with pytest.raises(SystemExit):
+        worker.run()
+    assert worker._run.called
+    assert loop.is_closed()
+
+
 def test_handle_quit(worker):
     worker.handle_quit(object(), object())
     assert not worker.alive
@@ -261,6 +273,27 @@ def test_close(worker, loop):
     yield from worker.close()
     app.shutdown.assert_called_with()
     app.cleanup.assert_called_with()
+    handler.shutdown.assert_called_with(timeout=95.0)
+    srv.close.assert_called_with()
+    assert worker.servers is None
+
+    yield from worker.close()
+
+
+@asyncio.coroutine
+def test_close_wsgi(worker, loop):
+    srv = mock.Mock()
+    srv.wait_closed = make_mocked_coro(None)
+    handler = mock.Mock()
+    worker.servers = {srv: handler}
+    worker.log = mock.Mock()
+    worker.loop = loop
+    worker.wsgi = lambda env, start_resp: start_resp()
+    handler.connections = [object()]
+    handler.shutdown.return_value = helpers.create_future(loop)
+    handler.shutdown.return_value.set_result(1)
+
+    yield from worker.close()
     handler.shutdown.assert_called_with(timeout=95.0)
     srv.close.assert_called_with()
     assert worker.servers is None
