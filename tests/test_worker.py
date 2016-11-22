@@ -108,6 +108,20 @@ def test_make_handler(worker, mocker):
     assert worker._get_valid_log_format.called
 
 
+def test_make_handler_wsgi(worker, mocker):
+    worker.wsgi = lambda env, start_resp: start_resp()
+    worker.loop = mock.Mock()
+    worker.log = mock.Mock()
+    worker.cfg = mock.Mock()
+    worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
+    mocker.spy(worker, '_get_valid_log_format')
+
+    f = worker.make_handler(worker.wsgi)
+    assert isinstance(f, base_worker.WSGIServer)
+    assert isinstance(f(), base_worker.WSGIServerHttpProtocol)
+    assert worker._get_valid_log_format.called
+
+
 @pytest.mark.parametrize('source,result', [
     (ACCEPTABLE_LOG_FORMAT, ACCEPTABLE_LOG_FORMAT),
     (AsyncioWorker.DEFAULT_GUNICORN_LOG_FORMAT,

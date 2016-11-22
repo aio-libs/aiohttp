@@ -1,6 +1,7 @@
 """Async gunicorn worker for aiohttp.web"""
 
 import asyncio
+import logging
 import os
 import re
 import signal
@@ -12,6 +13,8 @@ import gunicorn.workers.base as base
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 
 from aiohttp.helpers import AccessLogger, ensure_future
+from aiohttp.web_server import WebServer
+from aiohttp.wsgi import WSGIServerHttpProtocol
 
 __all__ = ('GunicornWebWorker', 'GunicornUVLoopWebWorker')
 
@@ -37,7 +40,8 @@ class GunicornWebWorker(base.Worker):
         super().init_process()
 
     def run(self):
-        self.loop.run_until_complete(self.wsgi.startup())
+        if hasattr(self.wsgi, 'startup'):
+            self.loop.run_until_complete(self.wsgi.startup())
         self._runner = ensure_future(self._run(), loop=self.loop)
 
         try:
@@ -48,13 +52,16 @@ class GunicornWebWorker(base.Worker):
         sys.exit(self.exit_code)
 
     def make_handler(self, app):
-        return app.make_handler(
-            logger=self.log,
-            slow_request_timeout=self.cfg.timeout,
-            keepalive_timeout=self.cfg.keepalive,
-            access_log=self.log.access_log,
-            access_log_format=self._get_valid_log_format(
-                self.cfg.access_log_format))
+        if hasattr(self.wsgi, 'make_handler'):
+            return app.make_handler(
+                logger=self.log,
+                slow_request_timeout=self.cfg.timeout,
+                keepalive_timeout=self.cfg.keepalive,
+                access_log=self.log.access_log,
+                access_log_format=self._get_valid_log_format(
+                    self.cfg.access_log_format))
+        else:
+            return WSGIServer(self.wsgi, self)
 
     @asyncio.coroutine
     def close(self):
@@ -70,7 +77,8 @@ class GunicornWebWorker(base.Worker):
                 yield from server.wait_closed()
 
             # send on_shutdown event
-            yield from self.wsgi.shutdown()
+            if hasattr(self.wsgi, 'shutdown'):
+                yield from self.wsgi.shutdown()
 
             # stop alive connections
             tasks = [
@@ -80,7 +88,8 @@ class GunicornWebWorker(base.Worker):
             yield from asyncio.gather(*tasks, loop=self.loop)
 
             # cleanup application
-            yield from self.wsgi.cleanup()
+            if hasattr(self.wsgi, 'cleanup'):
+                yield from self.wsgi.cleanup()
 
     @asyncio.coroutine
     def _run(self):
@@ -182,6 +191,26 @@ class GunicornWebWorker(base.Worker):
             )
         else:
             return source_format
+
+
+class WSGIServer(WebServer):
+
+    def __init__(self, app, worker):
+        super().__init__(app, loop=worker.loop)
+
+        self.worker = worker
+        self.access_log_format = worker._get_valid_log_format(
+            worker.cfg.access_log_format)
+
+    def __call__(self):
+        return WSGIServerHttpProtocol(
+            self.handler, readpayload=True,
+            loop=self._loop,
+            logger=self.worker.log,
+            debug=self.worker.log.loglevel == logging.DEBUG,
+            keep_alive=self.worker.cfg.keepalive,
+            access_log=self.worker.log.access_log,
+            access_log_format=self.access_log_format)
 
 
 class GunicornUVLoopWebWorker(GunicornWebWorker):
