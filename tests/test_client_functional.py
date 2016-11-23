@@ -1714,3 +1714,26 @@ def test_redirect_without_location_header(loop, test_client):
                               'a redirect [301] status but response lacks '
                               'a Location or URI HTTP header'
                               .format(client.port))
+
+
+@asyncio.coroutine
+def test_redirect_location_quoting(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(text=request.method)
+
+    @asyncio.coroutine
+    def redirect(request):
+        return web.HTTPFound(location=r_url)
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    app.router.add_get('/redirect', redirect)
+
+    client = yield from test_client(app)
+    r_url = str(client.make_url('/')) + '?' + 'next=http%3A//example.com/'
+    resp = yield from client.get('/redirect')
+    assert 200 == resp.status
+    assert r_url == str(resp.url_obj)
+    resp.close()
