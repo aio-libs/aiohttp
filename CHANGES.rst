@@ -14,13 +14,13 @@ CHANGES
 
 - Support task attribute for StreamResponse #1410
 
+-
+
+-
+
 - Has functional tests for client proxy #1218
 
 - Fix bugs with client proxy target path and proxy host with port #1413
-
--
-
--
 
 -
 
