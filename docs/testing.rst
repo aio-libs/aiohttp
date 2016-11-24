@@ -441,7 +441,45 @@ Test Client
                       may be useful with ``CookieJar(unsafe=True)``
                       option.
 
-:class:`aiohttp.web.Application` instance to run.
+   :param str scheme: HTTP scheme, non-protected ``"http"`` by default.
+
+   :param str host: a host for TCP socket, IPv4 *local host*
+      (``'127.0.0.1'``) by default.
+
+   .. attribute:: scheme
+
+      A *scheme* for tested application, ``'http'`` for non-protected
+      run and ``'htttps'`` for TLS encrypted server.
+
+   .. attribute:: host
+
+      *host* used to start a test server.
+
+   .. attribute:: port
+
+      A random *port* used to start a server.
+
+   .. attribute:: handler
+
+      :class:`aiohttp.web.WebServer` used for HTTP requests serving.
+
+   .. attribute:: server
+
+      :class:`asyncio.AbstractServer` used for managing accepted connections.
+
+   .. comethod:: start_server(**kwargs)
+
+      Start a test server.
+
+   .. comethod:: close()
+
+      Stop and finish executed test server.
+
+   .. method:: make_url(path)
+
+      Return an *absolute* :class:`~yarl.URL` for given *path*.
+
+
 
 
 Mocked coroutine

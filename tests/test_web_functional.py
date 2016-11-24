@@ -825,19 +825,19 @@ def test_requests_count(loop, test_client):
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
     client = yield from test_client(app)
-    assert client.handler.requests_count == 0
+    assert client.server.handler.requests_count == 0
 
     resp = yield from client.get('/')
     assert 200 == resp.status
-    assert client.handler.requests_count == 1
+    assert client.server.handler.requests_count == 1
 
     resp = yield from client.get('/')
     assert 200 == resp.status
-    assert client.handler.requests_count == 2
+    assert client.server.handler.requests_count == 2
 
     resp = yield from client.get('/')
     assert 200 == resp.status
-    assert client.handler.requests_count == 3
+    assert client.server.handler.requests_count == 3
 
 
 @asyncio.coroutine

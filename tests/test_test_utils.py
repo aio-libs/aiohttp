@@ -226,12 +226,10 @@ def test_make_mocked_request_transport():
 def test_test_client_props(loop):
     app = _create_example_app(loop)
     client = _TestClient(app, host='localhost')
-    assert client.app == app
     assert client.host == 'localhost'
     assert client.port is None
     with client:
         assert isinstance(client.port, int)
-        assert client.handler is not None
         assert client.server is not None
     assert client.port is None
 

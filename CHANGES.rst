@@ -14,8 +14,14 @@ CHANGES
 
 - Support task attribute for StreamResponse #1410
 
--
+- Drop `TestClient.app` property, use `TestClient.server.app` instead
+  (BACKWARD INCOMPATIBLE)
 
+- Drop `TestClient.handler` property, use `TestClient.server.handler` instead
+  (BACKWARD INCOMPATIBLE)
+
+- `TestClient.server` property returns a test server instance, was
+  `asyncio.AbstractServer` (BACKWARD INCOMPATIBLE)
 -
 
 -
