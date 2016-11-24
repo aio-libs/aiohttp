@@ -22,7 +22,11 @@ CHANGES
 
 - `TestClient.server` property returns a test server instance, was
   `asyncio.AbstractServer` (BACKWARD INCOMPATIBLE)
--
+
+- Follow gunicorn's signal semantics in `Gunicorn[UVLoop]WebWorker` #1201
+
+- Call worker_int and worker_abort callbacks in
+  `Gunicorn[UVLoop]WebWorker` #1202
 
 -
 

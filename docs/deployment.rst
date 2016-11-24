@@ -206,14 +206,14 @@ Prepare environment
 -------------------
 
 You firstly need to setup your deployment environment. This example is
-based on Ubuntu 14.04.
+based on `Ubuntu` 14.04.
 
 Create a directory for your application::
 
   >> mkdir myapp
   >> cd myapp
 
-Ubuntu has a bug in pyenv, so to create virtualenv you need to do some
+`Ubuntu` has a bug in pyenv, so to create virtualenv you need to do some
 extra manipulation::
 
   >> pyvenv-3.4 --without-pip venv
