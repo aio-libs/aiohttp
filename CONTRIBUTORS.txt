@@ -118,6 +118,7 @@ Sebastian Hüther
 SeongSoo Cho
 Sergey Ninua
 Sergey Skripnick
+Serhii Kostel
 Simon Kennedy
 Sin-Woo Bang
 Stanislas Plum
