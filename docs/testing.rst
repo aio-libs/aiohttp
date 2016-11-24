@@ -459,13 +459,18 @@ Test Client
 
       A random *port* used to start a server.
 
-   .. attribute:: handler
-
-      :class:`aiohttp.web.WebServer` used for HTTP requests serving.
-
    .. attribute:: server
 
-      :class:`asyncio.AbstractServer` used for managing accepted connections.
+      :class:`BaseTestServer` test server instance used in conjunction
+      with client.
+
+   .. attribute:: session
+
+      An internal :class:`aiohttp.ClientSession`.
+
+      Unlike the methods on the :class:`TestClient`, client session
+      requests do not automatically include the host in the url
+      queried, and will require an absolute path to the resource.
 
    .. comethod:: start_server(**kwargs)
 
@@ -479,8 +484,47 @@ Test Client
 
       Return an *absolute* :class:`~yarl.URL` for given *path*.
 
+   .. comethod:: request(method, path, *args, **kwargs)
 
+      Routes a request to tested http server.
 
+      The interface is identical to
+      :meth:`asyncio.ClientSession.request`, except the loop kwarg is
+      overridden by the instance used by the test server.
+
+   .. comethod:: get(path, *args, **kwargs)
+
+      Perform an HTTP GET request.
+
+   .. comethod:: post(path, *args, **kwargs)
+
+      Perform an HTTP POST request.
+
+   .. comethod:: options(path, *args, **kwargs)
+
+      Perform an HTTP OPTIONS request.
+
+   .. comethod:: head(path, *args, **kwargs)
+
+      Perform an HTTP HEAD request.
+
+   .. comethod:: put(path, *args, **kwargs)
+
+      Perform an HTTP PUT request.
+
+   .. comethod:: patch(path, *args, **kwargs)
+
+      Perform an HTTP PATCH request.
+
+   .. comethod:: delete(path, *args, **kwargs)
+
+      Perform an HTTP DELETE request.
+
+   .. comethod:: delete(path, *args, **kwargs)
+
+      Initiate websocket connection.
+
+      The api corresponds to :meth:`aiohttp.ClientSession.ws_connect`.
 
 Mocked coroutine
 ~~~~~~~~~~~~~~~~

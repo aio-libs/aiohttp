@@ -232,7 +232,7 @@ class TestClient:
 
     @property
     def session(self):
-        """A raw handler to the aiohttp.ClientSession.
+        """An internal aiohttp.ClientSession.
 
         Unlike the methods on the TestClient, client session requests
         do not automatically include the host in the url queried, and
@@ -246,11 +246,11 @@ class TestClient:
 
     @asyncio.coroutine
     def request(self, method, path, *args, **kwargs):
-        """Routes a request to the http server.
+        """Routes a request to tested http server.
 
         The interface is identical to asyncio.ClientSession.request,
         except the loop kwarg is overridden by the instance used by the
-        application.
+        test server.
 
         """
         resp = yield from self._session.request(
@@ -306,7 +306,7 @@ class TestClient:
     def ws_connect(self, path, *args, **kwargs):
         """Initiate websocket connection.
 
-        The api is identical to aiohttp.ClientSession.ws_connect.
+        The api corresponds to aiohttp.ClientSession.ws_connect.
 
         """
         ws = yield from self._session.ws_connect(
