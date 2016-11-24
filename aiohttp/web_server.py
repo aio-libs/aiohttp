@@ -1,10 +1,12 @@
 """Low level HTTP server."""
 
 import asyncio
+import traceback
+from html import escape as html_escape
 
 from .helpers import TimeService
 from .server import ServerHttpProtocol
-from .web_exceptions import HTTPException
+from .web_exceptions import HTTPException, HTTPInternalServerError
 from .web_reqrep import BaseRequest
 
 __all__ = ('RequestHandler', 'WebServer')
@@ -59,6 +61,26 @@ class RequestHandler(ServerHttpProtocol):
                 resp = yield from self._handler(request)
             except HTTPException as exc:
                 resp = exc
+            except Exception as exc:
+                msg = "<h1>500 Internal Server Error</h1>"
+                if self.debug:
+                    try:
+                        tb = traceback.format_exc()
+                        tb = html_escape(tb)
+                        msg += '<br><h2>Traceback:</h2>\n<pre>'
+                        msg += tb
+                        msg += '</pre>'
+                    except:  # pragma: no cover
+                        pass
+                else:
+                    msg += "Server got itself in trouble"
+                msg = ("<html><head><title>500 Internal Server Error</title>"
+                       "</head><body>" + msg + "</body></html>")
+                resp = HTTPInternalServerError(text=msg,
+                                               content_type='text/html')
+                self.logger.exception(
+                    "Error handling request",
+                    exc_info=exc)
 
             resp_msg = yield from resp.prepare(request)
             yield from resp.write_eof()

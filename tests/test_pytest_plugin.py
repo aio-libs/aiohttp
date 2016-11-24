@@ -114,7 +114,7 @@ def test_set_value(cli):
     assert resp.status == 200
     text = yield from resp.text()
     assert text == 'thanks for the data'
-    assert cli.app['value'] == 'foo'
+    assert cli.server.app['value'] == 'foo'
 
 
 @asyncio.coroutine
@@ -123,7 +123,7 @@ def test_get_value(cli):
     assert resp.status == 200
     text = yield from resp.text()
     assert text == 'value: unknown'
-    cli.app['value'] = 'bar'
+    cli.server.app['value'] = 'bar'
     resp = yield from cli.get('/')
     assert resp.status == 200
     text = yield from resp.text()

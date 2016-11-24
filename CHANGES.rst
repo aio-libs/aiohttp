@@ -14,9 +14,19 @@ CHANGES
 
 - Support task attribute for StreamResponse #1410
 
+- Drop `TestClient.app` property, use `TestClient.server.app` instead
+  (BACKWARD INCOMPATIBLE)
+
+- Drop `TestClient.handler` property, use `TestClient.server.handler` instead
+  (BACKWARD INCOMPATIBLE)
+
+- `TestClient.server` property returns a test server instance, was
+  `asyncio.AbstractServer` (BACKWARD INCOMPATIBLE)
+
 - Follow gunicorn's signal semantics in `Gunicorn[UVLoop]WebWorker` #1201
 
-- Call worker_int and worker_abort callbacks in `Gunicorn[UVLoop]WebWorker` #1202
+- Call worker_int and worker_abort callbacks in
+  `Gunicorn[UVLoop]WebWorker` #1202
 
 -
 

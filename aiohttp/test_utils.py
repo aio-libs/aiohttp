@@ -74,7 +74,7 @@ class BaseTestServer(ABC):
 
     @abstractmethod  # pragma: no cover
     @asyncio.coroutine
-    def _make_factory(self):
+    def _make_factory(self, **kwargs):
         pass
 
     def make_url(self, path):
@@ -164,7 +164,8 @@ class RawTestServer(BaseTestServer):
 
     @asyncio.coroutine
     def _make_factory(self, **kwargs):
-        return WebServer(self._handler, loop=self._loop)
+        self.handler = WebServer(self._handler, loop=self._loop, **kwargs)
+        return self.handler
 
     @asyncio.coroutine
     def _close_hook(self):
@@ -218,10 +219,6 @@ class TestClient:
         yield from self._server.start_server()
 
     @property
-    def app(self):
-        return self._server.app
-
-    @property
     def host(self):
         return self._server.host
 
@@ -230,16 +227,12 @@ class TestClient:
         return self._server.port
 
     @property
-    def handler(self):
-        return self._server.handler
-
-    @property
     def server(self):
-        return self._server.server
+        return self._server
 
     @property
     def session(self):
-        """A raw handler to the aiohttp.ClientSession.
+        """An internal aiohttp.ClientSession.
 
         Unlike the methods on the TestClient, client session requests
         do not automatically include the host in the url queried, and
@@ -253,11 +246,11 @@ class TestClient:
 
     @asyncio.coroutine
     def request(self, method, path, *args, **kwargs):
-        """Routes a request to the http server.
+        """Routes a request to tested http server.
 
         The interface is identical to asyncio.ClientSession.request,
         except the loop kwarg is overridden by the instance used by the
-        application.
+        test server.
 
         """
         resp = yield from self._session.request(
@@ -313,7 +306,7 @@ class TestClient:
     def ws_connect(self, path, *args, **kwargs):
         """Initiate websocket connection.
 
-        The api is identical to aiohttp.ClientSession.ws_connect.
+        The api corresponds to aiohttp.ClientSession.ws_connect.
 
         """
         ws = yield from self._session.ws_connect(
@@ -486,45 +479,6 @@ def make_mocked_request(method, path, headers=None, *,
 
     Useful in unit tests, when spinning full web server is overkill or
     specific conditions and errors are hard to trigger.
-
-    :param method: str, that represents HTTP method, like; GET, POST.
-    :type method: str
-
-    :param path: str, The URL including *PATH INFO* without the host or scheme
-    :type path: str
-
-    :param headers: mapping containing the headers. Can be anything accepted
-        by the multidict.CIMultiDict constructor.
-    :type headers: dict, multidict.CIMultiDict, list of pairs
-
-    :param version: namedtuple with encoded HTTP version
-    :type version: aiohttp.protocol.HttpVersion
-
-    :param closing: flag indicates that connection should be closed after
-        response.
-    :type closing: bool
-
-    :param app: the aiohttp.web application attached for fake request
-    :type app: aiohttp.web.Application
-
-    :param reader: object for storing and managing incoming data
-    :type reader: aiohttp.parsers.StreamParser
-
-    :param writer: object for managing outcoming data
-    :type wirter: aiohttp.parsers.StreamWriter
-
-    :param transport: asyncio transport instance
-    :type transport: asyncio.transports.Transport
-
-    :param payload: raw payload reader object
-    :type  payload: aiohttp.streams.FlowControlStreamReader
-
-    :param sslcontext: ssl.SSLContext object, for HTTPS connection
-    :type sslcontext: ssl.SSLContext
-
-    :param secure_proxy_ssl_header: A tuple representing a HTTP header/value
-        combination that signifies a request is secure.
-    :type secure_proxy_ssl_header: tuple
 
     """
 
