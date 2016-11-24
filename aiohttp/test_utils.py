@@ -74,7 +74,7 @@ class BaseTestServer(ABC):
 
     @abstractmethod  # pragma: no cover
     @asyncio.coroutine
-    def _make_factory(self):
+    def _make_factory(self, **kwargs):
         pass
 
     def make_url(self, path):
@@ -164,7 +164,8 @@ class RawTestServer(BaseTestServer):
 
     @asyncio.coroutine
     def _make_factory(self, **kwargs):
-        return WebServer(self._handler, loop=self._loop)
+        self.handler = WebServer(self._handler, loop=self._loop, **kwargs)
+        return self.handler
 
     @asyncio.coroutine
     def _close_hook(self):
