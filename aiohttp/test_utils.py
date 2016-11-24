@@ -219,10 +219,6 @@ class TestClient:
         yield from self._server.start_server()
 
     @property
-    def app(self):
-        return self._server.app
-
-    @property
     def host(self):
         return self._server.host
 
@@ -231,12 +227,8 @@ class TestClient:
         return self._server.port
 
     @property
-    def handler(self):
-        return self._server.handler
-
-    @property
     def server(self):
-        return self._server.server
+        return self._server
 
     @property
     def session(self):

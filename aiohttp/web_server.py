@@ -2,9 +2,7 @@
 
 import asyncio
 import traceback
-
 from html import escape as html_escape
-
 
 from .helpers import TimeService
 from .server import ServerHttpProtocol
@@ -72,7 +70,7 @@ class RequestHandler(ServerHttpProtocol):
                         msg += '<br><h2>Traceback:</h2>\n<pre>'
                         msg += tb
                         msg += '</pre>'
-                    except:
+                    except:  # pragma: no cover
                         pass
                 else:
                     msg += "Server got itself in trouble"
