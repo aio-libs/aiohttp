@@ -103,6 +103,229 @@ app test client::
         assert await resp.text() == 'value: bar'
 
 
+The Test Client and Servers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+*aiohttp* test utils provides a scaffolding for testing aiohttp-based
+web servers.
+
+They are consist of two parts: running test server and making HTTP
+requests to this server.
+
+:class:`~aiohttp.test_utils.TestServer` runs :class:`aiohttp.web.Application`
+based server, :class:`~aiohttp.test_utils.RawTestServer` starts
+:class:`aiohttp.web.WebServer` low level server.
+
+For performing HTTP requests to these servers you have to create a
+test client: :class:`aiohttp.test_utils.TestClient` instance.
+
+The client incapsulates :class:`aiohttp.ClientSession` by providing
+proxy methods to the client for common operations such as
+*ws_connect*, *get*, *post*, etc.
+
+
+
+.. _aiohttp-testing-unittest-example:
+
+.. _aiohttp-testing-unittest-style:
+
+Unittest style
+~~~~~~~~~~~~~~
+
+To test applications with the standard library's unittest or unittest-based
+functionality, the AioHTTPTestCase is provided::
+
+    from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+    from aiohttp import web
+
+    class MyAppTestCase(AioHTTPTestCase):
+
+        def get_app(self, loop):
+            """Override the get_app method to return your application.
+            """
+            # it's important to use the loop passed here.
+            return web.Application(loop=loop)
+
+        # the unittest_run_loop decorator can be used in tandem with
+        # the AioHTTPTestCase to simplify running
+        # tests that are asynchronous
+        @unittest_run_loop
+        async def test_example(self):
+            request = await self.client.request("GET", "/")
+            assert request.status == 200
+            text = await request.text()
+            assert "Hello, world" in text
+
+        # a vanilla example
+        def test_example(self):
+            async def test_get_route():
+                url = root + "/"
+                resp = await self.client.request("GET", url, loop=loop)
+                assert resp.status == 200
+                text = await resp.text()
+                assert "Hello, world" in text
+
+            self.loop.run_until_complete(test_get_route())
+
+.. class:: AioHTTPTestCase
+
+    A base class to allow for unittest web applications using aiohttp.
+
+    Derived from :class:`unittest.TestCase`
+
+    Provides the following:
+
+    .. attribute:: client
+
+       an aiohttp test client, :class:`TestClient` instance.
+
+    .. attribute:: loop
+
+       The event loop in which the application and server are running.
+
+    .. attribute:: app
+
+       The application returned by :meth:`get_app`
+       (:class:`aiohttp.web.Application` instance).
+
+    .. method:: get_app(loop)
+
+       This method should be overridden
+       to return the :class:`aiohttp.web.Application`
+       object to test.
+
+       :param loop: the event_loop to use
+       :type loop: asyncio.AbstractEventLoop
+
+       :return: :class:`aiohttp.web.Application` instance.
+
+    .. method:: setUp()
+
+       Standard test initialization method.
+
+    .. method:: tearDown()
+
+       Standard test finalization method.
+
+
+   .. note::
+
+      The ``TestClient``'s methods are asynchronous: you have to
+      execute function on the test client using asynchronous methods.
+
+      A basic test class wraps every test method by
+      :func:`unittest_run_loop` decorator::
+
+         class TestA(AioHTTPTestCase):
+
+             @unittest_run_loop
+             async def test_f(self):
+                 resp = await self.client.get('/')
+
+
+.. decorator:: unittest_run_loop:
+
+   A decorator dedicated to use with asynchronous methods of an
+   :class:`AioHTTPTestCase`.
+
+   Handles executing an asynchronous function, using
+   the :attr:`AioHTTPTestCase.loop` of the :class:`AioHTTPTestCase`.
+
+
+Faking request object
+---------------------
+
+aiohttp provides test utility for creating fake
+:class:`aiohttp.web.Request` objects:
+:func:`aiohttp.test_utils.make_mocked_request`, it could be useful in
+case of simple unit tests, like handler tests, or simulate error
+conditions that hard to reproduce on real server::
+
+    from aiohttp import web
+    from aiohttp.test_utils import make_mocked_request
+
+    def handler(request):
+        assert request.headers.get('token') == 'x'
+        return web.Response(body=b'data')
+
+    def test_handler():
+        req = make_mocked_request('GET', '/', headers={'token': 'x'})
+        resp = handler(req)
+        assert resp.body == b'data'
+
+.. warning::
+
+   We don't recommend to apply
+   :func:`~aiohttp.test_utils.make_mocked_request` everywhere for
+   testing web-handler's business object -- please use test client and
+   real networking via 'localhost' as shown in examples before.
+
+   :func:`~aiohttp.test_utils.make_mocked_request` exists only for
+   testing complex cases (e.g. emulating network errors) which
+   are extremely hard or even impossible to test by conventional
+   way.
+
+
+.. function:: make_mocked_request(method, path, headers=None, *, \
+                                  version=HttpVersion(1, 1), \
+                                  closing=False, \
+                                  app=None, \
+                                  reader=sentinel, \
+                                  writer=sentinel, \
+                                  transport=sentinel, \
+                                  payload=sentinel, \
+                                  sslcontext=None, \
+                                  secure_proxy_ssl_header=None)
+
+   Creates mocked web.Request testing purposes.
+
+   Useful in unit tests, when spinning full web server is overkill or
+   specific conditions and errors are hard to trigger.
+
+   :param method: str, that represents HTTP method, like; GET, POST.
+   :type method: str
+
+   :param path: str, The URL including *PATH INFO* without the host or scheme
+   :type path: str
+
+   :param headers: mapping containing the headers. Can be anything accepted
+       by the multidict.CIMultiDict constructor.
+   :type headers: dict, multidict.CIMultiDict, list of pairs
+
+   :param version: namedtuple with encoded HTTP version
+   :type version: aiohttp.protocol.HttpVersion
+
+   :param closing: flag indicates that connection should be closed after
+       response.
+   :type closing: bool
+
+   :param app: the aiohttp.web application attached for fake request
+   :type app: aiohttp.web.Application
+
+   :param reader: object for storing and managing incoming data
+   :type reader: aiohttp.parsers.StreamParser
+
+   :param writer: object for managing outcoming data
+   :type wirter: aiohttp.parsers.StreamWriter
+
+   :param transport: asyncio transport instance
+   :type transport: asyncio.transports.Transport
+
+   :param payload: raw payload reader object
+   :type  payload: aiohttp.streams.FlowControlStreamReader
+
+   :param sslcontext: ssl.SSLContext object, for HTTPS connection
+   :type sslcontext: ssl.SSLContext
+
+   :param secure_proxy_ssl_header: A tuple representing a HTTP header/value
+       combination that signifies a request is secure.
+   :type secure_proxy_ssl_header: tuple
+
+   :return: :class:`aiohttp.web.Request` object.
+
+
+.. _aiohttp-testing-writing-testable-services:
+
 .. _aiohttp-testing-framework-agnostic-utilities:
 
 Framework Agnostic Utilities
@@ -152,104 +375,6 @@ basis, the TestClient object can be used directly::
 
 A full list of the utilities provided can be found at the
 :data:`api reference <aiohttp.test_utils>`
-
-The Test Client and Servers
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-*aiohttp* test utils provides a scaffolding for testing aiohttp-based
-web servers.
-
-They are consist of two parts: running test server and making HTTP
-requests to this server.
-
-:class:`~aiohttp.test_utils.TestServer` runs :class:`aiohttp.web.Application`
-based server, :class:`~aiohttp.test_utils.RawTestServer` starts
-:class:`aiohttp.web.WebServer` low level server.
-
-For performing HTTP requests to these servers you have to create a
-test client: :class:`aiohttp.test_utils.TestClient` instance.
-
-The client incapsulates :class:`aiohttp.ClientSession` by providing
-proxy methods to the client for common operations such as
-*ws_connect*, *get*, *post*, etc.
-
-
-
-.. _aiohttp-testing-unittest-example:
-
-Unittest Example
-~~~~~~~~~~~~~~~~
-
-To test applications with the standard library's unittest or unittest-based
-functionality, the AioHTTPTestCase is provided::
-
-    from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
-    from aiohttp import web
-
-    class MyAppTestCase(AioHTTPTestCase):
-
-        def get_app(self, loop):
-            """Override the get_app method to return your application.
-            """
-            # it's important to use the loop passed here.
-            return web.Application(loop=loop)
-
-        # the unittest_run_loop decorator can be used in tandem with
-        # the AioHTTPTestCase to simplify running
-        # tests that are asynchronous
-        @unittest_run_loop
-        async def test_example(self):
-            request = await self.client.request("GET", "/")
-            assert request.status == 200
-            text = await request.text()
-            assert "Hello, world" in text
-
-        # a vanilla example
-        def test_example(self):
-            async def test_get_route():
-                url = root + "/"
-                resp = await self.client.request("GET", url, loop=loop)
-                assert resp.status == 200
-                text = await resp.text()
-                assert "Hello, world" in text
-
-            self.loop.run_until_complete(test_get_route())
-
-Faking request object
----------------------
-
-aiohttp provides test utility for creating fake
-:class:`aiohttp.web.Request` objects:
-:func:`aiohttp.test_utils.make_mocked_request`, it could be useful in
-case of simple unit tests, like handler tests, or simulate error
-conditions that hard to reproduce on real server::
-
-    from aiohttp import web
-    from aiohttp.test_utils import make_mocked_request
-
-    def handler(request):
-        assert request.headers.get('token') == 'x'
-        return web.Response(body=b'data')
-
-    def test_handler():
-        req = make_mocked_request('GET', '/', headers={'token': 'x'})
-        resp = handler(req)
-        assert resp.body == b'data'
-
-.. warning::
-
-   We don't recommend to apply
-   :func:`~aiohttp.test_utils.make_mocked_request` everywhere for
-   testing web-handler's business object -- please use test client and
-   real networking via 'localhost' as shown in examples before.
-
-   :func:`~aiohttp.test_utils.make_mocked_request` exists only for
-   testing complex cases (e.g. emulating network errors) which
-   are extremely hard or even impossible to test by conventional
-   way.
-
-
-.. _aiohttp-testing-writing-testable-services:
 
 Writing testable services
 -------------------------
@@ -526,73 +651,6 @@ Test Client
 
       The api corresponds to :meth:`aiohttp.ClientSession.ws_connect`.
 
-Unittest's TestCase
-~~~~~~~~~~~~~~~~~~~~
-
-.. class:: AioHTTPTestCase
-
-    A base class to allow for unittest web applications using aiohttp.
-
-    Derived from :class:`unittest.TestCase`
-
-    Provides the following:
-
-    .. attribute:: client
-
-       an aiohttp test client, :class:`TestClient` instance.
-
-    .. attribute:: loop
-
-       The event loop in which the application and server are running.
-
-    .. attribute:: app
-
-       The application returned by :meth:`get_app`
-       (:class:`aiohttp.web.Application` instance).
-
-    .. method:: get_app(loop)
-
-       This method should be overridden
-       to return the :class:`aiohttp.web.Application`
-       object to test.
-
-       :param loop: the event_loop to use
-       :type loop: asyncio.AbstractEventLoop
-
-       :return: :class:`aiohttp.web.Application` instance.
-
-    .. method:: setUp()
-
-       Standard test initialization method.
-
-    .. method:: tearDown()
-
-       Standard test finalization method.
-
-
-   .. note::
-
-      The ``TestClient``'s methods are asynchronous: you have to
-      execute function on the test client using asynchronous methods.
-
-      A basic test class wraps every test method by
-      :func:`unittest_run_loop` decorator::
-
-         class TestA(AioHTTPTestCase):
-
-             @unittest_run_loop
-             async def test_f(self):
-                 resp = await self.client.get('/')
-
-
-.. decorator:: unittest_run_loop:
-
-   A decorator dedicated to use with asynchronous methods of an
-   :class:`AioHTTPTestCase`.
-
-   Handles executing an asynchronous function, using
-   the :attr:`AioHTTPTestCase.loop` of the :class:`AioHTTPTestCase`.
-
 
 Utilities
 ~~~~~~~~~
@@ -614,64 +672,6 @@ Utilities
       called.
   :returns: A mock object that behaves as a coroutine which returns
       *return_value* when called.
-
-
-.. function:: make_mocked_request(method, path, headers=None, *, \
-                                  version=HttpVersion(1, 1), \
-                                  closing=False, \
-                                  app=None, \
-                                  reader=sentinel, \
-                                  writer=sentinel, \
-                                  transport=sentinel, \
-                                  payload=sentinel, \
-                                  sslcontext=None, \
-                                  secure_proxy_ssl_header=None)
-
-   Creates mocked web.Request testing purposes.
-
-   Useful in unit tests, when spinning full web server is overkill or
-   specific conditions and errors are hard to trigger.
-
-   :param method: str, that represents HTTP method, like; GET, POST.
-   :type method: str
-
-   :param path: str, The URL including *PATH INFO* without the host or scheme
-   :type path: str
-
-   :param headers: mapping containing the headers. Can be anything accepted
-       by the multidict.CIMultiDict constructor.
-   :type headers: dict, multidict.CIMultiDict, list of pairs
-
-   :param version: namedtuple with encoded HTTP version
-   :type version: aiohttp.protocol.HttpVersion
-
-   :param closing: flag indicates that connection should be closed after
-       response.
-   :type closing: bool
-
-   :param app: the aiohttp.web application attached for fake request
-   :type app: aiohttp.web.Application
-
-   :param reader: object for storing and managing incoming data
-   :type reader: aiohttp.parsers.StreamParser
-
-   :param writer: object for managing outcoming data
-   :type wirter: aiohttp.parsers.StreamWriter
-
-   :param transport: asyncio transport instance
-   :type transport: asyncio.transports.Transport
-
-   :param payload: raw payload reader object
-   :type  payload: aiohttp.streams.FlowControlStreamReader
-
-   :param sslcontext: ssl.SSLContext object, for HTTPS connection
-   :type sslcontext: ssl.SSLContext
-
-   :param secure_proxy_ssl_header: A tuple representing a HTTP header/value
-       combination that signifies a request is secure.
-   :type secure_proxy_ssl_header: tuple
-
-   :return: :class:`aiohttp.web.Request` object.
 
 
 .. function:: unused_port()
