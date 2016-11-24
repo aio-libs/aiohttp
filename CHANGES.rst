@@ -28,9 +28,9 @@ CHANGES
 - Call worker_int and worker_abort callbacks in
   `Gunicorn[UVLoop]WebWorker` #1202
 
--
+- Has functional tests for client proxy #1218
 
--
+- Fix bugs with client proxy target path and proxy host with port #1413
 
 -
 
