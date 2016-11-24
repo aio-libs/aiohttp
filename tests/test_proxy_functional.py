@@ -10,6 +10,58 @@ import aiohttp.helpers
 import aiohttp.web
 
 
+@pytest.fixture
+def proxy_test_server(raw_test_server, loop, monkeypatch):
+    """Handle all proxy requests and imitate remote server response."""
+
+    _patch_ssl_transport(monkeypatch)
+
+    default_response = dict(
+        status=200,
+        headers=None,
+        body=None)
+
+    @asyncio.coroutine
+    def proxy_handler(request, proxy_mock):
+        proxy_mock.request = request
+        proxy_mock.requests_list.append(request)
+
+        response = default_response.copy()
+        if isinstance(proxy_mock.return_value, dict):
+            response.update(proxy_mock.return_value)
+
+        return aiohttp.web.Response(**response)
+
+    @asyncio.coroutine
+    def proxy_server():
+        proxy_mock = mock.Mock()
+        proxy_mock.request = None
+        proxy_mock.requests_list = []
+
+        handler = partial(proxy_handler, proxy_mock=proxy_mock)
+        server = yield from raw_test_server(handler)
+
+        proxy_mock.server = server
+        proxy_mock.url = server.make_url('/')
+
+        return proxy_mock
+
+    return proxy_server
+
+
+@asyncio.coroutine
+def _request(method, url, loop=None, **kwargs):
+    with aiohttp.ClientSession(loop=loop) as client:
+        resp = yield from client.request(method, url, **kwargs)
+        yield from resp.release()
+        return resp
+
+
+@pytest.fixture()
+def get_request(loop):
+    return partial(_request, method='GET', loop=loop)
+
+
 @asyncio.coroutine
 def test_proxy_http_absolute_path(proxy_test_server, get_request):
     url = 'http://aiohttp.io/path?query=yes'
@@ -225,55 +277,3 @@ def _patch_ssl_transport(monkeypatch):
     monkeypatch.setattr(
         "asyncio.selector_events.BaseSelectorEventLoop._make_ssl_transport",
         _make_ssl_transport_dummy)
-
-
-@pytest.fixture
-def proxy_test_server(raw_test_server, loop, monkeypatch):
-    """Handle all proxy requests and imitate remote server response."""
-
-    _patch_ssl_transport(monkeypatch)
-
-    default_response = dict(
-        status=200,
-        headers=None,
-        body=None)
-
-    @asyncio.coroutine
-    def proxy_handler(request, proxy_mock):
-        proxy_mock.request = request
-        proxy_mock.requests_list.append(request)
-
-        response = default_response.copy()
-        if isinstance(proxy_mock.return_value, dict):
-            response.update(proxy_mock.return_value)
-
-        return aiohttp.web.Response(**response)
-
-    @asyncio.coroutine
-    def proxy_server():
-        proxy_mock = mock.Mock()
-        proxy_mock.request = None
-        proxy_mock.requests_list = []
-
-        handler = partial(proxy_handler, proxy_mock=proxy_mock)
-        server = yield from raw_test_server(handler, loop=loop)
-
-        proxy_mock.server = server
-        proxy_mock.url = server.make_url('/')
-
-        return proxy_mock
-
-    return proxy_server
-
-
-@asyncio.coroutine
-def _request(method, url, loop=None, **kwargs):
-    with aiohttp.ClientSession(loop=loop) as client:
-        resp = yield from client.request(method, url, **kwargs)
-        yield from resp.release()
-        return resp
-
-
-@pytest.fixture()
-def get_request(loop):
-    return partial(_request, method='GET', loop=loop)
