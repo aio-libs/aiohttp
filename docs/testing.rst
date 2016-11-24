@@ -526,8 +526,76 @@ Test Client
 
       The api corresponds to :meth:`aiohttp.ClientSession.ws_connect`.
 
-Mocked coroutine
-~~~~~~~~~~~~~~~~
+Unittest's TestCase
+~~~~~~~~~~~~~~~~~~~~
+
+.. class:: AioHTTPTestCase
+
+    A base class to allow for unittest web applications using aiohttp.
+
+    Derived from :class:`unittest.TestCase`
+
+    Provides the following:
+
+    .. attribute:: client
+
+       an aiohttp test client, :class:`TestClient` instance.
+
+    .. attribute:: loop
+
+       The event loop in which the application and server are running.
+
+    .. attribute:: app
+
+       The application returned by :meth:`get_app`
+       (:class:`aiohttp.web.Application` instance).
+
+    .. method:: get_app(loop)
+
+       This method should be overridden
+       to return the :class:`aiohttp.web.Application`
+       object to test.
+
+       :param loop: the event_loop to use
+       :type loop: asyncio.AbstractEventLoop
+
+       :return: :class:`aiohttp.web.Application` instance.
+
+    .. method:: setUp()
+
+       Standard test initialization method.
+
+    .. method:: tearDown()
+
+       Standard test finalization method.
+
+
+   .. note::
+
+      The ``TestClient``'s methods are asynchronous: you have to
+      execute function on the test client using asynchronous methods.
+
+      A basic test class wraps every test method by
+      :func:`unittest_run_loop` decorator::
+
+         class TestA(AioHTTPTestCase):
+
+             @unittest_run_loop
+             async def test_f(self):
+                 resp = await self.client.get('/')
+
+
+.. decorator:: unittest_run_loop:
+
+   A decorator dedicated to use with asynchronous methods of an
+   :class:`AioHTTPTestCase`.
+
+   Handles executing an asynchronous function, using
+   the :attr:`AioHTTPTestCase.loop` of the :class:`AioHTTPTestCase`.
+
+
+Utilities
+~~~~~~~~~
 
 .. function:: make_mocked_coro(return_value)
 
@@ -548,19 +616,89 @@ Mocked coroutine
       *return_value* when called.
 
 
+.. function:: make_mocked_request(method, path, headers=None, *, \
+                                  version=HttpVersion(1, 1), \
+                                  closing=False, \
+                                  app=None, \
+                                  reader=sentinel, \
+                                  writer=sentinel, \
+                                  transport=sentinel, \
+                                  payload=sentinel, \
+                                  sslcontext=None, \
+                                  secure_proxy_ssl_header=None)
+
+   Creates mocked web.Request testing purposes.
+
+   Useful in unit tests, when spinning full web server is overkill or
+   specific conditions and errors are hard to trigger.
+
+   :param method: str, that represents HTTP method, like; GET, POST.
+   :type method: str
+
+   :param path: str, The URL including *PATH INFO* without the host or scheme
+   :type path: str
+
+   :param headers: mapping containing the headers. Can be anything accepted
+       by the multidict.CIMultiDict constructor.
+   :type headers: dict, multidict.CIMultiDict, list of pairs
+
+   :param version: namedtuple with encoded HTTP version
+   :type version: aiohttp.protocol.HttpVersion
+
+   :param closing: flag indicates that connection should be closed after
+       response.
+   :type closing: bool
+
+   :param app: the aiohttp.web application attached for fake request
+   :type app: aiohttp.web.Application
+
+   :param reader: object for storing and managing incoming data
+   :type reader: aiohttp.parsers.StreamParser
+
+   :param writer: object for managing outcoming data
+   :type wirter: aiohttp.parsers.StreamWriter
+
+   :param transport: asyncio transport instance
+   :type transport: asyncio.transports.Transport
+
+   :param payload: raw payload reader object
+   :type  payload: aiohttp.streams.FlowControlStreamReader
+
+   :param sslcontext: ssl.SSLContext object, for HTTPS connection
+   :type sslcontext: ssl.SSLContext
+
+   :param secure_proxy_ssl_header: A tuple representing a HTTP header/value
+       combination that signifies a request is secure.
+   :type secure_proxy_ssl_header: tuple
+
+   :return: :class:`aiohttp.web.Request` object.
+
+
 .. function:: unused_port()
 
    Return an unused port number for IPv4 TCP protocol.
 
+   :return int: ephemeral port number which could be reused by test server.
 
+.. function:: loop_context(loop_factory=<function asyncio.new_event_loop>)
 
-.. automodule:: aiohttp.test_utils
-   :members: AioHTTPTestCase, unittest_run_loop,
-             loop_context, setup_test_loop, teardown_test_loop,
-             make_mocked_request
-   :undoc-members:
-   :show-inheritance:
+   A contextmanager that creates an event_loop, for test purposes.
 
+   Handles the creation and cleanup of a test loop.
+
+.. function:: setup_test_loop(loop_factory=<function asyncio.new_event_loop>)
+
+   Create and return an :class:`asyncio.AbstractEventLoop` instance.
+
+   The caller should also call teardown_test_loop, once they are done
+   with the loop.
+
+.. function:: teardown_test_loop(loop)
+
+   Teardown and cleanup an event_loop created by setup_test_loop.
+
+   :param loop: the loop to teardown
+   :type loop: asyncio.AbstractEventLoop
 
 
 
