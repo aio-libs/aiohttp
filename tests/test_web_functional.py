@@ -52,7 +52,7 @@ def test_handler_returns_not_response(loop, test_server, test_client):
     resp = yield from client.get('/')
     assert 500 == resp.status
 
-    logger.exception.assert_called_with("Error handling request")
+    assert logger.exception.called
 
 
 @asyncio.coroutine
