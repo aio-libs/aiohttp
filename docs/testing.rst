@@ -153,17 +153,26 @@ basis, the TestClient object can be used directly::
 A full list of the utilities provided can be found at the
 :data:`api reference <aiohttp.test_utils>`
 
-The Test Client
-~~~~~~~~~~~~~~~
+The Test Client and Servers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The :class:`aiohttp.test_utils.TestClient` creates an asyncio server
-for the web.Application object, as well as a
-:class:`aiohttp.ClientSession` to perform requests. In addition,
-*TestClient* provides proxy methods to the client for common
-operations such as *ws_connect*, *get*, *post*, etc.
+*aiohttp* test utils provides a scaffolding for testing aiohttp-based
+web servers.
 
-Please see the full api at the
-:class:`TestClass api reference <aiohttp.test_utils.TestClient>`
+They are consist of two parts: running test server and making HTTP
+requests to this server.
+
+:class:`~aiohttp.test_utils.TestServer` runs :class:`aiohttp.web.Application`
+based server, :class:`~aiohttp.test_utils.RawTestServer` starts
+:class:`aiohttp.web.WebServer` low level server.
+
+For performing HTTP requests to these servers you have to create a
+test client: :class:`aiohttp.test_utils.TestClient` instance.
+
+The client incapsulates :class:`aiohttp.ClientSession` by providing
+proxy methods to the client for common operations such as
+*ws_connect*, *get*, *post*, etc.
+
 
 
 .. _aiohttp-testing-unittest-example:
@@ -327,21 +336,15 @@ Test server usually works in conjunction with
 :class:`aiohttp.test_utils.TestClient` which provides handy client methods
 for accessing to the server.
 
-.. class:: TestServer(app, *, scheme="http", host='127.0.0.1')
+.. class:: BaseTestServer(*, scheme='http', host='127.0.0.1')
 
-   Test server (not started yet after constructor call).
-
-   :param app: :class:`aiohttp.web.Application` instance to run.
+   Base class for test servers.
 
    :param str scheme: HTTP scheme, non-protected ``"http"`` by default.
 
    :param str host: a host for TCP socket, IPv4 *local host*
       (``'127.0.0.1'``) by default.
 
-
-   .. attribute:: app
-
-      :class:`aiohttp.web.Application` instance to run.
 
    .. attribute:: scheme
 
@@ -358,12 +361,11 @@ for accessing to the server.
 
    .. attribute:: handler
 
-      :class:`aiohttp.web.RequestHandlerFactory` returned by
-      ``self.app.make_handler()``.
+      :class:`aiohttp.web.WebServer` used for HTTP requests serving.
 
    .. attribute:: server
 
-      :class:`asyncio.AbstractServer` used for running :attr:`app`.
+      :class:`asyncio.AbstractServer` used for managing accepted connections.
 
    .. comethod:: start_server(**kwargs)
 
@@ -375,14 +377,75 @@ for accessing to the server.
 
    .. method:: make_url(path)
 
-      Return :class:`~yarl.URL` for given *path*.
+      Return an *absolute* :class:`~yarl.URL` for given *path*.
+
+
+.. class:: RawTestServer(handler, *, \
+                         loop=None, scheme="http", host='127.0.0.1')
+
+   Low-level test server (derived from :class:`BaseTestServer`).
+
+   :param handler: a coroutine for handling web requests. The
+                   handler should accept
+                   :class:`aiohttp.web.BaseRequest` and return a
+                   response instance,
+                   e.g. :class:`~aiohttp.web.StreamResponse` or
+                   :class:`~aiohttp.web.Response`.
+
+                   The handler could raise
+                   :class:`~aiohttp.web.HTTPException` as a signal for
+                   non-200 HTTP response.
+
+   :param str scheme: HTTP scheme, non-protected ``"http"`` by default.
+
+   :param str host: a host for TCP socket, IPv4 *local host*
+      (``'127.0.0.1'``) by default.
+
+
+.. class:: TestServer(app, *, scheme="http", host='127.0.0.1')
+
+   Test server (derived from :class:`BaseTestServer`) for starting
+   :class:`~aiohttp.web.Application`.
+
+   :param app: :class:`aiohttp.web.Application` instance to run.
+
+   :param str scheme: HTTP scheme, non-protected ``"http"`` by default.
+
+   :param str host: a host for TCP socket, IPv4 *local host*
+      (``'127.0.0.1'``) by default.
+
+
+   .. attribute:: app
+
+      :class:`aiohttp.web.Application` instance to run.
 
 
 Test Client
 ~~~~~~~~~~~
 
-.. class:: TestClient
+.. class:: TestClient(app_or_server, *, \
+                      scheme='http', host='127.0.0.1', \
+                      cookie_jar=None, **kwargs)
 
+   A test client used for making calls to tested server.
+
+   :param app_or_server: :class:`BaseTestServer` instance for making
+                         client requests to it.
+
+                         If the parameter is
+                         :class:`aiohttp.web.Application` the tool
+                         creates :class:`TestServer` implicitly for
+                         serving the application.
+
+   :param cookie_jar: an optional :class:`aiohttp.CookieJar` instance,
+                      may be useful with ``CookieJar(unsafe=True)``
+                      option.
+
+:class:`aiohttp.web.Application` instance to run.
+
+
+Mocked coroutine
+~~~~~~~~~~~~~~~~
 
 .. function:: make_mocked_coro(return_value)
 
@@ -410,7 +473,7 @@ Test Client
 
 
 .. automodule:: aiohttp.test_utils
-   :members: TestClient, AioHTTPTestCase, unittest_run_loop,
+   :members: AioHTTPTestCase, unittest_run_loop,
              loop_context, setup_test_loop, teardown_test_loop,
              make_mocked_request
    :undoc-members:
