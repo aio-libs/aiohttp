@@ -1,6 +1,11 @@
 import collections
 import logging
+import pathlib
+import signal
+import socket
 import sys
+import time
+from subprocess import Popen
 
 import pytest
 
@@ -82,3 +87,49 @@ def pytest_ignore_collect(path, config):
     if 'test_py35' in str(path):
         if sys.version_info < (3, 5, 0):
             return True
+
+
+def get_ephemeral_port():
+    s = socket.socket()
+    s.bind(("", 0))
+    return s.getsockname()[1]
+
+
+def _wait_for_port(portnum, delay=0.1, attempts=100):
+    while attempts > 0:
+        s = socket.socket()
+        if s.connect_ex(('127.0.0.1', portnum)) == 0:
+            s.close()
+            return
+        time.sleep(delay)
+        attempts -= 1
+    raise RuntimeError("Port %d is not open" % portnum)
+
+
+class FakeProxyProcess(object):
+    def __init__(self):
+        self.port = get_ephemeral_port()
+        script_file = pathlib.Path(__file__).parent / 'mitmdump_script.py'
+        self.args = ['mitmdump', '-p', str(self.port), '-s',
+                     str(script_file), '--no-http2']
+
+    def __enter__(self):
+        self.proc = Popen(self.args)
+        self.proc.poll()
+        _wait_for_port(self.port)
+        return self
+
+    def __exit__(self, *args):
+        if self.proc is not None:
+            self.proc.send_signal(signal.SIGINT)
+            self.proc.wait()
+            self.proc = None
+
+    def url(self):
+        return "http://localhost:{}/".format(self.port)
+
+
+@pytest.yield_fixture
+def fake_proxy():
+    with FakeProxyProcess() as fake_proxy:
+        yield fake_proxy
