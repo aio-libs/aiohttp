@@ -4,7 +4,6 @@ import cgi
 import collections
 import datetime
 import enum
-import http.cookies
 import io
 import json
 import math
@@ -12,6 +11,7 @@ import re
 import time
 import warnings
 from email.utils import parsedate
+from http.cookies import SimpleCookie
 from types import MappingProxyType
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
@@ -295,7 +295,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         A read-only dictionary-like object.
         """
         raw = self.headers.get(hdrs.COOKIE, '')
-        parsed = http.cookies.SimpleCookie(raw)
+        parsed = SimpleCookie(raw)
         return MappingProxyType(
             {key: val.value for key, val in parsed.items()})
 
@@ -508,7 +508,7 @@ class StreamResponse(HeadersMixin):
         self._compression = False
         self._compression_force = False
         self._headers = CIMultiDict()
-        self._cookies = http.cookies.SimpleCookie()
+        self._cookies = SimpleCookie()
         self.set_status(status, reason)
 
         self._req = None
@@ -518,9 +518,9 @@ class StreamResponse(HeadersMixin):
         self._task = None
 
         if headers is not None:
+            # TODO: optimize CIMultiDict extending
             self._headers.extend(headers)
-        if hdrs.CONTENT_TYPE not in self._headers:
-            self._headers[hdrs.CONTENT_TYPE] = 'application/octet-stream'
+        self._headers.setdefault(hdrs.CONTENT_TYPE, 'application/octet-stream')
 
     def _copy_cookies(self):
         for cookie in self._cookies.values():
