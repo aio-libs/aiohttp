@@ -219,8 +219,9 @@ class Application(MutableMapping):
         warnings.warn("Use .on_cleanup.append() instead", DeprecationWarning)
         self.on_cleanup.append(lambda app: func(app, *args, **kwargs))
 
-    def _make_request(self, message, payload, protocol):
-        return web_reqrep.Request(
+    def _make_request(self, message, payload, protocol,
+                      _cls=web_reqrep.Request):
+        return _cls(
             message, payload,
             protocol.transport, protocol.reader, protocol.writer,
             protocol.time_service, protocol._request_handler,
