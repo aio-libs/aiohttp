@@ -349,7 +349,7 @@ class TestProxy(unittest.TestCase):
             proxy=URL('http://proxy.example.com'),
             proxy_auth=aiohttp.helpers.BasicAuth('user', 'pass'),
             loop=self.loop)
-        self.assertEqual(('user', 'pass', 'latin1'), req.proxy_auth)
+        self.assertEqual(('user', 'pass', 'utf-8'), req.proxy_auth)
 
     def test_proxy_auth_property_default(self):
         req = aiohttp.ClientRequest(

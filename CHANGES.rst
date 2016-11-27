@@ -113,7 +113,7 @@ CHANGES
 
 - Revert `resp.url` back to `str`, introduce `resp.url_obj` #1292
 
-- Raise ValueError if BasicAuth login has a ":" character #1307
+- Quote login and password for basic auth separately #1307
 
 - Fix bug when ClientRequest send payload file with opened as
   open('filename', 'r+b') #1306

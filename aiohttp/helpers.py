@@ -18,6 +18,7 @@ from urllib.parse import urlencode
 
 from async_timeout import timeout
 from multidict import MultiDict, MultiDictProxy
+from yarl import quote, unquote
 
 from . import hdrs
 
@@ -43,21 +44,21 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
     :param str encoding: (optional) encoding ('latin1' by default)
     """
 
-    def __new__(cls, login, password='', encoding='latin1'):
+    def __new__(cls, login, password='', encoding='utf-8'):
         if login is None:
             raise ValueError('None is not allowed as login value')
 
         if password is None:
             raise ValueError('None is not allowed as password value')
 
-        if ':' in login:
+        if ':' in login and encoding.lower not in ('utf8', 'utf-8'):
             raise ValueError(
                 'A ":" is not allowed in login (RFC 1945#section-11.1)')
 
         return super().__new__(cls, login, password, encoding)
 
     @classmethod
-    def decode(cls, auth_header, encoding='latin1'):
+    def decode(cls, auth_header, encoding='utf-8'):
         """Create a :class:`BasicAuth` object from an ``Authorization`` HTTP
         header."""
         split = auth_header.strip().split(' ')
@@ -69,9 +70,15 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
             raise ValueError('Could not parse authorization header.')
 
         try:
-            username, _, password = base64.b64decode(
-                to_decode.encode('ascii')
-            ).decode(encoding).partition(':')
+            if encoding in ('utf8', 'utf-8'):
+                username, _, password = base64.b64decode(
+                    to_decode.encode('ascii')).decode('ascii').partition(':')
+                username = unquote(username)
+                password = unquote(password)
+            else:
+                username, _, password = base64.b64decode(
+                    to_decode.encode('ascii')
+                ).decode(encoding).partition(':')
         except binascii.Error:
             raise ValueError('Invalid base64 encoding.')
 
@@ -79,8 +86,14 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
 
     def encode(self):
         """Encode credentials."""
-        creds = ('%s:%s' % (self.login, self.password)).encode(self.encoding)
-        return 'Basic %s' % base64.b64encode(creds).decode(self.encoding)
+        if self.encoding.lower() in ('utf8', 'utf-8'):
+            creds = quote(self.login) + ':' + quote(self.password)
+            return 'Basic ' + base64.b64encode(
+                creds.encode('ascii')).decode('ascii')
+        else:
+            creds = (self.login + ':' + self.password).encode(
+                self.encoding)
+            return 'Basic ' + base64.b64encode(creds).decode(self.encoding)
 
 
 def create_future(loop):
