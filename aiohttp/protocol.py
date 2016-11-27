@@ -712,8 +712,6 @@ class HttpMessage(ABC):
         if self._send_headers and not self.headers_sent:
             self.send_headers()
 
-        assert self.writer is not None, 'send_headers() is not called.'
-
         if self.filter:
             chunk = self.filter.send(chunk)
             while chunk not in (EOF_MARKER, EOL_MARKER):
