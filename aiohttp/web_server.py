@@ -82,7 +82,7 @@ class RequestHandler(ServerHttpProtocol):
                     "Error handling request",
                     exc_info=exc)
 
-            resp_msg = yield from resp.prepare(request)
+            yield from resp.prepare(request)
             yield from resp.write_eof()
         finally:
             resp._task = None
@@ -97,7 +97,7 @@ class RequestHandler(ServerHttpProtocol):
 
         # log access
         if self.access_log:
-            self.log_access(message, None, resp_msg, self._loop.time() - now)
+            self.log_access(message, None, resp, self._loop.time() - now)
 
         # for repr
         self._request = None
