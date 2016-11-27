@@ -88,7 +88,8 @@ class RequestHandler(ServerHttpProtocol):
             resp._task = None
 
         # notify server about keep-alive
-        self.keep_alive(resp.keep_alive)
+        # assign to parent class attr
+        self._keepalive = resp._keep_alive
 
         # Restore default state.
         # Should be no-op if server code didn't touch these attributes.
