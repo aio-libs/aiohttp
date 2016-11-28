@@ -332,10 +332,6 @@ class BodyPartReader(object):
             chunk = window[len(self._prev_chunk):idx]
             if not chunk:
                 self._at_eof = True
-        if 0 < len(chunk) < len(sub) and not self._content_eof:
-            self._prev_chunk += chunk
-            self._at_eof = False
-            return b''
         result = self._prev_chunk
         self._prev_chunk = chunk
         return result

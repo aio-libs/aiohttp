@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+<<<<<<< HEAD
 1.2.0 (XXXX-XX-XX)
 ------------------
 
@@ -41,6 +42,13 @@ CHANGES
 -
 
 -
+=======
+1.1.6 (2016-11-28)
+------------------
+
+- Fix `BodyPartReader.read_chunk` bug about returns zero bytes before
+  `EOF` #1428
+>>>>>>> 1.1
 
 1.1.5 (2016-11-16)
 ------------------
