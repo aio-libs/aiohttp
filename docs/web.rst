@@ -591,7 +591,7 @@ should use :meth:`Request.multipart` which returns :ref:`multipart reader
 
         filename = mp3.filename
 
-        # You cannot relay on Content-Length if transfer is chunked.
+        # You cannot rely on Content-Length if transfer is chunked.
         size = 0
         with open(os.path.join('/spool/yarrr-media/mp3/', filename), 'wb') as f:
             while True:
