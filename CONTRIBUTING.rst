@@ -39,6 +39,7 @@ If you like to use *virtualenv* please run:
 
    $ cd aiohttp
    $ virtualenv --python=`which python3` venv
+   $ . venv/bin/activate
 
 For standard python *venv*:
 
@@ -46,6 +47,7 @@ For standard python *venv*:
 
    $ cd aiohttp
    $ python3 -m venv venv
+   $ . venv/bin/activate
 
 For *virtualenvwrapper* (my choice):
 
