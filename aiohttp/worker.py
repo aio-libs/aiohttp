@@ -122,6 +122,10 @@ class GunicornWebWorker(base.Worker):
         yield from self.close()
 
     def init_signals(self):
+        # reset signaling
+        for s in self.SIGNALS:
+            signal.signal(s, signal.SIG_DFL)
+
         # Set up signals through the event loop API.
 
         self.loop.add_signal_handler(signal.SIGQUIT, self.handle_quit,
