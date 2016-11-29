@@ -170,8 +170,9 @@ class ClientSession:
                     yield from resp.start(conn, read_until_eof)
                 except:
                     resp.close()
-                    conn.close()
                     raise
+                finally:
+                    conn.close()
             except (aiohttp.HttpProcessingError,
                     aiohttp.ServerDisconnectedError) as exc:
                 raise aiohttp.ClientResponseError() from exc
