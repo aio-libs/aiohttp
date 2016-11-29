@@ -199,8 +199,7 @@ def test_bad_method(srv, loop):
 def test_line_too_long(srv, loop):
     transport = mock.Mock()
     srv.connection_made(transport)
-
-    srv.reader.feed_data(b''.join([b'a' for _ in range(10000)]))
+    srv.data_received(b''.join([b'a' for _ in range(10000)]) + b'\r\n\r\n')
 
     loop.run_until_complete(srv._request_handler)
     assert transport.write.mock_calls[0][1][0].startswith(

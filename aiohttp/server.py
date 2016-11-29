@@ -118,7 +118,6 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         self._slow_request_timeout = slow_request_timeout
         self._loop = loop if loop is not None else asyncio.get_event_loop()
 
-        self._request_prefix = aiohttp.HttpPrefixParser()
         self._request_parser = aiohttp.HttpRequestParser(
             max_line_size=max_line_size,
             max_field_size=max_field_size,
@@ -184,9 +183,9 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     def data_received(self, data):
         super().data_received(data)
 
-        # reading request
-        if not self._reading_request:
-            self._reading_request = True
+        # we can not gracefully shutdown handler
+        # if we in process of reading request
+        self._reading_request = True
 
     def keep_alive(self, val):
         """Set keep-alive connection mode.
@@ -228,17 +227,10 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                 self._reading_request = False
 
                 payload = None
+
+                # slow request timer
                 with Timeout(max(self._slow_request_timeout,
-                                 self._keepalive_timeout),
-                             loop=self._loop):
-                    # read HTTP request method
-                    prefix = reader.set_parser(self._request_prefix)
-                    yield from prefix.read()
-
-                    # start reading request
-                    self._reading_request = True
-
-                    # start slow request timer
+                                 self._keepalive_timeout), loop=self._loop):
                     # read request headers
                     httpstream = reader.set_parser(self._request_parser)
                     message = yield from httpstream.read()
@@ -251,7 +243,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                     raise errors.InvalidHeader(hdrs.CONTENT_LENGTH) from None
 
                 if (content_length > 0 or
-                    message.method == 'CONNECT' or
+                    message.method == hdrs.METH_CONNECT or
                     hdrs.SEC_WEBSOCKET_KEY1 in message.headers or
                     'chunked' in message.headers.get(
                         hdrs.TRANSFER_ENCODING, '')):
