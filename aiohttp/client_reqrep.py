@@ -437,7 +437,7 @@ class ClientRequest:
         # - not CONNECT proxy must send absolute form URI
         # - most common is origin form URI
         if self.method == hdrs.METH_CONNECT:
-            path = '{}:{}'.format(self.url.host, self.url.port)
+            path = '{}:{}'.format(self.url.raw_host, self.url.port)
         elif self.proxy and not self.ssl:
             path = str(self.url)
         else:
