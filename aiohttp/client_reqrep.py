@@ -165,7 +165,7 @@ class ClientRequest:
 
         # add host
         if hdrs.HOST not in used_headers:
-            netloc = self.url.host
+            netloc = self.url.raw_host
             if not self.url.is_default_port():
                 netloc += ':' + str(self.url.port)
             self.headers[hdrs.HOST] = netloc
