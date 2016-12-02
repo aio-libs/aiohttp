@@ -32,7 +32,7 @@ CHANGES
 
 - Fix bugs with client proxy target path and proxy host with port #1413
 
--
+- Fix bugs related to the use of unicode hostnames #1444
 
 -
 
