@@ -91,7 +91,7 @@ class CookieJar(AbstractCookieJar):
 
     def update_cookies(self, cookies, response_url=URL()):
         """Update cookies."""
-        hostname = response_url.host
+        hostname = response_url.raw_host
 
         if not self._unsafe and is_ip_address(hostname):
             # Don't accept cookies from IPs
@@ -168,7 +168,7 @@ class CookieJar(AbstractCookieJar):
         """Returns this jar's cookies filtered by their attributes."""
         self._do_expiration()
         filtered = SimpleCookie()
-        hostname = request_url.host or ""
+        hostname = request_url.raw_host or ""
         is_not_secure = request_url.scheme not in ("https", "wss")
 
         for cookie in self:
