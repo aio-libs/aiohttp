@@ -162,6 +162,32 @@ def test_save_load(loop, cookies_to_send, cookies_to_receive):
     assert jar_test == cookies_to_receive
 
 
+def test_update_cookie_with_unicode_domain(loop):
+    cookies = (
+        "idna-domain-first=first; Domain=xn--9caa.com; Path=/;",
+        "idna-domain-second=second; Domain=xn--9caa.com; Path=/;",
+    )
+
+    jar = CookieJar(loop=loop)
+    jar.update_cookies(SimpleCookie(cookies[0]), URL("http://éé.com/"))
+    jar.update_cookies(SimpleCookie(cookies[1]), URL("http://xn--9caa.com/"))
+
+    jar_test = SimpleCookie()
+    for cookie in jar:
+        jar_test[cookie.key] = cookie
+
+    assert jar_test == SimpleCookie(" ".join(cookies))
+
+
+def test_filter_cookie_with_unicode_domain(loop):
+    jar = CookieJar(loop=loop)
+    jar.update_cookies(SimpleCookie(
+        "idna-domain-first=first; Domain=xn--9caa.com; Path=/; "
+    ))
+    assert len(jar.filter_cookies(URL("http://éé.com"))) == 1
+    assert len(jar.filter_cookies(URL("http://xn--9caa.com"))) == 1
+
+
 def test_ctor_ith_default_loop(loop):
     asyncio.set_event_loop(loop)
     jar = CookieJar()

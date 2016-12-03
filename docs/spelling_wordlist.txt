@@ -203,6 +203,7 @@ tp
 tuples
 UI
 un
+unicode
 unittest
 Unittest
 unix

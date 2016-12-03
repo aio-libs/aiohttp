@@ -165,7 +165,7 @@ class ClientRequest:
 
         # add host
         if hdrs.HOST not in used_headers:
-            netloc = self.url.host
+            netloc = self.url.raw_host
             if not self.url.is_default_port():
                 netloc += ':' + str(self.url.port)
             self.headers[hdrs.HOST] = netloc
@@ -437,7 +437,7 @@ class ClientRequest:
         # - not CONNECT proxy must send absolute form URI
         # - most common is origin form URI
         if self.method == hdrs.METH_CONNECT:
-            path = '{}:{}'.format(self.url.host, self.url.port)
+            path = '{}:{}'.format(self.url.raw_host, self.url.port)
         elif self.proxy and not self.ssl:
             path = str(self.url)
         else:
