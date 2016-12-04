@@ -337,7 +337,7 @@ def test_format_task_get(test_server, loop):
 def test_str_params(loop, test_client):
     @asyncio.coroutine
     def handler(request):
-        assert 'q=t+est' in request.query_string
+        assert 'q=t est' in request.query_string
         return web.Response()
 
     app = web.Application(loop=loop)
