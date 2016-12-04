@@ -88,6 +88,18 @@ def test_proxy_http_raw_path(proxy_test_server, get_request):
 
 
 @asyncio.coroutine
+def test_proxy_http_idna_support(proxy_test_server, get_request):
+    url = 'http://éé.com/'
+    raw_url = 'http://xn--9caa.com/'
+    proxy = yield from proxy_test_server()
+
+    yield from get_request(url=url, proxy=proxy.url)
+
+    assert proxy.request.host == 'xn--9caa.com'
+    assert proxy.request.path_qs == raw_url
+
+
+@asyncio.coroutine
 def test_proxy_http_connection_error(get_request):
     url = 'http://aiohttp.io/path'
     proxy_url = 'http://localhost:2242/'
@@ -198,6 +210,19 @@ def test_proxy_https_connect_with_port(proxy_test_server, get_request):
 
     assert proxy.request.host == 'secure.aiohttp.io:2242'
     assert proxy.request.path_qs == '/path'
+
+
+@asyncio.coroutine
+def test_proxy_https_idna_support(proxy_test_server, get_request):
+    url = 'https://éé.com/'
+    proxy = yield from proxy_test_server()
+
+    yield from get_request(url=url, proxy=proxy.url)
+
+    connect = proxy.requests_list[0]
+    assert connect.method == 'CONNECT'
+    assert connect.path == 'xn--9caa.com:443'
+    assert connect.host == 'xn--9caa.com'
 
 
 @asyncio.coroutine
