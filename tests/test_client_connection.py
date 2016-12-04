@@ -95,5 +95,6 @@ def test_detach(connector, key, request, transport, protocol, loop):
     assert not conn.closed
     conn.detach()
     assert conn._transport is None
+    assert connector._release_acquired.called
     assert not connector._release.called
     assert conn.closed

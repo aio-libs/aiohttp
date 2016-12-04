@@ -91,6 +91,8 @@ class Connection:
             self._transport = None
 
     def detach(self):
+        if self._transport is not None:
+            self._connector._release_acquired(self._key, self._transport)
         self._transport = None
 
     @property
@@ -351,7 +353,7 @@ class BaseConnector(object):
                 waiter.set_result(None)
                 break
 
-    def _release(self, key, req, transport, protocol, *, should_close=False):
+    def _release_acquired(self, key, transport):
         if self._closed:
             # acquired connection is already released on connector closing
             return
@@ -366,6 +368,13 @@ class BaseConnector(object):
         else:
             if self._limit is not None and len(acquired) < self._limit:
                 self._release_waiter(key)
+
+    def _release(self, key, req, transport, protocol, *, should_close=False):
+        if self._closed:
+            # acquired connection is already released on connector closing
+            return
+
+        self._release_acquired(key, transport)
 
         resp = req.response
 

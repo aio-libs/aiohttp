@@ -149,6 +149,18 @@ def test_get_expired(loop):
     conn.close()
 
 
+def test_release_acquired(loop):
+    conn = aiohttp.BaseConnector(loop=loop, limit=5)
+    conn._release_waiter = unittest.mock.Mock()
+
+    key, tr = 1, unittest.mock.Mock()
+    conn._acquired[key].add(tr)
+    conn._release_acquired(key, tr)
+    assert 0 == len(conn._acquired[key])
+    assert conn._release_waiter.called
+    conn.close()
+
+
 def test_release(loop):
     loop.time = mock.Mock(return_value=10)
 
