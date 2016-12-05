@@ -204,7 +204,7 @@ def test_proxy_http_acquired_cleanup(proxy_test_server, loop):
 
     assert 0 == len(conn._acquired[key])
 
-    sess.close()
+    yield from sess.close()
 
 
 @asyncio.coroutine
@@ -231,7 +231,7 @@ def test_proxy_http_acquired_cleanup_force(proxy_test_server, loop):
 
     assert 0 == len(conn._acquired[key])
 
-    sess.close()
+    yield from sess.close()
 
 
 @asyncio.coroutine
@@ -255,7 +255,7 @@ def test_proxy_http_multi_conn_limit(proxy_test_server, loop):
     assert len(responses) == multi_conn_num
     assert set(resp.status for resp in responses) == {200}
 
-    sess.close()
+    yield from sess.close()
 
 
 @asyncio.coroutine
@@ -395,7 +395,7 @@ def test_proxy_https_acquired_cleanup(proxy_test_server, loop):
 
     assert 0 == len(conn._acquired[key])
 
-    sess.close()
+    yield from sess.close()
 
 
 @asyncio.coroutine
@@ -422,7 +422,7 @@ def test_proxy_https_aquired_cleanup_force(proxy_test_server, loop):
 
     assert 0 == len(conn._acquired[key])
 
-    sess.close()
+    yield from sess.close()
 
 
 @asyncio.coroutine
@@ -446,7 +446,7 @@ def test_proxy_https_multi_conn_limit(proxy_test_server, loop):
     assert len(responses) == multi_conn_num
     assert set(resp.status for resp in responses) == {200}
 
-    sess.close()
+    yield from sess.close()
 
 
 def _patch_ssl_transport(monkeypatch):
