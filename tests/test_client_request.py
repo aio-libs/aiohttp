@@ -143,6 +143,16 @@ def test_host_header_host_with_nondefault_port(make_request):
     assert req.headers['HOST'] == 'python.org:99'
 
 
+def test_host_header_host_idna_encode(make_request):
+    req = make_request('get', 'http://xn--9caa.com')
+    assert req.headers['HOST'] == 'xn--9caa.com'
+
+
+def test_host_header_host_unicode(make_request):
+    req = make_request('get', 'http://éé.com')
+    assert req.headers['HOST'] == 'xn--9caa.com'
+
+
 def test_host_header_explicit_host(make_request):
     req = make_request('get', 'http://python.org/',
                        headers={'host': 'example.com'})
