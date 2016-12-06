@@ -185,7 +185,8 @@ class ClientRequest:
 
         for name, value in cookies.items():
             if isinstance(value, http.cookies.Morsel):
-                c[value.key] = value.value
+                # Set with Morsel to preserve coded_value based on version
+                c[value.key] = value
             else:
                 c[name] = value
 

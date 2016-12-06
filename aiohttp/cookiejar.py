@@ -195,7 +195,9 @@ class CookieJar(AbstractCookieJar):
             if is_not_secure and cookie["secure"]:
                 continue
 
-            filtered[name] = cookie.value
+            # It's critical we use the Morsel so the coded_value
+            # (based on cookie version) is preserved
+            filtered[name] = cookie
 
         return filtered
 
