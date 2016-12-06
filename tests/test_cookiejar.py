@@ -266,7 +266,6 @@ def test_ignore_domain_ending_with_dot(loop):
     assert cookies_sent.output(header='Cookie:') == ""
 
 
-
 class TestCookieJarBase(unittest.TestCase):
 
     def setUp(self):
