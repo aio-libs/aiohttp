@@ -261,7 +261,7 @@ def test_ignore_domain_ending_with_dot(loop):
                        URL("http://www.example.com"))
     cookies_sent = jar.filter_cookies(URL("http://www.example.com/"))
     assert cookies_sent.output(header='Cookie:') \
-           == "Cookie: cookie=val; Domain=www.example.com; Path=/"
+        == "Cookie: cookie=val; Domain=www.example.com; Path=/"
     cookies_sent = jar.filter_cookies(URL("http://example.com/"))
     assert cookies_sent.output(header='Cookie:') == ""
 
