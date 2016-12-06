@@ -240,8 +240,19 @@ def test_preserving_ip_domain_cookies(loop):
     ))
     cookies_sent = jar.filter_cookies(URL("http://127.0.0.1/")).output(
         header='Cookie:')
-    assert cookies_sent == ('Cookie: ip-cookie=second\r\n'
-                            'Cookie: shared-cookie=first')
+    assert cookies_sent == ('Cookie: ip-cookie=second; Domain=127.0.0.1; '
+                            'Path=/\r\nCookie: shared-cookie=first')
+
+
+def test_preserving_quoted_cookies(loop):
+    jar = CookieJar(loop=loop, unsafe=True)
+    jar.update_cookies(SimpleCookie(
+        "ip-cookie=\"second\"; Domain=127.0.0.1;"
+    ))
+    cookies_sent = jar.filter_cookies(URL("http://127.0.0.1/")).output(
+        header='Cookie:')
+    assert cookies_sent == ('Cookie: ip-cookie=\"second\"; Domain=127.0.0.1; '
+                            'Path=/')
 
 
 def test_ignore_domain_ending_with_dot(loop):
@@ -249,9 +260,11 @@ def test_ignore_domain_ending_with_dot(loop):
     jar.update_cookies(SimpleCookie("cookie=val; Domain=example.com.;"),
                        URL("http://www.example.com"))
     cookies_sent = jar.filter_cookies(URL("http://www.example.com/"))
-    assert cookies_sent.output(header='Cookie:') == "Cookie: cookie=val"
+    assert cookies_sent.output(header='Cookie:') \
+           == "Cookie: cookie=val; Domain=www.example.com; Path=/"
     cookies_sent = jar.filter_cookies(URL("http://example.com/"))
     assert cookies_sent.output(header='Cookie:') == ""
+
 
 
 class TestCookieJarBase(unittest.TestCase):
