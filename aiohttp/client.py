@@ -92,45 +92,9 @@ class ClientSession:
                 context['source_traceback'] = self._source_traceback
             self._loop.call_exception_handler(context)
 
-    def request(self, method, url, *,
-                params=None,
-                data=None,
-                headers=None,
-                skip_auto_headers=None,
-                auth=None,
-                allow_redirects=True,
-                max_redirects=10,
-                encoding='utf-8',
-                version=None,
-                compress=None,
-                chunked=None,
-                expect100=False,
-                read_until_eof=True,
-                proxy=None,
-                proxy_auth=None,
-                timeout=5*60):
+    def request(self, method, url, **kwargs):
         """Perform HTTP request."""
-
-        return _RequestContextManager(
-            self._request(
-                method,
-                url,
-                params=params,
-                data=data,
-                headers=headers,
-                skip_auto_headers=skip_auto_headers,
-                auth=auth,
-                allow_redirects=allow_redirects,
-                max_redirects=max_redirects,
-                encoding=encoding,
-                version=version,
-                compress=compress,
-                chunked=chunked,
-                expect100=expect100,
-                read_until_eof=read_until_eof,
-                proxy=proxy,
-                proxy_auth=proxy_auth,
-                timeout=timeout))
+        return _RequestContextManager(self._request(method, url, **kwargs))
 
     @asyncio.coroutine
     def _request(self, method, url, *,
@@ -199,6 +163,7 @@ class ClientSession:
 
             with Timeout(timeout, loop=self._loop):
                 conn = yield from self._connector.connect(req)
+            conn.writer.set_tcp_nodelay(True)
             try:
                 resp = req.send(conn.writer, conn.reader)
                 try:
@@ -240,8 +205,14 @@ class ClientSession:
                     if headers.get(hdrs.CONTENT_LENGTH):
                         headers.pop(hdrs.CONTENT_LENGTH)
 
-                r_url = URL(resp.headers.get(hdrs.LOCATION) or
-                            resp.headers.get(hdrs.URI))
+                r_url = (resp.headers.get(hdrs.LOCATION) or
+                         resp.headers.get(hdrs.URI))
+                if r_url is None:
+                    raise RuntimeError("{0.method} {0.url_obj} returns "
+                                       "a redirect [{0.status}] status "
+                                       "but response lacks a Location "
+                                       "or URI HTTP header".format(resp))
+                r_url = URL(r_url)
 
                 scheme = r_url.scheme
                 if scheme not in ('http', 'https', ''):
@@ -509,6 +480,7 @@ class ClientSession:
         def __aexit__(self, exc_type, exc_val, exc_tb):
             yield from self.close()
 
+
 if PY_35:
     from collections.abc import Coroutine
     base = Coroutine
@@ -518,25 +490,14 @@ else:
 
 class _BaseRequestContextManager(base):
 
-    __slots__ = ('_coro', '_resp')
+    __slots__ = ('_coro', '_resp', 'send', 'throw', 'close')
 
     def __init__(self, coro):
         self._coro = coro
         self._resp = None
-
-    def send(self, value):
-        return self._coro.send(value)
-
-    def throw(self, typ, val=None, tb=None):
-        if val is None:
-            return self._coro.throw(typ)
-        elif tb is None:
-            return self._coro.throw(typ, val)
-        else:
-            return self._coro.throw(typ, val, tb)
-
-    def close(self):
-        return self._coro.close()
+        self.send = coro.send
+        self.throw = coro.throw
+        self.close = coro.close
 
     @property
     def gi_frame(self):

@@ -3,14 +3,17 @@
 import asyncio
 import base64
 import binascii
+import cgi
 import datetime
 import functools
 import io
 import os
 import re
 import warnings
-from collections import namedtuple
+from collections import MutableSequence, namedtuple
+from functools import total_ordering
 from pathlib import Path
+from time import gmtime, time
 from urllib.parse import urlencode
 
 from async_timeout import timeout
@@ -46,6 +49,10 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
 
         if password is None:
             raise ValueError('None is not allowed as password value')
+
+        if ':' in login:
+            raise ValueError(
+                'A ":" is not allowed in login (RFC 1945#section-11.1)')
 
         return super().__new__(cls, login, password, encoding)
 
@@ -167,7 +174,8 @@ class FormData:
             else:
                 raise TypeError('Only io.IOBase, multidict and (name, file) '
                                 'pairs allowed, use .add_field() for passing '
-                                'more complex parameters')
+                                'more complex parameters, got {!r}'
+                                .format(rec))
 
     def _gen_form_urlencoded(self, encoding):
         # form data (x-www-form-urlencoded)
@@ -267,11 +275,28 @@ class AccessLogger:
         %{FOO}e  os.environ['FOO']
 
     """
+    LOG_FORMAT_MAP = {
+        'a': 'remote_address',
+        't': 'request_time',
+        'P': 'process_id',
+        'r': 'first_request_line',
+        's': 'response_status',
+        'b': 'response_size',
+        'O': 'bytes_sent',
+        'T': 'request_time',
+        'Tf': 'request_time_frac',
+        'D': 'request_time_micro',
+        'i': 'request_header',
+        'o': 'response_header',
+        'e': 'environ'
+    }
 
     LOG_FORMAT = '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
     FORMAT_RE = re.compile(r'%(\{([A-Za-z0-9\-_]+)\}([ioe])|[atPrsbOD]|Tf?)')
     CLEANUP_RE = re.compile(r'(%[^s])')
     _FORMAT_CACHE = {}
+
+    KeyMethod = namedtuple('KeyMethod', 'key method')
 
     def __init__(self, logger, log_format=LOG_FORMAT):
         """Initialise the logger.
@@ -281,10 +306,12 @@ class AccessLogger:
 
         """
         self.logger = logger
+
         _compiled_format = AccessLogger._FORMAT_CACHE.get(log_format)
         if not _compiled_format:
             _compiled_format = self.compile_format(log_format)
             AccessLogger._FORMAT_CACHE[log_format] = _compiled_format
+
         self._log_format, self._methods = _compiled_format
 
     def compile_format(self, log_format):
@@ -311,14 +338,22 @@ class AccessLogger:
 
         log_format = log_format.replace("%l", "-")
         log_format = log_format.replace("%u", "-")
-        methods = []
+
+        # list of (key, method) tuples, we don't use an OrderedDict as users
+        # can repeat the same key more than once
+        methods = list()
 
         for atom in self.FORMAT_RE.findall(log_format):
             if atom[1] == '':
-                methods.append(getattr(AccessLogger, '_format_%s' % atom[0]))
+                format_key = self.LOG_FORMAT_MAP[atom[0]]
+                m = getattr(AccessLogger, '_format_%s' % atom[0])
             else:
+                format_key = (self.LOG_FORMAT_MAP[atom[2]], atom[1])
                 m = getattr(AccessLogger, '_format_%s' % atom[2])
-                methods.append(functools.partial(m, atom[1]))
+                m = functools.partial(m, atom[1])
+
+            methods.append(self.KeyMethod(format_key, m))
+
         log_format = self.FORMAT_RE.sub(r'%s', log_format)
         log_format = self.CLEANUP_RE.sub(r'%\1', log_format)
         return log_format, methods
@@ -331,6 +366,7 @@ class AccessLogger:
     def _format_i(key, args):
         if not args[0]:
             return '(no headers)'
+
         # suboptimal, make istr(key) once
         return args[0].headers.get(key, '-')
 
@@ -390,7 +426,7 @@ class AccessLogger:
         return round(args[4] * 1000000)
 
     def _format_line(self, args):
-        return tuple(m(args) for m in self._methods)
+        return ((key, method(args)) for key, method in self._methods)
 
     def log(self, message, environ, response, transport, time):
         """Log access.
@@ -402,8 +438,20 @@ class AccessLogger:
         :param float time: Time taken to serve the request.
         """
         try:
-            self.logger.info(self._log_format % self._format_line(
-                [message, environ, response, transport, time]))
+            fmt_info = self._format_line(
+                [message, environ, response, transport, time])
+
+            values = list()
+            extra = dict()
+            for key, value in fmt_info:
+                values.append(value)
+
+                if key.__class__ is str:
+                    extra[key] = value
+                else:
+                    extra[key[0]] = {key[1]: value}
+
+            self.logger.info(self._log_format % tuple(values), extra=extra)
         except Exception:
             self.logger.exception("Error in logging")
 
@@ -428,11 +476,11 @@ class reify:
     def __get__(self, inst, owner, _sentinel=sentinel):
         if inst is None:
             return self
-        val = inst.__dict__.get(self.name, _sentinel)
+        val = inst._cache.get(self.name, _sentinel)
         if val is not _sentinel:
             return val
         val = self.wrapped(inst)
-        inst.__dict__[self.name] = val
+        inst._cache[self.name] = val
         return val
 
     def __set__(self, inst, value):
@@ -483,3 +531,147 @@ def _get_kwarg(kwargs, old, new, value):
         return val
     else:
         return value
+
+
+@total_ordering
+class FrozenList(MutableSequence):
+
+    __slots__ = ('_frozen', '_items')
+
+    def __init__(self, items=None):
+        self._frozen = False
+        if items is not None:
+            items = list(items)
+        else:
+            items = []
+        self._items = items
+
+    def freeze(self):
+        self._frozen = True
+
+    def __getitem__(self, index):
+        return self._items[index]
+
+    def __setitem__(self, index, value):
+        if self._frozen:
+            raise RuntimeError("Cannot modify frozen list.")
+        self._items[index] = value
+
+    def __delitem__(self, index):
+        if self._frozen:
+            raise RuntimeError("Cannot modify frozen list.")
+        del self._items[index]
+
+    def __len__(self):
+        return self._items.__len__()
+
+    def __iter__(self):
+        return self._items.__iter__()
+
+    def __reversed__(self):
+        return self._items.__reversed__()
+
+    def __eq__(self, other):
+        return list(self) == other
+
+    def __le__(self, other):
+        return list(self) <= other
+
+    def insert(self, pos, item):
+        if self._frozen:
+            raise RuntimeError("Cannot modify frozen list.")
+        self._items.insert(pos, item)
+
+
+class TimeService:
+    def __init__(self, loop):
+        self._loop = loop
+        self._time = time()
+        self._strtime = None
+        self._count = 0
+        self._cb = loop.call_later(1, self._on_cb)
+
+    def stop(self):
+        self._cb.cancel()
+        self._cb = None
+        self._loop = None
+
+    def _on_cb(self):
+        self._count += 1
+        if self._count >= 10*60:
+            # reset timer every 10 minutes
+            self._count = 0
+            self._time = time()
+        else:
+            self._time += 1
+        self._strtime = None
+        self._cb = self._loop.call_later(1, self._on_cb)
+
+    def _format_date_time(self):
+        # Weekday and month names for HTTP date/time formatting;
+        # always English!
+        # Tuples are contants stored in codeobject!
+        _weekdayname = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+        _monthname = (None,  # Dummy so we can use 1-based month numbers
+                      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+        year, month, day, hh, mm, ss, wd, y, z = gmtime(self._time)
+        return "%s, %02d %3s %4d %02d:%02d:%02d GMT" % (
+            _weekdayname[wd], day, _monthname[month], year, hh, mm, ss
+        )
+
+    def time(self):
+        return self._time
+
+    def strtime(self):
+        s = self._strtime
+        if s is None:
+            self._strtime = s = self._format_date_time()
+        return self._strtime
+
+
+class HeadersMixin:
+
+    _content_type = None
+    _content_dict = None
+    _stored_content_type = sentinel
+
+    def _parse_content_type(self, raw):
+        self._stored_content_type = raw
+        if raw is None:
+            # default value according to RFC 2616
+            self._content_type = 'application/octet-stream'
+            self._content_dict = {}
+        else:
+            self._content_type, self._content_dict = cgi.parse_header(raw)
+
+    @property
+    def content_type(self, *, _CONTENT_TYPE=hdrs.CONTENT_TYPE):
+        """The value of content part for Content-Type HTTP header."""
+        raw = self.headers.get(_CONTENT_TYPE)
+        if self._stored_content_type != raw:
+            self._parse_content_type(raw)
+        return self._content_type
+
+    @property
+    def charset(self, *, _CONTENT_TYPE=hdrs.CONTENT_TYPE):
+        """The value of charset part for Content-Type HTTP header."""
+        raw = self.headers.get(_CONTENT_TYPE)
+        if self._stored_content_type != raw:
+            self._parse_content_type(raw)
+        return self._content_dict.get('charset')
+
+    @property
+    def content_length(self, *, _CONTENT_LENGTH=hdrs.CONTENT_LENGTH):
+        """The value of Content-Length HTTP header."""
+        l = self.headers.get(_CONTENT_LENGTH)
+        if l is None:
+            return None
+        else:
+            return int(l)
+
+
+def check_loop(loop):
+    if loop is None:
+        loop = asyncio.get_event_loop()

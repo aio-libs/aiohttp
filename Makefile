@@ -7,7 +7,6 @@
 isort:
 	isort -rc aiohttp
 	isort -rc tests
-	isort -rc benchmark
 	isort -rc examples
 	isort -rc demos
 
@@ -23,7 +22,7 @@ flake: .flake
 	    flake8 examples tests demos benchmark && \
             python setup.py check -rms; \
 	fi
-	@if ! isort -c -rc aiohttp tests benchmark examples; then \
+	@if ! isort -c -rc aiohttp tests examples; then \
             echo "Import sort errors, run 'make isort' to fix them!!!"; \
             isort --diff -rc aiohttp tests benchmark examples; \
             false; \
@@ -49,8 +48,11 @@ cov-dev: .develop
 	@echo "open file://`pwd`/coverage/index.html"
 
 cov-dev-full: .develop
+	@echo "Run without extensions"
 	@AIOHTTP_NO_EXTENSIONS=1 py.test --cov=aiohttp tests
+	@echo "Run in debug mode"
 	@PYTHONASYNCIODEBUG=1 py.test --cov=aiohttp --cov-append tests
+	@echo "Regular run"
 	@py.test --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
 	@echo "open file://`pwd`/coverage/index.html"
 

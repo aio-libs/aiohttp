@@ -14,7 +14,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, upstr
 from yarl import URL
 
 import aiohttp
-from aiohttp import BaseConnector, helpers
+from aiohttp import BaseConnector, hdrs, helpers
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
 
 
@@ -141,6 +141,16 @@ def test_host_header_host_with_default_port(make_request):
 def test_host_header_host_with_nondefault_port(make_request):
     req = make_request('get', 'http://python.org:99/')
     assert req.headers['HOST'] == 'python.org:99'
+
+
+def test_host_header_host_idna_encode(make_request):
+    req = make_request('get', 'http://xn--9caa.com')
+    assert req.headers['HOST'] == 'xn--9caa.com'
+
+
+def test_host_header_host_unicode(make_request):
+    req = make_request('get', 'http://éé.com')
+    assert req.headers['HOST'] == 'xn--9caa.com'
 
 
 def test_host_header_explicit_host(make_request):
@@ -519,6 +529,21 @@ def test_pass_falsy_data(loop):
             'post', URL('http://python.org/'),
             data={}, loop=loop)
         req.update_body_from_data.assert_called_once_with({}, frozenset())
+    yield from req.close()
+
+
+@asyncio.coroutine
+def test_pass_falsy_data_file(loop, tmpdir):
+    testfile = tmpdir.join('tmpfile').open('w+b')
+    testfile.write(b'data')
+    testfile.seek(0)
+    skip = frozenset([hdrs.CONTENT_TYPE])
+    req = ClientRequest(
+        'post', URL('http://python.org/'),
+        data=testfile,
+        skip_auto_headers=skip,
+        loop=loop)
+    assert req.headers.get('CONTENT-LENGTH', None) is not None
     yield from req.close()
 
 

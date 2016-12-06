@@ -5,6 +5,7 @@ import asyncio
 import aioredis
 from aiohttp.web import Application, WebSocketResponse, run_app
 
+
 async def websocket_handler(request):
     ws = WebSocketResponse()
     await ws.prepare(request)

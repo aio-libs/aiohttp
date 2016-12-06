@@ -441,6 +441,11 @@ class TCPConnector(BaseConnector):
             hashfunc = HASHFUNC_BY_DIGESTLEN.get(digestlen)
             if not hashfunc:
                 raise ValueError('fingerprint has invalid length')
+            elif hashfunc is md5 or hashfunc is sha1:
+                warnings.simplefilter('always')
+                warnings.warn('md5 and sha1 are insecure and deprecated. '
+                              'Use sha256.',
+                              DeprecationWarning, stacklevel=2)
             self._hashfunc = hashfunc
         self._fingerprint = fingerprint
 
@@ -629,7 +634,7 @@ class TCPConnector(BaseConnector):
     def _create_proxy_connection(self, req):
         proxy_req = ClientRequest(
             hdrs.METH_GET, req.proxy,
-            headers={hdrs.HOST: req.host},
+            headers={hdrs.HOST: req.headers[hdrs.HOST]},
             auth=req.proxy_auth,
             loop=self._loop)
         try:
@@ -639,8 +644,6 @@ class TCPConnector(BaseConnector):
         except OSError as exc:
             raise ProxyConnectionError(*exc.args) from exc
 
-        if not req.ssl:
-            req.path = str(req.url)
         if hdrs.AUTHORIZATION in proxy_req.headers:
             auth = proxy_req.headers[hdrs.AUTHORIZATION]
             del proxy_req.headers[hdrs.AUTHORIZATION]
@@ -660,7 +663,7 @@ class TCPConnector(BaseConnector):
             # to do this we must wrap raw socket into secure one
             # asyncio handles this perfectly
             proxy_req.method = hdrs.METH_CONNECT
-            proxy_req.path = '{}:{}'.format(req.host, req.port)
+            proxy_req.url = req.url
             key = (req.host, req.port, req.ssl)
             conn = Connection(self, key, proxy_req,
                               transport, proto, self._loop)

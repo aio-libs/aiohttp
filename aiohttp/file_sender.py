@@ -4,6 +4,8 @@ import os
 
 from . import hdrs
 from .helpers import create_future
+from .web_exceptions import (HTTPNotModified, HTTPOk, HTTPPartialContent,
+                             HTTPRequestRangeNotSatisfiable)
 from .web_reqrep import StreamResponse
 
 
@@ -81,8 +83,8 @@ class FileSender:
         # See https://github.com/KeepSafe/aiohttp/issues/958 for details
 
         # send headers
-        headers = ['HTTP/{0.major}.{0.minor} 200 OK\r\n'.format(
-            request.version)]
+        headers = ['HTTP/{0.major}.{0.minor} {1} OK\r\n'.format(
+            request.version, resp.status)]
         for hdr, val in resp.headers.items():
             headers.append('{}: {}\r\n'.format(hdr, val))
         headers.append('\r\n')
@@ -91,6 +93,7 @@ class FileSender:
         out_socket.setblocking(False)
         out_fd = out_socket.fileno()
         in_fd = fobj.fileno()
+        offset = fobj.tell()
 
         bheaders = ''.join(headers).encode('utf-8')
         headers_length = len(bheaders)
@@ -100,7 +103,7 @@ class FileSender:
         try:
             yield from loop.sock_sendall(out_socket, bheaders)
             fut = create_future(loop)
-            self._sendfile_cb(fut, out_fd, in_fd, 0, count, loop, False)
+            self._sendfile_cb(fut, out_fd, in_fd, offset, count, loop, False)
 
             yield from fut
         finally:
@@ -118,16 +121,20 @@ class FileSender:
 
         yield from resp.prepare(request)
 
-        chunk_size = self._chunk_size
+        resp.set_tcp_cork(True)
+        try:
+            chunk_size = self._chunk_size
 
-        chunk = fobj.read(chunk_size)
-        while True:
-            resp.write(chunk)
-            yield from resp.drain()
-            count = count - chunk_size
-            if count <= 0:
-                break
-            chunk = fobj.read(count)
+            chunk = fobj.read(chunk_size)
+            while True:
+                resp.write(chunk)
+                yield from resp.drain()
+                count = count - chunk_size
+                if count <= 0:
+                    break
+                chunk = fobj.read(min(chunk_size, count))
+        finally:
+            resp.set_tcp_nodelay(True)
 
     if hasattr(os, "sendfile"):  # pragma: no cover
         _sendfile = _sendfile_system
@@ -141,28 +148,46 @@ class FileSender:
 
         modsince = request.if_modified_since
         if modsince is not None and st.st_mtime <= modsince.timestamp():
-            from .web_exceptions import HTTPNotModified
             raise HTTPNotModified()
 
         ct, encoding = mimetypes.guess_type(str(filepath))
         if not ct:
             ct = 'application/octet-stream'
 
-        resp = self._response_factory()
+        status = HTTPOk.status_code
+        file_size = st.st_size
+        count = file_size
+
+        try:
+            rng = request.http_range
+            start = rng.start
+            end = rng.stop
+        except ValueError:
+            raise HTTPRequestRangeNotSatisfiable
+
+        # If a range request has been made, convert start, end slice notation
+        # into file pointer offset and count
+        if start is not None or end is not None:
+            status = HTTPPartialContent.status_code
+            if start is None and end < 0:  # return tail of file
+                start = file_size + end
+                count = -end
+            else:
+                count = (end or file_size) - start
+
+            if start + count > file_size:
+                raise HTTPRequestRangeNotSatisfiable
+
+        resp = self._response_factory(status=status)
         resp.content_type = ct
         if encoding:
             resp.headers[hdrs.CONTENT_ENCODING] = encoding
         resp.last_modified = st.st_mtime
 
-        file_size = st.st_size
-
-        resp.content_length = file_size
-        resp.set_tcp_cork(True)
-        try:
-            with filepath.open('rb') as f:
-                yield from self._sendfile(request, resp, f, file_size)
-
-        finally:
-            resp.set_tcp_nodelay(True)
+        resp.content_length = count
+        with filepath.open('rb') as f:
+            if start:
+                f.seek(start)
+            yield from self._sendfile(request, resp, f, count)
 
         return resp

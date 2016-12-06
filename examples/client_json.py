@@ -2,6 +2,7 @@ import asyncio
 
 import aiohttp
 
+
 async def fetch(session):
     print('Query http://httpbin.org/get')
     async with session.get(

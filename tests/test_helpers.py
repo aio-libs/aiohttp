@@ -60,6 +60,11 @@ def test_basic_auth2():
         helpers.BasicAuth('nkim', None)
 
 
+def test_basic_with_auth_colon_in_login():
+    with pytest.raises(ValueError):
+        helpers.BasicAuth('nkim:1', 'pwd')
+
+
 def test_basic_auth3():
     auth = helpers.BasicAuth('nkim')
     assert auth.login == 'nkim'
@@ -159,7 +164,19 @@ def test_access_logger_atoms(mocker):
     assert not mock_logger.exception.called
     expected = ('127.0.0.2 [01/Jan/1843:00:00:00 +0000] <42> - - '
                 'GET /path HTTP/1.1 200 42 123 3 3.141593 3141593')
-    mock_logger.info.assert_called_with(expected)
+    extra = {
+        'bytes_sent': 123,
+        'first_request_line': 'GET /path HTTP/1.1',
+        'process_id': '<42>',
+        'remote_address': '127.0.0.2',
+        'request_time': 3,
+        'request_time_frac': '3.141593',
+        'request_time_micro': 3141593,
+        'response_size': 42,
+        'response_status': 200
+    }
+
+    mock_logger.info.assert_called_with(expected, extra=extra)
 
 
 def test_access_logger_dicts():
@@ -174,7 +191,13 @@ def test_access_logger_dicts():
     access_logger.log(message, environ, response, transport, 0.0)
     assert not mock_logger.error.called
     expected = 'Mock/1.0 123 EGGS -'
-    mock_logger.info.assert_called_with(expected)
+    extra = {
+        'environ': {'SPAM': 'EGGS'},
+        'request_header': {'None': '-'},
+        'response_header': {'Content-Length': 123}
+    }
+
+    mock_logger.info.assert_called_with(expected, extra=extra)
 
 
 def test_access_logger_unix_socket():
@@ -189,7 +212,7 @@ def test_access_logger_unix_socket():
     access_logger.log(message, environ, response, transport, 0.0)
     assert not mock_logger.error.called
     expected = '||'
-    mock_logger.info.assert_called_with(expected)
+    mock_logger.info.assert_called_with(expected, extra={'remote_address': ''})
 
 
 def test_logger_no_message_and_environ():
@@ -198,8 +221,14 @@ def test_logger_no_message_and_environ():
     mock_transport.get_extra_info.return_value = ("127.0.0.3", 0)
     access_logger = helpers.AccessLogger(mock_logger,
                                          "%r %{FOOBAR}e %{content-type}i")
+    extra_dict = {
+        'environ': {'FOOBAR': '-'},
+        'first_request_line': '-',
+        'request_header': {'content-type': '(no headers)'}
+    }
+
     access_logger.log(None, None, None, mock_transport, 0.0)
-    mock_logger.info.assert_called_with("- - (no headers)")
+    mock_logger.info.assert_called_with("- - (no headers)", extra=extra_dict)
 
 
 def test_logger_internal_error():
@@ -215,43 +244,49 @@ def test_logger_no_transport():
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, "%a")
     access_logger.log(None, None, None, None, 0)
-    mock_logger.info.assert_called_with("-")
+    mock_logger.info.assert_called_with("-", extra={'remote_address': '-'})
 
 
-# ----------------------------------------------------------
+class TestReify:
 
+    def test_reify(self):
+        class A:
+            def __init__(self):
+                self._cache = {}
 
-def test_reify():
-    class A:
-        @helpers.reify
-        def prop(self):
-            return 1
+            @helpers.reify
+            def prop(self):
+                return 1
 
-    a = A()
-    assert 1 == a.prop
+        a = A()
+        assert 1 == a.prop
 
+    def test_reify_class(self):
+        class A:
+            def __init__(self):
+                self._cache = {}
 
-def test_reify_class():
-    class A:
-        @helpers.reify
-        def prop(self):
-            """Docstring."""
-            return 1
+            @helpers.reify
+            def prop(self):
+                """Docstring."""
+                return 1
 
-    assert isinstance(A.prop, helpers.reify)
-    assert 'Docstring.' == A.prop.__doc__
+        assert isinstance(A.prop, helpers.reify)
+        assert 'Docstring.' == A.prop.__doc__
 
+    def test_reify_assignment(self):
+        class A:
+            def __init__(self):
+                self._cache = {}
 
-def test_reify_assignment():
-    class A:
-        @helpers.reify
-        def prop(self):
-            return 1
+            @helpers.reify
+            def prop(self):
+                return 1
 
-    a = A()
+        a = A()
 
-    with pytest.raises(AttributeError):
-        a.prop = 123
+        with pytest.raises(AttributeError):
+            a.prop = 123
 
 
 def test_create_future_with_new_loop():
@@ -350,3 +385,50 @@ def test_is_ip_address_invalid_type():
 
     with pytest.raises(TypeError):
         helpers.is_ip_address(object())
+
+
+@pytest.fixture
+def time_service(loop):
+    return helpers.TimeService(loop)
+
+
+class TestTimeService:
+    def test_ctor(self, time_service):
+        assert time_service._cb is not None
+        assert time_service._time is not None
+        assert time_service._strtime is None
+        assert time_service._count == 0
+
+    def test_stop(self, time_service):
+        time_service.stop()
+        assert time_service._cb is None
+        assert time_service._loop is None
+
+    def test_time(self, time_service):
+        t = time_service._time
+        assert t == time_service.time()
+
+    def test_strtime(self, time_service):
+        time_service._time = 1477797232
+        assert time_service.strtime() == 'Sun, 30 Oct 2016 03:13:52 GMT'
+        # second call should use cached value
+        assert time_service.strtime() == 'Sun, 30 Oct 2016 03:13:52 GMT'
+
+    def test_recalc_time(self, time_service):
+        time_service._time = 123
+        time_service._strtime = 'asd'
+        time_service._count = 1000000
+        time_service._on_cb()
+        assert time_service._strtime is None
+        assert time_service._count == 0
+        assert time_service._time > 1234
+
+
+class TestFrozenList:
+    def test_eq(self):
+        l = helpers.FrozenList([1])
+        assert l == [1]
+
+    def test_le(self):
+        l = helpers.FrozenList([1])
+        assert l < [2]

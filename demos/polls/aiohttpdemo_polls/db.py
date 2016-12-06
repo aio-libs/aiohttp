@@ -35,7 +35,8 @@ class RecordNotFound(Exception):
     """Requested record in database was not found"""
 
 
-async def init_postgres(conf, loop):
+async def init_pg(app):
+    conf = app['config']
     engine = await aiopg.sa.create_engine(
         database=conf['database'],
         user=conf['user'],
@@ -44,8 +45,13 @@ async def init_postgres(conf, loop):
         port=conf['port'],
         minsize=conf['minsize'],
         maxsize=conf['maxsize'],
-        loop=loop)
-    return engine
+        loop=app.loop)
+    app['db'] = engine
+
+
+async def close_pg(app):
+    app['db'].close()
+    await app['db'].wait_closed()
 
 
 async def get_question(conn, question_id):

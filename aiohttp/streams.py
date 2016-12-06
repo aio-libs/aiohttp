@@ -15,7 +15,6 @@ __all__ = (
 PY_35 = sys.version_info >= (3, 5)
 PY_352 = sys.version_info >= (3, 5, 2)
 
-EOF_MARKER = b''
 DEFAULT_LIMIT = 2 ** 16
 
 
@@ -41,7 +40,7 @@ if PY_35:
                 rv = yield from self.read_func()
             except EofStream:
                 raise StopAsyncIteration  # NOQA
-            if rv == EOF_MARKER:
+            if rv == b'':
                 raise StopAsyncIteration  # NOQA
             return rv
 
@@ -278,7 +277,7 @@ class StreamReader(AsyncStreamReaderMixin):
                         'might be infinite loop: \n%s', stack)
 
         if not n:
-            return EOF_MARKER
+            return b''
 
         if n < 0:
             # This used to just loop creating a new waiter hoping to
@@ -369,7 +368,7 @@ class StreamReader(AsyncStreamReaderMixin):
                 if n == 0:
                     break
 
-        return b''.join(chunks) if chunks else EOF_MARKER
+        return b''.join(chunks) if chunks else b''
 
 
 class EmptyStreamReader(AsyncStreamReaderMixin):
@@ -398,22 +397,22 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
 
     @asyncio.coroutine
     def readline(self):
-        return EOF_MARKER
+        return b''
 
     @asyncio.coroutine
     def read(self, n=-1):
-        return EOF_MARKER
+        return b''
 
     @asyncio.coroutine
     def readany(self):
-        return EOF_MARKER
+        return b''
 
     @asyncio.coroutine
     def readexactly(self, n):
         raise asyncio.streams.IncompleteReadError(b'', n)
 
     def read_nowait(self):
-        return EOF_MARKER
+        return b''
 
 
 class DataQueue:
@@ -504,7 +503,7 @@ class ChunksQueue(DataQueue):
         try:
             return (yield from super().read())
         except EofStream:
-            return EOF_MARKER
+            return b''
 
     readany = read
 
@@ -667,6 +666,6 @@ class FlowControlChunksQueue(FlowControlDataQueue):
         try:
             return (yield from super().read())
         except EofStream:
-            return EOF_MARKER
+            return b''
 
     readany = read

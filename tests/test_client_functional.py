@@ -266,8 +266,15 @@ def test_tcp_connector_fingerprint_ok(test_server, test_client,
     def handler(request):
         return web.HTTPOk(text='Test message')
 
-    connector = aiohttp.TCPConnector(loop=loop, verify_ssl=False,
-                                     fingerprint=fingerprint)
+    # Test for deprecation warning on md5 and sha1 len digests.
+    if len(fingerprint) == 16 or len(fingerprint) == 20:
+        with pytest.warns(DeprecationWarning) as cm:
+            connector = aiohttp.TCPConnector(loop=loop, verify_ssl=False,
+                                             fingerprint=fingerprint)
+        assert 'Use sha256.' in str(cm[0].message)
+    else:
+        connector = aiohttp.TCPConnector(loop=loop, verify_ssl=False,
+                                         fingerprint=fingerprint)
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
     server = yield from test_server(app, ssl=ssl_ctx)
@@ -330,7 +337,7 @@ def test_format_task_get(test_server, loop):
 def test_str_params(loop, test_client):
     @asyncio.coroutine
     def handler(request):
-        assert 'q=t+est' in request.query_string
+        assert 'q=t est' in request.query_string
         return web.Response()
 
     app = web.Application(loop=loop)
@@ -508,9 +515,9 @@ def test_204_with_gzipped_content_encoding(loop, test_client):
         return resp
 
     app = web.Application(loop=loop)
+    app.router.add_route('DELETE', '/', handler)
     client = yield from test_client(app)
 
-    app.router.add_route('DELETE', '/', handler)
     resp = yield from client.delete('/')
     assert resp.status == 204
     yield from resp.release()
@@ -552,6 +559,95 @@ def test_timeout_on_reading_data(loop, test_client):
 
     with pytest.raises(asyncio.TimeoutError):
         yield from resp.read()
+
+
+@asyncio.coroutine
+def test_readline_error_on_conn_close(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        resp_ = web.StreamResponse()
+        yield from resp_.prepare(request)
+
+        # make sure connection is closed by client.
+        with pytest.raises(aiohttp.ServerDisconnectedError):
+            for _ in range(10):
+                resp_.write(b'data\n')
+                yield from resp_.drain()
+                yield from asyncio.sleep(0.5, loop=loop)
+            return resp_
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+    server = yield from test_client(app)
+
+    with aiohttp.ClientSession(loop=loop) as session:
+        timer_started = False
+        url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
+        resp = yield from session.get(url, headers=headers)
+        with pytest.raises(aiohttp.ClientDisconnectedError):
+            while True:
+                data = yield from resp.content.readline()
+                data = data.strip()
+                if not data:
+                    break
+                assert data == b'data'
+                if not timer_started:
+                    def do_release():
+                        loop.create_task(resp.release())
+                    loop.call_later(1.0, do_release)
+                    timer_started = True
+
+
+@asyncio.coroutine
+def test_no_error_on_conn_close_if_eof(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        resp_ = web.StreamResponse()
+        yield from resp_.prepare(request)
+        resp_.write(b'data\n')
+        yield from resp_.drain()
+        yield from asyncio.sleep(0.5, loop=loop)
+        return resp_
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+    server = yield from test_client(app)
+
+    with aiohttp.ClientSession(loop=loop) as session:
+        url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
+        resp = yield from session.get(url, headers=headers)
+        while True:
+            data = yield from resp.content.readline()
+            data = data.strip()
+            if not data:
+                break
+            assert data == b'data'
+        yield from resp.release()
+        assert resp.content.exception() is None
+
+
+@asyncio.coroutine
+def test_error_not_overwrote_on_conn_close(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        resp_ = web.StreamResponse()
+        yield from resp_.prepare(request)
+        return resp_
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+    server = yield from test_client(app)
+
+    with aiohttp.ClientSession(loop=loop) as session:
+        url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
+        resp = yield from session.get(url, headers=headers)
+        resp.content.set_exception(aiohttp.ClientRequestError())
+
+    yield from resp.release()
+    assert isinstance(resp.content.exception(), aiohttp.ClientRequestError)
 
 
 @asyncio.coroutine
@@ -1381,9 +1477,9 @@ def test_shortcuts(test_client, loop):
         return web.Response(text=request.method)
 
     app = web.Application(loop=loop)
-    client = yield from test_client(lambda loop: app)
     for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         app.router.add_route(meth.upper(), '/', handler)
+    client = yield from test_client(lambda loop: app)
 
     for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         coro = getattr(client.session, meth)
@@ -1412,9 +1508,9 @@ def test_module_shortcuts(test_client, loop):
         return web.Response(text=request.method)
 
     app = web.Application(loop=loop)
-    client = yield from test_client(lambda loop: app)
     for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         app.router.add_route(meth.upper(), '/', handler)
+    client = yield from test_client(lambda loop: app)
 
     for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         coro = getattr(aiohttp, meth)
@@ -1600,3 +1696,21 @@ def test_redirect_to_absolute_url(loop, test_client):
     resp = yield from client.get('/redirect')
     assert 200 == resp.status
     resp.close()
+
+
+@asyncio.coroutine
+def test_redirect_without_location_header(loop, test_client):
+    @asyncio.coroutine
+    def handler_redirect(request):
+        return web.Response(status=301)
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/redirect', handler_redirect)
+    client = yield from test_client(app)
+
+    with pytest.raises(RuntimeError) as ctx:
+        yield from client.get('/redirect')
+    assert str(ctx.value) == ('GET http://127.0.0.1:{}/redirect returns '
+                              'a redirect [301] status but response lacks '
+                              'a Location or URI HTTP header'
+                              .format(client.port))

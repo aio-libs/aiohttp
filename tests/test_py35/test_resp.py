@@ -7,6 +7,7 @@ import aiohttp
 from aiohttp import web
 from aiohttp.client import _RequestContextManager
 
+
 async def test_await(test_server, loop):
 
     async def handler(request):
@@ -35,6 +36,25 @@ async def test_response_context_manager(test_server, loop):
         assert resp.status == 200
         assert resp.connection is not None
     assert resp.connection is None
+
+
+async def test_response_context_manager_error(test_server, loop):
+
+    async def handler(request):
+        return web.HTTPOk()
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+    server = await test_server(app)
+    cm = aiohttp.get(server.make_url('/'), loop=loop)
+    session = cm._session
+    resp = await cm
+    with pytest.raises(RuntimeError):
+        async with resp:
+            assert resp.status == 200
+            resp.content.set_exception(RuntimeError())
+            await resp.read()
+    assert len(session._connector._conns) == 0
 
 
 async def test_client_api_context_manager(test_server, loop):
