@@ -950,6 +950,8 @@ class Response(StreamResponse):
         super().__init__(status=status, reason=reason, headers=headers)
         if text is not None:
             self.text = text
+        elif body is None and hdrs.CONTENT_LENGTH in headers:
+            self._body = None
         else:
             self.body = body
 
