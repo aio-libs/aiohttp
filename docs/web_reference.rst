@@ -1547,6 +1547,9 @@ Router is any object that implements :class:`AbstractRouter` interface.
       system call even if the platform supports it. This can be accomplished by
       by setting environment variable ``AIOHTTP_NOSENDFILE=1``.
 
+      If a gzip version of the static content exists at file path + ``.gz``, it
+      will be used for the response.
+
       .. warning::
 
          Use :meth:`add_static` for development only. In production,
@@ -1560,6 +1563,9 @@ Router is any object that implements :class:`AbstractRouter` interface.
       .. versionchanged:: 0.19.0
          Disable ``sendfile`` by setting environment variable
          ``AIOHTTP_NOSENDFILE=1``
+
+      .. versionchanged:: 1.2.0
+         Send gzip version if file path + ``.gz`` exists.
 
       :param str prefix: URL path prefix for handled static files
 
