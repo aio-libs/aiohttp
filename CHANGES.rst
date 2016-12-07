@@ -41,7 +41,7 @@ CHANGES
 
 - Introduce `router.post_init()` for solving #1373
 
--
+- Allow to raise web exceptions on router resolving stage #1460
 
 -
 
