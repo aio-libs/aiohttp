@@ -39,7 +39,7 @@ CHANGES
 - Don't override `Content-Length` header in `web.Response` if no body
   was set #1400
 
--
+- Introduce `router.post_init()` for solving #1373
 
 -
 
