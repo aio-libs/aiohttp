@@ -11,6 +11,10 @@ class AbstractRouter(ABC):
     def __init__(self):
         self._frozen = False
 
+    @abstractmethod
+    def post_init(self, app):
+        pass
+
     @property
     def frozen(self):
         return self._frozen

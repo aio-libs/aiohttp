@@ -710,10 +710,14 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
     NAME_SPLIT_RE = re.compile(r'[.:-]')
 
-    def __init__(self, app):
+    def __init__(self):
         super().__init__()
         self._resources = []
         self._named_resources = {}
+        self._app = None
+
+    def post_init(self, app):
+        assert app is not None
         self._app = app
 
     @asyncio.coroutine
@@ -759,6 +763,9 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         assert isinstance(resource, AbstractResource), \
             'Instance of AbstractResource class is required, got {!r}'.format(
                 resource)
+        if self._app is None:
+            raise RuntimeError(".post_init() should be called before "
+                               "first resource registering")
         if self.frozen:
             raise RuntimeError("Cannot register a resource into "
                                "frozen router.")
