@@ -13,7 +13,7 @@ class AbstractRouter(ABC):
 
     @abstractmethod
     def post_init(self, app):
-        pass  # pragme: no cover
+        pass  # pragma: no cover
 
     @property
     def frozen(self):
