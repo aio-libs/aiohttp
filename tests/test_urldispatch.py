@@ -13,7 +13,7 @@ from aiohttp import hdrs, web
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPMethodNotAllowed, HTTPNotFound, Response
 from aiohttp.web_urldispatcher import (AbstractResource, ResourceRoute,
-                                       SystemRoute, View,
+                                       SystemRoute, UrlDispatcher, View,
                                        _defaultExpectHandler)
 
 
@@ -1011,3 +1011,9 @@ def test_convert_empty_path_to_slash_on_freezing(router):
     assert resource.get_info() == {'path': ''}
     router.freeze()
     assert resource.get_info() == {'path': '/'}
+
+
+def test_add_to_non_initialized_router():
+    router = UrlDispatcher()
+    with pytest.raises(RuntimeError):
+        router.add_get('/', make_handler())
