@@ -244,8 +244,6 @@ def test_preserving_ip_domain_cookies(loop):
                             'Cookie: shared-cookie=first')
 
 
-test_preserving_ip_domain_cookies(None)
-
 def test_preserving_quoted_cookies(loop):
     jar = CookieJar(loop=loop, unsafe=True)
     jar.update_cookies(SimpleCookie(
