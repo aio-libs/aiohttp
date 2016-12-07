@@ -144,6 +144,14 @@ class FileSender:
     @asyncio.coroutine
     def send(self, request, filepath):
         """Send filepath to client using request."""
+        gzip = False
+        if 'gzip' in request.headers.get(hdrs.ACCEPT_ENCODING, ''):
+            gzip_path = filepath.with_name(filepath.name + '.gz')
+
+            if gzip_path.is_file():
+                filepath = gzip_path
+                gzip = True
+
         st = filepath.stat()
 
         modsince = request.if_modified_since
@@ -182,6 +190,8 @@ class FileSender:
         resp.content_type = ct
         if encoding:
             resp.headers[hdrs.CONTENT_ENCODING] = encoding
+        if gzip:
+            resp.headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
         resp.last_modified = st.st_mtime
 
         resp.content_length = count
