@@ -36,6 +36,8 @@ CHANGES
 
 - Preserve cookie quoting/escaping #1453
 
+- FileSender will send gzipped response if gzip version available #1426
+
 -
 
 -
