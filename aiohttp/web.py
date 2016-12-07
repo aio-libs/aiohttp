@@ -36,8 +36,10 @@ class Application(MutableMapping):
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:
-            router = web_urldispatcher.UrlDispatcher(self)
+            router = web_urldispatcher.UrlDispatcher()
         assert isinstance(router, AbstractRouter), router
+
+        router.post_init(self)
 
         if debug is ...:
             debug = loop.get_debug()
