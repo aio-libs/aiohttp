@@ -34,7 +34,7 @@ CHANGES
 
 - Fix bugs related to the use of unicode hostnames #1444
 
--
+- FileSender will send gzipped response if gzip version available #1426
 
 -
 
