@@ -197,7 +197,9 @@ class CookieJar(AbstractCookieJar):
 
             # It's critical we use the Morsel so the coded_value
             # (based on cookie version) is preserved
-            filtered[name] = cookie
+            mrsl_val = cookie.get(cookie.key, Morsel())
+            mrsl_val.set(cookie.key, cookie.value, cookie.coded_value)
+            filtered[name] = mrsl_val
 
         return filtered
 
