@@ -36,7 +36,7 @@ class RecordNotFound(Exception):
 
 
 async def init_pg(app):
-    conf = app['config']
+    conf = app['config']['postgres']
     engine = await aiopg.sa.create_engine(
         database=conf['database'],
         user=conf['user'],
