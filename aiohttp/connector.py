@@ -364,17 +364,20 @@ class BaseConnector(object):
         except KeyError:  # pragma: no cover
             # this may be result of undetermenistic order of objects
             # finalization due garbage collection.
-            pass
-        else:
-            if self._limit is not None and len(acquired) < self._limit:
-                self._release_waiter(key)
+            return None
+
+        return acquired
 
     def _release(self, key, req, transport, protocol, *, should_close=False):
         if self._closed:
             # acquired connection is already released on connector closing
             return
 
-        self._release_acquired(key, transport)
+        acquired = self._release_acquired(key, transport)
+
+        if self._limit is not None and acquired is not None:
+            if len(acquired) < self._limit:
+                self._release_waiter(key)
 
         resp = req.response
 

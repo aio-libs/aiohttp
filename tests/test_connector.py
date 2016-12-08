@@ -155,9 +155,15 @@ def test_release_acquired(loop):
 
     key, tr = 1, unittest.mock.Mock()
     conn._acquired[key].add(tr)
-    conn._release_acquired(key, tr)
+    acquired = conn._release_acquired(key, tr)
     assert 0 == len(conn._acquired[key])
-    assert conn._release_waiter.called
+    assert acquired == conn._acquired[key]
+    assert not conn._release_waiter.called
+
+    acquired = conn._release_acquired(key, tr)
+    assert 0 == len(conn._acquired[key])
+    assert acquired is None
+
     conn.close()
 
 
@@ -179,6 +185,7 @@ def test_release(loop):
 
     conn = aiohttp.BaseConnector(loop=loop)
     conn._start_cleanup_task = unittest.mock.Mock()
+    conn._release_waiter = unittest.mock.Mock()
     req = unittest.mock.Mock()
     resp = req.response = unittest.mock.Mock()
     resp._should_close = False
@@ -187,8 +194,60 @@ def test_release(loop):
     key = 1
     conn._acquired[key].add(tr)
     conn._release(key, req, tr, proto)
+    assert conn._release_waiter.called
     assert conn._conns[1][0] == (tr, proto, 10)
     assert conn._start_cleanup_task.called
+    conn.close()
+
+
+def test_release_already_closed(loop):
+    conn = aiohttp.BaseConnector(loop=loop)
+
+    tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+    key = 1
+    conn._acquired[key].add(tr)
+    conn.close()
+
+    conn._start_cleanup_task = unittest.mock.Mock()
+    conn._release_waiter = unittest.mock.Mock()
+    conn._release_acquired = unittest.mock.Mock()
+    req = unittest.mock.Mock()
+
+    conn._release(key, req, tr, proto)
+    assert not conn._release_waiter.called
+    assert not conn._start_cleanup_task.called
+    assert not conn._release_acquired.called
+
+
+def test_release_do_not_call_release_waiter(loop):
+    req = unittest.mock.Mock()
+    resp = req.response = unittest.mock.Mock()
+    resp._should_close = False
+    tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+    key = 1
+
+    # limit is None
+    conn = aiohttp.BaseConnector(limit=None, loop=loop)
+    conn._release_waiter = unittest.mock.Mock()
+    conn._acquired[key].add(tr)
+    conn._release(key, req, tr, proto)
+    assert not conn._release_waiter.called
+    conn.close()
+
+    # acquired key error
+    conn = aiohttp.BaseConnector(loop=loop)
+    conn._release_waiter = unittest.mock.Mock()
+    conn._release(key, req, tr, proto)
+    assert not conn._release_waiter.called
+    conn.close()
+
+    # acquired len >= limit
+    conn = aiohttp.BaseConnector(limit=1, loop=loop)
+    conn._release_waiter = unittest.mock.Mock()
+    conn._acquired[key].add(unittest.mock.Mock())
+    conn._acquired[key].add(tr)
+    conn._release(key, req, tr, proto)
+    assert not conn._release_waiter.called
     conn.close()
 
 

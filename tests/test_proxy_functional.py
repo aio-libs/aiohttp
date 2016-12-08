@@ -243,13 +243,23 @@ def test_proxy_http_multi_conn_limit(proxy_test_server, loop):
     sess = aiohttp.ClientSession(connector=conn, loop=loop)
     proxy = yield from proxy_test_server()
 
+    current_pid = None
+
     @asyncio.coroutine
-    def request():
+    def request(pid):
+        # process requests only one by one
+        nonlocal current_pid
+
         resp = yield from sess.get(url, proxy=proxy.url)
+
+        current_pid = pid
+        yield from asyncio.sleep(0.2, loop=loop)
+        assert current_pid == pid
+
         yield from resp.release()
         return resp
 
-    requests = [request() for _ in range(multi_conn_num)]
+    requests = [request(pid) for pid in range(multi_conn_num)]
     responses = yield from asyncio.gather(*requests, loop=loop)
 
     assert len(responses) == multi_conn_num
@@ -399,7 +409,7 @@ def test_proxy_https_acquired_cleanup(proxy_test_server, loop):
 
 
 @asyncio.coroutine
-def test_proxy_https_aquired_cleanup_force(proxy_test_server, loop):
+def test_proxy_https_acquired_cleanup_force(proxy_test_server, loop):
     url = 'https://secure.aiohttp.io/path'
     key = ('secure.aiohttp.io', 443, True)
 
@@ -434,13 +444,23 @@ def test_proxy_https_multi_conn_limit(proxy_test_server, loop):
     sess = aiohttp.ClientSession(connector=conn, loop=loop)
     proxy = yield from proxy_test_server()
 
+    current_pid = None
+
     @asyncio.coroutine
-    def request():
+    def request(pid):
+        # process requests only one by one
+        nonlocal current_pid
+
         resp = yield from sess.get(url, proxy=proxy.url)
+
+        current_pid = pid
+        yield from asyncio.sleep(0.2, loop=loop)
+        assert current_pid == pid
+
         yield from resp.release()
         return resp
 
-    requests = [request() for _ in range(multi_conn_num)]
+    requests = [request(pid) for pid in range(multi_conn_num)]
     responses = yield from asyncio.gather(*requests, loop=loop)
 
     assert len(responses) == multi_conn_num
@@ -453,7 +473,9 @@ def _patch_ssl_transport(monkeypatch):
     """Make ssl transport substitution to prevent ssl handshake."""
     def _make_ssl_transport_dummy(self, rawsock, protocol, sslcontext,
                                   waiter=None, **kwargs):
-        return self._make_socket_transport(rawsock, protocol, waiter)
+        return self._make_socket_transport(rawsock, protocol, waiter,
+                                           extra=kwargs.get('extra'),
+                                           server=kwargs.get('server'))
 
     monkeypatch.setattr(
         "asyncio.selector_events.BaseSelectorEventLoop._make_ssl_transport",
