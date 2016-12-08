@@ -1,7 +1,6 @@
 import argparse
 import asyncio
 import logging
-import pathlib
 
 import jinja2
 
