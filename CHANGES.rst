@@ -34,6 +34,8 @@ CHANGES
 
 - Fix bugs related to the use of unicode hostnames #1444
 
+- Preserve cookie quoting/escaping #1453
+
 - FileSender will send gzipped response if gzip version available #1426
 
 - Don't override `Content-Length` header in `web.Response` if no body
