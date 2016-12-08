@@ -195,7 +195,11 @@ class CookieJar(AbstractCookieJar):
             if is_not_secure and cookie["secure"]:
                 continue
 
-            filtered[name] = cookie.value
+            # It's critical we use the Morsel so the coded_value
+            # (based on cookie version) is preserved
+            mrsl_val = cookie.get(cookie.key, Morsel())
+            mrsl_val.set(cookie.key, cookie.value, cookie.coded_value)
+            filtered[name] = mrsl_val
 
         return filtered
 
