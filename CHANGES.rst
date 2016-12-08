@@ -34,15 +34,15 @@ CHANGES
 
 - Fix bugs related to the use of unicode hostnames #1444
 
+-
+
+-
+
+-
+
+-
+
 - Fix bug with https proxy acquired cleanup #1340
-
--
-
--
-
--
-
--
 
 -
 
