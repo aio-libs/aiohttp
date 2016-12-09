@@ -284,11 +284,11 @@ def run_app(app, *, host='0.0.0.0', port=None,
         make_handler_kwargs['access_log_format'] = access_log_format
     handler = app.make_handler(access_log=access_log,
                                **make_handler_kwargs)
-    server = loop.create_server(handler, host, port, ssl=ssl_context,
-                                backlog=backlog)
-    srv, startup_res = loop.run_until_complete(asyncio.gather(server,
-                                                              app.startup(),
-                                                              loop=loop))
+
+    loop.run_until_complete(app.startup())
+    srv = loop.run_until_complete(loop.create_server(handler, host,
+                                                     port, ssl=ssl_context,
+                                                     backlog=backlog))
 
     scheme = 'https' if ssl_context else 'http'
     url = URL('{}://localhost'.format(scheme))
