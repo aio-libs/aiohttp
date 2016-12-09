@@ -15,8 +15,8 @@ Request and Base Request
 
 The Request object contains all the information about an incoming HTTP request.
 
-:class:`BaseRequest` is used for :ref:`low-level
-servers<aiohttp-web-low-level>` (which have no applications, routers, signals
+:class:`BaseRequest` is used for :ref:`Low-Level
+Servers<aiohttp-web-lowlevel>` (which have no applications, routers, signals
 and middlewares) and :class:`Request` has an *application* and *match
 info* attributes.
 

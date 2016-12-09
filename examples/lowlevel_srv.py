@@ -7,8 +7,8 @@ async def handler(request):
 
 
 async def main(loop):
-    proto = web.WebServer(handler)
-    await loop.create_server(proto, "127.0.0.1", 8080)
+    server = web.Server(handler)
+    await loop.create_server(server, "127.0.0.1", 8080)
     print("======= Serving on http://127.0.0.1:8080/ ======")
 
     # pause here for very long time by serving HTTP requests and

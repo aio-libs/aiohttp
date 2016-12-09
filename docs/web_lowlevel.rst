@@ -54,8 +54,8 @@ The following code demonstrates very trivial usage example::
 
 
    async def main(loop):
-       proto = web.WebServer(handler)
-       await loop.create_server(proto, "127.0.0.1", 8080)
+       server = web.Server(handler)
+       await loop.create_server(server, "127.0.0.1", 8080)
        print("======= Serving on http://127.0.0.1:8080/ ======")
 
        # pause here for very long time by serving HTTP requests and
@@ -70,3 +70,21 @@ The following code demonstrates very trivial usage example::
    except KeyboardInterrupt:
        pass
    loop.close()
+
+
+In the snippet we have ``handler`` which returns a regular
+:class:`Response` with ``"OK"`` in BODY.
+
+This *handler* is processed by ``server`` (:class:`Server` which acts
+as *protocol factory*).  Network communication is created by
+``loop.create_server`` call to serve ``http://127.0.0.1:8080/``.
+
+The handler should process every request: ``GET``, ``POST``,
+Web-Socket for every *path*.
+
+The example is very basic: it always return ``200 OK`` response, real
+life code should be much more complex.
+
+
+.. disqus::
+  :title: aiohttp.web low-level server
