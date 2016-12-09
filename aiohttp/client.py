@@ -58,6 +58,12 @@ class ClientSession:
             warnings.warn("Creating a client session outside of coroutine is "
                           "a very dangerous idea", ResourceWarning,
                           stacklevel=2)
+            context = {'client_session': self,
+                       'message': 'Creating a client session outside '
+                       'of coroutine'}
+            if self._source_traceback is not None:
+                context['source_traceback'] = self._source_traceback
+            loop.call_exception_handler(context)
 
         if cookie_jar is None:
             cookie_jar = CookieJar(loop=loop)
