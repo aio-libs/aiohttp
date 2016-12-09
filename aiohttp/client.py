@@ -54,6 +54,11 @@ class ClientSession:
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
+        if not loop.is_running():
+            warnings.warn("Creating a client session outside of coroutine is "
+                          "a very dangerous idea", ResourceWarning,
+                          stacklevel=2)
+
         if cookie_jar is None:
             cookie_jar = CookieJar(loop=loop)
         self._cookie_jar = cookie_jar
