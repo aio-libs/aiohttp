@@ -1,7 +1,7 @@
 .. _aiohttp-web:
 
-HTTP Server Usage
-=================
+Server Usage
+============
 
 .. currentmodule:: aiohttp.web
 
@@ -1097,7 +1097,7 @@ Proper finalization procedure has three steps:
   2. Fire :meth:`Application.shutdown` event.
 
   3. Close accepted connections from clients by
-     :meth:`RequestHandlerFactory.shutdown` call with
+     :meth:`Server.shutdown` call with
      reasonable small delay.
 
   4. Call registered application finalizers by :meth:`Application.cleanup`.

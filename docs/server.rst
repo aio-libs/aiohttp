@@ -1,7 +1,7 @@
 .. _aiohttp-server:
 
-Low-level HTTP Server
-=====================
+Deprecated Low-level Server
+===========================
 
 .. currentmodule:: aiohttp.server
 

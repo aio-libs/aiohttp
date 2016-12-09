@@ -1,7 +1,7 @@
 .. _aiohttp-web-reference:
 
-HTTP Server Reference
-=====================
+Server Reference
+================
 
 .. module:: aiohttp.web
 
@@ -1161,8 +1161,8 @@ Application is a synonym for web-server.
 
 To get fully working example, you have to make *application*, register
 supported urls in *router* and create a *server socket* with
-:class:`~aiohttp.web.RequestHandlerFactory` as a *protocol
-factory*. *RequestHandlerFactory* could be constructed with
+:class:`~aiohttp.web.Server` as a *protocol
+factory*. *Server* could be constructed with
 :meth:`Application.make_handler`.
 
 *Application* contains a *router* instance and a list of callbacks that
@@ -1398,37 +1398,44 @@ duplicated like one using :meth:`Application.copy`.
       router for your application).
 
 
-RequestHandlerFactory
-^^^^^^^^^^^^^^^^^^^^^
+Server
+^^^^^^
 
-   A protocol factory compatible with
-   :meth:`~asyncio.AbstreactEventLoop.create_server`.
+A protocol factory compatible with
+:meth:`~asyncio.AbstreactEventLoop.create_server`.
 
-   .. class:: RequestHandlerFactory
+.. class:: Server
 
-      RequestHandlerFactory is responsible for creating HTTP protocol
-      objects that can handle HTTP connections.
+   The class is responsible for creating HTTP protocol
+   objects that can handle HTTP connections.
 
-      .. attribute:: RequestHandlerFactory.connections
+   .. attribute:: Server.connections
 
-         List of all currently opened connections.
+      List of all currently opened connections.
 
-      .. attribute:: requests_count
+   .. attribute:: requests_count
 
-         Amount of processed requests.
+      Amount of processed requests.
 
-         .. versionadded:: 1.0
+      .. versionadded:: 1.0
 
-      .. coroutinemethod:: RequestHandlerFactory.shutdown(timeout)
+   .. coroutinemethod:: Server.shutdown(timeout)
 
-         A :ref:`coroutine<coroutine>` that should be called to close all opened
-         connections.
+      A :ref:`coroutine<coroutine>` that should be called to close all opened
+      connections.
 
-      .. coroutinemethod:: RequestHandlerFactory.finish_connections(timeout)
+   .. coroutinemethod:: Server.finish_connections(timeout)
 
-         .. deprecated:: 1.2
+      .. deprecated:: 1.2
 
          A deprecated alias for :meth:`shutdown`.
+
+   .. versionchanged:: 1.2
+
+      ``Server`` was called ``RequestHandlerFactory`` before ``aiohttp==1.2``.
+
+      The rename has no deprecation period but it's safe: no user
+      should instantiate the class by hands.
 
 
 Router
