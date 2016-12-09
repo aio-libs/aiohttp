@@ -10,26 +10,22 @@ HTTP Server Reference
 .. _aiohttp-web-request:
 
 
-Request
--------
+Request and Base Request
+------------------------
 
 The Request object contains all the information about an incoming HTTP request.
 
-Every :ref:`handler<aiohttp-web-handler>` accepts a request instance as the
-first positional parameter.
+:class:`BaseRequest` is used for :ref:`low-level
+servers<aiohttp-web-low-level>` (which have no applications, routers, signals
+and middlewares) and :class:`Request` has an *application* and *match
+info* attributes.
 
-A :class:`Request` is a :obj:`dict`-like object, allowing it to be used for
-:ref:`sharing data<aiohttp-web-data-sharing>` among
-:ref:`aiohttp-web-middlewares` and :ref:`aiohttp-web-signals` handlers.
+A :class:`BaseRequest`/:class:`Request` are :obj:`dict`-like objects,
+allowing them to be used for :ref:`sharing
+data<aiohttp-web-data-sharing>` among :ref:`aiohttp-web-middlewares`
+and :ref:`aiohttp-web-signals` handlers.
 
-.. note::
-
-   You should never create the :class:`Request` instance manually --
-   :mod:`aiohttp.web` does it for you. But :meth:`Request.clone` may
-   be used for cloning *modified* request copy with changed *path*,
-   *method* etc.
-
-.. class:: Request
+.. class:: BaseRequest
 
    .. attribute:: version
 
@@ -188,22 +184,6 @@ A :class:`Request` is a :obj:`dict`-like object, allowing it to be used for
       protocol version supports it, otherwise ``False``.
 
       Read-only :class:`bool` property.
-
-   .. attribute:: match_info
-
-      Read-only property with :class:`~aiohttp.abc.AbstractMatchInfo`
-      instance for result of route resolving.
-
-      .. note::
-
-         Exact type of property depends on used router.  If
-         ``app.router`` is :class:`UrlDispatcher` the property contains
-         :class:`UrlMappingMatchInfo` instance.
-
-   .. attribute:: app
-
-      An :class:`Application` instance used to call :ref:`request handler
-      <aiohttp-web-handler>`, Read-only property.
 
    .. attribute:: transport
 
@@ -411,6 +391,41 @@ A :class:`Request` is a :obj:`dict`-like object, allowing it to be used for
           User code may never call :meth:`~Request.release`, all
           required work will be processed by :mod:`aiohttp.web`
           internal machinery.
+
+
+.. class:: Request
+
+   An request used for receiving request's information by *web handler*.
+
+   Every :ref:`handler<aiohttp-web-handler>` accepts a request
+   instance as the first positional parameter.
+
+   The class in derived from :class:`BaseRequest`, shares all parent's
+   attributes and methods but has a couple of additional properties:
+
+   .. attribute:: match_info
+
+      Read-only property with :class:`~aiohttp.abc.AbstractMatchInfo`
+      instance for result of route resolving.
+
+      .. note::
+
+         Exact type of property depends on used router.  If
+         ``app.router`` is :class:`UrlDispatcher` the property contains
+         :class:`UrlMappingMatchInfo` instance.
+
+   .. attribute:: app
+
+      An :class:`Application` instance used to call :ref:`request handler
+      <aiohttp-web-handler>`, Read-only property.
+
+   .. note::
+
+      You should never create the :class:`Request` instance manually
+      -- :mod:`aiohttp.web` does it for you. But
+      :meth:`~BaseRequest.clone` may be used for cloning *modified*
+      request copy with changed *path*, *method* etc.
+
 
 
 .. _aiohttp-web-response:
