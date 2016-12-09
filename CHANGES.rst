@@ -47,7 +47,8 @@ CHANGES
 
 - Add a warning for session creation outside of coroutine #1468
 
--
+- Avoid a race when application might start accepting incoming requests
+  but startup signals are not processed yet e98e8c6
 
 -
 
