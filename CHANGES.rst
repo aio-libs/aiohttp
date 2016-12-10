@@ -32,7 +32,7 @@ CHANGES
 
 - Fix bugs with client proxy target path and proxy host with port #1413
 
-- Fix raise error in case of multiple calls of `TimeServive.stop()`
+-
 
 -
 
