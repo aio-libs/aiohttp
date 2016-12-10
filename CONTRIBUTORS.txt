@@ -105,6 +105,7 @@ Mun Gwan-gyeong
 Nicolas Braem
 Nikolay Novik
 Olaf Conradi
+Pahaz Blinov <pahaz.blinov@gmail.com>
 Pankaj Pandey
 Pau Freixes
 Paul Colomiets
