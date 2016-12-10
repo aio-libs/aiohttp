@@ -13,7 +13,7 @@ import gunicorn.workers.base as base
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 
 from aiohttp.helpers import AccessLogger, ensure_future
-from aiohttp.web_server import WebServer
+from aiohttp.web_server import Server
 from aiohttp.wsgi import WSGIServerHttpProtocol
 
 __all__ = ('GunicornWebWorker', 'GunicornUVLoopWebWorker')
@@ -220,7 +220,7 @@ class GunicornWebWorker(base.Worker):
             return source_format
 
 
-class WSGIServer(WebServer):
+class WSGIServer(Server):
 
     def __init__(self, app, worker):
         super().__init__(app, loop=worker.loop)
