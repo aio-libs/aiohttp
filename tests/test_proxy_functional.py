@@ -78,7 +78,7 @@ def test_proxy_http_absolute_path(proxy_test_server, get_request):
 @asyncio.coroutine
 def test_proxy_http_raw_path(proxy_test_server, get_request):
     url = 'http://aiohttp.io:2561/space sheep?q=can:fly'
-    raw_url = 'http://aiohttp.io:2561/space%20sheep?q=can%3Afly'
+    raw_url = 'http://aiohttp.io:2561/space%20sheep?q=can:fly'
     proxy = yield from proxy_test_server()
 
     yield from get_request(url=url, proxy=proxy.url)

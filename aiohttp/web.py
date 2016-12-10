@@ -16,7 +16,7 @@ from .protocol import HttpVersion  # noqa
 from .signals import PostSignal, PreSignal, Signal
 from .web_exceptions import *  # noqa
 from .web_reqrep import *  # noqa
-from .web_server import WebServer
+from .web_server import Server
 from .web_urldispatcher import *  # noqa
 from .web_ws import *  # noqa
 
@@ -36,8 +36,10 @@ class Application(MutableMapping):
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:
-            router = web_urldispatcher.UrlDispatcher(self)
+            router = web_urldispatcher.UrlDispatcher()
         assert isinstance(router, AbstractRouter), router
+
+        router.post_init(self)
 
         if debug is ...:
             debug = loop.get_debug()
@@ -177,10 +179,8 @@ class Application(MutableMapping):
                 )
         self.freeze()
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
-        return WebServer(self._handle,
-                         request_factory=self._make_request,
-                         debug=self.debug, loop=self.loop,
-                         **kwargs)
+        return Server(self._handle, request_factory=self._make_request,
+                      debug=self.debug, loop=self.loop, **kwargs)
 
     @asyncio.coroutine
     def startup(self):
@@ -282,11 +282,11 @@ def run_app(app, *, host='0.0.0.0', port=None,
         make_handler_kwargs['access_log_format'] = access_log_format
     handler = app.make_handler(access_log=access_log,
                                **make_handler_kwargs)
-    server = loop.create_server(handler, host, port, ssl=ssl_context,
-                                backlog=backlog)
-    srv, startup_res = loop.run_until_complete(asyncio.gather(server,
-                                                              app.startup(),
-                                                              loop=loop))
+
+    loop.run_until_complete(app.startup())
+    srv = loop.run_until_complete(loop.create_server(handler, host,
+                                                     port, ssl=ssl_context,
+                                                     backlog=backlog))
 
     scheme = 'https' if ssl_context else 'http'
     url = URL('{}://localhost'.format(scheme))

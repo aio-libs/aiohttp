@@ -91,7 +91,7 @@ class CookieJar(AbstractCookieJar):
 
     def update_cookies(self, cookies, response_url=URL()):
         """Update cookies."""
-        hostname = response_url.host
+        hostname = response_url.raw_host
 
         if not self._unsafe and is_ip_address(hostname):
             # Don't accept cookies from IPs
@@ -168,7 +168,7 @@ class CookieJar(AbstractCookieJar):
         """Returns this jar's cookies filtered by their attributes."""
         self._do_expiration()
         filtered = SimpleCookie()
-        hostname = request_url.host or ""
+        hostname = request_url.raw_host or ""
         is_not_secure = request_url.scheme not in ("https", "wss")
 
         for cookie in self:
@@ -195,7 +195,11 @@ class CookieJar(AbstractCookieJar):
             if is_not_secure and cookie["secure"]:
                 continue
 
-            filtered[name] = cookie.value
+            # It's critical we use the Morsel so the coded_value
+            # (based on cookie version) is preserved
+            mrsl_val = cookie.get(cookie.key, Morsel())
+            mrsl_val.set(cookie.key, cookie.value, cookie.coded_value)
+            filtered[name] = mrsl_val
 
         return filtered
 

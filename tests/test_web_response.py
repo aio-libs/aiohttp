@@ -948,6 +948,11 @@ def test_text_with_empty_payload():
     assert resp.text is None
 
 
+def test_response_with_content_length_header_without_body():
+    resp = Response(headers={'Content-Length': 123})
+    assert resp.content_length == 123
+
+
 class TestJSONResponse:
 
     def test_content_type_is_application_json_by_default(self):

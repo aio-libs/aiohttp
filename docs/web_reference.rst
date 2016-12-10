@@ -1,7 +1,7 @@
 .. _aiohttp-web-reference:
 
-HTTP Server Reference
-=====================
+Server Reference
+================
 
 .. module:: aiohttp.web
 
@@ -10,26 +10,22 @@ HTTP Server Reference
 .. _aiohttp-web-request:
 
 
-Request
--------
+Request and Base Request
+------------------------
 
 The Request object contains all the information about an incoming HTTP request.
 
-Every :ref:`handler<aiohttp-web-handler>` accepts a request instance as the
-first positional parameter.
+:class:`BaseRequest` is used for :ref:`Low-Level
+Servers<aiohttp-web-lowlevel>` (which have no applications, routers, signals
+and middlewares) and :class:`Request` has an *application* and *match
+info* attributes.
 
-A :class:`Request` is a :obj:`dict`-like object, allowing it to be used for
-:ref:`sharing data<aiohttp-web-data-sharing>` among
-:ref:`aiohttp-web-middlewares` and :ref:`aiohttp-web-signals` handlers.
+A :class:`BaseRequest`/:class:`Request` are :obj:`dict`-like objects,
+allowing them to be used for :ref:`sharing
+data<aiohttp-web-data-sharing>` among :ref:`aiohttp-web-middlewares`
+and :ref:`aiohttp-web-signals` handlers.
 
-.. note::
-
-   You should never create the :class:`Request` instance manually --
-   :mod:`aiohttp.web` does it for you. But :meth:`Request.clone` may
-   be used for cloning *modified* request copy with changed *path*,
-   *method* etc.
-
-.. class:: Request
+.. class:: BaseRequest
 
    .. attribute:: version
 
@@ -188,22 +184,6 @@ A :class:`Request` is a :obj:`dict`-like object, allowing it to be used for
       protocol version supports it, otherwise ``False``.
 
       Read-only :class:`bool` property.
-
-   .. attribute:: match_info
-
-      Read-only property with :class:`~aiohttp.abc.AbstractMatchInfo`
-      instance for result of route resolving.
-
-      .. note::
-
-         Exact type of property depends on used router.  If
-         ``app.router`` is :class:`UrlDispatcher` the property contains
-         :class:`UrlMappingMatchInfo` instance.
-
-   .. attribute:: app
-
-      An :class:`Application` instance used to call :ref:`request handler
-      <aiohttp-web-handler>`, Read-only property.
 
    .. attribute:: transport
 
@@ -411,6 +391,41 @@ A :class:`Request` is a :obj:`dict`-like object, allowing it to be used for
           User code may never call :meth:`~Request.release`, all
           required work will be processed by :mod:`aiohttp.web`
           internal machinery.
+
+
+.. class:: Request
+
+   An request used for receiving request's information by *web handler*.
+
+   Every :ref:`handler<aiohttp-web-handler>` accepts a request
+   instance as the first positional parameter.
+
+   The class in derived from :class:`BaseRequest`, shares all parent's
+   attributes and methods but has a couple of additional properties:
+
+   .. attribute:: match_info
+
+      Read-only property with :class:`~aiohttp.abc.AbstractMatchInfo`
+      instance for result of route resolving.
+
+      .. note::
+
+         Exact type of property depends on used router.  If
+         ``app.router`` is :class:`UrlDispatcher` the property contains
+         :class:`UrlMappingMatchInfo` instance.
+
+   .. attribute:: app
+
+      An :class:`Application` instance used to call :ref:`request handler
+      <aiohttp-web-handler>`, Read-only property.
+
+   .. note::
+
+      You should never create the :class:`Request` instance manually
+      -- :mod:`aiohttp.web` does it for you. But
+      :meth:`~BaseRequest.clone` may be used for cloning *modified*
+      request copy with changed *path*, *method* etc.
+
 
 
 .. _aiohttp-web-response:
@@ -1146,8 +1161,8 @@ Application is a synonym for web-server.
 
 To get fully working example, you have to make *application*, register
 supported urls in *router* and create a *server socket* with
-:class:`~aiohttp.web.RequestHandlerFactory` as a *protocol
-factory*. *RequestHandlerFactory* could be constructed with
+:class:`~aiohttp.web.Server` as a *protocol
+factory*. *Server* could be constructed with
 :meth:`Application.make_handler`.
 
 *Application* contains a *router* instance and a list of callbacks that
@@ -1383,37 +1398,44 @@ duplicated like one using :meth:`Application.copy`.
       router for your application).
 
 
-RequestHandlerFactory
-^^^^^^^^^^^^^^^^^^^^^
+Server
+^^^^^^
 
-   A protocol factory compatible with
-   :meth:`~asyncio.AbstreactEventLoop.create_server`.
+A protocol factory compatible with
+:meth:`~asyncio.AbstreactEventLoop.create_server`.
 
-   .. class:: RequestHandlerFactory
+.. class:: Server
 
-      RequestHandlerFactory is responsible for creating HTTP protocol
-      objects that can handle HTTP connections.
+   The class is responsible for creating HTTP protocol
+   objects that can handle HTTP connections.
 
-      .. attribute:: RequestHandlerFactory.connections
+   .. attribute:: Server.connections
 
-         List of all currently opened connections.
+      List of all currently opened connections.
 
-      .. attribute:: requests_count
+   .. attribute:: requests_count
 
-         Amount of processed requests.
+      Amount of processed requests.
 
-         .. versionadded:: 1.0
+      .. versionadded:: 1.0
 
-      .. coroutinemethod:: RequestHandlerFactory.shutdown(timeout)
+   .. coroutinemethod:: Server.shutdown(timeout)
 
-         A :ref:`coroutine<coroutine>` that should be called to close all opened
-         connections.
+      A :ref:`coroutine<coroutine>` that should be called to close all opened
+      connections.
 
-      .. coroutinemethod:: RequestHandlerFactory.finish_connections(timeout)
+   .. coroutinemethod:: Server.finish_connections(timeout)
 
-         .. deprecated:: 1.2
+      .. deprecated:: 1.2
 
          A deprecated alias for :meth:`shutdown`.
+
+   .. versionchanged:: 1.2
+
+      ``Server`` was called ``RequestHandlerFactory`` before ``aiohttp==1.2``.
+
+      The rename has no deprecation period but it's safe: no user
+      should instantiate the class by hands.
 
 
 Router
@@ -1547,6 +1569,9 @@ Router is any object that implements :class:`AbstractRouter` interface.
       system call even if the platform supports it. This can be accomplished by
       by setting environment variable ``AIOHTTP_NOSENDFILE=1``.
 
+      If a gzip version of the static content exists at file path + ``.gz``, it
+      will be used for the response.
+
       .. warning::
 
          Use :meth:`add_static` for development only. In production,
@@ -1560,6 +1585,9 @@ Router is any object that implements :class:`AbstractRouter` interface.
       .. versionchanged:: 0.19.0
          Disable ``sendfile`` by setting environment variable
          ``AIOHTTP_NOSENDFILE=1``
+
+      .. versionchanged:: 1.2.0
+         Send gzip version if file path + ``.gz`` exists.
 
       :param str prefix: URL path prefix for handled static files
 

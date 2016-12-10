@@ -162,6 +162,32 @@ def test_save_load(loop, cookies_to_send, cookies_to_receive):
     assert jar_test == cookies_to_receive
 
 
+def test_update_cookie_with_unicode_domain(loop):
+    cookies = (
+        "idna-domain-first=first; Domain=xn--9caa.com; Path=/;",
+        "idna-domain-second=second; Domain=xn--9caa.com; Path=/;",
+    )
+
+    jar = CookieJar(loop=loop)
+    jar.update_cookies(SimpleCookie(cookies[0]), URL("http://éé.com/"))
+    jar.update_cookies(SimpleCookie(cookies[1]), URL("http://xn--9caa.com/"))
+
+    jar_test = SimpleCookie()
+    for cookie in jar:
+        jar_test[cookie.key] = cookie
+
+    assert jar_test == SimpleCookie(" ".join(cookies))
+
+
+def test_filter_cookie_with_unicode_domain(loop):
+    jar = CookieJar(loop=loop)
+    jar.update_cookies(SimpleCookie(
+        "idna-domain-first=first; Domain=xn--9caa.com; Path=/; "
+    ))
+    assert len(jar.filter_cookies(URL("http://éé.com"))) == 1
+    assert len(jar.filter_cookies(URL("http://xn--9caa.com"))) == 1
+
+
 def test_ctor_ith_default_loop(loop):
     asyncio.set_event_loop(loop)
     jar = CookieJar()
@@ -218,6 +244,16 @@ def test_preserving_ip_domain_cookies(loop):
                             'Cookie: shared-cookie=first')
 
 
+def test_preserving_quoted_cookies(loop):
+    jar = CookieJar(loop=loop, unsafe=True)
+    jar.update_cookies(SimpleCookie(
+        "ip-cookie=\"second\"; Domain=127.0.0.1;"
+    ))
+    cookies_sent = jar.filter_cookies(URL("http://127.0.0.1/")).output(
+        header='Cookie:')
+    assert cookies_sent == 'Cookie: ip-cookie=\"second\"'
+
+
 def test_ignore_domain_ending_with_dot(loop):
     jar = CookieJar(loop=loop, unsafe=True)
     jar.update_cookies(SimpleCookie("cookie=val; Domain=example.com.;"),
@@ -234,7 +270,7 @@ class TestCookieJarBase(unittest.TestCase):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
 
-        # N.B. those need to be overriden in child test cases
+        # N.B. those need to be overridden in child test cases
         self.jar = CookieJar(loop=self.loop)
 
     def tearDown(self):

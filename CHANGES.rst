@@ -4,7 +4,7 @@ CHANGES
 1.2.0 (XXXX-XX-XX)
 ------------------
 
-- Extract `BaseRequest` from `web.Request`, introduce `web.WebServer`
+- Extract `BaseRequest` from `web.Request`, introduce `web.Server`
   (former `RequestHandlerFactory`), introduce new low-level web server
   which is not coupled with `web.Application` and routing #1362
 
@@ -31,6 +31,32 @@ CHANGES
 - Has functional tests for client proxy #1218
 
 - Fix bugs with client proxy target path and proxy host with port #1413
+
+- Fix bugs related to the use of unicode hostnames #1444
+
+- Preserve cookie quoting/escaping #1453
+
+- FileSender will send gzipped response if gzip version available #1426
+
+- Don't override `Content-Length` header in `web.Response` if no body
+  was set #1400
+
+- Introduce `router.post_init()` for solving #1373
+
+- Allow to raise web exceptions on router resolving stage #1460
+
+- Add a warning for session creation outside of coroutine #1468
+
+- Avoid a race when application might start accepting incoming requests
+  but startup signals are not processed yet e98e8c6
+
+-
+
+-
+
+-
+
+-
 
 -
 

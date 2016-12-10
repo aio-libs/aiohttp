@@ -10,6 +10,7 @@ Alexander Bayandin
 Alexander Karpinsky
 Alexander Koshevoy
 Alexander Malev
+Alexander Mohr
 Alexander Shorin
 Alexander Travov
 Alexandru Mihai
@@ -109,6 +110,7 @@ Pahaz Blinov <pahaz.blinov@gmail.com>
 Pankaj Pandey
 Pau Freixes
 Paul Colomiets
+Paulus Schoutsen
 Philipp A.
 Rafael Viotti
 Raúl Cumplido

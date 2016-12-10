@@ -275,13 +275,10 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                                          tzinfo=datetime.timezone.utc)
         return None
 
-    @reify
+    @property
     def keep_alive(self):
         """Is keepalive enabled by client?"""
-        if self.version < HttpVersion10:
-            return False
-        else:
-            return not self._message.should_close
+        return not self._message.should_close
 
     @property
     def transport(self):
@@ -489,7 +486,10 @@ class Request(BaseRequest):
 
     @asyncio.coroutine
     def _prepare_hook(self, response):
-        for app in self.match_info.apps:
+        match_info = self._match_info
+        if match_info is None:
+            return
+        for app in match_info.apps:
             yield from app.on_response_prepare.send(self, response)
 
 
@@ -521,11 +521,6 @@ class StreamResponse(HeadersMixin):
             # TODO: optimize CIMultiDict extending
             self._headers.extend(headers)
         self._headers.setdefault(hdrs.CONTENT_TYPE, 'application/octet-stream')
-
-    def _copy_cookies(self):
-        for cookie in self._cookies.values():
-            value = cookie.output(header='')[1:]
-            self.headers.add(hdrs.SET_COOKIE, value)
 
     @property
     def prepared(self):
@@ -568,6 +563,14 @@ class StreamResponse(HeadersMixin):
 
     def force_close(self):
         self._keep_alive = False
+
+    @property
+    def body_length(self):
+        return self._resp_impl.body_length
+
+    @property
+    def output_length(self):
+        return self._resp.impl.output_length
 
     def enable_chunked_encoding(self, chunk_size=None):
         """Enables automatic chunked transfer encoding."""
@@ -796,7 +799,14 @@ class StreamResponse(HeadersMixin):
 
         return self._start(request)
 
-    def _start(self, request):
+    def _start(self, request,
+               HttpVersion10=HttpVersion10,
+               HttpVersion11=HttpVersion11,
+               CONNECTION=hdrs.CONNECTION,
+               DATE=hdrs.DATE,
+               SERVER=hdrs.SERVER,
+               SET_COOKIE=hdrs.SET_COOKIE,
+               TRANSFER_ENCODING=hdrs.TRANSFER_ENCODING):
         self._req = request
         keep_alive = self._keep_alive
         if keep_alive is None:
@@ -811,9 +821,11 @@ class StreamResponse(HeadersMixin):
             not keep_alive,
             self._reason)
 
-        self._copy_cookies()
-
         headers = self.headers
+        for cookie in self._cookies.values():
+            value = cookie.output(header='')[1:]
+            headers.add(SET_COOKIE, value)
+
         if self._compression:
             self._start_compression(request)
 
@@ -822,23 +834,22 @@ class StreamResponse(HeadersMixin):
                 raise RuntimeError("Using chunked encoding is forbidden "
                                    "for HTTP/{0.major}.{0.minor}".format(
                                        request.version))
-            resp_impl.enable_chunked_encoding()
+            resp_impl.chunked = True
             if self._chunk_size:
                 resp_impl.add_chunking_filter(self._chunk_size)
-            headers[hdrs.TRANSFER_ENCODING] = 'chunked'
+            headers[TRANSFER_ENCODING] = 'chunked'
         else:
             resp_impl.length = self.content_length
 
-        if hdrs.DATE not in headers:
-            headers[hdrs.DATE] = request._time_service.strtime()
-        headers.setdefault(hdrs.SERVER, resp_impl.SERVER_SOFTWARE)
-        if hdrs.CONNECTION not in headers:
+        headers.setdefault(DATE, request._time_service.strtime())
+        headers.setdefault(SERVER, resp_impl.SERVER_SOFTWARE)
+        if CONNECTION not in headers:
             if keep_alive:
                 if version == HttpVersion10:
-                    headers[hdrs.CONNECTION] = 'keep-alive'
+                    headers[CONNECTION] = 'keep-alive'
             else:
                 if version == HttpVersion11:
-                    headers[hdrs.CONNECTION] = 'close'
+                    headers[CONNECTION] = 'close'
 
         resp_impl.headers = headers
 
@@ -942,6 +953,8 @@ class Response(StreamResponse):
         super().__init__(status=status, reason=reason, headers=headers)
         if text is not None:
             self.text = text
+        elif body is None and hdrs.CONTENT_LENGTH in headers:
+            self._body = None
         else:
             self.body = body
 

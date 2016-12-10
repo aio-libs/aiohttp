@@ -15,7 +15,6 @@ from multidict import CIMultiDict, istr
 import aiohttp
 
 from . import errors, hdrs
-from .helpers import reify
 from .log import internal_logger
 
 __all__ = ('HttpMessage', 'Request', 'Response',
@@ -713,8 +712,6 @@ class HttpMessage(ABC):
         if self._send_headers and not self.headers_sent:
             self.send_headers()
 
-        assert self.writer is not None, 'send_headers() is not called.'
-
         if self.filter:
             chunk = self.filter.send(chunk)
             while chunk not in (EOF_MARKER, EOL_MARKER):
@@ -867,7 +864,7 @@ class Response(HttpMessage):
     def reason(self):
         return self._reason
 
-    @reify
+    @property
     def status_line(self):
         version = self.version
         return 'HTTP/{}.{} {} {}\r\n'.format(
@@ -875,7 +872,7 @@ class Response(HttpMessage):
 
     def autochunked(self):
         return (self.length is None and
-                self.version >= HttpVersion11)
+                self._version >= HttpVersion11)
 
     def _add_default_headers(self):
         super()._add_default_headers()
@@ -916,12 +913,12 @@ class Request(HttpMessage):
     def path(self):
         return self._path
 
-    @reify
+    @property
     def status_line(self):
         return '{0} {1} HTTP/{2[0]}.{2[1]}\r\n'.format(
             self.method, self.path, self.version)
 
     def autochunked(self):
         return (self.length is None and
-                self.version >= HttpVersion11 and
+                self._version >= HttpVersion11 and
                 self.status not in (304, 204))

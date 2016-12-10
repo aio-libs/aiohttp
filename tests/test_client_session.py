@@ -435,3 +435,9 @@ def test_proxy_str(session, params):
                                            allow_redirects=True,
                                            proxy='http://proxy.com',
                                            **params)]
+
+
+def test_create_session_outside_of_coroutine(loop):
+    with pytest.warns(ResourceWarning):
+        sess = ClientSession(loop=loop)
+    sess.close()

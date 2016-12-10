@@ -62,6 +62,21 @@ class TestProxy(unittest.TestCase):
             "proxy_auth must be None or BasicAuth() tuple",
         )
 
+    @mock.patch('aiohttp.Request')
+    def test_connect_request_with_unicode_host(self, Request_mock):
+        loop = mock.Mock()
+        request = ClientRequest("CONNECT", URL("http://éé.com/"),
+                                loop=loop)
+
+        request.response_class = mock.Mock()
+        request.write_bytes = mock.Mock()
+        request.write_bytes.return_value = asyncio.Future(loop=loop)
+        request.write_bytes.return_value.set_result(None)
+        request.send(mock.Mock(), mock.Mock())
+
+        Request_mock.assert_called_with(mock.ANY, mock.ANY, "xn--9caa.com:80",
+                                        mock.ANY)
+
     def test_proxy_connection_error(self):
         connector = aiohttp.TCPConnector(loop=self.loop)
         connector._resolve_host = make_mocked_coro(

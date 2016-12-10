@@ -9,7 +9,7 @@ from .server import ServerHttpProtocol
 from .web_exceptions import HTTPException, HTTPInternalServerError
 from .web_reqrep import BaseRequest
 
-__all__ = ('RequestHandler', 'WebServer')
+__all__ = ('RequestHandler', 'Server')
 
 
 class RequestHandler(ServerHttpProtocol):
@@ -82,13 +82,14 @@ class RequestHandler(ServerHttpProtocol):
                     "Error handling request",
                     exc_info=exc)
 
-            resp_msg = yield from resp.prepare(request)
+            yield from resp.prepare(request)
             yield from resp.write_eof()
         finally:
             resp._task = None
 
         # notify server about keep-alive
-        self.keep_alive(resp.keep_alive)
+        # assign to parent class attr
+        self._keepalive = resp._keep_alive
 
         # Restore default state.
         # Should be no-op if server code didn't touch these attributes.
@@ -97,15 +98,17 @@ class RequestHandler(ServerHttpProtocol):
 
         # log access
         if self.access_log:
-            self.log_access(message, None, resp_msg, self._loop.time() - now)
+            self.log_access(message, None, resp, self._loop.time() - now)
 
         # for repr
         self._request = None
 
 
-class WebServer:
+class Server:
 
     def __init__(self, handler, *, request_factory=None, loop=None, **kwargs):
+        if loop is None:
+            loop = asyncio.get_event_loop()
         self._handler = handler
         self._request_factory = request_factory or self._make_request
         self._loop = loop
