@@ -28,7 +28,7 @@ def test_app_default_loop(loop):
 def test_app_make_handler_debug_exc(loop, mocker, debug):
     app = web.Application(loop=loop, debug=debug)
 
-    srv = mocker.patch('aiohttp.web.WebServer')
+    srv = mocker.patch('aiohttp.web.Server')
 
     app.make_handler()
     with pytest.warns(DeprecationWarning) as exc:

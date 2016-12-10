@@ -4,7 +4,7 @@ CHANGES
 1.2.0 (XXXX-XX-XX)
 ------------------
 
-- Extract `BaseRequest` from `web.Request`, introduce `web.WebServer`
+- Extract `BaseRequest` from `web.Request`, introduce `web.Server`
   (former `RequestHandlerFactory`), introduce new low-level web server
   which is not coupled with `web.Application` and routing #1362
 

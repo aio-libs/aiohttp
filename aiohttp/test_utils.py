@@ -20,7 +20,7 @@ from . import ClientSession, hdrs
 from .helpers import sentinel
 from .protocol import HttpVersion, RawRequestMessage
 from .signals import Signal
-from .web import Application, Request, UrlMappingMatchInfo, WebServer
+from .web import Application, Request, Server, UrlMappingMatchInfo
 
 PY_35 = sys.version_info >= (3, 5)
 
@@ -164,7 +164,7 @@ class RawTestServer(BaseTestServer):
 
     @asyncio.coroutine
     def _make_factory(self, **kwargs):
-        self.handler = WebServer(self._handler, loop=self._loop, **kwargs)
+        self.handler = Server(self._handler, loop=self._loop, **kwargs)
         return self.handler
 
     @asyncio.coroutine

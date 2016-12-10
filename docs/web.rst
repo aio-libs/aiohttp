@@ -1,7 +1,7 @@
 .. _aiohttp-web:
 
-HTTP Server Usage
-=================
+Server Usage
+============
 
 .. currentmodule:: aiohttp.web
 
@@ -636,10 +636,12 @@ with the peer::
 
 .. _aiohttp-web-websocket-read-same-task:
 
-Reading from the *WebSocket* (``await ws.receive()``) and closing it (``await ws.close()``)
-**must only** be done inside the request handler *task*; however, writing
-(``ws.send_str(...)``) to the *WebSocket* and canceling the handler task
-may be delegated to other tasks. See also :ref:`FAQ section <aiohttp_faq_terminating_websockets>`.
+Reading from the *WebSocket* (``await ws.receive()``) and closing it
+(``await ws.close()``) **must only** be done inside the request
+handler *task*; however, writing (``ws.send_str(...)``) to the
+*WebSocket* and canceling the handler task may be delegated to other
+tasks. See also :ref:`FAQ section
+<aiohttp_faq_terminating_websockets>`.
 
 *aiohttp.web* creates an implicit :class:`asyncio.Task` for handling every
 incoming request.
@@ -1095,7 +1097,7 @@ Proper finalization procedure has three steps:
   2. Fire :meth:`Application.shutdown` event.
 
   3. Close accepted connections from clients by
-     :meth:`RequestHandlerFactory.shutdown` call with
+     :meth:`Server.shutdown` call with
      reasonable small delay.
 
   4. Call registered application finalizers by :meth:`Application.cleanup`.
