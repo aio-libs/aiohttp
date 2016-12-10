@@ -367,7 +367,7 @@ def test_request_ctx_manager_props(loop):
     with aiohttp.ClientSession(loop=loop) as client:
         ctx_mgr = client.get('http://example.com')
 
-        next(ctx_mgr)
+        yield from next(ctx_mgr)
         assert isinstance(ctx_mgr.gi_frame, types.FrameType)
         assert not ctx_mgr.gi_running
         assert isinstance(ctx_mgr.gi_code, types.CodeType)

@@ -689,13 +689,19 @@ class TCPConnector(BaseConnector):
                 raise
             else:
                 conn.detach()
-                if resp.status != 200:
-                    raise HttpProxyError(code=resp.status, message=resp.reason)
-                rawsock = transport.get_extra_info('socket', default=None)
-                if rawsock is None:
-                    raise RuntimeError(
-                        "Transport does not expose socket instance")
-                transport.pause_reading()
+                try:
+                    if resp.status != 200:
+                        raise HttpProxyError(code=resp.status,
+                                             message=resp.reason)
+                    rawsock = transport.get_extra_info('socket', default=None)
+                    if rawsock is None:
+                        raise RuntimeError(
+                            "Transport does not expose socket instance")
+                    # Duplicate the socket, so now we can close proxy transport
+                    rawsock = rawsock.dup()
+                finally:
+                    transport.close()
+
                 transport, proto = yield from self._loop.create_connection(
                     self._factory, ssl=self.ssl_context, sock=rawsock,
                     server_hostname=req.host)

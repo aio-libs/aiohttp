@@ -30,6 +30,9 @@ def proxy_test_server(raw_test_server, loop, monkeypatch):
         if isinstance(proxy_mock.return_value, dict):
             response.update(proxy_mock.return_value)
 
+        if request.method == 'CONNECT':
+            response['body'] = None
+
         return aiohttp.web.Response(**response)
 
     @asyncio.coroutine
@@ -298,6 +301,21 @@ def test_proxy_https_connect_with_port(proxy_test_server, get_request):
 
     assert proxy.request.host == 'secure.aiohttp.io:2242'
     assert proxy.request.path_qs == '/path'
+
+
+@asyncio.coroutine
+def test_proxy_https_send_body(proxy_test_server, loop):
+    sess = aiohttp.ClientSession(loop=loop)
+    proxy = yield from proxy_test_server()
+    proxy.return_value = {'status': 200, 'body': b'1'*(2**20)}
+    url = 'https://www.google.com.ua/search?q=aiohttp proxy'
+
+    resp = yield from sess.get(url, proxy=proxy.url)
+    body = yield from resp.read()
+    yield from resp.release()
+    yield from sess.close()
+
+    assert body == b'1'*(2**20)
 
 
 @asyncio.coroutine
