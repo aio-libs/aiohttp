@@ -404,7 +404,7 @@ class TestTimeService:
         assert time_service._cb is None
         assert time_service._loop is None
 
-    def test_stop_call_again(self, time_service):
+    def test_double_stopping(self, time_service):
         time_service.stop()
         time_service.stop()
         assert time_service._cb is None
