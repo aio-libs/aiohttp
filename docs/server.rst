@@ -12,7 +12,7 @@ Deprecated Low-level Server
 
 .. deprecated:: 1.2
 
-   The module is deprectated and will be eventually removed.  Use
+   The module has been deprecated and will be eventually removed.  Use
    :ref:`aiohttp-web-lowlevel` instead.
 
    The new solution provides much more user friendly API.
