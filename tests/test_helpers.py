@@ -404,6 +404,12 @@ class TestTimeService:
         assert time_service._cb is None
         assert time_service._loop is None
 
+    def test_stop_call_again(self, time_service):
+        time_service.stop()
+        time_service.stop()
+        assert time_service._cb is None
+        assert time_service._loop is None
+
     def test_time(self, time_service):
         t = time_service._time
         assert t == time_service.time()
