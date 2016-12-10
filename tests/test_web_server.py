@@ -60,3 +60,14 @@ def test_raw_server_not_http_exception_debug(raw_test_server, test_client):
     logger.exception.assert_called_with(
         "Error handling request",
         exc_info=exc)
+
+
+def test_create_web_server_with_implicit_loop(loop):
+    asyncio.set_event_loop(loop)
+
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response()  # pragma: no cover
+
+    srv = web.Server(handler)
+    assert srv._loop is loop

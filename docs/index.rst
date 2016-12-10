@@ -198,8 +198,8 @@ Contents
    tutorial
    web
    web_reference
+   web_lowlevel
    abc
-   server
    multipart
    streams
    api
@@ -208,6 +208,7 @@ Contents
    deployment
    faq
    third_party
+   server
    essays
    contributing
    changes
