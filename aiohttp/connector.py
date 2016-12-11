@@ -91,6 +91,8 @@ class Connection:
             self._transport = None
 
     def detach(self):
+        if self._transport is not None:
+            self._connector._release_acquired(self._key, self._transport)
         self._transport = None
 
     @property
@@ -351,7 +353,7 @@ class BaseConnector(object):
                 waiter.set_result(None)
                 break
 
-    def _release(self, key, req, transport, protocol, *, should_close=False):
+    def _release_acquired(self, key, transport):
         if self._closed:
             # acquired connection is already released on connector closing
             return
@@ -362,9 +364,19 @@ class BaseConnector(object):
         except KeyError:  # pragma: no cover
             # this may be result of undetermenistic order of objects
             # finalization due garbage collection.
-            pass
-        else:
-            if self._limit is not None and len(acquired) < self._limit:
+            return None
+
+        return acquired
+
+    def _release(self, key, req, transport, protocol, *, should_close=False):
+        if self._closed:
+            # acquired connection is already released on connector closing
+            return
+
+        acquired = self._release_acquired(key, transport)
+
+        if self._limit is not None and acquired is not None:
+            if len(acquired) < self._limit:
                 self._release_waiter(key)
 
         resp = req.response
@@ -677,13 +689,19 @@ class TCPConnector(BaseConnector):
                 raise
             else:
                 conn.detach()
-                if resp.status != 200:
-                    raise HttpProxyError(code=resp.status, message=resp.reason)
-                rawsock = transport.get_extra_info('socket', default=None)
-                if rawsock is None:
-                    raise RuntimeError(
-                        "Transport does not expose socket instance")
-                transport.pause_reading()
+                try:
+                    if resp.status != 200:
+                        raise HttpProxyError(code=resp.status,
+                                             message=resp.reason)
+                    rawsock = transport.get_extra_info('socket', default=None)
+                    if rawsock is None:
+                        raise RuntimeError(
+                            "Transport does not expose socket instance")
+                    # Duplicate the socket, so now we can close proxy transport
+                    rawsock = rawsock.dup()
+                finally:
+                    transport.close()
+
                 transport, proto = yield from self._loop.create_connection(
                     self._factory, ssl=self.ssl_context, sock=rawsock,
                     server_hostname=req.host)
