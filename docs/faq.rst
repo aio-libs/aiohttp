@@ -15,6 +15,16 @@ For this reason feature will not be implemented. But if you really want to
 use decorators just derive from web.Application and add desired method.
 
 
+Has aiohttp the Flask Blueprint or Django App concept?
+------------------------------------------------------
+
+If you're planing to write big applications, maybe you must consider use nested applications. They acts as a Flask Blueprint or like the Django application concept.
+
+Using nested application you can add sub-applications to the main application.
+
+see: :ref:`nested_applications`.
+
+
 How to create route that catches urls with given prefix?
 ---------------------------------------------------------
 Try something like::
