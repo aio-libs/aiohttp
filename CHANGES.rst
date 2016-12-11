@@ -43,6 +43,8 @@ CHANGES
 
 - Introduce `router.post_init()` for solving #1373
 
+- Fix raise error in case of multiple calls of `TimeServive.stop()`
+
 - Allow to raise web exceptions on router resolving stage #1460
 
 - Add a warning for session creation outside of coroutine #1468
