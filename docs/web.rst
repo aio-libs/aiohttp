@@ -938,6 +938,7 @@ parameters.
    object creation is subject to change. As long as you are not creating new
    signals, but simply reusing existing ones, you will not be affected.
 
+.. _nested_applications:
 
 Nested applications
 -------------------
