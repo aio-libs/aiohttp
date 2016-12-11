@@ -228,7 +228,7 @@ class TestProxy(unittest.TestCase):
         self.assertEqual(req.url.path, '/')
         self.assertEqual(proxy_req.method, 'CONNECT')
         self.assertEqual(proxy_req.url, URL('https://www.python.org'))
-        tr.pause_reading.assert_called_once_with()
+        tr.close.assert_called_once_with()
         tr.get_extra_info.assert_called_with('socket', default=None)
 
         self.loop.run_until_complete(proxy_req.close())
@@ -409,7 +409,7 @@ class TestProxy(unittest.TestCase):
         self.assertEqual(req.url.path, '/')
         self.assertEqual(proxy_req.method, 'CONNECT')
         self.assertEqual(proxy_req.url, URL('https://www.python.org'))
-        tr.pause_reading.assert_called_once_with()
+        tr.close.assert_called_once_with()
         tr.get_extra_info.assert_called_with('socket', default=None)
 
         self.loop.run_until_complete(proxy_req.close())
