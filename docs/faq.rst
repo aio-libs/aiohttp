@@ -22,7 +22,7 @@ If you're planing to write big applications, maybe you must consider use nested 
 
 Using nested application you can add sub-applications to the main application.
 
-see: :ref:`nested_applications`.
+see: :ref:`aiohttp-web-nested-applications`.
 
 
 How to create route that catches urls with given prefix?
