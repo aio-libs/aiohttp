@@ -58,7 +58,6 @@ _SocketSocketTransport ->
 
 import asyncio
 import asyncio.streams
-import inspect
 import socket
 
 from . import errors
@@ -183,7 +182,6 @@ class StreamParser:
 
         # init parser
         p = parser(output, self._buffer)
-        assert inspect.isgenerator(p), 'Generator is required'
 
         try:
             # initialize parser with data and parser buffers
