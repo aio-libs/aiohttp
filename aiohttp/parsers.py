@@ -183,7 +183,12 @@ class StreamParser:
 
         # init parser
         p = parser(output, self._buffer)
-        assert inspect.isgenerator(p), 'Generator is required'
+        try:
+            assert inspect.isgenerator(p), 'Generator is required not {}'.format(p)
+        except AssertionError as exc:
+            import asyncio.coroutines
+            if not isinstance(p, asyncio.coroutines.CoroWrapper):
+                raise exc
 
         try:
             # initialize parser with data and parser buffers
