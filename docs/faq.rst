@@ -18,7 +18,9 @@ use decorators just derive from web.Application and add desired method.
 Has aiohttp the Flask Blueprint or Django App concept?
 ------------------------------------------------------
 
-If you're planing to write big applications, maybe you must consider use nested applications. They acts as a Flask Blueprint or like the Django application concept.
+If you're planing to write big applications, maybe you must consider
+use nested applications. They acts as a Flask Blueprint or like the
+Django application concept.
 
 Using nested application you can add sub-applications to the main application.
 
@@ -244,7 +246,9 @@ example would be the following::
 
       async def test_get(self, test_client, loop):
           with patch("main.AioESService", MagicMock(
-                  side_effect=lambda *args, **kwargs: AioESService(*args, **kwargs, loop=loop))):
+                  side_effect=lambda *args, **kwargs: AioESService(*args,
+                                                                   **kwargs,
+                                                                   loop=loop))):
               client = await test_client(create_app)
               resp = await client.get("/")
               assert resp.status == 200
@@ -316,7 +320,9 @@ And the full tests file::
 
       async def test_get(self, test_client, loop):
           with patch("main.AioESService", MagicMock(
-                  side_effect=lambda *args, **kwargs: AioESService(*args, **kwargs, loop=loop))):
+                  side_effect=lambda *args, **kwargs: AioESService(*args,
+                                                                   **kwargs,
+                                                                   loop=loop))):
               client = await test_client(create_app)
               resp = await client.get("/")
               assert resp.status == 200
