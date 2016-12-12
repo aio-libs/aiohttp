@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import logging
+import sys
 
 import jinja2
 
@@ -15,18 +16,16 @@ from aiohttpdemo_polls.routes import setup_routes
 from aiohttpdemo_polls.utils import TRAFARET
 
 
-def init():
+def init(loop, argv):
     ap = argparse.ArgumentParser()
     commandline.standard_argparse_options(ap,
                                           default_config='./config/polls.yaml')
     #
     # define your command-line arguments here
     #
-    options = ap.parse_args()
+    options = ap.parse_args(argv)
 
     config = commandline.config_from_options(options, TRAFARET)
-
-    loop = asyncio.get_event_loop()
 
     # setup application and extensions
     app = web.Application(loop=loop)
@@ -49,15 +48,17 @@ def init():
     return app
 
 
-def main():
+def main(argv):
     # init logging
     logging.basicConfig(level=logging.DEBUG)
 
-    app = init()
+    loop = asyncio.get_event_loop()
+
+    app = init(loop, argv)
     web.run_app(app,
                 host=app['config']['host'],
                 port=app['config']['port'])
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])
