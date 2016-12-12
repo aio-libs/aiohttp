@@ -352,5 +352,16 @@ All *backward incompatible* changes are explicitly marked in
 :ref:`CHANGES <aiohttp_changes>` chapter.
 
 
+How to enable gzip compression globally for the whole application?
+------------------------------------------------------------------
+
+It's impossible. Choosing what to compress and where don't apply such
+time consuming operation is very tricky matter.
+
+If you need global compression -- write own custom middleware. Or
+enable compression in NGINX (you are deploying aiohttp behind reverse
+proxy, isn't it).
+
+
 .. disqus::
   :title: aiohttp FAQ
