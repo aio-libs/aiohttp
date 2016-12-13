@@ -509,7 +509,6 @@ class StreamResponse(HeadersMixin):
         self._compression_force = False
         self._headers = CIMultiDict()
         self._cookies = SimpleCookie()
-        self.set_status(status, reason)
 
         self._req = None
         self._resp_impl = None
@@ -521,6 +520,8 @@ class StreamResponse(HeadersMixin):
             # TODO: optimize CIMultiDict extending
             self._headers.extend(headers)
         self._headers.setdefault(hdrs.CONTENT_TYPE, 'application/octet-stream')
+
+        self.set_status(status, reason)
 
     @property
     def prepared(self):
@@ -552,6 +553,9 @@ class StreamResponse(HeadersMixin):
         return self._reason
 
     def set_status(self, status, reason=None):
+        if self.prepared:
+            raise RuntimeError("Cannot change the response status code after "
+                               "the headers have been sent")
         self._status = int(status)
         if reason is None:
             reason = ResponseImpl.calc_reason(status)
