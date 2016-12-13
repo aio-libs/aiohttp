@@ -384,7 +384,7 @@ def test_lingering(srv, loop):
 
 @asyncio.coroutine
 def test_lingering_disabled(make_srv, loop):
-    srv = make_srv(lingering_timeout=0)
+    srv = make_srv(lingering_time=0)
 
     transport = mock.Mock()
     srv.connection_made(transport)
@@ -395,7 +395,32 @@ def test_lingering_disabled(make_srv, loop):
     srv.reader.feed_data(
         b'GET / HTTP/1.0\r\n'
         b'Host: example.com\r\n'
-        b'Content-Length: 0\r\n\r\n')
+        b'Content-Length: 50\r\n\r\n')
+
+    srv.reader.feed_data(b'123')
+
+    yield from asyncio.sleep(0, loop=loop)
+    assert not transport.close.called
+    srv.reader.feed_eof()
+
+    yield from asyncio.sleep(0, loop=loop)
+    transport.close.assert_called_with()
+
+
+@asyncio.coroutine
+def test_lingering_zero_timeout(make_srv, loop):
+    srv = make_srv(lingering_time=1e-30)
+
+    transport = mock.Mock()
+    srv.connection_made(transport)
+
+    yield from asyncio.sleep(0, loop=loop)
+    assert not transport.close.called
+
+    srv.reader.feed_data(
+        b'GET / HTTP/1.0\r\n'
+        b'Host: example.com\r\n'
+        b'Content-Length: 50\r\n\r\n')
 
     srv.reader.feed_data(b'123')
 
