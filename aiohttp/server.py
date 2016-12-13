@@ -94,6 +94,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                  max_line_size=8190,
                  max_headers=32768,
                  max_field_size=8190,
+                 lingering_time=30,
+                 lingering_timeout=5,
                  **kwargs):
 
         # process deprecated params
@@ -116,6 +118,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         self._tcp_keepalive = tcp_keepalive
         self._keepalive_timeout = keepalive_timeout
         self._slow_request_timeout = slow_request_timeout
+        self._lingering_time = float(lingering_time)
+        self._lingering_timeout = float(lingering_timeout)
         self._loop = loop if loop is not None else asyncio.get_event_loop()
 
         self._request_parser = aiohttp.HttpRequestParser(
@@ -256,9 +260,25 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
                 yield from self.handle_request(message, payload)
 
-                if payload and not payload.is_eof():
+                if not payload.is_eof():
                     self.log_debug('Uncompleted request.')
                     self._closing = True
+
+                    if self._lingering_time:
+                        self.transport.write_eof()
+                        self.log_debug(
+                            'Start lingering close timer for %s sec.',
+                            self._lingering_time)
+
+                        end_time = self._loop.time() + self._lingering_time
+
+                        with suppress(asyncio.TimeoutError,
+                                      errors.ClientDisconnectedError):
+                            while self._loop.time() < end_time:
+                                with Timeout(self._lingering_timeout,
+                                             loop=self._loop):
+                                    # read and ignore
+                                    yield from payload.readany()
                 else:
                     reader.unset_parser()
                     if not self._keepalive or not self._keepalive_timeout:
