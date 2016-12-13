@@ -1320,6 +1320,14 @@ duplicated like one using :meth:`Application.copy`.
     :param int max_field_size: Optional maximum header field size. Default:
       ``8190``.
 
+    :param float lingering_time: maximum time during which the server
+       reads and ignore additionnal data comming from the client when
+       lingering close is on.  Use ``0`` for disabling lintering on
+       server channel closing.
+
+    :param float lingering_timeout: maximum waiting time for more
+        client data to arrive when lingering close is in effect
+
 
     You should pass result of the method as *protocol_factory* to
     :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::
