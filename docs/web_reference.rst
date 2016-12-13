@@ -1321,8 +1321,8 @@ duplicated like one using :meth:`Application.copy`.
       ``8190``.
 
     :param float lingering_time: maximum time during which the server
-       reads and ignore additionnal data comming from the client when
-       lingering close is on.  Use ``0`` for disabling lintering on
+       reads and ignore additional data coming from the client when
+       lingering close is on.  Use ``0`` for disabling lingering on
        server channel closing.
 
     :param float lingering_timeout: maximum waiting time for more
