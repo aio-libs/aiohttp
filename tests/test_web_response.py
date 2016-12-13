@@ -905,6 +905,14 @@ def test_drain_before_start():
         yield from resp.drain()
 
 
+@asyncio.coroutine
+def test_changing_status_after_prepare_raises():
+    resp = StreamResponse()
+    yield from resp.prepare(make_request('GET', '/'))
+    with pytest.raises(RuntimeError):
+        resp.set_status(400)
+
+
 def test_nonstr_text_in_ctor():
     with pytest.raises(TypeError):
         Response(text=b'data')

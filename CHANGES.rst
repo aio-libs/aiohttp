@@ -52,6 +52,9 @@ CHANGES
 - Avoid a race when application might start accepting incoming requests
   but startup signals are not processed yet e98e8c6
 
+- Raise a `RuntimeError` when trying to change the status of the HTTP response
+  after the headers have been sent
+
 -
 
 - Fix bug with https proxy acquired cleanup #1340
