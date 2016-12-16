@@ -46,8 +46,30 @@ Moreover we may break *backward compatibility* without *deprecation
 peroid* for some very strong reason.
 
 
-Pytest Example
-~~~~~~~~~~~~~~
+The Test Client and Servers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+*aiohttp* test utils provides a scaffolding for testing aiohttp-based
+web servers.
+
+They are consist of two parts: running test server and making HTTP
+requests to this server.
+
+:class:`~aiohttp.test_utils.TestServer` runs :class:`aiohttp.web.Application`
+based server, :class:`~aiohttp.test_utils.RawTestServer` starts
+:class:`aiohttp.web.WebServer` low level server.
+
+For performing HTTP requests to these servers you have to create a
+test client: :class:`~aiohttp.test_utils.TestClient` instance.
+
+The client incapsulates :class:`aiohttp.ClientSession` by providing
+proxy methods to the client for common operations such as
+*ws_connect*, *get*, *post*, etc.
+
+
+
+Pytest
+~~~~~~
 
 The :data:`test_client` fixture available from pytest-aiohttp_ plugin
 allows you to create a client to make requests to test your app.
@@ -103,34 +125,75 @@ app test client::
         assert await resp.text() == 'value: bar'
 
 
-The Test Client and Servers
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Pytest tooling has the following fixtures:
 
-*aiohttp* test utils provides a scaffolding for testing aiohttp-based
-web servers.
+.. data:: test_server(app, **kwargs)
 
-They are consist of two parts: running test server and making HTTP
-requests to this server.
+   A fixture factory that creates
+   :class:`~aiohttp.test_utils.TestServer`::
 
-:class:`~aiohttp.test_utils.TestServer` runs :class:`aiohttp.web.Application`
-based server, :class:`~aiohttp.test_utils.RawTestServer` starts
-:class:`aiohttp.web.WebServer` low level server.
+      async def test_f(loop, test_server):
+          app = web.Application(loop=loop)
+          # fill route table
 
-For performing HTTP requests to these servers you have to create a
-test client: :class:`aiohttp.test_utils.TestClient` instance.
+          server = await test_server(app)
 
-The client incapsulates :class:`aiohttp.ClientSession` by providing
-proxy methods to the client for common operations such as
-*ws_connect*, *get*, *post*, etc.
+   The server will be destroyed on exit from test function.
+
+   *app* is the :class:`aiohttp.web.Application` used
+                           to start server.
+
+   *kwargs* are parameters passed to
+                  :meth:`aiohttp.web.Application.make_handler`
 
 
+.. data:: test_client(app, **kwargs)
+          test_client(server, **kwargs)
+          test_client(raw_server, **kwargs)
+
+   A fixture factory that creates
+   :class:`~aiohttp.test_utils.TestClient` for access to tested server::
+
+      async def test_f(loop, test_client):
+          app = web.Application(loop=loop)
+          # fill route table
+
+          client = await test_client(app)
+          resp = await client.get('/')
+
+   *client* and responses are cleaned up after test function finishing.
+
+   The fixture accepts :class:`aiohttp.web.Application`,
+   :class:`aiohttp.test_utils.TestServer` or
+   :class:`aiohttp.test_utils.RawTestServer` instance.
+
+   *kwargs* are parameters passed to
+   :class:`aiohttp.test_utils.TestClient` constructor.
+
+.. data:: raw_test_server(handler, **kwargs)
+
+   A fixture factory that creates
+   :class:`~aiohttp.test_utils.RawTestServer` instance from given web
+   handler.
+
+   *handler* should be a coroutine which accepts a request and returns
+   response, e.g.::
+
+      async def test_f(raw_test_server, test_client):
+
+          async def handler(request):
+              return web.Response(text="OK")
+
+          raw_server = await raw_test_server(handler)
+          client = await test_client(raw_server)
+          resp = await client.get('/')
 
 .. _aiohttp-testing-unittest-example:
 
 .. _aiohttp-testing-unittest-style:
 
-Unittest style
-~~~~~~~~~~~~~~
+Unittest
+~~~~~~~~
 
 To test applications with the standard library's unittest or unittest-based
 functionality, the AioHTTPTestCase is provided::
