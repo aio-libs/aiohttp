@@ -159,6 +159,25 @@ You can also specify a custom regex in the form ``{identifier:regex}``::
 
    resource = app.router.add_resource(r'/{name:\d+}')
 
+.. note::
+
+   Regex should match against *percent encoded* URL
+   (``request.rel_url_raw_path``). E.g. *space character* is encoded
+   as ``%20``.
+
+   According to
+   `RFC 3986 <https://tools.ietf.org/html/rfc3986.html#appendix-A>`_
+   allowed in path symbols are::
+
+      allowed       = unreserved / pct-encoded / sub-delims
+                    / ":" / "@" / "/"
+
+      pct-encoded   = "%" HEXDIG HEXDIG
+
+      unreserved    = ALPHA / DIGIT / "-" / "." / "_" / "~"
+
+      sub-delims    = "!" / "$" / "&" / "'" / "(" / ")"
+                    / "*" / "+" / "," / ";" / "="
 
 .. _aiohttp-web-named-routes:
 
