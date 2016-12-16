@@ -394,7 +394,9 @@ class BodyPartReader(object):
         :rtype: str
         """
         data = yield from self.read(decode=True)
-        encoding = encoding or self.get_charset(default='latin1')
+        # see https://www.w3.org/TR/html5/forms.html#multipart/form-data-encoding-algorithm # NOQA
+        # and https://dvcs.w3.org/hg/xhr/raw-file/tip/Overview.html#dom-xmlhttprequest-send # NOQA
+        encoding = encoding or self.get_charset(default='utf-8')
         return data.decode(encoding)
 
     @asyncio.coroutine

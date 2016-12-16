@@ -361,6 +361,13 @@ class PartReaderTestCase(TestCase):
         result = yield from obj.text()
         self.assertEqual('Hello, world!', result)
 
+    def test_read_text_default_encoding(self):
+        obj = aiohttp.multipart.BodyPartReader(
+            self.boundary, {},
+            Stream('Привет, Мир!\r\n--:--'.encode('utf-8')))
+        result = yield from obj.text()
+        self.assertEqual('Привет, Мир!', result)
+
     def test_read_text_encoding(self):
         obj = aiohttp.multipart.BodyPartReader(
             self.boundary, {},
