@@ -58,3 +58,5 @@ CHANGES
 - Fix bug with https proxy acquired cleanup #1340
 
 - Use UTF-8 as the default encoding for multipart text parts #1484
+
+- Fix polls demo run application
