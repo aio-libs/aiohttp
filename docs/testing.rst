@@ -708,7 +708,7 @@ Test Client
 
       Perform an HTTP DELETE request.
 
-   .. comethod:: delete(path, *args, **kwargs)
+   .. comethod:: ws_connect(path, *args, **kwargs)
 
       Initiate websocket connection.
 
