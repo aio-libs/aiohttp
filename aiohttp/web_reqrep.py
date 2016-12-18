@@ -574,7 +574,7 @@ class StreamResponse(HeadersMixin):
 
     @property
     def output_length(self):
-        return self._resp.impl.output_length
+        return self._resp_impl.output_length
 
     def enable_chunked_encoding(self, chunk_size=None):
         """Enables automatic chunked transfer encoding."""
