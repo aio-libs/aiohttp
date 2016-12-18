@@ -15,9 +15,9 @@ def config_path():
 
 
 @pytest.fixture
-def create_app(event_loop, config_path):
-    app = init(event_loop, ['-c', config_path])
-    return app
+def cli(loop, test_client, config_path):
+    app = init(loop, ['-c', config_path])
+    return loop.run_until_complete(test_client(app))
 
 
 @pytest.fixture
