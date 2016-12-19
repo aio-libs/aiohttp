@@ -4,9 +4,7 @@ import asyncio
 import unittest
 from unittest import mock
 
-from aiohttp import streams
-from aiohttp import test_utils
-from aiohttp import helpers
+from aiohttp import helpers, streams, test_utils
 
 
 class TestStreamReader(unittest.TestCase):
@@ -26,7 +24,8 @@ class TestStreamReader(unittest.TestCase):
     def test_create_waiter(self):
         stream = self._make_one()
         stream._waiter = helpers.create_future(self.loop)
-        self.assertRaises(RuntimeError, stream._create_waiter, 'test')
+        with self.assertRaises(RuntimeError):
+            self.loop.run_until_complete(stream._wait('test'))
 
     @mock.patch('aiohttp.streams.asyncio')
     def test_ctor_global_loop(self, m_asyncio):
@@ -125,6 +124,28 @@ class TestStreamReader(unittest.TestCase):
         data = self.loop.run_until_complete(stream.read(5))
         self.assertEqual(b'line2', data)
 
+    def test_read_all(self):
+        # Read all avaliable buffered bytes
+        stream = self._make_one()
+        stream.feed_data(b'line1')
+        stream.feed_data(b'line2')
+        stream.feed_eof()
+
+        data = self.loop.run_until_complete(stream.read())
+        self.assertEqual(b'line1line2', data)
+
+    def test_read_up_to(self):
+        # Read available buffered bytes up to requested amount
+        stream = self._make_one()
+        stream.feed_data(b'line1')
+        stream.feed_data(b'line2')
+
+        data = self.loop.run_until_complete(stream.read(8))
+        self.assertEqual(b'line1lin', data)
+
+        data = self.loop.run_until_complete(stream.read(8))
+        self.assertEqual(b'e2', data)
+
     def test_read_eof(self):
         # Read bytes, stop at eof.
         stream = self._make_one()
@@ -138,7 +159,7 @@ class TestStreamReader(unittest.TestCase):
         self.assertEqual(b'', data)
 
         data = self.loop.run_until_complete(stream.read())
-        self.assertIs(data, streams.EOF_MARKER)
+        self.assertEqual(data, b'')
 
     @mock.patch('aiohttp.streams.internal_logger')
     def test_read_eof_infinit(self, internal_logger):
@@ -275,7 +296,6 @@ class TestStreamReader(unittest.TestCase):
 
         line = self.loop.run_until_complete(stream.readline())
         self.assertEqual(b'', line)
-        self.assertIs(line, streams.EOF_MARKER)
 
     def test_readline_read_byte_count(self):
         stream = self._make_one()
@@ -471,7 +491,6 @@ class TestStreamReader(unittest.TestCase):
         data = self.loop.run_until_complete(read_task)
 
         self.assertEqual(b'', data)
-        self.assertIs(data, streams.EOF_MARKER)
 
     def test_readany_exception(self):
         stream = self._make_one()
@@ -488,10 +507,8 @@ class TestStreamReader(unittest.TestCase):
         stream = self._make_one()
         stream.feed_data(b'line1\nline2\n')
 
-        self.assertEqual(
-            stream.read_nowait(), b'line1\nline2\n')
-        self.assertIs(
-            stream.read_nowait(), streams.EOF_MARKER)
+        self.assertEqual(stream.read_nowait(), b'line1\nline2\n')
+        self.assertEqual(stream.read_nowait(), b'')
         stream.feed_eof()
         data = self.loop.run_until_complete(stream.read())
         self.assertEqual(b'', data)
@@ -504,8 +521,7 @@ class TestStreamReader(unittest.TestCase):
             stream.read_nowait(4), b'line')
         self.assertEqual(
             stream.read_nowait(), b'1\nline2\n')
-        self.assertIs(
-            stream.read_nowait(), streams.EOF_MARKER)
+        self.assertEqual(stream.read_nowait(), b'')
         stream.feed_eof()
         data = self.loop.run_until_complete(stream.read())
         self.assertEqual(b'', data)
@@ -520,7 +536,7 @@ class TestStreamReader(unittest.TestCase):
     def test_read_nowait_waiter(self):
         stream = self._make_one()
         stream.feed_data(b'line\n')
-        stream._waiter = stream._create_waiter('readany')
+        stream._waiter = helpers.create_future(self.loop)
 
         self.assertRaises(RuntimeError, stream.read_nowait)
 
@@ -550,7 +566,7 @@ class TestStreamReader(unittest.TestCase):
 
     def test___repr__waiter(self):
         stream = self._make_one()
-        stream._waiter = stream._create_waiter('test_waiter')
+        stream._waiter = helpers.create_future(self.loop)
         self.assertRegex(
             repr(stream),
             "<StreamReader w=<Future pending[\S ]*>>")
@@ -558,6 +574,66 @@ class TestStreamReader(unittest.TestCase):
         self.loop.run_until_complete(stream._waiter)
         stream._waiter = None
         self.assertEqual("<StreamReader>", repr(stream))
+
+    def test_unread_empty(self):
+        stream = self._make_one()
+        stream.feed_data(b'line1')
+        stream.feed_eof()
+        stream.unread_data(b'')
+
+        data = self.loop.run_until_complete(stream.read(5))
+        self.assertEqual(b'line1', data)
+        self.assertTrue(stream.at_eof())
+
+    def test_set_exception_cancels_timeout(self):
+        stream = self._make_one(timeout=1)
+        task = helpers.ensure_future(stream.readany(), loop=self.loop)
+        self.loop.run_until_complete(asyncio.sleep(0, loop=self.loop))
+
+        self.assertIsNotNone(stream._canceller)
+        canceller = stream._canceller = mock.Mock()
+        stream.set_exception(ValueError())
+        self.assertIsNone(stream._canceller)
+        canceller.cancel.assert_called_with()
+        self.assertRaises(
+            ValueError, self.loop.run_until_complete, task)
+
+    def test_feed_eof_cancels_timeout(self):
+        stream = self._make_one(timeout=1)
+        task = helpers.ensure_future(stream.readany(), loop=self.loop)
+        self.loop.run_until_complete(asyncio.sleep(0, loop=self.loop))
+
+        self.assertIsNotNone(stream._canceller)
+        canceller = stream._canceller = mock.Mock()
+        stream.feed_eof()
+        self.assertIsNone(stream._canceller)
+        canceller.cancel.assert_called_with()
+        self.assertEqual(b'', self.loop.run_until_complete(task))
+
+    def test_feed_data_cancels_timeout(self):
+        stream = self._make_one(timeout=1)
+        task = helpers.ensure_future(stream.readany(), loop=self.loop)
+        self.loop.run_until_complete(asyncio.sleep(0, loop=self.loop))
+
+        self.assertIsNotNone(stream._canceller)
+        canceller = stream._canceller = mock.Mock()
+        stream.feed_data(b'data')
+        self.assertIsNone(stream._canceller)
+        canceller.cancel.assert_called_with()
+        self.assertEqual(b'data', self.loop.run_until_complete(task))
+
+    def test_wait_cancels_timeout(self):
+        # Read bytes.
+        stream = self._make_one(timeout=1)
+        task = helpers.ensure_future(stream._wait('test'), loop=self.loop)
+        self.loop.run_until_complete(asyncio.sleep(0, loop=self.loop))
+
+        self.assertIsNotNone(stream._canceller)
+        canceller = stream._canceller = mock.Mock()
+        stream._waiter.set_result(None)
+        self.loop.run_until_complete(task)
+        self.assertIsNone(stream._canceller)
+        canceller.cancel.assert_called_with()
 
 
 class TestEmptyStreamReader(unittest.TestCase):
@@ -578,16 +654,16 @@ class TestEmptyStreamReader(unittest.TestCase):
         self.assertTrue(s.at_eof())
         self.assertIsNone(
             self.loop.run_until_complete(s.wait_eof()))
-        self.assertIs(
-            self.loop.run_until_complete(s.read()), streams.EOF_MARKER)
-        self.assertIs(
-            self.loop.run_until_complete(s.readline()), streams.EOF_MARKER)
-        self.assertIs(
-            self.loop.run_until_complete(s.readany()), streams.EOF_MARKER)
+        self.assertEqual(
+            self.loop.run_until_complete(s.read()), b'')
+        self.assertEqual(
+            self.loop.run_until_complete(s.readline()), b'')
+        self.assertEqual(
+            self.loop.run_until_complete(s.readany()), b'')
         self.assertRaises(
             asyncio.IncompleteReadError,
             self.loop.run_until_complete, s.readexactly(10))
-        self.assertIs(s.read_nowait(), streams.EOF_MARKER)
+        self.assertEqual(s.read_nowait(), b'')
 
 
 class DataQueueMixin:

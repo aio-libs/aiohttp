@@ -3,23 +3,24 @@
 import asyncio
 import base64
 import binascii
+import cgi
 import datetime
 import functools
 import io
 import os
 import re
-
-from collections import namedtuple
-from http.cookies import SimpleCookie, Morsel
-from math import ceil
+import warnings
+from collections import MutableSequence, namedtuple
+from functools import total_ordering
 from pathlib import Path
-from urllib.parse import quote, urlencode, urlsplit
+from time import gmtime, time
+from urllib.parse import urlencode
 
-import multidict
+from async_timeout import timeout
+from multidict import MultiDict, MultiDictProxy
 
 from . import hdrs
-from .abc import AbstractCookieJar
-from .errors import InvalidURL
+
 try:
     from asyncio import ensure_future
 except ImportError:
@@ -27,7 +28,11 @@ except ImportError:
 
 
 __all__ = ('BasicAuth', 'create_future', 'FormData', 'parse_mimetype',
-           'Timeout', 'CookieJar')
+           'Timeout', 'ensure_future')
+
+
+sentinel = object()
+Timeout = timeout
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
@@ -44,6 +49,10 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
 
         if password is None:
             raise ValueError('None is not allowed as password value')
+
+        if ':' in login:
+            raise ValueError(
+                'A ":" is not allowed in login (RFC 1945#section-11.1)')
 
         return super().__new__(cls, login, password, encoding)
 
@@ -75,7 +84,7 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
 
 
 def create_future(loop):
-    """Compatiblity wrapper for the loop.create_future() call introduced in
+    """Compatibility wrapper for the loop.create_future() call introduced in
     3.5.2."""
     if hasattr(loop, 'create_future'):
         return loop.create_future()
@@ -119,7 +128,7 @@ class FormData:
             if filename is None and content_transfer_encoding is None:
                 filename = name
 
-        type_options = multidict.MultiDict({'name': name})
+        type_options = MultiDict({'name': name})
         if filename is not None and not isinstance(filename, str):
             raise TypeError('filename must be an instance of str. '
                             'Got: %s' % filename)
@@ -155,9 +164,7 @@ class FormData:
                 k = guess_filename(rec, 'unknown')
                 self.add_field(k, rec)
 
-            elif isinstance(rec,
-                            (multidict.MultiDictProxy,
-                             multidict.MultiDict)):
+            elif isinstance(rec, (MultiDictProxy, MultiDict)):
                 to_add.extend(rec.items())
 
             elif isinstance(rec, (list, tuple)) and len(rec) == 2:
@@ -167,7 +174,8 @@ class FormData:
             else:
                 raise TypeError('Only io.IOBase, multidict and (name, file) '
                                 'pairs allowed, use .add_field() for passing '
-                                'more complex parameters')
+                                'more complex parameters, got {!r}'
+                                .format(rec))
 
     def _gen_form_urlencoded(self, encoding):
         # form data (x-www-form-urlencoded)
@@ -233,12 +241,6 @@ def parse_mimetype(mimetype):
     return mtype, stype, suffix, params
 
 
-def str_to_bytes(s, encoding='utf-8'):
-    if isinstance(s, str):
-        return s.encode(encoding)
-    return s
-
-
 def guess_filename(obj, default=None):
     name = getattr(obj, 'name', None)
     if name and name[0] != '<' and name[-1] != '>':
@@ -273,11 +275,28 @@ class AccessLogger:
         %{FOO}e  os.environ['FOO']
 
     """
+    LOG_FORMAT_MAP = {
+        'a': 'remote_address',
+        't': 'request_time',
+        'P': 'process_id',
+        'r': 'first_request_line',
+        's': 'response_status',
+        'b': 'response_size',
+        'O': 'bytes_sent',
+        'T': 'request_time',
+        'Tf': 'request_time_frac',
+        'D': 'request_time_micro',
+        'i': 'request_header',
+        'o': 'response_header',
+        'e': 'environ'
+    }
 
     LOG_FORMAT = '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
-    FORMAT_RE = re.compile(r'%(\{([A-Za-z\-]+)\}([ioe])|[atPrsbOD]|Tf?)')
+    FORMAT_RE = re.compile(r'%(\{([A-Za-z0-9\-_]+)\}([ioe])|[atPrsbOD]|Tf?)')
     CLEANUP_RE = re.compile(r'(%[^s])')
     _FORMAT_CACHE = {}
+
+    KeyMethod = namedtuple('KeyMethod', 'key method')
 
     def __init__(self, logger, log_format=LOG_FORMAT):
         """Initialise the logger.
@@ -287,10 +306,12 @@ class AccessLogger:
 
         """
         self.logger = logger
+
         _compiled_format = AccessLogger._FORMAT_CACHE.get(log_format)
         if not _compiled_format:
             _compiled_format = self.compile_format(log_format)
             AccessLogger._FORMAT_CACHE[log_format] = _compiled_format
+
         self._log_format, self._methods = _compiled_format
 
     def compile_format(self, log_format):
@@ -317,36 +338,52 @@ class AccessLogger:
 
         log_format = log_format.replace("%l", "-")
         log_format = log_format.replace("%u", "-")
-        methods = []
+
+        # list of (key, method) tuples, we don't use an OrderedDict as users
+        # can repeat the same key more than once
+        methods = list()
 
         for atom in self.FORMAT_RE.findall(log_format):
             if atom[1] == '':
-                methods.append(getattr(AccessLogger, '_format_%s' % atom[0]))
+                format_key = self.LOG_FORMAT_MAP[atom[0]]
+                m = getattr(AccessLogger, '_format_%s' % atom[0])
             else:
+                format_key = (self.LOG_FORMAT_MAP[atom[2]], atom[1])
                 m = getattr(AccessLogger, '_format_%s' % atom[2])
-                methods.append(functools.partial(m, atom[1]))
+                m = functools.partial(m, atom[1])
+
+            methods.append(self.KeyMethod(format_key, m))
+
         log_format = self.FORMAT_RE.sub(r'%s', log_format)
         log_format = self.CLEANUP_RE.sub(r'%\1', log_format)
         return log_format, methods
 
     @staticmethod
     def _format_e(key, args):
-        return (args[1] or {}).get(multidict.upstr(key), '-')
+        return (args[1] or {}).get(key, '-')
 
     @staticmethod
     def _format_i(key, args):
         if not args[0]:
             return '(no headers)'
-        return args[0].headers.get(multidict.upstr(key), '-')
+
+        # suboptimal, make istr(key) once
+        return args[0].headers.get(key, '-')
 
     @staticmethod
     def _format_o(key, args):
-        return args[2].headers.get(multidict.upstr(key), '-')
+        # suboptimal, make istr(key) once
+        return args[2].headers.get(key, '-')
 
     @staticmethod
     def _format_a(args):
-        return args[3].get_extra_info('peername')[0] if args[3] is not None \
-            else '-'
+        if args[3] is None:
+            return '-'
+        peername = args[3].get_extra_info('peername')
+        if isinstance(peername, (list, tuple)):
+            return peername[0]
+        else:
+            return peername
 
     @staticmethod
     def _format_t(args):
@@ -389,7 +426,7 @@ class AccessLogger:
         return round(args[4] * 1000000)
 
     def _format_line(self, args):
-        return tuple(m(args) for m in self._methods)
+        return ((key, method(args)) for key, method in self._methods)
 
     def log(self, message, environ, response, transport, time):
         """Log access.
@@ -401,13 +438,22 @@ class AccessLogger:
         :param float time: Time taken to serve the request.
         """
         try:
-            self.logger.info(self._log_format % self._format_line(
-                [message, environ, response, transport, time]))
+            fmt_info = self._format_line(
+                [message, environ, response, transport, time])
+
+            values = list()
+            extra = dict()
+            for key, value in fmt_info:
+                values.append(value)
+
+                if key.__class__ is str:
+                    extra[key] = value
+                else:
+                    extra[key[0]] = {key[1]: value}
+
+            self.logger.info(self._log_format % tuple(values), extra=extra)
         except Exception:
             self.logger.exception("Error in logging")
-
-
-_marker = object()
 
 
 class reify:
@@ -427,66 +473,18 @@ class reify:
             self.__doc__ = ""
         self.name = wrapped.__name__
 
-    def __get__(self, inst, owner, _marker=_marker):
+    def __get__(self, inst, owner, _sentinel=sentinel):
         if inst is None:
             return self
-        val = inst.__dict__.get(self.name, _marker)
-        if val is not _marker:
+        val = inst._cache.get(self.name, _sentinel)
+        if val is not _sentinel:
             return val
         val = self.wrapped(inst)
-        inst.__dict__[self.name] = val
+        inst._cache[self.name] = val
         return val
 
     def __set__(self, inst, value):
         raise AttributeError("reified property is read-only")
-
-
-# The unreserved URI characters (RFC 3986)
-UNRESERVED_SET = frozenset(
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" +
-    "0123456789-._~")
-
-
-def unquote_unreserved(uri):
-    """Un-escape any percent-escape sequences in a URI that are unreserved
-    characters. This leaves all reserved, illegal and non-ASCII bytes encoded.
-    """
-    parts = uri.split('%')
-    for i in range(1, len(parts)):
-        h = parts[i][0:2]
-        if len(h) == 2 and h.isalnum():
-            try:
-                c = chr(int(h, 16))
-            except ValueError:
-                raise InvalidURL("Invalid percent-escape sequence: '%s'" % h)
-
-            if c in UNRESERVED_SET:
-                parts[i] = c + parts[i][2:]
-            else:
-                parts[i] = '%' + parts[i]
-        else:
-            parts[i] = '%' + parts[i]
-    return ''.join(parts)
-
-
-def requote_uri(uri):
-    """Re-quote the given URI.
-
-    This function passes the given URI through an unquote/quote cycle to
-    ensure that it is fully and consistently quoted.
-    """
-    safe_with_percent = "!#$%&'()*+,/:;=?@[]~"
-    safe_without_percent = "!#$&'()*+,/:;=?@[]~"
-    try:
-        # Unquote only the unreserved characters
-        # Then quote only illegal characters (do not quote reserved,
-        # unreserved, or '%')
-        return quote(unquote_unreserved(uri), safe=safe_with_percent)
-    except InvalidURL:
-        # We couldn't unquote the given URI, so let's try quoting it, but
-        # there may be unquoted '%'s in the URI. We need to make sure they're
-        # properly quoted so they do not cause issues elsewhere.
-        return quote(uri, safe=safe_without_percent)
 
 
 _ipv4_pattern = ('^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}'
@@ -524,304 +522,157 @@ def is_ip_address(host):
                         .format(host, type(host)))
 
 
-class Timeout:
-    """Timeout context manager.
-
-    Useful in cases when you want to apply timeout logic around block
-    of code or in cases when asyncio.wait_for is not suitable. For example:
-
-    >>> with aiohttp.Timeout(0.001):
-    ...     async with aiohttp.get('https://github.com') as r:
-    ...         await r.text()
-
-
-    :param timeout: timeout value in seconds or None to disable timeout logic
-    :param loop: asyncio compatible event loop
-    """
-    def __init__(self, timeout, *, loop=None):
-        self._timeout = timeout
-        if loop is None:
-            loop = asyncio.get_event_loop()
-        self._loop = loop
-        self._task = None
-        self._cancelled = False
-        self._cancel_handler = None
-
-    def __enter__(self):
-        self._task = asyncio.Task.current_task(loop=self._loop)
-        if self._task is None:
-            raise RuntimeError('Timeout context manager should be used '
-                               'inside a task')
-        if self._timeout is not None:
-            self._cancel_handler = self._loop.call_later(
-                self._timeout, self._cancel_task)
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is asyncio.CancelledError and self._cancelled:
-            self._cancel_handler = None
-            self._task = None
-            raise asyncio.TimeoutError from None
-        if self._timeout is not None:
-            self._cancel_handler.cancel()
-            self._cancel_handler = None
-        self._task = None
-
-    def _cancel_task(self):
-        self._cancelled = self._task.cancel()
+def _get_kwarg(kwargs, old, new, value):
+    val = kwargs.pop(old, sentinel)
+    if val is not sentinel:
+        warnings.warn("{} is deprecated, use {} instead".format(old, new),
+                      DeprecationWarning,
+                      stacklevel=3)
+        return val
+    else:
+        return value
 
 
-class CookieJar(AbstractCookieJar):
-    """Implements cookie storage adhering to RFC 6265."""
+@total_ordering
+class FrozenList(MutableSequence):
 
-    DATE_TOKENS_RE = re.compile(
-        "[\x09\x20-\x2F\x3B-\x40\x5B-\x60\x7B-\x7E]*"
-        "(?P<token>[\x00-\x08\x0A-\x1F\d:a-zA-Z\x7F-\xFF]+)")
+    __slots__ = ('_frozen', '_items')
 
-    DATE_HMS_TIME_RE = re.compile("(\d{1,2}):(\d{1,2}):(\d{1,2})")
-
-    DATE_DAY_OF_MONTH_RE = re.compile("(\d{1,2})")
-
-    DATE_MONTH_RE = re.compile(
-        "(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)", re.I)
-
-    DATE_YEAR_RE = re.compile("(\d{2,4})")
-
-    def __init__(self, *, unsafe=False, loop=None):
-        super().__init__(loop=loop)
-        self._host_only_cookies = set()
-        self._unsafe = unsafe
-
-    def _expire_cookie(self, when, name, DAY=24*3600):
-        now = self._loop.time()
-        delta = when - now
-        if delta <= 0:
-            # expired
-            self._cookies.pop(name, None)
-        if delta > DAY:
-            # Huge timeouts (more than 24 days) breaks event loop
-            self._loop.call_at(ceil(now+DAY), self._expire_cookie, when, name)
+    def __init__(self, items=None):
+        self._frozen = False
+        if items is not None:
+            items = list(items)
         else:
-            self._loop.call_at(ceil(when), self._expire_cookie, when, name)
+            items = []
+        self._items = items
 
-    def update_cookies(self, cookies, response_url=None):
-        """Update cookies."""
-        url_parsed = urlsplit(response_url or "")
-        hostname = url_parsed.hostname
+    def freeze(self):
+        self._frozen = True
 
-        if not self._unsafe and is_ip_address(hostname):
-            # Don't accept cookies from IPs
-            return
+    def __getitem__(self, index):
+        return self._items[index]
 
-        if isinstance(cookies, dict):
-            cookies = cookies.items()
+    def __setitem__(self, index, value):
+        if self._frozen:
+            raise RuntimeError("Cannot modify frozen list.")
+        self._items[index] = value
 
-        for name, value in cookies:
-            if isinstance(value, Morsel):
+    def __delitem__(self, index):
+        if self._frozen:
+            raise RuntimeError("Cannot modify frozen list.")
+        del self._items[index]
 
-                if not self._add_morsel(name, value, hostname):
-                    continue
+    def __len__(self):
+        return self._items.__len__()
 
-            else:
-                self._cookies[name] = value
+    def __iter__(self):
+        return self._items.__iter__()
 
-            cookie = self._cookies[name]
+    def __reversed__(self):
+        return self._items.__reversed__()
 
-            if not cookie["domain"] and hostname is not None:
-                # Set the cookie's domain to the response hostname
-                # and set its host-only-flag
-                self._host_only_cookies.add(name)
-                cookie["domain"] = hostname
+    def __eq__(self, other):
+        return list(self) == other
 
-            if not cookie["path"] or not cookie["path"].startswith("/"):
-                # Set the cookie's path to the response path
-                path = url_parsed.path
-                if not path.startswith("/"):
-                    path = "/"
-                else:
-                    # Cut everything from the last slash to the end
-                    path = "/" + path[1:path.rfind("/")]
-                cookie["path"] = path
+    def __le__(self, other):
+        return list(self) <= other
 
-            max_age = cookie["max-age"]
-            if max_age:
-                try:
-                    delta_seconds = int(max_age)
-                    self._expire_cookie(self._loop.time() + delta_seconds,
-                                        name)
-                except ValueError:
-                    cookie["max-age"] = ""
+    def insert(self, pos, item):
+        if self._frozen:
+            raise RuntimeError("Cannot modify frozen list.")
+        self._items.insert(pos, item)
 
-            expires = cookie["expires"]
-            if not cookie["max-age"] and expires:
-                expire_time = self._parse_date(expires)
-                if expire_time:
-                    self._expire_cookie(expire_time.timestamp(),
-                                        name)
-                else:
-                    cookie["expires"] = ""
 
-        # Remove the host-only flags of nonexistent cookies
-        self._host_only_cookies -= (
-            self._host_only_cookies.difference(self._cookies.keys()))
+class TimeService:
+    def __init__(self, loop):
+        self._loop = loop
+        self._time = time()
+        self._strtime = None
+        self._count = 0
+        self._cb = loop.call_later(1, self._on_cb)
 
-    def _add_morsel(self, name, value, hostname):
-        """Add a Morsel to the cookie jar."""
-        cookie_domain = value["domain"]
-        if cookie_domain.startswith("."):
-            # Remove leading dot
-            cookie_domain = cookie_domain[1:]
-            value["domain"] = cookie_domain
+    def stop(self):
+        if self._cb:
+            self._cb.cancel()
+        self._cb = None
+        self._loop = None
 
-        if not cookie_domain or not hostname:
-            dict.__setitem__(self._cookies, name, value)
-            return True
+    def _on_cb(self):
+        self._count += 1
+        if self._count >= 10*60:
+            # reset timer every 10 minutes
+            self._count = 0
+            self._time = time()
+        else:
+            self._time += 1
+        self._strtime = None
+        self._cb = self._loop.call_later(1, self._on_cb)
 
-        if not self._is_domain_match(cookie_domain, hostname):
-            # Setting cookies for different domains is not allowed
-            return False
+    def _format_date_time(self):
+        # Weekday and month names for HTTP date/time formatting;
+        # always English!
+        # Tuples are contants stored in codeobject!
+        _weekdayname = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+        _monthname = (None,  # Dummy so we can use 1-based month numbers
+                      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
-        # use dict method because SimpleCookie class modifies value
-        # before Python 3.4
-        dict.__setitem__(self._cookies, name, value)
-        return True
+        year, month, day, hh, mm, ss, wd, y, z = gmtime(self._time)
+        return "%s, %02d %3s %4d %02d:%02d:%02d GMT" % (
+            _weekdayname[wd], day, _monthname[month], year, hh, mm, ss
+        )
 
-    def filter_cookies(self, request_url):
-        """Returns this jar's cookies filtered by their attributes."""
-        url_parsed = urlsplit(request_url)
-        filtered = SimpleCookie()
+    def time(self):
+        return self._time
 
-        for name, cookie in self._cookies.items():
-            cookie_domain = cookie["domain"]
+    def strtime(self):
+        s = self._strtime
+        if s is None:
+            self._strtime = s = self._format_date_time()
+        return self._strtime
 
-            # Send shared cookies
-            if not cookie_domain:
-                dict.__setitem__(filtered, name, cookie)
-                continue
 
-            hostname = url_parsed.hostname or ""
+class HeadersMixin:
 
-            if not self._unsafe and is_ip_address(hostname):
-                continue
+    _content_type = None
+    _content_dict = None
+    _stored_content_type = sentinel
 
-            if name in self._host_only_cookies:
-                if cookie_domain != hostname:
-                    continue
-            elif not self._is_domain_match(cookie_domain, hostname):
-                continue
+    def _parse_content_type(self, raw):
+        self._stored_content_type = raw
+        if raw is None:
+            # default value according to RFC 2616
+            self._content_type = 'application/octet-stream'
+            self._content_dict = {}
+        else:
+            self._content_type, self._content_dict = cgi.parse_header(raw)
 
-            if not self._is_path_match(url_parsed.path, cookie["path"]):
-                continue
+    @property
+    def content_type(self, *, _CONTENT_TYPE=hdrs.CONTENT_TYPE):
+        """The value of content part for Content-Type HTTP header."""
+        raw = self.headers.get(_CONTENT_TYPE)
+        if self._stored_content_type != raw:
+            self._parse_content_type(raw)
+        return self._content_type
 
-            is_secure = url_parsed.scheme in ("https", "wss")
+    @property
+    def charset(self, *, _CONTENT_TYPE=hdrs.CONTENT_TYPE):
+        """The value of charset part for Content-Type HTTP header."""
+        raw = self.headers.get(_CONTENT_TYPE)
+        if self._stored_content_type != raw:
+            self._parse_content_type(raw)
+        return self._content_dict.get('charset')
 
-            if cookie["secure"] and not is_secure:
-                continue
+    @property
+    def content_length(self, *, _CONTENT_LENGTH=hdrs.CONTENT_LENGTH):
+        """The value of Content-Length HTTP header."""
+        l = self.headers.get(_CONTENT_LENGTH)
+        if l is None:
+            return None
+        else:
+            return int(l)
 
-            dict.__setitem__(filtered, name, cookie)
 
-        return filtered
-
-    @staticmethod
-    def _is_domain_match(domain, hostname):
-        """Implements domain matching adhering to RFC 6265."""
-        if hostname == domain:
-            return True
-
-        if not hostname.endswith(domain):
-            return False
-
-        non_matching = hostname[:-len(domain)]
-
-        if not non_matching.endswith("."):
-            return False
-
-        return not is_ip_address(hostname)
-
-    @staticmethod
-    def _is_path_match(req_path, cookie_path):
-        """Implements path matching adhering to RFC 6265."""
-        if not req_path.startswith("/"):
-            req_path = "/"
-
-        if req_path == cookie_path:
-            return True
-
-        if not req_path.startswith(cookie_path):
-            return False
-
-        if cookie_path.endswith("/"):
-            return True
-
-        non_matching = req_path[len(cookie_path):]
-
-        return non_matching.startswith("/")
-
-    @classmethod
-    def _parse_date(cls, date_str):
-        """Implements date string parsing adhering to RFC 6265."""
-        if not date_str:
-            return
-
-        found_time = False
-        found_day_of_month = False
-        found_month = False
-        found_year = False
-
-        hour = minute = second = 0
-        day_of_month = 0
-        month = ""
-        year = 0
-
-        for token_match in cls.DATE_TOKENS_RE.finditer(date_str):
-
-            token = token_match.group("token")
-
-            if not found_time:
-                time_match = cls.DATE_HMS_TIME_RE.match(token)
-                if time_match:
-                    found_time = True
-                    hour, minute, second = [
-                        int(s) for s in time_match.groups()]
-                    continue
-
-            if not found_day_of_month:
-                day_of_month_match = cls.DATE_DAY_OF_MONTH_RE.match(token)
-                if day_of_month_match:
-                    found_day_of_month = True
-                    day_of_month = int(day_of_month_match.group())
-                    continue
-
-            if not found_month:
-                month_match = cls.DATE_MONTH_RE.match(token)
-                if month_match:
-                    found_month = True
-                    month = month_match.group()
-                    continue
-
-            if not found_year:
-                year_match = cls.DATE_YEAR_RE.match(token)
-                if year_match:
-                    found_year = True
-                    year = int(year_match.group())
-
-        if 70 <= year <= 99:
-            year += 1900
-        elif 0 <= year <= 69:
-            year += 2000
-
-        if False in (found_day_of_month, found_month, found_year, found_time):
-            return
-
-        if not 1 <= day_of_month <= 31:
-            return
-
-        if year < 1601 or hour > 23 or minute > 59 or second > 59:
-            return
-
-        dt = datetime.datetime.strptime(
-            "%s %d %d:%d:%d %d" % (
-                month, day_of_month, hour, minute, second, year
-            ), "%b %d %H:%M:%S %Y")
-
-        return dt.replace(tzinfo=datetime.timezone.utc)
+def check_loop(loop):
+    if loop is None:
+        loop = asyncio.get_event_loop()

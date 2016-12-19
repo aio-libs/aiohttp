@@ -1,52 +1,72 @@
 import asyncio
+from collections.abc import Coroutine
+
 import pytest
 
 import aiohttp
 from aiohttp import web
 from aiohttp.client import _RequestContextManager
-from collections.abc import Coroutine
 
 
-@pytest.mark.run_loop
-async def test_await(create_server, loop):
+async def test_await(test_server, loop):
 
     async def handler(request):
         return web.HTTPOk()
 
-    app, url = await create_server()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
-    resp = await aiohttp.get(url+'/', loop=loop)
+    server = await test_server(app)
+    resp = await aiohttp.get(server.make_url('/'), loop=loop)
     assert resp.status == 200
     assert resp.connection is not None
     await resp.release()
     assert resp.connection is None
 
 
-@pytest.mark.run_loop
-async def test_response_context_manager(create_server, loop):
+async def test_response_context_manager(test_server, loop):
 
     async def handler(request):
         return web.HTTPOk()
 
-    app, url = await create_server()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
-    resp = await aiohttp.get(url+'/', loop=loop)
+    server = await test_server(app)
+    resp = await aiohttp.get(server.make_url('/'), loop=loop)
     async with resp:
         assert resp.status == 200
         assert resp.connection is not None
     assert resp.connection is None
 
 
-@pytest.mark.run_loop
-async def test_client_api_context_manager(create_server, loop):
+async def test_response_context_manager_error(test_server, loop):
 
     async def handler(request):
         return web.HTTPOk()
 
-    app, url = await create_server()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    server = await test_server(app)
+    cm = aiohttp.get(server.make_url('/'), loop=loop)
+    session = cm._session
+    resp = await cm
+    with pytest.raises(RuntimeError):
+        async with resp:
+            assert resp.status == 200
+            resp.content.set_exception(RuntimeError())
+            await resp.read()
+    assert len(session._connector._conns) == 0
 
-    async with aiohttp.get(url+'/', loop=loop) as resp:
+
+async def test_client_api_context_manager(test_server, loop):
+
+    async def handler(request):
+        return web.HTTPOk()
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+    server = await test_server(app)
+
+    async with aiohttp.get(server.make_url('/'), loop=loop) as resp:
         assert resp.status == 200
         assert resp.connection is not None
     assert resp.connection is None
@@ -56,8 +76,7 @@ def test_ctx_manager_is_coroutine():
     assert issubclass(_RequestContextManager, Coroutine)
 
 
-@pytest.mark.run_loop
-async def test_context_manager_timeout_on_release(create_server, loop):
+async def test_context_manager_timeout_on_release(test_server, loop):
 
     async def handler(request):
         resp = web.StreamResponse()
@@ -65,11 +84,12 @@ async def test_context_manager_timeout_on_release(create_server, loop):
         await asyncio.sleep(10, loop=loop)
         return resp
 
-    app, url = await create_server()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    server = await test_server(app)
 
     with aiohttp.ClientSession(loop=loop) as session:
-        resp = await session.get(url+'/')
+        resp = await session.get(server.make_url('/'))
         with pytest.raises(asyncio.TimeoutError):
             with aiohttp.Timeout(0.01, loop=loop):
                 async with resp:
@@ -78,8 +98,7 @@ async def test_context_manager_timeout_on_release(create_server, loop):
         assert resp.connection is None
 
 
-@pytest.mark.run_loop
-async def test_iter_any(create_server, loop):
+async def test_iter_any(test_server, loop):
 
     data = b'0123456789' * 1024
 
@@ -90,9 +109,10 @@ async def test_iter_any(create_server, loop):
         assert b''.join(buf) == data
         return web.Response()
 
-    app, url = await create_server()
+    app = web.Application(loop=loop)
     app.router.add_route('POST', '/', handler)
+    server = await test_server(app)
 
     with aiohttp.ClientSession(loop=loop) as session:
-        async with await session.post(url+'/', data=data) as resp:
+        async with await session.post(server.make_url('/'), data=data) as resp:
             assert resp.status == 200

@@ -3,6 +3,8 @@
 """
 
 import asyncio
+from pprint import pformat
+
 from aiohttp import web
 
 
@@ -11,7 +13,7 @@ tmpl = '''\
     <body>
         <a href="/login">Login</a><br/>
         <a href="/logout">Logout</a><br/>
-        {}
+        <pre>{}</pre>
     </body>
 </html>'''
 
@@ -19,7 +21,7 @@ tmpl = '''\
 @asyncio.coroutine
 def root(request):
     resp = web.Response(content_type='text/html')
-    resp.text = tmpl.format(request.cookies)
+    resp.text = tmpl.format(pformat(request.cookies))
     return resp
 
 
@@ -40,18 +42,12 @@ def logout(request):
 @asyncio.coroutine
 def init(loop):
     app = web.Application(loop=loop)
-    app.router.add_route('GET', '/', root)
-    app.router.add_route('GET', '/login', login)
-    app.router.add_route('GET', '/logout', logout)
+    app.router.add_get('/', root)
+    app.router.add_get('/login', login)
+    app.router.add_get('/logout', logout)
+    return app
 
-    handler = app.make_handler()
-    srv = yield from loop.create_server(handler, '127.0.0.1', 8080)
-    print("Server started at http://127.0.0.1:8080")
-    return srv, handler
 
 loop = asyncio.get_event_loop()
-srv, handler = loop.run_until_complete(init(loop))
-try:
-    loop.run_forever()
-except KeyboardInterrupt:
-    loop.run_until_complete(handler.finish_connections())
+app = loop.run_until_complete(init(loop))
+web.run_app(app)

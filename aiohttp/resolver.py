@@ -1,14 +1,20 @@
-import socket
 import asyncio
+import socket
+
 from .abc import AbstractResolver
+
+__all__ = ('ThreadedResolver', 'AsyncResolver', 'DefaultResolver')
 
 try:
     import aiodns
-except ImportError:
+    # aiodns_default = hasattr(aiodns.DNSResolver, 'gethostbyname')
+except ImportError:  # pragma: no cover
     aiodns = None
 
+aiodns_default = False
 
-class DefaultResolver(AbstractResolver):
+
+class ThreadedResolver(AbstractResolver):
     """Use Executor for synchronous getaddrinfo() calls, which defaults to
     concurrent.futures.ThreadPoolExecutor.
     """
@@ -51,8 +57,25 @@ class AsyncResolver(AbstractResolver):
         self._loop = loop
         self._resolver = aiodns.DNSResolver(*args, loop=loop, **kwargs)
 
+        if not hasattr(self._resolver, 'gethostbyname'):
+            # aiodns 1.1 is not available, fallback to DNSResolver.query
+            self.resolve = self.resolve_with_query
+
     @asyncio.coroutine
     def resolve(self, host, port=0, family=socket.AF_INET):
+        hosts = []
+        resp = yield from self._resolver.gethostbyname(host, family)
+
+        for address in resp.addresses:
+            hosts.append(
+                {'hostname': host,
+                 'host': address, 'port': port,
+                 'family': family, 'proto': 0,
+                 'flags': socket.AI_NUMERICHOST})
+        return hosts
+
+    @asyncio.coroutine
+    def resolve_with_query(self, host, port=0, family=socket.AF_INET):
         if family == socket.AF_INET6:
             qtype = 'AAAA'
         else:
@@ -67,8 +90,12 @@ class AsyncResolver(AbstractResolver):
                  'host': rr.host, 'port': port,
                  'family': family, 'proto': 0,
                  'flags': socket.AI_NUMERICHOST})
+
         return hosts
 
     @asyncio.coroutine
     def close(self):
         return self._resolver.cancel()
+
+
+DefaultResolver = AsyncResolver if aiodns_default else ThreadedResolver

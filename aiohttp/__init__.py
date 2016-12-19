@@ -1,4 +1,4 @@
-__version__ = '0.22.5'
+__version__ = '1.2.0'
 
 # Deprecated, keep it here for a while for backward compatibility.
 import multidict  # noqa
@@ -16,8 +16,14 @@ from .helpers import *  # noqa
 from .parsers import *  # noqa
 from .streams import *  # noqa
 from .multipart import *  # noqa
-from .websocket_client import *  # noqa
+from .client_ws import ClientWebSocketResponse  # noqa
+from ._ws_impl import WSMsgType, WSCloseCode, WSMessage, WebSocketError  # noqa
 from .file_sender import FileSender  # noqa
+from .cookiejar import CookieJar  # noqa
+from .resolver import *  # noqa
+
+
+MsgType = WSMsgType  # backward compatibility
 
 
 __all__ = (client.__all__ +  # noqa
@@ -30,5 +36,6 @@ __all__ = (client.__all__ +  # noqa
            streams.__all__ +  # noqa
            multidict.__all__ +  # noqa
            multipart.__all__ +  # noqa
-           websocket_client.__all__ +  # noqa
-           ('hdrs', 'FileSender'))
+           ('hdrs', 'FileSender', 'WSMsgType', 'MsgType', 'WSCloseCode',
+            'WebSocketError', 'WSMessage',
+            'ClientWebSocketResponse', 'CookieJar'))

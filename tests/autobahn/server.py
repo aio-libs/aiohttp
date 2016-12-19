@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+
 from aiohttp import web
 
 
@@ -17,11 +18,11 @@ def wshandler(request):
     while True:
         msg = yield from ws.receive()
 
-        if msg.tp == web.MsgType.text:
+        if msg.type == web.MsgType.text:
             ws.send_str(msg.data)
-        elif msg.tp == web.MsgType.binary:
+        elif msg.type == web.MsgType.binary:
             ws.send_bytes(msg.data)
-        elif msg.tp == web.MsgType.close:
+        elif msg.type == web.MsgType.close:
             yield from ws.close()
             break
         else:

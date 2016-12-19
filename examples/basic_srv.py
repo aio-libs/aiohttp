@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Basic HTTP server with minimal setup"""
 
+import asyncio
+from urllib.parse import parse_qsl, urlparse
+
 import aiohttp
 import aiohttp.server
-
-import asyncio
-from urllib.parse import urlparse, parse_qsl
-from aiohttp.multidict import MultiDict
+from aiohttp import MultiDict
 
 
 class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):

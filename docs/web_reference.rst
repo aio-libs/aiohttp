@@ -1,7 +1,7 @@
 .. _aiohttp-web-reference:
 
-HTTP Server Reference
-=====================
+Server Reference
+================
 
 .. module:: aiohttp.web
 
@@ -10,27 +10,57 @@ HTTP Server Reference
 .. _aiohttp-web-request:
 
 
-Request
--------
+Request and Base Request
+------------------------
 
 The Request object contains all the information about an incoming HTTP request.
 
-Every :ref:`handler<aiohttp-web-handler>` accepts a request instance as the
-first positional parameter.
+:class:`BaseRequest` is used for :ref:`Low-Level
+Servers<aiohttp-web-lowlevel>` (which have no applications, routers, signals
+and middlewares) and :class:`Request` has an *application* and *match
+info* attributes.
 
-A :class:`Request` is a :obj:`dict`-like object, allowing it to be used for
-:ref:`sharing data<aiohttp-web-data-sharing>` among
-:ref:`aiohttp-web-middlewares` and :ref:`aiohttp-web-signals` handlers.
+A :class:`BaseRequest`/:class:`Request` are :obj:`dict`-like objects,
+allowing them to be used for :ref:`sharing
+data<aiohttp-web-data-sharing>` among :ref:`aiohttp-web-middlewares`
+and :ref:`aiohttp-web-signals` handlers.
 
-Although :class:`Request` is :obj:`dict`-like object, it can't be duplicated
-like one using :meth:`Request.copy`.
+.. class:: BaseRequest
 
-.. note::
+   .. attribute:: version
 
-   You should never create the :class:`Request` instance manually --
-   :mod:`aiohttp.web` does it for you.
+      *HTTP version* of request, Read-only property.
 
-.. class:: Request
+      Returns :class:`aiohttp.protocol.HttpVersion` instance.
+
+   .. attribute:: method
+
+      *HTTP method*, read-only property.
+
+      The value is upper-cased :class:`str` like ``"GET"``,
+      ``"POST"``, ``"PUT"`` etc.
+
+   .. attribute:: url
+
+      A :class:`~yarl.URL` instance with absolute URL to resource
+      (*scheme*, *host* and *port* are included).
+
+      .. note::
+
+         In case of malformed request (e.g. without ``"HOST"`` HTTP
+         header) the absolute url may be unavailable.
+
+   .. attribute:: rel_url
+
+      A :class:`~yarl.URL` instance with relative URL to resource
+      (contains *path*, *query* and *fragment* parts only, *scheme*,
+      *host* and *port* are excluded).
+
+      The property is equal to ``.url.relative()`` but is always present.
+
+      .. seealso::
+
+         A note from :attr:`url`.
 
    .. attribute:: scheme
 
@@ -43,18 +73,11 @@ like one using :meth:`Request.copy`.
 
       Read-only :class:`str` property.
 
-   .. attribute:: method
+      .. seealso:: :meth:`Application.make_handler`
 
-      *HTTP method*, read-only property.
+      .. deprecated:: 1.1
 
-      The value is upper-cased :class:`str` like ``"GET"``,
-      ``"POST"``, ``"PUT"`` etc.
-
-   .. attribute:: version
-
-      *HTTP version* of request, Read-only property.
-
-      Returns :class:`aiohttp.protocol.HttpVersion` instance.
+         Use :attr:`url` (``request.url.scheme``) instead.
 
    .. attribute:: host
 
@@ -62,11 +85,20 @@ like one using :meth:`Request.copy`.
 
       Returns :class:`str` or ``None`` if HTTP request has no *HOST* header.
 
+      .. deprecated:: 1.1
+
+         Use :attr:`url` (``request.url.host``) instead.
+
    .. attribute:: path_qs
 
-      The URL including PATH_INFO and the query string. e.g, ``/app/blog?id=10``
+      The URL including PATH_INFO and the query string. e.g.,
+      ``/app/blog?id=10``
 
       Read-only :class:`str` property.
+
+      .. deprecated:: 1.1
+
+         Use :attr:`url` (``str(request.rel_url)``) instead.
 
    .. attribute:: path
 
@@ -75,6 +107,10 @@ like one using :meth:`Request.copy`.
       :attr:`raw_path`.
 
       Read-only :class:`str` property.
+
+      .. deprecated:: 1.1
+
+         Use :attr:`url` (``request.rel_url.path``) instead.
 
    .. attribute:: raw_path
 
@@ -87,36 +123,55 @@ like one using :meth:`Request.copy`.
 
       Read-only :class:`str` property.
 
+      .. deprecated:: 1.1
+
+         Use :attr:`url` (``request.rel_url.raw_path``) instead.
+
    .. attribute:: query_string
 
       The query string in the URL, e.g., ``id=10``
 
       Read-only :class:`str` property.
 
+      .. deprecated:: 1.1
+
+         Use :attr:`url` (``request.rel_url.query_string``) instead.
+
    .. attribute:: GET
 
       A multidict with all the variables in the query string.
 
-      Read-only :class:`~aiohttp.MultiDictProxy` lazy property.
+      Read-only :class:`~multidict.MultiDictProxy` lazy property.
 
       .. versionchanged:: 0.17
          A multidict contains empty items for query string like ``?arg=``.
+
+      .. deprecated:: 1.1
+
+         Use :attr:`url` (``request.rel_url.query``) instead.
 
    .. attribute:: POST
 
       A multidict with all the variables in the POST parameters.
       POST property available only after :meth:`Request.post` coroutine call.
 
-      Read-only :class:`~aiohttp.MultiDictProxy`.
+      Read-only :class:`~multidict.MultiDictProxy`.
 
       :raises RuntimeError: if :meth:`Request.post` was not called \
                             before accessing the property.
+
+      .. deprecated:: 1.1
+
+         Since POST date preloaded is not implemented yet and probably
+         will never be done the :meth:`post` call is required and
+         recommended way for accessing to POST data. :meth:`multipart`
+         is useful for working with multipart encoded content.
 
    .. attribute:: headers
 
       A case-insensitive multidict proxy with all headers.
 
-      Read-only :class:`~aiohttp.CIMultiDictProxy` property.
+      Read-only :class:`~multidict.CIMultiDictProxy` property.
 
    .. attribute:: raw_headers
 
@@ -129,22 +184,6 @@ like one using :meth:`Request.copy`.
       protocol version supports it, otherwise ``False``.
 
       Read-only :class:`bool` property.
-
-   .. attribute:: match_info
-
-      Read-only property with :class:`~aiohttp.abc.AbstractMatchInfo`
-      instance for result of route resolving.
-
-      .. note::
-
-         Exact type of property depends on used router.  If
-         ``app.router`` is :class:`UrlDispatcher` the property contains
-         :class:`UrlMappingMatchInfo` instance.
-
-   .. attribute:: app
-
-      An :class:`Application` instance used to call :ref:`request handler
-      <aiohttp-web-handler>`, Read-only property.
 
    .. attribute:: transport
 
@@ -162,11 +201,11 @@ like one using :meth:`Request.copy`.
 
       A multidict of all request's cookies.
 
-      Read-only :class:`~aiohttp.MultiDictProxy` lazy property.
+      Read-only :class:`~multidict.MultiDictProxy` lazy property.
 
    .. attribute:: content
 
-      A :class:`~aiohttp.streams.FlowControlStreamReader` instance,
+      A :class:`~aiohttp.StreamReader` instance,
       input stream for reading request's *BODY*.
 
       Read-only property.
@@ -208,6 +247,31 @@ like one using :meth:`Request.copy`.
 
       Returns :class:`int` or ``None`` if *Content-Length* is absent.
 
+   .. attribute:: http_range
+
+      Read-only property that returns information about *Range* HTTP header.
+
+      Returns a :class:`slice` where ``.start`` is *left inclusive
+      bound*, ``.stop`` is *right exclusive bound* and ``.step`` is
+      ``1``.
+
+      The property might be used in two manners:
+
+      1. Attribute-access style (example assumes that both left and
+         right borders are set, the real logic for case of open bounds
+         is more complex)::
+
+            rng = request.http_rangea
+            with open(filename, 'rb') as f:
+                f.seek(rng.start)
+                return f.read(rng.stop-rng.start)
+
+      2. Slice-style::
+
+            return buffer[request.http_range]
+
+      .. versionadded:: 1.2
+
    .. attribute:: if_modified_since
 
       Read-only property that returns the date specified in the
@@ -216,6 +280,23 @@ like one using :meth:`Request.copy`.
       Returns :class:`datetime.datetime` or ``None`` if
       *If-Modified-Since* header is absent or is not a valid
       HTTP date.
+
+   .. method:: clone(*, method=..., rel_url=..., headers=...)
+
+      Clone itself with replacement some attributes.
+
+      Creates and returns a new instance of Request object. If no parameters
+      are given, an exact copy is returned. If a parameter is not passed, it
+      will reuse the one from the current request object.
+
+      :param str method: http method
+
+      :param rel_url: url to use, :class:`str` or :class:`~yarl.URL`
+
+      :param headers: :class:`~multidict.CIMultidict` or compatible
+                      headers container.
+
+      :return: a cloned :class:`Request` instance.
 
    .. coroutinemethod:: read()
 
@@ -259,15 +340,37 @@ like one using :meth:`Request.copy`.
          The method **does** store read data internally, subsequent
          :meth:`~Request.json` call will return the same value.
 
+
+   .. coroutinemethod:: multipart(*, reader=aiohttp.multipart.MultipartReader)
+
+      Returns :class:`aiohttp.multipart.MultipartReader` which processes
+      incoming *multipart* request.
+
+      The method is just a boilerplate :ref:`coroutine <coroutine>`
+      implemented as::
+
+         async def multipart(self, *, reader=aiohttp.multipart.MultipartReader):
+             return reader(self.headers, self._payload)
+
+      This method is a coroutine for consistency with the else reader methods.
+
+      .. warning::
+
+         The method **does not** store read data internally. That means once
+         you exhausts multipart reader, you cannot get the request payload one
+         more time.
+
+      .. seealso:: :ref:`aiohttp-multipart`
+
    .. coroutinemethod:: post()
 
       A :ref:`coroutine <coroutine>` that reads POST parameters from
       request body.
 
-      Returns :class:`~aiohttp.MultiDictProxy` instance filled
+      Returns :class:`~multidict.MultiDictProxy` instance filled
       with parsed data.
 
-      If :attr:`method` is not *POST*, *PUT* or *PATCH* or
+      If :attr:`method` is not *POST*, *PUT*, *PATCH*, *TRACE* or *DELETE* or
       :attr:`content_type` is not empty or
       *application/x-www-form-urlencoded* or *multipart/form-data*
       returns empty multidict.
@@ -288,6 +391,41 @@ like one using :meth:`Request.copy`.
           User code may never call :meth:`~Request.release`, all
           required work will be processed by :mod:`aiohttp.web`
           internal machinery.
+
+
+.. class:: Request
+
+   An request used for receiving request's information by *web handler*.
+
+   Every :ref:`handler<aiohttp-web-handler>` accepts a request
+   instance as the first positional parameter.
+
+   The class in derived from :class:`BaseRequest`, shares all parent's
+   attributes and methods but has a couple of additional properties:
+
+   .. attribute:: match_info
+
+      Read-only property with :class:`~aiohttp.abc.AbstractMatchInfo`
+      instance for result of route resolving.
+
+      .. note::
+
+         Exact type of property depends on used router.  If
+         ``app.router`` is :class:`UrlDispatcher` the property contains
+         :class:`UrlMappingMatchInfo` instance.
+
+   .. attribute:: app
+
+      An :class:`Application` instance used to call :ref:`request handler
+      <aiohttp-web-handler>`, Read-only property.
+
+   .. note::
+
+      You should never create the :class:`Request` instance manually
+      -- :mod:`aiohttp.web` does it for you. But
+      :meth:`~BaseRequest.clone` may be used for cloning *modified*
+      request copy with changed *path*, *method* etc.
+
 
 
 .. _aiohttp-web-response:
@@ -361,6 +499,15 @@ StreamResponse
 
       .. deprecated:: 0.18
 
+   .. attribute:: task
+
+      A task that serves HTTP request handling.
+
+      May be useful for graceful shutdown of long-running requests
+      (streaming, long polling or web-socket).
+
+      .. versionadded:: 1.2
+
    .. attribute:: status
 
       Read-only property for *HTTP response status code*, :class:`int`.
@@ -431,7 +578,7 @@ StreamResponse
 
    .. attribute:: headers
 
-      :class:`~aiohttp.CIMultiDict` instance
+      :class:`~aiohttp.CIMultiiDct` instance
       for *outgoing* *HTTP headers*.
 
    .. attribute:: cookies
@@ -494,6 +641,12 @@ StreamResponse
                           specification the cookie
                           conforms. (Optional, *version=1* by default)
 
+      .. warning::
+
+         In HTTP version 1.1, ``expires`` was deprecated and replaced with
+         the easier-to-use ``max-age``, but Internet Explorer (IE6, IE7,
+         and IE8) **does not** support ``max-age``.
+
    .. method:: del_cookie(name, *, path='/', domain=None)
 
       Deletes cookie.
@@ -503,6 +656,11 @@ StreamResponse
       :param str domain: optional cookie domain
 
       :param str path: optional cookie path, ``'/'`` by default
+
+      .. versionchanged:: 1.0
+
+         Fixed cookie expiration support for
+         Internet Explorer (version less than 11).
 
    .. attribute:: content_length
 
@@ -571,7 +729,7 @@ StreamResponse
          Use :meth:`prepare` instead.
 
       .. warning:: The method doesn't call
-         :attr:`web.Application.on_response_prepare` signal, use
+         :attr:`~aiohttp.web.Application.on_response_prepare` signal, use
          :meth:`prepare` instead.
 
    .. coroutinemethod:: prepare(request)
@@ -582,7 +740,7 @@ StreamResponse
       Send *HTTP header*. You should not change any header data after
       calling this method.
 
-      The coroutine calls :attr:`web.Application.on_response_prepare`
+      The coroutine calls :attr:`~aiohttp.web.Application.on_response_prepare`
       signal handlers.
 
       .. versionadded:: 0.18
@@ -673,14 +831,14 @@ Response
 
    .. attribute:: text
 
-      Read-write attribute for storing response's content, represented as str,
-      :class:`str`.
+      Read-write attribute for storing response's content, represented as
+      string, :class:`str`.
 
-      Setting :attr:`str` also recalculates
+      Setting :attr:`text` also recalculates
       :attr:`~StreamResponse.content_length` value and
       :attr:`~StreamResponse.body` value
 
-      Resetting :attr:`body` (assigning ``None``) sets
+      Resetting :attr:`text` (assigning ``None``) sets
       :attr:`~StreamResponse.content_length` to ``None`` too, dropping
       *Content-Length* HTTP header.
 
@@ -698,6 +856,17 @@ WebSocketResponse
    cannot use :meth:`~StreamResponse.write` method but should to
    communicate with websocket client by :meth:`send_str`,
    :meth:`receive` and others.
+
+   :param bool autoping: Automatically send
+                         :const:`~aiohttp.WSMsgType.PONG` on
+                         :const:`~aiohttp.WSMsgType.PING`
+                         message from client, and handle
+                         :const:`~aiohttp.WSMsgType.PONG`
+                         responses from client.
+                         Note that server doesn't send
+                         :const:`~aiohttp.WSMsgType.PING`
+                         requests, you need to do this explicitly
+                         using :meth:`ping` method.
 
    .. versionadded:: 0.19
 
@@ -748,11 +917,15 @@ WebSocketResponse
       :param aiohttp.web.Request request: HTTP request object, that the
                                           response answers.
 
-      :return: ``(ok, protocol)`` pair, *ok* is ``True`` on success,
-               *protocol* is websocket subprotocol which is passed by
-               client and accepted by server (one of *protocols*
-               sequence from :class:`WebSocketResponse` ctor). *protocol* may be
-               ``None`` if client and server subprotocols are nit overlapping.
+      :return: :class:`WebSocketReady` instance.
+
+               :attr:`WebSocketReady.ok` is
+               ``True`` on success, :attr:`WebSocketReady.protocol` is
+               websocket subprotocol which is passed by client and
+               accepted by server (one of *protocols* sequence from
+               :class:`WebSocketResponse` ctor).
+               :attr:`WebSocketReady.protocol` may be ``None`` if
+               client and server subprotocols are not overlapping.
 
       .. note:: The method never raises exception.
 
@@ -766,7 +939,7 @@ WebSocketResponse
 
       Read-only property, ``True`` if connection has been closed or in process
       of closing.
-      :const:`~aiohttp.websocket.MSG_CLOSE` message has been received from peer.
+      :const:`~aiohttp.WSMsgType.CLOSE` message has been received from peer.
 
    .. attribute:: close_code
 
@@ -786,7 +959,7 @@ WebSocketResponse
 
    .. method:: ping(message=b'')
 
-      Send :const:`~aiohttp.websocket.MSG_PING` to peer.
+      Send :const:`~aiohttp.WSMsgType.PING` to peer.
 
       :param message: optional payload of *ping* message,
                       :class:`str` (converted to *UTF-8* encoded bytes)
@@ -796,7 +969,7 @@ WebSocketResponse
 
    .. method:: pong(message=b'')
 
-      Send *unsolicited* :const:`~aiohttp.websocket.MSG_PONG` to peer.
+      Send *unsolicited* :const:`~aiohttp.WSMsgType.PONG` to peer.
 
       :param message: optional payload of *pong* message,
                       :class:`str` (converted to *UTF-8* encoded bytes)
@@ -806,7 +979,7 @@ WebSocketResponse
 
    .. method:: send_str(data)
 
-      Send *data* to peer as :const:`~aiohttp.websocket.MSG_TEXT` message.
+      Send *data* to peer as :const:`~aiohttp.WSMsgType.TEXT` message.
 
       :param str data: data to send.
 
@@ -816,7 +989,7 @@ WebSocketResponse
 
    .. method:: send_bytes(data)
 
-      Send *data* to peer as :const:`~aiohttp.websocket.MSG_BINARY` message.
+      Send *data* to peer as :const:`~aiohttp.WSMsgType.BINARY` message.
 
       :param data: data to send.
 
@@ -825,10 +998,32 @@ WebSocketResponse
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
 
+   .. method:: send_json(data, *, dumps=json.loads)
+
+      Send *data* to peer as JSON string.
+
+      :param data: data to send.
+
+      :param callable dumps: any :term:`callable` that accepts an object and
+                             returns a JSON string
+                             (:func:`json.dumps` by default).
+
+      :raise RuntimeError: if connection is not started or closing
+
+      :raise ValueError: if data is not serializable object
+
+      :raise TypeError: if value returned by ``dumps`` param is not :class:`str`
+
    .. coroutinemethod:: close(*, code=1000, message=b'')
 
       A :ref:`coroutine<coroutine>` that initiates closing
-      handshake by sending :const:`~aiohttp.websocket.MSG_CLOSE` message.
+      handshake by sending :const:`~aiohttp.WSMsgType.CLOSE` message.
+
+      .. note::
+
+         Can only be called by the request handling task. To
+         programmatically close websocket server side see the
+         :ref:`FAQ section <aiohttp_faq_terminating_websockets>`.
 
       :param int code: closing code
 
@@ -844,18 +1039,18 @@ WebSocketResponse
       message from peer and returns it.
 
       The coroutine implicitly handles
-      :const:`~aiohttp.websocket.MSG_PING`,
-      :const:`~aiohttp.websocket.MSG_PONG` and
-      :const:`~aiohttp.websocket.MSG_CLOSE` without returning the
+      :const:`~aiohttp.WSMsgType.PING`,
+      :const:`~aiohttp.WSMsgType.PONG` and
+      :const:`~aiohttp.WSMsgType.CLOSE` without returning the
       message.
 
       It process *ping-pong game* and performs *closing handshake* internally.
 
-      After websocket closing raises
-      :exc:`~aiohttp.errors.WSClientDisconnectedError` with
-      connection closing data.
+      .. note::
 
-      :return: :class:`~aiohttp.websocket.Message`
+         Can only be called by the request handling task.
+
+      :return: :class:`~aiohttp.WSMessage`
 
       :raise RuntimeError: if connection is not started
 
@@ -865,27 +1060,38 @@ WebSocketResponse
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
-      :const:`~aiohttp.websocket.MSG_TEXT`.
+      :const:`~aiohttp.WSMsgType.TEXT`.
+
+      .. note::
+
+         Can only be called by the request handling task.
 
       :return str: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_BINARY`.
+      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
 
    .. coroutinemethod:: receive_bytes()
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
-      :const:`~aiohttp.websocket.MSG_BINARY`.
+      :const:`~aiohttp.WSMsgType.BINARY`.
+
+      .. note::
+
+         Can only be called by the request handling task.
 
       :return bytes: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_TEXT`.
+      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.TEXT`.
 
    .. coroutinemethod:: receive_json(*, loads=json.loads)
 
-      A :ref:`coroutine<coroutine>` that calls :meth:`receive`, asserts the
-      message type is :const:`~aiohttp.websocket.MSG_TEXT`, and loads the JSON
-      string to a Python dict.
+      A :ref:`coroutine<coroutine>` that calls :meth:`receive_str` and loads the
+      JSON string to a Python dict.
+
+      .. note::
+
+         Can only be called by the request handling task.
 
       :param callable loads: any :term:`callable` that accepts
                               :class:`str` and returns :class:`dict`
@@ -894,13 +1100,39 @@ WebSocketResponse
 
       :return dict: loaded JSON content
 
-      :raise TypeError: if message is :const:`~aiohttp.websocket.MSG_BINARY`.
+      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
       :raise ValueError: if message is not valid JSON.
 
       .. versionadded:: 0.22
 
 
 .. seealso:: :ref:`WebSockets handling<aiohttp-web-websockets>`
+
+
+WebSocketReady
+^^^^^^^^^^^^^^
+
+.. class:: WebSocketReady
+
+   A named tuple for returning result from
+   :meth:`WebSocketResponse.can_prepare`.
+
+   Has :class:`bool` check implemented, e.g.::
+
+       if not await ws.can_prepare(...):
+           cannot_start_websocket()
+
+   .. attribute:: ok
+
+      ``True`` if websocket connection can be established, ``False``
+      otherwise.
+
+
+   .. attribute:: protocol
+
+      :class:`str` represented selected websocket sub-protocol.
+
+   .. seealso:: :meth:`WebSocketResponse.can_prepare`
 
 
 json_response
@@ -912,7 +1144,7 @@ json_response
                             dumps=json.dumps)
 
 Return :class:`Response` with predefined ``'application/json'``
-content type and *data* encoded by *dumps* parameter
+content type and *data* encoded by ``dumps`` parameter
 (:func:`json.dumps` by default).
 
 
@@ -929,9 +1161,9 @@ Application is a synonym for web-server.
 
 To get fully working example, you have to make *application*, register
 supported urls in *router* and create a *server socket* with
-:class:`aiohttp.RequestHandlerFactory` as a *protocol
-factory*. *RequestHandlerFactory* could be constructed with
-:meth:`make_handler`.
+:class:`~aiohttp.web.Server` as a *protocol
+factory*. *Server* could be constructed with
+:meth:`Application.make_handler`.
 
 *Application* contains a *router* instance and a list of callbacks that
 will be called during application finishing.
@@ -952,16 +1184,16 @@ Although :class:`Application` is a :obj:`dict`-like object, it can't be
 duplicated like one using :meth:`Application.copy`.
 
 .. class:: Application(*, loop=None, router=None, logger=<default>, \
-                       middlewares=(), **kwargs)
+                       middlewares=(), debug=False, **kwargs)
 
    The class inherits :class:`dict`.
 
    :param loop: :ref:`event loop<asyncio-event-loop>` used
-                for processing HTTP requests.
+    for processing HTTP requests.
 
-                If param is ``None`` :func:`asyncio.get_event_loop`
-                used for getting default event loop, but we strongly
-                recommend to use explicit loops everywhere.
+    If param is ``None`` :func:`asyncio.get_event_loop`
+    used for getting default event loop, but we strongly
+    recommend to use explicit loops everywhere.
 
    :param router: :class:`aiohttp.abc.AbstractRouter` instance, the system
                   creates :class:`UrlDispatcher` by default if
@@ -973,6 +1205,8 @@ duplicated like one using :meth:`Application.copy`.
 
    :param middlewares: :class:`list` of middleware factories, see
                        :ref:`aiohttp-web-middlewares` for details.
+
+   :param debug: Switches debug mode.
 
    .. attribute:: router
 
@@ -986,6 +1220,11 @@ duplicated like one using :meth:`Application.copy`.
 
       :ref:`event loop<asyncio-event-loop>` used for processing HTTP requests.
 
+
+   .. attribute:: debug
+
+      Boolean value indicating whether the debug mode is turned on or off.
+
    .. attribute:: on_response_prepare
 
       A :class:`~aiohttp.signals.Signal` that is fired at the beginning
@@ -997,6 +1236,21 @@ duplicated like one using :meth:`Application.copy`.
 
           async def on_prepare(request, response):
               pass
+
+   .. attribute:: on_startup
+
+      A :class:`~aiohttp.signals.Signal` that is fired on application start-up.
+
+      Subscribers may use the signal to run background tasks in the event
+      loop along with the application's request handler just after the
+      application start-up.
+
+      Signal handlers should have the following signature::
+
+          async def on_startup(app):
+              pass
+
+      .. seealso:: :ref:`aiohttp-web-background-tasks`.
 
    .. attribute:: on_shutdown
 
@@ -1032,26 +1286,69 @@ duplicated like one using :meth:`Application.copy`.
 
       .. seealso:: :ref:`aiohttp-web-graceful-shutdown` and :attr:`on_shutdown`.
 
-
    .. method:: make_handler(**kwargs)
 
-      Creates HTTP protocol factory for handling requests.
+    Creates HTTP protocol factory for handling requests.
 
-      :param kwargs: additional parameters for :class:`RequestHandlerFactory`
-                     constructor.
+    :param tuple secure_proxy_ssl_header: Secure proxy SSL header. Can
+      be used to detect request scheme,
+      e.g. ``secure_proxy_ssl_header=('X-Forwarded-Proto', 'https')``.
 
-      You should pass result of the method as *protocol_factory* to
-      :meth:`~BaseEventLoop.create_server`, e.g.::
+      Default: ``None``.
+    :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
+    :param int keepalive_timeout: Number of seconds before closing Keep-Alive
+      connection. Default: ``75`` seconds (NGINX's default value).
+    :param slow_request_timeout: Slow request timeout. Default: ``0``.
+    :param logger: Custom logger object. Default:
+      :data:`aiohttp.log.server_logger`.
+    :param access_log: Custom logging object. Default:
+      :data:`aiohttp.log.access_logger`.
+    :param str access_log_format: Access log format string. Default:
+      :attr:`helpers.AccessLogger.LOG_FORMAT`.
+    :param bool debug: Switches debug mode. Default: ``False``.
 
-         loop = asyncio.get_event_loop()
+      .. deprecated:: 1.0
 
-         app = Application(loop=loop)
+        The usage of ``debug`` parameter in :meth:`Application.make_handler`
+        is deprecated in favor of :attr:`Application.debug`.
+        The :class:`Application`'s debug mode setting should be used
+        as a single point to setup a debug mode.
 
-         # setup route table
-         # app.router.add_route(...)
+    :param int max_line_size: Optional maximum header line size. Default:
+      ``8190``.
+    :param int max_headers: Optional maximum header size. Default: ``32768``.
+    :param int max_field_size: Optional maximum header field size. Default:
+      ``8190``.
 
-         await loop.create_server(app.make_handler(),
-                                  '0.0.0.0', 8080)
+    :param float lingering_time: maximum time during which the server
+       reads and ignore additional data coming from the client when
+       lingering close is on.  Use ``0`` for disabling lingering on
+       server channel closing.
+
+    :param float lingering_timeout: maximum waiting time for more
+        client data to arrive when lingering close is in effect
+
+
+    You should pass result of the method as *protocol_factory* to
+    :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::
+
+       loop = asyncio.get_event_loop()
+
+       app = Application(loop=loop)
+
+       # setup route table
+       # app.router.add_route(...)
+
+       await loop.create_server(app.make_handler(),
+                                '0.0.0.0', 8080)
+
+   .. coroutinemethod:: startup()
+
+      A :ref:`coroutine<coroutine>` that will be called along with the
+      application's request handler.
+
+      The purpose of the method is calling :attr:`on_startup` signal
+      handlers.
 
    .. coroutinemethod:: shutdown()
 
@@ -1109,20 +1406,44 @@ duplicated like one using :meth:`Application.copy`.
       router for your application).
 
 
-RequestHandlerFactory
-^^^^^^^^^^^^^^^^^^^^^
+Server
+^^^^^^
 
-RequestHandlerFactory is responsible for creating HTTP protocol objects that
-can handle HTTP connections.
+A protocol factory compatible with
+:meth:`~asyncio.AbstreactEventLoop.create_server`.
 
-   .. attribute:: RequestHandlerFactory.connections
+.. class:: Server
+
+   The class is responsible for creating HTTP protocol
+   objects that can handle HTTP connections.
+
+   .. attribute:: Server.connections
 
       List of all currently opened connections.
 
-   .. coroutinemethod:: RequestHandlerFactory.finish_connections(timeout)
+   .. attribute:: requests_count
+
+      Amount of processed requests.
+
+      .. versionadded:: 1.0
+
+   .. coroutinemethod:: Server.shutdown(timeout)
 
       A :ref:`coroutine<coroutine>` that should be called to close all opened
       connections.
+
+   .. coroutinemethod:: Server.finish_connections(timeout)
+
+      .. deprecated:: 1.2
+
+         A deprecated alias for :meth:`shutdown`.
+
+   .. versionchanged:: 1.2
+
+      ``Server`` was called ``RequestHandlerFactory`` before ``aiohttp==1.2``.
+
+      The rename has no deprecation period but it's safe: no user
+      should instantiate the class by hands.
 
 
 Router
@@ -1163,7 +1484,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       *path* may be either *constant* string like ``'/a/b/c'`` or
       *variable rule* like ``'/a/{var}'`` (see
-      :ref:`handling variable pathes<aiohttp-web-variable-handler>`)
+      :ref:`handling variable paths <aiohttp-web-variable-handler>`)
 
       :param str path: resource path spec.
 
@@ -1179,7 +1500,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       *path* may be either *constant* string like ``'/a/b/c'`` or
        *variable rule* like ``'/a/{var}'`` (see
-       :ref:`handling variable pathes<aiohttp-web-variable-handler>`)
+       :ref:`handling variable paths <aiohttp-web-variable-handler>`)
 
       Pay attention please: *handler* is converted to coroutine internally when
       it is a regular function.
@@ -1202,8 +1523,48 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       :returns: new :class:`PlainRoute` or :class:`DynamicRoute` instance.
 
+   .. method:: add_get(path, *args, **kwargs)
+
+      Shortcut for adding a GET handler. Calls the :meth:`add_route` with \
+      ``method`` equals to ``'GET'``.
+
+      .. versionadded:: 1.0
+
+   .. method:: add_post(path, *args, **kwargs)
+
+      Shortcut for adding a POST handler. Calls the :meth:`add_route` with \
+
+
+      ``method`` equals to ``'POST'``.
+
+      .. versionadded:: 1.0
+
+   .. method:: add_put(path, *args, **kwargs)
+
+      Shortcut for adding a PUT handler. Calls the :meth:`add_route` with \
+      ``method`` equals to ``'PUT'``.
+
+      .. versionadded:: 1.0
+
+   .. method:: add_patch(path, *args, **kwargs)
+
+      Shortcut for adding a PATCH handler. Calls the :meth:`add_route` with \
+      ``method`` equals to ``'PATCH'``.
+
+      .. versionadded:: 1.0
+
+   .. method:: add_delete(path, *args, **kwargs)
+
+      Shortcut for adding a DELETE handler. Calls the :meth:`add_route` with \
+      ``method`` equals to ``'DELETE'``.
+
+      .. versionadded:: 1.0
+
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
-                          chunk_size=256*1024, response_factory=StreamResponse)
+                          chunk_size=256*1024, \
+                          response_factory=StreamResponse, \
+                          show_index=False, \
+                          follow_symlinks=False)
 
       Adds a router and a handler for returning static files.
 
@@ -1215,6 +1576,9 @@ Router is any object that implements :class:`AbstractRouter` interface.
       In some situations it might be necessary to avoid using the ``sendfile``
       system call even if the platform supports it. This can be accomplished by
       by setting environment variable ``AIOHTTP_NOSENDFILE=1``.
+
+      If a gzip version of the static content exists at file path + ``.gz``, it
+      will be used for the response.
 
       .. warning::
 
@@ -1229,6 +1593,9 @@ Router is any object that implements :class:`AbstractRouter` interface.
       .. versionchanged:: 0.19.0
          Disable ``sendfile`` by setting environment variable
          ``AIOHTTP_NOSENDFILE=1``
+
+      .. versionchanged:: 1.2.0
+         Send gzip version if file path + ``.gz`` exists.
 
       :param str prefix: URL path prefix for handled static files
 
@@ -1255,9 +1622,32 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
                                         .. versionadded:: 0.17
 
-   :returns: new :class:`StaticRoute` instance.
+      :param bool show_index: flag for allowing to show indexes of a directory,
+                              by default it's not allowed and HTTP/403 will
+                              be returned on directory access.
 
-   .. coroutinemethod:: resolve(requst)
+      :param bool follow_symlinks: flag for allowing to follow symlinks from
+                              a directory, by default it's not allowed and
+                              HTTP/404 will be returned on access.
+
+      :returns: new :class:`StaticRoute` instance.
+
+   .. method:: add_subapp(prefix, subapp)
+
+      Register nested sub-application under given path *prefix*.
+
+      In resolving process if request's path starts with *prefix* then
+      further resolving is passed to *subapp*.
+
+      :param str prefix: path's prefix for the resource.
+
+      :param Application subapp: nested application attached under *prefix*.
+
+      :returns: a :class:`PrefixedSubAppResource` instance.
+
+      .. versionadded:: 1.1
+
+   .. coroutinemethod:: resolve(request)
 
       A :ref:`coroutine<coroutine>` that returns
       :class:`AbstractMatchInfo` for *request*.
@@ -1311,7 +1701,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
       Returns a :obj:`dict`-like :class:`types.MappingProxyType` *view* over
       *all* named **resources**.
 
-      The view maps every named resources's **name** to the
+      The view maps every named resource's **name** to the
       :class:`BaseResource` instance. It supports the usual
       :obj:`dict`-like operations, except for any mutable operations
       (i.e. it's **read-only**)::
@@ -1385,7 +1775,7 @@ Resource with a *name* is called *named resource*.
 The main purpose of *named resource* is constructing URL by route name for
 passing it into *template engine* for example::
 
-   url = app.router['resource_name'].url(query={'a': 1, 'b': 2})
+   url = app.router['resource_name'].url_for().with_query({'a': 1, 'b': 2})
 
 Resource classes hierarchy::
 
@@ -1393,7 +1783,7 @@ Resource classes hierarchy::
      Resource
        PlainResource
        DynamicResource
-     ResourceAdapter
+       StaticResource
 
 
 .. class:: AbstractResource
@@ -1427,6 +1817,23 @@ Resource classes hierarchy::
                request is resolved or ``None`` if no :term:`route` is
                found.
 
+   .. method:: get_info()
+
+      A resource description, e.g. ``{'path': '/path/to'}`` or
+      ``{'formatter': '/path/{to}', 'pattern':
+      re.compile(r'^/path/(?P<to>[a-zA-Z][_a-zA-Z0-9]+)$``
+
+   .. method:: url_for(*args, **kwargs)
+
+      Construct an URL for route with additional params.
+
+      *args* and **kwargs** depend on a parameters list accepted by
+      inherited resource class.
+
+      :return: :class:`~yarl.URL` -- resulting URL instance.
+
+      .. versionadded:: 1.1
+
    .. method:: url(**kwargs)
 
       Construct an URL for route with additional params.
@@ -1434,7 +1841,11 @@ Resource classes hierarchy::
       **kwargs** depends on a list accepted by inherited resource
       class parameters.
 
-      :return: :class:`str` -- resulting URL.
+      :return: :class:`str` -- resulting URL string.
+
+      .. deprecated:: 1.1
+
+         Use :meth:`url_for` instead.
 
 
 .. class:: Resource
@@ -1465,27 +1876,70 @@ Resource classes hierarchy::
 
 .. class:: PlainResource
 
-   A new-style resource, inherited from :class:`Resource`.
+   A resource, inherited from :class:`Resource`.
 
    The class corresponds to resources with plain-text matching,
    ``'/path/to'`` for example.
 
 
+   .. method:: url_for()
+
+      Returns a :class:`~yarl.URL` for the resource.
+
+      .. versionadded:: 1.1
+
+
 .. class:: DynamicResource
 
-   A new-style resource, inherited from :class:`Resource`.
+   A resource, inherited from :class:`Resource`.
 
    The class corresponds to resources with
    :ref:`variable <aiohttp-web-variable-handler>` matching,
    e.g. ``'/path/{to}/{param}'`` etc.
 
 
-.. class:: ResourceAdapter
+   .. method:: url_for(**params)
 
-   An adapter for old-style routes.
+      Returns a :class:`~yarl.URL` for the resource.
 
-   The adapter is used by ``router.register_route()`` call, the method
-   is deprecated and will be removed eventually.
+      :param params: -- a variable substitutions for dynamic resource.
+
+         E.g. for ``'/path/{to}/{param}'`` pattern the method should
+         be called as ``resource.url_for(to='val1', param='val2')``
+
+
+      .. versionadded:: 1.1
+
+.. class:: StaticResource
+
+   A resource, inherited from :class:`Resource`.
+
+   The class corresponds to resources for :ref:`static file serving
+   <aiohttp-web-static-file-handling>`.
+
+   .. method:: url_for(filename)
+
+      Returns a :class:`~yarl.URL` for file path under resource prefix.
+
+      :param filename: -- a file name substitution for static file handler.
+
+         Accepts both :class:`str` and :class:`pathlib.Path`.
+
+         E.g. an URL for ``'/prefix/dir/file.txt'`` should
+         be generated as ``resource.url_for(filename='dir/file.txt')``
+
+      .. versionadded:: 1.1
+
+.. class:: PrefixedSubAppResource
+
+   A resource for serving nested applications. The class instance is
+   returned by :class:`~aiohttp.web.UrlDispatcher.add_subapp` call.
+
+   .. versionadded:: 1.1
+
+   .. method:: url_for(**kwargs)
+
+      The call is not allowed, it raises :exc:`RuntimeError`.
 
 
 .. _aiohttp-web-route:
@@ -1502,22 +1956,11 @@ Route classes hierarchy::
 
    AbstractRoute
      ResourceRoute
-     Route
-       PlainRoute
-       DynamicRoute
-       StaticRoute
+     SystemRoute
 
-:class:`ResourceRoute` is the route used for new-style resources,
-:class:`PlainRoute` and :class:`DynamicRoute` serves old-style
-routes kept for backward compatibility only.
-
-:class:`StaticRoute` is used for static file serving
-(:meth:`UrlDispatcher.add_static`).  Don't rely on the route
-implementation too hard, static file handling most likely will be
-rewritten eventually.
-
-So the only non-deprecated and not internal route is
-:class:`ResourceRoute` only.
+:class:`ResourceRoute` is the route used for resources,
+:class:`SystemRoute` serves URL resolving errors like *404 Not Found*
+and *405 Method Not Allowed*.
 
 .. class:: AbstractRoute
 
@@ -1537,24 +1980,14 @@ So the only non-deprecated and not internal route is
 
    .. attribute:: resource
 
-      Resource instance which holds the route.
+      Resource instance which holds the route, ``None`` for
+      :class:`SystemRoute`.
 
-   .. method:: url(*, query=None, **kwargs)
+   .. method:: url_for(*args, **kwargs)
 
       Abstract method for constructing url handled by the route.
 
-      *query* is a mapping or list of *(name, value)* pairs for
-      specifying *query* part of url (parameter is processed by
-      :func:`~urllib.parse.urlencode`).
-
-      Other available parameters depends on concrete route class and
-      described in descendant classes.
-
-
-      .. note::
-
-         The method is kept for sake of backward compatibility, usually
-         you should use :meth:`Resource.url` instead.
+      Actually it's a shortcut for ``route.resource.url_for(...)``.
 
    .. coroutinemethod:: handle_expect_header(request)
 
@@ -1564,42 +1997,20 @@ So the only non-deprecated and not internal route is
 
    The route class for handling different HTTP methods for :class:`Resource`.
 
-.. class:: PlainRoute
 
-   The route class for handling plain *URL path*, e.g. ``"/a/b/c"``
+.. class:: SystemRoute
 
-   .. method:: url(*, parts, query=None)
+   The route class for handling URL resolution errors like like *404 Not Found*
+   and *405 Method Not Allowed*.
 
-       Construct url, doesn't accepts extra parameters::
+   .. attribute:: status
 
-          >>> route.url(query={'d': 1, 'e': 2})
-          '/a/b/c/?d=1&e=2'
+      HTTP status code
 
-.. class:: DynamicRoute
+   .. attribute:: reason
 
-   The route class for handling :ref:`variable
-   path<aiohttp-web-variable-handler>`, e.g. ``"/a/{name1}/{name2}"``
+      HTTP status reason
 
-   .. method:: url(*, parts, query=None)
-
-      Construct url with given *dynamic parts*::
-
-          >>> route.url(parts={'name1': 'b', 'name2': 'c'},
-                        query={'d': 1, 'e': 2})
-          '/a/b/c/?d=1&e=2'
-
-
-.. class:: StaticRoute
-
-   The route class for handling static files, created by
-   :meth:`UrlDispatcher.add_static` call.
-
-   .. method:: url(*, filename, query=None)
-
-      Construct url for given *filename*::
-
-         >>> route.url(filename='img/logo.png', query={'param': 1})
-         '/path/to/static/img/logo.png?param=1'
 
 
 MatchInfo
@@ -1704,9 +2115,11 @@ Utilities
 
 .. function:: run_app(app, *, host='0.0.0.0', port=None, loop=None, \
                       shutdown_timeout=60.0, ssl_context=None, \
-                      print=print, backlog=128)
+                      print=print, backlog=128, \
+                      access_log_format=None, \
+                      access_log=aiohttp.log.access_logger)
 
-   An utility function for running an application, serving it until
+   A utility function for running an application, serving it until
    keyboard interrupt and performing a
    :ref:`aiohttp-web-graceful-shutdown`.
 
@@ -1744,6 +2157,14 @@ Utilities
                        system will allow before refusing new
                        connections (``128`` by default).
 
+   :param access_log: :class:`logging.Logger` instance used for saving
+                      access logs. Use ``None`` for disabling logs for
+                      sake of speedup.
+
+   :param access_log_format: access log format, see
+                             :ref:`aiohttp-logging-access-log-format-spec`
+                             for details.
+
 
 Constants
 ---------
@@ -1758,10 +2179,11 @@ Constants
 
    .. attribute:: gzip
 
-      *GZIP comression*
+      *GZIP compression*
 
    .. attribute:: identity
 
-      *no comression*
+      *no compression*
 
 .. disqus::
+  :title: aiohttp server reference

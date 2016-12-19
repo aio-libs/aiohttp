@@ -1,14 +1,12 @@
 """Tests for aiohttp/protocol.py"""
 
 import asyncio
-import zlib
 import unittest
-import unittest.mock
+import zlib
+from unittest import mock
 
 import aiohttp
-from aiohttp import errors
-from aiohttp import protocol
-from aiohttp import CIMultiDict
+from aiohttp import CIMultiDict, errors, protocol
 
 
 class TestParseHeaders(unittest.TestCase):
@@ -26,7 +24,8 @@ class TestParseHeaders(unittest.TestCase):
             hdrs)
 
         self.assertEqual(list(headers.items()),
-                         [('TEST', 'line\r\n continue'), ('TEST2', 'data')])
+                         [('Test', 'line\r\n continue'),
+                          ('Test2', 'data')])
         self.assertEqual(raw_headers,
                          [(b'TEST', b'line\r\n continue'),
                           (b'TEST2', b'data')])
@@ -42,8 +41,8 @@ class TestParseHeaders(unittest.TestCase):
             hdrs)
 
         self.assertEqual(list(headers.items()),
-                         [('SET-COOKIE', 'c1=cookie1'),
-                          ('SET-COOKIE', 'c2=cookie2')])
+                         [('Set-Cookie', 'c1=cookie1'),
+                          ('Set-Cookie', 'c2=cookie2')])
         self.assertEqual(raw_headers,
                          [(b'SET-COOKIE', b'c1=cookie1'),
                           (b'SET-COOKIE', b'c2=cookie2')])
@@ -85,14 +84,21 @@ class TestParseHeaders(unittest.TestCase):
             parser = protocol.HttpParser(8190, 32768, 5)
             parser.parse_headers(
                 [b'', b'test: line data data\r\n', b'data\r\n', b'\r\n'])
-        self.assertIn("limit request headers fields size", str(cm.exception))
+        self.assertIn("request header field TEST", str(cm.exception))
 
     def test_max_continuation_headers_size(self):
         with self.assertRaises(errors.LineTooLong) as cm:
             parser = protocol.HttpParser(8190, 32768, 5)
             parser.parse_headers([b'', b'test: line\r\n',
                                   b' test\r\n', b'\r\n'])
-        self.assertIn("limit request headers fields size", str(cm.exception))
+        self.assertIn("request header field TEST", str(cm.exception))
+
+    def test_max_header_size(self):
+        with self.assertRaises(errors.LineTooLong) as cm:
+            parser = protocol.HttpParser(5, 5, 5)
+            parser.parse_headers(
+                [b'', b'test: line data data\r\n', b'data\r\n', b'\r\n'])
+        self.assertIn("request header", str(cm.exception))
 
     def test_invalid_header(self):
         with self.assertRaisesRegex(
@@ -110,14 +116,14 @@ class TestParseHeaders(unittest.TestCase):
 class TestDeflateBuffer(unittest.TestCase):
 
     def setUp(self):
-        self.stream = unittest.mock.Mock()
+        self.stream = mock.Mock()
         asyncio.set_event_loop(None)
 
     def test_feed_data(self):
         buf = aiohttp.FlowControlDataQueue(self.stream)
         dbuf = protocol.DeflateBuffer(buf, 'deflate')
 
-        dbuf.zlib = unittest.mock.Mock()
+        dbuf.zlib = mock.Mock()
         dbuf.zlib.decompress.return_value = b'line'
 
         dbuf.feed_data(b'data', 4)
@@ -128,7 +134,7 @@ class TestDeflateBuffer(unittest.TestCase):
         dbuf = protocol.DeflateBuffer(buf, 'deflate')
 
         exc = ValueError()
-        dbuf.zlib = unittest.mock.Mock()
+        dbuf.zlib = mock.Mock()
         dbuf.zlib.decompress.side_effect = exc
 
         self.assertRaises(
@@ -138,7 +144,7 @@ class TestDeflateBuffer(unittest.TestCase):
         buf = aiohttp.FlowControlDataQueue(self.stream)
         dbuf = protocol.DeflateBuffer(buf, 'deflate')
 
-        dbuf.zlib = unittest.mock.Mock()
+        dbuf.zlib = mock.Mock()
         dbuf.zlib.flush.return_value = b'line'
 
         dbuf.feed_eof()
@@ -149,7 +155,7 @@ class TestDeflateBuffer(unittest.TestCase):
         buf = aiohttp.FlowControlDataQueue(self.stream)
         dbuf = protocol.DeflateBuffer(buf, 'deflate')
 
-        dbuf.zlib = unittest.mock.Mock()
+        dbuf.zlib = mock.Mock()
         dbuf.zlib.flush.return_value = b'line'
         dbuf.zlib.eof = False
 
@@ -159,7 +165,7 @@ class TestDeflateBuffer(unittest.TestCase):
 class TestParsePayload(unittest.TestCase):
 
     def setUp(self):
-        self.stream = unittest.mock.Mock()
+        self.stream = mock.Mock()
         asyncio.set_event_loop(None)
 
     def test_parse_eof_payload(self):
@@ -386,7 +392,7 @@ class TestParsePayload(unittest.TestCase):
 class TestParseRequest(unittest.TestCase):
 
     def setUp(self):
-        self.stream = unittest.mock.Mock()
+        self.stream = mock.Mock()
         asyncio.set_event_loop(None)
 
     def test_http_request_parser_max_headers(self):
@@ -509,7 +515,7 @@ class TestParseRequest(unittest.TestCase):
 class TestParseResponse(unittest.TestCase):
 
     def setUp(self):
-        self.stream = unittest.mock.Mock()
+        self.stream = mock.Mock()
         asyncio.set_event_loop(None)
 
     def test_http_response_parser_utf8(self):

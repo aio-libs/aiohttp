@@ -1,26 +1,22 @@
-import aiohttp
 import asyncio
 
+import aiohttp
 
-@asyncio.coroutine
-def go(session):
+
+async def fetch(session):
     print('Query http://httpbin.org/get')
-    resp = yield from session.get(
-        'http://httpbin.org/get')
-    print(resp.status)
-    try:
-        data = yield from resp.json()
+    async with session.get(
+            'http://httpbin.org/get') as resp:
+        print(resp.status)
+        data = await resp.json()
         print(data)
-    finally:
-        yield from resp.release()
+
+
+async def go(loop):
+    async with aiohttp.ClientSession(loop=loop) as session:
+        await fetch(session)
 
 
 loop = asyncio.get_event_loop()
-session = aiohttp.ClientSession(loop=loop)
-loop.run_until_complete(go(session))
-session.close()
-
-# run loop iteration for actual session closing
-loop.stop()
-loop.run_forever()
+loop.run_until_complete(go(loop))
 loop.close()

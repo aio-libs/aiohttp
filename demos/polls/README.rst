@@ -29,6 +29,12 @@ Open browser::
     :align: center
 
 
+Run integration tests::
+
+  pip install tox
+  tox
+
+
 Requirements
 ============
 * aiohttp_

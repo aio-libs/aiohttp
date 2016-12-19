@@ -1,7 +1,5 @@
 -r requirements-ci.txt
-ipdb
-pytest-sugar
-ipython
-pyenchant
-sphinxcontrib-spelling
-sphinxcontrib-asyncio
+ipdb==0.10.1
+pytest-sugar==0.7.1
+ipython==5.1.0
+aiodns==1.1.1

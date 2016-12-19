@@ -1,7 +1,7 @@
 .. _aiohttp-client:
 
-HTTP Client
-===========
+Client
+======
 
 .. module:: aiohttp
 
@@ -16,7 +16,7 @@ Begin by importing the aiohttp module::
     import aiohttp
 
 Now, let's try to get a web-page. For example let's get GitHub's public
-time-line ::
+time-line::
 
     async with aiohttp.ClientSession() as session:
         async with session.get('https://api.github.com/events') as resp:
@@ -39,6 +39,14 @@ Other HTTP methods are available as well::
     session.head('http://httpbin.org/get')
     session.options('http://httpbin.org/get')
     session.patch('http://httpbin.org/patch', data=b'data')
+
+.. note::
+
+   Don't create a session per request. Most likely you need a session
+   per application which performs all requests altogether.
+
+   A session contains a connection pool inside, connection reusage and
+   keep-alives (both are on by default) may speed up total performance.
 
 
 Passing Parameters In URLs
@@ -71,7 +79,7 @@ that case you can specify multiple values for each key::
                            params=params) as r:
         assert r.url == 'http://httpbin.org/get?key=value2&key=value1'
 
-You can also pass :class:`str` content as param, but beware - content
+You can also pass :class:`str` content as param, but beware -- content
 is not encoded by library. Note that ``+`` is not encoded::
 
     async with session.get('http://httpbin.org/get',
@@ -157,12 +165,12 @@ explicit reading from :attr:`~ClientResponse.content`.
 
 
 Releasing Response
---------------------------
+------------------
 
 Don't forget to release response after use. This will ensure explicit
 behavior and proper connection pooling.
 
-The easiest way to correctly response releasing is ``async with`` statement::
+The easiest way to release response correctly is ``async with`` statement::
 
     async with session.get(url) as resp:
         pass
@@ -171,7 +179,7 @@ But explicit :meth:`~ClientResponse.release` call also may be used::
 
     await resp.release()
 
-But it's not necessary if you use :meth:`~ClientResponse.read`,
+However it's not necessary if you use :meth:`~ClientResponse.read`,
 :meth:`~ClientResponse.json` and :meth:`~ClientResponse.text` methods.
 They do release connection internally but better don't rely on that
 behavior.
@@ -203,21 +211,22 @@ To send your own cookies to the server, you can use the *cookies*
 parameter of :class:`ClientSession` constructor::
 
     url = 'http://httpbin.org/cookies'
-    async with ClientSession({'cookies_are': 'working'}) as session:
+    cookies = {'cookies_are': 'working'}
+    async with ClientSession(cookies=cookies) as session:
         async with session.get(url) as resp:
-            assert await resp.json() == {"cookies":
-                                             {"cookies_are": "working"}}
+            assert await resp.json() == {
+               "cookies": {"cookies_are": "working"}}
 
 .. note::
    ``httpbin.org/cookies`` endpoint returns request cookies
    in JSON-encoded body.
-   To access session cookies see :attr:`ClientSession.cookies`.
+   To access session cookies see :attr:`ClientSession.cookie_jar`.
 
 
 More complicated POST requests
 ------------------------------
 
-Typically, you want to send some form-encoded data — much like an HTML form.
+Typically, you want to send some form-encoded data -- much like an HTML form.
 To do this, simply pass a dictionary to the *data* argument. Your
 dictionary of data will automatically be form-encoded when the request is made::
 
@@ -305,7 +314,7 @@ Or you can provide an :ref:`coroutine<coroutine>` that yields bytes objects::
 .. note::
 
    It is not a standard :ref:`coroutine<coroutine>` as it yields values so it
-   can not be used like ``yield from my_coroutine()``.
+   cannot be used like ``yield from my_coroutine()``.
    :mod:`aiohttp` internally handles such coroutines.
 
 Also it is possible to use a :class:`~aiohttp.streams.StreamReader`
@@ -333,7 +342,7 @@ calculate the file SHA1 hash::
 
 Because the response content attribute is a
 :class:`~aiohttp.streams.StreamReader`, you can chain get and post
-requests together (aka HTTP pipelining)::
+requests together::
 
    r = await session.get('http://python.org')
    await session.post('http://httpbin.org/post',
@@ -369,7 +378,8 @@ between multiple requests::
     async with aiohttp.ClientSession() as session:
         await session.get(
             'http://httpbin.org/cookies/set?my_cookie=my_value')
-        assert session.cookies['my_cookie'].value == 'my_value'
+        filtered = session.cookie_jar.filter_cookies('http://httpbin.org')
+        assert filtered['my_cookie'].value == 'my_value'
         async with session.get('http://httpbin.org/cookies') as r:
             json_body = await r.json()
             assert json_body['cookies']['my_cookie'] == 'my_value'
@@ -392,13 +402,13 @@ Cookie safety
 -------------
 
 By default :class:`~aiohttp.ClientSession` uses strict version of
-:class:`~aiohttp.CookieJar`. :rfc:`2109` explicitly forbids cookie
+:class:`aiohttp.CookieJar`. :rfc:`2109` explicitly forbids cookie
 accepting from URLs with IP address instead of DNS name
 (e.g. `http://127.0.0.1:80/cookie`).
 
 It's good but sometimes for testing we need to enable support for such
-cookies. It should be done by passing `usafe=True` to
-:class:`~aiohttp.CookieJar` constructor::
+cookies. It should be done by passing `unsafe=True` to
+:class:`aiohttp.CookieJar` constructor::
 
 
     jar = aiohttp.CookieJar(unsafe=True)
@@ -431,15 +441,21 @@ parameter to *connector*::
 
 The example limits amount of parallel connections to `30`.
 
+The default is `20`.
+
+If you explicitly want not to have limits to the same endpoint,
+pass `None`. For example::
+
+    conn = aiohttp.TCPConnector(limit=None)
+
 
 Resolving using custom nameservers
 ----------------------------------
 
 In order to specify the nameservers to when resolving the hostnames,
-aiodns is required.
+:term:`aiodns` is required::
 
     from aiohttp.resolver import AsyncResolver
-
 
     resolver = AsyncResolver(nameservers=["8.8.8.8", "8.8.4.4"])
     conn = aiohttp.TCPConnector(resolver=resolver)
@@ -463,7 +479,8 @@ If you need to setup custom ssl parameters (use own certification
 files for example) you can create a :class:`ssl.SSLContext` instance and
 pass it into the connector::
 
-  sslcontext = ssl.create_default_context(cafile='/path/to/ca-bundle.crt')
+  sslcontext = ssl.create_default_context(
+     cafile='/path/to/ca-bundle.crt')
   conn = aiohttp.TCPConnector(ssl_context=sslcontext)
   session = aiohttp.ClientSession(connector=conn)
   r = await session.get('https://example.com')
@@ -511,26 +528,26 @@ Proxy support
 -------------
 
 aiohttp supports proxy. You have to use
-:class:`~aiohttp.ProxyConnector`::
+:attr:`proxy`::
 
-   conn = aiohttp.ProxyConnector(proxy="http://some.proxy.com")
-   session = aiohttp.ClientSession(connector=conn)
-   async with session.get('http://python.org') as resp:
-       print(resp.status)
+   async with aiohttp.ClientSession() as session:
+       async with session.get("http://python.org",
+                              proxy="http://some.proxy.com") as resp:
+           print(resp.status)
 
-:class:`~aiohttp.ProxyConnector` also supports proxy authorization::
+it also supports proxy authorization::
 
-   conn = aiohttp.ProxyConnector(
-       proxy="http://some.proxy.com",
-       proxy_auth=aiohttp.BasicAuth('user', 'pass'))
-   session = aiohttp.ClientSession(connector=conn)
-   async with session.get('http://python.org') as r:
-       assert r.status == 200
+   async with aiohttp.ClientSession() as session:
+       proxy_auth = aiohttp.BasicAuth('user', 'pass')
+       async with session.get("http://python.org",
+                              proxy="http://some.proxy.com",
+                              proxy_auth=proxy_auth) as resp:
+           print(resp.status)
 
 Authentication credentials can be passed in proxy URL::
 
-   conn = aiohttp.ProxyConnector(
-       proxy="http://user:pass@some.proxy.com")
+   session.get("http://python.org",
+               proxy="http://user:pass@some.proxy.com")
 
 
 Response Status Codes
@@ -597,7 +614,7 @@ If a response contains some Cookies, you can quickly access them::
 
    Response cookies contain only values, that were in ``Set-Cookie`` headers
    of the **last** request in redirection chain. To gather cookies between all
-   redirection requests you can use :ref:`aiohttp.ClientSession
+   redirection requests please use :ref:`aiohttp.ClientSession
    <aiohttp-client-session>` object.
 
 
@@ -634,19 +651,19 @@ methods::
    async with session.ws_connect('http://example.org/websocket') as ws:
 
        async for msg in ws:
-           if msg.tp == aiohttp.MsgType.text:
+           if msg.type == aiohttp.WSMsgType.TEXT:
                if msg.data == 'close cmd':
                    await ws.close()
                    break
                else:
                    ws.send_str(msg.data + '/answer')
-           elif msg.tp == aiohttp.MsgType.closed:
+           elif msg.type == aiohttp.WSMsgType.CLOSED:
                break
-           elif msg.tp == aiohttp.MsgType.error:
+           elif msg.type == aiohttp.WSMsgType.ERROR:
                break
 
 
-You **must** use the only websocket task for both reading (e.g ``await
+You **must** use the only websocket task for both reading (e.g. ``await
 ws.receive()`` or ``async for msg in ws:``) and writing but may have
 multiple writer tasks which can only send data asynchronously (by
 ``ws.send_str('data')`` for example).
@@ -655,13 +672,25 @@ multiple writer tasks which can only send data asynchronously (by
 Timeouts
 --------
 
-The example wraps a client call in :class:`Timeout` context
+By default all IO operations have 5min timeout. The timeout may be
+overridden by passing ``timeout`` parameter into
+:meth:`ClientSession.get` and family::
+
+    aync with session.get('https://github.com', timeout=60) as r:
+        ...
+
+``None`` or ``0`` disables timeout check.
+
+The example wraps a client call in :func:`async_timeout.timeout` context
 manager, adding timeout for both connecting and response body
 reading procedures::
 
-    with aiohttp.Timeout(0.001):
-        async with aiohttp.get('https://github.com') as r:
+    import async_timeout
+
+    with async_timeout.timeout(0.001, loop=session.loop):
+        async with session.get('https://github.com') as r:
             await r.text()
 
 
 .. disqus::
+  :title: aiohttp client usage

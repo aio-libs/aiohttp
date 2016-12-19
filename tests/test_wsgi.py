@@ -1,16 +1,15 @@
 """Tests for http/wsgi.py"""
 
-import io
 import asyncio
+import io
 import socket
 import unittest
-import unittest.mock
+from unittest import mock
+
+import multidict
 
 import aiohttp
-from aiohttp import multidict
-from aiohttp import wsgi
-from aiohttp import protocol
-from aiohttp import helpers
+from aiohttp import helpers, protocol, wsgi
 
 
 class TestHttpWsgiServerProtocol(unittest.TestCase):
@@ -19,17 +18,17 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
 
-        self.wsgi = unittest.mock.Mock()
-        self.reader = unittest.mock.Mock()
-        self.writer = unittest.mock.Mock()
+        self.wsgi = mock.Mock()
+        self.reader = mock.Mock()
+        self.writer = mock.Mock()
         self.writer.drain.return_value = ()
-        self.transport = unittest.mock.Mock()
+        self.transport = mock.Mock()
         self.transport.get_extra_info.side_effect = [
-            unittest.mock.Mock(family=socket.AF_INET),
+            mock.Mock(family=socket.AF_INET),
             ('1.2.3.4', 1234),
             ('2.3.4.5', 80)]
 
-        self.headers = multidict.MultiDict({"HOST": "python.org"})
+        self.headers = multidict.CIMultiDict({"HOST": "python.org"})
         self.raw_headers = [(b"HOST", b"python.org")]
         self.message = protocol.RawRequestMessage(
             'GET', '/path', (1, 0), self.headers, self.raw_headers,
@@ -76,6 +75,7 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
              ('X_TEST', '123'),
              ('X_TEST', '456')))
         environ = self._make_one()
+        print(environ)
         self.assertEqual(environ['CONTENT_TYPE'], 'text/plain')
         self.assertEqual(environ['CONTENT_LENGTH'], '209')
         self.assertEqual(environ['HTTP_X_TEST'], '123,456')
@@ -84,8 +84,8 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
         self.assertEqual(environ['SERVER_PORT'], '80')
         get_extra_info_calls = self.transport.get_extra_info.mock_calls
         expected_calls = [
-            unittest.mock.call('socket'),
-            unittest.mock.call('peername'),
+            mock.call('socket'),
+            mock.call('peername'),
         ]
         self.assertEqual(expected_calls, get_extra_info_calls)
 
@@ -130,7 +130,7 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
             resp.start_response,
             '500 Err', [('CONTENT-TYPE', 'text/plain')], ['', ValueError()])
 
-    @unittest.mock.patch('aiohttp.wsgi.aiohttp')
+    @mock.patch('aiohttp.wsgi.aiohttp')
     def test_wsgi_response_101_upgrade_to_websocket(self, m_asyncio):
         srv = self._make_srv()
         resp = srv.create_wsgi_response(self.message)
@@ -194,7 +194,7 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
             [c[1][0] for c in self.writer.write.mock_calls])
         self.assertTrue(content.startswith(b'HTTP/1.1 200 OK'))
         self.assertTrue(content.endswith(b'data\r\n0\r\n\r\n'))
-        self.assertFalse(srv._keep_alive)
+        self.assertFalse(srv._keepalive)
 
     def test_handle_request_io(self):
 
@@ -235,7 +235,7 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
             [c[1][0] for c in self.writer.write.mock_calls])
         self.assertTrue(content.startswith(b'HTTP/1.1 200 OK'))
         self.assertTrue(content.endswith(b'data\r\n0\r\n\r\n'))
-        self.assertTrue(srv._keep_alive)
+        self.assertTrue(srv._keepalive)
 
     def test_handle_request_readpayload(self):
 
@@ -282,7 +282,7 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
 
     def test_family_inet6(self):
         self.transport.get_extra_info.side_effect = [
-            unittest.mock.Mock(family=socket.AF_INET6),
+            mock.Mock(family=socket.AF_INET6),
             ("::", 1122, 0, 0),
             ('2.3.4.5', 80)]
         self.message = protocol.RawRequestMessage(
@@ -298,7 +298,7 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
         if not hasattr(socket, "AF_UNIX"):
             self.skipTest("No UNIX address family. (Windows?)")
         self.transport.get_extra_info.side_effect = [
-            unittest.mock.Mock(family=socket.AF_UNIX)]
+            mock.Mock(family=socket.AF_UNIX)]
         headers = multidict.MultiDict({
             'SERVER_NAME': '1.2.3.4', 'SERVER_PORT': '5678',
             'REMOTE_ADDR': '4.3.2.1', 'REMOTE_PORT': '8765'})

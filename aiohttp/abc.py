@@ -1,13 +1,32 @@
 import asyncio
 import sys
 from abc import ABC, abstractmethod
-from http.cookies import SimpleCookie
-
+from collections.abc import Iterable, Sized
 
 PY_35 = sys.version_info >= (3, 5)
 
 
 class AbstractRouter(ABC):
+
+    def __init__(self):
+        self._frozen = False
+
+    def post_init(self, app):
+        """Post init stage.
+
+        It's not an abstract method for sake of backward compatibility
+        but if router wans to be aware about application it should
+        override it.
+
+        """
+
+    @property
+    def frozen(self):
+        return self._frozen
+
+    def freeze(self):
+        """Freeze router."""
+        self._frozen = True
 
     @asyncio.coroutine  # pragma: no branch
     @abstractmethod
@@ -35,6 +54,29 @@ class AbstractMatchInfo(ABC):
     @abstractmethod  # pragma: no branch
     def get_info(self):
         """Return a dict with additional info useful for introspection"""
+
+    @property  # pragma: no branch
+    @abstractmethod
+    def apps(self):
+        """Stack of nested applications.
+
+        Top level application is left-most element.
+
+        """
+
+    @abstractmethod
+    def add_app(self, app):
+        """Add application to the nested apps stack."""
+
+    @abstractmethod
+    def freeze(self):
+        """Freeze the match info.
+
+        The method is called after route resolution.
+
+        After the call .add_app() is forbidden.
+
+        """
 
 
 class AbstractView(ABC):
@@ -71,16 +113,14 @@ class AbstractResolver(ABC):
         """Release resolver"""
 
 
-class AbstractCookieJar(ABC):
+class AbstractCookieJar(Sized, Iterable):
 
     def __init__(self, *, loop=None):
-        self._cookies = SimpleCookie()
         self._loop = loop or asyncio.get_event_loop()
 
-    @property
-    def cookies(self):
-        """The session cookies."""
-        return self._cookies
+    @abstractmethod
+    def clear(self):
+        """Clear all cookies."""
 
     @abstractmethod
     def update_cookies(self, cookies, response_url=None):
@@ -88,4 +128,4 @@ class AbstractCookieJar(ABC):
 
     @abstractmethod
     def filter_cookies(self, request_url):
-        """Returns this jar's cookies filtered by their attributes."""
+        """Return the jar's cookies filtered by their attributes."""

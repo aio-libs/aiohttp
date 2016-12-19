@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-import aiohttp
-import sys
+import argparse
 import asyncio
+
+import aiohttp
 
 
 def curl(url):
@@ -14,15 +15,21 @@ def curl(url):
     print('Downloaded: %s' % len(chunk))
 
     response.close()
-    session.close()
+    yield from session.close()
 
 
 if __name__ == '__main__':
-    if '--iocp' in sys.argv:
+    ARGS = argparse.ArgumentParser(description="GET url example")
+    ARGS.add_argument('url', nargs=1, metavar='URL',
+                      help="URL to download")
+    ARGS.add_argument('--iocp', default=False, action="store_true",
+                      help="Use ProactorEventLoop on Windows")
+    options = ARGS.parse_args()
+
+    if options.iocp:
         from asyncio import events, windows_events
-        sys.argv.remove('--iocp')
         el = windows_events.ProactorEventLoop()
         events.set_event_loop(el)
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(curl(sys.argv[1]))
+    loop.run_until_complete(curl(options.url[0]))

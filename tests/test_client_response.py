@@ -3,287 +3,351 @@
 
 import asyncio
 import gc
-import unittest
-import unittest.mock
+from unittest import mock
+
+import pytest
+from yarl import URL
 
 import aiohttp
 from aiohttp import helpers
 from aiohttp.client_reqrep import ClientResponse
 
 
-class TestClientResponse(unittest.TestCase):
+def test_del(loop):
+    response = ClientResponse('get', URL('http://del-cl-resp.org'))
+    response._post_init(loop)
 
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
+    connection = mock.Mock()
+    response._setup_connection(connection)
+    loop.set_exception_handler(lambda loop, ctx: None)
 
-        self.connection = unittest.mock.Mock()
-        self.stream = aiohttp.StreamParser(loop=self.loop)
-        self.response = ClientResponse('get', 'http://def-cl-resp.org')
-        self.response._post_init(self.loop)
-        self.response._setup_connection(self.connection)
-
-    def tearDown(self):
-        self.response.close()
-        self.loop.close()
+    with pytest.warns(ResourceWarning):
+        del response
         gc.collect()
 
-    def test_del(self):
-        response = ClientResponse('get', 'http://del-cl-resp.org')
-        response._post_init(self.loop)
+    connection.close.assert_called_with()
 
-        connection = unittest.mock.Mock()
-        response._setup_connection(connection)
-        self.loop.set_exception_handler(lambda loop, ctx: None)
 
-        with self.assertWarns(ResourceWarning):
-            del response
-            gc.collect()
+def test_close(loop):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop)
+    response._connection = mock.Mock()
+    response.close()
+    assert response.connection is None
+    response.close()
+    response.close()
 
-        connection.close.assert_called_with()
 
-    def test_close(self):
-        self.response._connection = self.connection
-        self.response.close()
-        self.assertIsNone(self.response.connection)
-        self.response.close()
-        self.response.close()
+def test_wait_for_100_1(loop):
+    response = ClientResponse(
+        'get', URL('http://python.org'), continue100=object())
+    response._post_init(loop)
+    assert response._continue is not None
+    response.close()
 
-    def test_wait_for_100_1(self):
-        response = ClientResponse(
-            'get', 'http://python.org', continue100=object())
-        response._post_init(self.loop)
-        self.assertTrue(response.waiting_for_continue())
-        response.close()
 
-    def test_wait_for_100_2(self):
-        response = ClientResponse(
-            'get', 'http://python.org')
-        response._post_init(self.loop)
-        self.assertFalse(response.waiting_for_continue())
-        response.close()
+def test_wait_for_100_2(loop):
+    response = ClientResponse(
+        'get', URL('http://python.org'))
+    response._post_init(loop)
+    assert response._continue is None
+    response.close()
 
-    def test_repr(self):
-        self.response.status = 200
-        self.response.reason = 'Ok'
-        self.assertIn(
-            '<ClientResponse(http://def-cl-resp.org) [200 Ok]>',
-            repr(self.response))
 
-    def test_repr_non_ascii_url(self):
-        response = ClientResponse('get', 'http://fake-host.org/\u03bb')
-        self.assertIn(
-            "<ClientResponse(http://fake-host.org/\\u03bb) [None None]>",
-            repr(response))
-        response.close()
+def test_repr(loop):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop)
+    response.status = 200
+    response.reason = 'Ok'
+    assert '<ClientResponse(http://def-cl-resp.org) [200 Ok]>'\
+        in repr(response)
 
-    def test_repr_non_ascii_reason(self):
-        response = ClientResponse('get', 'http://fake-host.org/path')
-        response.reason = '\u03bb'
-        self.assertIn(
-            "<ClientResponse(http://fake-host.org/path) [None \\u03bb]>",
-            repr(response))
-        response.close()
 
-    def test_read_and_release_connection(self):
-        def side_effect(*args, **kwargs):
-            fut = helpers.create_future(self.loop)
-            fut.set_result(b'payload')
-            return fut
-        content = self.response.content = unittest.mock.Mock()
-        content.read.side_effect = side_effect
+def test_repr_non_ascii_url():
+    response = ClientResponse('get', URL('http://fake-host.org/\u03bb'))
+    assert "<ClientResponse(http://fake-host.org/%CE%BB) [None None]>"\
+        in repr(response)
 
-        res = self.loop.run_until_complete(self.response.read())
-        self.assertEqual(res, b'payload')
-        self.assertIsNone(self.response._connection)
 
-    def test_read_and_release_connection_with_error(self):
-        content = self.response.content = unittest.mock.Mock()
-        content.read.return_value = helpers.create_future(self.loop)
-        content.read.return_value.set_exception(ValueError)
+def test_repr_non_ascii_reason():
+    response = ClientResponse('get', URL('http://fake-host.org/path'))
+    response.reason = '\u03bb'
+    assert "<ClientResponse(http://fake-host.org/path) [None \\u03bb]>"\
+        in repr(response)
 
-        self.assertRaises(
-            ValueError,
-            self.loop.run_until_complete, self.response.read())
-        self.assertTrue(self.response._closed)
 
-    def test_release(self):
-        fut = helpers.create_future(self.loop)
-        fut.set_result(b'')
-        content = self.response.content = unittest.mock.Mock()
-        content.readany.return_value = fut
+@asyncio.coroutine
+def test_read_and_release_connection(loop):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop)
 
-        self.loop.run_until_complete(self.response.release())
-        self.assertIsNone(self.response._connection)
+    def side_effect(*args, **kwargs):
+        fut = helpers.create_future(loop)
+        fut.set_result(b'payload')
+        return fut
+    content = response.content = mock.Mock()
+    content.read.side_effect = side_effect
 
-    def test_read_decode_deprecated(self):
-        self.response._content = b'data'
-        self.response.json = unittest.mock.Mock()
-        self.response.json.return_value = helpers.create_future(self.loop)
-        self.response.json.return_value.set_result('json')
+    res = yield from response.read()
+    assert res == b'payload'
+    assert response._connection is None
 
-        with self.assertWarns(DeprecationWarning):
-            res = self.loop.run_until_complete(self.response.read(decode=True))
-        self.assertEqual(res, 'json')
-        self.assertTrue(self.response.json.called)
 
-    def test_text(self):
-        def side_effect(*args, **kwargs):
-            fut = helpers.create_future(self.loop)
-            fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
-            return fut
-        self.response.headers = {
-            'CONTENT-TYPE': 'application/json;charset=cp1251'}
-        content = self.response.content = unittest.mock.Mock()
-        content.read.side_effect = side_effect
+@asyncio.coroutine
+def test_read_and_release_connection_with_error(loop):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop)
+    content = response.content = mock.Mock()
+    content.read.return_value = helpers.create_future(loop)
+    content.read.return_value.set_exception(ValueError)
 
-        res = self.loop.run_until_complete(self.response.text())
-        self.assertEqual(res, '{"тест": "пройден"}')
-        self.assertIsNone(self.response._connection)
+    with pytest.raises(ValueError):
+        yield from response.read()
+    assert response._closed
 
-    def test_text_custom_encoding(self):
-        def side_effect(*args, **kwargs):
-            fut = helpers.create_future(self.loop)
-            fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
-            return fut
-        self.response.headers = {
-            'CONTENT-TYPE': 'application/json'}
-        content = self.response.content = unittest.mock.Mock()
-        content.read.side_effect = side_effect
-        self.response._get_encoding = unittest.mock.Mock()
 
-        res = self.loop.run_until_complete(
-            self.response.text(encoding='cp1251'))
-        self.assertEqual(res, '{"тест": "пройден"}')
-        self.assertIsNone(self.response._connection)
-        self.assertFalse(self.response._get_encoding.called)
+@asyncio.coroutine
+def test_release(loop):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop)
+    fut = helpers.create_future(loop)
+    fut.set_result(b'')
+    content = response.content = mock.Mock()
+    content.readany.return_value = fut
 
-    def test_text_detect_encoding(self):
-        def side_effect(*args, **kwargs):
-            fut = helpers.create_future(self.loop)
-            fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
-            return fut
-        self.response.headers = {'CONTENT-TYPE': 'application/json'}
-        content = self.response.content = unittest.mock.Mock()
-        content.read.side_effect = side_effect
+    yield from response.release()
+    assert response._connection is None
 
-        self.loop.run_until_complete(self.response.read())
-        res = self.loop.run_until_complete(self.response.text())
-        self.assertEqual(res, '{"тест": "пройден"}')
-        self.assertIsNone(self.response._connection)
 
-    def test_text_after_read(self):
-        def side_effect(*args, **kwargs):
-            fut = helpers.create_future(self.loop)
-            fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
-            return fut
-        self.response.headers = {
-            'CONTENT-TYPE': 'application/json;charset=cp1251'}
-        content = self.response.content = unittest.mock.Mock()
-        content.read.side_effect = side_effect
+@asyncio.coroutine
+def test_text(loop):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop)
 
-        res = self.loop.run_until_complete(self.response.text())
-        self.assertEqual(res, '{"тест": "пройден"}')
-        self.assertIsNone(self.response._connection)
+    def side_effect(*args, **kwargs):
+        fut = helpers.create_future(loop)
+        fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
+        return fut
 
-    def test_json(self):
-        def side_effect(*args, **kwargs):
-            fut = helpers.create_future(self.loop)
-            fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
-            return fut
-        self.response.headers = {
-            'CONTENT-TYPE': 'application/json;charset=cp1251'}
-        content = self.response.content = unittest.mock.Mock()
-        content.read.side_effect = side_effect
+    response.headers = {
+        'Content-Type': 'application/json;charset=cp1251'}
+    content = response.content = mock.Mock()
+    content.read.side_effect = side_effect
 
-        res = self.loop.run_until_complete(self.response.json())
-        self.assertEqual(res, {'тест': 'пройден'})
-        self.assertIsNone(self.response._connection)
+    res = yield from response.text()
+    assert res == '{"тест": "пройден"}'
+    assert response._connection is None
 
-    def test_json_custom_loader(self):
-        self.response.headers = {
-            'CONTENT-TYPE': 'application/json;charset=cp1251'}
-        self.response._content = b'data'
 
-        def custom(content):
-            return content + '-custom'
+@asyncio.coroutine
+def test_text_custom_encoding(loop):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop)
 
-        res = self.loop.run_until_complete(self.response.json(loads=custom))
-        self.assertEqual(res, 'data-custom')
+    def side_effect(*args, **kwargs):
+        fut = helpers.create_future(loop)
+        fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
+        return fut
 
-    @unittest.mock.patch('aiohttp.client_reqrep.client_logger')
-    def test_json_no_content(self, m_log):
-        self.response.headers = {
-            'CONTENT-TYPE': 'data/octet-stream'}
-        self.response._content = b''
+    response.headers = {
+        'Content-Type': 'application/json'}
+    content = response.content = mock.Mock()
+    content.read.side_effect = side_effect
+    response._get_encoding = mock.Mock()
 
-        res = self.loop.run_until_complete(self.response.json())
-        self.assertIsNone(res)
-        m_log.warning.assert_called_with(
-            'Attempt to decode JSON with unexpected mimetype: %s',
-            'data/octet-stream')
+    res = yield from response.text(encoding='cp1251')
+    assert res == '{"тест": "пройден"}'
+    assert response._connection is None
+    assert not response._get_encoding.called
 
-    def test_json_override_encoding(self):
-        def side_effect(*args, **kwargs):
-            fut = helpers.create_future(self.loop)
-            fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
-            return fut
-        self.response.headers = {
-            'CONTENT-TYPE': 'application/json;charset=utf8'}
-        content = self.response.content = unittest.mock.Mock()
-        content.read.side_effect = side_effect
-        self.response._get_encoding = unittest.mock.Mock()
 
-        res = self.loop.run_until_complete(
-            self.response.json(encoding='cp1251'))
-        self.assertEqual(res, {'тест': 'пройден'})
-        self.assertIsNone(self.response._connection)
-        self.assertFalse(self.response._get_encoding.called)
+@asyncio.coroutine
+def test_text_detect_encoding(loop):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop)
 
-    def test_json_detect_encoding(self):
-        def side_effect(*args, **kwargs):
-            fut = helpers.create_future(self.loop)
-            fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
-            return fut
-        self.response.headers = {'CONTENT-TYPE': 'application/json'}
-        content = self.response.content = unittest.mock.Mock()
-        content.read.side_effect = side_effect
+    def side_effect(*args, **kwargs):
+        fut = helpers.create_future(loop)
+        fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
+        return fut
 
-        res = self.loop.run_until_complete(self.response.json())
-        self.assertEqual(res, {'тест': 'пройден'})
-        self.assertIsNone(self.response._connection)
+    response.headers = {'Content-Type': 'text/plain'}
+    content = response.content = mock.Mock()
+    content.read.side_effect = side_effect
 
-    def test_override_flow_control(self):
-        class MyResponse(ClientResponse):
-            flow_control_class = aiohttp.FlowControlDataQueue
-        response = MyResponse('get', 'http://my-cl-resp.org')
-        response._post_init(self.loop)
-        response._setup_connection(self.connection)
-        self.assertIsInstance(response.content, aiohttp.FlowControlDataQueue)
-        response.close()
+    yield from response.read()
+    res = yield from response.text()
+    assert res == '{"тест": "пройден"}'
+    assert response._connection is None
 
-    @unittest.mock.patch('aiohttp.client_reqrep.chardet')
-    def test_get_encoding_unknown(self, m_chardet):
+
+@asyncio.coroutine
+def test_text_after_read(loop):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop)
+
+    def side_effect(*args, **kwargs):
+        fut = helpers.create_future(loop)
+        fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
+        return fut
+
+    response.headers = {
+        'Content-Type': 'application/json;charset=cp1251'}
+    content = response.content = mock.Mock()
+    content.read.side_effect = side_effect
+
+    res = yield from response.text()
+    assert res == '{"тест": "пройден"}'
+    assert response._connection is None
+
+
+@asyncio.coroutine
+def test_json(loop):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop)
+
+    def side_effect(*args, **kwargs):
+        fut = helpers.create_future(loop)
+        fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
+        return fut
+
+    response.headers = {
+        'Content-Type': 'application/json;charset=cp1251'}
+    content = response.content = mock.Mock()
+    content.read.side_effect = side_effect
+
+    res = yield from response.json()
+    assert res == {'тест': 'пройден'}
+    assert response._connection is None
+
+
+@asyncio.coroutine
+def test_json_custom_loader(loop):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop)
+    response.headers = {
+        'Content-Type': 'application/json;charset=cp1251'}
+    response._content = b'data'
+
+    def custom(content):
+        return content + '-custom'
+
+    res = yield from response.json(loads=custom)
+    assert res == 'data-custom'
+
+
+@asyncio.coroutine
+def test_json_no_content(loop):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop)
+    response.headers = {
+        'Content-Type': 'data/octet-stream'}
+    response._content = b''
+
+    with mock.patch('aiohttp.client_reqrep.client_logger') as m_log:
+        res = yield from response.json()
+
+    assert res is None
+    m_log.warning.assert_called_with(
+        'Attempt to decode JSON with unexpected mimetype: %s',
+        'data/octet-stream')
+
+
+@asyncio.coroutine
+def test_json_override_encoding(loop):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop)
+
+    def side_effect(*args, **kwargs):
+        fut = helpers.create_future(loop)
+        fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
+        return fut
+
+    response.headers = {
+        'Content-Type': 'application/json;charset=utf8'}
+    content = response.content = mock.Mock()
+    content.read.side_effect = side_effect
+    response._get_encoding = mock.Mock()
+
+    res = yield from response.json(encoding='cp1251')
+    assert res == {'тест': 'пройден'}
+    assert response._connection is None
+    assert not response._get_encoding.called
+
+
+def test_override_flow_control(loop):
+    class MyResponse(ClientResponse):
+        flow_control_class = aiohttp.StreamReader
+    response = MyResponse('get', URL('http://my-cl-resp.org'))
+    response._post_init(loop)
+    response._setup_connection(mock.Mock())
+    assert isinstance(response.content, aiohttp.StreamReader)
+    response.close()
+
+
+def test_get_encoding_unknown(loop):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop)
+
+    response.headers = {'Content-Type': 'application/json'}
+    with mock.patch('aiohttp.client_reqrep.chardet') as m_chardet:
         m_chardet.detect.return_value = {'encoding': None}
+        assert response._get_encoding() == 'utf-8'
 
-        self.response.headers = {'CONTENT-TYPE': 'application/json'}
-        self.assertEqual(self.response._get_encoding(), 'utf-8')
 
-    def test_close_deprecated(self):
-        self.response._connection = self.connection
-        with self.assertWarns(DeprecationWarning):
-            self.response.close(force=False)
-        self.assertIsNone(self.response._connection)
+def test_raise_for_status_2xx():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.status = 200
+    response.reason = 'OK'
+    response.raise_for_status()  # should not raise
 
-    def test_raise_for_status_2xx(self):
-        self.response.status = 200
-        self.response.reason = 'OK'
-        self.response.raise_for_status()  # should not raise
 
-    def test_raise_for_status_4xx(self):
-        self.response.status = 409
-        self.response.reason = 'CONFLICT'
-        with self.assertRaises(aiohttp.HttpProcessingError) as cm:
-            self.response.raise_for_status()
-        self.assertEqual(str(cm.exception.code), '409')
-        self.assertEqual(str(cm.exception.message), "CONFLICT")
+def test_raise_for_status_4xx():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.status = 409
+    response.reason = 'CONFLICT'
+    with pytest.raises(aiohttp.HttpProcessingError) as cm:
+        response.raise_for_status()
+    assert str(cm.value.code) == '409'
+    assert str(cm.value.message) == "CONFLICT"
+
+
+def test_resp_host():
+    response = ClientResponse('get', URL('http://del-cl-resp.org'))
+    with pytest.warns(DeprecationWarning):
+        assert 'del-cl-resp.org' == response.host
+
+
+def test_content_type():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {'Content-Type': 'application/json;charset=cp1251'}
+
+    assert 'application/json' == response.content_type
+
+
+def test_content_type_no_header():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {}
+
+    assert 'application/octet-stream' == response.content_type
+
+
+def test_charset():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {'Content-Type': 'application/json;charset=cp1251'}
+
+    assert 'cp1251' == response.charset
+
+
+def test_charset_no_header():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {}
+
+    assert response.charset is None
+
+
+def test_charset_no_charset():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {'Content-Type': 'application/json'}
+
+    assert response.charset is None

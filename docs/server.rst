@@ -1,7 +1,7 @@
 .. _aiohttp-server:
 
-Low-level HTTP Server
-=====================
+Deprecated Low-level Server
+===========================
 
 .. currentmodule:: aiohttp.server
 
@@ -9,6 +9,13 @@ Low-level HTTP Server
 
    This topic describes the low-level HTTP support. For high-level
    interface please take a look on :mod:`aiohttp.web`.
+
+.. deprecated:: 1.2
+
+   The module has been deprecated and will be eventually removed.  Use
+   :ref:`aiohttp-web-lowlevel` instead.
+
+   The new solution provides much more user friendly API.
 
 Run a basic server
 ------------------
@@ -123,7 +130,7 @@ SSL
 ---
 
 To use asyncio's SSL support, just pass an SSLContext object to the
-:meth:`asyncio.BaseEventLoop.create_server` method of the loop::
+:meth:`asyncio.AbstractEventLoop.create_server` method of the loop::
 
     import ssl
 
@@ -145,3 +152,4 @@ Reference
 
 
 .. disqus::
+  :title: aiohttp low-level server

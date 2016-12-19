@@ -5,10 +5,10 @@ import cProfile
 import gc
 import random
 import socket
-from statistics import stdev, mean, median
 import string
 import sys
-from multiprocessing import Process, set_start_method, Barrier
+from multiprocessing import Barrier, Process, set_start_method
+from statistics import mean, median, stdev
 
 import aiohttp
 
@@ -50,7 +50,7 @@ def run_aiohttp(host, port, barrier, profile):
         app.router.add_route('GET', '/stop', stop)
         app.router.add_route('GET', '/test/{name}', test)
 
-        handler = app.make_handler(keep_alive=15, timeout=None)
+        handler = app.make_handler(keep_alive=15, timeout=0)
         srv = yield from loop.create_server(handler, host, port)
         return srv, app, handler
 
@@ -63,8 +63,8 @@ def run_aiohttp(host, port, barrier, profile):
 
     loop.run_forever()
     srv.close()
-    loop.run_until_complete(handler.finish_connections())
     loop.run_until_complete(srv.wait_closed())
+    loop.run_until_complete(handler.finish_connections())
     loop.close()
 
     if profile:
@@ -297,6 +297,7 @@ def main(argv):
                       times_stdev,
                       times_median))
     return 0
+
 
 ARGS = argparse.ArgumentParser(description="Run benchmark.")
 ARGS.add_argument(

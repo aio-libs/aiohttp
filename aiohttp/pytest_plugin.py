@@ -3,8 +3,11 @@ import contextlib
 
 import pytest
 
-from .test_utils import (TestClient, loop_context, setup_test_loop,
-                         teardown_test_loop)
+from aiohttp.web import Application
+
+from .test_utils import unused_port as _unused_port
+from .test_utils import (RawTestServer, TestClient, TestServer, loop_context,
+                         setup_test_loop, teardown_test_loop)
 
 
 @contextlib.contextmanager
@@ -49,19 +52,90 @@ def loop():
         yield _loop
 
 
+@pytest.fixture
+def unused_port():
+    return _unused_port
+
+
 @pytest.yield_fixture
-def test_client(loop):
-    client = None
+def test_server(loop):
+    servers = []
 
     @asyncio.coroutine
-    def _create_from_app_factory(app_factory, *args, **kwargs):
-        nonlocal client
-        app = app_factory(loop, *args, **kwargs)
-        client = TestClient(app)
+    def go(app, **kwargs):
+        assert app.loop is loop, \
+            "Application is attached to other event loop"
+
+        server = TestServer(app)
+        yield from server.start_server(**kwargs)
+        servers.append(server)
+        return server
+
+    yield go
+
+    @asyncio.coroutine
+    def finalize():
+        while servers:
+            yield from servers.pop().close()
+
+    loop.run_until_complete(finalize())
+
+
+@pytest.yield_fixture
+def raw_test_server(loop):
+    servers = []
+
+    @asyncio.coroutine
+    def go(handler, **kwargs):
+        server = RawTestServer(handler, loop=loop)
+        yield from server.start_server(**kwargs)
+        servers.append(server)
+        return server
+
+    yield go
+
+    @asyncio.coroutine
+    def finalize():
+        while servers:
+            yield from servers.pop().close()
+
+    loop.run_until_complete(finalize())
+
+
+@pytest.yield_fixture
+def test_client(loop):
+    clients = []
+
+    @asyncio.coroutine
+    def go(__param, *args, **kwargs):
+        if isinstance(__param, Application):
+            assert not args, "args should be empty"
+            assert __param.loop is loop, \
+                "Application is attached to other event loop"
+            client = TestClient(__param, **kwargs)
+        elif isinstance(__param, TestServer):
+            assert not args, "args should be empty"
+            assert __param.app.loop is loop, \
+                "TestServer is attached to other event loop"
+            client = TestClient(__param, **kwargs)
+        elif isinstance(__param, RawTestServer):
+            assert not args, "args should be empty"
+            assert __param._loop is loop, \
+                "TestServer is attached to other event loop"
+            client = TestClient(__param, **kwargs)
+        else:
+            __param = __param(loop, *args, **kwargs)
+            client = TestClient(__param)
+
         yield from client.start_server()
+        clients.append(client)
         return client
 
-    yield _create_from_app_factory
+    yield go
 
-    if client:
-        client.close()
+    @asyncio.coroutine
+    def finalize():
+        while clients:
+            yield from clients.pop().close()
+
+    loop.run_until_complete(finalize())

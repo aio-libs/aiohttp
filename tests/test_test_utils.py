@@ -1,12 +1,17 @@
 import asyncio
-import aiohttp
-from aiohttp import web
-from aiohttp.test_utils import (
-    TestClient, loop_context,
-    AioHTTPTestCase, unittest_run_loop,
-    setup_test_loop, teardown_test_loop
-)
+from unittest import mock
+
 import pytest
+from multidict import CIMultiDict, CIMultiDictProxy
+from yarl import URL
+
+import aiohttp
+from aiohttp import web, web_reqrep
+from aiohttp.test_utils import TestClient as _TestClient
+from aiohttp.test_utils import TestServer as _TestServer
+from aiohttp.test_utils import (AioHTTPTestCase, RawTestServer, loop_context,
+                                make_mocked_request, setup_test_loop,
+                                teardown_test_loop, unittest_run_loop)
 
 
 def _create_example_app(loop):
@@ -21,7 +26,7 @@ def _create_example_app(loop):
         ws = web.WebSocketResponse()
         yield from ws.prepare(request)
         msg = yield from ws.receive()
-        if msg.tp == aiohttp.MsgType.text:
+        if msg.type == aiohttp.WSMsgType.TEXT:
             if msg.data == 'close':
                 yield from ws.close()
             else:
@@ -29,16 +34,23 @@ def _create_example_app(loop):
 
         return ws
 
+    @asyncio.coroutine
+    def cookie_handler(request):
+        resp = web.Response(body=b"Hello, world")
+        resp.set_cookie('cookie', 'val')
+        return resp
+
     app = web.Application(loop=loop)
     app.router.add_route('*', '/', hello)
     app.router.add_route('*', '/websocket', websocket_handler)
+    app.router.add_route('*', '/cookie', cookie_handler)
     return app
 
 
 def test_full_server_scenario():
     with loop_context() as loop:
         app = _create_example_app(loop)
-        with TestClient(app) as client:
+        with _TestClient(app) as client:
 
             @asyncio.coroutine
             def test_get_route():
@@ -54,30 +66,29 @@ def test_full_server_scenario():
 def test_server_with_create_test_teardown():
     with loop_context() as loop:
         app = _create_example_app(loop)
-        client = TestClient(app)
+        with _TestClient(app) as client:
 
-        @asyncio.coroutine
-        def test_get_route():
-            resp = yield from client.request("GET", "/")
-            assert resp.status == 200
-            text = yield from resp.text()
-            assert "Hello, world" in text
+            @asyncio.coroutine
+            def test_get_route():
+                resp = yield from client.request("GET", "/")
+                assert resp.status == 200
+                text = yield from resp.text()
+                assert "Hello, world" in text
 
-        loop.run_until_complete(test_get_route())
-        client.close()
+            loop.run_until_complete(test_get_route())
 
 
 def test_test_client_close_is_idempotent():
     """
     a test client, called multiple times, should
-    not attempt to close the loop again.
+    not attempt to close the server again.
     """
     loop = setup_test_loop()
     app = _create_example_app(loop)
-    client = TestClient(app)
-    client.close()
+    client = _TestClient(app)
+    loop.run_until_complete(client.close())
+    loop.run_until_complete(client.close())
     teardown_test_loop(loop)
-    client.close()
 
 
 class TestAioHTTPTestCase(AioHTTPTestCase):
@@ -118,15 +129,15 @@ def app(loop):
 
 @pytest.yield_fixture
 def test_client(loop, app):
-    client = TestClient(app)
+    client = _TestClient(app)
+    loop.run_until_complete(client.start_server())
     yield client
-    client.close()
+    loop.run_until_complete(client.close())
 
 
 def test_get_route(loop, test_client):
     @asyncio.coroutine
     def test_get_route():
-        nonlocal test_client
         resp = yield from test_client.request("GET", "/")
         assert resp.status == 200
         text = yield from resp.text()
@@ -135,20 +146,28 @@ def test_get_route(loop, test_client):
     loop.run_until_complete(test_get_route())
 
 
-@pytest.mark.run_loop
 @asyncio.coroutine
 def test_client_websocket(loop, test_client):
     resp = yield from test_client.ws_connect("/websocket")
     resp.send_str("foo")
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.MsgType.text
+    assert msg.type == aiohttp.WSMsgType.TEXT
     assert "foo" in msg.data
     resp.send_str("close")
     msg = yield from resp.receive()
-    assert msg.tp == aiohttp.MsgType.close
+    assert msg.type == aiohttp.WSMsgType.CLOSE
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
+def test_client_cookie(loop, test_client):
+    assert not test_client.session.cookie_jar
+    yield from test_client.get("/cookie")
+    cookies = list(test_client.session.cookie_jar)
+    assert cookies[0].key == 'cookie'
+    assert cookies[0].value == 'val'
+
+
+@asyncio.coroutine
 @pytest.mark.parametrize("method", [
     "get", "post", "options", "post", "put", "patch", "delete"
 ])
@@ -160,8 +179,109 @@ def test_test_client_methods(method, loop, test_client):
     assert "Hello, world" in text
 
 
-@pytest.mark.run_loop
 @asyncio.coroutine
 def test_test_client_head(loop, test_client):
     resp = yield from test_client.head("/")
     assert resp.status == 200
+
+
+@pytest.mark.parametrize(
+    "headers", [{'token': 'x'}, CIMultiDict({'token': 'x'}), {}])
+def test_make_mocked_request(headers):
+    req = make_mocked_request('GET', '/', headers=headers)
+    assert req.method == "GET"
+    assert req.path == "/"
+    assert isinstance(req, web_reqrep.Request)
+    assert isinstance(req.headers, CIMultiDictProxy)
+
+
+def test_make_mocked_request_sslcontext():
+    req = make_mocked_request('GET', '/')
+    assert req.transport.get_extra_info('sslcontext') is None
+
+
+def test_make_mocked_request_unknown_extra_info():
+    req = make_mocked_request('GET', '/')
+    assert req.transport.get_extra_info('unknown_extra_info') is None
+
+
+def test_make_mocked_request_app():
+    app = mock.Mock()
+    req = make_mocked_request('GET', '/', app=app)
+    assert req.app is app
+
+
+def test_make_mocked_request_content():
+    payload = mock.Mock()
+    req = make_mocked_request('GET', '/', payload=payload)
+    assert req.content is payload
+
+
+def test_make_mocked_request_transport():
+    transport = mock.Mock()
+    req = make_mocked_request('GET', '/', transport=transport)
+    assert req.transport is transport
+
+
+def test_test_client_props(loop):
+    app = _create_example_app(loop)
+    client = _TestClient(app, host='localhost')
+    assert client.host == 'localhost'
+    assert client.port is None
+    with client:
+        assert isinstance(client.port, int)
+        assert client.server is not None
+    assert client.port is None
+
+
+def test_test_server_context_manager(loop):
+    app = _create_example_app(loop)
+    with _TestServer(app) as server:
+        @asyncio.coroutine
+        def go():
+            client = aiohttp.ClientSession(loop=loop)
+            resp = yield from client.head(server.make_url('/'))
+            assert resp.status == 200
+            resp.close()
+            yield from client.close()
+
+        loop.run_until_complete(go())
+
+
+def test_client_scheme_mutually_exclusive_with_server(loop):
+    app = _create_example_app(loop)
+    server = _TestServer(app)
+    with pytest.raises(ValueError):
+        _TestClient(server, scheme='http')
+
+
+def test_client_host_mutually_exclusive_with_server(loop):
+    app = _create_example_app(loop)
+    server = _TestServer(app)
+    with pytest.raises(ValueError):
+        _TestClient(server, host='127.0.0.1')
+
+
+def test_client_unsupported_arg():
+    with pytest.raises(TypeError):
+        _TestClient('string')
+
+
+def test_server_make_url_yarl_compatibility(loop):
+    app = _create_example_app(loop)
+    with _TestServer(app) as server:
+        make_url = server.make_url
+        assert make_url(URL('/foo')) == make_url('/foo')
+        with pytest.raises(AssertionError):
+            make_url('http://foo.com')
+        with pytest.raises(AssertionError):
+            make_url(URL('http://foo.com'))
+
+
+def test_raw_server_implicit_loop(loop):
+    @asyncio.coroutine
+    def handler(request):
+        pass
+    asyncio.set_event_loop(loop)
+    srv = RawTestServer(handler)
+    assert srv._loop is loop

@@ -7,14 +7,15 @@ import re
 import string
 import sys
 import zlib
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 from wsgiref.handlers import format_date_time
-from multidict import CIMultiDict, upstr
+
+from multidict import CIMultiDict, istr
 
 import aiohttp
+
 from . import errors, hdrs
 from .log import internal_logger
-from .helpers import reify
 
 __all__ = ('HttpMessage', 'Request', 'Response',
            'HttpVersion', 'HttpVersion10', 'HttpVersion11',
@@ -100,7 +101,9 @@ class HttpParser:
                     header_length += len(line)
                     if header_length > self.max_field_size:
                         raise errors.LineTooLong(
-                            'limit request headers fields size')
+                            'request header field {}'.format(
+                                bname.decode("utf8", "xmlcharrefreplace")),
+                            self.max_field_size)
                     bvalue.append(line)
 
                     # next line
@@ -111,11 +114,13 @@ class HttpParser:
             else:
                 if header_length > self.max_field_size:
                     raise errors.LineTooLong(
-                        'limit request headers fields size')
+                        'request header field {}'.format(
+                            bname.decode("utf8", "xmlcharrefreplace")),
+                        self.max_field_size)
 
             bvalue = bvalue.strip()
 
-            name = bname.decode('utf-8', 'surrogateescape')
+            name = istr(bname.decode('utf-8', 'surrogateescape'))
             value = bvalue.decode('utf-8', 'surrogateescape')
 
             # keep-alive and encoding
@@ -171,7 +176,7 @@ class HttpRequestParser(HttpParser):
             raw_data = yield from buf.readuntil(
                 b'\r\n\r\n', self.max_headers)
         except errors.LineLimitExceededParserError as exc:
-            raise errors.LineTooLong(exc.limit) from None
+            raise errors.LineTooLong('request header', exc.limit) from None
 
         lines = raw_data.split(b'\r\n')
 
@@ -225,7 +230,7 @@ class HttpResponseParser(HttpParser):
             raw_data = yield from buf.readuntil(
                 b'\r\n\r\n', self.max_line_size + self.max_headers)
         except errors.LineLimitExceededParserError as exc:
-            raise errors.LineTooLong(exc.limit) from None
+            raise errors.LineTooLong('response header', exc.limit) from None
 
         lines = raw_data.split(b'\r\n')
 
@@ -553,6 +558,7 @@ class HttpMessage(ABC):
         self.output_length = 0
         self.headers_length = 0
         self._output_size = 0
+        self._cache = {}
 
     @property
     @abstractmethod
@@ -608,7 +614,7 @@ class HttpMessage(ABC):
             'Header {!r} should have string value, got {!r}'.format(
                 name, value)
 
-        name = upstr(name)
+        name = istr(name)
         value = value.strip()
 
         if name == hdrs.CONTENT_LENGTH:
@@ -705,8 +711,6 @@ class HttpMessage(ABC):
 
         if self._send_headers and not self.headers_sent:
             self.send_headers()
-
-        assert self.writer is not None, 'send_headers() is not called.'
 
         if self.filter:
             chunk = self.filter.send(chunk)
@@ -860,7 +864,7 @@ class Response(HttpMessage):
     def reason(self):
         return self._reason
 
-    @reify
+    @property
     def status_line(self):
         version = self.version
         return 'HTTP/{}.{} {} {}\r\n'.format(
@@ -868,7 +872,7 @@ class Response(HttpMessage):
 
     def autochunked(self):
         return (self.length is None and
-                self.version >= HttpVersion11)
+                self._version >= HttpVersion11)
 
     def _add_default_headers(self):
         super()._add_default_headers()
@@ -877,6 +881,12 @@ class Response(HttpMessage):
             # format_date_time(None) is quite expensive
             self.headers.setdefault(hdrs.DATE, format_date_time(None))
         self.headers.setdefault(hdrs.SERVER, self.SERVER_SOFTWARE)
+
+
+class WebResponse(Response):
+    """For usage in aiohttp.web only"""
+    def _add_default_headers(self):
+        pass
 
 
 class Request(HttpMessage):
@@ -903,12 +913,12 @@ class Request(HttpMessage):
     def path(self):
         return self._path
 
-    @reify
+    @property
     def status_line(self):
         return '{0} {1} HTTP/{2[0]}.{2[1]}\r\n'.format(
             self.method, self.path, self.version)
 
     def autochunked(self):
         return (self.length is None and
-                self.version >= HttpVersion11 and
+                self._version >= HttpVersion11 and
                 self.status not in (304, 204))

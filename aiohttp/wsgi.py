@@ -15,7 +15,7 @@ import sys
 from urllib.parse import urlsplit
 
 import aiohttp
-from aiohttp import server, hdrs
+from aiohttp import hdrs, server
 
 __all__ = ('WSGIServerHttpProtocol',)
 
@@ -65,6 +65,7 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
         script_name = self.SCRIPT_NAME
 
         for hdr_name, hdr_value in message.headers.items():
+            hdr_name = hdr_name.upper()
             if hdr_name == 'SCRIPT_NAME':
                 script_name = hdr_value
             elif hdr_name == 'CONTENT-TYPE':

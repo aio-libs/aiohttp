@@ -3,59 +3,86 @@ Contributors
 
 A. Jesse Jiryu Davis
 Alejandro Gómez
-Alex Khomchenko
-Alex Lisovoy
-Alex Key
+Aleksandr Danshyn
+Aleksey Kutepov
+Alex Hayes
 Alexander Bayandin
 Alexander Karpinsky
+Alexander Koshevoy
 Alexander Malev
+Alexander Mohr
 Alexander Shorin
 Alexander Travov
+Alexandru Mihai
+Alexey Firsov
 Alexey Popravka
+Alex Key
+Alex Khomchenko
+Alex Lisovoy
 Amy Boyle
 Andrei Ursulenko
 Andrej Antonov
+Andrew Leech
 Andrew Svetlov
 Andrii Soldatenko
 Anton Kasyanov
 Arthur Darcet
 Ben Bader
 Benedikt Reinartz
+Boris Feld
 Brett Cannon
 Brian C. Lane
-Boris Feld
+Brian Muller
 Carl George
 Chien-Wei Huang
 Chih-Yuan Chen
+Chris AtLee
 Chris Laws
 Chris Moore
+Christopher Schmitt
 Daniel García
 Daniel Nelson
+Danny Song
 David Michael Brown
+Denis Matiychuk
 Dima Veselov
 Dimitar Dimitrov
+Dmitry Shamov
+Dmitry Trofimov
 Dmytro Kuznetsov
 Dustin J. Mitchell
+Eduard Iskandarov
 Elizabeth Leddy
+Enrique Saez
 Erich Healy
 Eugene Chernyshov
+Eugene Naydenov
 Frederik Gladhorn
+Frederik Peter Aalund
 Gabriel Tremblay
 Gennady Andreyev
 Georges Dubus
 Greg Holt
+Gregory Haynes
+Günther Jena
 Hugo Herter
 Igor Pavlov
 Ingmar Steen
 Jacob Champion
 Jaesung Lee
+Jake Davis
+Jakub Wilk
 Jashandeep Sohi
 Jeroen van der Heijden
 Jesus Cea
+Jinkyu Yi
 Joel Watts
+Joongi Kim
 Julien Duponchelle
 Junjie Tao
+Justas Trimailovas
 Kay Zheng
+Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
 Kyrylo Perevozchikov
@@ -64,29 +91,39 @@ Louis-Philippe Huberdeau
 Lubomir Gelo
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
+Manuel Miranda
 Marco Paolini
+Mariano Anaya
 Martin Richard
 Mathias Fröjdman
 Matthieu Hauglustaine
 Michael Ihnatenko
+Mikhail Kashkin
 Mikhail Lukyanchenko
 Misha Behersky
 Morgan Delahaye-Prat
 Moss Collum
+Mun Gwan-gyeong
 Nicolas Braem
 Nikolay Novik
 Olaf Conradi
+Pahaz Blinov <pahaz.blinov@gmail.com>
 Pankaj Pandey
+Pau Freixes
 Paul Colomiets
+Paulus Schoutsen
 Philipp A.
+Rafael Viotti
 Raúl Cumplido
 "Required Field" <requiredfield256@gmail.com>
 Robert Lu
 Samuel Colvin
 Sebastian Hanula
 Sebastian Hüther
+SeongSoo Cho
 Sergey Ninua
 Sergey Skripnick
+Serhii Kostel
 Simon Kennedy
 Sin-Woo Bang
 Stanislas Plum
@@ -94,20 +131,26 @@ Stanislav Prokop
 Stephen Granade
 Steven Seguin
 Sviatoslav Bulbakha
+Taha Jahangir
 Taras Voinarovskyi
-Tolga Tezel
 Thomas Grainger
+Tolga Tezel
 Vaibhav Sagar
+Vamsi Krishna Avula
 Vasyl Baran
+Vikas Kawadia
 Vitalik Verhovodov
 Vitaly Haritonsky
 Vitaly Magerya
+Vladimir Kozlovski
 Vladimir Rutsky
 Vladimir Shulyak
 Vladimir Zakharov
-W. Trevor King
 Willem de Groot
+Wilson Ong
+W. Trevor King
 Yannick Koechlin
+Young-Ho Cha
 Yury Selivanov
 Yusuke Tsutsumi
 Марк Коренберг

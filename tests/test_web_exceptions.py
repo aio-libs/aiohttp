@@ -1,12 +1,12 @@
+import asyncio
 import collections
-import pytest
 import re
-from multidict import CIMultiDict
 from unittest import mock
-from aiohttp.web import Request
-from aiohttp.protocol import RawRequestMessage, HttpVersion11
+
+import pytest
 
 from aiohttp import signals, web
+from aiohttp.test_utils import make_mocked_request
 
 
 @pytest.fixture
@@ -18,10 +18,6 @@ def buf():
 def request(buf):
     method = 'GET'
     path = '/'
-    headers = CIMultiDict()
-    transport = mock.Mock()
-    payload = mock.Mock()
-    reader = mock.Mock()
     writer = mock.Mock()
     writer.drain.return_value = ()
 
@@ -31,10 +27,7 @@ def request(buf):
     app = mock.Mock()
     app._debug = False
     app.on_response_prepare = signals.Signal(app)
-    message = RawRequestMessage(method, path, HttpVersion11, headers, [],
-                                False, False)
-    req = Request(app, message, payload,
-                  transport, reader, writer)
+    req = make_mocked_request(method, path, app=app, writer=writer)
     return req
 
 
@@ -48,17 +41,17 @@ def test_all_http_exceptions_exported():
             assert name in web.__all__
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_HTTPOk(buf, request):
     resp = web.HTTPOk()
     yield from resp.prepare(request)
     yield from resp.write_eof()
     txt = buf.decode('utf8')
     assert re.match(('HTTP/1.1 200 OK\r\n'
-                     'CONTENT-TYPE: text/plain; charset=utf-8\r\n'
-                     'CONTENT-LENGTH: 7\r\n'
-                     'DATE: .+\r\n'
-                     'SERVER: .+\r\n\r\n'
+                     'Content-Type: text/plain; charset=utf-8\r\n'
+                     'Content-Length: 7\r\n'
+                     'Date: .+\r\n'
+                     'Server: .+\r\n\r\n'
                      '200: OK'), txt)
 
 
@@ -82,7 +75,7 @@ def test_terminal_classes_has_status_code():
     assert 1 == codes.most_common(1)[0][1]
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_HTTPFound(buf, request):
     resp = web.HTTPFound(location='/redirect')
     assert '/redirect' == resp.location
@@ -91,11 +84,11 @@ def test_HTTPFound(buf, request):
     yield from resp.write_eof()
     txt = buf.decode('utf8')
     assert re.match('HTTP/1.1 302 Found\r\n'
-                    'CONTENT-TYPE: text/plain; charset=utf-8\r\n'
-                    'CONTENT-LENGTH: 10\r\n'
-                    'LOCATION: /redirect\r\n'
-                    'DATE: .+\r\n'
-                    'SERVER: .+\r\n\r\n'
+                    'Content-Type: text/plain; charset=utf-8\r\n'
+                    'Content-Length: 10\r\n'
+                    'Location: /redirect\r\n'
+                    'Date: .+\r\n'
+                    'Server: .+\r\n\r\n'
                     '302: Found', txt)
 
 
@@ -107,7 +100,7 @@ def test_HTTPFound_empty_location():
         web.HTTPFound(location=None)
 
 
-@pytest.mark.run_loop
+@asyncio.coroutine
 def test_HTTPMethodNotAllowed(buf, request):
     resp = web.HTTPMethodNotAllowed('get', ['POST', 'PUT'])
     assert 'GET' == resp.method
@@ -117,11 +110,11 @@ def test_HTTPMethodNotAllowed(buf, request):
     yield from resp.write_eof()
     txt = buf.decode('utf8')
     assert re.match('HTTP/1.1 405 Method Not Allowed\r\n'
-                    'CONTENT-TYPE: text/plain; charset=utf-8\r\n'
-                    'CONTENT-LENGTH: 23\r\n'
-                    'ALLOW: POST,PUT\r\n'
-                    'DATE: .+\r\n'
-                    'SERVER: .+\r\n\r\n'
+                    'Content-Type: text/plain; charset=utf-8\r\n'
+                    'Content-Length: 23\r\n'
+                    'Allow: POST,PUT\r\n'
+                    'Date: .+\r\n'
+                    'Server: .+\r\n\r\n'
                     '405: Method Not Allowed', txt)
 
 

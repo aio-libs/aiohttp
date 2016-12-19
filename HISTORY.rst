@@ -1,3 +1,461 @@
+1.1.6 (2016-11-28)
+------------------
+
+- Fix `BodyPartReader.read_chunk` bug about returns zero bytes before
+  `EOF` #1428
+
+1.1.5 (2016-11-16)
+------------------
+
+- Fix static file serving in fallback mode #1401
+
+1.1.4 (2016-11-14)
+------------------
+
+- Make `TestServer.make_url` compatible with `yarl.URL` #1389
+
+- Generate informative exception on redirects from server which
+  doesn't provide redirection headers #1396
+
+
+1.1.3 (2016-11-10)
+------------------
+
+- Support *root* resources for sub-applications #1379
+
+
+1.1.2 (2016-11-08)
+------------------
+
+- Allow starting variables with an underscore #1379
+
+- Properly process UNIX sockets by gunicorn worker #1375
+
+- Fix ordering for `FrozenList`
+
+- Don't propagate pre and post signals to sub-application #1377
+
+1.1.1 (2016-11-04)
+------------------
+
+- Fix documentation generation #1120
+
+1.1.0 (2016-11-03)
+------------------
+
+- Drop deprecated `WSClientDisconnectedError` (BACKWARD INCOMPATIBLE)
+
+- Use `yarl.URL` in client API. The change is 99% backward compatible
+  but `ClientResponse.url` is an `yarl.URL` instance now. #1217
+
+- Close idle keep-alive connections on shutdown #1222
+
+- Modify regex in AccessLogger to accept underscore and numbers #1225
+
+- Use `yarl.URL` in web server API. `web.Request.rel_url` and
+  `web.Request.url` are added. URLs and templates are percent-encoded
+  now. #1224
+
+- Accept `yarl.URL` by server redirections #1278
+
+- Return `yarl.URL` by `.make_url()` testing utility #1279
+
+- Properly format IPv6 addresses by `aiohttp.web.run_app` #1139
+
+- Use `yarl.URL` by server API #1288
+
+  * Introduce `resource.url_for()`, deprecate `resource.url()`.
+
+  * Implement `StaticResource`.
+
+  * Inherit `SystemRoute` from `AbstractRoute`
+
+  * Drop old-style routes: `Route`, `PlainRoute`, `DynamicRoute`,
+    `StaticRoute`, `ResourceAdapter`.
+
+- Revert `resp.url` back to `str`, introduce `resp.url_obj` #1292
+
+- Raise ValueError if BasicAuth login has a ":" character #1307
+
+- Fix bug when ClientRequest send payload file with opened as
+  open('filename', 'r+b') #1306
+
+- Enhancement to AccessLogger (pass *extra* dict) #1303
+
+- Show more verbose message on import errors #1319
+
+- Added save and load functionality for `CookieJar` #1219
+
+- Added option on `StaticRoute` to follow symlinks #1299
+
+- Force encoding of `application/json` content type to utf-8 #1339
+
+- Fix invalid invocations of `errors.LineTooLong` #1335
+
+- Websockets: Stop `async for` iteration when connection is closed #1144
+
+- Ensure TestClient HTTP methods return a context manager #1318
+
+- Raise `ClientDisconnectedError` to `FlowControlStreamReader` read function
+  if `ClientSession` object is closed by client when reading data. #1323
+
+- Document deployment without `Gunicorn` #1120
+
+- Add deprecation warning for MD5 and SHA1 digests when used for fingerprint
+  of site certs in TCPConnector. #1186
+
+- Implement sub-applications #1301
+
+- Don't inherit `web.Request` from `dict` but implement
+  `MutableMapping` protocol.
+
+- Implement frozen signals
+
+- Don't inherit `web.Application` from `dict` but implement
+  `MutableMapping` protocol.
+
+- Support freezing for web applications
+
+- Accept access_log parameter in `web.run_app`, use `None` to disable logging
+
+- Don't flap `tcp_cork` and `tcp_nodelay` in regular request handling.
+  `tcp_nodelay` is still enabled by default.
+
+- Improve performance of web server by removing premature computing of
+  Content-Type if the value was set by `web.Response` constructor.
+
+  While the patch boosts speed of trivial `web.Response(text='OK',
+  content_type='text/plain)` very well please don't expect significant
+  boost of your application -- a couple DB requests and business logic
+  is still the main bottleneck.
+
+- Boost performance by adding a custom time service #1350
+
+- Extend `ClientResponse` with `content_type` and `charset`
+  properties like in `web.Request`. #1349
+
+- Disable aiodns by default #559
+
+- Don't flap `tcp_cork` in client code, use TCP_NODELAY mode by default.
+
+- Implement `web.Request.clone()` #1361
+
+1.0.5 (2016-10-11)
+------------------
+
+- Fix StreamReader._read_nowait to return all available
+  data up to the requested amount #1297
+
+
+1.0.4 (2016-09-22)
+------------------
+
+- Fix FlowControlStreamReader.read_nowait so that it checks
+  whether the transport is paused #1206
+
+
+1.0.2 (2016-09-22)
+------------------
+
+- Make CookieJar compatible with 32-bit systems #1188
+
+- Add missing `WSMsgType` to `web_ws.__all__`, see #1200
+
+- Fix `CookieJar` ctor when called with `loop=None` #1203
+
+- Fix broken upper-casing in wsgi support #1197
+
+
+1.0.1 (2016-09-16)
+------------------
+
+- Restore `aiohttp.web.MsgType` alias for `aiohttp.WSMsgType` for sake
+  of backward compatibility #1178
+
+- Tune alabaster schema.
+
+- Use `text/html` content type for displaying index pages by static
+  file handler.
+
+- Fix `AssertionError` in static file handling #1177
+
+- Fix access log formats `%O` and `%b` for static file handling
+
+- Remove `debug` setting of GunicornWorker, use `app.debug`
+  to control its debug-mode instead
+
+
+1.0.0 (2016-09-16)
+-------------------
+
+- Change default size for client session's connection pool from
+  unlimited to 20 #977
+
+- Add IE support for cookie deletion. #994
+
+- Remove deprecated `WebSocketResponse.wait_closed` method (BACKWARD
+  INCOMPATIBLE)
+
+- Remove deprecated `force` parameter for `ClientResponse.close`
+  method (BACKWARD INCOMPATIBLE)
+
+- Avoid using of mutable CIMultiDict kw param in make_mocked_request
+  #997
+
+- Make WebSocketResponse.close a little bit faster by avoiding new
+  task creating just for timeout measurement
+
+- Add `proxy` and `proxy_auth` params to `client.get()` and family,
+  deprecate `ProxyConnector` #998
+
+- Add support for websocket send_json and receive_json, synchronize
+  server and client API for websockets #984
+
+- Implement router shourtcuts for most useful HTTP methods, use
+  `app.router.add_get()`, `app.router.add_post()` etc. instead of
+  `app.router.add_route()` #986
+
+- Support SSL connections for gunicorn worker #1003
+
+- Move obsolete examples to legacy folder
+
+- Switch to multidict 2.0 and title-cased strings #1015
+
+- `{FOO}e` logger format is case-sensitive now
+
+- Fix logger report for unix socket 8e8469b
+
+- Rename aiohttp.websocket to aiohttp._ws_impl
+
+- Rename aiohttp.MsgType tp aiohttp.WSMsgType
+
+- Introduce aiohttp.WSMessage officially
+
+- Rename Message -> WSMessage
+
+- Remove deprecated decode param from resp.read(decode=True)
+
+- Use 5min default client timeout #1028
+
+- Relax HTTP method validation in UrlDispatcher #1037
+
+- Pin minimal supported asyncio version to 3.4.2+ (`loop.is_close()`
+  should be present)
+
+- Remove aiohttp.websocket module (BACKWARD INCOMPATIBLE)
+  Please use high-level client and server approaches
+
+- Link header for 451 status code is mandatory
+
+- Fix test_client fixture to allow multiple clients per test #1072
+
+- make_mocked_request now accepts dict as headers #1073
+
+- Add Python 3.5.2/3.6+ compatibility patch for async generator
+  protocol change #1082
+
+- Improvement test_client can accept instance object #1083
+
+- Simplify ServerHttpProtocol implementation #1060
+
+- Add a flag for optional showing directory index for static file
+  handling #921
+
+- Define `web.Application.on_startup()` signal handler #1103
+
+- Drop ChunkedParser and LinesParser #1111
+
+- Call `Application.startup` in GunicornWebWorker #1105
+
+- Fix client handling hostnames with 63 bytes when a port is given in
+  the url #1044
+
+- Implement proxy support for ClientSession.ws_connect #1025
+
+- Return named tuple from WebSocketResponse.can_prepare #1016
+
+- Fix access_log_format in `GunicornWebWorker` #1117
+
+- Setup Content-Type to application/octet-stream by default #1124
+
+- Deprecate debug parameter from app.make_handler(), use
+  `Application(debug=True)` instead #1121
+
+- Remove fragment string in request path #846
+
+- Use aiodns.DNSResolver.gethostbyname() if available #1136
+
+- Fix static file sending on uvloop when sendfile is available #1093
+
+- Make prettier urls if query is empty dict #1143
+
+- Fix redirects for HEAD requests #1147
+
+- Default value for `StreamReader.read_nowait` is -1 from now #1150
+
+- `aiohttp.StreamReader` is not inherited from `asyncio.StreamReader` from now
+  (BACKWARD INCOMPATIBLE) #1150
+
+- Streams documentation added #1150
+
+- Add `multipart` coroutine method for web Request object #1067
+
+- Publish ClientSession.loop property #1149
+
+- Fix static file with spaces #1140
+
+- Fix piling up asyncio loop by cookie expiration callbacks #1061
+
+- Drop `Timeout` class for sake of `async_timeout` external library.
+  `aiohttp.Timeout` is an alias for `async_timeout.timeout`
+
+- `use_dns_cache` parameter of `aiohttp.TCPConnector` is `True` by
+  default (BACKWARD INCOMPATIBLE) #1152
+
+- `aiohttp.TCPConnector` uses asynchronous DNS resolver if available by
+  default (BACKWARD INCOMPATIBLE) #1152
+
+- Conform to RFC3986 - do not include url fragments in client requests #1174
+
+- Drop `ClientSession.cookies` (BACKWARD INCOMPATIBLE) #1173
+
+- Refactor `AbstractCookieJar` public API (BACKWARD INCOMPATIBLE) #1173
+
+- Fix clashing cookies with have the same name but belong to different
+  domains (BACKWARD INCOMPATIBLE) #1125
+
+- Support binary Content-Transfer-Encoding #1169
+
+
+0.22.5 (08-02-2016)
+-------------------
+
+- Pin miltidict version to >=1.2.2
+
+0.22.3 (07-26-2016)
+-------------------
+
+- Do not filter cookies if unsafe flag provided #1005
+
+
+0.22.2 (07-23-2016)
+-------------------
+
+- Suppress CancelledError when Timeout raises TimeoutError #970
+
+- Don't expose `aiohttp.__version__`
+
+- Add unsafe parameter to CookieJar #968
+
+- Use unsafe cookie jar in test client tools
+
+- Expose aiohttp.CookieJar name
+
+
+0.22.1 (07-16-2016)
+-------------------
+
+- Large cookie expiration/max-age doesn't break an event loop from now
+  (fixes #967)
+
+
+0.22.0 (07-15-2016)
+-------------------
+
+- Fix bug in serving static directory #803
+
+- Fix command line arg parsing #797
+
+- Fix a documentation chapter about cookie usage #790
+
+- Handle empty body with gzipped encoding #758
+
+- Support 451 Unavailable For Legal Reasons http status  #697
+
+- Fix Cookie share example and few small typos in docs #817
+
+- UrlDispatcher.add_route with partial coroutine handler #814
+
+- Optional support for aiodns #728
+
+- Add ServiceRestart and TryAgainLater websocket close codes #828
+
+- Fix prompt message for `web.run_app` #832
+
+- Allow to pass None as a timeout value to disable timeout logic #834
+
+- Fix leak of connection slot during connection error #835
+
+- Gunicorn worker with uvloop support
+  `aiohttp.worker.GunicornUVLoopWebWorker` #878
+
+- Don't send body in response to HEAD request #838
+
+- Skip the preamble in MultipartReader #881
+
+- Implement BasicAuth decode classmethod. #744
+
+- Don't crash logger when transport is None #889
+
+- Use a create_future compatibility wrapper instead of creating
+  Futures directly #896
+
+- Add test utilities to aiohttp #902
+
+- Improve Request.__repr__ #875
+
+- Skip DNS resolving if provided host is already an ip address #874
+
+- Add headers to ClientSession.ws_connect #785
+
+- Document that server can send pre-compressed data #906
+
+- Don't add Content-Encoding and Transfer-Encoding if no body #891
+
+- Add json() convenience methods to websocket message objects #897
+
+- Add client_resp.raise_for_status() #908
+
+- Implement cookie filter #799
+
+- Include an example of middleware to handle error pages #909
+
+- Fix error handling in StaticFileMixin #856
+
+- Add mocked request helper #900
+
+- Fix empty ALLOW Response header for cls based View #929
+
+- Respect CONNECT method to implement a proxy server #847
+
+- Add pytest_plugin #914
+
+- Add tutorial
+
+- Add backlog option to support more than 128 (default value in
+  "create_server" function) concurrent connections #892
+
+- Allow configuration of header size limits #912
+
+- Separate sending file logic from StaticRoute dispatcher #901
+
+- Drop deprecated share_cookies connector option (BACKWARD INCOMPATIBLE)
+
+- Drop deprecated support for tuple as auth parameter.
+  Use aiohttp.BasicAuth instead (BACKWARD INCOMPATIBLE)
+
+- Remove deprecated `request.payload` property, use `content` instead.
+  (BACKWARD INCOMPATIBLE)
+
+- Drop all mentions about api changes in documentation for versions
+  older than 0.16
+
+- Allow to override default cookie jar #963
+
+- Add manylinux wheel builds
+
+- Dup a socket for sendfile usage #964
+
 0.21.6 (05-05-2016)
 -------------------
 
@@ -12,10 +470,10 @@
 0.21.4 (03-12-2016)
 -------------------
 
-- Fix ResourceAdapter: dont add method to allowed if resource is not
+- Fix ResourceAdapter: don't add method to allowed if resource is not
   match #826
 
-- Fix Resouce: append found method to returned allowed methods
+- Fix Resource: append found method to returned allowed methods
 
 0.21.2 (02-16-2016)
 -------------------
@@ -160,7 +618,7 @@
 - Avoid sending cookie attributes in Cookie header #613
 
 - Round server timeouts to seconds for grouping pending calls.  That
-  leads to less amount of poller syscalls e.g epoll.poll(). #702
+  leads to less amount of poller syscalls e.g. epoll.poll(). #702
 
 - Close connection on websocket handshake error #703
 
@@ -182,7 +640,7 @@
 
 - Memory leak in ParserBuffer #579
 
-- Suppport gunicorn's `max_requests` settings in gunicorn worker
+- Support gunicorn's `max_requests` settings in gunicorn worker
 
 - Fix wsgi environment building #573
 
@@ -320,7 +778,7 @@
 
 - Implement server signals #562
 
-- Drop an year-old deprecated *files* parameter from client API.
+- Drop a year-old deprecated *files* parameter from client API.
 
 - Added `async for` support for aiohttp stream #542
 
@@ -352,7 +810,7 @@
 0.17.1 (08-10-2015)
 ---------------------
 
-- Fix multidict comparsion to arbitrary abc.Mapping
+- Fix multidict comparison to arbitrary abc.Mapping
 
 0.17.0 (08-04-2015)
 ---------------------
@@ -400,7 +858,7 @@
 - Ensure multipart.BodyPartReader.read_chunk read all the necessary data
   to avoid false assertions about malformed multipart payload
 
-- Dont sent body for 204, 205 and 304 http exceptions #442
+- Don't send body for 204, 205 and 304 http exceptions #442
 
 - Correctly skip Cython compilation in MSVC not found #453
 
@@ -505,7 +963,7 @@
 
 - Flow control subsystem refactoring
 
-- HTTP server performace optimizations
+- HTTP server performance optimizations
 
 - Allow to match any request method with `*`
 
@@ -525,7 +983,7 @@
 0.15.1 (03-31-2015)
 -------------------
 
-- Pass Autobahn Testsuit tests
+- Pass Autobahn Testsuite tests
 
 - Fixed websocket fragmentation
 
@@ -608,7 +1066,7 @@
 
 - multidict.getall() returns `list`, not `tuple`.
 
-- Backward imcompatible change: now there are two mutable multidicts
+- Backward incompatible change: now there are two mutable multidicts
   (`MultiDict`, `CIMultiDict`) and two immutable multidict proxies
   (`MultiDictProxy` and `CIMultiDictProxy`). Previous edition of
   multidicts was not a part of public API BTW.
@@ -639,7 +1097,7 @@
 
 - Add `aiohttp.web.StreamResponse.started` property #213
 
-- Html escape traceback text in `ServerHttpProtocol.handle_error`
+- HTML escape traceback text in `ServerHttpProtocol.handle_error`
 
 - Mention handler and middlewares in `aiohttp.web.RequestHandler.handle_request`
   on error (#218)
@@ -677,7 +1135,7 @@
 
 - Added POST attribute
 
-- Response processing refactoring: constructor does't accept Request
+- Response processing refactoring: constructor doesn't accept Request
   instance anymore.
 
 - Pass application instance to finish callback

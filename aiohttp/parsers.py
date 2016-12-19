@@ -58,13 +58,13 @@ _SocketSocketTransport ->
 
 import asyncio
 import asyncio.streams
-import inspect
 import socket
+
 from . import errors
-from .streams import FlowControlDataQueue, EofStream
+from .streams import EofStream, FlowControlDataQueue
 
 __all__ = ('EofStream', 'StreamParser', 'StreamProtocol',
-           'ParserBuffer', 'LinesParser', 'ChunksParser')
+           'ParserBuffer', 'StreamWriter')
 
 DEFAULT_LIMIT = 2 ** 16
 
@@ -88,7 +88,7 @@ class StreamParser:
     """
 
     def __init__(self, *, loop=None, buf=None,
-                 limit=DEFAULT_LIMIT, eof_exc_class=RuntimeError, **kwargs):
+                 limit=DEFAULT_LIMIT, eof_exc_class=RuntimeError):
         self._loop = loop
         self._eof = False
         self._exception = None
@@ -182,7 +182,6 @@ class StreamParser:
 
         # init parser
         p = parser(output, self._buffer)
-        assert inspect.isgenerator(p), 'Generator is required'
 
         try:
             # initialize parser with data and parser buffers
@@ -207,10 +206,9 @@ class StreamParser:
             return
 
         # TODO: write test
-        if hasattr(self._loop, 'is_closed'):
-            if self._loop.is_closed():
-                # TODO: log something
-                return
+        if self._loop.is_closed():
+            # TODO: log something
+            return
 
         try:
             self._parser.throw(EofStream())
@@ -493,39 +491,3 @@ class ParserBuffer:
 
     def __bytes__(self):
         return bytes(self._data)
-
-
-class LinesParser:
-    """Lines parser.
-
-    Lines parser splits a bytes stream into a chunks of data, each chunk ends
-    with \\n symbol."""
-
-    def __init__(self, limit=DEFAULT_LIMIT):
-        self._limit = limit
-
-    def __call__(self, out, buf):
-        try:
-            while True:
-                chunk = yield from buf.readuntil(b'\n', self._limit)
-                out.feed_data(chunk, len(chunk))
-        except EofStream:
-            pass
-
-
-class ChunksParser:
-    """Chunks parser.
-
-    Chunks parser splits a bytes stream into a specified
-    size chunks of data."""
-
-    def __init__(self, size=8192):
-        self._size = size
-
-    def __call__(self, out, buf):
-        try:
-            while True:
-                chunk = yield from buf.read(self._size)
-                out.feed_data(chunk, len(chunk))
-        except EofStream:
-            pass

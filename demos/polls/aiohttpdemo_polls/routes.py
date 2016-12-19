@@ -1,11 +1,16 @@
+import pathlib
 
-def setup_routes(app, handler, project_root):
-    add_route = app.router.add_route
-    add_route('GET', '/', handler.index)
-    add_route('GET', '/poll/{question_id}', handler.poll, name='poll')
-    add_route('GET', '/poll/{question_id}/results',
-              handler.results, name='results')
-    add_route('POST', '/poll/{question_id}/vote', handler.vote, name='vote')
+from .views import index, poll, results, vote
+
+PROJECT_ROOT = pathlib.Path(__file__).parent
+
+
+def setup_routes(app):
+    app.router.add_get('/', index)
+    app.router.add_get('/poll/{question_id}', poll, name='poll')
+    app.router.add_get('/poll/{question_id}/results',
+                       results, name='results')
+    app.router.add_post('/poll/{question_id}/vote', vote, name='vote')
     app.router.add_static('/static/',
-                          path=str(project_root / 'static'),
+                          path=str(PROJECT_ROOT / 'static'),
                           name='static')
