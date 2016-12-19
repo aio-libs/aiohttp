@@ -1013,6 +1013,18 @@ But for getting URL sub-application's router should be used::
 The generated ``url`` from example will have a value
 ``URL('/admin/resource')``.
 
+If main application should do URL reversing for sub-application it could
+use the following explicit technique::
+
+   admin = web.Application()
+   admin.router.add_get('/resource', handler, name='name')
+
+   app.router.add_subapp('/admin/', admin)
+   app['admin'] = admin
+
+   async def handler(request):  # main application's handler
+       admin = request.app['admin']
+       url = admin.router['name'].url_for()
 
 .. _aiohttp-web-flow-control:
 
