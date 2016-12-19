@@ -5,24 +5,19 @@ import pytest
 
 from aiohttpdemo_polls.main import init
 
-
-@pytest.fixture
-def config():
-    pass
-
-
-@pytest.fixture
-def config_path(config):
-    pass
-
-
-@pytest.fixture
-def create_app(loop, config_path):
-    app = init(loop, ['-c', config_path])
-    return app
-
-
 BASE_DIR = pathlib.Path(__file__).parent.parent
+
+
+@pytest.fixture
+def config_path():
+    path = BASE_DIR / 'config' / 'polls.yaml'
+    return path.as_posix()
+
+
+@pytest.fixture
+def cli(loop, test_client, config_path):
+    app = init(loop, ['-c', config_path])
+    return loop.run_until_complete(test_client(app))
 
 
 @pytest.fixture
