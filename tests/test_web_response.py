@@ -426,6 +426,13 @@ def test_force_close():
     assert resp.keep_alive is False
 
 
+@asyncio.coroutine
+def test_response_output_length():
+    resp = StreamResponse()
+    yield from resp.prepare(make_request('GET', '/'))
+    assert resp.output_length
+
+
 def test_response_cookies():
     resp = StreamResponse()
 
