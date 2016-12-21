@@ -138,7 +138,7 @@ peer::
         finally:
             task.cancel()
 
-    async def read_subscriptions(ws, redis):
+    async def read_subscription(ws, redis):
         channel, = await redis.subscribe('channel:1')
 
         try:
@@ -204,7 +204,7 @@ tasks for a user in the :class:`aiohttp.web.Application` instance and
         app = aiohttp.web.Application(loop=loop)
         app.router.add_route('GET', '/echo', echo_handler)
         app.router.add_route('POST', '/logout', logout_handler)
-        app['websockets'] = defaultdict(set)
+        app['handlers'] = defaultdict(set)
         aiohttp.web.run_app(app, host='localhost', port=8080)
 
 
