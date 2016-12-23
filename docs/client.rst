@@ -694,3 +694,67 @@ reading procedures::
 
 .. disqus::
   :title: aiohttp client usage
+
+
+Closed Client Sessions
+----------------------
+
+When you close a aiohttp ClientSession there is now an explicit function to reopen it.
+This function is a coroutine.
+Example HTTP Client below.
+
+Before::
+
+    import aiohttp
+    import asyncio
+    
+    
+    class HTTPClient:
+        """http client class."""
+        def __init__(self, connector=None, *, loop=None):
+            """handles http client stuff."""
+            self.loop = asyncio.get_event_loop() if loop is None else loop
+            self.connector = connector
+            self.session = self.loop.run_until_complete(self._create_session())
+
+        @asyncio.coroutine
+        def _create_session(self):
+            """creates a ClientSession inside of a coroutine."""
+            session = await aiohttp.ClientSession(connector=self.connector, loop=self.loop)
+            return session
+
+        def recreate(self):
+            """recreates client session."""
+            self.session = self.loop.run_until_complete(self._create_session())
+
+After::
+
+    import aiohttp
+    import asyncio
+    
+    
+    class HTTPClient:
+        """http client class."""
+        def __init__(self, connector=None, *, loop=None):
+            """handles http client stuff."""
+            self.loop = asyncio.get_event_loop() if loop is None else loop
+            self.connector = connector
+            self.session = self.loop.run_until_complete(self._create_session())
+
+        @asyncio.coroutine
+        def _create_session(self):
+            """creates a ClientSession inside of a coroutine."""
+            session = await aiohttp.ClientSession(connector=self.connector, loop=self.loop)
+            return session
+
+        @asyncio.coroutine
+        def _recreate_session(self):
+            """recreates a ClientSession inside of a coroutine."""
+            yield from self.session.recreate(connector=self.connector, loop=self.loop)
+
+        def recreate(self):
+            """recreates client session."""
+            self.loop.run_until_complete(self._recreate_session())
+
+This helps with the fact that Memory Leaks and Resource Leaks do happen when you
+have to create a new instance of ClientSession for this before. With this change you now do not have to.

@@ -91,6 +91,13 @@ class ClientSession:
         self._response_class = response_class
         self._ws_response_class = ws_response_class
 
+    @asyncio.coroutine
+    def recreate(self, *args, **kwargs):
+
+        if not self.closed:
+            raise RuntimeError('Session is not closed')
+        self.__init__(*args, **kwargs)
+
     def __del__(self, _warnings=warnings):
         if not self.closed:
             self.close()

@@ -6,7 +6,10 @@ CHANGES
 
 - Fix polls demo run application #1487
 
--
+- Add recreate method to aiohttp.ClientSession(). #1501
+  This addresses an Issue I spotted with ClientSession in a comment to #1468 found here https://github.com/KeepSafe/aiohttp/pull/1468#issuecomment-269052523.
+
+- 
 
 1.2.0 (2016-12-17)
 ------------------
