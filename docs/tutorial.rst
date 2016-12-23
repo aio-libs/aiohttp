@@ -210,7 +210,7 @@ Thus we **suggest** to use the following approach:
       candidates for such job.
 
 
-Load config and push into into application::
+Load config and push into application::
 
     # load config from yaml file in current dir
     conf = load_config(str(pathlib.Path('.') / 'config' / 'polls.yaml'))
