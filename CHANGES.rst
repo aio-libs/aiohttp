@@ -8,6 +8,8 @@ CHANGES
 
 -
 
+- close() now deletes the instance for those who forget to delete it in their code. #1505
+
 1.2.0 (2016-12-17)
 ------------------
 
