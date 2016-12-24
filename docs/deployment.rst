@@ -131,26 +131,11 @@ Gaffer, Circus, Runit etc.
 
 Here we'll use `Supervisord <http://supervisord.org/>`_ for example::
 
-   [program:aiohttp_1]
-   cmd=/path/to/aiohttp_example.py 8081
-   user=nobody
-   autostart=true
-   autorestart=true
-
-   [program:aiohttp_2]
-   cmd=/path/to/aiohttp_example.py 8082
-   user=nobody
-   autostart=true
-   autorestart=true
-
-   [program:aiohttp_3]
-   cmd=/path/to/aiohttp_example.py 8083
-   user=nobody
-   autostart=true
-   autorestart=true
-
-   [program:aiohttp_4]
-   cmd=/path/to/aiohttp_example.py 8084
+   [program:aiohttp]
+   numprocs = 4
+   numprocs_start = 1
+   process_name = example_%(process_num)s
+   cmd=/path/to/aiohttp_example.py 808%(process_num)s
    user=nobody
    autostart=true
    autorestart=true
