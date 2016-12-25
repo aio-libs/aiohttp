@@ -684,7 +684,7 @@ class HttpMessage(ABC):
         # set the connection header
         connection = None
         if self.upgrade:
-            connection = 'upgrade'
+            connection = 'Upgrade'
         elif not self.closing if self.keepalive is None else self.keepalive:
             if self.version == HttpVersion10:
                 connection = 'keep-alive'
