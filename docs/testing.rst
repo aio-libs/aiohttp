@@ -203,7 +203,7 @@ functionality, the AioHTTPTestCase is provided::
 
     class MyAppTestCase(AioHTTPTestCase):
 
-        def get_app(self, loop):
+        async def get_application(self, loop):
             """Override the get_app method to return your application.
             """
             # it's important to use the loop passed here.
@@ -251,9 +251,9 @@ functionality, the AioHTTPTestCase is provided::
        The application returned by :meth:`get_app`
        (:class:`aiohttp.web.Application` instance).
 
-    .. method:: get_app(loop)
+    .. comethod:: get_application(loop)
 
-       This method should be overridden
+       This async method should be overridden
        to return the :class:`aiohttp.web.Application`
        object to test.
 
