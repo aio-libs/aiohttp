@@ -18,6 +18,7 @@ from .web_exceptions import *  # noqa
 from .web_reqrep import *  # noqa
 from .web_server import Server
 from .web_urldispatcher import *  # noqa
+from .web_urldispatcher import PrefixedSubAppResource, _wrap_add_subbapp
 from .web_ws import *  # noqa
 
 __all__ = (web_reqrep.__all__ +
@@ -39,7 +40,7 @@ class Application(MutableMapping):
             router = web_urldispatcher.UrlDispatcher()
         assert isinstance(router, AbstractRouter), router
 
-        router.post_init(self)
+        router.add_subapp = _wrap_add_subbapp(self)
 
         if debug is ...:
             debug = loop.get_debug()
@@ -124,6 +125,23 @@ class Application(MutableMapping):
         reg_handler('on_startup')
         reg_handler('on_shutdown')
         reg_handler('on_cleanup')
+
+    def add_subapp(self, prefix, subapp):
+        if self.frozen:
+            raise RuntimeError(
+                "Cannot add sub application to frozen application")
+        if subapp.frozen:
+            raise RuntimeError("Cannot add frozen application")
+        if prefix.endswith('/'):
+            prefix = prefix[:-1]
+        if prefix in ('', '/'):
+            raise ValueError("Prefix cannot be empty")
+
+        resource = PrefixedSubAppResource(prefix, subapp)
+        self.reg_resource(resource)
+        subapp._reg_subapp_signals(subapp)
+        subapp.freeze()
+        return resource
 
     @property
     def on_response_prepare(self):
