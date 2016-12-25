@@ -174,18 +174,10 @@ class RawTestServer(BaseTestServer):
 
 class TestClient:
     """
-    A test client implementation, for a aiohttp.web.Application.
+    A test client implementation.
 
-    :param app: the aiohttp.web application passed to create_test_server
+    To write functional tests for aiohttp based servers.
 
-    :type app: aiohttp.web.Application
-
-    :param protocol: http or https
-
-    :type protocol: str
-
-    TestClient can also be used as a contextmanager, returning
-    the instance of itself instantiated.
     """
 
     def __init__(self, app_or_server, *, scheme=sentinel, host=sentinel,
@@ -441,8 +433,6 @@ def teardown_test_loop(loop):
     """Teardown and cleanup an event_loop created
     by setup_test_loop.
 
-    :param loop: the loop to teardown
-    :type loop: asyncio.BaseEventLoop
     """
     closed = loop.is_closed()
     if not closed:
