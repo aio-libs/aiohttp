@@ -54,7 +54,7 @@ class ClientSession:
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
-        if not loop.is_running():
+        if not loop.is_running() and loop is not None:
             warnings.warn("Creating a client session outside of coroutine is "
                           "a very dangerous idea", ResourceWarning,
                           stacklevel=2)
