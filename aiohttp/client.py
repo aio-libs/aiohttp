@@ -438,6 +438,7 @@ class ClientSession:
             self._connector = None
         ret = helpers.create_future(self._loop)
         ret.set_result(None)
+        del self
         return ret
 
     @property
