@@ -261,6 +261,34 @@ def test_closed(session):
     assert session.closed
 
 
+def test_recreate(create_session, connector, loop):
+    session = create_session(connector=connector)
+
+    @asyncio.coroutine
+    def _test_recreate_helper(session, connector):
+        ret = yield from session.recreate(connector=connector)
+        return ret
+    session.close()
+    session = loop.run_until_complete(_test_recreate_helper(session,
+                                                            connector))
+
+
+def test_recreate_2(create_session, connector, loop):
+    session = create_session(connector=connector)
+
+    @asyncio.coroutine
+    def _test_recreate_helper(session, connector):
+        ret = yield from session.recreate(connector=connector)
+        return ret
+    try:
+        session = loop.run_until_complete(_test_recreate_helper(session,
+                                                                connector))
+    except RuntimeError:
+        session.close()
+        session = loop.run_until_complete(_test_recreate_helper(session,
+                                                                connector))
+
+
 def test_connector(create_session, loop):
     connector = TCPConnector(loop=loop)
     session = create_session(connector=connector)

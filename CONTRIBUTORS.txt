@@ -1,4 +1,4 @@
-Contributors
+﻿Contributors
 ------------
 
 A. Jesse Jiryu Davis
@@ -119,6 +119,7 @@ Raúl Cumplido
 "Required Field" <requiredfield256@gmail.com>
 Robert Lu
 Samuel Colvin
+Sean Hunt
 Sebastian Hanula
 Sebastian Hüther
 SeongSoo Cho
