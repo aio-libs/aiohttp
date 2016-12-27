@@ -612,7 +612,7 @@ class ClientResponse(HeadersMixin):
             # read response
             with Timeout(self._timeout, loop=self._loop):
                 message = yield from httpstream.read()
-            if message.code != 100:
+            if message.code < 100 or message.code > 199 or message.code == 101:
                 break
 
             if self._continue is not None and not self._continue.done():

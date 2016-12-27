@@ -6,6 +6,8 @@ CHANGES
 
 - Fix polls demo run application #1487
 
+- Ignore unknown 1XX status codes in client #1353
+
 - remove `web.Application` dependency from `web.UrlDispatcher` #1510
 
  
