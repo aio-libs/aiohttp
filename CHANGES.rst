@@ -6,8 +6,9 @@ CHANGES
 
 - Fix polls demo run application #1487
 
--
+- remove `web.Application` dependency from `web.UrlDispatcher` #1510
 
+ 
 1.2.0 (2016-12-17)
 ------------------
 

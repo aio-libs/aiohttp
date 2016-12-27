@@ -971,12 +971,12 @@ toolbar URLs are served by prefix like ``/admin``.
 
 Thus we'll create a totally separate application named ``admin`` and
 connect it to main app with prefix by
-:meth:`~aiohttp.web.UrlDispatcher.add_subapp`::
+:meth:`~aiohttp.web.Application.add_subapp`::
 
    admin = web.Application()
    # setup admin routes, signals and middlewares
 
-   app.router.add_subapp('/admin/', admin)
+   app.add_subapp('/admin/', admin)
 
 Middlewares and signals from ``app`` and ``admin`` are chained.
 
@@ -1006,7 +1006,7 @@ But for getting URL sub-application's router should be used::
    admin = web.Application()
    admin.router.add_get('/resource', handler, name='name')
 
-   app.router.add_subapp('/admin/', admin)
+   app.add_subapp('/admin/', admin)
 
    url = admin.router['name'].url_for()
 
@@ -1019,7 +1019,7 @@ use the following explicit technique::
    admin = web.Application()
    admin.router.add_get('/resource', handler, name='name')
 
-   app.router.add_subapp('/admin/', admin)
+   app.add_subapp('/admin/', admin)
    app['admin'] = admin
 
    async def handler(request):  # main application's handler
