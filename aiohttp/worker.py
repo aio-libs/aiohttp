@@ -10,11 +10,12 @@ import ssl
 import sys
 import warnings
 
+from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
+from gunicorn.workers import base
+
 from aiohttp.helpers import AccessLogger, ensure_future
 from aiohttp.web_server import Server
 from aiohttp.wsgi import WSGIServerHttpProtocol
-from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
-from gunicorn.workers import base
 
 __all__ = ('GunicornWebWorker', 'GunicornUVLoopWebWorker')
 
