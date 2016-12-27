@@ -869,7 +869,7 @@ def test_simple_subapp(loop, test_client):
     app = web.Application(loop=loop)
     subapp = web.Application(loop=loop)
     subapp.router.add_get('/to', handler)
-    app.router.add_subapp('/path', subapp)
+    app.add_subapp('/path', subapp)
 
     client = yield from test_client(app)
     resp = yield from client.get('/path/to')
@@ -893,7 +893,7 @@ def test_subapp_reverse_url(loop, test_client):
     subapp = web.Application(loop=loop)
     subapp.router.add_get('/to', handler)
     subapp.router.add_get('/final', handler2, name='name')
-    app.router.add_subapp('/path', subapp)
+    app.add_subapp('/path', subapp)
 
     client = yield from test_client(app)
     resp = yield from client.get('/path/to')
@@ -918,7 +918,7 @@ def test_subapp_reverse_variable_url(loop, test_client):
     subapp = web.Application(loop=loop)
     subapp.router.add_get('/to', handler)
     subapp.router.add_get('/{part}', handler2, name='name')
-    app.router.add_subapp('/path', subapp)
+    app.add_subapp('/path', subapp)
 
     client = yield from test_client(app)
     resp = yield from client.get('/path/to')
@@ -942,7 +942,7 @@ def test_subapp_reverse_static_url(loop, test_client):
     subapp.router.add_get('/to', handler)
     here = pathlib.Path(__file__).parent
     subapp.router.add_static('/static', here, name='name')
-    app.router.add_subapp('/path', subapp)
+    app.add_subapp('/path', subapp)
 
     client = yield from test_client(app)
     resp = yield from client.get('/path/to')
@@ -963,7 +963,7 @@ def test_subapp_app(loop, test_client):
     app = web.Application(loop=loop)
     subapp = web.Application(loop=loop)
     subapp.router.add_get('/to', handler)
-    app.router.add_subapp('/path/', subapp)
+    app.add_subapp('/path/', subapp)
 
     client = yield from test_client(app)
     resp = yield from client.get('/path/to')
@@ -981,7 +981,7 @@ def test_subapp_not_found(loop, test_client):
     app = web.Application(loop=loop)
     subapp = web.Application(loop=loop)
     subapp.router.add_get('/to', handler)
-    app.router.add_subapp('/path/', subapp)
+    app.add_subapp('/path/', subapp)
 
     client = yield from test_client(app)
     resp = yield from client.get('/path/other')
@@ -997,7 +997,7 @@ def test_subapp_not_found2(loop, test_client):
     app = web.Application(loop=loop)
     subapp = web.Application(loop=loop)
     subapp.router.add_get('/to', handler)
-    app.router.add_subapp('/path/', subapp)
+    app.add_subapp('/path/', subapp)
 
     client = yield from test_client(app)
     resp = yield from client.get('/invalid/other')
@@ -1013,7 +1013,7 @@ def test_subapp_not_allowed(loop, test_client):
     app = web.Application(loop=loop)
     subapp = web.Application(loop=loop)
     subapp.router.add_get('/to', handler)
-    app.router.add_subapp('/path/', subapp)
+    app.add_subapp('/path/', subapp)
 
     client = yield from test_client(app)
     resp = yield from client.post('/path/to')
@@ -1031,7 +1031,7 @@ def test_subapp_cannot_add_app_in_handler(loop, test_client):
     app = web.Application(loop=loop)
     subapp = web.Application(loop=loop)
     subapp.router.add_get('/to', handler)
-    app.router.add_subapp('/path/', subapp)
+    app.add_subapp('/path/', subapp)
 
     client = yield from test_client(app)
     resp = yield from client.get('/path/to')
@@ -1062,8 +1062,8 @@ def test_subapp_middlewares(loop, test_client):
     subapp1 = web.Application(loop=loop, middlewares=[middleware_factory])
     subapp2 = web.Application(loop=loop, middlewares=[middleware_factory])
     subapp2.router.add_get('/to', handler)
-    subapp1.router.add_subapp('/b/', subapp2)
-    app.router.add_subapp('/a/', subapp1)
+    subapp1.add_subapp('/b/', subapp2)
+    app.add_subapp('/a/', subapp1)
 
     client = yield from test_client(app)
     resp = yield from client.get('/a/b/to')
@@ -1095,8 +1095,8 @@ def test_subapp_on_response_prepare(loop, test_client):
     subapp2 = web.Application(loop=loop)
     subapp2.on_response_prepare.append(make_signal(subapp2))
     subapp2.router.add_get('/to', handler)
-    subapp1.router.add_subapp('/b/', subapp2)
-    app.router.add_subapp('/a/', subapp1)
+    subapp1.add_subapp('/b/', subapp2)
+    app.add_subapp('/a/', subapp1)
 
     client = yield from test_client(app)
     resp = yield from client.get('/a/b/to')
@@ -1118,8 +1118,8 @@ def test_subapp_on_startup(loop, test_server):
     subapp1.on_startup.append(on_signal)
     subapp2 = web.Application(loop=loop)
     subapp2.on_startup.append(on_signal)
-    subapp1.router.add_subapp('/b/', subapp2)
-    app.router.add_subapp('/a/', subapp1)
+    subapp1.add_subapp('/b/', subapp2)
+    app.add_subapp('/a/', subapp1)
 
     yield from test_server(app)
 
@@ -1139,8 +1139,8 @@ def test_subapp_on_shutdown(loop, test_server):
     subapp1.on_shutdown.append(on_signal)
     subapp2 = web.Application(loop=loop)
     subapp2.on_shutdown.append(on_signal)
-    subapp1.router.add_subapp('/b/', subapp2)
-    app.router.add_subapp('/a/', subapp1)
+    subapp1.add_subapp('/b/', subapp2)
+    app.add_subapp('/a/', subapp1)
 
     server = yield from test_server(app)
     yield from server.close()
@@ -1162,8 +1162,8 @@ def test_subapp_on_cleanup(loop, test_server):
     subapp1.on_cleanup.append(on_signal)
     subapp2 = web.Application(loop=loop)
     subapp2.on_cleanup.append(on_signal)
-    subapp1.router.add_subapp('/b/', subapp2)
-    app.router.add_subapp('/a/', subapp1)
+    subapp1.add_subapp('/b/', subapp2)
+    app.add_subapp('/a/', subapp1)
 
     server = yield from test_server(app)
     yield from server.close()

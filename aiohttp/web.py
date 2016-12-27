@@ -18,7 +18,7 @@ from .web_exceptions import *  # noqa
 from .web_reqrep import *  # noqa
 from .web_server import Server
 from .web_urldispatcher import *  # noqa
-from .web_urldispatcher import PrefixedSubAppResource, _wrap_add_subbapp
+from .web_urldispatcher import PrefixedSubAppResource
 from .web_ws import *  # noqa
 
 __all__ = (web_reqrep.__all__ +
@@ -40,6 +40,7 @@ class Application(MutableMapping):
             router = web_urldispatcher.UrlDispatcher()
         assert isinstance(router, AbstractRouter), router
 
+        # backward compatibility until full deprecation
         router.add_subapp = _wrap_add_subbapp(self)
 
         if debug is ...:
@@ -138,8 +139,8 @@ class Application(MutableMapping):
             raise ValueError("Prefix cannot be empty")
 
         resource = PrefixedSubAppResource(prefix, subapp)
-        self.reg_resource(resource)
-        subapp._reg_subapp_signals(subapp)
+        self.router.reg_resource(resource)
+        self._reg_subapp_signals(subapp)
         subapp.freeze()
         return resource
 
@@ -280,6 +281,16 @@ class Application(MutableMapping):
 
     def __repr__(self):
         return "<Application 0x{:x}>".format(id(self))
+
+
+def _wrap_add_subbapp(app):
+    # backward compatibility
+
+    def add_subapp(prefix, subapp):
+        warnings.warn("Use app.add_subapp() instead", DeprecationWarning)
+        return app.add_subapp(prefix, subapp)
+
+    return add_subapp
 
 
 def run_app(app, *, host='0.0.0.0', port=None,
