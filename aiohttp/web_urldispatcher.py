@@ -754,7 +754,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     def named_resources(self):
         return MappingProxyType(self._named_resources)
 
-    def reg_resource(self, resource):
+    def register_resource(self, resource):
         assert isinstance(resource, AbstractResource), \
             'Instance of AbstractResource class is required, got {!r}'.format(
                 resource)
@@ -784,7 +784,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             raise ValueError("path should be started with / or be empty")
         if not ('{' in path or '}' in path or self.ROUTE_RE.search(path)):
             resource = PlainResource(quote(path, safe='/'), name=name)
-            self.reg_resource(resource)
+            self.register_resource(resource)
             return resource
 
         pattern = ''
@@ -815,7 +815,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             raise ValueError(
                 "Bad pattern '{}': {}".format(pattern, exc)) from None
         resource = DynamicResource(compiled, formatter, name=name)
-        self.reg_resource(resource)
+        self.register_resource(resource)
         return resource
 
     def add_route(self, method, path, handler,
@@ -844,7 +844,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                                   response_factory=response_factory,
                                   show_index=show_index,
                                   follow_symlinks=follow_symlinks)
-        self.reg_resource(resource)
+        self.register_resource(resource)
         return resource
 
     def add_head(self, *args, **kwargs):

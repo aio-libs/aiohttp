@@ -131,6 +131,17 @@ family are plain shortcuts for :meth:`UrlDispatcher.add_route`.
    Introduce resources.
 
 
+.. _aiohttp-web-custom-resource:
+
+Custom resource implementation
+------------------------------
+
+To register custom resource use :meth:`UrlDispatcher.register_resource`.
+Resource instance must implement `AbstractResource` interface.
+
+.. versionadded:: 1.2.1
+
+
 .. _aiohttp-web-variable-handler:
 
 Variable Resources
