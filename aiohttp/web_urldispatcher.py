@@ -887,21 +887,3 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         super().freeze()
         for resource in self._resources:
             resource.freeze()
-
-
-def _wrap_add_subbapp(app):
-
-    def add_subapp(prefix, subapp):
-        if subapp.frozen:
-            raise RuntimeError("Cannot add frozen application")
-        if prefix.endswith('/'):
-            prefix = prefix[:-1]
-        if prefix in ('', '/'):
-            raise ValueError("Prefix cannot be empty")
-        resource = PrefixedSubAppResource(prefix, subapp)
-        app.router.reg_resource(resource)
-        app._reg_subapp_signals(subapp)
-        subapp.freeze()
-        return resource
-
-    return add_subapp
