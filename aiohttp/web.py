@@ -139,7 +139,7 @@ class Application(MutableMapping):
             raise ValueError("Prefix cannot be empty")
 
         resource = PrefixedSubAppResource(prefix, subapp)
-        self.router.reg_resource(resource)
+        self.router.register_resource(resource)
         self._reg_subapp_signals(subapp)
         subapp.freeze()
         return resource
