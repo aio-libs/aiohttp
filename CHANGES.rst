@@ -10,7 +10,12 @@ CHANGES
 
 - remove `web.Application` dependency from `web.UrlDispatcher` #1510
 
- 
+- Fix ClientSession is not aware of TestClient #1499
+
+- Fixed warnings showing when giving ClientSession an event loop when called from a normal function. #[1468](https://github.com/KeepSafe/aiohttp/pull/1468#issuecomment-269112177)
+
+-
+
 1.2.0 (2016-12-17)
 ------------------
 
