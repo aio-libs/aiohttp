@@ -460,3 +460,29 @@ def test_ws_connect_non_overlapped_protocols(ws_key, loop, key_data):
                 loop=loop)
 
     assert res.protocol is None
+
+
+@asyncio.coroutine
+def test_ws_connect_non_overlapped_protocols_2(ws_key, loop, key_data):
+    resp = mock.Mock()
+    resp.status = 101
+    resp.headers = {
+        hdrs.UPGRADE: hdrs.WEBSOCKET,
+        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
+        hdrs.SEC_WEBSOCKET_PROTOCOL: 'other,another'
+    }
+    with mock.patch('aiohttp.client.os') as m_os:
+        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+            m_os.urandom.return_value = key_data
+            m_req.return_value = helpers.create_future(loop)
+            m_req.return_value.set_result(resp)
+
+            connector = aiohttp.TCPConnector(loop=loop, force_close=True)
+            res = yield from aiohttp.ws_connect(
+                'http://test.org',
+                protocols=('t1', 't2', 'chat'),
+                connector=connector,
+                loop=loop)
+
+    assert res.protocol is None
