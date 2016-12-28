@@ -144,7 +144,7 @@ WebSocket utilities
 
       1. :class:`str` for :attr:`WSMsgType.TEXT` messages.
 
-      2. :class:`bytes` for :attr:`WSMsgType.TEXT` messages.
+      2. :class:`bytes` for :attr:`WSMsgType.BINARY` messages.
 
       3. :class:`WSCloseCode` for :attr:`WSMsgType.CLOSE` messages.
 
