@@ -438,3 +438,38 @@ class TestFrozenList:
     def test_le(self):
         l = helpers.FrozenList([1])
         assert l < [2]
+
+
+@pytest.mark.parametrize(
+    'uri, expected', (
+        (
+            # Illegal bytes
+            'http://example.com/?a=%--',
+            'http://example.com/?a=%--',
+        ),
+        (
+            # Reserved characters
+            'http://example.com/?a=%300',
+            'http://example.com/?a=00',
+        )
+    ))
+def test_unquote_unreserved(uri, expected):
+    assert helpers.unquote_unreserved(uri) == expected
+
+
+@pytest.mark.parametrize(
+    'uri, expected', (
+        (
+            # Ensure requoting doesn't break expectations
+            'http://example.com/fiz?buz=%25ppicture',
+            'http://example.com/fiz?buz=%25ppicture',
+        ),
+        (
+            # Ensure we handle unquoted percent signs in redirects
+            'http://example.com/fiz?buz=%ppicture',
+            'http://example.com/fiz?buz=%25ppicture',
+        ),
+    ))
+def test_requote_uri(uri, expected):
+    """See: https://github.com/kennethreitz/requests/issues/2356"""
+    assert helpers.requote_uri(uri) == expected

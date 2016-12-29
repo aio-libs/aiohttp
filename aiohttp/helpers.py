@@ -18,6 +18,7 @@ from urllib.parse import urlencode
 
 from async_timeout import timeout
 from multidict import MultiDict, MultiDictProxy
+from yarl.quoting import UNRESERVED, quote
 
 from . import hdrs
 
@@ -676,3 +677,61 @@ class HeadersMixin:
 def check_loop(loop):
     if loop is None:
         loop = asyncio.get_event_loop()
+
+
+def unquote_unreserved(uri):
+    """Un-escape any percent-escape sequences in a URI that are unreserved
+    characters. This leaves all reserved, illegal and non-ASCII bytes encoded.
+
+    Stolen from `requests`.
+
+    :rtype: str
+    """
+    parts = uri.split('%')
+    for i in range(1, len(parts)):
+        h = parts[i][0:2]
+        if len(h) == 2 and h.isalnum():
+            try:
+                c = chr(int(h, 16))
+            except ValueError:
+                raise ValueError("Invalid percent-escape sequence: '%s'" % h)
+
+            if c in UNRESERVED:
+                parts[i] = c + parts[i][2:]
+            else:
+                parts[i] = '%' + parts[i]
+        else:
+            parts[i] = '%' + parts[i]
+    return ''.join(parts)
+
+
+def requote_uri(uri):
+    """Re-quote the given URI.
+    This function passes the given URI through an unquote/quote cycle to
+    ensure that it is fully and consistently quoted.
+
+    Stolen from `requests`.
+
+    :rtype: str
+    """
+    safe_with_percent = "!#$%&'()*+,/:;=?@[]~"
+    safe_without_percent = "!#$&'()*+,/:;=?@[]~"
+    try:
+        # Unquote only the unreserved characters
+        # Then quote only illegal characters (do not quote reserved,
+        # unreserved, or '%')
+        return quote(unquote_unreserved(uri), safe=safe_with_percent)
+    except Exception:
+        # We couldn't unquote the given URI, so let's try quoting it, but
+        # there may be unquoted '%'s in the URI. We need to make sure they're
+        # properly quoted so they do not cause issues elsewhere.
+        try:
+            return quote(uri, safe=safe_without_percent)
+        except ValueError:  # pragma: no cover
+            # TODO: make changes in yarl.quote to quote percent
+            # Fallback to standart urllib.parse.quote
+            # yarl.quote must quote percent
+            # >>> yarl.quote('%25') == '%25'
+            # >>> urllib.parse.quote('%25') == '%2525'
+            import urllib
+            return urllib.parse.quote(uri, safe=safe_without_percent)

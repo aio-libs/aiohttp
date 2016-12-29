@@ -19,7 +19,7 @@ from .client_reqrep import ClientRequest, ClientResponse
 from .client_ws import ClientWebSocketResponse
 from .cookiejar import CookieJar
 from .errors import WSServerHandshakeError
-from .helpers import Timeout
+from .helpers import Timeout, requote_uri
 
 __all__ = ('ClientSession', 'request', 'get', 'options', 'head',
            'delete', 'post', 'put', 'patch', 'ws_connect')
@@ -223,7 +223,9 @@ class ClientSession:
                                        "a redirect [{0.status}] status "
                                        "but response lacks a Location "
                                        "or URI HTTP header".format(resp))
-                r_url = URL(r_url)
+
+                # Ensure Location is fully and consistently quoted
+                r_url = URL(requote_uri(r_url), encoded=True)
 
                 scheme = r_url.scheme
                 if scheme not in ('http', 'https', ''):

@@ -58,6 +58,7 @@ Enrique Saez
 Erich Healy
 Eugene Chernyshov
 Eugene Naydenov
+Eugene Tatarkin
 Frederik Gladhorn
 Frederik Peter Aalund
 Gabriel Tremblay
