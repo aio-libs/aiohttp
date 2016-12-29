@@ -62,7 +62,10 @@ def test_run_app_nondefault_host_port(loop, unused_port, mocker):
     app = web.Application(loop=loop)
     mocker.spy(app, 'startup')
 
-    web.run_app(app, host=host, port=port, print=lambda *args: None)
+    try:
+        web.run_app(app, host=host, port=port, print=lambda *args: None)
+    except RuntimeError:
+        pass
 
     assert loop.is_closed()
     loop.create_server.assert_called_with(mock.ANY, host, port,
