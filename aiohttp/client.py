@@ -27,6 +27,10 @@ __all__ = ('ClientSession', 'request', 'get', 'options', 'head',
 PY_35 = sys.version_info >= (3, 5)
 
 
+# 5 Minute default read and connect timeout
+DEFAULT_TIMEOUT = 5 * 60
+
+
 class ClientSession:
     """First-class interface for making HTTP requests."""
 
@@ -39,10 +43,13 @@ class ClientSession:
                  response_class=ClientResponse,
                  ws_response_class=ClientWebSocketResponse,
                  version=aiohttp.HttpVersion11,
-                 cookie_jar=None):
+                 cookie_jar=None, read_timeout=DEFAULT_TIMEOUT):
+
+        assert read_timeout is not None
 
         if connector is None:
-            connector = aiohttp.TCPConnector(loop=loop)
+            connector = aiohttp.TCPConnector(loop=loop,
+                                             conn_timeout=DEFAULT_TIMEOUT)
             loop = connector._loop  # never None
         else:
             if loop is None:
@@ -74,6 +81,7 @@ class ClientSession:
         self._connector = connector
         self._default_auth = auth
         self._version = version
+        self._read_timeout = read_timeout
 
         # Convert to list of tuples
         if headers:
@@ -124,7 +132,9 @@ class ClientSession:
                  read_until_eof=True,
                  proxy=None,
                  proxy_auth=None,
-                 timeout=5*60):
+                 timeout=None):
+
+        # NOTE: timeout clamps existing connect and read timeouts
 
         if version is not None:
             warnings.warn("HTTP version should be specified "
@@ -158,6 +168,29 @@ class ClientSession:
         if proxy is not None:
             proxy = URL(proxy)
 
+        # clamp timeouts to timeout parameter
+
+        # default connector timeout is DEFAULT_TIMEOUT however user may have
+        # specified None as conn_timeout
+        conn_timeout = self._connector.conn_timeout
+
+        # default _read_timeout is DEFAULT_TIMEOUT and guaranteed to not be
+        # None via assert
+        read_timeout = self._read_timeout
+        if timeout is not None:
+            read_timeout = min(timeout, read_timeout)
+
+            if conn_timeout is not None:
+                conn_timeout = min(timeout, conn_timeout)
+
+        # previously we would force a default timeout
+        if conn_timeout is None:
+            conn_timeout = DEFAULT_TIMEOUT
+
+        # is this just the same as the connector's existing timeout?
+        if conn_timeout == self._connector.conn_timeout:
+            conn_timeout = None  # this will no-op the below timeout
+
         while True:
             url = URL(url).with_fragment(None)
 
@@ -170,9 +203,10 @@ class ClientSession:
                 auth=auth, version=version, compress=compress, chunked=chunked,
                 expect100=expect100,
                 loop=self._loop, response_class=self._response_class,
-                proxy=proxy, proxy_auth=proxy_auth, timeout=timeout)
+                proxy=proxy, proxy_auth=proxy_auth, timeout=read_timeout)
 
-            with Timeout(timeout, loop=self._loop):
+            # None conn_timeout is a Timeout no-op
+            with Timeout(conn_timeout, loop=self._loop):
                 conn = yield from self._connector.connect(req)
             conn.writer.set_tcp_nodelay(True)
             try:
