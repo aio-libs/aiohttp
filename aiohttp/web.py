@@ -16,8 +16,9 @@ from .protocol import HttpVersion  # noqa
 from .signals import PostSignal, PreSignal, Signal
 from .web_exceptions import *  # noqa
 from .web_reqrep import *  # noqa
-from .web_server import WebServer
+from .web_server import Server
 from .web_urldispatcher import *  # noqa
+from .web_urldispatcher import PrefixedSubAppResource
 from .web_ws import *  # noqa
 
 __all__ = (web_reqrep.__all__ +
@@ -36,8 +37,11 @@ class Application(MutableMapping):
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:
-            router = web_urldispatcher.UrlDispatcher(self)
+            router = web_urldispatcher.UrlDispatcher()
         assert isinstance(router, AbstractRouter), router
+
+        # backward compatibility until full deprecation
+        router.add_subapp = _wrap_add_subbapp(self)
 
         if debug is ...:
             debug = loop.get_debug()
@@ -123,6 +127,23 @@ class Application(MutableMapping):
         reg_handler('on_shutdown')
         reg_handler('on_cleanup')
 
+    def add_subapp(self, prefix, subapp):
+        if self.frozen:
+            raise RuntimeError(
+                "Cannot add sub application to frozen application")
+        if subapp.frozen:
+            raise RuntimeError("Cannot add frozen application")
+        if prefix.endswith('/'):
+            prefix = prefix[:-1]
+        if prefix in ('', '/'):
+            raise ValueError("Prefix cannot be empty")
+
+        resource = PrefixedSubAppResource(prefix, subapp)
+        self.router.register_resource(resource)
+        self._reg_subapp_signals(subapp)
+        subapp.freeze()
+        return resource
+
     @property
     def on_response_prepare(self):
         return self._on_response_prepare
@@ -177,10 +198,8 @@ class Application(MutableMapping):
                 )
         self.freeze()
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
-        return WebServer(self._handle,
-                         request_factory=self._make_request,
-                         debug=self.debug, loop=self.loop,
-                         **kwargs)
+        return Server(self._handle, request_factory=self._make_request,
+                      debug=self.debug, loop=self.loop, **kwargs)
 
     @asyncio.coroutine
     def startup(self):
@@ -264,6 +283,16 @@ class Application(MutableMapping):
         return "<Application 0x{:x}>".format(id(self))
 
 
+def _wrap_add_subbapp(app):
+    # backward compatibility
+
+    def add_subapp(prefix, subapp):
+        warnings.warn("Use app.add_subapp() instead", DeprecationWarning)
+        return app.add_subapp(prefix, subapp)
+
+    return add_subapp
+
+
 def run_app(app, *, host='0.0.0.0', port=None,
             shutdown_timeout=60.0, ssl_context=None,
             print=print, backlog=128, access_log_format=None,
@@ -282,11 +311,11 @@ def run_app(app, *, host='0.0.0.0', port=None,
         make_handler_kwargs['access_log_format'] = access_log_format
     handler = app.make_handler(access_log=access_log,
                                **make_handler_kwargs)
-    server = loop.create_server(handler, host, port, ssl=ssl_context,
-                                backlog=backlog)
-    srv, startup_res = loop.run_until_complete(asyncio.gather(server,
-                                                              app.startup(),
-                                                              loop=loop))
+
+    loop.run_until_complete(app.startup())
+    srv = loop.run_until_complete(loop.create_server(handler, host,
+                                                     port, ssl=ssl_context,
+                                                     backlog=backlog))
 
     scheme = 'https' if ssl_context else 'http'
     url = URL('{}://localhost'.format(scheme))

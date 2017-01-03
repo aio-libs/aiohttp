@@ -8,12 +8,13 @@ import signal
 import socket
 import ssl
 import sys
+import warnings
 
-import gunicorn.workers.base as base
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
+from gunicorn.workers import base
 
 from aiohttp.helpers import AccessLogger, ensure_future
-from aiohttp.web_server import WebServer
+from aiohttp.web_server import Server
 from aiohttp.wsgi import WSGIServerHttpProtocol
 
 __all__ = ('GunicornWebWorker', 'GunicornUVLoopWebWorker')
@@ -62,6 +63,11 @@ class GunicornWebWorker(base.Worker):
                 access_log_format=self._get_valid_log_format(
                     self.cfg.access_log_format))
         else:
+            warnings.warn(
+                "aiohttp.wsgi is deprecarted, "
+                "consider to switch to aiohttp.web.Application",
+                DeprecationWarning)
+
             return WSGIServer(self.wsgi, self)
 
     @asyncio.coroutine
@@ -220,7 +226,7 @@ class GunicornWebWorker(base.Worker):
             return source_format
 
 
-class WSGIServer(WebServer):
+class WSGIServer(Server):
 
     def __init__(self, app, worker):
         super().__init__(app, loop=worker.loop)

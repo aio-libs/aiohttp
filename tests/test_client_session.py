@@ -371,6 +371,7 @@ def test_request_ctx_manager_props(loop):
         assert isinstance(ctx_mgr.gi_frame, types.FrameType)
         assert not ctx_mgr.gi_running
         assert isinstance(ctx_mgr.gi_code, types.CodeType)
+        yield from asyncio.sleep(0.1, loop=loop)
 
 
 @asyncio.coroutine
@@ -435,3 +436,9 @@ def test_proxy_str(session, params):
                                            allow_redirects=True,
                                            proxy='http://proxy.com',
                                            **params)]
+
+
+def test_create_session_outside_of_coroutine(loop):
+    with pytest.warns(ResourceWarning):
+        sess = ClientSession(loop=loop)
+    sess.close()

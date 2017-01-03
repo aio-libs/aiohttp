@@ -486,7 +486,10 @@ class Request(BaseRequest):
 
     @asyncio.coroutine
     def _prepare_hook(self, response):
-        for app in self.match_info.apps:
+        match_info = self._match_info
+        if match_info is None:
+            return
+        for app in match_info.apps:
             yield from app.on_response_prepare.send(self, response)
 
 
@@ -506,7 +509,6 @@ class StreamResponse(HeadersMixin):
         self._compression_force = False
         self._headers = CIMultiDict()
         self._cookies = SimpleCookie()
-        self.set_status(status, reason)
 
         self._req = None
         self._resp_impl = None
@@ -518,6 +520,8 @@ class StreamResponse(HeadersMixin):
             # TODO: optimize CIMultiDict extending
             self._headers.extend(headers)
         self._headers.setdefault(hdrs.CONTENT_TYPE, 'application/octet-stream')
+
+        self.set_status(status, reason)
 
     @property
     def prepared(self):
@@ -549,6 +553,9 @@ class StreamResponse(HeadersMixin):
         return self._reason
 
     def set_status(self, status, reason=None):
+        if self.prepared:
+            raise RuntimeError("Cannot change the response status code after "
+                               "the headers have been sent")
         self._status = int(status)
         if reason is None:
             reason = ResponseImpl.calc_reason(status)
@@ -567,7 +574,7 @@ class StreamResponse(HeadersMixin):
 
     @property
     def output_length(self):
-        return self._resp.impl.output_length
+        return self._resp_impl.output_length
 
     def enable_chunked_encoding(self, chunk_size=None):
         """Enables automatic chunked transfer encoding."""
@@ -950,6 +957,8 @@ class Response(StreamResponse):
         super().__init__(status=status, reason=reason, headers=headers)
         if text is not None:
             self.text = text
+        elif body is None and hdrs.CONTENT_LENGTH in headers:
+            self._body = None
         else:
             self.body = body
 

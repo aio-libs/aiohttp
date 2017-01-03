@@ -2,6 +2,7 @@ Contributors
 ------------
 
 A. Jesse Jiryu Davis
+Adam Mills
 Alejandro Gómez
 Aleksandr Danshyn
 Aleksey Kutepov
@@ -10,6 +11,7 @@ Alexander Bayandin
 Alexander Karpinsky
 Alexander Koshevoy
 Alexander Malev
+Alexander Mohr
 Alexander Shorin
 Alexander Travov
 Alexandru Mihai
@@ -50,6 +52,7 @@ Dmitry Shamov
 Dmitry Trofimov
 Dmytro Kuznetsov
 Dustin J. Mitchell
+Eduard Iskandarov
 Elizabeth Leddy
 Enrique Saez
 Erich Healy
@@ -105,9 +108,11 @@ Mun Gwan-gyeong
 Nicolas Braem
 Nikolay Novik
 Olaf Conradi
+Pahaz Blinov <pahaz.blinov@gmail.com>
 Pankaj Pandey
 Pau Freixes
 Paul Colomiets
+Paulus Schoutsen
 Philipp A.
 Rafael Viotti
 Raúl Cumplido

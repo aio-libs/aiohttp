@@ -1,7 +1,7 @@
 .. _aiohttp-client:
 
-HTTP Client
-===========
+Client
+======
 
 .. module:: aiohttp
 

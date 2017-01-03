@@ -1,7 +1,7 @@
 .. _aiohttp-client-reference:
 
-HTTP Client Reference
-=====================
+Client Reference
+================
 
 .. module:: aiohttp
 .. currentmodule:: aiohttp

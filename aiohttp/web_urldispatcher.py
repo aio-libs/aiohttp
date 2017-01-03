@@ -710,11 +710,10 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
     NAME_SPLIT_RE = re.compile(r'[.:-]')
 
-    def __init__(self, app):
+    def __init__(self):
         super().__init__()
         self._resources = []
         self._named_resources = {}
-        self._app = app
 
     @asyncio.coroutine
     def resolve(self, request):
@@ -755,13 +754,13 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     def named_resources(self):
         return MappingProxyType(self._named_resources)
 
-    def _reg_resource(self, resource):
+    def register_resource(self, resource):
         assert isinstance(resource, AbstractResource), \
             'Instance of AbstractResource class is required, got {!r}'.format(
                 resource)
         if self.frozen:
-            raise RuntimeError("Cannot register a resource into "
-                               "frozen router.")
+            raise RuntimeError(
+                "Cannot register a resource into frozen router.")
 
         name = resource.name
 
@@ -785,7 +784,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             raise ValueError("path should be started with / or be empty")
         if not ('{' in path or '}' in path or self.ROUTE_RE.search(path)):
             resource = PlainResource(quote(path, safe='/'), name=name)
-            self._reg_resource(resource)
+            self.register_resource(resource)
             return resource
 
         pattern = ''
@@ -816,7 +815,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             raise ValueError(
                 "Bad pattern '{}': {}".format(pattern, exc)) from None
         resource = DynamicResource(compiled, formatter, name=name)
-        self._reg_resource(resource)
+        self.register_resource(resource)
         return resource
 
     def add_route(self, method, path, handler,
@@ -845,7 +844,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                                   response_factory=response_factory,
                                   show_index=show_index,
                                   follow_symlinks=follow_symlinks)
-        self._reg_resource(resource)
+        self.register_resource(resource)
         return resource
 
     def add_head(self, *args, **kwargs):
@@ -883,19 +882,6 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         Shortcut for add_route with method DELETE
         """
         return self.add_route(hdrs.METH_DELETE, *args, **kwargs)
-
-    def add_subapp(self, prefix, subapp):
-        if subapp.frozen:
-            raise RuntimeError("Cannod add frozen application")
-        if prefix.endswith('/'):
-            prefix = prefix[:-1]
-        if prefix in ('', '/'):
-            raise ValueError("Prefix cannot be empty")
-        resource = PrefixedSubAppResource(prefix, subapp)
-        self._reg_resource(resource)
-        self._app._reg_subapp_signals(subapp)
-        subapp.freeze()
-        return resource
 
     def freeze(self):
         super().freeze()

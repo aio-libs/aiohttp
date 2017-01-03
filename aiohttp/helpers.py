@@ -592,7 +592,8 @@ class TimeService:
         self._cb = loop.call_later(1, self._on_cb)
 
     def stop(self):
-        self._cb.cancel()
+        if self._cb:
+            self._cb.cancel()
         self._cb = None
         self._loop = None
 
@@ -670,8 +671,3 @@ class HeadersMixin:
             return None
         else:
             return int(l)
-
-
-def check_loop(loop):
-    if loop is None:
-        loop = asyncio.get_event_loop()

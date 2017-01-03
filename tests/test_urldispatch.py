@@ -907,46 +907,52 @@ def test_url_for_in_resource_route(router):
     assert URL('/get/John') == route.url_for(name='John')
 
 
-def test_subapp_get_info(router, loop):
+def test_subapp_get_info(app, loop):
+    subapp = web.Application(loop=loop)
+    resource = subapp.add_subapp('/pre', subapp)
+    assert resource.get_info() == {'prefix': '/pre', 'app': subapp}
+
+
+def test_subapp_backward_compatible(router, loop):
     subapp = web.Application(loop=loop)
     resource = router.add_subapp('/pre', subapp)
     assert resource.get_info() == {'prefix': '/pre', 'app': subapp}
 
 
-def test_subapp_url(router, loop):
+def test_subapp_url(app, loop):
     subapp = web.Application(loop=loop)
-    resource = router.add_subapp('/pre', subapp)
+    resource = app.add_subapp('/pre', subapp)
     with pytest.raises(RuntimeError):
         resource.url()
 
 
-def test_subapp_url_for(router, loop):
+def test_subapp_url_for(app, loop):
     subapp = web.Application(loop=loop)
-    resource = router.add_subapp('/pre', subapp)
+    resource = app.add_subapp('/pre', subapp)
     with pytest.raises(RuntimeError):
         resource.url_for()
 
 
-def test_subapp_repr(router, loop):
+def test_subapp_repr(app, loop):
     subapp = web.Application(loop=loop)
-    resource = router.add_subapp('/pre', subapp)
+    resource = app.add_subapp('/pre', subapp)
     assert repr(resource).startswith(
         '<PrefixedSubAppResource /pre -> <Application')
 
 
-def test_subapp_len(router, loop):
+def test_subapp_len(app, loop):
     subapp = web.Application(loop=loop)
     subapp.router.add_get('/', make_handler())
     subapp.router.add_post('/', make_handler())
-    resource = router.add_subapp('/pre', subapp)
+    resource = app.add_subapp('/pre', subapp)
     assert len(resource) == 2
 
 
-def test_subapp_iter(router, loop):
+def test_subapp_iter(app, loop):
     subapp = web.Application(loop=loop)
     r1 = subapp.router.add_get('/', make_handler())
     r2 = subapp.router.add_post('/', make_handler())
-    resource = router.add_subapp('/pre', subapp)
+    resource = app.add_subapp('/pre', subapp)
     assert list(resource) == [r1, r2]
 
 
@@ -961,11 +967,18 @@ def test_frozen_router(router):
         router.add_get('/', make_handler())
 
 
-def test_frozen_router_subapp(loop, router):
+def test_frozen_router_subapp(app, loop):
     subapp = web.Application(loop=loop)
     subapp.freeze()
     with pytest.raises(RuntimeError):
-        router.add_subapp('/', subapp)
+        app.add_subapp('/', subapp)
+
+
+def test_frozen_app_on_subapp(app, loop):
+    app.freeze()
+    subapp = web.Application(loop=loop)
+    with pytest.raises(RuntimeError):
+        app.add_subapp('/', subapp)
 
 
 def test_set_options_route(router):
@@ -991,16 +1004,16 @@ def test_dynamic_url_with_name_started_from_undescore(router):
     assert URL('/get/John') == route.url_for(_name='John')
 
 
-def test_cannot_add_subapp_with_empty_prefix(router, loop):
+def test_cannot_add_subapp_with_empty_prefix(app, loop):
     subapp = web.Application(loop=loop)
     with pytest.raises(ValueError):
-        router.add_subapp('', subapp)
+        app.add_subapp('', subapp)
 
 
-def test_cannot_add_subapp_with_slash_prefix(router, loop):
+def test_cannot_add_subapp_with_slash_prefix(app, loop):
     subapp = web.Application(loop=loop)
     with pytest.raises(ValueError):
-        router.add_subapp('/', subapp)
+        app.add_subapp('/', subapp)
 
 
 @asyncio.coroutine

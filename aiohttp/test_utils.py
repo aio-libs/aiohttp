@@ -20,7 +20,7 @@ from . import ClientSession, hdrs
 from .helpers import sentinel
 from .protocol import HttpVersion, RawRequestMessage
 from .signals import Signal
-from .web import Application, Request, UrlMappingMatchInfo, WebServer
+from .web import Application, Request, Server, UrlMappingMatchInfo
 
 PY_35 = sys.version_info >= (3, 5)
 
@@ -164,7 +164,7 @@ class RawTestServer(BaseTestServer):
 
     @asyncio.coroutine
     def _make_factory(self, **kwargs):
-        self.handler = WebServer(self._handler, loop=self._loop, **kwargs)
+        self.handler = Server(self._handler, loop=self._loop, **kwargs)
         return self.handler
 
     @asyncio.coroutine
@@ -174,18 +174,10 @@ class RawTestServer(BaseTestServer):
 
 class TestClient:
     """
-    A test client implementation, for a aiohttp.web.Application.
+    A test client implementation.
 
-    :param app: the aiohttp.web application passed to create_test_server
+    To write functional tests for aiohttp based servers.
 
-    :type app: aiohttp.web.Application
-
-    :param protocol: http or https
-
-    :type protocol: str
-
-    TestClient can also be used as a contextmanager, returning
-    the instance of itself instantiated.
     """
 
     def __init__(self, app_or_server, *, scheme=sentinel, host=sentinel,
@@ -364,26 +356,33 @@ class AioHTTPTestCase(unittest.TestCase):
     * self.loop (asyncio.BaseEventLoop): the event loop in which the
         application and server are running.
     * self.app (aiohttp.web.Application): the application returned by
-        self.get_app()
+        self.get_applicaion()
 
     Note that the TestClient's methods are asynchronous: you have to
     execute function on the test client using asynchronous methods.
     """
 
-    def get_app(self, loop):
+    @asyncio.coroutine
+    def get_applicaion(self, loop):
         """
         This method should be overridden
         to return the aiohttp.web.Application
         object to test.
 
-        :param loop: the event_loop to use
-        :type loop: asyncio.BaseEventLoop
+        """
+        return self.get_app(loop)
+
+    def get_app(self, loop):
+        """Obsolete method used to constructing web application.
+
+        Use .get_applicaion() coroutine instead
+
         """
         pass  # pragma: no cover
 
     def setUp(self):
         self.loop = setup_test_loop()
-        self.app = self.get_app(self.loop)
+        self.app = self.loop.run_until_complete(self.get_applicaion(self.loop))
         self.client = TestClient(self.app)
         self.loop.run_until_complete(self.client.start_server())
 
@@ -434,8 +433,6 @@ def teardown_test_loop(loop):
     """Teardown and cleanup an event_loop created
     by setup_test_loop.
 
-    :param loop: the loop to teardown
-    :type loop: asyncio.BaseEventLoop
     """
     closed = loop.is_closed()
     if not closed:

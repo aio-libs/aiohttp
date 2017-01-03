@@ -185,7 +185,10 @@ class ClientRequest:
 
         for name, value in cookies.items():
             if isinstance(value, http.cookies.Morsel):
-                c[value.key] = value.value
+                # Preserve coded_value
+                mrsl_val = value.get(value.key, http.cookies.Morsel())
+                mrsl_val.set(value.key, value.value, value.coded_value)
+                c[name] = mrsl_val
             else:
                 c[name] = value
 
@@ -609,7 +612,7 @@ class ClientResponse(HeadersMixin):
             # read response
             with Timeout(self._timeout, loop=self._loop):
                 message = yield from httpstream.read()
-            if message.code != 100:
+            if message.code < 100 or message.code > 199 or message.code == 101:
                 break
 
             if self._continue is not None and not self._continue.done():

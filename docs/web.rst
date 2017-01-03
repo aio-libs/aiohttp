@@ -1,7 +1,7 @@
 .. _aiohttp-web:
 
-HTTP Server Usage
-=================
+Server Usage
+============
 
 .. currentmodule:: aiohttp.web
 
@@ -131,6 +131,17 @@ family are plain shortcuts for :meth:`UrlDispatcher.add_route`.
    Introduce resources.
 
 
+.. _aiohttp-web-custom-resource:
+
+Custom resource implementation
+------------------------------
+
+To register custom resource use :meth:`UrlDispatcher.register_resource`.
+Resource instance must implement `AbstractResource` interface.
+
+.. versionadded:: 1.2.1
+
+
 .. _aiohttp-web-variable-handler:
 
 Variable Resources
@@ -159,6 +170,25 @@ You can also specify a custom regex in the form ``{identifier:regex}``::
 
    resource = app.router.add_resource(r'/{name:\d+}')
 
+.. note::
+
+   Regex should match against *percent encoded* URL
+   (``request.rel_url_raw_path``). E.g. *space character* is encoded
+   as ``%20``.
+
+   According to
+   `RFC 3986 <https://tools.ietf.org/html/rfc3986.html#appendix-A>`_
+   allowed in path symbols are::
+
+      allowed       = unreserved / pct-encoded / sub-delims
+                    / ":" / "@" / "/"
+
+      pct-encoded   = "%" HEXDIG HEXDIG
+
+      unreserved    = ALPHA / DIGIT / "-" / "." / "_" / "~"
+
+      sub-delims    = "!" / "$" / "&" / "'" / "(" / ")"
+                    / "*" / "+" / "," / ";" / "="
 
 .. _aiohttp-web-named-routes:
 
@@ -172,8 +202,7 @@ Routes can also be given a *name*::
 Which can then be used to access and build a *URL* for that resource later (e.g.
 in a :ref:`request handler <aiohttp-web-handler>`)::
 
-   >>> request.app.router.named_resources()['root'].url_for()
-   ...                                      .with_query({"a": "b", "c": "d"})
+   >>> request.app.router['root'].url_for().with_query({"a": "b", "c": "d"})
    URL('/root?a=b&c=d')
 
 A more interesting example is building *URLs* for :ref:`variable
@@ -636,10 +665,12 @@ with the peer::
 
 .. _aiohttp-web-websocket-read-same-task:
 
-Reading from the *WebSocket* (``await ws.receive()``) and closing it (``await ws.close()``)
-**must only** be done inside the request handler *task*; however, writing
-(``ws.send_str(...)``) to the *WebSocket* and canceling the handler task
-may be delegated to other tasks. See also :ref:`FAQ section <aiohttp_faq_terminating_websockets>`.
+Reading from the *WebSocket* (``await ws.receive()``) and closing it
+(``await ws.close()``) **must only** be done inside the request
+handler *task*; however, writing (``ws.send_str(...)``) to the
+*WebSocket* and canceling the handler task may be delegated to other
+tasks. See also :ref:`FAQ section
+<aiohttp_faq_terminating_websockets>`.
 
 *aiohttp.web* creates an implicit :class:`asyncio.Task` for handling every
 incoming request.
@@ -936,6 +967,7 @@ parameters.
    object creation is subject to change. As long as you are not creating new
    signals, but simply reusing existing ones, you will not be affected.
 
+.. _aiohttp-web-nested-applications:
 
 Nested applications
 -------------------
@@ -950,12 +982,12 @@ toolbar URLs are served by prefix like ``/admin``.
 
 Thus we'll create a totally separate application named ``admin`` and
 connect it to main app with prefix by
-:meth:`~aiohttp.web.UrlDispatcher.add_subapp`::
+:meth:`~aiohttp.web.Application.add_subapp`::
 
    admin = web.Application()
    # setup admin routes, signals and middlewares
 
-   app.router.add_subapp('/admin/', admin)
+   app.add_subapp('/admin/', admin)
 
 Middlewares and signals from ``app`` and ``admin`` are chained.
 
@@ -985,13 +1017,25 @@ But for getting URL sub-application's router should be used::
    admin = web.Application()
    admin.router.add_get('/resource', handler, name='name')
 
-   app.router.add_subapp('/admin/', admin)
+   app.add_subapp('/admin/', admin)
 
    url = admin.router['name'].url_for()
 
 The generated ``url`` from example will have a value
 ``URL('/admin/resource')``.
 
+If main application should do URL reversing for sub-application it could
+use the following explicit technique::
+
+   admin = web.Application()
+   admin.router.add_get('/resource', handler, name='name')
+
+   app.add_subapp('/admin/', admin)
+   app['admin'] = admin
+
+   async def handler(request):  # main application's handler
+       admin = request.app['admin']
+       url = admin.router['name'].url_for()
 
 .. _aiohttp-web-flow-control:
 
@@ -1095,7 +1139,7 @@ Proper finalization procedure has three steps:
   2. Fire :meth:`Application.shutdown` event.
 
   3. Close accepted connections from clients by
-     :meth:`RequestHandlerFactory.shutdown` call with
+     :meth:`Server.shutdown` call with
      reasonable small delay.
 
   4. Call registered application finalizers by :meth:`Application.cleanup`.

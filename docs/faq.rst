@@ -15,6 +15,18 @@ For this reason feature will not be implemented. But if you really want to
 use decorators just derive from web.Application and add desired method.
 
 
+Has aiohttp the Flask Blueprint or Django App concept?
+------------------------------------------------------
+
+If you're planing to write big applications, maybe you must consider
+use nested applications. They acts as a Flask Blueprint or like the
+Django application concept.
+
+Using nested application you can add sub-applications to the main application.
+
+see: :ref:`aiohttp-web-nested-applications`.
+
+
 How to create route that catches urls with given prefix?
 ---------------------------------------------------------
 Try something like::
@@ -126,7 +138,7 @@ peer::
         finally:
             task.cancel()
 
-    async def read_subscriptions(ws, redis):
+    async def read_subscription(ws, redis):
         channel, = await redis.subscribe('channel:1')
 
         try:
@@ -192,7 +204,7 @@ tasks for a user in the :class:`aiohttp.web.Application` instance and
         app = aiohttp.web.Application(loop=loop)
         app.router.add_route('GET', '/echo', echo_handler)
         app.router.add_route('POST', '/logout', logout_handler)
-        app['websockets'] = defaultdict(set)
+        app['handlers'] = defaultdict(set)
         aiohttp.web.run_app(app, host='localhost', port=8080)
 
 
@@ -234,7 +246,9 @@ example would be the following::
 
       async def test_get(self, test_client, loop):
           with patch("main.AioESService", MagicMock(
-                  side_effect=lambda *args, **kwargs: AioESService(*args, **kwargs, loop=loop))):
+                  side_effect=lambda *args, **kwargs: AioESService(*args,
+                                                                   **kwargs,
+                                                                   loop=loop))):
               client = await test_client(create_app)
               resp = await client.get("/")
               assert resp.status == 200
@@ -306,7 +320,9 @@ And the full tests file::
 
       async def test_get(self, test_client, loop):
           with patch("main.AioESService", MagicMock(
-                  side_effect=lambda *args, **kwargs: AioESService(*args, **kwargs, loop=loop))):
+                  side_effect=lambda *args, **kwargs: AioESService(*args,
+                                                                   **kwargs,
+                                                                   loop=loop))):
               client = await test_client(create_app)
               resp = await client.get("/")
               assert resp.status == 200
@@ -334,6 +350,17 @@ client side forced us to break backward compatibility twice).
 
 All *backward incompatible* changes are explicitly marked in
 :ref:`CHANGES <aiohttp_changes>` chapter.
+
+
+How to enable gzip compression globally for the whole application?
+------------------------------------------------------------------
+
+It's impossible. Choosing what to compress and where don't apply such
+time consuming operation is very tricky matter.
+
+If you need global compression -- write own custom middleware. Or
+enable compression in NGINX (you are deploying aiohttp behind reverse
+proxy, isn't it).
 
 
 .. disqus::
