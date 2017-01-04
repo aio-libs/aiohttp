@@ -31,6 +31,19 @@ PY_35 = sys.version_info >= (3, 5)
 DEFAULT_TIMEOUT = 5 * 60
 
 
+def _timeout_min(value1, value2):
+    # If neither value is None returns minimum of two, otherwise returns non-
+    # None value
+
+    if value1 is None:
+        return value2
+
+    if value2 is None:
+        return value1
+
+    return min(value1, value2)
+
+
 class ClientSession:
     """First-class interface for making HTTP requests."""
 
@@ -43,13 +56,10 @@ class ClientSession:
                  response_class=ClientResponse,
                  ws_response_class=ClientWebSocketResponse,
                  version=aiohttp.HttpVersion11,
-                 cookie_jar=None, read_timeout=DEFAULT_TIMEOUT):
-
-        assert read_timeout is not None
+                 cookie_jar=None, read_timeout=None):
 
         if connector is None:
-            connector = aiohttp.TCPConnector(loop=loop,
-                                             conn_timeout=DEFAULT_TIMEOUT)
+            connector = aiohttp.TCPConnector(loop=loop)
             loop = connector._loop  # never None
         else:
             if loop is None:
@@ -132,9 +142,11 @@ class ClientSession:
                  read_until_eof=True,
                  proxy=None,
                  proxy_auth=None,
-                 timeout=None):
+                 timeout=DEFAULT_TIMEOUT):
 
-        # NOTE: timeout clamps existing connect and read timeouts
+        # NOTE: timeout clamps existing connect and read timeouts.  We cannot
+        # set the default to None because we need to detect if the user wants
+        # to use the existing timeouts by setting timeout to None.
 
         if version is not None:
             warnings.warn("HTTP version should be specified "
@@ -168,24 +180,12 @@ class ClientSession:
         if proxy is not None:
             proxy = URL(proxy)
 
-        # clamp timeouts to timeout parameter
-
-        # default connector timeout is DEFAULT_TIMEOUT however user may have
-        # specified None as conn_timeout
-        conn_timeout = self._connector.conn_timeout
-
-        # default _read_timeout is DEFAULT_TIMEOUT and guaranteed to not be
-        # None via assert
+        # optionally clamp timeouts to timeout parameter
         read_timeout = self._read_timeout
+        conn_timeout = self._connector.conn_timeout
         if timeout is not None:
-            read_timeout = min(timeout, read_timeout)
-
-            if conn_timeout is not None:
-                conn_timeout = min(timeout, conn_timeout)
-
-        # previously we would force a default timeout
-        if conn_timeout is None:
-            conn_timeout = DEFAULT_TIMEOUT
+            read_timeout = _timeout_min(timeout, read_timeout)
+            conn_timeout = _timeout_min(timeout, conn_timeout)
 
         # is this just the same as the connector's existing timeout?
         if conn_timeout == self._connector.conn_timeout:
