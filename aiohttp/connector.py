@@ -179,12 +179,6 @@ class BaseConnector(object):
     def conn_timeout(self):
         return self._conn_timeout
 
-    @conn_timeout.setter
-    def conn_timeout(self, timeout):
-        """ Set connector timeout.  This will only take into effect for new
-        connections. """
-        self._conn_timeout = timeout
-
     @property
     def force_close(self):
         """Ultimately close connection on releasing if True."""
