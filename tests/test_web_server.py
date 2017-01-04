@@ -62,6 +62,26 @@ def test_raw_server_not_http_exception_debug(raw_test_server, test_client):
         exc_info=exc)
 
 
+@asyncio.coroutine
+def test_raw_server_base_exception(raw_test_server, test_client):
+    class TestBaseException(BaseException):
+        pass
+
+    @asyncio.coroutine
+    def handler(request):
+        raise TestBaseException()
+
+    logger = mock.Mock()
+    server = yield from raw_test_server(handler, logger=logger, debug=True)
+    client = yield from test_client(server)
+    resp = yield from client.get('/path/to')
+    assert resp.status == 500
+
+    txt = yield from resp.text()
+    assert 'During handling of the above exception' not in txt
+    assert 'TestBaseException' in txt
+
+
 def test_create_web_server_with_implicit_loop(loop):
     asyncio.set_event_loop(loop)
 
