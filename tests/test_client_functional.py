@@ -563,6 +563,25 @@ def test_timeout_on_conn_reading_headers(loop, test_client):
 
 
 @asyncio.coroutine
+def test_timeout_on_session_read_timeout(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.StreamResponse()
+        yield from asyncio.sleep(0.1, loop=loop)
+        yield from resp.prepare(request)
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+
+    conn = aiohttp.TCPConnector(loop=loop)
+    client = yield from test_client(app, connector=conn, read_timeout=0.01)
+
+    with pytest.raises(asyncio.TimeoutError):
+        yield from client.get('/', timeout=None)
+
+
+@asyncio.coroutine
 def test_timeout_on_reading_data(loop, test_client):
 
     @asyncio.coroutine

@@ -35,8 +35,7 @@ def _timeout_min(value1, value2):
     # If neither value is None returns minimum of two, otherwise returns non-
     # None value
 
-    if value1 is None:
-        return value2
+    assert value1 is not None
 
     if value2 is None:
         return value1
