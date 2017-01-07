@@ -838,6 +838,12 @@ class BodyPartWriterTestCase(unittest.TestCase):
         multipart = aiohttp.multipart.MultipartWriter(boundary=':')
         multipart.append('foo-bar-baz')
         multipart.append_json({'test': 'passed'})
+        multipart.append_form({'test': 'passed'})
+        multipart.append_form([('one', 1), ('two', 2)])
+        sub_multipart = aiohttp.multipart.MultipartWriter(boundary='::')
+        sub_multipart.append('nested content')
+        sub_multipart.headers['X-CUSTOM'] = 'test'
+        multipart.append(sub_multipart)
         self.assertEqual(
             [b'--:\r\n',
              b'Content-Type: text/plain; charset=utf-8\r\n'
@@ -845,10 +851,36 @@ class BodyPartWriterTestCase(unittest.TestCase):
              b'\r\n\r\n',
              b'foo-bar-baz',
              b'\r\n',
+
              b'--:\r\n',
              b'Content-Type: application/json',
              b'\r\n\r\n',
              b'{"test": "passed"}',
+             b'\r\n',
+
+             b'--:\r\n',
+             b'Content-Type: application/x-www-form-urlencoded',
+             b'\r\n\r\n',
+             b'test=passed',
+             b'\r\n',
+
+             b'--:\r\n',
+             b'Content-Type: application/x-www-form-urlencoded',
+             b'\r\n\r\n',
+             b'one=1&two=2',
+             b'\r\n',
+
+             b'--:\r\n',
+             b'Content-Type: multipart/mixed; boundary="::"\r\nX-Custom: test',
+             b'\r\n\r\n',
+             b'--::\r\n',
+             b'Content-Type: text/plain; charset=utf-8\r\n'
+             b'Content-Length: 14',
+             b'\r\n\r\n',
+             b'nested content',
+             b'\r\n',
+             b'--::--\r\n',
+             b'',
              b'\r\n',
              b'--:--\r\n',
              b''],
