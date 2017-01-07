@@ -639,6 +639,7 @@ class MultipartReader(object):
             pass
         elif chunk == self._boundary + b'--':
             self._at_eof = True
+            yield from self._readline()
         else:
             raise ValueError('Invalid boundary %r, expected %r'
                              % (chunk, self._boundary))

@@ -46,6 +46,7 @@ async def test_async_for_reader(loop):
             b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03K\xcc\xcc\xcf())'
             b'\xe0\x02\x00\xd6\x90\xe2O\x08\x00\x00\x00',
             b'--::--',
+            b'',
             b'--:--',
             b''])))
     idata = iter(data)

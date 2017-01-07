@@ -594,6 +594,7 @@ class MultipartReaderTestCase(TestCase):
                    b'\r\n'
                    b'passed\r\n'
                    b'----:----\r\n'
+                   b'\r\n'
                    b'--:--'))
         yield from reader.release()
         self.assertTrue(reader.at_eof())
