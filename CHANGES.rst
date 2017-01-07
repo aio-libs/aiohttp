@@ -6,7 +6,7 @@ CHANGES
 
 - Fix polls demo run application #1487
 
--
+- Fix sub-Multipart messages missing their headers on serialization #1525
 
 1.2.0 (2016-12-17)
 ------------------
