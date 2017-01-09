@@ -13,6 +13,8 @@ from aiohttp.hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING,
 from aiohttp.helpers import parse_mimetype
 from aiohttp.multipart import (content_disposition_filename,
                                parse_content_disposition)
+from aiohttp.streams import DEFAULT_LIMIT as stream_reader_default_limit
+from aiohttp.streams import StreamReader
 
 
 def run_in_loop(f):
@@ -497,6 +499,16 @@ class PartReaderTestCase(TestCase):
             {CONTENT_DISPOSITION: 'attachment; filename=foo.html'},
             None)
         self.assertEqual('foo.html', part.filename)
+
+    def test_reading_long_part(self):
+        size = 2 * stream_reader_default_limit
+        stream = StreamReader()
+        stream.feed_data(b'0' * size + b'\r\n--:--')
+        stream.feed_eof()
+        obj = aiohttp.multipart.BodyPartReader(
+            self.boundary, {}, stream)
+        data = yield from obj.read()
+        self.assertEqual(len(data), size)
 
 
 class MultipartReaderTestCase(TestCase):
