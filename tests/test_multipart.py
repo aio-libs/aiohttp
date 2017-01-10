@@ -1014,6 +1014,13 @@ class BodyPartWriterTestCase(unittest.TestCase):
         self.part.set_content_disposition('related', filename='foo.html')
         self.assertEqual('foo.html', self.part.filename)
 
+    def test_wrap_multipart(self):
+        writer = aiohttp.multipart.MultipartWriter(boundary=':')
+        part = aiohttp.multipart.BodyPartWriter(writer)
+        self.assertEqual(part.headers, writer.headers)
+        part.headers['X-Custom'] = 'test'
+        self.assertEqual(part.headers, writer.headers)
+
 
 class MultipartWriterTestCase(unittest.TestCase):
 
@@ -1079,6 +1086,14 @@ class MultipartWriterTestCase(unittest.TestCase):
         part = self.writer.parts[0]
         self.assertEqual(part.headers[CONTENT_TYPE],
                          'application/x-www-form-urlencoded')
+
+    def test_append_multipart(self):
+        subwriter = aiohttp.multipart.MultipartWriter(boundary=':')
+        subwriter.append_json({'foo': 'bar'})
+        self.writer.append(subwriter, {CONTENT_TYPE: 'test/passed'})
+        self.assertEqual(1, len(self.writer))
+        part = self.writer.parts[0]
+        self.assertEqual(part.headers[CONTENT_TYPE], 'test/passed')
 
     def test_serialize(self):
         self.assertEqual([b''], list(self.writer.serialize()))
