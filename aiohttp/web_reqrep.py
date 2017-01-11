@@ -281,6 +281,11 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return not self._message.should_close
 
     @property
+    def time_service(self):
+        """Time service"""
+        return self._time_service
+
+    @property
     def transport(self):
         """Transport used for request processing."""
         return self._transport
@@ -845,7 +850,7 @@ class StreamResponse(HeadersMixin):
         else:
             resp_impl.length = self.content_length
 
-        headers.setdefault(DATE, request._time_service.strtime())
+        headers.setdefault(DATE, request.time_service.strtime())
         headers.setdefault(SERVER, resp_impl.SERVER_SOFTWARE)
         if CONNECTION not in headers:
             if keep_alive:
