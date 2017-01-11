@@ -17,7 +17,7 @@ Sometimes user don't need high-level concepts introduced in
 All what is needed is supporting asynchronous callable which accepts a
 request and returns a response object.
 
-This is done by introducing :class:`aiohttp.web.WebServer` class which
+This is done by introducing :class:`aiohttp.web.Server` class which
 serves a *protocol factory* role for
 :meth:`asyncio.AbstractEventLoop.create_server` and bridges data
 stream to *web handler* and sends result back.
