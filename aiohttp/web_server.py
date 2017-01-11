@@ -89,7 +89,7 @@ class RequestHandler(ServerHttpProtocol):
 
         # notify server about keep-alive
         # assign to parent class attr
-        self._keepalive = resp._keep_alive
+        self._keepalive = resp.keep_alive
 
         # Restore default state.
         # Should be no-op if server code didn't touch these attributes.
