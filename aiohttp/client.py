@@ -35,11 +35,8 @@ class ClientSession:
 
     def __init__(self, *, connector=None, loop=None, cookies=None,
                  headers=None, skip_auto_headers=None,
-                 auth=None, request_class=ClientRequest,
-                 response_class=ClientResponse,
-                 ws_response_class=ClientWebSocketResponse,
-                 version=aiohttp.HttpVersion11,
-                 cookie_jar=None):
+                 auth=None, version=aiohttp.HttpVersion11,
+                 cookie_jar=None, **kwargs):
 
         if connector is None:
             connector = aiohttp.TCPConnector(loop=loop)
@@ -87,9 +84,10 @@ class ClientSession:
         else:
             self._skip_auto_headers = frozenset()
 
-        self._request_class = request_class
-        self._response_class = response_class
-        self._ws_response_class = ws_response_class
+        self._request_class = kwargs.get('request_class', ClientRequest)
+        self._response_class = kwargs.get('response_class', ClientResponse)
+        self._ws_response_class = kwargs.get('ws_response_class',
+                                             ClientWebSocketResponse)
 
     def __del__(self, _warnings=warnings):
         if not self.closed:
