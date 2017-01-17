@@ -10,6 +10,8 @@ CHANGES
 
 - remove `web.Application` dependency from `web.UrlDispatcher` #1510
 
+- separate read + connect + request timeouts # 1523
+
  
 1.2.0 (2016-12-17)
 ------------------
