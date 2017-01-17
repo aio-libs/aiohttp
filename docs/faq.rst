@@ -175,7 +175,7 @@ tasks for a user in the :class:`aiohttp.web.Application` instance and
         ws = web.WebSocketResponse()
         user_id = authenticate_user(request)
         await ws.prepare(request)
-        request.app['handlers'][user_id].add(asyncio.Task.current_task())
+        request.app['websockets'][user_id].add(asyncio.Task.current_task())
 
         try:
             async for msg in ws:
@@ -185,7 +185,7 @@ tasks for a user in the :class:`aiohttp.web.Application` instance and
         except asyncio.CancelledError:
             print('websocket cancelled')
         finally:
-            request.app['handlers'][user_id].remove(asyncio.Task.current_task())
+            request.app['websockets'][user_id].remove(asyncio.Task.current_task())
         await ws.close()
         return ws
 
@@ -193,7 +193,7 @@ tasks for a user in the :class:`aiohttp.web.Application` instance and
 
         user_id = authenticate_user(request)
 
-        for task in request.app['handlers'][user_id]:
+        for task in request.app['websockets'][user_id]:
             task.cancel()
 
         # return response
