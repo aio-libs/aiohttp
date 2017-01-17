@@ -10,6 +10,8 @@ CHANGES
 
 - remove `web.Application` dependency from `web.UrlDispatcher` #1510
 
+- Fix typo in FAQ section "How to programmatically close websocket server-side?".
+
  
 1.2.0 (2016-12-17)
 ------------------

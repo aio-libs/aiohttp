@@ -48,6 +48,7 @@ David Michael Brown
 Denis Matiychuk
 Dima Veselov
 Dimitar Dimitrov
+Dmitry Doroshev
 Dmitry Shamov
 Dmitry Trofimov
 Dmytro Kuznetsov
