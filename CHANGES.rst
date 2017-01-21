@@ -12,8 +12,7 @@ CHANGES
 
 - Fix typo in FAQ section "How to programmatically close websocket server-side?".
 
-- Allow users to specify what should happen to decoding errors when calling a responses `text()` method
-
+- Allow users to specify what should happen to decoding errors when calling a responses `text()` method #1542
  
 1.2.0 (2016-12-17)
 ------------------
