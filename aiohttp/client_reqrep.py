@@ -741,7 +741,7 @@ class ClientResponse(HeadersMixin):
         return encoding
 
     @asyncio.coroutine
-    def text(self, encoding=None):
+    def text(self, encoding=None, errors='strict'):
         """Read response payload and decode."""
         if self._content is None:
             yield from self.read()
@@ -749,7 +749,7 @@ class ClientResponse(HeadersMixin):
         if encoding is None:
             encoding = self._get_encoding()
 
-        return self._content.decode(encoding)
+        return self._content.decode(encoding, errors=errors)
 
     @asyncio.coroutine
     def json(self, *, encoding=None, loads=json.loads):
