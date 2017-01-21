@@ -318,10 +318,13 @@ def run_app(app, *, host='0.0.0.0', port=None,
                                                      backlog=backlog))
 
     scheme = 'https' if ssl_context else 'http'
-    url = URL('{}://localhost'.format(scheme))
-    url = url.with_host(host).with_port(port)
+    base_url = URL('{}://localhost'.format(scheme)).with_port(port)
+    if isinstance(host, str):
+        urls = [base_url.with_host(host)]
+    else:
+        urls = [base_url.with_host(h) for h in host]
     print("======== Running on {} ========\n"
-          "(Press CTRL+C to quit)".format(url))
+          "(Press CTRL+C to quit)".format(', '.join(str(u) for u in urls)))
 
     try:
         loop.run_forever()
