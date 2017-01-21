@@ -20,7 +20,7 @@ Workflow is pretty straightforward:
 
   4. Commit changes to own aiohttp clone
 
-  5. Make pull request from github page for your clone
+  5. Make pull request from github page for your clone againt master branch
 
   .. note::
      If your PR has long history or many commits
