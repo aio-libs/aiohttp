@@ -323,6 +323,7 @@ def run_app(app, *, host='0.0.0.0', port=None,
         urls = [base_url.with_host(host)]
     else:
         urls = [base_url.with_host(h) for h in host]
+
     print("======== Running on {} ========\n"
           "(Press CTRL+C to quit)".format(', '.join(str(u) for u in urls)))
 
