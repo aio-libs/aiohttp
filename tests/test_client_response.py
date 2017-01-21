@@ -140,6 +140,29 @@ def test_text(loop):
 
 
 @asyncio.coroutine
+def test_text_bad_encoding(loop):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop)
+
+    def side_effect(*args, **kwargs):
+        fut = helpers.create_future(loop)
+        fut.set_result('{"тестkey": "пройденvalue"}'.encode('cp1251'))
+        return fut
+
+    # lie about the encoding
+    response.headers = {
+        'Content-Type': 'application/json;charset=utf-8'}
+    content = response.content = mock.Mock()
+    content.read.side_effect = side_effect
+    with pytest.raises(UnicodeDecodeError):
+        yield from response.text()
+    # only the valid utf-8 characters will be returned
+    res = yield from response.text(errors='ignore')
+    assert res == '{"key": "value"}'
+    assert response._connection is None
+
+
+@asyncio.coroutine
 def test_text_custom_encoding(loop):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop)

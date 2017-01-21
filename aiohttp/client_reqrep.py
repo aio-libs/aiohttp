@@ -749,7 +749,7 @@ class ClientResponse(HeadersMixin):
         if encoding is None:
             encoding = self._get_encoding()
 
-        return self._content.decode(encoding, errors)
+        return self._content.decode(encoding, errors=errors)
 
     @asyncio.coroutine
     def json(self, *, encoding=None, loads=json.loads):
