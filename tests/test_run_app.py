@@ -26,11 +26,11 @@ def test_run_app_multi_bind(loop, mocker):
     app = web.Application(loop=loop)
     mocker.spy(app, 'startup')
 
-    web.run_app(app, host=('0.0.0.0', '127.0.0.1'), print=lambda *args: None)
+    web.run_app(app, host=('0.0.0.0', '0.0.0.0'), print=lambda *args: None)
 
     assert loop.is_closed()
     loop.create_server.assert_called_with(
-        mock.ANY, ('0.0.0.0', '127.0.0.1'), 8080, ssl=None, backlog=128)
+        mock.ANY, ('0.0.0.0', '0.0.0.0'), 8080, ssl=None, backlog=128)
     app.startup.assert_called_once_with()
 
 
