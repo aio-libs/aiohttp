@@ -8,12 +8,14 @@ CHANGES
 
 - Ignore unknown 1XX status codes in client #1353
 
+- Fix sub-Multipart messages missing their headers on serialization #1525
+
 - remove `web.Application` dependency from `web.UrlDispatcher` #1510
 
-- Fix typo in FAQ section "How to programmatically close websocket server-side?".
+- Fix typo in FAQ section "How to programmatically close websocket server-side?"
 
 - Allow users to specify what should happen to decoding errors when calling a responses `text()` method #1542
- 
+
 1.2.0 (2016-12-17)
 ------------------
 
