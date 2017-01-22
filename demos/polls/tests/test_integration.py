@@ -4,21 +4,14 @@ Integration tests. They need a running database.
 Beware, they destroy your db using sudo.
 """
 
-async def _test_index(create_app):
-    app, url, client_session = await create_app()
-    async with client_session.get('{}/'.format(url)) as response:
-        assert response.status == 200, await response.text()
+
+async def test_index(cli, app_db):
+    response = await cli.get('/poll/1')
+    assert response.status == 200
+    assert 'What\'s new?' in await response.text()
 
 
-def test_index(create_app, event_loop, app_db):
-    event_loop.run_until_complete(_test_index(create_app))
-
-
-async def _test_results(create_app):
-    app, url, client_session = await create_app()
-    async with client_session.get('{}/results'.format(url)) as response:
-        assert response.status == 200, await response.text()
-
-
-def test_results(create_app, event_loop, app_db):
-    event_loop.run_until_complete(_test_results(create_app))
+async def test_results(cli, app_db):
+    response = await cli.get('/poll/1/results')
+    assert response.status == 200
+    assert 'Just hacking again' in await response.text()

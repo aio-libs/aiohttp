@@ -101,7 +101,7 @@ class FakeFacebook:
         self.server.close()
         await self.server.wait_closed()
         await self.app.shutdown()
-        await self.handler.finish_connections()
+        await self.handler.shutdown()
         await self.app.cleanup()
 
     @get('/v2.7/me')

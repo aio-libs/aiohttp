@@ -8,32 +8,20 @@ import pytest
 from multidict import CIMultiDict
 
 from aiohttp import hdrs, signals
-from aiohttp.protocol import (HttpVersion, HttpVersion10, HttpVersion11,
-                              RawRequestMessage)
-from aiohttp.web import (ContentCoding, Request, Response, StreamResponse,
-                         json_response)
+from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
+from aiohttp.test_utils import make_mocked_request
+from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
 
 
 def make_request(method, path, headers=CIMultiDict(),
                  version=HttpVersion11, **kwargs):
-    message = RawRequestMessage(method, path, version, headers,
-                                [(k.encode('utf-8'), v.encode('utf-8'))
-                                 for k, v in headers.items()],
-                                False, False)
-    return request_from_message(message, **kwargs)
-
-
-def request_from_message(message, **kwargs):
-    app = kwargs.get('app') or mock.Mock()
+    app = kwargs.pop('app', None) or mock.Mock()
     app._debug = False
     app.on_response_prepare = signals.Signal(app)
-    payload = mock.Mock()
-    transport = mock.Mock()
-    reader = mock.Mock()
-    writer = kwargs.get('writer') or mock.Mock()
-    req = Request(app, message, payload,
-                  transport, reader, writer)
-    return req
+    writer = kwargs.pop('writer', None) or mock.Mock()
+    return make_mocked_request(method, path, headers,
+                               version=version, writer=writer,
+                               app=app, **kwargs)
 
 
 def test_stream_response_ctor():
@@ -438,6 +426,13 @@ def test_force_close():
     assert resp.keep_alive is False
 
 
+@asyncio.coroutine
+def test_response_output_length():
+    resp = StreamResponse()
+    yield from resp.prepare(make_request('GET', '/'))
+    assert resp.output_length
+
+
 def test_response_cookies():
     resp = StreamResponse()
 
@@ -544,9 +539,7 @@ def test___repr__not_started():
 
 @asyncio.coroutine
 def test_keep_alive_http10_default():
-    message = RawRequestMessage('GET', '/', HttpVersion10, CIMultiDict(),
-                                [], True, False)
-    req = request_from_message(message)
+    req = make_request('GET', '/', version=HttpVersion10)
     resp = StreamResponse()
     yield from resp.prepare(req)
     assert not resp.keep_alive
@@ -555,22 +548,17 @@ def test_keep_alive_http10_default():
 @asyncio.coroutine
 def test_keep_alive_http10_switched_on():
     headers = CIMultiDict(Connection='keep-alive')
-    message = RawRequestMessage('GET', '/', HttpVersion10, headers,
-                                [(b'Connection', b'keep-alive')],
-                                False, False)
-    req = request_from_message(message)
+    req = make_request('GET', '/', version=HttpVersion10, headers=headers)
+    req._message = req._message._replace(should_close=False)
     resp = StreamResponse()
     yield from resp.prepare(req)
-    assert resp.keep_alive is True
+    assert resp.keep_alive
 
 
 @asyncio.coroutine
 def test_keep_alive_http09():
     headers = CIMultiDict(Connection='keep-alive')
-    message = RawRequestMessage('GET', '/', HttpVersion(0, 9), headers,
-                                [(b'Connection', b'keep-alive')],
-                                False, False)
-    req = request_from_message(message)
+    req = make_request('GET', '/', version=HttpVersion(0, 9), headers=headers)
     resp = StreamResponse()
     yield from resp.prepare(req)
     assert not resp.keep_alive
@@ -599,86 +587,70 @@ def test_prepare_calls_signal():
     sig.assert_called_with(req, resp)
 
 
-def test_default_nodelay():
+def test_get_nodelay_unprepared():
     resp = StreamResponse()
-    assert resp.tcp_nodelay
+    with pytest.raises(RuntimeError):
+        resp.tcp_nodelay
 
 
-def test_set_tcp_nodelay_before_start():
+def test_set_nodelay_unprepared():
     resp = StreamResponse()
-    resp.set_tcp_nodelay(False)
+    with pytest.raises(RuntimeError):
+        resp.set_tcp_nodelay(True)
+
+
+@asyncio.coroutine
+def test_get_nodelay_prepared():
+    resp = StreamResponse()
+    writer = mock.Mock()
+    writer.tcp_nodelay = False
+    req = make_request('GET', '/', writer=writer)
+
+    yield from resp.prepare(req)
     assert not resp.tcp_nodelay
+
+
+def test_set_nodelay_prepared():
+    resp = StreamResponse()
+    writer = mock.Mock()
+    req = make_request('GET', '/', writer=writer)
+
+    yield from resp.prepare(req)
     resp.set_tcp_nodelay(True)
-    assert resp.tcp_nodelay
+    writer.set_tcp_nodelay.assert_called_with(True)
+
+
+def test_get_cork_unprepared():
+    resp = StreamResponse()
+    with pytest.raises(RuntimeError):
+        resp.tcp_cork
+
+
+def test_set_cork_unprepared():
+    resp = StreamResponse()
+    with pytest.raises(RuntimeError):
+        resp.set_tcp_cork(True)
 
 
 @asyncio.coroutine
-def test_set_tcp_nodelay_on_start():
-    req = make_request('GET', '/')
+def test_get_cork_prepared():
     resp = StreamResponse()
+    writer = mock.Mock()
+    writer.tcp_cork = False
+    req = make_request('GET', '/', writer=writer)
 
-    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
-        resp_impl = yield from resp.prepare(req)
-    resp_impl.transport.set_tcp_nodelay.assert_called_with(True)
-    resp_impl.transport.set_tcp_cork.assert_called_with(False)
-
-
-@asyncio.coroutine
-def test_set_tcp_nodelay_after_start():
-    req = make_request('GET', '/')
-    resp = StreamResponse()
-
-    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
-        resp_impl = yield from resp.prepare(req)
-    resp_impl.transport.set_tcp_cork.assert_called_with(False)
-    resp_impl.transport.set_tcp_nodelay.assert_called_with(True)
-    resp.set_tcp_nodelay(False)
-    assert not resp.tcp_nodelay
-    resp_impl.transport.set_tcp_nodelay.assert_called_with(False)
-    resp.set_tcp_nodelay(True)
-    assert resp.tcp_nodelay
-    resp_impl.transport.set_tcp_nodelay.assert_called_with(True)
-
-
-def test_default_cork():
-    resp = StreamResponse()
+    yield from resp.prepare(req)
     assert not resp.tcp_cork
 
 
-def test_set_tcp_cork_before_start():
+def test_set_cork_prepared():
     resp = StreamResponse()
+    writer = mock.Mock()
+    req = make_request('GET', '/', writer=writer)
+
+    yield from resp.prepare(req)
     resp.set_tcp_cork(True)
-    assert resp.tcp_cork
-    resp.set_tcp_cork(False)
-    assert not resp.tcp_cork
-
-
-@asyncio.coroutine
-def test_set_tcp_cork_on_start():
-    req = make_request('GET', '/')
-    resp = StreamResponse()
-    resp.set_tcp_cork(True)
-
-    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
-        resp_impl = yield from resp.prepare(req)
-    resp_impl.transport.set_tcp_nodelay.assert_called_with(False)
-    resp_impl.transport.set_tcp_cork.assert_called_with(True)
-
-
-@asyncio.coroutine
-def test_set_tcp_cork_after_start():
-    req = make_request('GET', '/')
-    resp = StreamResponse()
-
-    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
-        resp_impl = yield from resp.prepare(req)
-    resp_impl.transport.set_tcp_cork.assert_called_with(False)
-    resp.set_tcp_cork(True)
-    assert resp.tcp_cork
-    resp_impl.transport.set_tcp_cork.assert_called_with(True)
-    resp.set_tcp_cork(False)
-    assert not resp.tcp_cork
-    resp_impl.transport.set_tcp_cork.assert_called_with(False)
+    writer.set_tcp_cork.assert_called_with(True)
 
 
 # Response class
@@ -940,6 +912,14 @@ def test_drain_before_start():
         yield from resp.drain()
 
 
+@asyncio.coroutine
+def test_changing_status_after_prepare_raises():
+    resp = StreamResponse()
+    yield from resp.prepare(make_request('GET', '/'))
+    with pytest.raises(RuntimeError):
+        resp.set_status(400)
+
+
 def test_nonstr_text_in_ctor():
     with pytest.raises(TypeError):
         Response(text=b'data')
@@ -981,6 +961,11 @@ def test_text_with_empty_payload():
     resp = Response(status=200)
     assert resp.body is None
     assert resp.text is None
+
+
+def test_response_with_content_length_header_without_body():
+    resp = Response(headers={'Content-Length': 123})
+    assert resp.content_length == 123
 
 
 class TestJSONResponse:

@@ -25,3 +25,9 @@
 - [ ] I think the code is well written
 - [ ] Unit tests for the changes exist
 - [ ] Documentation reflects the changes
+- [ ] Add yourself to `CONTRIBUTORS.txt`
+  * The format is &lt;Name&gt; &lt;Surname&gt;.
+  * Please keep alphabetical order, the file is sorted by names. 
+- [ ] Add a new entry to `CHANGES.rst`
+  * Choose any open position to avoid merge conflicts with other PRs.
+  * Add a link to the issue you are fixing (if any) using `#issue_number` format at the end of changelog message. Use Pull Request number if there are no issues for PR or PR covers the issue only partially.

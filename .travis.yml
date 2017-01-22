@@ -7,11 +7,18 @@ language: python
 python:
   - 3.4
   - 3.5
-#  - nightly
+  - '3.6-dev'
+  - 'nightly'
 
 os:
   - linux
-#  - osx
+#   - osx   # doesn't work on MacOSX -- the system has no Python installed
+
+matrix:
+  allow_failures:
+    - python: '3.6-dev'
+    - python: 'nightly'
+    - os: osx
 
 cache:
   directories:

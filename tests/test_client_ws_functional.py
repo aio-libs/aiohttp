@@ -7,7 +7,7 @@ from aiohttp import hdrs, helpers, web
 
 
 @asyncio.coroutine
-def test_send_recv_text(create_app_and_client):
+def test_send_recv_text(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -19,8 +19,9 @@ def test_send_recv_text(create_app_and_client):
         yield from ws.close()
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
     resp.send_str('ask')
 
@@ -30,7 +31,7 @@ def test_send_recv_text(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_send_recv_bytes_bad_type(create_app_and_client):
+def test_send_recv_bytes_bad_type(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -42,8 +43,9 @@ def test_send_recv_bytes_bad_type(create_app_and_client):
         yield from ws.close()
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
     resp.send_str('ask')
 
@@ -53,7 +55,7 @@ def test_send_recv_bytes_bad_type(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_send_recv_bytes(create_app_and_client):
+def test_send_recv_bytes(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -65,8 +67,9 @@ def test_send_recv_bytes(create_app_and_client):
         yield from ws.close()
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
 
     resp.send_bytes(b'ask')
@@ -78,7 +81,7 @@ def test_send_recv_bytes(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_send_recv_text_bad_type(create_app_and_client):
+def test_send_recv_text_bad_type(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -90,8 +93,9 @@ def test_send_recv_text_bad_type(create_app_and_client):
         yield from ws.close()
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
 
     resp.send_bytes(b'ask')
@@ -103,7 +107,7 @@ def test_send_recv_text_bad_type(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_send_recv_json(create_app_and_client):
+def test_send_recv_json(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -115,8 +119,9 @@ def test_send_recv_json(create_app_and_client):
         yield from ws.close()
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
     payload = {'request': 'test'}
     resp.send_json(payload)
@@ -127,7 +132,7 @@ def test_send_recv_json(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_ping_pong(create_app_and_client, loop):
+def test_ping_pong(loop, test_client):
 
     closed = helpers.create_future(loop)
 
@@ -145,8 +150,9 @@ def test_ping_pong(create_app_and_client, loop):
             closed.set_result(1)
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
 
     resp.ping()
@@ -164,7 +170,7 @@ def test_ping_pong(create_app_and_client, loop):
 
 
 @asyncio.coroutine
-def test_ping_pong_manual(create_app_and_client, loop):
+def test_ping_pong_manual(loop, test_client):
 
     closed = helpers.create_future(loop)
 
@@ -182,8 +188,9 @@ def test_ping_pong_manual(create_app_and_client, loop):
             closed.set_result(1)
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.ws_connect('/', autoping=False)
 
     resp.ping()
@@ -206,7 +213,7 @@ def test_ping_pong_manual(create_app_and_client, loop):
 
 
 @asyncio.coroutine
-def test_close(create_app_and_client):
+def test_close(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -219,8 +226,9 @@ def test_close(create_app_and_client):
         yield from ws.receive()
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
 
     resp.send_bytes(b'ask')
@@ -235,7 +243,7 @@ def test_close(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_close_from_server(create_app_and_client, loop):
+def test_close_from_server(loop, test_client):
 
     closed = helpers.create_future(loop)
 
@@ -251,8 +259,9 @@ def test_close_from_server(create_app_and_client, loop):
             closed.set_result(1)
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
 
     resp.send_bytes(b'ask')
@@ -268,7 +277,7 @@ def test_close_from_server(create_app_and_client, loop):
 
 
 @asyncio.coroutine
-def test_close_manual(create_app_and_client, loop):
+def test_close_manual(loop, test_client):
 
     closed = helpers.create_future(loop)
 
@@ -286,8 +295,9 @@ def test_close_manual(create_app_and_client, loop):
             closed.set_result(1)
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.ws_connect('/', autoclose=False)
     resp.send_bytes(b'ask')
 
@@ -306,7 +316,7 @@ def test_close_manual(create_app_and_client, loop):
 
 
 @asyncio.coroutine
-def test_close_timeout(create_app_and_client, loop):
+def test_close_timeout(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -316,8 +326,9 @@ def test_close_timeout(create_app_and_client, loop):
         ws.send_str('test')
         yield from asyncio.sleep(10, loop=loop)
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.ws_connect('/', timeout=0.2, autoclose=False)
 
     resp.send_bytes(b'ask')
@@ -332,7 +343,7 @@ def test_close_timeout(create_app_and_client, loop):
 
 
 @asyncio.coroutine
-def test_close_cancel(create_app_and_client, loop):
+def test_close_cancel(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -342,8 +353,9 @@ def test_close_cancel(create_app_and_client, loop):
         ws.send_str('test')
         yield from asyncio.sleep(10, loop=loop)
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.ws_connect('/', autoclose=False)
 
     resp.send_bytes(b'ask')
@@ -360,7 +372,7 @@ def test_close_cancel(create_app_and_client, loop):
 
 
 @asyncio.coroutine
-def test_override_default_headers(create_app_and_client, loop):
+def test_override_default_headers(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -372,9 +384,10 @@ def test_override_default_headers(create_app_and_client, loop):
         yield from ws.close()
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
     headers = {hdrs.SEC_WEBSOCKET_VERSION: '8'}
+    client = yield from test_client(app)
     resp = yield from client.ws_connect('/', headers=headers)
     msg = yield from resp.receive()
     assert msg.data == 'answer'
@@ -382,7 +395,7 @@ def test_override_default_headers(create_app_and_client, loop):
 
 
 @asyncio.coroutine
-def test_additional_headers(create_app_and_client, loop):
+def test_additional_headers(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -394,8 +407,9 @@ def test_additional_headers(create_app_and_client, loop):
         yield from ws.close()
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.ws_connect('/', headers={'x-hdr': 'xtra'})
     msg = yield from resp.receive()
     assert msg.data == 'answer'
@@ -403,7 +417,7 @@ def test_additional_headers(create_app_and_client, loop):
 
 
 @asyncio.coroutine
-def test_recv_protocol_error(create_app_and_client):
+def test_recv_protocol_error(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -415,8 +429,9 @@ def test_recv_protocol_error(create_app_and_client):
         yield from ws.close()
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
     resp.send_str('ask')
 
@@ -429,7 +444,7 @@ def test_recv_protocol_error(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_recv_timeout(create_app_and_client):
+def test_recv_timeout(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -443,8 +458,9 @@ def test_recv_timeout(create_app_and_client):
         yield from ws.close()
         return ws
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
     resp.send_str('ask')
 

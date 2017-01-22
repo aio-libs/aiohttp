@@ -6,7 +6,7 @@ from aiohttp import web
 
 
 @asyncio.coroutine
-def test_middleware_modifies_response(create_app_and_client):
+def test_middleware_modifies_response(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -24,9 +24,10 @@ def test_middleware_modifies_response(create_app_and_client):
             return resp
         return middleware
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.middlewares.append(middleware_factory)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.get('/')
     assert 201 == resp.status
     txt = yield from resp.text()
@@ -34,7 +35,7 @@ def test_middleware_modifies_response(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_middleware_handles_exception(create_app_and_client):
+def test_middleware_handles_exception(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -52,9 +53,10 @@ def test_middleware_handles_exception(create_app_and_client):
 
         return middleware
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.middlewares.append(middleware_factory)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.get('/')
     assert 501 == resp.status
     txt = yield from resp.text()
@@ -62,7 +64,7 @@ def test_middleware_handles_exception(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_middleware_chain(create_app_and_client):
+def test_middleware_chain(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -81,11 +83,103 @@ def test_middleware_chain(create_app_and_client):
             return middleware
         return factory
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.middlewares.append(make_factory(1))
     app.middlewares.append(make_factory(2))
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.get('/')
     assert 200 == resp.status
     txt = yield from resp.text()
     assert 'OK[2][1]' == txt
+
+
+@pytest.fixture
+def cli(loop, test_client):
+    def wrapper(extra_middlewares):
+        app = web.Application(loop=loop)
+        app.router.add_route(
+            'GET', '/resource1', lambda x: web.Response(text="OK"))
+        app.router.add_route(
+            'GET', '/resource2/', lambda x: web.Response(text="OK"))
+        app.router.add_route(
+            'GET', '/resource1/a/b', lambda x: web.Response(text="OK"))
+        app.router.add_route(
+            'GET', '/resource2/a/b/', lambda x: web.Response(text="OK"))
+        app.middlewares.extend(extra_middlewares)
+        return test_client(app)
+    return wrapper
+
+
+class TestNormalizePathMiddleware:
+
+    @asyncio.coroutine
+    @pytest.mark.parametrize("path, status", [
+        ('/resource1', 200),
+        ('/resource1/', 404),
+        ('/resource2', 200),
+        ('/resource2/', 200)
+    ])
+    def test_add_trailing_when_necessary(
+            self, path, status, cli):
+        extra_middlewares = [
+            web.normalize_path_middleware(merge_slashes=False)]
+        client = yield from cli(extra_middlewares)
+
+        resp = yield from client.get(path)
+        assert resp.status == status
+
+    @asyncio.coroutine
+    @pytest.mark.parametrize("path, status", [
+        ('/resource1', 200),
+        ('/resource1/', 404),
+        ('/resource2', 404),
+        ('/resource2/', 200)
+    ])
+    def test_no_trailing_slash_when_disabled(
+            self, path, status, cli):
+        extra_middlewares = [
+            web.normalize_path_middleware(
+                append_slash=False, merge_slashes=False)]
+        client = yield from cli(extra_middlewares)
+
+        resp = yield from client.get(path)
+        assert resp.status == status
+
+    @asyncio.coroutine
+    @pytest.mark.parametrize("path, status", [
+        ('/resource1/a/b', 200),
+        ('//resource1//a//b', 200),
+        ('/////resource1/a///b', 200),
+        ('/////resource1/a//b/', 404)
+    ])
+    def test_merge_slash(self, path, status, cli):
+        extra_middlewares = [
+            web.normalize_path_middleware(append_slash=False)]
+        client = yield from cli(extra_middlewares)
+
+        resp = yield from client.get(path)
+        assert resp.status == status
+
+    @asyncio.coroutine
+    @pytest.mark.parametrize("path, status", [
+        ('/resource1/a/b', 200),
+        ('/resource1/a/b/', 404),
+        ('//resource1//a//b', 200),
+        ('//resource1//a//b/', 404),
+        ('/////resource1/a///b', 200),
+        ('/////resource1/a///b/', 404),
+        ('/resource2/a/b', 200),
+        ('//resource2//a//b', 200),
+        ('//resource2//a//b/', 200),
+        ('/////resource2/a///b', 200),
+        ('/////resource2/a///b/', 200)
+    ])
+    def test_append_and_merge_slash(self, path, status, cli):
+        extra_middlewares = [
+            web.normalize_path_middleware()]
+
+        client = yield from cli(extra_middlewares)
+
+        resp = yield from client.get(path)
+        assert resp.status == status

@@ -6,8 +6,8 @@ import pytest
 from aiohttp.web import Application
 
 from .test_utils import unused_port as _unused_port
-from .test_utils import (TestClient, TestServer, loop_context, setup_test_loop,
-                         teardown_test_loop)
+from .test_utils import (RawTestServer, TestClient, TestServer, loop_context,
+                         setup_test_loop, teardown_test_loop)
 
 
 @contextlib.contextmanager
@@ -82,6 +82,27 @@ def test_server(loop):
 
 
 @pytest.yield_fixture
+def raw_test_server(loop):
+    servers = []
+
+    @asyncio.coroutine
+    def go(handler, **kwargs):
+        server = RawTestServer(handler, loop=loop)
+        yield from server.start_server(**kwargs)
+        servers.append(server)
+        return server
+
+    yield go
+
+    @asyncio.coroutine
+    def finalize():
+        while servers:
+            yield from servers.pop().close()
+
+    loop.run_until_complete(finalize())
+
+
+@pytest.yield_fixture
 def test_client(loop):
     clients = []
 
@@ -89,16 +110,23 @@ def test_client(loop):
     def go(__param, *args, **kwargs):
         if isinstance(__param, Application):
             assert not args, "args should be empty"
-            assert not kwargs, "kwargs should be empty"
             assert __param.loop is loop, \
                 "Application is attached to other event loop"
+            client = TestClient(__param, **kwargs)
         elif isinstance(__param, TestServer):
+            assert not args, "args should be empty"
             assert __param.app.loop is loop, \
                 "TestServer is attached to other event loop"
+            client = TestClient(__param, **kwargs)
+        elif isinstance(__param, RawTestServer):
+            assert not args, "args should be empty"
+            assert __param._loop is loop, \
+                "TestServer is attached to other event loop"
+            client = TestClient(__param, **kwargs)
         else:
             __param = __param(loop, *args, **kwargs)
+            client = TestClient(__param)
 
-        client = TestClient(__param)
         yield from client.start_server()
         clients.append(client)
         return client

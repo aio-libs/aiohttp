@@ -216,7 +216,7 @@ def test_default_headers_connection_upgrade(transport):
     msg.upgrade = True
     msg._add_default_headers()
 
-    assert msg.headers['Connection'] == 'upgrade'
+    assert msg.headers['Connection'] == 'Upgrade'
 
 
 def test_default_headers_connection_close(transport):

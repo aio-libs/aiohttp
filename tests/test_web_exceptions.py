@@ -4,11 +4,9 @@ import re
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict
 
 from aiohttp import signals, web
-from aiohttp.protocol import HttpVersion11, RawRequestMessage
-from aiohttp.web import Request
+from aiohttp.test_utils import make_mocked_request
 
 
 @pytest.fixture
@@ -20,10 +18,6 @@ def buf():
 def request(buf):
     method = 'GET'
     path = '/'
-    headers = CIMultiDict()
-    transport = mock.Mock()
-    payload = mock.Mock()
-    reader = mock.Mock()
     writer = mock.Mock()
     writer.drain.return_value = ()
 
@@ -33,10 +27,7 @@ def request(buf):
     app = mock.Mock()
     app._debug = False
     app.on_response_prepare = signals.Signal(app)
-    message = RawRequestMessage(method, path, HttpVersion11, headers, [],
-                                False, False)
-    req = Request(app, message, payload,
-                  transport, reader, writer)
+    req = make_mocked_request(method, path, app=app, writer=writer)
     return req
 
 

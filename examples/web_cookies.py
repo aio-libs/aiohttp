@@ -3,6 +3,7 @@
 """
 
 import asyncio
+from pprint import pformat
 
 from aiohttp import web
 
@@ -12,7 +13,7 @@ tmpl = '''\
     <body>
         <a href="/login">Login</a><br/>
         <a href="/logout">Logout</a><br/>
-        {}
+        <pre>{}</pre>
     </body>
 </html>'''
 
@@ -20,7 +21,7 @@ tmpl = '''\
 @asyncio.coroutine
 def root(request):
     resp = web.Response(content_type='text/html')
-    resp.text = tmpl.format(request.cookies)
+    resp.text = tmpl.format(pformat(request.cookies))
     return resp
 
 
@@ -46,6 +47,7 @@ def init(loop):
     app.router.add_get('/logout', logout)
     return app
 
+
 loop = asyncio.get_event_loop()
 app = loop.run_until_complete(init(loop))
-web.run_app(app, loop=loop)
+web.run_app(app)

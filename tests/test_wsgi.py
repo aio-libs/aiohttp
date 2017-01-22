@@ -6,8 +6,10 @@ import socket
 import unittest
 from unittest import mock
 
+import multidict
+
 import aiohttp
-from aiohttp import helpers, multidict, protocol, wsgi
+from aiohttp import helpers, protocol, wsgi
 
 
 class TestHttpWsgiServerProtocol(unittest.TestCase):
@@ -26,7 +28,7 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
             ('1.2.3.4', 1234),
             ('2.3.4.5', 80)]
 
-        self.headers = multidict.MultiDict({"HOST": "python.org"})
+        self.headers = multidict.CIMultiDict({"HOST": "python.org"})
         self.raw_headers = [(b"HOST", b"python.org")]
         self.message = protocol.RawRequestMessage(
             'GET', '/path', (1, 0), self.headers, self.raw_headers,
@@ -73,6 +75,7 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
              ('X_TEST', '123'),
              ('X_TEST', '456')))
         environ = self._make_one()
+        print(environ)
         self.assertEqual(environ['CONTENT_TYPE'], 'text/plain')
         self.assertEqual(environ['CONTENT_LENGTH'], '209')
         self.assertEqual(environ['HTTP_X_TEST'], '123,456')

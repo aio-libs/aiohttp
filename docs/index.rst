@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-aiohttp
-=======
+aiohttp: Asynchronous HTTP Client/Server
+========================================
 
 HTTP client/server for :term:`asyncio` (:pep:`3156`).
 
@@ -35,6 +35,14 @@ replacement for :term:`chardet`:
 
    $ pip install cchardet
 
+For speeding up DNS resolving by client API you may install
+:term:`aiodns` as well.
+This option is highly recommended:
+
+.. code-block:: bash
+
+   $ pip install aiodns
+
 Getting Started
 ---------------
 
@@ -42,9 +50,10 @@ Client example::
 
     import aiohttp
     import asyncio
+    import async_timeout
 
     async def fetch(session, url):
-        with aiohttp.Timeout(10):
+        with async_timeout.timeout(10):
             async with session.get(url) as response:
                 return await response.text()
 
@@ -63,9 +72,10 @@ Server example::
     async def handle(request):
         name = request.match_info.get('name', "Anonymous")
         text = "Hello, " + name
-        return web.Response(body=text.encode('utf-8'))
+        return web.Response(text=text)
 
     app = web.Application()
+    app.router.add_get('/', handle)
     app.router.add_get('/{name}', handle)
 
     web.run_app(app)
@@ -112,9 +122,11 @@ Dependencies
 ------------
 
 - Python 3.4.2+
-- *chardet* library
-- *multidict* library
-- *Optional* :term:`cchardet` library as faster replacement for
+- *chardet*
+- *multidict*
+- *async_timeout*
+- *yarl*
+- *Optional* :term:`cchardet` as faster replacement for
   :term:`chardet`.
 
   Install it explicitly via:
@@ -122,6 +134,13 @@ Dependencies
   .. code-block:: bash
 
      $ pip install cchardet
+
+- *Optional* :term:`aiodns` for fast DNS resolving. The
+  library is highly recommended.
+
+  .. code-block:: bash
+
+     $ pip install aiodns
 
 
 Discussion list
@@ -147,6 +166,28 @@ It's *Apache 2* licensed and freely available.
 
 Feel free to improve this package and send a pull request to GitHub_.
 
+
+.. _aiohttp-backward-compatibility-policy:
+
+Policy for Backward Incompatible Changes
+----------------------------------------
+
+*aiohttp* keeps backward compatibility.
+
+After deprecating some *Public API* (method, class, function argument,
+etc.) the library guaranties the usage of *deprecated API* is still
+allowed at least for a year and half after publishing new release with
+deprecation.
+
+All deprecations are reflected in documentation and raises
+:exc:`DeprecationWarning`.
+
+Sometimes we are forced to break the own rule for sake of very strong
+reason.  Most likely the reason is a critical bug which cannot be
+solved without major API change, but we are working hard for keeping
+these changes as rare as possible.
+
+
 Contents
 --------
 
@@ -157,15 +198,18 @@ Contents
    tutorial
    web
    web_reference
+   web_lowlevel
    abc
-   server
    multipart
+   streams
    api
    logging
    testing
-   gunicorn
+   deployment
    faq
-   new_router
+   third_party
+   server
+   essays
    contributing
    changes
    glossary
@@ -179,3 +223,4 @@ Indices and tables
 
 
 .. disqus::
+  :title: aiohttp documentation

@@ -4,6 +4,7 @@ from unittest import mock
 import pytest
 
 from aiohttp import helpers, log, web
+from aiohttp.abc import AbstractRouter
 
 
 def test_app_ctor(loop):
@@ -17,12 +18,6 @@ def test_app_call(loop):
     assert app is app()
 
 
-def test_app_copy(loop):
-    app = web.Application(loop=loop)
-    with pytest.raises(NotImplementedError):
-        app.copy()
-
-
 def test_app_default_loop(loop):
     asyncio.set_event_loop(loop)
     app = web.Application()
@@ -33,16 +28,18 @@ def test_app_default_loop(loop):
 def test_app_make_handler_debug_exc(loop, mocker, debug):
     app = web.Application(loop=loop, debug=debug)
 
-    mocker.spy(app, '_handler_factory')
+    srv = mocker.patch('aiohttp.web.Server')
 
     app.make_handler()
     with pytest.warns(DeprecationWarning) as exc:
         app.make_handler(debug=debug)
 
     assert 'parameter is deprecated' in exc[0].message.args[0]
-    assert app._handler_factory.call_count == 2
-    app._handler_factory.assert_called_with(app, app.router, loop=loop,
-                                            debug=debug)
+    assert srv.call_count == 2
+    srv.assert_called_with(app._handle,
+                           request_factory=app._make_request,
+                           loop=loop,
+                           debug=debug)
 
     with pytest.raises(ValueError) as exc:
         app.make_handler(debug=not debug)
@@ -94,15 +91,16 @@ def test_app_register_and_finish_are_deprecated(loop):
 
 
 def test_non_default_router(loop):
-    router = web.UrlDispatcher()
+    router = mock.Mock(spec=AbstractRouter)
     app = web.Application(loop=loop, router=router)
     assert router is app.router
 
-    def test_logging(self):
-        logger = mock.Mock()
-        app = web.Application(loop=self.loop)
-        app.logger = logger
-        self.assertIs(app.logger, logger)
+
+def test_logging(loop):
+    logger = mock.Mock()
+    app = web.Application(loop=loop)
+    app.logger = logger
+    assert app.logger is logger
 
 
 @asyncio.coroutine
@@ -165,3 +163,24 @@ def test_on_startup(loop):
     assert long_running1_called
     assert long_running2_called
     assert all_long_running_called
+
+
+def test_app_delitem(loop):
+    app = web.Application(loop=loop)
+    app['key'] = 'value'
+    assert len(app) == 1
+    del app['key']
+    assert len(app) == 0
+
+
+def test_secure_proxy_ssl_header_default(loop):
+    app = web.Application(loop=loop)
+    assert app._secure_proxy_ssl_header is None
+
+
+@asyncio.coroutine
+def test_secure_proxy_ssl_header_non_default(loop):
+    app = web.Application(loop=loop)
+    hdr = ('X-Forwarded-Proto', 'https')
+    app.make_handler(secure_proxy_ssl_header=hdr)
+    assert app._secure_proxy_ssl_header is hdr

@@ -124,6 +124,28 @@ class TestStreamReader(unittest.TestCase):
         data = self.loop.run_until_complete(stream.read(5))
         self.assertEqual(b'line2', data)
 
+    def test_read_all(self):
+        # Read all avaliable buffered bytes
+        stream = self._make_one()
+        stream.feed_data(b'line1')
+        stream.feed_data(b'line2')
+        stream.feed_eof()
+
+        data = self.loop.run_until_complete(stream.read())
+        self.assertEqual(b'line1line2', data)
+
+    def test_read_up_to(self):
+        # Read available buffered bytes up to requested amount
+        stream = self._make_one()
+        stream.feed_data(b'line1')
+        stream.feed_data(b'line2')
+
+        data = self.loop.run_until_complete(stream.read(8))
+        self.assertEqual(b'line1lin', data)
+
+        data = self.loop.run_until_complete(stream.read(8))
+        self.assertEqual(b'e2', data)
+
     def test_read_eof(self):
         # Read bytes, stop at eof.
         stream = self._make_one()
@@ -137,7 +159,7 @@ class TestStreamReader(unittest.TestCase):
         self.assertEqual(b'', data)
 
         data = self.loop.run_until_complete(stream.read())
-        self.assertIs(data, streams.EOF_MARKER)
+        self.assertEqual(data, b'')
 
     @mock.patch('aiohttp.streams.internal_logger')
     def test_read_eof_infinit(self, internal_logger):
@@ -274,7 +296,6 @@ class TestStreamReader(unittest.TestCase):
 
         line = self.loop.run_until_complete(stream.readline())
         self.assertEqual(b'', line)
-        self.assertIs(line, streams.EOF_MARKER)
 
     def test_readline_read_byte_count(self):
         stream = self._make_one()
@@ -470,7 +491,6 @@ class TestStreamReader(unittest.TestCase):
         data = self.loop.run_until_complete(read_task)
 
         self.assertEqual(b'', data)
-        self.assertIs(data, streams.EOF_MARKER)
 
     def test_readany_exception(self):
         stream = self._make_one()
@@ -487,10 +507,8 @@ class TestStreamReader(unittest.TestCase):
         stream = self._make_one()
         stream.feed_data(b'line1\nline2\n')
 
-        self.assertEqual(
-            stream.read_nowait(), b'line1\nline2\n')
-        self.assertIs(
-            stream.read_nowait(), streams.EOF_MARKER)
+        self.assertEqual(stream.read_nowait(), b'line1\nline2\n')
+        self.assertEqual(stream.read_nowait(), b'')
         stream.feed_eof()
         data = self.loop.run_until_complete(stream.read())
         self.assertEqual(b'', data)
@@ -503,8 +521,7 @@ class TestStreamReader(unittest.TestCase):
             stream.read_nowait(4), b'line')
         self.assertEqual(
             stream.read_nowait(), b'1\nline2\n')
-        self.assertIs(
-            stream.read_nowait(), streams.EOF_MARKER)
+        self.assertEqual(stream.read_nowait(), b'')
         stream.feed_eof()
         data = self.loop.run_until_complete(stream.read())
         self.assertEqual(b'', data)
@@ -637,16 +654,16 @@ class TestEmptyStreamReader(unittest.TestCase):
         self.assertTrue(s.at_eof())
         self.assertIsNone(
             self.loop.run_until_complete(s.wait_eof()))
-        self.assertIs(
-            self.loop.run_until_complete(s.read()), streams.EOF_MARKER)
-        self.assertIs(
-            self.loop.run_until_complete(s.readline()), streams.EOF_MARKER)
-        self.assertIs(
-            self.loop.run_until_complete(s.readany()), streams.EOF_MARKER)
+        self.assertEqual(
+            self.loop.run_until_complete(s.read()), b'')
+        self.assertEqual(
+            self.loop.run_until_complete(s.readline()), b'')
+        self.assertEqual(
+            self.loop.run_until_complete(s.readany()), b'')
         self.assertRaises(
             asyncio.IncompleteReadError,
             self.loop.run_until_complete, s.readexactly(10))
-        self.assertIs(s.read_nowait(), streams.EOF_MARKER)
+        self.assertEqual(s.read_nowait(), b'')
 
 
 class DataQueueMixin:

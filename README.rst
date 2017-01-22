@@ -37,14 +37,14 @@ To retrieve something from the web:
   import aiohttp
   import asyncio
 
-  async def fetch(session, url, *, loop):
-      with aiohttp.Timeout(10, loop=loop):
+  async def fetch(session, url):
+      with aiohttp.Timeout(10, loop=session.loop):
           async with session.get(url) as response:
               return await response.text()
 
   async def main(loop):
       async with aiohttp.ClientSession(loop=loop) as session:
-          html = await fetch(session, 'http://python.org', loop=loop)
+          html = await fetch(session, 'http://python.org')
           print(html)
 
   if __name__ == '__main__':
@@ -64,7 +64,7 @@ This is simple usage example:
     async def handle(request):
         name = request.match_info.get('name', "Anonymous")
         text = "Hello, " + name
-        return web.Response(body=text.encode('utf-8'))
+        return web.Response(text=text)
 
     async def wshandler(request):
         ws = web.WebSocketResponse()
@@ -83,6 +83,7 @@ This is simple usage example:
 
     app = web.Application()
     app.router.add_get('/echo', wshandler)
+    app.router.add_get('/', handle)
     app.router.add_get('/{name}', handle)
 
     web.run_app(app)
@@ -115,13 +116,19 @@ Requirements
 ------------
 
 - Python >= 3.4.2
+- async-timeout_
 - chardet_
 - multidict_
+- yarl_
 
-Optionally you may install the cChardet_ library.
+Optionally you may install the cChardet_ and aiodns_ libraries (highly
+recommended for sake of speed).
 
 .. _chardet: https://pypi.python.org/pypi/chardet
+.. _aiodns: https://pypi.python.org/pypi/aiodns
 .. _multidict: https://pypi.python.org/pypi/multidict
+.. _yarl: https://pypi.python.org/pypi/yarl
+.. _async-timeout: https://pypi.python.org/pypi/async_timeout
 .. _cChardet: https://pypi.python.org/pypi/cchardet
 
 License

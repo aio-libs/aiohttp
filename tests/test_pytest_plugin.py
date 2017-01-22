@@ -77,8 +77,8 @@ def test_set_args(test_client, loop):
 
 @asyncio.coroutine
 def test_set_keyword_args(test_client, loop):
-    with pytest.raises(AssertionError):
-        app = web.Application(loop=loop)
+    app = web.Application(loop=loop)
+    with pytest.raises(TypeError):
         yield from test_client(app, param=1)
 
 
@@ -114,7 +114,7 @@ def test_set_value(cli):
     assert resp.status == 200
     text = yield from resp.text()
     assert text == 'thanks for the data'
-    assert cli.app['value'] == 'foo'
+    assert cli.server.app['value'] == 'foo'
 
 
 @asyncio.coroutine
@@ -123,7 +123,7 @@ def test_get_value(cli):
     assert resp.status == 200
     text = yield from resp.text()
     assert text == 'value: unknown'
-    cli.app['value'] = 'bar'
+    cli.server.app['value'] = 'bar'
     resp = yield from cli.get('/')
     assert resp.status == 200
     text = yield from resp.text()

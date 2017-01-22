@@ -1,5 +1,4 @@
 import asyncio
-import collections
 import http.cookies
 import io
 import json
@@ -7,32 +6,29 @@ import mimetypes
 import os
 import sys
 import traceback
-import urllib.parse
 import warnings
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
+from yarl import URL
 
 import aiohttp
 
 from . import hdrs, helpers, streams
-from .helpers import Timeout
+from .helpers import HeadersMixin, Timeout
 from .log import client_logger
 from .multipart import MultipartWriter
 from .protocol import HttpMessage
-from .streams import EOF_MARKER, FlowControlStreamReader
+from .streams import FlowControlStreamReader
 
 try:
     import cchardet as chardet
-except ImportError:
+except ImportError:  # pragma: no cover
     import chardet
 
 
 __all__ = ('ClientRequest', 'ClientResponse')
 
 PY_35 = sys.version_info >= (3, 5)
-
-HTTP_PORT = 80
-HTTPS_PORT = 443
 
 
 class ClientRequest:
@@ -75,7 +71,15 @@ class ClientRequest:
         if loop is None:
             loop = asyncio.get_event_loop()
 
-        self.url = url
+        assert isinstance(url, URL), url
+        assert isinstance(proxy, (URL, type(None))), proxy
+
+        if params:
+            q = MultiDict(url.query)
+            url2 = url.with_query(params)
+            q.extend(url2.query)
+            url = url.with_query(q)
+        self.url = url.with_fragment(None)
         self.method = method.upper()
         self.encoding = encoding
         self.chunked = chunked
@@ -89,7 +93,6 @@ class ClientRequest:
 
         self.update_version(version)
         self.update_host(url)
-        self.update_path(params)
         self.update_headers(headers)
         self.update_auto_headers(skip_auto_headers)
         self.update_cookies(cookies)
@@ -101,58 +104,29 @@ class ClientRequest:
         self.update_transfer_encoding()
         self.update_expect_continue(expect100)
 
+    @property
+    def host(self):
+        return self.url.host
+
+    @property
+    def port(self):
+        return self.url.port
+
     def update_host(self, url):
         """Update destination host, port and connection type (ssl)."""
-        url_parsed = urllib.parse.urlsplit(url)
-
-        # check for network location part
-        netloc = url_parsed.netloc
-        if not netloc:
-            raise ValueError('Host could not be detected.')
-
         # get host/port
-        host = url_parsed.hostname
-        if not host:
+        if not url.host:
             raise ValueError('Host could not be detected.')
-
-        try:
-            port = url_parsed.port
-        except ValueError:
-            raise ValueError(
-                'Port number could not be converted.') from None
-
-        # check domain idna encoding
-        try:
-            host = host.encode('idna').decode('utf-8')
-            netloc = self.make_netloc(host, url_parsed.port)
-        except UnicodeError:
-            raise ValueError('URL has an invalid label.')
 
         # basic auth info
-        username, password = url_parsed.username, url_parsed.password
+        username, password = url.user, url.password
         if username:
             self.auth = helpers.BasicAuth(username, password or '')
 
         # Record entire netloc for usage in host header
-        self.netloc = netloc
 
-        scheme = url_parsed.scheme
+        scheme = url.scheme
         self.ssl = scheme in ('https', 'wss')
-
-        # set port number if it isn't already set
-        if not port:
-            if self.ssl:
-                port = HTTPS_PORT
-            else:
-                port = HTTP_PORT
-
-        self.host, self.port, self.scheme = host, port, scheme
-
-    def make_netloc(self, host, port):
-        ret = host
-        if port:
-            ret = ret + ':' + str(port)
-        return ret
 
     def update_version(self, version):
         """Convert request version to two elements tuple.
@@ -168,29 +142,6 @@ class ClientRequest:
                     'Can not parse http version number: {}'
                     .format(version)) from None
         self.version = version
-
-    def update_path(self, params):
-        """Build path."""
-        # extract path
-        scheme, netloc, path, query, fragment = urllib.parse.urlsplit(self.url)
-        if not path:
-            path = '/'
-
-        if isinstance(params, collections.Mapping):
-            params = list(params.items())
-
-        if params:
-            if not isinstance(params, str):
-                params = urllib.parse.urlencode(params)
-            if query:
-                query = '%s&%s' % (query, params)
-            else:
-                query = params
-
-        self.path = urllib.parse.urlunsplit(('', '', helpers.requote_uri(path),
-                                             query, ''))
-        self.url = urllib.parse.urlunsplit(
-            (scheme, netloc, self.path, '', fragment))
 
     def update_headers(self, headers):
         """Update request headers."""
@@ -214,7 +165,10 @@ class ClientRequest:
 
         # add host
         if hdrs.HOST not in used_headers:
-            self.headers[hdrs.HOST] = self.netloc
+            netloc = self.url.raw_host
+            if not self.url.is_default_port():
+                netloc += ':' + str(self.url.port)
+            self.headers[hdrs.HOST] = netloc
 
         if hdrs.USER_AGENT not in used_headers:
             self.headers[hdrs.USER_AGENT] = self.SERVER_SOFTWARE
@@ -229,12 +183,12 @@ class ClientRequest:
             c.load(self.headers.get(hdrs.COOKIE, ''))
             del self.headers[hdrs.COOKIE]
 
-        if isinstance(cookies, dict):
-            cookies = cookies.items()
-
-        for name, value in cookies:
+        for name, value in cookies.items():
             if isinstance(value, http.cookies.Morsel):
-                c[value.key] = value.value
+                # Preserve coded_value
+                mrsl_val = value.get(value.key, http.cookies.Morsel())
+                mrsl_val.set(value.key, value.value, value.coded_value)
+                c[name] = mrsl_val
             else:
                 c[name] = value
 
@@ -284,7 +238,8 @@ class ClientRequest:
             if hdrs.CONTENT_LENGTH not in self.headers and not self.chunked:
                 self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
 
-        elif isinstance(data, (asyncio.StreamReader, streams.DataQueue)):
+        elif isinstance(data, (asyncio.StreamReader, streams.StreamReader,
+                               streams.DataQueue)):
             self.body = data
 
         elif asyncio.iscoroutine(data):
@@ -302,7 +257,8 @@ class ClientRequest:
                 size = len(data.getbuffer())
                 self.headers[hdrs.CONTENT_LENGTH] = str(size)
                 self.chunked = False
-            elif not self.chunked and isinstance(data, io.BufferedReader):
+            elif (not self.chunked and
+                  isinstance(data, (io.BufferedReader, io.BufferedRandom))):
                 # Not chunking if content-length can be determined
                 try:
                     size = os.fstat(data.fileno()).st_size - data.tell()
@@ -377,7 +333,7 @@ class ClientRequest:
             self._continue = helpers.create_future(self.loop)
 
     def update_proxy(self, proxy, proxy_auth):
-        if proxy and not proxy.startswith('http://'):
+        if proxy and not proxy.scheme == 'http':
             raise ValueError("Only http proxies are supported")
         if proxy_auth and not isinstance(proxy_auth, helpers.BasicAuth):
             raise ValueError("proxy_auth must be None or BasicAuth() tuple")
@@ -393,7 +349,6 @@ class ClientRequest:
 
         try:
             if asyncio.iscoroutine(self.body):
-                request.transport.set_tcp_nodelay(True)
                 exc = None
                 value = None
                 stream = self.body
@@ -427,19 +382,18 @@ class ClientRequest:
                             'Bytes object is expected, got: %s.' %
                             type(result))
 
-            elif isinstance(self.body, asyncio.StreamReader):
-                request.transport.set_tcp_nodelay(True)
+            elif isinstance(self.body, (asyncio.StreamReader,
+                                        streams.StreamReader)):
                 chunk = yield from self.body.read(streams.DEFAULT_LIMIT)
                 while chunk:
                     yield from request.write(chunk, drain=True)
                     chunk = yield from self.body.read(streams.DEFAULT_LIMIT)
 
             elif isinstance(self.body, streams.DataQueue):
-                request.transport.set_tcp_nodelay(True)
                 while True:
                     try:
                         chunk = yield from self.body.read()
-                        if chunk is EOF_MARKER:
+                        if not chunk:
                             break
                         yield from request.write(chunk, drain=True)
                     except streams.EofStream:
@@ -450,15 +404,12 @@ class ClientRequest:
                 while chunk:
                     request.write(chunk)
                     chunk = self.body.read(self.chunked)
-                request.transport.set_tcp_nodelay(True)
-
             else:
                 if isinstance(self.body, (bytes, bytearray)):
                     self.body = (self.body,)
 
                 for chunk in self.body:
                     request.write(chunk)
-                request.transport.set_tcp_nodelay(True)
 
         except Exception as exc:
             new_exc = aiohttp.ClientRequestError(
@@ -467,7 +418,6 @@ class ClientRequest:
             new_exc.__cause__ = exc
             reader.set_exception(new_exc)
         else:
-            assert request.transport.tcp_nodelay
             try:
                 ret = request.write_eof()
                 # NB: in asyncio 3.4.1+ StreamWriter.drain() is coroutine
@@ -485,8 +435,21 @@ class ClientRequest:
         self._writer = None
 
     def send(self, writer, reader):
-        writer.set_tcp_cork(True)
-        request = aiohttp.Request(writer, self.method, self.path, self.version)
+        # Specify request target:
+        # - CONNECT request must send authority form URI
+        # - not CONNECT proxy must send absolute form URI
+        # - most common is origin form URI
+        if self.method == hdrs.METH_CONNECT:
+            path = '{}:{}'.format(self.url.raw_host, self.url.port)
+        elif self.proxy and not self.ssl:
+            path = str(self.url)
+        else:
+            path = self.url.raw_path
+            if self.url.raw_query_string:
+                path += '?' + self.url.raw_query_string
+
+        request = aiohttp.Request(writer, self.method, path,
+                                  self.version)
 
         if self.compress:
             request.add_compression_filter(self.compress)
@@ -509,7 +472,7 @@ class ClientRequest:
             self.write_bytes(request, reader), loop=self.loop)
 
         self.response = self.response_class(
-            self.method, self.url, self.host,
+            self.method, self.url,
             writer=self._writer, continue100=self._continue,
             timeout=self._timeout)
         self.response._post_init(self.loop)
@@ -530,14 +493,13 @@ class ClientRequest:
             self._writer = None
 
 
-class ClientResponse:
+class ClientResponse(HeadersMixin):
 
     # from the Status-Line of the response
     version = None  # HTTP-Version
     status = None   # Status-Code
     reason = None   # Reason-Phrase
 
-    cookies = None  # Response cookies (Set-Cookie)
     content = None  # Payload stream
     headers = None  # Response headers, CIMultiDictProxy
     raw_headers = None  # Response raw headers, a sequence of pairs
@@ -552,13 +514,12 @@ class ClientResponse:
     _loop = None
     _closed = True  # to allow __del__ for non-initialized properly response
 
-    def __init__(self, method, url, host='', *, writer=None, continue100=None,
+    def __init__(self, method, url, *, writer=None, continue100=None,
                  timeout=5*60):
-        super().__init__()
+        assert isinstance(url, URL)
 
         self.method = method
-        self.url = url
-        self.host = host
+        self._url_obj = url
         self._content = None
         self._writer = writer
         self._continue = continue100
@@ -566,6 +527,25 @@ class ClientResponse:
         self._should_close = True  # override by message.should_close later
         self._history = ()
         self._timeout = timeout
+        self.cookies = http.cookies.SimpleCookie()
+
+    @property
+    def url_obj(self):
+        return self._url_obj
+
+    @property
+    def url(self):
+        warnings.warn("Deprecated, use .url_obj",
+                      DeprecationWarning,
+                      stacklevel=2)
+        return str(self._url_obj)
+
+    @property
+    def host(self):
+        warnings.warn("Deprecated, use .url_obj.host",
+                      DeprecationWarning,
+                      stacklevel=2)
+        return self._url_obj.host
 
     def _post_init(self, loop):
         self._loop = loop
@@ -589,8 +569,7 @@ class ClientResponse:
 
     def __repr__(self):
         out = io.StringIO()
-        ascii_encodable_url = self.url.encode('ascii', 'backslashreplace') \
-            .decode('ascii')
+        ascii_encodable_url = str(self.url)
         if self.reason:
             ascii_encodable_reason = self.reason.encode('ascii',
                                                         'backslashreplace') \
@@ -609,11 +588,8 @@ class ClientResponse:
 
     @property
     def history(self):
-        """A sequence of of responses, if redirects occured."""
+        """A sequence of of responses, if redirects occurred."""
         return self._history
-
-    def waiting_for_continue(self):
-        return self._continue is not None
 
     def _setup_connection(self, connection):
         self._reader = connection.reader
@@ -636,7 +612,7 @@ class ClientResponse:
             # read response
             with Timeout(self._timeout, loop=self._loop):
                 message = yield from httpstream.read()
-            if message.code != 100:
+            if message.code < 100 or message.code > 199 or message.code == 101:
                 break
 
             if self._continue is not None and not self._continue.done():
@@ -662,14 +638,12 @@ class ClientResponse:
             self.content)
 
         # cookies
-        self.cookies = http.cookies.SimpleCookie()
-        if hdrs.SET_COOKIE in self.headers:
-            for hdr in self.headers.getall(hdrs.SET_COOKIE):
-                try:
-                    self.cookies.load(hdr)
-                except http.cookies.CookieError as exc:
-                    client_logger.warning(
-                        'Can not load response cookies: %s', exc)
+        for hdr in self.headers.getall(hdrs.SET_COOKIE, ()):
+            try:
+                self.cookies.load(hdr)
+            except http.cookies.CookieError as exc:
+                client_logger.warning(
+                    'Can not load response cookies: %s', exc)
         return self
 
     def close(self):
@@ -685,6 +659,7 @@ class ClientResponse:
             self._connection.close()
             self._connection = None
         self._cleanup_writer()
+        self._notify_content()
 
     @asyncio.coroutine
     def release(self):
@@ -692,10 +667,9 @@ class ClientResponse:
             return
         try:
             content = self.content
-            if content is not None and not content.at_eof():
-                chunk = yield from content.readany()
-                while chunk is not EOF_MARKER or chunk:
-                    chunk = yield from content.readany()
+            if content is not None:
+                while not content.at_eof():
+                    yield from content.readany()
         except Exception:
             self._connection.close()
             self._connection = None
@@ -708,6 +682,7 @@ class ClientResponse:
                     self._reader.unset_parser()
                 self._connection = None
             self._cleanup_writer()
+            self._notify_content()
 
     def raise_for_status(self):
         if 400 <= self.status:
@@ -719,6 +694,12 @@ class ClientResponse:
         if self._writer is not None and not self._writer.done():
             self._writer.cancel()
         self._writer = None
+
+    def _notify_content(self):
+        content = self.content
+        if content and content.exception() is None and not content.is_eof():
+            content.set_exception(
+                aiohttp.ClientDisconnectedError('Connection closed'))
 
     @asyncio.coroutine
     def wait_for_close(self):
@@ -749,14 +730,18 @@ class ClientResponse:
 
         encoding = params.get('charset')
         if not encoding:
-            encoding = chardet.detect(self._content)['encoding']
+            if mtype == 'application' and stype == 'json':
+                # RFC 7159 states that the default encoding is UTF-8.
+                encoding = 'utf-8'
+            else:
+                encoding = chardet.detect(self._content)['encoding']
         if not encoding:
             encoding = 'utf-8'
 
         return encoding
 
     @asyncio.coroutine
-    def text(self, encoding=None):
+    def text(self, encoding=None, errors='strict'):
         """Read response payload and decode."""
         if self._content is None:
             yield from self.read()
@@ -764,7 +749,7 @@ class ClientResponse:
         if encoding is None:
             encoding = self._get_encoding()
 
-        return self._content.decode(encoding)
+        return self._content.decode(encoding, errors=errors)
 
     @asyncio.coroutine
     def json(self, *, encoding=None, loads=json.loads):
