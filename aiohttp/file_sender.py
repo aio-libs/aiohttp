@@ -4,6 +4,8 @@ import os
 
 from . import hdrs
 from .helpers import create_future
+from .web_exceptions import (HTTPNotModified, HTTPOk, HTTPPartialContent,
+                             HTTPRequestRangeNotSatisfiable)
 from .web_reqrep import StreamResponse
 
 
@@ -21,6 +23,8 @@ class FileSender:
                      count, loop, registered):
         if registered:
             loop.remove_writer(out_fd)
+        if fut.cancelled():
+            return
         try:
             n = os.sendfile(out_fd, in_fd, offset, count)
             if n == 0:  # EOF reached
@@ -39,35 +43,67 @@ class FileSender:
 
     @asyncio.coroutine
     def _sendfile_system(self, request, resp, fobj, count):
-        """
-        Write `count` bytes of `fobj` to `resp` using
-        the ``sendfile`` system call.
+        # Write count bytes of fobj to resp using
+        # the os.sendfile system call.
+        #
+        # request should be a aiohttp.web.Request instance.
+        #
+        # resp should be a aiohttp.web.StreamResponse instance.
+        #
+        # fobj should be an open file object.
+        #
+        # count should be an integer > 0.
 
-        `request` should be a :obj:`aiohttp.web.Request` instance.
-
-        `resp` should be a :obj:`aiohttp.web.StreamResponse` instance.
-
-        `fobj` should be an open file object.
-
-        `count` should be an integer > 0.
-        """
         transport = request.transport
 
         if transport.get_extra_info("sslcontext"):
             yield from self._sendfile_fallback(request, resp, fobj, count)
             return
 
-        yield from resp.drain()
+        def _send_headers(resp_impl):
+            # Durty hack required for
+            # https://github.com/KeepSafe/aiohttp/issues/1093
+            # don't send headers in sendfile mode
+            pass
+
+        resp._send_headers = _send_headers
+
+        @asyncio.coroutine
+        def write_eof():
+            # Durty hack required for
+            # https://github.com/KeepSafe/aiohttp/issues/1177
+            # do nothing in write_eof
+            pass
+
+        resp.write_eof = write_eof
+
+        resp_impl = yield from resp.prepare(request)
 
         loop = request.app.loop
         # See https://github.com/KeepSafe/aiohttp/issues/958 for details
+
+        # send headers
+        headers = ['HTTP/{0.major}.{0.minor} {1} OK\r\n'.format(
+            request.version, resp.status)]
+        for hdr, val in resp.headers.items():
+            headers.append('{}: {}\r\n'.format(hdr, val))
+        headers.append('\r\n')
+
         out_socket = transport.get_extra_info("socket").dup()
+        out_socket.setblocking(False)
         out_fd = out_socket.fileno()
         in_fd = fobj.fileno()
-        fut = create_future(loop)
+        offset = fobj.tell()
+
+        bheaders = ''.join(headers).encode('utf-8')
+        headers_length = len(bheaders)
+        resp_impl.headers_length = headers_length
+        resp_impl.output_length = headers_length + count
 
         try:
-            self._sendfile_cb(fut, out_fd, in_fd, 0, count, loop, False)
+            yield from loop.sock_sendall(out_socket, bheaders)
+            fut = create_future(loop)
+            self._sendfile_cb(fut, out_fd, in_fd, offset, count, loop, False)
 
             yield from fut
         finally:
@@ -75,25 +111,30 @@ class FileSender:
 
     @asyncio.coroutine
     def _sendfile_fallback(self, request, resp, fobj, count):
-        """
-        Mimic the :meth:`_sendfile_system` method, but without using the
-        ``sendfile`` system call. This should be used on systems that don't
-        support the ``sendfile`` system call.
+        # Mimic the _sendfile_system() method, but without using the
+        # os.sendfile() system call. This should be used on systems
+        # that don't support the os.sendfile().
 
-        To avoid blocking the event loop & to keep memory usage low, `fobj` is
-        transferred in chunks controlled by the `chunk_size` argument to
-        :class:`StaticRoute`.
-        """
-        chunk_size = self._chunk_size
+        # To avoid blocking the event loop & to keep memory usage low,
+        # fobj is transferred in chunks controlled by the
+        # constructor's chunk_size argument.
 
-        chunk = fobj.read(chunk_size)
-        while True:
-            resp.write(chunk)
-            yield from resp.drain()
-            count = count - chunk_size
-            if count <= 0:
-                break
-            chunk = fobj.read(count)
+        yield from resp.prepare(request)
+
+        resp.set_tcp_cork(True)
+        try:
+            chunk_size = self._chunk_size
+
+            chunk = fobj.read(chunk_size)
+            while True:
+                resp.write(chunk)
+                yield from resp.drain()
+                count = count - chunk_size
+                if count <= 0:
+                    break
+                chunk = fobj.read(min(chunk_size, count))
+        finally:
+            resp.set_tcp_nodelay(True)
 
     if hasattr(os, "sendfile"):  # pragma: no cover
         _sendfile = _sendfile_system
@@ -102,34 +143,61 @@ class FileSender:
 
     @asyncio.coroutine
     def send(self, request, filepath):
+        """Send filepath to client using request."""
+        gzip = False
+        if 'gzip' in request.headers.get(hdrs.ACCEPT_ENCODING, ''):
+            gzip_path = filepath.with_name(filepath.name + '.gz')
+
+            if gzip_path.is_file():
+                filepath = gzip_path
+                gzip = True
+
         st = filepath.stat()
 
         modsince = request.if_modified_since
         if modsince is not None and st.st_mtime <= modsince.timestamp():
-            from .web_exceptions import HTTPNotModified
             raise HTTPNotModified()
 
         ct, encoding = mimetypes.guess_type(str(filepath))
         if not ct:
             ct = 'application/octet-stream'
 
-        resp = self._response_factory()
+        status = HTTPOk.status_code
+        file_size = st.st_size
+        count = file_size
+
+        try:
+            rng = request.http_range
+            start = rng.start
+            end = rng.stop
+        except ValueError:
+            raise HTTPRequestRangeNotSatisfiable
+
+        # If a range request has been made, convert start, end slice notation
+        # into file pointer offset and count
+        if start is not None or end is not None:
+            status = HTTPPartialContent.status_code
+            if start is None and end < 0:  # return tail of file
+                start = file_size + end
+                count = -end
+            else:
+                count = (end or file_size) - start
+
+            if start + count > file_size:
+                raise HTTPRequestRangeNotSatisfiable
+
+        resp = self._response_factory(status=status)
         resp.content_type = ct
         if encoding:
             resp.headers[hdrs.CONTENT_ENCODING] = encoding
+        if gzip:
+            resp.headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
         resp.last_modified = st.st_mtime
 
-        file_size = st.st_size
-
-        resp.content_length = file_size
-        resp.set_tcp_cork(True)
-        try:
-            yield from resp.prepare(request)
-
-            with filepath.open('rb') as f:
-                yield from self._sendfile(request, resp, f, file_size)
-
-        finally:
-            resp.set_tcp_nodelay(True)
+        resp.content_length = count
+        with filepath.open('rb') as f:
+            if start:
+                f.seek(start)
+            yield from self._sendfile(request, resp, f, count)
 
         return resp

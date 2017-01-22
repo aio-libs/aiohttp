@@ -199,8 +199,7 @@ def test_bad_method(srv, loop):
 def test_line_too_long(srv, loop):
     transport = mock.Mock()
     srv.connection_made(transport)
-
-    srv.reader.feed_data(b''.join([b'a' for _ in range(10000)]))
+    srv.data_received(b''.join([b'a' for _ in range(10000)]) + b'\r\n\r\n')
 
     loop.run_until_complete(srv._request_handler)
     assert transport.write.mock_calls[0][1][0].startswith(
@@ -330,8 +329,18 @@ def test_handle(srv, loop):
     assert transport.close.called
 
 
-def test_handle_uncompleted(srv, loop):
+def test_handle_uncompleted(make_srv, loop):
     transport = mock.Mock()
+    closed = False
+
+    def close():
+        nonlocal closed
+        closed = True
+
+    transport.close = close
+
+    srv = make_srv(lingering_timeout=0)
+
     srv.connection_made(transport)
     srv.logger.exception = mock.Mock()
 
@@ -345,8 +354,82 @@ def test_handle_uncompleted(srv, loop):
 
     loop.run_until_complete(srv._request_handler)
     assert handle.called
-    assert transport.close.called
+    assert closed
     srv.logger.exception.assert_called_with("Error handling request")
+
+
+@asyncio.coroutine
+def test_lingering(srv, loop):
+
+    transport = mock.Mock()
+    srv.connection_made(transport)
+
+    yield from asyncio.sleep(0, loop=loop)
+    assert not transport.close.called
+
+    srv.reader.feed_data(
+        b'GET / HTTP/1.0\r\n'
+        b'Host: example.com\r\n'
+        b'Content-Length: 0\r\n\r\n')
+
+    srv.reader.feed_data(b'123')
+
+    yield from asyncio.sleep(0, loop=loop)
+    assert not transport.close.called
+    srv.reader.feed_eof()
+
+    yield from asyncio.sleep(0, loop=loop)
+    transport.close.assert_called_with()
+
+
+@asyncio.coroutine
+def test_lingering_disabled(make_srv, loop):
+    srv = make_srv(lingering_time=0)
+
+    transport = mock.Mock()
+    srv.connection_made(transport)
+
+    yield from asyncio.sleep(0, loop=loop)
+    assert not transport.close.called
+
+    srv.reader.feed_data(
+        b'GET / HTTP/1.0\r\n'
+        b'Host: example.com\r\n'
+        b'Content-Length: 50\r\n\r\n')
+
+    srv.reader.feed_data(b'123')
+
+    yield from asyncio.sleep(0, loop=loop)
+    assert not transport.close.called
+    srv.reader.feed_eof()
+
+    yield from asyncio.sleep(0, loop=loop)
+    transport.close.assert_called_with()
+
+
+@asyncio.coroutine
+def test_lingering_zero_timeout(make_srv, loop):
+    srv = make_srv(lingering_time=1e-30)
+
+    transport = mock.Mock()
+    srv.connection_made(transport)
+
+    yield from asyncio.sleep(0, loop=loop)
+    assert not transport.close.called
+
+    srv.reader.feed_data(
+        b'GET / HTTP/1.0\r\n'
+        b'Host: example.com\r\n'
+        b'Content-Length: 50\r\n\r\n')
+
+    srv.reader.feed_data(b'123')
+
+    yield from asyncio.sleep(0, loop=loop)
+    assert not transport.close.called
+    srv.reader.feed_eof()
+
+    yield from asyncio.sleep(0, loop=loop)
+    transport.close.assert_called_with()
 
 
 def test_handle_coro(srv, loop):

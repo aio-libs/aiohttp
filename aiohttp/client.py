@@ -6,10 +6,10 @@ import hashlib
 import os
 import sys
 import traceback
-import urllib.parse
 import warnings
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
+from yarl import URL
 
 import aiohttp
 
@@ -17,8 +17,9 @@ from . import hdrs, helpers
 from ._ws_impl import WS_KEY, WebSocketParser, WebSocketWriter
 from .client_reqrep import ClientRequest, ClientResponse
 from .client_ws import ClientWebSocketResponse
+from .cookiejar import CookieJar
 from .errors import WSServerHandshakeError
-from .helpers import CookieJar, Timeout
+from .helpers import Timeout
 
 __all__ = ('ClientSession', 'request', 'get', 'options', 'head',
            'delete', 'post', 'put', 'patch', 'ws_connect')
@@ -52,6 +53,17 @@ class ClientSession:
         self._loop = loop
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
+
+        if not loop.is_running():
+            warnings.warn("Creating a client session outside of coroutine is "
+                          "a very dangerous idea", ResourceWarning,
+                          stacklevel=2)
+            context = {'client_session': self,
+                       'message': 'Creating a client session outside '
+                       'of coroutine'}
+            if self._source_traceback is not None:
+                context['source_traceback'] = self._source_traceback
+            loop.call_exception_handler(context)
 
         if cookie_jar is None:
             cookie_jar = CookieJar(loop=loop)
@@ -91,45 +103,9 @@ class ClientSession:
                 context['source_traceback'] = self._source_traceback
             self._loop.call_exception_handler(context)
 
-    def request(self, method, url, *,
-                params=None,
-                data=None,
-                headers=None,
-                skip_auto_headers=None,
-                auth=None,
-                allow_redirects=True,
-                max_redirects=10,
-                encoding='utf-8',
-                version=None,
-                compress=None,
-                chunked=None,
-                expect100=False,
-                read_until_eof=True,
-                proxy=None,
-                proxy_auth=None,
-                timeout=5*60):
+    def request(self, method, url, **kwargs):
         """Perform HTTP request."""
-
-        return _RequestContextManager(
-            self._request(
-                method,
-                url,
-                params=params,
-                data=data,
-                headers=headers,
-                skip_auto_headers=skip_auto_headers,
-                auth=auth,
-                allow_redirects=allow_redirects,
-                max_redirects=max_redirects,
-                encoding=encoding,
-                version=version,
-                compress=compress,
-                chunked=chunked,
-                expect100=expect100,
-                read_until_eof=read_until_eof,
-                proxy=proxy,
-                proxy_auth=proxy_auth,
-                timeout=timeout))
+        return _RequestContextManager(self._request(method, url, **kwargs))
 
     @asyncio.coroutine
     def _request(self, method, url, *,
@@ -179,7 +155,11 @@ class ClientSession:
             for i in skip_auto_headers:
                 skip_headers.add(istr(i))
 
+        if proxy is not None:
+            proxy = URL(proxy)
+
         while True:
+            url = URL(url).with_fragment(None)
 
             cookies = self._cookie_jar.filter_cookies(url)
 
@@ -194,6 +174,7 @@ class ClientSession:
 
             with Timeout(timeout, loop=self._loop):
                 conn = yield from self._connector.connect(req)
+            conn.writer.set_tcp_nodelay(True)
             try:
                 resp = req.send(conn.writer, conn.reader)
                 try:
@@ -208,7 +189,7 @@ class ClientSession:
             except OSError as exc:
                 raise aiohttp.ClientOSError(*exc.args) from exc
 
-            self._cookie_jar.update_cookies(resp.cookies, resp.url)
+            self._cookie_jar.update_cookies(resp.cookies, resp.url_obj)
 
             # redirects
             if resp.status in (301, 302, 303, 307) and allow_redirects:
@@ -227,7 +208,9 @@ class ClientSession:
 
                 # For 301 and 302, mimic IE behaviour, now changed in RFC.
                 # Details: https://github.com/kennethreitz/requests/pull/269
-                if resp.status != 307:
+                if (resp.status == 303 and resp.method != hdrs.METH_HEAD) \
+                   or (resp.status in (301, 302) and
+                       resp.method == hdrs.METH_POST):
                     method = hdrs.METH_GET
                     data = None
                     if headers.get(hdrs.CONTENT_LENGTH):
@@ -235,13 +218,19 @@ class ClientSession:
 
                 r_url = (resp.headers.get(hdrs.LOCATION) or
                          resp.headers.get(hdrs.URI))
+                if r_url is None:
+                    raise RuntimeError("{0.method} {0.url_obj} returns "
+                                       "a redirect [{0.status}] status "
+                                       "but response lacks a Location "
+                                       "or URI HTTP header".format(resp))
+                r_url = URL(r_url)
 
-                scheme = urllib.parse.urlsplit(r_url)[0]
+                scheme = r_url.scheme
                 if scheme not in ('http', 'https', ''):
                     resp.close()
                     raise ValueError('Can redirect only to http or https')
                 elif not scheme:
-                    r_url = urllib.parse.urljoin(url, r_url)
+                    r_url = url.join(r_url)
 
                 url = r_url
                 params = None
@@ -465,14 +454,19 @@ class ClientSession:
         return self._connector
 
     @property
-    def cookies(self):
+    def cookie_jar(self):
         """The session cookies."""
-        return self._cookie_jar.cookies
+        return self._cookie_jar
 
     @property
     def version(self):
         """The session HTTP protocol version."""
         return self._version
+
+    @property
+    def loop(self):
+        """Session's loop."""
+        return self._loop
 
     def detach(self):
         """Detach connector from session without closing the former.
@@ -482,6 +476,7 @@ class ClientSession:
         self._connector = None
 
     def __enter__(self):
+        warnings.warn("Use async with instead", DeprecationWarning)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -496,6 +491,7 @@ class ClientSession:
         def __aexit__(self, exc_type, exc_val, exc_tb):
             yield from self.close()
 
+
 if PY_35:
     from collections.abc import Coroutine
     base = Coroutine
@@ -505,25 +501,14 @@ else:
 
 class _BaseRequestContextManager(base):
 
-    __slots__ = ('_coro', '_resp')
+    __slots__ = ('_coro', '_resp', 'send', 'throw', 'close')
 
     def __init__(self, coro):
         self._coro = coro
         self._resp = None
-
-    def send(self, value):
-        return self._coro.send(value)
-
-    def throw(self, typ, val=None, tb=None):
-        if val is None:
-            return self._coro.throw(typ)
-        elif tb is None:
-            return self._coro.throw(typ, val)
-        else:
-            return self._coro.throw(typ, val, tb)
-
-    def close(self):
-        return self._coro.close()
+        self.send = coro.send
+        self.throw = coro.throw
+        self.close = coro.close
 
     @property
     def gi_frame(self):
@@ -644,34 +629,31 @@ def request(method, url, *,
             proxy_auth=None):
     """Constructs and sends a request. Returns response object.
 
-    :param str method: HTTP method
-    :param str url: request url
-    :param params: (optional) Dictionary or bytes to be sent in the query
+    method - HTTP method
+    url - request url
+    params - (optional) Dictionary or bytes to be sent in the query
       string of the new request
-    :param data: (optional) Dictionary, bytes, or file-like object to
+    data - (optional) Dictionary, bytes, or file-like object to
       send in the body of the request
-    :param dict headers: (optional) Dictionary of HTTP Headers to send with
+    headers - (optional) Dictionary of HTTP Headers to send with
       the request
-    :param dict cookies: (optional) Dict object to send with the request
-    :param auth: (optional) BasicAuth named tuple represent HTTP Basic Auth
-    :type auth: aiohttp.helpers.BasicAuth
-    :param bool allow_redirects: (optional) If set to False, do not follow
+    cookies - (optional) Dict object to send with the request
+    auth - (optional) BasicAuth named tuple represent HTTP Basic Auth
+    auth - aiohttp.helpers.BasicAuth
+    allow_redirects - (optional) If set to False, do not follow
       redirects
-    :param version: Request HTTP version.
-    :type version: aiohttp.protocol.HttpVersion
-    :param bool compress: Set to True if request has to be compressed
+    version - Request HTTP version.
+    compress - Set to True if request has to be compressed
        with deflate encoding.
-    :param chunked: Set to chunk size for chunked transfer encoding.
-    :type chunked: bool or int
-    :param bool expect100: Expect 100-continue response from server.
-    :param connector: BaseConnector sub-class instance to support
+    chunked - Set to chunk size for chunked transfer encoding.
+    expect100 - Expect 100-continue response from server.
+    connector - BaseConnector sub-class instance to support
        connection pooling.
-    :type connector: aiohttp.connector.BaseConnector
-    :param bool read_until_eof: Read response until eof if response
+    read_until_eof - Read response until eof if response
        does not have Content-Length header.
-    :param request_class: (optional) Custom Request class implementation.
-    :param response_class: (optional) Custom Response class implementation.
-    :param loop: Optional event loop.
+    request_class - (optional) Custom Request class implementation.
+    response_class - (optional) Custom Response class implementation.
+    loop - Optional event loop.
 
     Usage::
 

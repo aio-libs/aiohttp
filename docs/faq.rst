@@ -15,6 +15,18 @@ For this reason feature will not be implemented. But if you really want to
 use decorators just derive from web.Application and add desired method.
 
 
+Has aiohttp the Flask Blueprint or Django App concept?
+------------------------------------------------------
+
+If you're planing to write big applications, maybe you must consider
+use nested applications. They acts as a Flask Blueprint or like the
+Django application concept.
+
+Using nested application you can add sub-applications to the main application.
+
+see: :ref:`aiohttp-web-nested-applications`.
+
+
 How to create route that catches urls with given prefix?
 ---------------------------------------------------------
 Try something like::
@@ -61,7 +73,7 @@ resource closing.
 The last Python 3.3, 3.4.0 compatible version of aiohttp is
 **v0.17.4**.
 
-This should not be an issue for most aiohttp users (for example Ubuntu
+This should not be an issue for most aiohttp users (for example `Ubuntu`
 14.04.3 LTS provides python upgraded to 3.4.3), however libraries
 depending on aiohttp should consider this and either freeze aiohttp
 version or drop Python 3.3 support as well.
@@ -126,7 +138,7 @@ peer::
         finally:
             task.cancel()
 
-    async def read_subscriptions(ws, redis):
+    async def read_subscription(ws, redis):
         channel, = await redis.subscribe('channel:1')
 
         try:
@@ -163,7 +175,7 @@ tasks for a user in the :class:`aiohttp.web.Application` instance and
         ws = web.WebSocketResponse()
         user_id = authenticate_user(request)
         await ws.prepare(request)
-        request.app['handlers'][user_id].add(asyncio.Task.current_task())
+        request.app['websockets'][user_id].add(asyncio.Task.current_task())
 
         try:
             async for msg in ws:
@@ -173,7 +185,7 @@ tasks for a user in the :class:`aiohttp.web.Application` instance and
         except asyncio.CancelledError:
             print('websocket cancelled')
         finally:
-            request.app['handlers'][user_id].remove(asyncio.Task.current_task())
+            request.app['websockets'][user_id].remove(asyncio.Task.current_task())
         await ws.close()
         return ws
 
@@ -181,7 +193,7 @@ tasks for a user in the :class:`aiohttp.web.Application` instance and
 
         user_id = authenticate_user(request)
 
-        for task in request.app['handlers'][user_id]:
+        for task in request.app['websockets'][user_id]:
             task.cancel()
 
         # return response
@@ -192,7 +204,7 @@ tasks for a user in the :class:`aiohttp.web.Application` instance and
         app = aiohttp.web.Application(loop=loop)
         app.router.add_route('GET', '/echo', echo_handler)
         app.router.add_route('POST', '/logout', logout_handler)
-        app['websockets'] = defaultdict(set)
+        app['handlers'] = defaultdict(set)
         aiohttp.web.run_app(app, host='localhost', port=8080)
 
 
@@ -203,7 +215,7 @@ If your system has several IP interfaces you may choose one which will
 be used used to bind socket locally::
 
     conn = aiohttp.TCPConnector(local_addr=('127.0.0.1, 0), loop=loop)
-    with aiohttp.ClientSession(connector=conn) as session:
+    async with aiohttp.ClientSession(connector=conn) as session:
         ...
 
 .. seealso:: :class:`aiohttp.TCPConnector` and ``local_addr`` parameter.
@@ -234,7 +246,9 @@ example would be the following::
 
       async def test_get(self, test_client, loop):
           with patch("main.AioESService", MagicMock(
-                  side_effect=lambda *args, **kwargs: AioESService(*args, **kwargs, loop=loop))):
+                  side_effect=lambda *args, **kwargs: AioESService(*args,
+                                                                   **kwargs,
+                                                                   loop=loop))):
               client = await test_client(create_app)
               resp = await client.get("/")
               assert resp.status == 200
@@ -306,7 +320,9 @@ And the full tests file::
 
       async def test_get(self, test_client, loop):
           with patch("main.AioESService", MagicMock(
-                  side_effect=lambda *args, **kwargs: AioESService(*args, **kwargs, loop=loop))):
+                  side_effect=lambda *args, **kwargs: AioESService(*args,
+                                                                   **kwargs,
+                                                                   loop=loop))):
               client = await test_client(create_app)
               resp = await client.get("/")
               assert resp.status == 200
@@ -314,3 +330,38 @@ And the full tests file::
 Note how we are using the ``side_effect`` feature for injecting the loop to the
 ``AioESService.__init__`` call. The use of ``**args, **kwargs`` is mandatory
 in order to propagate the arguments being used by the caller.
+
+
+API stability and deprecation policy
+------------------------------------
+
+aiohttp tries to not break existing users code.
+
+Obsolete attributes and methods are marked as *deprecated* in
+documentation and raises :class:`DeprecationWarning` on usage.
+
+Deprecation period is usually a year and half.
+
+After the period is passed out deprecated code is be removed.
+
+Unfortunately we should break own rules if new functionality or bug
+fixing forces us to do it (for example proper cookies support on
+client side forced us to break backward compatibility twice).
+
+All *backward incompatible* changes are explicitly marked in
+:ref:`CHANGES <aiohttp_changes>` chapter.
+
+
+How to enable gzip compression globally for the whole application?
+------------------------------------------------------------------
+
+It's impossible. Choosing what to compress and where don't apply such
+time consuming operation is very tricky matter.
+
+If you need global compression -- write own custom middleware. Or
+enable compression in NGINX (you are deploying aiohttp behind reverse
+proxy, isn't it).
+
+
+.. disqus::
+  :title: aiohttp FAQ

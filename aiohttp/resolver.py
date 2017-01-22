@@ -3,13 +3,18 @@ import socket
 
 from .abc import AbstractResolver
 
+__all__ = ('ThreadedResolver', 'AsyncResolver', 'DefaultResolver')
+
 try:
     import aiodns
+    # aiodns_default = hasattr(aiodns.DNSResolver, 'gethostbyname')
 except ImportError:  # pragma: no cover
     aiodns = None
 
+aiodns_default = False
 
-class DefaultResolver(AbstractResolver):
+
+class ThreadedResolver(AbstractResolver):
     """Use Executor for synchronous getaddrinfo() calls, which defaults to
     concurrent.futures.ThreadPoolExecutor.
     """
@@ -91,3 +96,6 @@ class AsyncResolver(AbstractResolver):
     @asyncio.coroutine
     def close(self):
         return self._resolver.cancel()
+
+
+DefaultResolver = AsyncResolver if aiodns_default else ThreadedResolver

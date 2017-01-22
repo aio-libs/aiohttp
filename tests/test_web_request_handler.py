@@ -2,7 +2,7 @@ import asyncio
 from unittest import mock
 
 from aiohttp import web
-from aiohttp.test_utils import make_mocked_coro
+from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 
 
 def test_repr(loop):
@@ -13,8 +13,8 @@ def test_repr(loop):
     assert '<RequestHandler none:none disconnected>' == repr(handler)
 
     handler.transport = object()
-    handler._meth = 'GET'
-    handler._path = '/index.html'
+    request = make_mocked_request('GET', '/index.html')
+    handler._request = request
     assert '<RequestHandler GET:/index.html connected>' == repr(handler)
 
 
@@ -64,9 +64,3 @@ def test_finish_connection_timeout(loop):
     manager.connection_lost(handler, None)
     assert manager.connections == []
     handler.shutdown.assert_called_with(0.1)
-
-
-def test_secure_proxy_ssl_header_default(loop):
-    app = web.Application(loop=loop)
-    manager = app.make_handler()
-    assert manager.secure_proxy_ssl_header is None

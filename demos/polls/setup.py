@@ -20,11 +20,11 @@ def read_version():
 
 install_requires = ['aiohttp',
                     'aiopg[sa]',
-                    'aiohttp_jinja2',
-                    'pyyaml']
+                    'aiohttp-jinja2',
+                    'trafaret-config']
 
 
-setup(name='aiohttpdemo_polls',
+setup(name='aiohttpdemo-polls',
       version=read_version(),
       description='Polls project example from aiohttp',
       platforms=['POSIX'],

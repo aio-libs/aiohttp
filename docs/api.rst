@@ -144,7 +144,7 @@ WebSocket utilities
 
       1. :class:`str` for :attr:`WSMsgType.TEXT` messages.
 
-      2. :class:`bytes` for :attr:`WSMsgType.TEXT` messages.
+      2. :class:`bytes` for :attr:`WSMsgType.BINARY` messages.
 
       3. :class:`WSCloseCode` for :attr:`WSMsgType.CLOSE` messages.
 
@@ -215,15 +215,6 @@ aiohttp.signals module
     :undoc-members:
     :show-inheritance:
 
-aiohttp.streams module
-----------------------
-
-.. automodule:: aiohttp.streams
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 aiohttp.wsgi module
 -------------------
 
@@ -234,3 +225,4 @@ aiohttp.wsgi module
 
 
 .. disqus::
+  :title: aiohttp helpers api

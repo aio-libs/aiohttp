@@ -1,7 +1,7 @@
 .. _aiohttp-tutorial:
 
-HTTP Server Tutorial
-====================
+Server Tutorial
+===============
 
 Are you going to learn *aiohttp* but don't where to start? We have
 example for you. Polls application is a great example for getting
@@ -35,7 +35,7 @@ command:
 .. code-block:: shell
 
  $ python -c 'import aiohttp; print(aiohttp.__version__)'
- 0.22.0
+ 1.1.5
 
 Project structure looks very similar to other python based web projects:
 
@@ -75,6 +75,98 @@ Getting started with aiohttp first app
 
 This tutorial based on Django polls tutorial.
 
+
+Application
+-----------
+
+All aiohttp server is built around :class:`aiohttp.web.Application` instance.
+It is used for registering *startup*/*cleanup* signals, connecting routes etc.
+
+The following code creates an application::
+
+   import asyncio
+   from aiohttp import web
+
+   loop = asyncio.get_event_loop()
+   app = web.Application(loop=loop)
+   web.run_app(app, host='127.0.0.1', port=8080)
+
+Save it under ``aiohttpdemo_polls/main.py`` and start the server:
+
+.. code-block:: shell
+
+   $ python main.py  
+   
+You'll see the following output on the command line:
+
+.. code-block:: shell
+
+   ======== Running on http://127.0.0.1:8080 ========
+   (Press CTRL+C to quit)
+
+Open ``http://127.0.0.1:8080`` in browser or do
+
+.. code-block:: shell
+
+   $ curl -X GET localhost:8080
+
+Alas, for now both return only ``404: Not Found``.
+To show something more meaningful let's create a route and a view.
+
+.. _aiohttp-tutorial-views:
+
+Views
+-----
+
+Let's start from first views. Create the file ``aiohttpdemo_polls/views.py`` with the following::
+
+    from aiohttp import web
+
+
+    async def index(request):
+        return web.Response(text='Hello Aiohttp!')
+
+This is the simplest view possible in Aiohttp. 
+Now we should create a route for this ``index`` view. Put this into ``aiohttpdemo_polls/routes.py`` (it is a good practice to separate views, routes, models etc. You'll have more of each, and it is nice to have them in different places)::
+
+    from views import index
+
+
+    def setup_routes(app):
+        app.router.add_get('/', index)
+
+
+Also, we should call ``setup_routes`` function somewhere, and the best place is in the ``main.py`` ::
+
+   import asyncio
+   from aiohttp import web
+   from routes import setup_routes
+
+
+   loop = asyncio.get_event_loop()
+   app = web.Application(loop=loop)
+   setup_routes(app)
+   web.run_app(app, host='127.0.0.1', port=8080)
+
+Start server again. Now if we open browser we can see:
+
+.. code-block:: shell
+
+    $ curl -X GET localhost:8080
+    Hello Aiohttp!
+
+Success! For now your working directory should look like this:
+
+.. code-block:: none
+
+    .
+    ├── ..
+    └── polls
+        ├── aiohttpdemo_polls
+        │   ├── main.py
+        │   ├── routes.py
+        │   └── views.py
+
 .. _aiohttp-tutorial-config:
 
 Configuration files
@@ -111,11 +203,18 @@ Thus we **suggest** to use the following approach:
       parameter, e.g. ``./run_app --config=/opt/config/app_cfg.yaml``.
 
    4. Applying strict validation checks to loaded dict. `trafaret
-      <https://github.com/Deepwalker/trafaret>`_, `collander
+      <http://trafaret.readthedocs.io/en/latest/>`_, `colander
       <http://docs.pylonsproject.org/projects/colander/en/latest/>`_
       or `JSON schema
       <http://python-jsonschema.readthedocs.io/en/latest/>`_ are good
       candidates for such job.
+
+
+Load config and push into application::
+
+    # load config from yaml file in current dir
+    conf = load_config(str(pathlib.Path('.') / 'config' / 'polls.yaml'))
+    app['config'] = conf
 
 .. _aiohttp-tutorial-database:
 
@@ -125,13 +224,13 @@ Database
 Setup
 ^^^^^
 
-In this tutorial we use latest PostgreSQL database.  You can install
+In this tutorial we will use the latest PostgreSQL database.  You can install
 PostgreSQL using this instruction http://www.postgresql.org/download/
 
 Database schema
 ^^^^^^^^^^^^^^^
 
-We use SQLAlchemy for describe database schema.
+We use SQLAlchemy to describe database schemas.
 For this tutorial we can use two simple models ``question`` and ``choice``::
 
     import sqlalchemy as sa
@@ -191,40 +290,46 @@ and second table is choice table:
 | question_id   |
 +---------------+
 
-TBD: aiopg.sa.create_engine and pushing it into app's storage
+Creating connection engine
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-TBD: graceful cleanup
+For making DB queries we need an engine instance. Assuming ``conf`` is
+a :class:`dict` with configuration info Postgres connection could be
+done by the following coroutine::
+
+   async def init_pg(app):
+       conf = app['config']
+       engine = await aiopg.sa.create_engine(
+           database=conf['database'],
+           user=conf['user'],
+           password=conf['password'],
+           host=conf['host'],
+           port=conf['port'],
+           minsize=conf['minsize'],
+           maxsize=conf['maxsize'],
+           loop=app.loop)
+       app['db'] = engine
+
+The best place for connecting to DB is
+:attr:`~aiohtp.web.Application.on_startup` signal::
+
+   app.on_startup.append(init_pg)
 
 
-.. _aiohttp-tutorial-views:
+Graceful shutdown
+^^^^^^^^^^^^^^^^^
 
-Views
------
+There is a good practice to close all resources on program exit.
 
-Let's start from first views. Open polls/aiohttpdemo_polls/views.py and put
-next Python code inside file (``polls/aiohttpdemo_polls/views.py``)::
+Let's close DB connection in :attr:`~aiohtp.web.Application.on_cleanup` signal::
 
-    from aiohttp import web
-
-
-    async def index(self, request):
-        return web.Response(text='Hello Aiohttp!')
-
-This is the simplest view possible in Aiohttp. Now we should add ``index`` view
-to ``polls/aiohttpdemo_polls/routes.py``::
-
-    from .views import index
+   async def close_pg(app):
+       app['db'].close()
+       await app['db'].wait_closed()
 
 
-    def setup_routes(app, project_root):
-        app.router.add_get('/', index)
+   app.on_cleanup.append(close_pg)
 
-Now if we open browser we can see:
-
-.. code-block:: shell
-
-    $ curl -X GET localhost:8080
-    Hello Aiohttp!
 
 
 .. _aiohttp-tutorial-templates:
@@ -294,7 +399,72 @@ Fortunately it can be done easy by single call::
 where ``project_root`` is the path to root folder.
 
 
+.. _aiohttp-tutorial-middlewares:
+
 Middlewares
 -----------
 
-TBD
+Middlewares are stacked around every web-handler.  They are called
+*before* handler for pre-processing request and *after* getting
+response back for post-processing given response.
+
+Here we'll add a simple middleware for displaying pretty looking pages
+for *404 Not Found* and *500 Internal Error*.
+
+Middlewares could be registered in ``app`` by adding new middleware to
+``app.middlewares`` list::
+
+   def setup_middlewares(app):
+       error_middleware = error_pages({404: handle_404,
+                                       500: handle_500})
+       app.middlewares.append(error_middleware)
+
+Middleware itself is a factory which accepts *application* and *next
+handler* (the following middleware or *web-handler* in case of the
+latest middleware in the list).
+
+The factory returns *middleware handler* which has the same signature
+as regular *web-handler* -- it accepts *request* and returns
+*response*.
+
+Middleware for processing HTTP exceptions::
+
+   def error_pages(overrides):
+       async def middleware(app, handler):
+           async def middleware_handler(request):
+               try:
+                   response = await handler(request)
+                   override = overrides.get(response.status)
+                   if override is None:
+                       return response
+                   else:
+                       return await override(request, response)
+               except web.HTTPException as ex:
+                   override = overrides.get(ex.status)
+                   if override is None:
+                       raise
+                   else:
+                       return await override(request, ex)
+           return middleware_handler
+       return middleware
+
+Registered overrides are trivial Jinja2 template renderers::
+
+
+   async def handle_404(request, response):
+       response = aiohttp_jinja2.render_template('404.html',
+                                                 request,
+                                                 {})
+       return response
+
+
+   async def handle_500(request, response):
+       response = aiohttp_jinja2.render_template('500.html',
+                                                 request,
+                                                 {})
+       return response
+
+.. seealso:: :ref:`aiohttp-web-middlewares`
+
+.. disqus::
+  :title: aiohttp server tutorial

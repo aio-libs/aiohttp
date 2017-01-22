@@ -1,12 +1,9 @@
-import asyncio
 import datetime
-import http.cookies
-import unittest
 from unittest import mock
 
 import pytest
 
-from aiohttp import helpers, test_utils
+from aiohttp import helpers
 
 
 def test_parse_mimetype_1():
@@ -61,6 +58,11 @@ def test_basic_auth1():
 def test_basic_auth2():
     with pytest.raises(ValueError):
         helpers.BasicAuth('nkim', None)
+
+
+def test_basic_with_auth_colon_in_login():
+    with pytest.raises(ValueError):
+        helpers.BasicAuth('nkim:1', 'pwd')
 
 
 def test_basic_auth3():
@@ -132,12 +134,14 @@ def test_invalid_formdata_content_transfer_encoding():
                            'bar',
                            content_transfer_encoding=invalid_val)
 
+# ------------- access logger -------------------------
+
 
 def test_access_logger_format():
-    log_format = '%T {%{SPAM}e} "%{ETag}o" %X {X} %%P'
+    log_format = '%T {%{SPAM}e} "%{ETag}o" %X {X} %%P %{FOO_TEST}e %{FOO1}e'
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, log_format)
-    expected = '%s {%s} "%s" %%X {X} %%%s'
+    expected = '%s {%s} "%s" %%X {X} %%%s %s %s'
     assert expected == access_logger._log_format
 
 
@@ -160,7 +164,19 @@ def test_access_logger_atoms(mocker):
     assert not mock_logger.exception.called
     expected = ('127.0.0.2 [01/Jan/1843:00:00:00 +0000] <42> - - '
                 'GET /path HTTP/1.1 200 42 123 3 3.141593 3141593')
-    mock_logger.info.assert_called_with(expected)
+    extra = {
+        'bytes_sent': 123,
+        'first_request_line': 'GET /path HTTP/1.1',
+        'process_id': '<42>',
+        'remote_address': '127.0.0.2',
+        'request_time': 3,
+        'request_time_frac': '3.141593',
+        'request_time_micro': 3141593,
+        'response_size': 42,
+        'response_status': 200
+    }
+
+    mock_logger.info.assert_called_with(expected, extra=extra)
 
 
 def test_access_logger_dicts():
@@ -175,7 +191,13 @@ def test_access_logger_dicts():
     access_logger.log(message, environ, response, transport, 0.0)
     assert not mock_logger.error.called
     expected = 'Mock/1.0 123 EGGS -'
-    mock_logger.info.assert_called_with(expected)
+    extra = {
+        'environ': {'SPAM': 'EGGS'},
+        'request_header': {'None': '-'},
+        'response_header': {'Content-Length': 123}
+    }
+
+    mock_logger.info.assert_called_with(expected, extra=extra)
 
 
 def test_access_logger_unix_socket():
@@ -190,7 +212,7 @@ def test_access_logger_unix_socket():
     access_logger.log(message, environ, response, transport, 0.0)
     assert not mock_logger.error.called
     expected = '||'
-    mock_logger.info.assert_called_with(expected)
+    mock_logger.info.assert_called_with(expected, extra={'remote_address': ''})
 
 
 def test_logger_no_message_and_environ():
@@ -199,54 +221,72 @@ def test_logger_no_message_and_environ():
     mock_transport.get_extra_info.return_value = ("127.0.0.3", 0)
     access_logger = helpers.AccessLogger(mock_logger,
                                          "%r %{FOOBAR}e %{content-type}i")
+    extra_dict = {
+        'environ': {'FOOBAR': '-'},
+        'first_request_line': '-',
+        'request_header': {'content-type': '(no headers)'}
+    }
+
     access_logger.log(None, None, None, mock_transport, 0.0)
-    mock_logger.info.assert_called_with("- - (no headers)")
+    mock_logger.info.assert_called_with("- - (no headers)", extra=extra_dict)
 
 
-def test_reify():
-    class A:
-        @helpers.reify
-        def prop(self):
-            return 1
-
-    a = A()
-    assert 1 == a.prop
-
-
-def test_reify_class():
-    class A:
-        @helpers.reify
-        def prop(self):
-            """Docstring."""
-            return 1
-
-    assert isinstance(A.prop, helpers.reify)
-    assert 'Docstring.' == A.prop.__doc__
+def test_logger_internal_error():
+    mock_logger = mock.Mock()
+    mock_transport = mock.Mock()
+    mock_transport.get_extra_info.return_value = ("127.0.0.3", 0)
+    access_logger = helpers.AccessLogger(mock_logger, "%D")
+    access_logger.log(None, None, None, mock_transport, 'invalid')
+    mock_logger.exception.assert_called_with("Error in logging")
 
 
-def test_reify_assignment():
-    class A:
-        @helpers.reify
-        def prop(self):
-            return 1
-
-    a = A()
-
-    with pytest.raises(AttributeError):
-        a.prop = 123
+def test_logger_no_transport():
+    mock_logger = mock.Mock()
+    access_logger = helpers.AccessLogger(mock_logger, "%a")
+    access_logger.log(None, None, None, None, 0)
+    mock_logger.info.assert_called_with("-", extra={'remote_address': '-'})
 
 
-def test_requote_uri_with_unquoted_percents():
-    # Ensure we handle unquoted percent signs in redirects.
-    bad_uri = 'http://example.com/fiz?buz=%ppicture'
-    quoted = 'http://example.com/fiz?buz=%25ppicture'
-    assert quoted == helpers.requote_uri(bad_uri)
+class TestReify:
 
+    def test_reify(self):
+        class A:
+            def __init__(self):
+                self._cache = {}
 
-def test_requote_uri_properly_requotes():
-    # Ensure requoting doesn't break expectations.
-    quoted = 'http://example.com/fiz?buz=%25ppicture'
-    assert quoted == helpers.requote_uri(quoted)
+            @helpers.reify
+            def prop(self):
+                return 1
+
+        a = A()
+        assert 1 == a.prop
+
+    def test_reify_class(self):
+        class A:
+            def __init__(self):
+                self._cache = {}
+
+            @helpers.reify
+            def prop(self):
+                """Docstring."""
+                return 1
+
+        assert isinstance(A.prop, helpers.reify)
+        assert 'Docstring.' == A.prop.__doc__
+
+    def test_reify_assignment(self):
+        class A:
+            def __init__(self):
+                self._cache = {}
+
+            @helpers.reify
+            def prop(self):
+                return 1
+
+        a = A()
+
+        with pytest.raises(AttributeError):
+            a.prop = 123
 
 
 def test_create_future_with_new_loop():
@@ -270,6 +310,8 @@ def test_create_future_with_old_loop(mocker):
     future = helpers.create_future(mock_loop)
     MockFuture.assert_called_with(loop=mock_loop)
     assert expected == future
+
+# ----------------------------------- is_ip_address() ----------------------
 
 
 def test_is_ip_address():
@@ -308,6 +350,35 @@ def test_is_ip_address_bytes():
     assert not helpers.is_ip_address(b"1200::AB00:1234::2552:7777:1313")
 
 
+def test_ip_addresses():
+    ip_addresses = [
+        '0.0.0.0',
+        '127.0.0.1',
+        '255.255.255.255',
+        '0:0:0:0:0:0:0:0',
+        'FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF',
+        '00AB:0002:3008:8CFD:00AB:0002:3008:8CFD',
+        '00ab:0002:3008:8cfd:00ab:0002:3008:8cfd',
+        'AB:02:3008:8CFD:AB:02:3008:8CFD',
+        'AB:02:3008:8CFD::02:3008:8CFD',
+        '::',
+        '1::1',
+    ]
+    for address in ip_addresses:
+        assert helpers.is_ip_address(address)
+
+
+def test_host_addresses():
+    hosts = [
+        'www.four.part.host'
+        'www.python.org',
+        'foo.bar',
+        'localhost',
+    ]
+    for host in hosts:
+        assert not helpers.is_ip_address(host)
+
+
 def test_is_ip_address_invalid_type():
     with pytest.raises(TypeError):
         helpers.is_ip_address(123)
@@ -316,449 +387,54 @@ def test_is_ip_address_invalid_type():
         helpers.is_ip_address(object())
 
 
-class TestCookieJarBase(unittest.TestCase):
-
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-
-        # N.B. those need to be overriden in child test cases
-        self.jar = helpers.CookieJar(loop=self.loop)
-        # Cookies to send from client to server as "Cookie" header
-        self.cookies_to_send = http.cookies.SimpleCookie()
-        # Cookies received from the server as "Set-Cookie" header
-        self.cookies_to_receive = http.cookies.SimpleCookie()
-
-    def tearDown(self):
-        self.loop.close()
-
-    def request_reply_with_same_url(self, url):
-        self.jar.update_cookies(self.cookies_to_send)
-        cookies_sent = self.jar.filter_cookies(url)
-
-        self.jar.cookies.clear()
-
-        self.jar.update_cookies(self.cookies_to_receive, url)
-        cookies_received = self.jar.cookies.copy()
-
-        self.jar.cookies.clear()
-
-        return cookies_sent, cookies_received
-
-
-class TestCookieJarSafe(TestCookieJarBase):
-
-    def setUp(self):
-        super().setUp()
-
-        self.cookies_to_send = http.cookies.SimpleCookie(
-            "shared-cookie=first; "
-            "domain-cookie=second; Domain=example.com; "
-            "subdomain1-cookie=third; Domain=test1.example.com; "
-            "subdomain2-cookie=fourth; Domain=test2.example.com; "
-            "dotted-domain-cookie=fifth; Domain=.example.com; "
-            "different-domain-cookie=sixth; Domain=different.org; "
-            "secure-cookie=seventh; Domain=secure.com; Secure; "
-            "no-path-cookie=eighth; Domain=pathtest.com; "
-            "path1-cookie=nineth; Domain=pathtest.com; Path=/; "
-            "path2-cookie=tenth; Domain=pathtest.com; Path=/one; "
-            "path3-cookie=eleventh; Domain=pathtest.com; Path=/one/two; "
-            "path4-cookie=twelfth; Domain=pathtest.com; Path=/one/two/; "
-            "expires-cookie=thirteenth; Domain=expirestest.com; Path=/;"
-            " Expires=Tue, 1 Jan 1980 12:00:00 GMT; "
-            "max-age-cookie=fourteenth; Domain=maxagetest.com; Path=/;"
-            " Max-Age=60; "
-            "invalid-max-age-cookie=fifteenth; Domain=invalid-values.com; "
-            " Max-Age=string; "
-            "invalid-expires-cookie=sixteenth; Domain=invalid-values.com; "
-            " Expires=string;"
-        )
-
-        self.cookies_to_receive = http.cookies.SimpleCookie(
-            "unconstrained-cookie=first; Path=/; "
-            "domain-cookie=second; Domain=example.com; Path=/; "
-            "subdomain1-cookie=third; Domain=test1.example.com; Path=/; "
-            "subdomain2-cookie=fourth; Domain=test2.example.com; Path=/; "
-            "dotted-domain-cookie=fifth; Domain=.example.com; Path=/; "
-            "different-domain-cookie=sixth; Domain=different.org; Path=/; "
-            "no-path-cookie=seventh; Domain=pathtest.com; "
-            "path-cookie=eighth; Domain=pathtest.com; Path=/somepath; "
-            "wrong-path-cookie=nineth; Domain=pathtest.com; Path=somepath;"
-        )
-
-        self.jar = helpers.CookieJar(loop=self.loop)
-
-    def timed_request(
-            self, url, update_time, send_time):
-        time_func = "time.monotonic"
-
-        with mock.patch(time_func, return_value=update_time):
-            self.jar.update_cookies(self.cookies_to_send)
-
-        with mock.patch(time_func, return_value=send_time):
-            test_utils.run_briefly(self.loop)
-
-            cookies_sent = self.jar.filter_cookies(url)
-
-        self.jar.cookies.clear()
-
-        return cookies_sent
-
-    def test_constructor(self):
-        jar = helpers.CookieJar(loop=self.loop)
-        jar.update_cookies(self.cookies_to_send)
-        self.assertEqual(jar.cookies, self.cookies_to_send)
-        self.assertIs(jar._loop, self.loop)
-
-    def test_domain_filter_ip(self):
-        cookies_sent, cookies_received = (
-            self.request_reply_with_same_url("http://1.2.3.4/"))
-
-        self.assertEqual(set(cookies_sent.keys()), {
-            "shared-cookie"
-        })
-
-        self.assertEqual(set(cookies_received.keys()), set())
-
-    def test_domain_filter_same_host(self):
-        cookies_sent, cookies_received = (
-            self.request_reply_with_same_url("http://example.com/"))
-
-        self.assertEqual(set(cookies_sent.keys()), {
-            "shared-cookie",
-            "domain-cookie",
-            "dotted-domain-cookie"
-        })
-
-        self.assertEqual(set(cookies_received.keys()), {
-            "unconstrained-cookie",
-            "domain-cookie",
-            "dotted-domain-cookie"
-        })
-
-    def test_domain_filter_same_host_and_subdomain(self):
-        cookies_sent, cookies_received = (
-            self.request_reply_with_same_url("http://test1.example.com/"))
-
-        self.assertEqual(set(cookies_sent.keys()), {
-            "shared-cookie",
-            "domain-cookie",
-            "subdomain1-cookie",
-            "dotted-domain-cookie"
-        })
-
-        self.assertEqual(set(cookies_received.keys()), {
-            "unconstrained-cookie",
-            "domain-cookie",
-            "subdomain1-cookie",
-            "dotted-domain-cookie"
-        })
-
-    def test_domain_filter_same_host_diff_subdomain(self):
-        cookies_sent, cookies_received = (
-            self.request_reply_with_same_url("http://different.example.com/"))
-
-        self.assertEqual(set(cookies_sent.keys()), {
-            "shared-cookie",
-            "domain-cookie",
-            "dotted-domain-cookie"
-        })
-
-        self.assertEqual(set(cookies_received.keys()), {
-            "unconstrained-cookie",
-            "domain-cookie",
-            "dotted-domain-cookie"
-        })
-
-    def test_domain_filter_diff_host(self):
-        cookies_sent, cookies_received = (
-            self.request_reply_with_same_url("http://different.org/"))
-
-        self.assertEqual(set(cookies_sent.keys()), {
-            "shared-cookie",
-            "different-domain-cookie"
-        })
-
-        self.assertEqual(set(cookies_received.keys()), {
-            "unconstrained-cookie",
-            "different-domain-cookie"
-        })
-
-    def test_domain_filter_host_only(self):
-        self.jar.update_cookies(self.cookies_to_receive, "http://example.com/")
-
-        cookies_sent = self.jar.filter_cookies("http://example.com/")
-        self.assertIn("unconstrained-cookie", set(cookies_sent.keys()))
-
-        cookies_sent = self.jar.filter_cookies("http://different.org/")
-        self.assertNotIn("unconstrained-cookie", set(cookies_sent.keys()))
-
-    def test_secure_filter(self):
-        cookies_sent, _ = (
-            self.request_reply_with_same_url("http://secure.com/"))
-
-        self.assertEqual(set(cookies_sent.keys()), {
-            "shared-cookie"
-        })
-
-        cookies_sent, _ = (
-            self.request_reply_with_same_url("https://secure.com/"))
-
-        self.assertEqual(set(cookies_sent.keys()), {
-            "shared-cookie",
-            "secure-cookie"
-        })
-
-    def test_path_filter_root(self):
-        cookies_sent, _ = (
-            self.request_reply_with_same_url("http://pathtest.com/"))
-
-        self.assertEqual(set(cookies_sent.keys()), {
-            "shared-cookie",
-            "no-path-cookie",
-            "path1-cookie"
-        })
-
-    def test_path_filter_folder(self):
-
-        cookies_sent, _ = (
-            self.request_reply_with_same_url("http://pathtest.com/one/"))
-
-        self.assertEqual(set(cookies_sent.keys()), {
-            "shared-cookie",
-            "no-path-cookie",
-            "path1-cookie",
-            "path2-cookie"
-        })
-
-    def test_path_filter_file(self):
-
-        cookies_sent, _ = self.request_reply_with_same_url(
-            "http://pathtest.com/one/two")
-
-        self.assertEqual(set(cookies_sent.keys()), {
-            "shared-cookie",
-            "no-path-cookie",
-            "path1-cookie",
-            "path2-cookie",
-            "path3-cookie"
-        })
-
-    def test_path_filter_subfolder(self):
-
-        cookies_sent, _ = self.request_reply_with_same_url(
-            "http://pathtest.com/one/two/")
-
-        self.assertEqual(set(cookies_sent.keys()), {
-            "shared-cookie",
-            "no-path-cookie",
-            "path1-cookie",
-            "path2-cookie",
-            "path3-cookie",
-            "path4-cookie"
-        })
-
-    def test_path_filter_subsubfolder(self):
-
-        cookies_sent, _ = self.request_reply_with_same_url(
-            "http://pathtest.com/one/two/three/")
-
-        self.assertEqual(set(cookies_sent.keys()), {
-            "shared-cookie",
-            "no-path-cookie",
-            "path1-cookie",
-            "path2-cookie",
-            "path3-cookie",
-            "path4-cookie"
-        })
-
-    def test_path_filter_different_folder(self):
-
-        cookies_sent, _ = (
-            self.request_reply_with_same_url("http://pathtest.com/hundred/"))
-
-        self.assertEqual(set(cookies_sent.keys()), {
-            "shared-cookie",
-            "no-path-cookie",
-            "path1-cookie"
-        })
-
-    def test_path_value(self):
-        _, cookies_received = (
-            self.request_reply_with_same_url("http://pathtest.com/"))
-
-        self.assertEqual(set(cookies_received.keys()), {
-            "unconstrained-cookie",
-            "no-path-cookie",
-            "path-cookie",
-            "wrong-path-cookie"
-        })
-
-        self.assertEqual(cookies_received["no-path-cookie"]["path"], "/")
-        self.assertEqual(cookies_received["path-cookie"]["path"], "/somepath")
-        self.assertEqual(cookies_received["wrong-path-cookie"]["path"], "/")
-
-    def test_expires(self):
-        ts_before = datetime.datetime(
-            1975, 1, 1, tzinfo=datetime.timezone.utc).timestamp()
-
-        ts_after = datetime.datetime(
-            1985, 1, 1, tzinfo=datetime.timezone.utc).timestamp()
-
-        cookies_sent = self.timed_request(
-            "http://expirestest.com/", ts_before, ts_before)
-
-        self.assertEqual(set(cookies_sent.keys()), {
-            "shared-cookie",
-            "expires-cookie"
-        })
-
-        cookies_sent = self.timed_request(
-            "http://expirestest.com/", ts_before, ts_after)
-
-        self.assertEqual(set(cookies_sent.keys()), {
-            "shared-cookie"
-        })
-
-    def test_max_age(self):
-        cookies_sent = self.timed_request(
-            "http://maxagetest.com/", 1000, 1000)
-
-        self.assertEqual(set(cookies_sent.keys()), {
-            "shared-cookie",
-            "max-age-cookie"
-        })
-
-        cookies_sent = self.timed_request(
-            "http://maxagetest.com/", 1000, 2000)
-
-        self.assertEqual(set(cookies_sent.keys()), {
-            "shared-cookie"
-        })
-
-    def test_invalid_values(self):
-        cookies_sent, cookies_received = (
-            self.request_reply_with_same_url("http://invalid-values.com/"))
-
-        self.assertEqual(set(cookies_sent.keys()), {
-            "shared-cookie",
-            "invalid-max-age-cookie",
-            "invalid-expires-cookie"
-        })
-
-        cookie = cookies_sent["invalid-max-age-cookie"]
-        self.assertEqual(cookie["max-age"], "")
-
-        cookie = cookies_sent["invalid-expires-cookie"]
-        self.assertEqual(cookie["expires"], "")
-
-    def test_domain_matching(self):
-        test_func = helpers.CookieJar._is_domain_match
-
-        self.assertTrue(test_func("test.com", "test.com"))
-        self.assertTrue(test_func("test.com", "sub.test.com"))
-
-        self.assertFalse(test_func("test.com", ""))
-        self.assertFalse(test_func("test.com", "test.org"))
-        self.assertFalse(test_func("diff-test.com", "test.com"))
-        self.assertFalse(test_func("test.com", "diff-test.com"))
-        self.assertFalse(test_func("test.com", "127.0.0.1"))
-
-    def test_path_matching(self):
-        test_func = helpers.CookieJar._is_path_match
-
-        self.assertTrue(test_func("/", ""))
-        self.assertTrue(test_func("", "/"))
-        self.assertTrue(test_func("/file", ""))
-        self.assertTrue(test_func("/folder/file", ""))
-        self.assertTrue(test_func("/", "/"))
-        self.assertTrue(test_func("/file", "/"))
-        self.assertTrue(test_func("/file", "/file"))
-        self.assertTrue(test_func("/folder/", "/folder/"))
-        self.assertTrue(test_func("/folder/", "/"))
-        self.assertTrue(test_func("/folder/file", "/"))
-
-        self.assertFalse(test_func("/", "/file"))
-        self.assertFalse(test_func("/", "/folder/"))
-        self.assertFalse(test_func("/file", "/folder/file"))
-        self.assertFalse(test_func("/folder/", "/folder/file"))
-        self.assertFalse(test_func("/different-file", "/file"))
-        self.assertFalse(test_func("/different-folder/", "/folder/"))
-
-    def test_date_parsing(self):
-        parse_func = helpers.CookieJar._parse_date
-        utc = datetime.timezone.utc
-
-        self.assertEqual(parse_func(""), None)
-
-        # 70 -> 1970
-        self.assertEqual(
-            parse_func("Tue, 1 Jan 70 00:00:00 GMT"),
-            datetime.datetime(1970, 1, 1, tzinfo=utc))
-
-        # 10 -> 2010
-        self.assertEqual(
-            parse_func("Tue, 1 Jan 10 00:00:00 GMT"),
-            datetime.datetime(2010, 1, 1, tzinfo=utc))
-
-        # No day of week string
-        self.assertEqual(
-            parse_func("1 Jan 1970 00:00:00 GMT"),
-            datetime.datetime(1970, 1, 1, tzinfo=utc))
-
-        # No timezone string
-        self.assertEqual(
-            parse_func("Tue, 1 Jan 1970 00:00:00"),
-            datetime.datetime(1970, 1, 1, tzinfo=utc))
-
-        # No year
-        self.assertEqual(parse_func("Tue, 1 Jan 00:00:00 GMT"), None)
-
-        # No month
-        self.assertEqual(parse_func("Tue, 1 1970 00:00:00 GMT"), None)
-
-        # No day of month
-        self.assertEqual(parse_func("Tue, Jan 1970 00:00:00 GMT"), None)
-
-        # No time
-        self.assertEqual(parse_func("Tue, 1 Jan 1970 GMT"), None)
-
-        # Invalid day of month
-        self.assertEqual(parse_func("Tue, 0 Jan 1970 00:00:00 GMT"), None)
-
-        # Invalid year
-        self.assertEqual(parse_func("Tue, 1 Jan 1500 00:00:00 GMT"), None)
-
-        # Invalid time
-        self.assertEqual(parse_func("Tue, 1 Jan 1970 77:88:99 GMT"), None)
-
-
-class TestCookieJarUnsafe(TestCookieJarBase):
-
-    def setUp(self):
-        super().setUp()
-        self.cookies_to_send = http.cookies.SimpleCookie(
-            "shared-cookie=first; "
-            "ip-cookie=second; Domain=127.0.0.1;"
-        )
-
-        self.cookies_to_receive = http.cookies.SimpleCookie(
-            "shared-cookie=first; "
-            "ip-cookie=second; Domain=127.0.0.1;"
-        )
-
-        self.jar = helpers.CookieJar(loop=self.loop, unsafe=True)
-
-    def test_preserving_ip_domain_cookies(self):
-        cookies_sent, cookies_received = (
-            self.request_reply_with_same_url("http://127.0.0.1/"))
-
-        self.assertEqual(set(cookies_sent.keys()), {
-            "shared-cookie",
-            "ip-cookie",
-        })
-
-        self.assertEqual(set(cookies_received.keys()), {
-            "shared-cookie",
-            "ip-cookie",
-        })
+@pytest.fixture
+def time_service(loop):
+    return helpers.TimeService(loop)
+
+
+class TestTimeService:
+    def test_ctor(self, time_service):
+        assert time_service._cb is not None
+        assert time_service._time is not None
+        assert time_service._strtime is None
+        assert time_service._count == 0
+
+    def test_stop(self, time_service):
+        time_service.stop()
+        assert time_service._cb is None
+        assert time_service._loop is None
+
+    def test_double_stopping(self, time_service):
+        time_service.stop()
+        time_service.stop()
+        assert time_service._cb is None
+        assert time_service._loop is None
+
+    def test_time(self, time_service):
+        t = time_service._time
+        assert t == time_service.time()
+
+    def test_strtime(self, time_service):
+        time_service._time = 1477797232
+        assert time_service.strtime() == 'Sun, 30 Oct 2016 03:13:52 GMT'
+        # second call should use cached value
+        assert time_service.strtime() == 'Sun, 30 Oct 2016 03:13:52 GMT'
+
+    def test_recalc_time(self, time_service):
+        time_service._time = 123
+        time_service._strtime = 'asd'
+        time_service._count = 1000000
+        time_service._on_cb()
+        assert time_service._strtime is None
+        assert time_service._count == 0
+        assert time_service._time > 1234
+
+
+class TestFrozenList:
+    def test_eq(self):
+        l = helpers.FrozenList([1])
+        assert l == [1]
+
+    def test_le(self):
+        l = helpers.FrozenList([1])
+        assert l < [2]

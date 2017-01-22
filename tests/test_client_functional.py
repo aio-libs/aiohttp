@@ -38,15 +38,16 @@ def fname(here):
 
 
 @asyncio.coroutine
-def test_keepalive_two_requests_success(create_app_and_client):
+def test_keepalive_two_requests_success(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         body = yield from request.read()
         assert b'' == body
         return web.Response(body=b'OK')
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp1 = yield from client.get('/')
     yield from resp1.read()
     resp2 = yield from client.get('/')
@@ -56,15 +57,16 @@ def test_keepalive_two_requests_success(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_keepalive_response_released(create_app_and_client):
+def test_keepalive_response_released(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         body = yield from request.read()
         assert b'' == body
         return web.Response(body=b'OK')
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     resp1 = yield from client.get('/')
     yield from resp1.release()
@@ -75,7 +77,7 @@ def test_keepalive_response_released(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_keepalive_server_force_close_connection(create_app_and_client):
+def test_keepalive_server_force_close_connection(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         body = yield from request.read()
@@ -84,8 +86,9 @@ def test_keepalive_server_force_close_connection(create_app_and_client):
         response.force_close()
         return response
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     resp1 = yield from client.get('/')
     resp1.close()
@@ -96,15 +99,16 @@ def test_keepalive_server_force_close_connection(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_HTTP_304(create_app_and_client):
+def test_HTTP_304(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         body = yield from request.read()
         assert b'' == body
         return web.Response(status=304)
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     resp = yield from client.get('/')
     assert resp.status == 304
@@ -113,15 +117,16 @@ def test_HTTP_304(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_HTTP_304_WITH_BODY(create_app_and_client):
+def test_HTTP_304_WITH_BODY(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         body = yield from request.read()
         assert b'' == body
         return web.Response(body=b'test', status=304)
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     resp = yield from client.get('/')
     assert resp.status == 304
@@ -130,78 +135,69 @@ def test_HTTP_304_WITH_BODY(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_auto_header_user_agent(create_app_and_client):
+def test_auto_header_user_agent(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         assert 'aiohttp' in request.headers['user-agent']
         return web.Response()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     resp = yield from client.get('/')
-    try:
-        assert 200, resp.status
-    finally:
-        yield from resp.release()
+    assert 200, resp.status
 
 
 @asyncio.coroutine
-def test_skip_auto_headers_user_agent(create_app_and_client):
+def test_skip_auto_headers_user_agent(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         assert hdrs.USER_AGENT not in request.headers
         return web.Response()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     resp = yield from client.get('/',
                                  skip_auto_headers=['user-agent'])
-    try:
-        assert 200 == resp.status
-    finally:
-        yield from resp.release()
+    assert 200 == resp.status
 
 
 @asyncio.coroutine
-def test_skip_default_auto_headers_user_agent(create_app_and_client):
+def test_skip_default_auto_headers_user_agent(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         assert hdrs.USER_AGENT not in request.headers
         return web.Response()
 
-    app, client = yield from create_app_and_client(client_params=dict(
-        skip_auto_headers=['user-agent']))
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app, skip_auto_headers=['user-agent'])
 
     resp = yield from client.get('/')
-    try:
-        assert 200 == resp.status
-    finally:
-        yield from resp.release()
+    assert 200 == resp.status
 
 
 @asyncio.coroutine
-def test_skip_auto_headers_content_type(create_app_and_client):
+def test_skip_auto_headers_content_type(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         assert hdrs.CONTENT_TYPE not in request.headers
         return web.Response()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     resp = yield from client.get('/',
                                  skip_auto_headers=['content-type'])
-    try:
-        assert 200 == resp.status
-    finally:
-        yield from resp.release()
+    assert 200 == resp.status
 
 
 @asyncio.coroutine
-def test_post_data_bytesio(create_app_and_client):
+def test_post_data_bytesio(loop, test_client):
     data = b'some buffer'
 
     @asyncio.coroutine
@@ -211,18 +207,16 @@ def test_post_data_bytesio(create_app_and_client):
         assert data == val
         return web.Response()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('POST', '/', handler)
+    client = yield from test_client(app)
 
     resp = yield from client.post('/', data=io.BytesIO(data))
-    try:
-        assert 200 == resp.status
-    finally:
-        yield from resp.release()
+    assert 200 == resp.status
 
 
 @asyncio.coroutine
-def test_post_data_with_bytesio_file(create_app_and_client):
+def test_post_data_with_bytesio_file(loop, test_client):
     data = b'some buffer'
 
     @asyncio.coroutine
@@ -232,36 +226,31 @@ def test_post_data_with_bytesio_file(create_app_and_client):
         assert data == post_data['file'].file.read()
         return web.Response()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('POST', '/', handler)
+    client = yield from test_client(app)
 
     resp = yield from client.post('/', data={'file': io.BytesIO(data)})
-    try:
-        assert 200 == resp.status
-    finally:
-        yield from resp.release()
+    assert 200 == resp.status
 
 
 @asyncio.coroutine
-def test_client_ssl(create_app_and_client, loop, ssl_ctx):
+def test_client_ssl(loop, ssl_ctx, test_server, test_client):
     connector = aiohttp.TCPConnector(verify_ssl=False, loop=loop)
 
     @asyncio.coroutine
     def handler(request):
         return web.HTTPOk(text='Test message')
 
-    app, client = yield from create_app_and_client(
-        server_params=dict(ssl_ctx=ssl_ctx),
-        client_params=dict(connector=connector))
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    server = yield from test_server(app, ssl=ssl_ctx)
+    client = yield from test_client(server, connector=connector)
 
     resp = yield from client.get('/')
-    try:
-        assert 200 == resp.status
-        txt = yield from resp.text()
-        assert txt == 'Test message'
-    finally:
-        yield from resp.release()
+    assert 200 == resp.status
+    txt = yield from resp.text()
+    assert txt == 'Test message'
 
 
 @pytest.mark.parametrize('fingerprint', [
@@ -271,18 +260,25 @@ def test_client_ssl(create_app_and_client, loop, ssl_ctx):
     b'\x11\xab\x99\xa8\xae\xb7\x14\xee\x8b'],
     ids=['md5', 'sha1', 'sha256'])
 @asyncio.coroutine
-def test_tcp_connector_fingerprint_ok(create_app_and_client,
+def test_tcp_connector_fingerprint_ok(test_server, test_client,
                                       loop, ssl_ctx, fingerprint):
     @asyncio.coroutine
     def handler(request):
         return web.HTTPOk(text='Test message')
 
-    connector = aiohttp.TCPConnector(loop=loop, verify_ssl=False,
-                                     fingerprint=fingerprint)
-    app, client = yield from create_app_and_client(
-        server_params=dict(ssl_ctx=ssl_ctx),
-        client_params=dict(connector=connector))
+    # Test for deprecation warning on md5 and sha1 len digests.
+    if len(fingerprint) == 16 or len(fingerprint) == 20:
+        with pytest.warns(DeprecationWarning) as cm:
+            connector = aiohttp.TCPConnector(loop=loop, verify_ssl=False,
+                                             fingerprint=fingerprint)
+        assert 'Use sha256.' in str(cm[0].message)
+    else:
+        connector = aiohttp.TCPConnector(loop=loop, verify_ssl=False,
+                                         fingerprint=fingerprint)
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    server = yield from test_server(app, ssl=ssl_ctx)
+    client = yield from test_client(server, connector=connector)
 
     resp = yield from client.get('/')
     assert resp.status == 200
@@ -296,7 +292,7 @@ def test_tcp_connector_fingerprint_ok(create_app_and_client,
     b'\x11\xab\x99\xa8\xae\xb7\x14\xee\x8b'],
     ids=['md5', 'sha1', 'sha256'])
 @asyncio.coroutine
-def test_tcp_connector_fingerprint_fail(create_app_and_client,
+def test_tcp_connector_fingerprint_fail(test_server, test_client,
                                         loop, ssl_ctx, fingerprint):
     @asyncio.coroutine
     def handler(request):
@@ -306,10 +302,11 @@ def test_tcp_connector_fingerprint_fail(create_app_and_client,
 
     connector = aiohttp.TCPConnector(loop=loop, verify_ssl=False,
                                      fingerprint=bad_fingerprint)
-    app, client = yield from create_app_and_client(
-        server_params=dict(ssl_ctx=ssl_ctx),
-        client_params=dict(connector=connector))
+
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    server = yield from test_server(app, ssl=ssl_ctx)
+    client = yield from test_client(server, connector=connector)
 
     with pytest.raises(FingerprintMismatch) as cm:
         yield from client.get('/')
@@ -319,41 +316,40 @@ def test_tcp_connector_fingerprint_fail(create_app_and_client,
 
 
 @asyncio.coroutine
-def test_format_task_get(create_server, loop):
+def test_format_task_get(test_server, loop):
 
     @asyncio.coroutine
     def handler(request):
         return web.Response(body=b'OK')
 
-    app, url = yield from create_server()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    server = yield from test_server(app)
     client = aiohttp.ClientSession(loop=loop)
-    task = loop.create_task(client.get(url))
+    task = loop.create_task(client.get(server.make_url('/')))
     assert "{}".format(task)[:18] == "<Task pending coro"
     resp = yield from task
     resp.close()
-    client.close()
+    yield from client.close()
 
 
 @asyncio.coroutine
-def test_str_params(create_app_and_client):
+def test_str_params(loop, test_client):
     @asyncio.coroutine
     def handler(request):
-        assert 'q=t+est' in request.query_string
+        assert 'q=t est' in request.query_string
         return web.Response()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
 
     resp = yield from client.get('/', params='q=t+est')
-    try:
-        assert 200 == resp.status
-    finally:
-        yield from resp.release()
+    assert 200 == resp.status
 
 
 @asyncio.coroutine
-def test_drop_params_on_redirect(create_app_and_client):
+def test_drop_params_on_redirect(loop, test_client):
     @asyncio.coroutine
     def handler_redirect(request):
         return web.Response(status=301, headers={'Location': '/ok?a=redirect'})
@@ -363,19 +359,52 @@ def test_drop_params_on_redirect(create_app_and_client):
         assert request.query_string == 'a=redirect'
         return web.Response(status=200)
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/ok', handler_ok)
     app.router.add_route('GET', '/redirect', handler_redirect)
+    client = yield from test_client(app)
 
     resp = yield from client.get('/redirect', params={'a': 'initial'})
-    try:
-        assert resp.status == 200
-    finally:
-        yield from resp.release()
+    assert resp.status == 200
 
 
 @asyncio.coroutine
-def test_history(create_app_and_client):
+def test_drop_fragment_on_redirect(loop, test_client):
+    @asyncio.coroutine
+    def handler_redirect(request):
+        return web.Response(status=301, headers={'Location': '/ok#fragment'})
+
+    @asyncio.coroutine
+    def handler_ok(request):
+        return web.Response(status=200)
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/ok', handler_ok)
+    app.router.add_route('GET', '/redirect', handler_redirect)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/redirect')
+    assert resp.status == 200
+    assert resp.url_obj.path == '/ok'
+
+
+@asyncio.coroutine
+def test_drop_fragment(loop, test_client):
+    @asyncio.coroutine
+    def handler_ok(request):
+        return web.Response(status=200)
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/ok', handler_ok)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/ok#fragment')
+    assert resp.status == 200
+    assert resp.url_obj.path == '/ok'
+
+
+@asyncio.coroutine
+def test_history(loop, test_client):
     @asyncio.coroutine
     def handler_redirect(request):
         return web.Response(status=301, headers={'Location': '/ok'})
@@ -384,28 +413,23 @@ def test_history(create_app_and_client):
     def handler_ok(request):
         return web.Response(status=200)
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/ok', handler_ok)
     app.router.add_route('GET', '/redirect', handler_redirect)
+    client = yield from test_client(app)
 
     resp = yield from client.get('/ok')
-    try:
-        assert len(resp.history) == 0
-        assert resp.status == 200
-    finally:
-        yield from resp.release()
+    assert len(resp.history) == 0
+    assert resp.status == 200
 
     resp_redirect = yield from client.get('/redirect')
-    try:
-        assert len(resp_redirect.history) == 1
-        assert resp_redirect.history[0].status == 301
-        assert resp_redirect.status == 200
-    finally:
-        yield from resp_redirect.release()
+    assert len(resp_redirect.history) == 1
+    assert resp_redirect.history[0].status == 301
+    assert resp_redirect.status == 200
 
 
 @asyncio.coroutine
-def test_keepalive_closed_by_server(create_app_and_client):
+def test_keepalive_closed_by_server(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         body = yield from request.read()
@@ -414,8 +438,10 @@ def test_keepalive_closed_by_server(create_app_and_client):
         resp.force_close()
         return resp
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
+
     resp1 = yield from client.get('/')
     val1 = yield from resp1.read()
     assert val1 == b'OK'
@@ -427,13 +453,15 @@ def test_keepalive_closed_by_server(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_wait_for(create_app_and_client, loop):
+def test_wait_for(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(body=b'OK')
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
+
     resp = yield from asyncio.wait_for(client.get('/'), 10, loop=loop)
     assert resp.status == 200
     txt = yield from resp.text()
@@ -441,13 +469,14 @@ def test_wait_for(create_app_and_client, loop):
 
 
 @asyncio.coroutine
-def test_raw_headers(create_app_and_client, loop):
+def test_raw_headers(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
     resp = yield from client.get('/')
     assert resp.status == 200
     assert resp.raw_headers == ((b'CONTENT-TYPE', b'application/octet-stream'),
@@ -458,13 +487,15 @@ def test_raw_headers(create_app_and_client, loop):
 
 
 @asyncio.coroutine
-def test_http_request_with_version(create_app_and_client, loop):
+def test_http_request_with_version(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
+
     with pytest.warns(DeprecationWarning):
         resp = yield from client.get('/', version=aiohttp.HttpVersion11)
         assert resp.status == 200
@@ -472,7 +503,7 @@ def test_http_request_with_version(create_app_and_client, loop):
 
 
 @asyncio.coroutine
-def test_204_with_gzipped_content_encoding(create_app_and_client):
+def test_204_with_gzipped_content_encoding(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         resp = web.StreamResponse(status=204)
@@ -483,15 +514,17 @@ def test_204_with_gzipped_content_encoding(create_app_and_client):
         yield from resp.prepare(request)
         return resp
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('DELETE', '/', handler)
+    client = yield from test_client(app)
+
     resp = yield from client.delete('/')
     assert resp.status == 204
     yield from resp.release()
 
 
 @asyncio.coroutine
-def test_timeout_on_reading_headers(create_app_and_client, loop):
+def test_timeout_on_reading_headers(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -500,14 +533,16 @@ def test_timeout_on_reading_headers(create_app_and_client, loop):
         yield from resp.prepare(request)
         return resp
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
+
     with pytest.raises(asyncio.TimeoutError):
         yield from client.get('/', timeout=0.01)
 
 
 @asyncio.coroutine
-def test_timeout_on_reading_data(create_app_and_client, loop):
+def test_timeout_on_reading_data(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -516,8 +551,10 @@ def test_timeout_on_reading_data(create_app_and_client, loop):
         yield from asyncio.sleep(0.1, loop=loop)
         return resp
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
+
     resp = yield from client.get('/', timeout=0.05)
 
     with pytest.raises(asyncio.TimeoutError):
@@ -525,15 +562,105 @@ def test_timeout_on_reading_data(create_app_and_client, loop):
 
 
 @asyncio.coroutine
-def test_HTTP_200_OK_METHOD(create_app_and_client):
+def test_readline_error_on_conn_close(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        resp_ = web.StreamResponse()
+        yield from resp_.prepare(request)
+
+        # make sure connection is closed by client.
+        with pytest.raises(aiohttp.ServerDisconnectedError):
+            for _ in range(10):
+                resp_.write(b'data\n')
+                yield from resp_.drain()
+                yield from asyncio.sleep(0.5, loop=loop)
+            return resp_
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+    server = yield from test_client(app)
+
+    with aiohttp.ClientSession(loop=loop) as session:
+        timer_started = False
+        url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
+        resp = yield from session.get(url, headers=headers)
+        with pytest.raises(aiohttp.ClientDisconnectedError):
+            while True:
+                data = yield from resp.content.readline()
+                data = data.strip()
+                if not data:
+                    break
+                assert data == b'data'
+                if not timer_started:
+                    def do_release():
+                        loop.create_task(resp.release())
+                    loop.call_later(1.0, do_release)
+                    timer_started = True
+
+
+@asyncio.coroutine
+def test_no_error_on_conn_close_if_eof(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        resp_ = web.StreamResponse()
+        yield from resp_.prepare(request)
+        resp_.write(b'data\n')
+        yield from resp_.drain()
+        yield from asyncio.sleep(0.5, loop=loop)
+        return resp_
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+    server = yield from test_client(app)
+
+    with aiohttp.ClientSession(loop=loop) as session:
+        url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
+        resp = yield from session.get(url, headers=headers)
+        while True:
+            data = yield from resp.content.readline()
+            data = data.strip()
+            if not data:
+                break
+            assert data == b'data'
+        yield from resp.release()
+        assert resp.content.exception() is None
+
+
+@asyncio.coroutine
+def test_error_not_overwrote_on_conn_close(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        resp_ = web.StreamResponse()
+        yield from resp_.prepare(request)
+        return resp_
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+    server = yield from test_client(app)
+
+    with aiohttp.ClientSession(loop=loop) as session:
+        url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
+        resp = yield from session.get(url, headers=headers)
+        resp.content.set_exception(aiohttp.ClientRequestError())
+
+    yield from resp.release()
+    assert isinstance(resp.content.exception(), aiohttp.ClientRequestError)
+
+
+@asyncio.coroutine
+def test_HTTP_200_OK_METHOD(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text=request.method)
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         app.router.add_route(meth.upper(), '/', handler)
 
+    client = yield from test_client(app)
     for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         resp = yield from client.request(meth, '/')
         assert resp.status == 200
@@ -553,7 +680,7 @@ def test_HTTP_200_OK_METHOD(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_HTTP_200_OK_METHOD_connector(create_app_and_client, loop):
+def test_HTTP_200_OK_METHOD_connector(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text=request.method)
@@ -562,10 +689,10 @@ def test_HTTP_200_OK_METHOD_connector(create_app_and_client, loop):
         conn_timeout=0.2, resolve=True, loop=loop)
     conn.clear_resolved_hosts()
 
-    app, client = yield from create_app_and_client(
-        client_params={'connector': conn})
+    app = web.Application(loop=loop)
     for meth in ('get', 'post', 'put', 'delete', 'head'):
         app.router.add_route(meth.upper(), '/', handler)
+    client = yield from test_client(app, connector=conn)
 
     for meth in ('get', 'post', 'put', 'delete', 'head'):
         resp = yield from client.request(meth, '/')
@@ -585,7 +712,7 @@ def test_HTTP_200_OK_METHOD_connector(create_app_and_client, loop):
 
 
 @asyncio.coroutine
-def test_HTTP_302_REDIRECT_GET(create_app_and_client):
+def test_HTTP_302_REDIRECT_GET(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text=request.method)
@@ -594,9 +721,10 @@ def test_HTTP_302_REDIRECT_GET(create_app_and_client):
     def redirect(request):
         return web.HTTPFound(location='/')
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_get('/', handler)
     app.router.add_get('/redirect', redirect)
+    client = yield from test_client(app)
 
     resp = yield from client.get('/redirect')
     assert 200 == resp.status
@@ -605,21 +733,7 @@ def test_HTTP_302_REDIRECT_GET(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_HTTP_302_REDIRECT_NON_HTTP(create_app_and_client):
-
-    @asyncio.coroutine
-    def redirect(request):
-        return web.HTTPFound(location='ftp://127.0.0.1/test/')
-
-    app, client = yield from create_app_and_client()
-    app.router.add_get('/redirect', redirect)
-
-    with pytest.raises(ValueError):
-        yield from client.get('/redirect')
-
-
-@asyncio.coroutine
-def test_HTTP_302_REDIRECT_POST(create_app_and_client):
+def test_HTTP_302_REDIRECT_HEAD(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text=request.method)
@@ -628,9 +742,49 @@ def test_HTTP_302_REDIRECT_POST(create_app_and_client):
     def redirect(request):
         return web.HTTPFound(location='/')
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    app.router.add_get('/redirect', redirect)
+    app.router.add_head('/', handler)
+    app.router.add_head('/redirect', redirect)
+    client = yield from test_client(app)
+
+    resp = yield from client.request('head', '/redirect')
+    assert 200 == resp.status
+    assert 1 == len(resp.history)
+    assert resp.method == 'HEAD'
+    resp.close()
+
+
+@asyncio.coroutine
+def test_HTTP_302_REDIRECT_NON_HTTP(loop, test_client):
+
+    @asyncio.coroutine
+    def redirect(request):
+        return web.HTTPFound(location='ftp://127.0.0.1/test/')
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/redirect', redirect)
+    client = yield from test_client(app)
+
+    with pytest.raises(ValueError):
+        yield from client.get('/redirect')
+
+
+@asyncio.coroutine
+def test_HTTP_302_REDIRECT_POST(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(text=request.method)
+
+    @asyncio.coroutine
+    def redirect(request):
+        return web.HTTPFound(location='/')
+
+    app = web.Application(loop=loop)
     app.router.add_get('/', handler)
     app.router.add_post('/redirect', redirect)
+    client = yield from test_client(app)
 
     resp = yield from client.post('/redirect')
     assert 200 == resp.status
@@ -641,8 +795,8 @@ def test_HTTP_302_REDIRECT_POST(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_HTTP_302_REDIRECT_POST_with_content_length_header(
-        create_app_and_client):
+def test_HTTP_302_REDIRECT_POST_with_content_length_header(loop,
+                                                           test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text=request.method)
@@ -652,9 +806,10 @@ def test_HTTP_302_REDIRECT_POST_with_content_length_header(
         return web.HTTPFound(location='/')
 
     data = json.dumps({'some': 'data'})
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_get('/', handler)
     app.router.add_post('/redirect', redirect)
+    client = yield from test_client(app)
 
     resp = yield from client.post('/redirect', data=data,
                                   headers={'Content-Length': str(len(data))})
@@ -666,7 +821,7 @@ def test_HTTP_302_REDIRECT_POST_with_content_length_header(
 
 
 @asyncio.coroutine
-def test_HTTP_307_REDIRECT_POST(create_app_and_client):
+def test_HTTP_307_REDIRECT_POST(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text=request.method)
@@ -675,9 +830,10 @@ def test_HTTP_307_REDIRECT_POST(create_app_and_client):
     def redirect(request):
         return web.HTTPTemporaryRedirect(location='/')
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_post('/', handler)
     app.router.add_post('/redirect', redirect)
+    client = yield from test_client(app)
 
     resp = yield from client.post('/redirect', data={'some': 'data'})
     assert 200 == resp.status
@@ -688,7 +844,7 @@ def test_HTTP_307_REDIRECT_POST(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_HTTP_302_max_redirects(create_app_and_client):
+def test_HTTP_302_max_redirects(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text=request.method)
@@ -701,9 +857,10 @@ def test_HTTP_302_max_redirects(create_app_and_client):
         else:
             return web.HTTPFound(location='/')
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_get('/', handler)
     app.router.add_get(r'/redirect/{count:\d+}', redirect)
+    client = yield from test_client(app)
 
     resp = yield from client.get('/redirect/5', max_redirects=2)
     assert 302 == resp.status
@@ -712,14 +869,15 @@ def test_HTTP_302_max_redirects(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_HTTP_200_GET_WITH_PARAMS(create_app_and_client):
+def test_HTTP_200_GET_WITH_PARAMS(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text='&'.join(
             k+'='+v for k, v in request.GET.items()))
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_get('/', handler)
+    client = yield from test_client(app)
 
     resp = yield from client.get('/', params={'q': 'test'})
     assert 200 == resp.status
@@ -729,14 +887,15 @@ def test_HTTP_200_GET_WITH_PARAMS(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_HTTP_200_GET_WITH_MultiDict_PARAMS(create_app_and_client):
+def test_HTTP_200_GET_WITH_MultiDict_PARAMS(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text='&'.join(
             k+'='+v for k, v in request.GET.items()))
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_get('/', handler)
+    client = yield from test_client(app)
 
     resp = yield from client.get('/', params=MultiDict([('q', 'test'),
                                                         ('q', 'test2')]))
@@ -747,14 +906,15 @@ def test_HTTP_200_GET_WITH_MultiDict_PARAMS(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_HTTP_200_GET_WITH_MIXED_PARAMS(create_app_and_client):
+def test_HTTP_200_GET_WITH_MIXED_PARAMS(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text='&'.join(
             k+'='+v for k, v in request.GET.items()))
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_get('/', handler)
+    client = yield from test_client(app)
 
     resp = yield from client.get('/?test=true', params={'q': 'test'})
     assert 200 == resp.status
@@ -764,14 +924,15 @@ def test_HTTP_200_GET_WITH_MIXED_PARAMS(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_POST_DATA(create_app_and_client):
+def test_POST_DATA(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.post()
         return web.json_response(dict(data))
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_post('/', handler)
+    client = yield from test_client(app)
 
     resp = yield from client.post('/', data={'some': 'data'})
     assert 200 == resp.status
@@ -781,14 +942,15 @@ def test_POST_DATA(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_POST_DATA_with_explicit_formdata(create_app_and_client):
+def test_POST_DATA_with_explicit_formdata(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.post()
         return web.json_response(dict(data))
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_post('/', handler)
+    client = yield from test_client(app)
 
     form = aiohttp.FormData()
     form.add_field('name', 'text')
@@ -802,14 +964,15 @@ def test_POST_DATA_with_explicit_formdata(create_app_and_client):
 
 @pytest.mark.xfail
 @asyncio.coroutine
-def test_POST_DATA_with_charset(create_app_and_client):
+def test_POST_DATA_with_charset(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.post()
         return web.Response(text=data['name'])
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_post('/', handler)
+    client = yield from test_client(app)
 
     form = aiohttp.FormData()
     form.add_field('name', 'текст', content_type='text/plain; charset=koi8-r')
@@ -823,15 +986,16 @@ def test_POST_DATA_with_charset(create_app_and_client):
 
 @pytest.mark.xfail
 @asyncio.coroutine
-def test_POST_DATA_with_context_transfer_encoding(create_app_and_client):
+def test_POST_DATA_with_context_transfer_encoding(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.post()
         assert data['name'] == b'text'  # should it be str?
         return web.Response()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_post('/', handler)
+    client = yield from test_client(app)
 
     form = aiohttp.FormData()
     form.add_field('name', 'text', content_transfer_encoding='base64')
@@ -844,15 +1008,16 @@ def test_POST_DATA_with_context_transfer_encoding(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_POST_MultiDict(create_app_and_client):
+def test_POST_MultiDict(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.post()
         assert data == MultiDict([('q', 'test1'), ('q', 'test2')])
         return web.Response()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_post('/', handler)
+    client = yield from test_client(app)
 
     resp = yield from client.post('/', data=MultiDict(
         [('q', 'test1'), ('q', 'test2')]))
@@ -861,14 +1026,15 @@ def test_POST_MultiDict(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_POST_DATA_DEFLATE(create_app_and_client):
+def test_POST_DATA_DEFLATE(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.post()
         return web.json_response(dict(data))
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_post('/', handler)
+    client = yield from test_client(app)
 
     resp = yield from client.post('/', data={'some': 'data'}, compress=True)
     assert 200 == resp.status
@@ -878,7 +1044,7 @@ def test_POST_DATA_DEFLATE(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_POST_FILES(create_app_and_client, fname):
+def test_POST_FILES(loop, test_client, fname):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.post()
@@ -890,8 +1056,9 @@ def test_POST_FILES(create_app_and_client, fname):
         assert data['test'].file.read() == b'data'
         return web.HTTPOk()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_post('/', handler)
+    client = yield from test_client(app)
 
     with fname.open() as f:
         resp = yield from client.post('/', data={'some': f, 'test': b'data'},
@@ -902,7 +1069,7 @@ def test_POST_FILES(create_app_and_client, fname):
 
 
 @asyncio.coroutine
-def test_POST_FILES_DEFLATE(create_app_and_client, fname):
+def test_POST_FILES_DEFLATE(loop, test_client, fname):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.post()
@@ -913,8 +1080,9 @@ def test_POST_FILES_DEFLATE(create_app_and_client, fname):
         assert content1 == content2
         return web.HTTPOk()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_post('/', handler)
+    client = yield from test_client(app)
 
     with fname.open() as f:
         resp = yield from client.post('/', data={'some': f},
@@ -925,7 +1093,7 @@ def test_POST_FILES_DEFLATE(create_app_and_client, fname):
 
 
 @asyncio.coroutine
-def test_POST_FILES_STR(create_app_and_client, fname):
+def test_POST_FILES_STR(loop, test_client, fname):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.post()
@@ -935,8 +1103,9 @@ def test_POST_FILES_STR(create_app_and_client, fname):
         assert content1 == content2
         return web.HTTPOk()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_post('/', handler)
+    client = yield from test_client(app)
 
     with fname.open() as f:
         resp = yield from client.post('/', data={'some': f.read()})
@@ -945,7 +1114,7 @@ def test_POST_FILES_STR(create_app_and_client, fname):
 
 
 @asyncio.coroutine
-def test_POST_FILES_STR_SIMPLE(create_app_and_client, fname):
+def test_POST_FILES_STR_SIMPLE(loop, test_client, fname):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.read()
@@ -954,8 +1123,9 @@ def test_POST_FILES_STR_SIMPLE(create_app_and_client, fname):
         assert content == data
         return web.HTTPOk()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_post('/', handler)
+    client = yield from test_client(app)
 
     with fname.open() as f:
         resp = yield from client.post('/', data=f.read())
@@ -964,7 +1134,7 @@ def test_POST_FILES_STR_SIMPLE(create_app_and_client, fname):
 
 
 @asyncio.coroutine
-def test_POST_FILES_LIST(create_app_and_client, fname):
+def test_POST_FILES_LIST(loop, test_client, fname):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.post()
@@ -974,8 +1144,9 @@ def test_POST_FILES_LIST(create_app_and_client, fname):
         assert content == data['some'].file.read()
         return web.HTTPOk()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_post('/', handler)
+    client = yield from test_client(app)
 
     with fname.open() as f:
         resp = yield from client.post('/', data=[('some', f)])
@@ -984,7 +1155,7 @@ def test_POST_FILES_LIST(create_app_and_client, fname):
 
 
 @asyncio.coroutine
-def test_POST_FILES_CT(create_app_and_client, fname):
+def test_POST_FILES_CT(loop, test_client, fname):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.post()
@@ -995,8 +1166,9 @@ def test_POST_FILES_CT(create_app_and_client, fname):
         assert content == data['some'].file.read()
         return web.HTTPOk()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_post('/', handler)
+    client = yield from test_client(app)
 
     with fname.open() as f:
         form = aiohttp.FormData()
@@ -1007,9 +1179,10 @@ def test_POST_FILES_CT(create_app_and_client, fname):
 
 
 @asyncio.coroutine
-def test_POST_FILES_SINGLE(create_app_and_client, fname):
+def test_POST_FILES_SINGLE(loop, test_client, fname):
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
+    client = yield from test_client(app)
 
     with fname.open() as f:
         with pytest.raises(ValueError):
@@ -1017,7 +1190,7 @@ def test_POST_FILES_SINGLE(create_app_and_client, fname):
 
 
 @asyncio.coroutine
-def test_POST_FILES_SINGLE_BINARY(create_app_and_client, fname):
+def test_POST_FILES_SINGLE_BINARY(loop, test_client, fname):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.read()
@@ -1031,8 +1204,9 @@ def test_POST_FILES_SINGLE_BINARY(create_app_and_client, fname):
                                         'application/octet-stream']
         return web.HTTPOk()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_post('/', handler)
+    client = yield from test_client(app)
 
     with fname.open('rb') as f:
         resp = yield from client.post('/', data=f)
@@ -1041,7 +1215,7 @@ def test_POST_FILES_SINGLE_BINARY(create_app_and_client, fname):
 
 
 @asyncio.coroutine
-def test_POST_FILES_IO(create_app_and_client):
+def test_POST_FILES_IO(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.post()
@@ -1050,8 +1224,9 @@ def test_POST_FILES_IO(create_app_and_client):
         assert data['unknown'].filename == 'unknown'
         return web.HTTPOk()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_post('/', handler)
+    client = yield from test_client(app)
 
     data = io.BytesIO(b'data')
     resp = yield from client.post('/', data=[data])
@@ -1061,7 +1236,7 @@ def test_POST_FILES_IO(create_app_and_client):
 
 @pytest.mark.xfail
 @asyncio.coroutine
-def test_POST_MULTIPART(create_app_and_client):
+def test_POST_MULTIPART(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.post()
@@ -1074,8 +1249,9 @@ def test_POST_MULTIPART(create_app_and_client):
         assert data['unknown'].filename == 'unknown'
         return web.HTTPOk()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_post('/', handler)
+    client = yield from test_client(app)
 
     with MultipartWriter('form-data') as writer:
         writer.append('foo')
@@ -1088,7 +1264,7 @@ def test_POST_MULTIPART(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_POST_FILES_IO_WITH_PARAMS(create_app_and_client):
+def test_POST_FILES_IO_WITH_PARAMS(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.post()
@@ -1100,8 +1276,9 @@ def test_POST_FILES_IO_WITH_PARAMS(create_app_and_client):
 
         return web.HTTPOk()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_post('/', handler)
+    client = yield from test_client(app)
 
     data = io.BytesIO(b'data')
     resp = yield from client.post('/', data=(('test', 'true'),
@@ -1113,7 +1290,7 @@ def test_POST_FILES_IO_WITH_PARAMS(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_POST_FILES_WITH_DATA(create_app_and_client, fname):
+def test_POST_FILES_WITH_DATA(loop, test_client, fname):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.post()
@@ -1127,8 +1304,9 @@ def test_POST_FILES_WITH_DATA(create_app_and_client, fname):
 
         return web.HTTPOk()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_post('/', handler)
+    client = yield from test_client(app)
 
     with fname.open() as f:
         resp = yield from client.post('/', data={'test': 'true', 'some': f})
@@ -1138,7 +1316,7 @@ def test_POST_FILES_WITH_DATA(create_app_and_client, fname):
 
 @pytest.mark.xfail
 @asyncio.coroutine
-def test_POST_STREAM_DATA(create_app_and_client, fname, loop):
+def test_POST_STREAM_DATA(loop, test_client, fname):
     @asyncio.coroutine
     def handler(request):
         assert request.content_type == 'application/octet-stream'
@@ -1150,8 +1328,9 @@ def test_POST_STREAM_DATA(create_app_and_client, fname, loop):
 
         return web.HTTPOk()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_post('/', handler)
+    client = yield from test_client(app)
 
     with fname.open() as f:
         data = f.read()
@@ -1173,7 +1352,7 @@ def test_POST_STREAM_DATA(create_app_and_client, fname, loop):
 
 @pytest.mark.xfail
 @asyncio.coroutine
-def test_POST_StreamReader(create_app_and_client, fname, loop):
+def test_POST_StreamReader(fname, loop, test_client):
     @asyncio.coroutine
     def handler(request):
         assert request.content_type == 'application/octet-stream'
@@ -1185,8 +1364,9 @@ def test_POST_StreamReader(create_app_and_client, fname, loop):
 
         return web.HTTPOk()
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_post('/', handler)
+    client = yield from test_client(app)
 
     with fname.open() as f:
         data = f.read()
@@ -1203,7 +1383,7 @@ def test_POST_StreamReader(create_app_and_client, fname, loop):
 
 
 @asyncio.coroutine
-def test_expect_continue(create_app_and_client):
+def test_expect_continue(loop, test_client):
     expect_called = False
 
     @asyncio.coroutine
@@ -1220,8 +1400,9 @@ def test_expect_continue(create_app_and_client):
             request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
             expect_called = True
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_post('/', handler, expect_handler=expect_handler)
+    client = yield from test_client(app)
 
     resp = yield from client.post('/', data={'some': 'data'}, expect100=True)
     assert 200 == resp.status
@@ -1230,7 +1411,7 @@ def test_expect_continue(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_encoding_deflate(create_app_and_client):
+def test_encoding_deflate(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         resp = web.Response(text='text')
@@ -1238,8 +1419,9 @@ def test_encoding_deflate(create_app_and_client):
         resp.enable_compression(web.ContentCoding.deflate)
         return resp
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_get('/', handler)
+    client = yield from test_client(app)
 
     resp = yield from client.get('/')
     assert 200 == resp.status
@@ -1249,7 +1431,7 @@ def test_encoding_deflate(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_encoding_gzip(create_app_and_client):
+def test_encoding_gzip(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         resp = web.Response(text='text')
@@ -1257,8 +1439,9 @@ def test_encoding_gzip(create_app_and_client):
         resp.enable_compression(web.ContentCoding.gzip)
         return resp
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_get('/', handler)
+    client = yield from test_client(app)
 
     resp = yield from client.get('/')
     assert 200 == resp.status
@@ -1268,15 +1451,16 @@ def test_encoding_gzip(create_app_and_client):
 
 
 @asyncio.coroutine
-def test_chunked(create_app_and_client):
+def test_chunked(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         resp = web.Response(text='text')
         resp.enable_chunked_encoding()
         return resp
 
-    app, client = yield from create_app_and_client()
+    app = web.Application(loop=loop)
     app.router.add_get('/', handler)
+    client = yield from test_client(app)
 
     resp = yield from client.get('/')
     assert 200 == resp.status
@@ -1293,9 +1477,9 @@ def test_shortcuts(test_client, loop):
         return web.Response(text=request.method)
 
     app = web.Application(loop=loop)
-    client = yield from test_client(lambda loop: app)
     for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         app.router.add_route(meth.upper(), '/', handler)
+    client = yield from test_client(lambda loop: app)
 
     for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         coro = getattr(client.session, meth)
@@ -1324,9 +1508,9 @@ def test_module_shortcuts(test_client, loop):
         return web.Response(text=request.method)
 
     app = web.Application(loop=loop)
-    client = yield from test_client(lambda loop: app)
     for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         app.router.add_route(meth.upper(), '/', handler)
+    client = yield from test_client(lambda loop: app)
 
     for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         coro = getattr(aiohttp, meth)
@@ -1426,7 +1610,8 @@ def test_set_cookies(test_client, loop):
     with mock.patch('aiohttp.client_reqrep.client_logger') as m_log:
         resp = yield from client.get('/')
         assert 200 == resp.status
-        assert client.session.cookies.keys() == {'c1', 'c2'}
+        cookie_names = {c.key for c in client.session.cookie_jar}
+        assert cookie_names == {'c1', 'c2'}
         resp.close()
 
         m_log.warning.assert_called_with('Can not load response cookies: %s',
@@ -1474,3 +1659,58 @@ def test_broken_connection_2(loop, test_client):
     with pytest.raises(aiohttp.ServerDisconnectedError):
         yield from resp.read()
     resp.close()
+
+
+@asyncio.coroutine
+def test_custom_headers(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        assert request.headers["x-api-key"] == "foo"
+        return web.Response()
+
+    app = web.Application(loop=loop)
+    app.router.add_post('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    resp = yield from client.post('/', headers={
+        "Content-Type": "application/json",
+        "x-api-key": "foo"})
+    assert resp.status == 200
+
+
+@asyncio.coroutine
+def test_redirect_to_absolute_url(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(text=request.method)
+
+    @asyncio.coroutine
+    def redirect(request):
+        return web.HTTPFound(location=client.make_url('/'))
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    app.router.add_get('/redirect', redirect)
+
+    client = yield from test_client(app)
+    resp = yield from client.get('/redirect')
+    assert 200 == resp.status
+    resp.close()
+
+
+@asyncio.coroutine
+def test_redirect_without_location_header(loop, test_client):
+    @asyncio.coroutine
+    def handler_redirect(request):
+        return web.Response(status=301)
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/redirect', handler_redirect)
+    client = yield from test_client(app)
+
+    with pytest.raises(RuntimeError) as ctx:
+        yield from client.get('/redirect')
+    assert str(ctx.value) == ('GET http://127.0.0.1:{}/redirect returns '
+                              'a redirect [301] status but response lacks '
+                              'a Location or URI HTTP header'
+                              .format(client.port))

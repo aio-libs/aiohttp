@@ -23,7 +23,13 @@ async def test_server_context_manager(app, loop):
                 assert resp.status == 200
 
 
-async def test_client_context_manager(app, loop):
+@pytest.mark.parametrize("method", [
+    "head", "get", "post", "options", "post", "put", "patch", "delete"
+])
+async def test_client_context_manager_response(method, app, loop):
     async with _TestClient(app) as client:
-        resp = await client.head('/')
-        assert resp.status == 200
+        async with getattr(client, method)('/') as resp:
+            assert resp.status == 200
+            if method != 'head':
+                text = await resp.text()
+                assert "OK" in text

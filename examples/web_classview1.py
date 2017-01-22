@@ -58,4 +58,4 @@ async def init(loop):
 
 loop = asyncio.get_event_loop()
 app = loop.run_until_complete(init(loop))
-run_app(app, loop=loop)
+run_app(app)

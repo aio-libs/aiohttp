@@ -1,7 +1,7 @@
 .. _aiohttp-client:
 
-HTTP Client
-===========
+Client
+======
 
 .. module:: aiohttp
 
@@ -220,7 +220,7 @@ parameter of :class:`ClientSession` constructor::
 .. note::
    ``httpbin.org/cookies`` endpoint returns request cookies
    in JSON-encoded body.
-   To access session cookies see :attr:`ClientSession.cookies`.
+   To access session cookies see :attr:`ClientSession.cookie_jar`.
 
 
 More complicated POST requests
@@ -342,7 +342,7 @@ calculate the file SHA1 hash::
 
 Because the response content attribute is a
 :class:`~aiohttp.streams.StreamReader`, you can chain get and post
-requests together (aka HTTP pipelining)::
+requests together::
 
    r = await session.get('http://python.org')
    await session.post('http://httpbin.org/post',
@@ -378,7 +378,8 @@ between multiple requests::
     async with aiohttp.ClientSession() as session:
         await session.get(
             'http://httpbin.org/cookies/set?my_cookie=my_value')
-        assert session.cookies['my_cookie'].value == 'my_value'
+        filtered = session.cookie_jar.filter_cookies('http://httpbin.org')
+        assert filtered['my_cookie'].value == 'my_value'
         async with session.get('http://httpbin.org/cookies') as r:
             json_body = await r.json()
             assert json_body['cookies']['my_cookie'] == 'my_value'
@@ -613,7 +614,7 @@ If a response contains some Cookies, you can quickly access them::
 
    Response cookies contain only values, that were in ``Set-Cookie`` headers
    of the **last** request in redirection chain. To gather cookies between all
-   redirection requests you can use :ref:`aiohttp.ClientSession
+   redirection requests please use :ref:`aiohttp.ClientSession
    <aiohttp-client-session>` object.
 
 
@@ -680,13 +681,16 @@ overridden by passing ``timeout`` parameter into
 
 ``None`` or ``0`` disables timeout check.
 
-The example wraps a client call in :class:`~aiohttp.helpers.Timeout` context
+The example wraps a client call in :func:`async_timeout.timeout` context
 manager, adding timeout for both connecting and response body
 reading procedures::
 
-    with aiohttp.Timeout(0.001):
+    import async_timeout
+
+    with async_timeout.timeout(0.001, loop=session.loop):
         async with session.get('https://github.com') as r:
             await r.text()
 
 
 .. disqus::
+  :title: aiohttp client usage

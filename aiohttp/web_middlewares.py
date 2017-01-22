@@ -5,9 +5,14 @@ from aiohttp.web_exceptions import HTTPMovedPermanently
 from aiohttp.web_urldispatcher import SystemRoute
 
 
+__all__ = (
+    'normalize_path_middleware',
+)
+
+
 @asyncio.coroutine
 def _check_request_resolves(request, path):
-    alt_request = request.clone(path=path)
+    alt_request = request.clone(rel_url=path)
 
     match_info = yield from request.app.router.resolve(alt_request)
     alt_request._match_info = match_info
@@ -18,7 +23,7 @@ def _check_request_resolves(request, path):
     return False, request
 
 
-def normalize_path(
+def normalize_path_middleware(
         *, append_slash=True, merge_slashes=True,
         redirect_class=HTTPMovedPermanently):
     """
@@ -33,10 +38,11 @@ def normalize_path(
     and 3) both merge_slashes and append_slash. If the path resolves with
     at least one of those conditions, it will redirect to the new path.
 
-    :param append_slash: If True append slash when needed. If a resource is
+    If append_slash is True append slash when needed. If a resource is
     defined with trailing slash and the request comes without it, it will
     append it automatically.
-    :param merge_slashes: If True, merge multiple consecutive slashes in the
+
+    If merge_slashes is True, merge multiple consecutive slashes in the
     path into one.
     """
 
@@ -50,7 +56,7 @@ def normalize_path(
                 paths_to_check = []
                 if merge_slashes:
                     paths_to_check.append(re.sub('//+', '/', request.path))
-                if append_slash:
+                if append_slash and not request.path.endswith('/'):
                     paths_to_check.append(request.path + '/')
                 if merge_slashes and append_slash:
                     paths_to_check.append(

@@ -725,7 +725,7 @@ class TestHttpClientFunctional(unittest.TestCase):
 
             # Add the received cookies as shared for sending them to the test
             # server, which is only accessible via IP
-            session.cookies.update(resp.cookies)
+            session.cookie_jar.update_cookies(resp.cookies)
 
             # Assert, that we send those cookies in next requests
             r = self.loop.run_until_complete(

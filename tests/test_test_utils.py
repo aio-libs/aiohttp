@@ -3,12 +3,13 @@ from unittest import mock
 
 import pytest
 from multidict import CIMultiDict, CIMultiDictProxy
+from yarl import URL
 
 import aiohttp
 from aiohttp import web, web_reqrep
 from aiohttp.test_utils import TestClient as _TestClient
 from aiohttp.test_utils import TestServer as _TestServer
-from aiohttp.test_utils import (AioHTTPTestCase, loop_context,
+from aiohttp.test_utils import (AioHTTPTestCase, RawTestServer, loop_context,
                                 make_mocked_request, setup_test_loop,
                                 teardown_test_loop, unittest_run_loop)
 
@@ -159,9 +160,11 @@ def test_client_websocket(loop, test_client):
 
 @asyncio.coroutine
 def test_client_cookie(loop, test_client):
-    assert not test_client.session.cookies
+    assert not test_client.session.cookie_jar
     yield from test_client.get("/cookie")
-    assert test_client.session.cookies['cookie'].value == 'val'
+    cookies = list(test_client.session.cookie_jar)
+    assert cookies[0].key == 'cookie'
+    assert cookies[0].value == 'val'
 
 
 @asyncio.coroutine
@@ -223,12 +226,10 @@ def test_make_mocked_request_transport():
 def test_test_client_props(loop):
     app = _create_example_app(loop)
     client = _TestClient(app, host='localhost')
-    assert client.app == app
     assert client.host == 'localhost'
     assert client.port is None
     with client:
         assert isinstance(client.port, int)
-        assert client.handler is not None
         assert client.server is not None
     assert client.port is None
 
@@ -264,3 +265,23 @@ def test_client_host_mutually_exclusive_with_server(loop):
 def test_client_unsupported_arg():
     with pytest.raises(TypeError):
         _TestClient('string')
+
+
+def test_server_make_url_yarl_compatibility(loop):
+    app = _create_example_app(loop)
+    with _TestServer(app) as server:
+        make_url = server.make_url
+        assert make_url(URL('/foo')) == make_url('/foo')
+        with pytest.raises(AssertionError):
+            make_url('http://foo.com')
+        with pytest.raises(AssertionError):
+            make_url(URL('http://foo.com'))
+
+
+def test_raw_server_implicit_loop(loop):
+    @asyncio.coroutine
+    def handler(request):
+        pass
+    asyncio.set_event_loop(loop)
+    srv = RawTestServer(handler)
+    assert srv._loop is loop

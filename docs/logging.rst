@@ -95,7 +95,7 @@ Default access log format is::
 .. note::
 
    When `Gunicorn <http://docs.gunicorn.org/en/latest/index.html>`_ is used for
-   :ref:`deployment <deployment-using-gunicorn>` its default access log format
+   :ref:`deployment <aiohttp-deployment-gunicorn>` its default access log format
    will be automatically replaced with the default aiohttp's access log format.
 
    If Gunicorn's option access_logformat_ is
@@ -117,3 +117,7 @@ To use different logger name please specify *logger* parameter
 
 .. _access_logformat:
     http://docs.gunicorn.org/en/stable/settings.html#access-log-format
+
+
+.. disqus::
+  :title: aiohttp logging

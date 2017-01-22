@@ -20,7 +20,7 @@ Workflow is pretty straightforward:
 
   4. Commit changes to own aiohttp clone
 
-  5. Make pull request from github page for your clone
+  5. Make pull request from github page for your clone against master branch
 
   .. note::
      If your PR has long history or many commits
@@ -39,6 +39,7 @@ If you like to use *virtualenv* please run:
 
    $ cd aiohttp
    $ virtualenv --python=`which python3` venv
+   $ . venv/bin/activate
 
 For standard python *venv*:
 
@@ -46,6 +47,7 @@ For standard python *venv*:
 
    $ cd aiohttp
    $ python3 -m venv venv
+   $ . venv/bin/activate
 
 For *virtualenvwrapper* (my choice):
 

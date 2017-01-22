@@ -8,16 +8,20 @@ from . import Timeout, hdrs
 from ._ws_impl import (CLOSED_MESSAGE, WebSocketError, WSMessage, WSMsgType,
                        do_handshake)
 from .errors import ClientDisconnectedError, HttpProcessingError
-from .helpers import _decorate_aiter
 from .web_exceptions import (HTTPBadRequest, HTTPInternalServerError,
                              HTTPMethodNotAllowed)
 from .web_reqrep import StreamResponse
 
-__all__ = ('WebSocketResponse',)
+__all__ = ('WebSocketResponse', 'WebSocketReady', 'MsgType', 'WSMsgType',)
 
 PY_35 = sys.version_info >= (3, 5)
+PY_352 = sys.version_info >= (3, 5, 2)
 
 THRESHOLD_CONNLOST_ACCESS = 5
+
+
+# deprecated since 1.0
+MsgType = WSMsgType
 
 
 class WebSocketReady(namedtuple('WebSocketReady', 'ok protocol')):
@@ -302,13 +306,15 @@ class WebSocketResponse(StreamResponse):
         raise RuntimeError("Cannot call .write() for websocket")
 
     if PY_35:
-        @_decorate_aiter
         def __aiter__(self):
             return self
+
+        if not PY_352:  # pragma: no cover
+            __aiter__ = asyncio.coroutine(__aiter__)
 
         @asyncio.coroutine
         def __anext__(self):
             msg = yield from self.receive()
-            if msg.type == WSMsgType.CLOSE:
+            if msg.type == WSMsgType.CLOSE or msg.type == WSMsgType.CLOSED:
                 raise StopAsyncIteration  # NOQA
             return msg

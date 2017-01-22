@@ -7,6 +7,7 @@ import textwrap
 
 from aiohttp.web import Application, Response, StreamResponse, run_app
 
+
 async def intro(request):
     txt = textwrap.dedent("""\
         Type {url}/hello/John  {url}/simple or {url}/change_body
@@ -15,7 +16,8 @@ async def intro(request):
     binary = txt.encode('utf8')
     resp = StreamResponse()
     resp.content_length = len(binary)
-    yield from resp.prepare(request)
+    resp.content_type = 'text/plain'
+    await resp.prepare(request)
     resp.write(binary)
     return resp
 
@@ -27,6 +29,7 @@ async def simple(request):
 async def change_body(request):
     resp = Response()
     resp.body = b"Body changed"
+    resp.content_type = 'text/plain'
     return resp
 
 
@@ -35,6 +38,7 @@ async def hello(request):
     name = request.match_info.get('name', 'Anonymous')
     answer = ('Hello, ' + name).encode('utf8')
     resp.content_length = len(answer)
+    resp.content_type = 'text/plain'
     await resp.prepare(request)
     resp.write(answer)
     await resp.write_eof()
@@ -52,4 +56,4 @@ async def init(loop):
 
 loop = asyncio.get_event_loop()
 app = loop.run_until_complete(init(loop))
-run_app(app, loop=loop)
+run_app(app)
