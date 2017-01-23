@@ -158,6 +158,28 @@ def test_access_non_existing_resource(tmp_dir_path, loop, test_client):
     yield from r.release()
 
 
+@pytest.mark.parametrize('registered_path,request_url', [
+    ('/a:b', '/a:b'),
+    ('/a@b', '/a@b'),
+    ('/a:b', '/a%3Ab'),
+])
+@asyncio.coroutine
+def test_url_escaping(loop, test_client, registered_path, request_url):
+    """
+    Tests accessing a resource with
+    """
+    app = web.Application(loop=loop)
+
+    def handler(_):
+        return web.Response()
+    app.router.add_get(registered_path, handler)
+    client = yield from test_client(app)
+
+    r = yield from client.get(request_url)
+    assert r.status == 200
+    yield from r.release()
+
+
 @asyncio.coroutine
 def test_unauthorized_folder_access(tmp_dir_path, loop, test_client):
     """

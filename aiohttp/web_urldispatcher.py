@@ -11,7 +11,10 @@ from collections.abc import Container, Iterable, Sized
 from pathlib import Path
 from types import MappingProxyType
 
-from yarl import URL, quote, unquote
+# do not use yarl.quote directly,
+# use `URL(path).raw_path` instead of `quote(path)`
+# Escaping of the URLs need to be consitent with the escaping done by yarl
+from yarl import URL, unquote
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
@@ -373,7 +376,7 @@ class PrefixResource(AbstractResource):
         assert not prefix or prefix.startswith('/'), prefix
         assert prefix in ('', '/') or not prefix.endswith('/'), prefix
         super().__init__(name=name)
-        self._prefix = quote(prefix, safe='/')
+        self._prefix = URL(prefix).raw_path
 
     def add_prefix(self, prefix):
         assert prefix.startswith('/')
@@ -421,7 +424,7 @@ class StaticResource(PrefixResource):
         while filename.startswith('/'):
             filename = filename[1:]
         filename = '/' + filename
-        url = self._prefix + quote(filename, safe='/')
+        url = self._prefix + URL(filename).raw_path
         return URL(url)
 
     def get_info(self):
@@ -783,7 +786,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         if path and not path.startswith('/'):
             raise ValueError("path should be started with / or be empty")
         if not ('{' in path or '}' in path or self.ROUTE_RE.search(path)):
-            resource = PlainResource(quote(path, safe='/'), name=name)
+            url = URL(path)
+            resource = PlainResource(url.raw_path, name=name)
             self.register_resource(resource)
             return resource
 
@@ -805,9 +809,9 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             if '{' in part or '}' in part:
                 raise ValueError("Invalid path '{}'['{}']".format(path, part))
 
-            part = quote(part, safe='/')
-            formatter += part
-            pattern += re.escape(part)
+            path = URL(part).raw_path
+            formatter += path
+            pattern += re.escape(path)
 
         try:
             compiled = re.compile(pattern)
