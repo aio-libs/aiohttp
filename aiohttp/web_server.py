@@ -82,7 +82,8 @@ class RequestHandler(ServerHttpProtocol):
                     "Error handling request",
                     exc_info=exc)
 
-            yield from resp.prepare(request)
+            if not resp.prepared:
+                yield from resp.prepare(request)
             yield from resp.write_eof()
         finally:
             resp._task = None
