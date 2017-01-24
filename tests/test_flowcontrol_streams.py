@@ -19,7 +19,7 @@ class TestFlowControlStreamReader(unittest.TestCase):
     def _make_one(self, allow_pause=True, *args, **kwargs):
         out = streams.FlowControlStreamReader(
             self.stream, limit=1, loop=self.loop, *args, **kwargs)
-        out.allow_pause = allow_pause
+        out._allow_pause = allow_pause
         return out
 
     def test_read(self):
@@ -71,7 +71,7 @@ class TestFlowControlStreamReader(unittest.TestCase):
 
     def test_feed_data_no_allow_pause(self):
         r = self._make_one()
-        r.allow_pause = False
+        r._allow_pause = False
         r._stream.paused = False
         r.feed_data(b'datadata', 8)
         self.assertFalse(self.transp.pause_reading.called)
@@ -278,7 +278,7 @@ class TestFlowControlDataQueue(unittest.TestCase, FlowControlMixin):
     def _make_one(self, *args, **kwargs):
         out = streams.FlowControlDataQueue(
             self.stream, limit=1, loop=self.loop, *args, **kwargs)
-        out.allow_pause = True
+        out._allow_pause = True
         return out
 
 
@@ -295,7 +295,7 @@ class TestFlowControlChunksQueue(unittest.TestCase, FlowControlMixin):
     def _make_one(self, *args, **kwargs):
         out = streams.FlowControlChunksQueue(
             self.stream, limit=1, loop=self.loop, *args, **kwargs)
-        out.allow_pause = True
+        out._allow_pause = True
         return out
 
     def test_read_eof(self):
