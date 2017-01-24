@@ -180,7 +180,7 @@ allowed at least for a year and half after publishing new release with
 deprecation.
 
 All deprecations are reflected in documentation and raises
-:exc:`DeprectaionWarning`.
+:exc:`DeprecationWarning`.
 
 Sometimes we are forced to break the own rule for sake of very strong
 reason.  Most likely the reason is a critical bug which cannot be

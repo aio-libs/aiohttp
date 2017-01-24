@@ -670,7 +670,11 @@ class BodyPartWriter(object):
     """Multipart writer for single body part."""
 
     def __init__(self, obj, headers=None, *, chunk_size=8192):
-        if headers is None:
+        if isinstance(obj, MultipartWriter):
+            if headers is not None:
+                obj.headers.update(headers)
+            headers = obj.headers
+        elif headers is None:
             headers = CIMultiDict()
         elif not isinstance(headers, CIMultiDict):
             headers = CIMultiDict(headers)

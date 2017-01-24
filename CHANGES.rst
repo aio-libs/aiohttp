@@ -8,13 +8,22 @@ CHANGES
 
 - Ignore unknown 1XX status codes in client #1353
 
-- remove `web.Application` dependency from `web.UrlDispatcher` #1510
+- Fix sub-Multipart messages missing their headers on serialization #1525
+
+- Remove `web.Application` dependency from `web.UrlDispatcher` #1510
+
+- Do not pause transport during set_parser stage #1211
+
+- Fix typo in FAQ section "How to programmatically close websocket server-side?"
+
+- Allow users to specify what should happen to decoding errors when calling a responses `text()` method #1542
 
 - Fix ClientSession is not aware of TestClient #1499
 
 - Fixed warnings showing when giving ClientSession an event loop when called from a normal function. #[1468](https://github.com/KeepSafe/aiohttp/pull/1468#issuecomment-269112177)
 
 -
+
 
 1.2.0 (2016-12-17)
 ------------------
