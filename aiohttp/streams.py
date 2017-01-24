@@ -534,7 +534,7 @@ class FlowControlStreamReader(StreamReader):
 
         self._stream = stream
         self._b_limit = limit * 2
-        self.allow_pause = False
+        self._allow_pause = False
 
         # resume transport reading
         if stream.paused:
@@ -544,7 +544,7 @@ class FlowControlStreamReader(StreamReader):
                 pass
             else:
                 self._stream.paused = False
-                self.allow_pause = True
+                self._allow_pause = True
 
     def _check_buffer_size(self):
         if self._stream.paused:
@@ -569,7 +569,7 @@ class FlowControlStreamReader(StreamReader):
 
         super().feed_data(data)
 
-        if (self.allow_pause and not self._stream.paused and
+        if (self._allow_pause and not self._stream.paused and
                 not has_waiter and self._buffer_size > self._b_limit):
             try:
                 self._stream.transport.pause_reading()
@@ -613,7 +613,7 @@ class FlowControlDataQueue(DataQueue):
 
         self._stream = stream
         self._limit = limit * 2
-        self.allow_pause = False
+        self._allow_pause = False
 
         # resume transport reading
         if stream.paused:
@@ -623,14 +623,14 @@ class FlowControlDataQueue(DataQueue):
                 pass
             else:
                 self._stream.paused = False
-                self.allow_pause = True
+                self._allow_pause = True
 
     def feed_data(self, data, size):
         has_waiter = self._waiter is not None and not self._waiter.cancelled()
 
         super().feed_data(data, size)
 
-        if (self.allow_pause and not self._stream.paused and
+        if (self._allow_pause and not self._stream.paused and
                 not has_waiter and self._size > self._limit):
             try:
                 self._stream.transport.pause_reading()
