@@ -528,13 +528,13 @@ def test_tcp_connector_clear_resolved_hosts(loop):
     info = object()
     conn._cached_hosts[('localhost', 123)] = info
     conn._cached_hosts[('localhost', 124)] = info
-    conn.clear_resolved_hosts('localhost', 123)
-    assert conn.resolved_hosts == {('localhost', 124): info}
-    conn.clear_resolved_hosts('localhost', 123)
-    assert conn.resolved_hosts == {('localhost', 124): info}
+    conn.clear_dns_cache('localhost', 123)
+    assert conn.cached_hosts == {('localhost', 124): info}
+    conn.clear_dns_cache('localhost', 123)
+    assert conn.cached_hosts == {('localhost', 124): info}
     with pytest.warns(DeprecationWarning):
         conn.clear_resolved_hosts()
-    assert conn.resolved_hosts == {}
+    assert conn.cached_hosts == {}
 
 
 def test_tcp_connector_clear_dns_cache(loop):
@@ -909,7 +909,7 @@ class TestHttpClientConnector(unittest.TestCase):
         app = web.Application(loop=self.loop)
         app.router.add_route(method, path, handler)
 
-        self.handler = app.make_handler(keep_alive_on=False, access_log=None)
+        self.handler = app.make_handler(tcp_keepalive=False, access_log=None)
         sock_path = os.path.join(tmpdir, 'socket.sock')
         srv = yield from self.loop.create_unix_server(
             self.handler, sock_path)
