@@ -93,7 +93,7 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
 
         host, port = listen_addr
         server_coroutine = thread_loop.create_server(
-            lambda: TestHttpServer(keep_alive=0.5),
+            lambda: TestHttpServer(keepalive_timeout=0.5),
             host, port, ssl=sslcontext)
         server = thread_loop.run_until_complete(server_coroutine)
 

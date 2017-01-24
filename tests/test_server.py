@@ -120,7 +120,7 @@ def test_connection_made_with_keepaplive(srv):
 
 
 def test_connection_made_without_keepaplive(make_srv):
-    srv = make_srv(keep_alive_on=False)
+    srv = make_srv(tcp_keepalive=False)
 
     sock = mock.Mock()
     transport = mock.Mock()
