@@ -3,6 +3,7 @@
 import asyncio
 import gc
 import os.path
+import platform
 import shutil
 import socket
 import ssl
@@ -278,9 +279,12 @@ def test_tcp_connector_resolve_host_use_dns_cache(loop):
             assert rec['hostname'] == 'localhost'
             assert rec['port'] == 8080
         elif rec['family'] == socket.AF_INET6:
-            assert rec['host'] == '::1'
             assert rec['hostname'] == 'localhost'
             assert rec['port'] == 8080
+            if platform.system() == 'Darwin':
+                assert rec['host'] in ('::1', 'fe80::1%lo0')
+            else:
+                assert rec['host'] == '::1'
 
 
 @asyncio.coroutine
@@ -891,7 +895,7 @@ class TestHttpClientConnector(unittest.TestCase):
         app.router.add_route(method, path, handler)
 
         port = unused_port()
-        self.handler = app.make_handler(keep_alive_on=False)
+        self.handler = app.make_handler(tcp_keepalive=False)
         srv = yield from self.loop.create_server(
             self.handler, '127.0.0.1', port)
         url = "http://127.0.0.1:{}".format(port) + path
