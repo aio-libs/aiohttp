@@ -6,6 +6,7 @@ import functools
 import gc
 import socket
 import sys
+import warnings
 import unittest
 from abc import ABC, abstractmethod
 from unittest import mock
@@ -371,6 +372,13 @@ class AioHTTPTestCase(unittest.TestCase):
 
         """
         return self.get_app(loop)
+
+    @asyncio.coroutine
+    def get_applicaion(self, loop):
+        warnings.warn(
+            "get_applicaion() is a typo please use get_application() instead",
+            DeprecationWarning)
+        return self.get_application(loop)
 
     def get_app(self, loop):
         """Obsolete method used to constructing web application.
