@@ -382,7 +382,8 @@ class AioHTTPTestCase(unittest.TestCase):
 
     def setUp(self):
         self.loop = setup_test_loop()
-        self.app = self.loop.run_until_complete(self.get_application(self.loop))
+        self.app = self.loop.run_until_complete(
+            self.get_application(self.loop))
         self.client = TestClient(self.app)
         self.loop.run_until_complete(self.client.start_server())
 
