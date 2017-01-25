@@ -356,14 +356,14 @@ class AioHTTPTestCase(unittest.TestCase):
     * self.loop (asyncio.BaseEventLoop): the event loop in which the
         application and server are running.
     * self.app (aiohttp.web.Application): the application returned by
-        self.get_applicaion()
+        self.get_application()
 
     Note that the TestClient's methods are asynchronous: you have to
     execute function on the test client using asynchronous methods.
     """
 
     @asyncio.coroutine
-    def get_applicaion(self, loop):
+    def get_application(self, loop):
         """
         This method should be overridden
         to return the aiohttp.web.Application
@@ -375,14 +375,14 @@ class AioHTTPTestCase(unittest.TestCase):
     def get_app(self, loop):
         """Obsolete method used to constructing web application.
 
-        Use .get_applicaion() coroutine instead
+        Use .get_application() coroutine instead
 
         """
         pass  # pragma: no cover
 
     def setUp(self):
         self.loop = setup_test_loop()
-        self.app = self.loop.run_until_complete(self.get_applicaion(self.loop))
+        self.app = self.loop.run_until_complete(self.get_application(self.loop))
         self.client = TestClient(self.app)
         self.loop.run_until_complete(self.client.start_server())
 
