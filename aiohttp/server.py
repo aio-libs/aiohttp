@@ -94,8 +94,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                  max_line_size=8190,
                  max_headers=32768,
                  max_field_size=8190,
-                 lingering_time=30,
-                 lingering_timeout=5,
+                 lingering_time=30.0,
+                 lingering_timeout=5.0,
                  **kwargs):
 
         # process deprecated params
@@ -220,6 +220,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         or response handling. Connection is being closed always unless
         keep_alive(True) specified.
         """
+        loop = self._loop
         reader = self.reader
         self.writer.set_tcp_nodelay(True)
 
@@ -234,7 +235,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
                 # slow request timer
                 with Timeout(max(self._slow_request_timeout,
-                                 self._keepalive_timeout), loop=self._loop):
+                                 self._keepalive_timeout), loop=loop):
                     # read request headers
                     httpstream = reader.set_parser(self._request_parser)
                     message = yield from httpstream.read()
@@ -252,7 +253,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                     'chunked' in message.headers.get(
                         hdrs.TRANSFER_ENCODING, '')):
                     payload = streams.FlowControlStreamReader(
-                        reader, loop=self._loop)
+                        reader, loop=loop)
                     reader.set_parser(
                         aiohttp.HttpPayloadParser(message), payload)
                 else:
@@ -270,15 +271,19 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                             'Start lingering close timer for %s sec.',
                             self._lingering_time)
 
-                        end_time = self._loop.time() + self._lingering_time
+                        now = loop.time()
+                        end_time = now + self._lingering_time
 
                         with suppress(asyncio.TimeoutError,
                                       errors.ClientDisconnectedError):
-                            while self._loop.time() < end_time:
-                                with Timeout(self._lingering_timeout,
-                                             loop=self._loop):
+                            while not payload.is_eof() and now < end_time:
+                                timeout = min(
+                                    end_time - now, self._lingering_timeout)
+                                with Timeout(timeout, loop=loop):
                                     # read and ignore
                                     yield from payload.readany()
+
+                                now = loop.time()
                 else:
                     reader.unset_parser()
                     if not self._keepalive or not self._keepalive_timeout:

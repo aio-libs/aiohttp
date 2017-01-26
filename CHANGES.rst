@@ -14,9 +14,10 @@ CHANGES
 
 - Do not pause transport during set_parser stage #1211
 
-- Fix typo in FAQ section "How to programmatically close websocket server-side?"
+- Lingering close doesn't terminate before timeout #1559
 
-- Allow users to specify what should happen to decoding errors when calling a responses `text()` method #1542
+- Allow users to specify what should happen to decoding errors
+  when calling a responses `text()` method #1542
 
 
 1.2.0 (2016-12-17)
