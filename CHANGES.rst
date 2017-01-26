@@ -10,6 +10,9 @@ CHANGES
 
 - Fix sub-Multipart messages missing their headers on serialization #1525
 
+- Do not use readline when reading the content of a part
+  in the multipart reader #1535
+
 - Remove `web.Application` dependency from `web.UrlDispatcher` #1510
 
 - Do not pause transport during set_parser stage #1211
