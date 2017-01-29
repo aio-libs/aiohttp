@@ -823,7 +823,7 @@ BaseConnector
       Endpoints are the same if they are have equal ``(host, port,
       is_ssl)`` triple.
 
-      If *limit* is ``None`` the connector has no limit (default).
+      If *limit* is ``None`` the connector has no limit.
 
       Read-only property.
 
