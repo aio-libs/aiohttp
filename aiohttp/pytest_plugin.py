@@ -48,17 +48,23 @@ def pytest_pyfunc_call(pyfuncitem):
 
 @pytest.yield_fixture
 def loop():
+    """Return an instance of the event loop."""
     with loop_context() as _loop:
         yield _loop
 
 
 @pytest.fixture
 def unused_port():
+    """Return a port that is unused on the current host."""
     return _unused_port
 
 
 @pytest.yield_fixture
 def test_server(loop):
+    """Factory to create a TestServer instance, given an app.
+
+    test_server(app, **kwargs)
+    """
     servers = []
 
     @asyncio.coroutine
@@ -83,6 +89,10 @@ def test_server(loop):
 
 @pytest.yield_fixture
 def raw_test_server(loop):
+    """Factory to create a RawTestServer instance, given a web handler.
+
+    raw_test_server(handler, **kwargs)
+    """
     servers = []
 
     @asyncio.coroutine
@@ -104,6 +114,12 @@ def raw_test_server(loop):
 
 @pytest.yield_fixture
 def test_client(loop):
+    """Factory to create a TestClient instance.
+
+    test_client(app, **kwargs)
+    test_client(server, **kwargs)
+    test_client(raw_server, **kwargs)
+    """
     clients = []
 
     @asyncio.coroutine
