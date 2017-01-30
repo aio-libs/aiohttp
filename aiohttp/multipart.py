@@ -252,12 +252,8 @@ class BodyPartReader(object):
         if self._at_eof:
             return b''
         data = bytearray()
-        if self._length is None:
-            while not self._at_eof:
-                data.extend((yield from self.readline()))
-        else:
-            while not self._at_eof:
-                data.extend((yield from self.read_chunk(self.chunk_size)))
+        while not self._at_eof:
+            data.extend((yield from self.read_chunk(self.chunk_size)))
         if decode:
             return self.decode(data)
         return data
@@ -377,12 +373,8 @@ class BodyPartReader(object):
         """
         if self._at_eof:
             return
-        if self._length is None:
-            while not self._at_eof:
-                yield from self.readline()
-        else:
-            while not self._at_eof:
-                yield from self.read_chunk(self.chunk_size)
+        while not self._at_eof:
+            yield from self.read_chunk(self.chunk_size)
 
     @asyncio.coroutine
     def text(self, *, encoding=None):

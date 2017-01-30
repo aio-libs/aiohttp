@@ -13,6 +13,8 @@ from aiohttp.hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING,
 from aiohttp.helpers import parse_mimetype
 from aiohttp.multipart import (content_disposition_filename,
                                parse_content_disposition)
+from aiohttp.streams import DEFAULT_LIMIT as stream_reader_default_limit
+from aiohttp.streams import StreamReader
 
 
 def run_in_loop(f):
@@ -255,14 +257,13 @@ class PartReaderTestCase(TestCase):
         self.assertEqual(b'.' * size, result)
         self.assertTrue(obj.at_eof())
 
-    def test_read_does_reads_boundary(self):
+    def test_read_does_not_read_boundary(self):
         stream = Stream(b'Hello, world!\r\n--:')
         obj = aiohttp.multipart.BodyPartReader(
             self.boundary, {}, stream)
         result = yield from obj.read()
         self.assertEqual(b'Hello, world!', result)
-        self.assertEqual(b'', (yield from stream.read()))
-        self.assertEqual([b'--:'], list(obj._unread))
+        self.assertEqual(b'--:', (yield from stream.read()))
 
     def test_multiread(self):
         obj = aiohttp.multipart.BodyPartReader(
@@ -474,8 +475,7 @@ class PartReaderTestCase(TestCase):
             self.boundary, {}, stream)
         yield from obj.release()
         self.assertTrue(obj.at_eof())
-        self.assertEqual(b'\r\nworld!\r\n--:--', stream.content.read())
-        self.assertEqual([b'--:\r\n'], list(obj._unread))
+        self.assertEqual(b'--:\r\n\r\nworld!\r\n--:--', stream.content.read())
 
     def test_release_respects_content_length(self):
         obj = aiohttp.multipart.BodyPartReader(
@@ -491,8 +491,7 @@ class PartReaderTestCase(TestCase):
             self.boundary, {}, stream)
         yield from obj.release()
         yield from obj.release()
-        self.assertEqual(b'\r\nworld!\r\n--:--', stream.content.read())
-        self.assertEqual([b'--:\r\n'], list(obj._unread))
+        self.assertEqual(b'--:\r\n\r\nworld!\r\n--:--', stream.content.read())
 
     def test_filename(self):
         part = aiohttp.multipart.BodyPartReader(
@@ -500,6 +499,16 @@ class PartReaderTestCase(TestCase):
             {CONTENT_DISPOSITION: 'attachment; filename=foo.html'},
             None)
         self.assertEqual('foo.html', part.filename)
+
+    def test_reading_long_part(self):
+        size = 2 * stream_reader_default_limit
+        stream = StreamReader()
+        stream.feed_data(b'0' * size + b'\r\n--:--')
+        stream.feed_eof()
+        obj = aiohttp.multipart.BodyPartReader(
+            self.boundary, {}, stream)
+        data = yield from obj.read()
+        self.assertEqual(len(data), size)
 
 
 class MultipartReaderTestCase(TestCase):
