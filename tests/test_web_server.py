@@ -42,6 +42,26 @@ def test_raw_server_not_http_exception(raw_test_server, test_client):
 
 
 @asyncio.coroutine
+def test_raw_server_handler_timeout(raw_test_server, test_client):
+    exc = asyncio.TimeoutError("error")
+
+    @asyncio.coroutine
+    def handler(request):
+        raise exc
+
+    logger = mock.Mock()
+    server = yield from raw_test_server(handler, logger=logger)
+    client = yield from test_client(server)
+    resp = yield from client.get('/path/to')
+    assert resp.status == 504
+
+    txt = yield from resp.text()
+    assert "<h1>504 Gateway Timeout</h1>" in txt
+
+    logger.debug.assert_called_with("Request handler timed out.")
+
+
+@asyncio.coroutine
 def test_raw_server_do_not_swallow_exceptions(raw_test_server, test_client):
     exc = None
 
@@ -54,7 +74,6 @@ def test_raw_server_do_not_swallow_exceptions(raw_test_server, test_client):
     client = yield from test_client(server)
 
     for _exc, msg in (
-            (asyncio.TimeoutError("error"), 'Request handler timed out.'),
             (asyncio.CancelledError("error"), 'Request handler cancelled.'),
             (errors.ClientDisconnectedError("error"),
              'Ignored premature client disconnection #1.')):
