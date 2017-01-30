@@ -294,9 +294,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                 'Request handler cancelled.')
             return
         except asyncio.TimeoutError:
-            self.log_debug(
-                'Request handler timed out.')
-            return
+            self.log_debug('Request handler timed out.')
+            yield from self.handle_error(504, message)
         except errors.ClientDisconnectedError:
             self.log_debug(
                 'Ignored premature client disconnection #1.')

@@ -18,11 +18,13 @@ CHANGES
 - Do not pause transport during set_parser stage #1211
 
 - Lingering close doesn't terminate before timeout #1559
-
-- Lots of CancelledError when requests are interupted #1565
+  
+- Lots of CancelledError when requests are interrupted #1565
 
 - Allow users to specify what should happen to decoding errors
   when calling a responses `text()` method #1542
+
+- Return 504 if request handle raises TimeoutError.
 
 
 1.2.0 (2016-12-17)
