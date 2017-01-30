@@ -61,7 +61,7 @@ class RequestHandler(ServerHttpProtocol):
                 resp = yield from self._handler(request)
             except HTTPException as exc:
                 resp = exc
-            except Exception as exc:
+            except BaseException as exc:
                 msg = "<h1>500 Internal Server Error</h1>"
                 if self.debug:
                     try:
