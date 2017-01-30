@@ -163,8 +163,9 @@ class RawTestServer(BaseTestServer):
         super().__init__(scheme=scheme, host=host)
 
     @asyncio.coroutine
-    def _make_factory(self, **kwargs):
-        self.handler = Server(self._handler, loop=self._loop, **kwargs)
+    def _make_factory(self, debug=True, **kwargs):
+        self.handler = Server(
+            self._handler, loop=self._loop, debug=True, **kwargs)
         return self.handler
 
     @asyncio.coroutine
