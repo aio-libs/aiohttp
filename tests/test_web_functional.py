@@ -1188,29 +1188,6 @@ def test_custom_date_header(loop, test_client):
 
 
 @asyncio.coroutine
-def test_response_task(loop, test_client):
-
-    srv_resp = None
-
-    @asyncio.coroutine
-    def handler(request):
-        nonlocal srv_resp
-        srv_resp = web.StreamResponse()
-        assert srv_resp.task is None
-        yield from srv_resp.prepare(request)
-        assert srv_resp.task is not None
-        return srv_resp
-
-    app = web.Application(loop=loop)
-    app.router.add_get('/', handler)
-    client = yield from test_client(app)
-
-    resp = yield from client.get('/')
-    assert 200 == resp.status
-    assert srv_resp.task is None
-
-
-@asyncio.coroutine
 def test_response_prepared_with_clone(loop, test_client):
 
     @asyncio.coroutine

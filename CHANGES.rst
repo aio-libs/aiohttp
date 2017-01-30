@@ -16,6 +16,8 @@ CHANGES
 
 - Lingering close doesn't terminate before timeout #1559
 
+- Lots of CancelledError when requests are interupted #1565
+
 - Allow users to specify what should happen to decoding errors
   when calling a responses `text()` method #1542
 

@@ -4,6 +4,7 @@ import asyncio
 import traceback
 from html import escape as html_escape
 
+from . import errors
 from .helpers import TimeService
 from .server import ServerHttpProtocol
 from .web_exceptions import HTTPException, HTTPInternalServerError
@@ -57,36 +58,37 @@ class RequestHandler(ServerHttpProtocol):
         self._request = request
 
         try:
-            try:
-                resp = yield from self._handler(request)
-            except HTTPException as exc:
-                resp = exc
-            except Exception as exc:
-                msg = "<h1>500 Internal Server Error</h1>"
-                if self.debug:
-                    try:
-                        tb = traceback.format_exc()
-                        tb = html_escape(tb)
-                        msg += '<br><h2>Traceback:</h2>\n<pre>'
-                        msg += tb
-                        msg += '</pre>'
-                    except:  # pragma: no cover
-                        pass
-                else:
-                    msg += "Server got itself in trouble"
-                msg = ("<html><head><title>500 Internal Server Error</title>"
-                       "</head><body>" + msg + "</body></html>")
-                resp = HTTPInternalServerError(text=msg,
-                                               content_type='text/html')
-                self.logger.exception(
-                    "Error handling request",
-                    exc_info=exc)
+            resp = yield from self._handler(request)
+        except (asyncio.CancelledError,
+                asyncio.TimeoutError,
+                errors.ClientDisconnectedError) as exc:
+            raise
+        except HTTPException as exc:
+            resp = exc
+        except Exception as exc:
+            msg = "<h1>500 Internal Server Error</h1>"
+            if self.debug:
+                try:
+                    tb = traceback.format_exc()
+                    tb = html_escape(tb)
+                    msg += '<br><h2>Traceback:</h2>\n<pre>'
+                    msg += tb
+                    msg += '</pre>'
+                except:  # pragma: no cover
+                    pass
+            else:
+                msg += "Server got itself in trouble"
+            msg = ("<html><head><title>500 Internal Server Error</title>"
+                   "</head><body>" + msg + "</body></html>")
+            resp = HTTPInternalServerError(
+                text=msg, content_type='text/html')
+            self.logger.exception(
+                "Error handling request",
+                exc_info=exc)
 
-            if not resp.prepared:
-                yield from resp.prepare(request)
-            yield from resp.write_eof()
-        finally:
-            resp._task = None
+        if not resp.prepared:
+            yield from resp.prepare(request)
+        yield from resp.write_eof()
 
         # notify server about keep-alive
         # assign to parent class attr
