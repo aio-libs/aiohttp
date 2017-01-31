@@ -48,6 +48,7 @@ David Michael Brown
 Denis Matiychuk
 Dima Veselov
 Dimitar Dimitrov
+Dmitry Doroshev
 Dmitry Shamov
 Dmitry Trofimov
 Dmytro Kuznetsov
@@ -134,6 +135,7 @@ Steven Seguin
 Sviatoslav Bulbakha
 Taha Jahangir
 Taras Voinarovskyi
+Terence Honles
 Thomas Grainger
 Tolga Tezel
 Vaibhav Sagar

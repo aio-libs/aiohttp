@@ -252,12 +252,8 @@ class BodyPartReader(object):
         if self._at_eof:
             return b''
         data = bytearray()
-        if self._length is None:
-            while not self._at_eof:
-                data.extend((yield from self.readline()))
-        else:
-            while not self._at_eof:
-                data.extend((yield from self.read_chunk(self.chunk_size)))
+        while not self._at_eof:
+            data.extend((yield from self.read_chunk(self.chunk_size)))
         if decode:
             return self.decode(data)
         return data
@@ -377,12 +373,8 @@ class BodyPartReader(object):
         """
         if self._at_eof:
             return
-        if self._length is None:
-            while not self._at_eof:
-                yield from self.readline()
-        else:
-            while not self._at_eof:
-                yield from self.read_chunk(self.chunk_size)
+        while not self._at_eof:
+            yield from self.read_chunk(self.chunk_size)
 
     @asyncio.coroutine
     def text(self, *, encoding=None):
@@ -670,7 +662,11 @@ class BodyPartWriter(object):
     """Multipart writer for single body part."""
 
     def __init__(self, obj, headers=None, *, chunk_size=8192):
-        if headers is None:
+        if isinstance(obj, MultipartWriter):
+            if headers is not None:
+                obj.headers.update(headers)
+            headers = obj.headers
+        elif headers is None:
             headers = CIMultiDict()
         elif not isinstance(headers, CIMultiDict):
             headers = CIMultiDict(headers)

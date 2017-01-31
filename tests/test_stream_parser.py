@@ -213,6 +213,7 @@ def test_set_parser_feed_existing_stop(loop):
 def test_feed_parser(loop, lines_parser):
     stream = parsers.StreamParser(loop=loop)
     s = stream.set_parser(lines_parser)
+    assert s._allow_pause
 
     stream.feed_data(b'line1')
     stream.feed_data(b'\r\nline2\r\ndata')

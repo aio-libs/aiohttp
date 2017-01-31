@@ -107,6 +107,10 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             self._task,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header)
 
+    @property
+    def task(self):
+        return self._task
+
     # MutableMapping API
 
     def __getitem__(self, key):
@@ -132,7 +136,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         'http' or 'https'.
         """
-        warnings.warn("path_qs property is deprecated, "
+        warnings.warn("scheme is deprecated, "
                       "use .url.scheme instead",
                       DeprecationWarning)
         return self.url.scheme
@@ -279,6 +283,11 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     def keep_alive(self):
         """Is keepalive enabled by client?"""
         return not self._message.should_close
+
+    @property
+    def time_service(self):
+        """Time service"""
+        return self._time_service
 
     @property
     def transport(self):
@@ -514,8 +523,6 @@ class StreamResponse(HeadersMixin):
         self._resp_impl = None
         self._eof_sent = False
 
-        self._task = None
-
         if headers is not None:
             # TODO: optimize CIMultiDict extending
             self._headers.extend(headers)
@@ -534,7 +541,7 @@ class StreamResponse(HeadersMixin):
 
     @property
     def task(self):
-        return self._task
+        return getattr(self._req, 'task', None)
 
     @property
     def status(self):
@@ -845,7 +852,7 @@ class StreamResponse(HeadersMixin):
         else:
             resp_impl.length = self.content_length
 
-        headers.setdefault(DATE, request._time_service.strtime())
+        headers.setdefault(DATE, request.time_service.strtime())
         headers.setdefault(SERVER, resp_impl.SERVER_SOFTWARE)
         if CONNECTION not in headers:
             if keep_alive:
@@ -858,7 +865,6 @@ class StreamResponse(HeadersMixin):
         resp_impl.headers = headers
 
         self._send_headers(resp_impl)
-        self._task = request._task
         return resp_impl
 
     def _send_headers(self, resp_impl):
@@ -896,6 +902,7 @@ class StreamResponse(HeadersMixin):
 
         yield from self._resp_impl.write_eof()
         self._eof_sent = True
+        self._req = None
 
     def __repr__(self):
         if self.started:

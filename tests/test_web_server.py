@@ -1,7 +1,8 @@
 import asyncio
+import pytest
 from unittest import mock
 
-from aiohttp import web
+from aiohttp import web, errors
 
 
 @asyncio.coroutine
@@ -38,6 +39,49 @@ def test_raw_server_not_http_exception(raw_test_server, test_client):
     logger.exception.assert_called_with(
         "Error handling request",
         exc_info=exc)
+
+
+@asyncio.coroutine
+def test_raw_server_handler_timeout(raw_test_server, test_client):
+    exc = asyncio.TimeoutError("error")
+
+    @asyncio.coroutine
+    def handler(request):
+        raise exc
+
+    logger = mock.Mock()
+    server = yield from raw_test_server(handler, logger=logger)
+    client = yield from test_client(server)
+    resp = yield from client.get('/path/to')
+    assert resp.status == 504
+
+    txt = yield from resp.text()
+    assert "<h1>504 Gateway Timeout</h1>" in txt
+
+    logger.debug.assert_called_with("Request handler timed out.")
+
+
+@asyncio.coroutine
+def test_raw_server_do_not_swallow_exceptions(raw_test_server, test_client):
+    exc = None
+
+    @asyncio.coroutine
+    def handler(request):
+        raise exc
+
+    logger = mock.Mock()
+    server = yield from raw_test_server(handler, logger=logger)
+    client = yield from test_client(server)
+
+    for _exc, msg in (
+            (asyncio.CancelledError("error"), 'Request handler cancelled.'),
+            (errors.ClientDisconnectedError("error"),
+             'Ignored premature client disconnection #1.')):
+        exc = _exc
+        with pytest.raises(errors.ClientResponseError):
+            yield from client.get('/path/to')
+
+        logger.debug.assert_called_with(msg)
 
 
 @asyncio.coroutine

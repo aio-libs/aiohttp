@@ -19,6 +19,15 @@ def test_run_app_http(loop, mocker):
     app.startup.assert_called_once_with()
 
 
+def test_run_app_multi_bind():
+    app = mock.Mock()
+
+    web.run_app(app, host=('0.0.0.0', '127.0.0.1'), print=lambda *args: None)
+
+    app.loop.create_server.assert_called_with(
+        mock.ANY, ('0.0.0.0', '127.0.0.1'), 8080, ssl=None, backlog=128)
+
+
 def test_run_app_http_access_format(loop, mocker):
     mocker.spy(loop, 'create_server')
     loop.call_later(0.05, loop.stop)

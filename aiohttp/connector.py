@@ -176,6 +176,10 @@ class BaseConnector(object):
         self.close()
 
     @property
+    def conn_timeout(self):
+        return self._conn_timeout
+
+    @property
     def force_close(self):
         """Ultimately close connection on releasing if True."""
         return self._force_close

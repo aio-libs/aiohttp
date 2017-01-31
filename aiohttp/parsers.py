@@ -194,6 +194,7 @@ class StreamParser:
             # parser still require more data
             self._parser = p
             self._output = output
+            self._output._allow_pause = True  # stricktly internal use!
 
             if self._eof:
                 self.unset_parser()
