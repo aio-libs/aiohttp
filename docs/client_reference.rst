@@ -785,7 +785,7 @@ BaseConnector
    :param int limit: limit for simultaneous connections to the same
                      endpoint.  Endpoints are the same if they are
                      have equal ``(host, port, is_ssl)`` triple.
-                     If *limit* is ``None`` the connector has no limit.
+                     If *limit* is ``None`` the connector has no limit (default: 20).
 
    :param bool force_close: do close underlying sockets after
                             connection releasing (optional).
