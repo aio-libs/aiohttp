@@ -584,6 +584,12 @@ class FrozenList(MutableSequence):
         self._items.insert(pos, item)
 
 
+class TimerHandle(asyncio.TimerHandle):
+
+    def cancel(self):
+        asyncio.Handle.cancel(self)
+
+
 class TimeService:
 
     def __init__(self, loop):
@@ -669,7 +675,7 @@ class TimeService:
 
         Absolute time corresponds to the time service's time() method.
         """
-        timer = asyncio.TimerHandle(when, callback, args, self._loop)
+        timer = TimerHandle(when, callback, args, self._loop)
         heapq.heappush(self._scheduled, timer)
         return timer
 
