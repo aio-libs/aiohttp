@@ -27,7 +27,7 @@ if uvloop:
 
 
 @pytest.yield_fixture(params=LOOP_FACTORIES)
-def loop(request):
+def _loop(request):
     with loop_context(request.param) as loop:
         yield loop
 
