@@ -6,6 +6,7 @@ import binascii
 import cgi
 import datetime
 import functools
+import heapq
 import io
 import os
 import re
@@ -13,7 +14,7 @@ import warnings
 from collections import MutableSequence, namedtuple
 from functools import total_ordering
 from pathlib import Path
-from time import gmtime, time
+from time import gmtime
 from urllib.parse import urlencode
 
 from async_timeout import timeout
@@ -584,29 +585,45 @@ class FrozenList(MutableSequence):
 
 
 class TimeService:
+
     def __init__(self, loop):
         self._loop = loop
-        self._time = time()
+        self._time = loop.time()
         self._strtime = None
-        self._count = 0
-        self._cb = loop.call_later(1, self._on_cb)
+        self._cb = loop.call_later(self._time + 1.0, self._on_cb)
+        self._scheduled = []
 
     def stop(self):
         if self._cb:
             self._cb.cancel()
+
+        # cancel all scheduled handles
+        for handle in self._scheduled:
+            handle.cancel()
+
         self._cb = None
+        self._scheduled = []
         self._loop = None
 
     def _on_cb(self):
-        self._count += 1
-        if self._count >= 10*60:
-            # reset timer every 10 minutes
-            self._count = 0
-            self._time = time()
-        else:
-            self._time += 1
+        self._time = self._loop.time()
+
+        # Handle 'later' callbacks that are ready.
+        ready = []
+        end_time = self._time
+        while self._scheduled:
+            handle = self._scheduled[0]
+            if handle._when >= end_time:
+                break
+            handle = heapq.heappop(self._scheduled)
+            ready.append(handle)
+
+        for handle in ready:
+            if not handle._cancelled:
+                handle._run()
+
         self._strtime = None
-        self._cb = self._loop.call_later(1, self._on_cb)
+        self._cb = self._loop.call_later(self._time + 1.0, self._on_cb)
 
     def _format_date_time(self):
         # Weekday and month names for HTTP date/time formatting;
@@ -630,6 +647,31 @@ class TimeService:
         if s is None:
             self._strtime = s = self._format_date_time()
         return self._strtime
+
+    def call_later(self, delay, callback, *args):
+        """Arrange for a callback to be called at a given time.
+
+        Return a Handle: an opaque object with a cancel() method that
+        can be used to cancel the call.
+
+        The delay can be an int or float, expressed in seconds.  It is
+        always relative to the current time.
+
+        Any positional arguments after the callback will be passed to
+        the callback when it is called.
+
+        Time resolution is aproximatly one second.
+        """
+        return self.call_at(self._time + delay, callback, *args)
+
+    def call_at(self, when, callback, *args):
+        """Like call_later(), but uses an absolute time.
+
+        Absolute time corresponds to the time service's time() method.
+        """
+        timer = asyncio.TimerHandle(when, callback, args, self._loop)
+        heapq.heappush(self._scheduled, timer)
+        return timer
 
 
 class HeadersMixin:

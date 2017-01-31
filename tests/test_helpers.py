@@ -387,22 +387,34 @@ def test_is_ip_address_invalid_type():
         helpers.is_ip_address(object())
 
 
+# ----------------------------------- TimeService ----------------------
+
+
 @pytest.fixture
 def time_service(loop):
     return helpers.TimeService(loop)
 
 
 class TestTimeService:
+
     def test_ctor(self, time_service):
         assert time_service._cb is not None
         assert time_service._time is not None
         assert time_service._strtime is None
-        assert time_service._count == 0
 
     def test_stop(self, time_service):
         time_service.stop()
         assert time_service._cb is None
         assert time_service._loop is None
+
+    def test_cancel_handles_on_stop(self, time_service):
+        def cb(x):
+            return x
+
+        handle = time_service.call_later(10, cb, 'test')
+        time_service.stop()
+        assert handle._cancelled
+        assert not time_service._scheduled
 
     def test_double_stopping(self, time_service):
         time_service.stop()
@@ -423,11 +435,55 @@ class TestTimeService:
     def test_recalc_time(self, time_service):
         time_service._time = 123
         time_service._strtime = 'asd'
-        time_service._count = 1000000
         time_service._on_cb()
         assert time_service._strtime is None
-        assert time_service._count == 0
         assert time_service._time > 1234
+
+    def test_call_later(self, time_service):
+        time_service._loop.time = mock.Mock()
+        time_service._loop.time.return_value = 1477797232
+        time_service._time = 1477797232
+
+        called = 0
+
+        def cb():
+            nonlocal called
+            called += 1
+
+        time_service.call_later(10, cb)
+        time_service.call_later(20, cb)
+        time_service._loop.time.return_value = 1477797232 + 11
+        time_service._on_cb()
+
+        assert called == 1
+
+        time_service._loop.time.return_value = 1477797232 + 21
+        time_service._on_cb()
+
+        assert called == 2
+        assert not time_service._scheduled
+
+    def test_call_cancel(self, time_service):
+        time_service._loop.time = mock.Mock()
+        time_service._loop.time.return_value = 1477797232
+        time_service._time = 1477797232
+
+        called = 0
+
+        def cb():
+            nonlocal called
+            called += 1
+
+        handle = time_service.call_later(10, cb)
+        handle.cancel()
+        time_service._loop.time.return_value = 1477797232 + 11
+        time_service._on_cb()
+
+        assert called == 0
+        assert not time_service._scheduled
+
+
+# ----------------------------------- FrozenList ----------------------
 
 
 class TestFrozenList:
