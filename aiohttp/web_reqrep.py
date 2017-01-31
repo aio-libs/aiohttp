@@ -107,6 +107,10 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             self._task,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header)
 
+    @property
+    def task(self):
+        return self._task
+
     # MutableMapping API
 
     def __getitem__(self, key):
@@ -519,8 +523,6 @@ class StreamResponse(HeadersMixin):
         self._resp_impl = None
         self._eof_sent = False
 
-        self._task = None
-
         if headers is not None:
             # TODO: optimize CIMultiDict extending
             self._headers.extend(headers)
@@ -539,7 +541,7 @@ class StreamResponse(HeadersMixin):
 
     @property
     def task(self):
-        return self._task
+        return getattr(self._req, 'task', None)
 
     @property
     def status(self):
@@ -863,7 +865,6 @@ class StreamResponse(HeadersMixin):
         resp_impl.headers = headers
 
         self._send_headers(resp_impl)
-        self._task = request._task
         return resp_impl
 
     def _send_headers(self, resp_impl):
@@ -901,6 +902,7 @@ class StreamResponse(HeadersMixin):
 
         yield from self._resp_impl.write_eof()
         self._eof_sent = True
+        self._req = None
 
     def __repr__(self):
         if self.started:
