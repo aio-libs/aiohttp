@@ -17,6 +17,8 @@ CHANGES
 
 - Remove `web.Application` dependency from `web.UrlDispatcher` #1510
 
+- Accepting back-pressure from slow websocket clients #1367
+
 - Do not pause transport during set_parser stage #1211
 
 - Lingering close doesn't terminate before timeout #1559

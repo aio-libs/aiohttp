@@ -1109,6 +1109,16 @@ WebSocketResponse
 .. seealso:: :ref:`WebSockets handling<aiohttp-web-websockets>`
 
 
+WebSocketResponse Send Flow Control
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To enable send flow control you need to treat methods
+`ping()`, `pong()`, `send_str()`, `send_bytes()`, `send_json()` as coroutines.
+By default write buffer size is set to 64k.
+
+.. versionadded:: 1.3.0
+             
+
 WebSocketReady
 ^^^^^^^^^^^^^^
 
