@@ -691,8 +691,6 @@ class LowresTimeout:
     """ Low resolution timeout context manager """
 
     def __init__(self, timeout, time_service, loop):
-        assert timeout is not None
-
         self._loop = loop
         self._timeout = timeout
         self._time_service = time_service
@@ -712,14 +710,14 @@ class LowresTimeout:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        self._task = None
+
         if exc_type is asyncio.CancelledError and self._cancelled:
             self._cancel_handler = None
-            self._task = None
             raise asyncio.TimeoutError from None
         if self._timeout is not None:
             self._cancel_handler.cancel()
             self._cancel_handler = None
-        self._task = None
 
     def _cancel_task(self):
         self._cancelled = self._task.cancel()

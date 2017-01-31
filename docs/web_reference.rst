@@ -857,6 +857,12 @@ WebSocketResponse
    communicate with websocket client by :meth:`send_str`,
    :meth:`receive` and others.
 
+   .. versionadded:: 1.3.0
+
+   To enable back-pressure from slow websocket clients treat methods
+   `ping()`, `pong()`, `send_str()`, `send_bytes()`, `send_json()` as coroutines.
+   By default write buffer size is set to 64k.
+
    :param bool autoping: Automatically send
                          :const:`~aiohttp.WSMsgType.PONG` on
                          :const:`~aiohttp.WSMsgType.PING`
@@ -867,6 +873,11 @@ WebSocketResponse
                          :const:`~aiohttp.WSMsgType.PING`
                          requests, you need to do this explicitly
                          using :meth:`ping` method.
+
+   .. versionadded:: 1.3.0
+
+   :param float receive_timeout: Timeout value for `receive` operations.
+                                 Default value is None (no timeout for receive operation)
 
    .. versionadded:: 0.19
 
@@ -1033,7 +1044,7 @@ WebSocketResponse
 
       :raise RuntimeError: if connection is not started or closing
 
-   .. coroutinemethod:: receive()
+   .. coroutinemethod:: receive(timeout=None)
 
       A :ref:`coroutine<coroutine>` that waits upcoming *data*
       message from peer and returns it.
@@ -1050,13 +1061,16 @@ WebSocketResponse
 
          Can only be called by the request handling task.
 
+      :param timeout: timeout for `receive` operation.
+                      timeout value overrides response`s receive_timeout attribute.
+
       :return: :class:`~aiohttp.WSMessage`
 
       :raise RuntimeError: if connection is not started
 
       :raise: :exc:`~aiohttp.errors.WSClientDisconnectedError` on closing.
 
-   .. coroutinemethod:: receive_str()
+   .. coroutinemethod:: receive_str(*, timeout=None)
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
@@ -1066,11 +1080,14 @@ WebSocketResponse
 
          Can only be called by the request handling task.
 
+      :param timeout: timeout for `receive` operation.
+                      timeout value overrides response`s receive_timeout attribute.
+
       :return str: peer's message content.
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
 
-   .. coroutinemethod:: receive_bytes()
+   .. coroutinemethod:: receive_bytes(*, timeout=None)
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
@@ -1080,11 +1097,14 @@ WebSocketResponse
 
          Can only be called by the request handling task.
 
+      :param timeout: timeout for `receive` operation.
+                      timeout value overrides response`s receive_timeout attribute.
+
       :return bytes: peer's message content.
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.TEXT`.
 
-   .. coroutinemethod:: receive_json(*, loads=json.loads)
+   .. coroutinemethod:: receive_json(*, loads=json.loads, timeout=None)
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive_str` and loads the
       JSON string to a Python dict.
@@ -1098,6 +1118,9 @@ WebSocketResponse
                               with parsed JSON (:func:`json.loads` by
                               default).
 
+      :param timeout: timeout for `receive` operation.
+                      timeout value overrides response`s receive_timeout attribute.
+
       :return dict: loaded JSON content
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
@@ -1107,16 +1130,6 @@ WebSocketResponse
 
 
 .. seealso:: :ref:`WebSockets handling<aiohttp-web-websockets>`
-
-
-WebSocketResponse Send Flow Control
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-To enable send flow control you need to treat methods
-`ping()`, `pong()`, `send_str()`, `send_bytes()`, `send_json()` as coroutines.
-By default write buffer size is set to 64k.
-
-.. versionadded:: 1.3.0
              
 
 WebSocketReady

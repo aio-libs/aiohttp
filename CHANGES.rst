@@ -4,7 +4,7 @@ CHANGES
 1.3.0 (XXXX-XX-XX)
 ------------------
 
-- separate read + connect + request timeouts # 1523
+- Separate read + connect + request timeouts # 1523
 
 - Fix polls demo run application #1487
 
@@ -15,6 +15,8 @@ CHANGES
 - Do not use readline when reading the content of a part
   in the multipart reader #1535
 
+- Added `receive_timeout` timeout for websocket to receive complete message. #1024 #1325
+  
 - Remove `web.Application` dependency from `web.UrlDispatcher` #1510
 
 - Accepting back-pressure from slow websocket clients #1367

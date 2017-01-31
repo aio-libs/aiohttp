@@ -386,6 +386,7 @@ The client session supports the context manager protocol for self closing.
          URLs may be either :class:`str` or :class:`~yarl.URL`
 
    .. comethod:: ws_connect(url, *, protocols=(), timeout=10.0,\
+                            receive_timeout=None,\
                             auth=None,\
                             autoclose=True,\
                             autoping=True,\
@@ -401,8 +402,11 @@ The client session supports the context manager protocol for self closing.
 
       :param tuple protocols: Websocket protocols
 
-      :param float timeout: Timeout for websocket read. 10 seconds by default
+      :param float timeout: Timeout for websocket to close. 10 seconds by default
 
+      :param float receive_timeout: Timeout for websocket to receive complete message.
+                                    None(unlimited) seconds by default
+ 
       :param aiohttp.BasicAuth auth: an object that represents HTTP
                                      Basic Authorization (optional)
 

@@ -8,6 +8,7 @@ import socket
 import sys
 import unittest
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from unittest import mock
 
 from multidict import CIMultiDict
@@ -512,6 +513,13 @@ def make_mocked_request(method, path, headers=None, *,
     time_service = mock.Mock()
     time_service.time.return_value = 12345
     time_service.strtime.return_value = "Tue, 15 Nov 1994 08:12:31 GMT"
+
+    @contextmanager
+    def timeout(*args, **kw):
+        yield
+
+    time_service.timeout = mock.Mock()
+    time_service.timeout.side_effect = timeout
 
     task = mock.Mock()
 

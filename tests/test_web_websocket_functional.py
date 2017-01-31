@@ -565,3 +565,59 @@ def test_receive_msg(loop, test_client):
     ws = yield from client.ws_connect('/')
     ws.send_bytes(b'data')
     yield from ws.close()
+
+
+@asyncio.coroutine
+def test_receive_timeout(loop, test_client):
+    raised = False
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse(receive_timeout=1.0)
+        yield from ws.prepare(request)
+
+        try:
+            yield from ws.receive()
+        except asyncio.TimeoutError:
+            nonlocal raised
+            raised = True
+
+        yield from ws.close()
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    ws = yield from client.ws_connect('/')
+    yield from asyncio.sleep(1.06, loop=loop)
+    yield from ws.close()
+    assert raised
+
+
+@asyncio.coroutine
+def test_custom_receive_timeout(loop, test_client):
+    raised = False
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse(receive_timeout=None)
+        yield from ws.prepare(request)
+
+        try:
+            yield from ws.receive(1.0)
+        except asyncio.TimeoutError:
+            nonlocal raised
+            raised = True
+
+        yield from ws.close()
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    ws = yield from client.ws_connect('/')
+    yield from asyncio.sleep(1.06, loop=loop)
+    yield from ws.close()
+    assert raised

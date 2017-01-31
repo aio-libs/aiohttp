@@ -469,3 +469,53 @@ def test_recv_timeout(loop, test_client):
             yield from resp.receive()
 
     yield from resp.close()
+
+
+@asyncio.coroutine
+def test_receive_timeout(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+        yield from ws.receive_str()
+        yield from asyncio.sleep(1.1, loop=request.app.loop)
+        yield from ws.close()
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+
+    client = yield from test_client(app)
+    resp = yield from client.ws_connect('/', receive_timeout=0.1)
+    resp.send_str('ask')
+
+    with pytest.raises(asyncio.TimeoutError):
+        yield from resp.receive(0.1)
+
+    yield from resp.close()
+
+
+@asyncio.coroutine
+def test_custom_receive_timeout(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+        yield from ws.receive_str()
+        yield from asyncio.sleep(1.1, loop=request.app.loop)
+        yield from ws.close()
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+
+    client = yield from test_client(app)
+    resp = yield from client.ws_connect('/')
+    resp.send_str('ask')
+
+    with pytest.raises(asyncio.TimeoutError):
+        yield from resp.receive(0.1)
+
+    yield from resp.close()
