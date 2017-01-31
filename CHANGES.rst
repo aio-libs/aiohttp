@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-1.2.1 (XXXX-XX-XX)
+1.3.0 (XXXX-XX-XX)
 ------------------
 
 - Fix polls demo run application #1487
@@ -25,6 +25,8 @@ CHANGES
   when calling a responses `text()` method #1542
 
 - Return 504 if request handle raises TimeoutError.
+
+- Refactor how we use keep-alive and clone lingering timeouts.
 
 
 1.2.0 (2016-12-17)

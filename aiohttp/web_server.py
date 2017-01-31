@@ -17,11 +17,13 @@ class RequestHandler(ServerHttpProtocol):
     _request = None
 
     def __init__(self, manager, **kwargs):
+        kwargs['time_service'] = manager.time_service
+
         super().__init__(**kwargs)
+
         self._manager = manager
         self._request_factory = manager.request_factory
         self._handler = manager.handler
-        self.time_service = manager.time_service
 
     def __repr__(self):
         if self._request is None:
@@ -45,7 +47,6 @@ class RequestHandler(ServerHttpProtocol):
         super().connection_lost(exc)
         self._request_factory = None
         self._manager = None
-        self.time_service = None
         self._handler = None
 
     @asyncio.coroutine

@@ -10,7 +10,7 @@ from html import escape as html_escape
 
 import aiohttp
 from aiohttp import errors, hdrs, helpers, streams
-from aiohttp.helpers import Timeout, _get_kwarg, ensure_future
+from aiohttp.helpers import TimeService, _get_kwarg, ensure_future
 from aiohttp.log import access_logger, server_logger
 
 __all__ = ('ServerHttpProtocol',)
@@ -51,6 +51,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     status line, bad headers or incomplete payload. If any error occurs,
     connection gets closed.
 
+    :param time_service: Low resolution time service
+
     :param keepalive_timeout: number of seconds before closing
                               keep-alive connection
     :type keepalive_timeout: int or None
@@ -84,6 +86,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     _keepalive = False  # keep transport open
 
     def __init__(self, *, loop=None,
+                 time_service=None,
                  keepalive_timeout=75,  # NGINX default value is 75 secs
                  tcp_keepalive=True,
                  slow_request_timeout=0,
@@ -115,12 +118,15 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             loop=loop,
             disconnect_error=errors.ClientDisconnectedError, **kwargs)
 
+        self._loop = loop if loop is not None else asyncio.get_event_loop()
+        self._time_service = (
+            time_service if time_service is not None
+            else TimeService(self._loop))
         self._tcp_keepalive = tcp_keepalive
         self._keepalive_timeout = keepalive_timeout
         self._slow_request_timeout = slow_request_timeout
         self._lingering_time = float(lingering_time)
         self._lingering_timeout = float(lingering_timeout)
-        self._loop = loop if loop is not None else asyncio.get_event_loop()
 
         self._request_parser = aiohttp.HttpRequestParser(
             max_line_size=max_line_size,
@@ -136,6 +142,10 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         else:
             self.access_logger = None
         self._closing = False
+
+    @property
+    def time_service(self):
+        return self._time_service
 
     @property
     def keep_alive_timeout(self):
@@ -160,14 +170,14 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         if self._request_count > 1 and not self._reading_request:
             # force-close idle keep-alive connections
             self._request_handler.cancel()
-        elif timeout:
-            canceller = self._loop.call_later(timeout,
-                                              self._request_handler.cancel)
-            with suppress(asyncio.CancelledError):
-                yield from self._request_handler
-            canceller.cancel()
         else:
-            self._request_handler.cancel()
+            if timeout:
+                with suppress(asyncio.CancelledError):
+                    with self.time_service.timeout(timeout):
+                        yield from self._request_handler
+
+            if self._request_handler is not None:
+                self._request_handler.cancel()
 
     def connection_made(self, transport):
         super().connection_made(transport)
@@ -183,6 +193,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         self._closing = True
         if self._request_handler is not None:
             self._request_handler.cancel()
+
+        self._time_service = None
 
     def data_received(self, data):
         super().data_received(data)
@@ -222,6 +234,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         """
         loop = self._loop
         reader = self.reader
+        time_service = self.time_service
         self.writer.set_tcp_nodelay(True)
 
         try:
@@ -234,8 +247,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                 payload = None
 
                 # slow request timer
-                with Timeout(max(self._slow_request_timeout,
-                                 self._keepalive_timeout), loop=loop):
+                with time_service.timeout(max(self._slow_request_timeout,
+                                              self._keepalive_timeout)):
                     # read request headers
                     httpstream = reader.set_parser(self._request_parser)
                     message = yield from httpstream.read()
@@ -271,7 +284,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                             'Start lingering close timer for %s sec.',
                             self._lingering_time)
 
-                        now = loop.time()
+                        now = time_service.time()
                         end_time = now + self._lingering_time
 
                         with suppress(asyncio.TimeoutError,
@@ -279,11 +292,11 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                             while not payload.is_eof() and now < end_time:
                                 timeout = min(
                                     end_time - now, self._lingering_timeout)
-                                with Timeout(timeout, loop=loop):
+                                with time_service.timeout(timeout):
                                     # read and ignore
                                     yield from payload.readany()
 
-                                now = loop.time()
+                                now = time_service.time()
                 else:
                     reader.unset_parser()
                     if not self._keepalive or not self._keepalive_timeout:
