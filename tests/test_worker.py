@@ -152,6 +152,7 @@ def test_make_handler(worker, mocker):
 def test_make_handler_wsgi(worker, mocker):
     worker.wsgi = lambda env, start_resp: start_resp()
     worker.loop = mock.Mock()
+    worker.loop.time.return_value = 1477797232
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
