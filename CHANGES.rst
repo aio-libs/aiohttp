@@ -1,18 +1,36 @@
 CHANGES
 =======
 
-1.2.1 (XXXX-XX-XX)
+1.3.0 (XXXX-XX-XX)
 ------------------
+
+- separate read + connect + request timeouts # 1523
 
 - Fix polls demo run application #1487
 
 - Ignore unknown 1XX status codes in client #1353
 
-- remove `web.Application` dependency from `web.UrlDispatcher` #1510
+- Fix sub-Multipart messages missing their headers on serialization #1525
 
-- separate read + connect + request timeouts # 1523
+- Do not use readline when reading the content of a part
+  in the multipart reader #1535
 
- 
+- Remove `web.Application` dependency from `web.UrlDispatcher` #1510
+
+- Do not pause transport during set_parser stage #1211
+
+- Lingering close doesn't terminate before timeout #1559
+  
+- Lots of CancelledError when requests are interrupted #1565
+
+- Allow users to specify what should happen to decoding errors
+  when calling a responses `text()` method #1542
+
+- Return 504 if request handle raises TimeoutError.
+
+- Refactor how we use keep-alive and clone lingering timeouts.
+
+
 1.2.0 (2016-12-17)
 ------------------
 

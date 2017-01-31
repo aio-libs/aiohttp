@@ -13,8 +13,14 @@ class Stream(object):
     async def read(self, size=None):
         return self.content.read(size)
 
+    def at_eof(self):
+        return self.content.tell() == len(self.content.getbuffer())
+
     async def readline(self):
         return self.content.readline()
+
+    def unread_data(self, data):
+        self.content = io.BytesIO(data + self.content.read())
 
 
 async def test_async_for_reader(loop):
