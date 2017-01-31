@@ -65,6 +65,7 @@ PACK_LEN2 = Struct('!BBH').pack
 PACK_LEN3 = Struct('!BBQ').pack
 PACK_CLOSE_CODE = Struct('!H').pack
 MSG_SIZE = 2 ** 14
+DEFAULT_LIMIT = 2 ** 16
 
 
 _WSMessageBase = collections.namedtuple('_WSMessageBase',
@@ -299,10 +300,13 @@ def parse_frame(buf, continuation=False):
 
 class WebSocketWriter:
 
-    def __init__(self, writer, *, use_mask=False, random=random.Random()):
+    def __init__(self, writer, *,
+                 use_mask=False, limit=DEFAULT_LIMIT, random=random.Random()):
         self.writer = writer
         self.use_mask = use_mask
         self.randrange = random.randrange
+        self._limit = limit
+        self._output_size = 0
 
     def _send_frame(self, message, opcode):
         """Send a frame over the websocket with message as its payload."""
@@ -325,6 +329,7 @@ class WebSocketWriter:
             mask = mask.to_bytes(4, 'big')
             message = _websocket_mask(mask, bytearray(message))
             self.writer.write(header + mask + message)
+            self._output_size += len(header) + len(mask) + len(message)
         else:
             if len(message) > MSG_SIZE:
                 self.writer.write(header)
@@ -332,36 +337,45 @@ class WebSocketWriter:
             else:
                 self.writer.write(header + message)
 
+            self._output_size += len(header) + len(message)
+
+        if self._output_size > self._limit:
+            self._output_size = 0
+            return self.writer.drain()
+
+        return ()
+
     def pong(self, message=b''):
         """Send pong message."""
         if isinstance(message, str):
             message = message.encode('utf-8')
-        self._send_frame(message, WSMsgType.PONG)
+        return self._send_frame(message, WSMsgType.PONG)
 
     def ping(self, message=b''):
         """Send ping message."""
         if isinstance(message, str):
             message = message.encode('utf-8')
-        self._send_frame(message, WSMsgType.PING)
+        return self._send_frame(message, WSMsgType.PING)
 
     def send(self, message, binary=False):
         """Send a frame over the websocket with message as its payload."""
         if isinstance(message, str):
             message = message.encode('utf-8')
         if binary:
-            self._send_frame(message, WSMsgType.BINARY)
+            return self._send_frame(message, WSMsgType.BINARY)
         else:
-            self._send_frame(message, WSMsgType.TEXT)
+            return self._send_frame(message, WSMsgType.TEXT)
 
     def close(self, code=1000, message=b''):
         """Close the websocket, sending the specified code and message."""
         if isinstance(message, str):
             message = message.encode('utf-8')
-        self._send_frame(
+        return self._send_frame(
             PACK_CLOSE_CODE(code) + message, opcode=WSMsgType.CLOSE)
 
 
-def do_handshake(method, headers, transport, protocols=()):
+def do_handshake(method, headers, transport,
+                 protocols=(), write_buffer_size=DEFAULT_LIMIT):
     """Prepare WebSocket handshake.
 
     It return HTTP response code, response headers, websocket parser,
@@ -371,6 +385,7 @@ def do_handshake(method, headers, transport, protocols=()):
     the returned response headers contain the first protocol in this list
     which the server also knows.
 
+    `write_buffer_size` max size of write buffer before `drain()` get called.
     """
     # WebSocket accepts only GET
     if method.upper() != hdrs.METH_GET:
@@ -434,5 +449,5 @@ def do_handshake(method, headers, transport, protocols=()):
     return (101,
             response_headers,
             WebSocketParser,
-            WebSocketWriter(transport),
+            WebSocketWriter(transport, limit=write_buffer_size),
             protocol)

@@ -361,6 +361,8 @@ def test_receive_exc_in_reader(make_request, loop, reader):
     res = helpers.create_future(loop)
     res.set_exception(exc)
     reader.read = make_mocked_coro(res)
+    ws._resp_impl.transport.drain.return_value = helpers.create_future(loop)
+    ws._resp_impl.transport.drain.return_value.set_result(True)
 
     msg = yield from ws.receive()
     assert msg.type == WSMsgType.ERROR
@@ -444,7 +446,7 @@ def test_concurrent_receive(make_request):
 
 
 @asyncio.coroutine
-def test_close_exc(make_request, reader, loop):
+def test_close_exc(make_request, reader, loop, mocker):
     req = make_request('GET', '/')
 
     ws = WebSocketResponse()
@@ -453,6 +455,8 @@ def test_close_exc(make_request, reader, loop):
     exc = ValueError()
     reader.read.return_value = helpers.create_future(loop)
     reader.read.return_value.set_exception(exc)
+    ws._resp_impl.transport.drain.return_value = helpers.create_future(loop)
+    ws._resp_impl.transport.drain.return_value.set_result(True)
 
     yield from ws.close()
     assert ws.closed

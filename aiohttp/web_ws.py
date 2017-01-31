@@ -187,6 +187,7 @@ class WebSocketResponse(StreamResponse):
             self._closed = True
             try:
                 self._writer.close(code, message)
+                yield from self.drain()
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._close_code = 1006
                 raise
