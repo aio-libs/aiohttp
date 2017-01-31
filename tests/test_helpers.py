@@ -1,10 +1,26 @@
 import asyncio
 import datetime
+import pytest
 from unittest import mock
 
-import pytest
-
 from aiohttp import helpers
+from aiohttp.test_utils import loop_context
+
+try:
+    import uvloop
+except:
+    uvloop = None
+
+
+LOOP_FACTORIES = [asyncio.new_event_loop]
+if uvloop:
+    LOOP_FACTORIES.append(uvloop.new_event_loop)
+
+
+@pytest.yield_fixture(params=LOOP_FACTORIES)
+def _loop(request):
+    with loop_context(request.param) as loop:
+        yield loop
 
 
 def test_parse_mimetype_1():
