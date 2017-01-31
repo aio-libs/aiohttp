@@ -21,10 +21,13 @@ from multidict import MultiDict, MultiDictProxy
 
 from . import hdrs
 
-try:
-    from asyncio import ensure_future
-except ImportError:
-    ensure_future = asyncio.async
+# Because this has asyncio.async as a 3rd arg for getattr
+# instead of this throwing an AttrubuteError when
+# ensure_future is not found in asyncio it returns
+# asyncio.async instead.
+ensure_future = getattr(asyncio, 'ensure_future', getattr(asyncio,
+                                                          'async',
+                                                          None))
 
 
 __all__ = ('BasicAuth', 'create_future', 'FormData', 'parse_mimetype',
