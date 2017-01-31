@@ -13,17 +13,20 @@ PY_352 = sys.version_info >= (3, 5, 2)
 class ClientWebSocketResponse:
 
     def __init__(self, reader, writer, protocol,
-                 response, timeout, autoclose, autoping, loop):
+                 response, timeout, autoclose, autoping, loop, *,
+                 time_service=None, receive_timeout=None):
         self._response = response
         self._conn = response.connection
 
         self._writer = writer
         self._reader = reader
         self._protocol = protocol
+        self._time_service = time_service
         self._closed = False
         self._closing = False
         self._close_code = None
         self._timeout = timeout
+        self._receive_timeout = receive_timeout
         self._autoclose = autoclose
         self._autoping = autoping
         self._loop = loop
@@ -115,7 +118,7 @@ class ClientWebSocketResponse:
             return False
 
     @asyncio.coroutine
-    def receive(self):
+    def receive(self, timeout=None):
         if self._waiting:
             raise RuntimeError('Concurrent call to receive() is not allowed')
 
@@ -126,7 +129,9 @@ class ClientWebSocketResponse:
                     return CLOSED_MESSAGE
 
                 try:
-                    msg = yield from self._reader.read()
+                    with self._time_service.timeout(
+                            timeout or self._receive_timeout):
+                        msg = yield from self._reader.read()
                 except (asyncio.CancelledError, asyncio.TimeoutError):
                     raise
                 except WebSocketError as exc:
@@ -156,8 +161,8 @@ class ClientWebSocketResponse:
             self._waiting = False
 
     @asyncio.coroutine
-    def receive_str(self):
-        msg = yield from self.receive()
+    def receive_str(self, *, timeout=None):
+        msg = yield from self.receive(timeout)
         if msg.type != WSMsgType.TEXT:
             raise TypeError(
                 "Received message {}:{!r} is not str".format(msg.type,
@@ -165,8 +170,8 @@ class ClientWebSocketResponse:
         return msg.data
 
     @asyncio.coroutine
-    def receive_bytes(self):
-        msg = yield from self.receive()
+    def receive_bytes(self, *, timeout=None):
+        msg = yield from self.receive(timeout)
         if msg.type != WSMsgType.BINARY:
             raise TypeError(
                 "Received message {}:{!r} is not bytes".format(msg.type,
@@ -174,8 +179,8 @@ class ClientWebSocketResponse:
         return msg.data
 
     @asyncio.coroutine
-    def receive_json(self, *, loads=json.loads):
-        data = yield from self.receive_str()
+    def receive_json(self, *, loads=json.loads, timeout=None):
+        data = yield from self.receive_str(timeout=timeout)
         return loads(data)
 
     if PY_35:

@@ -19,7 +19,7 @@ from .client_reqrep import ClientRequest, ClientResponse
 from .client_ws import ClientWebSocketResponse
 from .cookiejar import CookieJar
 from .errors import WSServerHandshakeError
-from .helpers import Timeout
+from .helpers import Timeout, TimeService
 
 __all__ = ('ClientSession', 'request', 'get', 'options', 'head',
            'delete', 'post', 'put', 'patch', 'ws_connect')
@@ -55,7 +55,7 @@ class ClientSession:
                  response_class=ClientResponse,
                  ws_response_class=ClientWebSocketResponse,
                  version=aiohttp.HttpVersion11,
-                 cookie_jar=None, read_timeout=None):
+                 cookie_jar=None, read_timeout=None, time_service=None):
 
         if connector is None:
             connector = aiohttp.TCPConnector(loop=loop)
@@ -107,6 +107,10 @@ class ClientSession:
         self._request_class = request_class
         self._response_class = response_class
         self._ws_response_class = ws_response_class
+        self._time_service = (
+            time_service
+            if time_service is not None
+            else TimeService(self._loop))
 
     def __del__(self, _warnings=warnings):
         if not self.closed:
@@ -119,6 +123,10 @@ class ClientSession:
             if self._source_traceback is not None:
                 context['source_traceback'] = self._source_traceback
             self._loop.call_exception_handler(context)
+
+    @property
+    def time_service(self):
+        return self._time_service
 
     def request(self, method, url, **kwargs):
         """Perform HTTP request."""
@@ -278,6 +286,7 @@ class ClientSession:
     def ws_connect(self, url, *,
                    protocols=(),
                    timeout=10.0,
+                   receive_timeout=None,
                    autoclose=True,
                    autoping=True,
                    auth=None,
@@ -290,6 +299,7 @@ class ClientSession:
             self._ws_connect(url,
                              protocols=protocols,
                              timeout=timeout,
+                             receive_timeout=receive_timeout,
                              autoclose=autoclose,
                              autoping=autoping,
                              auth=auth,
@@ -302,6 +312,7 @@ class ClientSession:
     def _ws_connect(self, url, *,
                     protocols=(),
                     timeout=10.0,
+                    receive_timeout=None,
                     autoclose=True,
                     autoping=True,
                     auth=None,
@@ -394,7 +405,9 @@ class ClientSession:
                                            timeout,
                                            autoclose,
                                            autoping,
-                                           self._loop)
+                                           self._loop,
+                                           time_service=self.time_service,
+                                           receive_timeout=receive_timeout)
 
     def _prepare_headers(self, headers):
         """ Add default headers and transform it to CIMultiDict
