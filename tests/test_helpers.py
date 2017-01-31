@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 from unittest import mock
 
@@ -481,6 +482,36 @@ class TestTimeService:
 
         assert called == 0
         assert not time_service._scheduled
+
+    @asyncio.coroutine
+    def test_timeout(self, time_service, loop):
+        canceled_raised = False
+
+        @asyncio.coroutine
+        def long_running_task():
+            try:
+                yield from asyncio.sleep(10, loop=loop)
+            except asyncio.CancelledError:
+                nonlocal canceled_raised
+                canceled_raised = True
+                raise
+
+        with pytest.raises(asyncio.TimeoutError):
+            with time_service.timeout(0.01):
+                yield from long_running_task()
+        assert canceled_raised, 'CancelledError was not raised'
+
+    @asyncio.coroutine
+    def test_timeout_finish_in_time(self, time_service, loop):
+        @asyncio.coroutine
+        def long_running_task():
+            yield from asyncio.sleep(0.01, loop=loop)
+            return 'done'
+
+        with time_service.timeout(0.1):
+            resp = yield from long_running_task()
+
+        assert resp == 'done'
 
 
 # ----------------------------------- FrozenList ----------------------
