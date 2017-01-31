@@ -4,6 +4,8 @@ CHANGES
 1.3.0 (XXXX-XX-XX)
 ------------------
 
+- separate read + connect + request timeouts # 1523
+
 - Fix polls demo run application #1487
 
 - Ignore unknown 1XX status codes in client #1353
