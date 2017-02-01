@@ -626,13 +626,12 @@ def test_custom_receive_timeout(loop, test_client):
 
 
 @asyncio.coroutine
-def test_autoping_interval(loop, test_client):
+def test_heartbeat(loop, test_client):
     @asyncio.coroutine
     def handler(request):
-        print('server', request._time_service)
         request._time_service._interval = 0.1
 
-        ws = web.WebSocketResponse(autoping_interval=0.05)
+        ws = web.WebSocketResponse(heartbeat=0.05)
         yield from ws.prepare(request)
         yield from ws.receive()
         yield from ws.close()
@@ -651,7 +650,7 @@ def test_autoping_interval(loop, test_client):
 
 
 @asyncio.coroutine
-def test_autoping_interval_no_pong(loop, test_client):
+def test_heartbeat_no_pong(loop, test_client):
     cancelled = False
 
     @asyncio.coroutine
@@ -660,7 +659,7 @@ def test_autoping_interval_no_pong(loop, test_client):
         request._time_service._interval = 0.1
         request._time_service._on_cb()
 
-        ws = web.WebSocketResponse(autoping_interval=0.05)
+        ws = web.WebSocketResponse(heartbeat=0.05)
         yield from ws.prepare(request)
 
         try:

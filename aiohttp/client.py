@@ -290,7 +290,7 @@ class ClientSession:
                    receive_timeout=None,
                    autoclose=True,
                    autoping=True,
-                   autoping_interval=None,
+                   heartbeat=None,
                    auth=None,
                    origin=None,
                    headers=None,
@@ -304,7 +304,7 @@ class ClientSession:
                              receive_timeout=receive_timeout,
                              autoclose=autoclose,
                              autoping=autoping,
-                             autoping_interval=autoping_interval,
+                             heartbeat=heartbeat,
                              auth=auth,
                              origin=origin,
                              headers=headers,
@@ -318,7 +318,7 @@ class ClientSession:
                     receive_timeout=None,
                     autoclose=True,
                     autoping=True,
-                    autoping_interval=None,
+                    heartbeat=None,
                     auth=None,
                     origin=None,
                     headers=None,
@@ -412,7 +412,7 @@ class ClientSession:
                                            self._loop,
                                            time_service=self.time_service,
                                            receive_timeout=receive_timeout,
-                                           autoping_interval=autoping_interval)
+                                           heartbeat=heartbeat)
 
     def _prepare_headers(self, headers):
         """ Add default headers and transform it to CIMultiDict

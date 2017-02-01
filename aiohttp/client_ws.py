@@ -15,7 +15,7 @@ class ClientWebSocketResponse:
     def __init__(self, reader, writer, protocol,
                  response, timeout, autoclose, autoping, loop, *,
                  time_service=None,
-                 receive_timeout=None, autoping_interval=None):
+                 receive_timeout=None, heartbeat=None):
         self._response = response
         self._conn = response.connection
 
@@ -30,39 +30,39 @@ class ClientWebSocketResponse:
         self._receive_timeout = receive_timeout
         self._autoclose = autoclose
         self._autoping = autoping
-        self._autoping_interval = autoping_interval
-        self._autoping_interval_cb = None
+        self._heartbeat = heartbeat
+        self._heartbeat_cb = None
         self._pong_response_cb = None
         self._loop = loop
         self._waiting = False
         self._exception = None
 
-        self._reset_autoping()
+        self._reset_heartbeat()
 
-    def _cancel_autoping(self):
+    def _cancel_heartbeat(self):
         if self._pong_response_cb is not None:
             self._pong_response_cb.cancel()
             self._pong_response_cb = None
 
-        if self._autoping_interval_cb is not None:
-            self._autoping_interval_cb.cancel()
-            self._autoping_interval_cb = None
+        if self._heartbeat_cb is not None:
+            self._heartbeat_cb.cancel()
+            self._heartbeat_cb = None
 
-    def _reset_autoping(self):
-        self._cancel_autoping()
+    def _reset_heartbeat(self):
+        self._cancel_heartbeat()
 
-        if self._autoping_interval is not None:
-            self._autoping_interval_cb = self._time_service.call_later(
-                self._autoping_interval, self._send_autoping)
+        if self._heartbeat is not None:
+            self._heartbeat_cb = self._time_service.call_later(
+                self._heartbeat, self._send_heartbeat)
 
-    def _send_autoping(self):
-        if self._autoping_interval is not None and not self._closed:
+    def _send_heartbeat(self):
+        if self._heartbeat is not None and not self._closed:
             self.ping()
 
             if self._pong_response_cb is not None:
                 self._pong_response_cb.cancel()
             self._pong_response_cb = self._time_service.call_later(
-                self._autoping_interval/2.0, self._pong_not_received)
+                self._heartbeat/2.0, self._pong_not_received)
 
     def _pong_not_received(self):
         self._closed = True
@@ -116,7 +116,7 @@ class ClientWebSocketResponse:
     @asyncio.coroutine
     def close(self, *, code=1000, message=b''):
         if not self._closed:
-            self._cancel_autoping()
+            self._cancel_heartbeat()
             self._closed = True
             try:
                 self._writer.close(code, message)
@@ -170,7 +170,7 @@ class ClientWebSocketResponse:
                     with self._time_service.timeout(
                             timeout or self._receive_timeout):
                         msg = yield from self._reader.read()
-                        self._reset_autoping()
+                        self._reset_heartbeat()
                 except (asyncio.CancelledError, asyncio.TimeoutError):
                     raise
                 except WebSocketError as exc:

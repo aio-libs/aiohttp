@@ -17,7 +17,7 @@ CHANGES
 
 - Added `receive_timeout` timeout for websocket to receive complete message. #1325
 
-- Added `autoping_interval` parameter for websocket to automatically send `ping` message. #1024 #777
+- Added `heartbeat` parameter for websocket to automatically send `ping` message. #1024 #777
 
 - Remove `web.Application` dependency from `web.UrlDispatcher` #1510
 

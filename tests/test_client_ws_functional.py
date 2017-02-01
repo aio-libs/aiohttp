@@ -520,7 +520,7 @@ def test_custom_receive_timeout(loop, test_client):
 
 
 @asyncio.coroutine
-def test_autoping_interval(loop, test_client):
+def test_heartbeat(loop, test_client):
     ping_received = False
 
     @asyncio.coroutine
@@ -538,7 +538,7 @@ def test_autoping_interval(loop, test_client):
     app.router.add_route('GET', '/', handler)
 
     client = yield from test_client(app)
-    resp = yield from client.ws_connect('/', autoping_interval=0.01)
+    resp = yield from client.ws_connect('/', heartbeat=0.01)
 
     yield from resp.receive()
     yield from resp.close()
@@ -547,7 +547,7 @@ def test_autoping_interval(loop, test_client):
 
 
 @asyncio.coroutine
-def test_autoping_interval_no_pong(loop, test_client):
+def test_heartbeat_no_pong(loop, test_client):
     ping_received = False
 
     @asyncio.coroutine
@@ -565,7 +565,7 @@ def test_autoping_interval_no_pong(loop, test_client):
     app.router.add_route('GET', '/', handler)
 
     client = yield from test_client(app)
-    resp = yield from client.ws_connect('/', autoping_interval=0.05)
+    resp = yield from client.ws_connect('/', heartbeat=0.05)
 
     yield from resp.receive()
     yield from resp.receive()
