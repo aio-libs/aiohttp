@@ -32,7 +32,8 @@ class WebSocketReady(namedtuple('WebSocketReady', 'ok protocol')):
 class WebSocketResponse(StreamResponse):
 
     def __init__(self, *,
-                 timeout=10.0, autoclose=True, autoping=True, protocols=()):
+                 timeout=10.0, receive_timeout=None,
+                 autoclose=True, autoping=True, protocols=()):
         super().__init__(status=101)
         self._protocols = protocols
         self._protocol = None
@@ -46,8 +47,10 @@ class WebSocketResponse(StreamResponse):
         self._waiting = False
         self._exception = None
         self._timeout = timeout
+        self._receive_timeout = receive_timeout
         self._autoclose = autoclose
         self._autoping = autoping
+        self._time_service = None
 
     @asyncio.coroutine
     def prepare(self, request):
@@ -74,6 +77,8 @@ class WebSocketResponse(StreamResponse):
                 raise HTTPBadRequest(text=err.message, headers=err.headers)
             else:  # pragma: no cover
                 raise HTTPInternalServerError() from err
+
+        self._time_service = request.time_service
 
         if self.status != status:
             self.set_status(status)
@@ -187,6 +192,7 @@ class WebSocketResponse(StreamResponse):
             self._closed = True
             try:
                 self._writer.close(code, message)
+                yield from self.drain()
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._close_code = 1006
                 raise
@@ -223,7 +229,7 @@ class WebSocketResponse(StreamResponse):
             return False
 
     @asyncio.coroutine
-    def receive(self):
+    def receive(self, timeout=None):
         if self._reader is None:
             raise RuntimeError('Call .prepare() first')
         if self._waiting:
@@ -239,7 +245,9 @@ class WebSocketResponse(StreamResponse):
                     return CLOSED_MESSAGE
 
                 try:
-                    msg = yield from self._reader.read()
+                    with self._time_service.timeout(
+                            timeout or self._receive_timeout):
+                        msg = yield from self._reader.read()
                 except (asyncio.CancelledError, asyncio.TimeoutError):
                     raise
                 except WebSocketError as exc:
@@ -280,8 +288,8 @@ class WebSocketResponse(StreamResponse):
         return (yield from self.receive())
 
     @asyncio.coroutine
-    def receive_str(self):
-        msg = yield from self.receive()
+    def receive_str(self, *, timeout=None):
+        msg = yield from self.receive(timeout)
         if msg.type != WSMsgType.TEXT:
             raise TypeError(
                 "Received message {}:{!r} is not str".format(msg.type,
@@ -289,8 +297,8 @@ class WebSocketResponse(StreamResponse):
         return msg.data
 
     @asyncio.coroutine
-    def receive_bytes(self):
-        msg = yield from self.receive()
+    def receive_bytes(self, *, timeout=None):
+        msg = yield from self.receive(timeout)
         if msg.type != WSMsgType.BINARY:
             raise TypeError(
                 "Received message {}:{!r} is not bytes".format(msg.type,
@@ -298,8 +306,8 @@ class WebSocketResponse(StreamResponse):
         return msg.data
 
     @asyncio.coroutine
-    def receive_json(self, *, loads=json.loads):
-        data = yield from self.receive_str()
+    def receive_json(self, *, loads=json.loads, timeout=None):
+        data = yield from self.receive_str(timeout=timeout)
         return loads(data)
 
     def write(self, data):
