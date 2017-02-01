@@ -385,14 +385,21 @@ class AioHTTPTestCase(unittest.TestCase):
 
     def setUp(self):
         self.loop = setup_test_loop()
+
         self.app = self.loop.run_until_complete(
             self.get_application(self.loop))
-        self.client = TestClient(self.app)
+        self.client = self.loop.run_until_complete(self._get_client(self.app))
+
         self.loop.run_until_complete(self.client.start_server())
 
     def tearDown(self):
         self.loop.run_until_complete(self.client.close())
         teardown_test_loop(self.loop)
+
+    @asyncio.coroutine
+    def _get_client(self, app):
+        """Return a TestClient instance."""
+        return TestClient(self.app)
 
 
 def unittest_run_loop(func):
