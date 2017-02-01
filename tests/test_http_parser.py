@@ -161,6 +161,13 @@ class TestDeflateBuffer(unittest.TestCase):
 
         self.assertRaises(errors.ContentEncodingError, dbuf.feed_eof)
 
+    def test_empty_body(self):
+        buf = aiohttp.FlowControlDataQueue(self.stream)
+        dbuf = protocol.DeflateBuffer(buf, 'deflate')
+        dbuf.feed_eof()
+
+        self.assertTrue(buf.at_eof())
+
 
 class TestParsePayload(unittest.TestCase):
 

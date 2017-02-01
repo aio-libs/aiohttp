@@ -377,12 +377,14 @@ class DeflateBuffer:
 
     def __init__(self, out, encoding):
         self.out = out
+        self.size = 0
         zlib_mode = (16 + zlib.MAX_WBITS
                      if encoding == 'gzip' else -zlib.MAX_WBITS)
 
         self.zlib = zlib.decompressobj(wbits=zlib_mode)
 
     def feed_data(self, chunk, size):
+        self.size += size
         try:
             chunk = self.zlib.decompress(chunk)
         except Exception:
@@ -393,9 +395,11 @@ class DeflateBuffer:
 
     def feed_eof(self):
         chunk = self.zlib.flush()
-        self.out.feed_data(chunk, len(chunk))
-        if not self.zlib.eof:
-            raise errors.ContentEncodingError('deflate')
+
+        if chunk or self.size > 0:
+            self.out.feed_data(chunk, len(chunk))
+            if not self.zlib.eof:
+                raise errors.ContentEncodingError('deflate')
 
         self.out.feed_eof()
 
