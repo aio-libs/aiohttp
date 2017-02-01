@@ -213,7 +213,6 @@ class ClientSession:
                 proxy=proxy, proxy_auth=proxy_auth, timeout=read_timeout)
 
             # None conn_timeout is a Timeout no-op
-            print(conn_timeout)
             with Timeout(conn_timeout, loop=self._loop):
                 conn = yield from self._connector.connect(req)
             conn.writer.set_tcp_nodelay(True)
