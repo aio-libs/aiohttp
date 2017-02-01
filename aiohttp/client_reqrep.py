@@ -679,9 +679,8 @@ class ClientResponse(HeadersMixin):
                         content.read_nowait()
                         if not content.at_eof():
                             close = True
-                    if close and self._connection is not None:
-                        self._connection.close()
-                        self._connection = None
+                    if close:
+                        self.close()
         except Exception:
             self._connection.close()
             self._connection = None
