@@ -5,7 +5,8 @@ services:
 language: python
 
 python:
-  - 3.4
+  - 3.4.2
+  - 3.4.3
   - 3.5
   - '3.6-dev'
   - 'nightly'

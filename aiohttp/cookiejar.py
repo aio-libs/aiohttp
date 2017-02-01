@@ -2,15 +2,19 @@ import datetime
 import pathlib
 import pickle
 import re
+import sys
 from collections import defaultdict
 from collections.abc import Mapping
-from http.cookies import Morsel, SimpleCookie
 from math import ceil
-
 from yarl import URL
 
 from .abc import AbstractCookieJar
 from .helpers import is_ip_address
+
+if sys.version_info.minor > 4 or sys.version_info.micro > 2:
+    from http.cookies import Morsel, SimpleCookie
+else:
+    from .backport_cookies import Morsel, SimpleCookie
 
 
 class CookieJar(AbstractCookieJar):
