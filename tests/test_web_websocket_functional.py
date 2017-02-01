@@ -275,6 +275,48 @@ def test_close_timeout(loop, test_client):
 
 
 @asyncio.coroutine
+def test_concurrent_close(loop, test_client):
+
+    srv_ws = None
+
+    @asyncio.coroutine
+    def handler(request):
+        nonlocal srv_ws
+        ws = srv_ws = web.WebSocketResponse(
+            autoclose=False, protocols=('foo', 'bar'))
+        yield from ws.prepare(request)
+
+        msg = yield from ws.receive()
+        assert msg.type == WSMsgType.CLOSING
+
+        msg = yield from ws.receive()
+        assert msg.type == WSMsgType.CLOSING
+
+        yield from asyncio.sleep(0, loop=loop)
+
+        msg = yield from ws.receive()
+        assert msg.type == WSMsgType.CLOSED
+
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    ws = yield from client.ws_connect('/', autoclose=False,
+                                      protocols=('eggs', 'bar'))
+
+    yield from srv_ws.close(code=1007)
+
+    msg = yield from ws.receive()
+    assert msg.type == WSMsgType.CLOSE
+
+    yield from asyncio.sleep(0, loop=loop)
+    msg = yield from ws.receive()
+    assert msg.type == WSMsgType.CLOSED
+
+
+@asyncio.coroutine
 def test_auto_pong_with_closing_by_peer(loop, test_client):
 
     closed = helpers.create_future(loop)

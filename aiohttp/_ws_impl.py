@@ -36,12 +36,16 @@ ALLOWED_CLOSE_CODES = {int(i) for i in WSCloseCode}
 
 
 class WSMsgType(IntEnum):
+    # websocket spec types
     CONTINUATION = 0x0
     TEXT = 0x1
     BINARY = 0x2
     PING = 0x9
     PONG = 0xa
     CLOSE = 0x8
+
+    # aiohttp specific types
+    CLOSING = 0x100
     CLOSED = 0x101
     ERROR = 0x102
 
@@ -50,6 +54,7 @@ class WSMsgType(IntEnum):
     ping = PING
     pong = PONG
     close = CLOSE
+    closing = CLOSING
     closed = CLOSED
     error = ERROR
 
@@ -86,6 +91,7 @@ class WSMessage(_WSMessageBase):
 
 
 CLOSED_MESSAGE = WSMessage(WSMsgType.CLOSED, None, None)
+CLOSING_MESSAGE = WSMessage(WSMsgType.CLOSING, None, None)
 
 
 class WebSocketError(Exception):

@@ -5,9 +5,10 @@ import warnings
 from collections import namedtuple
 
 from . import hdrs
-from ._ws_impl import (CLOSED_MESSAGE, WebSocketError, WSMessage, WSMsgType,
-                       do_handshake)
+from ._ws_impl import (CLOSED_MESSAGE, CLOSING_MESSAGE, WebSocketError,
+                       WSMessage, WSMsgType, do_handshake)
 from .errors import ClientDisconnectedError, HttpProcessingError
+from .helpers import create_future
 from .web_exceptions import (HTTPBadRequest, HTTPInternalServerError,
                              HTTPMethodNotAllowed)
 from .web_reqrep import StreamResponse
@@ -45,7 +46,7 @@ class WebSocketResponse(StreamResponse):
         self._conn_lost = 0
         self._close_code = None
         self._loop = None
-        self._waiting = False
+        self._waiting = None
         self._exception = None
         self._timeout = timeout
         self._receive_timeout = receive_timeout
@@ -218,6 +219,12 @@ class WebSocketResponse(StreamResponse):
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')
 
+        # we need to break `receive()` cycle first,
+        # `close()` may be called from different task
+        if self._waiting is not None and not self._closed:
+            self._reader.feed_data(CLOSING_MESSAGE, 0)
+            yield from self._waiting
+
         if not self._closed:
             self._cancel_heartbeat()
             self._closed = True
@@ -260,54 +267,62 @@ class WebSocketResponse(StreamResponse):
     def receive(self, timeout=None):
         if self._reader is None:
             raise RuntimeError('Call .prepare() first')
-        if self._waiting:
-            raise RuntimeError('Concurrent call to receive() is not allowed')
 
-        self._waiting = True
-        try:
-            while True:
-                if self._closed:
-                    self._conn_lost += 1
-                    if self._conn_lost >= THRESHOLD_CONNLOST_ACCESS:
-                        raise RuntimeError('WebSocket connection is closed.')
-                    return CLOSED_MESSAGE
+        while True:
+            if self._waiting is not None:
+                raise RuntimeError(
+                    'Concurrent call to receive() is not allowed')
 
+            if self._closed:
+                self._conn_lost += 1
+                if self._conn_lost >= THRESHOLD_CONNLOST_ACCESS:
+                    raise RuntimeError('WebSocket connection is closed.')
+                return CLOSED_MESSAGE
+            elif self._closing:
+                return CLOSING_MESSAGE
+
+            try:
+                self._waiting = create_future(self._loop)
                 try:
                     with self._time_service.timeout(
                             timeout or self._receive_timeout):
                         msg = yield from self._reader.read()
                         self._reset_heartbeat()
-                except (asyncio.CancelledError, asyncio.TimeoutError) as exc:
-                    raise
-                except WebSocketError as exc:
-                    self._close_code = exc.code
-                    yield from self.close(code=exc.code)
-                    return WSMessage(WSMsgType.ERROR, exc, None)
-                except ClientDisconnectedError:
-                    self._closed = True
-                    self._close_code = 1006
-                    return WSMessage(WSMsgType.CLOSE, None, None)
-                except Exception as exc:
-                    self._exception = exc
-                    self._closing = True
-                    self._close_code = 1006
-                    yield from self.close()
-                    return WSMessage(WSMsgType.ERROR, exc, None)
+                finally:
+                    waiter = self._waiting
+                    self._waiting = None
+                    waiter.set_result(True)
+            except (asyncio.CancelledError, asyncio.TimeoutError) as exc:
+                raise
+            except WebSocketError as exc:
+                self._close_code = exc.code
+                yield from self.close(code=exc.code)
+                return WSMessage(WSMsgType.ERROR, exc, None)
+            except ClientDisconnectedError:
+                self._closed = True
+                self._close_code = 1006
+                return CLOSED_MESSAGE
+            except Exception as exc:
+                self._exception = exc
+                self._closing = True
+                self._close_code = 1006
+                yield from self.close()
+                return WSMessage(WSMsgType.ERROR, exc, None)
 
-                if msg.type == WSMsgType.CLOSE:
-                    self._closing = True
-                    self._close_code = msg.data
-                    if not self._closed and self._autoclose:
-                        yield from self.close()
-                    return msg
-                if msg.type == WSMsgType.PING and self._autoping:
-                    self.pong(msg.data)
-                elif msg.type == WSMsgType.PONG and self._autoping:
-                    continue
-                else:
-                    return msg
-        finally:
-            self._waiting = False
+            if msg.type == WSMsgType.CLOSE:
+                self._closing = True
+                self._close_code = msg.data
+                if not self._closed and self._autoclose:
+                    yield from self.close()
+            elif msg.type == WSMsgType.CLOSING:
+                self._closing = True
+            elif msg.type == WSMsgType.PING and self._autoping:
+                self.pong(msg.data)
+                continue
+            elif msg.type == WSMsgType.PONG and self._autoping:
+                continue
+
+            return msg
 
     @asyncio.coroutine
     def receive_msg(self):
