@@ -34,6 +34,10 @@ CHANGES
 
 - Refactor how we use keep-alive and clone lingering timeouts.
 
+- Fix ClientSession is not aware of TestClient #1499
+
+- Fixed warnings showing when giving ClientSession an event loop when called from a normal function. #[1468](https://github.com/KeepSafe/aiohttp/pull/1468#issuecomment-269112177)
+
 
 1.2.0 (2016-12-17)
 ------------------
