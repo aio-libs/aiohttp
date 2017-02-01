@@ -846,8 +846,8 @@ Response
 WebSocketResponse
 ^^^^^^^^^^^^^^^^^
 
-.. class:: WebSocketResponse(*, timeout=10.0, autoclose=True, \
-                             autoping=True, protocols=())
+.. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, autoclose=True, \
+                             autoping=True, autoping_interval=None, protocols=())
 
    Class for handling server-side websockets, inherited from
    :class:`StreamResponse`.
