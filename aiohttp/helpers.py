@@ -10,6 +10,7 @@ import heapq
 import io
 import os
 import re
+import time
 import warnings
 from collections import MutableSequence, namedtuple
 from functools import total_ordering
@@ -592,11 +593,14 @@ class TimerHandle(asyncio.TimerHandle):
 
 class TimeService:
 
-    def __init__(self, loop):
+    def __init__(self, loop, *, interval=1.0):
         self._loop = loop
-        self._time = loop.time()
+        self._interval = interval
+        self._time = time.time()
+        self._loop_time = loop.time()
+        self._count = 0
         self._strtime = None
-        self._cb = loop.call_at(self._time + 1.0, self._on_cb)
+        self._cb = loop.call_at(self._loop_time + self._interval, self._on_cb)
         self._scheduled = []
 
     def stop(self):
@@ -611,12 +615,19 @@ class TimeService:
         self._scheduled = []
         self._loop = None
 
-    def _on_cb(self):
-        self._time = self._loop.time()
+    def _on_cb(self, reset_count=10*60):
+        self._loop_time = self._loop.time()
+
+        if self._count >= reset_count:
+            # reset timer every 10 minutes
+            self._count = 0
+            self._time = time.time()
+        else:
+            self._time += self._interval
 
         # Handle 'later' callbacks that are ready.
         ready = []
-        end_time = self._time
+        end_time = self._loop_time
         while self._scheduled:
             handle = self._scheduled[0]
             if handle._when >= end_time:
@@ -629,7 +640,8 @@ class TimeService:
                 handle._run()
 
         self._strtime = None
-        self._cb = self._loop.call_later(self._time + 1.0, self._on_cb)
+        self._cb = self._loop.call_at(
+            self._loop_time + self._interval, self._on_cb)
 
     def _format_date_time(self):
         # Weekday and month names for HTTP date/time formatting;
@@ -668,12 +680,12 @@ class TimeService:
 
         Time resolution is aproximatly one second.
         """
-        return self.call_at(self._time + delay, callback, *args)
+        return self._call_at(self._loop_time + delay, callback, *args)
 
-    def call_at(self, when, callback, *args):
+    def _call_at(self, when, callback, *args):
         """Like call_later(), but uses an absolute time.
 
-        Absolute time corresponds to the time service's time() method.
+        Absolute time corresponds to the loop's time() method.
         """
         timer = TimerHandle(when, callback, args, self._loop)
         heapq.heappush(self._scheduled, timer)

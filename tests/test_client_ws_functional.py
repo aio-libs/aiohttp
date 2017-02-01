@@ -478,8 +478,7 @@ def test_receive_timeout(loop, test_client):
     def handler(request):
         ws = web.WebSocketResponse()
         yield from ws.prepare(request)
-        yield from ws.receive_str()
-        yield from asyncio.sleep(1.1, loop=request.app.loop)
+        yield from ws.receive()
         yield from ws.close()
         return ws
 
@@ -488,10 +487,10 @@ def test_receive_timeout(loop, test_client):
 
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/', receive_timeout=0.1)
-    resp.send_str('ask')
+    resp._time_service._interval = 0.05
 
     with pytest.raises(asyncio.TimeoutError):
-        yield from resp.receive(0.1)
+        yield from resp.receive(0.05)
 
     yield from resp.close()
 
@@ -503,8 +502,7 @@ def test_custom_receive_timeout(loop, test_client):
     def handler(request):
         ws = web.WebSocketResponse()
         yield from ws.prepare(request)
-        yield from ws.receive_str()
-        yield from asyncio.sleep(1.1, loop=request.app.loop)
+        yield from ws.receive()
         yield from ws.close()
         return ws
 
@@ -513,9 +511,63 @@ def test_custom_receive_timeout(loop, test_client):
 
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
-    resp.send_str('ask')
+    resp._time_service._interval = 0.05
 
     with pytest.raises(asyncio.TimeoutError):
-        yield from resp.receive(0.1)
+        yield from resp.receive(0.05)
 
     yield from resp.close()
+
+
+@asyncio.coroutine
+def test_autoping_interval(loop, test_client):
+    ping_received = False
+
+    @asyncio.coroutine
+    def handler(request):
+        nonlocal ping_received
+        ws = web.WebSocketResponse(autoping=False)
+        yield from ws.prepare(request)
+        msg = yield from ws.receive()
+        if msg.type == aiohttp.WSMsgType.ping:
+            ping_received = True
+        yield from ws.close()
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+
+    client = yield from test_client(app)
+    resp = yield from client.ws_connect('/', autoping_interval=0.01)
+
+    yield from resp.receive()
+    yield from resp.close()
+
+    assert ping_received
+
+
+@asyncio.coroutine
+def test_autoping_interval_no_pong(loop, test_client):
+    ping_received = False
+
+    @asyncio.coroutine
+    def handler(request):
+        nonlocal ping_received
+        ws = web.WebSocketResponse(autoping=False)
+        yield from ws.prepare(request)
+        msg = yield from ws.receive()
+        if msg.type == aiohttp.WSMsgType.ping:
+            ping_received = True
+        yield from ws.receive()
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+
+    client = yield from test_client(app)
+    resp = yield from client.ws_connect('/', autoping_interval=0.05)
+
+    yield from resp.receive()
+    yield from resp.receive()
+
+    assert ping_received

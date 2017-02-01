@@ -15,8 +15,10 @@ CHANGES
 - Do not use readline when reading the content of a part
   in the multipart reader #1535
 
-- Added `receive_timeout` timeout for websocket to receive complete message. #1024 #1325
-  
+- Added `receive_timeout` timeout for websocket to receive complete message. #1325
+
+- Added `autoping_interval` parameter for websocket to automatically send `ping` message. #1024 #777
+
 - Remove `web.Application` dependency from `web.UrlDispatcher` #1510
 
 - Accepting back-pressure from slow websocket clients #1367
