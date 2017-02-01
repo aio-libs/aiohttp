@@ -10,6 +10,7 @@ import heapq
 import io
 import os
 import re
+import sys
 import time
 import warnings
 from collections import MutableSequence, namedtuple
@@ -29,8 +30,14 @@ except ImportError:
     ensure_future = asyncio.async
 
 
+if sys.version_info >= (3, 4, 3):
+    from http.cookies import SimpleCookie
+else:
+    from .backport_cookies import SimpleCookie
+
+
 __all__ = ('BasicAuth', 'create_future', 'FormData', 'parse_mimetype',
-           'Timeout', 'ensure_future')
+           'Timeout', 'ensure_future', 'SimpleCookie')
 
 
 sentinel = object()

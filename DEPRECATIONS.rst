@@ -7,6 +7,7 @@ python 3.4
 Waiting until major linux distributions drop python 3.4 support. Estimation fall of 2017.
 
   * drop aiohttp/backport_cookies.py module with python3.4 support as well.
+    import SimpleCookie directly from http.cookies package
 
 Date: 01/01/2018
 

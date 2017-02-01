@@ -129,20 +129,16 @@ Finis.
 #
 # Import our required modules
 #
+
 import re
 import string
+from http.cookies import CookieError, Morsel
 
 __all__ = ["CookieError", "BaseCookie", "SimpleCookie"]
 
 _nulljoin = ''.join
 _semispacejoin = '; '.join
 _spacejoin = ' '.join
-
-#
-# Define an exception visible to External modules
-#
-class CookieError(Exception):
-    pass
 
 
 # These quoting routines conform to the RFC2109 specification, which in
@@ -300,123 +296,6 @@ def _getdate(future=0, weekdayname=_weekdayname, monthname=_monthname):
     year, month, day, hh, mm, ss, wd, y, z = gmtime(now + future)
     return "%s, %02d %3s %4d %02d:%02d:%02d GMT" % \
            (weekdayname[wd], day, monthname[month], year, hh, mm, ss)
-
-
-class Morsel(dict):
-    """A class to hold ONE (key, value) pair.
-
-    In a cookie, each such pair may have several attributes, so this class is
-    used to keep the attributes associated with the appropriate key,value pair.
-    This class also includes a coded_value attribute, which is used to hold
-    the network representation of the value.  This is most useful when Python
-    objects are pickled for network transit.
-    """
-    # RFC 2109 lists these attributes as reserved:
-    #   path       comment         domain
-    #   max-age    secure      version
-    #
-    # For historical reasons, these attributes are also reserved:
-    #   expires
-    #
-    # This is an extension from Microsoft:
-    #   httponly
-    #
-    # This dictionary provides a mapping from the lowercase
-    # variant on the left to the appropriate traditional
-    # formatting on the right.
-    _reserved = {
-        "expires"  : "expires",
-        "path"     : "Path",
-        "comment"  : "Comment",
-        "domain"   : "Domain",
-        "max-age"  : "Max-Age",
-        "secure"   : "Secure",
-        "httponly" : "HttpOnly",
-        "version"  : "Version",
-    }
-
-    _flags = {'secure', 'httponly'}
-
-    def __init__(self):
-        # Set defaults
-        self.key = self.value = self.coded_value = None
-
-        # Set default attributes
-        for key in self._reserved:
-            dict.__setitem__(self, key, "")
-
-    def __setitem__(self, K, V):
-        K = K.lower()
-        if not K in self._reserved:
-            raise CookieError("Invalid Attribute %s" % K)
-        dict.__setitem__(self, K, V)
-
-    def isReservedKey(self, K):
-        return K.lower() in self._reserved
-
-    def set(self, key, val, coded_val, LegalChars=_LegalChars):
-        # First we verify that the key isn't a reserved word
-        # Second we make sure it only contains legal characters
-        if key.lower() in self._reserved:
-            raise CookieError("Attempt to set a reserved key: %s" % key)
-        if any(c not in LegalChars for c in key):
-            raise CookieError("Illegal key value: %s" % key)
-
-        # It's a good key, so save it.
-        self.key = key
-        self.value = val
-        self.coded_value = coded_val
-
-    def output(self, attrs=None, header="Set-Cookie:"):
-        return "%s %s" % (header, self.OutputString(attrs))
-
-    __str__ = output
-
-    def __repr__(self):
-        return '<%s: %s=%s>' % (self.__class__.__name__,
-                                self.key, repr(self.value))
-
-    def js_output(self, attrs=None):
-        # Print javascript
-        return """
-        <script type="text/javascript">
-        <!-- begin hiding
-        document.cookie = \"%s\";
-        // end hiding -->
-        </script>
-        """ % (self.OutputString(attrs).replace('"', r'\"'))
-
-    def OutputString(self, attrs=None):
-        # Build up our result
-        #
-        result = []
-        append = result.append
-
-        # First, the key=value pair
-        append("%s=%s" % (self.key, self.coded_value))
-
-        # Now add any defined attributes
-        if attrs is None:
-            attrs = self._reserved
-        items = sorted(self.items())
-        for key, value in items:
-            if value == "":
-                continue
-            if key not in attrs:
-                continue
-            if key == "expires" and isinstance(value, int):
-                append("%s=%s" % (self._reserved[key], _getdate(value)))
-            elif key == "max-age" and isinstance(value, int):
-                append("%s=%d" % (self._reserved[key], value))
-            elif key == "secure":
-                append(str(self._reserved[key]))
-            elif key == "httponly":
-                append(str(self._reserved[key]))
-            else:
-                append("%s=%s" % (self._reserved[key], value))
-
-        # Return the result
-        return _semispacejoin(result)
 
 
 #

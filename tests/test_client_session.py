@@ -1,7 +1,6 @@
 import asyncio
 import contextlib
 import gc
-import http.cookies
 import re
 import types
 from unittest import mock
@@ -14,6 +13,7 @@ import aiohttp
 from aiohttp import web
 from aiohttp.client import ClientSession
 from aiohttp.connector import BaseConnector, TCPConnector
+from aiohttp.helpers import SimpleCookie
 
 
 @pytest.fixture
@@ -410,7 +410,7 @@ def test_cookie_jar_usage(loop, test_client):
     # Updating the cookie jar with the response cookies
     assert jar.update_cookies.called
     resp_cookies = jar.update_cookies.call_args[0][0]
-    assert isinstance(resp_cookies, http.cookies.SimpleCookie)
+    assert isinstance(resp_cookies, SimpleCookie)
     assert "response" in resp_cookies
     assert resp_cookies["response"].value == "resp_value"
 
