@@ -847,7 +847,7 @@ WebSocketResponse
 ^^^^^^^^^^^^^^^^^
 
 .. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, autoclose=True, \
-                             autoping=True, autoping_interval=None, protocols=())
+                             autoping=True, heartbeat=None, protocols=())
 
    Class for handling server-side websockets, inherited from
    :class:`StreamResponse`.
@@ -876,9 +876,8 @@ WebSocketResponse
 
    .. versionadded:: 1.3.0
 
-   :param float autoping_interval: Send `ping` message every `autoping_interval` seconds
-                                   and wait `pong` response, if `pong` response is not received
-                                   then close connection.
+   :param float heartbeat: Send `ping` message every `heartbeat` seconds
+                           and wait `pong` response, close connection if `pong` response is not received
 
    :param float receive_timeout: Timeout value for `receive` operations.
                                  Default value is None (no timeout for receive operation)
