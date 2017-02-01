@@ -329,7 +329,6 @@ class StreamReader(AsyncStreamReaderMixin):
         #
         # I believe the most users don't know about the method and
         # they are not affected.
-        assert n is not None, "n should be -1"
         if self._exception is not None:
             raise self._exception
 

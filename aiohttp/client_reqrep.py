@@ -668,8 +668,10 @@ class ClientResponse(HeadersMixin):
         try:
             content = self.content
             if content is not None:
-                while not content.at_eof():
-                    yield from content.readany()
+                content.read_nowait()
+                if not content.at_eof():
+                    self._connection.close()
+                    self._connection = None
         except Exception:
             self._connection.close()
             self._connection = None
