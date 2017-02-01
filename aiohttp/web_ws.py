@@ -33,7 +33,7 @@ class WebSocketResponse(StreamResponse):
 
     def __init__(self, *,
                  timeout=10.0, receive_timeout=None,
-                 autoclose=True, autoping=True, autoping_interval=15.0,
+                 autoclose=True, autoping=True, autoping_interval=None,
                  protocols=()):
         super().__init__(status=101)
         self._protocols = protocols

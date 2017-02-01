@@ -390,7 +390,7 @@ The client session supports the context manager protocol for self closing.
                             auth=None,\
                             autoclose=True,\
                             autoping=True,\
-                            autoping_interval=15.0,\
+                            autoping_interval=None,\
                             origin=None, \
                             proxy=None, proxy_auth=None)
       :async-with:
