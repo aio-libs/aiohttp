@@ -31,13 +31,13 @@ except ImportError:
 
 
 if sys.version_info >= (3, 4, 3):
-    from http.cookies import SimpleCookie
+    from http.cookies import SimpleCookie  # noqa
 else:
-    from .backport_cookies import SimpleCookie
+    from .backport_cookies import SimpleCookie  # noqa
 
 
 __all__ = ('BasicAuth', 'create_future', 'FormData', 'parse_mimetype',
-           'Timeout', 'ensure_future', 'SimpleCookie')
+           'Timeout', 'ensure_future')
 
 
 sentinel = object()
