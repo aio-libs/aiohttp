@@ -9,6 +9,7 @@ import pytest
 import aiohttp
 from aiohttp import ClientWebSocketResponse, errors, hdrs, helpers
 from aiohttp._ws_impl import WS_KEY
+from aiohttp.log import ws_logger
 
 
 @pytest.fixture
@@ -321,7 +322,7 @@ def test_close_exc2(loop, ws_key, key_data):
 
 
 @asyncio.coroutine
-def test_send_data_after_close(ws_key, key_data, loop):
+def test_send_data_after_close(ws_key, key_data, loop, mocker):
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -329,23 +330,26 @@ def test_send_data_after_close(ws_key, key_data, loop):
         hdrs.CONNECTION: hdrs.UPGRADE,
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
-    with mock.patch('aiohttp.client.WebSocketWriter') as WebSocketWriter:
-        with mock.patch('aiohttp.client.os') as m_os:
-            with mock.patch('aiohttp.client.ClientSession.get') as m_req:
-                m_os.urandom.return_value = key_data
-                m_req.return_value = helpers.create_future(loop)
-                m_req.return_value.set_result(resp)
-                WebSocketWriter.return_value = mock.Mock()
+    with mock.patch('aiohttp.client.os') as m_os:
+        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+            m_os.urandom.return_value = key_data
+            m_req.return_value = helpers.create_future(loop)
+            m_req.return_value.set_result(resp)
 
-                resp = yield from aiohttp.ws_connect('http://test.org',
-                                                     loop=loop)
-                resp._closed = True
+            resp = yield from aiohttp.ws_connect('http://test.org',
+                                                 loop=loop)
+            resp._writer._closing = True
 
-                pytest.raises(RuntimeError, resp.ping)
-                pytest.raises(RuntimeError, resp.pong)
-                pytest.raises(RuntimeError, resp.send_str, 's')
-                pytest.raises(RuntimeError, resp.send_bytes, b'b')
-                pytest.raises(RuntimeError, resp.send_json, {})
+            mocker.spy(ws_logger, 'warning')
+
+            for meth, args in ((resp.ping, ()),
+                               (resp.pong, ()),
+                               (resp.send_str, ('s',)),
+                               (resp.send_bytes, (b'b',)),
+                               (resp.send_json, ({},))):
+                meth(*args)
+                assert ws_logger.warning.called
+                ws_logger.warning.reset_mock()
 
 
 @asyncio.coroutine

@@ -5,6 +5,7 @@ import pytest
 
 from aiohttp import (CIMultiDict, WSMessage, WSMsgType, errors, helpers,
                      signals, web)
+from aiohttp.log import ws_logger
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import HTTPBadRequest, HTTPMethodNotAllowed, WebSocketResponse
 from aiohttp.web_ws import WebSocketReady
@@ -248,53 +249,63 @@ def test_closed_after_ctor():
 
 
 @asyncio.coroutine
-def test_send_str_closed(make_request):
+def test_send_str_closed(make_request, mocker):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
     yield from ws.close()
-    with pytest.raises(RuntimeError):
-        ws.send_str('string')
+
+    mocker.spy(ws_logger, 'warning')
+    ws.send_str('string')
+    assert ws_logger.warning.called
 
 
 @asyncio.coroutine
-def test_send_bytes_closed(make_request):
+def test_send_bytes_closed(make_request, mocker):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
     yield from ws.close()
-    with pytest.raises(RuntimeError):
-        ws.send_bytes(b'bytes')
+
+    mocker.spy(ws_logger, 'warning')
+    ws.send_bytes(b'bytes')
+    assert ws_logger.warning.called
 
 
 @asyncio.coroutine
-def test_send_json_closed(make_request):
+def test_send_json_closed(make_request, mocker):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
     yield from ws.close()
-    with pytest.raises(RuntimeError):
-        ws.send_json({'type': 'json'})
+
+    mocker.spy(ws_logger, 'warning')
+    ws.send_json({'type': 'json'})
+    assert ws_logger.warning.called
 
 
 @asyncio.coroutine
-def test_ping_closed(make_request):
+def test_ping_closed(make_request, mocker):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
     yield from ws.close()
-    with pytest.raises(RuntimeError):
-        ws.ping()
+
+    mocker.spy(ws_logger, 'warning')
+    ws.ping()
+    assert ws_logger.warning.called
 
 
 @asyncio.coroutine
-def test_pong_closed(make_request):
+def test_pong_closed(make_request, mocker):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
     yield from ws.close()
-    with pytest.raises(RuntimeError):
-        ws.pong()
+
+    mocker.spy(ws_logger, 'warning')
+    ws.pong()
+    assert ws_logger.warning.called
 
 
 @asyncio.coroutine

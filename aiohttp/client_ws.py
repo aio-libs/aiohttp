@@ -86,25 +86,17 @@ class ClientWebSocketResponse:
         return self._exception
 
     def ping(self, message='b'):
-        if self._closed:
-            raise RuntimeError('websocket connection is closed')
         self._writer.ping(message)
 
     def pong(self, message='b'):
-        if self._closed:
-            raise RuntimeError('websocket connection is closed')
         self._writer.pong(message)
 
     def send_str(self, data):
-        if self._closed:
-            raise RuntimeError('websocket connection is closed')
         if not isinstance(data, str):
             raise TypeError('data argument must be str (%r)' % type(data))
         return self._writer.send(data, binary=False)
 
     def send_bytes(self, data):
-        if self._closed:
-            raise RuntimeError('websocket connection is closed')
         if not isinstance(data, (bytes, bytearray, memoryview)):
             raise TypeError('data argument must be byte-ish (%r)' %
                             type(data))
