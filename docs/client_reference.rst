@@ -468,7 +468,6 @@ The client session supports the context manager protocol for self closing.
       Session is switched to closed state anyway.
 
 
-
 Basic API
 ---------
 

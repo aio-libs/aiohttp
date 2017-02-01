@@ -34,6 +34,8 @@ CHANGES
 
 - Back port std module `http.cookies` for python3.4.2 #1566
 
+- Allow concurrently close WebSocket connection #754
+
 - Return 504 if request handle raises TimeoutError.
 
 - Refactor how we use keep-alive and clone lingering timeouts.

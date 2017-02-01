@@ -243,6 +243,40 @@ def test_close(loop, test_client):
 
 
 @asyncio.coroutine
+def test_concurrent_close(loop, test_client):
+    client_ws = None
+
+    @asyncio.coroutine
+    def handler(request):
+        nonlocal client_ws
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        yield from ws.receive_bytes()
+        ws.send_str('test')
+
+        yield from client_ws.close()
+
+        msg = yield from ws.receive()
+        assert msg.type == aiohttp.WSMsgType.CLOSE
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
+    ws = client_ws = yield from client.ws_connect('/')
+
+    ws.send_bytes(b'ask')
+
+    msg = yield from ws.receive()
+    assert msg.type == aiohttp.WSMsgType.CLOSING
+
+    yield from asyncio.sleep(0.01, loop=loop)
+    msg = yield from ws.receive()
+    assert msg.type == aiohttp.WSMsgType.CLOSED
+
+
+@asyncio.coroutine
 def test_close_from_server(loop, test_client):
 
     closed = helpers.create_future(loop)

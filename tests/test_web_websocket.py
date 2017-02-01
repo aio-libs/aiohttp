@@ -423,7 +423,7 @@ def test_receive_client_disconnected(make_request, loop, reader):
 
     msg = yield from ws.receive()
     assert ws.closed
-    assert msg.type == WSMsgType.CLOSE
+    assert msg.type == WSMsgType.CLOSED
     assert msg.type is msg.tp
     assert msg.data is None
     assert ws.exception() is None

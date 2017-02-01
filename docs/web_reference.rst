@@ -906,20 +906,6 @@ WebSocketResponse
 
       .. versionadded:: 0.18
 
-   .. method:: start(request)
-
-      Starts websocket. After the call you can use websocket methods.
-
-      :param aiohttp.web.Request request: HTTP request object, that the
-                                          response answers.
-
-
-      :raises HTTPException: if websocket handshake has failed.
-
-      .. deprecated:: 0.18
-
-         Use :meth:`prepare` instead.
-
    .. method:: can_prepare(request)
 
       Performs checks for *request* data to figure out if websocket
@@ -942,12 +928,6 @@ WebSocketResponse
                client and server subprotocols are not overlapping.
 
       .. note:: The method never raises exception.
-
-   .. method:: can_start(request)
-
-      Deprecated alias for :meth:`can_prepare`
-
-      .. deprecated:: 0.18
 
    .. attribute:: closed
 
@@ -1033,11 +1013,7 @@ WebSocketResponse
       A :ref:`coroutine<coroutine>` that initiates closing
       handshake by sending :const:`~aiohttp.WSMsgType.CLOSE` message.
 
-      .. note::
-
-         Can only be called by the request handling task. To
-         programmatically close websocket server side see the
-         :ref:`FAQ section <aiohttp_faq_terminating_websockets>`.
+      It is save to call `close()` from different task.
 
       :param int code: closing code
 
@@ -1045,7 +1021,7 @@ WebSocketResponse
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
-      :raise RuntimeError: if connection is not started or closing
+      :raise RuntimeError: if connection is not started
 
    .. coroutinemethod:: receive(timeout=None)
 

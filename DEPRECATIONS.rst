@@ -21,3 +21,21 @@ automatically.
 
 
 Date: 01/01/2018
+
+
+aiohttp.MsgType
+---------------
+
+aiohttp.MsgType is deprecated in favor to aiohttp.WSMsgType, deprecated since 1.0
+
+
+Date: 07/01/2018 ?
+
+
+Response.start(), WebSocketResponse.can_start()
+-----------------------------------------------
+
+Deprecate `start()`, `can_start()` in favor `prepare()` and `can_preapre()`
+
+
+Date: 07/01/2018
