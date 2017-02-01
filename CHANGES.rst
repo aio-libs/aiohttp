@@ -36,6 +36,8 @@ CHANGES
 
 - Allow concurrently close WebSocket connection #754
 
+- Gzipped responses with empty body raises ContentEncodingError #609
+
 - Return 504 if request handle raises TimeoutError.
 
 - Refactor how we use keep-alive and clone lingering timeouts.
