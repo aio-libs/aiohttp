@@ -124,7 +124,7 @@ _Translator       = {
     '\375' : '\\375',  '\376' : '\\376',  '\377' : '\\377'
     }
 
-def _quote(str, LegalChars=_LegalChars):
+def _quote(str, LegalChars=_LegalChars):  # pragma: no cover
     r"""Quote a string for use in a cookie header.
 
     If the string does not need to be double-quoted, then just return the
@@ -140,7 +140,7 @@ def _quote(str, LegalChars=_LegalChars):
 _OctalPatt = re.compile(r"\\[0-3][0-7][0-7]")
 _QuotePatt = re.compile(r"[\\].")
 
-def _unquote(str):
+def _unquote(str):  # pragma: no cover
     # If there aren't any doublequotes,
     # then there can't be any special characters.  See RFC 2109.
     if len(str) < 2:
@@ -196,7 +196,7 @@ _monthname = [None,
               'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-def _getdate(future=0, weekdayname=_weekdayname, monthname=_monthname):
+def _getdate(future=0, weekdayname=_weekdayname, monthname=_monthname):  # pragma: no cover
     from time import gmtime, time
     now = time()
     year, month, day, hh, mm, ss, wd, y, z = gmtime(now + future)
@@ -239,7 +239,7 @@ _CookiePattern = re.compile(r"""
 # At long last, here is the cookie class.  Using this class is almost just like
 # using a dictionary.  See this module's docstring for example usage.
 #
-class BaseCookie(dict):
+class BaseCookie(dict):  # pragma: no cover
     """A container class for a set of Morsels."""
 
     def value_decode(self, val):
