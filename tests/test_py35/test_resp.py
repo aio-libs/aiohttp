@@ -76,7 +76,7 @@ def test_ctx_manager_is_coroutine():
     assert issubclass(_RequestContextManager, Coroutine)
 
 
-async def test_context_manager_timeout_on_release(test_server, loop):
+async def test_context_manager_close_on_release(test_server, loop, mocker):
 
     async def handler(request):
         resp = web.StreamResponse()
@@ -90,12 +90,13 @@ async def test_context_manager_timeout_on_release(test_server, loop):
 
     with aiohttp.ClientSession(loop=loop) as session:
         resp = await session.get(server.make_url('/'))
-        with pytest.raises(asyncio.TimeoutError):
-            with aiohttp.Timeout(0.01, loop=loop):
-                async with resp:
-                    assert resp.status == 200
-                    assert resp.connection is not None
+        conn = resp.connection
+        mocker.spy(conn, 'close')
+        async with resp:
+            assert resp.status == 200
+            assert resp.connection is not None
         assert resp.connection is None
+        assert conn.close.called
 
 
 async def test_iter_any(test_server, loop):

@@ -36,6 +36,9 @@ CHANGES
 
 - Refactor how we use keep-alive and clone lingering timeouts.
 
+- Close response connection if we can not consume whole http
+  message during client response release
+
 
 1.2.0 (2016-12-17)
 ------------------
