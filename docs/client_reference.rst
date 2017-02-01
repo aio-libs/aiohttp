@@ -390,6 +390,7 @@ The client session supports the context manager protocol for self closing.
                             auth=None,\
                             autoclose=True,\
                             autoping=True,\
+                            autoping_interval=15.0,\
                             origin=None, \
                             proxy=None, proxy_auth=None)
       :async-with:
@@ -417,6 +418,10 @@ The client session supports the context manager protocol for self closing.
       :param bool autoping: automatically send `pong` on `ping`
                             message from server
 
+      :param float autoping_interval: Send `ping` message every `autoping_interval` seconds
+                                      and wait `pong` response, if `pong` response is not received
+                                      then close connection.
+                            
       :param str origin: Origin header to send to server
 
       :param str proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)

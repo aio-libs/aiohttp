@@ -409,7 +409,7 @@ def test_is_ip_address_invalid_type():
 
 @pytest.fixture
 def time_service(loop):
-    return helpers.TimeService(loop)
+    return helpers.TimeService(loop, interval=0.1)
 
 
 class TestTimeService:
@@ -454,14 +454,17 @@ class TestTimeService:
 
         time_service._time = 123
         time_service._strtime = 'asd'
+        time_service._count = 1000000
         time_service._on_cb()
         assert time_service._strtime is None
+        assert time_service._time > 1234
+        assert time_service._count == 0
         assert time_service._loop.time.called
 
     def test_call_later(self, time_service):
         time_service._loop.time = mock.Mock()
         time_service._loop.time.return_value = 1477797232
-        time_service._time = 1477797232
+        time_service._loop_time = 1477797232
 
         called = 0
 
@@ -485,7 +488,7 @@ class TestTimeService:
     def test_call_cancel(self, time_service):
         time_service._loop.time = mock.Mock()
         time_service._loop.time.return_value = 1477797232
-        time_service._time = 1477797232
+        time_service._loop_time = 1477797232
 
         called = 0
 
@@ -515,7 +518,7 @@ class TestTimeService:
                 raise
 
         with pytest.raises(asyncio.TimeoutError):
-            with time_service.timeout(0.01):
+            with time_service.timeout(0.02):
                 yield from long_running_task()
         assert canceled_raised, 'CancelledError was not raised'
 

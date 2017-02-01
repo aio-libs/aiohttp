@@ -213,6 +213,7 @@ class ClientSession:
                 proxy=proxy, proxy_auth=proxy_auth, timeout=read_timeout)
 
             # None conn_timeout is a Timeout no-op
+            print(conn_timeout)
             with Timeout(conn_timeout, loop=self._loop):
                 conn = yield from self._connector.connect(req)
             conn.writer.set_tcp_nodelay(True)
@@ -289,6 +290,7 @@ class ClientSession:
                    receive_timeout=None,
                    autoclose=True,
                    autoping=True,
+                   autoping_interval=15.0,
                    auth=None,
                    origin=None,
                    headers=None,
@@ -302,6 +304,7 @@ class ClientSession:
                              receive_timeout=receive_timeout,
                              autoclose=autoclose,
                              autoping=autoping,
+                             autoping_interval=autoping_interval,
                              auth=auth,
                              origin=origin,
                              headers=headers,
@@ -315,6 +318,7 @@ class ClientSession:
                     receive_timeout=None,
                     autoclose=True,
                     autoping=True,
+                    autoping_interval=15.0,
                     auth=None,
                     origin=None,
                     headers=None,
@@ -407,7 +411,8 @@ class ClientSession:
                                            autoping,
                                            self._loop,
                                            time_service=self.time_service,
-                                           receive_timeout=receive_timeout)
+                                           receive_timeout=receive_timeout,
+                                           autoping_interval=autoping_interval)
 
     def _prepare_headers(self, headers):
         """ Add default headers and transform it to CIMultiDict

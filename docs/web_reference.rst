@@ -876,6 +876,10 @@ WebSocketResponse
 
    .. versionadded:: 1.3.0
 
+   :param float autoping_interval: Send `ping` message every `autoping_interval` seconds
+                                   and wait `pong` response, if `pong` response is not received
+                                   then close connection.
+
    :param float receive_timeout: Timeout value for `receive` operations.
                                  Default value is None (no timeout for receive operation)
 
