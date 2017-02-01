@@ -305,11 +305,15 @@ class WebSocketWriter:
         self.writer = writer
         self.use_mask = use_mask
         self.randrange = random.randrange
+        self._closing = False
         self._limit = limit
         self._output_size = 0
 
     def _send_frame(self, message, opcode):
         """Send a frame over the websocket with message as its payload."""
+        if self._closing:
+            ws_logger.warning('websocket connection is closing.')
+
         msg_length = len(message)
 
         use_mask = self.use_mask
@@ -370,8 +374,11 @@ class WebSocketWriter:
         """Close the websocket, sending the specified code and message."""
         if isinstance(message, str):
             message = message.encode('utf-8')
-        return self._send_frame(
-            PACK_CLOSE_CODE(code) + message, opcode=WSMsgType.CLOSE)
+        try:
+            return self._send_frame(
+                PACK_CLOSE_CODE(code) + message, opcode=WSMsgType.CLOSE)
+        finally:
+            self._closing = True
 
 
 def do_handshake(method, headers, transport,

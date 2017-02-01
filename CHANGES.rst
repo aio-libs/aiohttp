@@ -41,6 +41,8 @@ CHANGES
 - Close response connection if we can not consume whole http
   message during client response release
 
+- Log warning instead of RuntimeError is websocket connection is closed.
+  
 
 1.2.0 (2016-12-17)
 ------------------

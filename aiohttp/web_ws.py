@@ -177,23 +177,17 @@ class WebSocketResponse(StreamResponse):
     def ping(self, message='b'):
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')
-        if self._closed:
-            raise RuntimeError('websocket connection is closing')
         self._writer.ping(message)
 
     def pong(self, message='b'):
         # unsolicited pong
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')
-        if self._closed:
-            raise RuntimeError('websocket connection is closing')
         self._writer.pong(message)
 
     def send_str(self, data):
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')
-        if self._closed:
-            raise RuntimeError('websocket connection is closing')
         if not isinstance(data, str):
             raise TypeError('data argument must be str (%r)' % type(data))
         return self._writer.send(data, binary=False)
@@ -201,8 +195,6 @@ class WebSocketResponse(StreamResponse):
     def send_bytes(self, data):
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')
-        if self._closed:
-            raise RuntimeError('websocket connection is closing')
         if not isinstance(data, (bytes, bytearray, memoryview)):
             raise TypeError('data argument must be byte-ish (%r)' %
                             type(data))
