@@ -32,8 +32,8 @@ CHANGES
 - Allow users to specify what should happen to decoding errors
   when calling a responses `text()` method #1542
 
-- Backport std module http.cookies for python3.4.2 #1566
-  
+- Back port std module `http.cookies` for python3.4.2 #1566
+
 - Return 504 if request handle raises TimeoutError.
 
 - Refactor how we use keep-alive and clone lingering timeouts.
