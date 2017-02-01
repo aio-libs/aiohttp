@@ -17,7 +17,7 @@ flake: .flake
                       $(shell find benchmark -type f) \
                       $(shell find examples -type f) \
                       $(shell find demos -type f)
-	@flake8 aiohttp
+	@flake8 aiohttp --exclude=aiohttp/backport_cookies.py
 	@if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then \
 	    flake8 examples tests demos benchmark && \
             python setup.py check -rms; \
