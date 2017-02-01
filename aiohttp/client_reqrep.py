@@ -1,5 +1,4 @@
 import asyncio
-import http.cookies
 import io
 import json
 import mimetypes
@@ -7,6 +6,7 @@ import os
 import sys
 import traceback
 import warnings
+from http.cookies import CookieError, Morsel
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
@@ -14,7 +14,7 @@ from yarl import URL
 import aiohttp
 
 from . import hdrs, helpers, streams
-from .helpers import HeadersMixin, Timeout
+from .helpers import HeadersMixin, SimpleCookie, Timeout
 from .log import client_logger
 from .multipart import MultipartWriter
 from .protocol import HttpMessage
@@ -178,15 +178,15 @@ class ClientRequest:
         if not cookies:
             return
 
-        c = http.cookies.SimpleCookie()
+        c = SimpleCookie()
         if hdrs.COOKIE in self.headers:
             c.load(self.headers.get(hdrs.COOKIE, ''))
             del self.headers[hdrs.COOKIE]
 
         for name, value in cookies.items():
-            if isinstance(value, http.cookies.Morsel):
+            if isinstance(value, Morsel):
                 # Preserve coded_value
-                mrsl_val = value.get(value.key, http.cookies.Morsel())
+                mrsl_val = value.get(value.key, Morsel())
                 mrsl_val.set(value.key, value.value, value.coded_value)
                 c[name] = mrsl_val
             else:
@@ -527,7 +527,7 @@ class ClientResponse(HeadersMixin):
         self._should_close = True  # override by message.should_close later
         self._history = ()
         self._timeout = timeout
-        self.cookies = http.cookies.SimpleCookie()
+        self.cookies = SimpleCookie()
 
     @property
     def url_obj(self):
@@ -641,7 +641,7 @@ class ClientResponse(HeadersMixin):
         for hdr in self.headers.getall(hdrs.SET_COOKIE, ()):
             try:
                 self.cookies.load(hdr)
-            except http.cookies.CookieError as exc:
+            except CookieError as exc:
                 client_logger.warning(
                     'Can not load response cookies: %s', exc)
         return self

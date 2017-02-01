@@ -1,7 +1,8 @@
 import asyncio
 import datetime
-import pytest
 from unittest import mock
+
+import pytest
 
 from aiohttp import helpers
 from aiohttp.test_utils import loop_context

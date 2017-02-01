@@ -1,8 +1,9 @@
 import asyncio
-import pytest
 from unittest import mock
 
-from aiohttp import web, errors
+import pytest
+
+from aiohttp import errors, web
 
 
 @asyncio.coroutine

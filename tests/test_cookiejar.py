@@ -3,13 +3,13 @@ import datetime
 import os
 import tempfile
 import unittest
-from http.cookies import SimpleCookie
 from unittest import mock
 
 import pytest
 from yarl import URL
 
 from aiohttp import CookieJar
+from aiohttp.helpers import SimpleCookie
 
 
 @pytest.fixture
