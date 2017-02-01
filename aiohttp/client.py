@@ -604,10 +604,12 @@ class _RequestContextManager(_BaseRequestContextManager):
     if PY_35:
         @asyncio.coroutine
         def __aexit__(self, exc_type, exc, tb):
-            if exc_type is not None:
-                self._resp.close()
-            else:
-                yield from self._resp.release()
+            # We're basing behavior on the exception as it can be caused by
+            # user code unrelated to the status of the connection.  If you
+            # would like to close a connection you must do that
+            # explicitly.  Otherwise connection error handling should kick in
+            # and close/recycle the connection as required.
+            yield from self._resp.release()
 
 
 class _WSRequestContextManager(_BaseRequestContextManager):
