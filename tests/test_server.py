@@ -15,10 +15,9 @@ from aiohttp import errors, helpers, server
 def make_srv(loop):
     srv = None
 
-    def maker(**kwargs):
+    def maker(cls=server.ServerHttpProtocol, **kwargs):
         nonlocal srv
-        srv = server.ServerHttpProtocol(loop=loop, access_log=None,
-                                        **kwargs)
+        srv = cls(loop=loop, access_log=None, **kwargs)
         return srv
 
     yield maker
@@ -384,7 +383,14 @@ def test_lingering(srv, loop):
 
 @asyncio.coroutine
 def test_lingering_disabled(make_srv, loop):
-    srv = make_srv(lingering_time=0)
+
+    class Server(server.ServerHttpProtocol):
+
+        def handle_request(self, message, payload):
+            yield from payload.read()
+            return super().handle_request(message, payload)
+
+    srv = make_srv(Server, lingering_time=0)
 
     transport = mock.Mock()
     srv.connection_made(transport)
@@ -402,14 +408,20 @@ def test_lingering_disabled(make_srv, loop):
     yield from asyncio.sleep(0, loop=loop)
     assert not transport.close.called
     srv.reader.feed_eof()
-
     yield from asyncio.sleep(0, loop=loop)
     transport.close.assert_called_with()
 
 
 @asyncio.coroutine
 def test_lingering_zero_timeout(make_srv, loop):
-    srv = make_srv(lingering_time=1e-30)
+
+    class Server(server.ServerHttpProtocol):
+
+        def handle_request(self, message, payload):
+            yield from payload.read()
+            return super().handle_request(message, payload)
+
+    srv = make_srv(Server, lingering_time=1e-30)
 
     transport = mock.Mock()
     srv.connection_made(transport)
