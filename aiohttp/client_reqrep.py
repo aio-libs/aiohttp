@@ -80,6 +80,7 @@ class ClientRequest:
             q.extend(url2.query)
             url = url.with_query(q)
         self.url = url.with_fragment(None)
+        self.original_url = url
         self.method = method.upper()
         self.encoding = encoding
         self.chunked = chunked
@@ -472,7 +473,7 @@ class ClientRequest:
             self.write_bytes(request, reader), loop=self.loop)
 
         self.response = self.response_class(
-            self.method, self.url,
+            self.method, self.original_url,
             writer=self._writer, continue100=self._continue,
             timeout=self._timeout)
         self.response._post_init(self.loop)
