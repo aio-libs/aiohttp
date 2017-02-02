@@ -646,7 +646,7 @@ class TestHttpClientFunctional(unittest.TestCase):
 
             addr = server.sockets[0].getsockname()
 
-            connector = aiohttp.TCPConnector(loop=self.loop)
+            connector = aiohttp.TCPConnector(loop=self.loop, limit=1)
 
             url = 'http://{}:{}/'.format(*addr)
             for i in range(2):
@@ -689,7 +689,7 @@ class TestHttpClientFunctional(unittest.TestCase):
 
             addr = server.sockets[0].getsockname()
 
-            connector = aiohttp.TCPConnector(loop=self.loop)
+            connector = aiohttp.TCPConnector(loop=self.loop, limit=1)
 
             url = 'http://{}:{}/'.format(*addr)
 
