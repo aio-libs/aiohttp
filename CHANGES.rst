@@ -4,6 +4,8 @@ CHANGES
 1.3.0 (XXXX-XX-XX)
 ------------------
 
+- Multipart writer validates the data on append instead of on a request send #920
+
 - Multipart reader accepts multipart messages with or without their epilogue
   to consistently handle valid and legacy behaviors #1526 #1581
 
