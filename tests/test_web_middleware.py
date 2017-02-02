@@ -149,7 +149,7 @@ class TestNormalizePathMiddleware:
     @asyncio.coroutine
     @pytest.mark.parametrize("path, status", [
         ('/resource1/a/b', 200),
-        ('//resource1//a//b', 200),
+        ('///resource1//a//b', 200),
         ('/////resource1/a///b', 200),
         ('/////resource1/a//b/', 404)
     ])
@@ -165,13 +165,13 @@ class TestNormalizePathMiddleware:
     @pytest.mark.parametrize("path, status", [
         ('/resource1/a/b', 200),
         ('/resource1/a/b/', 404),
-        ('//resource1//a//b', 200),
-        ('//resource1//a//b/', 404),
+        ('///resource1//a//b', 200),
+        ('///resource1//a//b/', 404),
         ('/////resource1/a///b', 200),
         ('/////resource1/a///b/', 404),
         ('/resource2/a/b', 200),
-        ('//resource2//a//b', 200),
-        ('//resource2//a//b/', 200),
+        ('///resource2//a//b', 200),
+        ('///resource2//a//b/', 200),
         ('/////resource2/a///b', 200),
         ('/////resource2/a///b/', 200)
     ])
