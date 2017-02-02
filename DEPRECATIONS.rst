@@ -49,3 +49,11 @@ Deprecated unsupported `aiohttp.wsgi` module
 
 Date: 01/01/2018
 
+
+Application.router.add_subapp()
+-------------------------------
+
+Deprecate `Application.router.add_subapp()`
+
+
+Date: version 1.4.0
