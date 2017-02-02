@@ -34,6 +34,8 @@ CHANGES
 
 - Back port std module `http.cookies` for python3.4.2 #1566
 
+- Maintain url's fragment in client response #1314
+
 - Allow concurrently close WebSocket connection #754
 
 - Gzipped responses with empty body raises ContentEncodingError #609
