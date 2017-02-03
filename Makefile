@@ -25,7 +25,8 @@ flake: .flake
 	@if ! isort -c -rc aiohttp tests examples; then \
             echo "Import sort errors, run 'make isort' to fix them!!!"; \
             isort --diff -rc aiohttp tests benchmark examples; \
-        fi
+            false; \
+	fi
 	@touch .flake
 
 

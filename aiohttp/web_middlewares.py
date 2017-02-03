@@ -4,7 +4,6 @@ import re
 from aiohttp.web_exceptions import HTTPMovedPermanently
 from aiohttp.web_urldispatcher import SystemRoute
 
-
 __all__ = (
     'normalize_path_middleware',
 )
