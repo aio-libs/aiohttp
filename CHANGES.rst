@@ -4,6 +4,9 @@ CHANGES
 1.3.0 (XXXX-XX-XX)
 ------------------
 
+- Multipart reader accepts multipart messages with or without their epilogue
+  to consistently handle valid and legacy behaviors #1526 #1581
+
 - Separate read + connect + request timeouts # 1523
 
 - Fix polls demo run application #1487
