@@ -698,6 +698,19 @@ class BodyPartWriter(object):
             ('application', 'json'): self._serialize_json,
             ('application', 'x-www-form-urlencoded'): self._serialize_form
         }
+        self._validate_obj(obj, headers)
+
+    def _validate_obj(self, obj, headers):
+        mtype, stype, *_ = parse_mimetype(headers.get(CONTENT_TYPE))
+        if (mtype, stype) in self._serialize_map:
+            return
+        for key in self._serialize_map:
+            if isinstance(key, tuple):
+                continue
+            if isinstance(obj, key):
+                return
+        else:
+            raise TypeError('unexpected body part value type %r' % type(obj))
 
     def _fill_headers_with_defaults(self):
         if CONTENT_TYPE not in self.headers:
