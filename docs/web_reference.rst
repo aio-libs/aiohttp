@@ -2187,5 +2187,33 @@ Constants
 
       *no compression*
 
+
+Middlewares
+-----------
+
+Normalize path middleware
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. function:: normalize_path_middleware(*, append_slash=True, merge_slashes=True)
+
+  Middleware that normalizes the path of a request. By normalizing
+  it means:
+
+      - Add a trailing slash to the path.
+      - Double slashes are replaced by one.
+
+  The middleware returns as soon as it finds a path that resolves
+  correctly. The order if all enabled is 1) merge_slashes, 2) append_slash
+  and 3) both merge_slashes and append_slash. If the path resolves with
+  at least one of those conditions, it will redirect to the new path.
+
+  If append_slash is True append slash when needed. If a resource is
+  defined with trailing slash and the request comes without it, it will
+  append it automatically.
+
+  If merge_slashes is True, merge multiple consecutive slashes in the
+  path into one.
+
+
 .. disqus::
   :title: aiohttp server reference
