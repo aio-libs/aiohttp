@@ -57,29 +57,47 @@ class ClientSession:
                  version=aiohttp.HttpVersion11,
                  cookie_jar=None, read_timeout=None, time_service=None):
 
-        if connector is None:
-            connector = aiohttp.TCPConnector(loop=loop)
-            loop = connector._loop  # never None
-        else:
-            if loop is None:
+        self._set_explicit_loop = False
+        self._no_event_loop_possible = False
+        try:
+            if connector is None:
+                connector = aiohttp.TCPConnector(loop=loop)
                 loop = connector._loop  # never None
-            elif connector._loop is not loop:
-                raise ValueError("loop argument must agree with connector")
+                self._set_explicit_loop = True
+            else:
+                if loop is None:
+                    loop = connector._loop  # never None
+                    self._set_explicit_loop = True
+                elif connector._loop is not loop:
+                    raise ValueError(
+                        "loop argument must agree with connector")
 
-        self._loop = loop
-        if loop.get_debug():
-            self._source_traceback = traceback.extract_stack(sys._getframe(1))
+            self._loop = loop
+            if loop.get_debug():
+                self._source_traceback = traceback.extract_stack(
+                    sys._getframe(1))
+        except (RuntimeError, AssertionError):
+            self._set_explicit_loop = False
+            self._no_event_loop_possible = True
 
-        if not loop.is_running():
-            warnings.warn("Creating a client session outside of coroutine is "
-                          "a very dangerous idea", ResourceWarning,
-                          stacklevel=2)
-            context = {'client_session': self,
-                       'message': 'Creating a client session outside '
-                       'of coroutine'}
-            if self._source_traceback is not None:
-                context['source_traceback'] = self._source_traceback
-            loop.call_exception_handler(context)
+        if self._set_explicit_loop and not self._no_event_loop_possible:
+            if not loop.is_running():
+                warnings.warn(
+                    "Creating a client session outside of coroutine is "
+                    "a very dangerous idea", ResourceWarning,
+                    stacklevel=2)
+                context = {'client_session': self,
+                           'message': 'Creating a client session outside '
+                           'of coroutine'}
+                if self._source_traceback is not None:
+                    context['source_traceback'] = self._source_traceback
+                loop.call_exception_handler(context)
+        elif self._no_event_loop_possible:
+            raise RuntimeError(
+                "Could not create a client session when"
+                "running in the Main Thread. Please try"
+                " to get an event loop and then try to"
+                " create a client session with that.")
 
         if cookie_jar is None:
             cookie_jar = CookieJar(loop=loop)
