@@ -846,8 +846,8 @@ Response
 WebSocketResponse
 ^^^^^^^^^^^^^^^^^
 
-.. class:: WebSocketResponse(*, timeout=10.0, autoclose=True, \
-                             autoping=True, protocols=())
+.. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, autoclose=True, \
+                             autoping=True, heartbeat=None, protocols=())
 
    Class for handling server-side websockets, inherited from
    :class:`StreamResponse`.
@@ -876,6 +876,9 @@ WebSocketResponse
 
    .. versionadded:: 1.3.0
 
+   :param float heartbeat: Send `ping` message every `heartbeat` seconds
+                           and wait `pong` response, close connection if `pong` response is not received
+
    :param float receive_timeout: Timeout value for `receive` operations.
                                  Default value is None (no timeout for receive operation)
 
@@ -903,20 +906,6 @@ WebSocketResponse
 
       .. versionadded:: 0.18
 
-   .. method:: start(request)
-
-      Starts websocket. After the call you can use websocket methods.
-
-      :param aiohttp.web.Request request: HTTP request object, that the
-                                          response answers.
-
-
-      :raises HTTPException: if websocket handshake has failed.
-
-      .. deprecated:: 0.18
-
-         Use :meth:`prepare` instead.
-
    .. method:: can_prepare(request)
 
       Performs checks for *request* data to figure out if websocket
@@ -939,12 +928,6 @@ WebSocketResponse
                client and server subprotocols are not overlapping.
 
       .. note:: The method never raises exception.
-
-   .. method:: can_start(request)
-
-      Deprecated alias for :meth:`can_prepare`
-
-      .. deprecated:: 0.18
 
    .. attribute:: closed
 
@@ -1030,11 +1013,7 @@ WebSocketResponse
       A :ref:`coroutine<coroutine>` that initiates closing
       handshake by sending :const:`~aiohttp.WSMsgType.CLOSE` message.
 
-      .. note::
-
-         Can only be called by the request handling task. To
-         programmatically close websocket server side see the
-         :ref:`FAQ section <aiohttp_faq_terminating_websockets>`.
+      It is save to call `close()` from different task.
 
       :param int code: closing code
 
@@ -1042,7 +1021,7 @@ WebSocketResponse
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
-      :raise RuntimeError: if connection is not started or closing
+      :raise RuntimeError: if connection is not started
 
    .. coroutinemethod:: receive(timeout=None)
 
@@ -2207,6 +2186,34 @@ Constants
    .. attribute:: identity
 
       *no compression*
+
+
+Middlewares
+-----------
+
+Normalize path middleware
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. function:: normalize_path_middleware(*, append_slash=True, merge_slashes=True)
+
+  Middleware that normalizes the path of a request. By normalizing
+  it means:
+
+      - Add a trailing slash to the path.
+      - Double slashes are replaced by one.
+
+  The middleware returns as soon as it finds a path that resolves
+  correctly. The order if all enabled is 1) merge_slashes, 2) append_slash
+  and 3) both merge_slashes and append_slash. If the path resolves with
+  at least one of those conditions, it will redirect to the new path.
+
+  If append_slash is True append slash when needed. If a resource is
+  defined with trailing slash and the request comes without it, it will
+  append it automatically.
+
+  If merge_slashes is True, merge multiple consecutive slashes in the
+  path into one.
+
 
 .. disqus::
   :title: aiohttp server reference

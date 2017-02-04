@@ -1,5 +1,4 @@
 import asyncio
-import http.cookies
 import io
 import json
 import mimetypes
@@ -7,6 +6,7 @@ import os
 import sys
 import traceback
 import warnings
+from http.cookies import CookieError, Morsel
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
@@ -14,7 +14,7 @@ from yarl import URL
 import aiohttp
 
 from . import hdrs, helpers, streams
-from .helpers import HeadersMixin, Timeout
+from .helpers import HeadersMixin, SimpleCookie, Timeout
 from .log import client_logger
 from .multipart import MultipartWriter
 from .protocol import HttpMessage
@@ -80,6 +80,7 @@ class ClientRequest:
             q.extend(url2.query)
             url = url.with_query(q)
         self.url = url.with_fragment(None)
+        self.original_url = url
         self.method = method.upper()
         self.encoding = encoding
         self.chunked = chunked
@@ -178,15 +179,15 @@ class ClientRequest:
         if not cookies:
             return
 
-        c = http.cookies.SimpleCookie()
+        c = SimpleCookie()
         if hdrs.COOKIE in self.headers:
             c.load(self.headers.get(hdrs.COOKIE, ''))
             del self.headers[hdrs.COOKIE]
 
         for name, value in cookies.items():
-            if isinstance(value, http.cookies.Morsel):
+            if isinstance(value, Morsel):
                 # Preserve coded_value
-                mrsl_val = value.get(value.key, http.cookies.Morsel())
+                mrsl_val = value.get(value.key, Morsel())
                 mrsl_val.set(value.key, value.value, value.coded_value)
                 c[name] = mrsl_val
             else:
@@ -472,7 +473,7 @@ class ClientRequest:
             self.write_bytes(request, reader), loop=self.loop)
 
         self.response = self.response_class(
-            self.method, self.url,
+            self.method, self.original_url,
             writer=self._writer, continue100=self._continue,
             timeout=self._timeout)
         self.response._post_init(self.loop)
@@ -527,7 +528,7 @@ class ClientResponse(HeadersMixin):
         self._should_close = True  # override by message.should_close later
         self._history = ()
         self._timeout = timeout
-        self.cookies = http.cookies.SimpleCookie()
+        self.cookies = SimpleCookie()
 
     @property
     def url_obj(self):
@@ -641,7 +642,7 @@ class ClientResponse(HeadersMixin):
         for hdr in self.headers.getall(hdrs.SET_COOKIE, ()):
             try:
                 self.cookies.load(hdr)
-            except http.cookies.CookieError as exc:
+            except CookieError as exc:
                 client_logger.warning(
                     'Can not load response cookies: %s', exc)
         return self
@@ -662,14 +663,25 @@ class ClientResponse(HeadersMixin):
         self._notify_content()
 
     @asyncio.coroutine
-    def release(self):
+    def release(self, *, consume=False):
         if self._closed:
             return
         try:
             content = self.content
             if content is not None:
-                while not content.at_eof():
-                    yield from content.readany()
+                if consume:
+                    while not content.at_eof():
+                        yield from content.readany()
+                else:
+                    close = False
+                    if content.exception() is not None:
+                        close = True
+                    else:
+                        content.read_nowait()
+                        if not content.at_eof():
+                            close = True
+                    if close:
+                        self.close()
         except Exception:
             self._connection.close()
             self._connection = None

@@ -47,7 +47,10 @@ def test_keepalive_two_requests_success(loop, test_client):
 
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
-    client = yield from test_client(app)
+
+    connector = aiohttp.TCPConnector(loop=loop, limit=1)
+    client = yield from test_client(app, connector=connector)
+
     resp1 = yield from client.get('/')
     yield from resp1.read()
     resp2 = yield from client.get('/')
@@ -66,7 +69,9 @@ def test_keepalive_response_released(loop, test_client):
 
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
-    client = yield from test_client(app)
+
+    connector = aiohttp.TCPConnector(loop=loop, limit=1)
+    client = yield from test_client(app, connector=connector)
 
     resp1 = yield from client.get('/')
     yield from resp1.release()
@@ -88,7 +93,9 @@ def test_keepalive_server_force_close_connection(loop, test_client):
 
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
-    client = yield from test_client(app)
+
+    connector = aiohttp.TCPConnector(loop=loop, limit=1)
+    client = yield from test_client(app, connector=connector)
 
     resp1 = yield from client.get('/')
     resp1.close()
@@ -440,7 +447,9 @@ def test_keepalive_closed_by_server(loop, test_client):
 
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
-    client = yield from test_client(app)
+
+    connector = aiohttp.TCPConnector(loop=loop, limit=1)
+    client = yield from test_client(app, connector=connector)
 
     resp1 = yield from client.get('/')
     val1 = yield from resp1.read()

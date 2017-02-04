@@ -36,12 +36,16 @@ ALLOWED_CLOSE_CODES = {int(i) for i in WSCloseCode}
 
 
 class WSMsgType(IntEnum):
+    # websocket spec types
     CONTINUATION = 0x0
     TEXT = 0x1
     BINARY = 0x2
     PING = 0x9
     PONG = 0xa
     CLOSE = 0x8
+
+    # aiohttp specific types
+    CLOSING = 0x100
     CLOSED = 0x101
     ERROR = 0x102
 
@@ -50,6 +54,7 @@ class WSMsgType(IntEnum):
     ping = PING
     pong = PONG
     close = CLOSE
+    closing = CLOSING
     closed = CLOSED
     error = ERROR
 
@@ -86,6 +91,7 @@ class WSMessage(_WSMessageBase):
 
 
 CLOSED_MESSAGE = WSMessage(WSMsgType.CLOSED, None, None)
+CLOSING_MESSAGE = WSMessage(WSMsgType.CLOSING, None, None)
 
 
 class WebSocketError(Exception):
@@ -305,11 +311,15 @@ class WebSocketWriter:
         self.writer = writer
         self.use_mask = use_mask
         self.randrange = random.randrange
+        self._closing = False
         self._limit = limit
         self._output_size = 0
 
     def _send_frame(self, message, opcode):
         """Send a frame over the websocket with message as its payload."""
+        if self._closing:
+            ws_logger.warning('websocket connection is closing.')
+
         msg_length = len(message)
 
         use_mask = self.use_mask
@@ -370,8 +380,11 @@ class WebSocketWriter:
         """Close the websocket, sending the specified code and message."""
         if isinstance(message, str):
             message = message.encode('utf-8')
-        return self._send_frame(
-            PACK_CLOSE_CODE(code) + message, opcode=WSMsgType.CLOSE)
+        try:
+            return self._send_frame(
+                PACK_CLOSE_CODE(code) + message, opcode=WSMsgType.CLOSE)
+        finally:
+            self._closing = True
 
 
 def do_handshake(method, headers, transport,

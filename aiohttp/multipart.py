@@ -631,6 +631,20 @@ class MultipartReader(object):
             pass
         elif chunk == self._boundary + b'--':
             self._at_eof = True
+            epilogue = yield from self._readline()
+            next_line = yield from self._readline()
+
+            # the epilogue is expected and then either the end of input or the
+            # parent multipart boundary, if the parent boundary is found then
+            # it should be marked as unread and handed to the parent for
+            # processing
+            if next_line[:2] == b'--':
+                self._unread.append(next_line)
+            # otherwise the request is likely missing an epilogue and both
+            # lines should be passed to the parent for processing
+            # (this handles the old behavior gracefully)
+            else:
+                self._unread.extend([next_line, epilogue])
         else:
             raise ValueError('Invalid boundary %r, expected %r'
                              % (chunk, self._boundary))
@@ -684,6 +698,19 @@ class BodyPartWriter(object):
             ('application', 'json'): self._serialize_json,
             ('application', 'x-www-form-urlencoded'): self._serialize_form
         }
+        self._validate_obj(obj, headers)
+
+    def _validate_obj(self, obj, headers):
+        mtype, stype, *_ = parse_mimetype(headers.get(CONTENT_TYPE))
+        if (mtype, stype) in self._serialize_map:
+            return
+        for key in self._serialize_map:
+            if isinstance(key, tuple):
+                continue
+            if isinstance(obj, key):
+                return
+        else:
+            raise TypeError('unexpected body part value type %r' % type(obj))
 
     def _fill_headers_with_defaults(self):
         if CONTENT_TYPE not in self.headers:

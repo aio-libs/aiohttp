@@ -7,14 +7,15 @@ from importlib import import_module
 
 from yarl import URL
 
-from . import (hdrs, web_exceptions, web_reqrep, web_server, web_urldispatcher,
-               web_ws)
+from . import (hdrs, web_exceptions, web_middlewares, web_reqrep, web_server,
+               web_urldispatcher, web_ws)
 from .abc import AbstractMatchInfo, AbstractRouter
 from .helpers import FrozenList, sentinel
 from .log import access_logger, web_logger
 from .protocol import HttpVersion  # noqa
 from .signals import PostSignal, PreSignal, Signal
 from .web_exceptions import *  # noqa
+from .web_middlewares import *  # noqa
 from .web_reqrep import *  # noqa
 from .web_server import Server
 from .web_urldispatcher import *  # noqa
@@ -26,6 +27,7 @@ __all__ = (web_reqrep.__all__ +
            web_urldispatcher.__all__ +
            web_ws.__all__ +
            web_server.__all__ +
+           web_middlewares.__all__ +
            ('Application', 'HttpVersion', 'MsgType'))
 
 

@@ -603,6 +603,7 @@ class MultipartReaderTestCase(TestCase):
                    b'\r\n'
                    b'passed\r\n'
                    b'----:----\r\n'
+                   b'\r\n'
                    b'--:--'))
         yield from reader.release()
         self.assertTrue(reader.at_eof())
@@ -1113,6 +1114,21 @@ class MultipartWriterTestCase(unittest.TestCase):
             writer.append(b'bar')
             writer.append_json({'baz': True})
         self.assertEqual(3, len(writer))
+
+    def test_append_int_not_allowed(self):
+        with self.assertRaises(TypeError):
+            with aiohttp.multipart.MultipartWriter(boundary=':') as writer:
+                writer.append(1)
+
+    def test_append_float_not_allowed(self):
+        with self.assertRaises(TypeError):
+            with aiohttp.multipart.MultipartWriter(boundary=':') as writer:
+                writer.append(1.1)
+
+    def test_append_none_not_allowed(self):
+        with self.assertRaises(TypeError):
+            with aiohttp.multipart.MultipartWriter(boundary=':') as writer:
+                writer.append(None)
 
 
 class ParseContentDispositionTestCase(unittest.TestCase):

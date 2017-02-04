@@ -6,7 +6,6 @@ import io
 import os.path
 import urllib.parse
 import zlib
-from http.cookies import SimpleCookie
 from unittest import mock
 
 import pytest
@@ -16,6 +15,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import BaseConnector, hdrs, helpers
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
+from aiohttp.helpers import SimpleCookie
 
 
 @pytest.yield_fixture

@@ -1,6 +1,5 @@
 import asyncio
 import functools
-import http.cookies
 import ssl
 import sys
 import traceback
@@ -20,12 +19,10 @@ from .client import ClientRequest
 from .errors import (ClientOSError, ClientTimeoutError, FingerprintMismatch,
                      HttpProxyError, ProxyConnectionError,
                      ServerDisconnectedError)
-from .helpers import is_ip_address, sentinel
+from .helpers import SimpleCookie, is_ip_address, sentinel
 from .resolver import DefaultResolver
 
 __all__ = ('BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector')
-
-PY_343 = sys.version_info >= (3, 4, 3)
 
 HASHFUNC_BY_DIGESTLEN = {
     16: md5,
@@ -148,7 +145,7 @@ class BaseConnector(object):
             aiohttp.StreamProtocol, loop=loop,
             disconnect_error=ServerDisconnectedError)
 
-        self.cookies = http.cookies.SimpleCookie()
+        self.cookies = SimpleCookie()
 
     def __del__(self, _warnings=warnings):
         if self._closed:
