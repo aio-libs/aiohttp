@@ -1278,6 +1278,7 @@ The toolbar is ready to use. Enjoy!!!
 
 .. _aiohttp_debugtoolbar: https://github.com/aio-libs/aiohttp_debugtoolbar
 
+
 Dev Tools
 ---------
 
@@ -1291,9 +1292,9 @@ Install via ``pip``:
 
     $ pip install aiohttp-devtools
 
-* ``runserver`` provides a development server with auto-reload, livereload, static file serving and
+   * ``runserver`` provides a development server with auto-reload, live-reload, static file serving and
   aiohttp_debugtoolbar_ integration.
-* ``start`` is a "cookiecutter" command which does the donkey work of creating new :mod:`aiohttp.web`
+   * ``start`` is a `cookiecutter command which does the donkey work of creating new :mod:`aiohttp.web`
   Applications.
 
 Documentation and a complete tutorial of creating and running an app locally are available at
