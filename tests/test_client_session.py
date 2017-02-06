@@ -273,9 +273,9 @@ def test_connector_loop(loop):
         stack.enter_context(contextlib.closing(another_loop))
         connector = TCPConnector(loop=another_loop)
         stack.enter_context(contextlib.closing(connector))
-        with pytest.raises(ValueError) as ctx:
+        with pytest.raises(RuntimeError) as ctx:
             ClientSession(connector=connector, loop=loop)
-        assert re.match("loop argument must agree with connector",
+        assert re.match("Session and connector has to use same event loop",
                         str(ctx.value))
 
 
@@ -423,6 +423,7 @@ def test_session_default_version(loop):
 def test_session_loop(loop):
     session = aiohttp.ClientSession(loop=loop)
     assert session.loop is loop
+    session.close()
 
 
 def test_proxy_str(session, params):
@@ -438,7 +439,14 @@ def test_proxy_str(session, params):
                                            **params)]
 
 
-def test_create_session_outside_of_coroutine(loop):
+def test_client_session_implicit_loop_warn():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
     with pytest.warns(ResourceWarning):
-        sess = ClientSession(loop=loop)
-    sess.close()
+        session = aiohttp.ClientSession()
+        assert session._loop is loop
+        session.close()
+
+    asyncio.set_event_loop(None)
+    loop.close()

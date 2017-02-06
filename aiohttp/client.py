@@ -57,20 +57,27 @@ class ClientSession:
                  version=aiohttp.HttpVersion11,
                  cookie_jar=None, read_timeout=None, time_service=None):
 
+        implicit_loop = False
+        if loop is None:
+            if connector is not None:
+                loop = connector._loop
+            else:
+                implicit_loop = True
+                loop = asyncio.get_event_loop()
+
         if connector is None:
             connector = aiohttp.TCPConnector(loop=loop)
-            loop = connector._loop  # never None
-        else:
-            if loop is None:
-                loop = connector._loop  # never None
-            elif connector._loop is not loop:
-                raise ValueError("loop argument must agree with connector")
+
+        if connector._loop is not loop:
+            raise RuntimeError(
+                "Session and connector has to use same event loop")
 
         self._loop = loop
+
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
-        if not loop.is_running():
+        if implicit_loop and not loop.is_running():
             warnings.warn("Creating a client session outside of coroutine is "
                           "a very dangerous idea", ResourceWarning,
                           stacklevel=2)
