@@ -54,8 +54,17 @@ CHANGES
 - Close response connection if we can not consume whole http
   message during client response release
 
-- Log warning instead of RuntimeError is websocket connection is closed.
-  
+- Log warning instead of `RuntimeError` is websocket connection is closed.
+
+- Deprecated: `aiohttp.protocol.HttpPrefixParser`
+  will be removed in 1.4 #1590
+
+- Deprecated: Servers response's `.started`, `.start()` and `.can_start()` method
+  will be removed in 1.4 #1591
+
+- Deprecated: Adding `sub app` via `app.router.add_subapp()` is deprecated
+  use `app.add_subapp()` instead, will be removed in 1.4 #1592
+
 
 1.2.0 (2016-12-17)
 ------------------

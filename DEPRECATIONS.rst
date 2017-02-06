@@ -32,15 +32,6 @@ aiohttp.MsgType is deprecated in favor to aiohttp.WSMsgType, deprecated since 1.
 Date: 07/01/2018 ?
 
 
-Response.start(), WebSocketResponse.can_start()
------------------------------------------------
-
-Deprecate `start()`, `can_start()` in favor `prepare()` and `can_preapre()`
-
-
-Date: 07/01/2017
-
-
 aiohttp.wsgi
 ------------
 
