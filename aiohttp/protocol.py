@@ -641,7 +641,7 @@ class HttpMessage(ABC):
         elif name == hdrs.UPGRADE:
             if 'websocket' in value.lower():
                 self.websocket = True
-                self.headers[name] = value
+            self.headers[name] = value
 
         elif name not in self.HOP_HEADERS:
             # ignore hop-by-hop headers

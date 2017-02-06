@@ -147,11 +147,13 @@ def test_add_headers_upgrade(transport):
 
 def test_add_headers_upgrade_websocket(transport):
     msg = protocol.Response(transport, 200)
-
     msg.add_headers(('upgrade', 'test'))
-    assert [] == list(msg.headers)
+    assert not msg.websocket
+    assert [('Upgrade', 'test')] == list(msg.headers.items())
 
+    msg = protocol.Response(transport, 200)
     msg.add_headers(('upgrade', 'websocket'))
+    assert msg.websocket
     assert [('Upgrade', 'websocket')] == list(msg.headers.items())
 
 
