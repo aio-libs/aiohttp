@@ -22,6 +22,8 @@ CHANGES
 - Do not use readline when reading the content of a part
   in the multipart reader #1535
 
+- Having a `:` or `@` in a route does not work #1552
+
 - Added `receive_timeout` timeout for websocket to receive complete message. #1325
 
 - Added `heartbeat` parameter for websocket to automatically send `ping` message. #1024 #777
