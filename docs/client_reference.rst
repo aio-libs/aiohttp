@@ -1271,8 +1271,8 @@ Response object
    .. attribute:: history
 
       A :class:`~collections.abc.Sequence` of :class:`ClientResponse`
-      objects of preceding requests if there were redirects, an empty
-      sequence otherwise.
+      objects of preceding requests (earliest request first) if there were
+      redirects, an empty sequence otherwise.
 
    .. method:: close()
 
