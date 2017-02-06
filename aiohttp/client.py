@@ -107,10 +107,13 @@ class ClientSession:
         self._request_class = request_class
         self._response_class = response_class
         self._ws_response_class = ws_response_class
-        self._time_service = (
-            time_service
-            if time_service is not None
-            else TimeService(self._loop))
+
+        if time_service is not None:
+            self._time_service_owner = False
+            self._time_service = time_service
+        else:
+            self._time_service_owner = True
+            self._time_service = TimeService(self._loop)
 
     def __del__(self, _warnings=warnings):
         if not self.closed:
@@ -486,6 +489,10 @@ class ClientSession:
         if not self.closed:
             self._connector.close()
             self._connector = None
+
+            if self._time_service_owner:
+                self._time_service.close()
+
         ret = helpers.create_future(self._loop)
         ret.set_result(None)
         return ret

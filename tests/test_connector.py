@@ -22,7 +22,8 @@ from aiohttp.test_utils import unused_port
 
 
 def test_del(loop):
-    conn = aiohttp.BaseConnector(loop=loop)
+    conn = aiohttp.BaseConnector(
+        loop=loop, time_service=unittest.mock.Mock())
     transp = unittest.mock.Mock()
     conn._conns['a'] = [(transp, 'proto', 123)]
     conns_impl = conn._conns
@@ -78,7 +79,6 @@ def test_del_with_closed_loop(loop):
     conn._conns['a'] = [(transp, 'proto', 123)]
 
     conns_impl = conn._conns
-    conn._start_cleanup_task()
     exc_handler = unittest.mock.Mock()
     loop.set_exception_handler(exc_handler)
     loop.close()
@@ -127,6 +127,36 @@ def test_close(loop):
     assert not conn._conns
     assert tr.close.called
     assert conn.closed
+
+
+def test_close_time_service_owned(loop):
+    tr = unittest.mock.Mock()
+
+    conn = aiohttp.BaseConnector(loop=loop)
+    assert not conn.closed
+    conn._conns[1] = [(tr, object(), object())]
+    ts = conn._time_service = unittest.mock.Mock()
+    conn.close()
+
+    assert not conn._conns
+    assert tr.close.called
+    assert conn.closed
+    assert ts.close.called
+
+
+def test_close_time_service_unowned(loop):
+    tr = unittest.mock.Mock()
+    ts = unittest.mock.Mock()
+
+    conn = aiohttp.BaseConnector(loop=loop, time_service=ts)
+    assert not conn.closed
+    conn._conns[1] = [(tr, object(), object())]
+    conn.close()
+
+    assert not conn._conns
+    assert tr.close.called
+    assert conn.closed
+    assert not ts.close.called
 
 
 def test_get(loop):
@@ -197,7 +227,6 @@ def test_release(loop):
     conn._release(key, req, tr, proto)
     assert conn._release_waiter.called
     assert conn._conns[1][0] == (tr, proto, 10)
-    assert conn._start_cleanup_task.called
     conn.close()
 
 
@@ -424,16 +453,11 @@ def test_connect_oserr(loop):
     assert ctx.value.strerror.endswith('[permission error]')
 
 
-def test_start_cleanup_task():
+def test_ctor_cleanup():
     loop = unittest.mock.Mock()
     loop.time.return_value = 1.5
     conn = aiohttp.BaseConnector(loop=loop, keepalive_timeout=10)
-    assert conn._cleanup_handle is None
-
-    conn._start_cleanup_task()
     assert conn._cleanup_handle is not None
-    loop.call_at.assert_called_with(
-        12, conn._cleanup)
 
 
 def test_cleanup():
@@ -446,15 +470,16 @@ def test_cleanup():
     testset[1][1][1].is_connected.return_value = False
 
     loop = unittest.mock.Mock()
-    loop.time.return_value = 300
-    conn = aiohttp.BaseConnector(loop=loop)
+    time_service = unittest.mock.Mock()
+    time_service.loop_time.return_value = 300
+    conn = aiohttp.BaseConnector(loop=loop, time_service=time_service)
     conn._conns = testset
     existing_handle = conn._cleanup_handle = unittest.mock.Mock()
 
     conn._cleanup()
     assert existing_handle.cancel.called
     assert conn._conns == {}
-    assert conn._cleanup_handle is None
+    assert conn._cleanup_handle is not None
 
 
 def test_cleanup2():
@@ -462,16 +487,17 @@ def test_cleanup2():
     testset[1][0][1].is_connected.return_value = True
 
     loop = unittest.mock.Mock()
-    loop.time.return_value = 300.1
+    time_service = unittest.mock.Mock()
+    time_service.loop_time.return_value = 300
 
-    conn = aiohttp.BaseConnector(loop=loop, keepalive_timeout=10)
+    conn = aiohttp.BaseConnector(
+        loop=loop, keepalive_timeout=10, time_service=time_service)
     conn._conns = testset
     conn._cleanup()
     assert conn._conns == testset
 
     assert conn._cleanup_handle is not None
-    loop.call_at.assert_called_with(
-        310, conn._cleanup)
+    time_service.call_later.assert_called_with(5, conn._cleanup)
     conn.close()
 
 
@@ -481,17 +507,18 @@ def test_cleanup3():
     testset[1][0][1].is_connected.return_value = True
 
     loop = unittest.mock.Mock()
-    loop.time.return_value = 308.5
+    time_service = unittest.mock.Mock()
+    time_service.loop_time.return_value = 308.5
 
-    conn = aiohttp.BaseConnector(loop=loop, keepalive_timeout=10)
+    conn = aiohttp.BaseConnector(
+        loop=loop, keepalive_timeout=10, time_service=time_service)
     conn._conns = testset
 
     conn._cleanup()
     assert conn._conns == {1: [testset[1][1]]}
 
     assert conn._cleanup_handle is not None
-    loop.call_at.assert_called_with(
-        316, conn._cleanup)
+    time_service.call_later.assert_called_with(5, conn._cleanup)
     conn.close()
 
 
@@ -594,8 +621,6 @@ def test_close_twice(loop):
 
 def test_close_cancels_cleanup_handle(loop):
     conn = aiohttp.BaseConnector(loop=loop)
-    conn._start_cleanup_task()
-
     assert conn._cleanup_handle is not None
     conn.close()
     assert conn._cleanup_handle is None

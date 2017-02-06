@@ -421,7 +421,7 @@ class TestTimeService:
         assert time_service._strtime is None
 
     def test_stop(self, time_service):
-        time_service.stop()
+        time_service.close()
         assert time_service._cb is None
         assert time_service._loop is None
 
@@ -430,13 +430,13 @@ class TestTimeService:
             return x
 
         handle = time_service.call_later(10, cb, 'test')
-        time_service.stop()
+        time_service.close()
         assert handle._cancelled
         assert not time_service._scheduled
 
     def test_double_stopping(self, time_service):
-        time_service.stop()
-        time_service.stop()
+        time_service.close()
+        time_service.close()
         assert time_service._cb is None
         assert time_service._loop is None
 

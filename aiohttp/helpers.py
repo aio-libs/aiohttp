@@ -610,7 +610,7 @@ class TimeService:
         self._cb = loop.call_at(self._loop_time + self._interval, self._on_cb)
         self._scheduled = []
 
-    def stop(self):
+    def close(self):
         if self._cb:
             self._cb.cancel()
 
@@ -673,6 +673,9 @@ class TimeService:
             self._strtime = s = self._format_date_time()
         return self._strtime
 
+    def loop_time(self):
+        return self._loop_time
+
     def call_later(self, delay, callback, *args):
         """Arrange for a callback to be called at a given time.
 
@@ -703,28 +706,31 @@ class TimeService:
 
         timeout - value in seconds or None to disable timeout logic
         """
-        return LowresTimeout(timeout, self, self._loop)
+        when = self._loop_time + timeout if timeout is not None else 0.0
+
+        ctx = _TimeServiceTimeoutContext(when, self._loop)
+
+        if timeout is not None:
+            heapq.heappush(self._scheduled, ctx)
+
+        return ctx
 
 
-class LowresTimeout:
+class _TimeServiceTimeoutContext(TimerHandle):
     """ Low resolution timeout context manager """
 
-    def __init__(self, timeout, time_service, loop):
-        self._loop = loop
-        self._timeout = timeout
-        self._time_service = time_service
+    def __init__(self, when, loop):
+        super().__init__(when, self.cancel, (), loop)
+
         self._task = None
         self._cancelled = False
-        self._cancel_handler = None
 
     def __enter__(self):
         self._task = asyncio.Task.current_task(loop=self._loop)
         if self._task is None:
+            self._cancelled = True
             raise RuntimeError('Timeout context manager should be used '
                                'inside a task')
-        if self._timeout is not None:
-            self._cancel_handler = self._time_service.call_later(
-                self._timeout, self._cancel_task)
 
         return self
 
@@ -732,14 +738,17 @@ class LowresTimeout:
         self._task = None
 
         if exc_type is asyncio.CancelledError and self._cancelled:
-            self._cancel_handler = None
             raise asyncio.TimeoutError from None
-        if self._timeout is not None:
-            self._cancel_handler.cancel()
-            self._cancel_handler = None
 
-    def _cancel_task(self):
-        self._cancelled = self._task.cancel()
+        self._cancelled = True
+
+    def cancel(self):
+        if not self._cancelled:
+            if self._task is not None:
+                self._task.cancel()
+                self._task = None
+
+            self._cancelled = True
 
 
 class HeadersMixin:

@@ -7,7 +7,6 @@ import warnings
 from collections import defaultdict
 from hashlib import md5, sha1, sha256
 from itertools import chain
-from math import ceil
 from types import MappingProxyType
 
 from yarl import URL
@@ -112,8 +111,7 @@ class BaseConnector(object):
     _source_traceback = None
 
     def __init__(self, *, conn_timeout=None, keepalive_timeout=sentinel,
-                 force_close=False, limit=20,
-                 loop=None):
+                 force_close=False, limit=20, time_service=None, loop=None):
 
         if force_close:
             if keepalive_timeout is not None and \
@@ -122,7 +120,7 @@ class BaseConnector(object):
                                  'be set if force_close is True')
         else:
             if keepalive_timeout is sentinel:
-                keepalive_timeout = 30
+                keepalive_timeout = 15.0
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -135,10 +133,16 @@ class BaseConnector(object):
         self._acquired = defaultdict(set)
         self._conn_timeout = conn_timeout
         self._keepalive_timeout = keepalive_timeout
-        self._cleanup_handle = None
         self._force_close = force_close
         self._limit = limit
         self._waiters = defaultdict(list)
+
+        if time_service is not None:
+            self._time_service_owner = False
+            self._time_service = time_service
+        else:
+            self._time_service_owner = True
+            self._time_service = helpers.TimeService(loop)
 
         self._loop = loop
         self._factory = functools.partial(
@@ -146,6 +150,11 @@ class BaseConnector(object):
             disconnect_error=ServerDisconnectedError)
 
         self.cookies = SimpleCookie()
+
+        self._cleanup_handle = None
+        if (keepalive_timeout is not sentinel and
+                keepalive_timeout is not None):
+            self._cleanup()
 
     def __del__(self, _warnings=warnings):
         if self._closed:
@@ -197,43 +206,29 @@ class BaseConnector(object):
         """Cleanup unused transports."""
         if self._cleanup_handle:
             self._cleanup_handle.cancel()
-            self._cleanup_handle = None
 
-        now = self._loop.time()
+        now = self._time_service.loop_time()
 
-        connections = {}
-        timeout = self._keepalive_timeout
+        if self._conns:
+            connections = {}
+            deadline = now - self._keepalive_timeout
+            for key, conns in self._conns.items():
+                alive = []
+                for transport, proto, use_time in conns:
+                    if transport is not None:
+                        if proto.is_connected():
+                            if use_time - deadline < 0:
+                                transport.close()
+                            else:
+                                alive.append((transport, proto, use_time))
 
-        for key, conns in self._conns.items():
-            alive = []
-            for transport, proto, t0 in conns:
-                if transport is not None:
-                    if proto and not proto.is_connected():
-                        transport = None
-                    else:
-                        delta = t0 + self._keepalive_timeout - now
-                        if delta < 0:
-                            transport.close()
-                            transport = None
-                        elif delta < timeout:
-                            timeout = delta
+                if alive:
+                    connections[key] = alive
 
-                if transport is not None:
-                    alive.append((transport, proto, t0))
-            if alive:
-                connections[key] = alive
+            self._conns = connections
 
-        if connections:
-            self._cleanup_handle = self._loop.call_at(
-                ceil(now + timeout), self._cleanup)
-
-        self._conns = connections
-
-    def _start_cleanup_task(self):
-        if self._cleanup_handle is None:
-            now = self._loop.time()
-            self._cleanup_handle = self._loop.call_at(
-                ceil(now + self._keepalive_timeout), self._cleanup)
+        self._cleanup_handle = self._time_service.call_later(
+            self._keepalive_timeout / 2.0, self._cleanup)
 
     def close(self):
         """Close all opened transports."""
@@ -246,6 +241,9 @@ class BaseConnector(object):
         try:
             if self._loop.is_closed():
                 return ret
+
+            if self._time_service_owner:
+                self._time_service.close()
 
             for key, data in self._conns.items():
                 for transport, proto, t0 in data:
@@ -330,6 +328,7 @@ class BaseConnector(object):
             conns = self._conns[key]
         except KeyError:
             return None, None
+
         t1 = self._loop.time()
         while conns:
             transport, proto, t0 = conns.pop()
@@ -342,6 +341,7 @@ class BaseConnector(object):
                         # The very last connection was reclaimed: drop the key
                         del self._conns[key]
                     return transport, proto
+
         # No more connections: drop the key
         del self._conns[key]
         return None, None
@@ -397,8 +397,6 @@ class BaseConnector(object):
                 conns = self._conns[key] = []
             conns.append((transport, protocol, self._loop.time()))
             reader.unset_parser()
-
-            self._start_cleanup_task()
 
     @asyncio.coroutine
     def _create_connection(self, req):
