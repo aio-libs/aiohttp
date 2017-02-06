@@ -11,6 +11,8 @@ CHANGES
 
 - Separate read + connect + request timeouts # 1523
 
+- Do not swallow Upgrade header #1587
+
 - Fix polls demo run application #1487
 
 - Ignore unknown 1XX status codes in client #1353
