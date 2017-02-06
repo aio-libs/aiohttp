@@ -790,7 +790,7 @@ class ClientResponse(HeadersMixin):
 
         @asyncio.coroutine
         def __aexit__(self, exc_type, exc_val, exc_tb):
-            if exc_type is None:
-                yield from self.release()
-            else:
-                self.close()
+            # similar to _RequestContextManager, we do not need to check
+            # for exceptions, response object can closes connection
+            # is state is broken
+            yield from self.release()
