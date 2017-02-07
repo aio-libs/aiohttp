@@ -213,7 +213,7 @@ def _getdate(future=0, weekdayname=_weekdayname, monthname=_monthname):  # pragm
 #
 
 _LegalKeyChars  = r"\w\d!#%&'~_`><@,:/\$\*\+\-\.\^\|\)\(\?\}\{\="  # pragma: no cover
-_LegalValueChars = _LegalKeyChars + '\[\]'  # pragma: no cover
+_LegalValueChars = _LegalKeyChars + r'\[\]'  # pragma: no cover
 _CookiePattern = re.compile(r"""
     (?x)                           # This is a verbose pattern
     \s*                            # Optional whitespace at start of cookie
