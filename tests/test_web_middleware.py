@@ -107,7 +107,7 @@ def cli(loop, test_client):
         app.router.add_route(
             'GET', '/resource2/a/b/', lambda x: web.Response(text="OK"))
         app.middlewares.extend(extra_middlewares)
-        return test_client(app)
+        return test_client(app, server_kwargs={'skip_url_asserts': True})
     return wrapper
 
 
@@ -149,6 +149,8 @@ class TestNormalizePathMiddleware:
     @asyncio.coroutine
     @pytest.mark.parametrize("path, status", [
         ('/resource1/a/b', 200),
+        ('//resource1//a//b', 200),
+        ('//resource1//a//b/', 404),
         ('///resource1//a//b', 200),
         ('/////resource1/a///b', 200),
         ('/////resource1/a//b/', 404)
@@ -165,11 +167,15 @@ class TestNormalizePathMiddleware:
     @pytest.mark.parametrize("path, status", [
         ('/resource1/a/b', 200),
         ('/resource1/a/b/', 404),
+        ('//resource2//a//b', 200),
+        ('//resource2//a//b/', 200),
         ('///resource1//a//b', 200),
         ('///resource1//a//b/', 404),
         ('/////resource1/a///b', 200),
         ('/////resource1/a///b/', 404),
         ('/resource2/a/b', 200),
+        ('//resource2//a//b', 200),
+        ('//resource2//a//b/', 200),
         ('///resource2//a//b', 200),
         ('///resource2//a//b/', 200),
         ('/////resource2/a///b', 200),
@@ -180,6 +186,5 @@ class TestNormalizePathMiddleware:
             web.normalize_path_middleware()]
 
         client = yield from cli(extra_middlewares)
-
         resp = yield from client.get(path)
         assert resp.status == status
