@@ -511,6 +511,24 @@ def test_cleanup():
     assert conn._cleanup_handle is not None
 
 
+def test_cleanup_close_ssl_transport():
+    tr = unittest.mock.Mock()
+    key = ('localhost', 80, True)
+    testset = {key: [(tr, unittest.mock.Mock(), 10)]}
+
+    loop = unittest.mock.Mock()
+    time_service = unittest.mock.Mock()
+    time_service.loop_time.return_value = 300
+    conn = aiohttp.BaseConnector(loop=loop, time_service=time_service)
+    conn._conns = testset
+    existing_handle = conn._cleanup_handle = unittest.mock.Mock()
+
+    conn._cleanup()
+    assert existing_handle.cancel.called
+    assert conn._conns == {}
+    assert conn._cleanup_closed_transports == [tr]
+
+
 def test_cleanup2():
     testset = {1: [(unittest.mock.Mock(), unittest.mock.Mock(), 300)]}
     testset[1][0][1].is_connected.return_value = True
