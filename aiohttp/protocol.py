@@ -25,8 +25,8 @@ __all__ = ('HttpMessage', 'Request', 'Response',
 
 ASCIISET = set(string.printable)
 METHRE = re.compile('[A-Z0-9$-_.]+')
-VERSRE = re.compile('HTTP/(\d+).(\d+)')
-HDRRE = re.compile(b'[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]')
+VERSRE = re.compile(r'HTTP/(\d+).(\d+)')
+HDRRE = re.compile(rb'[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]')
 EOF_MARKER = object()
 EOL_MARKER = object()
 STATUS_LINE_READY = object()
