@@ -36,16 +36,15 @@
 #
 ####
 
-import re
-import string
-from http.cookies import CookieError, Morsel
+import re  # pragma: no cover
+import string  # pragma: no cover
+from http.cookies import CookieError, Morsel  # pragma: no cover
 
-__all__ = ["CookieError", "BaseCookie", "SimpleCookie"]
+__all__ = ["CookieError", "BaseCookie", "SimpleCookie"]  # pragma: no cover
 
-_nulljoin = ''.join
-_semispacejoin = '; '.join
-_spacejoin = ' '.join
-
+_nulljoin = ''.join  # pragma: no cover
+_semispacejoin = '; '.join  # pragma: no cover
+_spacejoin = ' '.join  # pragma: no cover
 
 # These quoting routines conform to the RFC2109 specification, which in
 # turn references the character definitions from RFC2068.  They provide
@@ -58,8 +57,8 @@ _spacejoin = ' '.join
 #       _LegalChars       is the list of chars which don't require "'s
 #       _Translator       hash-table for fast quoting
 #
-_LegalChars       = string.ascii_letters + string.digits + "!#$%&'*+-.^_`|~:"
-_Translator       = {
+_LegalChars       = string.ascii_letters + string.digits + "!#$%&'*+-.^_`|~:"  # pragma: no cover
+_Translator       = {  # pragma: no cover
     '\000' : '\\000',  '\001' : '\\001',  '\002' : '\\002',
     '\003' : '\\003',  '\004' : '\\004',  '\005' : '\\005',
     '\006' : '\\006',  '\007' : '\\007',  '\010' : '\\010',
@@ -137,8 +136,8 @@ def _quote(str, LegalChars=_LegalChars):  # pragma: no cover
         return '"' + _nulljoin(_Translator.get(s, s) for s in str) + '"'
 
 
-_OctalPatt = re.compile(r"\\[0-3][0-7][0-7]")
-_QuotePatt = re.compile(r"[\\].")
+_OctalPatt = re.compile(r"\\[0-3][0-7][0-7]")  # pragma: no cover
+_QuotePatt = re.compile(r"[\\].")  # pragma: no cover
 
 def _unquote(str):  # pragma: no cover
     # If there aren't any doublequotes,
@@ -190,11 +189,11 @@ def _unquote(str):  # pragma: no cover
 # ago".  The offset may be a floating point number.
 #
 
-_weekdayname = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+_weekdayname = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']  # pragma: no cover
 
 _monthname = [None,
               'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-              'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+              'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']  # pragma: no cover
 
 def _getdate(future=0, weekdayname=_weekdayname, monthname=_monthname):  # pragma: no cover
     from time import gmtime, time
@@ -213,8 +212,8 @@ def _getdate(future=0, weekdayname=_weekdayname, monthname=_monthname):  # pragm
 # result, the parsing rules here are less strict.
 #
 
-_LegalKeyChars  = r"\w\d!#%&'~_`><@,:/\$\*\+\-\.\^\|\)\(\?\}\{\="
-_LegalValueChars = _LegalKeyChars + '\[\]'
+_LegalKeyChars  = r"\w\d!#%&'~_`><@,:/\$\*\+\-\.\^\|\)\(\?\}\{\="  # pragma: no cover
+_LegalValueChars = _LegalKeyChars + '\[\]'  # pragma: no cover
 _CookiePattern = re.compile(r"""
     (?x)                           # This is a verbose pattern
     \s*                            # Optional whitespace at start of cookie
@@ -233,7 +232,7 @@ _CookiePattern = re.compile(r"""
     )?                             # End of optional value group
     \s*                            # Any number of spaces.
     (\s+|;|$)                      # Ending either at space, semicolon, or EOS.
-    """, re.ASCII)                 # May be removed if safe.
+    """, re.ASCII)                 # pragma: no cover
 
 
 # At long last, here is the cookie class.  Using this class is almost just like
@@ -353,16 +352,16 @@ class BaseCookie(dict):  # pragma: no cover
                 M = self[key]
 
 
-class SimpleCookie(BaseCookie):
+class SimpleCookie(BaseCookie):  # pragma: no cover
     """
     SimpleCookie supports strings as cookie values.  When setting
     the value using the dictionary assignment notation, `SimpleCookie`
     calls the builtin `str()` to convert the value to a string.  Values
     received from HTTP are kept as strings.
     """
-    def value_decode(self, val):
+    def value_decode(self, val):  # pragma: no cover
         return _unquote(val), val
 
-    def value_encode(self, val):
+    def value_encode(self, val):  # pragma: no cover
         strval = str(val)
         return strval, _quote(strval)
