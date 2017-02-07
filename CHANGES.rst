@@ -21,6 +21,8 @@ CHANGES
 
 - Do not use readline when reading the content of a part
   in the multipart reader #1535
+  
+- Add optional flag for quoting `FormData` fields #916
 
 - 416 Range Not Satisfiable if requested range end > file size #1588
 
