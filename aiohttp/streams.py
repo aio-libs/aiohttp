@@ -118,14 +118,26 @@ class StreamReader(AsyncStreamReaderMixin):
     def exception(self):
         return self._exception
 
-    def set_exception(self, exc):
-        self._exception = exc
-
+    def _waiter_set_exception(self, value):
+        """Sets an waiter exception"""
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
             if not waiter.cancelled():
-                waiter.set_exception(exc)
+                waiter.set_exception(value)
+
+    def _waiter_set_result(self, res):
+        """Sets a waiter result."""
+        waiter = self._waiter
+        if waiter is not None:
+            self._waiter = None
+            if not waiter.cancelled():
+                waiter.set_result(res)
+
+    def set_exception(self, exc):
+        self._exception = exc
+
+        self._waiter_set_exception(exc)
 
         canceller = self._canceller
         if canceller is not None:
@@ -135,22 +147,14 @@ class StreamReader(AsyncStreamReaderMixin):
     def feed_eof(self):
         self._eof = True
 
-        waiter = self._waiter
-        if waiter is not None:
-            self._waiter = None
-            if not waiter.cancelled():
-                waiter.set_result(True)
+        self._waiter_set_result(True)
 
         canceller = self._canceller
         if canceller is not None:
             self._canceller = None
             canceller.cancel()
 
-        waiter = self._eof_waiter
-        if waiter is not None:
-            self._eof_waiter = None
-            if not waiter.cancelled():
-                waiter.set_result(True)
+        self._waiter_set_result(True)
 
     def is_eof(self):
         """Return True if  'feed_eof' was called."""
@@ -194,11 +198,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._buffer_size += len(data)
         self.total_bytes += len(data)
 
-        waiter = self._waiter
-        if waiter is not None:
-            self._waiter = None
-            if not waiter.cancelled():
-                waiter.set_result(False)
+        self._waiter_set_result(False)
 
         canceller = self._canceller
         if canceller is not None:
@@ -434,33 +434,37 @@ class DataQueue:
     def exception(self):
         return self._exception
 
-    def set_exception(self, exc):
-        self._exception = exc
-
+    def _waiter_set_exception(self, value):
+        """Sets an waiter exception"""
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            if not waiter.done():
-                waiter.set_exception(exc)
+            if not waiter.cancelled():
+                waiter.set_exception(value)
+
+    def _waiter_set_result(self, res):
+        """Sets a waiter result."""
+        waiter = self._waiter
+        if waiter is not None:
+            self._waiter = None
+            if not waiter.cancelled():
+                waiter.set_result(res)
+
+    def set_exception(self, exc):
+        self._exception = exc
+
+        self._waiter_set_exception(exc)
 
     def feed_data(self, data, size=0):
         self._size += size
         self._buffer.append((data, size))
 
-        waiter = self._waiter
-        if waiter is not None:
-            self._waiter = None
-            if not waiter.cancelled():
-                waiter.set_result(True)
+        self._waiter_set_result(True)
 
     def feed_eof(self):
         self._eof = True
 
-        waiter = self._waiter
-        if waiter is not None:
-            self._waiter = None
-            if not waiter.cancelled():
-                waiter.set_result(False)
+        self._waiter_set_result(False)
 
     @asyncio.coroutine
     def read(self):
