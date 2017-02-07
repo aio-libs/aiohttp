@@ -372,6 +372,36 @@ def test_static_file_range(loop, test_client, sender):
 
 
 @asyncio.coroutine
+def test_static_file_range_end_bigger_than_size(loop, test_client, sender):
+    filepath = (pathlib.Path(__file__).parent / 'aiohttp.png')
+
+    @asyncio.coroutine
+    def handler(request):
+        resp = yield from sender(chunk_size=16).send(request, filepath)
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    with filepath.open('rb') as f:
+        content = f.read()
+
+        # Ensure the whole file requested in parts is correct
+        response = yield from client.get(
+            '/', headers={'Range': 'bytes=61000-62000'})
+
+        assert response.status == 206, \
+            "failed 'bytes=61000-62000': %s" % response.reason
+
+        body = yield from response.read()
+        assert len(body) == 108, \
+            "failed 'bytes=0-999', received %d bytes" % len(body[0])
+
+        assert content[61000:] == body
+
+
+@asyncio.coroutine
 def test_static_file_range_tail(loop, test_client, sender):
     filepath = (pathlib.Path(__file__).parent / 'aiohttp.png')
 
@@ -408,16 +438,9 @@ def test_static_file_invalid_range(loop, test_client, sender):
     app.router.add_get('/', handler)
     client = yield from test_client(lambda loop: app)
 
-    flen = filepath.stat().st_size
-
     # range must be in bytes
     resp = yield from client.get('/', headers={'Range': 'blocks=0-10'})
     assert resp.status == 416, 'Range must be in bytes'
-    resp.close()
-
-    # Range end is inclusive
-    resp = yield from client.get('/', headers={'Range': 'bytes=0-%d' % flen})
-    assert resp.status == 416, 'Range end must be inclusive'
     resp.close()
 
     # start > end
