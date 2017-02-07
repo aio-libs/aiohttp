@@ -622,7 +622,7 @@ def test_http10_keep_alive_with_headers(loop, test_client):
 def test_upload_file(loop, test_client):
 
     here = pathlib.Path(__file__).parent
-    fname = here / 'software_development_in_picture.jpg'
+    fname = here / 'aiohttp.png'
     with fname.open('rb') as f:
         data = f.read()
 
@@ -644,7 +644,7 @@ def test_upload_file(loop, test_client):
 @asyncio.coroutine
 def test_upload_file_object(loop, test_client):
     here = pathlib.Path(__file__).parent
-    fname = here / 'software_development_in_picture.jpg'
+    fname = here / 'aiohttp.png'
     with fname.open('rb') as f:
         data = f.read()
 
@@ -952,7 +952,7 @@ def test_subapp_reverse_variable_url(loop, test_client):
 
 @asyncio.coroutine
 def test_subapp_reverse_static_url(loop, test_client):
-    fname = 'software_development_in_picture.jpg'
+    fname = 'aiohttp.png'
 
     @asyncio.coroutine
     def handler(request):
