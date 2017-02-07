@@ -41,6 +41,20 @@ def test_set_nodelay_no_change(loop):
     assert not s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
 
 
+def test_set_nodelay_exception(loop):
+    transport = mock.Mock()
+    s = mock.Mock()
+    s.setsockopt = mock.Mock()
+    s.family = (socket.AF_INET,)
+    s.setsockopt.side_effect = OSError
+    transport.get_extra_info.return_value = s
+    proto = mock.Mock()
+    reader = mock.Mock()
+    writer = StreamWriter(transport, proto, reader, loop)
+    writer.set_tcp_nodelay(True)
+    assert not writer.tcp_nodelay
+
+
 def test_set_nodelay_enable(loop):
     transport = mock.Mock()
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -82,6 +96,7 @@ def test_set_nodelay_enable_ipv6(loop):
 @pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
                     reason="requires unix sockets")
 def test_set_nodelay_enable_unix(loop):
+    # do not set nodelay for unix socket
     transport = mock.Mock()
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     transport.get_extra_info.return_value = s
@@ -89,7 +104,7 @@ def test_set_nodelay_enable_unix(loop):
     reader = mock.Mock()
     writer = StreamWriter(transport, proto, reader, loop)
     writer.set_tcp_nodelay(True)
-    assert writer.tcp_nodelay
+    assert not writer.tcp_nodelay
 
 
 def test_set_nodelay_enable_no_socket(loop):
@@ -99,7 +114,7 @@ def test_set_nodelay_enable_no_socket(loop):
     reader = mock.Mock()
     writer = StreamWriter(transport, proto, reader, loop)
     writer.set_tcp_nodelay(True)
-    assert writer.tcp_nodelay
+    assert not writer.tcp_nodelay
     assert writer._socket is None
 
 
@@ -182,7 +197,7 @@ def test_set_cork_enable_unix(loop):
     reader = mock.Mock()
     writer = StreamWriter(transport, proto, reader, loop)
     writer.set_tcp_cork(True)
-    assert writer.tcp_cork
+    assert not writer.tcp_cork
 
 
 @pytest.mark.skipif(CORK is None, reason="TCP_CORK or TCP_NOPUSH required")
@@ -193,8 +208,21 @@ def test_set_cork_enable_no_socket(loop):
     reader = mock.Mock()
     writer = StreamWriter(transport, proto, reader, loop)
     writer.set_tcp_cork(True)
-    assert writer.tcp_cork
+    assert not writer.tcp_cork
     assert writer._socket is None
+
+
+def test_set_cork_exception(loop):
+    transport = mock.Mock()
+    s = mock.Mock()
+    s.setsockopt = mock.Mock()
+    s.family = (socket.AF_INET,)
+    s.setsockopt.side_effect = OSError
+    proto = mock.Mock()
+    reader = mock.Mock()
+    writer = StreamWriter(transport, proto, reader, loop)
+    writer.set_tcp_cork(True)
+    assert not writer.tcp_cork
 
 
 # cork and nodelay interference

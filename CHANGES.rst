@@ -39,7 +39,9 @@ CHANGES
 - Do not pause transport during set_parser stage #1211
 
 - Lingering close doesn't terminate before timeout #1559
-  
+
+- `setsockopt` may raise `OSError` exception if socket is closed already #1595
+
 - Lots of CancelledError when requests are interrupted #1565
 
 - Allow users to specify what should happen to decoding errors
