@@ -19,7 +19,7 @@ from .client_reqrep import ClientRequest, ClientResponse
 from .client_ws import ClientWebSocketResponse
 from .cookiejar import CookieJar
 from .errors import WSServerHandshakeError
-from .helpers import Timeout, TimeService
+from .helpers import TimeService
 
 __all__ = ('ClientSession', 'request', 'get', 'options', 'head',
            'delete', 'post', 'put', 'patch', 'ws_connect')
@@ -29,18 +29,6 @@ PY_35 = sys.version_info >= (3, 5)
 
 # 5 Minute default read and connect timeout
 DEFAULT_TIMEOUT = 5 * 60
-
-
-def _timeout_min(value1, value2):
-    # If neither value is None returns minimum of two, otherwise returns non-
-    # None value
-
-    assert value1 is not None
-
-    if value2 is None:
-        return value1
-
-    return min(value1, value2)
 
 
 class ClientSession:
@@ -197,21 +185,19 @@ class ClientSession:
         if proxy is not None:
             proxy = URL(proxy)
 
-        # optionally clamp timeouts to timeout parameter
-        read_timeout = self._read_timeout
-        conn_timeout = self._connector.conn_timeout
-        if timeout is not None:
-            read_timeout = _timeout_min(timeout, read_timeout)
-            conn_timeout = _timeout_min(timeout, conn_timeout)
-
-        # is this just the same as the connector's existing timeout?
-        if conn_timeout == self._connector.conn_timeout:
-            conn_timeout = None  # this will no-op the below timeout
+        # request timeout
+        if timeout is None:
+            timeout = self._read_timeout
+        if timeout is None:
+            timeout = self._connector.conn_timeout
+        elif self._connector.conn_timeout is not None:
+            timeout = max(timeout, self._connector.conn_timeout)
 
         while True:
             url = URL(url).with_fragment(None)
 
             cookies = self._cookie_jar.filter_cookies(url)
+            timer = self._time_service.timeout(timeout)
 
             req = self._request_class(
                 method, url, params=params, headers=headers,
@@ -220,25 +206,25 @@ class ClientSession:
                 auth=auth, version=version, compress=compress, chunked=chunked,
                 expect100=expect100,
                 loop=self._loop, response_class=self._response_class,
-                proxy=proxy, proxy_auth=proxy_auth, timeout=read_timeout)
+                proxy=proxy, proxy_auth=proxy_auth, timer=timer)
 
             # None conn_timeout is a Timeout no-op
-            with Timeout(conn_timeout, loop=self._loop):
+            with timer:
                 conn = yield from self._connector.connect(req)
-            conn.writer.set_tcp_nodelay(True)
-            try:
-                resp = req.send(conn.writer, conn.reader)
+                conn.writer.set_tcp_nodelay(True)
                 try:
-                    yield from resp.start(conn, read_until_eof)
-                except:
-                    resp.close()
-                    conn.close()
-                    raise
-            except (aiohttp.HttpProcessingError,
-                    aiohttp.ServerDisconnectedError) as exc:
-                raise aiohttp.ClientResponseError() from exc
-            except OSError as exc:
-                raise aiohttp.ClientOSError(*exc.args) from exc
+                    resp = req.send(conn.writer, conn.reader)
+                    try:
+                        yield from resp.start(conn, read_until_eof)
+                    except:
+                        resp.close()
+                        conn.close()
+                        raise
+                except (aiohttp.HttpProcessingError,
+                        aiohttp.ServerDisconnectedError) as exc:
+                    raise aiohttp.ClientResponseError() from exc
+                except OSError as exc:
+                    raise aiohttp.ClientOSError(*exc.args) from exc
 
             self._cookie_jar.update_cookies(resp.cookies, resp.url_obj)
 

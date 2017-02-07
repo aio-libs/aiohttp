@@ -14,7 +14,7 @@ from yarl import URL
 import aiohttp
 
 from . import hdrs, helpers, streams
-from .helpers import HeadersMixin, SimpleCookie, Timeout
+from .helpers import HeadersMixin, SimpleCookie, _TimeServiceTimerStub
 from .log import client_logger
 from .multipart import MultipartWriter
 from .protocol import HttpMessage
@@ -65,8 +65,7 @@ class ClientRequest:
                  version=aiohttp.HttpVersion11, compress=None,
                  chunked=None, expect100=False,
                  loop=None, response_class=None,
-                 proxy=None, proxy_auth=None,
-                 timeout=5*60):
+                 proxy=None, proxy_auth=None, timer=None):
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -87,7 +86,7 @@ class ClientRequest:
         self.compress = compress
         self.loop = loop
         self.response_class = response_class or ClientResponse
-        self._timeout = timeout
+        self._timer = timer if timer is not None else _TimeServiceTimerStub()
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
@@ -474,8 +473,8 @@ class ClientRequest:
 
         self.response = self.response_class(
             self.method, self.original_url,
-            writer=self._writer, continue100=self._continue,
-            timeout=self._timeout)
+            writer=self._writer, continue100=self._continue, timer=self._timer)
+
         self.response._post_init(self.loop)
         return self.response
 
@@ -515,8 +514,8 @@ class ClientResponse(HeadersMixin):
     _loop = None
     _closed = True  # to allow __del__ for non-initialized properly response
 
-    def __init__(self, method, url, *, writer=None, continue100=None,
-                 timeout=5*60):
+    def __init__(self, method, url, *,
+                 writer=None, continue100=None, timer=None):
         assert isinstance(url, URL)
 
         self.method = method
@@ -527,7 +526,7 @@ class ClientResponse(HeadersMixin):
         self._closed = False
         self._should_close = True  # override by message.should_close later
         self._history = ()
-        self._timeout = timeout
+        self._timer = timer if timer is not None else _TimeServiceTimerStub()
         self.cookies = SimpleCookie()
 
     @property
@@ -596,7 +595,7 @@ class ClientResponse(HeadersMixin):
         self._reader = connection.reader
         self._connection = connection
         self.content = self.flow_control_class(
-            connection.reader, loop=connection.loop, timeout=self._timeout)
+            connection.reader, loop=connection.loop, timer=self._timer)
 
     def _need_parse_response_body(self):
         return (self.method.lower() != 'head' and
@@ -607,18 +606,19 @@ class ClientResponse(HeadersMixin):
         """Start response processing."""
         self._setup_connection(connection)
 
-        while True:
-            httpstream = self._reader.set_parser(self._response_parser)
+        with self._timer:
+            while True:
+                httpstream = self._reader.set_parser(self._response_parser)
 
-            # read response
-            with Timeout(self._timeout, loop=self._loop):
+                # read response
                 message = yield from httpstream.read()
-            if message.code < 100 or message.code > 199 or message.code == 101:
-                break
+                if (message.code < 100 or
+                        message.code > 199 or message.code == 101):
+                    break
 
-            if self._continue is not None and not self._continue.done():
-                self._continue.set_result(True)
-                self._continue = None
+                if self._continue is not None and not self._continue.done():
+                    self._continue.set_result(True)
+                    self._continue = None
 
         # response status
         self.version = message.version
