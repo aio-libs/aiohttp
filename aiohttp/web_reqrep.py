@@ -180,6 +180,14 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     @reify
     def rel_url(self):
+        # special case for path started with `//`
+        # if path starts with // it is valid host, but in case of web server
+        # liklyhood of it beein malformed path is much higher
+        url = URL(self._message.path)
+
+        if self._message.path.startswith('//'):
+            return url.with_path(self._message.path.split('?')[0])
+
         return URL(self._message.path)
 
     @reify
