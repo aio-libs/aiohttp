@@ -105,11 +105,12 @@ class FormData:
     """Helper class for multipart/form-data and
     application/x-www-form-urlencoded body generation."""
 
-    def __init__(self, fields=()):
+    def __init__(self, fields=(), quote_fields=True):
         from . import multipart
         self._writer = multipart.MultipartWriter('form-data')
         self._fields = []
         self._is_multipart = False
+        self._quote_fields = quote_fields
 
         if isinstance(fields, dict):
             fields = list(fields.items())
@@ -200,7 +201,9 @@ class FormData:
         for dispparams, headers, value in self._fields:
             part = self._writer.append(value, headers)
             if dispparams:
-                part.set_content_disposition('form-data', **dispparams)
+                part.set_content_disposition(
+                    'form-data', quote_fields=self._quote_fields, **dispparams
+                )
                 # FIXME cgi.FieldStorage doesn't likes body parts with
                 # Content-Length which were sent via chunked transfer encoding
                 part.headers.pop(hdrs.CONTENT_LENGTH, None)
