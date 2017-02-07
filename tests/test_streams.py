@@ -12,6 +12,7 @@ class TestStreamReader(unittest.TestCase):
     DATA = b'line1\nline2\nline3\n'
 
     def setUp(self):
+        self.time_service = None
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
 
@@ -19,6 +20,11 @@ class TestStreamReader(unittest.TestCase):
         self.loop.close()
 
     def _make_one(self, *args, **kwargs):
+        if 'timeout' in kwargs:
+            self.time_service = helpers.TimeService(self.loop, interval=0.01)
+            self.addCleanup(self.time_service.close)
+            kwargs['timer'] = self.time_service.timeout(kwargs.pop('timeout'))
+
         return streams.StreamReader(loop=self.loop, *args, **kwargs)
 
     def test_create_waiter(self):
@@ -584,56 +590,6 @@ class TestStreamReader(unittest.TestCase):
         data = self.loop.run_until_complete(stream.read(5))
         self.assertEqual(b'line1', data)
         self.assertTrue(stream.at_eof())
-
-    def test_set_exception_cancels_timeout(self):
-        stream = self._make_one(timeout=1)
-        task = helpers.ensure_future(stream.readany(), loop=self.loop)
-        self.loop.run_until_complete(asyncio.sleep(0, loop=self.loop))
-
-        self.assertIsNotNone(stream._canceller)
-        canceller = stream._canceller = mock.Mock()
-        stream.set_exception(ValueError())
-        self.assertIsNone(stream._canceller)
-        canceller.cancel.assert_called_with()
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, task)
-
-    def test_feed_eof_cancels_timeout(self):
-        stream = self._make_one(timeout=1)
-        task = helpers.ensure_future(stream.readany(), loop=self.loop)
-        self.loop.run_until_complete(asyncio.sleep(0, loop=self.loop))
-
-        self.assertIsNotNone(stream._canceller)
-        canceller = stream._canceller = mock.Mock()
-        stream.feed_eof()
-        self.assertIsNone(stream._canceller)
-        canceller.cancel.assert_called_with()
-        self.assertEqual(b'', self.loop.run_until_complete(task))
-
-    def test_feed_data_cancels_timeout(self):
-        stream = self._make_one(timeout=1)
-        task = helpers.ensure_future(stream.readany(), loop=self.loop)
-        self.loop.run_until_complete(asyncio.sleep(0, loop=self.loop))
-
-        self.assertIsNotNone(stream._canceller)
-        canceller = stream._canceller = mock.Mock()
-        stream.feed_data(b'data')
-        self.assertIsNone(stream._canceller)
-        canceller.cancel.assert_called_with()
-        self.assertEqual(b'data', self.loop.run_until_complete(task))
-
-    def test_wait_cancels_timeout(self):
-        # Read bytes.
-        stream = self._make_one(timeout=1)
-        task = helpers.ensure_future(stream._wait('test'), loop=self.loop)
-        self.loop.run_until_complete(asyncio.sleep(0, loop=self.loop))
-
-        self.assertIsNotNone(stream._canceller)
-        canceller = stream._canceller = mock.Mock()
-        stream._waiter.set_result(None)
-        self.loop.run_until_complete(task)
-        self.assertIsNone(stream._canceller)
-        canceller.cancel.assert_called_with()
 
 
 class TestEmptyStreamReader(unittest.TestCase):

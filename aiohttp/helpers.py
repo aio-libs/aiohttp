@@ -711,7 +711,7 @@ class TimeService:
         """
         when = self._loop_time + timeout if timeout is not None else 0.0
 
-        ctx = _TimeServiceTimeoutContext(when, self._loop)
+        ctx = _TimeServiceTimeoutContext(when, self._loop, timeout is None)
 
         if timeout is not None:
             heapq.heappush(self._scheduled, ctx)
@@ -719,38 +719,52 @@ class TimeService:
         return ctx
 
 
-class _TimeServiceTimeoutContext(TimerHandle):
-    """ Low resolution timeout context manager """
-
-    def __init__(self, when, loop):
-        super().__init__(when, self.cancel, (), loop)
-
-        self._task = None
-        self._cancelled = False
+class _TimeServiceTimerStub:
 
     def __enter__(self):
-        self._task = asyncio.Task.current_task(loop=self._loop)
-        if self._task is None:
-            self._cancelled = True
-            raise RuntimeError('Timeout context manager should be used '
-                               'inside a task')
-
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._task = None
+        pass
+
+
+class _TimeServiceTimeoutContext(TimerHandle):
+    """ Low resolution timeout context manager """
+
+    def __init__(self, when, loop, noop):
+        super().__init__(when, self.cancel, (), loop)
+
+        self._noop = noop
+        self._tasks = []
+        self._cancelled = False
+
+    def __enter__(self):
+        if not self._noop:
+            task = asyncio.Task.current_task(loop=self._loop)
+            if task is None:
+                raise RuntimeError('Timeout context manager should be used '
+                                   'inside a task')
+
+            if self._cancelled:
+                task.cancel()
+                raise asyncio.TimeoutError from None
+
+            self._tasks.append(task)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._tasks:
+            self._tasks.pop()
 
         if exc_type is asyncio.CancelledError and self._cancelled:
             raise asyncio.TimeoutError from None
 
-        self._cancelled = True
-
     def cancel(self):
         if not self._cancelled:
-            if self._task is not None:
-                self._task.cancel()
-                self._task = None
+            for task in self._tasks:
+                task.cancel()
 
+            self._tasks = []
             self._cancelled = True
 
 
