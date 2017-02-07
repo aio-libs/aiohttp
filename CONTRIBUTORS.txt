@@ -110,7 +110,7 @@ Mun Gwan-gyeong
 Nicolas Braem
 Nikolay Novik
 Olaf Conradi
-Pahaz Blinov <pahaz.blinov@gmail.com>
+Pahaz Blinov
 Pankaj Pandey
 Pau Freixes
 Paul Colomiets
@@ -118,11 +118,12 @@ Paulus Schoutsen
 Philipp A.
 Rafael Viotti
 Raúl Cumplido
-"Required Field" <requiredfield256@gmail.com>
+Required Field
 Robert Lu
 Samuel Colvin
 Sebastian Hanula
 Sebastian Hüther
+Sean Hunt
 SeongSoo Cho
 Sergey Ninua
 Sergey Skripnick
