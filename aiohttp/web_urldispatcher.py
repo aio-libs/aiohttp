@@ -721,6 +721,11 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     @asyncio.coroutine
     def resolve(self, request):
         method = request.method
+
+        return (yield from self.resolve2(method, path))
+
+    @asyncio.coroutine
+    def resolve2(self, method, path):
         allowed_methods = set()
 
         for resource in self._resources:
