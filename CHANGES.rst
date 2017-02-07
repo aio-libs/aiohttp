@@ -51,10 +51,12 @@ CHANGES
 
 - Return 504 if request handle raises TimeoutError.
 
-- Refactor how we use keep-alive and clone lingering timeouts.
+- Refactor how we use keep-alive and close lingering timeouts.
 
 - Close response connection if we can not consume whole http
   message during client response release
+
+- Abort closed ssl client transports, broken servers can keep socket open un-limit time #1568
 
 - Log warning instead of `RuntimeError` is websocket connection is closed.
 
