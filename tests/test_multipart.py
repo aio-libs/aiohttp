@@ -751,10 +751,10 @@ class BodyPartWriterTestCase(unittest.TestCase):
                          self.part._guess_content_type('foo'))
 
         here = os.path.dirname(__file__)
-        filename = os.path.join(here, 'software_development_in_picture.jpg')
+        filename = os.path.join(here, 'aiohttp.png')
 
         with open(filename, 'rb') as f:
-            self.assertEqual('image/jpeg',
+            self.assertEqual('image/png',
                              self.part._guess_content_type(f))
 
     def test_guess_filename(self):
