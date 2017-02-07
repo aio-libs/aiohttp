@@ -184,7 +184,14 @@ class FileSender:
                 count = (end or file_size) - start
 
             if start + count > file_size:
-                raise HTTPRequestRangeNotSatisfiable
+                # rfc7233:If the last-byte-pos value is
+                # absent, or if the value is greater than or equal to
+                # the current length of the representation data,
+                # the byte range is interpreted as the remainder
+                # of the representation (i.e., the server replaces the
+                # value of last-byte-pos with a value that is one less than
+                # the current length of the selected representation).
+                count = file_size - start
 
         resp = self._response_factory(status=status)
         resp.content_type = ct
