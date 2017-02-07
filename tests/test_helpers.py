@@ -155,6 +155,20 @@ def test_invalid_formdata_content_transfer_encoding():
 # ------------- access logger -------------------------
 
 
+def test_formdata_field_name_is_quoted():
+    form = helpers.FormData()
+    form.add_field("emails[]", "xxx@x.co", content_type="multipart/form-data")
+    res = b"".join(form("ascii"))
+    assert b'name="emails%5B%5D"' in res
+
+
+def test_formdata_field_name_is_not_quoted():
+    form = helpers.FormData(quote_fields=False)
+    form.add_field("emails[]", "xxx@x.co", content_type="multipart/form-data")
+    res = b"".join(form("ascii"))
+    assert b'name="emails[]"' in res
+
+
 def test_access_logger_format():
     log_format = '%T {%{SPAM}e} "%{ETag}o" %X {X} %%P %{FOO_TEST}e %{FOO1}e'
     mock_logger = mock.Mock()
