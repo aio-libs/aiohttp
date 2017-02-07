@@ -42,7 +42,8 @@ def unused_port():
 
 
 class BaseTestServer(ABC):
-    def __init__(self, *, scheme=sentinel, host='127.0.0.1'):
+    def __init__(self, *, scheme=sentinel,
+                 host='127.0.0.1', skip_url_asserts=False, **kwargs):
         self.port = None
         self.server = None
         self.handler = None
@@ -50,6 +51,7 @@ class BaseTestServer(ABC):
         self.host = host
         self._closed = False
         self.scheme = scheme
+        self.skip_url_asserts = skip_url_asserts
 
     @asyncio.coroutine
     def start_server(self, **kwargs):
@@ -80,8 +82,11 @@ class BaseTestServer(ABC):
 
     def make_url(self, path):
         url = URL(path)
-        assert not url.is_absolute()
-        return self._root.join(url)
+        if not self.skip_url_asserts:
+            assert not url.is_absolute()
+            return self._root.join(url)
+        else:
+            return URL(str(self._root) + path)
 
     @property
     def started(self):
@@ -136,10 +141,10 @@ class BaseTestServer(ABC):
 
 
 class TestServer(BaseTestServer):
-    def __init__(self, app, *, scheme=sentinel, host='127.0.0.1'):
+    def __init__(self, app, *, scheme=sentinel, host='127.0.0.1', **kwargs):
         self.app = app
         self._loop = app.loop
-        super().__init__(scheme=scheme, host=host)
+        super().__init__(scheme=scheme, host=host, **kwargs)
 
     @asyncio.coroutine
     def _make_factory(self, **kwargs):
@@ -155,13 +160,13 @@ class TestServer(BaseTestServer):
 
 
 class RawTestServer(BaseTestServer):
-    def __init__(self, handler,
-                 *, loop=None, scheme=sentinel, host='127.0.0.1'):
+    def __init__(self, handler, *,
+                 loop=None, scheme=sentinel, host='127.0.0.1', **kwargs):
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
         self._handler = handler
-        super().__init__(scheme=scheme, host=host)
+        super().__init__(scheme=scheme, host=host, **kwargs)
 
     @asyncio.coroutine
     def _make_factory(self, debug=True, **kwargs):
@@ -183,7 +188,7 @@ class TestClient:
     """
 
     def __init__(self, app_or_server, *, scheme=sentinel, host=sentinel,
-                 cookie_jar=None, **kwargs):
+                 cookie_jar=None, server_kwargs=None, **kwargs):
         if isinstance(app_or_server, BaseTestServer):
             if scheme is not sentinel or host is not sentinel:
                 raise ValueError("scheme and host are mutable exclusive "
@@ -192,8 +197,10 @@ class TestClient:
         elif isinstance(app_or_server, Application):
             scheme = "http" if scheme is sentinel else scheme
             host = '127.0.0.1' if host is sentinel else host
-            self._server = TestServer(app_or_server,
-                                      scheme=scheme, host=host)
+            server_kwargs = server_kwargs or {}
+            self._server = TestServer(
+                app_or_server,
+                scheme=scheme, host=host, **server_kwargs)
         else:
             raise TypeError("app_or_server should be either web.Application "
                             "or TestServer instance")
