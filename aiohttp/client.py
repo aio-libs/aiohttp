@@ -193,7 +193,7 @@ class ClientSession:
         elif self._connector.conn_timeout is not None:
             timeout = max(timeout, self._connector.conn_timeout)
 
-        # timeout is comulative for all request operations
+        # timeout is cumulative for all request operations
         # (request, redirects, responses, data consuming)
         timer = self._time_service.timeout(timeout)
 
