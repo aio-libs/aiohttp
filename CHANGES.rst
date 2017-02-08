@@ -17,3 +17,6 @@ CHANGES
   aiohttp.put(), aiohttp.patch(), aiohttp.delete(), and aiohttp.ws_connect() #1593
 
 - Dropped: `aiohttp.web.WebSocketResponse.receive_msg()` #1605
+
+- Dropped: `ServerHttpProtocol.keep_alive_timeout` attr and
+  `keep-alive`, `keep_alive_on`, `timeout`, `log` ctor parameters #1606

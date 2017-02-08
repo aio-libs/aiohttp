@@ -542,7 +542,7 @@ def test_handle_error_no_handle_task(srv):
 
 
 def test_keep_alive(make_srv, loop):
-    srv = make_srv(keep_alive=0.1)
+    srv = make_srv(keepalive_timeout=0.1)
     transport = mock.Mock()
     closed = False
 
@@ -587,7 +587,7 @@ def test_keep_alive_close_existing(make_srv, loop):
 
 def test_srv_process_request_without_timeout(make_srv, loop):
     transport = mock.Mock()
-    srv = make_srv(timeout=0)
+    srv = make_srv(slow_request_timeout=0)
     srv.connection_made(transport)
 
     srv.reader.feed_data(
@@ -605,24 +605,6 @@ def test_keep_alive_timeout_default(srv):
 def test_keep_alive_timeout_nondefault(make_srv):
     srv = make_srv(keepalive_timeout=10)
     assert 10 == srv.keepalive_timeout
-
-
-def test_keep_alive_timeout_deprecated(make_srv):
-    with pytest.warns(DeprecationWarning) as ctx:
-        make_srv(keep_alive=10)
-    assert len(ctx) == 1
-    expected = "keep_alive is deprecated, use keepalive_timeout instead"
-    assert ctx[0].message.args == (expected,)
-
-
-def test_keep_alive_timeout_deprecated2(make_srv):
-    srv = make_srv(keepalive_timeout=10)
-
-    with pytest.warns(DeprecationWarning) as ctx:
-        assert 10 == srv.keep_alive_timeout
-    assert len(ctx) == 1
-    expected = "Use keepalive_timeout property instead"
-    assert ctx[0].message.args == (expected,)
 
 
 def test_supports_connect_method(srv, loop):
