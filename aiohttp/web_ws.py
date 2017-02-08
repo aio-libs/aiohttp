@@ -132,18 +132,6 @@ class WebSocketResponse(StreamResponse):
         self._protocol = protocol
         self._loop = request.app.loop
 
-    def start(self, request):
-        warnings.warn('use .prepare(request) instead', DeprecationWarning)
-        # make pre-check to don't hide it by do_handshake() exceptions
-        resp_impl = self._start_pre_check(request)
-        if resp_impl is not None:
-            return resp_impl
-
-        parser, protocol, writer = self._pre_start(request)
-        resp_impl = super().start(request)
-        self._post_start(request, parser, protocol, writer)
-        return resp_impl
-
     def can_prepare(self, request):
         if self._writer is not None:
             raise RuntimeError('Already started')
@@ -155,10 +143,6 @@ class WebSocketResponse(StreamResponse):
             return WebSocketReady(False, None)
         else:
             return WebSocketReady(True, protocol)
-
-    def can_start(self, request):
-        warnings.warn('use .can_prepare(request) instead', DeprecationWarning)
-        return self.can_prepare(request)
 
     @property
     def closed(self):

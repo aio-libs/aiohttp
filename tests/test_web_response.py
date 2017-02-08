@@ -564,14 +564,13 @@ def test_keep_alive_http09():
     assert not resp.keep_alive
 
 
-def test_start_twice():
+def test_prepare_twice():
     req = make_request('GET', '/')
     resp = StreamResponse()
 
-    with pytest.warns(DeprecationWarning):
-        impl1 = resp.start(req)
-        impl2 = resp.start(req)
-        assert impl1 is impl2
+    impl1 = yield from resp.prepare(req)
+    impl2 = yield from resp.prepare(req)
+    assert impl1 is impl2
 
 
 @asyncio.coroutine
