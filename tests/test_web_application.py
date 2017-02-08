@@ -75,21 +75,6 @@ def test_app_register_coro(loop):
     assert 123 == fut.result()
 
 
-@asyncio.coroutine
-def test_app_register_and_finish_are_deprecated(loop):
-    app = web.Application(loop=loop)
-    cb1 = mock.Mock()
-    cb2 = mock.Mock()
-    with pytest.warns(DeprecationWarning):
-        app.register_on_finish(cb1, 1, b=2)
-    with pytest.warns(DeprecationWarning):
-        app.register_on_finish(cb2, 2, c=3)
-    with pytest.warns(DeprecationWarning):
-        yield from app.finish()
-    cb1.assert_called_once_with(app, 1, b=2)
-    cb2.assert_called_once_with(app, 2, c=3)
-
-
 def test_non_default_router(loop):
     router = mock.Mock(spec=AbstractRouter)
     app = web.Application(loop=loop, router=router)
