@@ -12,7 +12,6 @@ import os
 import re
 import sys
 import time
-import warnings
 from collections import MutableSequence, namedtuple
 from functools import total_ordering
 from pathlib import Path
@@ -532,17 +531,6 @@ def is_ip_address(host):
     else:
         raise TypeError("{} [{}] is not a str or bytes"
                         .format(host, type(host)))
-
-
-def _get_kwarg(kwargs, old, new, value):
-    val = kwargs.pop(old, sentinel)
-    if val is not sentinel:
-        warnings.warn("{} is deprecated, use {} instead".format(old, new),
-                      DeprecationWarning,
-                      stacklevel=3)
-        return val
-    else:
-        return value
 
 
 @total_ordering

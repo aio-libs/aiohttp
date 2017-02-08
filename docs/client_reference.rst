@@ -691,8 +691,7 @@ TCPConnector
                         family=0, \
                         ssl_context=None, conn_timeout=None, \
                         keepalive_timeout=30, limit=None, \
-                        force_close=False, loop=None, local_addr=None,
-                        resolver=None)
+                        force_close=False, loop=None, local_addr=None)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -744,10 +743,6 @@ TCPConnector
          The resolver is ``aiohttp.AsyncResolver`` now if
          :term:`aiodns` is installed.
 
-   :param bool resolve: alias for *use_dns_cache* parameter.
-
-      .. deprecated:: 0.17
-
    :param int family: TCP socket family, both IPv4 and IPv6 by default.
                       For *IPv4* only use :const:`socket.AF_INET`,
                       for  *IPv6* only -- :const:`socket.AF_INET6`.
@@ -795,12 +790,6 @@ TCPConnector
 
       .. versionadded:: 0.17
 
-   .. attribute:: resolve
-
-      Alias for :attr:`dns_cache`.
-
-      .. deprecated:: 0.17
-
    .. attribute:: cached_hosts
 
       The cache of resolved hosts if :attr:`dns_cache` is enabled.
@@ -808,12 +797,6 @@ TCPConnector
       Read-only :class:`types.MappingProxyType` property.
 
       .. versionadded:: 0.17
-
-   .. attribute:: resolved_hosts
-
-      Alias for :attr:`cached_hosts`
-
-      .. deprecated:: 0.17
 
    .. attribute:: fingerprint
 
@@ -833,14 +816,6 @@ TCPConnector
       clear all cache otherwise.
 
       .. versionadded:: 0.17
-
-   .. method:: clear_resolved_hosts(self, host=None, port=None)
-
-      Alias for :meth:`clear_dns_cache`.
-
-      .. deprecated:: 0.17
-
-
 
 
 ProxyConnector

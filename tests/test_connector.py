@@ -604,15 +604,9 @@ def test_tcp_connector_ctor(loop):
     assert conn.verify_ssl
     assert conn.fingerprint is None
 
-    with pytest.warns(DeprecationWarning):
-        assert conn.resolve
     assert conn.use_dns_cache
-
     assert conn.family == 0
-
-    with pytest.warns(DeprecationWarning):
-        assert conn.resolved_hosts == {}
-    assert conn.resolved_hosts == {}
+    assert conn.cached_hosts == {}
 
 
 def test_tcp_connector_ctor_fingerprint_valid(loop):
@@ -625,20 +619,6 @@ def test_tcp_connector_fingerprint_invalid(loop):
     invalid = b'\x00'
     with pytest.raises(ValueError):
         aiohttp.TCPConnector(loop=loop, fingerprint=invalid)
-
-
-def test_tcp_connector_clear_resolved_hosts(loop):
-    conn = aiohttp.TCPConnector(loop=loop)
-    info = object()
-    conn._cached_hosts[('localhost', 123)] = info
-    conn._cached_hosts[('localhost', 124)] = info
-    conn.clear_dns_cache('localhost', 123)
-    assert conn.cached_hosts == {('localhost', 124): info}
-    conn.clear_dns_cache('localhost', 123)
-    assert conn.cached_hosts == {('localhost', 124): info}
-    with pytest.warns(DeprecationWarning):
-        conn.clear_resolved_hosts()
-    assert conn.cached_hosts == {}
 
 
 def test_tcp_connector_clear_dns_cache(loop):
@@ -966,28 +946,6 @@ def test_tcp_connector(test_client, loop):
 
     r = yield from client.get('/')
     assert r.status == 200
-
-
-def test_ambiguous_ctor_params(loop):
-    with pytest.raises(ValueError):
-        aiohttp.TCPConnector(resolve=True, use_dns_cache=False,
-                             loop=loop)
-
-
-def test_both_resolve_and_use_dns_cache(loop):
-    conn = aiohttp.TCPConnector(resolve=True, use_dns_cache=True,
-                                loop=loop)
-    assert conn.use_dns_cache
-    with pytest.warns(DeprecationWarning):
-        assert conn.resolve
-
-
-def test_both_use_dns_cache_only(loop):
-    conn = aiohttp.TCPConnector(use_dns_cache=True,
-                                loop=loop)
-    assert conn.use_dns_cache
-    with pytest.warns(DeprecationWarning):
-        assert conn.resolve
 
 
 def test_default_use_dns_cache(loop):

@@ -736,7 +736,7 @@ def test_HTTP_200_OK_METHOD_connector(loop, test_client):
 
     conn = aiohttp.TCPConnector(
         conn_timeout=0.2, resolve=True, loop=loop)
-    conn.clear_resolved_hosts()
+    conn.clear_dns_cache()
 
     app = web.Application(loop=loop)
     for meth in ('get', 'post', 'put', 'delete', 'head'):
