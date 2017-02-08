@@ -96,6 +96,19 @@ def test_entry_func_non_existent_attribute(mocker):
     )
 
 
+def test_path_when_unsupported(mocker, monkeypatch):
+    argv = "--path=test_path.sock alpha.beta:func".split()
+    mocker.patch("aiohttp.web.import_module")
+    monkeypatch.delattr("socket.AF_UNIX")
+
+    error = mocker.patch("aiohttp.web.ArgumentParser.error",
+                         side_effect=SystemExit)
+    with pytest.raises(SystemExit):
+        web.main(argv)
+
+    error.assert_called_with("file system paths not supported by your operating environment")
+
+
 def test_entry_func_call(mocker):
     mocker.patch("aiohttp.web.run_app")
     import_module = mocker.patch("aiohttp.web.import_module")
@@ -125,5 +138,5 @@ def test_running_application(mocker):
     with pytest.raises(SystemExit):
         web.main(argv)
 
-    run_app.assert_called_with(app, host="testhost", port=6666)
+    run_app.assert_called_with(app, host="testhost", port=6666, path=None)
     exit.assert_called_with(message="Stopped\n")
