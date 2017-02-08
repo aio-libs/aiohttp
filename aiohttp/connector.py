@@ -481,8 +481,7 @@ class TCPConnector(BaseConnector):
                  resolve=sentinel, use_dns_cache=sentinel,
                  family=0, ssl_context=None, local_addr=None, resolver=None,
                  conn_timeout=None, keepalive_timeout=sentinel,
-                 force_close=False, limit=20,
-                 loop=None):
+                 force_close=False, limit=20, loop=None):
         super().__init__(conn_timeout=conn_timeout,
                          keepalive_timeout=keepalive_timeout,
                          force_close=force_close, limit=limit, loop=loop)
@@ -507,19 +506,8 @@ class TCPConnector(BaseConnector):
             self._hashfunc = hashfunc
         self._fingerprint = fingerprint
 
-        if resolve is not sentinel:
-            warnings.warn(("resolve parameter is deprecated, "
-                           "use use_dns_cache instead"),
-                          DeprecationWarning, stacklevel=2)
-
-        if use_dns_cache is not sentinel and resolve is not sentinel:
-            if use_dns_cache != resolve:
-                raise ValueError("use_dns_cache must agree with resolve")
+        if use_dns_cache is not sentinel:
             _use_dns_cache = use_dns_cache
-        elif use_dns_cache is not sentinel:
-            _use_dns_cache = use_dns_cache
-        elif resolve is not sentinel:
-            _use_dns_cache = resolve
         else:
             _use_dns_cache = True
 
@@ -585,32 +573,6 @@ class TCPConnector(BaseConnector):
                              "or none of them are allowed")
         else:
             self._cached_hosts.clear()
-
-    @property
-    def resolve(self):
-        """Do DNS lookup for host name?"""
-        warnings.warn((".resolve property is deprecated, "
-                       "use .dns_cache instead"),
-                      DeprecationWarning, stacklevel=2)
-        return self.use_dns_cache
-
-    @property
-    def resolved_hosts(self):
-        """The dict of (host, port) -> (ipaddr, port) pairs."""
-        warnings.warn((".resolved_hosts property is deprecated, "
-                       "use .cached_hosts instead"),
-                      DeprecationWarning, stacklevel=2)
-        return self.cached_hosts
-
-    def clear_resolved_hosts(self, host=None, port=None):
-        """Remove specified host/port or clear all resolve cache."""
-        warnings.warn((".clear_resolved_hosts() is deprecated, "
-                       "use .clear_dns_cache() instead"),
-                      DeprecationWarning, stacklevel=2)
-        if host is not None and port is not None:
-            self.clear_dns_cache(host, port)
-        else:
-            self.clear_dns_cache()
 
     @asyncio.coroutine
     def _resolve_host(self, host, port):

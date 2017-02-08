@@ -18,5 +18,8 @@ CHANGES
 
 - Dropped: `aiohttp.web.WebSocketResponse.receive_msg()` #1605
 
-- Dropped: `ServerHttpProtocol.keep_alive_timeout` attr and
-  `keep-alive`, `keep_alive_on`, `timeout`, `log` ctor parameters #1606
+- Dropped: `ServerHttpProtocol.keep_alive_timeout` attribute and
+  `keep-alive`, `keep_alive_on`, `timeout`, `log` constructor parameters #1606
+
+- Dropped: `TCPConnector's`` `.resolve`, `.resolved_hosts`, `.clear_resolved_hosts()`
+  attributes and `resolve` constructor  parameter #1607
