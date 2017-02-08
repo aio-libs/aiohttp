@@ -1,7 +1,9 @@
 import asyncio
 import contextlib
+import tempfile
 
 import pytest
+from py import path
 
 from aiohttp.web import Application
 
@@ -155,3 +157,13 @@ def test_client(loop):
             yield from clients.pop().close()
 
     loop.run_until_complete(finalize())
+
+
+@pytest.fixture
+def shorttmpdir():
+    """Provides a temporary directory with a shorter file system path than the
+    tmpdir fixture.
+    """
+    tmpdir = path.local(tempfile.mkdtemp())
+    yield tmpdir
+    tmpdir.remove(rec=1)
