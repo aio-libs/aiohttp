@@ -16,7 +16,7 @@ async def test_await(test_server, loop):
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
     server = await test_server(app)
-    resp = await aiohttp.get(server.make_url('/'), loop=loop)
+    resp = await aiohttp.ClientSession(loop=loop).get(server.make_url('/'))
     assert resp.status == 200
     assert resp.connection is not None
     await resp.release()
@@ -31,7 +31,7 @@ async def test_response_context_manager(test_server, loop):
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
     server = await test_server(app)
-    resp = await aiohttp.get(server.make_url('/'), loop=loop)
+    resp = await aiohttp.ClientSession(loop=loop).get(server.make_url('/'))
     async with resp:
         assert resp.status == 200
         assert resp.connection is not None
@@ -46,8 +46,8 @@ async def test_response_context_manager_error(test_server, loop):
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
     server = await test_server(app)
-    cm = aiohttp.get(server.make_url('/'), loop=loop)
-    session = cm._session
+    session = aiohttp.ClientSession(loop=loop)
+    cm = session.get(server.make_url('/'))
     resp = await cm
     with pytest.raises(RuntimeError):
         async with resp:
@@ -66,9 +66,10 @@ async def test_client_api_context_manager(test_server, loop):
     app.router.add_route('GET', '/', handler)
     server = await test_server(app)
 
-    async with aiohttp.get(server.make_url('/'), loop=loop) as resp:
-        assert resp.status == 200
-        assert resp.connection is not None
+    async with aiohttp.ClientSession(loop=loop) as session:
+        async with session.get(server.make_url('/')) as resp:
+            assert resp.status == 200
+            assert resp.connection is not None
     assert resp.connection is None
 
 

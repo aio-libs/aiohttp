@@ -1551,38 +1551,6 @@ def test_shortcuts(test_client, loop):
 
 
 @asyncio.coroutine
-def test_module_shortcuts(test_client, loop):
-    @asyncio.coroutine
-    def handler(request):
-        return web.Response(text=request.method)
-
-    app = web.Application(loop=loop)
-    for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
-        app.router.add_route(meth.upper(), '/', handler)
-    client = yield from test_client(lambda loop: app)
-
-    for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
-        coro = getattr(aiohttp, meth)
-        with pytest.warns(DeprecationWarning):
-            resp = yield from coro(client.make_url('/'), loop=loop)
-
-        assert resp.status == 200
-        assert len(resp.history) == 0
-
-        content1 = yield from resp.read()
-        content2 = yield from resp.read()
-        assert content1 == content2
-        content = yield from resp.text()
-
-        if meth == 'head':
-            assert b'' == content1
-        else:
-            assert meth.upper() == content
-
-        yield from resp.release()
-
-
-@asyncio.coroutine
 def test_cookies(test_client, loop):
     @asyncio.coroutine
     def handler(request):
@@ -1596,11 +1564,10 @@ def test_cookies(test_client, loop):
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = yield from test_client(
+        app, cookies={'test1': '123', 'test2': c})
 
-    resp = yield from aiohttp.get(client.make_url('/'),
-                                  cookies={'test1': '123', 'test2': c},
-                                  loop=loop)
+    resp = yield from client.get('/')
     assert 200 == resp.status
     resp.close()
 
@@ -1630,11 +1597,9 @@ def test_morsel_with_attributes(test_client, loop):
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = yield from test_client(app, cookies={'test2': c})
 
-    resp = yield from aiohttp.get(client.make_url('/'),
-                                  cookies={'test2': c},
-                                  loop=loop)
+    resp = yield from client.get('/')
     assert 200 == resp.status
     resp.close()
 

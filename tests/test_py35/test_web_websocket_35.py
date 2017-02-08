@@ -20,17 +20,19 @@ async def test_server_ws_async_for(loop, test_server):
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
     server = await test_server(app)
-    resp = await aiohttp.ws_connect(server.make_url('/'), loop=loop)
 
-    items = ['q1', 'q2', 'q3']
-    for item in items:
-        resp.send_str(item)
-        msg = await resp.receive()
-        assert msg.type == aiohttp.MsgType.TEXT
-        assert item + '/answer' == msg.data
+    async with aiohttp.ClientSession(loop=loop) as sm:
+        async with sm.ws_connect(server.make_url('/')) as resp:
 
-    await resp.close()
-    await closed
+            items = ['q1', 'q2', 'q3']
+            for item in items:
+                resp.send_str(item)
+                msg = await resp.receive()
+                assert msg.type == aiohttp.MsgType.TEXT
+                assert item + '/answer' == msg.data
+
+            await resp.close()
+            await closed
 
 
 async def test_closed_async_for(loop, test_client):

@@ -51,8 +51,8 @@ async def test_non_close_detached_session_on_error_cm(loop, test_server):
     app.router.add_get('/', handler)
     server = await test_server(app)
 
-    cm = aiohttp.get(server.make_url('/'), loop=loop)
-    session = cm._session
+    session = aiohttp.ClientSession(loop=loop)
+    cm = session.get(server.make_url('/'))
     assert not session.closed
     with pytest.raises(RuntimeError):
         async with cm as resp:
@@ -62,9 +62,12 @@ async def test_non_close_detached_session_on_error_cm(loop, test_server):
 
 
 async def test_close_detached_session_on_non_existing_addr(loop):
-    cm = aiohttp.get('http://non-existing.example.com', loop=loop)
-    session = cm._session
-    assert not session.closed
-    with pytest.raises(Exception):
-        await cm
+    session = aiohttp.ClientSession(loop=loop)
+
+    async with session:
+        cm = session.get('http://non-existing.example.com')
+        assert not session.closed
+        with pytest.raises(Exception):
+            await cm
+
     assert session.closed

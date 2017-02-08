@@ -21,8 +21,7 @@ from .cookiejar import CookieJar
 from .errors import WSServerHandshakeError
 from .helpers import TimeService
 
-__all__ = ('ClientSession', 'request', 'get', 'options', 'head',
-           'delete', 'post', 'put', 'patch', 'ws_connect')
+__all__ = ('ClientSession', 'request')
 
 PY_35 = sys.version_info >= (3, 5)
 
@@ -746,65 +745,4 @@ def request(method, url, *,
                          read_until_eof=read_until_eof,
                          proxy=proxy,
                          proxy_auth=proxy_auth,),
-        session=session)
-
-
-def get(url, **kwargs):
-    warnings.warn("Use ClientSession().get() instead", DeprecationWarning)
-    return request(hdrs.METH_GET, url, **kwargs)
-
-
-def options(url, **kwargs):
-    warnings.warn("Use ClientSession().options() instead", DeprecationWarning)
-    return request(hdrs.METH_OPTIONS, url, **kwargs)
-
-
-def head(url, **kwargs):
-    warnings.warn("Use ClientSession().head() instead", DeprecationWarning)
-    return request(hdrs.METH_HEAD, url, **kwargs)
-
-
-def post(url, **kwargs):
-    warnings.warn("Use ClientSession().post() instead", DeprecationWarning)
-    return request(hdrs.METH_POST, url, **kwargs)
-
-
-def put(url, **kwargs):
-    warnings.warn("Use ClientSession().put() instead", DeprecationWarning)
-    return request(hdrs.METH_PUT, url, **kwargs)
-
-
-def patch(url, **kwargs):
-    warnings.warn("Use ClientSession().patch() instead", DeprecationWarning)
-    return request(hdrs.METH_PATCH, url, **kwargs)
-
-
-def delete(url, **kwargs):
-    warnings.warn("Use ClientSession().delete() instead", DeprecationWarning)
-    return request(hdrs.METH_DELETE, url, **kwargs)
-
-
-def ws_connect(url, *, protocols=(), timeout=10.0, connector=None, auth=None,
-               ws_response_class=ClientWebSocketResponse, autoclose=True,
-               autoping=True, loop=None, origin=None, headers=None):
-
-    warnings.warn("Use ClientSession().ws_connect() instead",
-                  DeprecationWarning)
-    if loop is None:
-        loop = asyncio.get_event_loop()
-
-    if connector is None:
-        connector = aiohttp.TCPConnector(loop=loop, force_close=True)
-
-    session = aiohttp.ClientSession(loop=loop, connector=connector, auth=auth,
-                                    ws_response_class=ws_response_class,
-                                    headers=headers)
-
-    return _DetachedWSRequestContextManager(
-        session._ws_connect(url,
-                            protocols=protocols,
-                            timeout=timeout,
-                            autoclose=autoclose,
-                            autoping=autoping,
-                            origin=origin),
         session=session)
