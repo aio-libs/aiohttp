@@ -709,7 +709,7 @@ class TimeService:
 
         timeout - value in seconds or None to disable timeout logic
         """
-        if timeout is not None:
+        if timeout:
             when = self._loop_time + timeout
             ctx = _TimeServiceTimeoutContext(when, self._loop)
             heapq.heappush(self._scheduled, ctx)
