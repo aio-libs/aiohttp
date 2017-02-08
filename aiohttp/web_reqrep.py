@@ -542,11 +542,6 @@ class StreamResponse(HeadersMixin):
         return self._resp_impl is not None
 
     @property
-    def started(self):
-        warnings.warn('use Response.prepared instead', DeprecationWarning)
-        return self.prepared
-
-    @property
     def task(self):
         return getattr(self._req, 'task', None)
 
@@ -800,14 +795,6 @@ class StreamResponse(HeadersMixin):
                     self._do_start_compression(coding)
                     return
 
-    def start(self, request):
-        warnings.warn('use .prepare(request) instead', DeprecationWarning)
-        resp_impl = self._start_pre_check(request)
-        if resp_impl is not None:
-            return resp_impl
-
-        return self._start(request)
-
     @asyncio.coroutine
     def prepare(self, request):
         resp_impl = self._start_pre_check(request)
@@ -912,7 +899,7 @@ class StreamResponse(HeadersMixin):
         self._req = None
 
     def __repr__(self):
-        if self.started:
+        if self.prepared:
             info = "{} {} ".format(self._req.method, self._req.path)
         else:
             info = "not started"

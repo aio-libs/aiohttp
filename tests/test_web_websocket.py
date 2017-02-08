@@ -319,7 +319,7 @@ def test_close_idempotent(make_request, writer):
 
 
 @asyncio.coroutine
-def test_start_invalid_method(make_request):
+def test_prepare_invalid_method(make_request):
     req = make_request('POST', '/')
     ws = WebSocketResponse()
     with pytest.raises(HTTPMethodNotAllowed):
@@ -327,7 +327,7 @@ def test_start_invalid_method(make_request):
 
 
 @asyncio.coroutine
-def test_start_without_upgrade(make_request):
+def test_prepare_without_upgrade(make_request):
     req = make_request('GET', '/',
                        headers=CIMultiDict({}))
     ws = WebSocketResponse()
@@ -502,20 +502,14 @@ def test_close_exc2(make_request):
         yield from ws.close()
 
 
-def test_start_twice_idempotent(make_request):
+@asyncio.coroutine
+def test_prepare_twice_idempotent(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
-    with pytest.warns(DeprecationWarning):
-        impl1 = ws.start(req)
-        impl2 = ws.start(req)
-        assert impl1 is impl2
 
-
-def test_can_start_ok(make_request):
-    req = make_request('GET', '/', protocols=True)
-    ws = WebSocketResponse(protocols=('chat',))
-    with pytest.warns(DeprecationWarning):
-        assert (True, 'chat') == ws.can_start(req)
+    impl1 = yield from ws.prepare(req)
+    impl2 = yield from ws.prepare(req)
+    assert impl1 is impl2
 
 
 def test_msgtype_alias():
