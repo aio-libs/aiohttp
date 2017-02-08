@@ -184,6 +184,9 @@ However it's not necessary if you use :meth:`~ClientResponse.read`,
 They do release connection internally but better don't rely on that
 behavior.
 
+If response still contains un-consumed data (i.e. not received from server)
+underlining connection get closed and not re-used in connection pooling.
+
 
 Custom Headers
 --------------
@@ -601,6 +604,7 @@ perspective they are may be retrieved by using
      (b'CONTENT-LENGTH', b'12150'),
      (b'CONNECTION', b'keep-alive'))
 
+
 Response Cookies
 ----------------
 
@@ -635,6 +639,7 @@ history will be an empty sequence.
 
 
 .. _aiohttp-client-websockets:
+
 
 WebSockets
 ----------
@@ -690,6 +695,11 @@ reading procedures::
     with async_timeout.timeout(0.001, loop=session.loop):
         async with session.get('https://github.com') as r:
             await r.text()
+
+
+.. note::
+   Timeout is comulative time, it includes all operations like sending request,
+   redirects, response parsing, consuming response, etc.
 
 
 .. disqus::

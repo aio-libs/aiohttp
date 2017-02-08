@@ -193,23 +193,25 @@ class ClientSession:
         elif self._connector.conn_timeout is not None:
             timeout = max(timeout, self._connector.conn_timeout)
 
-        while True:
-            url = URL(url).with_fragment(None)
+        # timeout is comulative for all request operations
+        # (request, redirects, responses, data consuming)
+        timer = self._time_service.timeout(timeout)
 
-            cookies = self._cookie_jar.filter_cookies(url)
-            timer = self._time_service.timeout(timeout)
+        with timer:
+            while True:
+                url = URL(url).with_fragment(None)
 
-            req = self._request_class(
-                method, url, params=params, headers=headers,
-                skip_auto_headers=skip_headers, data=data,
-                cookies=cookies, encoding=encoding,
-                auth=auth, version=version, compress=compress, chunked=chunked,
-                expect100=expect100,
-                loop=self._loop, response_class=self._response_class,
-                proxy=proxy, proxy_auth=proxy_auth, timer=timer)
+                cookies = self._cookie_jar.filter_cookies(url)
 
-            # None conn_timeout is a Timeout no-op
-            with timer:
+                req = self._request_class(
+                    method, url, params=params, headers=headers,
+                    skip_auto_headers=skip_headers, data=data,
+                    cookies=cookies, encoding=encoding,
+                    auth=auth, version=version, compress=compress,
+                    chunked=chunked, expect100=expect100,
+                    loop=self._loop, response_class=self._response_class,
+                    proxy=proxy, proxy_auth=proxy_auth, timer=timer)
+
                 conn = yield from self._connector.connect(req)
                 conn.writer.set_tcp_nodelay(True)
                 try:
@@ -226,55 +228,50 @@ class ClientSession:
                 except OSError as exc:
                     raise aiohttp.ClientOSError(*exc.args) from exc
 
-            self._cookie_jar.update_cookies(resp.cookies, resp.url_obj)
+                self._cookie_jar.update_cookies(resp.cookies, resp.url_obj)
 
-            # redirects
-            if resp.status in (301, 302, 303, 307) and allow_redirects:
-                redirects += 1
-                history.append(resp)
-                if max_redirects and redirects >= max_redirects:
-                    resp.close()
-                    break
-                else:
-                    # TODO: close the connection if BODY is large enough
-                    # Redirect with big BODY is forbidden by HTTP protocol
-                    # but malformed server may send illegal response.
-                    # Small BODIES with text like "Not Found" are still
-                    # perfectly fine and should be accepted.
+                # redirects
+                if resp.status in (301, 302, 303, 307) and allow_redirects:
+                    redirects += 1
+                    history.append(resp)
+                    if max_redirects and redirects >= max_redirects:
+                        resp.close()
+                        break
+                    else:
+                        yield from resp.release()
+
+                    # For 301 and 302, mimic IE behaviour, now changed in RFC.
+                    # Info: https://github.com/kennethreitz/requests/pull/269
+                    if (resp.status == 303 and resp.method != hdrs.METH_HEAD) \
+                       or (resp.status in (301, 302) and
+                           resp.method == hdrs.METH_POST):
+                        method = hdrs.METH_GET
+                        data = None
+                        if headers.get(hdrs.CONTENT_LENGTH):
+                            headers.pop(hdrs.CONTENT_LENGTH)
+
+                    r_url = (resp.headers.get(hdrs.LOCATION) or
+                             resp.headers.get(hdrs.URI))
+                    if r_url is None:
+                        raise RuntimeError("{0.method} {0.url_obj} returns "
+                                           "a redirect [{0.status}] status "
+                                           "but response lacks a Location "
+                                           "or URI HTTP header".format(resp))
+                    r_url = URL(r_url)
+
+                    scheme = r_url.scheme
+                    if scheme not in ('http', 'https', ''):
+                        resp.close()
+                        raise ValueError('Can redirect only to http or https')
+                    elif not scheme:
+                        r_url = url.join(r_url)
+
+                    url = r_url
+                    params = None
                     yield from resp.release()
+                    continue
 
-                # For 301 and 302, mimic IE behaviour, now changed in RFC.
-                # Details: https://github.com/kennethreitz/requests/pull/269
-                if (resp.status == 303 and resp.method != hdrs.METH_HEAD) \
-                   or (resp.status in (301, 302) and
-                       resp.method == hdrs.METH_POST):
-                    method = hdrs.METH_GET
-                    data = None
-                    if headers.get(hdrs.CONTENT_LENGTH):
-                        headers.pop(hdrs.CONTENT_LENGTH)
-
-                r_url = (resp.headers.get(hdrs.LOCATION) or
-                         resp.headers.get(hdrs.URI))
-                if r_url is None:
-                    raise RuntimeError("{0.method} {0.url_obj} returns "
-                                       "a redirect [{0.status}] status "
-                                       "but response lacks a Location "
-                                       "or URI HTTP header".format(resp))
-                r_url = URL(r_url)
-
-                scheme = r_url.scheme
-                if scheme not in ('http', 'https', ''):
-                    resp.close()
-                    raise ValueError('Can redirect only to http or https')
-                elif not scheme:
-                    r_url = url.join(r_url)
-
-                url = r_url
-                params = None
-                yield from resp.release()
-                continue
-
-            break
+                break
 
         resp._history = tuple(history)
         return resp
