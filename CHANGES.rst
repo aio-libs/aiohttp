@@ -3,6 +3,8 @@ CHANGES
 
 1.4.0 (XXXX-XX-XX)
 ------------------
+- `run_app` and the Command Line Interface now support serving over Unix domain sockets for
+  faster inter-process communication.
 
 - Dropped: `aiohttp.protocol.HttpPrefixParser`  #1590
 

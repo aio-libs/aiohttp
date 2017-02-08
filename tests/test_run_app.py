@@ -99,7 +99,8 @@ def test_run_app_custom_backlog(loop, mocker):
     app.startup.assert_called_once_with()
 
 
-@pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'), reason="UNIX sockets are not supported")
+@pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
+                    reason="UNIX sockets are not supported")
 def test_run_app_http_unix_socket(loop, mocker, shorttmpdir):
     mocker.spy(loop, 'create_unix_server')
     loop.call_later(0.05, loop.stop)
@@ -112,12 +113,14 @@ def test_run_app_http_unix_socket(loop, mocker, shorttmpdir):
     web.run_app(app, path=sock_path, print=printed.write)
 
     assert loop.is_closed()
-    loop.create_unix_server.assert_called_with(mock.ANY, sock_path, ssl=None, backlog=128)
+    loop.create_unix_server.assert_called_with(mock.ANY, sock_path,
+                                               ssl=None, backlog=128)
     app.startup.assert_called_once_with()
     assert "http://unix:{}:".format(sock_path) in printed.getvalue()
 
 
-@pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'), reason="UNIX sockets are not supported")
+@pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
+                    reason="UNIX sockets are not supported")
 def test_run_app_https_unix_socket(loop, mocker, shorttmpdir):
     mocker.spy(loop, 'create_unix_server')
     loop.call_later(0.05, loop.stop)
@@ -128,9 +131,11 @@ def test_run_app_https_unix_socket(loop, mocker, shorttmpdir):
     sock_path = str(shorttmpdir.join('socket.sock'))
     printed = StringIO()
     ssl_context = ssl.create_default_context()
-    web.run_app(app, path=sock_path, ssl_context=ssl_context, print=printed.write)
+    web.run_app(app, path=sock_path, ssl_context=ssl_context,
+                print=printed.write)
 
     assert loop.is_closed()
-    loop.create_unix_server.assert_called_with(mock.ANY, sock_path, ssl=ssl_context, backlog=128)
+    loop.create_unix_server.assert_called_with(mock.ANY, sock_path,
+                                               ssl=ssl_context, backlog=128)
     app.startup.assert_called_once_with()
     assert "https://unix:{}:".format(sock_path) in printed.getvalue()
