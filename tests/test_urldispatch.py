@@ -913,12 +913,6 @@ def test_subapp_get_info(app, loop):
     assert resource.get_info() == {'prefix': '/pre', 'app': subapp}
 
 
-def test_subapp_backward_compatible(router, loop):
-    subapp = web.Application(loop=loop)
-    resource = router.add_subapp('/pre', subapp)
-    assert resource.get_info() == {'prefix': '/pre', 'app': subapp}
-
-
 def test_subapp_url(app, loop):
     subapp = web.Application(loop=loop)
     resource = app.add_subapp('/pre', subapp)
