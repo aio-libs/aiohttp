@@ -76,7 +76,11 @@ CHANGES
   use `app.add_subapp()` instead, will be removed in 1.4 #1592
 
 - Deprecated: aiohttp.get(), aiohttp.options(), aiohttp.head(), aiohttp.post(),
-  aiohttp.put(), aiohttp.patch(), aiohttp.delete(), and aiohttp.ws_connect() #1593
+  aiohttp.put(), aiohttp.patch(), aiohttp.delete(), and aiohttp.ws_connect()
+  will be removed in 1.4 #1593
+
+- Deprecated: `Application.finish()` and `Application.register_on_finish()`
+  will be removed in 1.4 #1602
 
 
 1.2.0 (2016-12-17)
