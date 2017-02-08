@@ -576,11 +576,13 @@ def test_cleanup_closed(loop):
 
     ts = conn._time_service = unittest.mock.Mock()
     tr = unittest.mock.Mock()
+    conn._cleanup_closed_handle = cleanup_closed_handle = unittest.mock.Mock()
     conn._cleanup_closed_transports = [tr]
     conn._cleanup_closed()
     assert tr.abort.called
     assert not conn._cleanup_closed_transports
     assert ts.call_later.called
+    assert cleanup_closed_handle.cancel.called
 
 
 def test_cleanup_closed_disabled(loop):
