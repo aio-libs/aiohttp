@@ -251,7 +251,7 @@ class BaseConnector(object):
         Some broken ssl servers may leave socket open without proper close.
         """
         if self._cleanup_closed_handle:
-            self._cleanup_closed_handle.close()
+            self._cleanup_closed_handle.cancel()
 
         for transport in self._cleanup_closed_transports:
             transport.abort()
