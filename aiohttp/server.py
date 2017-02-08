@@ -4,13 +4,12 @@ import asyncio
 import http.server
 import socket
 import traceback
-import warnings
 from contextlib import suppress
 from html import escape as html_escape
 
 import aiohttp
 from aiohttp import errors, hdrs, helpers, streams
-from aiohttp.helpers import TimeService, _get_kwarg, ensure_future
+from aiohttp.helpers import TimeService, ensure_future
 from aiohttp.log import access_logger, server_logger
 
 __all__ = ('ServerHttpProtocol',)
@@ -102,26 +101,19 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                  **kwargs):
 
         # process deprecated params
-        logger = _get_kwarg(kwargs, 'log', 'logger', logger)
-
-        tcp_keepalive = _get_kwarg(kwargs, 'keep_alive_on',
-                                   'tcp_keepalive', tcp_keepalive)
-
-        keepalive_timeout = _get_kwarg(kwargs, 'keep_alive',
-                                       'keepalive_timeout', keepalive_timeout)
-
-        slow_request_timeout = _get_kwarg(kwargs, 'timeout',
-                                          'slow_request_timeout',
-                                          slow_request_timeout)
+        logger = kwargs.get('logger', logger)
 
         super().__init__(
             loop=loop,
             disconnect_error=errors.ClientDisconnectedError, **kwargs)
 
         self._loop = loop if loop is not None else asyncio.get_event_loop()
-        self._time_service = (
-            time_service if time_service is not None
-            else TimeService(self._loop))
+        if time_service is not None:
+            self._time_service_owner = False
+            self._time_service = time_service
+        else:
+            self._time_service_owner = True
+            self._time_service = TimeService(self._loop)
         self._tcp_keepalive = tcp_keepalive
         self._keepalive_timeout = keepalive_timeout
         self._slow_request_timeout = slow_request_timeout
@@ -146,13 +138,6 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     @property
     def time_service(self):
         return self._time_service
-
-    @property
-    def keep_alive_timeout(self):
-        warnings.warn("Use keepalive_timeout property instead",
-                      DeprecationWarning,
-                      stacklevel=2)
-        return self._keepalive_timeout
 
     @property
     def keepalive_timeout(self):
@@ -194,7 +179,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         if self._request_handler is not None:
             self._request_handler.cancel()
 
-        self._time_service = None
+        if self._time_service_owner:
+            self._time_service.close()
 
     def data_received(self, data):
         super().data_received(data)
@@ -365,6 +351,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             response = aiohttp.Response(self.writer, status, close=True)
             response.add_header(hdrs.CONTENT_TYPE, 'text/html; charset=utf-8')
             response.add_header(hdrs.CONTENT_LENGTH, str(len(html)))
+            response.add_header(hdrs.DATE, self._time_service.strtime())
             if headers is not None:
                 for name, value in headers:
                     response.add_header(name, value)
@@ -399,6 +386,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
         response.add_header(hdrs.CONTENT_TYPE, 'text/plain')
         response.add_header(hdrs.CONTENT_LENGTH, str(len(body)))
+        response.add_header(hdrs.DATE, self._time_service.strtime())
         response.send_headers()
         response.write(body)
         drain = response.write_eof()
