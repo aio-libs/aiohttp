@@ -224,19 +224,6 @@ class Application(MutableMapping):
         """
         yield from self.on_cleanup.send(self)
 
-    @asyncio.coroutine
-    def finish(self):
-        """Finalize an application.
-
-        Deprecated alias for .cleanup()
-        """
-        warnings.warn("Use .cleanup() instead", DeprecationWarning)
-        yield from self.cleanup()
-
-    def register_on_finish(self, func, *args, **kwargs):
-        warnings.warn("Use .on_cleanup.append() instead", DeprecationWarning)
-        self.on_cleanup.append(lambda app: func(app, *args, **kwargs))
-
     def _make_request(self, message, payload, protocol,
                       _cls=web_reqrep.Request):
         return _cls(

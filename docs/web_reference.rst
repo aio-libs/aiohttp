@@ -1355,7 +1355,7 @@ duplicated like one using :meth:`Application.copy`.
    .. coroutinemethod:: shutdown()
 
       A :ref:`coroutine<coroutine>` that should be called on
-      server stopping but before :meth:`finish()`.
+      server stopping but before :meth:`cleanup()`.
 
       The purpose of the method is calling :attr:`on_shutdown` signal
       handlers.
@@ -1367,29 +1367,6 @@ duplicated like one using :meth:`Application.copy`.
 
       The purpose of the method is calling :attr:`on_cleanup` signal
       handlers.
-
-   .. coroutinemethod:: finish()
-
-      A deprecated alias for :meth:`cleanup`.
-
-      .. deprecated:: 0.21
-
-   .. method:: register_on_finish(self, func, *args, **kwargs):
-
-      Register *func* as a function to be executed at termination.
-      Any optional arguments that are to be passed to *func* must be
-      passed as arguments to :meth:`register_on_finish`.  It is possible to
-      register the same function and arguments more than once.
-
-      During the call of :meth:`finish` all functions registered are called in
-      last in, first out order.
-
-      *func* may be either regular function or :ref:`coroutine<coroutine>`,
-      :meth:`finish` will un-yield (`await`) the later.
-
-      .. deprecated:: 0.21
-
-         Use :attr:`on_cleanup` instead: ``app.on_cleanup.append(handler)``.
 
    .. note::
 
@@ -1935,7 +1912,7 @@ Resource classes hierarchy::
 .. class:: PrefixedSubAppResource
 
    A resource for serving nested applications. The class instance is
-   returned by :class:`~aiohttp.web.UrlDispatcher.add_subapp` call.
+   returned by :class:`~aiohttp.web.Application.add_subapp` call.
 
    .. versionadded:: 1.1
 
