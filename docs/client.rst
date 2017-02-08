@@ -698,7 +698,8 @@ reading procedures::
 
 
 .. note::
-   Timeout is comulative time, it includes all operations like sending request,
+
+   Timeout is cumulative time, it includes all operations like sending request,
    redirects, response parsing, consuming response, etc.
 
 

@@ -75,6 +75,9 @@ CHANGES
 - Deprecated: Adding `sub app` via `app.router.add_subapp()` is deprecated
   use `app.add_subapp()` instead, will be removed in 1.4 #1592
 
+- Deprecated: aiohttp.get(), aiohttp.options(), aiohttp.head(), aiohttp.post(),
+  aiohttp.put(), aiohttp.patch(), aiohttp.delete(), and aiohttp.ws_connect() #1593
+
 
 1.2.0 (2016-12-17)
 ------------------
