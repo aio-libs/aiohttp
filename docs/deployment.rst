@@ -96,23 +96,24 @@ Next we need to configure *aiohttp upstream group*:
 
    http {
      upstream aiohttp {
-       fail_timeout=0 means we always retry an upstream even if it failed
+       # fail_timeout=0 means we always retry an upstream even if it failed
        # to return a good HTTP response
 
-       # TCP servers
-       server 127.0.0.1:8081 fail_timeout=0;
-       server 127.0.0.1:8082 fail_timeout=0;
-       server 127.0.0.1:8083 fail_timeout=0;
-       server 127.0.0.1:8084 fail_timeout=0;
+       # Unix domain servers
+       server unix:/tmp/example_1.sock fail_timeout=0;
+       server unix:/tmp/example_2.sock fail_timeout=0;
+       server unix:/tmp/example_3.sock fail_timeout=0;
+       server unix:/tmp/example_4.sock fail_timeout=0;
      }
    }
 
 All HTTP requests for ``http://example.com`` except ones for
-``http://example.com/static`` will be redirected to
-``127.0.0.1:8081``, ``127.0.0.1:8082``, ``127.0.0.1:8083`` or
-``127.0.0.1:8084`` *backend proxies*.
+``http://example.com/static`` will be redirected to ``example_1.sock``,
+``example_2.sock``, ``example_3.sock`` or ``example_4.sock``
+*backend servers*. Unix domain sockets are used in this example due to
+their high performance, but TCP/IP sockets can be used as well.
 
-By default Nginx uses round-robin algorithm for backend selection.
+By default, Nginx uses round-robin algorithm for backend selection.
 
 .. note::
 
@@ -135,12 +136,12 @@ Here we'll use `Supervisord <http://supervisord.org/>`_ for example::
    numprocs = 4
    numprocs_start = 1
    process_name = example_%(process_num)s
-   cmd=/path/to/aiohttp_example.py 808%(process_num)s
+   cmd=/path/to/aiohttp_example.py /tmp/example_%(process_num)s.sock
    user=nobody
    autostart=true
    autorestart=true
 
-The config will run four aiohttp server instances, ports are specified
+The config will run four aiohttp server instances. Unix socket paths are specified
 by command line.
 
 aiohttp server
@@ -156,7 +157,7 @@ and port is specified by command line the task is trivial::
    from aiohttp import web
 
    parser = argparse.ArgumentParser(description="aiohttp server example")
-   parser.add_argument('port', type=int)
+   parser.add_argument('sockfile')
 
 
    if __name__ == '__main__':
@@ -164,7 +165,7 @@ and port is specified by command line the task is trivial::
        # configure app
 
        args = parser.parse_args()
-       web.run_app(app, port=args.port)
+       web.run_app(app, path=args.sockfile)
 
 For real use cases we perhaps need to configure other things like
 logging etc. but it's out of scope of the topic.
