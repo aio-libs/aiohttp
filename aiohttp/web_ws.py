@@ -1,7 +1,6 @@
 import asyncio
 import json
 import sys
-import warnings
 from collections import namedtuple
 
 from . import hdrs
@@ -307,13 +306,6 @@ class WebSocketResponse(StreamResponse):
                 continue
 
             return msg
-
-    @asyncio.coroutine
-    def receive_msg(self):
-        warnings.warn(
-            'receive_msg() coroutine is deprecated. use receive() instead',
-            DeprecationWarning)
-        return (yield from self.receive())
 
     @asyncio.coroutine
     def receive_str(self, *, timeout=None):

@@ -1391,7 +1391,7 @@ Server
 A protocol factory compatible with
 :meth:`~asyncio.AbstreactEventLoop.create_server`.
 
-.. class:: Server
+      .. class:: Server
 
    The class is responsible for creating HTTP protocol
    objects that can handle HTTP connections.
