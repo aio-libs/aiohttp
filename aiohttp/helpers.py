@@ -709,47 +709,45 @@ class TimeService:
 
         timeout - value in seconds or None to disable timeout logic
         """
-        when = self._loop_time + timeout if timeout is not None else 0.0
-
-        ctx = _TimeServiceTimeoutContext(when, self._loop, timeout is None)
-
         if timeout is not None:
+            when = self._loop_time + timeout
+            ctx = _TimeServiceTimeoutContext(when, self._loop)
             heapq.heappush(self._scheduled, ctx)
+        else:
+            ctx = _TimeServiceTimeoutNoop()
 
         return ctx
 
 
-class _TimeServiceTimerStub:
+class _TimeServiceTimeoutNoop:
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
+        return False
 
 
 class _TimeServiceTimeoutContext(TimerHandle):
     """ Low resolution timeout context manager """
 
-    def __init__(self, when, loop, noop):
+    def __init__(self, when, loop):
         super().__init__(when, self.cancel, (), loop)
 
-        self._noop = noop
         self._tasks = []
         self._cancelled = False
 
     def __enter__(self):
-        if not self._noop:
-            task = asyncio.Task.current_task(loop=self._loop)
-            if task is None:
-                raise RuntimeError('Timeout context manager should be used '
-                                   'inside a task')
+        task = asyncio.Task.current_task(loop=self._loop)
+        if task is None:
+            raise RuntimeError('Timeout context manager should be used '
+                               'inside a task')
 
-            if self._cancelled:
-                task.cancel()
-                raise asyncio.TimeoutError from None
+        if self._cancelled:
+            task.cancel()
+            raise asyncio.TimeoutError from None
 
-            self._tasks.append(task)
+        self._tasks.append(task)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
