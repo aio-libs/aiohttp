@@ -106,7 +106,8 @@ def test_path_when_unsupported(mocker, monkeypatch):
     with pytest.raises(SystemExit):
         web.main(argv)
 
-    error.assert_called_with("file system paths not supported by your operating environment")
+    error.assert_called_with("file system paths not supported by your"
+                             " operating environment")
 
 
 def test_entry_func_call(mocker):

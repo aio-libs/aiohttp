@@ -3,6 +3,8 @@ CHANGES
 
 1.3.4 (2017-02-..)
 ------------------
+- `run_app` and the Command Line Interface now support serving over Unix domain sockets for
+  faster inter-process communication.
 
 - Revert timeout handling in client request
 

@@ -1,4 +1,5 @@
 import asyncio
+import socket
 import sys
 import warnings
 from argparse import ArgumentParser
@@ -298,12 +299,12 @@ def _wrap_add_subbapp(app):
     return add_subapp
 
 
-def run_app(app, *, host='0.0.0.0', port=None,
+def run_app(app, *, host='0.0.0.0', port=None, path=None,
             shutdown_timeout=60.0, ssl_context=None,
             print=print, backlog=128, access_log_format=None,
             access_log=access_logger):
     """Run an app locally"""
-    if port is None:
+    if port is None and path is None:
         if not ssl_context:
             port = 8080
         else:
@@ -318,16 +319,30 @@ def run_app(app, *, host='0.0.0.0', port=None,
                                **make_handler_kwargs)
 
     loop.run_until_complete(app.startup())
-    srv = loop.run_until_complete(loop.create_server(handler, host,
-                                                     port, ssl=ssl_context,
-                                                     backlog=backlog))
 
     scheme = 'https' if ssl_context else 'http'
-    base_url = URL('{}://localhost'.format(scheme)).with_port(port)
-    if isinstance(host, str):
-        urls = [base_url.with_host(host)]
+
+    if path is None:
+        # Assume IP networking
+        srv_creation = loop.create_server(
+            handler, host, port, ssl=ssl_context, backlog=backlog
+        )
+        base_url = URL('{}://localhost'.format(scheme)).with_port(port)
+        if isinstance(host, str):
+            urls = (base_url.with_host(host),)
+        else:
+            urls = [base_url.with_host(h) for h in host]
     else:
-        urls = [base_url.with_host(h) for h in host]
+        srv_creation = loop.create_unix_server(
+            handler, path, ssl=ssl_context, backlog=backlog
+        )
+        # nginx-style URLs for Unix socket paths
+        if isinstance(path, str):
+            urls = ('{}://unix:{}:'.format(scheme, path),)
+        else:
+            urls = ['{}://unix:{}:'.format(scheme, p) for p in path]
+
+    srv = loop.run_until_complete(srv_creation)
 
     print("======== Running on {} ========\n"
           "(Press CTRL+C to quit)".format(', '.join(str(u) for u in urls)))
@@ -367,6 +382,11 @@ def main(argv):
         type=int,
         default="8080"
     )
+    arg_parser.add_argument(
+        "-U", "--path",
+        help="Unix file system path to serve on. Specifying a path will cause "
+             "hostname and port arguments to be ignored.",
+    )
     args, extra_argv = arg_parser.parse_known_args(argv)
 
     # Import logic
@@ -386,8 +406,13 @@ def main(argv):
     except AttributeError:
         arg_parser.error("module %r has no attribute %r" % (mod_str, func_str))
 
+    # Compatibility logic
+    if args.path is not None and not hasattr(socket, 'AF_UNIX'):
+        arg_parser.error("file system paths not supported by your operating"
+                         " environment")
+
     app = func(extra_argv)
-    run_app(app, host=args.hostname, port=args.port)
+    run_app(app, host=args.hostname, port=args.port, path=args.path)
     arg_parser.exit(message="Stopped\n")
 
 

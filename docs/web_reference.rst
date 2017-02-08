@@ -2115,9 +2115,9 @@ Utilities
    .. seealso:: :ref:`aiohttp-web-file-upload`
 
 
-.. function:: run_app(app, *, host='0.0.0.0', port=None, loop=None, \
-                      shutdown_timeout=60.0, ssl_context=None, \
-                      print=print, backlog=128, \
+.. function:: run_app(app, *, host='0.0.0.0', port=None, path=None, \
+                      loop=None, shutdown_timeout=60.0, \
+                      ssl_context=None, print=print, backlog=128, \
                       access_log_format=None, \
                       access_log=aiohttp.log.access_logger)
 
@@ -2135,9 +2135,13 @@ Utilities
 
    :param str host: host for HTTP server, ``'0.0.0.0'`` by default
 
-   :param int port: port for HTTP server. By default is ``8080`` for
+   :param int port: TCP port for HTTP server. By default is ``8080`` for
                     plain text HTTP and ``8443`` for HTTP via SSL
                     (when *ssl_context* parameter is specified).
+
+   :param str path: file system path for HTTP server Unix domain socket.
+                    If supplied, TCP/IP parameters `host` and
+                    `port` are ignored.
 
    :param int shutdown_timeout: a delay to wait for graceful server
                                 shutdown before disconnecting all
