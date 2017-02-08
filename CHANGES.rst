@@ -15,3 +15,5 @@ CHANGES
 
 - Dropped: aiohttp.get(), aiohttp.options(), aiohttp.head(), aiohttp.post(),
   aiohttp.put(), aiohttp.patch(), aiohttp.delete(), and aiohttp.ws_connect() #1593
+
+- Dropped: `aiohttp.web.WebSocketResponse.receive_msg()` #1605
