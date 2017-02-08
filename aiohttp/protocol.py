@@ -20,8 +20,7 @@ from .log import internal_logger
 __all__ = ('HttpMessage', 'Request', 'Response',
            'HttpVersion', 'HttpVersion10', 'HttpVersion11',
            'RawRequestMessage', 'RawResponseMessage',
-           'HttpPrefixParser', 'HttpRequestParser', 'HttpResponseParser',
-           'HttpPayloadParser')
+           'HttpRequestParser', 'HttpResponseParser', 'HttpPayloadParser')
 
 ASCIISET = set(string.printable)
 METHRE = re.compile('[A-Z0-9$-_.]+')
@@ -139,29 +138,6 @@ class HttpParser:
             raw_headers.append((bname, bvalue))
 
         return headers, raw_headers, close_conn, encoding
-
-
-class HttpPrefixParser:
-    """Waits for 'HTTP' prefix (non destructive)"""
-
-    def __init__(self, allowed_methods=()):
-        self.allowed_methods = [m.upper() for m in allowed_methods]
-
-    def __call__(self, out, buf):
-        raw_data = yield from buf.waituntil(b' ', 12)
-        method = raw_data.decode('ascii', 'surrogateescape').strip()
-
-        # method
-        method = method.upper()
-        if not METHRE.match(method):
-            raise errors.BadStatusLine(method)
-
-        # allowed method
-        if self.allowed_methods and method not in self.allowed_methods:
-            raise errors.HttpMethodNotAllowed(message=method)
-
-        out.feed_data(method, len(method))
-        out.feed_eof()
 
 
 class HttpRequestParser(HttpParser):
