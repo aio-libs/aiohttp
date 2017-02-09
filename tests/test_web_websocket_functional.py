@@ -91,6 +91,35 @@ def test_websocket_send_json(loop, test_client):
 
 
 @asyncio.coroutine
+def test_websocket_send_drain(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        ws._writer._limit = 1
+
+        data = yield from ws.receive_json()
+        drain = ws.send_json(data)
+        assert drain
+
+        yield from drain
+        yield from ws.close()
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
+
+    ws = yield from client.ws_connect('/')
+    expected_value = 'value'
+    ws.send_json({'test': expected_value})
+
+    data = yield from ws.receive_json()
+    assert data['test'] == expected_value
+
+
+@asyncio.coroutine
 def test_websocket_receive_json(loop, test_client):
     @asyncio.coroutine
     def handler(request):
