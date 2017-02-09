@@ -4,6 +4,11 @@ CHANGES
 1.4.0 (XXXX-XX-XX)
 ------------------
 
+- Added `capacity` parameter for client connector object.
+  Capacity is the total number of simultaneous connections.  #1601
+
+- Deprecate connector's `limit` parameter #1601
+
 - Dropped: `aiohttp.protocol.HttpPrefixParser`  #1590
 
 - Dropped: Servers response's `.started`, `.start()` and `.can_start()` method  #1591

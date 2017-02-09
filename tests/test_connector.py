@@ -194,33 +194,31 @@ def test_get_expired_ssl(loop):
 
 
 def test_release_acquired(loop):
-    conn = aiohttp.BaseConnector(loop=loop, limit=5)
-    conn._release_waiter = unittest.mock.Mock()
+    conn = aiohttp.BaseConnector(loop=loop, capacity=5)
+    conn._release_waiters = unittest.mock.Mock()
 
-    key, tr = 1, unittest.mock.Mock()
-    conn._acquired[key].add(tr)
-    acquired = conn._release_acquired(key, tr)
-    assert 0 == len(conn._acquired[key])
-    assert acquired == conn._acquired[key]
-    assert not conn._release_waiter.called
+    tr = unittest.mock.Mock()
+    conn._acquired.add(tr)
+    conn._release_acquired(tr)
+    assert 0 == len(conn._acquired)
+    assert conn._release_waiters.called
 
-    acquired = conn._release_acquired(key, tr)
-    assert 0 == len(conn._acquired[key])
-    assert acquired is None
+    conn._release_acquired(tr)
+    assert 0 == len(conn._acquired)
 
     conn.close()
 
 
 def test_release_acquired_closed(loop):
-    conn = aiohttp.BaseConnector(loop=loop, limit=5)
-    conn._release_waiter = unittest.mock.Mock()
+    conn = aiohttp.BaseConnector(loop=loop, capacity=5)
+    conn._release_waiters = unittest.mock.Mock()
 
-    key, tr = 1, unittest.mock.Mock()
-    conn._acquired[key].add(tr)
+    tr = unittest.mock.Mock()
+    conn._acquired.add(tr)
     conn._closed = True
-    conn._release_acquired(key, tr)
-    assert 1 == len(conn._acquired[key])
-    assert not conn._release_waiter.called
+    conn._release_acquired(tr)
+    assert 1 == len(conn._acquired)
+    assert not conn._release_waiters.called
     conn.close()
 
 
@@ -228,16 +226,16 @@ def test_release(loop):
     loop.time = mock.Mock(return_value=10)
 
     conn = aiohttp.BaseConnector(loop=loop)
-    conn._release_waiter = unittest.mock.Mock()
+    conn._release_waiters = unittest.mock.Mock()
     req = unittest.mock.Mock()
     resp = req.response = unittest.mock.Mock()
     resp._should_close = False
 
     tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
     key = 1
-    conn._acquired[key].add(tr)
+    conn._acquired.add(tr)
     conn._release(key, req, tr, proto)
-    assert conn._release_waiter.called
+    assert conn._release_waiters.called
     assert conn._conns[1][0] == (tr, proto, 10)
     assert not conn._cleanup_closed_transports
     conn.close()
@@ -247,14 +245,14 @@ def test_release_ssl_transport(loop):
     loop.time = mock.Mock(return_value=10)
 
     conn = aiohttp.BaseConnector(loop=loop)
-    conn._release_waiter = unittest.mock.Mock()
+    conn._release_waiters = unittest.mock.Mock()
     req = unittest.mock.Mock()
     resp = req.response = unittest.mock.Mock()
     resp._should_close = True
 
     tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
     key = ('localhost', 80, True)
-    conn._acquired[key].add(tr)
+    conn._acquired.add(tr)
     conn._release(key, req, tr, proto, should_close=True)
     assert conn._cleanup_closed_transports == [tr]
     conn.close()
@@ -265,47 +263,60 @@ def test_release_already_closed(loop):
 
     tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
     key = 1
-    conn._acquired[key].add(tr)
+    conn._acquired.add(tr)
     conn.close()
 
-    conn._release_waiter = unittest.mock.Mock()
+    conn._release_waiters = unittest.mock.Mock()
     conn._release_acquired = unittest.mock.Mock()
     req = unittest.mock.Mock()
 
     conn._release(key, req, tr, proto)
-    assert not conn._release_waiter.called
+    assert not conn._release_waiters.called
     assert not conn._release_acquired.called
 
 
-def test_release_do_not_call_release_waiter(loop):
-    req = unittest.mock.Mock()
-    resp = req.response = unittest.mock.Mock()
-    resp._should_close = False
-    tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-    key = 1
-
+def test_release_waiters(loop):
     # limit is None
-    conn = aiohttp.BaseConnector(limit=None, loop=loop)
-    conn._release_waiter = unittest.mock.Mock()
-    conn._acquired[key].add(tr)
-    conn._release(key, req, tr, proto)
-    assert not conn._release_waiter.called
+    conn = aiohttp.BaseConnector(capacity=None, loop=loop)
+    conn._waiters.append(unittest.mock.Mock())
+    conn._release_waiters()
+    assert len(conn._waiters) == 1
     conn.close()
 
-    # acquired key error
+    # release all
     conn = aiohttp.BaseConnector(loop=loop)
-    conn._release_waiter = unittest.mock.Mock()
-    conn._release(key, req, tr, proto)
-    assert not conn._release_waiter.called
+    w1, w2 = unittest.mock.Mock(), unittest.mock.Mock()
+    w1.done.return_value = False
+    w2.done.return_value = False
+    conn._waiters = [w1, w2]
+    conn._release_waiters()
+    assert len(conn._waiters) == 2
+    assert w1.set_result.called
+    assert w2.set_result.called
     conn.close()
 
-    # acquired len >= limit
-    conn = aiohttp.BaseConnector(limit=1, loop=loop)
-    conn._release_waiter = unittest.mock.Mock()
-    conn._acquired[key].add(unittest.mock.Mock())
-    conn._acquired[key].add(tr)
-    conn._release(key, req, tr, proto)
-    assert not conn._release_waiter.called
+    # limited available
+    conn = aiohttp.BaseConnector(loop=loop, capacity=1)
+    w1, w2 = unittest.mock.Mock(), unittest.mock.Mock()
+    w1.done.return_value = False
+    w2.done.return_value = False
+    conn._waiters = [w1, w2]
+    conn._release_waiters()
+    assert len(conn._waiters) == 2
+    assert w1.set_result.called
+    assert not w2.set_result.called
+    conn.close()
+
+    # limited available
+    conn = aiohttp.BaseConnector(loop=loop, capacity=1)
+    w1, w2 = unittest.mock.Mock(), unittest.mock.Mock()
+    w1.done.return_value = True
+    w2.done.return_value = False
+    conn._waiters = [w1, w2]
+    conn._release_waiters()
+    assert len(conn._waiters) == 2
+    assert not w1.set_result.called
+    assert not w2.set_result.called
     conn.close()
 
 
@@ -318,7 +329,7 @@ def test_release_close(loop):
 
     tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
     key = ('localhost', 80, False)
-    conn._acquired[key].add(tr)
+    conn._acquired.add(tr)
     conn._release(key, req, tr, proto)
     assert not conn._conns
     assert tr.close.called
@@ -375,7 +386,7 @@ def test_release_close_do_not_add_to_pool(loop):
     key = ('127.0.0.1', 80, False)
 
     tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-    conn._acquired[key].add(tr)
+    conn._acquired.add(tr)
     conn._release(key, req, tr, proto)
     assert not conn._conns
 
@@ -392,7 +403,7 @@ def test_release_close_do_not_delete_existing_connections(loop):
     req.response = resp
 
     tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-    conn._acquired[key].add(tr1)
+    conn._acquired.add(tr1)
     conn._release(key, req, tr, proto)
     assert conn._conns[key] == [(tr1, proto1, 1)]
     assert tr.close.called
@@ -408,7 +419,7 @@ def test_release_not_started(loop):
 
     tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
     key = 1
-    conn._acquired[key].add(tr)
+    conn._acquired.add(tr)
     conn._release(key, req, tr, proto)
     assert conn._conns == {1: [(tr, proto, 10)]}
     assert not tr.close.called
@@ -423,7 +434,7 @@ def test_release_not_opened(loop):
 
     tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
     key = ('localhost', 80, False)
-    conn._acquired[key].add(tr)
+    conn._acquired.add(tr)
     conn._release(key, req, tr, proto)
     assert tr.close.called
 
@@ -711,7 +722,7 @@ def test_ctor_with_default_loop():
 
 
 @asyncio.coroutine
-def test_connect_with_limit(loop):
+def test_connect_with_capacity(loop):
 
     tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
     proto.is_connected.return_value = True
@@ -720,7 +731,7 @@ def test_connect_with_limit(loop):
                         loop=loop,
                         response_class=unittest.mock.Mock())
 
-    conn = aiohttp.BaseConnector(loop=loop, limit=1)
+    conn = aiohttp.BaseConnector(loop=loop, capacity=1)
     key = ('host', 80, False)
     conn._conns[key] = [(tr, proto, loop.time())]
     conn._create_connection = unittest.mock.Mock()
@@ -730,7 +741,7 @@ def test_connect_with_limit(loop):
     connection1 = yield from conn.connect(req)
     assert connection1._transport == tr
 
-    assert 1 == len(conn._acquired[key])
+    assert 1 == len(conn._acquired)
 
     acquired = False
 
@@ -739,7 +750,7 @@ def test_connect_with_limit(loop):
         nonlocal acquired
         connection2 = yield from conn.connect(req)
         acquired = True
-        assert 1 == len(conn._acquired[key])
+        assert 1 == len(conn._acquired)
         connection2.release()
 
     task = helpers.ensure_future(f(), loop=loop)
@@ -754,7 +765,7 @@ def test_connect_with_limit(loop):
 
 
 @asyncio.coroutine
-def test_connect_with_limit_cancelled(loop):
+def test_connect_with_capacity_cancelled(loop):
 
     tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
     proto.is_connected.return_value = True
@@ -763,7 +774,7 @@ def test_connect_with_limit_cancelled(loop):
                         loop=loop,
                         response_class=unittest.mock.Mock())
 
-    conn = aiohttp.BaseConnector(loop=loop, limit=1)
+    conn = aiohttp.BaseConnector(loop=loop, capacity=1)
     key = ('host', 80, False)
     conn._conns[key] = [(tr, proto, loop.time())]
     conn._create_connection = unittest.mock.Mock()
@@ -773,7 +784,7 @@ def test_connect_with_limit_cancelled(loop):
     connection = yield from conn.connect(req)
     assert connection._transport == tr
 
-    assert 1 == len(conn._acquired[key])
+    assert 1 == len(conn._acquired)
 
     with pytest.raises(asyncio.TimeoutError):
         # limit exhausted
@@ -783,10 +794,10 @@ def test_connect_with_limit_cancelled(loop):
 
 
 @asyncio.coroutine
-def test_connect_with_limit_release_waiters(loop):
+def test_connect_with_capacity_release_waiters(loop):
 
     def check_with_exc(err):
-        conn = aiohttp.BaseConnector(limit=1, loop=loop)
+        conn = aiohttp.BaseConnector(capacity=1, loop=loop)
         conn._create_connection = unittest.mock.Mock()
         conn._create_connection.return_value = \
             helpers.create_future(loop)
@@ -795,8 +806,8 @@ def test_connect_with_limit_release_waiters(loop):
         with pytest.raises(Exception):
             req = unittest.mock.Mock()
             yield from conn.connect(req)
-        key = (req.host, req.port, req.ssl)
-        assert not conn._waiters[key]
+
+        assert not conn._waiters
 
     check_with_exc(OSError(1, 'permission error'))
     check_with_exc(RuntimeError())
@@ -804,7 +815,7 @@ def test_connect_with_limit_release_waiters(loop):
 
 
 @asyncio.coroutine
-def test_connect_with_limit_concurrent(loop):
+def test_connect_with_capacity_concurrent(loop):
     proto = unittest.mock.Mock()
     proto.is_connected.return_value = True
 
@@ -816,7 +827,7 @@ def test_connect_with_limit_concurrent(loop):
     max_connections = 2
     num_connections = 0
 
-    conn = aiohttp.BaseConnector(limit=max_connections, loop=loop)
+    conn = aiohttp.BaseConnector(capacity=max_connections, loop=loop)
 
     # Use a real coroutine for _create_connection; a mock would mask
     # problems that only happen when the method yields.
@@ -878,7 +889,7 @@ def test_close_with_acquired_connection(loop):
                         loop=loop,
                         response_class=unittest.mock.Mock())
 
-    conn = aiohttp.BaseConnector(loop=loop, limit=1)
+    conn = aiohttp.BaseConnector(loop=loop, capacity=1)
     key = ('host', 80, False)
     conn._conns[key] = [(tr, proto, loop.time())]
     conn._create_connection = unittest.mock.Mock()
@@ -903,21 +914,32 @@ def test_default_force_close(loop):
     assert not connector.force_close
 
 
-def test_limit_property(loop):
-    conn = aiohttp.BaseConnector(loop=loop, limit=15)
-    assert 15 == conn.limit
+def test_capacity_property(loop):
+    conn = aiohttp.BaseConnector(loop=loop, capacity=15)
+    assert 15 == conn.capacity
+
+    with pytest.warns(DeprecationWarning):
+        assert 15 == conn.limit
+
     conn.close()
 
 
-def test_limit_property_default(loop):
+def test_limit_property(loop):
+    with pytest.warns(DeprecationWarning):
+        conn = aiohttp.BaseConnector(loop=loop, limit=15)
+        assert 15 == conn.capacity
+        conn.close()
+
+
+def test_capacity_property_default(loop):
     conn = aiohttp.BaseConnector(loop=loop)
-    assert conn.limit == 20
+    assert conn.capacity == 20
     conn.close()
 
 
 def test_limitless(loop):
-    with aiohttp.BaseConnector(loop=loop, limit=None) as conn:
-        assert conn.limit is None
+    with aiohttp.BaseConnector(loop=loop, capacity=None) as conn:
+        assert conn.capacity == 0
 
 
 def test_force_close_and_explicit_keep_alive(loop):
