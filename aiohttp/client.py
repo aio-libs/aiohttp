@@ -161,6 +161,10 @@ class ClientSession:
         if self.closed:
             raise RuntimeError('Session is closed')
 
+        if not isinstance(chunked, bool):
+            warnings.warn('Chunk size is deprecated #1615',
+                          DeprecationWarning, stacklevel=2)
+
         redirects = 0
         history = []
 

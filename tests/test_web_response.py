@@ -192,7 +192,7 @@ def test_chunk_size():
     with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
         msg = yield from resp.prepare(req)
         assert msg.chunked
-        msg.add_chunking_filter.assert_called_with(8192)
+        assert msg.enable_chunking.called
         assert msg.filter is not None
 
 
@@ -220,7 +220,7 @@ def test_compression_no_accept():
 
     with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
         msg = yield from resp.prepare(req)
-        assert not msg.add_compression_filter.called
+        assert not msg.enable_compression.called
 
 
 @asyncio.coroutine
@@ -235,7 +235,7 @@ def test_force_compression_no_accept_backwards_compat():
 
     with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
         msg = yield from resp.prepare(req)
-    assert msg.add_compression_filter.called
+    assert msg.enable_compression.called
     assert msg.filter is not None
 
 
@@ -250,7 +250,7 @@ def test_force_compression_false_backwards_compat():
 
     with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
         msg = yield from resp.prepare(req)
-    assert not msg.add_compression_filter.called
+    assert not msg.enable_compression.called
 
 
 @asyncio.coroutine
@@ -268,7 +268,7 @@ def test_compression_default_coding():
     with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
         msg = yield from resp.prepare(req)
 
-    msg.add_compression_filter.assert_called_with('deflate')
+    msg.enable_compression.assert_called_with('deflate')
     assert 'deflate' == resp.headers.get(hdrs.CONTENT_ENCODING)
     assert msg.filter is not None
 
@@ -285,7 +285,7 @@ def test_force_compression_deflate():
 
     with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
         msg = yield from resp.prepare(req)
-    msg.add_compression_filter.assert_called_with('deflate')
+    msg.enable_compression.assert_called_with('deflate')
     assert 'deflate' == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 
@@ -299,7 +299,7 @@ def test_force_compression_no_accept_deflate():
 
     with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
         msg = yield from resp.prepare(req)
-    msg.add_compression_filter.assert_called_with('deflate')
+    msg.enable_compression.assert_called_with('deflate')
     assert 'deflate' == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 
@@ -315,7 +315,7 @@ def test_force_compression_gzip():
 
     with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
         msg = yield from resp.prepare(req)
-    msg.add_compression_filter.assert_called_with('gzip')
+    msg.enable_compression.assert_called_with('gzip')
     assert 'gzip' == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 
@@ -329,7 +329,7 @@ def test_force_compression_no_accept_gzip():
 
     with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
         msg = yield from resp.prepare(req)
-    msg.add_compression_filter.assert_called_with('gzip')
+    msg.enable_compression.assert_called_with('gzip')
     assert 'gzip' == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 

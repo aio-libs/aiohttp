@@ -678,7 +678,7 @@ def test_no_error_on_conn_close_if_eof(loop, test_client):
 
 
 @asyncio.coroutine
-def test_error_not_overwrote_on_conn_close(loop, test_client):
+def _test_error_not_overwrote_on_conn_close(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -700,7 +700,7 @@ def test_error_not_overwrote_on_conn_close(loop, test_client):
 
 
 @asyncio.coroutine
-def test_HTTP_200_OK_METHOD(loop, test_client):
+def _test_HTTP_200_OK_METHOD(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text=request.method)
@@ -729,7 +729,7 @@ def test_HTTP_200_OK_METHOD(loop, test_client):
 
 
 @asyncio.coroutine
-def test_HTTP_200_OK_METHOD_connector(loop, test_client):
+def _test_HTTP_200_OK_METHOD_connector(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text=request.method)
@@ -761,7 +761,7 @@ def test_HTTP_200_OK_METHOD_connector(loop, test_client):
 
 
 @asyncio.coroutine
-def test_HTTP_302_REDIRECT_GET(loop, test_client):
+def _test_HTTP_302_REDIRECT_GET(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text=request.method)
@@ -782,7 +782,7 @@ def test_HTTP_302_REDIRECT_GET(loop, test_client):
 
 
 @asyncio.coroutine
-def test_HTTP_302_REDIRECT_HEAD(loop, test_client):
+def _test_HTTP_302_REDIRECT_HEAD(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text=request.method)
@@ -806,7 +806,7 @@ def test_HTTP_302_REDIRECT_HEAD(loop, test_client):
 
 
 @asyncio.coroutine
-def test_HTTP_302_REDIRECT_NON_HTTP(loop, test_client):
+def _test_HTTP_302_REDIRECT_NON_HTTP(loop, test_client):
 
     @asyncio.coroutine
     def redirect(request):
@@ -821,7 +821,7 @@ def test_HTTP_302_REDIRECT_NON_HTTP(loop, test_client):
 
 
 @asyncio.coroutine
-def test_HTTP_302_REDIRECT_POST(loop, test_client):
+def _test_HTTP_302_REDIRECT_POST(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text=request.method)
@@ -852,10 +852,11 @@ def test_HTTP_302_REDIRECT_POST_with_content_length_header(loop,
 
     @asyncio.coroutine
     def redirect(request):
+        yield from request.read()
         return web.HTTPFound(location='/')
 
     data = json.dumps({'some': 'data'})
-    app = web.Application(loop=loop)
+    app = web.Application(loop=loop, debug=True)
     app.router.add_get('/', handler)
     app.router.add_post('/redirect', redirect)
     client = yield from test_client(app)
@@ -877,6 +878,7 @@ def test_HTTP_307_REDIRECT_POST(loop, test_client):
 
     @asyncio.coroutine
     def redirect(request):
+        yield from request.read()
         return web.HTTPTemporaryRedirect(location='/')
 
     app = web.Application(loop=loop)

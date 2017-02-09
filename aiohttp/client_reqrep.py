@@ -452,11 +452,10 @@ class ClientRequest:
                                   self.version)
 
         if self.compress:
-            request.add_compression_filter(self.compress)
+            request.enable_compression(self.compress)
 
         if self.chunked is not None:
-            request.enable_chunked_encoding()
-            request.add_chunking_filter(self.chunked)
+            request.enable_chunking()
 
         # set default content-type
         if (self.method in self.POST_METHODS and
