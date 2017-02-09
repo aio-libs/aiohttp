@@ -63,7 +63,7 @@ def test_force_close(transport):
 def test_force_chunked(transport):
     msg = protocol.Response(transport, 200)
     assert not msg.chunked
-    msg.enable_chunked_encoding()
+    msg.enable_chunking()
     assert msg.chunked
 
 
@@ -207,7 +207,7 @@ def test_default_headers_chunked(transport):
     assert 'TRANSFER-ENCODING' not in msg.headers
 
     msg = protocol.Response(transport, 200)
-    msg.enable_chunked_encoding()
+    msg.enable_chunking()
     msg.send_headers()
 
     assert 'TRANSFER-ENCODING' in msg.headers
@@ -262,8 +262,6 @@ def test_send_headers(transport):
     assert b'Content-Type: plain/html' in content
     assert msg.headers_sent
     assert msg.is_headers_sent()
-    # cleanup
-    msg.writer.close()
 
 
 def test_send_headers_non_ascii(transport):
@@ -281,8 +279,6 @@ def test_send_headers_non_ascii(transport):
     assert b'X-Header: \xd1\x82\xd0\xb5\xd0\xba\xd1\x81\xd1\x82' in content
     assert msg.headers_sent
     assert msg.is_headers_sent()
-    # cleanup
-    msg.writer.close()
 
 
 def test_send_headers_nomore_add(transport):
@@ -292,52 +288,34 @@ def test_send_headers_nomore_add(transport):
 
     with pytest.raises(AssertionError):
         msg.add_header('content-type', 'plain/html')
-    # cleanup
-    msg.writer.close()
 
 
 def test_prepare_length(transport):
     msg = protocol.Response(transport, 200)
-    w_l_p = msg._write_length_payload = mock.Mock()
-    w_l_p.return_value = iter([1, 2, 3])
-
     msg.add_headers(('content-length', '42'))
     msg.send_headers()
 
-    assert w_l_p.called
-    assert (42,) == w_l_p.call_args[0]
+    assert msg.length == 42
 
 
 def test_prepare_chunked_force(transport):
     msg = protocol.Response(transport, 200)
-    msg.enable_chunked_encoding()
-
-    chunked = msg._write_chunked_payload = mock.Mock()
-    chunked.return_value = iter([1, 2, 3])
-
+    msg.enable_chunking()
     msg.add_headers(('content-length', '42'))
     msg.send_headers()
-    assert chunked.called
+    assert msg.chunked
 
 
 def test_prepare_chunked_no_length(transport):
     msg = protocol.Response(transport, 200)
-
-    chunked = msg._write_chunked_payload = mock.Mock()
-    chunked.return_value = iter([1, 2, 3])
-
     msg.send_headers()
-    assert chunked.called
+    assert msg.chunked
 
 
 def test_prepare_eof(transport):
     msg = protocol.Response(transport, 200, http_version=(1, 0))
-
-    eof = msg._write_eof_payload = mock.Mock()
-    eof.return_value = iter([1, 2, 3])
-
     msg.send_headers()
-    assert eof.called
+    assert msg.length is None
 
 
 def test_write_auto_send_headers(transport):
@@ -345,9 +323,6 @@ def test_write_auto_send_headers(transport):
     msg.send_headers()
     msg.write(b'data1')
     assert msg.headers_sent
-
-    # cleanup
-    msg.writer.close()
 
 
 def test_write_payload_eof(transport):
@@ -369,7 +344,7 @@ def test_write_payload_chunked(transport):
     write = transport.write = mock.Mock()
 
     msg = protocol.Response(transport, 200)
-    msg.enable_chunked_encoding()
+    msg.enable_chunking()
     msg.send_headers()
 
     msg.write(b'data')
@@ -383,7 +358,7 @@ def test_write_payload_chunked_multiple(transport):
     write = transport.write = mock.Mock()
 
     msg = protocol.Response(transport, 200)
-    msg.enable_chunked_encoding()
+    msg.enable_chunking()
     msg.send_headers()
 
     msg.write(b'data1')
@@ -416,8 +391,9 @@ def test_write_payload_chunked_filter(transport):
     msg = protocol.Response(transport, 200)
     msg.send_headers()
 
-    msg.add_chunking_filter(2)
-    msg.write(b'data')
+    msg.enable_chunking()
+    msg.write(b'da')
+    msg.write(b'ta')
     msg.write_eof()
 
     content = b''.join([c[1][0] for c in list(write.mock_calls)])
@@ -429,9 +405,12 @@ def test_write_payload_chunked_filter_mutiple_chunks(transport):
     msg = protocol.Response(transport, 200)
     msg.send_headers()
 
-    msg.add_chunking_filter(2)
-    msg.write(b'data1')
-    msg.write(b'data2')
+    msg.enable_chunking()
+    msg.write(b'da')
+    msg.write(b'ta')
+    msg.write(b'1d')
+    msg.write(b'at')
+    msg.write(b'a2')
     msg.write_eof()
     content = b''.join([c[1][0] for c in list(write.mock_calls)])
     assert content.endswith(
@@ -439,25 +418,13 @@ def test_write_payload_chunked_filter_mutiple_chunks(transport):
         b'2\r\na2\r\n0\r\n\r\n')
 
 
-def test_write_payload_chunked_large_chunk(transport):
-    write = transport.write = mock.Mock()
-    msg = protocol.Response(transport, 200)
-    msg.send_headers()
-
-    msg.add_chunking_filter(1024)
-    msg.write(b'data')
-    msg.write_eof()
-    content = b''.join([c[1][0] for c in list(write.mock_calls)])
-    assert content.endswith(b'4\r\ndata\r\n0\r\n\r\n')
-
-
-def test_write_payload_deflate_filter(transport):
+def test_write_payload_deflate_compression(transport):
     write = transport.write = mock.Mock()
     msg = protocol.Response(transport, 200)
     msg.add_headers(('content-length', '{}'.format(len(COMPRESSED))))
     msg.send_headers()
 
-    msg.add_compression_filter('deflate')
+    msg.enable_compression('deflate')
     msg.write(b'data')
     msg.write_eof()
 
@@ -472,46 +439,30 @@ def test_write_payload_deflate_and_chunked(transport):
     msg = protocol.Response(transport, 200)
     msg.send_headers()
 
-    msg.add_compression_filter('deflate')
-    msg.add_chunking_filter(2)
+    msg.enable_compression('deflate')
+    msg.enable_chunking()
 
-    msg.write(b'data')
+    msg.write(b'da')
+    msg.write(b'ta')
     msg.write_eof()
 
     chunks = [c[1][0] for c in list(write.mock_calls)]
     assert all(chunks)
     content = b''.join(chunks)
-    assert (b'2\r\nKI\r\n2\r\n,I\r\n2\r\n\x04\x00\r\n0\r\n\r\n' ==
+    print(content)
+    assert (b'6\r\nKI,I\x04\x00\r\n0\r\n\r\n' ==
             content.split(b'\r\n\r\n', 1)[-1])
-
-
-def test_write_payload_chunked_and_deflate(transport):
-    write = transport.write = mock.Mock()
-    msg = protocol.Response(transport, 200)
-    msg.add_headers(('content-length', '{}'.format(len(COMPRESSED))))
-
-    msg.add_chunking_filter(2)
-    msg.add_compression_filter('deflate')
-    msg.send_headers()
-
-    msg.write(b'data')
-    msg.write_eof()
-
-    chunks = [c[1][0] for c in list(write.mock_calls)]
-    assert all(chunks)
-    content = b''.join(chunks)
-    assert COMPRESSED == content.split(b'\r\n\r\n', 1)[-1]
 
 
 def test_write_drain(transport):
     msg = protocol.Response(transport, 200, http_version=(1, 0))
     msg.send_headers()
-    msg.write(b'1' * (64 * 1024 * 2))
+    msg.write(b'1' * (64 * 1024 * 2), drain=False)
     assert not transport.drain.called
 
     msg.write(b'1', drain=True)
     assert transport.drain.called
-    assert msg._output_size == 0
+    assert msg.buffer_size == 0
 
 
 def test_dont_override_request_headers_with_default_values(transport):

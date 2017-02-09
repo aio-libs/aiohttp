@@ -525,7 +525,6 @@ class StreamResponse(HeadersMixin):
         self._body = None
         self._keep_alive = None
         self._chunked = False
-        self._chunk_size = None
         self._compression = False
         self._compression_force = False
         self._headers = CIMultiDict()
@@ -593,7 +592,8 @@ class StreamResponse(HeadersMixin):
     def enable_chunked_encoding(self, chunk_size=None):
         """Enables automatic chunked transfer encoding."""
         self._chunked = True
-        self._chunk_size = chunk_size
+        if chunk_size is not None:
+            warnings.warn('Chunk size is deprecated #1615', DeprecationWarning)
 
     def enable_compression(self, force=None):
         """Enables response compression encoding."""
@@ -786,7 +786,7 @@ class StreamResponse(HeadersMixin):
     def _do_start_compression(self, coding):
         if coding != ContentCoding.identity:
             self.headers[hdrs.CONTENT_ENCODING] = coding.value
-            self._resp_impl.add_compression_filter(coding.value)
+            self._resp_impl.enable_compression(coding.value)
             self.content_length = None
 
     def _start_compression(self, request):
@@ -844,10 +844,7 @@ class StreamResponse(HeadersMixin):
                 raise RuntimeError("Using chunked encoding is forbidden "
                                    "for HTTP/{0.major}.{0.minor}".format(
                                        request.version))
-            resp_impl.chunked = True
-            if self._chunk_size:
-                resp_impl.add_chunking_filter(self._chunk_size)
-            headers[TRANSFER_ENCODING] = 'chunked'
+            resp_impl.enable_chunking()
         else:
             resp_impl.length = self.content_length
 

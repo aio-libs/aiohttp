@@ -1,7 +1,6 @@
 """Http related parsers and protocol."""
 
 import collections
-import functools
 import http.server
 import re
 import string
@@ -380,138 +379,95 @@ class DeflateBuffer:
         self.out.feed_eof()
 
 
-def wrap_payload_filter(func):
-    """Wraps payload filter and piped filters.
+class WriteBuffer:
 
-    Filter is a generator that accepts arbitrary chunks of data,
-    modify data and emit new stream of data.
+    def __init__(self):
+        self.transport = None
+        self.length = None
+        self.chunked = False
+        self.buffer_size = 0
+        self.output_length = 0
 
-    For example we have stream of chunks: ['1', '2', '3', '4', '5'],
-    we can apply chunking filter to this stream:
+        self._buffer = []
+        self._compress = None
 
-    ['1', '2', '3', '4', '5']
-      |
-    response.add_chunking_filter(2)
-      |
-    ['12', '34', '5']
+    def enable_chunking(self):
+        self.chunked = True
 
-    It is possible to use different filters at the same time.
+    def enable_compression(self, encoding='deflate'):
+        zlib_mode = (16 + zlib.MAX_WBITS
+                     if encoding == 'gzip' else -zlib.MAX_WBITS)
+        self._compress = zlib.compressobj(wbits=zlib_mode)
 
-    For a example to compress incoming stream with 'deflate' encoding
-    and then split data and emit chunks of 8192 bytes size chunks:
+    def write(self, chunk, *, drain=True):
+        """Writes chunk of data to a stream.
 
-      >>> response.add_compression_filter('deflate')
-      >>> response.add_chunking_filter(8192)
+        write_eof() indicates end of stream.
+        writer can't be used after write_eof() method being called.
+        write() return drain future.
+        """
+        assert isinstance(chunk, (bytes, bytearray, memoryview)), \
+            'chunk argument must be a bytes-like object, not %r' % \
+            type(chunk).__name__
 
-    Filters do not alter transfer encoding.
+        if self._compress is not None:
+            chunk = self._compress.compress(chunk)
+            if not chunk:
+                return ()
 
-    Filter can receive types types of data, bytes object or EOF_MARKER.
-
-      1. If filter receives bytes object, it should process data
-         and yield processed data then yield EOL_MARKER object.
-      2. If Filter received EOF_MARKER, it should yield remaining
-         data (buffered) and then yield EOF_MARKER.
-    """
-    @functools.wraps(func)
-    def wrapper(self, *args, **kw):
-        new_filter = func(self, *args, **kw)
-
-        filter = self.filter
-        if filter is not None:
-            next(new_filter)
-            self.filter = filter_pipe(filter, new_filter)
-        else:
-            self.filter = new_filter
-
-        next(self.filter)
-
-    return wrapper
-
-
-def filter_pipe(filter, filter2, *,
-                EOF_MARKER=EOF_MARKER, EOL_MARKER=EOL_MARKER):
-    """Creates pipe between two filters.
-
-    filter_pipe() feeds first filter with incoming data and then
-    send yielded from first filter data into filter2, results of
-    filter2 are being emitted.
-
-      1. If filter_pipe receives bytes object, it sends it to the first filter.
-      2. Reads yielded values from the first filter until it receives
-         EOF_MARKER or EOL_MARKER.
-      3. Each of this values is being send to second filter.
-      4. Reads yielded values from second filter until it receives EOF_MARKER
-         or EOL_MARKER. Each of this values yields to writer.
-    """
-    chunk = yield
-
-    while True:
-        eof = chunk is EOF_MARKER
-        chunk = filter.send(chunk)
-
-        while chunk is not EOL_MARKER:
-            chunk = filter2.send(chunk)
-
-            while chunk not in (EOF_MARKER, EOL_MARKER):
-                yield chunk
-                chunk = next(filter2)
-
-            if chunk is not EOF_MARKER:
-                if eof:
-                    chunk = EOF_MARKER
-                else:
-                    chunk = next(filter)
+        if self.length is not None:
+            chunk_len = len(chunk)
+            if self.length >= chunk_len:
+                self.length = self.length - chunk_len
             else:
-                break
+                chunk = chunk[:self.length]
+                self.length = 0
+                if not chunk:
+                    return ()
 
-        chunk = yield EOL_MARKER
+        if self.chunked:
+            chunk_len = ('%x\r\n' % len(chunk)).encode('ascii')
+            chunk = chunk_len + chunk + b'\r\n'
+
+        if chunk:
+            size = len(chunk)
+            self.buffer_size += size
+            self.output_length += size
+            self.transport.write(chunk)
+
+            if self.buffer_size > 64 * 1024 and drain:
+                self.buffer_size = 0
+                return self.transport.drain()
+
+        return ()
+
+    def write_data(self, chunk):
+        size = len(chunk)
+        self.buffer_size += size
+        self.output_length += size
+        self.transport.write(chunk)
+
+    def write_eof(self):
+        if self._compress:
+            chunk = self._compress.flush()
+            if chunk and self.chunked:
+                chunk_len = ('%x\r\n' % len(chunk)).encode('ascii')
+                chunk = chunk_len + chunk + b'\r\n0\r\n\r\n'
+                self.output_length += len(chunk)
+                self.transport.write(chunk)
+            elif chunk:
+                self.transport.write(chunk)
+        else:
+            if self.chunked:
+                chunk = b'0\r\n\r\n'
+                self.output_length += 5
+                self.transport.write(chunk)
+
+        return self.transport.drain()
 
 
-class HttpMessage(ABC):
-    """HttpMessage allows to write headers and payload to a stream.
-
-    For example, lets say we want to read file then compress it with deflate
-    compression and then send it with chunked transfer encoding, code may look
-    like this:
-
-       >>> response = aiohttp.Response(transport, 200)
-
-    We have to use deflate compression first:
-
-      >>> response.add_compression_filter('deflate')
-
-    Then we want to split output stream into chunks of 1024 bytes size:
-
-      >>> response.add_chunking_filter(1024)
-
-    We can add headers to response with add_headers() method. add_headers()
-    does not send data to transport, send_headers() sends request/response
-    line and then sends headers:
-
-      >>> response.add_headers(
-      ...     ('Content-Disposition', 'attachment; filename="..."'))
-      >>> response.send_headers()
-
-    Now we can use chunked writer to write stream to a network stream.
-    First call to write() method sends response status line and headers,
-    add_header() and add_headers() method unavailable at this stage:
-
-    >>> with open('...', 'rb') as f:
-    ...     chunk = fp.read(8192)
-    ...     while chunk:
-    ...         response.write(chunk)
-    ...         chunk = fp.read(8192)
-
-    >>> response.write_eof()
-
-    """
-
-    writer = None
-
-    # 'filter' is being used for altering write() behaviour,
-    # add_chunking_filter adds deflate/gzip compression and
-    # add_compression_filter splits incoming data into a chunks.
-    filter = None
+class HttpMessage(ABC, WriteBuffer):
+    """HttpMessage allows to write headers and payload to a stream."""
 
     HOP_HEADERS = None  # Must be set by subclass.
 
@@ -523,17 +479,15 @@ class HttpMessage(ABC):
     has_chunked_hdr = False  # Transfer-encoding: chunked
 
     def __init__(self, transport, version, close):
+        super().__init__()
+
         self.transport = transport
         self._version = version
         self.closing = close
         self.keepalive = None
-        self.chunked = False
         self.length = None
         self.headers = CIMultiDict()
         self.headers_sent = False
-        self.output_length = 0
-        self.headers_length = 0
-        self._output_size = 0
         self._cache = {}
 
     @property
@@ -551,14 +505,11 @@ class HttpMessage(ABC):
 
     @property
     def body_length(self):
-        return self.output_length - self.headers_length
+        return self.output_length
 
     def force_close(self):
         self.closing = True
         self.keepalive = False
-
-    def enable_chunked_encoding(self):
-        self.chunked = True
 
     def keep_alive(self):
         if self.keepalive is None:
@@ -633,17 +584,11 @@ class HttpMessage(ABC):
         assert not self.headers_sent, 'headers have been sent already'
         self.headers_sent = True
 
-        if self.chunked or self.autochunked():
-            self.writer = self._write_chunked_payload()
+        if not self.chunked and self.autochunked():
+            self.enable_chunking()
+
+        if self.chunked:
             self.headers[hdrs.TRANSFER_ENCODING] = 'chunked'
-
-        elif self.length is not None:
-            self.writer = self._write_length_payload(self.length)
-
-        else:
-            self.writer = self._write_eof_payload()
-
-        next(self.writer)
 
         self._add_default_headers()
 
@@ -652,9 +597,7 @@ class HttpMessage(ABC):
             [k + _sep + v + _end for k, v in self.headers.items()])
         headers = headers.encode('utf-8') + b'\r\n'
 
-        self.output_length += len(headers)
-        self.headers_length = len(headers)
-        self.transport.write(headers)
+        self.write_data(headers)
 
     def _add_default_headers(self):
         # set the connection header
@@ -670,136 +613,6 @@ class HttpMessage(ABC):
 
         if connection is not None:
             self.headers[hdrs.CONNECTION] = connection
-
-    def write(self, chunk, *,
-              drain=False, EOF_MARKER=EOF_MARKER, EOL_MARKER=EOL_MARKER):
-        """Writes chunk of data to a stream by using different writers.
-
-        Caller has to call .send_headers() before make .write() call.
-
-        writer uses filter to modify chunk of data.
-        write_eof() indicates end of stream.
-        writer can't be used after write_eof() method being called.
-        write() return drain future.
-        """
-        assert (isinstance(chunk, (bytes, bytearray)) or
-                chunk is EOF_MARKER), chunk
-
-        size = self.output_length
-
-        if self.filter:
-            chunk = self.filter.send(chunk)
-            while chunk not in (EOF_MARKER, EOL_MARKER):
-                if chunk:
-                    self.writer.send(chunk)
-                chunk = next(self.filter)
-        else:
-            if chunk is not EOF_MARKER:
-                self.writer.send(chunk)
-
-        self._output_size += self.output_length - size
-
-        if self._output_size > 64 * 1024:
-            if drain:
-                self._output_size = 0
-                return self.transport.drain()
-
-        return ()
-
-    def write_eof(self):
-        self.write(EOF_MARKER)
-        try:
-            self.writer.throw(aiohttp.EofStream())
-        except StopIteration:
-            pass
-
-        return self.transport.drain()
-
-    def _write_chunked_payload(self):
-        """Write data in chunked transfer encoding."""
-        while True:
-            try:
-                chunk = yield
-            except aiohttp.EofStream:
-                self.transport.write(b'0\r\n\r\n')
-                self.output_length += 5
-                break
-
-            chunk = bytes(chunk)
-            chunk_len = '{:x}\r\n'.format(len(chunk)).encode('ascii')
-            self.transport.write(chunk_len + chunk + b'\r\n')
-            self.output_length += len(chunk_len) + len(chunk) + 2
-
-    def _write_length_payload(self, length):
-        """Write specified number of bytes to a stream."""
-        while True:
-            try:
-                chunk = yield
-            except aiohttp.EofStream:
-                break
-
-            if length:
-                l = len(chunk)
-                if length >= l:
-                    self.transport.write(chunk)
-                    self.output_length += l
-                    length = length-l
-                else:
-                    self.transport.write(chunk[:length])
-                    self.output_length += length
-                    length = 0
-
-    def _write_eof_payload(self):
-        while True:
-            try:
-                chunk = yield
-            except aiohttp.EofStream:
-                break
-
-            self.transport.write(chunk)
-            self.output_length += len(chunk)
-
-    @wrap_payload_filter
-    def add_chunking_filter(self, chunk_size=16*1024, *,
-                            EOF_MARKER=EOF_MARKER, EOL_MARKER=EOL_MARKER):
-        """Split incoming stream into chunks."""
-        buf = bytearray()
-        chunk = yield
-
-        while True:
-            if chunk is EOF_MARKER:
-                if buf:
-                    yield buf
-
-                yield EOF_MARKER
-
-            else:
-                buf.extend(chunk)
-
-                while len(buf) >= chunk_size:
-                    chunk = bytes(buf[:chunk_size])
-                    del buf[:chunk_size]
-                    yield chunk
-
-                chunk = yield EOL_MARKER
-
-    @wrap_payload_filter
-    def add_compression_filter(self, encoding='deflate', *,
-                               EOF_MARKER=EOF_MARKER, EOL_MARKER=EOL_MARKER):
-        """Compress incoming stream with deflate or gzip encoding."""
-        zlib_mode = (16 + zlib.MAX_WBITS
-                     if encoding == 'gzip' else -zlib.MAX_WBITS)
-        zcomp = zlib.compressobj(wbits=zlib_mode)
-
-        chunk = yield
-        while True:
-            if chunk is EOF_MARKER:
-                yield zcomp.flush()
-                chunk = yield EOF_MARKER
-
-            else:
-                yield zcomp.compress(chunk)
-                chunk = yield EOL_MARKER
 
 
 class Response(HttpMessage):
@@ -847,7 +660,8 @@ class Response(HttpMessage):
 
     def autochunked(self):
         return (self.length is None and
-                self._version >= HttpVersion11)
+                self._version >= HttpVersion11 and
+                self.status not in (304, 204))
 
     def _add_default_headers(self):
         super()._add_default_headers()
@@ -895,5 +709,4 @@ class Request(HttpMessage):
 
     def autochunked(self):
         return (self.length is None and
-                self._version >= HttpVersion11 and
-                self.status not in (304, 204))
+                self._version >= HttpVersion11)

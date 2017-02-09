@@ -581,7 +581,7 @@ def test_content_encoding(loop):
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
     assert req.headers['CONTENT-ENCODING'] == 'deflate'
     m_http.Request.return_value\
-        .add_compression_filter.assert_called_with('deflate')
+        .enable_compression.assert_called_with('deflate')
     yield from req.close()
     resp.close()
 
@@ -609,9 +609,9 @@ def test_content_encoding_header(loop):
     assert req.headers['CONTENT-ENCODING'] == 'deflate'
 
     m_http.Request.return_value\
-        .add_compression_filter.assert_called_with('deflate')
+        .enable_compression.assert_called_with('deflate')
     m_http.Request.return_value\
-        .add_chunking_filter.assert_called_with(8192)
+        .enable_chunking.assert_called_with()
     yield from req.close()
     resp.close()
 
@@ -647,7 +647,7 @@ def test_chunked_explicit(loop):
 
     assert 'chunked' == req.headers['TRANSFER-ENCODING']
     m_http.Request.return_value\
-                  .add_chunking_filter.assert_called_with(8192)
+                  .enable_chunking.assert_called_with()
     yield from req.close()
     resp.close()
 
@@ -660,7 +660,7 @@ def test_chunked_explicit_size(loop):
         resp = req.send(mock.Mock(), mock.Mock())
     assert 'chunked' == req.headers['TRANSFER-ENCODING']
     m_http.Request.return_value\
-                  .add_chunking_filter.assert_called_with(1024)
+                  .enable_chunking.assert_called_with()
     yield from req.close()
     resp.close()
 
@@ -773,8 +773,9 @@ def test_data_stream(loop):
     assert isinstance(req._writer, asyncio.Future)
     yield from resp.wait_for_close()
     assert req._writer is None
-    assert transport.write.mock_calls[-2:] == [
-        mock.call(b'12\r\nbinary data result\r\n'),
+    assert transport.write.mock_calls[-3:] == [
+        mock.call(b'b\r\nbinary data\r\n'),
+        mock.call(b'7\r\n result\r\n'),
         mock.call(b'0\r\n\r\n')]
     yield from req.close()
 
@@ -901,8 +902,9 @@ def test_data_stream_continue(loop):
     transport = mock.Mock()
     resp = req.send(transport, mock.Mock())
     yield from req._writer
-    assert transport.write.mock_calls[-2:] == [
-        mock.call(b'12\r\nbinary data result\r\n'),
+    assert transport.write.mock_calls[-3:] == [
+        mock.call(b'b\r\nbinary data\r\n'),
+        mock.call(b'7\r\n result\r\n'),
         mock.call(b'0\r\n\r\n')]
     yield from req.close()
     resp.close()
