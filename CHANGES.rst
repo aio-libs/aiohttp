@@ -23,3 +23,5 @@ CHANGES
 
 - Dropped: `TCPConnector's`` `.resolve`, `.resolved_hosts`, `.clear_resolved_hosts()`
   attributes and `resolve` constructor  parameter #1607
+
+- Dropped `ProxyConnector` #1609
