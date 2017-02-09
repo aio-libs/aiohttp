@@ -9,8 +9,6 @@ from hashlib import md5, sha1, sha256
 from itertools import chain
 from types import MappingProxyType
 
-from yarl import URL
-
 import aiohttp
 
 from . import hdrs, helpers
@@ -21,7 +19,7 @@ from .errors import (ClientOSError, ClientTimeoutError, FingerprintMismatch,
 from .helpers import SimpleCookie, is_ip_address, sentinel
 from .resolver import DefaultResolver
 
-__all__ = ('BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector')
+__all__ = ('BaseConnector', 'TCPConnector', 'UnixConnector')
 
 HASHFUNC_BY_DIGESTLEN = {
     16: md5,
@@ -715,62 +713,6 @@ class TCPConnector(BaseConnector):
                     server_hostname=req.host)
             finally:
                 proxy_resp.close()
-
-        return transport, proto
-
-
-class ProxyConnector(TCPConnector):
-    """Http Proxy connector.
-    Deprecated, use ClientSession.request with proxy parameters.
-    Is still here for backward compatibility.
-
-    proxy - Proxy URL address. Only HTTP proxy supported.
-    proxy_auth - (optional) Proxy HTTP Basic Auth
-    proxy_auth - aiohttp.helpers.BasicAuth
-    conn_timeout - (optional) Connect timeout.
-    keepalive_timeout - (optional) Keep-alive timeout.
-    force_close - Set to True to force close and do reconnect
-        after each request (and between redirects).
-    limit - The limit of simultaneous connections to the same endpoint.
-    loop - Optional event loop.
-
-    Usage:
-
-    >>> conn = ProxyConnector(proxy="http://some.proxy.com")
-    >>> session = ClientSession(connector=conn)
-    >>> resp = yield from session.get('http://python.org')
-
-    """
-
-    def __init__(self, proxy, *, proxy_auth=None, force_close=True,
-                 conn_timeout=None, keepalive_timeout=sentinel,
-                 limit=20, loop=None):
-        warnings.warn("ProxyConnector is deprecated, use "
-                      "client.get(url, proxy=proxy_url) instead",
-                      DeprecationWarning)
-        super().__init__(force_close=force_close,
-                         conn_timeout=conn_timeout,
-                         keepalive_timeout=keepalive_timeout,
-                         limit=limit, loop=loop)
-        proxy = URL(proxy)
-        self._proxy = proxy
-        self._proxy_auth = proxy_auth
-
-    @property
-    def proxy(self):
-        return self._proxy
-
-    @property
-    def proxy_auth(self):
-        return self._proxy_auth
-
-    @asyncio.coroutine
-    def _create_connection(self, req):
-        """
-        Use TCPConnector _create_connection, to emulate old ProxyConnector.
-        """
-        req.update_proxy(self._proxy, self._proxy_auth)
-        transport, proto = yield from super()._create_connection(req)
 
         return transport, proto
 
