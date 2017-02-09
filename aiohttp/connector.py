@@ -353,13 +353,8 @@ class BaseConnector(object):
             placeholder = _TransportPlaceholder()
             self._acquired.add(placeholder)
             try:
-                if self._conn_timeout:
-                    transport, proto = yield from asyncio.wait_for(
-                        self._create_connection(req),
-                        self._conn_timeout, loop=self._loop)
-                else:
+                with self._time_service.timeout(self._conn_timeout):
                     transport, proto = yield from self._create_connection(req)
-
             except asyncio.TimeoutError as exc:
                 raise ClientTimeoutError(
                     'Connection timeout to host {0[0]}:{0[1]} ssl:{0[2]}'
