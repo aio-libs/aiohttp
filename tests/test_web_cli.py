@@ -99,7 +99,7 @@ def test_entry_func_non_existent_attribute(mocker):
 def test_path_when_unsupported(mocker, monkeypatch):
     argv = "--path=test_path.sock alpha.beta:func".split()
     mocker.patch("aiohttp.web.import_module")
-    monkeypatch.delattr("socket.AF_UNIX")
+    monkeypatch.delattr("socket.AF_UNIX", raising=False)
 
     error = mocker.patch("aiohttp.web.ArgumentParser.error",
                          side_effect=SystemExit)
