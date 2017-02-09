@@ -743,14 +743,14 @@ class StreamResponse(HeadersMixin):
         if resp_impl is None:
             raise RuntimeError("Cannot get tcp_nodelay for "
                                "not prepared response")
-        return resp_impl.transport.tcp_nodelay
+        return resp_impl.tcp_nodelay
 
     def set_tcp_nodelay(self, value):
         resp_impl = self._resp_impl
         if resp_impl is None:
             raise RuntimeError("Cannot set tcp_nodelay for "
                                "not prepared response")
-        resp_impl.transport.set_tcp_nodelay(value)
+        resp_impl.set_tcp_nodelay(value)
 
     @property
     def tcp_cork(self):
@@ -758,14 +758,14 @@ class StreamResponse(HeadersMixin):
         if resp_impl is None:
             raise RuntimeError("Cannot get tcp_cork for "
                                "not prepared response")
-        return resp_impl.transport.tcp_cork
+        return resp_impl.tcp_cork
 
     def set_tcp_cork(self, value):
         resp_impl = self._resp_impl
         if resp_impl is None:
             raise RuntimeError("Cannot set tcp_cork for "
                                "not prepared response")
-        resp_impl.transport.set_tcp_cork(value)
+        resp_impl.set_tcp_cork(value)
 
     def _generate_content_type_header(self, CONTENT_TYPE=hdrs.CONTENT_TYPE):
         params = '; '.join("%s=%s" % i for i in self._content_dict.items())
@@ -890,7 +890,7 @@ class StreamResponse(HeadersMixin):
     def drain(self):
         if self._resp_impl is None:
             raise RuntimeError("Response has not been started")
-        yield from self._resp_impl.transport.drain()
+        yield from self._resp_impl.drain()
 
     @asyncio.coroutine
     def write_eof(self):

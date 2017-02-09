@@ -538,6 +538,7 @@ def make_mocked_request(method, path, headers=None, *,
 
     task = mock.Mock()
     loop = mock.Mock()
+    loop.create_future.return_value = ()
 
     req = Request(message, payload,
                   transport, reader, writer,

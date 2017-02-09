@@ -2,8 +2,6 @@
 
 import asyncio
 
-import pytest
-
 import aiohttp
 from aiohttp import helpers, web
 from aiohttp._ws_impl import WSMsgType
@@ -614,28 +612,6 @@ def test_server_close_handshake_server_eats_client_messages(loop, test_client):
 
     yield from ws.close()
     yield from closed
-
-
-@asyncio.coroutine
-def test_receive_msg(loop, test_client):
-    @asyncio.coroutine
-    def handler(request):
-        ws = web.WebSocketResponse()
-        yield from ws.prepare(request)
-
-        with pytest.warns(DeprecationWarning):
-            msg = yield from ws.receive_msg()
-            assert msg.data == b'data'
-        yield from ws.close()
-        return ws
-
-    app = web.Application(loop=loop)
-    app.router.add_get('/', handler)
-    client = yield from test_client(app)
-
-    ws = yield from client.ws_connect('/')
-    ws.send_bytes(b'data')
-    yield from ws.close()
 
 
 @asyncio.coroutine
