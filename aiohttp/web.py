@@ -1,5 +1,7 @@
 import asyncio
+import os
 import socket
+import stat
 import sys
 import warnings
 from argparse import ArgumentParser
@@ -341,6 +343,16 @@ def run_app(app, *, host='0.0.0.0', port=None, path=None,
             urls = ('{}://unix:{}:'.format(scheme, path),)
         else:
             urls = ['{}://unix:{}:'.format(scheme, p) for p in path]
+
+        # Clean up prior socket path if stale and not abstract.
+        # CPython 3.5.3+'s event loop already does this. See
+        # https://github.com/python/asyncio/issues/425
+        if path[0] not in (0, '\x00'):
+            try:
+                if stat.S_ISSOCK(os.stat(path).st_mode):
+                    os.remove(path)
+            except FileNotFoundError:
+                pass
 
     srv = loop.run_until_complete(srv_creation)
 
