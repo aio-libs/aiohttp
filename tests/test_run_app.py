@@ -1,3 +1,4 @@
+import os
 import socket
 import ssl
 
@@ -7,6 +8,7 @@ from unittest import mock
 import pytest
 
 from aiohttp import web
+from aiohttp.test_utils import loop_context
 
 
 def test_run_app_http(loop, mocker):
@@ -139,3 +141,44 @@ def test_run_app_https_unix_socket(loop, mocker, shorttmpdir):
                                                ssl=ssl_context, backlog=128)
     app.startup.assert_called_once_with()
     assert "https://unix:{}:".format(sock_path) in printed.getvalue()
+
+
+@pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
+                    reason="UNIX sockets are not supported")
+def test_run_app_stale_unix_socket(loop, mocker, shorttmpdir):
+    """Older asyncio event loop implementations are known to halt server
+    creation when a socket path from a previous server bind still exists.
+    """
+    loop.call_later(0.05, loop.stop)
+
+    app = web.Application(loop=loop)
+
+    sock_path = shorttmpdir.join('socket.sock')
+    sock_path_string = str(sock_path)
+
+    web.run_app(app, path=sock_path_string, print=lambda *args: None)
+    assert loop.is_closed()
+
+    if sock_path.check():
+        # New app run using same socket path
+        with loop_context() as loop:
+            mocker.spy(loop, 'create_unix_server')
+            loop.call_later(0.05, loop.stop)
+
+            app = web.Application(loop=loop)
+
+            mocker.spy(app, 'startup')
+            mocker.spy(os, 'remove')
+            printed = StringIO()
+
+            web.run_app(app, path=sock_path_string, print=printed.write)
+            os.remove.assert_called_with(sock_path_string)
+            loop.create_unix_server.assert_called_with(
+                mock.ANY,
+                sock_path_string,
+                ssl=None,
+                backlog=128
+            )
+            app.startup.assert_called_once_with()
+            assert "http://unix:{}:".format(sock_path) in \
+                   printed.getvalue()
