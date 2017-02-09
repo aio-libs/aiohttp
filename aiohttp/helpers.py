@@ -697,6 +697,9 @@ class TimeService:
 
         timeout - value in seconds or None to disable timeout logic
         """
+        if self._loop is None:
+            raise RuntimeError
+
         if timeout:
             when = self._loop_time + timeout
             ctx = _TimeServiceTimeoutContext(when, self._loop)
@@ -720,6 +723,8 @@ class _TimeServiceTimeoutContext(TimerHandle):
     """ Low resolution timeout context manager """
 
     def __init__(self, when, loop):
+        assert loop is not None, "loop is not set"
+
         super().__init__(when, self.cancel, (), loop)
 
         self._tasks = []

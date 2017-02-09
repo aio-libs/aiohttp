@@ -137,8 +137,8 @@ class ClientWebSocketResponse:
 
             while True:
                 try:
-                    msg = yield from asyncio.wait_for(
-                        self._reader.read(), self._timeout, loop=self._loop)
+                    with self._time_service.timeout(self._timeout):
+                        msg = yield from self._reader.read()
                 except asyncio.CancelledError:
                     self._close_code = 1006
                     self._response.close()
