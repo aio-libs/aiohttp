@@ -342,10 +342,10 @@ def test_prepare_eof(transport):
 
 def test_write_auto_send_headers(transport):
     msg = protocol.Response(transport, 200, http_version=(1, 0))
-    msg._send_headers = True
-
+    msg.send_headers()
     msg.write(b'data1')
     assert msg.headers_sent
+
     # cleanup
     msg.writer.close()
 
@@ -505,8 +505,7 @@ def test_write_payload_chunked_and_deflate(transport):
 
 def test_write_drain(transport):
     msg = protocol.Response(transport, 200, http_version=(1, 0))
-    msg._send_headers = True
-
+    msg.send_headers()
     msg.write(b'1' * (64 * 1024 * 2))
     assert not transport.drain.called
 

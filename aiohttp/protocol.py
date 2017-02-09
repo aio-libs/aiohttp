@@ -522,10 +522,6 @@ class HttpMessage(ABC):
     websocket = False  # Upgrade: WEBSOCKET
     has_chunked_hdr = False  # Transfer-encoding: chunked
 
-    # subclass can enable auto sending headers with write() call,
-    # this is useful for wsgi's start_response implementation.
-    _send_headers = False
-
     def __init__(self, transport, version, close):
         self.transport = transport
         self._version = version
@@ -679,6 +675,8 @@ class HttpMessage(ABC):
               drain=False, EOF_MARKER=EOF_MARKER, EOL_MARKER=EOL_MARKER):
         """Writes chunk of data to a stream by using different writers.
 
+        Caller has to call .send_headers() before make .write() call.
+
         writer uses filter to modify chunk of data.
         write_eof() indicates end of stream.
         writer can't be used after write_eof() method being called.
@@ -688,9 +686,6 @@ class HttpMessage(ABC):
                 chunk is EOF_MARKER), chunk
 
         size = self.output_length
-
-        if self._send_headers and not self.headers_sent:
-            self.send_headers()
 
         if self.filter:
             chunk = self.filter.send(chunk)
