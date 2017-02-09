@@ -153,7 +153,7 @@ class Server:
         return BaseRequest(
             message, payload,
             protocol.transport, protocol.reader, protocol.writer,
-            protocol.time_service, protocol._request_handler)
+            protocol.time_service, protocol._request_handler, loop=self._loop)
 
     @asyncio.coroutine
     def shutdown(self, timeout=None):

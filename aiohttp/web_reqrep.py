@@ -50,8 +50,9 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
     def __init__(self, message, payload, transport, reader, writer,
-                 time_service, task, *,
+                 time_service, task, *, loop=None,
                  secure_proxy_ssl_header=None):
+        self._loop = loop
         self._message = message
         self._transport = transport
         self._reader = reader
@@ -104,6 +105,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             self._writer,
             self._time_service,
             self._task,
+            loop=self._loop,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header)
 
     @property
@@ -829,7 +831,8 @@ class StreamResponse(HeadersMixin):
             self._status,
             version,
             not keep_alive,
-            self._reason)
+            self._reason,
+            loop=request._loop)
 
         headers = self.headers
         for cookie in self._cookies.values():

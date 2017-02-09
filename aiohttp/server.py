@@ -348,7 +348,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             html = DEFAULT_ERROR_MESSAGE.format(
                 status=status, reason=reason, message=msg).encode('utf-8')
 
-            response = aiohttp.Response(self.writer, status, close=True)
+            response = aiohttp.Response(
+                self.writer, status, close=True, loop=self._loop)
             response.add_header(hdrs.CONTENT_TYPE, 'text/html; charset=utf-8')
             response.add_header(hdrs.CONTENT_LENGTH, str(len(html)))
             response.add_header(hdrs.DATE, self._time_service.strtime())
@@ -380,7 +381,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         """
         now = self._loop.time()
         response = aiohttp.Response(
-            self.writer, 404, http_version=message.version, close=True)
+            self.writer, 404,
+            http_version=message.version, close=True, loop=self._loop)
 
         body = b'Page Not Found!'
 

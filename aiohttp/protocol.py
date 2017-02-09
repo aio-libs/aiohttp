@@ -1,5 +1,6 @@
 """Http related parsers and protocol."""
 
+import asyncio
 import collections
 import http.server
 import re
@@ -14,6 +15,7 @@ from multidict import CIMultiDict, istr
 import aiohttp
 
 from . import errors, hdrs
+from .helpers import create_future
 from .log import internal_logger
 
 __all__ = ('HttpMessage', 'Request', 'Response',
@@ -381,7 +383,11 @@ class DeflateBuffer:
 
 class WriteBuffer:
 
-    def __init__(self):
+    def __init__(self, loop):
+        if loop is None:
+            loop = asyncio.get_event_loop()
+
+        self.loop = loop
         self.transport = None
         self.length = None
         self.chunked = False
@@ -390,6 +396,19 @@ class WriteBuffer:
 
         self._buffer = []
         self._compress = None
+        self._drain_waiter = None
+
+    def set_transport(self, transport):
+        self.transport = transport
+        for chunk in self._buffer:
+            transport.write(chunk)
+
+        self._buffer = []
+
+        if self._drain_maiter is not None:
+            waiter, self._drain_maiter = self._drain_maiter, None
+            if not waiter.done():
+                waiter.set_result(None)
 
     def enable_chunking(self):
         self.chunked = True
@@ -433,11 +452,14 @@ class WriteBuffer:
             size = len(chunk)
             self.buffer_size += size
             self.output_length += size
-            self.transport.write(chunk)
+            if self.transport is not None:
+                self.transport.write(chunk)
+            else:
+                self._buffer.append(chunk)
 
             if self.buffer_size > 64 * 1024 and drain:
                 self.buffer_size = 0
-                return self.transport.drain()
+                return self.drain()
 
         return ()
 
@@ -445,25 +467,42 @@ class WriteBuffer:
         size = len(chunk)
         self.buffer_size += size
         self.output_length += size
-        self.transport.write(chunk)
+        if self.transport is not None:
+            self.transport.write(chunk)
+        else:
+            self._buffer.append(chunk)
 
     def write_eof(self):
+        chunk = None
         if self._compress:
             chunk = self._compress.flush()
             if chunk and self.chunked:
                 chunk_len = ('%x\r\n' % len(chunk)).encode('ascii')
                 chunk = chunk_len + chunk + b'\r\n0\r\n\r\n'
                 self.output_length += len(chunk)
-                self.transport.write(chunk)
-            elif chunk:
-                self.transport.write(chunk)
         else:
             if self.chunked:
                 chunk = b'0\r\n\r\n'
                 self.output_length += 5
-                self.transport.write(chunk)
 
-        return self.transport.drain()
+        if chunk:
+            if self.transport is not None:
+                self.transport.write(chunk)
+            else:
+                self._buffer.append(chunk)
+
+        return self.drain()
+
+    @asyncio.coroutine
+    def drain(self):
+        if self.transport is not None:
+            yield from self.transport.drain()
+        else:
+            if self._buffer:
+                if self._drain_waiter is None:
+                    self._drain_waiter = create_future(self._loop)
+
+                yield from self._drain_waiter
 
 
 class HttpMessage(ABC, WriteBuffer):
@@ -478,8 +517,8 @@ class HttpMessage(ABC, WriteBuffer):
     websocket = False  # Upgrade: WEBSOCKET
     has_chunked_hdr = False  # Transfer-encoding: chunked
 
-    def __init__(self, transport, version, close):
-        super().__init__()
+    def __init__(self, transport, version, close, loop=None):
+        super().__init__(loop)
 
         self.transport = transport
         self._version = version
@@ -635,8 +674,9 @@ class Response(HttpMessage):
         return reason
 
     def __init__(self, transport, status,
-                 http_version=HttpVersion11, close=False, reason=None):
-        super().__init__(transport, http_version, close)
+                 http_version=HttpVersion11,
+                 close=False, reason=None, loop=None):
+        super().__init__(transport, http_version, close, loop=loop)
 
         self._status = status
         if reason is None:
@@ -674,6 +714,7 @@ class Response(HttpMessage):
 
 class WebResponse(Response):
     """For usage in aiohttp.web only"""
+
     def _add_default_headers(self):
         pass
 
@@ -683,13 +724,13 @@ class Request(HttpMessage):
     HOP_HEADERS = ()
 
     def __init__(self, transport, method, path,
-                 http_version=HttpVersion11, close=False):
+                 http_version=HttpVersion11, close=False, loop=None):
         # set the default for HTTP 0.9 to be different
         # will only be overwritten with keep-alive header
         if http_version < HttpVersion10:
             close = True
 
-        super().__init__(transport, http_version, close)
+        super().__init__(transport, http_version, close, loop=loop)
 
         self._method = method
         self._path = path
