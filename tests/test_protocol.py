@@ -456,12 +456,13 @@ def test_write_payload_deflate_and_chunked(transport):
 
 def test_write_drain(transport):
     msg = protocol.Response(transport, 200, http_version=(1, 0))
+    msg.drain = mock.Mock()
     msg.send_headers()
     msg.write(b'1' * (64 * 1024 * 2), drain=False)
-    assert not transport.drain.called
+    assert not msg.drain.called
 
     msg.write(b'1', drain=True)
-    assert transport.drain.called
+    assert msg.drain.called
     assert msg.buffer_size == 0
 
 

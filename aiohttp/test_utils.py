@@ -537,10 +537,12 @@ def make_mocked_request(method, path, headers=None, *,
     time_service.timeout.side_effect = timeout
 
     task = mock.Mock()
+    loop = mock.Mock()
 
     req = Request(message, payload,
                   transport, reader, writer,
                   time_service, task,
+                  loop=loop,
                   secure_proxy_ssl_header=secure_proxy_ssl_header)
 
     match_info = UrlMappingMatchInfo({}, mock.Mock())

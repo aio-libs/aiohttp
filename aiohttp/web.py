@@ -230,6 +230,7 @@ class Application(MutableMapping):
             message, payload,
             protocol.transport, protocol.reader, protocol.writer,
             protocol.time_service, protocol._request_handler,
+            loop=self._loop,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header)
 
     @asyncio.coroutine

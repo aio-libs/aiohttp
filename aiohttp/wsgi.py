@@ -41,7 +41,7 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
         self.readpayload = readpayload
 
     def create_wsgi_response(self, message):
-        return WsgiResponse(self.writer, message)
+        return WsgiResponse(self.writer, message, loop=self._loop)
 
     def create_wsgi_environ(self, message, payload):
         uri_parts = urlsplit(message.path)
@@ -209,9 +209,10 @@ class WsgiResponse:
         hdrs.UPGRADE,
     }
 
-    def __init__(self, writer, message):
+    def __init__(self, writer, message, loop=None):
         self.writer = writer
         self.message = message
+        self.loop = loop
 
     def start_response(self, status, headers, exc_info=None):
         if exc_info:
@@ -226,7 +227,7 @@ class WsgiResponse:
         self.status = status
         resp = self.response = aiohttp.Response(
             self.writer, status_code,
-            self.message.version, self.message.should_close)
+            self.message.version, self.message.should_close, loop=self.loop)
         resp.HOP_HEADERS = self.HOP_HEADERS
         for name, value in headers:
             resp.add_header(name, value)

@@ -448,8 +448,8 @@ class ClientRequest:
             if self.url.raw_query_string:
                 path += '?' + self.url.raw_query_string
 
-        request = aiohttp.Request(writer, self.method, path,
-                                  self.version)
+        request = aiohttp.Request(
+            writer, self.method, path, self.version, loop=self.loop)
 
         if self.compress:
             request.enable_compression(self.compress)

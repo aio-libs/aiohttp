@@ -75,7 +75,7 @@ class TestProxy(unittest.TestCase):
         request.send(mock.Mock(), mock.Mock())
 
         Request_mock.assert_called_with(mock.ANY, mock.ANY, "xn--9caa.com:80",
-                                        mock.ANY)
+                                        mock.ANY, loop=loop)
 
     def test_proxy_connection_error(self):
         connector = aiohttp.TCPConnector(loop=self.loop)
