@@ -186,26 +186,24 @@ def test_proxy_http_auth_from_url(proxy_test_server, get_request):
 @asyncio.coroutine
 def test_proxy_http_acquired_cleanup(proxy_test_server, loop):
     url = 'http://aiohttp.io/path'
-    key = ('aiohttp.io', 80, False)
 
     conn = aiohttp.TCPConnector(loop=loop)
     sess = aiohttp.ClientSession(connector=conn, loop=loop)
     proxy = yield from proxy_test_server()
 
-    assert 0 == len(conn._acquired.keys())
+    assert 0 == len(conn._acquired)
 
     @asyncio.coroutine
     def request():
         resp = yield from sess.get(url, proxy=proxy.url)
 
-        assert 1 == len(conn._acquired.keys())
-        assert 1 == len(conn._acquired[key])
+        assert 1 == len(conn._acquired)
 
         yield from resp.release()
 
     yield from request()
 
-    assert 0 == len(conn._acquired[key])
+    assert 0 == len(conn._acquired)
 
     yield from sess.close()
 
@@ -213,26 +211,24 @@ def test_proxy_http_acquired_cleanup(proxy_test_server, loop):
 @asyncio.coroutine
 def test_proxy_http_acquired_cleanup_force(proxy_test_server, loop):
     url = 'http://aiohttp.io/path'
-    key = ('aiohttp.io', 80, False)
 
     conn = aiohttp.TCPConnector(force_close=True, loop=loop)
     sess = aiohttp.ClientSession(connector=conn, loop=loop)
     proxy = yield from proxy_test_server()
 
-    assert 0 == len(conn._acquired.keys())
+    assert 0 == len(conn._acquired)
 
     @asyncio.coroutine
     def request():
         resp = yield from sess.get(url, proxy=proxy.url)
 
-        assert 1 == len(conn._acquired.keys())
-        assert 1 == len(conn._acquired[key])
+        assert 1 == len(conn._acquired)
 
         yield from resp.release()
 
     yield from request()
 
-    assert 0 == len(conn._acquired[key])
+    assert 0 == len(conn._acquired)
 
     yield from sess.close()
 
@@ -242,7 +238,7 @@ def test_proxy_http_multi_conn_limit(proxy_test_server, loop):
     url = 'http://aiohttp.io/path'
     limit, multi_conn_num = 1, 5
 
-    conn = aiohttp.TCPConnector(limit=limit, loop=loop)
+    conn = aiohttp.TCPConnector(capacity=limit, loop=loop)
     sess = aiohttp.ClientSession(connector=conn, loop=loop)
     proxy = yield from proxy_test_server()
 
@@ -402,26 +398,24 @@ def test_proxy_https_auth(proxy_test_server, get_request):
 @asyncio.coroutine
 def test_proxy_https_acquired_cleanup(proxy_test_server, loop):
     url = 'https://secure.aiohttp.io/path'
-    key = ('secure.aiohttp.io', 443, True)
 
     conn = aiohttp.TCPConnector(loop=loop)
     sess = aiohttp.ClientSession(connector=conn, loop=loop)
     proxy = yield from proxy_test_server()
 
-    assert 0 == len(conn._acquired.keys())
+    assert 0 == len(conn._acquired)
 
     @asyncio.coroutine
     def request():
         resp = yield from sess.get(url, proxy=proxy.url)
 
-        assert 1 == len(conn._acquired.keys())
-        assert 1 == len(conn._acquired[key])
+        assert 1 == len(conn._acquired)
 
         yield from resp.release()
 
     yield from request()
 
-    assert 0 == len(conn._acquired[key])
+    assert 0 == len(conn._acquired)
 
     yield from sess.close()
 
@@ -429,26 +423,24 @@ def test_proxy_https_acquired_cleanup(proxy_test_server, loop):
 @asyncio.coroutine
 def test_proxy_https_acquired_cleanup_force(proxy_test_server, loop):
     url = 'https://secure.aiohttp.io/path'
-    key = ('secure.aiohttp.io', 443, True)
 
     conn = aiohttp.TCPConnector(force_close=True, loop=loop)
     sess = aiohttp.ClientSession(connector=conn, loop=loop)
     proxy = yield from proxy_test_server()
 
-    assert 0 == len(conn._acquired.keys())
+    assert 0 == len(conn._acquired)
 
     @asyncio.coroutine
     def request():
         resp = yield from sess.get(url, proxy=proxy.url)
 
-        assert 1 == len(conn._acquired.keys())
-        assert 1 == len(conn._acquired[key])
+        assert 1 == len(conn._acquired)
 
         yield from resp.release()
 
     yield from request()
 
-    assert 0 == len(conn._acquired[key])
+    assert 0 == len(conn._acquired)
 
     yield from sess.close()
 
@@ -456,9 +448,9 @@ def test_proxy_https_acquired_cleanup_force(proxy_test_server, loop):
 @asyncio.coroutine
 def test_proxy_https_multi_conn_limit(proxy_test_server, loop):
     url = 'https://secure.aiohttp.io/path'
-    limit, multi_conn_num = 1, 5
+    capacity, multi_conn_num = 1, 5
 
-    conn = aiohttp.TCPConnector(limit=limit, loop=loop)
+    conn = aiohttp.TCPConnector(capacity=capacity, loop=loop)
     sess = aiohttp.ClientSession(connector=conn, loop=loop)
     proxy = yield from proxy_test_server()
 
