@@ -4,6 +4,8 @@ CHANGES
 1.3.1 (2017-02-09)
 ------------------
 
+- Handle CLOSING in WebSocketResponse.__anext__
+
 - Fixed AttributeError 'drain' for server websocket handler #1613
 
 
