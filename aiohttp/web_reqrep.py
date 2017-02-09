@@ -301,6 +301,11 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """Transport used for request processing."""
         return self._transport
 
+    @property
+    def transport_pair(self):
+        """Reader and writer used for request processing."""
+        return (self._reader, self._writer)
+
     @reify
     def cookies(self):
         """Return request cookies.

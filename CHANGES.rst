@@ -1,6 +1,12 @@
 CHANGES
 =======
 
+1.3.1 (2017-02-09)
+------------------
+
+- Fixed AttributeError 'drain' for server websocket handler #1613
+
+
 1.3.0 (2017-02-08)
 ------------------
 

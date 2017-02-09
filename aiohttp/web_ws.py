@@ -105,7 +105,7 @@ class WebSocketResponse(StreamResponse):
     def _pre_start(self, request):
         try:
             status, headers, parser, writer, protocol = do_handshake(
-                request.method, request.headers, request.transport,
+                request.method, request.headers, request.transport_pair[1],
                 self._protocols)
         except HttpProcessingError as err:
             if err.code == 405:
