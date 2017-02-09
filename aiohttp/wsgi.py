@@ -153,7 +153,14 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
             for item in riter:
                 if isinstance(item, asyncio.Future):
                     item = yield from item
+
+                if not resp.headers_sent:
+                    resp.send_headers()
+
                 yield from resp.write(item)
+
+            if not resp.headers_sent:
+                resp.send_headers()
 
             yield from resp.write_eof()
         finally:
@@ -230,6 +237,5 @@ class WsgiResponse:
         # send headers immediately for websocket connection
         if status_code == 101 and resp.upgrade and resp.websocket:
             resp.send_headers()
-        else:
-            resp._send_headers = True
+
         return self.response.write
