@@ -383,12 +383,14 @@ class DeflateBuffer:
 
 class WriteBuffer:
 
-    def __init__(self, loop):
+    def __init__(self, stream, loop):
         if loop is None:
             loop = asyncio.get_event_loop()
 
+        self._stream = stream
+        self._transport = None
+
         self.loop = loop
-        self.transport = None
         self.length = None
         self.chunked = False
         self.buffer_size = 0
@@ -398,17 +400,33 @@ class WriteBuffer:
         self._compress = None
         self._drain_waiter = None
 
+        self._stream.acquire(self.set_transport)
+
     def set_transport(self, transport):
-        self.transport = transport
+        self._transport = transport
         for chunk in self._buffer:
             transport.write(chunk)
 
         self._buffer = []
 
-        if self._drain_maiter is not None:
+        if self._drain_waiter is not None:
             waiter, self._drain_maiter = self._drain_maiter, None
             if not waiter.done():
                 waiter.set_result(None)
+
+    @property
+    def tcp_nodelay(self):
+        return self._stream.tcp_nodelay
+
+    def set_tcp_nodelay(self, value):
+        self._stream.set_tcp_nodelay(value)
+
+    @property
+    def tcp_cork(self):
+        return self._stream.tcp_cork
+
+    def set_tcp_cork(self, value):
+        self._stream.set_tcp_cork(value)
 
     def enable_chunking(self):
         self.chunked = True
@@ -452,8 +470,8 @@ class WriteBuffer:
             size = len(chunk)
             self.buffer_size += size
             self.output_length += size
-            if self.transport is not None:
-                self.transport.write(chunk)
+            if self._transport is not None:
+                self._transport.write(chunk)
             else:
                 self._buffer.append(chunk)
 
@@ -467,11 +485,12 @@ class WriteBuffer:
         size = len(chunk)
         self.buffer_size += size
         self.output_length += size
-        if self.transport is not None:
-            self.transport.write(chunk)
+        if self._transport is not None:
+            self._transport.write(chunk)
         else:
             self._buffer.append(chunk)
 
+    @asyncio.coroutine
     def write_eof(self):
         chunk = None
         if self._compress:
@@ -486,22 +505,26 @@ class WriteBuffer:
                 self.output_length += 5
 
         if chunk:
-            if self.transport is not None:
-                self.transport.write(chunk)
+            if self._transport is not None:
+                self._transport.write(chunk)
             else:
                 self._buffer.append(chunk)
 
-        return self.drain()
+        yield from self.drain()
+
+        self._transport = None
+        self._stream.release()
 
     @asyncio.coroutine
     def drain(self):
-        if self.transport is not None:
-            yield from self.transport.drain()
+        if self._transport is not None:
+            yield from self._transport.drain()
         else:
             if self._buffer:
                 if self._drain_waiter is None:
-                    self._drain_waiter = create_future(self._loop)
+                    self._drain_waiter = create_future(self.loop)
 
+                print(self._transport, self._buffer)
                 yield from self._drain_waiter
 
 
@@ -518,16 +541,14 @@ class HttpMessage(ABC, WriteBuffer):
     has_chunked_hdr = False  # Transfer-encoding: chunked
 
     def __init__(self, transport, version, close, loop=None):
-        super().__init__(loop)
+        super().__init__(transport, loop)
 
-        self.transport = transport
         self._version = version
         self.closing = close
         self.keepalive = None
         self.length = None
         self.headers = CIMultiDict()
         self.headers_sent = False
-        self._cache = {}
 
     @property
     @abstractmethod

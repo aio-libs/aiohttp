@@ -154,12 +154,21 @@ class StreamReader(AsyncStreamReaderMixin):
         if self._eof:
             return
 
-        assert self._eof_waiter is None
-        self._eof_waiter = helpers.create_future(self._loop)
-        try:
-            yield from self._eof_waiter
-        finally:
-            self._eof_waiter = None
+        yield from self.eof_waiter
+
+    @property
+    def eof_waiter(self):
+        waiter = self._eof_waiter
+        if waiter is not None:
+            return waiter
+
+        waiter = helpers.create_future(self._loop)
+        if self._eof:
+            waiter.set_result(True)
+        else:
+            self._eof_waiter = waiter
+
+        return waiter
 
     def unread_data(self, data):
         """ rollback reading some data from stream, inserting it to buffer head.

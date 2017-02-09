@@ -30,17 +30,28 @@ def srv(make_srv):
     return make_srv()
 
 
+@pytest.fixture
+def writer():
+    writer = mock.Mock()
+
+    def acquire(cb):
+        cb(writer)
+
+    writer.acquire = acquire
+    writer.drain.return_value = ()
+    return writer
+
+
 def test_http_error_exception():
     exc = errors.HttpProcessingError(code=500, message='Internal error')
     assert exc.code == 500
     assert exc.message == 'Internal error'
 
 
-def test_handle_request(srv):
+def test_handle_request(srv, writer):
     transport = mock.Mock()
-
     srv.connection_made(transport)
-    srv.writer = mock.Mock()
+    srv.writer = writer
 
     message = mock.Mock()
     message.headers = []
@@ -219,11 +230,11 @@ def test_invalid_content_length(srv, loop):
         b'HTTP/1.1 400 Bad Request\r\n')
 
 
-def test_handle_error(srv):
+def test_handle_error(srv, writer):
     transport = mock.Mock()
     srv.connection_made(transport)
     srv.keep_alive(True)
-    srv.writer = mock.Mock()
+    srv.writer = writer
 
     srv.handle_error(404, headers=(('X-Server', 'asyncio'),))
     content = b''.join(
@@ -233,12 +244,12 @@ def test_handle_error(srv):
     assert not srv._keepalive
 
 
-def test_handle_error__utf(make_srv):
+def test_handle_error__utf(make_srv, writer):
     transport = mock.Mock()
     srv = make_srv(debug=True)
     srv.connection_made(transport)
     srv.keep_alive(True)
-    srv.writer = mock.Mock()
+    srv.writer = writer
     srv.logger = mock.Mock()
 
     try:
@@ -256,12 +267,12 @@ def test_handle_error__utf(make_srv):
     srv.logger.exception.assert_called_with("Error handling request")
 
 
-def test_handle_error_traceback_exc(make_srv):
+def test_handle_error_traceback_exc(make_srv, writer):
     log = mock.Mock()
     srv = make_srv(debug=True, logger=log)
     srv.transport = mock.Mock()
     srv.transport.get_extra_info.return_value = '127.0.0.1'
-    srv.writer = mock.Mock()
+    srv.writer = writer
     srv._request_handler = mock.Mock()
 
     with mock.patch('aiohttp.server.traceback') as m_trace:
@@ -275,11 +286,11 @@ def test_handle_error_traceback_exc(make_srv):
     assert log.exception.called
 
 
-def test_handle_error_debug(srv):
+def test_handle_error_debug(srv, writer):
     transport = mock.Mock()
     srv.debug = True
     srv.connection_made(transport)
-    srv.writer = mock.Mock()
+    srv.writer = writer
 
     try:
         raise ValueError()
@@ -293,14 +304,14 @@ def test_handle_error_debug(srv):
     assert b'Traceback (most recent call last):' in content
 
 
-def test_handle_error_500(make_srv, loop):
+def test_handle_error_500(make_srv, loop, writer):
     log = mock.Mock()
     transport = mock.Mock()
     transport.drain.return_value = ()
 
     srv = make_srv(logger=log)
     srv.connection_made(transport)
-    srv.writer = mock.Mock()
+    srv.writer = writer
 
     srv.handle_error(500)
     assert log.exception.called

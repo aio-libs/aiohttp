@@ -22,6 +22,11 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
         self.reader = mock.Mock()
         self.writer = mock.Mock()
         self.writer.drain.return_value = ()
+
+        def acquire(cb):
+            cb(self.writer)
+        self.writer.acquire = acquire
+
         self.transport = mock.Mock()
         self.transport.get_extra_info.side_effect = [
             mock.Mock(family=socket.AF_INET),

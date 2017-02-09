@@ -366,10 +366,12 @@ def test_write_before_start():
 def test_cannot_write_after_eof():
     resp = StreamResponse()
     writer = mock.Mock()
-    yield from resp.prepare(make_request('GET', '/', writer=writer))
+    resp_impl = yield from resp.prepare(
+        make_request('GET', '/', writer=writer))
+    resp_impl.write_eof = mock.Mock()
+    resp_impl.write_eof.return_value = ()
 
     resp.write(b'data')
-    writer.drain.return_value = ()
     yield from resp.write_eof()
     writer.write.reset_mock()
 
@@ -390,14 +392,18 @@ def test_cannot_write_eof_before_headers():
 def test_cannot_write_eof_twice():
     resp = StreamResponse()
     writer = mock.Mock()
-    yield from resp.prepare(make_request('GET', '/', writer=writer))
+    resp_impl = yield from resp.prepare(
+        make_request('GET', '/', writer=writer))
+    resp_impl.write = mock.Mock()
+    resp_impl.write_eof = mock.Mock()
+    resp_impl.write_eof.return_value = ()
 
     resp.write(b'data')
-    writer.drain.return_value = ()
-    yield from resp.write_eof()
-    assert writer.write.called
+    assert resp_impl.write.called
 
-    writer.write.reset_mock()
+    yield from resp.write_eof()
+
+    resp_impl.write.reset_mock()
     yield from resp.write_eof()
     assert not writer.write.called
 
@@ -779,18 +785,9 @@ def test_send_headers_for_empty_body():
     req = make_request('GET', '/', writer=writer)
     resp = Response()
 
-    writer.drain.return_value = ()
-    buf = b''
-
-    def append(data):
-        nonlocal buf
-        buf += data
-
-    writer.write.side_effect = append
-
-    yield from resp.prepare(req)
+    resp_impl = yield from resp.prepare(req)
     yield from resp.write_eof()
-    txt = buf.decode('utf8')
+    txt = b''.join(resp_impl._buffer).decode('utf8')
     assert re.match('HTTP/1.1 200 OK\r\n'
                     'Content-Type: application/octet-stream\r\n'
                     'Content-Length: 0\r\n'
@@ -804,18 +801,10 @@ def test_render_with_body():
     req = make_request('GET', '/', writer=writer)
     resp = Response(body=b'data')
 
-    writer.drain.return_value = ()
-    buf = b''
-
-    def append(data):
-        nonlocal buf
-        buf += data
-
-    writer.write.side_effect = append
-
-    yield from resp.prepare(req)
+    resp_impl = yield from resp.prepare(req)
     yield from resp.write_eof()
-    txt = buf.decode('utf8')
+
+    txt = b''.join(resp_impl._buffer).decode('utf8')
     assert re.match('HTTP/1.1 200 OK\r\n'
                     'Content-Type: application/octet-stream\r\n'
                     'Content-Length: 4\r\n'
@@ -828,21 +817,12 @@ def test_render_with_body():
 def test_send_set_cookie_header():
     resp = Response()
     resp.cookies['name'] = 'value'
+    req = make_request('GET', '/', writer=mock.Mock())
 
-    writer = mock.Mock()
-    req = make_request('GET', '/', writer=writer)
-    writer.drain.return_value = ()
-    buf = b''
-
-    def append(data):
-        nonlocal buf
-        buf += data
-
-    writer.write.side_effect = append
-
-    yield from resp.prepare(req)
+    resp_impl = yield from resp.prepare(req)
     yield from resp.write_eof()
-    txt = buf.decode('utf8')
+
+    txt = b''.join(resp_impl._buffer).decode('utf8')
     assert re.match('HTTP/1.1 200 OK\r\n'
                     'Content-Type: application/octet-stream\r\n'
                     'Content-Length: 0\r\n'

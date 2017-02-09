@@ -1,5 +1,6 @@
 """Tests for aiohttp/protocol.py"""
 
+import asyncio
 import zlib
 from unittest import mock
 
@@ -10,7 +11,14 @@ from aiohttp import hdrs, protocol
 
 @pytest.fixture
 def transport():
-    return mock.Mock()
+    transport = mock.Mock()
+
+    def acquire(cb):
+        cb(transport)
+
+    transport.acquire = acquire
+    transport.drain.return_value = ()
+    return transport
 
 
 compressor = zlib.compressobj(wbits=-zlib.MAX_WBITS)
@@ -21,7 +29,7 @@ def test_start_request(transport):
     msg = protocol.Request(
         transport, 'GET', '/index.html', close=True)
 
-    assert msg.transport is transport
+    assert msg._transport is transport
     assert msg.closing
     assert msg.status_line == 'GET /index.html HTTP/1.1\r\n'
 
@@ -29,7 +37,7 @@ def test_start_request(transport):
 def test_start_response(transport):
     msg = protocol.Response(transport, 200, close=True)
 
-    assert msg.transport is transport
+    assert msg._transport is transport
     assert msg.status == 200
     assert msg.reason == "OK"
     assert msg.closing
@@ -340,6 +348,7 @@ def test_write_payload_eof(transport):
     assert b'data1data2' == content.split(b'\r\n\r\n', 1)[-1]
 
 
+@asyncio.coroutine
 def test_write_payload_chunked(transport):
     write = transport.write = mock.Mock()
 
@@ -348,12 +357,13 @@ def test_write_payload_chunked(transport):
     msg.send_headers()
 
     msg.write(b'data')
-    msg.write_eof()
+    yield from msg.write_eof()
 
     content = b''.join([c[1][0] for c in list(write.mock_calls)])
     assert b'4\r\ndata\r\n0\r\n\r\n' == content.split(b'\r\n\r\n', 1)[-1]
 
 
+@asyncio.coroutine
 def test_write_payload_chunked_multiple(transport):
     write = transport.write = mock.Mock()
 
@@ -363,13 +373,14 @@ def test_write_payload_chunked_multiple(transport):
 
     msg.write(b'data1')
     msg.write(b'data2')
-    msg.write_eof()
+    yield from msg.write_eof()
 
     content = b''.join([c[1][0] for c in list(write.mock_calls)])
     assert (b'5\r\ndata1\r\n5\r\ndata2\r\n0\r\n\r\n' ==
             content.split(b'\r\n\r\n', 1)[-1])
 
 
+@asyncio.coroutine
 def test_write_payload_length(transport):
     write = transport.write = mock.Mock()
 
@@ -379,12 +390,13 @@ def test_write_payload_length(transport):
 
     msg.write(b'd')
     msg.write(b'ata')
-    msg.write_eof()
+    yield from msg.write_eof()
 
     content = b''.join([c[1][0] for c in list(write.mock_calls)])
     assert b'da' == content.split(b'\r\n\r\n', 1)[-1]
 
 
+@asyncio.coroutine
 def test_write_payload_chunked_filter(transport):
     write = transport.write = mock.Mock()
 
@@ -394,12 +406,13 @@ def test_write_payload_chunked_filter(transport):
     msg.enable_chunking()
     msg.write(b'da')
     msg.write(b'ta')
-    msg.write_eof()
+    yield from msg.write_eof()
 
     content = b''.join([c[1][0] for c in list(write.mock_calls)])
     assert content.endswith(b'2\r\nda\r\n2\r\nta\r\n0\r\n\r\n')
 
 
+@asyncio.coroutine
 def test_write_payload_chunked_filter_mutiple_chunks(transport):
     write = transport.write = mock.Mock()
     msg = protocol.Response(transport, 200)
@@ -411,13 +424,14 @@ def test_write_payload_chunked_filter_mutiple_chunks(transport):
     msg.write(b'1d')
     msg.write(b'at')
     msg.write(b'a2')
-    msg.write_eof()
+    yield from msg.write_eof()
     content = b''.join([c[1][0] for c in list(write.mock_calls)])
     assert content.endswith(
         b'2\r\nda\r\n2\r\nta\r\n2\r\n1d\r\n2\r\nat\r\n'
         b'2\r\na2\r\n0\r\n\r\n')
 
 
+@asyncio.coroutine
 def test_write_payload_deflate_compression(transport):
     write = transport.write = mock.Mock()
     msg = protocol.Response(transport, 200)
@@ -426,7 +440,7 @@ def test_write_payload_deflate_compression(transport):
 
     msg.enable_compression('deflate')
     msg.write(b'data')
-    msg.write_eof()
+    yield from msg.write_eof()
 
     chunks = [c[1][0] for c in list(write.mock_calls)]
     assert all(chunks)
@@ -434,6 +448,7 @@ def test_write_payload_deflate_compression(transport):
     assert COMPRESSED == content.split(b'\r\n\r\n', 1)[-1]
 
 
+@asyncio.coroutine
 def test_write_payload_deflate_and_chunked(transport):
     write = transport.write = mock.Mock()
     msg = protocol.Response(transport, 200)
@@ -444,7 +459,7 @@ def test_write_payload_deflate_and_chunked(transport):
 
     msg.write(b'da')
     msg.write(b'ta')
-    msg.write_eof()
+    yield from msg.write_eof()
 
     chunks = [c[1][0] for c in list(write.mock_calls)]
     assert all(chunks)
@@ -454,8 +469,8 @@ def test_write_payload_deflate_and_chunked(transport):
             content.split(b'\r\n\r\n', 1)[-1])
 
 
-def test_write_drain(transport):
-    msg = protocol.Response(transport, 200, http_version=(1, 0))
+def test_write_drain(transport, loop):
+    msg = protocol.Response(transport, 200, http_version=(1, 0), loop=loop)
     msg.drain = mock.Mock()
     msg.send_headers()
     msg.write(b'1' * (64 * 1024 * 2), drain=False)
@@ -466,16 +481,16 @@ def test_write_drain(transport):
     assert msg.buffer_size == 0
 
 
-def test_dont_override_request_headers_with_default_values(transport):
+def test_dont_override_request_headers_with_default_values(transport, loop):
     msg = protocol.Request(
-        transport, 'GET', '/index.html', close=True)
+        transport, 'GET', '/index.html', close=True, loop=loop)
     msg.add_header('USER-AGENT', 'custom')
     msg._add_default_headers()
     assert 'custom' == msg.headers['USER-AGENT']
 
 
-def test_dont_override_response_headers_with_default_values(transport):
-    msg = protocol.Response(transport, 200, http_version=(1, 0))
+def test_dont_override_response_headers_with_default_values(transport, loop):
+    msg = protocol.Response(transport, 200, http_version=(1, 0), loop=loop)
     msg.add_header('DATE', 'now')
     msg.add_header('SERVER', 'custom')
     msg._add_default_headers()

@@ -21,6 +21,11 @@ def request(buf):
     writer = mock.Mock()
     writer.drain.return_value = ()
 
+    def acquire(cb):
+        cb(writer)
+
+    writer.acquire.side_effect = acquire
+
     def append(data):
         buf.extend(data)
     writer.write.side_effect = append
