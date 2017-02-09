@@ -209,7 +209,8 @@ def test_close(loop, ws_key, key_data):
                 reader = mock.Mock()
                 resp.connection.reader.set_parser.return_value = reader
 
-                resp = yield from aiohttp.ClientSession(loop=loop).ws_connect(
+                session = aiohttp.ClientSession(loop=loop)
+                resp = yield from session.ws_connect(
                     'http://test.org')
                 assert not resp.closed
 
@@ -227,6 +228,8 @@ def test_close(loop, ws_key, key_data):
                 res = yield from resp.close()
                 assert not res
                 assert writer.close.call_count == 1
+
+                session.close()
 
 
 @asyncio.coroutine
@@ -248,8 +251,8 @@ def test_close_exc(loop, ws_key, key_data):
                 reader = mock.Mock()
                 resp.connection.reader.set_parser.return_value = reader
 
-                resp = yield from aiohttp.ClientSession(loop=loop).ws_connect(
-                    'http://test.org')
+                session = aiohttp.ClientSession(loop=loop)
+                resp = yield from session.ws_connect('http://test.org')
                 assert not resp.closed
 
                 exc = ValueError()
@@ -259,6 +262,8 @@ def test_close_exc(loop, ws_key, key_data):
                 yield from resp.close()
                 assert resp.closed
                 assert resp.exception() is exc
+
+                session.close()
 
 
 @asyncio.coroutine
@@ -371,8 +376,8 @@ def test_reader_read_exception(ws_key, key_data, loop):
                 reader = mock.Mock()
                 hresp.connection.reader.set_parser.return_value = reader
 
-                resp = yield from aiohttp.ClientSession(loop=loop).ws_connect(
-                    'http://test.org')
+                session = aiohttp.ClientSession(loop=loop)
+                resp = yield from session.ws_connect('http://test.org')
 
                 exc = ValueError()
                 reader.read.return_value = helpers.create_future(loop)
@@ -382,6 +387,8 @@ def test_reader_read_exception(ws_key, key_data, loop):
                 assert msg.type == aiohttp.MsgType.ERROR
                 assert msg.type is msg.tp
                 assert resp.exception() is exc
+
+                session.close()
 
 
 @asyncio.coroutine
