@@ -44,13 +44,13 @@ RawStatusLineMessage = collections.namedtuple(
 RawRequestMessage = collections.namedtuple(
     'RawRequestMessage',
     ['method', 'path', 'version', 'headers', 'raw_headers',
-     'should_close', 'compression'])
+     'should_close', 'compression', 'upgrade'])
 
 
 RawResponseMessage = collections.namedtuple(
     'RawResponseMessage',
     ['version', 'code', 'reason', 'headers', 'raw_headers',
-     'should_close', 'compression'])
+     'should_close', 'compression', 'upgrade'])
 
 
 class HttpParser:
@@ -69,6 +69,7 @@ class HttpParser:
         """
         close_conn = None
         encoding = None
+        upgrade = False
         headers = CIMultiDict()
         raw_headers = []
 
@@ -130,6 +131,8 @@ class HttpParser:
                     close_conn = True
                 elif v == 'keep-alive':
                     close_conn = False
+                elif v == 'upgrade':
+                    upgrade = True
             elif name == hdrs.CONTENT_ENCODING:
                 enc = value.lower()
                 if enc in ('gzip', 'deflate'):
@@ -138,7 +141,7 @@ class HttpParser:
             headers.add(name, value)
             raw_headers.append((bname, bvalue))
 
-        return headers, raw_headers, close_conn, encoding
+        return headers, raw_headers, close_conn, encoding, upgrade
 
 
 class HttpRequestParser(HttpParser):
@@ -180,7 +183,8 @@ class HttpRequestParser(HttpParser):
             raise errors.BadStatusLine(version)
 
         # read headers
-        headers, raw_headers, close, compression = self.parse_headers(lines)
+        headers, raw_headers, \
+            close, compression, upgrade = self.parse_headers(lines)
         if close is None:  # then the headers weren't set in the request
             if version <= HttpVersion10:  # HTTP 1.0 must asks to not close
                 close = True
@@ -190,7 +194,7 @@ class HttpRequestParser(HttpParser):
         out.feed_data(
             RawRequestMessage(
                 method, path, version, headers, raw_headers,
-                close, compression),
+                close, compression, upgrade),
             len(raw_data))
         out.feed_eof()
 
@@ -238,7 +242,8 @@ class HttpResponseParser(HttpParser):
             raise errors.BadStatusLine(line)
 
         # read headers
-        headers, raw_headers, close, compression = self.parse_headers(lines)
+        headers, raw_headers, \
+            close, compression, upgrade = self.parse_headers(lines)
 
         if close is None:
             close = version <= HttpVersion10
@@ -246,7 +251,7 @@ class HttpResponseParser(HttpParser):
         out.feed_data(
             RawResponseMessage(
                 version, status, reason.strip(),
-                headers, raw_headers, close, compression),
+                headers, raw_headers, close, compression, upgrade),
             len(raw_data))
         out.feed_eof()
 
@@ -404,10 +409,11 @@ class WriteBuffer:
 
     def set_transport(self, transport):
         self._transport = transport
-        for chunk in self._buffer:
-            transport.write(chunk)
 
-        self._buffer = []
+        chunk = b''.join(self._buffer)
+        if chunk:
+            transport.write(chunk)
+            self._buffer.clear()
 
         if self._drain_waiter is not None:
             waiter, self._drain_maiter = self._drain_maiter, None
@@ -436,6 +442,28 @@ class WriteBuffer:
                      if encoding == 'gzip' else -zlib.MAX_WBITS)
         self._compress = zlib.compressobj(wbits=zlib_mode)
 
+    def buffer_data(self, chunk):
+        if chunk:
+            size = len(chunk)
+            self.buffer_size += size
+            self.output_length += size
+            self._buffer.append(chunk)
+
+    def _write(self, chunk):
+        size = len(chunk)
+        self.buffer_size += size
+        self.output_length += size
+
+        if self._transport is not None:
+            if self._buffer:
+                self._buffer.append(chunk)
+                self._transport.write(b''.join(self._buffer))
+                self._buffer.clear()
+            else:
+                self._transport.write(chunk)
+        else:
+            self._buffer.append(chunk)
+
     def write(self, chunk, *, drain=True):
         """Writes chunk of data to a stream.
 
@@ -443,10 +471,6 @@ class WriteBuffer:
         writer can't be used after write_eof() method being called.
         write() return drain future.
         """
-        assert isinstance(chunk, (bytes, bytearray, memoryview)), \
-            'chunk argument must be a bytes-like object, not %r' % \
-            type(chunk).__name__
-
         if self._compress is not None:
             chunk = self._compress.compress(chunk)
             if not chunk:
@@ -467,13 +491,7 @@ class WriteBuffer:
             chunk = chunk_len + chunk + b'\r\n'
 
         if chunk:
-            size = len(chunk)
-            self.buffer_size += size
-            self.output_length += size
-            if self._transport is not None:
-                self._transport.write(chunk)
-            else:
-                self._buffer.append(chunk)
+            self._write(chunk)
 
             if self.buffer_size > 64 * 1024 and drain:
                 self.buffer_size = 0
@@ -481,34 +499,25 @@ class WriteBuffer:
 
         return ()
 
-    def write_data(self, chunk):
-        size = len(chunk)
-        self.buffer_size += size
-        self.output_length += size
-        if self._transport is not None:
-            self._transport.write(chunk)
-        else:
-            self._buffer.append(chunk)
-
     @asyncio.coroutine
-    def write_eof(self):
-        chunk = None
+    def write_eof(self, chunk=b''):
         if self._compress:
-            chunk = self._compress.flush()
+            if chunk:
+                chunk = self._compress.compress(chunk)
+
+            chunk = chunk + self._compress.flush()
             if chunk and self.chunked:
                 chunk_len = ('%x\r\n' % len(chunk)).encode('ascii')
                 chunk = chunk_len + chunk + b'\r\n0\r\n\r\n'
-                self.output_length += len(chunk)
         else:
-            if self.chunked:
-                chunk = b'0\r\n\r\n'
-                self.output_length += 5
+            if chunk and self.chunked:
+                chunk_len = ('%x\r\n' % len(chunk)).encode('ascii')
+                chunk = chunk_len + chunk + b'\r\n0\r\n\r\n'
 
-        if chunk:
-            if self._transport is not None:
-                self._transport.write(chunk)
-            else:
-                self._buffer.append(chunk)
+            if self.chunked:
+                chunk = chunk + b'0\r\n\r\n'
+
+        self.buffer_data(chunk)
 
         yield from self.drain()
 
@@ -518,13 +527,15 @@ class WriteBuffer:
     @asyncio.coroutine
     def drain(self):
         if self._transport is not None:
+            if self._buffer:
+                self._transport.write(b''.join(self._buffer))
+                self._buffer.clear()
             yield from self._transport.drain()
         else:
             if self._buffer:
                 if self._drain_waiter is None:
                     self._drain_waiter = create_future(self.loop)
 
-                print(self._transport, self._buffer)
                 yield from self._drain_waiter
 
 
@@ -657,7 +668,7 @@ class HttpMessage(ABC, WriteBuffer):
             [k + _sep + v + _end for k, v in self.headers.items()])
         headers = headers.encode('utf-8') + b'\r\n'
 
-        self.write_data(headers)
+        self.buffer_data(headers)
 
     def _add_default_headers(self):
         # set the connection header

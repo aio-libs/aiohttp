@@ -32,6 +32,25 @@ def make_request(loop):
         loop.run_until_complete(request.close())
 
 
+@pytest.yield_fixture
+def transport():
+    transport = mock.Mock()
+
+    buf = bytearray()
+
+    def acquire(cb):
+        cb(transport)
+
+    def write(chunk):
+        buf.extend(chunk)
+
+    transport.acquire.side_effect = acquire
+    transport.write.side_effect = write
+    transport.drain.return_value = ()
+
+    return (transport, buf)
+
+
 def test_method1(make_request):
     req = make_request('get', 'http://python.org/')
     assert req.method == 'GET'
@@ -761,7 +780,7 @@ def test_expect_100_continue_header(loop):
 
 
 @asyncio.coroutine
-def test_data_stream(loop):
+def test_data_stream(loop, transport):
     def gen():
         yield b'binary data'
         return b' result'
@@ -772,25 +791,20 @@ def test_data_stream(loop):
     assert inspect.isgenerator(req.body)
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
 
-    transport = mock.Mock()
-
-    def acquire(cb):
-        cb(transport)
-    transport.acquire.side_effect = acquire
+    transport, buf = transport
 
     resp = req.send(transport, mock.Mock())
     assert isinstance(req._writer, asyncio.Future)
     yield from resp.wait_for_close()
     assert req._writer is None
-    assert transport.write.mock_calls[-3:] == [
-        mock.call(b'b\r\nbinary data\r\n'),
-        mock.call(b'7\r\n result\r\n'),
-        mock.call(b'0\r\n\r\n')]
+
+    assert buf.split(b'\r\n\r\n', 1)[1] == \
+        b'b\r\nbinary data\r\n7\r\n result\r\n0\r\n\r\n'
     yield from req.close()
 
 
 @asyncio.coroutine
-def test_data_file(loop):
+def test_data_file(loop, transport):
     req = ClientRequest(
         'POST', URL('http://python.org/'),
         data=io.BufferedReader(io.BytesIO(b'*' * 2)),
@@ -799,18 +813,14 @@ def test_data_file(loop):
     assert isinstance(req.body, io.IOBase)
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
 
-    transport = mock.Mock()
+    transport, buf = transport
 
-    def acquire(cb):
-        cb(transport)
-    transport.acquire.side_effect = acquire
     resp = req.send(transport, mock.Mock())
     assert isinstance(req._writer, asyncio.Future)
     yield from resp.wait_for_close()
     assert req._writer is None
-    assert transport.write.mock_calls[-2:] == [
-        mock.call(b'2\r\n' + b'*' * 2 + b'\r\n'),
-        mock.call(b'0\r\n\r\n')]
+    assert buf.split(b'\r\n\r\n', 1)[1] == \
+        b'2\r\n' + b'*' * 2 + b'\r\n0\r\n\r\n'
     yield from req.close()
 
 
@@ -899,7 +909,7 @@ def test_data_stream_exc_chain(loop):
 
 
 @asyncio.coroutine
-def test_data_stream_continue(loop):
+def test_data_stream_continue(loop, transport):
     def gen():
         yield b'binary data'
         return b' result'
@@ -916,23 +926,17 @@ def test_data_stream_continue(loop):
 
     helpers.ensure_future(coro(), loop=loop)
 
-    transport = mock.Mock()
-
-    def acquire(cb):
-        cb(transport)
-    transport.acquire.side_effect = acquire
+    transport, buf = transport
     resp = req.send(transport, mock.Mock())
     yield from req._writer
-    assert transport.write.mock_calls[-3:] == [
-        mock.call(b'b\r\nbinary data\r\n'),
-        mock.call(b'7\r\n result\r\n'),
-        mock.call(b'0\r\n\r\n')]
+    assert buf.split(b'\r\n\r\n', 1)[1] == \
+        b'b\r\nbinary data\r\n7\r\n result\r\n0\r\n\r\n'
     yield from req.close()
     resp.close()
 
 
 @asyncio.coroutine
-def test_data_continue(loop):
+def test_data_continue(loop, transport):
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=b'data',
         expect100=True, loop=loop)
@@ -942,23 +946,18 @@ def test_data_continue(loop):
         req._continue.set_result(1)
 
     helpers.ensure_future(coro(), loop=loop)
-    transport = mock.Mock()
 
-    def acquire(cb):
-        cb(transport)
-    transport.acquire.side_effect = acquire
-
+    transport, buf = transport
     resp = req.send(transport, mock.Mock())
-    assert 1 == len(transport.write.mock_calls)
 
     yield from req._writer
-    assert transport.write.mock_calls[-1] == mock.call(b'data')
+    assert buf.split(b'\r\n\r\n', 1)[1] == b'data'
     yield from req.close()
     resp.close()
 
 
 @asyncio.coroutine
-def test_close(loop):
+def test_close(loop, transport):
     @asyncio.coroutine
     def gen():
         yield from asyncio.sleep(0.00001, loop=loop)
@@ -966,16 +965,10 @@ def test_close(loop):
 
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=gen(), loop=loop)
-    transport = mock.Mock()
-
-    def acquire(cb):
-        cb(transport)
-    transport.acquire.side_effect = acquire
+    transport, buf = transport
     resp = req.send(transport, mock.Mock())
     yield from req.close()
-    assert transport.write.mock_calls[-2:] == [
-        mock.call(b'6\r\nresult\r\n'),
-        mock.call(b'0\r\n\r\n')]
+    assert buf.split(b'\r\n\r\n', 1)[1] == b'6\r\nresult\r\n0\r\n\r\n'
     yield from req.close()
     resp.close()
 

@@ -82,6 +82,7 @@ async def test_context_manager_close_on_release(test_server, loop, mocker):
     async def handler(request):
         resp = web.StreamResponse()
         await resp.prepare(request)
+        await resp.drain()
         await asyncio.sleep(10, loop=loop)
         return resp
 

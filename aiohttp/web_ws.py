@@ -99,6 +99,7 @@ class WebSocketResponse(StreamResponse):
         parser, protocol, writer = self._pre_start(request)
         resp_impl = yield from super().prepare(request)
         self._post_start(request, parser, protocol, writer)
+        yield from resp_impl.drain()
         return resp_impl
 
     def _pre_start(self, request):
@@ -281,7 +282,7 @@ class WebSocketResponse(StreamResponse):
                 self._close_code = exc.code
                 yield from self.close(code=exc.code)
                 return WSMessage(WSMsgType.ERROR, exc, None)
-            except ClientDisconnectedError:
+            except ClientDisconnectedError as exc:
                 self._closed = True
                 self._close_code = 1006
                 return CLOSED_MESSAGE
@@ -312,8 +313,8 @@ class WebSocketResponse(StreamResponse):
         msg = yield from self.receive(timeout)
         if msg.type != WSMsgType.TEXT:
             raise TypeError(
-                "Received message {}:{!r} is not str".format(msg.type,
-                                                             msg.data))
+                "Received message {}:{!r} is not WSMsgType.TEXT".format(
+                    msg.type, msg.data))
         return msg.data
 
     @asyncio.coroutine

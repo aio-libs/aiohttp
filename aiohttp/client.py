@@ -225,8 +225,9 @@ class ClientSession:
                         resp.close()
                         conn.close()
                         raise
-                except (aiohttp.HttpProcessingError,
-                        aiohttp.ServerDisconnectedError) as exc:
+                except aiohttp.ServerDisconnectedError:
+                    raise
+                except aiohttp.HttpProcessingError as exc:
                     raise aiohttp.ClientResponseError() from exc
                 except OSError as exc:
                     raise aiohttp.ClientOSError(*exc.args) from exc

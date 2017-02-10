@@ -509,7 +509,7 @@ def make_mocked_request(method, path, headers=None, *,
         raw_hdrs = []
 
     message = RawRequestMessage(method, path, version, hdrs,
-                                raw_hdrs, closing, False)
+                                raw_hdrs, closing, False, False)
     if app is None:
         app = _create_app_mock()
 
