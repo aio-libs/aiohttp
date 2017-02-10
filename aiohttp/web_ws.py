@@ -92,15 +92,16 @@ class WebSocketResponse(StreamResponse):
     @asyncio.coroutine
     def prepare(self, request):
         # make pre-check to don't hide it by do_handshake() exceptions
-        resp_impl = self._start_pre_check(request)
-        if resp_impl is not None:
-            return resp_impl
+        payload_writer = self._start_pre_check(request)
+        if payload_writer is not None:
+            return payload_writer
 
+        print(request._writer)
         parser, protocol, writer = self._pre_start(request)
-        resp_impl = yield from super().prepare(request)
+        payload_writer = yield from super().prepare(request)
         self._post_start(request, parser, protocol, writer)
-        yield from resp_impl.drain()
-        return resp_impl
+        yield from payload_writer.drain()
+        return payload_writer
 
     def _pre_start(self, request):
         try:
@@ -192,7 +193,7 @@ class WebSocketResponse(StreamResponse):
     def write_eof(self):
         if self._eof_sent:
             return
-        if self._resp_impl is None:
+        if self._payload_writer is None:
             raise RuntimeError("Response has not been started")
 
         yield from self.close()

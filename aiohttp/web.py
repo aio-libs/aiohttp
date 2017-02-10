@@ -34,8 +34,7 @@ __all__ = (web_reqrep.__all__ +
 class Application(MutableMapping):
 
     def __init__(self, *, logger=web_logger, loop=None,
-                 router=None,
-                 middlewares=(), debug=...):
+                 router=None, middlewares=(), handler_args=None, debug=...):
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:
@@ -49,6 +48,7 @@ class Application(MutableMapping):
         self._router = router
         self._secure_proxy_ssl_header = None
         self._loop = loop
+        self._handler_args = handler_args
         self.logger = logger
 
         self._middlewares = FrozenList(middlewares)
@@ -196,6 +196,11 @@ class Application(MutableMapping):
                     "web_reference.html#aiohttp.web.Application"
                 )
         self.freeze()
+
+        if self._handler_args:
+            for k, v in self._handler_args.items():
+                kwargs[k] = v
+
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
         return Server(self._handle, request_factory=self._make_request,
                       debug=self.debug, loop=self.loop, **kwargs)
