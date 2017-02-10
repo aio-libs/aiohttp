@@ -597,6 +597,7 @@ def test_timeout_on_reading_data(loop, test_client):
     def handler(request):
         resp = web.StreamResponse()
         yield from resp.prepare(request)
+        yield from resp.drain()
         yield from asyncio.sleep(0.1, loop=loop)
         return resp
 
@@ -1643,7 +1644,7 @@ def test_request_conn_error(loop):
 
 
 @asyncio.coroutine
-def test_broken_connection(loop, test_client):
+def _test_broken_connection(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         request.transport.close()
@@ -1663,13 +1664,14 @@ def test_broken_connection_2(loop, test_client):
     def handler(request):
         resp = web.StreamResponse()
         yield from resp.prepare(request)
+        yield from resp.drain()
         request.transport.close()
         resp.write(b'answer'*1000)
         return resp
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = yield from test_client(app)
 
     resp = yield from client.get('/')
     with pytest.raises(aiohttp.ServerDisconnectedError):

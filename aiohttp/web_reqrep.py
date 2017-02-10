@@ -893,13 +893,16 @@ class StreamResponse(HeadersMixin):
         yield from self._resp_impl.drain()
 
     @asyncio.coroutine
-    def write_eof(self):
+    def write_eof(self, data=b''):
+        assert isinstance(data, (bytes, bytearray, memoryview)), \
+            "data argument must be byte-ish (%r)" % type(data)
+
         if self._eof_sent:
             return
         if self._resp_impl is None:
             raise RuntimeError("Response has not been started")
 
-        yield from self._resp_impl.write_eof()
+        yield from self._resp_impl.write_eof(data)
         self._eof_sent = True
         self._req = None
 
@@ -1004,10 +1007,14 @@ class Response(StreamResponse):
     def write_eof(self):
         body = self._body
         if (body is not None and
-                self._req.method != hdrs.METH_HEAD and
-                self._status not in [204, 304]):
-            self.write(body)
-        yield from super().write_eof()
+            (self._req.method == hdrs.METH_HEAD or
+             self._status in [204, 304])):
+            body = b''
+
+        if body is None:
+            body = b''
+
+        yield from super().write_eof(body)
 
 
 def json_response(data=sentinel, *, text=None, body=None, status=200,

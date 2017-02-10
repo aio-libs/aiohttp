@@ -256,16 +256,13 @@ def test_default_headers_connection_keep_alive_11(transport):
 
 
 def test_send_headers(transport):
-    write = transport.write = mock.Mock()
-
     msg = protocol.Response(transport, 200)
     msg.add_headers(('content-type', 'plain/html'))
     assert not msg.is_headers_sent()
 
     msg.send_headers()
 
-    content = b''.join([arg[1][0] for arg in list(write.mock_calls)])
-
+    content = b''.join(msg._buffer)
     assert content.startswith(b'HTTP/1.1 200 OK\r\n')
     assert b'Content-Type: plain/html' in content
     assert msg.headers_sent
@@ -273,15 +270,13 @@ def test_send_headers(transport):
 
 
 def test_send_headers_non_ascii(transport):
-    write = transport.write = mock.Mock()
-
     msg = protocol.Response(transport, 200)
     msg.add_headers(('x-header', 'текст'))
     assert not msg.is_headers_sent()
 
     msg.send_headers()
 
-    content = b''.join([arg[1][0] for arg in list(write.mock_calls)])
+    content = b''.join(msg._buffer)
 
     assert content.startswith(b'HTTP/1.1 200 OK\r\n')
     assert b'X-Header: \xd1\x82\xd0\xb5\xd0\xba\xd1\x81\xd1\x82' in content
@@ -349,10 +344,10 @@ def test_write_payload_eof(transport):
 
 
 @asyncio.coroutine
-def test_write_payload_chunked(transport):
+def test_write_payload_chunked(transport, loop):
     write = transport.write = mock.Mock()
 
-    msg = protocol.Response(transport, 200)
+    msg = protocol.Response(transport, 200, loop=loop)
     msg.enable_chunking()
     msg.send_headers()
 
@@ -364,10 +359,10 @@ def test_write_payload_chunked(transport):
 
 
 @asyncio.coroutine
-def test_write_payload_chunked_multiple(transport):
+def test_write_payload_chunked_multiple(transport, loop):
     write = transport.write = mock.Mock()
 
-    msg = protocol.Response(transport, 200)
+    msg = protocol.Response(transport, 200, loop=loop)
     msg.enable_chunking()
     msg.send_headers()
 
@@ -381,10 +376,10 @@ def test_write_payload_chunked_multiple(transport):
 
 
 @asyncio.coroutine
-def test_write_payload_length(transport):
+def test_write_payload_length(transport, loop):
     write = transport.write = mock.Mock()
 
-    msg = protocol.Response(transport, 200)
+    msg = protocol.Response(transport, 200, loop=loop)
     msg.add_headers(('content-length', '2'))
     msg.send_headers()
 
@@ -397,10 +392,10 @@ def test_write_payload_length(transport):
 
 
 @asyncio.coroutine
-def test_write_payload_chunked_filter(transport):
+def test_write_payload_chunked_filter(transport, loop):
     write = transport.write = mock.Mock()
 
-    msg = protocol.Response(transport, 200)
+    msg = protocol.Response(transport, 200, loop=loop)
     msg.send_headers()
 
     msg.enable_chunking()
@@ -413,9 +408,9 @@ def test_write_payload_chunked_filter(transport):
 
 
 @asyncio.coroutine
-def test_write_payload_chunked_filter_mutiple_chunks(transport):
+def test_write_payload_chunked_filter_mutiple_chunks(transport, loop):
     write = transport.write = mock.Mock()
-    msg = protocol.Response(transport, 200)
+    msg = protocol.Response(transport, 200, loop=loop)
     msg.send_headers()
 
     msg.enable_chunking()
@@ -432,9 +427,9 @@ def test_write_payload_chunked_filter_mutiple_chunks(transport):
 
 
 @asyncio.coroutine
-def test_write_payload_deflate_compression(transport):
+def test_write_payload_deflate_compression(transport, loop):
     write = transport.write = mock.Mock()
-    msg = protocol.Response(transport, 200)
+    msg = protocol.Response(transport, 200, loop=loop)
     msg.add_headers(('content-length', '{}'.format(len(COMPRESSED))))
     msg.send_headers()
 
@@ -445,13 +440,14 @@ def test_write_payload_deflate_compression(transport):
     chunks = [c[1][0] for c in list(write.mock_calls)]
     assert all(chunks)
     content = b''.join(chunks)
+    print(content)
     assert COMPRESSED == content.split(b'\r\n\r\n', 1)[-1]
 
 
 @asyncio.coroutine
-def test_write_payload_deflate_and_chunked(transport):
+def test_write_payload_deflate_and_chunked(transport, loop):
     write = transport.write = mock.Mock()
-    msg = protocol.Response(transport, 200)
+    msg = protocol.Response(transport, 200, loop=loop)
     msg.send_headers()
 
     msg.enable_compression('deflate')
@@ -464,7 +460,6 @@ def test_write_payload_deflate_and_chunked(transport):
     chunks = [c[1][0] for c in list(write.mock_calls)]
     assert all(chunks)
     content = b''.join(chunks)
-    print(content)
     assert (b'6\r\nKI,I\x04\x00\r\n0\r\n\r\n' ==
             content.split(b'\r\n\r\n', 1)[-1])
 

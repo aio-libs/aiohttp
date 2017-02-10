@@ -126,6 +126,12 @@ class StreamReader(AsyncStreamReaderMixin):
             if not waiter.cancelled():
                 waiter.set_exception(exc)
 
+        waiter = self._eof_waiter
+        if waiter is not None:
+            self._eof_waiter = None
+            if not waiter.cancelled():
+                waiter.set_exception(exc)
+
     def feed_eof(self):
         self._eof = True
 
