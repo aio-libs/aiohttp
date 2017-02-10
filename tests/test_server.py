@@ -137,7 +137,8 @@ def test_connection_made(srv):
     assert not srv._request_handlers
 
     srv.connection_made(mock.Mock())
-    assert srv._request_handlers
+    assert srv._request_handler is not None
+    assert not srv._request_handlers
     assert not srv._closing
 
 
@@ -180,7 +181,7 @@ def test_eof_received(srv):
 def test_connection_lost(srv, loop):
     srv.connection_made(mock.Mock())
 
-    handle = srv._request_handlers[-1]
+    handle = srv._request_handler
     yield from asyncio.sleep(0, loop=loop)  # wait for .start() starting
     srv.connection_lost(None)
 
@@ -188,6 +189,7 @@ def test_connection_lost(srv, loop):
 
     yield from handle
 
+    assert srv._request_handler is None
     assert not srv._request_handlers
 
 
@@ -343,7 +345,7 @@ def test_handle(srv, loop, transport):
         b'GET / HTTP/1.0\r\n'
         b'Host: example.com\r\n\r\n')
 
-    loop.run_until_complete(srv._request_handlers[0])
+    loop.run_until_complete(srv._request_handler)
     assert handle.called
     assert transport.close.called
 
@@ -518,7 +520,7 @@ def test_handle_cancelled(make_srv, loop):
         b'GET / HTTP/1.0\r\n'
         b'Host: example.com\r\n\r\n')
 
-    r_handler = srv._request_handlers[0]
+    r_handler = srv._request_handler
     assert loop.run_until_complete(r_handler) is None
 
 
