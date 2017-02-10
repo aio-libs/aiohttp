@@ -4,6 +4,7 @@ import asyncio
 import http.server
 import socket
 import traceback
+import warnings
 from collections import deque
 from contextlib import suppress
 from html import escape as html_escape
@@ -59,8 +60,6 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
     :param bool tcp_keepalive: TCP keep-alive is on, default is on
 
-    :param int slow_request_timeout: slow request timeout
-
     :param bool debug: enable debug mode
 
     :param logger: custom logger object
@@ -88,7 +87,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                  time_service=None,
                  keepalive_timeout=75,  # NGINX default value is 75 secs
                  tcp_keepalive=True,
-                 slow_request_timeout=0,
+                 slow_request_timeout=None,
                  logger=server_logger,
                  access_log=access_logger,
                  access_log_format=helpers.AccessLogger.LOG_FORMAT,
@@ -102,6 +101,10 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
         # process deprecated params
         logger = kwargs.get('logger', logger)
+
+        if slow_request_timeout is not None:
+            warnings.warn(
+                'slow_request_timeout is deprecated', DeprecationWarning)
 
         super().__init__(
             loop=loop,
@@ -117,7 +120,6 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         self._tcp_keepalive = tcp_keepalive
         self._keepalive_handle = None
         self._keepalive_timeout = keepalive_timeout
-        self._slow_request_timeout = slow_request_timeout
         self._lingering_time = float(lingering_time)
         self._lingering_timeout = float(lingering_timeout)
 
@@ -282,11 +284,9 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
         message = None
         try:
-            # slow request timer
-            with time_service.timeout(self._slow_request_timeout):
-                # read request headers
-                httpstream = reader.set_parser(self._request_parser)
-                message = yield from httpstream.read()
+            # read request headers
+            httpstream = reader.set_parser(self._request_parser)
+            message = yield from httpstream.read()
 
             self._request_count += 1
 
