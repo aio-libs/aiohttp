@@ -326,7 +326,7 @@ def test_handle_error_500(make_srv, loop, writer):
     assert log.exception.called
 
 
-def test_handle(srv, loop):
+def test_handle(srv, loop, transport):
 
     def get_mock_coro(return_value):
         @asyncio.coroutine
@@ -334,7 +334,7 @@ def test_handle(srv, loop):
             return return_value
         return mock.Mock(wraps=mock_coro)
 
-    transport = mock.Mock()
+    transport, buf = transport
     srv.connection_made(transport)
 
     handle = srv.handle_request = get_mock_coro(return_value=None)
@@ -343,7 +343,7 @@ def test_handle(srv, loop):
         b'GET / HTTP/1.0\r\n'
         b'Host: example.com\r\n\r\n')
 
-    loop.run_until_complete(srv._request_handler)
+    loop.run_until_complete(srv._request_handlers[0])
     assert handle.called
     assert transport.close.called
 

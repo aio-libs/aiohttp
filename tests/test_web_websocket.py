@@ -22,7 +22,9 @@ def app(loop):
 
 @pytest.fixture
 def writer():
-    return mock.Mock()
+    writer = mock.Mock()
+    writer.drain.return_value = ()
+    return writer
 
 
 @pytest.fixture
@@ -372,9 +374,9 @@ def test_receive_exc_in_reader(make_request, loop, reader):
     res = helpers.create_future(loop)
     res.set_exception(exc)
     reader.read = make_mocked_coro(res)
-    ws._resp_impl.drain = mock.Mock()
-    ws._resp_impl.drain.return_value = helpers.create_future(loop)
-    ws._resp_impl.drain.return_value.set_result(True)
+    ws._payload_writer.drain = mock.Mock()
+    ws._payload_writer.drain.return_value = helpers.create_future(loop)
+    ws._payload_writer.drain.return_value.set_result(True)
 
     msg = yield from ws.receive()
     assert msg.type == WSMsgType.ERROR
@@ -467,9 +469,9 @@ def test_close_exc(make_request, reader, loop, mocker):
     exc = ValueError()
     reader.read.return_value = helpers.create_future(loop)
     reader.read.return_value.set_exception(exc)
-    ws._resp_impl.drain = mock.Mock()
-    ws._resp_impl.drain.return_value = helpers.create_future(loop)
-    ws._resp_impl.drain.return_value.set_result(True)
+    ws._payload_writer.drain = mock.Mock()
+    ws._payload_writer.drain.return_value = helpers.create_future(loop)
+    ws._payload_writer.drain.return_value.set_result(True)
 
     yield from ws.close()
     assert ws.closed
