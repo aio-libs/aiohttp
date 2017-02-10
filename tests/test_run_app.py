@@ -26,13 +26,107 @@ def test_run_app_http(loop, mocker):
     app.startup.assert_called_once_with()
 
 
-def test_run_app_multi_bind():
-    app = mock.Mock()
+mock_unix_server_single = [
+    mock.call(mock.ANY, '/tmp/testsock1.sock', ssl=None, backlog=128),
+]
+mock_unix_server_multi = [
+    mock.call(mock.ANY, '/tmp/testsock1.sock', ssl=None, backlog=128),
+    mock.call(mock.ANY, '/tmp/testsock2.sock', ssl=None, backlog=128),
+]
+mock_server_single = [
+    mock.call(mock.ANY, '127.0.0.1', 8080, ssl=None, backlog=128),
+]
+mock_server_multi = [
+    mock.call(mock.ANY, ('127.0.0.1', '192.168.1.1'), 8080, ssl=None,
+              backlog=128),
+]
+mock_server_default_8989 = [
+    mock.call(mock.ANY, '0.0.0.0', 8989, ssl=None, backlog=128)
+]
+mixed_bindings_tests = (
+    (
+        "Nothing Specified",
+        {},
+        [mock.call(mock.ANY, '0.0.0.0', 8080, ssl=None, backlog=128)],
+        []
+    ),
+    (
+        "Port Only",
+        {'port': 8989},
+        mock_server_default_8989,
+        []
+    ),
+    (
+        "Multiple Hosts",
+        {'host': ('127.0.0.1', '192.168.1.1')},
+        mock_server_multi,
+        []
+    ),
+    (
+        "Multiple Paths",
+        {'path': ('/tmp/testsock1.sock', '/tmp/testsock2.sock')},
+        [],
+        mock_unix_server_multi
+    ),
+    (
+        "Multiple Paths, Port",
+        {'path': ('/tmp/testsock1.sock', '/tmp/testsock2.sock'),
+         'port': 8989},
+        mock_server_default_8989,
+        mock_unix_server_multi,
+    ),
+    (
+        "Multiple Paths, Single Host",
+        {'path': ('/tmp/testsock1.sock', '/tmp/testsock2.sock'),
+         'host': '127.0.0.1'},
+        mock_server_single,
+        mock_unix_server_multi
+    ),
+    (
+        "Single Path, Single Host",
+        {'path': '/tmp/testsock1.sock', 'host': '127.0.0.1'},
+        mock_server_single,
+        mock_unix_server_single
+    ),
+    (
+        "Single Path, Multiple Hosts",
+        {'path': '/tmp/testsock1.sock', 'host': ('127.0.0.1', '192.168.1.1')},
+        mock_server_multi,
+        mock_unix_server_single
+    ),
+    (
+        "Single Path, Port",
+        {'path': '/tmp/testsock1.sock', 'port': 8989},
+        mock_server_default_8989,
+        mock_unix_server_single
+    ),
+    (
+        "Multiple Paths, Multiple Hosts, Port",
+        {'path': ('/tmp/testsock1.sock', '/tmp/testsock2.sock'),
+         'host': ('127.0.0.1', '192.168.1.1'), 'port': 8000},
+        [mock.call(mock.ANY, ('127.0.0.1', '192.168.1.1'), 8000, ssl=None,
+                   backlog=128)],
+        mock_unix_server_multi
+    )
+)
+mixed_bindings_test_ids = [test[0] for test in mixed_bindings_tests]
+mixed_bindings_test_params = [test[1:] for test in mixed_bindings_tests]
 
-    web.run_app(app, host=('0.0.0.0', '127.0.0.1'), print=lambda *args: None)
 
-    app.loop.create_server.assert_called_with(
-        mock.ANY, ('0.0.0.0', '127.0.0.1'), 8080, ssl=None, backlog=128)
+@pytest.mark.parametrize(
+    'run_app_kwargs, expected_server_calls, expected_unix_server_calls',
+    mixed_bindings_test_params,
+    ids=mixed_bindings_test_ids
+)
+def test_run_app_mixed_bindings(mocker, run_app_kwargs, expected_server_calls,
+                                expected_unix_server_calls):
+    app = mocker.MagicMock()
+    mocker.patch('asyncio.gather')
+
+    web.run_app(app, print=lambda *args: None, **run_app_kwargs)
+
+    assert app.loop.create_unix_server.mock_calls == expected_unix_server_calls
+    assert app.loop.create_server.mock_calls == expected_server_calls
 
 
 def test_run_app_http_access_format(loop, mocker):
