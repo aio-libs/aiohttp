@@ -104,16 +104,21 @@ Next we need to configure *aiohttp upstream group*:
        server unix:/tmp/example_2.sock fail_timeout=0;
        server unix:/tmp/example_3.sock fail_timeout=0;
        server unix:/tmp/example_4.sock fail_timeout=0;
+
+       # Unix domain sockets are used in this example due to their high performance,
+       # but TCP/IP sockets could be used instead:
+       # server 127.0.0.1:8081 fail_timeout=0;
+       # server 127.0.0.1:8082 fail_timeout=0;
+       # server 127.0.0.1:8083 fail_timeout=0;
+       # server 127.0.0.1:8084 fail_timeout=0;
      }
    }
 
 All HTTP requests for ``http://example.com`` except ones for
-``http://example.com/static`` will be redirected to ``example_1.sock``,
-``example_2.sock``, ``example_3.sock`` or ``example_4.sock``
-*backend servers*. Unix domain sockets are used in this example due to
-their high performance, but TCP/IP sockets can be used as well.
-
-By default, Nginx uses round-robin algorithm for backend selection.
+``http://example.com/static`` will be redirected to ``example1.sock``,
+``example2.sock``, ``example3.sock`` or ``example4.sock``
+backend servers. By default, Nginx uses round-robin algorithm for backend
+selection.
 
 .. note::
 
@@ -130,19 +135,24 @@ or backend crash.
 There are very many ways to do it: Supervisord, Upstart, Systemd,
 Gaffer, Circus, Runit etc.
 
-Here we'll use `Supervisord <http://supervisord.org/>`_ for example::
+Here we'll use `Supervisord <http://supervisord.org/>`_ for example:
+
+.. code-block:: cfg
 
    [program:aiohttp]
    numprocs = 4
    numprocs_start = 1
    process_name = example_%(process_num)s
-   cmd=/path/to/aiohttp_example.py /tmp/example_%(process_num)s.sock
+
+   ; Unix socket paths are specified by command line.
+   cmd=/path/to/aiohttp_example.py --path=/tmp/example%(process_num)s.sock
+
+   ; We can just as easily pass TCP port numbers:
+   ; cmd=/path/to/aiohttp_example.py --port=808%(process_num)s
+
    user=nobody
    autostart=true
    autorestart=true
-
-The config will run four aiohttp server instances. Unix socket paths are specified
-by command line.
 
 aiohttp server
 --------------
@@ -150,14 +160,17 @@ aiohttp server
 The last step is preparing aiohttp server for working with supervisord.
 
 Assuming we have properly configured :class:`aiohttp.web.Application`
-and port is specified by command line the task is trivial::
+and port is specified by command line, the task is trivial:
+
+.. code-block:: python3
 
    # aiohttp_example.py
    import argparse
    from aiohttp import web
 
    parser = argparse.ArgumentParser(description="aiohttp server example")
-   parser.add_argument('sockfile')
+   parser.add_argument('--path')
+   parser.add_argument('--port')
 
 
    if __name__ == '__main__':
@@ -165,10 +178,10 @@ and port is specified by command line the task is trivial::
        # configure app
 
        args = parser.parse_args()
-       web.run_app(app, path=args.sockfile)
+       web.run_app(app, path=args.path, port=args.port)
 
 For real use cases we perhaps need to configure other things like
-logging etc. but it's out of scope of the topic.
+logging etc., but it's out of scope of the topic.
 
 
 .. _aiohttp-deployment-gunicorn:
