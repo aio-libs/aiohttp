@@ -201,17 +201,9 @@ def test_srv_keep_alive(srv):
     assert not srv._keepalive
 
 
-def test_slow_request(make_srv, loop):
-    transport = mock.Mock()
-    srv = make_srv(slow_request_timeout=0.01, keepalive_timeout=0)
-    srv.connection_made(transport)
-
-    srv.reader.feed_data(
-        b'GET / HTTP/1.0\r\n'
-        b'Host: example.com\r\n')
-
-    loop.run_until_complete(srv._request_handler)
-    assert transport.close.called
+def test_slow_request(make_srv):
+    with pytest.warns(DeprecationWarning):
+        make_srv(slow_request_timeout=0.01)
 
 
 def test_bad_method(srv, loop, transport):
@@ -613,7 +605,7 @@ def test_keep_alive_close_existing(make_srv, loop):
 
 def test_srv_process_request_without_timeout(make_srv, loop):
     transport = mock.Mock()
-    srv = make_srv(slow_request_timeout=0)
+    srv = make_srv()
     srv.connection_made(transport)
 
     srv.reader.feed_data(
