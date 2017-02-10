@@ -42,6 +42,25 @@ def writer():
     return writer
 
 
+@pytest.yield_fixture
+def transport():
+    transport = mock.Mock()
+
+    buf = bytearray()
+
+    def acquire(cb):
+        cb(transport)
+
+    def write(chunk):
+        buf.extend(chunk)
+
+    transport.acquire.side_effect = acquire
+    transport.write.side_effect = write
+    transport.drain.return_value = ()
+
+    return (transport, buf)
+
+
 def test_http_error_exception():
     exc = errors.HttpProcessingError(code=500, message='Internal error')
     assert exc.code == 500
@@ -82,6 +101,8 @@ def test_shutdown(srv, loop):
 
     request_handler = srv._request_handler
 
+    yield from asyncio.sleep(0.1, loop=loop)
+
     t0 = loop.time()
     yield from srv.shutdown()
     t1 = loop.time()
@@ -91,7 +112,7 @@ def test_shutdown(srv, loop):
     assert transport.close.called
     assert srv.transport is None
 
-    assert srv._request_handler is None
+    assert not srv._request_handlers
     assert request_handler.done()
 
 
@@ -113,10 +134,10 @@ def test_double_shutdown(srv):
 
 
 def test_connection_made(srv):
-    assert srv._request_handler is None
+    assert not srv._request_handlers
 
     srv.connection_made(mock.Mock())
-    assert srv._request_handler is not None
+    assert srv._request_handlers
     assert not srv._closing
 
 
@@ -159,7 +180,7 @@ def test_eof_received(srv):
 def test_connection_lost(srv, loop):
     srv.connection_made(mock.Mock())
 
-    handle = srv._request_handler
+    handle = srv._request_handlers[-1]
     yield from asyncio.sleep(0, loop=loop)  # wait for .start() starting
     srv.connection_lost(None)
 
@@ -167,7 +188,7 @@ def test_connection_lost(srv, loop):
 
     yield from handle
 
-    assert srv._request_handler is None
+    assert not srv._request_handlers
 
 
 def test_srv_keep_alive(srv):
@@ -193,8 +214,8 @@ def test_slow_request(make_srv, loop):
     assert transport.close.called
 
 
-def test_bad_method(srv, loop):
-    transport = mock.Mock()
+def test_bad_method(srv, loop, transport):
+    transport, buf = transport
     srv.connection_made(transport)
 
     srv.reader.feed_data(
@@ -202,22 +223,20 @@ def test_bad_method(srv, loop):
         b'Host: example.com\r\n\r\n')
 
     loop.run_until_complete(srv._request_handler)
-    assert transport.write.mock_calls[0][1][0].startswith(
-        b'HTTP/1.1 400 Bad Request\r\n')
+    assert buf.startswith(b'HTTP/1.1 400 Bad Request\r\n')
 
 
-def test_line_too_long(srv, loop):
-    transport = mock.Mock()
+def test_line_too_long(srv, loop, transport):
+    transport, buf = transport
     srv.connection_made(transport)
     srv.data_received(b''.join([b'a' for _ in range(10000)]) + b'\r\n\r\n')
 
     loop.run_until_complete(srv._request_handler)
-    assert transport.write.mock_calls[0][1][0].startswith(
-        b'HTTP/1.1 400 Bad Request\r\n')
+    assert buf.startswith(b'HTTP/1.1 400 Bad Request\r\n')
 
 
-def test_invalid_content_length(srv, loop):
-    transport = mock.Mock()
+def test_invalid_content_length(srv, loop, transport):
+    transport, buf = transport
     srv.connection_made(transport)
 
     srv.reader.feed_data(
@@ -226,8 +245,7 @@ def test_invalid_content_length(srv, loop):
         b'Content-Length: sdgg\r\n\r\n')
 
     loop.run_until_complete(srv._request_handler)
-    assert transport.write.mock_calls[0][1][0].startswith(
-        b'HTTP/1.1 400 Bad Request\r\n')
+    assert buf.startswith(b'HTTP/1.1 400 Bad Request\r\n')
 
 
 def test_handle_error(srv, writer):
@@ -267,22 +285,21 @@ def test_handle_error__utf(make_srv, writer):
     srv.logger.exception.assert_called_with("Error handling request")
 
 
-def test_handle_error_traceback_exc(make_srv, writer):
+def test_handle_error_traceback_exc(make_srv, transport):
     log = mock.Mock()
     srv = make_srv(debug=True, logger=log)
-    srv.transport = mock.Mock()
+    transport, buf = transport
+    srv.transport = transport
     srv.transport.get_extra_info.return_value = '127.0.0.1'
-    srv.writer = writer
-    srv._request_handler = mock.Mock()
+    srv.writer = transport
+    srv._request_handlers.append(mock.Mock())
 
     with mock.patch('aiohttp.server.traceback') as m_trace:
         m_trace.format_exc.side_effect = ValueError
 
         srv.handle_error(500, exc=object())
 
-    content = b''.join(
-        [c[1][0] for c in list(srv.writer.write.mock_calls)])
-    assert content.startswith(b'HTTP/1.1 500 Internal Server Error')
+    assert buf.startswith(b'HTTP/1.1 500 Internal Server Error')
     assert log.exception.called
 
 
@@ -509,9 +526,7 @@ def test_handle_cancelled(make_srv, loop):
         b'GET / HTTP/1.0\r\n'
         b'Host: example.com\r\n\r\n')
 
-    r_handler = srv._request_handler
-    srv._request_handler = None  # emulate srv.connection_lost()
-
+    r_handler = srv._request_handlers[0]
     assert loop.run_until_complete(r_handler) is None
 
 

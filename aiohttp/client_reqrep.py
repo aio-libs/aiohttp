@@ -345,6 +345,7 @@ class ClientRequest:
         """Support coroutines that yields bytes objects."""
         # 100 response
         if self._continue is not None:
+            yield from request.drain()
             yield from self._continue
 
         try:
@@ -419,7 +420,7 @@ class ClientRequest:
             reader.set_exception(new_exc)
         else:
             try:
-                ret = request.write_eof()
+                ret = yield from request.write_eof()
                 # NB: in asyncio 3.4.1+ StreamWriter.drain() is coroutine
                 # see bug #170
                 if (asyncio.iscoroutine(ret) or

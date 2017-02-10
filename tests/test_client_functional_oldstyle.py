@@ -534,7 +534,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertEqual(str(len(data)),
                              content['headers']['Content-Length'])
 
-    def test_request_conn_closed(self):
+    def _test_request_conn_closed(self):
         with run_server(self.loop, router=Functional) as httpd:
             httpd['close'] = True
             with self.assertRaises(aiohttp.ClientHttpProcessingError):
@@ -699,7 +699,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             yield from r.read()
             self.assertEqual(1, len(connector._conns))
 
-            with self.assertRaises(aiohttp.ClientError):
+            with self.assertRaises(aiohttp.ServerDisconnectedError):
                 yield from client.request('GET', url,
                                           connector=connector,
                                           loop=self.loop)

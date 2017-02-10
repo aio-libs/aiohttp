@@ -79,7 +79,7 @@ def test_raw_server_do_not_swallow_exceptions(raw_test_server, test_client):
             (errors.ClientDisconnectedError("error"),
              'Ignored premature client disconnection #1.')):
         exc = _exc
-        with pytest.raises(errors.ClientResponseError):
+        with pytest.raises(errors.ServerDisconnectedError):
             yield from client.get('/path/to')
 
         logger.debug.assert_called_with(msg)
