@@ -30,6 +30,8 @@ HDRRE = re.compile(rb'[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]')
 EOF_MARKER = object()
 EOL_MARKER = object()
 STATUS_LINE_READY = object()
+SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} aiohttp/{1}'.format(
+    sys.version_info, aiohttp.__version__)
 
 RESPONSES = http.server.BaseHTTPRequestHandler.responses
 
@@ -51,6 +53,15 @@ RawResponseMessage = collections.namedtuple(
     'RawResponseMessage',
     ['version', 'code', 'reason', 'headers', 'raw_headers',
      'should_close', 'compression', 'upgrade'])
+
+
+def calc_reason(status, *, _RESPONSES=RESPONSES):
+    record = _RESPONSES.get(status)
+    if record is not None:
+        reason = record[0]
+    else:
+        reason = str(status)
+    return reason
 
 
 class HttpParser:
@@ -386,7 +397,7 @@ class DeflateBuffer:
         self.out.feed_eof()
 
 
-class WriteBuffer:
+class PayloadWriter:
 
     def __init__(self, stream, loop):
         if loop is None:
@@ -405,7 +416,11 @@ class WriteBuffer:
         self._compress = None
         self._drain_waiter = None
 
-        self._stream.acquire(self.set_transport)
+        if self._stream.available:
+            self._transport = self._stream
+            self._stream.available = False
+        else:
+            self._stream.acquire(self.set_transport)
 
     def set_transport(self, transport):
         self._transport = transport
@@ -539,7 +554,7 @@ class WriteBuffer:
                 yield from self._drain_waiter
 
 
-class HttpMessage(ABC, WriteBuffer):
+class HttpMessage(ABC, PayloadWriter):
     """HttpMessage allows to write headers and payload to a stream."""
 
     HOP_HEADERS = None  # Must be set by subclass.
@@ -696,15 +711,6 @@ class Response(HttpMessage):
 
     HOP_HEADERS = ()
 
-    @staticmethod
-    def calc_reason(status, *, _RESPONSES=RESPONSES):
-        record = _RESPONSES.get(status)
-        if record is not None:
-            reason = record[0]
-        else:
-            reason = str(status)
-        return reason
-
     def __init__(self, transport, status,
                  http_version=HttpVersion11,
                  close=False, reason=None, loop=None):
@@ -712,7 +718,7 @@ class Response(HttpMessage):
 
         self._status = status
         if reason is None:
-            reason = self.calc_reason(status)
+            reason = calc_reason(status)
 
         self._reason = reason
 
@@ -742,13 +748,6 @@ class Response(HttpMessage):
             # format_date_time(None) is quite expensive
             self.headers.setdefault(hdrs.DATE, format_date_time(None))
         self.headers.setdefault(hdrs.SERVER, self.SERVER_SOFTWARE)
-
-
-class WebResponse(Response):
-    """For usage in aiohttp.web only"""
-
-    def _add_default_headers(self):
-        pass
 
 
 class Request(HttpMessage):

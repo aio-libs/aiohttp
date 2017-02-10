@@ -24,6 +24,25 @@ def make_request(method, path, headers=CIMultiDict(),
                                app=app, **kwargs)
 
 
+@pytest.yield_fixture
+def transport():
+    transport = mock.Mock()
+
+    buf = bytearray()
+
+    def acquire(cb):
+        cb(transport)
+
+    def write(chunk):
+        buf.extend(chunk)
+
+    transport.acquire.side_effect = acquire
+    transport.write.side_effect = write
+    transport.drain.return_value = ()
+
+    return (transport, buf)
+
+
 def test_stream_response_ctor():
     resp = StreamResponse()
     assert 200 == resp.status
@@ -152,10 +171,10 @@ def test_start():
     resp = StreamResponse()
     assert resp.keep_alive is None
 
-    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
         msg = yield from resp.prepare(req)
 
-        assert msg.send_headers.called
+        assert msg.buffer_data.called
         msg2 = yield from resp.prepare(req)
         assert msg is msg2
 
@@ -175,7 +194,7 @@ def test_chunked_encoding():
     resp.enable_chunked_encoding()
     assert resp.chunked
 
-    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
         msg = yield from resp.prepare(req)
         assert msg.chunked
 
@@ -189,7 +208,7 @@ def test_chunk_size():
     resp.enable_chunked_encoding(chunk_size=8192)
     assert resp.chunked
 
-    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
         msg = yield from resp.prepare(req)
         assert msg.chunked
         assert msg.enable_chunking.called
@@ -218,7 +237,7 @@ def test_compression_no_accept():
     resp.enable_compression()
     assert resp.compression
 
-    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
         msg = yield from resp.prepare(req)
         assert not msg.enable_compression.called
 
@@ -233,7 +252,7 @@ def test_force_compression_no_accept_backwards_compat():
     resp.enable_compression(force=True)
     assert resp.compression
 
-    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
         msg = yield from resp.prepare(req)
     assert msg.enable_compression.called
     assert msg.filter is not None
@@ -248,7 +267,7 @@ def test_force_compression_false_backwards_compat():
     resp.enable_compression(force=False)
     assert resp.compression
 
-    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
         msg = yield from resp.prepare(req)
     assert not msg.enable_compression.called
 
@@ -265,7 +284,7 @@ def test_compression_default_coding():
     resp.enable_compression()
     assert resp.compression
 
-    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
         msg = yield from resp.prepare(req)
 
     msg.enable_compression.assert_called_with('deflate')
@@ -283,7 +302,7 @@ def test_force_compression_deflate():
     resp.enable_compression(ContentCoding.deflate)
     assert resp.compression
 
-    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
         msg = yield from resp.prepare(req)
     msg.enable_compression.assert_called_with('deflate')
     assert 'deflate' == resp.headers.get(hdrs.CONTENT_ENCODING)
@@ -297,7 +316,7 @@ def test_force_compression_no_accept_deflate():
     resp.enable_compression(ContentCoding.deflate)
     assert resp.compression
 
-    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
         msg = yield from resp.prepare(req)
     msg.enable_compression.assert_called_with('deflate')
     assert 'deflate' == resp.headers.get(hdrs.CONTENT_ENCODING)
@@ -313,7 +332,7 @@ def test_force_compression_gzip():
     resp.enable_compression(ContentCoding.gzip)
     assert resp.compression
 
-    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
         msg = yield from resp.prepare(req)
     msg.enable_compression.assert_called_with('gzip')
     assert 'gzip' == resp.headers.get(hdrs.CONTENT_ENCODING)
@@ -327,7 +346,7 @@ def test_force_compression_no_accept_gzip():
     resp.enable_compression(ContentCoding.gzip)
     assert resp.compression
 
-    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
         msg = yield from resp.prepare(req)
     msg.enable_compression.assert_called_with('gzip')
     assert 'gzip' == resp.headers.get(hdrs.CONTENT_ENCODING)
@@ -341,7 +360,7 @@ def test_delete_content_length_if_compression_enabled():
 
     resp.enable_compression(ContentCoding.gzip)
 
-    with mock.patch('aiohttp.web_reqrep.ResponseImpl'):
+    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
         yield from resp.prepare(req)
     assert resp.content_length is None
 
@@ -384,7 +403,7 @@ def test_cannot_write_after_eof():
 def test_cannot_write_eof_before_headers():
     resp = StreamResponse()
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(AssertionError):
         yield from resp.write_eof()
 
 
@@ -525,9 +544,8 @@ def test_start_force_close():
     resp.force_close()
     assert not resp.keep_alive
 
-    msg = yield from resp.prepare(req)
+    yield from resp.prepare(req)
     assert not resp.keep_alive
-    assert msg.closing
 
 
 @asyncio.coroutine
@@ -594,13 +612,13 @@ def test_prepare_calls_signal():
 
 def test_get_nodelay_unprepared():
     resp = StreamResponse()
-    with pytest.raises(RuntimeError):
+    with pytest.raises(AssertionError):
         resp.tcp_nodelay
 
 
 def test_set_nodelay_unprepared():
     resp = StreamResponse()
-    with pytest.raises(RuntimeError):
+    with pytest.raises(AssertionError):
         resp.set_tcp_nodelay(True)
 
 
@@ -627,13 +645,13 @@ def test_set_nodelay_prepared():
 
 def test_get_cork_unprepared():
     resp = StreamResponse()
-    with pytest.raises(RuntimeError):
+    with pytest.raises(AssertionError):
         resp.tcp_cork
 
 
 def test_set_cork_unprepared():
     resp = StreamResponse()
-    with pytest.raises(RuntimeError):
+    with pytest.raises(AssertionError):
         resp.set_tcp_cork(True)
 
 
@@ -668,9 +686,7 @@ def test_response_ctor():
     assert 'OK' == resp.reason
     assert resp.body is None
     assert 0 == resp.content_length
-    assert (CIMultiDict([('CONTENT-TYPE', 'application/octet-stream'),
-                         ('CONTENT-LENGTH', '0')]) ==
-            resp.headers)
+    assert CIMultiDict((['CONTENT-LENGTH', '0'],)) == resp.headers
 
 
 def test_ctor_with_headers_and_status():
@@ -680,7 +696,6 @@ def test_ctor_with_headers_and_status():
     assert b'body' == resp.body
     assert 4 == resp.content_length
     assert (CIMultiDict([('AGE', '12'),
-                         ('CONTENT-TYPE', 'application/octet-stream'),
                          ('CONTENT-LENGTH', '4')]) ==
             resp.headers)
 
@@ -780,53 +795,54 @@ def test_assign_nonstr_text():
 
 
 @asyncio.coroutine
-def test_send_headers_for_empty_body():
-    writer = mock.Mock()
+def test_send_headers_for_empty_body(transport):
+    writer, buf = transport
     req = make_request('GET', '/', writer=writer)
     resp = Response()
 
-    resp_impl = yield from resp.prepare(req)
+    yield from resp.prepare(req)
     yield from resp.write_eof()
-    txt = b''.join(resp_impl._buffer).decode('utf8')
+    txt = buf.decode('utf8')
     assert re.match('HTTP/1.1 200 OK\r\n'
-                    'Content-Type: application/octet-stream\r\n'
                     'Content-Length: 0\r\n'
+                    'Content-Type: application/octet-stream\r\n'
                     'Date: .+\r\n'
                     'Server: .+\r\n\r\n', txt)
 
 
 @asyncio.coroutine
-def test_render_with_body():
-    writer = mock.Mock()
+def test_render_with_body(transport):
+    writer, buf = transport
     req = make_request('GET', '/', writer=writer)
     resp = Response(body=b'data')
 
-    resp_impl = yield from resp.prepare(req)
+    yield from resp.prepare(req)
     yield from resp.write_eof()
 
-    txt = b''.join(resp_impl._buffer).decode('utf8')
+    txt = buf.decode('utf8')
     assert re.match('HTTP/1.1 200 OK\r\n'
-                    'Content-Type: application/octet-stream\r\n'
                     'Content-Length: 4\r\n'
+                    'Content-Type: application/octet-stream\r\n'
                     'Date: .+\r\n'
                     'Server: .+\r\n\r\n'
                     'data', txt)
 
 
 @asyncio.coroutine
-def test_send_set_cookie_header():
+def test_send_set_cookie_header(transport):
+    writer, buf = transport
     resp = Response()
     resp.cookies['name'] = 'value'
-    req = make_request('GET', '/', writer=mock.Mock())
+    req = make_request('GET', '/', writer=writer)
 
-    resp_impl = yield from resp.prepare(req)
+    yield from resp.prepare(req)
     yield from resp.write_eof()
 
-    txt = b''.join(resp_impl._buffer).decode('utf8')
+    txt = buf.decode('utf8')
     assert re.match('HTTP/1.1 200 OK\r\n'
-                    'Content-Type: application/octet-stream\r\n'
                     'Content-Length: 0\r\n'
                     'Set-Cookie: name=value\r\n'
+                    'Content-Type: application/octet-stream\r\n'
                     'Date: .+\r\n'
                     'Server: .+\r\n\r\n', txt)
 

@@ -60,7 +60,7 @@ class FileSender:
             yield from self._sendfile_fallback(request, resp, fobj, count)
             return
 
-        def _send_headers(resp_impl):
+        def _send_headers(version, headers, writer):
             # Durty hack required for
             # https://github.com/KeepSafe/aiohttp/issues/1093
             # don't send headers in sendfile mode

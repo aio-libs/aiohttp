@@ -235,22 +235,22 @@ class StreamWriter(asyncio.streams.StreamWriter):
         self._tcp_cork = False
         self._socket = transport.get_extra_info('socket')
         self._waiters = []
-        self._available = True
+        self.available = True
 
     def acquire(self, cb):
-        if self._available:
-            self._available = False
+        if self.available:
+            self.available = False
             cb(self)
         else:
             self._waiters.append(cb)
 
     def release(self):
         if self._waiters:
-            self._available = False
+            self.available = False
             cb = self._waiters.pop(0)
             cb(self)
         else:
-            self._available = True
+            self.available = True
 
     @property
     def tcp_nodelay(self):
