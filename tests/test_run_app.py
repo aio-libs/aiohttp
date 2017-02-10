@@ -4,11 +4,39 @@ import ssl
 
 from io import StringIO
 from unittest import mock
+from uuid import uuid4
 
 import pytest
 
 from aiohttp import web
 from aiohttp.test_utils import loop_context
+
+
+# Test for features of OS' socket support
+_has_unix_domain_socks = hasattr(socket, 'AF_UNIX')
+if _has_unix_domain_socks:
+    _abstract_path_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        _abstract_path_sock.bind(b"\x00" + uuid4().hex.encode('ascii'))
+    except FileNotFoundError:
+        _abstract_path_failed = True
+    else:
+        _abstract_path_failed = False
+    finally:
+        _abstract_path_sock.close()
+        del _abstract_path_sock
+else:
+    _abstract_path_failed = True
+
+skip_if_no_abstract_paths = pytest.mark.skipif(
+    _abstract_path_failed,
+    reason="Linux-style abstract paths are not supported."
+)
+skip_if_no_unix_socks = pytest.mark.skipif(
+    not _has_unix_domain_socks,
+    reason="Unix domain sockets are not supported"
+)
+del _has_unix_domain_socks, _abstract_path_failed
 
 
 def test_run_app_http(loop, mocker):
@@ -195,8 +223,7 @@ def test_run_app_custom_backlog(loop, mocker):
     app.startup.assert_called_once_with()
 
 
-@pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
-                    reason="UNIX sockets are not supported")
+@skip_if_no_unix_socks
 def test_run_app_http_unix_socket(loop, mocker, shorttmpdir):
     mocker.spy(loop, 'create_unix_server')
     loop.call_later(0.05, loop.stop)
@@ -215,8 +242,7 @@ def test_run_app_http_unix_socket(loop, mocker, shorttmpdir):
     assert "http://unix:{}:".format(sock_path) in printed.getvalue()
 
 
-@pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
-                    reason="UNIX sockets are not supported")
+@skip_if_no_unix_socks
 def test_run_app_https_unix_socket(loop, mocker, shorttmpdir):
     mocker.spy(loop, 'create_unix_server')
     loop.call_later(0.05, loop.stop)
@@ -237,8 +263,7 @@ def test_run_app_https_unix_socket(loop, mocker, shorttmpdir):
     assert "https://unix:{}:".format(sock_path) in printed.getvalue()
 
 
-@pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
-                    reason="UNIX sockets are not supported")
+@skip_if_no_unix_socks
 def test_run_app_stale_unix_socket(loop, mocker, shorttmpdir):
     """Older asyncio event loop implementations are known to halt server
     creation when a socket path from a previous server bind still exists.
@@ -276,3 +301,54 @@ def test_run_app_stale_unix_socket(loop, mocker, shorttmpdir):
             app.startup.assert_called_once_with()
             assert "http://unix:{}:".format(sock_path) in \
                    printed.getvalue()
+
+
+@skip_if_no_unix_socks
+@skip_if_no_abstract_paths
+def test_run_app_abstract_linux_socket(loop, mocker):
+    sock_path = b"\x00" + uuid4().hex.encode('ascii')
+
+    loop.call_later(0.05, loop.stop)
+    app = web.Application(loop=loop)
+    web.run_app(app, path=sock_path, print=lambda *args: None)
+    assert loop.is_closed()
+
+    # New app run using same socket path
+    with loop_context() as loop:
+        mocker.spy(loop, 'create_unix_server')
+        loop.call_later(0.05, loop.stop)
+
+        app = web.Application(loop=loop)
+
+        mocker.spy(app, 'startup')
+        mocker.spy(os, 'remove')
+        printed = StringIO()
+
+        web.run_app(app, path=sock_path, print=printed.write)
+
+        # Abstract paths don't exist on the file system, so no attempt should
+        # be made to remove.
+        assert mock.call([sock_path]) not in os.remove.mock_calls
+
+        loop.create_unix_server.assert_called_with(
+            mock.ANY,
+            sock_path,
+            ssl=None,
+            backlog=128
+        )
+        app.startup.assert_called_once_with()
+
+
+@skip_if_no_unix_socks
+def test_run_app_existing_file_conflict(loop, mocker, shorttmpdir):
+    app = web.Application(loop=loop)
+    sock_path = shorttmpdir.join('socket.sock')
+    sock_path.ensure()
+    sock_path_str = str(sock_path)
+    mocker.spy(os, 'remove')
+
+    with pytest.raises(OSError):
+        web.run_app(app, path=sock_path_str, print=lambda *args: None)
+
+    # No attempt should be made to remove a non-socket file
+    assert mock.call([sock_path_str]) not in os.remove.mock_calls

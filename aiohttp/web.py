@@ -5,7 +5,7 @@ import stat
 import sys
 import warnings
 from argparse import ArgumentParser
-from collections import MutableMapping
+from collections import Iterable, MutableMapping
 from importlib import import_module
 
 from yarl import URL
@@ -321,7 +321,8 @@ def run_app(app, *, host='0.0.0.0', port=None, path=None,
 
     if path is None:
         paths = ()
-    elif isinstance(path, str):
+    elif isinstance(path, (str, bytes, bytearray, memoryview))\
+            or not isinstance(path, Iterable):
         paths = (path,)
     else:
         paths = path
@@ -331,7 +332,8 @@ def run_app(app, *, host='0.0.0.0', port=None, path=None,
             hosts = ()
         else:
             hosts = ("0.0.0.0",)
-    elif isinstance(host, str):
+    elif isinstance(host, (str, bytes, bytearray, memoryview))\
+            or not isinstance(host, Iterable):
         hosts = (host,)
     else:
         hosts = host
@@ -363,7 +365,7 @@ def run_app(app, *, host='0.0.0.0', port=None, path=None,
         # Clean up prior socket path if stale and not abstract.
         # CPython 3.5.3+'s event loop already does this. See
         # https://github.com/python/asyncio/issues/425
-        if path[0] not in (0, '\x00'):
+        if path[0] not in (0, '\x00'):  # pragma: no branch
             try:
                 if stat.S_ISSOCK(os.stat(path).st_mode):
                     os.remove(path)
