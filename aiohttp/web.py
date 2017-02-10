@@ -272,17 +272,11 @@ class Application(MutableMapping):
         return "<Application 0x{:x}>".format(id(self))
 
 
-def run_app(app, *, host='0.0.0.0', port=None, path=None,
+def run_app(app, *, host=None, port=None, path=None,
             shutdown_timeout=60.0, ssl_context=None,
             print=print, backlog=128, access_log_format=None,
             access_log=access_logger):
     """Run an app locally"""
-    if port is None and path is None:
-        if not ssl_context:
-            port = 8080
-        else:
-            port = 8443
-
     loop = app.loop
 
     make_handler_kwargs = dict()
@@ -294,26 +288,48 @@ def run_app(app, *, host='0.0.0.0', port=None, path=None,
     loop.run_until_complete(app.startup())
 
     scheme = 'https' if ssl_context else 'http'
+    base_url = URL('{}://localhost'.format(scheme)).with_port(port)
 
     if path is None:
-        # Assume IP networking
-        srv_creation = loop.create_server(
-            handler, host, port, ssl=ssl_context, backlog=backlog
-        )
-        base_url = URL('{}://localhost'.format(scheme)).with_port(port)
-        if isinstance(host, str):
-            urls = (base_url.with_host(host),)
-        else:
-            urls = [base_url.with_host(h) for h in host]
+        paths = ()
+    elif isinstance(path, str):
+        paths = (path,)
     else:
-        srv_creation = loop.create_unix_server(
-            handler, path, ssl=ssl_context, backlog=backlog
-        )
-        # nginx-style URLs for Unix socket paths
-        if isinstance(path, str):
-            urls = ('{}://unix:{}:'.format(scheme, path),)
+        paths = path
+
+    if host is None:
+        if paths and not port:
+            hosts = ()
         else:
-            urls = ['{}://unix:{}:'.format(scheme, p) for p in path]
+            hosts = ("0.0.0.0",)
+    elif isinstance(host, str):
+        hosts = (host,)
+    else:
+        hosts = host
+
+    if hosts and port is None:
+        port = 8443 if ssl_context else 8080
+
+    server_creations = []
+    uris = [str(base_url.with_host(host)) for host in hosts]
+    if hosts:
+        # Multiple hosts bound to same server is available in most loop
+        # implementations, but only send multiple if we have multiple.
+        host_binding = hosts[0] if len(hosts) == 1 else hosts
+        server_creations.append(
+            loop.create_server(
+                handler, host_binding, port, ssl=ssl_context, backlog=backlog
+            )
+        )
+    for path in paths:
+        # Most loop implementations don't support multiple paths bound in same
+        # server, so create a server for each.
+        server_creations.append(
+            loop.create_unix_server(
+                handler, path, ssl=ssl_context, backlog=backlog
+            )
+        )
+        uris.append('{}://unix:{}:'.format(scheme, path))
 
         # Clean up prior socket path if stale and not abstract.
         # CPython 3.5.3+'s event loop already does this. See
@@ -325,18 +341,23 @@ def run_app(app, *, host='0.0.0.0', port=None, path=None,
             except FileNotFoundError:
                 pass
 
-    srv = loop.run_until_complete(srv_creation)
+    servers = loop.run_until_complete(
+        asyncio.gather(*server_creations, loop=loop)
+    )
 
     print("======== Running on {} ========\n"
-          "(Press CTRL+C to quit)".format(', '.join(str(u) for u in urls)))
+          "(Press CTRL+C to quit)".format(', '.join(uris)))
 
     try:
         loop.run_forever()
     except KeyboardInterrupt:  # pragma: no cover
         pass
     finally:
-        srv.close()
-        loop.run_until_complete(srv.wait_closed())
+        server_closures = []
+        for srv in servers:
+            srv.close()
+            server_closures.append(srv.wait_closed())
+        loop.run_until_complete(asyncio.gather(*server_closures, loop=loop))
         loop.run_until_complete(app.shutdown())
         loop.run_until_complete(handler.shutdown(shutdown_timeout))
         loop.run_until_complete(app.cleanup())
