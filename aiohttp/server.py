@@ -125,6 +125,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         self._lingering_timeout = float(lingering_timeout)
 
         self._reading_request = False
+        self._request_handler = None
         self._request_handlers = deque()
 
         self._request_parser = aiohttp.HttpRequestParser(
@@ -195,8 +196,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         super().connection_made(transport)
 
         self._reading_request = True
-        self._request_handlers.append(
-            ensure_future(self.start(), loop=self._loop))
+        self._request_handler = ensure_future(self.start(), loop=self._loop)
 
         if self._tcp_keepalive:
             tcp_keepalive(self, transport)
@@ -211,11 +211,16 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         if self._keepalive_handle is not None:
             self._keepalive_handle.cancel()
 
-        for handler in self._request_handlers:
-            if not handler.done():
-                handler.cancel()
+        if self._request_handlers:
+            for handler in self._request_handlers:
+                if not handler.done():
+                    handler.cancel()
 
-        self._request_handlers.clear()
+            self._request_handlers.clear()
+
+        if self._request_handler:
+            self._request_handler.cancel()
+            self._request_handler = None
 
         if self._time_service_owner:
             self._time_service.close()
@@ -226,10 +231,11 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         if not self._reading_request:
             # we can not gracefully shutdown handler
             # if we in process of reading request
-            if len(self._request_handlers) > 1:
+            if self._request_handlers:
                 self._reading_request = True
-                self._request_handlers.append(
-                    ensure_future(self.start(), loop=self._loop))
+                self._request_handlers.append(self._request_handler)
+                self._request_handler = ensure_future(
+                    self.start(), loop=self._loop)
 
     def keep_alive(self, val):
         """Set keep-alive connection mode.
@@ -254,8 +260,9 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         self.reader.unset_parser()
 
         if len(self.reader._buffer) and not self.reader.at_eof():
-            self._request_handlers.append(
-                ensure_future(self.start(), loop=self._loop))
+            self._request_handlers.append(self._request_handler)
+            self._request_handler = ensure_future(
+                self.start(), loop=self._loop)
         else:
             self._reading_request = False
 
@@ -269,10 +276,6 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         elif self.transport is not None:
             self.transport.close()
 
-    @property
-    def _request_handler(self):
-        return self._request_handlers[-1]
-
     @asyncio.coroutine
     def start(self):
         """Start processing of incoming requests.
@@ -285,7 +288,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         """
         loop = self._loop
         reader = self.reader
-        handler = self._request_handlers[-1]
+        handler = self._request_handler
         time_service = self.time_service
 
         while not self._closing:
@@ -384,16 +387,15 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                         finally:
                             self.transport.close()
                     else:
-                        hnum = len(self._request_handlers)
-                        if hnum == 1 and (
-                                self._closing or not self._keepalive):
+                        last = self._request_handler is handler
+                        if last and (self._closing or not self._keepalive):
                             self.transport.close()
                             return
                         else:
-                            if len(self._request_handlers) > 1:
-                                is_handler = (handler is
-                                              self._request_handlers.popleft())
-                                assert is_handler
+                            if self._request_handlers:
+                                _handler = self._request_handlers.popleft()
+                                assert handler is _handler
+                                return
 
                             if self._keepalive_handle is None:
                                 self._keepalive_handle = (
