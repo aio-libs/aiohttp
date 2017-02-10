@@ -3,6 +3,8 @@ CHANGES
 
 1.4.0 (XXXX-XX-XX)
 ------------------
+- `run_app` and the Command Line Interface now support serving over Unix domain sockets for
+  faster inter-process communication.
 
 - Added `capacity` parameter for client connector object.
   Capacity is the total number of simultaneous connections.  #1601
