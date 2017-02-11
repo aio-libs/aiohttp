@@ -97,7 +97,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                  max_field_size=8190,
                  lingering_time=30.0,
                  lingering_timeout=5.0,
-                 max_concurrent_handlers=1,
+                 max_concurrent_handlers=2,
                  **kwargs):
 
         # process deprecated params
@@ -280,6 +280,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                             self._message_lines.clear()
 
                         # calculate payload
+                        empty_payload = True
                         if (length > 0 or msg.method == hdrs.METH_CONNECT or
                             hdrs.SEC_WEBSOCKET_KEY1 in msg.headers or
                             'chunked' in msg.headers.get(
@@ -294,6 +295,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                                 if fut.done():
                                     self._reading_request = False
                                 else:
+                                    empty_payload = False
                                     fut.add_done_callback(self._done_reading)
                         else:
                             payload = EMPTY_PAYLOAD
@@ -311,10 +313,13 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                         else:
                             self._messages.append((msg, payload))
 
-                        pos = start_pos+2
-                        if pos < len(data):
+                        start_pos = start_pos+2
+                        if start_pos < len(data):
+                            if empty_payload:
+                                continue
+
                             self._message_tail = None
-                            super().data_received(data[pos:])
+                            super().data_received(data[start_pos:])
                         return
                 else:
                     self._message_tail = data[start_pos:]
@@ -436,7 +441,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                     return
                 elif not self._closing:
                     if self._messages:
-                        message, payload = self._messages.pop(0)
+                        message, payload = self._messages.popleft()
                     else:
                         if not self._keepalive:
                             self._closing = True
