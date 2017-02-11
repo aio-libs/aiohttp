@@ -311,8 +311,10 @@ class StreamProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
         self.transport = None
         self.writer = None
+        self.buffer = ParserBuffer()
         self.reader = StreamParser(
-            loop=loop, eof_exc_class=disconnect_error, **kwargs)
+            buf=self.buffer, loop=loop,
+            eof_exc_class=disconnect_error, **kwargs)
 
     def is_connected(self):
         return self.transport is not None

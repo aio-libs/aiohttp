@@ -96,7 +96,6 @@ class WebSocketResponse(StreamResponse):
         if payload_writer is not None:
             return payload_writer
 
-        print(request._writer)
         parser, protocol, writer = self._pre_start(request)
         payload_writer = yield from super().prepare(request)
         self._post_start(request, parser, protocol, writer)

@@ -63,6 +63,7 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
             super().connection_made(transport)
 
         def handle_request(self, message, payload):
+
             if properties.get('close', False):
                 return
 

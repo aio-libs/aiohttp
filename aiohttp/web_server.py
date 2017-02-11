@@ -67,6 +67,7 @@ class RequestHandler(ServerHttpProtocol):
         except HTTPException as exc:
             resp = exc
         except Exception as exc:
+            print('exceptino', exc)
             msg = "<h1>500 Internal Server Error</h1>"
             if self.debug:
                 try:
@@ -84,8 +85,7 @@ class RequestHandler(ServerHttpProtocol):
             resp = HTTPInternalServerError(
                 text=msg, content_type='text/html')
             self.logger.exception(
-                "Error handling request",
-                exc_info=exc)
+                "Error handling request", exc_info=exc)
 
         if not resp.prepared:
             yield from resp.prepare(request)

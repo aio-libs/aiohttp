@@ -55,7 +55,6 @@ class GunicornWebWorker(base.Worker):
 
     def make_handler(self, app):
         if hasattr(self.wsgi, 'make_handler'):
-            print(self.log.access_log)
             return app.make_handler(
                 logger=self.log,
                 slow_request_timeout=self.cfg.timeout,
