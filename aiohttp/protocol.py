@@ -161,16 +161,7 @@ class HttpRequestParser(HttpParser):
     Returns RawRequestMessage.
     """
 
-    def __call__(self, out, buf):
-        # read HTTP message (request line + headers)
-        try:
-            raw_data = yield from buf.readuntil(
-                b'\r\n\r\n', self.max_headers)
-        except errors.LineLimitExceededParserError as exc:
-            raise errors.LineTooLong('request header', exc.limit) from None
-
-        lines = raw_data.split(b'\r\n')
-
+    def parse_message(self, lines):
         # request line
         line = lines[0].decode('utf-8', 'surrogateescape')
         try:
@@ -202,11 +193,21 @@ class HttpRequestParser(HttpParser):
             else:  # HTTP 1.1 must ask to close.
                 close = False
 
-        out.feed_data(
-            RawRequestMessage(
-                method, path, version, headers, raw_headers,
-                close, compression, upgrade),
-            len(raw_data))
+        return RawRequestMessage(
+            method, path, version, headers, raw_headers,
+            close, compression, upgrade)
+
+    def __call__(self, out, buf):
+        # read HTTP message (request line + headers)
+        try:
+            raw_data = yield from buf.readuntil(
+                b'\r\n\r\n', self.max_headers)
+        except errors.LineLimitExceededParserError as exc:
+            raise errors.LineTooLong('request header', exc.limit) from None
+
+        lines = raw_data.split(b'\r\n')
+
+        out.feed_data(self.parse_message(lines), len(raw_data))
         out.feed_eof()
 
 

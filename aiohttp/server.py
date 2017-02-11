@@ -11,7 +11,7 @@ from html import escape as html_escape
 
 import aiohttp
 from aiohttp import errors, hdrs, helpers, streams
-from aiohttp.helpers import TimeService, ensure_future
+from aiohttp.helpers import TimeService, create_future, ensure_future
 from aiohttp.log import access_logger, server_logger
 
 __all__ = ('ServerHttpProtocol',)
@@ -97,6 +97,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                  max_field_size=8190,
                  lingering_time=30.0,
                  lingering_timeout=5.0,
+                 max_concurrent_handlers=1,
                  **kwargs):
 
         # process deprecated params
@@ -124,9 +125,14 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         self._lingering_time = float(lingering_time)
         self._lingering_timeout = float(lingering_timeout)
 
+        self._messages = deque()
+        self._message_lines = []
+        self._message_tail = b''
+
+        self._waiters = deque()
         self._reading_request = False
-        self._request_handler = None
-        self._request_handlers = deque()
+        self._request_handlers = []
+        self._max_concurrent_handlers = max_concurrent_handlers
 
         self._request_parser = aiohttp.HttpRequestParser(
             max_line_size=max_line_size,
@@ -195,9 +201,6 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     def connection_made(self, transport):
         super().connection_made(transport)
 
-        self._reading_request = True
-        self._request_handler = ensure_future(self.start(), loop=self._loop)
-
         if self._tcp_keepalive:
             tcp_keepalive(self, transport)
 
@@ -211,31 +214,116 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         if self._keepalive_handle is not None:
             self._keepalive_handle.cancel()
 
-        if self._request_handlers:
-            for handler in self._request_handlers:
-                if not handler.done():
-                    handler.cancel()
+        for handler in self._request_handlers:
+            if not handler.done():
+                handler.cancel()
 
-            self._request_handlers.clear()
-
-        if self._request_handler:
-            self._request_handler.cancel()
-            self._request_handler = None
+        self._request_handlers.clear()
 
         if self._time_service_owner:
             self._time_service.close()
 
-    def data_received(self, data):
-        super().data_received(data)
+    def data_received(self, data, sep=b'\r\n'):
+        if self._closing:
+            return
 
+        # read HTTP message (request line + headers), \r\n\r\n
+        # and split by lines
         if not self._reading_request:
-            # we can not gracefully shutdown handler
-            # if we in process of reading request
-            if self._request_handlers:
-                self._reading_request = True
-                self._request_handlers.append(self._request_handler)
-                self._request_handler = ensure_future(
-                    self.start(), loop=self._loop)
+            assert self.reader._parser is None
+
+            if self._message_tail:
+                data = self._message_tail + data
+
+            start_pos = 0
+            while True:
+                pos = data.find(sep, start_pos)
+                if pos >= start_pos:
+                    # line found
+                    self._message_lines.append(data[start_pos:pos])
+
+                    # \r\n\r\n found
+                    start_pos = pos + 2
+                    if data[start_pos:start_pos+2] == sep:
+                        self._message_lines.append(b'')
+
+                        msg = None
+                        try:
+                            msg = self._request_parser.parse_message(
+                                self._message_lines)
+                            # payload length
+                            try:
+                                length = int(
+                                    msg.headers.get(hdrs.CONTENT_LENGTH, 0))
+                            except ValueError:
+                                raise errors.InvalidHeader(hdrs.CONTENT_LENGTH)
+                        except errors.HttpProcessingError as exc:
+                            # something happened during parsing
+                            self._closing = True
+                            self._request_handlers.append(
+                                ensure_future(
+                                    self.handle_error(
+                                        exc.code, msg,
+                                        None, exc, exc.headers, exc.message),
+                                    loop=self._loop))
+                            return
+                        except Exception as exc:
+                            self._closing = True
+                            self._request_handlers.append(
+                                ensure_future(
+                                    self.handle_error(500, msg, None, exc),
+                                    loop=self._loop))
+                            return
+                        else:
+                            self._request_count += 1
+                            self._reading_request = True
+                            self._message_lines.clear()
+
+                        # calculate payload
+                        if (length > 0 or msg.method == hdrs.METH_CONNECT or
+                            hdrs.SEC_WEBSOCKET_KEY1 in msg.headers or
+                            'chunked' in msg.headers.get(
+                                hdrs.TRANSFER_ENCODING, '')):
+                            payload = streams.FlowControlStreamReader(
+                                self.reader, loop=self._loop)
+                            self.reader.set_parser(
+                                aiohttp.HttpPayloadParser(msg), payload)
+
+                            if not msg.upgrade:
+                                fut = payload.eof_waiter
+                                if fut.done():
+                                    self._reading_request = False
+                                else:
+                                    fut.add_done_callback(self._done_reading)
+                        else:
+                            payload = EMPTY_PAYLOAD
+                            if not msg.upgrade:
+                                self._reading_request = False
+
+                        if self._waiters:
+                            waiter = self._waiters.popleft()
+                            waiter.set_result((msg, payload))
+                        elif self._max_concurrent_handlers:
+                            self._max_concurrent_handlers -= 1
+                            handler = ensure_future(
+                                self.start(msg, payload), loop=self._loop)
+                            self._request_handlers.append(handler)
+                        else:
+                            self._messages.append((msg, payload))
+
+                        pos = start_pos+2
+                        if pos < len(data):
+                            self._message_tail = None
+                            super().data_received(data[pos:])
+                        return
+                else:
+                    self._message_tail = data[start_pos:]
+                    return
+
+        # feed parser
+        assert not self._message_lines
+        if data:
+            super().data_received(data)
 
     def keep_alive(self, val):
         """Set keep-alive connection mode.
@@ -259,12 +347,19 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     def _done_reading(self, fut=None):
         self.reader.unset_parser()
 
-        if len(self.reader._buffer) and not self.reader.at_eof():
-            self._request_handlers.append(self._request_handler)
-            self._request_handler = ensure_future(
-                self.start(), loop=self._loop)
-        else:
-            self._reading_request = False
+        if self.buffer._data:
+            self._message_tail = self.buffer._data
+            self.buffer._data = bytearray()
+
+        self._reading_request = False
+
+        while self._messages:
+            if self._waiters:
+                waiter = self._waiters.popleft()
+                message = self._messages.popleft()
+                waiter.set_result(message)
+            else:
+                break
 
     def _process_keepalive(self):
         if self._closing:
@@ -276,8 +371,12 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         elif self.transport is not None:
             self.transport.close()
 
+    @property
+    def _request_handler(self):
+        return self._request_handlers[-1]
+
     @asyncio.coroutine
-    def start(self):
+    def start(self, message, payload):
         """Start processing of incoming requests.
 
         It reads request line, request headers and request payload, then
@@ -287,133 +386,85 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         keep_alive(True) specified.
         """
         loop = self._loop
-        reader = self.reader
-        handler = self._request_handler
+        handler = self._request_handlers[-1]
         time_service = self.time_service
 
         while not self._closing:
-            message = None
-            payload = EMPTY_PAYLOAD
             try:
-                try:
-                    # read request headers
-                    httpstream = reader.set_parser(self._request_parser)
-                    message = yield from httpstream.read()
+                yield from self.handle_request(message, payload)
 
-                    self._request_count += 1
-
-                    # request may not have payload
-                    try:
-                        content_length = int(
-                            message.headers.get(hdrs.CONTENT_LENGTH, 0))
-                    except ValueError:
-                        raise errors.InvalidHeader(
-                            hdrs.CONTENT_LENGTH) from None
-
-                    if (content_length > 0 or
-                        message.method == hdrs.METH_CONNECT or
-                        hdrs.SEC_WEBSOCKET_KEY1 in message.headers or
-                        'chunked' in message.headers.get(
-                            hdrs.TRANSFER_ENCODING, '')):
-                        payload = streams.FlowControlStreamReader(
-                            reader, loop=loop)
-                        reader.set_parser(
-                            aiohttp.HttpPayloadParser(message), payload)
-
-                        if not message.upgrade:
-                            fut = payload.eof_waiter
-                            if fut.done():
-                                self._done_reading()
-                            else:
-                                fut.add_done_callback(self._done_reading)
-                    else:
-                        if not message.upgrade:
-                            self._done_reading()
-
-                    yield from self.handle_request(message, payload)
-
-                except asyncio.CancelledError:
+                if not payload.is_eof() and not self._closing:
+                    self.log_debug('Uncompleted request.')
                     self._closing = True
-                    self.log_debug(
-                        'Request handler cancelled.')
-                except asyncio.TimeoutError:
-                    self._closing = True
-                    self.log_debug('Request handler timed out.')
-                    yield from self.handle_error(504, message)
-                except errors.ClientDisconnectedError:
-                    self._closing = True
-                    self.log_debug(
-                        'Ignored premature client disconnection #1.')
-                except errors.HttpProcessingError as exc:
-                    self._closing = True
-                    yield from self.handle_error(exc.code, message,
-                                                 None, exc, exc.headers,
-                                                 exc.message)
-                except Exception as exc:
-                    self._closing = True
-                    yield from self.handle_error(500, message, None, exc)
+
+                    if self._lingering_time:
+                        self.transport.write_eof()
+                        self.log_debug(
+                            'Start lingering close timer for %s sec.',
+                            self._lingering_time)
+
+                        now = time_service.time()
+                        end_time = now + self._lingering_time
+
+                        with suppress(asyncio.TimeoutError,
+                                      errors.ClientDisconnectedError):
+                            while (not payload.is_eof() and
+                                   now < end_time):
+                                timeout = min(
+                                    end_time - now, self._lingering_timeout)
+                                with time_service.timeout(timeout):
+                                    # read and ignore
+                                    yield from payload.readany()
+                                now = time_service.time()
+            except asyncio.CancelledError:
+                self._closing = True
+                self.log_debug('Request handler cancelled.')
+            except asyncio.TimeoutError:
+                self._closing = True
+                self.log_debug('Request handler timed out.')
+                yield from self.handle_error(504, message)
+            except errors.ClientDisconnectedError:
+                self._closing = True
+                self.log_debug('Ignored premature client disconnection #1.')
+            except Exception as exc:
+                self._closing = True
+                yield from self.handle_error(500, message, None, exc)
             finally:
                 if self.transport is None:
                     self.log_debug(
                         'Ignored premature client disconnection #2.')
-                else:
-                    if not payload.is_eof() and not self._closing:
-                        self.log_debug('Uncompleted request.')
-                        self._closing = True
-
-                        try:
-                            if self._lingering_time:
-                                self.transport.write_eof()
-                                self.log_debug(
-                                    'Start lingering close timer for %s sec.',
-                                    self._lingering_time)
-
-                                now = time_service.time()
-                                end_time = now + self._lingering_time
-
-                                with suppress(
-                                        asyncio.TimeoutError,
-                                        errors.ClientDisconnectedError):
-                                    while (not payload.is_eof() and
-                                           now < end_time):
-                                        timeout = min(
-                                            end_time - now,
-                                            self._lingering_timeout)
-                                        with time_service.timeout(timeout):
-                                            # read and ignore
-                                            yield from payload.readany()
-
-                                        now = time_service.time()
-                        finally:
-                            self.transport.close()
+                    return
+                elif not self._closing:
+                    if self._messages:
+                        message, payload = self._messages.pop(0)
                     else:
-                        last = self._request_handler is handler
-                        if last and (self._closing or not self._keepalive):
+                        if not self._keepalive:
+                            self._closing = True
                             self.transport.close()
-                            return
                         else:
-                            if self._request_handlers:
-                                _handler = self._request_handlers.popleft()
-                                assert handler is _handler
-                                return
+                            waiter = create_future(loop)
+                            self._waiters.append(waiter)
+                            message, payload = yield from waiter
+                else:
+                    self._request_handlers.remove(handler)
 
-                            if self._keepalive_handle is None:
-                                self._keepalive_handle = (
-                                    self._time_service.call_later(
-                                        self._keepalive_timeout,
-                                        self._process_keepalive))
+                    if (not self._request_handlers and
+                            self.transport is not None):
+                        self.transport.close()
 
+    @asyncio.coroutine
     def handle_error(self, status=500, message=None,
                      payload=None, exc=None, headers=None, reason=None):
         """Handle errors.
 
         Returns HTTP response with specific status code. Logs additional
         information. It always closes current connection."""
-        now = self._loop.time()
+        if self.access_log:
+            now = self._loop.time()
         try:
             if self.transport is None:
                 # client has been disconnected during writing.
-                return ()
+                return
 
             if status == 500:
                 self.log_exception("Error handling request")
@@ -451,13 +502,15 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             response.write(html)
             # disable CORK, enable NODELAY if needed
             self.writer.set_tcp_nodelay(True)
-            drain = response.write_eof()
+            yield from response.write_eof()
 
-            self.log_access(message, None, response, self._loop.time() - now)
-            return drain
+            if self.access_log:
+                self.log_access(
+                    message, None, response, self._loop.time() - now)
         finally:
             self.keep_alive(False)
 
+    @asyncio.coroutine
     def handle_request(self, message, payload):
         """Handle a single HTTP request.
 
@@ -469,7 +522,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         :param payload: Request payload
         :type payload: aiohttp.streams.FlowControlStreamReader
         """
-        now = self._loop.time()
+        if self.access_log:
+            now = self._loop.time()
         response = aiohttp.Response(
             self.writer, 404,
             http_version=message.version, close=True, loop=self._loop)
@@ -481,9 +535,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         response.add_header(hdrs.DATE, self._time_service.strtime())
         response.send_headers()
         response.write(body)
-        drain = response.write_eof()
+        yield from response.write_eof()
 
         self.keep_alive(False)
-        self.log_access(message, None, response, self._loop.time() - now)
-
-        return drain
+        if self.access_log:
+            self.log_access(message, None, response, self._loop.time() - now)
