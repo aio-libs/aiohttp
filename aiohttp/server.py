@@ -13,6 +13,7 @@ import aiohttp
 from aiohttp import errors, hdrs, helpers, streams
 from aiohttp.helpers import TimeService, create_future, ensure_future
 from aiohttp.log import access_logger, server_logger
+from aiohttp.protocol import HttpPayloadParser
 
 __all__ = ('ServerHttpProtocol',)
 
@@ -134,6 +135,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         self._request_handlers = []
         self._max_concurrent_handlers = max_concurrent_handlers
 
+        self._conn_upgraded = False
+        self._payload_parser = None
         self._request_parser = aiohttp.HttpRequestParser(
             max_line_size=max_line_size,
             max_field_size=max_field_size,
@@ -211,6 +214,9 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
         self._closing = True
 
+        if self._payload_parser is not None:
+            self._payload_parser.feed_eof()
+
         if self._keepalive_handle is not None:
             self._keepalive_handle.cancel()
 
@@ -223,40 +229,59 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         if self._time_service_owner:
             self._time_service.close()
 
-    def data_received(self, data, sep=b'\r\n'):
+    def data_received(self, data,
+                      SEP=b'\r\n',
+                      CONTENT_LENGTH=hdrs.CONTENT_LENGTH,
+                      METH_CONNECT=hdrs.METH_CONNECT,
+                      SEC_WEBSOCKET_KEY1=hdrs.SEC_WEBSOCKET_KEY1):
         if self._closing:
             return
 
+        while self._messages:
+            if self._waiters:
+                waiter = self._waiters.popleft()
+                message = self._messages.popleft()
+                waiter.set_result(message)
+            else:
+                break
+
         # read HTTP message (request line + headers), \r\n\r\n
         # and split by lines
-        if not self._reading_request:
-            assert self.reader._parser is None
-
+        if self._payload_parser is None and not self._conn_upgraded:
             if self._message_tail:
                 data = self._message_tail + data
 
             start_pos = 0
             while True:
-                pos = data.find(sep, start_pos)
+                pos = data.find(SEP, start_pos)
                 if pos >= start_pos:
                     # line found
                     self._message_lines.append(data[start_pos:pos])
 
                     # \r\n\r\n found
                     start_pos = pos + 2
-                    if data[start_pos:start_pos+2] == sep:
+                    if data[start_pos:start_pos+2] == SEP:
                         self._message_lines.append(b'')
 
                         msg = None
                         try:
                             msg = self._request_parser.parse_message(
                                 self._message_lines)
+
                             # payload length
-                            try:
-                                length = int(
-                                    msg.headers.get(hdrs.CONTENT_LENGTH, 0))
-                            except ValueError:
-                                raise errors.InvalidHeader(hdrs.CONTENT_LENGTH)
+                            length = msg.headers.get(CONTENT_LENGTH)
+                            if length is not None:
+                                try:
+                                    length = int(length)
+                                except ValueError:
+                                    raise errors.InvalidHeader(CONTENT_LENGTH)
+                                if length < 0:
+                                    raise errors.InvalidHeader(CONTENT_LENGTH)
+
+                            # do not support old websocket spec
+                            if SEC_WEBSOCKET_KEY1 in msg.headers:
+                                raise errors.InvalidHeader(SEC_WEBSOCKET_KEY1)
+
                         except errors.HttpProcessingError as exc:
                             # something happened during parsing
                             self._closing = True
@@ -279,28 +304,29 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                             self._reading_request = True
                             self._message_lines.clear()
 
+                        self._conn_upgraded = msg.upgrade
+
                         # calculate payload
                         empty_payload = True
-                        if (length > 0 or msg.method == hdrs.METH_CONNECT or
-                            hdrs.SEC_WEBSOCKET_KEY1 in msg.headers or
-                            'chunked' in msg.headers.get(
-                                hdrs.TRANSFER_ENCODING, '')):
+                        if ((length is not None and length > 0) or
+                                msg.chunked):
                             payload = streams.FlowControlStreamReader(
                                 self.reader, loop=self._loop)
-                            self.reader.set_parser(
-                                aiohttp.HttpPayloadParser(msg), payload)
+                            payload_parser = HttpPayloadParser(msg)
 
-                            if not msg.upgrade:
-                                fut = payload.eof_waiter
-                                if fut.done():
-                                    self._reading_request = False
-                                else:
-                                    empty_payload = False
-                                    fut.add_done_callback(self._done_reading)
+                            if payload_parser.start(length, payload):
+                                empty_payload = False
+                                self._payload_parser = payload_parser
+                        elif msg.method == METH_CONNECT:
+                            empty_payload = False
+                            payload = streams.FlowControlStreamReader(
+                                self.reader, loop=self._loop)
+                            payload_parser = HttpPayloadParser(
+                                msg, readall=True)
+                            payload_parser.start(length, payload)
+                            self._payload_parser = payload_parser
                         else:
                             payload = EMPTY_PAYLOAD
-                            if not msg.upgrade:
-                                self._reading_request = False
 
                         if self._waiters:
                             waiter = self._waiters.popleft()
@@ -315,20 +341,32 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
                         start_pos = start_pos+2
                         if start_pos < len(data):
-                            if empty_payload:
+                            if empty_payload and not self._conn_upgraded:
                                 continue
 
                             self._message_tail = None
-                            super().data_received(data[start_pos:])
+                            self.data_received(data[start_pos:])
                         return
                 else:
                     self._message_tail = data[start_pos:]
                     return
 
         # feed parser
-        assert not self._message_lines
-        if data:
-            super().data_received(data)
+        elif self._payload_parser is None and self._conn_upgraded:
+            assert not self._message_lines
+            if data:
+                super().data_received(data)
+
+        # feed payload
+        else:
+            assert not self._message_lines
+            if data:
+                eof, tail = self._payload_parser.feed_data(data)
+                if eof:
+                    self._payload_parser = None
+
+                    if tail:
+                        super().data_received(tail)
 
     def keep_alive(self, val):
         """Set keep-alive connection mode.
@@ -348,23 +386,6 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
     def log_exception(self, *args, **kw):
         self.logger.exception(*args, **kw)
-
-    def _done_reading(self, fut=None):
-        self.reader.unset_parser()
-
-        if self.buffer._data:
-            self._message_tail = self.buffer._data
-            self.buffer._data = bytearray()
-
-        self._reading_request = False
-
-        while self._messages:
-            if self._waiters:
-                waiter = self._waiters.popleft()
-                message = self._messages.popleft()
-                waiter.set_result(message)
-            else:
-                break
 
     def _process_keepalive(self):
         if self._closing:
@@ -445,6 +466,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                     else:
                         if not self._keepalive:
                             self._closing = True
+                            print('--------- close 1')
                             self.transport.close()
                         else:
                             waiter = create_future(loop)
@@ -455,6 +477,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
                     if (not self._request_handlers and
                             self.transport is not None):
+                        print('--------- close 2')
                         self.transport.close()
 
     @asyncio.coroutine

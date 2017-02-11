@@ -501,15 +501,17 @@ def make_mocked_request(method, path, headers=None, *,
         closing = True
 
     if headers:
-        hdrs = CIMultiDict(headers)
+        headers = CIMultiDict(headers)
         raw_hdrs = [
             (k.encode('utf-8'), v.encode('utf-8')) for k, v in headers.items()]
     else:
-        hdrs = CIMultiDict()
+        headers = CIMultiDict()
         raw_hdrs = []
 
-    message = RawRequestMessage(method, path, version, hdrs,
-                                raw_hdrs, closing, False, False)
+    chunked = 'chunked' in headers.get(hdrs.TRANSFER_ENCODING, '').lower()
+
+    message = RawRequestMessage(method, path, version, headers,
+                                raw_hdrs, closing, False, False, chunked)
     if app is None:
         app = _create_app_mock()
 

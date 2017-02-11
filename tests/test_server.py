@@ -660,6 +660,7 @@ def test_keep_alive_timeout_nondefault(make_srv):
     assert 10 == srv.keepalive_timeout
 
 
+@asyncio.coroutine
 def test_supports_connect_method(srv, loop):
     transport = mock.Mock()
     srv.connection_made(transport)
@@ -668,8 +669,10 @@ def test_supports_connect_method(srv, loop):
         srv.data_received(
             b'CONNECT aiohttp.readthedocs.org:80 HTTP/1.0\r\n'
             b'Content-Length: 0\r\n\r\n')
+        yield from asyncio.sleep(0.05, loop=loop)
 
-        loop.run_until_complete(srv._request_handlers[0])
+        srv.connection_lost(None)
+        yield from asyncio.sleep(0.05, loop=loop)
 
     assert m_handle_request.called
     assert m_handle_request.call_args[0] != (mock.ANY, server.EMPTY_PAYLOAD)

@@ -101,7 +101,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._timer = timer
 
     def __repr__(self):
-        info = ['StreamReader']
+        info = [self.__class__.__name__]
         if self._buffer_size:
             info.append('%d bytes' % self._buffer_size)
         if self._eof:
