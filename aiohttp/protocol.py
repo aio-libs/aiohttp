@@ -35,6 +35,17 @@ SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} aiohttp/{1}'.format(
 
 RESPONSES = http.server.BaseHTTPRequestHandler.responses
 
+PARSE_NONE = 0
+PARSE_LENGTH = 1
+PARSE_CHUNKED = 2
+PARSE_UNTIL_EOF = 3
+
+PARSE_CHUNKED_SIZE = 0
+PARSE_CHUNKED_CHUNK = 1
+PARSE_CHUNKED_CHUNK_EOF = 2
+PARSE_CHUNKED_TRAILERS = 3
+
+
 HttpVersion = collections.namedtuple(
     'HttpVersion', ['major', 'minor'])
 HttpVersion10 = HttpVersion(1, 0)
@@ -46,13 +57,13 @@ RawStatusLineMessage = collections.namedtuple(
 RawRequestMessage = collections.namedtuple(
     'RawRequestMessage',
     ['method', 'path', 'version', 'headers', 'raw_headers',
-     'should_close', 'compression', 'upgrade'])
+     'should_close', 'compression', 'upgrade', 'chunked'])
 
 
 RawResponseMessage = collections.namedtuple(
     'RawResponseMessage',
     ['version', 'code', 'reason', 'headers', 'raw_headers',
-     'should_close', 'compression', 'upgrade'])
+     'should_close', 'compression', 'upgrade', 'chunked'])
 
 
 def calc_reason(status, *, _RESPONSES=RESPONSES):
@@ -78,9 +89,6 @@ class HttpParser:
         Line continuations are supported. Returns list of header name
         and value pairs. Header name is in upper case.
         """
-        close_conn = None
-        encoding = None
-        upgrade = False
         headers = CIMultiDict()
         raw_headers = []
 
@@ -135,24 +143,38 @@ class HttpParser:
             name = istr(bname.decode('utf-8', 'surrogateescape'))
             value = bvalue.decode('utf-8', 'surrogateescape')
 
-            # keep-alive and encoding
-            if name == hdrs.CONNECTION:
-                v = value.lower()
-                if v == 'close':
-                    close_conn = True
-                elif v == 'keep-alive':
-                    close_conn = False
-                elif v == 'upgrade':
-                    upgrade = True
-            elif name == hdrs.CONTENT_ENCODING:
-                enc = value.lower()
-                if enc in ('gzip', 'deflate'):
-                    encoding = enc
-
             headers.add(name, value)
             raw_headers.append((bname, bvalue))
 
-        return headers, raw_headers, close_conn, encoding, upgrade
+        close_conn = None
+        encoding = None
+        upgrade = False
+        chunked = False
+
+        # keep-alive
+        conn = headers.get(hdrs.CONNECTION)
+        if conn:
+            v = conn.lower()
+            if v == 'close':
+                close_conn = True
+            elif v == 'keep-alive':
+                close_conn = False
+            elif v == 'upgrade':
+                upgrade = True
+
+        # encoding
+        enc = headers.get(hdrs.CONTENT_ENCODING)
+        if enc:
+            enc = enc.lower()
+            if enc in ('gzip', 'deflate'):
+                encoding = enc
+
+        # chunking
+        te = headers.get(hdrs.TRANSFER_ENCODING)
+        if te and 'chunked' in te.lower():
+            chunked = True
+
+        return headers, raw_headers, close_conn, encoding, upgrade, chunked
 
 
 class HttpRequestParser(HttpParser):
@@ -186,7 +208,7 @@ class HttpRequestParser(HttpParser):
 
         # read headers
         headers, raw_headers, \
-            close, compression, upgrade = self.parse_headers(lines)
+            close, compression, upgrade, chunked = self.parse_headers(lines)
         if close is None:  # then the headers weren't set in the request
             if version <= HttpVersion10:  # HTTP 1.0 must asks to not close
                 close = True
@@ -195,7 +217,7 @@ class HttpRequestParser(HttpParser):
 
         return RawRequestMessage(
             method, path, version, headers, raw_headers,
-            close, compression, upgrade)
+            close, compression, upgrade, chunked)
 
     def __call__(self, out, buf):
         # read HTTP message (request line + headers)
@@ -255,7 +277,7 @@ class HttpResponseParser(HttpParser):
 
         # read headers
         headers, raw_headers, \
-            close, compression, upgrade = self.parse_headers(lines)
+            close, compression, upgrade, chunked = self.parse_headers(lines)
 
         if close is None:
             close = version <= HttpVersion10
@@ -263,7 +285,7 @@ class HttpResponseParser(HttpParser):
         out.feed_data(
             RawResponseMessage(
                 version, status, reason.strip(),
-                headers, raw_headers, close, compression, upgrade),
+                headers, raw_headers, close, compression, upgrade, chunked),
             len(raw_data))
         out.feed_eof()
 
@@ -277,6 +299,145 @@ class HttpPayloadParser:
         self.compression = compression
         self.readall = readall
         self.response_with_body = response_with_body
+        self.payload = None
+
+        self._type = PARSE_NONE
+        self._chunk = PARSE_CHUNKED_SIZE
+        self._chunk_size = 0
+        self._chunk_tail = b''
+
+    def start(self, length, payload):
+        # payload decompression wrapper
+        if (self.response_with_body and
+                self.compression and self.message.compression):
+            payload = DeflateBuffer(payload, self.message.compression)
+
+        # payload parser
+        if not self.response_with_body:
+            # don't parse payload if it's not expected to be received
+            self._type = PARSE_NONE
+            payload.feed_eof()
+            return False
+        elif self.message.chunked:
+            self._type = PARSE_CHUNKED
+        elif length is not None:
+            self._type = PARSE_LENGTH
+            self.length = length
+        else:
+            if self.readall and getattr(self.message, 'code', 0) != 204:
+                self.length = None
+                self._type = PARSE_UNTIL_EOF
+            elif getattr(self.message, 'method', None) in ('PUT', 'POST'):
+                internal_logger.warning(  # pragma: no cover
+                    'Content-Length or Transfer-Encoding header is required')
+                self._type = PARSE_NONE
+                payload.feed_eof()
+                return False
+
+        self.payload = payload
+        return True
+
+    def feed_eof(self):
+        if self._type == PARSE_UNTIL_EOF:
+            self.payload.feed_eof()
+
+    def feed_data(self, chunk, SEP=b'\r\n', CHUNK_EXT=b';'):
+
+        # Read specified amount of bytes
+        if self._type == PARSE_LENGTH:
+            required = self.length
+            chunk_len = len(chunk)
+
+            if required >= chunk_len:
+                self.length = required - chunk_len
+                self.payload.feed_data(chunk, chunk_len)
+                if self.length == 0:
+                    self.payload.feed_eof()
+                    return True, b''
+            else:
+                self.length = 0
+                self.payload.feed_data(chunk[:required], required)
+                self.payload.feed_eof()
+                return True, chunk[required:]
+
+        # Chunked transfer encoding parser
+        elif self._type == PARSE_CHUNKED:
+            if self._chunk_tail:
+                chunk = self._chunk_tail + chunk
+
+            while chunk:
+
+                # read next chunk size
+                if self._chunk == PARSE_CHUNKED_SIZE:
+                    pos = chunk.find(SEP)
+                    if pos >= 0:
+                        if pos > 0:
+                            i = chunk.find(CHUNK_EXT, 0, pos)
+                            if i >= 0:
+                                size = chunk[:i]  # strip chunk-extensions
+                            else:
+                                size = chunk[:pos]
+                        else:
+                            size = chunk[:pos]
+
+                        try:
+                            size = int(size, 16)
+                        except ValueError:
+                            raise errors.TransferEncodingError(
+                                chunk[:pos]) from None
+
+                        chunk = chunk[pos+2:]
+                        if size == 0:  # eof marker
+                            self._chunk = PARSE_CHUNKED_TRAILERS
+                        else:
+                            self._chunk = PARSE_CHUNKED_CHUNK
+                            self._chunk_size = size
+                    else:
+                        self._chunk_tail = chunk
+                        return False, None
+
+                # read chunk and feed buffer
+                if self._chunk == PARSE_CHUNKED_CHUNK:
+                    required = self._chunk_size
+                    chunk_len = len(chunk)
+
+                    if required >= chunk_len:
+                        self._chunk_size = required - chunk_len
+                        if self._chunk_size == 0:
+                            self._chunk = PARSE_CHUNKED_CHUNK_EOF
+
+                        self.payload.feed_data(chunk, chunk_len)
+                        return False, None
+                    else:
+                        self._chunk_size = 0
+                        self.payload.feed_data(chunk[:required], required)
+                        chunk = chunk[required:]
+                        self._chunk = PARSE_CHUNKED_CHUNK_EOF
+
+                # toss the CRLF at the end of the chunk
+                if self._chunk == PARSE_CHUNKED_CHUNK_EOF:
+                    if chunk[:2] == SEP:
+                        chunk = chunk[2:]
+                        self._chunk = PARSE_CHUNKED_SIZE
+                    else:
+                        self._chunk_tail = chunk
+                        return False, None
+
+                # read and discard trailer up to the CRLF terminator
+                if self._chunk == PARSE_CHUNKED_TRAILERS:
+                    pos = chunk.find(SEP)
+                    if pos >= 0:
+                        self.payload.feed_eof()
+                        return True, chunk[pos+2:]
+                    else:
+                        self._chunk_tail = chunk
+                        return False, None
+
+        # Read all bytes until eof
+        elif self._type == PARSE_UNTIL_EOF:
+            self.payload.feed_data(chunk, len(chunk))
+
+        return False, None
 
     def __call__(self, out, buf):
         # payload params

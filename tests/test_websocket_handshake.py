@@ -21,7 +21,7 @@ def transport():
 def message():
     headers = multidict.MultiDict()
     return protocol.RawRequestMessage(
-        'GET', '/path', (1, 0), headers, [], True, None, True)
+        'GET', '/path', (1, 0), headers, [], True, None, True, False)
 
 
 def gen_ws_headers(protocols=''):
