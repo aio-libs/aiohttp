@@ -547,7 +547,7 @@ class TCPConnector(BaseConnector):
             resolver = DefaultResolver(loop=self._loop)
         self._resolver = resolver
 
-        self._use_dns_cache = _use_dns_cache
+        self._use_dns_cache = use_dns_cache
         self._cached_hosts = {}
         self._ssl_context = ssl_context
         self._family = family
