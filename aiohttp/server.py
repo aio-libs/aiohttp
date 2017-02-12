@@ -391,9 +391,10 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         if self._closing:
             return
 
-        if self._reading_request or self._request_handlers:
+        if self._request_handlers:
             self._keepalive_handle = self._time_service.call_later(
                 self._keepalive_timeout, self._process_keepalive)
+
         elif self.transport is not None:
             self.transport.close()
 
@@ -466,7 +467,6 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                     else:
                         if not self._keepalive:
                             self._closing = True
-                            print('--------- close 1')
                             self.transport.close()
                         else:
                             waiter = create_future(loop)
@@ -477,7 +477,6 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
 
                     if (not self._request_handlers and
                             self.transport is not None):
-                        print('--------- close 2')
                         self.transport.close()
 
     @asyncio.coroutine
