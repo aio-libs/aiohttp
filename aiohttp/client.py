@@ -14,12 +14,13 @@ from yarl import URL
 import aiohttp
 
 from . import hdrs, helpers
-from ._ws_impl import WS_KEY, WebSocketParser, WebSocketWriter
+from ._ws_impl import WS_KEY, WebSocketReader, WebSocketWriter
 from .client_reqrep import ClientRequest, ClientResponse
 from .client_ws import ClientWebSocketResponse
 from .cookiejar import CookieJar
 from .errors import WSServerHandshakeError
 from .helpers import TimeService
+from .streams import FlowControlDataQueue
 
 __all__ = ('ClientSession', 'request')
 
@@ -218,7 +219,7 @@ class ClientSession:
                 conn = yield from self._connector.connect(req)
                 conn.writer.set_tcp_nodelay(True)
                 try:
-                    resp = req.send(conn.writer, conn.reader)
+                    resp = req.send(conn)
                     try:
                         yield from resp.start(conn, read_until_eof)
                     except:
@@ -391,7 +392,10 @@ class ClientSession:
                         protocol = proto
                         break
 
-            reader = resp.connection.reader.set_parser(WebSocketParser)
+            proto = resp.connection.protocol
+            reader = FlowControlDataQueue(
+                proto, limit=2 ** 16, loop=self._loop)
+            proto.set_parser(WebSocketReader(reader), reader)
             resp.connection.writer.set_tcp_nodelay(True)
             writer = WebSocketWriter(resp.connection.writer, use_mask=True)
         except Exception:

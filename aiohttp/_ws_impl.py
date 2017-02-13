@@ -316,6 +316,7 @@ class WebSocketReader:
     def __init__(self, queue):
         self.queue = queue
 
+        self._exc = None
         self._partial = []
         self._state = WSParserState.READ_HEADER
 
@@ -333,7 +334,17 @@ class WebSocketReader:
         self.queue.feed_eof()
 
     def feed_data(self, data):
+        if self._exc:
+            return True, data
 
+        try:
+            return self._feed_data(data)
+        except Exception as exc:
+            self._exc = exc
+            self.queue.set_exception(exc)
+            return True, b''
+
+    def _feed_data(self, data):
         for fin, opcode, payload in self.parse_frame(data):
 
             if opcode == WSMsgType.CLOSE:

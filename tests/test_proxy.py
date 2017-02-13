@@ -72,7 +72,7 @@ class TestProxy(unittest.TestCase):
         request.write_bytes = mock.Mock()
         request.write_bytes.return_value = asyncio.Future(loop=loop)
         request.write_bytes.return_value.set_result(None)
-        request.send(mock.Mock(), mock.Mock())
+        request.send(mock.Mock())
 
         Request_mock.assert_called_with(mock.ANY, mock.ANY, "xn--9caa.com:80",
                                         mock.ANY, loop=loop)
