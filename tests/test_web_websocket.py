@@ -8,7 +8,7 @@ from aiohttp import (CIMultiDict, WSMessage, WSMsgType, errors, helpers,
 from aiohttp.log import ws_logger
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import HTTPBadRequest, HTTPMethodNotAllowed, WebSocketResponse
-from aiohttp.web_ws import WebSocketReady
+from aiohttp.web_ws import CLOSED_MESSAGE, WebSocketReady
 
 
 @pytest.fixture
@@ -255,6 +255,7 @@ def test_send_str_closed(make_request, mocker):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
+    ws._reader.feed_data(CLOSED_MESSAGE, 0)
     yield from ws.close()
 
     mocker.spy(ws_logger, 'warning')
@@ -267,6 +268,7 @@ def test_send_bytes_closed(make_request, mocker):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
+    ws._reader.feed_data(CLOSED_MESSAGE, 0)
     yield from ws.close()
 
     mocker.spy(ws_logger, 'warning')
@@ -279,6 +281,7 @@ def test_send_json_closed(make_request, mocker):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
+    ws._reader.feed_data(CLOSED_MESSAGE, 0)
     yield from ws.close()
 
     mocker.spy(ws_logger, 'warning')
@@ -291,6 +294,7 @@ def test_ping_closed(make_request, mocker):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
+    ws._reader.feed_data(CLOSED_MESSAGE, 0)
     yield from ws.close()
 
     mocker.spy(ws_logger, 'warning')
@@ -303,6 +307,7 @@ def test_pong_closed(make_request, mocker):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
+    ws._reader.feed_data(CLOSED_MESSAGE, 0)
     yield from ws.close()
 
     mocker.spy(ws_logger, 'warning')
@@ -315,6 +320,7 @@ def test_close_idempotent(make_request, writer):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
+    ws._reader.feed_data(CLOSED_MESSAGE, 0)
     assert (yield from ws.close(code=1, message='message1'))
     assert ws.closed
     assert not (yield from ws.close(code=2, message='message2'))
@@ -346,7 +352,6 @@ def test_wait_closed_before_start():
 
 @asyncio.coroutine
 def test_write_eof_not_started():
-
     ws = WebSocketResponse()
     with pytest.raises(RuntimeError):
         yield from ws.write_eof()
@@ -357,6 +362,7 @@ def test_write_eof_idempotent(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
+    ws._reader.feed_data(CLOSED_MESSAGE, 0)
     yield from ws.close()
 
     yield from ws.write_eof()
@@ -365,15 +371,16 @@ def test_write_eof_idempotent(make_request):
 
 
 @asyncio.coroutine
-def test_receive_exc_in_reader(make_request, loop, reader):
+def test_receive_exc_in_reader(make_request, loop):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
 
+    ws._reader = mock.Mock()
     exc = ValueError()
     res = helpers.create_future(loop)
     res.set_exception(exc)
-    reader.read = make_mocked_coro(res)
+    ws._reader.read = make_mocked_coro(res)
     ws._payload_writer.drain = mock.Mock()
     ws._payload_writer.drain.return_value = helpers.create_future(loop)
     ws._payload_writer.drain.return_value.set_result(True)
@@ -386,28 +393,30 @@ def test_receive_exc_in_reader(make_request, loop, reader):
 
 
 @asyncio.coroutine
-def test_receive_cancelled(make_request, loop, reader):
+def test_receive_cancelled(make_request, loop):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
 
+    ws._reader = mock.Mock()
     res = helpers.create_future(loop)
     res.set_exception(asyncio.CancelledError())
-    reader.read = make_mocked_coro(res)
+    ws._reader.read = make_mocked_coro(res)
 
     with pytest.raises(asyncio.CancelledError):
         yield from ws.receive()
 
 
 @asyncio.coroutine
-def test_receive_timeouterror(make_request, loop, reader):
+def test_receive_timeouterror(make_request, loop):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
 
+    ws._reader = mock.Mock()
     res = helpers.create_future(loop)
     res.set_exception(asyncio.TimeoutError())
-    reader.read = make_mocked_coro(res)
+    ws._reader.read = make_mocked_coro(res)
 
     with pytest.raises(asyncio.TimeoutError):
         yield from ws.receive()
@@ -419,10 +428,11 @@ def test_receive_client_disconnected(make_request, loop, reader):
     ws = WebSocketResponse()
     yield from ws.prepare(req)
 
+    ws._reader = mock.Mock()
     exc = errors.ClientDisconnectedError()
     res = helpers.create_future(loop)
     res.set_exception(exc)
-    reader.read = make_mocked_coro(res)
+    ws._reader.read = make_mocked_coro(res)
 
     msg = yield from ws.receive()
     assert ws.closed
@@ -437,6 +447,7 @@ def test_multiple_receive_on_close_connection(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
+    ws._reader.feed_data(CLOSED_MESSAGE, 0)
     yield from ws.close()
 
     yield from ws.receive()
@@ -460,15 +471,16 @@ def test_concurrent_receive(make_request):
 
 
 @asyncio.coroutine
-def test_close_exc(make_request, reader, loop, mocker):
+def test_close_exc(make_request, loop, mocker):
     req = make_request('GET', '/')
 
     ws = WebSocketResponse()
     yield from ws.prepare(req)
 
+    ws._reader = mock.Mock()
     exc = ValueError()
-    reader.read.return_value = helpers.create_future(loop)
-    reader.read.return_value.set_exception(exc)
+    ws._reader.read.return_value = helpers.create_future(loop)
+    ws._reader.read.return_value.set_exception(exc)
     ws._payload_writer.drain = mock.Mock()
     ws._payload_writer.drain.return_value = helpers.create_future(loop)
     ws._payload_writer.drain.return_value.set_result(True)
@@ -478,8 +490,8 @@ def test_close_exc(make_request, reader, loop, mocker):
     assert ws.exception() is exc
 
     ws._closed = False
-    reader.read.return_value = helpers.create_future(loop)
-    reader.read.return_value.set_exception(asyncio.CancelledError())
+    ws._reader.read.return_value = helpers.create_future(loop)
+    ws._reader.read.return_value.set_exception(asyncio.CancelledError())
     with pytest.raises(asyncio.CancelledError):
         yield from ws.close()
     assert ws.close_code == 1006
@@ -495,7 +507,6 @@ def test_close_exc2(make_request):
     exc = ValueError()
     ws._writer = mock.Mock()
     ws._writer.close.side_effect = exc
-
     yield from ws.close()
     assert ws.closed
     assert ws.exception() is exc

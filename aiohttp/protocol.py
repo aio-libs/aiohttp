@@ -239,16 +239,7 @@ class HttpResponseParser(HttpParser):
     BadStatusLine could be raised in case of any errors in status line.
     Returns RawResponseMessage"""
 
-    def __call__(self, out, buf):
-        # read HTTP message (response line + headers)
-        try:
-            raw_data = yield from buf.readuntil(
-                b'\r\n\r\n', self.max_line_size + self.max_headers)
-        except errors.LineLimitExceededParserError as exc:
-            raise errors.LineTooLong('response header', exc.limit) from None
-
-        lines = raw_data.split(b'\r\n')
-
+    def parse_message(self, lines):
         line = lines[0].decode('utf-8', 'surrogateescape')
         try:
             version, status = line.split(None, 1)
@@ -282,11 +273,21 @@ class HttpResponseParser(HttpParser):
         if close is None:
             close = version <= HttpVersion10
 
-        out.feed_data(
-            RawResponseMessage(
-                version, status, reason.strip(),
-                headers, raw_headers, close, compression, upgrade, chunked),
-            len(raw_data))
+        return RawResponseMessage(
+            version, status, reason.strip(),
+            headers, raw_headers, close, compression, upgrade, chunked)
+
+    def __call__(self, out, buf):
+        # read HTTP message (response line + headers)
+        try:
+            raw_data = yield from buf.readuntil(
+                b'\r\n\r\n', self.max_line_size + self.max_headers)
+        except errors.LineLimitExceededParserError as exc:
+            raise errors.LineTooLong('response header', exc.limit) from None
+
+        lines = raw_data.split(b'\r\n')
+
+        out.feed_data(self.parse_message(lines), len(raw_data))
         out.feed_eof()
 
 
