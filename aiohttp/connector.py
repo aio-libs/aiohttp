@@ -477,7 +477,7 @@ class TCPConnector(BaseConnector):
     """
 
     def __init__(self, *, verify_ssl=True, fingerprint=None,
-                 resolve=sentinel, use_dns_cache=sentinel,
+                 resolve=sentinel, use_dns_cache=True,
                  family=0, ssl_context=None, local_addr=None,
                  resolver=None, time_service=None,
                  conn_timeout=None, keepalive_timeout=sentinel,
@@ -507,16 +507,11 @@ class TCPConnector(BaseConnector):
             self._hashfunc = hashfunc
         self._fingerprint = fingerprint
 
-        if use_dns_cache is not sentinel:
-            _use_dns_cache = use_dns_cache
-        else:
-            _use_dns_cache = True
-
         if resolver is None:
             resolver = DefaultResolver(loop=self._loop)
         self._resolver = resolver
 
-        self._use_dns_cache = _use_dns_cache
+        self._use_dns_cache = use_dns_cache
         self._cached_hosts = {}
         self._ssl_context = ssl_context
         self._family = family
