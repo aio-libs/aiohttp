@@ -206,17 +206,14 @@ def test_close(loop, ws_key, key_data):
                 m_req.return_value = helpers.create_future(loop)
                 m_req.return_value.set_result(resp)
                 writer = WebSocketWriter.return_value = mock.Mock()
-                reader = mock.Mock()
-                resp.connection.reader.set_parser.return_value = reader
 
                 session = aiohttp.ClientSession(loop=loop)
                 resp = yield from session.ws_connect(
                     'http://test.org')
                 assert not resp.closed
 
-                msg = aiohttp.WSMessage(aiohttp.MsgType.CLOSE, b'', b'')
-                reader.read.return_value = helpers.create_future(loop)
-                reader.read.return_value.set_result(msg)
+                resp._reader.feed_data(
+                    aiohttp.WSMessage(aiohttp.MsgType.CLOSE, b'', b''), 0)
 
                 res = yield from resp.close()
                 writer.close.assert_called_with(1000, b'')
@@ -248,16 +245,13 @@ def test_close_exc(loop, ws_key, key_data):
                 m_req.return_value = helpers.create_future(loop)
                 m_req.return_value.set_result(resp)
                 WebSocketWriter.return_value = mock.Mock()
-                reader = mock.Mock()
-                resp.connection.reader.set_parser.return_value = reader
 
                 session = aiohttp.ClientSession(loop=loop)
                 resp = yield from session.ws_connect('http://test.org')
                 assert not resp.closed
 
                 exc = ValueError()
-                reader.read.return_value = helpers.create_future(loop)
-                reader.read.return_value.set_exception(exc)
+                resp._reader.set_exception(exc)
 
                 yield from resp.close()
                 assert resp.closed
@@ -282,7 +276,6 @@ def test_close_exc2(loop, ws_key, key_data):
                 m_req.return_value = helpers.create_future(loop)
                 m_req.return_value.set_result(resp)
                 writer = WebSocketWriter.return_value = mock.Mock()
-                resp.connection.reader.set_parser.return_value = mock.Mock()
 
                 resp = yield from aiohttp.ClientSession(loop=loop).ws_connect(
                     'http://test.org')
@@ -373,15 +366,12 @@ def test_reader_read_exception(ws_key, key_data, loop):
                 m_req.return_value = helpers.create_future(loop)
                 m_req.return_value.set_result(hresp)
                 WebSocketWriter.return_value = mock.Mock()
-                reader = mock.Mock()
-                hresp.connection.reader.set_parser.return_value = reader
 
                 session = aiohttp.ClientSession(loop=loop)
                 resp = yield from session.ws_connect('http://test.org')
 
                 exc = ValueError()
-                reader.read.return_value = helpers.create_future(loop)
-                reader.read.return_value.set_exception(exc)
+                resp._reader.set_exception(exc)
 
                 msg = yield from resp.receive()
                 assert msg.type == aiohttp.MsgType.ERROR

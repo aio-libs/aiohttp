@@ -595,7 +595,7 @@ def test_timeout_on_reading_data(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
-        resp = web.StreamResponse()
+        resp = web.StreamResponse(headers={'content-length': '100'})
         yield from resp.prepare(request)
         yield from resp.drain()
         yield from asyncio.sleep(0.1, loop=loop)
@@ -609,6 +609,7 @@ def test_timeout_on_reading_data(loop, test_client):
 
     with pytest.raises(asyncio.TimeoutError):
         yield from resp.read()
+
 
 
 @asyncio.coroutine
@@ -679,7 +680,7 @@ def test_no_error_on_conn_close_if_eof(loop, test_client):
 
 
 @asyncio.coroutine
-def _test_error_not_overwrote_on_conn_close(loop, test_client):
+def test_error_not_overwrote_on_conn_close(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -701,7 +702,7 @@ def _test_error_not_overwrote_on_conn_close(loop, test_client):
 
 
 @asyncio.coroutine
-def _test_HTTP_200_OK_METHOD(loop, test_client):
+def test_HTTP_200_OK_METHOD(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text=request.method)
@@ -730,7 +731,7 @@ def _test_HTTP_200_OK_METHOD(loop, test_client):
 
 
 @asyncio.coroutine
-def _test_HTTP_200_OK_METHOD_connector(loop, test_client):
+def test_HTTP_200_OK_METHOD_connector(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text=request.method)
@@ -762,7 +763,7 @@ def _test_HTTP_200_OK_METHOD_connector(loop, test_client):
 
 
 @asyncio.coroutine
-def _test_HTTP_302_REDIRECT_GET(loop, test_client):
+def test_HTTP_302_REDIRECT_GET(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text=request.method)
@@ -783,7 +784,7 @@ def _test_HTTP_302_REDIRECT_GET(loop, test_client):
 
 
 @asyncio.coroutine
-def _test_HTTP_302_REDIRECT_HEAD(loop, test_client):
+def test_HTTP_302_REDIRECT_HEAD(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text=request.method)
@@ -807,7 +808,7 @@ def _test_HTTP_302_REDIRECT_HEAD(loop, test_client):
 
 
 @asyncio.coroutine
-def _test_HTTP_302_REDIRECT_NON_HTTP(loop, test_client):
+def test_HTTP_302_REDIRECT_NON_HTTP(loop, test_client):
 
     @asyncio.coroutine
     def redirect(request):
@@ -822,7 +823,7 @@ def _test_HTTP_302_REDIRECT_NON_HTTP(loop, test_client):
 
 
 @asyncio.coroutine
-def _test_HTTP_302_REDIRECT_POST(loop, test_client):
+def test_HTTP_302_REDIRECT_POST(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text=request.method)
@@ -1643,6 +1644,7 @@ def test_request_conn_error(loop):
     yield from client.close()
 
 
+#@pytest.mark.xfail
 @asyncio.coroutine
 def _test_broken_connection(loop, test_client):
     @asyncio.coroutine
@@ -1652,7 +1654,7 @@ def _test_broken_connection(loop, test_client):
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = yield from test_client(app)
 
     with pytest.raises(aiohttp.ClientResponseError):
         yield from client.get('/')
@@ -1662,11 +1664,12 @@ def _test_broken_connection(loop, test_client):
 def test_broken_connection_2(loop, test_client):
     @asyncio.coroutine
     def handler(request):
-        resp = web.StreamResponse()
+        resp = web.StreamResponse(headers={'content-length': '1000'})
         yield from resp.prepare(request)
         yield from resp.drain()
+        resp.write(b'answer')
+        yield from resp.drain()
         request.transport.close()
-        resp.write(b'answer'*1000)
         return resp
 
     app = web.Application(loop=loop)

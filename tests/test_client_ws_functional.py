@@ -413,8 +413,7 @@ def test_override_default_headers(loop, test_client):
         assert request.headers[hdrs.SEC_WEBSOCKET_VERSION] == '8'
         ws = web.WebSocketResponse()
         yield from ws.prepare(request)
-
-        ws.send_str('answer')
+        yield from ws.send_str('answer')
         yield from ws.close()
         return ws
 

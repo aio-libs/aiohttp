@@ -11,6 +11,7 @@ import aiohttp
 
 from . import hdrs, helpers
 from .client import ClientRequest
+from .client_proto import HttpClientProtocol
 from .errors import (ClientOSError, ClientTimeoutError, FingerprintMismatch,
                      HttpProxyError, ProxyConnectionError,
                      ServerDisconnectedError)
@@ -38,7 +39,7 @@ class Connection:
         self._transport = transport
         self._protocol = protocol
         self._loop = loop
-        self.reader = protocol.reader
+        self.protocol = protocol
         self.writer = protocol.writer
 
         if loop.get_debug():
@@ -161,9 +162,7 @@ class BaseConnector(object):
             self._time_service = helpers.TimeService(loop)
 
         self._loop = loop
-        self._factory = functools.partial(
-            aiohttp.StreamProtocol, loop=loop,
-            disconnect_error=ServerDisconnectedError)
+        self._factory = functools.partial(HttpClientProtocol, loop=loop)
 
         self.cookies = SimpleCookie()
 
@@ -431,8 +430,7 @@ class BaseConnector(object):
             elif resp is not None:
                 should_close = resp._should_close
 
-        reader = protocol.reader
-        if should_close or (reader.output and not reader.output.at_eof()):
+        if should_close or protocol.should_close:
             transport.close()
 
             if key[-1] and not self._cleanup_closed_disabled:
@@ -442,7 +440,7 @@ class BaseConnector(object):
             if conns is None:
                 conns = self._conns[key] = []
             conns.append((transport, protocol, self._time_service.loop_time()))
-            reader.unset_parser()
+            # reader.unset_parser()
 
     @asyncio.coroutine
     def _create_connection(self, req):
@@ -683,7 +681,7 @@ class TCPConnector(BaseConnector):
             key = (req.host, req.port, req.ssl)
             conn = Connection(self, key, proxy_req,
                               transport, proto, self._loop)
-            proxy_resp = proxy_req.send(conn.writer, conn.reader)
+            proxy_resp = proxy_req.send(conn)
             try:
                 resp = yield from proxy_resp.start(conn, True)
             except:

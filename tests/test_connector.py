@@ -232,6 +232,7 @@ def test_release(loop):
     resp._should_close = False
 
     tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+    proto.should_close = False
     key = 1
     conn._acquired.add(tr)
     conn._release(key, req, tr, proto)
@@ -418,6 +419,7 @@ def test_release_not_started(loop):
     req.response = None
 
     tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+    proto.should_close = False
     key = 1
     conn._acquired.add(tr)
     conn._release(key, req, tr, proto)
@@ -817,6 +819,7 @@ def test_connect_with_capacity_release_waiters(loop):
 @asyncio.coroutine
 def test_connect_with_capacity_concurrent(loop):
     proto = unittest.mock.Mock()
+    proto.should_close = False
     proto.is_connected.return_value = True
 
     req = ClientRequest('GET', URL('http://host:80'),

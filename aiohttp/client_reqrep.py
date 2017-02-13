@@ -341,7 +341,7 @@ class ClientRequest:
         self.proxy_auth = proxy_auth
 
     @asyncio.coroutine
-    def write_bytes(self, request, reader):
+    def write_bytes(self, request, conn):
         """Support coroutines that yields bytes objects."""
         # 100 response
         if self._continue is not None:
@@ -417,7 +417,7 @@ class ClientRequest:
                 'Can not write request body for %s' % self.url)
             new_exc.__context__ = exc
             new_exc.__cause__ = exc
-            reader.set_exception(new_exc)
+            conn.protocol.set_exception(new_exc)
         else:
             try:
                 ret = yield from request.write_eof()
@@ -431,11 +431,11 @@ class ClientRequest:
                     'Can not write request body for %s' % self.url)
                 new_exc.__context__ = exc
                 new_exc.__cause__ = exc
-                reader.set_exception(new_exc)
+                conn.protocol.set_exception(new_exc)
 
         self._writer = None
 
-    def send(self, writer, reader):
+    def send(self, conn):
         # Specify request target:
         # - CONNECT request must send authority form URI
         # - not CONNECT proxy must send absolute form URI
@@ -450,7 +450,7 @@ class ClientRequest:
                 path += '?' + self.url.raw_query_string
 
         request = aiohttp.Request(
-            writer, self.method, path, self.version, loop=self.loop)
+            conn.writer, self.method, path, self.version, loop=self.loop)
 
         if self.compress:
             request.enable_compression(self.compress)
@@ -469,7 +469,7 @@ class ClientRequest:
         request.send_headers()
 
         self._writer = helpers.ensure_future(
-            self.write_bytes(request, reader), loop=self.loop)
+            self.write_bytes(request, conn), loop=self.loop)
 
         self.response = self.response_class(
             self.method, self.original_url,
@@ -591,27 +591,21 @@ class ClientResponse(HeadersMixin):
         """A sequence of of responses, if redirects occurred."""
         return self._history
 
-    def _setup_connection(self, connection):
-        self._reader = connection.reader
-        self._connection = connection
-        self.content = self.flow_control_class(
-            connection.reader, loop=connection.loop, timer=self._timer)
-
-    def _need_parse_response_body(self):
-        return (self.method.lower() != 'head' and
-                self.status not in [204, 304])
-
     @asyncio.coroutine
     def start(self, connection, read_until_eof=False):
         """Start response processing."""
-        self._setup_connection(connection)
+        self._protocol = connection.protocol
+        self._connection = connection
+        connection.protocol.set_response_params(
+            timer=self._timer,
+            skip_payload=self.method.lower() == 'head',
+            skip_status_codes=(204, 304),
+            read_until_eof=read_until_eof)
 
         with self._timer:
             while True:
-                httpstream = self._reader.set_parser(self._response_parser)
-
                 # read response
-                message = yield from httpstream.read()
+                (message, payload) = yield from self._protocol.read()
                 if (message.code < 100 or
                         message.code > 199 or message.code == 101):
                     break
@@ -631,12 +625,7 @@ class ClientResponse(HeadersMixin):
         self.raw_headers = tuple(message.raw_headers)
 
         # payload
-        rwb = self._need_parse_response_body()
-        self._reader.set_parser(
-            aiohttp.HttpPayloadParser(message,
-                                      readall=read_until_eof,
-                                      response_with_body=rwb),
-            self.content)
+        self.content = payload
 
         # cookies
         for hdr in self.headers.getall(hdrs.SET_COOKIE, ()):
@@ -690,8 +679,8 @@ class ClientResponse(HeadersMixin):
             self._closed = True
             if self._connection is not None:
                 self._connection.release()
-                if self._reader is not None:
-                    self._reader.unset_parser()
+                #if self._reader is not None:
+                #self._reader.unset_parser()
                 self._connection = None
             self._cleanup_writer()
             self._notify_content()
