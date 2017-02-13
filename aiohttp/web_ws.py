@@ -4,10 +4,12 @@ import sys
 from collections import namedtuple
 
 from . import hdrs
-from ._ws_impl import (CLOSED_MESSAGE, CLOSING_MESSAGE, WebSocketError,
+from ._ws_impl import (CLOSED_MESSAGE, CLOSING_MESSAGE,
+                       WebSocketError, WebSocketReader,
                        WSMessage, WSMsgType, do_handshake)
 from .errors import ClientDisconnectedError, HttpProcessingError
 from .helpers import create_future
+from .streams import FlowControlDataQueue
 from .web_exceptions import (HTTPBadRequest, HTTPInternalServerError,
                              HTTPMethodNotAllowed)
 from .web_reqrep import StreamResponse
@@ -127,10 +129,12 @@ class WebSocketResponse(StreamResponse):
         return parser, protocol, writer
 
     def _post_start(self, request, parser, protocol, writer):
-        self._reader = request._reader.set_parser(parser)
-        self._writer = writer
         self._protocol = protocol
         self._loop = request.app.loop
+        self._writer = writer
+        self._reader = FlowControlDataQueue(
+            request._reader.reader, limit=2 ** 16, loop=self._loop)
+        request._reader.set_parser(WebSocketReader(self._reader))
 
     def can_prepare(self, request):
         if self._writer is not None:

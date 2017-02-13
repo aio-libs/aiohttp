@@ -229,6 +229,11 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         if self._time_service_owner:
             self._time_service.close()
 
+    def set_parser(self, parser):
+        assert self._payload_parser is None
+
+        self._payload_parser = parser
+
     def data_received(self, data,
                       SEP=b'\r\n',
                       CONTENT_LENGTH=hdrs.CONTENT_LENGTH,
