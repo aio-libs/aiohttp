@@ -79,6 +79,10 @@ clean:
 	@rm -f aiohttp/_websocket.c
 	@rm -f aiohttp/_websocket.*.so
 	@rm -f aiohttp/_websocket.*.pyd
+	@rm -f aiohttp/_parser.html
+	@rm -f aiohttp/_parser.c
+	@rm -f aiohttp/_parser.*.so
+	@rm -f aiohttp/_parser.*.pyd
 	@rm -rf .tox
 
 doc:

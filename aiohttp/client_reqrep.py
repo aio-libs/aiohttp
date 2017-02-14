@@ -507,7 +507,6 @@ class ClientResponse(HeadersMixin):
     _connection = None  # current connection
     flow_control_class = FlowControlStreamReader  # reader flow control
     _reader = None     # input stream
-    _response_parser = aiohttp.HttpResponseParser()
     _source_traceback = None
     # setted up by ClientRequest after ClientResponse object creation
     # post-init stage allows to not change ctor signature

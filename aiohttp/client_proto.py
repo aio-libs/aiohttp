@@ -32,7 +32,7 @@ class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
         self._lines = []
         self._tail = b''
         self._upgrade = False
-        self._response_parser = HttpResponseParser()
+        self._response_parser = HttpResponseParser(self, self._loop)
 
     @property
     def should_close(self):

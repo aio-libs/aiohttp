@@ -573,9 +573,7 @@ def test_http09_keep_alive_default(loop, test_client):
     headers = {'Connection': 'keep-alive'}  # should be ignored
     resp = yield from client.get('/', version=HttpVersion(0, 9),
                                  headers=headers)
-    assert 200 == resp.status
-    assert resp.version == HttpVersion(0, 9)
-    assert 'Connection' not in resp.headers
+    assert 400 == resp.status
 
 
 @asyncio.coroutine

@@ -162,7 +162,7 @@ def test_connection_made_without_keepaplive(make_srv):
     assert not sock.setsockopt.called
 
 
-def test_data_received(srv):
+def _test_data_received(srv):
     srv.connection_made(mock.Mock())
 
     srv.data_received(b'123')

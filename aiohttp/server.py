@@ -3,6 +3,7 @@
 import asyncio
 import asyncio.streams
 import http.server
+import os
 import socket
 import traceback
 import warnings
@@ -15,7 +16,7 @@ from aiohttp import errors, hdrs, helpers, streams
 from aiohttp.helpers import TimeService, create_future, ensure_future
 from aiohttp.log import access_logger, server_logger
 from aiohttp.protocol import HttpPayloadParser
-from aiohttp.streams import StreamWriter
+from aiohttp.streams import EMPTY_PAYLOAD, StreamWriter
 
 __all__ = ('ServerHttpProtocol',)
 
@@ -41,7 +42,17 @@ else:
     def tcp_keepalive(server, transport):  # pragma: no cover
         pass
 
-EMPTY_PAYLOAD = streams.EmptyStreamReader()
+
+if bool(os.environ.get('AIOHTTP_NO_EXTENSIONS')):
+    from .protocol import HttpRequestParser
+    _CPARSER = False
+else:
+    try:
+        from ._parser import HttpRequestParser
+        _CPARSER = True
+    except ImportError:  # pragma: no cover
+        from .protocol import HttpRequestParser
+        _CPARSER = False
 
 
 class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
@@ -137,7 +148,8 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
         self._upgrade = False
         self._payload_parser = None
-        self._request_parser = aiohttp.HttpRequestParser(
+        self._request_parser = HttpRequestParser(
+            self, loop,
             max_line_size=max_line_size,
             max_field_size=max_field_size,
             max_headers=max_headers)
@@ -248,11 +260,78 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     def eof_received(self):
         pass
 
-    def data_received(self, data,
-                      SEP=b'\r\n',
-                      CONTENT_LENGTH=hdrs.CONTENT_LENGTH,
-                      METH_CONNECT=hdrs.METH_CONNECT,
-                      SEC_WEBSOCKET_KEY1=hdrs.SEC_WEBSOCKET_KEY1):
+    def data_received_cparser(self, data):
+        if self._closing:
+            return
+
+        while self._messages:
+            if self._waiters:
+                waiter = self._waiters.popleft()
+                message = self._messages.popleft()
+                waiter.set_result(message)
+            else:
+                break
+
+        # read HTTP message (request line + headers), \r\n\r\n
+        # and split by lines
+        if self._payload_parser is None and not self._upgrade:
+            try:
+                messages, upgraded, tail = self._request_parser.feed_data(data)
+            except errors.HttpProcessingError as exc:
+                # something happened during parsing
+                self._closing = True
+                self._request_handlers.append(
+                    ensure_future(
+                        self.handle_error(
+                            400, None,
+                            None, exc, exc.headers, exc.message),
+                        loop=self._loop))
+                return
+            except Exception as exc:
+                print('exc')
+                self._closing = True
+                self._request_handlers.append(
+                    ensure_future(
+                        self.handle_error(500, None, None, exc),
+                        loop=self._loop))
+                return
+
+            for (msg, payload) in messages:
+                self._request_count += 1
+                self._reading_request = True
+
+                if self._waiters:
+                    waiter = self._waiters.popleft()
+                    waiter.set_result((msg, payload))
+                elif self._max_concurrent_handlers:
+                    self._max_concurrent_handlers -= 1
+                    handler = ensure_future(
+                        self.start(msg, payload), loop=self._loop)
+                    self._request_handlers.append(handler)
+                else:
+                    self._messages.append((msg, payload))
+
+            self._upgraded = upgraded
+            if upgraded:
+                self._message_tail = tail
+
+        # no parser, just store
+        elif self._payload_parser is None and self._upgrade:
+            if data:
+                self._message_tail += data
+
+        # feed payload
+        else:
+            if data:
+                eof, tail = self._payload_parser.feed_data(data)
+                if eof:
+                    self._closing = True
+
+    def data_received_py(self, data,
+                         SEP=b'\r\n',
+                         CONTENT_LENGTH=hdrs.CONTENT_LENGTH,
+                         METH_CONNECT=hdrs.METH_CONNECT,
+                         SEC_WEBSOCKET_KEY1=hdrs.SEC_WEBSOCKET_KEY1):
         if self._closing:
             return
 
@@ -386,6 +465,11 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
                     if tail:
                         super().data_received(tail)
+
+    if _CPARSER:
+        data_received = data_received_cparser
+    else:
+        data_received = data_received_py
 
     def keep_alive(self, val):
         """Set keep-alive connection mode.
