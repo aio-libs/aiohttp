@@ -235,8 +235,7 @@ class Application(MutableMapping):
     def _make_request(self, message, payload, protocol,
                       _cls=web_reqrep.Request):
         return _cls(
-            message, payload,
-            protocol.transport, protocol, protocol.writer,
+            message, payload, protocol,
             protocol.time_service, protocol._request_handler,
             loop=self._loop,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header)

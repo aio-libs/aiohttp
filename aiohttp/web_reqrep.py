@@ -49,14 +49,12 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
-    def __init__(self, message, payload, transport, reader, writer,
-                 time_service, task, *, loop=None,
-                 secure_proxy_ssl_header=None):
+    def __init__(self, message, payload, protocol, time_service, task, *,
+                 loop=None, secure_proxy_ssl_header=None):
         self._loop = loop
         self._message = message
-        self._transport = transport
-        self._reader = reader
-        self._writer = writer
+        self._protocol = protocol
+        self._transport = protocol.transport
         self._post = None
         self._post_files_cache = None
 
@@ -100,9 +98,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self.__class__(
             message,
             self._payload,
-            self._transport,
-            self._reader,
-            self._writer,
+            self._protocol,
             self._time_service,
             self._task,
             loop=self._loop,
@@ -111,6 +107,14 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     @property
     def task(self):
         return self._task
+
+    @property
+    def protocol(self):
+        return self._protocol
+
+    @property
+    def transport(self):
+        return self._protocol.transport
 
     # MutableMapping API
 
@@ -297,16 +301,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     def time_service(self):
         """Time service"""
         return self._time_service
-
-    @property
-    def transport(self):
-        """Transport used for request processing."""
-        return self._transport
-
-    @property
-    def transport_pair(self):
-        """Reader and writer used for request processing."""
-        return (self._reader, self._writer)
 
     @reify
     def cookies(self):
@@ -825,7 +819,7 @@ class StreamResponse(HeadersMixin):
         version = request.version
 
         writer = self._payload_writer = PayloadWriter(
-            request._writer, request._loop)
+            request._protocol.writer, request._loop)
 
         headers = self.headers
         for cookie in self._cookies.values():

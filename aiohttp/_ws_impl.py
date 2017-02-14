@@ -262,11 +262,11 @@ class WebSocketReader:
 
         return False, b''
 
-    def parse_frame(self, buf, continuation=False):
+    def parse_frame(self, buf, continuation=False, EMPTY=b''):
         """Return the next frame from the socket."""
         frames = []
         if self._tail:
-            buf = self._tail + buf
+            buf, self._tail = self._tail + buf, EMPTY
 
         start_pos = 0
         buf_length = len(buf)
@@ -489,7 +489,7 @@ class WebSocketWriter:
             self._closing = True
 
 
-def do_handshake(method, headers, transport,
+def do_handshake(method, headers, stream,
                  protocols=(), write_buffer_size=DEFAULT_LIMIT):
     """Prepare WebSocket handshake.
 
@@ -560,9 +560,9 @@ def do_handshake(method, headers, transport,
     if protocol:
         response_headers.append((hdrs.SEC_WEBSOCKET_PROTOCOL, protocol))
 
-    # response code, headers, parser, writer, protocol
+    # response code, headers, None, writer, protocol
     return (101,
             response_headers,
             None,
-            WebSocketWriter(transport, limit=write_buffer_size),
+            WebSocketWriter(stream, limit=write_buffer_size),
             protocol)

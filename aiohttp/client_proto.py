@@ -87,6 +87,7 @@ class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
         self._read_until_eof = read_until_eof
 
     def data_received(self, data,
+                      EMPTY=b'',
                       SEP=b'\r\n',
                       CONTENT_LENGTH=hdrs.CONTENT_LENGTH,
                       SEC_WEBSOCKET_KEY1=hdrs.SEC_WEBSOCKET_KEY1):
@@ -108,7 +109,7 @@ class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
         # read HTTP message (status line + headers), \r\n\r\n
         # and split by lines
         if self._tail:
-            data = self._tail + data
+            data, self._tail = self._tail + data, EMPTY
 
         start_pos = 0
         while True:
@@ -120,7 +121,7 @@ class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
                 # \r\n\r\n found
                 start_pos = pos + 2
                 if data[start_pos:start_pos+2] == SEP:
-                    self._lines.append(b'')
+                    self._lines.append(EMPTY)
 
                     msg = None
                     try:

@@ -387,7 +387,6 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                     if tail:
                         super().data_received(tail)
 
-
     def keep_alive(self, val):
         """Set keep-alive connection mode.
 

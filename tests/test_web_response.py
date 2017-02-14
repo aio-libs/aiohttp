@@ -18,9 +18,9 @@ def make_request(method, path, headers=CIMultiDict(),
     app = kwargs.pop('app', None) or mock.Mock()
     app._debug = False
     app.on_response_prepare = signals.Signal(app)
-    writer = kwargs.pop('writer', None) or mock.Mock()
+    protocol = kwargs.pop('protocol', None) or mock.Mock()
     return make_mocked_request(method, path, headers,
-                               version=version, writer=writer,
+                               version=version, protocol=protocol,
                                app=app, **kwargs)
 
 

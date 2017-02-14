@@ -19,7 +19,7 @@ from yarl import URL, unquote
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
 from .file_sender import FileSender
-from .protocol import HttpVersion11
+from .protocol import HttpVersion11, PayloadWriter
 from .web_exceptions import (HTTPExpectationFailed, HTTPForbidden,
                              HTTPMethodNotAllowed, HTTPNotFound)
 from .web_reqrep import Response, StreamResponse
@@ -232,7 +232,9 @@ def _defaultExpectHandler(request):
     expect = request.headers.get(hdrs.EXPECT)
     if request.version == HttpVersion11:
         if expect.lower() == "100-continue":
-            request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+            writer = PayloadWriter(
+                request.protocol.writer, request.app.loop)
+            yield from writer.write_eof(b"HTTP/1.1 100 Continue\r\n\r\n")
         else:
             raise HTTPExpectationFailed(text="Unknown Expect: %s" % expect)
 

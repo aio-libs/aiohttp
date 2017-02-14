@@ -484,8 +484,8 @@ def _create_transport(sslcontext=None):
 def make_mocked_request(method, path, headers=None, *,
                         version=HttpVersion(1, 1), closing=False,
                         app=None,
-                        reader=sentinel,
                         writer=sentinel,
+                        protocol=sentinel,
                         transport=sentinel,
                         payload=sentinel,
                         sslcontext=None,
@@ -515,14 +515,18 @@ def make_mocked_request(method, path, headers=None, *,
     if app is None:
         app = _create_app_mock()
 
-    if reader is sentinel:
-        reader = mock.Mock()
-
-    if writer is sentinel:
-        writer = mock.Mock()
+    if protocol is sentinel:
+        protocol = mock.Mock()
 
     if transport is sentinel:
         transport = _create_transport(sslcontext)
+
+    if writer is sentinel:
+        writer = mock.Mock()
+        writer.transport = transport
+
+    protocol.transport = transport
+    protocol.writer = writer
 
     if payload is sentinel:
         payload = mock.Mock()
@@ -542,10 +546,8 @@ def make_mocked_request(method, path, headers=None, *,
     loop = mock.Mock()
     loop.create_future.return_value = ()
 
-    req = Request(message, payload,
-                  transport, reader, writer,
-                  time_service, task,
-                  loop=loop,
+    req = Request(message, payload, protocol,
+                  time_service, task, loop=loop,
                   secure_proxy_ssl_header=secure_proxy_ssl_header)
 
     match_info = UrlMappingMatchInfo({}, mock.Mock())

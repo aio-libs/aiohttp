@@ -28,14 +28,14 @@ def writer():
 
 
 @pytest.fixture
-def reader():
+def protocol():
     ret = mock.Mock()
     ret.set_parser.return_value = ret
     return ret
 
 
 @pytest.fixture
-def make_request(app, writer, reader):
+def make_request(app, protocol, writer):
     def maker(method, path, headers=None, protocols=False):
         if headers is None:
             headers = CIMultiDict(
@@ -48,8 +48,8 @@ def make_request(app, writer, reader):
         if protocols:
             headers['SEC-WEBSOCKET-PROTOCOL'] = 'chat, superchat'
 
-        return make_mocked_request(method, path, headers,
-                                   app=app, writer=writer, reader=reader)
+        return make_mocked_request(
+            method, path, headers, app=app, protocol=protocol, writer=writer)
 
     return maker
 
@@ -423,7 +423,7 @@ def test_receive_timeouterror(make_request, loop):
 
 
 @asyncio.coroutine
-def test_receive_client_disconnected(make_request, loop, reader):
+def test_receive_client_disconnected(make_request, loop):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
