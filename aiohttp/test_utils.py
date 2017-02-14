@@ -23,7 +23,16 @@ from .protocol import HttpVersion, RawRequestMessage
 from .signals import Signal
 from .web import Application, Request, Server, UrlMappingMatchInfo
 
+try:
+    import uvloop
+except:
+    uvloop = None
+
 PY_35 = sys.version_info >= (3, 5)
+
+LOOP_FACTORIES = [asyncio.new_event_loop]
+if uvloop:
+    LOOP_FACTORIES.append(uvloop.new_event_loop)
 
 
 def run_briefly(loop):

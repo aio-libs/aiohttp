@@ -351,7 +351,7 @@ def test_tcp_connector_resolve_host_use_dns_cache(loop):
             assert rec['hostname'] == 'localhost'
             assert rec['port'] == 8080
             if platform.system() == 'Darwin':
-                assert rec['host'] in ('::1', 'fe80::1%lo0')
+                assert rec['host'] in ('::1', 'fe80::1', 'fe80::1%lo0')
             else:
                 assert rec['host'] == '::1'
 
