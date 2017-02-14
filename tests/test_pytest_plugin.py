@@ -144,5 +144,10 @@ def test_client_failed_to_create(test_client):
         yield from test_client(make_app)
 
 """)
+    from aiohttp.test_utils import LOOP_FACTORIES
+    num = len(LOOP_FACTORIES)
     result = testdir.runpytest('-p', 'no:sugar')
-    result.assert_outcomes(passed=11, failed=1)
+    if num == 2:
+        result.assert_outcomes(passed=10*num, failed=num)
+    else:
+        result.assert_outcomes(passed=11, failed=1)

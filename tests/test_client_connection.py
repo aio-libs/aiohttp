@@ -32,6 +32,7 @@ def protocol():
 
 
 def test_del(connector, key, request, transport, protocol, loop):
+    loop.is_closed.return_value = False
     conn = Connection(connector, key, request,
                       transport, protocol, loop)
     exc_handler = mock.Mock()
@@ -50,7 +51,7 @@ def test_del(connector, key, request, transport, protocol, loop):
            'message': 'Unclosed connection'}
     if loop.get_debug():
         msg['source_traceback'] = mock.ANY
-    exc_handler.assert_called_with(loop, msg)
+    loop.call_exception_handler.assert_called_with(msg)
 
 
 def test_close(connector, key, request, transport, protocol, loop):
