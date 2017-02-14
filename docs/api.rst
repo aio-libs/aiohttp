@@ -4,7 +4,7 @@ Helpers API
 ===========
 
 All public names from submodules ``errors``, ``multipart``,
-``parsers``, ``protocol``, ``utils``, and ``wsgi`` are exported into
+``protocol``, ``utils``, and ``wsgi`` are exported into
 ``aiohttp`` namespace.
 
 WebSocket utilities
@@ -195,14 +195,6 @@ aiohttp.multipart module
 ------------------------
 
 .. automodule:: aiohttp.multipart
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-aiohttp.parsers module
-----------------------
-
-.. automodule:: aiohttp.parsers
     :members:
     :undoc-members:
     :show-inheritance:
