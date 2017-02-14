@@ -365,11 +365,8 @@ conditions that hard to reproduce on real server::
    :param app: the aiohttp.web application attached for fake request
    :type app: aiohttp.web.Application
 
-   :param reader: object for storing and managing incoming data
-   :type reader: aiohttp.parsers.StreamParser
-
    :param writer: object for managing outcoming data
-   :type wirter: aiohttp.parsers.StreamWriter
+   :type wirter: aiohttp.streams.StreamWriter
 
    :param transport: asyncio transport instance
    :type transport: asyncio.transports.Transport
