@@ -9,7 +9,7 @@ from multidict import MultiDict
 from yarl import URL
 
 from aiohttp import FormData, multipart, web
-from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
+from aiohttp.protocol import HttpVersion10, HttpVersion11
 
 try:
     import ssl
@@ -556,24 +556,6 @@ def test_http10_keep_alive_default(loop, test_client):
     assert 200 == resp.status
     assert resp.version == HttpVersion10
     assert resp.headers['Connection'] == 'keep-alive'
-
-
-@asyncio.coroutine
-def test_http09_keep_alive_default(loop, test_client):
-
-    @asyncio.coroutine
-    def handler(request):
-        yield from request.read()
-        return web.Response()
-
-    app = web.Application(loop=loop)
-    app.router.add_get('/', handler)
-    client = yield from test_client(app)
-
-    headers = {'Connection': 'keep-alive'}  # should be ignored
-    resp = yield from client.get('/', version=HttpVersion(0, 9),
-                                 headers=headers)
-    assert 400 == resp.status
 
 
 @asyncio.coroutine

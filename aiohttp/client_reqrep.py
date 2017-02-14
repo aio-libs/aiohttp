@@ -525,6 +525,7 @@ class ClientResponse(HeadersMixin):
         self._closed = False
         self._should_close = True  # override by message.should_close later
         self._history = ()
+        self.headers = None
         self._timer = timer if timer is not None else _TimeServiceTimeoutNoop()
         self.cookies = SimpleCookie()
 
@@ -545,6 +546,10 @@ class ClientResponse(HeadersMixin):
                       DeprecationWarning,
                       stacklevel=2)
         return self._url_obj.host
+
+    @property
+    def _headers(self):
+        return self.headers
 
     def _post_init(self, loop):
         self._loop = loop

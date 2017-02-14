@@ -288,7 +288,6 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                         loop=self._loop))
                 return
             except Exception as exc:
-                print('exc')
                 self._closing = True
                 self._request_handlers.append(
                     ensure_future(
@@ -316,16 +315,14 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 self._message_tail = tail
 
         # no parser, just store
-        elif self._payload_parser is None and self._upgrade:
-            if data:
-                self._message_tail += data
+        elif self._payload_parser is None and self._upgrade and data:
+            self._message_tail += data
 
         # feed payload
-        else:
-            if data:
-                eof, tail = self._payload_parser.feed_data(data)
-                if eof:
-                    self._closing = True
+        elif data:
+            eof, tail = self._payload_parser.feed_data(data)
+            if eof:
+                self._closing = True
 
     def data_received_py(self, data,
                          SEP=b'\r\n',

@@ -101,8 +101,8 @@ class Application(MutableMapping):
         if self._frozen:
             return
         self._frozen = True
+        self._middlewares = tuple(reversed(self._middlewares))
         self._router.freeze()
-        self._middlewares.freeze()
         self._on_pre_signal.freeze()
         self._on_post_signal.freeze()
         self._on_response_prepare.freeze()
@@ -236,7 +236,7 @@ class Application(MutableMapping):
                       _cls=web_reqrep.Request):
         return _cls(
             message, payload, protocol,
-            protocol.time_service, protocol._request_handler,
+            protocol._time_service, protocol._request_handler,
             loop=self._loop,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header)
 
@@ -245,7 +245,9 @@ class Application(MutableMapping):
         match_info = yield from self._router.resolve(request)
         assert isinstance(match_info, AbstractMatchInfo), match_info
         match_info.add_app(self)
-        match_info.freeze()
+
+        if __debug__:
+            match_info.freeze()
 
         resp = None
         request._match_info = match_info
@@ -257,7 +259,7 @@ class Application(MutableMapping):
         if resp is None:
             handler = match_info.handler
             for app in match_info.apps:
-                for factory in reversed(app.middlewares):
+                for factory in app._middlewares:
                     handler = yield from factory(app, handler)
             resp = yield from handler(request)
 

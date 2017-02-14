@@ -82,7 +82,7 @@ def test__sendfile_cb_return_on_cancelling(loop):
 
 def test_using_gzip_if_header_present_and_file_available(loop):
     request = make_mocked_request(
-        'GET', URL('http://python.org/logo.png'), headers={
+        'GET', 'http://python.org/logo.png', headers={
             hdrs.ACCEPT_ENCODING: 'gzip'
         }
     )
@@ -109,7 +109,7 @@ def test_using_gzip_if_header_present_and_file_available(loop):
 
 def test_gzip_if_header_not_present_and_file_available(loop):
     request = make_mocked_request(
-        'GET', URL('http://python.org/logo.png'), headers={
+        'GET', 'http://python.org/logo.png', headers={
         }
     )
 
@@ -135,7 +135,7 @@ def test_gzip_if_header_not_present_and_file_available(loop):
 
 def test_gzip_if_header_not_present_and_file_not_available(loop):
     request = make_mocked_request(
-        'GET', URL('http://python.org/logo.png'), headers={
+        'GET', 'http://python.org/logo.png', headers={
         }
     )
 
@@ -161,7 +161,7 @@ def test_gzip_if_header_not_present_and_file_not_available(loop):
 
 def test_gzip_if_header_present_and_file_not_available(loop):
     request = make_mocked_request(
-        'GET', URL('http://python.org/logo.png'), headers={
+        'GET', 'http://python.org/logo.png', headers={
             hdrs.ACCEPT_ENCODING: 'gzip'
         }
     )

@@ -182,8 +182,9 @@ def test_start():
         assert resp.keep_alive
 
     req2 = make_request('GET', '/')
-    with pytest.raises(RuntimeError):
-        yield from resp.prepare(req2)
+    # with pytest.raises(RuntimeError):
+    msg3 = yield from resp.prepare(req2)
+    assert msg is msg3
 
 
 @asyncio.coroutine
@@ -912,7 +913,7 @@ def test_drain_before_start():
 def test_changing_status_after_prepare_raises():
     resp = StreamResponse()
     yield from resp.prepare(make_request('GET', '/'))
-    with pytest.raises(RuntimeError):
+    with pytest.raises(AssertionError):
         resp.set_status(400)
 
 
