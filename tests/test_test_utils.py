@@ -192,7 +192,7 @@ def test_make_mocked_request(headers):
     assert req.method == "GET"
     assert req.path == "/"
     assert isinstance(req, web_reqrep.Request)
-    assert isinstance(req.headers, CIMultiDictProxy)
+    assert isinstance(req.headers, CIMultiDict)
 
 
 def test_make_mocked_request_sslcontext():

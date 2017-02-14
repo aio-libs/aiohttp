@@ -59,6 +59,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._post_files_cache = None
 
         self._payload = payload
+        self._headers = self._message.headers
 
         self._read_bytes = None
         self._has_body = not payload.at_eof()
@@ -68,6 +69,16 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._state = {}
         self._cache = {}
         self._task = task
+
+        # rel_url
+        # special case for path started with `//`
+        # if path starts with // it is valid host, but in case of web server
+        # liklyhood of it beein malformed path is much higher
+        url = URL(message.path)
+        if message.path.startswith('//'):
+            self.rel_url = url.with_path(message.path.split('?')[0])
+        else:
+            self.rel_url = url
 
     def clone(self, *, method=sentinel, rel_url=sentinel,
               headers=sentinel):
@@ -185,18 +196,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self._message.headers.get(hdrs.HOST)
 
     @reify
-    def rel_url(self):
-        # special case for path started with `//`
-        # if path starts with // it is valid host, but in case of web server
-        # liklyhood of it beein malformed path is much higher
-        url = URL(self._message.path)
-
-        if self._message.path.startswith('//'):
-            return url.with_path(self._message.path.split('?')[0])
-
-        return url
-
-    @reify
     def path_qs(self):
         """The URL including PATH_INFO and the query string.
 
@@ -271,7 +270,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     @reify
     def headers(self):
         """A case-insensitive multidict proxy with all headers."""
-        return CIMultiDictProxy(self._message.headers)
+        return self._headers
 
     @reify
     def raw_headers(self):
@@ -561,9 +560,9 @@ class StreamResponse(HeadersMixin):
         return self._reason
 
     def set_status(self, status, reason=None):
-        if self.prepared:
-            raise RuntimeError("Cannot change the response status code after "
-                               "the headers have been sent")
+        assert not self.prepared, \
+            'Cannot change the response status code after ' \
+            'the headers have been sent'
         self._status = int(status)
         if reason is None:
             reason = calc_reason(status)
@@ -671,9 +670,9 @@ class StreamResponse(HeadersMixin):
         if value is not None:
             value = int(value)
             # TODO: raise error if chunked enabled
-            self.headers[hdrs.CONTENT_LENGTH] = str(value)
+            self._headers[hdrs.CONTENT_LENGTH] = str(value)
         else:
-            self.headers.pop(hdrs.CONTENT_LENGTH, None)
+            self._headers.pop(hdrs.CONTENT_LENGTH, None)
 
     @property
     def content_type(self):
@@ -765,16 +764,6 @@ class StreamResponse(HeadersMixin):
             ctype = self._content_type
         self.headers[CONTENT_TYPE] = ctype
 
-    def _start_pre_check(self, request):
-        if self._payload_writer is not None:
-            if self._req is not request:
-                raise RuntimeError(
-                    "Response has been started with different request.")
-            else:
-                return self._payload_writer
-        else:
-            return None
-
     def _do_start_compression(self, coding):
         if coding != ContentCoding.identity:
             self.headers[hdrs.CONTENT_ENCODING] = coding.value
@@ -794,11 +783,10 @@ class StreamResponse(HeadersMixin):
 
     @asyncio.coroutine
     def prepare(self, request):
-        payload_writer = self._start_pre_check(request)
-        if payload_writer is not None:
-            return payload_writer
-        yield from request._prepare_hook(self)
+        if self._payload_writer is not None:
+            return self._payload_writer
 
+        yield from request._prepare_hook(self)
         return self._start(request)
 
     def _start(self, request,
@@ -821,7 +809,7 @@ class StreamResponse(HeadersMixin):
         writer = self._payload_writer = PayloadWriter(
             request._protocol.writer, request._loop)
 
-        headers = self.headers
+        headers = self._headers
         for cookie in self._cookies.values():
             value = cookie.output(header='')[1:]
             headers.add(SET_COOKIE, value)
@@ -831,9 +819,9 @@ class StreamResponse(HeadersMixin):
 
         if self._chunked:
             if version != HttpVersion11:
-                raise RuntimeError("Using chunked encoding is forbidden "
-                                   "for HTTP/{0.major}.{0.minor}".format(
-                                       request.version))
+                raise RuntimeError(
+                    "Using chunked encoding is forbidden "
+                    "for HTTP/{0.major}.{0.minor}".format(request.version))
             writer.enable_chunking()
             headers[TRANSFER_ENCODING] = 'chunked'
         else:

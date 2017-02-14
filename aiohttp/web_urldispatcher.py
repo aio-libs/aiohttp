@@ -169,7 +169,7 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
     def __init__(self, match_dict, route):
         super().__init__(match_dict)
         self._route = route
-        self._apps = []
+        self._apps = ()
         self._frozen = False
 
     @property
@@ -193,12 +193,12 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
 
     @property
     def apps(self):
-        return tuple(self._apps)
+        return self._apps
 
     def add_app(self, app):
         if self._frozen:
             raise RuntimeError("Cannot change apps stack after .freeze() call")
-        self._apps.insert(0, app)
+        self._apps = (app,) + self._apps
 
     def freeze(self):
         self._frozen = True

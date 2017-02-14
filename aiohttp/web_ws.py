@@ -94,9 +94,8 @@ class WebSocketResponse(StreamResponse):
     @asyncio.coroutine
     def prepare(self, request):
         # make pre-check to don't hide it by do_handshake() exceptions
-        payload_writer = self._start_pre_check(request)
-        if payload_writer is not None:
-            return payload_writer
+        if self._payload_writer is not None:
+            return self._payload_writer
 
         protocol, writer = self._pre_start(request)
         payload_writer = yield from super().prepare(request)

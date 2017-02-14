@@ -87,8 +87,7 @@ class RequestHandler(ServerHttpProtocol):
             self.logger.exception(
                 "Error handling request", exc_info=exc)
 
-        if not resp.prepared:
-            yield from resp.prepare(request)
+        yield from resp.prepare(request)
         yield from resp.write_eof()
 
         # notify server about keep-alive
@@ -152,7 +151,7 @@ class Server:
     def _make_request(self, message, payload, protocol):
         return BaseRequest(
             message, payload, protocol,
-            protocol.time_service, protocol._request_handler, loop=self._loop)
+            protocol._time_service, protocol._request_handler, loop=self._loop)
 
     @asyncio.coroutine
     def shutdown(self, timeout=None):

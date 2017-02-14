@@ -212,6 +212,7 @@ class HttpRequestParser(HttpParser):
         # read headers
         headers, raw_headers, \
             close, compression, upgrade, chunked = self.parse_headers(lines)
+
         if close is None:  # then the headers weren't set in the request
             if version <= HttpVersion10:  # HTTP 1.0 must asks to not close
                 close = True

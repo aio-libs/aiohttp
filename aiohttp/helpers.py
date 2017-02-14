@@ -28,6 +28,8 @@ try:
 except ImportError:
     ensure_future = asyncio.async
 
+PY_35 = sys.version_info >= (3, 5)
+PY_352 = sys.version_info >= (3, 5, 2)
 
 if sys.version_info >= (3, 4, 3):
     from http.cookies import SimpleCookie  # noqa
@@ -91,12 +93,13 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
         return 'Basic %s' % base64.b64encode(creds).decode(self.encoding)
 
 
-def create_future(loop):
-    """Compatibility wrapper for the loop.create_future() call introduced in
-    3.5.2."""
-    if hasattr(loop, 'create_future'):
+if PY_352:
+    def create_future(loop):
         return loop.create_future()
-    else:
+else:
+    def create_future(loop):
+        """Compatibility wrapper for the loop.create_future() call introduced in
+        3.5.2."""
         return asyncio.Future(loop=loop)
 
 
@@ -548,6 +551,7 @@ class FrozenList(MutableSequence):
 
     def freeze(self):
         self._frozen = True
+        self._items = tuple(self._items)
 
     def __getitem__(self, index):
         return self._items[index]
@@ -777,7 +781,7 @@ class HeadersMixin:
     @property
     def content_type(self, *, _CONTENT_TYPE=hdrs.CONTENT_TYPE):
         """The value of content part for Content-Type HTTP header."""
-        raw = self.headers.get(_CONTENT_TYPE)
+        raw = self._headers.get(_CONTENT_TYPE)
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
         return self._content_type
@@ -785,7 +789,7 @@ class HeadersMixin:
     @property
     def charset(self, *, _CONTENT_TYPE=hdrs.CONTENT_TYPE):
         """The value of charset part for Content-Type HTTP header."""
-        raw = self.headers.get(_CONTENT_TYPE)
+        raw = self._headers.get(_CONTENT_TYPE)
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
         return self._content_dict.get('charset')
@@ -793,7 +797,7 @@ class HeadersMixin:
     @property
     def content_length(self, *, _CONTENT_LENGTH=hdrs.CONTENT_LENGTH):
         """The value of Content-Length HTTP header."""
-        l = self.headers.get(_CONTENT_LENGTH)
+        l = self._headers.get(_CONTENT_LENGTH)
         if l is None:
             return None
         else:

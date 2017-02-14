@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import sys
 from unittest import mock
 
 import pytest
@@ -312,6 +313,7 @@ def test_create_future_with_new_loop():
     assert expected == helpers.create_future(mock_loop)
 
 
+@pytest.mark.skipif(sys.version_info >= (3, 5, 2), reason='new python')
 def test_create_future_with_old_loop(mocker):
     MockFuture = mocker.patch('asyncio.Future')
     # The old loop (without create_future()) should just have a Future object
