@@ -24,6 +24,7 @@ class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
 
         self._payload = None
         self._payload_parser = None
+        self._reading_paused = False
 
         self._timer = None
         self._skip_status = ()
