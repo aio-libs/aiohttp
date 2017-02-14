@@ -1,8 +1,6 @@
 import os
 from unittest import mock
 
-from yarl import URL
-
 from aiohttp import hdrs, helpers
 from aiohttp.file_sender import FileSender
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request

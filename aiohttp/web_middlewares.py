@@ -53,13 +53,14 @@ def normalize_path_middleware(
 
             if isinstance(request.match_info.route, SystemRoute):
                 paths_to_check = []
+                path = request.raw_path
                 if merge_slashes:
-                    paths_to_check.append(re.sub('//+', '/', request.path))
+                    paths_to_check.append(re.sub('//+', '/', path))
                 if append_slash and not request.path.endswith('/'):
-                    paths_to_check.append(request.path + '/')
+                    paths_to_check.append(path + '/')
                 if merge_slashes and append_slash:
                     paths_to_check.append(
-                        re.sub('//+', '/', request.path + '/'))
+                        re.sub('//+', '/', path + '/'))
 
                 for path in paths_to_check:
                     resolves, request = yield from _check_request_resolves(
