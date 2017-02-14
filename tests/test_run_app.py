@@ -310,7 +310,9 @@ def test_run_app_abstract_linux_socket(loop, mocker):
 
     loop.call_later(0.05, loop.stop)
     app = web.Application(loop=loop)
-    web.run_app(app, path=sock_path, print=lambda *args: None)
+    web.run_app(
+        app, path=sock_path.decode('ascii', 'ignore'),
+        print=lambda *args: None)
     assert loop.is_closed()
 
     # New app run using same socket path
