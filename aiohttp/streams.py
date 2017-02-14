@@ -10,7 +10,7 @@ from .log import internal_logger
 
 __all__ = (
     'EofStream', 'StreamReader', 'StreamWriter', 'DataQueue',
-    'ChunksQueue', 'FlowControlStreamReader',
+    'ChunksQueue', 'FlowControlStreamReader', 'EMPTY_PAYLOAD',
     'FlowControlDataQueue', 'FlowControlChunksQueue')
 
 PY_35 = sys.version_info >= (3, 5)
@@ -522,6 +522,9 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
 
     def read_nowait(self):
         return b''
+
+
+EMPTY_PAYLOAD = EmptyStreamReader()
 
 
 class DataQueue:

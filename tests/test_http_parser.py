@@ -100,21 +100,21 @@ class TestParseHeaders(unittest.TestCase):
 
     def test_max_field_size(self):
         with self.assertRaises(errors.LineTooLong) as cm:
-            parser = protocol.HttpParser(8190, 32768, 5)
+            parser = protocol.HttpParser(None, None, 8190, 32768, 5)
             parser.parse_headers(
                 [b'', b'test: line data data\r\n', b'data\r\n', b'\r\n'])
         self.assertIn("request header field TEST", str(cm.exception))
 
     def test_max_continuation_headers_size(self):
         with self.assertRaises(errors.LineTooLong) as cm:
-            parser = protocol.HttpParser(8190, 32768, 5)
+            parser = protocol.HttpParser(None, None, 8190, 32768, 5)
             parser.parse_headers([b'', b'test: line\r\n',
                                   b' test\r\n', b'\r\n'])
         self.assertIn("request header field TEST", str(cm.exception))
 
     def test_max_header_size(self):
         with self.assertRaises(errors.LineTooLong) as cm:
-            parser = protocol.HttpParser(5, 5, 5)
+            parser = protocol.HttpParser(None, None, 5, 5, 5)
             parser.parse_headers(
                 [b'', b'test: line data data\r\n', b'data\r\n', b'\r\n'])
         self.assertIn("request header", str(cm.exception))

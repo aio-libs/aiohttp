@@ -8,6 +8,14 @@ from yarl import URL
 import aiohttp
 import aiohttp.helpers
 import aiohttp.web
+from aiohttp.test_utils import loop_context
+
+
+@pytest.yield_fixture
+def loop():
+    """Return an instance of the event loop."""
+    with loop_context() as _loop:
+        yield _loop
 
 
 @pytest.fixture
@@ -267,9 +275,9 @@ def test_proxy_http_multi_conn_limit(proxy_test_server, loop):
     yield from sess.close()
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 @asyncio.coroutine
-def test_proxy_https_connect(proxy_test_server, get_request):
+def _test_proxy_https_connect(proxy_test_server, get_request):
     proxy = yield from proxy_test_server()
     url = 'https://www.google.com.ua/search?q=aiohttp proxy'
 
@@ -284,9 +292,9 @@ def test_proxy_https_connect(proxy_test_server, get_request):
     assert proxy.request.path_qs == '/search?q=aiohttp+proxy'
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 @asyncio.coroutine
-def test_proxy_https_connect_with_port(proxy_test_server, get_request):
+def _test_proxy_https_connect_with_port(proxy_test_server, get_request):
     proxy = yield from proxy_test_server()
     url = 'https://secure.aiohttp.io:2242/path'
 
@@ -301,9 +309,9 @@ def test_proxy_https_connect_with_port(proxy_test_server, get_request):
     assert proxy.request.path_qs == '/path'
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 @asyncio.coroutine
-def test_proxy_https_send_body(proxy_test_server, loop):
+def _test_proxy_https_send_body(proxy_test_server, loop):
     sess = aiohttp.ClientSession(loop=loop)
     proxy = yield from proxy_test_server()
     proxy.return_value = {'status': 200, 'body': b'1'*(2**20)}
@@ -317,9 +325,9 @@ def test_proxy_https_send_body(proxy_test_server, loop):
     assert body == b'1'*(2**20)
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 @asyncio.coroutine
-def test_proxy_https_idna_support(proxy_test_server, get_request):
+def _test_proxy_https_idna_support(proxy_test_server, get_request):
     url = 'https://éé.com/'
     proxy = yield from proxy_test_server()
 
@@ -356,9 +364,9 @@ def test_proxy_https_bad_response(proxy_test_server, get_request):
     assert proxy.request.path == 'secure.aiohttp.io:443'
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 @asyncio.coroutine
-def test_proxy_https_auth(proxy_test_server, get_request):
+def _test_proxy_https_auth(proxy_test_server, get_request):
     url = 'https://secure.aiohttp.io/path'
     auth = aiohttp.helpers.BasicAuth('user', 'pass')
 
@@ -400,9 +408,9 @@ def test_proxy_https_auth(proxy_test_server, get_request):
     assert 'Proxy-Authorization' not in proxy.request.headers
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 @asyncio.coroutine
-def test_proxy_https_acquired_cleanup(proxy_test_server, loop):
+def _test_proxy_https_acquired_cleanup(proxy_test_server, loop):
     url = 'https://secure.aiohttp.io/path'
 
     conn = aiohttp.TCPConnector(loop=loop)
@@ -426,9 +434,9 @@ def test_proxy_https_acquired_cleanup(proxy_test_server, loop):
     yield from sess.close()
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 @asyncio.coroutine
-def test_proxy_https_acquired_cleanup_force(proxy_test_server, loop):
+def _test_proxy_https_acquired_cleanup_force(proxy_test_server, loop):
     url = 'https://secure.aiohttp.io/path'
 
     conn = aiohttp.TCPConnector(force_close=True, loop=loop)
@@ -452,9 +460,9 @@ def test_proxy_https_acquired_cleanup_force(proxy_test_server, loop):
     yield from sess.close()
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 @asyncio.coroutine
-def test_proxy_https_multi_conn_limit(proxy_test_server, loop):
+def _test_proxy_https_multi_conn_limit(proxy_test_server, loop):
     url = 'https://secure.aiohttp.io/path'
     capacity, multi_conn_num = 1, 5
 
