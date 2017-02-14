@@ -135,7 +135,7 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         self._request_handlers = []
         self._max_concurrent_handlers = max_concurrent_handlers
 
-        self._conn_upgraded = False
+        self._upgrade = False
         self._payload_parser = None
         self._request_parser = aiohttp.HttpRequestParser(
             max_line_size=max_line_size,
@@ -143,6 +143,7 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             max_headers=max_headers)
 
         self.transport = None
+        self._reading_paused = False
 
         self.logger = logger
         self.debug = debug
@@ -240,6 +241,10 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
         self._payload_parser = parser
 
+        if self._message_tail:
+            self._payload_parser.feed_data(self._message_tail)
+            self._message_tail = b''
+
     def eof_received(self):
         pass
 
@@ -261,9 +266,9 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
         # read HTTP message (request line + headers), \r\n\r\n
         # and split by lines
-        if self._payload_parser is None and not self._conn_upgraded:
+        if self._payload_parser is None and not self._upgrade:
             if self._message_tail:
-                data = self._message_tail + data
+                data, self._message_tail = self._message_tail + data, b''
 
             start_pos = 0
             while True:
@@ -318,7 +323,7 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                             self._reading_request = True
                             self._message_lines.clear()
 
-                        self._conn_upgraded = msg.upgrade
+                        self._upgrade = msg.upgrade
 
                         # calculate payload
                         empty_payload = True
@@ -339,8 +344,7 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                                 self, loop=self._loop)
                             self._payload_parser = HttpPayloadParser(
                                 payload, method=msg.method,
-                                compression=msg.compression,
-                                readall=True)
+                                compression=msg.compression, readall=True)
                         else:
                             payload = EMPTY_PAYLOAD
 
@@ -357,18 +361,17 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
                         start_pos = start_pos+2
                         if start_pos < len(data):
-                            if empty_payload and not self._conn_upgraded:
+                            if empty_payload and not self._upgrade:
                                 continue
 
-                            self._message_tail = None
                             self.data_received(data[start_pos:])
                         return
                 else:
                     self._message_tail = data[start_pos:]
                     return
 
-        # feed parser
-        elif self._payload_parser is None and self._conn_upgraded:
+        # no parser, just store
+        elif self._payload_parser is None and self._upgrade:
             assert not self._message_lines
             if data:
                 self._message_tail += data
@@ -383,6 +386,7 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
                     if tail:
                         super().data_received(tail)
+
 
     def keep_alive(self, val):
         """Set keep-alive connection mode.

@@ -605,7 +605,7 @@ def test_timeout_on_reading_data(loop, test_client):
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
-    resp = yield from client.get('/', timeout=0.05)
+    resp = yield from client.get('/', timeout=0.01)
 
     with pytest.raises(asyncio.TimeoutError):
         yield from resp.read()
