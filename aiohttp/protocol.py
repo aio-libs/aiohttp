@@ -8,6 +8,7 @@ import string
 import sys
 import zlib
 from abc import ABC, abstractmethod
+from enum import IntEnum
 from wsgiref.handlers import format_date_time
 
 from multidict import CIMultiDict, istr
@@ -40,10 +41,12 @@ PARSE_LENGTH = 1
 PARSE_CHUNKED = 2
 PARSE_UNTIL_EOF = 3
 
-PARSE_CHUNKED_SIZE = 0
-PARSE_CHUNKED_CHUNK = 1
-PARSE_CHUNKED_CHUNK_EOF = 2
-PARSE_CHUNKED_TRAILERS = 3
+
+class ChunkState(IntEnum):
+    PARSE_CHUNKED_SIZE = 0
+    PARSE_CHUNKED_CHUNK = 1
+    PARSE_CHUNKED_CHUNK_EOF = 2
+    PARSE_CHUNKED_TRAILERS = 3
 
 
 HttpVersion = collections.namedtuple(
@@ -219,19 +222,6 @@ class HttpRequestParser(HttpParser):
             method, path, version, headers, raw_headers,
             close, compression, upgrade, chunked)
 
-    def __call__(self, out, buf):
-        # read HTTP message (request line + headers)
-        try:
-            raw_data = yield from buf.readuntil(
-                b'\r\n\r\n', self.max_headers)
-        except errors.LineLimitExceededParserError as exc:
-            raise errors.LineTooLong('request header', exc.limit) from None
-
-        lines = raw_data.split(b'\r\n')
-
-        out.feed_data(self.parse_message(lines), len(raw_data))
-        out.feed_eof()
-
 
 class HttpResponseParser(HttpParser):
     """Read response status line and headers.
@@ -277,86 +267,71 @@ class HttpResponseParser(HttpParser):
             version, status, reason.strip(),
             headers, raw_headers, close, compression, upgrade, chunked)
 
-    def __call__(self, out, buf):
-        # read HTTP message (response line + headers)
-        try:
-            raw_data = yield from buf.readuntil(
-                b'\r\n\r\n', self.max_line_size + self.max_headers)
-        except errors.LineLimitExceededParserError as exc:
-            raise errors.LineTooLong('response header', exc.limit) from None
-
-        lines = raw_data.split(b'\r\n')
-
-        out.feed_data(self.parse_message(lines), len(raw_data))
-        out.feed_eof()
-
 
 class HttpPayloadParser:
 
-    def __init__(self, message, length=None, compression=True,
+    def __init__(self, payload,
+                 length=None, chunked=False, compression=None,
+                 code=None, method=None,
                  readall=False, response_with_body=True):
-        self.message = message
-        self.length = length
-        self.compression = compression
-        self.readall = readall
-        self.response_with_body = response_with_body
-        self.payload = None
+        self.payload = payload
 
+        self._length = 0
         self._type = PARSE_NONE
-        self._chunk = PARSE_CHUNKED_SIZE
+        self._chunk = ChunkState.PARSE_CHUNKED_SIZE
         self._chunk_size = 0
         self._chunk_tail = b''
+        self.done = False
 
-    def start(self, length, payload):
         # payload decompression wrapper
-        if (self.response_with_body and
-                self.compression and self.message.compression):
-            payload = DeflateBuffer(payload, self.message.compression)
+        if (response_with_body and compression):
+            payload = DeflateBuffer(payload, compression)
 
         # payload parser
-        if not self.response_with_body:
+        if not response_with_body:
             # don't parse payload if it's not expected to be received
             self._type = PARSE_NONE
             payload.feed_eof()
-            return False
-        elif self.message.chunked:
+            self.done = True
+
+        elif chunked:
             self._type = PARSE_CHUNKED
         elif length is not None:
             self._type = PARSE_LENGTH
-            self.length = length
+            self._length = length
+            if self._length == 0:
+                payload.feed_eof()
+                self.done = True
         else:
-            if self.readall and getattr(self.message, 'code', 0) != 204:
-                self.length = None
+            if readall and code != 204:
                 self._type = PARSE_UNTIL_EOF
-            elif getattr(self.message, 'method', None) in ('PUT', 'POST'):
+            elif method in ('PUT', 'POST'):
                 internal_logger.warning(  # pragma: no cover
                     'Content-Length or Transfer-Encoding header is required')
                 self._type = PARSE_NONE
                 payload.feed_eof()
-                return False
+                self.done = True
 
         self.payload = payload
-        return True
 
     def feed_eof(self):
         if self._type == PARSE_UNTIL_EOF:
             self.payload.feed_eof()
 
     def feed_data(self, chunk, SEP=b'\r\n', CHUNK_EXT=b';'):
-
         # Read specified amount of bytes
         if self._type == PARSE_LENGTH:
-            required = self.length
+            required = self._length
             chunk_len = len(chunk)
 
             if required >= chunk_len:
-                self.length = required - chunk_len
+                self._length = required - chunk_len
                 self.payload.feed_data(chunk, chunk_len)
-                if self.length == 0:
+                if self._length == 0:
                     self.payload.feed_eof()
                     return True, b''
             else:
-                self.length = 0
+                self._length = 0
                 self.payload.feed_data(chunk[:required], required)
                 self.payload.feed_eof()
                 return True, chunk[required:]
@@ -365,11 +340,12 @@ class HttpPayloadParser:
         elif self._type == PARSE_CHUNKED:
             if self._chunk_tail:
                 chunk = self._chunk_tail + chunk
+                self._chunk_tail = b''
 
             while chunk:
 
                 # read next chunk size
-                if self._chunk == PARSE_CHUNKED_SIZE:
+                if self._chunk == ChunkState.PARSE_CHUNKED_SIZE:
                     pos = chunk.find(SEP)
                     if pos >= 0:
                         if pos > 0:
@@ -384,28 +360,29 @@ class HttpPayloadParser:
                         try:
                             size = int(size, 16)
                         except ValueError:
-                            raise errors.TransferEncodingError(
-                                chunk[:pos]) from None
+                            exc = errors.TransferEncodingError(chunk[:pos])
+                            self.payload.set_exception(exc)
+                            raise exc from None
 
                         chunk = chunk[pos+2:]
                         if size == 0:  # eof marker
-                            self._chunk = PARSE_CHUNKED_TRAILERS
+                            self._chunk = ChunkState.PARSE_CHUNKED_TRAILERS
                         else:
-                            self._chunk = PARSE_CHUNKED_CHUNK
+                            self._chunk = ChunkState.PARSE_CHUNKED_CHUNK
                             self._chunk_size = size
                     else:
                         self._chunk_tail = chunk
                         return False, None
 
                 # read chunk and feed buffer
-                if self._chunk == PARSE_CHUNKED_CHUNK:
+                if self._chunk == ChunkState.PARSE_CHUNKED_CHUNK:
                     required = self._chunk_size
                     chunk_len = len(chunk)
 
                     if required >= chunk_len:
                         self._chunk_size = required - chunk_len
                         if self._chunk_size == 0:
-                            self._chunk = PARSE_CHUNKED_CHUNK_EOF
+                            self._chunk = ChunkState.PARSE_CHUNKED_CHUNK_EOF
 
                         self.payload.feed_data(chunk, chunk_len)
                         return False, None
@@ -413,19 +390,19 @@ class HttpPayloadParser:
                         self._chunk_size = 0
                         self.payload.feed_data(chunk[:required], required)
                         chunk = chunk[required:]
-                        self._chunk = PARSE_CHUNKED_CHUNK_EOF
+                        self._chunk = ChunkState.PARSE_CHUNKED_CHUNK_EOF
 
                 # toss the CRLF at the end of the chunk
-                if self._chunk == PARSE_CHUNKED_CHUNK_EOF:
+                if self._chunk == ChunkState.PARSE_CHUNKED_CHUNK_EOF:
                     if chunk[:2] == SEP:
                         chunk = chunk[2:]
-                        self._chunk = PARSE_CHUNKED_SIZE
+                        self._chunk = ChunkState.PARSE_CHUNKED_SIZE
                     else:
                         self._chunk_tail = chunk
                         return False, None
 
                 # read and discard trailer up to the CRLF terminator
-                if self._chunk == PARSE_CHUNKED_TRAILERS:
+                if self._chunk == ChunkState.PARSE_CHUNKED_TRAILERS:
                     pos = chunk.find(SEP)
                     if pos >= 0:
                         self.payload.feed_eof()
@@ -439,93 +416,6 @@ class HttpPayloadParser:
             self.payload.feed_data(chunk, len(chunk))
 
         return False, None
-
-    def __call__(self, out, buf):
-        # payload params
-        length = self.message.headers.get(hdrs.CONTENT_LENGTH, self.length)
-        if hdrs.SEC_WEBSOCKET_KEY1 in self.message.headers:
-            length = 8
-
-        # payload decompression wrapper
-        if (self.response_with_body and
-                self.compression and self.message.compression):
-            out = DeflateBuffer(out, self.message.compression)
-
-        # payload parser
-        if not self.response_with_body:
-            # don't parse payload if it's not expected to be received
-            pass
-
-        elif 'chunked' in self.message.headers.get(
-                hdrs.TRANSFER_ENCODING, ''):
-            yield from self.parse_chunked_payload(out, buf)
-
-        elif length is not None:
-            try:
-                length = int(length)
-            except ValueError:
-                raise errors.InvalidHeader(hdrs.CONTENT_LENGTH) from None
-
-            if length < 0:
-                raise errors.InvalidHeader(hdrs.CONTENT_LENGTH)
-            elif length > 0:
-                yield from self.parse_length_payload(out, buf, length)
-        else:
-            if self.readall and getattr(self.message, 'code', 0) != 204:
-                yield from self.parse_eof_payload(out, buf)
-            elif getattr(self.message, 'method', None) in ('PUT', 'POST'):
-                internal_logger.warning(  # pragma: no cover
-                    'Content-Length or Transfer-Encoding header is required')
-
-        out.feed_eof()
-
-    def parse_chunked_payload(self, out, buf):
-        """Chunked transfer encoding parser."""
-        while True:
-            # read next chunk size
-            line = yield from buf.readuntil(b'\r\n', 8192)
-
-            i = line.find(b';')
-            if i >= 0:
-                line = line[:i]  # strip chunk-extensions
-            else:
-                line = line.strip()
-            try:
-                size = int(line, 16)
-            except ValueError:
-                raise errors.TransferEncodingError(line) from None
-
-            if size == 0:  # eof marker
-                break
-
-            # read chunk and feed buffer
-            while size:
-                chunk = yield from buf.readsome(size)
-                out.feed_data(chunk, len(chunk))
-                size = size - len(chunk)
-
-            # toss the CRLF at the end of the chunk
-            yield from buf.skip(2)
-
-        # read and discard trailer up to the CRLF terminator
-        yield from buf.skipuntil(b'\r\n')
-
-    def parse_length_payload(self, out, buf, length=0):
-        """Read specified amount of bytes."""
-        required = length
-        while required:
-            chunk = yield from buf.readsome(required)
-            out.feed_data(chunk, len(chunk))
-            required -= len(chunk)
-
-    def parse_eof_payload(self, out, buf):
-        """Read all bytes until eof."""
-        try:
-            while True:
-                chunk = yield from buf.readsome()
-                out.feed_data(chunk, len(chunk))
-        except aiohttp.EofStream:
-            pass
 
 
 class DeflateBuffer:
@@ -580,7 +470,7 @@ class PayloadWriter:
         self._drain_waiter = None
 
         if self._stream.available:
-            self._transport = self._stream
+            self._transport = self._stream.transport
             self._stream.available = False
         else:
             self._stream.acquire(self.set_transport)
@@ -708,7 +598,7 @@ class PayloadWriter:
             if self._buffer:
                 self._transport.write(b''.join(self._buffer))
                 self._buffer.clear()
-            yield from self._transport.drain()
+            yield from self._stream.drain()
         else:
             if self._buffer:
                 if self._drain_waiter is None:

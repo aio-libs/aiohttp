@@ -172,7 +172,7 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
             srv.handle_request(self.message, self.payload))
 
         content = b''.join(
-            [c[1][0] for c in self.writer.write.mock_calls])
+            [c[1][0] for c in self.writer.transport.write.mock_calls])
         self.assertTrue(content.startswith(b'HTTP/1.0 200 OK'))
         self.assertTrue(content.endswith(b'data'))
 
@@ -195,7 +195,7 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
             srv.handle_request(self.message, self.payload))
 
         content = b''.join(
-            [c[1][0] for c in self.writer.write.mock_calls])
+            [c[1][0] for c in self.writer.transport.write.mock_calls])
         self.assertTrue(content.startswith(b'HTTP/1.1 200 OK'))
         self.assertTrue(content.endswith(b'data\r\n0\r\n\r\n'))
         self.assertFalse(srv._keepalive)
@@ -212,7 +212,7 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
             srv.handle_request(self.message, self.payload))
 
         content = b''.join(
-            [c[1][0] for c in self.writer.write.mock_calls])
+            [c[1][0] for c in self.writer.transport.write.mock_calls])
         self.assertTrue(content.startswith(b'HTTP/1.0 200 OK'))
         self.assertTrue(content.endswith(b'data'))
 
@@ -236,7 +236,7 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
             srv.handle_request(self.message, self.payload))
 
         content = b''.join(
-            [c[1][0] for c in self.writer.write.mock_calls])
+            [c[1][0] for c in self.writer.transport.write.mock_calls])
         self.assertTrue(content.startswith(b'HTTP/1.1 200 OK'))
         self.assertTrue(content.endswith(b'data\r\n0\r\n\r\n'))
         self.assertTrue(srv._keepalive)
@@ -253,7 +253,7 @@ class TestHttpWsgiServerProtocol(unittest.TestCase):
             srv.handle_request(self.message, self.payload))
 
         content = b''.join(
-            [c[1][0] for c in self.writer.write.mock_calls])
+            [c[1][0] for c in self.writer.transport.write.mock_calls])
         self.assertTrue(content.startswith(b'HTTP/1.0 200 OK'))
         self.assertTrue(content.endswith(b'data'))
 

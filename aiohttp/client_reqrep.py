@@ -679,8 +679,6 @@ class ClientResponse(HeadersMixin):
             self._closed = True
             if self._connection is not None:
                 self._connection.release()
-                #if self._reader is not None:
-                #self._reader.unset_parser()
                 self._connection = None
             self._cleanup_writer()
             self._notify_content()

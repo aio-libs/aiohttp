@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 import aiohttp
@@ -16,7 +18,7 @@ async def test_close_resp_on_error_async_with_session(loop, test_server):
         resp = web.StreamResponse(headers={'content-length': '100'})
         await resp.prepare(request)
         await resp.drain()
-        await asycio.sleep(0.1, loop=request.app.loop)
+        await asyncio.sleep(0.1, loop=request.app.loop)
         return resp
 
     app = web.Application(loop=loop)
@@ -52,7 +54,7 @@ async def test_non_close_detached_session_on_error_cm(loop, test_server):
         resp = web.StreamResponse(headers={'content-length': '100'})
         await resp.prepare(request)
         await resp.drain()
-        await asycio.sleep(0.1, loop=request.app.loop)
+        await asyncio.sleep(0.1, loop=request.app.loop)
         return resp
 
     app = web.Application(loop=loop)

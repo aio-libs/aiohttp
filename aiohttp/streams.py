@@ -1,6 +1,7 @@
 import asyncio
 import collections
 import functools
+import socket
 import sys
 import traceback
 
@@ -8,7 +9,7 @@ from . import helpers
 from .log import internal_logger
 
 __all__ = (
-    'EofStream', 'StreamReader', 'DataQueue', 'ChunksQueue',
+    'EofStream', 'StreamReader', 'StreamWriter', 'DataQueue', 'ChunksQueue',
     'FlowControlStreamReader',
     'FlowControlDataQueue', 'FlowControlChunksQueue')
 
@@ -18,8 +19,117 @@ PY_352 = sys.version_info >= (3, 5, 2)
 DEFAULT_LIMIT = 2 ** 16
 
 
+if hasattr(socket, 'TCP_CORK'):  # pragma: no cover
+    CORK = socket.TCP_CORK
+elif hasattr(socket, 'TCP_NOPUSH'):  # pragma: no cover
+    CORK = socket.TCP_NOPUSH
+else:  # pragma: no cover
+    CORK = None
+
+
 class EofStream(Exception):
     """eof stream indication."""
+
+
+class StreamWriter:
+
+    def __init__(self, protocol, transport, loop):
+        self._protocol = protocol
+        self._loop = loop
+        self._tcp_nodelay = False
+        self._tcp_cork = False
+        self._socket = transport.get_extra_info('socket')
+        self._waiters = []
+        self.available = True
+        self.transport = transport
+
+    def acquire(self, cb):
+        if self.available:
+            self.available = False
+            cb(self.transport)
+        else:
+            self._waiters.append(cb)
+
+    def release(self):
+        if self._waiters:
+            self.available = False
+            cb = self._waiters.pop(0)
+            cb(self)
+        else:
+            self.available = True
+
+    def is_connected(self):
+        return self.transport is not None
+
+    @property
+    def tcp_nodelay(self):
+        return self._tcp_nodelay
+
+    def set_tcp_nodelay(self, value):
+        value = bool(value)
+        if self._tcp_nodelay == value:
+            return
+        if self._socket is None:
+            return
+        if self._socket.family not in (socket.AF_INET, socket.AF_INET6):
+            return
+
+        # socket may be closed already, on windows OSError get raised
+        try:
+            if self._tcp_cork:
+                if CORK is not None:  # pragma: no branch
+                    self._socket.setsockopt(socket.IPPROTO_TCP, CORK, False)
+                    self._tcp_cork = False
+
+            self._socket.setsockopt(
+                socket.IPPROTO_TCP, socket.TCP_NODELAY, value)
+            self._tcp_nodelay = value
+        except OSError:
+            pass
+
+    @property
+    def tcp_cork(self):
+        return self._tcp_cork
+
+    def set_tcp_cork(self, value):
+        value = bool(value)
+        if self._tcp_cork == value:
+            return
+        if self._socket is None:
+            return
+        if self._socket.family not in (socket.AF_INET, socket.AF_INET6):
+            return
+
+        try:
+            if self._tcp_nodelay:
+                self._socket.setsockopt(
+                    socket.IPPROTO_TCP, socket.TCP_NODELAY, False)
+                self._tcp_nodelay = False
+            if CORK is not None:  # pragma: no branch
+                self._socket.setsockopt(socket.IPPROTO_TCP, CORK, value)
+                self._tcp_cork = value
+        except OSError:
+            pass
+
+    @asyncio.coroutine
+    def drain(self):
+        """Flush the write buffer.
+
+        The intended use is to write
+
+          w.write(data)
+          yield from w.drain()
+        """
+        if self.transport is not None:
+            if self.transport.is_closing():
+                # Yield to the event loop so connection_lost() may be
+                # called.  Without this, _drain_helper() would return
+                # immediately, and code that calls
+                #     write(...); yield from drain()
+                # in a loop would never call connection_lost(), so it
+                # would not see an error when the socket is closed.
+                yield
+        yield from self._protocol._drain_helper()
 
 
 if PY_35:
@@ -533,7 +643,7 @@ class FlowControlStreamReader(StreamReader):
         self._allow_pause = False
 
         # resume transport reading
-        if stream.paused:
+        if stream._paused:
             try:
                 self._stream.transport.resume_reading()
             except (AttributeError, NotImplementedError):
@@ -543,14 +653,14 @@ class FlowControlStreamReader(StreamReader):
                 self._allow_pause = True
 
     def _check_buffer_size(self):
-        if self._stream.paused:
+        if self._stream._paused:
             if self._buffer_size < self._b_limit:
                 try:
                     self._stream.transport.resume_reading()
                 except (AttributeError, NotImplementedError):
                     pass
                 else:
-                    self._stream.paused = False
+                    self._stream._paused = False
         else:
             if self._buffer_size > self._b_limit:
                 try:
@@ -558,21 +668,21 @@ class FlowControlStreamReader(StreamReader):
                 except (AttributeError, NotImplementedError):
                     pass
                 else:
-                    self._stream.paused = True
+                    self._stream._paused = True
 
     def feed_data(self, data, size=0):
         has_waiter = self._waiter is not None and not self._waiter.cancelled()
 
         super().feed_data(data)
 
-        if (self._allow_pause and not self._stream.paused and
+        if (self._allow_pause and not self._stream._paused and
                 not has_waiter and self._buffer_size > self._b_limit):
             try:
                 self._stream.transport.pause_reading()
             except (AttributeError, NotImplementedError):
                 pass
             else:
-                self._stream.paused = True
+                self._stream._paused = True
 
     @maybe_resume
     @asyncio.coroutine
@@ -612,13 +722,13 @@ class FlowControlDataQueue(DataQueue):
         self._allow_pause = False
 
         # resume transport reading
-        if stream.paused:
+        if stream._paused:
             try:
                 self._stream.transport.resume_reading()
             except (AttributeError, NotImplementedError):
                 pass
             else:
-                self._stream.paused = False
+                self._stream._paused = False
                 self._allow_pause = True
 
     def feed_data(self, data, size):
@@ -626,27 +736,27 @@ class FlowControlDataQueue(DataQueue):
 
         super().feed_data(data, size)
 
-        if (self._allow_pause and not self._stream.paused and
+        if (self._allow_pause and not self._stream._paused and
                 not has_waiter and self._size > self._limit):
             try:
                 self._stream.transport.pause_reading()
             except (AttributeError, NotImplementedError):
                 pass
             else:
-                self._stream.paused = True
+                self._stream._paused = True
 
     @asyncio.coroutine
     def read(self):
         result = yield from super().read()
 
-        if self._stream.paused:
+        if self._stream._paused:
             if self._size < self._limit:
                 try:
                     self._stream.transport.resume_reading()
                 except (AttributeError, NotImplementedError):
                     pass
                 else:
-                    self._stream.paused = False
+                    self._stream._paused = False
         else:
             if self._size > self._limit:
                 try:
@@ -654,7 +764,7 @@ class FlowControlDataQueue(DataQueue):
                 except (AttributeError, NotImplementedError):
                     pass
                 else:
-                    self._stream.paused = True
+                    self._stream._paused = True
 
         return result
 

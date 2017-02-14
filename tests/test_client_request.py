@@ -47,6 +47,7 @@ def transport():
     transport.acquire.side_effect = acquire
     transport.write.side_effect = write
     transport.writer.write.side_effect = write
+    transport.writer.transport.write.side_effect = write
     transport.writer.drain.return_value = ()
     transport.drain.return_value = ()
 
@@ -848,7 +849,7 @@ def test_data_stream_exc(loop):
     helpers.ensure_future(exc(), loop=loop)
 
     conn = mock.Mock(acquire=acquire)
-    resp = req.send(conn)
+    req.send(conn)
     yield from req._writer
     # assert conn.close.called
     assert conn.protocol.set_exception.called
@@ -891,7 +892,7 @@ def test_data_stream_exc_chain(loop, transport):
     helpers.ensure_future(exc(), loop=loop)
 
     connection, _ = transport
-    resp = req.send(connection)
+    req.send(connection)
     yield from req._writer
     # assert connection.close.called
     assert connection.protocol.set_exception.called

@@ -28,7 +28,7 @@ def request(buf):
 
     def append(data):
         buf.extend(data)
-    writer.write.side_effect = append
+    writer.transport.write.side_effect = append
     app = mock.Mock()
     app._debug = False
     app.on_response_prepare = signals.Signal(app)

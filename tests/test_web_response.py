@@ -38,6 +38,7 @@ def transport():
 
     transport.acquire.side_effect = acquire
     transport.write.side_effect = write
+    transport.transport.write.side_effect = write
     transport.drain.return_value = ()
 
     return (transport, buf)
