@@ -37,19 +37,15 @@ def test_ctor(make_request):
 
     # just make sure that all lines of make_mocked_request covered
     headers = CIMultiDict(FOO='bar')
-    reader = mock.Mock()
-    writer = mock.Mock()
     payload = mock.Mock()
-    transport = mock.Mock()
+    protocol = mock.Mock()
     app = mock.Mock()
     req = make_request('GET', '/path/to?a=1&b=2', headers=headers,
-                       writer=writer, reader=reader, payload=payload,
-                       transport=transport, app=app)
+                       protocol=protocol, payload=payload, app=app)
     assert req.app is app
     assert req.content is payload
-    assert req.transport is transport
-    assert req._reader is reader
-    assert req._writer is writer
+    assert req.protocol is protocol
+    assert req.transport is protocol.transport
     assert req.headers == headers
     assert req.raw_headers == ((b'Foo', b'bar'),)
 

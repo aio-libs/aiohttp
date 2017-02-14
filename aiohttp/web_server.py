@@ -151,8 +151,7 @@ class Server:
 
     def _make_request(self, message, payload, protocol):
         return BaseRequest(
-            message, payload,
-            protocol.transport, protocol, protocol.writer,
+            message, payload, protocol,
             protocol.time_service, protocol._request_handler, loop=self._loop)
 
     @asyncio.coroutine

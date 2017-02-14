@@ -39,7 +39,7 @@ class WebSocketResponse(StreamResponse):
                  protocols=()):
         super().__init__(status=101)
         self._protocols = protocols
-        self._protocol = None
+        self._ws_protocol = None
         self._writer = None
         self._reader = None
         self._closed = False
@@ -98,16 +98,16 @@ class WebSocketResponse(StreamResponse):
         if payload_writer is not None:
             return payload_writer
 
-        parser, protocol, writer = self._pre_start(request)
+        protocol, writer = self._pre_start(request)
         payload_writer = yield from super().prepare(request)
-        self._post_start(request, parser, protocol, writer)
+        self._post_start(request, protocol, writer)
         yield from payload_writer.drain()
         return payload_writer
 
     def _pre_start(self, request):
         try:
-            status, headers, parser, writer, protocol = do_handshake(
-                request.method, request.headers, request._writer,
+            status, headers, _, writer, protocol = do_handshake(
+                request.method, request.headers, request._protocol.writer,
                 self._protocols)
         except HttpProcessingError as err:
             if err.code == 405:
@@ -126,15 +126,15 @@ class WebSocketResponse(StreamResponse):
         for k, v in headers:
             self.headers[k] = v
         self.force_close()
-        return parser, protocol, writer
+        return protocol, writer
 
-    def _post_start(self, request, parser, protocol, writer):
-        self._protocol = protocol
+    def _post_start(self, request, protocol, writer):
+        self._ws_protocol = protocol
         self._loop = request.app.loop
         self._writer = writer
         self._reader = FlowControlDataQueue(
-            request._reader, limit=2 ** 16, loop=self._loop)
-        request._reader.set_parser(WebSocketReader(self._reader))
+            request._protocol, limit=2 ** 16, loop=self._loop)
+        request.protocol.set_parser(WebSocketReader(self._reader))
 
     def can_prepare(self, request):
         if self._writer is not None:
@@ -157,8 +157,8 @@ class WebSocketResponse(StreamResponse):
         return self._close_code
 
     @property
-    def protocol(self):
-        return self._protocol
+    def ws_protocol(self):
+        return self._ws_protocol
 
     def exception(self):
         return self._exception

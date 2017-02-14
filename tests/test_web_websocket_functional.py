@@ -506,7 +506,7 @@ def test_handle_protocol(loop, test_client):
         ws = web.WebSocketResponse(protocols=('foo', 'bar'))
         yield from ws.prepare(request)
         yield from ws.close()
-        assert 'bar' == ws.protocol
+        assert 'bar' == ws.ws_protocol
         closed.set_result(None)
         return ws
 
