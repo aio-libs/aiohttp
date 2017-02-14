@@ -107,7 +107,7 @@ def test_non_ascii_path(make_request):
 
 def test_non_ascii_raw_path(make_request):
     req = make_request('GET', '/путь')
-    assert '/%D0%BF%D1%83%D1%82%D1%8C' == req.raw_path
+    assert '/путь' == req.raw_path
 
 
 def test_content_length(make_request):

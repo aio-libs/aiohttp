@@ -70,15 +70,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._cache = {}
         self._task = task
 
-        # rel_url
-        # special case for path started with `//`
-        # if path starts with // it is valid host, but in case of web server
-        # liklyhood of it beein malformed path is much higher
-        url = URL(message.path)
-        if message.path.startswith('//'):
-            self.rel_url = url.with_path(message.path.split('?')[0])
-        else:
-            self.rel_url = url
+        self.rel_url = URL(message.path)
 
     def clone(self, *, method=sentinel, rel_url=sentinel,
               headers=sentinel):
@@ -219,10 +211,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         E.g., ``/my%2Fpath%7Cwith%21some%25strange%24characters``
         """
-        warnings.warn("raw_path property is deprecated, "
-                      "use .rel_url.raw_path instead",
-                      DeprecationWarning)
-        return self.rel_url.raw_path
+        return self._message.path
 
     @reify
     def path(self):
