@@ -1,6 +1,7 @@
 """simple HTTP server."""
 
 import asyncio
+import asyncio.streams
 import http.server
 import socket
 import traceback
@@ -14,6 +15,7 @@ from aiohttp import errors, hdrs, helpers, streams
 from aiohttp.helpers import TimeService, create_future, ensure_future
 from aiohttp.log import access_logger, server_logger
 from aiohttp.protocol import HttpPayloadParser
+from aiohttp.streams import StreamWriter
 
 __all__ = ('ServerHttpProtocol',)
 
@@ -42,7 +44,7 @@ else:
 EMPTY_PAYLOAD = streams.EmptyStreamReader()
 
 
-class ServerHttpProtocol(aiohttp.StreamProtocol):
+class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     """Simple HTTP protocol implementation.
 
     ServerHttpProtocol handles incoming HTTP request. It reads request line,
@@ -108,9 +110,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             warnings.warn(
                 'slow_request_timeout is deprecated', DeprecationWarning)
 
-        super().__init__(
-            loop=loop,
-            disconnect_error=errors.ClientDisconnectedError, **kwargs)
+        super().__init__(loop=loop)
 
         self._loop = loop if loop is not None else asyncio.get_event_loop()
         if time_service is not None:
@@ -141,6 +141,8 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
             max_line_size=max_line_size,
             max_field_size=max_field_size,
             max_headers=max_headers)
+
+        self.transport = None
 
         self.logger = logger
         self.debug = debug
@@ -204,6 +206,9 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
     def connection_made(self, transport):
         super().connection_made(transport)
 
+        self.transport = transport
+        self.writer = StreamWriter(self, transport, self._loop)
+
         if self._tcp_keepalive:
             tcp_keepalive(self, transport)
 
@@ -213,6 +218,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         super().connection_lost(exc)
 
         self._closing = True
+        self.transport = self.writer = None
 
         if self._payload_parser is not None:
             self._payload_parser.feed_eof()
@@ -233,6 +239,9 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         assert self._payload_parser is None
 
         self._payload_parser = parser
+
+    def eof_received(self):
+        pass
 
     def data_received(self, data,
                       SEP=b'\r\n',
@@ -316,20 +325,22 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                         if ((length is not None and length > 0) or
                                 msg.chunked):
                             payload = streams.FlowControlStreamReader(
-                                self.reader, loop=self._loop)
-                            payload_parser = HttpPayloadParser(msg)
-
-                            if payload_parser.start(length, payload):
+                                self, loop=self._loop)
+                            payload_parser = HttpPayloadParser(
+                                payload, length=length,
+                                chunked=msg.chunked, method=msg.method,
+                                compression=msg.compression)
+                            if not payload_parser.done:
                                 empty_payload = False
                                 self._payload_parser = payload_parser
                         elif msg.method == METH_CONNECT:
                             empty_payload = False
                             payload = streams.FlowControlStreamReader(
-                                self.reader, loop=self._loop)
-                            payload_parser = HttpPayloadParser(
-                                msg, readall=True)
-                            payload_parser.start(length, payload)
-                            self._payload_parser = payload_parser
+                                self, loop=self._loop)
+                            self._payload_parser = HttpPayloadParser(
+                                payload, method=msg.method,
+                                compression=msg.compression,
+                                readall=True)
                         else:
                             payload = EMPTY_PAYLOAD
 
@@ -360,7 +371,7 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
         elif self._payload_parser is None and self._conn_upgraded:
             assert not self._message_lines
             if data:
-                super().data_received(data)
+                self._message_tail += data
 
         # feed payload
         else:

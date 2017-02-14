@@ -611,7 +611,6 @@ def test_timeout_on_reading_data(loop, test_client):
         yield from resp.read()
 
 
-
 @asyncio.coroutine
 def test_readline_error_on_conn_close(loop, test_client):
 
@@ -1644,9 +1643,9 @@ def test_request_conn_error(loop):
     yield from client.close()
 
 
-#@pytest.mark.xfail
+@pytest.mark.xfail
 @asyncio.coroutine
-def _test_broken_connection(loop, test_client):
+def test_broken_connection(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         request.transport.close()

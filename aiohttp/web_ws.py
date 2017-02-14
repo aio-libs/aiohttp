@@ -107,7 +107,7 @@ class WebSocketResponse(StreamResponse):
     def _pre_start(self, request):
         try:
             status, headers, parser, writer, protocol = do_handshake(
-                request.method, request.headers, request.transport_pair[1],
+                request.method, request.headers, request._writer,
                 self._protocols)
         except HttpProcessingError as err:
             if err.code == 405:
@@ -133,7 +133,7 @@ class WebSocketResponse(StreamResponse):
         self._loop = request.app.loop
         self._writer = writer
         self._reader = FlowControlDataQueue(
-            request._reader.reader, limit=2 ** 16, loop=self._loop)
+            request._reader, limit=2 ** 16, loop=self._loop)
         request._reader.set_parser(WebSocketReader(self._reader))
 
     def can_prepare(self, request):

@@ -1,12 +1,11 @@
 import asyncio
 import asyncio.streams
-import socket
 
-from . import errors, hdrs, streams
+from . import errors, hdrs
 from .errors import ServerDisconnectedError
-from .streams import DataQueue, FlowControlStreamReader, EmptyStreamReader
-from .parsers import StreamParser, StreamWriter
-from .protocol import HttpResponseParser, HttpPayloadParser
+from .protocol import HttpPayloadParser, HttpResponseParser
+from .streams import (DataQueue, EmptyStreamReader, FlowControlStreamReader,
+                      StreamWriter)
 
 EMPTY_PAYLOAD = EmptyStreamReader()
 
@@ -47,7 +46,7 @@ class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
 
     def connection_made(self, transport):
         self.transport = transport
-        self.writer = StreamWriter(transport, self, None, self._loop)
+        self.writer = StreamWriter(self, transport, self._loop)
 
     def connection_lost(self, exc):
         self.transport = self.writer = None
@@ -149,7 +148,8 @@ class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
 
                     # calculate payload
                     empty_payload = True
-                    if (((length is not None and length > 0) or msg.chunked) and
+                    if (((length is not None and length > 0) or
+                         msg.chunked) and
                         (not self._skip_payload and
                          msg.code not in self._skip_status_codes)):
 
@@ -157,9 +157,12 @@ class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
                             payload = FlowControlStreamReader(
                                 self, timer=self._timer, loop=self._loop)
                             payload_parser = HttpPayloadParser(
-                                msg, readall=self._read_until_eof)
+                                payload, length=length,
+                                chunked=msg.chunked, code=msg.code,
+                                compression=msg.compression,
+                                readall=self._read_until_eof)
 
-                            if payload_parser.start(length, payload):
+                            if not payload_parser.done:
                                 empty_payload = False
                                 self._payload = payload
                                 self._payload_parser = payload_parser

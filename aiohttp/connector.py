@@ -7,14 +7,11 @@ import warnings
 from hashlib import md5, sha1, sha256
 from types import MappingProxyType
 
-import aiohttp
-
 from . import hdrs, helpers
 from .client import ClientRequest
 from .client_proto import HttpClientProtocol
 from .errors import (ClientOSError, ClientTimeoutError, FingerprintMismatch,
-                     HttpProxyError, ProxyConnectionError,
-                     ServerDisconnectedError)
+                     HttpProxyError, ProxyConnectionError)
 from .helpers import SimpleCookie, is_ip_address, sentinel
 from .resolver import DefaultResolver
 

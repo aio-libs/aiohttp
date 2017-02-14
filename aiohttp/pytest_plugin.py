@@ -52,6 +52,7 @@ def pytest_pyfunc_call(pyfuncitem):
 def loop():
     """Return an instance of the event loop."""
     with loop_context() as _loop:
+        _loop.set_debug(True)
         yield _loop
 
 
