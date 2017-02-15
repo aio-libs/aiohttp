@@ -3,7 +3,6 @@
 import asyncio
 import contextlib
 import functools
-import gc
 import socket
 import sys
 import unittest
@@ -466,7 +465,6 @@ def teardown_test_loop(loop):
         loop.call_soon(loop.stop)
         loop.run_forever()
         loop.close()
-    gc.collect()
     asyncio.set_event_loop(None)
 
 
