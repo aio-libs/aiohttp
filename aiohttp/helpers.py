@@ -489,13 +489,18 @@ class reify:
         self.name = wrapped.__name__
 
     def __get__(self, inst, owner, _sentinel=sentinel):
-        if inst is None:
-            return self
-        val = inst._cache.get(self.name, _sentinel)
-        if val is not _sentinel:
-            return val
-        val = self.wrapped(inst)
-        inst._cache[self.name] = val
+        try:
+            try:
+                return inst._cache[self.name]
+            except KeyError:
+                val = self.wrapped(inst)
+                inst._cache[self.name] = val
+                return val
+        except AttributeError:
+            if inst is None:
+                return self
+            raise
+
         return val
 
     def __set__(self, inst, value):

@@ -276,7 +276,8 @@ class Resource(AbstractResource):
             route_method = route.method
             allowed_methods.add(route_method)
 
-            if route_method == request.method or route_method == hdrs.METH_ANY:
+            if (route_method == request._method or
+                    route_method == hdrs.METH_ANY):
                 return UrlMappingMatchInfo(match_dict, route), allowed_methods
         else:
             return None, allowed_methods
@@ -443,7 +444,7 @@ class StaticResource(PrefixResource):
     @asyncio.coroutine
     def resolve(self, request):
         path = request.rel_url.raw_path
-        method = request.method
+        method = request._method
         allowed_methods = set(self._routes)
         if not path.startswith(self._prefix):
             return None, set()
@@ -655,9 +656,9 @@ class View(AbstractView):
 
     @asyncio.coroutine
     def __iter__(self):
-        if self.request.method not in hdrs.METH_ALL:
+        if self.request._method not in hdrs.METH_ALL:
             self._raise_allowed_methods()
-        method = getattr(self, self.request.method.lower(), None)
+        method = getattr(self, self.request._method.lower(), None)
         if method is None:
             self._raise_allowed_methods()
         resp = yield from method()
@@ -722,7 +723,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     @asyncio.coroutine
     def resolve(self, request):
-        method = request.method
+        method = request._method
         allowed_methods = set()
 
         for resource in self._resources:
