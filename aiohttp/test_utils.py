@@ -502,11 +502,11 @@ def make_mocked_request(method, path, headers=None, *,
 
     if headers:
         headers = CIMultiDict(headers)
-        raw_hdrs = [
-            (k.encode('utf-8'), v.encode('utf-8')) for k, v in headers.items()]
+        raw_hdrs = tuple(
+            (k.encode('utf-8'), v.encode('utf-8')) for k, v in headers.items())
     else:
         headers = CIMultiDict()
-        raw_hdrs = []
+        raw_hdrs = ()
 
     chunked = 'chunked' in headers.get(hdrs.TRANSFER_ENCODING, '').lower()
 

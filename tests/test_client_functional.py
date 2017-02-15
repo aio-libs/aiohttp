@@ -488,10 +488,10 @@ def test_raw_headers(loop, test_client):
     client = yield from test_client(app)
     resp = yield from client.get('/')
     assert resp.status == 200
-    assert resp.raw_headers == ((b'CONTENT-LENGTH', b'0'),
-                                (b'CONTENT-TYPE', b'application/octet-stream'),
-                                (b'DATE', mock.ANY),
-                                (b'SERVER', mock.ANY))
+    assert resp.raw_headers == ((b'Content-Length', b'0'),
+                                (b'Content-Type', b'application/octet-stream'),
+                                (b'Date', mock.ANY),
+                                (b'Server', mock.ANY))
     resp.close()
 
 

@@ -145,7 +145,8 @@ def test_client_failed_to_create(test_client):
         yield from test_client(make_app)
 
 """)
-    result = testdir.runpytest('-p', 'no:sugar')
+    testdir.runpytest('-p', 'no:sugar')
 
     # i dont know how to fix this
+    # result = testdir.runpytest('-p', 'no:sugar')
     # result.assert_outcomes(passed=11, failed=1)

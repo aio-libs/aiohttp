@@ -57,8 +57,8 @@ def test_start_response_with_unknown_reason(stream):
     msg = protocol.Response(stream, 777, close=True)
 
     assert msg.status == 777
-    assert msg.reason == "777"
-    assert msg.status_line == 'HTTP/1.1 777 777\r\n'
+    assert msg.reason == ""
+    assert msg.status_line == 'HTTP/1.1 777 \r\n'
 
 
 def test_force_close(stream):

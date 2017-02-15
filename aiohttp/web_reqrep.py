@@ -97,8 +97,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             dct['path'] = str(rel_url)
         if headers is not sentinel:
             dct['headers'] = CIMultiDict(headers)
-            dct['raw_headers'] = [(k.encode('utf-8'), v.encode('utf-8'))
-                                  for k, v in headers.items()]
+            dct['raw_headers'] = tuple((k.encode('utf-8'), v.encode('utf-8'))
+                                       for k, v in headers.items())
 
         message = self._message._replace(**dct)
 
@@ -168,7 +168,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                 return 'https'
         return 'http'
 
-    @reify
+    @property
     def method(self):
         """Read only property for getting HTTP method.
 
@@ -212,7 +212,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                                       self._message.headers.get(hdrs.HOST),
                                       str(self.rel_url)))
 
-    @reify
+    @property
     def raw_path(self):
         """ The URL including raw *PATH INFO* without the host or scheme.
         Warning, the path is unquoted and may contains non valid URL characters
@@ -269,10 +269,10 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """A case-insensitive multidict proxy with all headers."""
         return self._headers
 
-    @reify
+    @property
     def raw_headers(self):
         """A sequence of pars for all headers."""
-        return tuple(self._message.raw_headers)
+        return self._message.raw_headers
 
     @reify
     def if_modified_since(self, _IF_MODIFIED_SINCE=hdrs.IF_MODIFIED_SINCE):
@@ -563,7 +563,7 @@ class StreamResponse(HeadersMixin):
         self._status = int(status)
         if reason is None:
             try:
-                reason = RESPONSES[self._status][0]
+                reason = _RESPONSES[self._status][0]
             except:
                 reason = ''
         self._reason = reason
