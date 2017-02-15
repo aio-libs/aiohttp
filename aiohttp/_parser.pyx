@@ -31,8 +31,10 @@ cdef class HttpParser:
         cparser.http_parser* _cparser
         cparser.http_parser_settings* _csettings
 
-        str _current_header_name
-        str _current_header_value
+        str _header_name
+        str _header_value
+        bytes _raw_header_name
+        bytes _raw_header_value
 
         object _protocol
         object _loop
@@ -44,6 +46,7 @@ cdef class HttpParser:
         object  _url
         str     _path
         list    _headers
+        list    _raw_headers
         bint    _upgraded
         list    _messages
         object  _payload
@@ -82,8 +85,11 @@ cdef class HttpParser:
         self._payload = None
         self._messages = []
 
-        self._current_header_name = None
-        self._current_header_value = None
+        self._header_name = None
+        self._header_value = None
+        self._raw_header_name = None
+        self._raw_header_value = None
+
         self._max_line_size = max_line_size
         self._max_headers = max_headers
         self._max_field_size = max_field_size
@@ -100,23 +106,32 @@ cdef class HttpParser:
         self._last_error = None
 
     cdef _process_header(self):
-        if self._current_header_name is not None:
-            header_name = self._current_header_name
-            header_value = self._current_header_value
+        if self._header_name is not None:
+            name = self._header_name
+            value = self._header_value
 
-            self._current_header_name = self._current_header_value = None
-            self._headers.append((header_name, header_value))
+            self._header_name = self._header_value = None
+            self._headers.append((name, value))
 
-    cdef _on_header_field(self, str field):
+            raw_name = self._raw_header_name
+            raw_value = self._raw_header_value
+
+            self._raw_header_name = self._raw_header_value = None
+            self._raw_headers.append((raw_name, raw_value))
+
+    cdef _on_header_field(self, str field, bytes raw_field):
         self._process_header()
-        self._current_header_name = field
+        self._header_name = field
+        self._raw_header_name = raw_field
 
-    cdef _on_header_value(self, str val):
-        if self._current_header_value is None:
-            self._current_header_value = val
+    cdef _on_header_value(self, str val, bytes raw_val):
+        if self._header_value is None:
+            self._header_value = val
+            self._raw_header_value = raw_val
         else:
             # This is unlikely, as mostly HTTP headers are one-line
-            self._current_header_value += val
+            self._header_value += val
+            self._raw_header_value += raw_val
 
     cdef _on_headers_complete(self):
         self._process_header()
@@ -126,6 +141,7 @@ cdef class HttpParser:
         upgrade = bool(self._cparser.upgrade)
         chunked = bool(self._cparser.flags & cparser.F_CHUNKED)
 
+        raw_headers = tuple(self._raw_headers)
         headers = CIMultiDict(self._headers)
 
         if upgrade or self._cparser.method == 5: # cparser.CONNECT:
@@ -140,7 +156,7 @@ cdef class HttpParser:
 
         msg = RawRequestMessage(
             method.decode('utf-8', 'surrogateescape'), self._path,
-            self.http_version(), headers, self._headers,
+            self.http_version(), headers, raw_headers,
             should_close, encoding, upgrade, chunked, self._url)
 
         if (self._cparser.content_length > 0 or chunked or
@@ -159,19 +175,6 @@ cdef class HttpParser:
         self._payload.feed_eof()
         self._payload = None
 
-    cdef _on_chunk_header(self):
-        if (self._current_header_value is not None or
-            self._current_header_name is not None):
-            raise BadHttpMessage('invalid headers state')
-
-        if self._proto_on_chunk_header is not None:
-            self._proto_on_chunk_header()
-
-    cdef _on_chunk_complete(self):
-        self._maybe_call_on_header()
-
-        if self._proto_on_chunk_complete is not None:
-            self._proto_on_chunk_complete()
 
     ### Public API ###
 
@@ -247,6 +250,7 @@ cdef int cb_on_message_begin(cparser.http_parser* parser) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
 
     pyparser._headers = []
+    pyparser._raw_headers = []
     return 0
 
 
@@ -282,7 +286,8 @@ cdef int cb_on_header_field(cparser.http_parser* parser,
     try:
         if length > pyparser._max_field_size:
             raise LineTooLong()
-        pyparser._on_header_field(at[:length].decode('utf-8', 'surrogateescape'))
+        pyparser._on_header_field(
+            at[:length].decode('utf-8', 'surrogateescape'), at[:length])
     except BaseException as ex:
         pyparser._last_error = ex
         return -1
@@ -296,7 +301,8 @@ cdef int cb_on_header_value(cparser.http_parser* parser,
     try:
         if length > pyparser._max_field_size:
             raise LineTooLong()
-        pyparser._on_header_value(at[:length].decode('utf-8', 'surrogateescape'))
+        pyparser._on_header_value(
+            at[:length].decode('utf-8', 'surrogateescape'), at[:length])
     except BaseException as ex:
         pyparser._last_error = ex
         return -1

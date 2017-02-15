@@ -72,15 +72,6 @@ RawResponseMessage = collections.namedtuple(
      'should_close', 'compression', 'upgrade', 'chunked'])
 
 
-def calc_reason(status, *, _RESPONSES=RESPONSES):
-    record = _RESPONSES.get(status)
-    if record is not None:
-        reason = record[0]
-    else:
-        reason = str(status)
-    return reason
-
-
 class HttpParser:
 
     def __init__(self, protocol=None, loop=None,
@@ -234,7 +225,7 @@ class HttpParser:
             except ValueError:
                 raise errors.InvalidHeader(line) from None
 
-            bname = bname.strip(b' \t').upper()
+            bname = bname.strip(b' \t')
             if HDRRE.search(bname):
                 raise errors.InvalidHeader(bname)
 
@@ -260,7 +251,7 @@ class HttpParser:
                     lines_idx += 1
                     line = lines[lines_idx]
                     continuation = line[0] in (32, 9)  # (' ', '\t')
-                bvalue = b'\r\n'.join(bvalue)
+                bvalue = b''.join(bvalue)
             else:
                 if header_length > self.max_field_size:
                     raise errors.LineTooLong(
@@ -269,7 +260,6 @@ class HttpParser:
                         self.max_field_size)
 
             bvalue = bvalue.strip()
-
             name = istr(bname.decode('utf-8', 'surrogateescape'))
             value = bvalue.decode('utf-8', 'surrogateescape')
 
@@ -280,6 +270,7 @@ class HttpParser:
         encoding = None
         upgrade = False
         chunked = False
+        raw_headers = tuple(raw_headers)
 
         # keep-alive
         conn = headers.get(hdrs.CONNECTION)
@@ -780,10 +771,10 @@ class HttpMessage(ABC, PayloadWriter):
 
     def keep_alive(self):
         if self.keepalive is None:
-            if self.version < HttpVersion10:
+            if self._version < HttpVersion10:
                 # keep alive not supported at all
                 return False
-            if self.version == HttpVersion10:
+            if self._version == HttpVersion10:
                 if self.headers.get(hdrs.CONNECTION) == 'keep-alive':
                     return True
                 else:  # no headers means we close for Http 1.0
@@ -815,7 +806,7 @@ class HttpMessage(ABC, PayloadWriter):
             self.length = int(value)
 
         if name == hdrs.TRANSFER_ENCODING:
-            self.has_chunked_hdr = value.lower().strip() == 'chunked'
+            self.has_chunked_hdr = value.lower() == 'chunked'
 
         if name == hdrs.CONNECTION:
             val = value.lower()
@@ -872,10 +863,10 @@ class HttpMessage(ABC, PayloadWriter):
         if self.upgrade:
             connection = 'Upgrade'
         elif not self.closing if self.keepalive is None else self.keepalive:
-            if self.version == HttpVersion10:
+            if self._version == HttpVersion10:
                 connection = 'keep-alive'
         else:
-            if self.version == HttpVersion11:
+            if self._version == HttpVersion11:
                 connection = 'close'
 
         if connection is not None:
@@ -894,12 +885,15 @@ class Response(HttpMessage):
 
     def __init__(self, transport, status,
                  http_version=HttpVersion11,
-                 close=False, reason=None, loop=None):
+                 close=False, reason=None, loop=None, _RESPONSES=RESPONSES):
         super().__init__(transport, http_version, close, loop=loop)
 
         self._status = status
         if reason is None:
-            reason = calc_reason(status)
+            try:
+                reason = _RESPONSES[status][0]
+            except:
+                reason = ''
 
         self._reason = reason
 
@@ -913,14 +907,14 @@ class Response(HttpMessage):
 
     @property
     def status_line(self):
-        version = self.version
+        version = self._version
         return 'HTTP/{}.{} {} {}\r\n'.format(
-            version[0], version[1], self.status, self.reason)
+            version[0], version[1], self._status, self._reason)
 
     def autochunked(self):
         return (self.length is None and
                 self._version >= HttpVersion11 and
-                self.status not in (304, 204))
+                self._status not in (304, 204))
 
     def _add_default_headers(self):
         super()._add_default_headers()
@@ -958,7 +952,7 @@ class Request(HttpMessage):
     @property
     def status_line(self):
         return '{0} {1} HTTP/{2[0]}.{2[1]}\r\n'.format(
-            self.method, self.path, self.version)
+            self._method, self._path, self._version)
 
     def autochunked(self):
         return (self.length is None and
