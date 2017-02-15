@@ -18,8 +18,8 @@ from yarl import URL
 
 from . import hdrs, multipart
 from .helpers import HeadersMixin, SimpleCookie, reify, sentinel
-from .protocol import (SERVER_SOFTWARE, HttpVersion10, HttpVersion11,
-                       PayloadWriter, calc_reason)
+from .protocol import (RESPONSES, SERVER_SOFTWARE, HttpVersion10,
+                       HttpVersion11, PayloadWriter)
 
 __all__ = (
     'ContentCoding', 'BaseRequest', 'Request', 'StreamResponse', 'Response',
@@ -59,7 +59,9 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._post_files_cache = None
 
         self._payload = payload
-        self._headers = self._message.headers
+        self._headers = message.headers
+        self._method = message.method
+        self._version = message.version
 
         self._read_bytes = None
         self._has_body = not payload.at_eof()
@@ -121,6 +123,10 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     def transport(self):
         return self._protocol.transport
 
+    @property
+    def message(self):
+        return self._message
+
     # MutableMapping API
 
     def __getitem__(self, key):
@@ -168,15 +174,15 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         The value is upper-cased str like 'GET', 'POST', 'PUT' etc.
         """
-        return self._message.method
+        return self._method
 
-    @reify
+    @property
     def version(self):
         """Read only property for getting HTTP version of request.
 
         Returns aiohttp.protocol.HttpVersion instance.
         """
-        return self._message.version
+        return self._version
 
     @reify
     def host(self):
@@ -258,7 +264,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             raise RuntimeError("POST is not available before post()")
         return self._post
 
-    @reify
+    @property
     def headers(self):
         """A case-insensitive multidict proxy with all headers."""
         return self._headers
@@ -550,13 +556,16 @@ class StreamResponse(HeadersMixin):
     def reason(self):
         return self._reason
 
-    def set_status(self, status, reason=None):
+    def set_status(self, status, reason=None, _RESPONSES=RESPONSES):
         assert not self.prepared, \
             'Cannot change the response status code after ' \
             'the headers have been sent'
         self._status = int(status)
         if reason is None:
-            reason = calc_reason(status)
+            try:
+                reason = RESPONSES[self._status][0]
+            except:
+                reason = ''
         self._reason = reason
 
     @property
@@ -985,7 +994,7 @@ class Response(StreamResponse):
     def write_eof(self):
         body = self._body
         if (body is not None and
-            (self._req.method == hdrs.METH_HEAD or
+            (self._req._method == hdrs.METH_HEAD or
              self._status in [204, 304])):
             body = b''
 
