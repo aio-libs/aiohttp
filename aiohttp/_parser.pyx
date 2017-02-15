@@ -13,7 +13,8 @@ from aiohttp import hdrs
 from .errors import (
     BadHttpMessage, BadStatusLine, InvalidHeader, LineTooLong, InvalidURLError)
 from .protocol import (
-    HttpVersion, HttpVersion10, HttpVersion11, RawRequestMessage, DeflateBuffer)
+    HttpVersion, HttpVersion10, HttpVersion11,
+    RawRequestMessage, DeflateBuffer, URL)
 from .streams import EMPTY_PAYLOAD, FlowControlStreamReader
 
 cimport cython
@@ -40,13 +41,12 @@ cdef class HttpParser:
         size_t _max_field_size
         size_t _max_headers
 
-        object  url
-        str   _raw_url
-        list  _headers
-        bint  _upgraded
-        list  _messages
-        object _payload
-
+        object  _url
+        str     _path
+        list    _headers
+        bint    _upgraded
+        list    _messages
+        object  _payload
         object _last_error
 
         Py_buffer py_buf
@@ -139,9 +139,9 @@ cdef class HttpParser:
                 encoding = enc
 
         msg = RawRequestMessage(
-            method.decode('utf-8', 'surrogateescape'), self._raw_url,
+            method.decode('utf-8', 'surrogateescape'), self._path,
             self.http_version(), headers, self._headers,
-            should_close, encoding, upgrade, chunked)
+            should_close, encoding, upgrade, chunked, self._url)
 
         if (self._cparser.content_length > 0 or chunked or
                 self._cparser.method == 5):  # CONNECT: 5
@@ -254,8 +254,8 @@ cdef int cb_on_url(cparser.http_parser* parser,
                    const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
-        #pyparser.url = _parse_url(at[:length], length)
-        pyparser._raw_url = at[:length].decode('utf-8', 'surrogateescape')
+        pyparser._url = _parse_url(at[:length], length)
+        pyparser._path = at[:length].decode('utf-8', 'surrogateescape')
     except BaseException as ex:
         pyparser._last_error = ex
         return -1
@@ -394,34 +394,6 @@ cdef parser_error_from_errno(cparser.http_errno errno):
     return cls(desc.decode('latin-1'))
 
 
-@cython.freelist(250)
-cdef class URL:
-    cdef readonly str schema
-    cdef readonly str host
-    cdef readonly object port
-    cdef readonly str path
-    cdef readonly str query
-    cdef readonly str fragment
-    cdef readonly str userinfo
-
-    def __cinit__(self, str schema, str host, object port, str path,
-                  str query, str fragment, str userinfo):
-
-        self.schema = schema
-        self.host = host
-        self.port = port
-        self.path = path
-        self.query = query
-        self.fragment = fragment
-        self.userinfo = userinfo
-
-    def __repr__(self):
-        return ('<URL schema: {!r}, host: {!r}, port: {!r}, path: {!r}, '
-                'query: {!r}, fragment: {!r}, userinfo: {!r}>'
-                .format(self.schema, self.host, self.port, self.path,
-                    self.query, self.fragment, self.userinfo))
-
-
 def parse_url(url):
     cdef:
         Py_buffer py_buf
@@ -461,11 +433,15 @@ def _parse_url(char* buf_data, size_t length):
                 off = parsed.field_data[<int>cparser.UF_SCHEMA].off
                 ln = parsed.field_data[<int>cparser.UF_SCHEMA].len
                 schema = buf_data[off:off+ln].decode('utf-8', 'surrogateescape')
+            else:
+                schema = ''
 
             if parsed.field_set & (1 << cparser.UF_HOST):
                 off = parsed.field_data[<int>cparser.UF_HOST].off
                 ln = parsed.field_data[<int>cparser.UF_HOST].len
                 host = buf_data[off:off+ln].decode('utf-8', 'surrogateescape')
+            else:
+                host = ''
 
             if parsed.field_set & (1 << cparser.UF_PORT):
                 port = parsed.port
@@ -474,16 +450,22 @@ def _parse_url(char* buf_data, size_t length):
                 off = parsed.field_data[<int>cparser.UF_PATH].off
                 ln = parsed.field_data[<int>cparser.UF_PATH].len
                 path = buf_data[off:off+ln].decode('utf-8', 'surrogateescape')
+            else:
+                path = ''
 
             if parsed.field_set & (1 << cparser.UF_QUERY):
                 off = parsed.field_data[<int>cparser.UF_QUERY].off
                 ln = parsed.field_data[<int>cparser.UF_QUERY].len
                 query = buf_data[off:off+ln].decode('utf-8', 'surrogateescape')
+            else:
+                query = ''
 
             if parsed.field_set & (1 << cparser.UF_FRAGMENT):
                 off = parsed.field_data[<int>cparser.UF_FRAGMENT].off
                 ln = parsed.field_data[<int>cparser.UF_FRAGMENT].len
                 fragment = buf_data[off:off+ln].decode('utf-8', 'surrogateescape')
+            else:
+                fragment = ''
 
             if parsed.field_set & (1 << cparser.UF_USERINFO):
                 off = parsed.field_data[<int>cparser.UF_USERINFO].off

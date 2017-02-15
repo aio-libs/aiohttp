@@ -9,8 +9,11 @@ import sys
 import zlib
 from abc import ABC, abstractmethod
 from enum import IntEnum
+from ipaddress import ip_address
+from urllib.parse import SplitResult
 from wsgiref.handlers import format_date_time
 
+import yarl
 from multidict import CIMultiDict, istr
 
 import aiohttp
@@ -60,7 +63,7 @@ RawStatusLineMessage = collections.namedtuple(
 RawRequestMessage = collections.namedtuple(
     'RawRequestMessage',
     ['method', 'path', 'version', 'headers', 'raw_headers',
-     'should_close', 'compression', 'upgrade', 'chunked'])
+     'should_close', 'compression', 'upgrade', 'chunked', 'url'])
 
 
 RawResponseMessage = collections.namedtuple(
@@ -221,7 +224,7 @@ class HttpRequestParser(HttpParser):
 
         return RawRequestMessage(
             method, path, version, headers, raw_headers,
-            close, compression, upgrade, chunked)
+            close, compression, upgrade, chunked, yarl.URL(path))
 
 
 class HttpResponseParser(HttpParser):
@@ -836,3 +839,41 @@ class Request(HttpMessage):
     def autochunked(self):
         return (self.length is None and
                 self._version >= HttpVersion11)
+
+
+class URL(yarl.URL):
+
+    def __new__(cls, schema, host, port, path, query, fragment, userinfo):
+        return super(URL, cls).__new__(cls)
+
+    def __init__(self, schema, netloc, port, path, query, fragment, userinfo):
+        self._strict = False
+
+        try:
+            ip = ip_address(netloc)
+        except:
+            pass
+        else:
+            if ip.version == 6:
+                netloc = '['+netloc+']'
+
+        if port:
+            netloc += ':{}'.format(port)
+        if userinfo:
+            netloc = yarl.quote(userinfo) + '@' + netloc
+
+        if path:
+            path = yarl.quote(path, safe='@:', protected='/', strict=False)
+
+        if query:
+            query = yarl.quote(
+                query, safe='=+&?/:@',
+                protected=yarl.PROTECT_CHARS, qs=True, strict=False)
+
+        if fragment:
+            fragment = yarl.quote(fragment, safe='?/:@', strict=False)
+
+        self._val = SplitResult(
+            schema or '',  # scheme
+            netloc, path=path, query=query, fragment=fragment)
+        self._cache = {}

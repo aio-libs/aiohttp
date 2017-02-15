@@ -5,6 +5,8 @@ import unittest
 import zlib
 from unittest import mock
 
+from yarl import URL
+
 import aiohttp
 from aiohttp import CIMultiDict, errors, protocol
 
@@ -327,7 +329,7 @@ class TestParseRequest(unittest.TestCase):
         result = p.parse_message(b'get /path HTTP/1.1\r\n\r\n'.split(b'\r\n'))
         self.assertEqual(
             ('GET', '/path', (1, 1), CIMultiDict(), [],
-             False, None, False, False), result)
+             False, None, False, False, URL('/path')), result)
 
     def test_http_request_parser_utf8(self):
         p = protocol.HttpRequestParser()
@@ -337,7 +339,7 @@ class TestParseRequest(unittest.TestCase):
             ('GET', '/path', (1, 1),
              CIMultiDict([('X-TEST', 'тест')]),
              [(b'X-TEST', 'тест'.encode('utf-8'))],
-             False, None, False, False),
+             False, None, False, False, URL('/path')),
             result)
 
     def test_http_request_parser_non_utf8(self):
@@ -349,7 +351,7 @@ class TestParseRequest(unittest.TestCase):
              CIMultiDict([('X-TEST', 'тест'.encode('cp1251').decode(
                  'utf-8', 'surrogateescape'))]),
              [(b'X-TEST', 'тест'.encode('cp1251'))],
-             False, None, False, False),
+             False, None, False, False, URL('/path')),
             result)
 
     def test_http_request_parser_eof(self):
@@ -363,7 +365,7 @@ class TestParseRequest(unittest.TestCase):
             b'get //path HTTP/1.1\r\n\r\n'.split(b'\r\n'))
         self.assertEqual(
             ('GET', '//path', (1, 1), CIMultiDict(), [],
-             False, None, False, False),
+             False, None, False, False, URL('//path')),
             result)
 
     def test_http_request_parser_bad_status_line(self):

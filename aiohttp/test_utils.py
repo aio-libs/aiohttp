@@ -519,8 +519,9 @@ def make_mocked_request(method, path, headers=None, *,
 
     chunked = 'chunked' in headers.get(hdrs.TRANSFER_ENCODING, '').lower()
 
-    message = RawRequestMessage(method, path, version, headers,
-                                raw_hdrs, closing, False, False, chunked)
+    message = RawRequestMessage(
+        method, path, version, headers,
+        raw_hdrs, closing, False, False, chunked, URL(path))
     if app is None:
         app = _create_app_mock()
 

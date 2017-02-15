@@ -75,7 +75,7 @@ def test_upgrade(parser):
     assert tail == b'Hot diggity dogg'
 
 
-CONNECT_REQUEST_1 = b'''CONNECT www.google.com HTTP/1.1
+CONNECT_REQUEST_1 = b'''CONNECT http://www.google.com HTTP/1.1
 User-Agent: Fooo
 Host: bar
 Content-Length: 0
@@ -89,7 +89,7 @@ def test_connect(parser):
     msg, payload = messages[0]
 
     assert msg.method == hdrs.METH_CONNECT
-    assert msg.path == 'www.google.com'
+    assert msg.path == 'http://www.google.com'
     assert msg.upgrade
 
     assert upgraded
