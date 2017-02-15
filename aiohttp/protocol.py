@@ -21,6 +21,7 @@ import aiohttp
 from . import errors, hdrs
 from .helpers import create_future
 from .log import internal_logger
+from .streams import EMPTY_PAYLOAD, FlowControlStreamReader
 
 __all__ = ('HttpMessage', 'Request', 'Response',
            'HttpVersion', 'HttpVersion10', 'HttpVersion11',
@@ -84,10 +85,134 @@ def calc_reason(status, *, _RESPONSES=RESPONSES):
 class HttpParser:
 
     def __init__(self, protocol=None, loop=None,
-                 max_line_size=8190, max_headers=32768, max_field_size=8190):
+                 max_line_size=8190, max_headers=32768, max_field_size=8190,
+                 timer=None, code=None, method=None,
+                 readall=False, response_with_body=True):
+        self.protocol = protocol
+        self.loop = loop
         self.max_line_size = max_line_size
         self.max_headers = max_headers
         self.max_field_size = max_field_size
+        self.timer = timer
+        self.code = code
+        self.method = method
+        self.readall = readall
+        self.response_with_body = response_with_body
+
+        self._lines = []
+        self._tail = b''
+        self._upgraded = False
+        self._payload = None
+        self._payload_parser = None
+
+    def feed_data(self, data,
+                  SEP=b'\r\n', EMPTY=b'',
+                  CONTENT_LENGTH=hdrs.CONTENT_LENGTH,
+                  METH_CONNECT=hdrs.METH_CONNECT,
+                  SEC_WEBSOCKET_KEY1=hdrs.SEC_WEBSOCKET_KEY1):
+
+        messages = []
+
+        if self._tail:
+            data, self._tail = self._tail + data, b''
+
+        data_len = len(data)
+        start_pos = 0
+        loop = self.loop
+
+        while start_pos < data_len:
+
+            # read HTTP message (request/response line + headers), \r\n\r\n
+            # and split by lines
+            if self._payload_parser is None and not self._upgraded:
+                pos = data.find(SEP, start_pos)
+                if pos >= start_pos:
+                    # line found
+                    self._lines.append(data[start_pos:pos])
+
+                    # \r\n\r\n found
+                    start_pos = pos + 2
+                    if data[start_pos:start_pos+2] == SEP:
+                        self._lines.append(EMPTY)
+
+                        try:
+                            msg = self.parse_message(self._lines)
+                        finally:
+                            self._lines.clear()
+
+                        # payload length
+                        length = msg.headers.get(CONTENT_LENGTH)
+                        if length is not None:
+                            try:
+                                length = int(length)
+                            except ValueError:
+                                raise errors.InvalidHeader(CONTENT_LENGTH)
+                            if length < 0:
+                                raise errors.InvalidHeader(CONTENT_LENGTH)
+
+                        # do not support old websocket spec
+                        if SEC_WEBSOCKET_KEY1 in msg.headers:
+                            raise errors.InvalidHeader(SEC_WEBSOCKET_KEY1)
+
+                        self._upgraded = msg.upgrade
+
+                        method = getattr(msg, 'method', self.method)
+
+                        # calculate payload
+                        if ((length is not None and length > 0) or
+                                msg.chunked and not msg.upgrade):
+                            payload = FlowControlStreamReader(
+                                self.protocol, timer=self.timer, loop=loop)
+                            payload_parser = HttpPayloadParser(
+                                payload, length=length,
+                                chunked=msg.chunked, method=method,
+                                compression=msg.compression,
+                                code=self.code, readall=self.readall,
+                                response_with_body=self.response_with_body)
+                            if not payload_parser.done:
+                                self._payload_parser = payload_parser
+                        elif method == METH_CONNECT:
+                            payload = FlowControlStreamReader(
+                                self.protocol, timer=self.timer, loop=loop)
+                            self._upgraded = True
+                            self._payload_parser = HttpPayloadParser(
+                                payload, method=msg.method,
+                                compression=msg.compression, readall=True)
+                        else:
+                            payload = EMPTY_PAYLOAD
+
+                        messages.append((msg, payload))
+
+                        start_pos = start_pos+2
+                else:
+                    self._tail = data[start_pos:]
+                    data = EMPTY
+                    break
+
+            # no parser, just store
+            elif self._payload_parser is None and self._upgraded:
+                assert not self._lines
+                break
+
+            # feed payload
+            elif data and start_pos < data_len:
+                assert not self._lines
+                eof, data = self._payload_parser.feed_data(
+                    data[start_pos:])
+                if eof:
+                    start_pos = 0
+                    data_len = len(data)
+                    self._payload_parser = None
+                    break
+            else:
+                break
+
+        if data and start_pos < data_len:
+            data = data[start_pos:]
+        else:
+            data = EMPTY
+
+        return messages, self._upgraded, data
 
     def parse_headers(self, lines):
         """Parses RFC 5322 headers from a stream.

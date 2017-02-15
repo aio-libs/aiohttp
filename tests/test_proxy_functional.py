@@ -41,7 +41,9 @@ def proxy_test_server(raw_test_server, loop, monkeypatch):
         if request.method == 'CONNECT':
             response['body'] = None
 
-        return aiohttp.web.Response(**response)
+        resp = aiohttp.web.Response(**response)
+        yield from resp.prepare(request)
+        return resp
 
     @asyncio.coroutine
     def proxy_server():

@@ -538,6 +538,9 @@ class DataQueue:
         self._size = 0
         self._buffer = collections.deque()
 
+    def __len__(self):
+        return len(self._buffer)
+
     def is_eof(self):
         return self._eof
 
