@@ -4,7 +4,6 @@ import asyncio
 import contextlib
 import functools
 import gc
-import os
 import socket
 import unittest
 from abc import ABC, abstractmethod
@@ -22,19 +21,6 @@ from .helpers import PY_35, TimeService, sentinel
 from .protocol import HttpVersion, RawRequestMessage
 from .signals import Signal
 from .web import Application, Request, Server, UrlMappingMatchInfo
-
-
-TESTS_USE_UVLOOP = not bool(os.environ.get('AIOHTTP_TESTS_USE_UVLOOP', True))
-
-
-try:
-    import uvloop
-except:
-    uvloop = None
-
-LOOP_FACTORIES = [asyncio.new_event_loop]
-if TESTS_USE_UVLOOP and uvloop:
-    LOOP_FACTORIES.append(uvloop.new_event_loop)
 
 
 def run_briefly(loop):

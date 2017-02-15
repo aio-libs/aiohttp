@@ -8,13 +8,22 @@ from py import path
 from aiohttp.web import Application
 
 from .test_utils import unused_port as _unused_port
-from .test_utils import (LOOP_FACTORIES, RawTestServer, TestClient, TestServer,
+from .test_utils import (RawTestServer, TestClient, TestServer,
                          loop_context, setup_test_loop, teardown_test_loop)
+
+try:
+    import uvloop
+except:
+    uvloop = None
 
 
 def pytest_addoption(parser):
     parser.addoption('--fast', action='store_true', default=False,
                      help='run tests faster by disabling extra checks')
+    parser.addoption('--with-uvloop-only', action='store_true', default=False,
+                     help='run tests with uvloop only if available')
+    parser.addoption('--without-uvloop', action='store_true', default=False,
+                     help='run tests without uvloop')
 
 
 @pytest.fixture
@@ -58,6 +67,24 @@ def pytest_pyfunc_call(pyfuncitem):
             _loop.run_until_complete(task)
 
         return True
+
+
+def pytest_configure(config):
+    uvloop_only = config.getoption("--with-uvloop-only")
+    without_uvloop = config.getoption("--without-uvloop")
+
+    LOOP_FACTORIES.clear()
+    if uvloop_only and uvloop is not None:
+        LOOP_FACTORIES.append(uvloop.new_event_loop)
+    elif without_uvloop:
+        LOOP_FACTORIES.append(asyncio.new_event_loop)
+    else:
+        LOOP_FACTORIES.append(asyncio.new_event_loop)
+        if uvloop is not None:
+            LOOP_FACTORIES.append(uvloop.new_event_loop)
+
+
+LOOP_FACTORIES = []
 
 
 @pytest.yield_fixture(params=LOOP_FACTORIES)

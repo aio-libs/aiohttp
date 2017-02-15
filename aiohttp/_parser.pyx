@@ -18,7 +18,7 @@ from .protocol import (
 from .streams import EMPTY_PAYLOAD, FlowControlStreamReader
 
 cimport cython
-from aiohttp cimport _cparser as cparser
+from . cimport _cparser as cparser
 
 
 __all__ = ('HttpRequestParser', 'parse_url')
@@ -335,28 +335,6 @@ cdef int cb_on_message_complete(cparser.http_parser* parser) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
         pyparser._on_message_complete()
-    except BaseException as ex:
-        pyparser._last_error = ex
-        return -1
-    else:
-        return 0
-
-
-cdef int cb_on_chunk_header(cparser.http_parser* parser) except -1:
-    cdef HttpParser pyparser = <HttpParser>parser.data
-    try:
-        pass
-    except BaseException as ex:
-        pyparser._last_error = ex
-        return -1
-    else:
-        return 0
-
-
-cdef int cb_on_chunk_complete(cparser.http_parser* parser) except -1:
-    cdef HttpParser pyparser = <HttpParser>parser.data
-    try:
-        pass
     except BaseException as ex:
         pyparser._last_error = ex
         return -1
