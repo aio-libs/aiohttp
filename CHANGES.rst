@@ -32,3 +32,5 @@ CHANGES
   attributes and `resolve` constructor  parameter #1607
 
 - Dropped `ProxyConnector` #1609
+
+- Allow string parameter for `aiohttp.CookieJar.filter_cookies()` #1636
