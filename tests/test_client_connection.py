@@ -12,12 +12,17 @@ def key():
 
 
 @pytest.fixture
-def connector():
+def request():
     return mock.Mock()
 
 
 @pytest.fixture
-def request():
+def loop():
+    return mock.Mock()
+
+
+@pytest.fixture
+def connector():
     return mock.Mock()
 
 
