@@ -670,13 +670,14 @@ def test_supports_connect_method(srv, loop):
         srv.data_received(
             b'CONNECT aiohttp.readthedocs.org:80 HTTP/1.0\r\n'
             b'Content-Length: 0\r\n\r\n')
-        yield from asyncio.sleep(0.05, loop=loop)
+        yield from asyncio.sleep(0.1, loop=loop)
 
         srv.connection_lost(None)
         yield from asyncio.sleep(0.05, loop=loop)
 
-    assert m_handle_request.called
-    assert m_handle_request.call_args[0] != (mock.ANY, streams.EMPTY_PAYLOAD)
+        assert m_handle_request.called
+        assert isinstance(
+            m_handle_request.call_args[0][1], streams.FlowControlStreamReader)
 
 
 def test_content_length_0(srv, loop):
