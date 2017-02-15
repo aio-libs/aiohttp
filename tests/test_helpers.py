@@ -305,6 +305,7 @@ class TestReify:
             a.prop = 123
 
 
+@pytest.mark.skipif(sys.version_info < (3, 5), reason='old python')
 def test_create_future_with_new_loop():
     # We should use the new create_future() if it's available.
     mock_loop = mock.Mock()

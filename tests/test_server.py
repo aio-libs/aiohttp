@@ -8,7 +8,7 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import errors, helpers, server
+from aiohttp import errors, helpers, server, streams
 
 
 @pytest.yield_fixture
@@ -676,7 +676,7 @@ def test_supports_connect_method(srv, loop):
         yield from asyncio.sleep(0.05, loop=loop)
 
     assert m_handle_request.called
-    assert m_handle_request.call_args[0] != (mock.ANY, server.EMPTY_PAYLOAD)
+    assert m_handle_request.call_args[0] != (mock.ANY, streams.EMPTY_PAYLOAD)
 
 
 def test_content_length_0(srv, loop):
@@ -692,4 +692,4 @@ def test_content_length_0(srv, loop):
         loop.run_until_complete(srv._request_handlers[0])
 
     assert m_handle_request.called
-    assert m_handle_request.call_args[0] == (mock.ANY, server.EMPTY_PAYLOAD)
+    assert m_handle_request.call_args[0] == (mock.ANY, streams.EMPTY_PAYLOAD)

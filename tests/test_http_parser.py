@@ -216,12 +216,10 @@ class TestParsePayload(unittest.TestCase):
         self.assertEqual(b'data', b''.join(d for d, _ in out._buffer))
         self.assertEqual(b'line', tail)
 
-    def _test_parse_length_payload_eof(self):
+    def test_parse_length_payload_eof(self):
         out = aiohttp.FlowControlDataQueue(self.stream)
 
-        p = protocol.HttpPayloadParser(None)
-        p.start(4, out)
-
+        p = protocol.HttpPayloadParser(out, length=4)
         p.feed_data(b'da')
         p.feed_eof()
 

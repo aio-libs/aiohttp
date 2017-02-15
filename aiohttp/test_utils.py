@@ -6,7 +6,6 @@ import functools
 import gc
 import os
 import socket
-import sys
 import unittest
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
@@ -45,7 +44,6 @@ LOOP_FACTORIES = [asyncio.new_event_loop]
 if TESTS_USE_UVLOOP and uvloop:
     LOOP_FACTORIES.append(uvloop.new_event_loop)
 
-print(LOOP_FACTORIES)
 
 def run_briefly(loop):
     @asyncio.coroutine

@@ -12,11 +12,10 @@ from contextlib import suppress
 from html import escape as html_escape
 
 import aiohttp
-from aiohttp import errors, hdrs, helpers, streams
+from aiohttp import errors, hdrs, helpers
 from aiohttp.helpers import TimeService, create_future, ensure_future
 from aiohttp.log import access_logger, server_logger
-from aiohttp.protocol import HttpPayloadParser
-from aiohttp.streams import EMPTY_PAYLOAD, StreamWriter
+from aiohttp.streams import StreamWriter
 
 __all__ = ('ServerHttpProtocol',)
 
@@ -45,14 +44,11 @@ else:
 
 if bool(os.environ.get('AIOHTTP_NO_EXTENSIONS')):
     from .protocol import HttpRequestParser
-    _CPARSER = False
 else:
     try:
         from ._parser import HttpRequestParser
-        _CPARSER = True
     except ImportError:  # pragma: no cover
         from .protocol import HttpRequestParser
-        _CPARSER = False
 
 
 class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
@@ -138,7 +134,6 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         self._lingering_timeout = float(lingering_timeout)
 
         self._messages = deque()
-        self._message_lines = []
         self._message_tail = b''
 
         self._waiters = deque()
@@ -260,7 +255,7 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     def eof_received(self):
         pass
 
-    def data_received_cparser(self, data):
+    def data_received(self, data):
         if self._closing:
             return
 
@@ -272,8 +267,7 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             else:
                 break
 
-        # read HTTP message (request line + headers), \r\n\r\n
-        # and split by lines
+        # parse http messages
         if self._payload_parser is None and not self._upgrade:
             try:
                 messages, upgraded, tail = self._request_parser.feed_data(data)
@@ -323,150 +317,6 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             eof, tail = self._payload_parser.feed_data(data)
             if eof:
                 self._closing = True
-
-    def data_received_py(self, data,
-                         SEP=b'\r\n',
-                         CONTENT_LENGTH=hdrs.CONTENT_LENGTH,
-                         METH_CONNECT=hdrs.METH_CONNECT,
-                         SEC_WEBSOCKET_KEY1=hdrs.SEC_WEBSOCKET_KEY1):
-        if self._closing:
-            return
-
-        while self._messages:
-            if self._waiters:
-                waiter = self._waiters.popleft()
-                message = self._messages.popleft()
-                waiter.set_result(message)
-            else:
-                break
-
-        # read HTTP message (request line + headers), \r\n\r\n
-        # and split by lines
-        if self._payload_parser is None and not self._upgrade:
-            if self._message_tail:
-                data, self._message_tail = self._message_tail + data, b''
-
-            start_pos = 0
-            while True:
-                pos = data.find(SEP, start_pos)
-                if pos >= start_pos:
-                    # line found
-                    self._message_lines.append(data[start_pos:pos])
-
-                    # \r\n\r\n found
-                    start_pos = pos + 2
-                    if data[start_pos:start_pos+2] == SEP:
-                        self._message_lines.append(b'')
-
-                        msg = None
-                        try:
-                            msg = self._request_parser.parse_message(
-                                self._message_lines)
-
-                            # payload length
-                            length = msg.headers.get(CONTENT_LENGTH)
-                            if length is not None:
-                                try:
-                                    length = int(length)
-                                except ValueError:
-                                    raise errors.InvalidHeader(CONTENT_LENGTH)
-                                if length < 0:
-                                    raise errors.InvalidHeader(CONTENT_LENGTH)
-
-                            # do not support old websocket spec
-                            if SEC_WEBSOCKET_KEY1 in msg.headers:
-                                raise errors.InvalidHeader(SEC_WEBSOCKET_KEY1)
-
-                        except errors.HttpProcessingError as exc:
-                            # something happened during parsing
-                            self._closing = True
-                            self._request_handlers.append(
-                                ensure_future(
-                                    self.handle_error(
-                                        exc.code, msg,
-                                        None, exc, exc.headers, exc.message),
-                                    loop=self._loop))
-                            return
-                        except Exception as exc:
-                            self._closing = True
-                            self._request_handlers.append(
-                                ensure_future(
-                                    self.handle_error(500, msg, None, exc),
-                                    loop=self._loop))
-                            return
-                        else:
-                            self._request_count += 1
-                            self._reading_request = True
-                            self._message_lines.clear()
-
-                        self._upgrade = msg.upgrade
-
-                        # calculate payload
-                        empty_payload = True
-                        if ((length is not None and length > 0) or
-                                msg.chunked):
-                            payload = streams.FlowControlStreamReader(
-                                self, loop=self._loop)
-                            payload_parser = HttpPayloadParser(
-                                payload, length=length,
-                                chunked=msg.chunked, method=msg.method,
-                                compression=msg.compression)
-                            if not payload_parser.done:
-                                empty_payload = False
-                                self._payload_parser = payload_parser
-                        elif msg.method == METH_CONNECT:
-                            empty_payload = False
-                            payload = streams.FlowControlStreamReader(
-                                self, loop=self._loop)
-                            self._payload_parser = HttpPayloadParser(
-                                payload, method=msg.method,
-                                compression=msg.compression, readall=True)
-                        else:
-                            payload = EMPTY_PAYLOAD
-
-                        if self._waiters:
-                            waiter = self._waiters.popleft()
-                            waiter.set_result((msg, payload))
-                        elif self._max_concurrent_handlers:
-                            self._max_concurrent_handlers -= 1
-                            handler = ensure_future(
-                                self.start(msg, payload), loop=self._loop)
-                            self._request_handlers.append(handler)
-                        else:
-                            self._messages.append((msg, payload))
-
-                        start_pos = start_pos+2
-                        if start_pos < len(data):
-                            if empty_payload and not self._upgrade:
-                                continue
-
-                            self.data_received(data[start_pos:])
-                        return
-                else:
-                    self._message_tail = data[start_pos:]
-                    return
-
-        # no parser, just store
-        elif self._payload_parser is None and self._upgrade:
-            assert not self._message_lines
-            if data:
-                self._message_tail += data
-
-        # feed payload
-        else:
-            assert not self._message_lines
-            if data:
-                eof, tail = self._payload_parser.feed_data(data)
-                if eof:
-                    self._payload_parser = None
-
-                    if tail:
-                        super().data_received(tail)
-
-    if _CPARSER:
-        data_received = data_received_cparser
-    else:
-        data_received = data_received_py
 
     def keep_alive(self, val):
         """Set keep-alive connection mode.

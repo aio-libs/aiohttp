@@ -76,7 +76,7 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
 
             rob = router(
                 self, properties, self.transport, message, body)
-            rob.dispatch()
+            yield from rob.dispatch()
 
     if use_ssl:
         here = os.path.join(os.path.dirname(__file__), '..', 'tests')
@@ -176,13 +176,14 @@ class Router:
                     traceback.print_exc(file=out)
                     self._response(500, out.getvalue())
 
-                return
+                return ()
 
         return self._response(self._start_response(404))
 
     def _start_response(self, code):
         return aiohttp.Response(self._srv.writer, code)
 
+    @asyncio.coroutine
     def _response(self, response, body=None,
                   headers=None, chunked=False, write_body=None):
         r_headers = {}
@@ -275,7 +276,7 @@ class Router:
         else:
             response.write(body.encode('utf8'))
 
-        response.write_eof()
+        yield from response.write_eof()
 
         # keep-alive
         if response.keep_alive():
@@ -286,7 +287,7 @@ class Functional(Router):
 
     @Router.define('/method/([A-Za-z]+)$')
     def method(self, match):
-        self._response(self._start_response(200))
+        return self._response(self._start_response(200))
 
     @Router.define('/keepalive$')
     def keepalive(self, match):
@@ -294,10 +295,10 @@ class Functional(Router):
             self._transport, '_requests', 0) + 1
         resp = self._start_response(200)
         if 'close=' in self._query:
-            self._response(
+            return self._response(
                 resp, 'requests={}'.format(self._transport._requests))
         else:
-            self._response(
+            return self._response(
                 resp, 'requests={}'.format(self._transport._requests),
                 headers={'CONNECTION': 'keep-alive'})
 
@@ -315,7 +316,7 @@ class Functional(Router):
             'Set-Cookie',
             'ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}='
             '{925EC0B8-CB17-4BEB-8A35-1033813B0523}; HttpOnly; Path=/')
-        self._response(resp)
+        return self._response(resp)
 
     @Router.define('/cookies_partial$')
     def cookies_partial(self, match):
@@ -326,7 +327,7 @@ class Functional(Router):
         for cookie in cookies.output(header='').split('\n'):
             resp.add_header('Set-Cookie', cookie.strip())
 
-        self._response(resp)
+        return self._response(resp)
 
     @Router.define('/broken$')
     def broken(self, match):
@@ -336,7 +337,7 @@ class Functional(Router):
             self._transport.close()
             raise ValueError()
 
-        self._response(
+        return self._response(
             resp,
             body=json.dumps({'t': (b'0' * 1024).decode('utf-8')}),
             write_body=write_body)
@@ -535,10 +536,10 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertEqual(str(len(data)),
                              content['headers']['Content-Length'])
 
-    def _test_request_conn_closed(self):
+    def test_request_conn_closed(self):
         with run_server(self.loop, router=Functional) as httpd:
             httpd['close'] = True
-            with self.assertRaises(aiohttp.ClientHttpProcessingError):
+            with self.assertRaises(aiohttp.ServerDisconnectedError):
                 self.loop.run_until_complete(
                     client.request('get', httpd.url('method', 'get'),
                                    loop=self.loop))

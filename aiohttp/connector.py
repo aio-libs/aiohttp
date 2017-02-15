@@ -50,7 +50,6 @@ class Connection:
             _warnings.warn('Unclosed connection {!r}'.format(self),
                            ResourceWarning)
             if self._loop.is_closed():
-                print('close', self._loop)
                 return
 
             self._connector._release(

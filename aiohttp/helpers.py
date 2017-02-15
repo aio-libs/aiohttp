@@ -28,6 +28,7 @@ try:
 except ImportError:
     ensure_future = asyncio.async
 
+PY_34 = sys.version_info < (3, 5)
 PY_35 = sys.version_info >= (3, 5)
 PY_352 = sys.version_info >= (3, 5, 2)
 
