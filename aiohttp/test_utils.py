@@ -24,7 +24,6 @@ from .signals import Signal
 from .web import Application, Request, Server, UrlMappingMatchInfo
 
 
-TESTS_FAST = bool(os.environ.get('AIOHTTP_TESTS_FAST'))
 TESTS_USE_UVLOOP = not bool(os.environ.get('AIOHTTP_TESTS_USE_UVLOOP', True))
 
 
@@ -437,7 +436,7 @@ def unittest_run_loop(func):
 
 
 @contextlib.contextmanager
-def loop_context(loop_factory=asyncio.new_event_loop, fast=None):
+def loop_context(loop_factory=asyncio.new_event_loop, fast=False):
     """A contextmanager that creates an event_loop, for test purposes.
 
     Handles the creation and cleanup of a test loop.
@@ -459,14 +458,11 @@ def setup_test_loop(loop_factory=asyncio.new_event_loop):
     return loop
 
 
-def teardown_test_loop(loop, fast=None):
+def teardown_test_loop(loop, fast=False):
     """Teardown and cleanup an event_loop created
     by setup_test_loop.
 
     """
-    if fast is None:
-        fast = TESTS_FAST
-
     closed = loop.is_closed()
     if not closed:
         loop.call_soon(loop.stop)
