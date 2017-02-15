@@ -24,12 +24,14 @@ def pytest_addoption(parser):
                      help='run tests with uvloop only if available')
     parser.addoption('--without-uvloop', action='store_true', default=False,
                      help='run tests without uvloop')
+    parser.addoption('--enable-loop-debug', action='store_true', default=False,
+                     help='enable event loop debug mode')
 
 
 @pytest.fixture
 def fast(request):
     """ --fast config option """
-    return request.config.getoption("--fast")
+    return request.config.getoption('--fast')
 
 
 @contextlib.contextmanager
@@ -70,8 +72,15 @@ def pytest_pyfunc_call(pyfuncitem):
 
 
 def pytest_configure(config):
-    uvloop_only = config.getoption("--with-uvloop-only")
-    without_uvloop = config.getoption("--without-uvloop")
+    fast = config.getoption('--fast')
+    uvloop_only = config.getoption('--with-uvloop-only')
+
+    without_uvloop = False
+    if fast:
+        without_uvloop = True
+
+    if config.getoption('--without-uvloop'):
+        without_uvloop = True
 
     LOOP_FACTORIES.clear()
     if uvloop_only and uvloop is not None:
@@ -90,10 +99,11 @@ LOOP_FACTORIES = []
 @pytest.yield_fixture(params=LOOP_FACTORIES)
 def loop(request):
     """Return an instance of the event loop."""
-    fast = request.config.getoption("--fast")
+    fast = request.config.getoption('--fast')
+    debug = request.config.getoption('--enable-loop-debug')
 
     with loop_context(request.param, fast=fast) as _loop:
-        _loop.set_debug(True)
+        _loop.set_debug(debug)
         yield _loop
 
 
