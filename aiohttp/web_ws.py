@@ -4,9 +4,8 @@ import sys
 from collections import namedtuple
 
 from . import hdrs
-from ._ws_impl import (CLOSED_MESSAGE, CLOSING_MESSAGE,
-                       WebSocketError, WebSocketReader,
-                       WSMessage, WSMsgType, do_handshake)
+from ._ws_impl import (CLOSED_MESSAGE, CLOSING_MESSAGE, WebSocketError,
+                       WebSocketReader, WSMessage, WSMsgType, do_handshake)
 from .errors import ClientDisconnectedError, HttpProcessingError
 from .helpers import create_future
 from .streams import FlowControlDataQueue

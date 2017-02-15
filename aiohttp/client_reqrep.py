@@ -9,7 +9,7 @@ import warnings
 from http.cookies import CookieError, Morsel
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
-from yarl import BaseURL, URL
+from yarl import BaseURL
 
 import aiohttp
 
@@ -516,7 +516,7 @@ class ClientResponse(HeadersMixin):
 
     def __init__(self, method, url, *,
                  writer=None, continue100=None, timer=None):
-        assert isinstance(url, URL)
+        assert isinstance(url, BaseURL)
 
         self.method = method
         self._url_obj = url
