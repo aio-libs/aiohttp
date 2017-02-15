@@ -120,19 +120,8 @@ class StreamWriter:
           w.write(data)
           yield from w.drain()
         """
-        if self.transport is not None:
-            try:
-                if self.transport.is_closing():
-                    # Yield to the event loop so connection_lost() may be
-                    # called.  Without this, _drain_helper() would return
-                    # immediately, and code that calls
-                    #     write(...); yield from drain()
-                    # in a loop would never call connection_lost(), so it
-                    # would not see an error when the socket is closed.
-                    yield
-            except AttributeError:
-                pass
-        yield from self._protocol._drain_helper()
+        if self._protocol.transport is not None:
+            yield from self._protocol._drain_helper()
 
 
 if PY_35:
