@@ -9,7 +9,7 @@ import warnings
 from http.cookies import CookieError, Morsel
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
-from yarl import URL
+from yarl import BaseURL, URL
 
 import aiohttp
 
@@ -70,8 +70,8 @@ class ClientRequest:
         if loop is None:
             loop = asyncio.get_event_loop()
 
-        assert isinstance(url, URL), url
-        assert isinstance(proxy, (URL, type(None))), proxy
+        assert isinstance(url, BaseURL), url
+        assert isinstance(proxy, (BaseURL, type(None))), proxy
 
         if params:
             q = MultiDict(url.query)
