@@ -70,7 +70,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._cache = {}
         self._task = task
 
-        self.rel_url = URL(message.path)
+        self.rel_url = message.url
 
     def clone(self, *, method=sentinel, rel_url=sentinel,
               headers=sentinel):
@@ -90,7 +90,9 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         if method is not sentinel:
             dct['method'] = method
         if rel_url is not sentinel:
-            dct['path'] = str(URL(rel_url))
+            rel_url = URL(rel_url)
+            dct['url'] = rel_url
+            dct['path'] = str(rel_url)
         if headers is not sentinel:
             dct['headers'] = CIMultiDict(headers)
             dct['raw_headers'] = [(k.encode('utf-8'), v.encode('utf-8'))
