@@ -67,7 +67,6 @@ class RequestHandler(ServerHttpProtocol):
         except HTTPException as exc:
             resp = exc
         except Exception as exc:
-            print('exceptino', exc)
             msg = "<h1>500 Internal Server Error</h1>"
             if self.debug:
                 try:

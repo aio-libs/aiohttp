@@ -285,7 +285,7 @@ class ClientRequest:
         elif isinstance(data, MultipartWriter):
             self.body = data.serialize()
             self.headers.update(data.headers)
-            self.chunked = self.chunked or 8192
+            self.chunked = True
 
         else:
             if not isinstance(data, helpers.FormData):
@@ -298,7 +298,7 @@ class ClientRequest:
                 self.headers[hdrs.CONTENT_TYPE] = data.content_type
 
             if data.is_multipart:
-                self.chunked = self.chunked or 8192
+                self.chunked = True
             else:
                 if (hdrs.CONTENT_LENGTH not in self.headers and
                         not self.chunked):
@@ -314,10 +314,9 @@ class ClientRequest:
             if 'chunked' not in te:
                 self.headers[hdrs.TRANSFER_ENCODING] = 'chunked'
 
-            self.chunked = self.chunked if type(self.chunked) is int else 8192
         else:
             if 'chunked' in te:
-                self.chunked = 8192
+                self.chunked = True
             else:
                 self.chunked = None
                 if hdrs.CONTENT_LENGTH not in self.headers:
@@ -401,7 +400,7 @@ class ClientRequest:
                         break
 
             elif isinstance(self.body, io.IOBase):
-                chunk = self.body.read(self.chunked)
+                chunk = self.body.read(streams.DEFAULT_LIMIT)
                 while chunk:
                     request.write(chunk)
                     chunk = self.body.read(self.chunked)
