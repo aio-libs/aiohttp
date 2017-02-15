@@ -1,7 +1,6 @@
 import os
 import socket
 import ssl
-
 from io import StringIO
 from unittest import mock
 from uuid import uuid4
@@ -10,7 +9,6 @@ import pytest
 
 from aiohttp import web
 from aiohttp.test_utils import loop_context
-
 
 # Test for features of OS' socket support
 _has_unix_domain_socks = hasattr(socket, 'AF_UNIX')

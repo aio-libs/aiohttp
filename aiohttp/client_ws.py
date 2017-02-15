@@ -4,8 +4,8 @@ import asyncio
 import json
 import sys
 
-from ._ws_impl import (CLOSED_MESSAGE, CLOSING_MESSAGE,
-                       WebSocketError, WSMessage, WSMsgType)
+from ._ws_impl import (CLOSED_MESSAGE, CLOSING_MESSAGE, WebSocketError,
+                       WSMessage, WSMsgType)
 from .errors import ServerDisconnectedError
 from .helpers import create_future
 
