@@ -12,8 +12,19 @@ from .test_utils import (LOOP_FACTORIES, RawTestServer, TestClient, TestServer,
                          loop_context, setup_test_loop, teardown_test_loop)
 
 
+def pytest_addoption(parser):
+    parser.addoption('--fast', action='store_true', default=False,
+                     help='run tests faster by disabling extra checks')
+
+
+@pytest.fixture
+def fast(request):
+    """ --fast config option """
+    return request.config.getoption("--fast")
+
+
 @contextlib.contextmanager
-def _passthrough_loop_context(loop):
+def _passthrough_loop_context(loop, fast=False):
     if loop:
         # loop already exists, pass it straight through
         yield loop
@@ -21,7 +32,7 @@ def _passthrough_loop_context(loop):
         # this shadows loop_context's standard behavior
         loop = setup_test_loop()
         yield loop
-        teardown_test_loop(loop)
+        teardown_test_loop(loop, fast=fast)
 
 
 def pytest_pycollect_makeitem(collector, name, obj):
@@ -36,9 +47,10 @@ def pytest_pyfunc_call(pyfuncitem):
     """
     Run coroutines in an event loop instead of a normal function call.
     """
+    fast = pyfuncitem.config.getoption("--fast")
     if asyncio.iscoroutinefunction(pyfuncitem.function):
         existing_loop = pyfuncitem.funcargs.get('loop', None)
-        with _passthrough_loop_context(existing_loop) as _loop:
+        with _passthrough_loop_context(existing_loop, fast=fast) as _loop:
             testargs = {arg: pyfuncitem.funcargs[arg]
                         for arg in pyfuncitem._fixtureinfo.argnames}
 
@@ -51,7 +63,9 @@ def pytest_pyfunc_call(pyfuncitem):
 @pytest.yield_fixture(params=LOOP_FACTORIES)
 def loop(request):
     """Return an instance of the event loop."""
-    with loop_context(request.param) as _loop:
+    fast = request.config.getoption("--fast")
+
+    with loop_context(request.param, fast=fast) as _loop:
         _loop.set_debug(True)
         yield _loop
 
