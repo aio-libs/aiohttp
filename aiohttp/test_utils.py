@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import functools
 import gc
+import os
 import socket
 import sys
 import unittest
@@ -18,22 +19,33 @@ import aiohttp
 from aiohttp.client import _RequestContextManager
 
 from . import ClientSession, hdrs
-from .helpers import TimeService, sentinel
+from .helpers import PY_35, TimeService, sentinel
 from .protocol import HttpVersion, RawRequestMessage
 from .signals import Signal
 from .web import Application, Request, Server, UrlMappingMatchInfo
+
+
+if bool(os.environ.get('AIOHTTP_TESTS_LIGHT')):
+    TESTS_LIGHT = True
+else:
+    TESTS_LIGHT = False
+
+if bool(os.environ.get('AIOHTTP_TESTS_USE_UVLOOP', True)):
+    TESTS_USE_UVLOOP = True
+else:
+    TESTS_USE_UVLOOP = False
+
 
 try:
     import uvloop
 except:
     uvloop = None
 
-PY_35 = sys.version_info >= (3, 5)
-
 LOOP_FACTORIES = [asyncio.new_event_loop]
-if uvloop:
+if TESTS_USE_UVLOOP and uvloop:
     LOOP_FACTORIES.append(uvloop.new_event_loop)
 
+print(LOOP_FACTORIES)
 
 def run_briefly(loop):
     @asyncio.coroutine
@@ -466,7 +478,10 @@ def teardown_test_loop(loop):
         loop.call_soon(loop.stop)
         loop.run_forever()
         loop.close()
-    gc.collect()
+
+    if not TESTS_LIGHT:
+        gc.collect()
+
     asyncio.set_event_loop(None)
 
 
