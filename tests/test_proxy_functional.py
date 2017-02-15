@@ -8,14 +8,6 @@ from yarl import URL
 import aiohttp
 import aiohttp.helpers
 import aiohttp.web
-from aiohttp.test_utils import loop_context
-
-
-@pytest.yield_fixture
-def loop():
-    """Return an instance of the event loop."""
-    with loop_context() as _loop:
-        yield _loop
 
 
 @pytest.fixture
@@ -38,11 +30,18 @@ def proxy_test_server(raw_test_server, loop, monkeypatch):
         if isinstance(proxy_mock.return_value, dict):
             response.update(proxy_mock.return_value)
 
+        headers = response['headers']
+        if not headers:
+            headers = {}
+
         if request.method == 'CONNECT':
             response['body'] = None
 
+        response['headers'] = headers
+
         resp = aiohttp.web.Response(**response)
         yield from resp.prepare(request)
+        yield from resp.drain()
         return resp
 
     @asyncio.coroutine

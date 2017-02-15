@@ -7,6 +7,7 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_SIMPLE, \
                      Py_buffer, PyBytes_AsString
 
+import yarl
 from multidict import CIMultiDict
 
 from aiohttp import hdrs
@@ -257,9 +258,15 @@ cdef int cb_on_message_begin(cparser.http_parser* parser) except -1:
 cdef int cb_on_url(cparser.http_parser* parser,
                    const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
+    cdef str path = None
     try:
-        pyparser._url = _parse_url(at[:length], length)
-        pyparser._path = at[:length].decode('utf-8', 'surrogateescape')
+        path = at[:length].decode('utf-8', 'surrogateescape')
+        pyparser._path = path
+
+        if pyparser._cparser.method == 5:  # CONNECT
+            pyparser._url = yarl.URL(path)
+        else:
+            pyparser._url = _parse_url(at[:length], length)
     except BaseException as ex:
         pyparser._last_error = ex
         return -1
