@@ -3,6 +3,9 @@ CHANGES
 
 1.4.0 (XXXX-XX-XX)
 ------------------
+
+- Make CookieJar.filter_cookies() accept plain string parameter. #1636
+
 - `run_app` and the Command Line Interface now support serving over Unix domain sockets for
   faster inter-process communication.
 
