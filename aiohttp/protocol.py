@@ -967,7 +967,9 @@ class URL(yarl.URL):
         if port:
             netloc += ':{}'.format(port)
         if userinfo:
-            netloc = yarl.quote(userinfo) + '@' + netloc
+            netloc = yarl.quote(
+                userinfo, safe='@:',
+                protected=':', strict=False) + '@' + netloc
 
         if path:
             path = yarl.quote(path, safe='@:', protected='/', strict=False)
