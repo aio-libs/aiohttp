@@ -15,14 +15,14 @@ from .errors import (
     BadHttpMessage, BadStatusLine, InvalidHeader, LineTooLong, InvalidURLError)
 from .protocol import (
     HttpVersion, HttpVersion10, HttpVersion11,
-    RawRequestMessage, DeflateBuffer, URL)
+    RawRequestMessage, RawResponseMessage, DeflateBuffer, URL)
 from .streams import EMPTY_PAYLOAD, FlowControlStreamReader
 
 cimport cython
 from . cimport _cparser as cparser
 
 
-__all__ = ('HttpRequestParser', 'parse_url')
+__all__ = ('HttpRequestParser', 'HttpResponseMessage', 'parse_url')
 
 
 @cython.internal
@@ -46,6 +46,7 @@ cdef class HttpParser:
 
         object  _url
         str     _path
+        str     _reason
         list    _headers
         list    _raw_headers
         bint    _upgraded
@@ -97,6 +98,7 @@ cdef class HttpParser:
         self._upgraded = False
 
         self._csettings.on_url = cb_on_url
+        self._csettings.on_status = cb_on_status
         self._csettings.on_header_field = cb_on_header_field
         self._csettings.on_header_value = cb_on_header_value
         self._csettings.on_headers_complete = cb_on_headers_complete
@@ -138,6 +140,7 @@ cdef class HttpParser:
                               ENCODING='utf-8',
                               ENCODING_ERR='surrogateescape',
                               CONTENT_ENCODING=hdrs.CONTENT_ENCODING,
+                              SEC_WEBSOCKET_KEY1=hdrs.SEC_WEBSOCKET_KEY1,
                               SUPPORTED=('gzip', 'deflate')):
         self._process_header()
 
@@ -152,17 +155,26 @@ cdef class HttpParser:
         if upgrade or self._cparser.method == 5: # cparser.CONNECT:
             self._upgraded = True
 
-        encoding = None
-        enc = headers.get(CONTENT_ENCODING)
-        if enc:
-           enc = enc.lower()
-           if enc in SUPPORTED:
-                encoding = enc
+        # do not support old websocket spec
+        if SEC_WEBSOCKET_KEY1 in headers:
+            raise InvalidHeader(SEC_WEBSOCKET_KEY1)
 
-        msg = RawRequestMessage(
-            method.decode(ENCODING, ENCODING_ERR), self._path,
-            self.http_version(), headers, raw_headers,
-            should_close, encoding, upgrade, chunked, self._url)
+        encoding = headers.get(CONTENT_ENCODING)
+        if encoding:
+           encoding = encoding.lower()
+           if encoding not in SUPPORTED:
+                encoding = None
+
+        if self._cparser.type == cparser.HTTP_REQUEST:
+            msg = RawRequestMessage(
+                method.decode(ENCODING, ENCODING_ERR), self._path,
+                self.http_version(), headers, raw_headers,
+                should_close, encoding, upgrade, chunked, self._url)
+        else:
+            msg = RawResponseMessage(
+                self.http_version(), self._cparser.status_code, self._reason,
+                headers, raw_headers, should_close, encoding,
+                upgrade, chunked)
 
         if (self._cparser.content_length > 0 or chunked or
                 self._cparser.method == 5):  # CONNECT: 5
@@ -216,11 +228,12 @@ cdef class HttpParser:
         if (self._cparser.http_errno != cparser.HPE_OK and
                 (self._cparser.http_errno != cparser.HPE_INVALID_METHOD or
                  self._cparser.method == 0)):
-            ex = parser_error_from_errno(
-                <cparser.http_errno> self._cparser.http_errno)
             if self._last_error is not None:
-                ex.__context__ = self._last_error
+                ex = self._last_error
                 self._last_error = None
+            else:
+                ex = parser_error_from_errno(
+                    <cparser.http_errno> self._cparser.http_errno)
             raise ex
 
         if self._messages:
@@ -242,13 +255,15 @@ cdef class HttpRequestParser(HttpParser):
                  size_t max_field_size=8190):
          self._init(cparser.HTTP_REQUEST, protocol, loop,
                     max_line_size, max_headers, max_field_size)
-        #self._proto_on_url = getattr(protocol, 'on_url', None)
-        #if self._proto_on_url is not None:
-        #    self._csettings.on_url = cb_on_url
 
-    def get_method(self):
-        cdef cparser.http_parser* parser = self._cparser
-        return cparser.http_method_str(<cparser.http_method> parser.method)
+
+cdef class HttpResponseParser(HttpParser):
+
+    def __init__(self, protocol, loop,
+                 size_t max_line_size=8190, size_t max_headers=32768,
+                 size_t max_field_size=8190):
+        self._init(cparser.HTTP_RESPONSE, protocol, loop,
+                   max_line_size, max_headers, max_field_size)
 
 
 cdef int cb_on_message_begin(cparser.http_parser* parser) except -1:
@@ -264,6 +279,10 @@ cdef int cb_on_url(cparser.http_parser* parser,
     cdef HttpParser pyparser = <HttpParser>parser.data
     cdef str path = None
     try:
+        if length > pyparser._max_line_size:
+            raise LineTooLong(
+                'Status line is too long', pyparser._max_line_size)
+
         path = at[:length].decode('utf-8', 'surrogateescape')
         pyparser._path = path
 
@@ -282,8 +301,10 @@ cdef int cb_on_status(cparser.http_parser* parser,
                       const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
-        pyparser._proto_on_status(
-            at[:length].decode('utf-8', 'surrogateescape'))
+        if length > pyparser._max_line_size:
+            raise LineTooLong(
+                'Status line is too long', pyparser._max_line_size)
+        pyparser._reason = at[:length].decode('utf-8', 'surrogateescape')
     except BaseException as ex:
         pyparser._last_error = ex
         return -1
@@ -296,7 +317,8 @@ cdef int cb_on_header_field(cparser.http_parser* parser,
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
         if length > pyparser._max_field_size:
-            raise LineTooLong()
+            raise LineTooLong(
+                'Header name is too long', pyparser._max_field_size)
         pyparser._on_header_field(
             at[:length].decode('utf-8', 'surrogateescape'), at[:length])
     except BaseException as ex:
@@ -311,7 +333,8 @@ cdef int cb_on_header_value(cparser.http_parser* parser,
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
         if length > pyparser._max_field_size:
-            raise LineTooLong()
+            raise LineTooLong(
+                'Header value is too long', pyparser._max_field_size)
         pyparser._on_header_value(
             at[:length].decode('utf-8', 'surrogateescape'), at[:length])
     except BaseException as ex:

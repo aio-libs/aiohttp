@@ -57,9 +57,6 @@ HttpVersion = collections.namedtuple(
 HttpVersion10 = HttpVersion(1, 0)
 HttpVersion11 = HttpVersion(1, 1)
 
-RawStatusLineMessage = collections.namedtuple(
-    'RawStatusLineMessage', ['method', 'path', 'version'])
-
 RawRequestMessage = collections.namedtuple(
     'RawRequestMessage',
     ['method', 'path', 'version', 'headers', 'raw_headers',
@@ -124,6 +121,7 @@ class HttpParser:
                     start_pos = pos + 2
                     if data[start_pos:start_pos+2] == SEP:
                         self._lines.append(EMPTY)
+                        print(self._lines)
 
                         try:
                             msg = self.parse_message(self._lines)
@@ -215,6 +213,7 @@ class HttpParser:
 
         lines_idx = 1
         line = lines[1]
+        line_count = len(lines)
 
         while line:
             header_length = len(line)
@@ -249,8 +248,13 @@ class HttpParser:
 
                     # next line
                     lines_idx += 1
-                    line = lines[lines_idx]
-                    continuation = line[0] in (32, 9)  # (' ', '\t')
+                    if lines_idx < line_count:
+                        line = lines[lines_idx]
+                        if line:
+                            continuation = line[0] in (32, 9)  # (' ', '\t')
+                    else:
+                        line = b''
+                        break
                 bvalue = b''.join(bvalue)
             else:
                 if header_length > self.max_field_size:
@@ -305,6 +309,10 @@ class HttpRequestParser(HttpParser):
     """
 
     def parse_message(self, lines):
+        if len(lines[0]) > self.max_line_size:
+            raise errors.LineTooLong(
+                'Status line is too long', self.max_line_size)
+
         # request line
         line = lines[0].decode('utf-8', 'surrogateescape')
         try:
@@ -349,6 +357,10 @@ class HttpResponseParser(HttpParser):
     Returns RawResponseMessage"""
 
     def parse_message(self, lines):
+        if len(lines[0]) > self.max_line_size:
+            raise errors.LineTooLong(
+                'Status line is too long', self.max_line_size)
+
         line = lines[0].decode('utf-8', 'surrogateescape')
         try:
             version, status = line.split(None, 1)
@@ -372,7 +384,7 @@ class HttpResponseParser(HttpParser):
         except ValueError:
             raise errors.BadStatusLine(line) from None
 
-        if status < 100 or status > 999:
+        if status > 999:
             raise errors.BadStatusLine(line)
 
         # read headers

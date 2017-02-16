@@ -239,3 +239,42 @@ def test_set_enabling_nodelay_disables_cork(loop):
     assert s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
     assert not writer.tcp_cork
     assert not s.getsockopt(socket.IPPROTO_TCP, CORK)
+
+
+def test_acquire(loop):
+    transport = mock.Mock()
+    writer = StreamWriter(mock.Mock(), transport, loop)
+    assert writer.available
+
+    acquired = None
+
+    def cb(tr):
+        nonlocal acquired
+        acquired = tr
+
+    writer.acquire(cb)
+    assert not writer.available
+    assert acquired is transport
+
+
+def test_release(loop):
+    transport = mock.Mock()
+    writer = StreamWriter(mock.Mock(), transport, loop)
+    writer.available = False
+
+    acquired = None
+
+    def cb(tr):
+        nonlocal acquired
+        acquired = tr
+
+    writer.acquire(cb)
+    assert not writer.available
+    assert acquired is None
+
+    writer.release()
+    assert not writer.available
+    assert acquired is transport
+
+    writer.release()
+    assert writer.available
