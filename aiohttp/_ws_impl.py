@@ -5,13 +5,12 @@ import binascii
 import collections
 import hashlib
 import json
-import os
 import random
 import sys
 from enum import IntEnum
 from struct import Struct
 
-from aiohttp import errors, hdrs
+from aiohttp import errors, hdrs, helpers
 from aiohttp.log import ws_logger
 
 __all__ = ('WebSocketReader', 'WebSocketWriter', 'do_handshake',
@@ -129,7 +128,7 @@ def _websocket_mask_python(mask, data):
     return (data ^ mask).to_bytes(datalen, native_byteorder)
 
 
-if bool(os.environ.get('AIOHTTP_NO_EXTENSIONS')):
+if helpers.NO_EXTENSIONS:
     _websocket_mask = _websocket_mask_python
 else:
     try:

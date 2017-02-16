@@ -134,7 +134,11 @@ cdef class HttpParser:
             self._header_value += val
             self._raw_header_value += raw_val
 
-    cdef _on_headers_complete(self):
+    cdef _on_headers_complete(self,
+                              ENCODING='utf-8',
+                              ENCODING_ERR='surrogateescape',
+                              CONTENT_ENCODING=hdrs.CONTENT_ENCODING,
+                              SUPPORTED=('gzip', 'deflate')):
         self._process_header()
 
         method = cparser.http_method_str(<cparser.http_method> self._cparser.method)
@@ -149,14 +153,14 @@ cdef class HttpParser:
             self._upgraded = True
 
         encoding = None
-        enc = headers.get(hdrs.CONTENT_ENCODING)
+        enc = headers.get(CONTENT_ENCODING)
         if enc:
            enc = enc.lower()
-           if enc in ('gzip', 'deflate'):
+           if enc in SUPPORTED:
                 encoding = enc
 
         msg = RawRequestMessage(
-            method.decode('utf-8', 'surrogateescape'), self._path,
+            method.decode(ENCODING, ENCODING_ERR), self._path,
             self.http_version(), headers, raw_headers,
             should_close, encoding, upgrade, chunked, self._url)
 

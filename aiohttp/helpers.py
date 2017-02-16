@@ -44,6 +44,7 @@ __all__ = ('BasicAuth', 'create_future', 'FormData', 'parse_mimetype',
 
 sentinel = object()
 Timeout = timeout
+NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):

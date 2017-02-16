@@ -3,7 +3,6 @@
 import asyncio
 import asyncio.streams
 import http.server
-import os
 import socket
 import traceback
 import warnings
@@ -42,7 +41,7 @@ else:
         pass
 
 
-if bool(os.environ.get('AIOHTTP_NO_EXTENSIONS')):
+if helpers.NO_EXTENSIONS:
     from .protocol import HttpRequestParser
 else:
     try:
@@ -238,7 +237,7 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             if not handler.done():
                 handler.cancel()
 
-        self._request_handlers.clear()
+        self._request_handlers = ()
 
         if self._time_service_owner:
             self._time_service.close()
