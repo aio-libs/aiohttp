@@ -39,12 +39,19 @@ else:
 
 
 __all__ = ('BasicAuth', 'create_future', 'FormData', 'parse_mimetype',
-           'Timeout', 'ensure_future')
+           'Timeout', 'ensure_future', 'noop')
 
 
 sentinel = object()
 Timeout = timeout
 NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))
+
+if sys.version_info < (3, 5):
+    noop = tuple
+else:
+    @asyncio.coroutine
+    def noop(*args, **kwargs):
+        pass
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
