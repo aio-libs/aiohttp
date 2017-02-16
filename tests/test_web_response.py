@@ -433,7 +433,8 @@ def test_write_returns_drain():
     resp = StreamResponse()
     yield from resp.prepare(make_request('GET', '/'))
 
-    assert () == resp.write(b'data')
+    with mock.patch('aiohttp.protocol.noop') as noop:
+        assert noop.return_value == resp.write(b'data')
 
 
 @asyncio.coroutine
