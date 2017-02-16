@@ -358,12 +358,11 @@ def test_force_compression_no_accept_gzip():
 def test_delete_content_length_if_compression_enabled():
     req = make_request('GET', '/')
     resp = Response(body=b'answer')
-    assert 6 == resp.content_length
-
     resp.enable_compression(ContentCoding.gzip)
 
     with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
         yield from resp.prepare(req)
+
     assert resp.content_length is None
 
 
@@ -687,8 +686,8 @@ def test_response_ctor():
     assert 200 == resp.status
     assert 'OK' == resp.reason
     assert resp.body is None
-    assert 0 == resp.content_length
-    assert CIMultiDict((['CONTENT-LENGTH', '0'],)) == resp.headers
+    assert resp.content_length == 0
+    assert 'CONTENT-LENGTH' not in resp.headers
 
 
 def test_ctor_with_headers_and_status():
@@ -696,10 +695,12 @@ def test_ctor_with_headers_and_status():
 
     assert 201 == resp.status
     assert b'body' == resp.body
+    assert resp.headers['AGE'] == '12'
+
+    resp._send_headers = mock.Mock()
+    resp._start(mock.Mock())
     assert 4 == resp.content_length
-    assert (CIMultiDict([('AGE', '12'),
-                         ('CONTENT-LENGTH', '4')]) ==
-            resp.headers)
+    assert resp.headers['CONTENT-LENGTH'] == '4'
 
 
 def test_ctor_content_type():
@@ -707,8 +708,8 @@ def test_ctor_content_type():
 
     assert 200 == resp.status
     assert 'OK' == resp.reason
-    assert (CIMultiDict([('CONTENT-TYPE', 'application/json'),
-                         ('CONTENT-LENGTH', '0')]) ==
+    assert 0 == resp.content_length
+    assert (CIMultiDict([('CONTENT-TYPE', 'application/json')]) ==
             resp.headers)
 
 
@@ -722,12 +723,16 @@ def test_ctor_text():
 
     assert 200 == resp.status
     assert 'OK' == resp.reason
+    assert 9 == resp.content_length
     assert (CIMultiDict(
-        [('CONTENT-TYPE', 'text/plain; charset=utf-8'),
-         ('CONTENT-LENGTH', '9')]) == resp.headers)
+        [('CONTENT-TYPE', 'text/plain; charset=utf-8')]) == resp.headers)
 
     assert resp.body == b'test text'
     assert resp.text == 'test text'
+
+    resp._send_headers = mock.Mock()
+    resp._start(mock.Mock())
+    assert resp.headers['CONTENT-LENGTH'] == '9'
 
 
 def test_ctor_charset():
@@ -781,16 +786,21 @@ def test_ctor_both_charset_param_and_header():
 def test_assign_nonbyteish_body():
     resp = Response(body=b'data')
 
-    with pytest.raises(TypeError):
+    with pytest.raises(AssertionError):
         resp.body = 123
     assert b'data' == resp.body
+    assert 4 == resp.content_length
+
+    resp._send_headers = mock.Mock()
+    resp._start(mock.Mock())
+    assert resp.headers['CONTENT-LENGTH'] == '4'
     assert 4 == resp.content_length
 
 
 def test_assign_nonstr_text():
     resp = Response(text='test')
 
-    with pytest.raises(TypeError):
+    with pytest.raises(AssertionError):
         resp.text = b'123'
     assert b'test' == resp.body
     assert 4 == resp.content_length
@@ -905,7 +915,7 @@ def test_started_when_started():
 @asyncio.coroutine
 def test_drain_before_start():
     resp = StreamResponse()
-    with pytest.raises(RuntimeError):
+    with pytest.raises(AssertionError):
         yield from resp.drain()
 
 

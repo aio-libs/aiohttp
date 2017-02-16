@@ -39,6 +39,7 @@ cdef class HttpParser:
 
         object _protocol
         object _loop
+        object _timer
 
         size_t _max_line_size
         size_t _max_field_size
@@ -72,7 +73,7 @@ cdef class HttpParser:
         PyMem_Free(self._csettings)
 
     cdef _init(self, cparser.http_parser_type mode,
-                   object protocol, object loop,
+                   object protocol, object loop, object timer=None,
                    size_t max_line_size=8190, size_t max_headers=32768,
                    size_t max_field_size=8190):
         cparser.http_parser_init(self._cparser, mode)
@@ -83,6 +84,7 @@ cdef class HttpParser:
 
         self._protocol = protocol
         self._loop = loop
+        self._timer = timer
 
         self._payload = None
         self._messages = []
@@ -178,7 +180,8 @@ cdef class HttpParser:
 
         if (self._cparser.content_length > 0 or chunked or
                 self._cparser.method == 5):  # CONNECT: 5
-            payload = FlowControlStreamReader(self._protocol, loop=self._loop)
+            payload = FlowControlStreamReader(
+                self._protocol, timer=self._timer, loop=self._loop)
         else:
             payload = EMPTY_PAYLOAD
 
@@ -250,19 +253,19 @@ cdef class HttpParser:
 
 cdef class HttpRequestParser(HttpParser):
 
-    def __init__(self, protocol, loop,
+    def __init__(self, protocol, loop, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,
                  size_t max_field_size=8190):
-         self._init(cparser.HTTP_REQUEST, protocol, loop,
+         self._init(cparser.HTTP_REQUEST, protocol, loop, timer,
                     max_line_size, max_headers, max_field_size)
 
 
 cdef class HttpResponseParser(HttpParser):
 
-    def __init__(self, protocol, loop,
+    def __init__(self, protocol, loop, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,
                  size_t max_field_size=8190):
-        self._init(cparser.HTTP_RESPONSE, protocol, loop,
+        self._init(cparser.HTTP_RESPONSE, protocol, loop, timer,
                    max_line_size, max_headers, max_field_size)
 
 
