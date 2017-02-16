@@ -55,7 +55,7 @@ with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
 
 
 install_requires = ['chardet', 'multidict>=2.1.4',
-                    'async_timeout>=1.1.0', 'yarl>=0.9.6,<0.10']
+                    'async_timeout>=1.1.0', 'yarl>=0.9.8,<0.10']
 
 if sys.version_info < (3, 4, 2):
     raise RuntimeError("aiohttp requires Python 3.4.2+")
@@ -90,6 +90,7 @@ args = dict(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
         'Development Status :: 5 - Production/Stable',
         'Operating System :: POSIX',
         'Operating System :: MacOS :: MacOS X',

@@ -310,8 +310,8 @@ def test_path_is_not_double_encoded3(make_request):
 
 
 def test_path_safe_chars_preserved(make_request):
-    req = make_request('get', "http://0.0.0.0/get/:=")
-    assert req.url.path == "/get/:="
+    req = make_request('get', "http://0.0.0.0/get/:=+/%2B/")
+    assert req.url.path == "/get/:=+/+/"
 
 
 def test_params_are_added_before_fragment1(make_request):
