@@ -308,7 +308,7 @@ def test_static_file_huge(loop, test_client, tmpdir):
 
 @asyncio.coroutine
 def test_static_file_range(loop, test_client, sender):
-    filepath = (pathlib.Path(__file__).parent / 'aiohttp.png')
+    filepath = (pathlib.Path(__file__).parent.parent / 'LICENSE.txt')
 
     @asyncio.coroutine
     def handler(request):

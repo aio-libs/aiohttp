@@ -54,12 +54,9 @@ class StreamWriter:
         if self._waiters:
             self.available = False
             cb = self._waiters.pop(0)
-            cb(self)
+            cb(self.transport)
         else:
             self.available = True
-
-    def is_connected(self):
-        return self.transport is not None
 
     @property
     def tcp_nodelay(self):

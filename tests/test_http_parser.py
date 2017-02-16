@@ -9,16 +9,18 @@ import pytest
 from yarl import URL
 
 import aiohttp
-from aiohttp import CIMultiDict, errors
-from aiohttp.protocol import (DeflateBuffer, HttpParser, HttpPayloadParser,
+from aiohttp import CIMultiDict, errors, streams
+from aiohttp.protocol import (DeflateBuffer, HttpPayloadParser,
                               HttpRequestParser, HttpResponseParser)
 
 
 REQUEST_PARSERS = [HttpRequestParser]
+RESPONSE_PARSERS = [HttpResponseParser]
 
 try:
     from aiohttp import _parser
     REQUEST_PARSERS.append(_parser.HttpRequestParser)
+    RESPONSE_PARSERS.append(_parser.HttpResponseParser)
 except ImportError:  # pragma: no cover
     pass
 
@@ -39,6 +41,12 @@ def parser(loop, protocol, request):
     return request.param(protocol, loop, 8190, 32768, 8190)
 
 
+@pytest.fixture(params=RESPONSE_PARSERS)
+def response(loop, protocol, request):
+    """Parser implementations"""
+    return request.param(protocol, loop, 8190, 32768, 8190)
+
+
 def test_parse_headers(parser):
     text = b'''GET /test HTTP/1.1\r
 test: line\r
@@ -47,7 +55,6 @@ test2: data\r
 \r
 '''
     messages, upgrade, tail = parser.feed_data(text)
-
     assert len(messages) == 1
     msg = messages[0][0]
 
@@ -60,166 +67,347 @@ test2: data\r
     assert not msg.upgrade
 
 
-class TestParseHeaders(unittest.TestCase):
+def test_headers_multi_feed(parser):
+    text1 = b'GET /test HTTP/1.1\r\n'
+    text2 = b'test: line\r'
+    text3 = b'\n continue\r\n\r\n'
 
-    def setUp(self):
-        asyncio.set_event_loop(None)
+    messages, upgrade, tail = parser.feed_data(text1)
+    assert len(messages) == 0
 
-        self.parser = HttpParser(8190, 32768, 8190)
+    messages, upgrade, tail = parser.feed_data(text2)
+    assert len(messages) == 0
 
-    def test_parse_headers_multi(self):
-        hdrs = (b'',
-                b'Set-Cookie: c1=cookie1',
-                b'Set-Cookie: c2=cookie2', '')
+    messages, upgrade, tail = parser.feed_data(text3)
+    assert len(messages) == 1
 
-        headers, raw_headers, close, \
-            compression, _, _ = self.parser.parse_headers(hdrs)
-
-        self.assertEqual(list(headers.items()),
-                         [('Set-Cookie', 'c1=cookie1'),
-                          ('Set-Cookie', 'c2=cookie2')])
-        self.assertEqual(raw_headers,
-                         ((b'Set-Cookie', b'c1=cookie1'),
-                          (b'Set-Cookie', b'c2=cookie2')))
-        self.assertIsNone(close)
-        self.assertIsNone(compression)
-
-    def test_conn_close(self):
-        headers, raw_headers, close, \
-            compression, _, _ = self.parser.parse_headers(
-                [b'', b'connection: close', b''])
-        self.assertTrue(close)
-
-    def test_conn_keep_alive(self):
-        headers, raw_headers, close, \
-            compression, _, _ = self.parser.parse_headers(
-                [b'', b'connection: keep-alive', b''])
-        self.assertFalse(close)
-
-    def test_conn_other(self):
-        headers, raw_headers, close, \
-            compression, _, _ = self.parser.parse_headers(
-                [b'', b'connection: test', b'', b''])
-        self.assertIsNone(close)
-
-    def test_conn_chunked(self):
-        headers, raw_headers, close, \
-            compression, _, chunked = self.parser.parse_headers(
-                [b'', b'transfer-encoding: chunked', b'', b''])
-        self.assertTrue(chunked)
-
-    def test_conn_upgrade(self):
-        headers, raw_headers, close, \
-            compression, upgrade, _ = self.parser.parse_headers(
-                [b'', b'connection: upgrade', b'', b''])
-        self.assertTrue(upgrade)
-
-    def test_compression_gzip(self):
-        headers, raw_headers, close, \
-            compression, upgrade, _ = self.parser.parse_headers(
-                [b'', b'content-encoding: gzip', b'', b''])
-        self.assertEqual('gzip', compression)
-
-    def test_compression_deflate(self):
-        headers, raw_headers, close, \
-            compression, upgrade, _ = self.parser.parse_headers(
-                [b'', b'content-encoding: deflate', b'', b''])
-        self.assertEqual('deflate', compression)
-
-    def test_compression_unknown(self):
-        headers, raw_headers, close, \
-            compression, _, _ = self.parser.parse_headers(
-                [b'', b'content-encoding: compress', b'', b''])
-        self.assertIsNone(compression)
-
-    def test_max_field_size(self):
-        with self.assertRaises(errors.LineTooLong) as cm:
-            parser = HttpParser(None, None, 8190, 32768, 5)
-            parser.parse_headers(
-                [b'', b'test: line data data\r\n', b'data\r\n', b'\r\n'])
-        self.assertIn("request header field test", str(cm.exception))
-
-    def test_max_continuation_headers_size(self):
-        with self.assertRaises(errors.LineTooLong) as cm:
-            parser = HttpParser(None, None, 8190, 32768, 5)
-            parser.parse_headers([b'', b'test: line\r\n',
-                                  b' test\r\n', b'\r\n'])
-        self.assertIn("request header field test", str(cm.exception))
-
-    def test_max_header_size(self):
-        with self.assertRaises(errors.LineTooLong) as cm:
-            parser = HttpParser(None, None, 5, 5, 5)
-            parser.parse_headers(
-                [b'', b'test: line data data\r\n', b'data\r\n', b'\r\n'])
-        self.assertIn("request header", str(cm.exception))
-
-    def test_invalid_header(self):
-        with self.assertRaisesRegex(
-                errors.InvalidHeader,
-                "(400, message='Invalid HTTP Header: test line)"):
-            self.parser.parse_headers([b'', b'test line\r\n', b'\r\n'])
-
-    def test_invalid_name(self):
-        with self.assertRaisesRegex(
-                errors.InvalidHeader,
-                "(400, message='Invalid HTTP Header: test..)"):
-            self.parser.parse_headers([b'', b'test[]: line\r\n', b'\r\n'])
+    msg = messages[0][0]
+    assert list(msg.headers.items()) == [('Test', 'line continue')]
+    assert msg.raw_headers == ((b'test', b'line continue'),)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
 
 
-class TestDeflateBuffer(unittest.TestCase):
+def test_parse_headers_multi(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'Set-Cookie: c1=cookie1\r\n'
+            b'Set-Cookie: c2=cookie2\r\n\r\n')
 
-    def setUp(self):
-        self.stream = mock.Mock()
-        asyncio.set_event_loop(None)
+    messages, upgrade, tail = parser.feed_data(text)
+    assert len(messages) == 1
+    msg = messages[0][0]
 
-    def test_feed_data(self):
-        buf = aiohttp.FlowControlDataQueue(self.stream)
-        dbuf = DeflateBuffer(buf, 'deflate')
+    assert list(msg.headers.items()) == [('Set-Cookie', 'c1=cookie1'),
+                                         ('Set-Cookie', 'c2=cookie2')]
+    assert msg.raw_headers == ((b'Set-Cookie', b'c1=cookie1'),
+                               (b'Set-Cookie', b'c2=cookie2'))
+    assert not msg.should_close
+    assert msg.compression is None
 
-        dbuf.zlib = mock.Mock()
-        dbuf.zlib.decompress.return_value = b'line'
 
-        dbuf.feed_data(b'data', 4)
-        self.assertEqual([b'line'], list(d for d, _ in buf._buffer))
+def test_conn_default_1_0(parser):
+    text = b'GET /test HTTP/1.0\r\n\r\n'
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.should_close
 
-    def test_feed_data_err(self):
-        buf = aiohttp.FlowControlDataQueue(self.stream)
-        dbuf = DeflateBuffer(buf, 'deflate')
 
-        exc = ValueError()
-        dbuf.zlib = mock.Mock()
-        dbuf.zlib.decompress.side_effect = exc
+def test_conn_default_1_1(parser):
+    text = b'GET /test HTTP/1.1\r\n\r\n'
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert not msg.should_close
 
-        self.assertRaises(
-            errors.ContentEncodingError, dbuf.feed_data, b'data', 4)
 
-    def test_feed_eof(self):
-        buf = aiohttp.FlowControlDataQueue(self.stream)
-        dbuf = DeflateBuffer(buf, 'deflate')
+def test_conn_close(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'connection: close\r\n\r\n')
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.should_close
 
-        dbuf.zlib = mock.Mock()
-        dbuf.zlib.flush.return_value = b'line'
 
-        dbuf.feed_eof()
-        self.assertEqual([b'line'], list(d for d, _ in buf._buffer))
-        self.assertTrue(buf._eof)
+def test_conn_close_1_0(parser):
+    text = (b'GET /test HTTP/1.0\r\n'
+            b'connection: close\r\n\r\n')
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.should_close
 
-    def test_feed_eof_err(self):
-        buf = aiohttp.FlowControlDataQueue(self.stream)
-        dbuf = DeflateBuffer(buf, 'deflate')
 
-        dbuf.zlib = mock.Mock()
-        dbuf.zlib.flush.return_value = b'line'
-        dbuf.zlib.eof = False
+def test_conn_keep_alive_1_0(parser):
+    text = (b'GET /test HTTP/1.0\r\n'
+            b'connection: keep-alive\r\n\r\n')
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert not msg.should_close
 
-        self.assertRaises(errors.ContentEncodingError, dbuf.feed_eof)
 
-    def test_empty_body(self):
-        buf = aiohttp.FlowControlDataQueue(self.stream)
-        dbuf = DeflateBuffer(buf, 'deflate')
-        dbuf.feed_eof()
+def test_conn_keep_alive_1_1(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'connection: keep-alive\r\n\r\n')
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert not msg.should_close
 
-        self.assertTrue(buf.at_eof())
+
+def test_conn_other_1_0(parser):
+    text = (b'GET /test HTTP/1.0\r\n'
+            b'connection: test\r\n\r\n')
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.should_close
+
+
+def test_conn_other_1_1(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'connection: test\r\n\r\n')
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert not msg.should_close
+
+
+def test_request_chunked(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'transfer-encoding: chunked\r\n\r\n')
+    messages, upgrade, tail = parser.feed_data(text)
+    msg, payload = messages[0]
+    assert msg.chunked
+    assert not upgrade
+    assert isinstance(payload, streams.FlowControlStreamReader)
+
+
+def test_conn_upgrade(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'connection: upgrade\r\n'
+            b'upgrade: websocket\r\n\r\n')
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert not msg.should_close
+    assert msg.upgrade
+    assert upgrade
+
+
+def test_compression_deflate(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'content-encoding: deflate\r\n\r\n')
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.compression == 'deflate'
+
+
+def test_compression_gzip(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'content-encoding: gzip\r\n\r\n')
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.compression == 'gzip'
+
+
+def test_compression_unknown(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'content-encoding: compress\r\n\r\n')
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert not msg.compression
+
+
+def test_headers_connect(parser):
+    text = (b'CONNECT www.google.com HTTP/1.1\r\n'
+            b'content-length: 0\r\n\r\n')
+    messages, upgrade, tail = parser.feed_data(text)
+    msg, payload = messages[0]
+    assert upgrade
+    assert isinstance(payload, streams.FlowControlStreamReader)
+
+
+def test_headers_old_websocket_key1(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'SEC-WEBSOCKET-KEY1: line\r\n\r\n')
+
+    with pytest.raises(errors.BadHttpMessage):
+        parser.feed_data(text)
+
+
+def test_headers_content_length_err_1(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'content-length: line\r\n\r\n')
+
+    with pytest.raises(errors.BadHttpMessage):
+        parser.feed_data(text)
+
+
+def test_headers_content_length_err_2(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'content-length: -1\r\n\r\n')
+
+    with pytest.raises(errors.BadHttpMessage):
+        parser.feed_data(text)
+
+
+def test_invalid_header(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'test line\r\n\r\n')
+    with pytest.raises(errors.BadHttpMessage):
+        parser.feed_data(text)
+
+
+def test_invalid_name(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'test[]: line\r\n\r\n')
+
+    with pytest.raises(errors.BadHttpMessage):
+        parser.feed_data(text)
+
+
+def test_max_header_field_size(parser):
+    name = b'test' * 10 * 1024
+    text = (b'GET /test HTTP/1.1\r\n' + name + b':data\r\n\r\n')
+
+    with pytest.raises(errors.LineTooLong):
+        parser.feed_data(text)
+
+
+def test_max_header_value_size(parser):
+    name = b'test' * 10 * 1024
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'data:' + name + b'\r\n\r\n')
+
+    with pytest.raises(errors.LineTooLong):
+        parser.feed_data(text)
+
+
+def test_max_header_value_size_continuation(parser):
+    name = b'test' * 10 * 1024
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'data: test\r\n ' + name + b'\r\n\r\n')
+
+    with pytest.raises(errors.LineTooLong):
+        parser.feed_data(text)
+
+
+def test_http_request_parser(parser):
+    text = b'GET /path HTTP/1.1\r\n\r\n'
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+
+    assert msg == ('GET', '/path', (1, 1), CIMultiDict(), (),
+                   False, None, False, False, URL('/path'))
+
+
+def test_http_request_upgrade(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'connection: upgrade\r\n'
+            b'upgrade: websocket\r\n\r\n'
+            b'some raw data')
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert not msg.should_close
+    assert msg.upgrade
+    assert upgrade
+    assert tail == b'some raw data'
+
+
+def test_http_request_parser_utf8(parser):
+    text = 'GET /path HTTP/1.1\r\nx-test:тест\r\n\r\n'.encode('utf-8')
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+
+    assert msg == ('GET', '/path', (1, 1),
+                   CIMultiDict([('X-TEST', 'тест')]),
+                   ((b'x-test', 'тест'.encode('utf-8')),),
+                   False, None, False, False, URL('/path'))
+
+
+def test_http_request_parser_non_utf8(parser):
+    text = 'GET /path HTTP/1.1\r\nx-test:тест\r\n\r\n'.encode('cp1251')
+    msg = parser.feed_data(text)[0][0][0]
+
+    assert msg == ('GET', '/path', (1, 1),
+                   CIMultiDict([('X-TEST', 'тест'.encode('cp1251').decode(
+                       'utf-8', 'surrogateescape'))]),
+                   ((b'x-test', 'тест'.encode('cp1251')),),
+                   False, None, False, False, URL('/path'))
+
+
+def test_http_request_parser_two_slashes(parser):
+    text = b'GET //path HTTP/1.1\r\n\r\n'
+    msg = parser.feed_data(text)[0][0][0]
+
+    assert msg[:-1] == ('GET', '//path', (1, 1), CIMultiDict(), (),
+                        False, None, False, False)
+
+
+def test_http_request_parser_bad_method(parser):
+    with pytest.raises(errors.BadStatusLine):
+        parser.feed_data(b'!12%()+=~$ /get HTTP/1.1\r\n\r\n')
+
+
+def test_http_request_parser_bad_version(parser):
+    with pytest.raises(errors.BadHttpMessage):
+        parser.feed_data(b'GET //get HT/11\r\n\r\n')
+
+
+def test_http_request_max_status_line(parser):
+    with pytest.raises(errors.LineTooLong):
+        parser.feed_data(
+            b'GET /path' + b'test' * 10 * 1024 + b' HTTP/1.1\r\n\r\n')
+
+
+def test_http_response_parser_utf8(response):
+    text = 'HTTP/1.1 200 Ok\r\nx-test:тест\r\n\r\n'.encode('utf-8')
+
+    messages, upgraded, tail = response.feed_data(text)
+    assert len(messages) == 1
+    msg = messages[0][0]
+
+    assert msg.version == (1, 1)
+    assert msg.code == 200
+    assert msg.reason == 'Ok'
+    assert msg.headers == CIMultiDict([('X-TEST', 'тест')])
+    assert msg.raw_headers == ((b'x-test', 'тест'.encode('utf-8')),)
+    assert not upgraded
+    assert not tail
+
+
+def test_http_response_parser_bad_status_line_too_long(response):
+    with pytest.raises(errors.LineTooLong):
+        response.feed_data(
+            b'HTTP/1.1 200 Ok' + b'test' * 10 * 1024 + b'\r\n\r\n')
+
+
+def test_http_response_parser_bad_version(response):
+    with pytest.raises(errors.BadHttpMessage):
+        response.feed_data(b'HT/11 200 Ok\r\n\r\n')
+
+
+def test_http_response_parser_no_reason(response):
+    msg = response.feed_data(b'HTTP/1.1 200\r\n\r\n')[0][0][0]
+
+    assert msg.version == (1, 1)
+    assert msg.code == 200
+    assert not msg.reason
+
+
+def test_http_response_parser_bad(response):
+    with pytest.raises(errors.BadHttpMessage):
+        response.feed_data(b'HTT/1\r\n\r\n')
+
+
+def test_http_response_parser_code_under_100(response):
+    msg = response.feed_data(b'HTTP/1.1 99 test\r\n\r\n')[0][0][0]
+    assert msg.code == 99
+
+
+def test_http_response_parser_code_above_999(response):
+    with pytest.raises(errors.BadHttpMessage):
+        response.feed_data(b'HTTP/1.1 9999 test\r\n\r\n')
+
+
+def test_http_response_parser_code_not_int(response):
+    with pytest.raises(errors.BadHttpMessage):
+        response.feed_data(b'HTTP/1.1 ttt test\r\n\r\n')
 
 
 class TestParsePayload(unittest.TestCase):
@@ -339,143 +527,57 @@ class TestParsePayload(unittest.TestCase):
         self.assertTrue(out.is_eof())
 
 
-class TestParseRequest(unittest.TestCase):
+class TestDeflateBuffer(unittest.TestCase):
 
     def setUp(self):
         self.stream = mock.Mock()
         asyncio.set_event_loop(None)
 
-    def _test_http_request_parser_max_headers(self):
-        p = HttpRequestParser(8190, 20, 8190)
+    def test_feed_data(self):
+        buf = aiohttp.FlowControlDataQueue(self.stream)
+        dbuf = DeflateBuffer(buf, 'deflate')
+
+        dbuf.zlib = mock.Mock()
+        dbuf.zlib.decompress.return_value = b'line'
+
+        dbuf.feed_data(b'data', 4)
+        self.assertEqual([b'line'], list(d for d, _ in buf._buffer))
+
+    def test_feed_data_err(self):
+        buf = aiohttp.FlowControlDataQueue(self.stream)
+        dbuf = DeflateBuffer(buf, 'deflate')
+
+        exc = ValueError()
+        dbuf.zlib = mock.Mock()
+        dbuf.zlib.decompress.side_effect = exc
 
         self.assertRaises(
-            errors.LineTooLong,
-            p.parse_message,
-            b'get /path HTTP/1.1\r\ntest: line\r\ntest2: data\r\n\r\n'
-            .split(b'\r\n'))
+            errors.ContentEncodingError, dbuf.feed_data, b'data', 4)
 
-    def test_http_request_parser(self):
-        p = HttpRequestParser()
-        result = p.parse_message(b'get /path HTTP/1.1\r\n\r\n'.split(b'\r\n'))
-        self.assertEqual(
-            ('GET', '/path', (1, 1), CIMultiDict(), (),
-             False, None, False, False, URL('/path')), result)
+    def test_feed_eof(self):
+        buf = aiohttp.FlowControlDataQueue(self.stream)
+        dbuf = DeflateBuffer(buf, 'deflate')
 
-    def test_http_request_parser_utf8(self):
-        p = HttpRequestParser()
-        msg = 'get /path HTTP/1.1\r\nx-test:тест\r\n\r\n'.encode('utf-8')
-        result = p.parse_message(msg.split(b'\r\n'))
-        self.assertEqual(
-            ('GET', '/path', (1, 1),
-             CIMultiDict([('X-TEST', 'тест')]),
-             ((b'x-test', 'тест'.encode('utf-8')),),
-             False, None, False, False, URL('/path')),
-            result)
+        dbuf.zlib = mock.Mock()
+        dbuf.zlib.flush.return_value = b'line'
 
-    def test_http_request_parser_non_utf8(self):
-        p = HttpRequestParser()
-        msg = 'get /path HTTP/1.1\r\nx-test:тест\r\n\r\n'.encode('cp1251')
-        result = p.parse_message(msg.split(b'\r\n'))
-        self.assertEqual(
-            ('GET', '/path', (1, 1),
-             CIMultiDict([('X-TEST', 'тест'.encode('cp1251').decode(
-                 'utf-8', 'surrogateescape'))]),
-             ((b'x-test', 'тест'.encode('cp1251')),),
-             False, None, False, False, URL('/path')),
-            result)
+        dbuf.feed_eof()
+        self.assertEqual([b'line'], list(d for d, _ in buf._buffer))
+        self.assertTrue(buf._eof)
 
-    def test_http_request_parser_eof(self):
-        # HttpRequestParser does fail on EofStream()
-        p = HttpRequestParser()
-        p.parse_message(b'get /path HTTP/1.1\r\n'.split(b'\r\n'))
+    def test_feed_eof_err(self):
+        buf = aiohttp.FlowControlDataQueue(self.stream)
+        dbuf = DeflateBuffer(buf, 'deflate')
 
-    def test_http_request_parser_two_slashes(self):
-        p = HttpRequestParser()
-        result = p.parse_message(
-            b'get //path HTTP/1.1\r\n\r\n'.split(b'\r\n'))
-        self.assertEqual(
-            ('GET', '//path', (1, 1), CIMultiDict(), (),
-             False, None, False, False, URL('//path')),
-            result)
+        dbuf.zlib = mock.Mock()
+        dbuf.zlib.flush.return_value = b'line'
+        dbuf.zlib.eof = False
 
-    def test_http_request_parser_bad_status_line(self):
-        p = HttpRequestParser()
-        self.assertRaises(
-            errors.BadStatusLine, p.parse_message, b'\r\n\r\n'.split(b'\r\n'))
+        self.assertRaises(errors.ContentEncodingError, dbuf.feed_eof)
 
-    def test_http_request_parser_bad_method(self):
-        p = HttpRequestParser()
-        self.assertRaises(
-            errors.BadStatusLine, p.parse_message,
-            b'!12%()+=~$ /get HTTP/1.1\r\n\r\n'.split(b'\r\n'))
+    def test_empty_body(self):
+        buf = aiohttp.FlowControlDataQueue(self.stream)
+        dbuf = DeflateBuffer(buf, 'deflate')
+        dbuf.feed_eof()
 
-    def test_http_request_parser_bad_version(self):
-        p = HttpRequestParser()
-        self.assertRaises(
-            errors.BadStatusLine,
-            p.parse_message, b'GET //get HT/11\r\n\r\n'.split(b'\r\n'))
-
-
-class TestParseResponse(unittest.TestCase):
-
-    def setUp(self):
-        self.stream = mock.Mock()
-        asyncio.set_event_loop(None)
-
-    def test_http_response_parser_utf8(self):
-        p = HttpResponseParser()
-        msg = 'HTTP/1.1 200 Ok\r\nx-test:тест\r\n\r\n'.encode('utf-8')
-        result = p.parse_message(msg.split(b'\r\n'))
-        self.assertEqual(result.version, (1, 1))
-        self.assertEqual(result.code, 200)
-        self.assertEqual(result.reason, 'Ok')
-        self.assertEqual(result.headers, CIMultiDict([('X-TEST', 'тест')]))
-
-    def test_http_response_parser_bad_status_line(self):
-        p = HttpResponseParser()
-        self.assertRaises(
-            errors.BadStatusLine, p.parse_message, b'\r\n\r\n'.split(b'\r\n'))
-
-    def _test_http_response_parser_bad_status_line_too_long(self):
-        p = HttpResponseParser(
-            max_headers=2, max_line_size=2)
-        self.assertRaises(
-            errors.LineTooLong,
-            p.parse_message, b'HTTP/1.1 200 Ok\r\n\r\n'.split(b'\r\n'))
-
-    def test_http_response_parser_bad_version(self):
-        p = HttpResponseParser()
-        with self.assertRaises(errors.BadStatusLine) as cm:
-            p.parse_message(b'HT/11 200 Ok\r\n\r\n'.split(b'\r\n'))
-        self.assertEqual('HT/11 200 Ok', cm.exception.args[0])
-
-    def test_http_response_parser_no_reason(self):
-        p = HttpResponseParser()
-        result = p.parse_message(b'HTTP/1.1 200\r\n\r\n'.split(b'\r\n'))
-        self.assertEqual(result.version, (1, 1))
-        self.assertEqual(result.code, 200)
-        self.assertEqual(result.reason, '')
-
-    def test_http_response_parser_bad(self):
-        p = HttpResponseParser()
-        with self.assertRaises(errors.BadStatusLine) as cm:
-            p.parse_message(b'HTT/1\r\n\r\n'.split(b'\r\n'))
-        self.assertIn('HTT/1', str(cm.exception))
-
-    def test_http_response_parser_code_under_100(self):
-        p = HttpResponseParser()
-        with self.assertRaises(errors.BadStatusLine) as cm:
-            p.parse_message(b'HTTP/1.1 99 test\r\n\r\n'.split(b'\r\n'))
-        self.assertIn('HTTP/1.1 99 test', str(cm.exception))
-
-    def test_http_response_parser_code_above_999(self):
-        p = HttpResponseParser()
-        with self.assertRaises(errors.BadStatusLine) as cm:
-            p.parse_message(b'HTTP/1.1 9999 test\r\n\r\n'.split(b'\r\n'))
-        self.assertIn('HTTP/1.1 9999 test', str(cm.exception))
-
-    def test_http_response_parser_code_not_int(self):
-        p = HttpResponseParser()
-        with self.assertRaises(errors.BadStatusLine) as cm:
-            p.parse_message(b'HTTP/1.1 ttt test\r\n\r\n'.split(b'\r\n'))
-        self.assertIn('HTTP/1.1 ttt test', str(cm.exception))
+        self.assertTrue(buf.at_eof())
