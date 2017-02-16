@@ -322,8 +322,6 @@ class ClientSession:
                     proxy=None,
                     proxy_auth=None):
 
-        sec_key = base64.b64encode(os.urandom(16))
-
         if headers is None:
             headers = CIMultiDict()
 
@@ -331,12 +329,14 @@ class ClientSession:
             hdrs.UPGRADE: hdrs.WEBSOCKET,
             hdrs.CONNECTION: hdrs.UPGRADE,
             hdrs.SEC_WEBSOCKET_VERSION: '13',
-            hdrs.SEC_WEBSOCKET_KEY: sec_key.decode(),
         }
 
         for key, value in default_headers.items():
             if key not in headers:
                 headers[key] = value
+
+        sec_key = base64.b64encode(os.urandom(16))
+        headers[hdrs.SEC_WEBSOCKET_KEY] = sec_key.decode()
 
         if protocols:
             headers[hdrs.SEC_WEBSOCKET_PROTOCOL] = ','.join(protocols)
