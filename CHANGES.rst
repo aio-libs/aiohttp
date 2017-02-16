@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-1.4.0 (XXXX-XX-XX)
+2.0.0 (XXXX-XX-XX)
 ------------------
 
 - `run_app` and the Command Line Interface now support serving over Unix domain sockets for
@@ -11,6 +11,8 @@ CHANGES
   Capacity is the total number of simultaneous connections.  #1601
 
 - Deprecate connector's `limit` parameter #1601
+
+- Dropped websocket version 76 support #1160
 
 - Dropped: `aiohttp.protocol.HttpPrefixParser`  #1590
 
