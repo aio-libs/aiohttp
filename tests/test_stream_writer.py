@@ -43,7 +43,7 @@ def test_set_nodelay_exception(loop):
     transport = mock.Mock()
     s = mock.Mock()
     s.setsockopt = mock.Mock()
-    s.family = (socket.AF_INET,)
+    s.family = socket.AF_INET
     s.setsockopt.side_effect = OSError
     transport.get_extra_info.return_value = s
     proto = mock.Mock()
@@ -201,7 +201,7 @@ def test_set_cork_exception(loop):
     transport = mock.Mock()
     s = mock.Mock()
     s.setsockopt = mock.Mock()
-    s.family = (socket.AF_INET,)
+    s.family = socket.AF_INET
     s.setsockopt.side_effect = OSError
     proto = mock.Mock()
     writer = StreamWriter(proto, transport, loop)

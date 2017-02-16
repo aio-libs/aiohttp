@@ -997,5 +997,5 @@ class URL(yarl.URL):
 
         self._val = SplitResult(
             schema or '',  # scheme
-            netloc, path=path, query=query, fragment=fragment)
+            netloc=netloc, path=path, query=query, fragment=fragment)
         self._cache = {}
