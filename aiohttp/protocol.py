@@ -706,17 +706,18 @@ class PayloadWriter:
 
         self.buffer_data(chunk)
 
-        yield from self.drain()
+        yield from self.drain(True)
 
         self._transport = None
         self._stream.release()
 
     @asyncio.coroutine
-    def drain(self):
+    def drain(self, last=False):
         if self._transport is not None:
             if self._buffer:
                 self._transport.write(b''.join(self._buffer))
-                self._buffer.clear()
+                if not last:
+                    self._buffer.clear()
             yield from self._stream.drain()
         else:
             if self._buffer:
