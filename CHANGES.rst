@@ -2,7 +2,7 @@ CHANGES
 =======
 
 1.4.0 (XXXX-XX-XX)
-------------------
+=======
 
 - Make CookieJar.filter_cookies() accept plain string parameter. #1636
 
@@ -18,7 +18,7 @@ CHANGES
 
 - Dropped: Servers response's `.started`, `.start()` and `.can_start()` method  #1591
 
-- Dropped: Adding `sub app` via `app.router.add_subapp()` is deprecated
+- Dropped:  Adding `sub app` via `app.router.add_subapp()` is deprecated
   use `app.add_subapp()` instead #1592
 
 - Dropped: `Application.finish()` and `Application.register_on_finish()`  #1602

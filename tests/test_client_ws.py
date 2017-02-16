@@ -191,6 +191,56 @@ def test_ws_connect_err_challenge(loop, ws_key, key_data):
 
 
 @asyncio.coroutine
+def test_ws_connect_common_headers(ws_key, loop, key_data):
+    """Emulate a headers dict being reused for a second ws_connect.
+
+    In this scenario, we need to ensure that the newly generated secret key
+    is sent to the server, not the stale key.
+    """
+    headers = {}
+
+    @asyncio.coroutine
+    def test_connection():
+        @asyncio.coroutine
+        def mock_get(*args, **kwargs):
+            resp = mock.Mock()
+            resp.status = 101
+            key = kwargs.get('headers').get(hdrs.SEC_WEBSOCKET_KEY)
+            accept = base64.b64encode(
+                hashlib.sha1(base64.b64encode(base64.b64decode(key)) + WS_KEY)
+                .digest()).decode()
+            resp.headers = {
+                hdrs.UPGRADE: hdrs.WEBSOCKET,
+                hdrs.CONNECTION: hdrs.UPGRADE,
+                hdrs.SEC_WEBSOCKET_ACCEPT: accept,
+                hdrs.SEC_WEBSOCKET_PROTOCOL: 'chat'
+            }
+            return resp
+        with mock.patch('aiohttp.client.os') as m_os:
+            with mock.patch('aiohttp.client.ClientSession.get',
+                            side_effect=mock_get) as m_req:
+                m_os.urandom.return_value = key_data
+                #m_req.return_value = helpers.create_future(loop)
+                #m_req.return_value.set_result(resp)
+
+                res = yield from aiohttp.ClientSession(loop=loop).ws_connect(
+                    'http://test.org',
+                    protocols=('t1', 't2', 'chat'),
+                    headers=headers)
+
+        assert isinstance(res, ClientWebSocketResponse)
+        assert res.protocol == 'chat'
+        assert hdrs.ORIGIN not in m_req.call_args[1]["headers"]
+
+    yield from test_connection()
+    # Generate a new ws key
+    key_data = os.urandom(16)
+    ws_key = base64.b64encode(
+        hashlib.sha1(base64.b64encode(key_data) + WS_KEY).digest()).decode()
+    yield from test_connection()
+
+
+@asyncio.coroutine
 def test_close(loop, ws_key, key_data):
     resp = mock.Mock()
     resp.status = 101
