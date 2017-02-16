@@ -222,13 +222,13 @@ class StreamReader(AsyncStreamReaderMixin):
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            if not waiter.cancelled():
+            if not waiter.done():
                 waiter.set_exception(exc)
 
         waiter = self._eof_waiter
         if waiter is not None:
             self._eof_waiter = None
-            if not waiter.cancelled():
+            if not waiter.done():
                 waiter.set_exception(exc)
 
     def feed_eof(self):
@@ -237,13 +237,13 @@ class StreamReader(AsyncStreamReaderMixin):
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            if not waiter.cancelled():
+            if not waiter.done():
                 waiter.set_result(True)
 
         waiter = self._eof_waiter
         if waiter is not None:
             self._eof_waiter = None
-            if not waiter.cancelled():
+            if not waiter.done():
                 waiter.set_result(True)
 
     def is_eof(self):
@@ -259,21 +259,12 @@ class StreamReader(AsyncStreamReaderMixin):
         if self._eof:
             return
 
-        yield from self.eof_waiter
-
-    @property
-    def eof_waiter(self):
-        waiter = self._eof_waiter
-        if waiter is not None:
-            return waiter
-
-        waiter = helpers.create_future(self._loop)
-        if self._eof:
-            waiter.set_result(True)
-        else:
-            self._eof_waiter = waiter
-
-        return waiter
+        assert self._eof_waiter is None
+        self._eof_waiter = helpers.create_future(self._loop)
+        try:
+            yield from self._eof_waiter
+        finally:
+            self._eof_waiter = None
 
     def unread_data(self, data):
         """ rollback reading some data from stream, inserting it to buffer head.
@@ -300,7 +291,7 @@ class StreamReader(AsyncStreamReaderMixin):
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            if not waiter.cancelled():
+            if not waiter.done():
                 waiter.set_result(False)
 
     @asyncio.coroutine
