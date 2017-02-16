@@ -12,6 +12,7 @@ from enum import IntEnum
 from struct import Struct
 
 from aiohttp import errors, hdrs
+from aiohttp.helpers import noop
 from aiohttp.log import ws_logger
 
 __all__ = ('WebSocketParser', 'WebSocketWriter', 'do_handshake',
@@ -353,7 +354,7 @@ class WebSocketWriter:
             self._output_size = 0
             return self.writer.drain()
 
-        return ()
+        return noop()
 
     def pong(self, message=b''):
         """Send pong message."""

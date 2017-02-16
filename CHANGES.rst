@@ -1,8 +1,10 @@
 CHANGES
 =======
 
-1.3.2 (2017-02-xx)
+1.3.2 (2017-02-16)
 ------------------
+
+- Awaiting on WebSocketResponse.send_* does not work #1645
 
 - Fix multiple calls to client ws_connect when using a shared header dict #1643
 
