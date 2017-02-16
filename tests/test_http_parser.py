@@ -6,10 +6,11 @@ import zlib
 from unittest import mock
 
 import pytest
+from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp
-from aiohttp import CIMultiDict, errors, streams
+from aiohttp import errors, streams
 from aiohttp.protocol import (DeflateBuffer, HttpPayloadParser,
                               HttpRequestParser, HttpResponseParser)
 
