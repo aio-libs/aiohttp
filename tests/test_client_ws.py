@@ -220,8 +220,6 @@ def test_ws_connect_common_headers(ws_key, loop, key_data):
             with mock.patch('aiohttp.client.ClientSession.get',
                             side_effect=mock_get) as m_req:
                 m_os.urandom.return_value = key_data
-                #m_req.return_value = helpers.create_future(loop)
-                #m_req.return_value.set_result(resp)
 
                 res = yield from aiohttp.ClientSession(loop=loop).ws_connect(
                     'http://test.org',
@@ -235,8 +233,6 @@ def test_ws_connect_common_headers(ws_key, loop, key_data):
     yield from test_connection()
     # Generate a new ws key
     key_data = os.urandom(16)
-    ws_key = base64.b64encode(
-        hashlib.sha1(base64.b64encode(key_data) + WS_KEY).digest()).decode()
     yield from test_connection()
 
 
