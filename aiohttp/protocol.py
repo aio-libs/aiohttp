@@ -18,7 +18,7 @@ from multidict import CIMultiDict, istr
 import aiohttp
 
 from . import errors, hdrs
-from .helpers import create_future
+from .helpers import create_future, noop
 from .log import internal_logger
 from .streams import EMPTY_PAYLOAD, FlowControlStreamReader
 
@@ -672,7 +672,7 @@ class PayloadWriter:
         if self._compress is not None:
             chunk = self._compress.compress(chunk)
             if not chunk:
-                return ()
+                return noop()
 
         if self.length is not None:
             chunk_len = len(chunk)
@@ -682,7 +682,7 @@ class PayloadWriter:
                 chunk = chunk[:self.length]
                 self.length = 0
                 if not chunk:
-                    return ()
+                    return noop()
 
         if chunk:
             if self.chunked:
@@ -695,7 +695,7 @@ class PayloadWriter:
                 self.buffer_size = 0
                 return self.drain()
 
-        return ()
+        return noop()
 
     @asyncio.coroutine
     def write_eof(self, chunk=b''):
