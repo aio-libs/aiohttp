@@ -121,7 +121,6 @@ class HttpParser:
                     start_pos = pos + 2
                     if data[start_pos:start_pos+2] == SEP:
                         self._lines.append(EMPTY)
-                        print(self._lines)
 
                         try:
                             msg = self.parse_message(self._lines)
@@ -663,7 +662,7 @@ class PayloadWriter:
         else:
             self._buffer.append(chunk)
 
-    def write(self, chunk, *, drain=True):
+    def write(self, chunk, *, drain=True, LIMIT=64*1024):
         """Writes chunk of data to a stream.
 
         write_eof() indicates end of stream.
@@ -685,14 +684,14 @@ class PayloadWriter:
                 if not chunk:
                     return ()
 
-        if self.chunked:
-            chunk_len = ('%x\r\n' % len(chunk)).encode('ascii')
-            chunk = chunk_len + chunk + b'\r\n'
-
         if chunk:
+            if self.chunked:
+                chunk_len = ('%x\r\n' % len(chunk)).encode('ascii')
+                chunk = chunk_len + chunk + b'\r\n'
+
             self._write(chunk)
 
-            if self.buffer_size > 64 * 1024 and drain:
+            if self.buffer_size > LIMIT and drain:
                 self.buffer_size = 0
                 return self.drain()
 
@@ -709,14 +708,15 @@ class PayloadWriter:
                 chunk_len = ('%x\r\n' % len(chunk)).encode('ascii')
                 chunk = chunk_len + chunk + b'\r\n0\r\n\r\n'
         else:
-            if chunk and self.chunked:
-                chunk_len = ('%x\r\n' % len(chunk)).encode('ascii')
-                chunk = chunk_len + chunk + b'\r\n0\r\n\r\n'
-
             if self.chunked:
-                chunk = chunk + b'0\r\n\r\n'
+                if chunk:
+                    chunk_len = ('%x\r\n' % len(chunk)).encode('ascii')
+                    chunk = chunk_len + chunk + b'\r\n0\r\n\r\n'
+                else:
+                    chunk = b'0\r\n\r\n'
 
-        self.buffer_data(chunk)
+        if chunk:
+            self.buffer_data(chunk)
 
         yield from self.drain(True)
 

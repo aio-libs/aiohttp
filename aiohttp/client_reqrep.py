@@ -361,7 +361,7 @@ class ClientRequest:
                             result = stream.send(value)
                     except StopIteration as exc:
                         if isinstance(exc.value, bytes):
-                            yield from request.write(exc.value, drain=True)
+                            yield from request.write(exc.value)
                         break
                     except:
                         self.response.close()
@@ -375,7 +375,7 @@ class ClientRequest:
                         except Exception as err:
                             exc = err
                     elif isinstance(result, (bytes, bytearray)):
-                        yield from request.write(result, drain=True)
+                        yield from request.write(result)
                         value = None
                     else:
                         raise ValueError(
@@ -395,7 +395,7 @@ class ClientRequest:
                         chunk = yield from self.body.read()
                         if not chunk:
                             break
-                        yield from request.write(chunk, drain=True)
+                        yield from request.write(chunk)
                     except streams.EofStream:
                         break
 

@@ -1,9 +1,18 @@
 import asyncio
 import asyncio.streams
 
+from . import helpers
 from .errors import ServerDisconnectedError
-from .protocol import HttpResponseParser
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamWriter
+
+
+if helpers.NO_EXTENSIONS:
+    from .protocol import HttpResponseParser
+else:
+    try:
+        from ._parser import HttpResponseParser
+    except ImportError:  # pragma: no cover
+        from .protocol import HttpResponseParser
 
 
 class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
@@ -81,8 +90,9 @@ class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
                             read_until_eof=False):
         self._skip_payload = skip_payload
         self._skip_status_codes = skip_status_codes
+        self._read_until_eof = read_until_eof
         self._parser = HttpResponseParser(
-            self, self._loop, timer=timer, readall=read_until_eof)
+            self, self._loop, timer=timer)
 
     def data_received(self, data):
         # custom payload parser

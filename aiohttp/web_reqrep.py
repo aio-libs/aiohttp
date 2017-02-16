@@ -64,7 +64,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._version = message.version
 
         self._read_bytes = None
-        self._has_body = not payload.at_eof()
 
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
         self._time_service = time_service
@@ -351,7 +350,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     @property
     def has_body(self):
         """Return True if request has HTTP BODY, False otherwise."""
-        return self._has_body
+        return not self._payload.at_eof()
 
     @asyncio.coroutine
     def release(self):
@@ -768,7 +767,7 @@ class StreamResponse(HeadersMixin):
         if coding != ContentCoding.identity:
             self.headers[hdrs.CONTENT_ENCODING] = coding.value
             self._payload_writer.enable_compression(coding.value)
-            self.content_length = None
+            self._chunked = True
 
     def _start_compression(self, request):
         if self._compression_force:
@@ -796,6 +795,7 @@ class StreamResponse(HeadersMixin):
                DATE=hdrs.DATE,
                SERVER=hdrs.SERVER,
                CONTENT_TYPE=hdrs.CONTENT_TYPE,
+               CONTENT_LENGTH=hdrs.CONTENT_LENGTH,
                SET_COOKIE=hdrs.SET_COOKIE,
                SERVER_SOFTWARE=SERVER_SOFTWARE,
                TRANSFER_ENCODING=hdrs.TRANSFER_ENCODING):
@@ -824,11 +824,15 @@ class StreamResponse(HeadersMixin):
                     "for HTTP/{0.major}.{0.minor}".format(request.version))
             writer.enable_chunking()
             headers[TRANSFER_ENCODING] = 'chunked'
+            if CONTENT_LENGTH in headers:
+                del headers[CONTENT_LENGTH]
         else:
             writer.length = self.content_length
             if writer.length is None and version >= HttpVersion11:
                 writer.enable_chunking()
                 headers[TRANSFER_ENCODING] = 'chunked'
+                if CONTENT_LENGTH in headers:
+                    del headers[CONTENT_LENGTH]
 
         headers.setdefault(CONTENT_TYPE, 'application/octet-stream')
         headers.setdefault(DATE, request.time_service.strtime())
@@ -874,8 +878,8 @@ class StreamResponse(HeadersMixin):
 
     @asyncio.coroutine
     def drain(self):
-        if self._payload_writer is None:
-            raise RuntimeError("Response has not been started")
+        assert self._payload_writer is not None, \
+            "Response has not been started"
         yield from self._payload_writer.drain()
 
     @asyncio.coroutine
@@ -953,10 +957,8 @@ class Response(StreamResponse):
         super().__init__(status=status, reason=reason, headers=headers)
         if text is not None:
             self.text = text
-        elif body is None and hdrs.CONTENT_LENGTH in headers:
-            self._body = None
         else:
-            self.body = body
+            self._body = body
 
     @property
     def body(self):
@@ -964,13 +966,9 @@ class Response(StreamResponse):
 
     @body.setter
     def body(self, body):
-        if body is not None and not isinstance(body, bytes):
-            raise TypeError("body argument must be bytes (%r)" % type(body))
+        assert body is None or isinstance(body, (bytes, bytearray)), \
+            "body argument must be bytes (%r)" % type(body)
         self._body = body
-        if body is not None:
-            self.content_length = len(body)
-        else:
-            self.content_length = 0
 
     @property
     def text(self):
@@ -980,15 +978,32 @@ class Response(StreamResponse):
 
     @text.setter
     def text(self, text):
-        if text is not None and not isinstance(text, str):
-            raise TypeError("text argument must be str (%r)" % type(text))
+        assert text is None or isinstance(text, str), \
+            "text argument must be str (%r)" % type(text)
 
         if self.content_type == 'application/octet-stream':
             self.content_type = 'text/plain'
         if self.charset is None:
             self.charset = 'utf-8'
 
-        self.body = text.encode(self.charset)
+        self._body = text.encode(self.charset)
+
+    @property
+    def content_length(self):
+        if self._chunked:
+            return None
+
+        if hdrs.CONTENT_LENGTH in self.headers:
+            return super().content_length
+
+        if self._body is not None:
+            return len(self._body)
+        else:
+            return 0
+
+    @content_length.setter
+    def content_length(self, value):
+        super().content_length = value
 
     @asyncio.coroutine
     def write_eof(self):
@@ -1002,6 +1017,15 @@ class Response(StreamResponse):
             body = b''
 
         yield from super().write_eof(body)
+
+    def _start(self, request):
+        if not self._chunked:
+            if self._body is not None:
+                self._headers[hdrs.CONTENT_LENGTH] = str(len(self._body))
+            else:
+                self._headers[hdrs.CONTENT_LENGTH] = '0'
+
+        return super()._start(request)
 
 
 def json_response(data=sentinel, *, text=None, body=None, status=200,
