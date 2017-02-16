@@ -2,9 +2,9 @@ import asyncio
 from unittest import mock
 
 import pytest
+from multidict import CIMultiDict
 
-from aiohttp import (CIMultiDict, WSMessage, WSMsgType, errors, helpers,
-                     signals, web)
+from aiohttp import WSMessage, WSMsgType, errors, helpers, signals, web
 from aiohttp.log import ws_logger
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import HTTPBadRequest, HTTPMethodNotAllowed, WebSocketResponse

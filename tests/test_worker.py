@@ -158,10 +158,8 @@ def test_make_handler_wsgi(worker, mocker):
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
     mocker.spy(worker, '_get_valid_log_format')
 
-    f = worker.make_handler(worker.wsgi)
-    assert isinstance(f, base_worker.WSGIServer)
-    assert isinstance(f(), base_worker.WSGIServerHttpProtocol)
-    assert worker._get_valid_log_format.called
+    with pytest.raises(RuntimeError):
+        worker.make_handler(worker.wsgi)
 
 
 @pytest.mark.parametrize('source,result', [

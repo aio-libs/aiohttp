@@ -1,11 +1,7 @@
-__version__ = '1.4.0a0'
-
-# Deprecated, keep it here for a while for backward compatibility.
-import multidict  # noqa
+__version__ = '2.0.0a0'
 
 # This relies on each of the submodules having an __all__ variable.
 
-from multidict import *  # noqa
 from . import hdrs  # noqa
 from .protocol import *  # noqa
 from .connector import *  # noqa
@@ -32,7 +28,6 @@ __all__ = (client.__all__ +  # noqa
            protocol.__all__ +  # noqa
            connector.__all__ +  # noqa
            streams.__all__ +  # noqa
-           multidict.__all__ +  # noqa
            multipart.__all__ +  # noqa
            ('hdrs', 'FileSender', 'WSMsgType', 'MsgType', 'WSCloseCode',
             'WebSocketError', 'WSMessage',

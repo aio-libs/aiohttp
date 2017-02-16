@@ -30,12 +30,3 @@ aiohttp.MsgType is deprecated in favor to aiohttp.WSMsgType, deprecated since 1.
 
 
 Date: 07/01/2018 ?
-
-
-aiohttp.wsgi
-------------
-
-Deprecated unsupported `aiohttp.wsgi` module
-
-
-Date: 01/01/2018
