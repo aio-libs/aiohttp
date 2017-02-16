@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+- Fix multiple calls to client ws_connect when using a shared header dict #1643
+
 1.3.1 (2017-02-09)
 ------------------
 
