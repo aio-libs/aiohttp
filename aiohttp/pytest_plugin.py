@@ -103,7 +103,8 @@ def loop(request):
     debug = request.config.getoption('--enable-loop-debug')
 
     with loop_context(request.param, fast=fast) as _loop:
-        _loop.set_debug(debug)
+        if debug:
+            _loop.set_debug(True)
         yield _loop
 
 
