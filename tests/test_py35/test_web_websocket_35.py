@@ -12,7 +12,7 @@ async def test_server_ws_async_for(loop, test_server):
         async for msg in ws:
             assert msg.type == aiohttp.MsgType.TEXT
             s = msg.data
-            ws.send_str(s + '/answer')
+            await ws.send_str(s + '/answer')
         await ws.close()
         closed.set_result(1)
         return ws
