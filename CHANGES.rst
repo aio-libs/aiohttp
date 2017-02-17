@@ -16,6 +16,8 @@ CHANGES
 
 - Deprecate connector's `limit` parameter #1601
 
+- Dropped aiohttp.wsgi #1108
+
 - Dropped websocket version 76 support #1160
 
 - Dropped: `aiohttp.protocol.HttpPrefixParser`  #1590
@@ -39,5 +41,3 @@ CHANGES
   attributes and `resolve` constructor  parameter #1607
 
 - Dropped `ProxyConnector` #1609
-
-- Allow string parameter for `aiohttp.CookieJar.filter_cookies()` #1636
