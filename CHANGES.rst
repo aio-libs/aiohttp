@@ -4,6 +4,8 @@ CHANGES
 2.0.0 (2016-03-XX)
 ------------------
 
+- Change `ClientResponse.url` to `yarl.URL` instance #1654
+
 - `run_app` and the Command Line Interface now support serving over Unix domain sockets for
   faster inter-process communication.
 

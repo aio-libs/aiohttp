@@ -233,7 +233,7 @@ class ClientSession:
                 except OSError as exc:
                     raise aiohttp.ClientOSError(*exc.args) from exc
 
-                self._cookie_jar.update_cookies(resp.cookies, resp.url_obj)
+                self._cookie_jar.update_cookies(resp.cookies, resp.url)
 
                 # redirects
                 if resp.status in (301, 302, 303, 307) and allow_redirects:
@@ -258,7 +258,7 @@ class ClientSession:
                     r_url = (resp.headers.get(hdrs.LOCATION) or
                              resp.headers.get(hdrs.URI))
                     if r_url is None:
-                        raise RuntimeError("{0.method} {0.url_obj} returns "
+                        raise RuntimeError("{0.method} {0.url} returns "
                                            "a redirect [{0.status}] status "
                                            "but response lacks a Location "
                                            "or URI HTTP header".format(resp))

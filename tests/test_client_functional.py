@@ -392,7 +392,7 @@ def test_drop_fragment_on_redirect(loop, test_client):
 
     resp = yield from client.get('/redirect')
     assert resp.status == 200
-    assert resp.url_obj.path == '/ok'
+    assert resp.url.path == '/ok'
 
 
 @asyncio.coroutine
@@ -407,7 +407,7 @@ def test_drop_fragment(loop, test_client):
 
     resp = yield from client.get('/ok#fragment')
     assert resp.status == 200
-    assert resp.url_obj.path == '/ok'
+    assert resp.url.path == '/ok'
 
 
 @asyncio.coroutine
