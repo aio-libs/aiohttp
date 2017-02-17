@@ -4,6 +4,7 @@ import ssl
 import sys
 import traceback
 import warnings
+from collections import defaultdict
 from hashlib import md5, sha1, sha256
 from types import MappingProxyType
 
@@ -104,7 +105,8 @@ class BaseConnector(object):
     keepalive_timeout - (optional) Keep-alive timeout.
     force_close - Set to True to force close and do reconnect
         after each request (and between redirects).
-    capacity - The total number of simultaneous connections.
+    limit - The total number of simultaneous connections.
+    limit_per_host - Number of simultaneous connections to one host.
     disable_cleanup_closed - Disable clean-up closed ssl transports.
     loop - Optional event loop.
     """
@@ -116,16 +118,8 @@ class BaseConnector(object):
     _cleanup_closed_period = 2.0
 
     def __init__(self, *, conn_timeout=None, keepalive_timeout=sentinel,
-                 force_close=False, capacity=20, limit=sentinel,
+                 force_close=False, limit=100, limit_per_host=0,
                  time_service=None, disable_cleanup_closed=False, loop=None):
-
-        if limit is not sentinel:
-            capacity = limit
-            warnings.warn('`limit` is deprecated use `capacity` instead #1601',
-                          DeprecationWarning, stacklevel=2)
-
-        if capacity is None or capacity is sentinel:
-            capacity = 0
 
         if force_close:
             if keepalive_timeout is not None and \
@@ -144,12 +138,14 @@ class BaseConnector(object):
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
         self._conns = {}
-        self._capacity = capacity
+        self._limit = limit
+        self._limit_per_host = limit_per_host
         self._acquired = set()
+        self._acquired_per_host = defaultdict(set)
         self._conn_timeout = conn_timeout
         self._keepalive_timeout = keepalive_timeout
         self._force_close = force_close
-        self._waiters = []
+        self._waiters = defaultdict(list)
 
         if time_service is not None:
             self._time_service_owner = False
@@ -210,22 +206,24 @@ class BaseConnector(object):
         return self._force_close
 
     @property
-    def capacity(self):
-        """The total number for simultaneous connections.
-
-        The default capacity size is 20.
-        """
-        return self._capacity
-
-    @property
     def limit(self):
         """The total number for simultaneous connections.
 
-        Deprecated
+        If limit is 0 the connector has no limit.
+        The default limit size is 100.
         """
-        warnings.warn('`limit` is deprecated use `capacity` instead #1601',
-                      DeprecationWarning)
-        return self._capacity
+        return self._limit
+
+    @property
+    def limit_per_host(self):
+        """The limit_per_host for simultaneous connections
+        to the same endpoint.
+
+        Endpoints are the same if they are have equal
+        (host, port, is_ssl) triple.
+
+        """
+        return self._limit_per_host
 
     def _cleanup(self):
         """Cleanup unused transports."""
@@ -329,25 +327,42 @@ class BaseConnector(object):
     @asyncio.coroutine
     def connect(self, req):
         """Get from pool or create new connection."""
-        if self._capacity:
-            # The capacity defines the maximum number of concurrent connections
-            available = (self._capacity -
-                         len(self._waiters) - len(self._acquired))
-
-            # Wait if there are not available connections.
-            if available <= 0:
-                fut = helpers.create_future(self._loop)
-
-                # This connection will now count towards the limit.
-                self._waiters.append(fut)
-                yield from fut
-                self._waiters.remove(fut)
-
         key = (req.host, req.port, req.ssl)
+
+        if self._limit:
+            # total calc available connections
+            available = self._limit - len(self._waiters) - len(self._acquired)
+
+            # check limit per host
+            if (self._limit_per_host and available > 0 and
+                    key in self._acquired_per_host):
+                available = self._limit_per_host - len(
+                    self._acquired_per_host.get(key))
+
+        elif self._limit_per_host and key in self._acquired_per_host:
+            # check limit per host
+            available = self._limit_per_host - len(
+                self._acquired_per_host.get(key))
+        else:
+            available = 1
+
+        # Wait if there are no available connections.
+        if available <= 0:
+            fut = helpers.create_future(self._loop)
+
+            # This connection will now count towards the limit.
+            waiters = self._waiters[key]
+            waiters.append(fut)
+            yield from fut
+            waiters.remove(fut)
+            if not waiters:
+                del self._waiters[key]
+
         transport, proto = self._get(key)
         if transport is None:
             placeholder = _TransportPlaceholder()
             self._acquired.add(placeholder)
+            self._acquired_per_host[key].add(placeholder)
             try:
                 with self._time_service.timeout(self._conn_timeout):
                     transport, proto = yield from self._create_connection(req)
@@ -362,8 +377,10 @@ class BaseConnector(object):
                     .format(key, exc.strerror)) from exc
             finally:
                 self._acquired.remove(placeholder)
+                self._acquired_per_host[key].remove(placeholder)
 
         self._acquired.add(transport)
+        self._acquired_per_host[key].add(transport)
         return Connection(self, key, req, transport, proto, self._loop)
 
     def _get(self, key):
@@ -390,34 +407,50 @@ class BaseConnector(object):
         del self._conns[key]
         return None, None
 
-    def _release_waiters(self):
-        if self._capacity > 0:
-            available = self._capacity - len(self._acquired)
-            if available > 0:
-                for waiter in self._waiters[:available]:
-                    if not waiter.done():
-                        waiter.set_result(None)
+    def _release_waiter(self):
+        # always release only one waiter
 
-    def _release_acquired(self, transport):
+        if self._limit:
+            # if we have limit and we have available
+            if self._limit - len(self._acquired) > 0:
+                for key, waiters in self._waiters.items():
+                    if waiters:
+                        if not waiters[0].done():
+                            waiters[0].set_result(None)
+                        break
+
+        elif self._limit_per_host:
+            # if we have dont have limit but have limit per host
+            # then release first available
+            for key, waiters in self._waiters.items():
+                if waiters:
+                    if not waiters[0].done():
+                        waiters[0].set_result(None)
+                    break
+
+    def _release_acquired(self, key, transport):
         if self._closed:
             # acquired connection is already released on connector closing
             return
 
         try:
             self._acquired.remove(transport)
+            self._acquired_per_host[key].remove(transport)
+            if not self._acquired_per_host[key]:
+                del self._acquired_per_host[key]
         except KeyError:  # pragma: no cover
             # this may be result of undetermenistic order of objects
             # finalization due garbage collection.
             pass
         else:
-            self._release_waiters()
+            self._release_waiter()
 
     def _release(self, key, req, transport, protocol, *, should_close=False):
         if self._closed:
             # acquired connection is already released on connector closing
             return
 
-        self._release_acquired(transport)
+        self._release_acquired(key, transport)
 
         resp = req.response
 
@@ -467,7 +500,8 @@ class TCPConnector(BaseConnector):
     keepalive_timeout - (optional) Keep-alive timeout.
     force_close - Set to True to force close and do reconnect
         after each request (and between redirects).
-    capacity - The total number of simultaneous connections.
+    limit - The total number of simultaneous connections.
+    limit_per_host - Number of simultaneous connections to one host.
     loop - Optional event loop.
     """
 
@@ -476,11 +510,11 @@ class TCPConnector(BaseConnector):
                  family=0, ssl_context=None, local_addr=None,
                  resolver=None, time_service=None,
                  conn_timeout=None, keepalive_timeout=sentinel,
-                 force_close=False, capacity=20, limit=sentinel, loop=None):
+                 force_close=False, limit=100, limit_per_host=0, loop=None):
         super().__init__(time_service=time_service, conn_timeout=conn_timeout,
                          keepalive_timeout=keepalive_timeout,
                          force_close=force_close,
-                         capacity=capacity, limit=limit, loop=loop)
+                         limit=limit, limit_per_host=limit_per_host, loop=loop)
 
         if not verify_ssl and ssl_context is not None:
             raise ValueError(
@@ -717,7 +751,8 @@ class UnixConnector(BaseConnector):
     keepalive_timeout - (optional) Keep-alive timeout.
     force_close - Set to True to force close and do reconnect
         after each request (and between redirects).
-    capacity - The total number of simultaneous connections.
+    limit - The total number of simultaneous connections.
+    limit_per_host - Number of simultaneous connections to one host.
     loop - Optional event loop.
 
     Usage:
@@ -731,12 +766,12 @@ class UnixConnector(BaseConnector):
     def __init__(self, path, force_close=False,
                  time_service=None,
                  conn_timeout=None, keepalive_timeout=sentinel,
-                 capacity=20, limit=sentinel, loop=None):
+                 limit=100, limit_per_host=0, loop=None):
         super().__init__(force_close=force_close,
                          time_service=time_service,
                          conn_timeout=conn_timeout,
                          keepalive_timeout=keepalive_timeout,
-                         capacity=capacity, limit=limit, loop=loop)
+                         limit=limit, limit_per_host=limit_per_host, loop=loop)
         self._path = path
 
     @property

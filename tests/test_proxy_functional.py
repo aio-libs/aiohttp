@@ -247,7 +247,7 @@ def test_proxy_http_multi_conn_limit(proxy_test_server, loop):
     url = 'http://aiohttp.io/path'
     limit, multi_conn_num = 1, 5
 
-    conn = aiohttp.TCPConnector(capacity=limit, loop=loop)
+    conn = aiohttp.TCPConnector(limit=limit, loop=loop)
     sess = aiohttp.ClientSession(connector=conn, loop=loop)
     proxy = yield from proxy_test_server()
 
@@ -465,9 +465,9 @@ def _test_proxy_https_acquired_cleanup_force(proxy_test_server, loop):
 @asyncio.coroutine
 def _test_proxy_https_multi_conn_limit(proxy_test_server, loop):
     url = 'https://secure.aiohttp.io/path'
-    capacity, multi_conn_num = 1, 5
+    limit, multi_conn_num = 1, 5
 
-    conn = aiohttp.TCPConnector(capacity=capacity, loop=loop)
+    conn = aiohttp.TCPConnector(limit=limit, loop=loop)
     sess = aiohttp.ClientSession(connector=conn, loop=loop)
     proxy = yield from proxy_test_server()
 
