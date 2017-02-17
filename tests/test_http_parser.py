@@ -42,10 +42,22 @@ def parser(loop, protocol, request):
     return request.param(protocol, loop, 8190, 32768, 8190)
 
 
+@pytest.fixture(params=REQUEST_PARSERS)
+def request_cls(request):
+    """Request Parser class"""
+    return request.param
+
+
 @pytest.fixture(params=RESPONSE_PARSERS)
 def response(loop, protocol, request):
     """Parser implementations"""
     return request.param(protocol, loop, 8190, 32768, 8190)
+
+
+@pytest.fixture(params=RESPONSE_PARSERS)
+def response_cls(request):
+    """Parser implementations"""
+    return request.param
 
 
 def test_parse_headers(parser):
@@ -297,6 +309,12 @@ def test_http_request_parser(parser):
                    False, None, False, False, URL('/path'))
 
 
+def test_http_request_bad_status_line(parser):
+    text = b'getpath \r\n\r\n'
+    with pytest.raises(errors.BadStatusLine):
+        parser.feed_data(text)
+
+
 def test_http_request_upgrade(parser):
     text = (b'GET /test HTTP/1.1\r\n'
             b'connection: upgrade\r\n'
@@ -479,6 +497,37 @@ def test_parse_chunked_payload_chunk_extension(parser):
     assert payload.is_eof()
 
 
+def _test_parse_no_length_or_te_on_post(loop, protocol, request_cls):
+    parser = request_cls(protocol, loop, readall=True)
+    text = b'POST /test HTTP/1.1\r\n\r\n'
+    msg, payload = parser.feed_data(text)[0][0]
+
+    assert payload.is_eof()
+
+
+def test_parse_payload_response_without_body(loop, protocol, response_cls):
+    parser = response_cls(protocol, loop, response_with_body=False)
+    text = (b'HTTP/1.1 200 Ok\r\n'
+            b'content-length: 10\r\n\r\n')
+    msg, payload = parser.feed_data(text)[0][0]
+
+    assert payload.is_eof()
+
+
+def test_parse_length_payload(response):
+    text = (b'HTTP/1.1 200 Ok\r\n'
+            b'content-length: 4\r\n\r\n')
+    msg, payload = response.feed_data(text)[0][0]
+    assert not payload.is_eof()
+
+    response.feed_data(b'da')
+    response.feed_data(b't')
+    response.feed_data(b'aHT')
+
+    assert payload.is_eof()
+    assert b'data' == b''.join(d for d in payload._buffer)
+
+
 class TestParsePayload(unittest.TestCase):
 
     def setUp(self):
@@ -493,17 +542,6 @@ class TestParsePayload(unittest.TestCase):
 
         self.assertTrue(out.is_eof())
         self.assertEqual([(bytearray(b'data'), 4)], list(out._buffer))
-
-    def test_parse_length_payload(self):
-        out = aiohttp.FlowControlDataQueue(self.stream)
-        p = HttpPayloadParser(out, length=4)
-        p.feed_data(b'da')
-        p.feed_data(b't')
-        eof, tail = p.feed_data(b'aline')
-
-        self.assertEqual(3, len(out._buffer))
-        self.assertEqual(b'data', b''.join(d for d, _ in out._buffer))
-        self.assertEqual(b'line', tail)
 
     def test_parse_length_payload_eof(self):
         out = aiohttp.FlowControlDataQueue(self.stream)

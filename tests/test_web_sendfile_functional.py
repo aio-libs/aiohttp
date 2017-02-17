@@ -81,7 +81,7 @@ def test_static_file_upper_directory(loop, test_client):
 
 @asyncio.coroutine
 def test_static_file_with_content_type(loop, test_client, sender):
-    filepath = (pathlib.Path(__file__).parent / 'aiohttp.png')
+    filepath = (pathlib.Path(__file__).parent / 'aiohttp.jpg')
 
     @asyncio.coroutine
     def handler(request):
@@ -98,7 +98,7 @@ def test_static_file_with_content_type(loop, test_client, sender):
     with filepath.open('rb') as f:
         content = f.read()
         assert content == body
-    assert resp.headers['Content-Type'] == 'image/png'
+    assert resp.headers['Content-Type'] == 'image/jpeg'
     assert resp.headers.get('Content-Encoding') is None
     resp.close()
 
