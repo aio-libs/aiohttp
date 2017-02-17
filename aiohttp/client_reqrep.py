@@ -60,7 +60,8 @@ class ClientRequest:
 
     def __init__(self, method, url, *,
                  params=None, headers=None, skip_auto_headers=frozenset(),
-                 data=None, cookies=None,
+                 # TODO: Implement ability to request files in "files=".
+                 data=None, files=files, cookies=None,
                  auth=None, encoding='utf-8',
                  version=aiohttp.HttpVersion11, compress=None,
                  chunked=None, expect100=False,
@@ -98,7 +99,7 @@ class ClientRequest:
         self.update_cookies(cookies)
         self.update_content_encoding(data)
         self.update_auth(auth)
-        self.update_proxy(proxy, proxy_auth)
+        self.update_proxy(proxy, proxy_auth
 
         self.update_body_from_data(data, skip_auto_headers)
         self.update_transfer_encoding()
