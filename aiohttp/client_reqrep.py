@@ -79,6 +79,12 @@ class ClientRequest:
             url2 = url.with_query(params)
             q.extend(url2.query)
             url = url.with_query(q)
+        # these 2 lines stolen from
+        # https://github.com/kennethreitz/requests/blob/master
+        # /requests/models.py#L217-#L239
+        files = [] if files is None else files
+        self.files = files
+        # the rest for "files=" isd TBD.
         self.url = url.with_fragment(None)
         self.original_url = url
         self.method = method.upper()
