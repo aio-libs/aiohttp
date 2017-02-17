@@ -61,7 +61,7 @@ class ClientRequest:
     def __init__(self, method, url, *,
                  params=None, headers=None, skip_auto_headers=frozenset(),
                  # TODO: Implement ability to request files in "files=".
-                 data=None, files=files, cookies=None,
+                 data=None, files=None, cookies=None,
                  auth=None, encoding='utf-8',
                  version=aiohttp.HttpVersion11, compress=None,
                  chunked=None, expect100=False,
