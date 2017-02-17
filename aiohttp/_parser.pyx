@@ -44,6 +44,7 @@ cdef class HttpParser:
         size_t _max_line_size
         size_t _max_field_size
         size_t _max_headers
+        bint _response_with_body
 
         object  _url
         str     _path
@@ -75,7 +76,7 @@ cdef class HttpParser:
     cdef _init(self, cparser.http_parser_type mode,
                    object protocol, object loop, object timer=None,
                    size_t max_line_size=8190, size_t max_headers=32768,
-                   size_t max_field_size=8190):
+                   size_t max_field_size=8190, response_with_body=True):
         cparser.http_parser_init(self._cparser, mode)
         self._cparser.data = <void*>self
         self._cparser.content_length = 0
@@ -97,6 +98,7 @@ cdef class HttpParser:
         self._max_line_size = max_line_size
         self._max_headers = max_headers
         self._max_field_size = max_field_size
+        self._response_with_body = response_with_body
         self._upgraded = False
 
         self._csettings.on_url = cb_on_url
@@ -189,6 +191,9 @@ cdef class HttpParser:
         if encoding is not None:
             self._payload = DeflateBuffer(payload, encoding)
 
+        if not self._response_with_body:
+            payload = EMPTY_PAYLOAD
+
         self._messages.append((msg, payload))
 
     cdef _on_message_complete(self):
@@ -255,18 +260,20 @@ cdef class HttpRequestParser(HttpParser):
 
     def __init__(self, protocol, loop, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,
-                 size_t max_field_size=8190):
+                 size_t max_field_size=8190, response_with_body=True):
          self._init(cparser.HTTP_REQUEST, protocol, loop, timer,
-                    max_line_size, max_headers, max_field_size)
+                    max_line_size, max_headers, max_field_size,
+                    response_with_body)
 
 
 cdef class HttpResponseParser(HttpParser):
 
     def __init__(self, protocol, loop, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,
-                 size_t max_field_size=8190):
+                 size_t max_field_size=8190, response_with_body=True):
         self._init(cparser.HTTP_RESPONSE, protocol, loop, timer,
-                   max_line_size, max_headers, max_field_size)
+                   max_line_size, max_headers, max_field_size,
+                   response_with_body)
 
 
 cdef int cb_on_message_begin(cparser.http_parser* parser) except -1:

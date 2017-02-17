@@ -479,12 +479,9 @@ class HttpPayloadParser:
                 if self._chunk == ChunkState.PARSE_CHUNKED_SIZE:
                     pos = chunk.find(SEP)
                     if pos >= 0:
-                        if pos > 0:
-                            i = chunk.find(CHUNK_EXT, 0, pos)
-                            if i >= 0:
-                                size = chunk[:i]  # strip chunk-extensions
-                            else:
-                                size = chunk[:pos]
+                        i = chunk.find(CHUNK_EXT, 0, pos)
+                        if i >= 0:
+                            size = chunk[:i]  # strip chunk-extensions
                         else:
                             size = chunk[:pos]
 
