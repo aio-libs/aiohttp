@@ -99,7 +99,7 @@ class ClientRequest:
         self.update_cookies(cookies)
         self.update_content_encoding(data)
         self.update_auth(auth)
-        self.update_proxy(proxy, proxy_auth
+        self.update_proxy(proxy, proxy_auth)
 
         self.update_body_from_data(data, skip_auto_headers)
         self.update_transfer_encoding()
