@@ -12,16 +12,16 @@ from yarl import URL
 import aiohttp
 from aiohttp import errors, streams
 from aiohttp.protocol import (DeflateBuffer, HttpPayloadParser,
-                              HttpRequestParser, HttpResponseParser)
+                              HttpRequestParserPy, HttpResponseParserPy)
 
 
-REQUEST_PARSERS = [HttpRequestParser]
-RESPONSE_PARSERS = [HttpResponseParser]
+REQUEST_PARSERS = [HttpRequestParserPy]
+RESPONSE_PARSERS = [HttpResponseParserPy]
 
 try:
     from aiohttp import _parser
-    REQUEST_PARSERS.append(_parser.HttpRequestParser)
-    RESPONSE_PARSERS.append(_parser.HttpResponseParser)
+    REQUEST_PARSERS.append(_parser.HttpRequestParserC)
+    RESPONSE_PARSERS.append(_parser.HttpResponseParserC)
 except ImportError:  # pragma: no cover
     pass
 

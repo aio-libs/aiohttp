@@ -1,18 +1,9 @@
 import asyncio
 import asyncio.streams
 
-from . import helpers
 from .errors import ServerDisconnectedError
+from .protocol import HttpResponseParser
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamWriter
-
-
-if helpers.NO_EXTENSIONS:
-    from .protocol import HttpResponseParser
-else:
-    try:
-        from ._parser import HttpResponseParser
-    except ImportError:  # pragma: no cover
-        from .protocol import HttpResponseParser
 
 
 class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
