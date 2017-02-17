@@ -1204,8 +1204,7 @@ manually.
       :param int code: closing code
 
       :param message: optional payload of *pong* message,
-                      :class:`str` (converted to *UTF-8* encoded bytes)
-                      or :class:`bytes`.
+         :class:`str` (converted to *UTF-8* encoded bytes) or :class:`bytes`.
 
    .. comethod:: receive()
 

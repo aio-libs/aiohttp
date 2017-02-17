@@ -63,7 +63,7 @@ following code::
     params = {'key1': 'value1', 'key2': 'value2'}
     async with session.get('http://httpbin.org/get',
                            params=params) as resp:
-        assert resp.url == 'http://httpbin.org/get?key2=value2&key1=value1'
+                           assert resp.url == 'http://httpbin.org/get?key2=value2&key1=value1'
 
 You can see that the URL has been correctly encoded by printing the URL.
 
@@ -436,20 +436,29 @@ To tweak or change *transport* layer of requests you can pass a custom
 Limiting connection pool size
 -----------------------------
 
-To limit amount of simultaneously opened connection to the same
-endpoint (``(host, port, is_ssl)`` triple) you can pass *limit*
+To limit amount of simultaneously opened connections you can pass *limit*
 parameter to *connector*::
 
-    conn = aiohttp.TCPConnector(limit=30)
+  conn = aiohttp.TCPConnector(limit=30)
 
-The example limits amount of parallel connections to `30`.
+  The example limits total amount of parallel connections to `30`.
 
-The default is `20`.
+  The default is `100`.
 
-If you explicitly want not to have limits to the same endpoint,
-pass `None`. For example::
+If you explicitly want not to have limits, pass `0`. For example::
 
-    conn = aiohttp.TCPConnector(limit=None)
+  conn = aiohttp.TCPConnector(limit=0)
+
+
+To limit amount of simultaneously opened connection to the same
+endpoint (``(host, port, is_ssl)`` triple) you can pass *limit_per_host*
+parameter to *connector*::
+
+    conn = aiohttp.TCPConnector(limit_per_host=30)
+
+The example limits amount of parallel connections to the same to `30`.
+
+The default is `0` (no limit on per host bases).
 
 
 Resolving using custom nameservers
