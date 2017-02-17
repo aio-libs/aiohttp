@@ -134,6 +134,9 @@ class ClientSession:
     def _request(self, method, url, *,
                  params=None,
                  data=None,
+                 # TODO: make this actually work for files.
+                 # see issue  for more info. #1651
+                 files=None,
                  headers=None,
                  skip_auto_headers=None,
                  auth=None,
