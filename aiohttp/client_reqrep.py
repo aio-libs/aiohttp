@@ -512,7 +512,7 @@ class ClientResponse(HeadersMixin):
         assert isinstance(url, URL)
 
         self.method = method
-        self._url_obj = url
+        self._url = url
         self._content = None
         self._writer = writer
         self._continue = continue100
@@ -524,22 +524,20 @@ class ClientResponse(HeadersMixin):
         self.cookies = SimpleCookie()
 
     @property
-    def url_obj(self):
-        return self._url_obj
+    def url(self):
+        return self._url
 
     @property
-    def url(self):
-        warnings.warn("Deprecated, use .url_obj",
-                      DeprecationWarning,
-                      stacklevel=2)
-        return str(self._url_obj)
+    def url_obj(self):
+        warnings.warn(
+            "Deprecated, use .url #1654", DeprecationWarning, stacklevel=2)
+        return self._url
 
     @property
     def host(self):
-        warnings.warn("Deprecated, use .url_obj.host",
-                      DeprecationWarning,
-                      stacklevel=2)
-        return self._url_obj.host
+        warnings.warn(
+            "Deprecated, use .url.host", DeprecationWarning, stacklevel=2)
+        return self._url.host
 
     @property
     def _headers(self):

@@ -902,7 +902,7 @@ def test_subapp_reverse_url(loop, test_client):
     assert resp.status == 200
     txt = yield from resp.text()
     assert 'OK' == txt
-    assert resp.url_obj.path == '/path/final'
+    assert resp.url.path == '/path/final'
 
 
 @asyncio.coroutine
@@ -927,7 +927,7 @@ def test_subapp_reverse_variable_url(loop, test_client):
     assert resp.status == 200
     txt = yield from resp.text()
     assert 'OK' == txt
-    assert resp.url_obj.path == '/path/final'
+    assert resp.url.path == '/path/final'
 
 
 @asyncio.coroutine
@@ -948,7 +948,7 @@ def test_subapp_reverse_static_url(loop, test_client):
 
     client = yield from test_client(app)
     resp = yield from client.get('/path/to')
-    assert resp.url_obj.path == '/path/static/' + fname
+    assert resp.url.path == '/path/static/' + fname
     assert resp.status == 200
     body = yield from resp.read()
     with (here / fname).open('rb') as f:

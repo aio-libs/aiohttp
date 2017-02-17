@@ -999,15 +999,7 @@ Response object
 
    .. attribute:: url
 
-      URL of request (:class:`str`).
-
-      .. deprecated:: 1.1
-
-   .. attribute:: url_obj
-
       URL of request (:class:`~yarl.URL`).
-
-      .. versionadded:: 1.1
 
    .. attribute:: connection
 
