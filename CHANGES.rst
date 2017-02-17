@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-2.0.0 (XXXX-XX-XX)
+2.0.0 (2016-03-XX)
 ------------------
 
 - `run_app` and the Command Line Interface now support serving over Unix domain sockets for
@@ -9,6 +9,8 @@ CHANGES
 
 - Added `capacity` parameter for client connector object.
   Capacity is the total number of simultaneous connections.  #1601
+
+- Implementation for Trailer headers parser is broken #1619
 
 - Deprecate connector's `limit` parameter #1601
 

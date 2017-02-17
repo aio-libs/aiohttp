@@ -49,7 +49,8 @@ class ChunkState(IntEnum):
     PARSE_CHUNKED_SIZE = 0
     PARSE_CHUNKED_CHUNK = 1
     PARSE_CHUNKED_CHUNK_EOF = 2
-    PARSE_CHUNKED_TRAILERS = 3
+    PARSE_MAYBE_TRAILERS = 3
+    PARSE_TRAILERS = 4
 
 
 HttpVersion = collections.namedtuple(
@@ -190,7 +191,7 @@ class HttpParser:
                     start_pos = 0
                     data_len = len(data)
                     self._payload_parser = None
-                    break
+                    continue
             else:
                 break
 
@@ -496,7 +497,7 @@ class HttpPayloadParser:
 
                         chunk = chunk[pos+2:]
                         if size == 0:  # eof marker
-                            self._chunk = ChunkState.PARSE_CHUNKED_TRAILERS
+                            self._chunk = ChunkState.PARSE_MAYBE_TRAILERS
                         else:
                             self._chunk = ChunkState.PARSE_CHUNKED_CHUNK
                             self._chunk_size = size
@@ -531,12 +532,23 @@ class HttpPayloadParser:
                         self._chunk_tail = chunk
                         return False, None
 
+                # if stream does not contain trailer, after 0\r\n
+                # we should get another \r\n otherwise
+                # trailers needs to be skiped until \r\n\r\n
+                if self._chunk == ChunkState.PARSE_MAYBE_TRAILERS:
+                    if chunk[:2] == SEP:
+                        # end of stream
+                        self.payload.feed_eof()
+                        return True, chunk[2:]
+                    else:
+                        self._chunk = ChunkState.PARSE_TRAILERS
+
                 # read and discard trailer up to the CRLF terminator
-                if self._chunk == ChunkState.PARSE_CHUNKED_TRAILERS:
+                if self._chunk == ChunkState.PARSE_TRAILERS:
                     pos = chunk.find(SEP)
                     if pos >= 0:
-                        self.payload.feed_eof()
-                        return True, chunk[pos+2:]
+                        chunk = chunk[pos+2:]
+                        self._chunk = ChunkState.PARSE_MAYBE_TRAILERS
                     else:
                         self._chunk_tail = chunk
                         return False, None

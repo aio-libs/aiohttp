@@ -411,6 +411,74 @@ def test_http_response_parser_code_not_int(response):
         response.feed_data(b'HTTP/1.1 ttt test\r\n\r\n')
 
 
+def test_http_request_chunked_payload(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'transfer-encoding: chunked\r\n\r\n')
+    msg, payload = parser.feed_data(text)[0][0]
+
+    assert msg.chunked
+    assert not payload.is_eof()
+    assert isinstance(payload, streams.FlowControlStreamReader)
+
+    parser.feed_data(b'4\r\ndata\r\n4\r\nline\r\n0\r\n\r\n')
+
+    assert b'dataline' == b''.join(d for d in payload._buffer)
+    assert payload.is_eof()
+
+
+def test_http_request_chunked_payload_and_next_message(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'transfer-encoding: chunked\r\n\r\n')
+    msg, payload = parser.feed_data(text)[0][0]
+
+    messages, upgraded, tail = parser.feed_data(
+        b'4\r\ndata\r\n4\r\nline\r\n0\r\n\r\n'
+        b'POST /test2 HTTP/1.1\r\n'
+        b'transfer-encoding: chunked\r\n\r\n')
+
+    assert b'dataline' == b''.join(d for d in payload._buffer)
+    assert payload.is_eof()
+
+    assert len(messages) == 1
+    msg2, payload2 = messages[0]
+
+    assert msg2.method == 'POST'
+    assert msg2.chunked
+    assert not payload2.is_eof()
+
+
+def test_http_request_chunked_payload_chunks(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'transfer-encoding: chunked\r\n\r\n')
+    msg, payload = parser.feed_data(text)[0][0]
+
+    parser.feed_data(b'4\r\ndata\r')
+    parser.feed_data(b'\n4')
+    parser.feed_data(b'\r')
+    parser.feed_data(b'\n')
+    parser.feed_data(b'line\r\n0\r\n')
+    parser.feed_data(b'test: test\r\n')
+
+    assert b'dataline' == b''.join(d for d in payload._buffer)
+    assert not payload.is_eof()
+
+    parser.feed_data(b'\r\n')
+    assert b'dataline' == b''.join(d for d in payload._buffer)
+    assert payload.is_eof()
+
+
+def test_parse_chunked_payload_chunk_extension(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'transfer-encoding: chunked\r\n\r\n')
+    msg, payload = parser.feed_data(text)[0][0]
+
+    parser.feed_data(
+        b'4;test\r\ndata\r\n4\r\nline\r\n0\r\ntest: test\r\n\r\n')
+
+    assert b'dataline' == b''.join(d for d in payload._buffer)
+    assert payload.is_eof()
+
+
 class TestParsePayload(unittest.TestCase):
 
     def setUp(self):
@@ -444,35 +512,6 @@ class TestParsePayload(unittest.TestCase):
         p.feed_data(b'da')
         p.feed_eof()
 
-    def test_parse_chunked_payload(self):
-        out = aiohttp.FlowControlDataQueue(self.stream)
-        p = HttpPayloadParser(out, chunked=True)
-        eof, tail = p.feed_data(b'4\r\ndata\r\n4\r\nline\r\n0\r\ntest\r\n')
-        self.assertEqual(b'dataline', b''.join(d for d, _ in out._buffer))
-        self.assertEqual(b'', tail)
-        self.assertTrue(eof)
-        self.assertTrue(out.is_eof())
-
-    def test_parse_chunked_payload_chunks(self):
-        out = aiohttp.FlowControlDataQueue(self.stream)
-        p = HttpPayloadParser(out, chunked=True)
-        p.feed_data(b'4\r\ndata\r')
-        p.feed_data(b'\n4')
-        p.feed_data(b'\r')
-        p.feed_data(b'\n')
-        p.feed_data(b'line\r\n0\r\n')
-        eof, tail = p.feed_data(b'test\r\n')
-        self.assertEqual(b'dataline', b''.join(d for d, _ in out._buffer))
-        self.assertTrue(eof)
-
-    def test_parse_chunked_payload_chunk_extension(self):
-        out = aiohttp.FlowControlDataQueue(self.stream)
-        p = HttpPayloadParser(out, chunked=True)
-        eof, tail = p.feed_data(
-            b'4;test\r\ndata\r\n4\r\nline\r\n0\r\ntest\r\n')
-        self.assertEqual(b'dataline', b''.join(d for d, _ in out._buffer))
-        self.assertTrue(eof)
-
     def test_parse_chunked_payload_size_error(self):
         out = aiohttp.FlowControlDataQueue(self.stream)
         p = HttpPayloadParser(out, chunked=True)
@@ -499,26 +538,6 @@ class TestParsePayload(unittest.TestCase):
             out, length=length, compression='deflate')
         p.feed_data(self._COMPRESSED)
         self.assertEqual(b'data', b''.join(d for d, _ in out._buffer))
-        self.assertTrue(out.is_eof())
-
-    def test_http_payload_parser_chunked(self):
-        out = aiohttp.FlowControlDataQueue(self.stream)
-        parser = HttpPayloadParser(out, chunked=True)
-        assert not parser.done
-
-        parser.feed_data(b'4;test\r\ndata\r\n4\r\nline\r\n0\r\ntest\r\n')
-        self.assertEqual(b'dataline', b''.join(d for d, _ in out._buffer))
-        self.assertTrue(out.is_eof())
-
-    def test_http_payload_parser_eof(self):
-        out = aiohttp.FlowControlDataQueue(self.stream)
-        p = HttpPayloadParser(out, readall=True)
-        assert not p.done
-
-        p.feed_data(b'data')
-        p.feed_data(b'line')
-        p.feed_eof()
-        self.assertEqual(b'dataline', b''.join(d for d, _ in out._buffer))
         self.assertTrue(out.is_eof())
 
     def test_http_payload_parser_length_zero(self):
