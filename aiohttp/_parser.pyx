@@ -22,7 +22,7 @@ cimport cython
 from . cimport _cparser as cparser
 
 
-__all__ = ('HttpRequestParser', 'HttpResponseMessage', 'parse_url')
+__all__ = ('HttpRequestParserC', 'HttpResponseMessageC', 'parse_url')
 
 
 @cython.internal
@@ -256,7 +256,7 @@ cdef class HttpParser:
             return messages, False, None
 
 
-cdef class HttpRequestParser(HttpParser):
+cdef class HttpRequestParserC(HttpParser):
 
     def __init__(self, protocol, loop, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,
@@ -266,7 +266,7 @@ cdef class HttpRequestParser(HttpParser):
                     response_with_body)
 
 
-cdef class HttpResponseParser(HttpParser):
+cdef class HttpResponseParserC(HttpParser):
 
     def __init__(self, protocol, loop, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,

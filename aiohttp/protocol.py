@@ -18,7 +18,7 @@ from multidict import CIMultiDict, istr
 import aiohttp
 
 from . import errors, hdrs
-from .helpers import create_future, noop
+from .helpers import NO_EXTENSIONS, create_future, noop
 from .log import internal_logger
 from .streams import EMPTY_PAYLOAD, FlowControlStreamReader
 
@@ -302,7 +302,7 @@ class HttpParser:
         return headers, raw_headers, close_conn, encoding, upgrade, chunked
 
 
-class HttpRequestParser(HttpParser):
+class HttpRequestParserPy(HttpParser):
     """Read request status line. Exception errors.BadStatusLine
     could be raised in case of any errors in status line.
     Returns RawRequestMessage.
@@ -350,7 +350,7 @@ class HttpRequestParser(HttpParser):
             close, compression, upgrade, chunked, yarl.URL(path))
 
 
-class HttpResponseParser(HttpParser):
+class HttpResponseParserPy(HttpParser):
     """Read response status line and headers.
 
     BadStatusLine could be raised in case of any errors in status line.
@@ -587,6 +587,17 @@ class DeflateBuffer:
                 raise errors.ContentEncodingError('deflate')
 
         self.out.feed_eof()
+
+
+HttpRequestParser = HttpRequestParserPy
+HttpResponseParser = HttpResponseParserPy
+try:
+    from .parser import HttpRequestParserC, HttpResponseParserC
+    if not NO_EXTENSIONS:  # pragma: no cover
+        HttpRequestParser = HttpRequestParserC
+        HttpResponseParser = HttpResponseParserC
+except ImportError:  # pragma: no cover
+    pass
 
 
 class PayloadWriter:

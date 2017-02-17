@@ -12,9 +12,10 @@ from html import escape as html_escape
 
 import aiohttp
 from aiohttp import errors, hdrs, helpers
-from aiohttp.helpers import TimeService, create_future, ensure_future
-from aiohttp.log import access_logger, server_logger
-from aiohttp.streams import StreamWriter
+from .helpers import TimeService, create_future, ensure_future
+from .log import access_logger, server_logger
+from .protocol import HttpRequestParser
+from .streams import StreamWriter
 
 __all__ = ('ServerHttpProtocol',)
 
@@ -39,15 +40,6 @@ if hasattr(socket, 'SO_KEEPALIVE'):
 else:
     def tcp_keepalive(server, transport):  # pragma: no cover
         pass
-
-
-if helpers.NO_EXTENSIONS:
-    from .protocol import HttpRequestParser
-else:
-    try:
-        from ._parser import HttpRequestParser
-    except ImportError:  # pragma: no cover
-        from .protocol import HttpRequestParser
 
 
 class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
