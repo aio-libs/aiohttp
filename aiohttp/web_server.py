@@ -8,7 +8,7 @@ from . import errors
 from .helpers import TimeService
 from .server import ServerHttpProtocol
 from .web_exceptions import HTTPException, HTTPInternalServerError
-from .web_reqrep import BaseRequest
+from .web_request import BaseRequest
 
 __all__ = ('RequestHandler', 'Server')
 

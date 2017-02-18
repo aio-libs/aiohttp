@@ -10,8 +10,8 @@ from importlib import import_module
 
 from yarl import URL
 
-from . import (hdrs, web_exceptions, web_middlewares, web_reqrep, web_server,
-               web_urldispatcher, web_ws)
+from . import (hdrs, web_exceptions, web_middlewares, web_request,
+               web_response, web_server, web_urldispatcher, web_ws)
 from .abc import AbstractMatchInfo, AbstractRouter
 from .helpers import FrozenList, sentinel
 from .http import HttpVersion  # noqa
@@ -19,13 +19,15 @@ from .log import access_logger, web_logger
 from .signals import PostSignal, PreSignal, Signal
 from .web_exceptions import *  # noqa
 from .web_middlewares import *  # noqa
-from .web_reqrep import *  # noqa
+from .web_request import *  # noqa
+from .web_response import *  # noqa
 from .web_server import Server
 from .web_urldispatcher import *  # noqa
 from .web_urldispatcher import PrefixedSubAppResource
 from .web_ws import *  # noqa
 
-__all__ = (web_reqrep.__all__ +
+__all__ = (web_request.__all__ +
+           web_response.__all__ +
            web_exceptions.__all__ +
            web_urldispatcher.__all__ +
            web_ws.__all__ +
@@ -235,7 +237,7 @@ class Application(MutableMapping):
         yield from self.on_cleanup.send(self)
 
     def _make_request(self, message, payload, protocol,
-                      _cls=web_reqrep.Request):
+                      _cls=web_request.Request):
         return _cls(
             message, payload, protocol,
             protocol._time_service, protocol._request_handler,
@@ -266,7 +268,7 @@ class Application(MutableMapping):
                     handler = yield from factory(app, handler)
             resp = yield from handler(request)
 
-        assert isinstance(resp, web_reqrep.StreamResponse), \
+        assert isinstance(resp, web_response.StreamResponse), \
             ("Handler {!r} should return response instance, "
              "got {!r} [middlewares {!r}]").format(
                  match_info.handler, type(resp),

@@ -12,7 +12,7 @@ from .helpers import create_future
 from .streams import FlowControlDataQueue
 from .web_exceptions import (HTTPBadRequest, HTTPInternalServerError,
                              HTTPMethodNotAllowed)
-from .web_reqrep import StreamResponse
+from .web_response import StreamResponse
 
 __all__ = ('WebSocketResponse', 'WebSocketReady', 'MsgType', 'WSMsgType',)
 

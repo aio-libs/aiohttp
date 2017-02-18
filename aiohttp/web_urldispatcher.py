@@ -22,7 +22,7 @@ from .file_sender import FileSender
 from .http import HttpVersion11, PayloadWriter
 from .web_exceptions import (HTTPExpectationFailed, HTTPForbidden,
                              HTTPMethodNotAllowed, HTTPNotFound)
-from .web_reqrep import Response, StreamResponse
+from .web_response import Response, StreamResponse
 
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',

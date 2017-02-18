@@ -171,7 +171,7 @@ def test_start():
     resp = StreamResponse()
     assert resp.keep_alive is None
 
-    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
+    with mock.patch('aiohttp.web_response.PayloadWriter'):
         msg = yield from resp.prepare(req)
 
         assert msg.buffer_data.called
@@ -195,7 +195,7 @@ def test_chunked_encoding():
     resp.enable_chunked_encoding()
     assert resp.chunked
 
-    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
+    with mock.patch('aiohttp.web_response.PayloadWriter'):
         msg = yield from resp.prepare(req)
         assert msg.chunked
 
@@ -209,7 +209,7 @@ def test_chunk_size():
     resp.enable_chunked_encoding(chunk_size=8192)
     assert resp.chunked
 
-    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
+    with mock.patch('aiohttp.web_response.PayloadWriter'):
         msg = yield from resp.prepare(req)
         assert msg.chunked
         assert msg.enable_chunking.called
@@ -238,7 +238,7 @@ def test_compression_no_accept():
     resp.enable_compression()
     assert resp.compression
 
-    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
+    with mock.patch('aiohttp.web_response.PayloadWriter'):
         msg = yield from resp.prepare(req)
         assert not msg.enable_compression.called
 
@@ -253,7 +253,7 @@ def test_force_compression_no_accept_backwards_compat():
     resp.enable_compression(force=True)
     assert resp.compression
 
-    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
+    with mock.patch('aiohttp.web_response.PayloadWriter'):
         msg = yield from resp.prepare(req)
     assert msg.enable_compression.called
     assert msg.filter is not None
@@ -268,7 +268,7 @@ def test_force_compression_false_backwards_compat():
     resp.enable_compression(force=False)
     assert resp.compression
 
-    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
+    with mock.patch('aiohttp.web_response.PayloadWriter'):
         msg = yield from resp.prepare(req)
     assert not msg.enable_compression.called
 
@@ -285,7 +285,7 @@ def test_compression_default_coding():
     resp.enable_compression()
     assert resp.compression
 
-    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
+    with mock.patch('aiohttp.web_response.PayloadWriter'):
         msg = yield from resp.prepare(req)
 
     msg.enable_compression.assert_called_with('deflate')
@@ -303,7 +303,7 @@ def test_force_compression_deflate():
     resp.enable_compression(ContentCoding.deflate)
     assert resp.compression
 
-    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
+    with mock.patch('aiohttp.web_response.PayloadWriter'):
         msg = yield from resp.prepare(req)
     msg.enable_compression.assert_called_with('deflate')
     assert 'deflate' == resp.headers.get(hdrs.CONTENT_ENCODING)
@@ -317,7 +317,7 @@ def test_force_compression_no_accept_deflate():
     resp.enable_compression(ContentCoding.deflate)
     assert resp.compression
 
-    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
+    with mock.patch('aiohttp.web_response.PayloadWriter'):
         msg = yield from resp.prepare(req)
     msg.enable_compression.assert_called_with('deflate')
     assert 'deflate' == resp.headers.get(hdrs.CONTENT_ENCODING)
@@ -333,7 +333,7 @@ def test_force_compression_gzip():
     resp.enable_compression(ContentCoding.gzip)
     assert resp.compression
 
-    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
+    with mock.patch('aiohttp.web_response.PayloadWriter'):
         msg = yield from resp.prepare(req)
     msg.enable_compression.assert_called_with('gzip')
     assert 'gzip' == resp.headers.get(hdrs.CONTENT_ENCODING)
@@ -347,7 +347,7 @@ def test_force_compression_no_accept_gzip():
     resp.enable_compression(ContentCoding.gzip)
     assert resp.compression
 
-    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
+    with mock.patch('aiohttp.web_response.PayloadWriter'):
         msg = yield from resp.prepare(req)
     msg.enable_compression.assert_called_with('gzip')
     assert 'gzip' == resp.headers.get(hdrs.CONTENT_ENCODING)
@@ -359,7 +359,7 @@ def test_delete_content_length_if_compression_enabled():
     resp = Response(body=b'answer')
     resp.enable_compression(ContentCoding.gzip)
 
-    with mock.patch('aiohttp.web_reqrep.PayloadWriter'):
+    with mock.patch('aiohttp.web_response.PayloadWriter'):
         yield from resp.prepare(req)
 
     assert resp.content_length is None
