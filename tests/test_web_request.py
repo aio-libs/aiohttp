@@ -9,6 +9,7 @@ from yarl import URL
 from aiohttp.protocol import HttpVersion
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
+from aiohttp.web_exceptions import HTTPRequestEntityTooLarge
 
 
 @pytest.fixture
@@ -314,3 +315,45 @@ def test_cannot_clone_after_read(loop):
     yield from req.read()
     with pytest.raises(RuntimeError):
         req.clone()
+
+
+@asyncio.coroutine
+def test_make_too_big_request(loop):
+    payload = StreamReader(loop=loop)
+    large_file = 1024 ** 2 * b'x'
+    too_large_file = large_file + b'x'
+    payload.feed_data(too_large_file)
+    payload.feed_eof()
+    req = make_mocked_request('POST', '/', payload=payload)
+    with pytest.raises(HTTPRequestEntityTooLarge) as err:
+        yield from req.read()
+
+    assert err.value.status_code == 413
+
+
+@asyncio.coroutine
+def test_make_too_big_request_adjust_limit(loop):
+    payload = StreamReader(loop=loop)
+    large_file = 1024 ** 2 * b'x'
+    too_large_file = large_file + b'x'
+    payload.feed_data(too_large_file)
+    payload.feed_eof()
+    max_size = 1024**2 + 2
+    req = make_mocked_request('POST', '/', payload=payload,
+                              client_max_size=max_size)
+    txt = yield from req.read()
+    assert len(txt) == 1024**2 + 1
+
+
+@asyncio.coroutine
+def test_make_too_big_request_limit_None(loop):
+    payload = StreamReader(loop=loop)
+    large_file = 1024 ** 2 * b'x'
+    too_large_file = large_file + b'x'
+    payload.feed_data(too_large_file)
+    payload.feed_eof()
+    max_size = None
+    req = make_mocked_request('POST', '/', payload=payload,
+                              client_max_size=max_size)
+    txt = yield from req.read()
+    assert len(txt) == 1024**2 + 1
